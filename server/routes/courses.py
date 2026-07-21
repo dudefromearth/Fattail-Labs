@@ -20,6 +20,11 @@ SELECT c.id, c.slug, c.title, c.subtitle, c.description_md, c.hero_image_url,
        (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS enrolled_count,
        (SELECT COUNT(*) FROM lessons l JOIN modules m ON l.module_id = m.id
          WHERE m.course_id = c.id) AS lesson_count,
+       (SELECT COALESCE(SUM(l.duration_seconds), 0)
+          FROM lessons l JOIN modules m ON l.module_id = m.id
+         WHERE m.course_id = c.id) AS total_duration_seconds,
+       (SELECT COUNT(*) FROM reviews r
+         WHERE r.course_id = c.id AND r.status = 'visible') AS review_count,
        (SELECT ROUND(AVG(r.rating), 1) FROM reviews r
          WHERE r.course_id = c.id AND r.status = 'visible'
         HAVING COUNT(*) >= 3) AS avg_rating
@@ -119,6 +124,8 @@ def list_courses(
                 "published_at": r["published_at"].isoformat() if r["published_at"] else None,
                 "enrolled_count": r["enrolled_count"],
                 "lesson_count": r["lesson_count"],
+                "total_duration_seconds": r["total_duration_seconds"],
+                "review_count": r["review_count"],
                 "avg_rating": float(r["avg_rating"]) if r["avg_rating"] is not None else None,
                 "categories": cats.get(r["id"], []),
                 "instructors": instructors.get(r["id"], []),

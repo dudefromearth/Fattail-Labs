@@ -13,6 +13,8 @@ export type CourseCard = {
   published_at: string | null;
   enrolled_count: number;
   lesson_count: number;
+  total_duration_seconds: number;
+  review_count: number;
   avg_rating: number | null;
   categories: Category[];
   instructors: InstructorCard[];

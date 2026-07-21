@@ -58,6 +58,41 @@ async def native_login(request: Request):
     )
 
 
+@router.post("/register")
+async def register(request: Request):
+    """Self-serve free account (observer tier). Enrollment & Access spec §2."""
+    body = await request.json()
+    name = (body.get("name") or "").strip()
+    email = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+    if not email or "@" not in email:
+        raise HTTPException(status_code=422, detail="Valid email required")
+    try:
+        password_hash = identity.hash_password(password)
+    except identity.IdentityError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT identity_id FROM identities WHERE email = %s", (email,))
+            if cur.fetchone() is not None:
+                # Never attach a password to an existing identity here (takeover guard).
+                raise HTTPException(
+                    status_code=409, detail="Account already exists — sign in instead"
+                )
+            identity_id = identity.get_or_create_identity(cur, email, name)
+            cur.execute(
+                "INSERT INTO credentials (identity_id, password_hash) VALUES (%s, %s)",
+                (identity_id, password_hash),
+            )
+            role = identity.derive_role(cur, identity_id)
+
+    return _session_response(
+        JSONResponse({"identity_id": identity_id, "role": role}, status_code=201),
+        identity_id, "native", role,
+    )
+
+
 @router.get("/sso/{provider_name:path}")
 def sso_callback(provider_name: str, token: str):
     reg = providers.registry()

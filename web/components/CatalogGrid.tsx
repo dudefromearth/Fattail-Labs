@@ -1,11 +1,142 @@
 "use client";
 
+// Udemy-model catalog: attractive banner cards with the essentials; hovering a
+// card raises an expansive info panel (outcomes, meta, CTA). Panel is desktop-
+// only (hover devices); touch users tap straight through to the course page.
+
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { CourseCard } from "@/lib/types";
 import { isNew } from "@/lib/catalog";
 
 const LEVELS = ["beginner", "intermediate", "advanced"] as const;
+
+// Deterministic banner art per category (until hero images are uploaded).
+const BANNER_GRADIENTS: Record<string, string> = {
+  "0-dte": "linear-gradient(135deg, #064e3b 0%, #10b981 100%)",
+  butterflies: "linear-gradient(135deg, #1e3a8a 0%, #38bdf8 100%)",
+  convexity: "linear-gradient(135deg, #3b0764 0%, #a855f7 100%)",
+  "fat-tail-doctrine": "linear-gradient(135deg, #0c0a09 0%, #57534e 100%)",
+  "risk-sizing": "linear-gradient(135deg, #7c2d12 0%, #f97316 100%)",
+  "journaling-routine": "linear-gradient(135deg, #134e4a 0%, #2dd4bf 100%)",
+  "marketswarm-platform": "linear-gradient(135deg, #111827 0%, #10b981 100%)",
+  "options-foundations": "linear-gradient(135deg, #1e293b 0%, #64748b 100%)",
+  psychology: "linear-gradient(135deg, #4c0519 0%, #fb7185 100%)",
+};
+const FALLBACK_GRADIENT = "linear-gradient(135deg, #18181b 0%, #3f3f46 100%)";
+
+function fmtHours(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function updatedLabel(published_at: string | null): string | null {
+  if (!published_at) return null;
+  const d = new Date(published_at);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function outcomes(description_md: string): string[] {
+  return description_md
+    .split("\n")
+    .filter((l) => l.startsWith("- "))
+    .map((l) => l.slice(2))
+    .slice(0, 3);
+}
+
+function Stars({ rating }: { rating: number }) {
+  return (
+    <span className="text-amber-500" aria-label={`${rating} out of 5 stars`}>
+      {"★".repeat(Math.round(rating))}
+      <span className="text-zinc-300 dark:text-zinc-700">
+        {"★".repeat(5 - Math.round(rating))}
+      </span>
+    </span>
+  );
+}
+
+function Banner({ course }: { course: CourseCard }) {
+  if (course.hero_image_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={course.hero_image_url}
+        alt=""
+        loading="lazy"
+        className="aspect-video w-full object-cover"
+      />
+    );
+  }
+  const cat = course.categories[0];
+  return (
+    <div
+      className="relative flex aspect-video w-full flex-col justify-between p-4 text-white"
+      style={{ background: BANNER_GRADIENTS[cat?.slug ?? ""] ?? FALLBACK_GRADIENT }}
+    >
+      <span className="text-[10px] font-semibold uppercase tracking-widest opacity-80">
+        {cat?.name ?? "FatTail Labs"}
+      </span>
+      <span className="text-xl font-bold leading-snug drop-shadow-sm">
+        {course.title}
+      </span>
+    </div>
+  );
+}
+
+function HoverPanel({ course, flip }: { course: CourseCard; flip: boolean }) {
+  const updated = updatedLabel(course.published_at);
+  return (
+    <div
+      className={`invisible absolute top-0 z-30 hidden w-80 opacity-0 transition-all duration-150 group-hover:visible group-hover:opacity-100 lg:block ${
+        flip ? "right-full mr-3" : "left-full ml-3"
+      }`}
+    >
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
+        <h3 className="text-base font-bold leading-snug">{course.title}</h3>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          {isNew(course.published_at) && (
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+              NEW
+            </span>
+          )}
+          {course.certification_enabled && (
+            <span className="rounded-full bg-indigo-100 px-2 py-0.5 font-semibold text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+              Certification
+            </span>
+          )}
+          {updated && (
+            <span className="font-medium text-emerald-700 dark:text-emerald-400">
+              Updated {updated}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-zinc-500">
+          {fmtHours(course.total_duration_seconds)} total ·{" "}
+          <span className="capitalize">{course.level}</span> ·{" "}
+          {course.lesson_count} lessons
+        </p>
+        <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-300">
+          {course.subtitle}
+        </p>
+        <ul className="mt-3 space-y-2">
+          {outcomes(course.description_md).map((o) => (
+            <li key={o} className="flex gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+              <span className="mt-0.5 text-emerald-500">✓</span>
+              <span>{o}</span>
+            </li>
+          ))}
+        </ul>
+        <Link
+          href={`/courses/${course.slug}`}
+          className="mt-4 block rounded-full bg-emerald-500 py-2.5 text-center text-sm font-medium text-white transition-colors hover:bg-emerald-600"
+        >
+          View Course
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 function Chip({
   active,
@@ -86,51 +217,51 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
         />
       </div>
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {visible.map((c) => (
-          <Link
-            key={c.slug}
-            href={`/courses/${c.slug}`}
-            className="group flex flex-col rounded-2xl border border-zinc-200 p-6 transition-shadow hover:shadow-lg dark:border-zinc-800"
-          >
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              {isNew(c.published_at) && (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                  NEW
-                </span>
-              )}
-              {c.categories.map((cat) => (
-                <span
-                  key={cat.slug}
-                  className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-                >
-                  {cat.name}
-                </span>
-              ))}
-            </div>
-            <h2 className="mt-3 text-lg font-semibold leading-snug group-hover:underline">
-              {c.title}
-            </h2>
-            <p className="mt-2 line-clamp-4 text-sm text-zinc-600 dark:text-zinc-400">
-              {c.description_md.split("\n\n")[0]}
-            </p>
-            <div className="mt-auto flex items-center gap-3 pt-4 text-sm text-zinc-500">
-              <span>{c.instructors.map((i) => i.name).join(", ")}</span>
-            </div>
-            <div className="mt-2 flex items-center gap-3 text-xs text-zinc-500">
-              <span className="capitalize">{c.level}</span>
-              <span>·</span>
-              <span>{c.lesson_count} lessons</span>
-              <span>·</span>
-              <span>{c.enrolled_count} enrolled</span>
-              {c.avg_rating !== null && (
-                <>
-                  <span>·</span>
-                  <span>★ {c.avg_rating.toFixed(1)}</span>
-                </>
-              )}
-            </div>
-          </Link>
+      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {visible.map((c, i) => (
+          <div key={c.slug} className="group relative">
+            <Link
+              href={`/courses/${c.slug}`}
+              className="block overflow-hidden rounded-2xl border border-zinc-200 transition-shadow hover:shadow-lg dark:border-zinc-800"
+            >
+              <Banner course={c} />
+              <div className="p-4">
+                <h2 className="line-clamp-2 font-semibold leading-snug">
+                  {c.title}
+                </h2>
+                <p className="mt-1 truncate text-xs text-zinc-500">
+                  {c.instructors.map((x) => x.name).join(", ")}
+                </p>
+                <div className="mt-1.5 flex items-center gap-1.5 text-sm">
+                  {c.avg_rating !== null ? (
+                    <>
+                      <span className="font-semibold text-amber-700 dark:text-amber-500">
+                        {c.avg_rating.toFixed(1)}
+                      </span>
+                      <Stars rating={c.avg_rating} />
+                      <span className="text-xs text-zinc-500">
+                        ({c.review_count})
+                      </span>
+                    </>
+                  ) : isNew(c.published_at) ? (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                      NEW
+                    </span>
+                  ) : (
+                    <span className="text-xs text-zinc-400">
+                      Not yet rated
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  {fmtHours(c.total_duration_seconds)} total ·{" "}
+                  <span className="capitalize">{c.level}</span> ·{" "}
+                  {c.lesson_count} lessons
+                </p>
+              </div>
+            </Link>
+            <HoverPanel course={c} flip={i % 3 === 2} />
+          </div>
         ))}
         {visible.length === 0 && (
           <p className="text-zinc-500">No courses match. Clear a filter and try again.</p>

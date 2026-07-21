@@ -104,18 +104,17 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                 );
                 const rowClass =
                   "flex items-center gap-3 border-t border-zinc-100 px-5 py-3 text-sm dark:border-zinc-800";
+                // Every row links to the player; the lesson endpoint is the
+                // access authority and the player renders sign-up/upgrade
+                // prompts (Enrollment & Access spec §4).
                 return (
                   <li key={l.slug}>
-                    {l.free_preview ? (
-                      <Link
-                        href={`/courses/${course.slug}/lessons/${l.slug}`}
-                        className={`${rowClass} transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900`}
-                      >
-                        {row}
-                      </Link>
-                    ) : (
-                      <div className={rowClass}>{row}</div>
-                    )}
+                    <Link
+                      href={`/courses/${course.slug}/lessons/${l.slug}`}
+                      className={`${rowClass} transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900`}
+                    >
+                      {row}
+                    </Link>
                   </li>
                 );
               })}

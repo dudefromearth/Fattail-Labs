@@ -23,9 +23,12 @@ async function fetchLesson(
   slug: string,
   lessonSlug: string,
 ): Promise<{ status: number; lesson: LessonPayload | null }> {
+  // Forward the caller's session cookie — lesson access is session-dependent.
+  const { cookies } = await import("next/headers");
+  const cookieHeader = (await cookies()).toString();
   const res = await fetch(
     apiUrl(`/api/courses/${encodeURIComponent(slug)}/lessons/${encodeURIComponent(lessonSlug)}`),
-    { cache: "no-store" },
+    { cache: "no-store", headers: cookieHeader ? { cookie: cookieHeader } : {} },
   );
   if (!res.ok) return { status: res.status, lesson: null };
   return { status: 200, lesson: (await res.json()) as LessonPayload };
@@ -51,19 +54,55 @@ export default async function LessonPlayerPage({
 
   if (status === 404) notFound();
 
-  if (status === 401 || !lesson) {
+  // 401: no account/session — the preview is the reward for signing up.
+  if (status === 401) {
     return (
       <main className="mx-auto w-full max-w-3xl px-6 py-16 text-center">
-        <h1 className="text-2xl font-semibold">This lesson is for members</h1>
+        <h1 className="text-2xl font-semibold">
+          Create a free account to watch
+        </h1>
         <p className="mt-3 text-zinc-600 dark:text-zinc-400">
-          Join FatTail Labs to unlock every course, live session, and resource.
+          Free accounts can watch preview lessons in every course. It takes
+          thirty seconds.
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <Link
             href="/signup"
             className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
           >
-            Join FatTail Labs
+            Create Free Account
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-full border border-zinc-300 px-6 py-2.5 font-medium transition-colors hover:border-zinc-500 dark:border-zinc-700"
+          >
+            Log In
+          </Link>
+        </div>
+        <p className="mt-6 text-sm">
+          <Link href={`/courses/${slug}`} className="text-zinc-500 hover:underline">
+            ← Back to course
+          </Link>
+        </p>
+      </main>
+    );
+  }
+
+  // 403: signed in, but this lesson needs membership.
+  if (status === 403 || !lesson) {
+    return (
+      <main className="mx-auto w-full max-w-3xl px-6 py-16 text-center">
+        <h1 className="text-2xl font-semibold">This lesson is for members</h1>
+        <p className="mt-3 text-zinc-600 dark:text-zinc-400">
+          Your free account unlocks the previews — membership unlocks every
+          lesson, live session, and resource.
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <Link
+            href="/signup"
+            className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
+          >
+            Become a Member
           </Link>
           <Link
             href={`/courses/${slug}`}

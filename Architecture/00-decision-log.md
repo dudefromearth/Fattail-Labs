@@ -141,3 +141,27 @@ Supersedes the two header entries above. Logged out: "Log In" (outline) + "Sign 
 (emerald) buttons. Logged in: both replaced by the initials avatar (emerald activator+,
 gray observer) whose dropdown holds user info (name, role label) and actions (Dashboard,
 Become-a-member for observers, Sign out).
+
+## 2026-07-21 — Signup is live; previews require an account; members get playback
+
+Spec: FatTail-Labs-Enrollment-Access-Spec-v1.0 (supersedes YouTube spec §5 public
+previews). Self-serve registration (POST /api/auth/register: free observer account,
+session issued, 409 on existing email — no password attach to SSO identities). Lesson
+access matrix: anonymous → 401 everywhere (the preview is the reward for signing up);
+observer → previews 200, gated 403; activator+ → member playback of gated lessons
+(activated now that roles are real). Player renders distinct prompts: 401 → "Create a
+free account to watch"; 403 → "Become a Member". All lesson rows link to the player —
+the lesson endpoint is the sole access authority. Accepted debt: no email verification
+yet (must land before production launch).
+
+## 2026-07-21 — Catalog cards adopt the Udemy model (banner card + hover info panel)
+
+Coach directive with Udemy reference. Compact card: banner (hero image when set;
+otherwise deterministic per-category gradient art with category label + title), title,
+instructor, rating stars + review count (or NEW / "Not yet rated"), meta line
+(total duration · level · lesson count). Hover (desktop only, lg+) raises an expansive
+panel beside the card — title, NEW/Certification badges, "Updated <Month Year>", meta,
+subtitle, up to 3 ✓ outcome bullets parsed from the description's outcome list, View
+Course CTA; panel flips to the left for last-column cards. API list payload gained
+total_duration_seconds + review_count. Touch devices tap straight through to the course
+page. Belongs in parent spec v1.1 §5.1 when cut.
