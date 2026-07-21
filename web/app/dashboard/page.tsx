@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ContinueLearning from "@/components/ContinueLearning";
+import DashboardExtras from "@/components/DashboardExtras";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -15,6 +16,7 @@ export default function DashboardPage() {
           <ContinueLearning />
         </div>
       </section>
+      <DashboardExtras />
     </main>
   );
 }

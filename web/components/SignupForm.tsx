@@ -31,7 +31,7 @@ export default function SignupForm() {
         setBusy(false);
         return;
       }
-      window.location.href = "/courses";
+      window.location.href = "/pathway";
     } catch {
       setError("Network error — try again.");
       setBusy(false);

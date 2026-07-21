@@ -299,3 +299,30 @@ correct-answer leak, bad-question 422s, attempt in /me results, quiz completes l
 private file 404 at public path, anon 401 / observer 403 / member 200 with
 Content-Disposition, library listing + anon 401. Demo quiz "Knowledge Check: The
 Anatomy of the Bleed" (free preview) lives on the flagship.
+
+## 2026-07-21 — Live sessions + pathway assessment
+
+Specs: FatTail-Labs-Live-Sessions-Spec-v1.0 + FatTail-Labs-Pathway-Spec-v1.0. The
+migration-001 live_sessions and pathways tables are now in service.
+
+Live: /live (header nav gains Live) — public schedule (marketing surface), join URLs
+double-gated server-side (role ≥ min_role AND T−15min→+4h window) with machine-readable
+lock reasons (sign_in/role/too_early) driving the right prompt; public ICS export
+(never carries the join URL); replays link past sessions to their replay course
+(recording→lesson pipeline stays manual, honestly specced); in-page admin scheduler
+(create/delete). Dashboard gains a Next Live Session card.
+
+Pathway: 4-question intake (experience/account/struggle/time) → deterministic
+server-side sequence. **Step 1 is first-stop-the-bleeding for every possible answer
+set — proven by exhaustive test over all 108 combinations.** Struggle answer routes
+psychology/routine/sizing early; platform primer always last (tool after doctrine).
+Progress overlay derived at read time from lesson_progress. /pathway renders the
+assessment or the numbered step list ("Start here" on first incomplete, Retake).
+**Signup now lands on /pathway** — the benchmark's post-signup assessment pattern
+carrying the sell-the-dream/sequence-the-discipline strategy. Dashboard gains a Your
+Pathway card.
+
+Verified: join gating matrix (entitled+in-window URL, role lock, sign_in lock, no URL
+leak to anonymous), ICS output, session CRUD; pathway routing per struggle answer,
+progress overlay against real member data, invalid answers 422, flagship-first
+invariant exhaustively. Demo sessions seeded (workshop + trading room).
