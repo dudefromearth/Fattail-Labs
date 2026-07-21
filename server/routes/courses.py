@@ -8,6 +8,7 @@ non-preview material).
 from fastapi import APIRouter, HTTPException, Query
 
 import db
+import video
 
 router = APIRouter(prefix="/api/courses", tags=["courses"])
 
@@ -195,10 +196,13 @@ def course_detail(slug: str) -> dict:
             attachments = [{"title": a["title"], "kind": a["kind"]} for a in cur.fetchall()]
 
             cur.execute(
-                "SELECT trailer_video_id FROM courses WHERE id = %s",
+                "SELECT trailer_video_id, trailer_provider FROM courses WHERE id = %s",
                 (course_id,),
             )
-            trailer = cur.fetchone()["trailer_video_id"]
+            trow = cur.fetchone()
+            trailer = video.embed_config(
+                trow["trailer_provider"], trow["trailer_video_id"], None
+            )
 
     return {
         "slug": row["slug"],
@@ -206,7 +210,7 @@ def course_detail(slug: str) -> dict:
         "subtitle": row["subtitle"],
         "description_md": row["description_md"],
         "hero_image_url": row["hero_image_url"],
-        "trailer_video_id": trailer,
+        "trailer": trailer,
         "level": row["level"],
         "certification_enabled": bool(row["certification_enabled"]),
         "published_at": row["published_at"].isoformat() if row["published_at"] else None,

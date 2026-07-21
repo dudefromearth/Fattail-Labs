@@ -39,6 +39,7 @@ type EditState = {
   value: (key: string, fallback: string) => string;
   lessons: Record<string, LessonAdmin>;
   modules: ModuleAdmin[];
+  trailerVideoId: string | null | undefined;
   createModule: () => void;
   createLesson: (moduleId: number) => void;
   deleteModule: (moduleId: number) => void;
@@ -84,6 +85,7 @@ export function EditProvider({
   const [dirty, setDirty] = useState<Dirty>({});
   const [lessons, setLessons] = useState<Record<string, LessonAdmin>>({});
   const [modules, setModules] = useState<ModuleAdmin[]>([]);
+  const [trailerVideoId, setTrailerVideoId] = useState<string | null | undefined>(undefined);
   const [status, setStatusState] = useState<string | null>(null);
   const [serverStatus, setServerStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -122,6 +124,7 @@ export function EditProvider({
             };
         setLessons(map);
         setModules(d.modules);
+        setTrailerVideoId(d.trailer_video_id ?? null);
         setServerStatus(d.status);
         setStatusState(d.status);
       })
@@ -327,6 +330,7 @@ export function EditProvider({
         value,
         lessons,
         modules,
+        trailerVideoId,
         createModule,
         createLesson,
         deleteModule,

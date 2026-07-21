@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { CourseDetail } from "@/lib/types";
+import DiscussionSection from "@/components/DiscussionSection";
 import Markdown from "@/components/Markdown";
+import ReviewsSection from "@/components/ReviewsSection";
+import StudentsSection from "@/components/StudentsSection";
 import {
   EditableMarkdown,
   EditableSelect,
@@ -12,7 +15,13 @@ import {
 import { useEdit } from "@/components/edit/EditContext";
 
 const TABS = ["About", "Modules", "Resources", "Discussion", "Students"] as const;
-const ENABLED: ReadonlySet<string> = new Set(["About", "Modules", "Resources"]);
+const ENABLED: ReadonlySet<string> = new Set([
+  "About",
+  "Modules",
+  "Resources",
+  "Discussion",
+  "Students",
+]);
 
 function fmtDuration(seconds: number): string {
   if (!seconds) return "";
@@ -98,6 +107,7 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
             </div>
           ))}
         </div>
+        <ReviewsSection slug={course.slug} />
       </section>
 
       <section hidden={tab !== "Modules"} className="mt-6 space-y-4">
@@ -264,6 +274,14 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
             + Add module
           </button>
         )}
+      </section>
+
+      <section hidden={tab !== "Discussion"}>
+        {tab === "Discussion" && <DiscussionSection slug={course.slug} />}
+      </section>
+
+      <section hidden={tab !== "Students"}>
+        {tab === "Students" && <StudentsSection slug={course.slug} />}
       </section>
 
       <section hidden={tab !== "Resources"} className="mt-6">

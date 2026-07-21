@@ -45,13 +45,14 @@ INSTRUCTORS = [
 
 
 def _course(slug, title, subtitle, level, cats, desc, modules, status="published",
-            days_ago=7, cert=0, attachments=()):
+            days_ago=7, cert=0, attachments=(), trailer=None):
     return {
         "slug": slug, "title": title, "subtitle": subtitle, "level": level,
         "status": status, "certification_enabled": cert,
         "published_days_ago": days_ago, "description_md": desc,
         "categories": cats, "instructors": ["Ernie Varitimos"],
         "modules": modules, "attachments": list(attachments),
+        "trailer_video_id": trailer,
     }
 
 
@@ -93,6 +94,7 @@ COURSES = [
         ],
         days_ago=10, cert=1,
         attachments=[("FatTail Routine Log — Spreadsheet", "file"), ("Capital Gate Quick Card", "file")],
+        trailer="izSfocWOB0E",
     ),
     _course(
         "zero-dte-essentials",
@@ -144,6 +146,7 @@ COURSES = [
         ],
         days_ago=3,
         attachments=[("Butterfly Construction Checklist", "file")],
+        trailer="L-3haLrKruk",
     ),
     _course(
         "convexity-and-asymmetry",
@@ -371,12 +374,12 @@ def seed() -> None:
                 cur.execute(
                     f"""INSERT INTO courses
                         (slug, title, subtitle, description_md, level, status,
-                         certification_enabled, published_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, {published_expr})""",
+                         certification_enabled, trailer_video_id, published_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, {published_expr})""",
                     (
                         course["slug"], course["title"], course["subtitle"],
                         course["description_md"], course["level"], course["status"],
-                        course["certification_enabled"],
+                        course["certification_enabled"], course.get("trailer_video_id"),
                     ),
                 )
                 course_id = cur.lastrowid

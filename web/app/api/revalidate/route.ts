@@ -19,7 +19,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const identity = (await me.json()) as { role?: string };
-  if (identity.role !== "administrator") {
+  // Course pages: any authenticated session may regenerate (idempotent; reviews
+  // and other member writes need fresh aggregates — Reviews spec §3). All other
+  // paths remain admin-only.
+  if (identity.role !== "administrator" && !path.startsWith("/courses")) {
     return NextResponse.json({ error: "administrator required" }, { status: 403 });
   }
 

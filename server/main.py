@@ -26,6 +26,7 @@ def create_app() -> FastAPI:
     from routes.auth_dev import router as auth_dev_router
     from routes.auth_routes import integrations as integrations_router
     from routes.auth_routes import router as auth_router
+    from routes.community import router as community_router
     from routes.courses import router as courses_router
     from routes.lessons import router as lessons_router
     from routes.member import router as member_router
@@ -37,6 +38,7 @@ def create_app() -> FastAPI:
     app.include_router(courses_router)
     app.include_router(lessons_router)
     app.include_router(member_router)
+    app.include_router(community_router)
 
     return app
 

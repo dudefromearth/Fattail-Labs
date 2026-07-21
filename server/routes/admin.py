@@ -17,7 +17,9 @@ from config import get_config
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
-COURSE_FIELDS = frozenset({"title", "subtitle", "description_md", "level", "status"})
+COURSE_FIELDS = frozenset(
+    {"title", "subtitle", "description_md", "level", "status", "trailer_video_id"}
+)
 MODULE_FIELDS = frozenset({"title", "kind"})
 VALID_MODULE_KINDS = frozenset({"standard", "worksheets", "resources", "bonus"})
 LESSON_FIELDS = frozenset(
@@ -66,7 +68,8 @@ def admin_course(slug: str, request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT id, slug, title, subtitle, description_md, level, status
+                """SELECT id, slug, title, subtitle, description_md, level, status,
+                          trailer_video_id
                    FROM courses WHERE slug = %s""",
                 (slug,),
             )
@@ -120,6 +123,8 @@ async def update_course(slug: str, request: Request) -> dict:
         raise HTTPException(status_code=422, detail=f"Unknown fields: {sorted(unknown)}")
     if not body:
         raise HTTPException(status_code=422, detail="Empty update")
+    if "trailer_video_id" in body:
+        body["trailer_video_id"] = normalize_video_id(body["trailer_video_id"])
     if "level" in body and body["level"] not in VALID_LEVELS:
         raise HTTPException(status_code=422, detail=f"level must be one of {sorted(VALID_LEVELS)}")
     if "status" in body and body["status"] not in VALID_STATUS:

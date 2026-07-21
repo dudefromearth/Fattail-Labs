@@ -212,3 +212,41 @@ deleted); lesson body_md renders as markdown and is click-to-edit on the lesson 
 (body_md added to the admin field allowlist). v1.0 modal (AdminBar.tsx) deleted — no
 parallel implementations. Verified live: edit mode affordances, in-place title edit →
 Save & Publish → regenerated page, static HTML clean of affordances.
+
+## 2026-07-21 — Ratings & Reviews + Course Discussion (benchmark parity)
+
+Coach reaffirmed: Labs operates with or without WordPress — both features build purely
+on the native model. Specs: FatTail-Labs-Reviews-Spec-v1.0 +
+FatTail-Labs-Course-Discussion-Spec-v1.0.
+
+Reviews: eligibility = enrolled + ≥1 completed lesson (server-enforced); rating 1–5,
+one per identity per course, writing again upserts; aggregate public at ≥3 visible;
+admin moderate visible/held (held never renders publicly nor counts). Course Review
+block in the About tab: aggregate + stars, list w/ Show more, star-picker write form,
+per-review admin Hide/Show. After a write the client revalidates the course page —
+/api/revalidate loosened to any authenticated session for /courses/* (idempotent),
+keeping the baked hero rating + JSON-LD aggregateRating fresh.
+
+Discussion: course-scoped threads + comments (migration-001 tables). Reading public
+(community as sales surface); posting requires any authenticated account (observer+);
+bodies render through the sanitizing markdown renderer; Admin badge on staff posts;
+admin moderate on threads/comments; Discussion tab now enabled, client-fetched.
+
+Verified live: full reviews matrix (eligible post, ineligible reason, anon 401, bad
+rating 422, upsert), full discussion matrix (thread/replies incl. admin badge, anon
+401, hide → public count drops, non-admin moderate 403), UI rendering of both blocks.
+(Browser-pane screenshots hit a stale-compositor glitch; content verified via DOM.)
+
+## 2026-07-21 — Students tab + course trailers (benchmark parity complete)
+
+Specs: FatTail-Labs-Students-Tab-Spec-v1.0 + FatTail-Labs-Course-Trailer-Spec-v1.0.
+Students: roster from enrollments — signed-in accounts see the grid (initials avatar,
+name — never email — joined date, Completed ✓, Admin badge); logged-out sees count +
+sign-in prompt. Trailers: hero ▶ button when trailer_video_id set; click swaps the hero
+for the player in place (no modal), ✕ restores; embed built server-side (public payload
+carries embed config, never the raw ID); trailer_video_id joined the admin course
+allowlist with URL→ID normalization; edit-mode Trailer chip in the hero for authoring;
+seed sets trailers on flagship + butterfly. Verified: anon count-only vs member roster,
+no raw-ID leak, admin set-by-URL, play button baked into regenerated static HTML.
+With these, all five AI Labs course-page tabs are functional — benchmark course-page
+parity is complete.

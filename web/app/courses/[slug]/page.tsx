@@ -5,6 +5,7 @@ import EnrollCard from "@/components/EnrollCard";
 import AdminEditBar from "@/components/edit/AdminEditBar";
 import { EditProvider } from "@/components/edit/EditContext";
 import { EditableSelect, EditableText } from "@/components/edit/Editable";
+import { TrailerEditChip, TrailerPlayButton } from "@/components/TrailerHero";
 import CourseTabs from "@/components/CourseTabs";
 import { fetchCourse, fetchCourses, siteUrl } from "@/lib/catalog";
 import type { CourseDetail } from "@/lib/types";
@@ -131,7 +132,9 @@ export default async function CourseDetailPage({
         {/* minmax(0,…) keeps text wrapping inside the column instead of widening the page */}
         <div>
           {/* Hero */}
-          <div className="overflow-hidden rounded-3xl bg-zinc-900 text-white">
+          <div className="relative overflow-hidden rounded-3xl bg-zinc-900 text-white">
+            <TrailerPlayButton trailer={course.trailer} title={course.title} />
+            <TrailerEditChip />
             {course.hero_image_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
