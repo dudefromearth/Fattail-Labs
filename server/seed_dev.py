@@ -22,6 +22,17 @@ CATEGORIES = [
     ("psychology", "Psychology"),
 ]
 
+# Labs-native plans + provider vocabulary mappings (Identity & Access spec §2)
+PLANS = [
+    ("labs-membership", "Labs Membership", "activator"),
+    ("coaching", "Coaching", "navigator"),
+]
+PROVIDER_PLAN_MAP = [
+    ("wordpress:fattail", "labs-membership", "labs-membership"),
+    ("wordpress:0-dte", "coaching", "coaching"),
+    ("wordpress:0-dte", "labs-membership", "labs-membership"),
+]
+
 INSTRUCTORS = [
     (
         "Ernie Varitimos",
@@ -315,6 +326,18 @@ COURSES = [
 def seed() -> None:
     with db.transaction() as conn:
         with conn.cursor() as cur:
+            for slug, name, grants in PLANS:
+                cur.execute(
+                    "INSERT INTO plans (slug, name, grants_role) VALUES (%s, %s, %s) "
+                    "ON DUPLICATE KEY UPDATE name = VALUES(name), grants_role = VALUES(grants_role)",
+                    (slug, name, grants),
+                )
+            for provider, external_key, plan_slug in PROVIDER_PLAN_MAP:
+                cur.execute(
+                    """INSERT IGNORE INTO provider_plan_map (provider, external_key, plan_id)
+                       SELECT %s, %s, id FROM plans WHERE slug = %s""",
+                    (provider, external_key, plan_slug),
+                )
             for slug, name in CATEGORIES:
                 cur.execute(
                     "INSERT INTO categories (slug, name) VALUES (%s, %s) "

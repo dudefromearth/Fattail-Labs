@@ -29,9 +29,4 @@ def dev_login() -> RedirectResponse:
     return resp
 
 
-@router.get("/logout")
-def logout() -> RedirectResponse:
-    cfg = get_config()
-    resp = RedirectResponse(url="/courses", status_code=302)
-    resp.delete_cookie(cfg.session_cookie)
-    return resp
+# logout lives in routes/auth_routes.py

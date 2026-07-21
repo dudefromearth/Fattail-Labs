@@ -18,11 +18,14 @@ Full product spec: `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`. Deploy play
 - **Frontend:** Next.js app (`web/`) — public pages (catalog, course detail) statically
   generated at publish time with Course JSON-LD + unique titles; member routes
   client-rendered behind auth. Production serves built output only.
-- **Auth:** dual WordPress SSO, issuers `fattail` (fattail.ai WP) + `0-dte` (0-dte.com WP).
-  HS256 JWT, issuer-specific secrets, `(issuer, wp_user_id)` compound identity, universal
-  `identity_id`. Roles cumulative: observer < activator < navigator < administrator.
-  Entitlement mapping (WooCommerce plan slug → role) is config, per issuer.
-  Session cookie: `ft_session`, HttpOnly, SameSite=lax, domain `.fattail.ai` in prod.
+- **Auth:** Labs-native identity/roles/plans/memberships model
+  (Specs/FatTail-Labs-Identity-Access-Spec-v1.0.md). Standalone-capable: scrypt password
+  login (`create_user.py` CLI), native memberships, role derivation = role_override else
+  best active plan else observer (cumulative: observer < activator < navigator <
+  administrator). WordPress SSO + WooCommerce are PLUGGABLE PROVIDERS (`providers.py`):
+  HS256 JWT verify per issuer, entitlement keys → plans via `provider_plan_map` table
+  (data, not env), HMAC-signed membership webhooks. Same email across providers = one
+  identity. Session cookie: `ft_session`, HttpOnly, SameSite=lax, `.fattail.ai` in prod.
 - **Commerce:** WooCommerce on the WP sites is the ONLY entry point for selling/cancelling.
   Webhooks sync entitlements. The app never touches payments.
 - **Admin:** custom in-app `/admin` (role: administrator). No WordPress admin involvement

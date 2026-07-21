@@ -103,3 +103,41 @@ rebuild after reseeding baked the OLD catalog (2 courses instead of 10) into the
 pages. Fix: `prebuild` script removes `fetch-cache` before every `next build`, so
 prerender always reflects current database state. Runtime admin edits are unaffected
 (revalidatePath purges correctly); this only bit build-time data freshness.
+
+## 2026-07-21 — Identity & access: Labs-native model, providers pluggable
+
+Coach directive: Labs owns its own identity/roles/subscriptions/memberships model and
+must work standalone; WordPress + WooCommerce demoted from foundation to pluggable
+provider. Spec: FatTail-Labs-Identity-Access-Spec-v1.0 (supersedes parent §7.2–7.3's
+WP-first model; the dual-issuer JWT mechanics survive inside the WordPress provider).
+Core: Identity (email = universal key) / IdentityLink / Credential (stdlib scrypt) /
+Plan / Membership / ProviderPlanMap (migration 003). One role algorithm for all paths:
+role_override else best active-membership plan else observer. Native login + operator
+CLI; SSO callback + HMAC membership webhooks per provider; login page renders SSO
+buttons only for configured providers. LABS_ENTITLEMENTS env removed — entitlement
+mapping is now data. Verified: native admin/member/observer logins, wrong-password 401,
+simulated WP SSO grant → activator, forged-webhook 401, signed cancellation → observer
+on next login, same identity across provider logins.
+
+## 2026-07-21 — Global site header: Join CTA / membership avatar on every page
+
+Sticky header mounted in the root layout (all pages): brand → /courses, Courses nav.
+Right side is auth-state-driven via /api/auth/me after hydration (static pages ship the
+neutral shell): logged out → "Sign In" + "Join FatTail Labs" CTA; logged in → initials
+avatar (emerald = activator+, gray = observer) opening a menu with name, role label
+(Free account / Member / Coaching member / Admin), Dashboard, Become-a-member upsell
+for observers, Sign out. Belongs in parent spec v1.1's shell section when that version
+is cut.
+
+## 2026-07-21 — Header amendment: logged-out avatar slot IS the sign-in button
+
+Refines the header entry above: no "Sign In" text link — the avatar position renders a
+gray person-silhouette circle linking to /login when logged out, keeping the avatar slot
+constant across auth states (silhouette → your initials on sign-in).
+
+## 2026-07-21 — Header final form: Log In + Sign Up buttons ⇄ avatar
+
+Supersedes the two header entries above. Logged out: "Log In" (outline) + "Sign Up"
+(emerald) buttons. Logged in: both replaced by the initials avatar (emerald activator+,
+gray observer) whose dropdown holds user info (name, role label) and actions (Dashboard,
+Become-a-member for observers, Sign out).

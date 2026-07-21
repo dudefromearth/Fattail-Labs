@@ -35,7 +35,7 @@ You open agent sessions and load seeds; agents report **PASS / FAIL / BLOCKED**.
 
 ## Current junction → what you do
 
-### NOW: Coach decision — Gate 1 PASSED, approve advance to P1c
+### NOW: P1c in progress — identity & access core SHIPPED (native + pluggable providers); next: enroll/progress/member playback. WP-side SSO endpoint remains the external dependency for live WordPress login.
 
 Read `gate-reports/gate-1.md`. On your approval, Juliet seeds the member-path packets
 (SSO callback, enroll, progress, player). External dependency to schedule first:

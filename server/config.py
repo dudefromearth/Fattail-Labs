@@ -61,31 +61,8 @@ class Config:
         if self.env != "dev" and not self.cookie_domain:
             raise ConfigError("LABS_COOKIE_DOMAIN is required outside dev")
 
-        # Entitlement mapping: WooCommerce plan slug -> role, per issuer.
-        # Format: "issuer:slug=role,issuer:slug=role"
-        # e.g. "fattail:labs-membership=activator,0-dte:coaching=navigator"
-        self.entitlement_map = self._parse_entitlements(_require("LABS_ENTITLEMENTS"))
-
-    @staticmethod
-    def _parse_entitlements(raw: str) -> dict[tuple[str, str], str]:
-        valid_roles = frozenset({"observer", "activator", "navigator", "administrator"})
-        mapping: dict[tuple[str, str], str] = {}
-        for entry in raw.split(","):
-            entry = entry.strip()
-            if not entry:
-                continue
-            try:
-                issuer_slug, role = entry.split("=")
-                issuer, slug = issuer_slug.split(":")
-            except ValueError as exc:
-                raise ConfigError(f"Bad LABS_ENTITLEMENTS entry: {entry!r}") from exc
-            role = role.strip()
-            if role not in valid_roles:
-                raise ConfigError(f"Bad role {role!r} in LABS_ENTITLEMENTS entry: {entry!r}")
-            mapping[(issuer.strip(), slug.strip())] = role
-        if not mapping:
-            raise ConfigError("LABS_ENTITLEMENTS parsed to an empty mapping")
-        return mapping
+        # Entitlement mapping lives in the database (plans + provider_plan_map),
+        # per FatTail-Labs-Identity-Access-Spec-v1.0 §2 — no env mapping.
 
 
 _config: Config | None = None
