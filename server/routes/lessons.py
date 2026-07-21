@@ -11,6 +11,7 @@ import auth
 import db
 import video
 from config import get_config
+from routes.quizzes import public_questions
 
 router = APIRouter(prefix="/api/courses", tags=["lessons"])
 
@@ -52,6 +53,7 @@ def lesson_detail(course_slug: str, lesson_slug: str, request: Request) -> dict:
         raise HTTPException(status_code=403, detail="Membership required")
 
     progress = {"last_position": 0, "completed": False}
+    questions = None
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -65,9 +67,12 @@ def lesson_detail(course_slug: str, lesson_slug: str, request: Request) -> dict:
                     "last_position": prow["last_position"],
                     "completed": prow["completed_at"] is not None,
                 }
+            if row["kind"] == "quiz":
+                questions = public_questions(cur, row["id"])
 
     return {
         "progress": progress,
+        "questions": questions,
         "slug": row["slug"],
         "title": row["title"],
         "kind": row["kind"],

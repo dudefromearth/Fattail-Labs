@@ -5,6 +5,8 @@ import { apiUrl } from "@/lib/api";
 import { fetchCourse } from "@/lib/catalog";
 import LessonBody from "@/components/LessonBody";
 import LessonPlayer from "@/components/LessonPlayer";
+import QuizBuilder from "@/components/QuizBuilder";
+import QuizPlayer, { type PublicQuestion } from "@/components/QuizPlayer";
 
 // Rendered per-request: free-preview lessons are public; gated lessons show the
 // members-only state until the member path (P1c) adds session-aware playback.
@@ -12,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 type LessonPayload = {
   progress: { last_position: number; completed: boolean };
+  questions: PublicQuestion[] | null;
   slug: string;
   title: string;
   kind: string;
@@ -155,7 +158,27 @@ export default async function LessonPlayerPage({
       <h1 className="mt-4 text-2xl font-semibold">{lesson.title}</h1>
       <p className="mt-1 text-sm text-zinc-500">{lesson.module_title}</p>
 
-      {lesson.video && (
+      {lesson.kind === "quiz" && (
+        <div className="mt-6">
+          {lesson.questions && lesson.questions.length > 0 ? (
+            <QuizPlayer
+              courseSlug={lesson.course_slug}
+              lessonSlug={lesson.slug}
+              questions={lesson.questions}
+            />
+          ) : (
+            <p className="rounded-2xl border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
+              This quiz has no questions yet.
+            </p>
+          )}
+          <QuizBuilder
+            courseSlug={lesson.course_slug}
+            lessonSlug={lesson.slug}
+          />
+        </div>
+      )}
+
+      {lesson.kind !== "quiz" && lesson.video && (
         <div className="mt-6">
           <LessonPlayer
             courseSlug={lesson.course_slug}

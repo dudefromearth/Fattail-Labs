@@ -233,6 +233,12 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                           value={adminLesson.title}
                           className="flex-1 font-medium"
                         />
+                        <EditableSelect
+                          field={k("kind")}
+                          value={l.kind}
+                          options={["video", "text", "download", "external", "replay", "quiz"]}
+                          className="text-xs text-zinc-500"
+                        />
                         <button
                           onClick={() => edit!.deleteLesson(adminLesson.id)}
                           title="Delete lesson"
@@ -363,13 +369,23 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
         ) : (
           <ul className="mt-3 space-y-2">
             {course.attachments.map((a) => (
-              <li
-                key={a.title}
-                className="flex items-center gap-3 rounded-xl border border-zinc-200 px-4 py-3 text-sm dark:border-zinc-800"
-              >
-                <LessonIcon kind={a.kind === "file" ? "download" : "external"} />
-                {a.title}
-                <span className="ml-auto text-xs text-zinc-400">Members</span>
+              <li key={a.id}>
+                <a
+                  href={
+                    a.kind === "link" && a.url
+                      ? a.url
+                      : `/api/attachments/${a.id}/download`
+                  }
+                  target={a.kind === "link" ? "_blank" : undefined}
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 rounded-xl border border-zinc-200 px-4 py-3 text-sm transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+                >
+                  <LessonIcon kind={a.kind === "file" ? "download" : "external"} />
+                  {a.title}
+                  <span className="ml-auto text-xs text-zinc-400">
+                    {a.kind === "file" ? "Members · Download" : "Open"}
+                  </span>
+                </a>
               </li>
             ))}
           </ul>

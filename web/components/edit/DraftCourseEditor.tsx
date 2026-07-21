@@ -75,8 +75,10 @@ function adapt(a: AdminCourse): CourseDetail {
       })),
     })),
     attachments: a.attachments.map((x) => ({
+      id: x.id,
       title: x.title,
       kind: x.kind as "file" | "link",
+      url: x.kind === "link" ? x.url : null,
     })),
   };
 }

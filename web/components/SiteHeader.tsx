@@ -88,6 +88,9 @@ export default function SiteHeader() {
           <Link href="/courses" className="hover:text-zinc-900 dark:hover:text-zinc-100">
             Courses
           </Link>
+          <Link href="/resources" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+            Resources
+          </Link>
         </nav>
 
         <div className="ml-auto flex items-center gap-3">

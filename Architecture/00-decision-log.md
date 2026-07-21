@@ -271,3 +271,31 @@ media pipeline (upload/serve/bad-type 422/unauthed 401), module reorder + exact-
 rejection, category/instructor replace-sets, attachment CRUD, course creation with
 draft invisibility, draft route rendering with all editors live. Draft "Tail Hedging
 Workshop" left in dev DB as a playground.
+
+## 2026-07-21 — Quizzes + Resource Library
+
+Specs: FatTail-Labs-Quizzes-Spec-v1.0 + FatTail-Labs-Resource-Library-Spec-v1.0.
+
+Quizzes: a quiz is a LESSON KIND (no parallel container) — ordered, access-gated,
+completion-counted like any lesson (migration 004: quiz_questions, quiz_attempts).
+Three question kinds: multiple_choice (options + correct index), binary (True/False),
+short_answer (server-graded, trimmed case-insensitive acceptable-answers list).
+Grading is server-side only; public payloads never carry correct answers; every
+submission is an immutable attempt; first submission completes the lesson (pass
+thresholds future). QuizPlayer (forms → score + per-question ✓/✗ + correct answer +
+explanation + retake); admin QuizBuilder in place on the quiz lesson page; lesson rows
+gained a kind select; /me Quiz Results placeholder now real (attempt history).
+
+Resource Library: /resources aggregates course attachments (no orphan store) with
+category/kind filters; header nav gained Resources. Storage tiers: public media
+(images) vs NEW private tier (POST /api/admin/media?private=true — pdf/zip/office/
+text/images ≤25MB, server/uploads/private, NOT statically mounted, url stored as
+private:{name}). Downloads gated at GET /api/attachments/{id}/download: activator+
+(member benefit), streams with human filename; observers get the upsell. Course
+Resources tab rows now functional; attachments editor uploads target the private tier.
+
+Verified: all three question kinds graded (incl. short-answer normalization), no
+correct-answer leak, bad-question 422s, attempt in /me results, quiz completes lesson;
+private file 404 at public path, anon 401 / observer 403 / member 200 with
+Content-Disposition, library listing + anon 401. Demo quiz "Knowledge Check: The
+Anatomy of the Bleed" (free preview) lives on the flagship.

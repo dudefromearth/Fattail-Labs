@@ -23,10 +23,21 @@ type ActivityEvent = {
   lesson_title?: string;
 };
 
+type QuizAttempt = {
+  quiz_title: string;
+  lesson_slug: string;
+  course_slug: string;
+  course_title: string;
+  score: number;
+  total: number;
+  submitted_at: string;
+};
+
 type Data = {
   enrollments: Enrollment[];
   events: ActivityEvent[];
   stats: { lessons_completed: number; watch_seconds: number };
+  quizzes: QuizAttempt[];
 };
 
 function fmtDate(iso: string): string {
@@ -67,12 +78,19 @@ export default function MyLearning() {
     Promise.all([
       fetch("/api/me/enrollments", { credentials: "same-origin" }),
       fetch("/api/me/activity", { credentials: "same-origin" }),
+      fetch("/api/me/quiz-results", { credentials: "same-origin" }),
     ])
-      .then(async ([er, ar]) => {
+      .then(async ([er, ar, qr]) => {
         if (er.status === 401 || ar.status === 401) return "anonymous" as const;
         const e = await er.json();
         const a = await ar.json();
-        return { enrollments: e.enrollments, events: a.events, stats: a.stats };
+        const q = qr.ok ? await qr.json() : { attempts: [] };
+        return {
+          enrollments: e.enrollments,
+          events: a.events,
+          stats: a.stats,
+          quizzes: q.attempts,
+        };
       })
       .then((d) => {
         if (!cancelled) setData(d);
@@ -190,12 +208,39 @@ export default function MyLearning() {
         )}
       </section>
 
-      {/* Quiz results — home for the future quiz system */}
+      {/* Quiz results */}
       <section>
         <h2 className="text-lg font-semibold">Quiz Results</h2>
-        <div className="mt-3 rounded-2xl border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          No quizzes yet — coming to courses soon.
-        </div>
+        {data.quizzes.length === 0 ? (
+          <div className="mt-3 rounded-2xl border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700">
+            No quiz attempts yet.
+          </div>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {data.quizzes.map((q, i) => (
+              <li
+                key={i}
+                className="flex flex-wrap items-center gap-x-3 rounded-xl border border-zinc-200 px-4 py-3 text-sm dark:border-zinc-800"
+              >
+                <Link
+                  href={`/courses/${q.course_slug}/lessons/${q.lesson_slug}`}
+                  className="font-medium hover:underline"
+                >
+                  {q.quiz_title}
+                </Link>
+                <span className="text-zinc-400">in {q.course_title}</span>
+                <span
+                  className={`ml-auto font-semibold ${
+                    q.score === q.total ? "text-emerald-600" : "text-zinc-600 dark:text-zinc-300"
+                  }`}
+                >
+                  {q.score}/{q.total}
+                </span>
+                <span className="text-xs text-zinc-400">{fmtDate(q.submitted_at)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {/* Activity */}

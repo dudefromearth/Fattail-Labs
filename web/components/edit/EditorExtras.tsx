@@ -127,7 +127,7 @@ export function AttachmentsEditor() {
     setUploading(true);
     const form = new FormData();
     form.append("file", f);
-    const r = await fetch("/api/admin/media", {
+    const r = await fetch("/api/admin/media?private=true", {
       method: "POST",
       credentials: "same-origin",
       body: form,

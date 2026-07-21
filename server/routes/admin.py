@@ -26,11 +26,25 @@ COURSE_FIELDS = frozenset(
 UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 MEDIA_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 MEDIA_MAX_BYTES = 5 * 1024 * 1024
+PRIVATE_TYPES = {
+    **MEDIA_TYPES,
+    "application/pdf": ".pdf",
+    "application/zip": ".zip",
+    "text/csv": ".csv",
+    "text/plain": ".txt",
+    "text/markdown": ".md",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+}
+PRIVATE_MAX_BYTES = 25 * 1024 * 1024
 MODULE_FIELDS = frozenset({"title", "kind"})
 VALID_MODULE_KINDS = frozenset({"standard", "worksheets", "resources", "bonus"})
 LESSON_FIELDS = frozenset(
-    {"title", "video_id", "video_params", "free_preview", "duration_seconds", "body_md"}
+    {"title", "video_id", "video_params", "free_preview", "duration_seconds",
+     "body_md", "kind"}
 )
+VALID_LESSON_KINDS = frozenset({"video", "text", "download", "external", "replay", "quiz"})
 VALID_LEVELS = frozenset({"beginner", "intermediate", "advanced"})
 VALID_STATUS = frozenset({"draft", "published", "archived"})
 
@@ -189,6 +203,8 @@ async def update_lesson(lesson_id: int, request: Request) -> dict:
     if not body:
         raise HTTPException(status_code=422, detail="Empty update")
 
+    if "kind" in body and body["kind"] not in VALID_LESSON_KINDS:
+        raise HTTPException(status_code=422, detail=f"kind must be one of {sorted(VALID_LESSON_KINDS)}")
     if "video_id" in body:
         body["video_id"] = normalize_video_id(body["video_id"])
     if "video_params" in body:
@@ -330,15 +346,22 @@ def delete_lesson(lesson_id: int, request: Request) -> dict:
 # --- v1.3: media, reorder, assignment, course creation ------------------------
 
 @router.post("/media")
-async def upload_media(file: UploadFile, request: Request) -> dict:
+async def upload_media(file: UploadFile, request: Request, private: bool = False) -> dict:
     require_admin(request)
-    ext = MEDIA_TYPES.get(file.content_type or "")
+    types = PRIVATE_TYPES if private else MEDIA_TYPES
+    max_bytes = PRIVATE_MAX_BYTES if private else MEDIA_MAX_BYTES
+    ext = types.get(file.content_type or "")
     if ext is None:
         raise HTTPException(status_code=422, detail=f"Unsupported type: {file.content_type}")
     data = await file.read()
-    if len(data) > MEDIA_MAX_BYTES:
-        raise HTTPException(status_code=422, detail="File exceeds 5 MB")
+    if len(data) > max_bytes:
+        raise HTTPException(status_code=422, detail=f"File exceeds {max_bytes // (1024*1024)} MB")
     name = hashlib.sha256(data).hexdigest()[:24] + ext
+    if private:
+        target = UPLOADS_DIR / "private"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / name).write_bytes(data)
+        return {"url": f"private:{name}", "private": True}
     UPLOADS_DIR.mkdir(exist_ok=True)
     (UPLOADS_DIR / name).write_bytes(data)
     return {"url": f"/api/media/{name}"}
