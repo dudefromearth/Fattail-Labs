@@ -38,5 +38,5 @@ export type CourseDetail = Omit<CourseCard, "instructors"> & {
   trailer: { provider: string; embed_url: string } | null;
   instructors: InstructorBio[];
   modules: Module[];
-  attachments: { id: number; title: string; kind: "file" | "link"; url: string | null }[];
+  attachments: { id: number; title: string; kind: "file" | "link"; free: boolean; url: string | null }[];
 };

@@ -119,6 +119,7 @@ export function AttachmentsEditor() {
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<"link" | "file">("link");
   const [url, setUrl] = useState("");
+  const [free, setFree] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   if (!edit?.editMode) return null;
@@ -157,6 +158,18 @@ export function AttachmentsEditor() {
               className="flex-1 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-950"
             />
             <span className="text-xs text-zinc-400">{a.kind}</span>
+            <label className="flex items-center gap-1 text-xs">
+              <input
+                type="checkbox"
+                checked={!!a.free_preview}
+                onChange={(e) =>
+                  edit.updateAttachment(a.id, {
+                    free_preview: e.target.checked,
+                  } as unknown as Record<string, string>)
+                }
+              />
+              Free
+            </label>
             <button
               onClick={() => edit.removeAttachment(a.id)}
               className="text-zinc-400 hover:text-red-500"
@@ -191,10 +204,23 @@ export function AttachmentsEditor() {
             }}
           />
         </label>
+        <label className="flex items-center gap-1 text-xs">
+          <input
+            type="checkbox"
+            checked={free}
+            onChange={(e) => setFree(e.target.checked)}
+          />
+          Free
+        </label>
         <button
           onClick={() => {
             if (title.trim() && url.trim())
-              edit.addAttachment({ title: title.trim(), kind, url: url.trim() });
+              edit.addAttachment({
+                title: title.trim(),
+                kind,
+                url: url.trim(),
+                free_preview: free,
+              });
           }}
           disabled={!title.trim() || !url.trim()}
           className="rounded-full bg-emerald-500 px-4 py-1 text-xs font-medium text-white disabled:opacity-50"

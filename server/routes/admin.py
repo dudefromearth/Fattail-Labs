@@ -148,7 +148,7 @@ def admin_course(slug: str, request: Request) -> dict:
             )
             instructors = cur.fetchall()
             cur.execute(
-                """SELECT id, title, kind, url FROM attachments
+                """SELECT id, title, kind, url, free_preview FROM attachments
                    WHERE owner_type = 'course' AND owner_id = %s""",
                 (course["id"],),
             )
@@ -476,6 +476,7 @@ async def create_attachment(slug: str, request: Request) -> dict:
     title = (body.get("title") or "").strip()
     kind = body.get("kind") or "link"
     url = (body.get("url") or "").strip()
+    free = 1 if body.get("free_preview") else 0
     if not title or kind not in ("file", "link") or not url:
         raise HTTPException(status_code=422, detail="title, kind (file|link), url required")
     with db.transaction() as conn:
@@ -485,9 +486,9 @@ async def create_attachment(slug: str, request: Request) -> dict:
             if course is None:
                 raise HTTPException(status_code=404, detail="Course not found")
             cur.execute(
-                """INSERT INTO attachments (owner_type, owner_id, title, kind, url)
-                   VALUES ('course', %s, %s, %s, %s)""",
-                (course["id"], title, kind, url),
+                """INSERT INTO attachments (owner_type, owner_id, title, kind, url, free_preview)
+                   VALUES ('course', %s, %s, %s, %s, %s)""",
+                (course["id"], title, kind, url, free),
             )
             return {"id": cur.lastrowid}
 
@@ -496,11 +497,13 @@ async def create_attachment(slug: str, request: Request) -> dict:
 async def update_attachment(attachment_id: int, request: Request) -> dict:
     require_admin(request)
     body = await request.json()
-    allowed = {k: v for k, v in body.items() if k in ("title", "kind", "url")}
+    allowed = {k: v for k, v in body.items() if k in ("title", "kind", "url", "free_preview")}
     if not allowed:
         raise HTTPException(status_code=422, detail="Nothing to update")
     if "kind" in allowed and allowed["kind"] not in ("file", "link"):
         raise HTTPException(status_code=422, detail="kind must be file|link")
+    if "free_preview" in allowed:
+        allowed["free_preview"] = 1 if allowed["free_preview"] else 0
     sets = ", ".join(f"{f} = %s" for f in allowed)
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -546,3 +549,48 @@ async def create_course(request: Request) -> dict:
                 (slug, title),
             )
     return {"slug": slug}
+
+
+@router.delete("/courses/{slug}")
+def delete_course(slug: str, request: Request) -> dict:
+    """Course lifecycle (spec v1.4): total deletion incl. non-FK relations
+    (attachments + their private files, course-scoped threads)."""
+    require_admin(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
+            course = cur.fetchone()
+            if course is None:
+                raise HTTPException(status_code=404, detail="Course not found")
+            course_id = course["id"]
+
+            # Private files referenced by this course's attachments.
+            cur.execute(
+                """SELECT url FROM attachments
+                   WHERE owner_type = 'course' AND owner_id = %s AND kind = 'file'""",
+                (course_id,),
+            )
+            private_files = [
+                r["url"].split(":", 1)[1]
+                for r in cur.fetchall()
+                if (r["url"] or "").startswith("private:")
+            ]
+            cur.execute(
+                "DELETE FROM attachments WHERE owner_type = 'course' AND owner_id = %s",
+                (course_id,),
+            )
+            cur.execute(
+                "DELETE FROM threads WHERE scope_type = 'course' AND scope_id = %s",
+                (course_id,),
+            )
+            cur.execute("DELETE FROM courses WHERE id = %s", (course_id,))
+
+    private_dir = UPLOADS_DIR / "private"
+    for name in private_files:
+        if "/" in name or ".." in name:
+            continue
+        try:
+            (private_dir / name).unlink(missing_ok=True)
+        except OSError:
+            pass
+    return {"ok": True, "deleted": slug}

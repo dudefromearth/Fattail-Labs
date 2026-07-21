@@ -189,7 +189,7 @@ def course_detail(slug: str) -> dict:
                     )
 
             cur.execute(
-                """SELECT id, title, kind, url FROM attachments
+                """SELECT id, title, kind, url, free_preview FROM attachments
                    WHERE owner_type = 'course' AND owner_id = %s""",
                 (course_id,),
             )
@@ -198,6 +198,7 @@ def course_detail(slug: str) -> dict:
                     "id": a["id"],
                     "title": a["title"],
                     "kind": a["kind"],
+                    "free": bool(a["free_preview"]),
                     "url": a["url"] if a["kind"] == "link" else None,
                 }
                 for a in cur.fetchall()

@@ -7,6 +7,7 @@ import { EditProvider } from "@/components/edit/EditContext";
 import { EditableSelect, EditableText } from "@/components/edit/Editable";
 import { TrailerEditChip, TrailerShell } from "@/components/TrailerHero";
 import { CategoriesCell, HeroImageChip } from "@/components/edit/EditorExtras";
+import DangerZone from "@/components/edit/DangerZone";
 import CourseTabs from "@/components/CourseTabs";
 import { fetchCourse, fetchCourses, siteUrl } from "@/lib/catalog";
 import type { CourseDetail } from "@/lib/types";
@@ -204,6 +205,7 @@ export default async function CourseDetailPage({
         {/* Right rail — session-aware enrollment card */}
         <EnrollCard slug={course.slug} enrolledCount={course.enrolled_count} />
       </div>
+      <DangerZone slug={course.slug} title={course.title} status="published" />
     </main>
     </EditProvider>
   );

@@ -383,7 +383,8 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                   <LessonIcon kind={a.kind === "file" ? "download" : "external"} />
                   {a.title}
                   <span className="ml-auto text-xs text-zinc-400">
-                    {a.kind === "file" ? "Members · Download" : "Open"}
+                    {a.free ? "Free" : "Members"}
+                    {a.kind === "file" ? " · Download" : " · Open"}
                   </span>
                 </a>
               </li>

@@ -43,12 +43,12 @@ type EditState = {
   heroImageUrl: string | null | undefined;
   categories: { slug: string; name: string }[];
   instructors: { id: number; name: string }[];
-  attachments: { id: number; title: string; kind: string; url: string }[];
+  attachments: { id: number; title: string; kind: string; url: string; free_preview?: boolean }[];
   reorderModules: (ids: number[]) => void;
   reorderLessons: (moduleId: number, ids: number[]) => void;
   setCategories: (slugs: string[]) => void;
   setInstructors: (ids: number[]) => void;
-  addAttachment: (a: { title: string; kind: string; url: string }) => void;
+  addAttachment: (a: { title: string; kind: string; url: string; free_preview?: boolean }) => void;
   updateAttachment: (id: number, patch: Record<string, string>) => void;
   removeAttachment: (id: number) => void;
   uploadHero: (file: File) => void;
@@ -102,7 +102,7 @@ export function EditProvider({
   const [categories, setCategoriesState] = useState<{ slug: string; name: string }[]>([]);
   const [instructors, setInstructorsState] = useState<{ id: number; name: string }[]>([]);
   const [attachments, setAttachments] = useState<
-    { id: number; title: string; kind: string; url: string }[]
+    { id: number; title: string; kind: string; url: string; free_preview?: boolean }[]
   >([]);
   const [status, setStatusState] = useState<string | null>(null);
   const [serverStatus, setServerStatus] = useState<string | null>(null);
@@ -384,7 +384,7 @@ export function EditProvider({
     [jsonOp, courseSlug],
   );
   const addAttachment = useCallback(
-    (a: { title: string; kind: string; url: string }) =>
+    (a: { title: string; kind: string; url: string; free_preview?: boolean }) =>
       jsonOp(`/api/admin/courses/${courseSlug}/attachments`, "POST", a),
     [jsonOp, courseSlug],
   );

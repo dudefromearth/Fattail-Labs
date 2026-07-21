@@ -9,16 +9,148 @@ type Resource = {
   id: number;
   title: string;
   kind: "file" | "link";
+  free: boolean;
   url: string | null;
   course: { slug: string; title: string };
   categories: { slug: string; name: string }[];
 };
+
+function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
+  const [courses, setCourses] = useState<{ slug: string; title: string }[]>([]);
+  const [courseSlug, setCourseSlug] = useState("");
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [kind, setKind] = useState<"link" | "file">("link");
+  const [free, setFree] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/courses")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.courses) {
+          setCourses(d.courses.map((c: { slug: string; title: string }) => ({ slug: c.slug, title: c.title })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  async function uploadFile(f: File) {
+    setUploading(true);
+    const form = new FormData();
+    form.append("file", f);
+    const r = await fetch("/api/admin/media?private=true", {
+      method: "POST",
+      credentials: "same-origin",
+      body: form,
+    });
+    setUploading(false);
+    if (r.ok) {
+      const d = await r.json();
+      setUrl(d.url);
+      setKind("file");
+    }
+  }
+
+  async function create() {
+    if (!courseSlug || !title.trim() || !url.trim()) return;
+    const r = await fetch(`/api/admin/courses/${courseSlug}/attachments`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: title.trim(),
+        kind,
+        url: url.trim(),
+        free_preview: free,
+      }),
+    });
+    if (r.ok) {
+      setTitle("");
+      setUrl("");
+      setFree(false);
+      onChanged();
+    } else alert(`Create failed: ${await r.text()}`);
+  }
+
+  const field =
+    "rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+
+  return (
+    <div className="mb-6 rounded-2xl border-2 border-dashed border-emerald-300 p-5 dark:border-emerald-800">
+      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+        Add a resource (admin)
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <select
+          value={courseSlug}
+          onChange={(e) => setCourseSlug(e.target.value)}
+          className={field}
+        >
+          <option value="">Course…</option>
+          {courses.map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Title"
+          className={`${field} w-48`}
+        />
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="URL (or upload →)"
+          className={`${field} min-w-40 flex-1`}
+        />
+        <label className={`cursor-pointer ${field} text-xs`}>
+          {uploading ? "Uploading…" : "Upload file"}
+          <input
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) uploadFile(f);
+            }}
+          />
+        </label>
+        <label className="flex items-center gap-1 text-xs">
+          <input
+            type="checkbox"
+            checked={free}
+            onChange={(e) => setFree(e.target.checked)}
+          />
+          Free
+        </label>
+        <button
+          onClick={create}
+          disabled={!courseSlug || !title.trim() || !url.trim()}
+          className="rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function ResourceLibrary() {
   const [resources, setResources] = useState<Resource[] | null | "anonymous">(null);
   const [category, setCategory] = useState<string | null>(null);
   const [kind, setKind] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((me) => me?.role === "administrator" && setIsAdmin(true))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,7 +167,7 @@ export default function ResourceLibrary() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   const categories = useMemo(() => {
     if (!Array.isArray(resources)) return [];
@@ -97,8 +229,28 @@ export default function ResourceLibrary() {
         : "border-zinc-300 text-zinc-600 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
     }`;
 
+  async function adminToggleFree(r: Resource) {
+    await fetch(`/api/admin/attachments/${r.id}`, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ free_preview: !r.free }),
+    });
+    setReloadKey((k) => k + 1);
+  }
+
+  async function adminDelete(r: Resource) {
+    if (!confirm(`Delete "${r.title}"?`)) return;
+    await fetch(`/api/admin/attachments/${r.id}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+    });
+    setReloadKey((k) => k + 1);
+  }
+
   return (
     <div>
+      {isAdmin && <AdminResourceForm onChanged={() => setReloadKey((k) => k + 1)} />}
       {denied && (
         <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950">
           Downloads are a member benefit —{" "}
@@ -140,13 +292,34 @@ export default function ResourceLibrary() {
               {r.kind === "file" ? "⤓" : "↗"}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-medium">{r.title}</span>
+              <span className="flex items-center gap-2">
+                <span className="truncate font-medium">{r.title}</span>
+                {r.free ? (
+                  <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                    Free
+                  </span>
+                ) : (
+                  <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800">
+                    Members
+                  </span>
+                )}
+              </span>
               <Link
                 href={`/courses/${r.course.slug}`}
                 className="block truncate text-xs text-zinc-500 hover:underline"
               >
                 {r.course.title}
               </Link>
+              {isAdmin && (
+                <span className="mt-1 flex gap-3 text-xs text-zinc-400">
+                  <button onClick={() => adminToggleFree(r)} className="hover:text-zinc-600">
+                    {r.free ? "Make members-only" : "Make free"}
+                  </button>
+                  <button onClick={() => adminDelete(r)} className="hover:text-red-500">
+                    Delete
+                  </button>
+                </span>
+              )}
             </span>
             {r.kind === "file" ? (
               <button

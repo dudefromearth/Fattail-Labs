@@ -384,3 +384,37 @@ Verified: full alumni matrix (courses 200, resources 200, workshop role-locked,
 year-expiry → observer), navigator subscribe → role navigator, cancel@5d → observer
 (no alumni), cancel@35d → "expired + alumni granted" → role alumni with courses
 playing and alumni year ending exactly +1yr, promo gating, step-2 page rendering.
+
+## 2026-07-21 — Course lifecycle: unpublish + title-confirmed delete (admin v1.4)
+
+Spec: FatTail-Labs-InPlace-Admin-Spec-v1.4. Danger zone at the bottom of the course
+page (and draft route) in edit mode: Unpublish (published only — status→draft,
+republish, redirect to /admin/courses/{slug}; published_at retained so republish keeps
+the original date) and Delete course (confirmation requires TYPING the exact title —
+stronger than modules/lessons confirm). DELETE /api/admin/courses/{slug} cleans the
+non-FK relations explicitly: course attachments incl. their private files on disk, and
+course-scoped threads (comments cascade); FKs handle modules/lessons/progress/
+questions/attempts/enrollments/reviews/certificates; replay links null. Both actions
+refused while the dirty set is non-empty. Verified: full-cascade delete on a
+disposable course (zero orphans, private file removed from disk, unauthed 401),
+danger-zone rendering with both controls in edit mode.
+
+## 2026-07-21 — Draft visibility: admins auto-route from public URL to the editor
+
+Extends spec v1.4 (§3, same working session): a draft's /courses/{slug} URL keeps its
+genuine 404 for everyone (HTTP status + SEO unchanged), but the 404 page carries an
+admin-only client check — administrators whose slug resolves in the admin API are
+routed straight to /admin/courses/{slug}. Verified: anonymous draft URL stays 404;
+admin visiting the same URL lands in the draft editor (DRAFT badge confirmed).
+
+## 2026-07-21 — Resource visibility (free vs members) + library admin controls
+
+Spec: FatTail-Labs-Resource-Library-Spec-v1.1 (extends v1.0; migration 006:
+attachments.free_preview). Every resource is free (any signed-in account — mirrors
+lesson previews; nothing is anonymous) or members-only (alumni+, the default).
+Free/Members badges on the library and course Resources tab. Admin controls: course
+attachments editor gains a Free checkbox on create + per-row toggle; the /resources
+page itself gains admin create (course selector — resources always belong to a
+course, no orphan store — title, URL or private upload, Free checkbox) plus per-row
+make-free/members toggle and confirmed delete. Verified: observer free-download 302,
+members-only 403, anon 401, live toggle flip, flags in listings.

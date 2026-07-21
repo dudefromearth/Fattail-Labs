@@ -23,7 +23,7 @@ def library(request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT a.id, a.title, a.kind, a.url,
+                """SELECT a.id, a.title, a.kind, a.url, a.free_preview,
                           c.slug AS course_slug, c.title AS course_title
                    FROM attachments a
                    JOIN courses c ON a.owner_type = 'course' AND a.owner_id = c.id
@@ -50,6 +50,7 @@ def library(request: Request) -> dict:
                 "id": r["id"],
                 "title": r["title"],
                 "kind": r["kind"],
+                "free": bool(r["free_preview"]),
                 "url": r["url"] if r["kind"] == "link" else None,
                 "course": {"slug": r["course_slug"], "title": r["course_title"]},
                 "categories": cats_by_course.get(course_ids.get(r["course_slug"], -1), []),
@@ -62,12 +63,10 @@ def library(request: Request) -> dict:
 @router.get("/api/attachments/{attachment_id}/download")
 def download(attachment_id: int, request: Request):
     claims = require_session(request)
-    if not auth.role_at_least(claims["role"], "alumni"):
-        raise HTTPException(status_code=403, detail="Membership required to download resources")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT a.title, a.kind, a.url FROM attachments a
+                """SELECT a.title, a.kind, a.url, a.free_preview FROM attachments a
                    JOIN courses c ON a.owner_type = 'course' AND a.owner_id = c.id
                    WHERE a.id = %s AND c.status = 'published'""",
                 (attachment_id,),
@@ -75,6 +74,9 @@ def download(attachment_id: int, request: Request):
             row = cur.fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Resource not found")
+    # Free resources: any signed-in account. Members-only: alumni+ (spec v1.1).
+    if not row["free_preview"] and not auth.role_at_least(claims["role"], "alumni"):
+        raise HTTPException(status_code=403, detail="Membership required to download resources")
     if row["kind"] == "link":
         return RedirectResponse(url=row["url"], status_code=302)
 

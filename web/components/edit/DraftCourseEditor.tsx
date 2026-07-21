@@ -13,6 +13,7 @@ import { EditProvider, useEdit } from "@/components/edit/EditContext";
 import { EditableSelect, EditableText } from "@/components/edit/Editable";
 import { CategoriesCell, HeroImageChip } from "@/components/edit/EditorExtras";
 import { TrailerEditChip } from "@/components/TrailerHero";
+import DangerZone from "@/components/edit/DangerZone";
 import type { CourseDetail } from "@/lib/types";
 
 type AdminCourse = {
@@ -25,7 +26,7 @@ type AdminCourse = {
   hero_image_url: string | null;
   categories: { slug: string; name: string }[];
   instructors: { id: number; name: string; bio_md: string | null }[];
-  attachments: { id: number; title: string; kind: string; url: string }[];
+  attachments: { id: number; title: string; kind: string; url: string; free_preview?: boolean }[];
   modules: {
     module_id: number;
     title: string;
@@ -78,6 +79,7 @@ function adapt(a: AdminCourse): CourseDetail {
       id: x.id,
       title: x.title,
       kind: x.kind as "file" | "link",
+      free: !!x.free_preview,
       url: x.kind === "link" ? x.url : null,
     })),
   };
@@ -154,6 +156,7 @@ function DraftBody({ course }: { course: CourseDetail }) {
       <div className="mt-8">
         <CourseTabs course={course} />
       </div>
+      <DangerZone slug={course.slug} title={course.title} status="draft" />
     </main>
   );
 }
