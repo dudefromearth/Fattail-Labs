@@ -4,7 +4,10 @@ Run (dev only):  .venv/bin/uvicorn main:app --port $LABS_PORT
 Production: launchd on MiniTwo runs uvicorn against the built config. See docs/deploy.md.
 """
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 import db
 from config import get_config
@@ -39,6 +42,10 @@ def create_app() -> FastAPI:
     app.include_router(lessons_router)
     app.include_router(member_router)
     app.include_router(community_router)
+
+    uploads = Path(__file__).resolve().parent / "uploads"
+    uploads.mkdir(exist_ok=True)
+    app.mount("/api/media", StaticFiles(directory=uploads), name="media")
 
     return app
 

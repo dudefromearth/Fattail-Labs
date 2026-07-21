@@ -5,10 +5,12 @@ validated against the provider allowlist BEFORE persisting, so a bad config can
 never reach the player.
 """
 
+import hashlib
 import json
 import re
+from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, UploadFile
 
 import auth
 import db
@@ -18,8 +20,12 @@ from config import get_config
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 COURSE_FIELDS = frozenset(
-    {"title", "subtitle", "description_md", "level", "status", "trailer_video_id"}
+    {"title", "subtitle", "description_md", "level", "status", "trailer_video_id",
+     "hero_image_url"}
 )
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
+MEDIA_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
+MEDIA_MAX_BYTES = 5 * 1024 * 1024
 MODULE_FIELDS = frozenset({"title", "kind"})
 VALID_MODULE_KINDS = frozenset({"standard", "worksheets", "resources", "bonus"})
 LESSON_FIELDS = frozenset(
@@ -69,7 +75,7 @@ def admin_course(slug: str, request: Request) -> dict:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, slug, title, subtitle, description_md, level, status,
-                          trailer_video_id
+                          trailer_video_id, hero_image_url
                    FROM courses WHERE slug = %s""",
                 (slug,),
             )
@@ -111,7 +117,35 @@ def admin_course(slug: str, request: Request) -> dict:
                     "video_params": params or {},
                 }
             )
-    return {**course, "modules": modules}
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT cat.slug, cat.name FROM course_categories cc
+                   JOIN categories cat ON cc.category_id = cat.id
+                   WHERE cc.course_id = %s""",
+                (course["id"],),
+            )
+            cats = cur.fetchall()
+            cur.execute(
+                """SELECT i.id, i.name, i.bio_md FROM course_instructors ci
+                   JOIN instructors i ON ci.instructor_id = i.id
+                   WHERE ci.course_id = %s ORDER BY ci.sort_order""",
+                (course["id"],),
+            )
+            instructors = cur.fetchall()
+            cur.execute(
+                """SELECT id, title, kind, url FROM attachments
+                   WHERE owner_type = 'course' AND owner_id = %s""",
+                (course["id"],),
+            )
+            attachments = cur.fetchall()
+    return {
+        **course,
+        "modules": modules,
+        "categories": cats,
+        "instructors": instructors,
+        "attachments": attachments,
+    }
 
 
 @router.put("/courses/{slug}")
@@ -291,3 +325,201 @@ def delete_lesson(lesson_id: int, request: Request) -> dict:
             if cur.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Lesson not found")
     return {"ok": True}
+
+
+# --- v1.3: media, reorder, assignment, course creation ------------------------
+
+@router.post("/media")
+async def upload_media(file: UploadFile, request: Request) -> dict:
+    require_admin(request)
+    ext = MEDIA_TYPES.get(file.content_type or "")
+    if ext is None:
+        raise HTTPException(status_code=422, detail=f"Unsupported type: {file.content_type}")
+    data = await file.read()
+    if len(data) > MEDIA_MAX_BYTES:
+        raise HTTPException(status_code=422, detail="File exceeds 5 MB")
+    name = hashlib.sha256(data).hexdigest()[:24] + ext
+    UPLOADS_DIR.mkdir(exist_ok=True)
+    (UPLOADS_DIR / name).write_bytes(data)
+    return {"url": f"/api/media/{name}"}
+
+
+async def _reorder(cur, table: str, parent_col: str, parent_id: int, ids: list) -> None:
+    if not isinstance(ids, list) or not all(isinstance(i, int) for i in ids):
+        raise HTTPException(status_code=422, detail="ids must be a list of integers")
+    cur.execute(f"SELECT id FROM {table} WHERE {parent_col} = %s", (parent_id,))
+    existing = {r["id"] for r in cur.fetchall()}
+    if set(ids) != existing or len(ids) != len(existing):
+        raise HTTPException(status_code=422, detail="ids must match existing children exactly")
+    for order, row_id in enumerate(ids):
+        cur.execute(f"UPDATE {table} SET sort_order = %s WHERE id = %s", (order, row_id))
+
+
+@router.post("/courses/{slug}/reorder-modules")
+async def reorder_modules(slug: str, request: Request) -> dict:
+    require_admin(request)
+    body = await request.json()
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
+            course = cur.fetchone()
+            if course is None:
+                raise HTTPException(status_code=404, detail="Course not found")
+            await _reorder(cur, "modules", "course_id", course["id"], body.get("module_ids"))
+    return {"ok": True}
+
+
+@router.post("/modules/{module_id}/reorder-lessons")
+async def reorder_lessons(module_id: int, request: Request) -> dict:
+    require_admin(request)
+    body = await request.json()
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM modules WHERE id = %s", (module_id,))
+            if cur.fetchone() is None:
+                raise HTTPException(status_code=404, detail="Module not found")
+            await _reorder(cur, "lessons", "module_id", module_id, body.get("lesson_ids"))
+    return {"ok": True}
+
+
+@router.get("/categories")
+def all_categories(request: Request) -> dict:
+    require_admin(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT slug, name FROM categories ORDER BY name")
+            return {"categories": cur.fetchall()}
+
+
+@router.get("/instructors")
+def all_instructors(request: Request) -> dict:
+    require_admin(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name FROM instructors ORDER BY name")
+            return {"instructors": cur.fetchall()}
+
+
+@router.put("/courses/{slug}/categories")
+async def set_categories(slug: str, request: Request) -> dict:
+    require_admin(request)
+    body = await request.json()
+    slugs = body.get("category_slugs")
+    if not isinstance(slugs, list):
+        raise HTTPException(status_code=422, detail="category_slugs must be a list")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
+            course = cur.fetchone()
+            if course is None:
+                raise HTTPException(status_code=404, detail="Course not found")
+            cur.execute("DELETE FROM course_categories WHERE course_id = %s", (course["id"],))
+            for cat_slug in slugs:
+                cur.execute(
+                    """INSERT INTO course_categories (course_id, category_id)
+                       SELECT %s, id FROM categories WHERE slug = %s""",
+                    (course["id"], cat_slug),
+                )
+    return {"ok": True}
+
+
+@router.put("/courses/{slug}/instructors")
+async def set_instructors(slug: str, request: Request) -> dict:
+    require_admin(request)
+    body = await request.json()
+    ids = body.get("instructor_ids")
+    if not isinstance(ids, list) or not all(isinstance(i, int) for i in ids):
+        raise HTTPException(status_code=422, detail="instructor_ids must be a list of integers")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
+            course = cur.fetchone()
+            if course is None:
+                raise HTTPException(status_code=404, detail="Course not found")
+            cur.execute("DELETE FROM course_instructors WHERE course_id = %s", (course["id"],))
+            for order, iid in enumerate(ids):
+                cur.execute(
+                    "INSERT INTO course_instructors (course_id, instructor_id, sort_order) "
+                    "VALUES (%s, %s, %s)",
+                    (course["id"], iid, order),
+                )
+    return {"ok": True}
+
+
+@router.post("/courses/{slug}/attachments")
+async def create_attachment(slug: str, request: Request) -> dict:
+    require_admin(request)
+    body = await request.json()
+    title = (body.get("title") or "").strip()
+    kind = body.get("kind") or "link"
+    url = (body.get("url") or "").strip()
+    if not title or kind not in ("file", "link") or not url:
+        raise HTTPException(status_code=422, detail="title, kind (file|link), url required")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
+            course = cur.fetchone()
+            if course is None:
+                raise HTTPException(status_code=404, detail="Course not found")
+            cur.execute(
+                """INSERT INTO attachments (owner_type, owner_id, title, kind, url)
+                   VALUES ('course', %s, %s, %s, %s)""",
+                (course["id"], title, kind, url),
+            )
+            return {"id": cur.lastrowid}
+
+
+@router.put("/attachments/{attachment_id}")
+async def update_attachment(attachment_id: int, request: Request) -> dict:
+    require_admin(request)
+    body = await request.json()
+    allowed = {k: v for k, v in body.items() if k in ("title", "kind", "url")}
+    if not allowed:
+        raise HTTPException(status_code=422, detail="Nothing to update")
+    if "kind" in allowed and allowed["kind"] not in ("file", "link"):
+        raise HTTPException(status_code=422, detail="kind must be file|link")
+    sets = ", ".join(f"{f} = %s" for f in allowed)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE attachments SET {sets} WHERE id = %s",
+                [*allowed.values(), attachment_id],
+            )
+            cur.execute("SELECT 1 FROM attachments WHERE id = %s", (attachment_id,))
+            if cur.fetchone() is None:
+                raise HTTPException(status_code=404, detail="Attachment not found")
+    return {"ok": True}
+
+
+@router.delete("/attachments/{attachment_id}")
+def delete_attachment(attachment_id: int, request: Request) -> dict:
+    require_admin(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM attachments WHERE id = %s", (attachment_id,))
+            if cur.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Attachment not found")
+    return {"ok": True}
+
+
+@router.post("/courses")
+async def create_course(request: Request) -> dict:
+    require_admin(request)
+    body = await request.json() if int(request.headers.get("content-length") or 0) else {}
+    title = (body.get("title") or "New Course").strip() or "New Course"
+    base = _slugify(title)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT slug FROM courses")
+            taken = {r["slug"] for r in cur.fetchall()}
+            slug = base
+            n = 2
+            while slug in taken:
+                slug = f"{base}-{n}"
+                n += 1
+            cur.execute(
+                """INSERT INTO courses (slug, title, subtitle, description_md, level, status)
+                   VALUES (%s, %s, '', '', 'beginner', 'draft')""",
+                (slug, title),
+            )
+    return {"slug": slug}

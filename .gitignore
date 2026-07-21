@@ -22,3 +22,6 @@ __pycache__/
 node_modules/
 .next/
 out/
+
+# Uploaded media (local storage)
+server/uploads/

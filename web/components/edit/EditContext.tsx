@@ -40,6 +40,18 @@ type EditState = {
   lessons: Record<string, LessonAdmin>;
   modules: ModuleAdmin[];
   trailerVideoId: string | null | undefined;
+  heroImageUrl: string | null | undefined;
+  categories: { slug: string; name: string }[];
+  instructors: { id: number; name: string }[];
+  attachments: { id: number; title: string; kind: string; url: string }[];
+  reorderModules: (ids: number[]) => void;
+  reorderLessons: (moduleId: number, ids: number[]) => void;
+  setCategories: (slugs: string[]) => void;
+  setInstructors: (ids: number[]) => void;
+  addAttachment: (a: { title: string; kind: string; url: string }) => void;
+  updateAttachment: (id: number, patch: Record<string, string>) => void;
+  removeAttachment: (id: number) => void;
+  uploadHero: (file: File) => void;
   createModule: () => void;
   createLesson: (moduleId: number) => void;
   deleteModule: (moduleId: number) => void;
@@ -86,6 +98,12 @@ export function EditProvider({
   const [lessons, setLessons] = useState<Record<string, LessonAdmin>>({});
   const [modules, setModules] = useState<ModuleAdmin[]>([]);
   const [trailerVideoId, setTrailerVideoId] = useState<string | null | undefined>(undefined);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null | undefined>(undefined);
+  const [categories, setCategoriesState] = useState<{ slug: string; name: string }[]>([]);
+  const [instructors, setInstructorsState] = useState<{ id: number; name: string }[]>([]);
+  const [attachments, setAttachments] = useState<
+    { id: number; title: string; kind: string; url: string }[]
+  >([]);
   const [status, setStatusState] = useState<string | null>(null);
   const [serverStatus, setServerStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -125,6 +143,10 @@ export function EditProvider({
         setLessons(map);
         setModules(d.modules);
         setTrailerVideoId(d.trailer_video_id ?? null);
+        setHeroImageUrl(d.hero_image_url ?? null);
+        setCategoriesState(d.categories ?? []);
+        setInstructorsState(d.instructors ?? []);
+        setAttachments(d.attachments ?? []);
         setServerStatus(d.status);
         setStatusState(d.status);
       })
@@ -319,6 +341,88 @@ export function EditProvider({
     [structureOp],
   );
 
+  const jsonOp = useCallback(
+    (url: string, method: string, body?: unknown) => {
+      structureOp(() =>
+        fetch(url, {
+          method,
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+        }),
+      );
+    },
+    [structureOp],
+  );
+
+  const reorderModules = useCallback(
+    (ids: number[]) =>
+      jsonOp(`/api/admin/courses/${courseSlug}/reorder-modules`, "POST", {
+        module_ids: ids,
+      }),
+    [jsonOp, courseSlug],
+  );
+  const reorderLessons = useCallback(
+    (moduleId: number, ids: number[]) =>
+      jsonOp(`/api/admin/modules/${moduleId}/reorder-lessons`, "POST", {
+        lesson_ids: ids,
+      }),
+    [jsonOp],
+  );
+  const setCategories = useCallback(
+    (slugs: string[]) =>
+      jsonOp(`/api/admin/courses/${courseSlug}/categories`, "PUT", {
+        category_slugs: slugs,
+      }),
+    [jsonOp, courseSlug],
+  );
+  const setInstructors = useCallback(
+    (ids: number[]) =>
+      jsonOp(`/api/admin/courses/${courseSlug}/instructors`, "PUT", {
+        instructor_ids: ids,
+      }),
+    [jsonOp, courseSlug],
+  );
+  const addAttachment = useCallback(
+    (a: { title: string; kind: string; url: string }) =>
+      jsonOp(`/api/admin/courses/${courseSlug}/attachments`, "POST", a),
+    [jsonOp, courseSlug],
+  );
+  const updateAttachment = useCallback(
+    (id: number, patch: Record<string, string>) =>
+      jsonOp(`/api/admin/attachments/${id}`, "PUT", patch),
+    [jsonOp],
+  );
+  const removeAttachment = useCallback(
+    (id: number) => {
+      if (!confirm("Delete this attachment?")) return;
+      jsonOp(`/api/admin/attachments/${id}`, "DELETE");
+    },
+    [jsonOp],
+  );
+  const uploadHero = useCallback(
+    (file: File) => {
+      structureOp(async () => {
+        const form = new FormData();
+        form.append("file", file);
+        const up = await fetch("/api/admin/media", {
+          method: "POST",
+          credentials: "same-origin",
+          body: form,
+        });
+        if (!up.ok) return up;
+        const { url } = await up.json();
+        return fetch(`/api/admin/courses/${courseSlug}`, {
+          method: "PUT",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hero_image_url: url }),
+        });
+      });
+    },
+    [structureOp, courseSlug],
+  );
+
   return (
     <Ctx.Provider
       value={{
@@ -331,6 +435,18 @@ export function EditProvider({
         lessons,
         modules,
         trailerVideoId,
+        heroImageUrl,
+        categories,
+        instructors,
+        attachments,
+        reorderModules,
+        reorderLessons,
+        setCategories,
+        setInstructors,
+        addAttachment,
+        updateAttachment,
+        removeAttachment,
+        uploadHero,
         createModule,
         createLesson,
         deleteModule,

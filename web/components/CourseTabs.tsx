@@ -12,6 +12,10 @@ import {
   EditableSelect,
   EditableText,
 } from "@/components/edit/Editable";
+import {
+  AttachmentsEditor,
+  InstructorsEditor,
+} from "@/components/edit/EditorExtras";
 import { useEdit } from "@/components/edit/EditContext";
 
 const TABS = ["About", "Modules", "Resources", "Discussion", "Students"] as const;
@@ -44,6 +48,34 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>("About");
   const [progress, setProgress] = useState<ProgressMap>({});
   const edit = useEdit();
+  const [drag, setDrag] = useState<
+    | { kind: "module"; id: number }
+    | { kind: "lesson"; moduleId: number; id: number }
+    | null
+  >(null);
+
+  function dropModule(targetId: number) {
+    if (!edit || drag?.kind !== "module" || drag.id === targetId) return;
+    const ids = edit.modules.map((m) => m.module_id);
+    const from = ids.indexOf(drag.id);
+    const to = ids.indexOf(targetId);
+    ids.splice(from, 1);
+    ids.splice(to, 0, drag.id);
+    edit.reorderModules(ids);
+  }
+
+  function dropLesson(moduleId: number, targetId: number) {
+    if (!edit || drag?.kind !== "lesson" || drag.moduleId !== moduleId) return;
+    if (drag.id === targetId) return;
+    const mod = edit.modules.find((m) => m.module_id === moduleId);
+    if (!mod) return;
+    const ids = mod.lessons.map((l) => l.id);
+    const from = ids.indexOf(drag.id);
+    const to = ids.indexOf(targetId);
+    ids.splice(from, 1);
+    ids.splice(to, 0, drag.id);
+    edit.reorderLessons(moduleId, ids);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +139,7 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
             </div>
           ))}
         </div>
+        <InstructorsEditor />
         <ReviewsSection slug={course.slug} />
       </section>
 
@@ -117,11 +150,24 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
           return (
           <div
             key={m.title}
-            className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
+            draggable={!!adminModule}
+            onDragStart={() =>
+              adminModule && setDrag({ kind: "module", id: adminModule.module_id })
+            }
+            onDragOver={(e) => {
+              if (drag?.kind === "module") e.preventDefault();
+            }}
+            onDrop={() => adminModule && dropModule(adminModule.module_id)}
+            className={`overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 ${
+              adminModule ? "cursor-grab" : ""
+            }`}
           >
             <div className="flex items-center gap-3 bg-zinc-50 px-5 py-3 font-medium dark:bg-zinc-900">
               {adminModule ? (
                 <>
+                  <span className="text-zinc-300 dark:text-zinc-600" title="Drag to reorder">
+                    ⠿
+                  </span>
                   <EditableText
                     field={`module.${adminModule.module_id}.title`}
                     value={adminModule.title}
@@ -148,14 +194,39 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
             <ul>
               {m.lessons.map((l) => {
                 const adminLesson = edit?.editMode ? edit.lessons[l.slug] : undefined;
-                if (adminLesson) {
+                if (adminLesson && adminModule) {
                   const k = (f: string) => `lesson.${adminLesson.id}.${f}`;
                   return (
                     <li
                       key={l.slug}
-                      className="space-y-2 border-t border-zinc-100 px-5 py-3 text-sm dark:border-zinc-800"
+                      draggable
+                      onDragStart={(e) => {
+                        e.stopPropagation();
+                        setDrag({
+                          kind: "lesson",
+                          moduleId: adminModule.module_id,
+                          id: adminLesson.id,
+                        });
+                      }}
+                      onDragOver={(e) => {
+                        if (
+                          drag?.kind === "lesson" &&
+                          drag.moduleId === adminModule.module_id
+                        ) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.stopPropagation();
+                        dropLesson(adminModule.module_id, adminLesson.id);
+                      }}
+                      className="cursor-grab space-y-2 border-t border-zinc-100 px-5 py-3 text-sm dark:border-zinc-800"
                     >
                       <div className="flex items-center gap-3">
+                        <span className="text-zinc-300 dark:text-zinc-600" title="Drag to reorder">
+                          ⠿
+                        </span>
                         <LessonIcon kind={l.kind} />
                         <EditableText
                           field={k("title")}
@@ -286,6 +357,7 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
 
       <section hidden={tab !== "Resources"} className="mt-6">
         <h2 className="font-semibold">Resources</h2>
+        <AttachmentsEditor />
         {course.attachments.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-500">No course-level resources.</p>
         ) : (

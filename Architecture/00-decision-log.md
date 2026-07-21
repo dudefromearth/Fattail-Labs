@@ -250,3 +250,24 @@ seed sets trailers on flagship + butterfly. Verified: anon count-only vs member 
 no raw-ID leak, admin set-by-URL, play button baked into regenerated static HTML.
 With these, all five AI Labs course-page tabs are functional — benchmark course-page
 parity is complete.
+
+## 2026-07-21 — Editor complete (v1.3): reorder, media, assignment, course creation
+
+Spec: FatTail-Labs-InPlace-Admin-Spec-v1.3. No authoring task requires SQL anymore.
+Reorder: HTML5 drag on module cards + lesson rows (⠿ handles); exact-set validation
+server-side (422 on mismatched ids); immediate structure-write semantics. **Media
+storage decision: local disk** (server/uploads, git-ignored, content-hash filenames,
+served at /api/media; S3-compatible is a future backend swap) — POST /api/admin/media
+validates png/jpeg/webp ≤5MB; hero_image_url allowlisted with an edit-mode Hero chip;
+hero doubles as the catalog card banner, replacing the gradient placeholder when set.
+Assignment in place: Categories checklist in the hero strip (replace-set PUT),
+Instructors checklist in the About tab, Attachments manager in the Resources tab
+(add/edit/delete; file kind uploads through media). New-course creation: admin-only
+"+ New Course" card on the catalog → POST creates a draft (unique slug) → dedicated
+draft editing route /admin/courses/{slug} (dynamic, admin-only, robots noindex)
+rendering the course-page components from the admin payload with edit mode auto-active;
+drafts remain 404 on all public surfaces until published from the edit bar. Verified:
+media pipeline (upload/serve/bad-type 422/unauthed 401), module reorder + exact-set
+rejection, category/instructor replace-sets, attachment CRUD, course creation with
+draft invisibility, draft route rendering with all editors live. Draft "Tail Hedging
+Workshop" left in dev DB as a playground.

@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { CourseCard } from "@/lib/types";
 import { isNew } from "@/lib/catalog";
+import { NewCourseCard } from "@/components/edit/EditorExtras";
 
 const LEVELS = ["beginner", "intermediate", "advanced"] as const;
 
@@ -266,6 +267,7 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
         {visible.length === 0 && (
           <p className="text-zinc-500">No courses match. Clear a filter and try again.</p>
         )}
+        <NewCourseCard />
       </div>
     </div>
   );
