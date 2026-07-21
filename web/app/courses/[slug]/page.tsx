@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import AdminBar from "@/components/AdminBar";
 import EnrollCard from "@/components/EnrollCard";
+import AdminEditBar from "@/components/edit/AdminEditBar";
+import { EditProvider } from "@/components/edit/EditContext";
+import { EditableSelect, EditableText } from "@/components/edit/Editable";
 import CourseTabs from "@/components/CourseTabs";
 import { fetchCourse, fetchCourses, siteUrl } from "@/lib/catalog";
 import type { CourseDetail } from "@/lib/types";
@@ -103,8 +105,9 @@ export default async function CourseDetailPage({
   if (!course) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-10">
-      <AdminBar slug={course.slug} />
+    <EditProvider courseSlug={course.slug}>
+    <main className="mx-auto w-full max-w-6xl px-6 py-10 pb-24">
+      <AdminEditBar />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(courseJsonLd(course)) }}
@@ -138,13 +141,29 @@ export default async function CourseDetailPage({
               />
             )}
             <div className="p-8">
-              <h1 className="text-3xl font-semibold leading-tight">
-                {course.title}
-              </h1>
-              <p className="mt-2 max-w-2xl text-zinc-300">{course.subtitle}</p>
+              <EditableText
+                field="course.title"
+                value={course.title}
+                as="h1"
+                className="block text-3xl font-semibold leading-tight"
+              />
+              <EditableText
+                field="course.subtitle"
+                value={course.subtitle}
+                as="p"
+                className="mt-2 block max-w-2xl text-zinc-300"
+              />
               <dl className="mt-6 grid grid-cols-2 gap-4 rounded-2xl bg-white/10 p-4 text-sm sm:grid-cols-4">
                 <div>
-                  <dt className="font-semibold capitalize">{course.level} Level</dt>
+                  <dt className="font-semibold capitalize">
+                    <EditableSelect
+                      field="course.level"
+                      value={course.level}
+                      options={["beginner", "intermediate", "advanced"]}
+                      className="capitalize"
+                    />{" "}
+                    Level
+                  </dt>
                   <dd className="text-zinc-300">Recommended Experience</dd>
                 </div>
                 <div>
@@ -182,5 +201,6 @@ export default async function CourseDetailPage({
         <EnrollCard slug={course.slug} enrolledCount={course.enrolled_count} />
       </div>
     </main>
+    </EditProvider>
   );
 }

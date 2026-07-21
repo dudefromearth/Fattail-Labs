@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { apiUrl } from "@/lib/api";
 import { fetchCourse } from "@/lib/catalog";
+import LessonBody from "@/components/LessonBody";
 import LessonPlayer from "@/components/LessonPlayer";
 
 // Rendered per-request: free-preview lessons are public; gated lessons show the
@@ -191,11 +192,11 @@ export default async function LessonPlayerPage({
         </div>
       )}
 
-      {lesson.body_md && (
-        <div className="mt-8 leading-relaxed text-zinc-700 dark:text-zinc-300">
-          {lesson.body_md}
-        </div>
-      )}
+      <LessonBody
+        courseSlug={lesson.course_slug}
+        lessonSlug={lesson.slug}
+        body={lesson.body_md}
+      />
 
       <div className="mt-10 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900 dark:bg-emerald-950">
         <p className="font-medium">Enjoying the free preview?</p>

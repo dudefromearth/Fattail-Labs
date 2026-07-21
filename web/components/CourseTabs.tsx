@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { CourseDetail } from "@/lib/types";
-import { renderCopy } from "@/lib/md";
+import Markdown from "@/components/Markdown";
+import {
+  EditableMarkdown,
+  EditableSelect,
+  EditableText,
+} from "@/components/edit/Editable";
+import { useEdit } from "@/components/edit/EditContext";
 
 const TABS = ["About", "Modules", "Resources", "Discussion", "Students"] as const;
 const ENABLED: ReadonlySet<string> = new Set(["About", "Modules", "Resources"]);
@@ -28,6 +34,7 @@ type ProgressMap = Record<string, { completed: boolean }>;
 export default function CourseTabs({ course }: { course: CourseDetail }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>("About");
   const [progress, setProgress] = useState<ProgressMap>({});
+  const edit = useEdit();
 
   useEffect(() => {
     let cancelled = false;
@@ -76,7 +83,10 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
 
       {/* All panels stay in the DOM so public pages carry full content in raw HTML. */}
       <section hidden={tab !== "About"} className="mt-6 space-y-4 leading-relaxed">
-        {renderCopy(course.description_md)}
+        <EditableMarkdown
+          field="course.description_md"
+          value={course.description_md}
+        />
         <div className="mt-8 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
           {course.instructors.map((i) => (
             <div key={i.name} className="space-y-1">
@@ -92,16 +102,103 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
 
       <section hidden={tab !== "Modules"} className="mt-6 space-y-4">
         <h2 className="font-semibold">Modules ({course.modules.length})</h2>
-        {course.modules.map((m) => (
+        {course.modules.map((m, mi) => {
+          const adminModule = edit?.editMode ? edit.modules[mi] : undefined;
+          return (
           <div
             key={m.title}
             className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
           >
-            <div className="bg-zinc-50 px-5 py-3 font-medium dark:bg-zinc-900">
-              {m.title}
+            <div className="flex items-center gap-3 bg-zinc-50 px-5 py-3 font-medium dark:bg-zinc-900">
+              {adminModule ? (
+                <>
+                  <EditableText
+                    field={`module.${adminModule.module_id}.title`}
+                    value={adminModule.title}
+                    className="flex-1"
+                  />
+                  <EditableSelect
+                    field={`module.${adminModule.module_id}.kind`}
+                    value={adminModule.kind}
+                    options={["standard", "worksheets", "resources", "bonus"]}
+                    className="text-xs text-zinc-500"
+                  />
+                  <button
+                    onClick={() => edit!.deleteModule(adminModule.module_id)}
+                    title="Delete module"
+                    className="text-zinc-400 hover:text-red-500"
+                  >
+                    🗑
+                  </button>
+                </>
+              ) : (
+                m.title
+              )}
             </div>
             <ul>
               {m.lessons.map((l) => {
+                const adminLesson = edit?.editMode ? edit.lessons[l.slug] : undefined;
+                if (adminLesson) {
+                  const k = (f: string) => `lesson.${adminLesson.id}.${f}`;
+                  return (
+                    <li
+                      key={l.slug}
+                      className="space-y-2 border-t border-zinc-100 px-5 py-3 text-sm dark:border-zinc-800"
+                    >
+                      <div className="flex items-center gap-3">
+                        <LessonIcon kind={l.kind} />
+                        <EditableText
+                          field={k("title")}
+                          value={adminLesson.title}
+                          className="flex-1 font-medium"
+                        />
+                        <button
+                          onClick={() => edit!.deleteLesson(adminLesson.id)}
+                          title="Delete lesson"
+                          className="text-zinc-400 hover:text-red-500"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 pl-9 text-xs">
+                        <input
+                          placeholder="YouTube URL or ID"
+                          defaultValue={adminLesson.video_id ?? ""}
+                          onBlur={(e) =>
+                            edit!.setField(k("video_id"), e.target.value)
+                          }
+                          className="w-56 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                        />
+                        <input
+                          placeholder="start s"
+                          defaultValue={adminLesson.video_params.start ?? ""}
+                          onBlur={(e) =>
+                            edit!.setField(k("video_start"), e.target.value)
+                          }
+                          className="w-20 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                        />
+                        <input
+                          placeholder="end s"
+                          defaultValue={adminLesson.video_params.end ?? ""}
+                          onBlur={(e) =>
+                            edit!.setField(k("video_end"), e.target.value)
+                          }
+                          className="w-20 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                        />
+                        <label className="flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            defaultChecked={adminLesson.free_preview}
+                            onChange={(e) =>
+                              edit!.setField(k("free_preview"), e.target.checked)
+                            }
+                          />
+                          Free preview
+                        </label>
+                      </div>
+                    </li>
+                  );
+                }
                 const row = (
                   <>
                     <LessonIcon kind={l.kind} />
@@ -145,9 +242,28 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                   </li>
                 );
               })}
+              {adminModule && (
+                <li className="border-t border-zinc-100 dark:border-zinc-800">
+                  <button
+                    onClick={() => edit!.createLesson(adminModule.module_id)}
+                    className="w-full px-5 py-2.5 text-left text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                  >
+                    + Add lesson
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
-        ))}
+          );
+        })}
+        {edit?.editMode && (
+          <button
+            onClick={() => edit.createModule()}
+            className="w-full rounded-2xl border-2 border-dashed border-emerald-300 py-4 font-medium text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950/30"
+          >
+            + Add module
+          </button>
+        )}
       </section>
 
       <section hidden={tab !== "Resources"} className="mt-6">

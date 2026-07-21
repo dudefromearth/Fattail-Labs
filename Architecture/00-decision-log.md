@@ -196,3 +196,19 @@ time), full enrollment list with Continue/Review actions, Quiz Results placehold
 the session-aware EnrollCard (anon → Join, signed-in → Enroll, enrolled → progress +
 Continue, completed → ✓). Verified live: explicit + auto enroll, idempotency,
 completion stamping, dropdown, /me rendering all sections.
+
+## 2026-07-21 — In-place editing v1.1: direct manipulation replaces the modal
+
+Spec: FatTail-Labs-InPlace-Admin-Spec-v1.1 (supersedes v1.0's modal form; server
+contract unchanged). Coach: the element IS the editor — click a block of text and it
+becomes its editor, in its own place. Implemented: edit-mode toggle + floating edit bar
+(status select, pending count, Discard/Exit/Save & Publish, dirty-navigation warning);
+EditableText/EditableMarkdown/EditableSelect client components rendering display markup
+identical to static output (SEO unaffected — zero edit artifacts in prerendered HTML);
+lesson rows edit inline (title, video URL/ID, start/end, preview); markdown block editor
+with Preview using the same renderer as the public page. Site-wide markdown decision
+folded in: react-markdown + rehype-sanitize replaces the minimal renderer (md.tsx
+deleted); lesson body_md renders as markdown and is click-to-edit on the lesson page
+(body_md added to the admin field allowlist). v1.0 modal (AdminBar.tsx) deleted — no
+parallel implementations. Verified live: edit mode affordances, in-place title edit →
+Save & Publish → regenerated page, static HTML clean of affordances.

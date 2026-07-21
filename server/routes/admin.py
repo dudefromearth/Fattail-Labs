@@ -18,8 +18,10 @@ from config import get_config
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 COURSE_FIELDS = frozenset({"title", "subtitle", "description_md", "level", "status"})
+MODULE_FIELDS = frozenset({"title", "kind"})
+VALID_MODULE_KINDS = frozenset({"standard", "worksheets", "resources", "bonus"})
 LESSON_FIELDS = frozenset(
-    {"title", "video_id", "video_params", "free_preview", "duration_seconds"}
+    {"title", "video_id", "video_params", "free_preview", "duration_seconds", "body_md"}
 )
 VALID_LEVELS = frozenset({"beginner", "intermediate", "advanced"})
 VALID_STATUS = frozenset({"draft", "published", "archived"})
@@ -172,3 +174,115 @@ async def update_lesson(lesson_id: int, request: Request) -> dict:
             if cur.fetchone() is None:
                 raise HTTPException(status_code=404, detail="Lesson not found")
     return {"ok": True, "updated": sorted(body)}
+
+
+def _slugify(title: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    return slug or "lesson"
+
+
+@router.put("/modules/{module_id}")
+async def update_module(module_id: int, request: Request) -> dict:
+    require_admin(request)
+    body = await request.json()
+    unknown = set(body) - MODULE_FIELDS
+    if unknown:
+        raise HTTPException(status_code=422, detail=f"Unknown fields: {sorted(unknown)}")
+    if not body:
+        raise HTTPException(status_code=422, detail="Empty update")
+    if "kind" in body and body["kind"] not in VALID_MODULE_KINDS:
+        raise HTTPException(status_code=422, detail=f"kind must be one of {sorted(VALID_MODULE_KINDS)}")
+    sets = ", ".join(f"{f} = %s" for f in body)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE modules SET {sets} WHERE id = %s", [*body.values(), module_id]
+            )
+            cur.execute("SELECT 1 FROM modules WHERE id = %s", (module_id,))
+            if cur.fetchone() is None:
+                raise HTTPException(status_code=404, detail="Module not found")
+    return {"ok": True, "updated": sorted(body)}
+
+
+@router.post("/courses/{slug}/modules")
+async def create_module(slug: str, request: Request) -> dict:
+    require_admin(request)
+    body = await request.json() if int(request.headers.get("content-length") or 0) else {}
+    title = (body.get("title") or "New Module").strip() or "New Module"
+    kind = body.get("kind") or "standard"
+    if kind not in VALID_MODULE_KINDS:
+        raise HTTPException(status_code=422, detail=f"kind must be one of {sorted(VALID_MODULE_KINDS)}")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
+            course = cur.fetchone()
+            if course is None:
+                raise HTTPException(status_code=404, detail="Course not found")
+            cur.execute(
+                "SELECT COALESCE(MAX(sort_order), -1) + 1 AS nxt FROM modules WHERE course_id = %s",
+                (course["id"],),
+            )
+            nxt = cur.fetchone()["nxt"]
+            cur.execute(
+                "INSERT INTO modules (course_id, title, sort_order, kind) VALUES (%s, %s, %s, %s)",
+                (course["id"], title, nxt, kind),
+            )
+            module_id = cur.lastrowid
+    return {"module_id": module_id}
+
+
+@router.post("/modules/{module_id}/lessons")
+async def create_lesson(module_id: int, request: Request) -> dict:
+    require_admin(request)
+    body = await request.json() if int(request.headers.get("content-length") or 0) else {}
+    title = (body.get("title") or "New Lesson").strip() or "New Lesson"
+    base = _slugify(title)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM modules WHERE id = %s", (module_id,))
+            if cur.fetchone() is None:
+                raise HTTPException(status_code=404, detail="Module not found")
+            cur.execute(
+                "SELECT slug FROM lessons WHERE module_id = %s", (module_id,)
+            )
+            taken = {r["slug"] for r in cur.fetchall()}
+            slug = base
+            n = 2
+            while slug in taken:
+                slug = f"{base}-{n}"
+                n += 1
+            cur.execute(
+                "SELECT COALESCE(MAX(sort_order), -1) + 1 AS nxt FROM lessons WHERE module_id = %s",
+                (module_id,),
+            )
+            nxt = cur.fetchone()["nxt"]
+            cur.execute(
+                """INSERT INTO lessons (module_id, slug, title, sort_order, kind,
+                                        duration_seconds, free_preview)
+                   VALUES (%s, %s, %s, %s, 'video', 0, 0)""",
+                (module_id, slug, title, nxt),
+            )
+            lesson_id = cur.lastrowid
+    return {"id": lesson_id, "slug": slug}
+
+
+@router.delete("/modules/{module_id}")
+def delete_module(module_id: int, request: Request) -> dict:
+    require_admin(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM modules WHERE id = %s", (module_id,))
+            if cur.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Module not found")
+    return {"ok": True}
+
+
+@router.delete("/lessons/{lesson_id}")
+def delete_lesson(lesson_id: int, request: Request) -> dict:
+    require_admin(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM lessons WHERE id = %s", (lesson_id,))
+            if cur.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Lesson not found")
+    return {"ok": True}
