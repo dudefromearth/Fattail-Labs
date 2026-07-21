@@ -127,8 +127,27 @@ export default function MyLearning() {
 
   const completedCourses = data.enrollments.filter((e) => e.completed_at).length;
 
+  async function manageBilling() {
+    const r = await fetch("/api/billing/portal", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    if (r.ok) {
+      const { url } = await r.json();
+      window.location.href = url;
+    }
+  }
+
   return (
     <div className="space-y-10">
+      <div className="-mt-4 text-right">
+        <button
+          onClick={manageBilling}
+          className="text-sm text-zinc-500 hover:underline"
+        >
+          Manage billing
+        </button>
+      </div>
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Courses enrolled" value={data.enrollments.length} />

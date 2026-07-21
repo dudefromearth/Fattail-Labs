@@ -64,7 +64,7 @@ function JoinControl({ s }: { s: Session }) {
     case "role":
       return (
         <Link
-          href="/signup"
+          href="/membership"
           className="rounded-full border border-emerald-300 px-5 py-2 text-sm font-medium text-emerald-600 dark:border-emerald-800"
         >
           {s.min_role === "navigator" ? "Coaching members" : "Members"} only —

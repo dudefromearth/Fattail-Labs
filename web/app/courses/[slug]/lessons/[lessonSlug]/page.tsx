@@ -125,7 +125,7 @@ export default async function LessonPlayerPage({
         </p>
         <div className="mt-6 flex items-center justify-center gap-3">
           <Link
-            href="/signup"
+            href="/membership"
             className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
           >
             Become a Member

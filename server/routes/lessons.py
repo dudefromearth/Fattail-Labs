@@ -49,7 +49,7 @@ def lesson_detail(course_slug: str, lesson_slug: str, request: Request) -> dict:
     claims = _session_claims(request)
     if claims is None:
         raise HTTPException(status_code=401, detail="Sign in to watch")
-    if not row["free_preview"] and not auth.role_at_least(claims["role"], "activator"):
+    if not row["free_preview"] and not auth.role_at_least(claims["role"], "alumni"):
         raise HTTPException(status_code=403, detail="Membership required")
 
     progress = {"last_position": 0, "completed": False}

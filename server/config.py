@@ -64,6 +64,12 @@ class Config:
         # Entitlement mapping lives in the database (plans + provider_plan_map),
         # per FatTail-Labs-Identity-Access-Spec-v1.0 §2 — no env mapping.
 
+        # Native billing (Stripe) — ALL optional; absence disables the provider
+        # (Native Billing spec §2). Web origin is validated when billing is used.
+        self.stripe_secret_key = os.environ.get("STRIPE_SECRET_KEY", "").strip() or None
+        self.stripe_webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip() or None
+        self.web_origin = os.environ.get("LABS_WEB_ORIGIN", "").strip() or None
+
 
 _config: Config | None = None
 

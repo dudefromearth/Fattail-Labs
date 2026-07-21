@@ -31,7 +31,7 @@ export default function SignupForm() {
         setBusy(false);
         return;
       }
-      window.location.href = "/pathway";
+      window.location.href = "/membership?welcome=1";
     } catch {
       setError("Network error — try again.");
       setBusy(false);

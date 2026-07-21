@@ -326,3 +326,61 @@ Verified: join gating matrix (entitled+in-window URL, role lock, sign_in lock, n
 leak to anonymous), ICS output, session CRUD; pathway routing per struggle answer,
 progress overlay against real member data, invalid answers 422, flagship-first
 invariant exhaustively. Demo sessions seeded (workshop + trading room).
+
+## 2026-07-21 — Trailer hero sizes to the full video
+
+Refines the Course Trailer spec's playback: the hero is wrapped in TrailerShell — at
+rest, normal hero content + centered play button; playing, the entire hero block swaps
+to a true 16:9 (aspect-video) player sized by the column, so the video is never cropped
+to the text-content height. ✕ restores the hero. Verified visually (full-width playback
+with captions).
+
+## 2026-07-21 — Native Stripe billing (third provider; live wiring awaits MiniTwo)
+
+Spec: FatTail-Labs-Native-Billing-Stripe-Spec-v1.0. Stripe rides the existing
+provider seams — Prices→plans via provider_plan_map (link_stripe_price.py CLI),
+customers via identity_links, lifecycle via upsert_membership. Stripe hosts all
+payment surfaces (Checkout + Customer Portal); the server never touches card data.
+Endpoints: GET /api/billing/plans (amounts cached from Stripe), POST checkout (hosted
+session, identity metadata, customer reuse), POST portal, POST webhook. Webhook
+verified with the SDK's signature check but processed as plain JSON (StripeObject
+accessor quirks bypassed — SDK is verify-only) and deliberately needs NO Stripe API
+calls: payloads carry customer/price/status. Status map: active|trialing→active,
+past_due→grace, canceled|unpaid|incomplete*→expired. Config-gated (no key → provider
+absent, 503s + graceful UI fallback). /membership pricing page (success/cancel
+banners; anonymous → signup first); all upgrade CTAs (gated lesson, resources denial,
+dropdown upsell, live role locks) now point to /membership; /me gains Manage billing
+(portal). Verified offline with the real signature scheme: disabled mode, customer
+linking, active→grace→expired lifecycle, bad-signature 400, unmapped-price graceful
+ignore, and role round-trip (observer → activator while Stripe-active → observer
+after cancel). PENDING on MiniTwo (Coach): live keys, two Prices, price↔plan mapping
+via CLI, webhook endpoint registration, one test-mode checkout.
+
+## 2026-07-21 — Membership tiers, alumni grandfather, 2-step enrollment funnel
+
+Spec: FatTail-Labs-Membership-Tiers-Enrollment-Spec-v1.0 (Coach directive with AI Labs
+funnel screens; supersedes parent §3.2 placeholder pricing).
+
+Tiers: Navigator $250/mo·$2,500/yr (featured — the AI Labs price structure);
+Activator $100/mo PROMO-ONLY (renders only with ?promo, verified absent without);
+Observer Trial $20/wk × 4 weeks with FULL Navigator access. Courses included with
+every tier. Discord/app delivered outside Labs.
+
+Role ladder gains **alumni** (observer < alumni < activator < navigator < admin);
+lesson content + resource downloads dropped to alumni threshold; livestreams stay
+activator+/navigator. **Alumni rule:** churn after ≥28 days tenure (any paid tier, or
+the completed 4-week trial) auto-grants courses-alumni for 1 year
+(current_period_end); role derivation is now date-expiry aware (expired-by-date
+memberships confer nothing — also ends the alumni year). Tenure check wired into
+BOTH churn paths (Stripe webhook + WP sync).
+
+Funnel: signup = "Step 1 of 2" (what-happens-next list) → lands on
+/membership?welcome=1 = "Step 2 of 2 — Welcome, {name}" with tier cards (display_json
+on plans, migration 005 — cards render before billing wiring; checkout buttons attach
+when Stripe is live). Exit-intent modal (once/page) pitches the trial + alumni promise
+instead of a discount. "Continue with your free account" always visible → /pathway.
+
+Verified: full alumni matrix (courses 200, resources 200, workshop role-locked,
+year-expiry → observer), navigator subscribe → role navigator, cancel@5d → observer
+(no alumni), cancel@35d → "expired + alumni granted" → role alumni with courses
+playing and alumni year ending exactly +1yr, promo gating, step-2 page rendering.

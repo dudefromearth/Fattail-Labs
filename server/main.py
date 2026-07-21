@@ -29,6 +29,7 @@ def create_app() -> FastAPI:
     from routes.auth_dev import router as auth_dev_router
     from routes.auth_routes import integrations as integrations_router
     from routes.auth_routes import router as auth_router
+    from routes.billing import router as billing_router
     from routes.community import router as community_router
     from routes.courses import router as courses_router
     from routes.lessons import router as lessons_router
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(resources_router)
     app.include_router(live_router)
     app.include_router(pathway_router)
+    app.include_router(billing_router)
 
     uploads = Path(__file__).resolve().parent / "uploads"
     uploads.mkdir(exist_ok=True)

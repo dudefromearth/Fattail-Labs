@@ -12,6 +12,8 @@ from auth import ROLE_ORDER
 
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 16384, 8, 1
 ACTIVE_STATUSES = ("active", "grace")
+ALUMNI_PLAN_SLUG = "courses-alumni"
+ALUMNI_MIN_TENURE_DAYS = 28
 
 
 class IdentityError(Exception):
@@ -70,6 +72,15 @@ def resolve_by_link(cur, provider: str, external_id: str) -> int | None:
     return row["identity_id"] if row else None
 
 
+def resolve_stripe_customer(cur, identity_id: int) -> str | None:
+    cur.execute(
+        "SELECT external_id FROM identity_links WHERE identity_id = %s AND provider = 'stripe'",
+        (identity_id,),
+    )
+    row = cur.fetchone()
+    return row["external_id"] if row else None
+
+
 def ensure_link(cur, identity_id: int, provider: str, external_id: str) -> None:
     cur.execute(
         "INSERT IGNORE INTO identity_links (identity_id, provider, external_id) "
@@ -112,6 +123,23 @@ def sync_provider_memberships(cur, identity_id: int, provider: str,
         if plan_id is not None:
             granted_plan_ids.append(plan_id)
             upsert_membership(cur, identity_id, plan_id, "active", provider)
+    # Expiring rows first pass the alumni tenure check (Membership Tiers spec §3).
+    if granted_plan_ids:
+        placeholders = ",".join(["%s"] * len(granted_plan_ids))
+        cur.execute(
+            f"""SELECT started_at FROM memberships
+                WHERE identity_id = %s AND source = %s AND status != 'expired'
+                  AND plan_id NOT IN ({placeholders})""",
+            (identity_id, provider, *granted_plan_ids),
+        )
+    else:
+        cur.execute(
+            """SELECT started_at FROM memberships
+               WHERE identity_id = %s AND source = %s AND status != 'expired'""",
+            (identity_id, provider),
+        )
+    for row in cur.fetchall():
+        maybe_grant_alumni(cur, identity_id, row["started_at"])
     if granted_plan_ids:
         placeholders = ",".join(["%s"] * len(granted_plan_ids))
         cur.execute(
@@ -138,12 +166,49 @@ def derive_role(cur, identity_id: int) -> str:
     if row["role_override"]:
         return row["role_override"]
     placeholders = ",".join(["%s"] * len(ACTIVE_STATUSES))
+    # Date-expired memberships confer nothing (alumni year, lapsed periods).
     cur.execute(
         f"""SELECT p.grants_role FROM memberships m JOIN plans p ON m.plan_id = p.id
-            WHERE m.identity_id = %s AND m.status IN ({placeholders})""",
+            WHERE m.identity_id = %s AND m.status IN ({placeholders})
+              AND (m.current_period_end IS NULL OR m.current_period_end > NOW())""",
         (identity_id, *ACTIVE_STATUSES),
     )
     roles = [r["grants_role"] for r in cur.fetchall() if r["grants_role"] in ROLE_ORDER]
     if not roles:
         return "observer"
     return max(roles, key=ROLE_ORDER.index)
+
+
+# --- alumni rule (Membership Tiers spec §3) -----------------------------------
+
+def grant_alumni(cur, identity_id: int) -> bool:
+    """Grant 1-year course access. Returns False if the alumni plan is missing."""
+    cur.execute("SELECT id FROM plans WHERE slug = %s", (ALUMNI_PLAN_SLUG,))
+    row = cur.fetchone()
+    if row is None:
+        return False
+    cur.execute(
+        """INSERT INTO memberships
+             (identity_id, plan_id, status, source, current_period_end)
+           VALUES (%s, %s, 'active', 'system', DATE_ADD(NOW(), INTERVAL 1 YEAR))
+           ON DUPLICATE KEY UPDATE
+             status = 'active',
+             current_period_end = GREATEST(
+               COALESCE(current_period_end, DATE_ADD(NOW(), INTERVAL 1 YEAR)),
+               DATE_ADD(NOW(), INTERVAL 1 YEAR))""",
+        (identity_id, row["id"]),
+    )
+    return True
+
+
+def maybe_grant_alumni(cur, identity_id: int, membership_started_at) -> bool:
+    """Tenure check on churn: >= 28 days on any paid tier earns the alumni year."""
+    if membership_started_at is None:
+        return False
+    cur.execute(
+        "SELECT DATEDIFF(NOW(), %s) AS days", (membership_started_at,)
+    )
+    days = cur.fetchone()["days"] or 0
+    if days < ALUMNI_MIN_TENURE_DAYS:
+        return False
+    return grant_alumni(cur, identity_id)

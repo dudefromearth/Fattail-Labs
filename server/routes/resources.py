@@ -62,7 +62,7 @@ def library(request: Request) -> dict:
 @router.get("/api/attachments/{attachment_id}/download")
 def download(attachment_id: int, request: Request):
     claims = require_session(request)
-    if not auth.role_at_least(claims["role"], "activator"):
+    if not auth.role_at_least(claims["role"], "alumni"):
         raise HTTPException(status_code=403, detail="Membership required to download resources")
     with db.transaction() as conn:
         with conn.cursor() as cur:

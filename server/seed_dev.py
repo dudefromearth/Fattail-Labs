@@ -22,15 +22,51 @@ CATEGORIES = [
     ("psychology", "Psychology"),
 ]
 
-# Labs-native plans + provider vocabulary mappings (Identity & Access spec §2)
+# Labs-native plans (Membership Tiers spec §1). display_json = sellable card data;
+# None = not sold (alumni is granted, never bought).
 PLANS = [
-    ("labs-membership", "Labs Membership", "activator"),
-    ("coaching", "Coaching", "navigator"),
+    ("navigator", "Navigator", "navigator", {
+        "featured": True,
+        "tagline": "The complete FatTail operating system",
+        "prices": [
+            {"label": "$250 / month", "interval": "month"},
+            {"label": "$2,500 / year", "interval": "year", "badge": "Save $500/year"},
+        ],
+        "features": [
+            "Live trading room + coaching",
+            "Weekly workshops & livestreams",
+            "All courses & certifications",
+            "Full resource library",
+            "Private Discord",
+            "FatTail App access",
+        ],
+    }),
+    ("observer-trial", "Observer Trial", "navigator", {
+        "tagline": "Four weeks of full Navigator access",
+        "prices": [{"label": "$20 / week for 4 weeks", "interval": "week"}],
+        "features": [
+            "Everything Navigator includes",
+            "Coaching, Discord, app, and all courses",
+            "Complete the 4 weeks: keep the courses for a year",
+        ],
+    }),
+    ("activator", "Activator", "activator", {
+        "promo_only": True,
+        "tagline": "Courses, community, and the app",
+        "prices": [{"label": "$100 / month", "interval": "month"}],
+        "features": [
+            "All courses & certifications",
+            "Weekly workshops",
+            "Private Discord",
+            "FatTail App access",
+        ],
+    }),
+    ("courses-alumni", "Course Alumni", "alumni", None),
 ]
 PROVIDER_PLAN_MAP = [
-    ("wordpress:fattail", "labs-membership", "labs-membership"),
-    ("wordpress:0-dte", "coaching", "coaching"),
-    ("wordpress:0-dte", "labs-membership", "labs-membership"),
+    ("wordpress:fattail", "labs-membership", "activator"),
+    ("wordpress:0-dte", "coaching", "navigator"),
+    ("wordpress:0-dte", "labs-membership", "activator"),
 ]
 
 INSTRUCTORS = [
@@ -329,11 +365,13 @@ COURSES = [
 def seed() -> None:
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            for slug, name, grants in PLANS:
+            for slug, name, grants, display in PLANS:
                 cur.execute(
-                    "INSERT INTO plans (slug, name, grants_role) VALUES (%s, %s, %s) "
-                    "ON DUPLICATE KEY UPDATE name = VALUES(name), grants_role = VALUES(grants_role)",
-                    (slug, name, grants),
+                    "INSERT INTO plans (slug, name, grants_role, display_json) "
+                    "VALUES (%s, %s, %s, %s) "
+                    "ON DUPLICATE KEY UPDATE name = VALUES(name), "
+                    "grants_role = VALUES(grants_role), display_json = VALUES(display_json)",
+                    (slug, name, grants, json.dumps(display) if display else None),
                 )
             for provider, external_key, plan_slug in PROVIDER_PLAN_MAP:
                 cur.execute(

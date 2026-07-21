@@ -22,6 +22,7 @@ type EnrollmentSummary = {
 
 const ROLE_LABELS: Record<string, string> = {
   observer: "Free account",
+  alumni: "Course alumni",
   activator: "Member",
   navigator: "Coaching member",
   administrator: "Admin",
@@ -124,7 +125,9 @@ export default function SiteHeader() {
               >
                 <span
                   className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-white ${
-                    me.role === "observer" ? "bg-zinc-400" : "bg-emerald-500"
+                    me.role === "observer" || me.role === "alumni"
+                      ? "bg-zinc-400"
+                      : "bg-emerald-500"
                   }`}
                 >
                   {initials(me)}
@@ -194,7 +197,7 @@ export default function SiteHeader() {
                     </Link>
                     {me.role === "observer" && (
                       <Link
-                        href="/signup"
+                        href="/membership"
                         className="block px-4 py-2 font-medium text-emerald-600 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                         onClick={() => setMenuOpen(false)}
                       >

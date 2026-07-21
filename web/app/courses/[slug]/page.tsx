@@ -5,7 +5,7 @@ import EnrollCard from "@/components/EnrollCard";
 import AdminEditBar from "@/components/edit/AdminEditBar";
 import { EditProvider } from "@/components/edit/EditContext";
 import { EditableSelect, EditableText } from "@/components/edit/Editable";
-import { TrailerEditChip, TrailerPlayButton } from "@/components/TrailerHero";
+import { TrailerEditChip, TrailerShell } from "@/components/TrailerHero";
 import { CategoriesCell, HeroImageChip } from "@/components/edit/EditorExtras";
 import CourseTabs from "@/components/CourseTabs";
 import { fetchCourse, fetchCourses, siteUrl } from "@/lib/catalog";
@@ -132,9 +132,8 @@ export default async function CourseDetailPage({
       <div className="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
         {/* minmax(0,…) keeps text wrapping inside the column instead of widening the page */}
         <div>
-          {/* Hero */}
-          <div className="relative overflow-hidden rounded-3xl bg-zinc-900 text-white">
-            <TrailerPlayButton trailer={course.trailer} title={course.title} />
+          {/* Hero — swaps to a full 16:9 player when the trailer plays */}
+          <TrailerShell trailer={course.trailer} title={course.title}>
             <TrailerEditChip />
             <HeroImageChip />
             {course.hero_image_url && (
@@ -195,7 +194,7 @@ export default async function CourseDetailPage({
                 </div>
               </dl>
             </div>
-          </div>
+          </TrailerShell>
 
           <div className="mt-8">
             <CourseTabs course={course} />

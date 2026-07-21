@@ -11,7 +11,7 @@ import jwt
 
 from config import get_config
 
-ROLE_ORDER = ("observer", "activator", "navigator", "administrator")
+ROLE_ORDER = ("observer", "alumni", "activator", "navigator", "administrator")
 
 
 class AuthError(Exception):

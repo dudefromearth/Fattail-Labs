@@ -40,7 +40,7 @@ def _lesson_for_access(cur, course_slug: str, lesson_slug: str, role: str) -> di
     row = cur.fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Lesson not found")
-    if not row["free_preview"] and not auth.role_at_least(role, "activator"):
+    if not row["free_preview"] and not auth.role_at_least(role, "alumni"):
         raise HTTPException(status_code=403, detail="Membership required")
     return row
 
