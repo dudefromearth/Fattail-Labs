@@ -41,6 +41,10 @@ Full product spec: `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`. Deploy play
   back, check the UI. "It should work" is banned.
 - **Change control:** declare exact files + changes before touching; only touch what was
   approved.
+- **Documentation parity (nothing hidden):** every feature ships WITH its spec (new or
+  versioned in `Specs/`), its decision-log entry, and updates to any affected
+  architecture docs — in the same body of work, never "later". `Specs/` must always
+  describe the system as it is and as intended, validatable without reading code.
 - **Never hardcode** dates, user IDs, API keys, ports.
 
 ## Positioning (informs all product copy)

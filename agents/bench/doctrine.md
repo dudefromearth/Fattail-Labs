@@ -56,6 +56,14 @@ is consumed via API. Importing, vendoring, or copying MSC code is architectural 
 Direct agent-to-agent communication is prohibited. All coordination flows through Coach
 or Juliet.
 
+### 9. Documentation Parity (Nothing Hidden)
+Every feature lands with its paper trail in the SAME body of work: the spec (new or new
+version in `Specs/`), the decision log entry (`Architecture/00-decision-log.md`), and any
+affected architecture docs. Code that exists without a spec describing it is drift —
+Coach must be able to read `Specs/` and know exactly what the system is and intends to
+be, without reading the code. India blocks work that arrives without its documentation;
+Lima audits for divergence between docs and reality.
+
 ## Agent Hierarchy
 
 - **Coach** — Visionary, final decision maker, human authority (Ernie)

@@ -63,3 +63,43 @@ content. LearnDash is fully replaced: WP keeps commerce + identity only.
 
 `Specs/` (versioned, immutable once approved), `Architecture/` (durable docs + this log),
 `infra/` (deploy playbooks). Same muscle memory across both repos.
+
+## 2026-07-21 — Lesson video: YouTube embeds with per-lesson player parameters
+
+Lessons carry `video_provider` + `video_id` + `video_params` (JSON). The API validates
+params against an allowlist (autoplay, controls, start, end, mute, loop, rel,
+cc_load_policy, fs, hl, playsinline) and builds the embed URL server-side
+(youtube-nocookie.com, rel=0 + playsinline baseline); the client never assembles player
+URLs. Free-preview lessons are publicly playable; gated lessons 401 until the member
+path. **Accepted tradeoff:** spec §7.4 rejected YouTube for gated content (unlisted links
+are leakable); Coach chose YouTube for launch speed — signed-CDN migration (Bunny/Mux)
+remains the recorded path if/when leakage matters. Placeholder video: Big Buck Bunny
+(Blender Foundation official upload).
+
+## 2026-07-21 — Admin is edit-in-place on the production interface
+
+No separate admin panel: administrators see a floating ✎ Edit button on the production
+course page; activating it opens the editor over the same page (course fields + per-lesson
+title/YouTube video/start/end/free-preview). Saves hit `/api/admin/*` (role-gated
+server-side), then `/api/revalidate` regenerates the static page in place — publish IS
+the prerender. Course pages use `dynamicParams=true` so revalidation can regenerate
+(dynamicParams=false 404s after cache purge — NoFallbackError). Browser API calls ride a
+same-origin Next rewrite proxy (`/api/*` → Labs API) so the session cookie flows without
+CORS. Dev-only `/api/auth/dev-login` (404 outside LABS_ENV=dev) issues an administrator
+session until WordPress SSO lands; staging/production sessions come only from SSO.
+
+## 2026-07-21 — Catalog covers every category; real channel videos as examples
+
+One published course per category (9 categories: 0-DTE, Butterflies, Convexity, Fat-Tail
+Doctrine, Risk & Sizing, Journaling & Routine, MarketSwarm Platform, Options Foundations,
+Psychology) + the flagship + the draft-invisibility fixture. All video lessons use real
+uploads from youtube.com/@0DTE with accurate durations; first lesson of every course is
+a free preview. Live Replays category deferred until the replay pipeline exists.
+
+## 2026-07-21 — Builds always clear the Next fetch cache (stale-prerender defect)
+
+Defect: Next.js persists fetch responses across builds (`.next/cache/fetch-cache`); a
+rebuild after reseeding baked the OLD catalog (2 courses instead of 10) into the static
+pages. Fix: `prebuild` script removes `fetch-cache` before every `next build`, so
+prerender always reflects current database state. Runtime admin edits are unaffected
+(revalidatePath purges correctly); this only bit build-time data freshness.

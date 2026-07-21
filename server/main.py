@@ -41,9 +41,18 @@ def create_app() -> FastAPI:
             }
         )
 
-    # Routers land here as P1 progresses:
-    #   routes/courses.py   — public catalog + course detail (P1b)
-    #   routes/sso.py       — SSO callback, session issue, logout (P1b)
+    from routes.admin import router as admin_router
+    from routes.auth_dev import router as auth_dev_router
+    from routes.courses import router as courses_router
+    from routes.lessons import router as lessons_router
+
+    app.include_router(auth_dev_router)
+    app.include_router(admin_router)
+    app.include_router(courses_router)
+    app.include_router(lessons_router)
+
+    # Routers still to land:
+    #   routes/sso.py       — SSO callback, session issue, logout
     #   routes/member.py    — enroll, progress, dashboard (P1c)
     #   routes/admin.py     — authoring CRUD (P1d)
 

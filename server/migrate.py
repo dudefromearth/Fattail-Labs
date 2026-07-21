@@ -37,7 +37,13 @@ def pending(conn) -> list[Path]:
 
 
 def apply(conn, path: Path) -> None:
-    statements = [s.strip() for s in path.read_text().split(";") if s.strip()]
+    # Strip full-line comments BEFORE splitting on ';' — semicolons inside
+    # comments must not truncate statements.
+    sql = "\n".join(
+        line for line in path.read_text().splitlines()
+        if not line.lstrip().startswith("--")
+    )
+    statements = [s.strip() for s in sql.split(";") if s.strip()]
     with conn.cursor() as cur:
         for statement in statements:
             cur.execute(statement)
