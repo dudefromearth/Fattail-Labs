@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdminBar from "@/components/AdminBar";
+import EnrollCard from "@/components/EnrollCard";
 import CourseTabs from "@/components/CourseTabs";
 import { fetchCourse, fetchCourses, siteUrl } from "@/lib/catalog";
 import type { CourseDetail } from "@/lib/types";
@@ -177,21 +178,8 @@ export default async function CourseDetailPage({
           </div>
         </div>
 
-        {/* Right rail */}
-        <aside className="h-fit rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
-          <h2 className="font-semibold">My Progress</h2>
-          <div className="mt-3 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800" />
-          <p className="mt-2 text-sm text-zinc-500">Not started yet</p>
-          <Link
-            href="/signup"
-            className="mt-4 block rounded-full bg-emerald-500 py-2.5 text-center font-medium text-white transition-colors hover:bg-emerald-600"
-          >
-            Join to Enroll
-          </Link>
-          <p className="mt-3 text-center text-xs text-zinc-400">
-            {course.enrolled_count} enrolled
-          </p>
-        </aside>
+        {/* Right rail — session-aware enrollment card */}
+        <EnrollCard slug={course.slug} enrolledCount={course.enrolled_count} />
       </div>
     </main>
   );

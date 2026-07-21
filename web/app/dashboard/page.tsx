@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
+import ContinueLearning from "@/components/ContinueLearning";
 
 export const metadata: Metadata = {
   title: "Dashboard",
 };
 
-// Member home (spec §5.4). Requires auth — out of P1 Foundation scope.
 export default function DashboardPage() {
   return (
-    <main className="p-8">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
-      <p className="mt-2 text-zinc-500">Member home — stub</p>
+    <main className="mx-auto w-full max-w-6xl px-6 py-10">
+      <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold">Continue Learning</h2>
+        <div className="mt-4">
+          <ContinueLearning />
+        </div>
+      </section>
     </main>
   );
 }

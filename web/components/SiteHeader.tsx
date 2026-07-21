@@ -13,6 +13,13 @@ type Me = {
   display_name: string;
 };
 
+type EnrollmentSummary = {
+  course: { slug: string; title: string };
+  completed_at: string | null;
+  progress: { percent: number; done: number; total: number };
+  resume: { lesson_slug: string; title: string } | null;
+};
+
 const ROLE_LABELS: Record<string, string> = {
   observer: "Free account",
   activator: "Member",
@@ -30,7 +37,17 @@ export default function SiteHeader() {
   const [me, setMe] = useState<Me | null>(null);
   const [checked, setChecked] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [learning, setLearning] = useState<EnrollmentSummary[] | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Lazy-load the My Learning summary when the menu opens.
+  useEffect(() => {
+    if (!menuOpen || learning !== null) return;
+    fetch("/api/me/enrollments", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setLearning(d?.enrollments ?? []))
+      .catch(() => setLearning([]));
+  }, [menuOpen, learning]);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,7 +134,51 @@ export default function SiteHeader() {
                       {ROLE_LABELS[me.role] ?? me.role}
                     </p>
                   </div>
+                  {learning !== null &&
+                    learning.filter((e) => !e.completed_at && e.resume).length > 0 && (
+                      <div className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                          Continue learning
+                        </p>
+                        <ul className="mt-2 space-y-2">
+                          {learning
+                            .filter((e) => !e.completed_at && e.resume)
+                            .slice(0, 3)
+                            .map((e) => (
+                              <li key={e.course.slug}>
+                                <Link
+                                  href={`/courses/${e.course.slug}/lessons/${e.resume!.lesson_slug}`}
+                                  onClick={() => setMenuOpen(false)}
+                                  className="block rounded-lg p-1.5 -mx-1.5 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                                >
+                                  <span className="block truncate text-sm font-medium">
+                                    {e.course.title}
+                                  </span>
+                                  <span className="mt-1 flex items-center gap-2">
+                                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                      <span
+                                        className="block h-full rounded-full bg-emerald-500"
+                                        style={{ width: `${e.progress.percent}%` }}
+                                      />
+                                    </span>
+                                    <span className="text-[10px] text-zinc-500">
+                                      {e.progress.percent}%
+                                    </span>
+                                  </span>
+                                </Link>
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
                   <nav className="py-1 text-sm">
+                    <Link
+                      href="/me"
+                      className="block px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      My Learning
+                    </Link>
                     <Link
                       href="/dashboard"
                       className="block px-4 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-900"

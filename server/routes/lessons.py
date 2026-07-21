@@ -15,12 +15,12 @@ from config import get_config
 router = APIRouter(prefix="/api/courses", tags=["lessons"])
 
 
-def _session_role(request: Request) -> str | None:
+def _session_claims(request: Request) -> dict | None:
     token = request.cookies.get(get_config().session_cookie)
     if not token:
         return None
     try:
-        return auth.verify_session(token)["role"]
+        return auth.verify_session(token)
     except auth.AuthError:
         return None
 
@@ -45,13 +45,29 @@ def lesson_detail(course_slug: str, lesson_slug: str, request: Request) -> dict:
     if row is None:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    role = _session_role(request)
-    if role is None:
+    claims = _session_claims(request)
+    if claims is None:
         raise HTTPException(status_code=401, detail="Sign in to watch")
-    if not row["free_preview"] and not auth.role_at_least(role, "activator"):
+    if not row["free_preview"] and not auth.role_at_least(claims["role"], "activator"):
         raise HTTPException(status_code=403, detail="Membership required")
 
+    progress = {"last_position": 0, "completed": False}
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT last_position, completed_at FROM lesson_progress
+                   WHERE identity_id = %s AND lesson_id = %s""",
+                (claims["identity_id"], row["id"]),
+            )
+            prow = cur.fetchone()
+            if prow:
+                progress = {
+                    "last_position": prow["last_position"],
+                    "completed": prow["completed_at"] is not None,
+                }
+
     return {
+        "progress": progress,
         "slug": row["slug"],
         "title": row["title"],
         "kind": row["kind"],

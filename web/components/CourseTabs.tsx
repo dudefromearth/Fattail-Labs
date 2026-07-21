@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { CourseDetail } from "@/lib/types";
 import { renderCopy } from "@/lib/md";
@@ -23,8 +23,26 @@ function LessonIcon({ kind }: { kind: string }) {
   );
 }
 
+type ProgressMap = Record<string, { completed: boolean }>;
+
 export default function CourseTabs({ course }: { course: CourseDetail }) {
   const [tab, setTab] = useState<(typeof TABS)[number]>("About");
+  const [progress, setProgress] = useState<ProgressMap>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/me/progress?course=${encodeURIComponent(course.slug)}`, {
+      credentials: "same-origin",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d?.lessons) setProgress(d.lessons);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [course.slug]);
 
   return (
     <div>
@@ -88,6 +106,15 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                   <>
                     <LessonIcon kind={l.kind} />
                     <span>{l.title}</span>
+                    {progress[l.slug]?.completed && (
+                      <span
+                        className="text-emerald-500"
+                        aria-label="Completed"
+                        title="Completed"
+                      >
+                        ✓
+                      </span>
+                    )}
                     <span className="ml-auto flex items-center gap-3 text-xs text-zinc-500">
                       {fmtDuration(l.duration_seconds)}
                       {l.free_preview ? (

@@ -165,3 +165,34 @@ subtitle, up to 3 ✓ outcome bullets parsed from the description's outcome list
 Course CTA; panel flips to the left for last-column cards. API list payload gained
 total_duration_seconds + review_count. Touch devices tap straight through to the course
 page. Belongs in parent spec v1.1 §5.1 when cut.
+
+## 2026-07-21 — Progress tracking shipped (watch position, auto-complete, dashboard)
+
+Spec: FatTail-Labs-Progress-Tracking-Spec-v1.0 (implements parent §9's progress half;
+certificates deferred to their own spec). Endpoints: POST /api/progress (delta clamped
+≤60s, auto-complete at ≥90% cumulative watch for videos), POST /api/progress/complete
+(manual/non-video), GET /api/me/progress?course=, GET /api/me/continue (percent over
+standard-module lessons only; resume = latest-touched incomplete). Player wraps the
+served iframe with the YouTube IFrame API (enablejsapi now in base embed params):
+resume-seek >10s, 5s sampling, 15s reporting + pause/end/leave flushes; Mark-complete
+button; prev/next lesson nav. Course Modules tab shows ✓ ticks; dashboard Continue
+Learning renders progress bars + resume deep links. Verified live end-to-end incl. real
+playback auto-reporting (28s position captured with no manual action), access matrix on
+progress writes (anon 401, observer-on-gated 403), clamping, and worksheets excluded
+from completion denominators.
+
+## 2026-07-21 — Enrollment records + student page + dropdown consolidation
+
+Spec: FatTail-Labs-Enrollment-Records-Student-Page-Spec-v1.0. Enrollment = explicit
+(course-page Enroll card) or automatic on first progress event (no orphan progress);
+never an access gate. Course completion stamped on the enrollment when all
+standard-module lessons complete. Enrolled counts on cards/pages are now real. New
+APIs: POST /courses/{slug}/enroll, GET /api/me/enrollments, GET /api/me/activity
+(merged enrolled/watched/completed feed + stats). Avatar dropdown gains a lazy-loaded
+CONTINUE LEARNING section (top 3 in-progress, mini bars, resume deep links) and a My
+Learning link to /me — the student page: stats row (enrolled/completed/lessons/watch
+time), full enrollment list with Continue/Review actions, Quiz Results placeholder
+(future quiz spec's home), and the activity feed. Course-page right rail replaced by
+the session-aware EnrollCard (anon → Join, signed-in → Enroll, enrolled → progress +
+Continue, completed → ✓). Verified live: explicit + auto enroll, idempotency,
+completion stamping, dropdown, /me rendering all sections.

@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { apiUrl } from "@/lib/api";
+import { fetchCourse } from "@/lib/catalog";
+import LessonPlayer from "@/components/LessonPlayer";
 
 // Rendered per-request: free-preview lessons are public; gated lessons show the
 // members-only state until the member path (P1c) adds session-aware playback.
 export const dynamic = "force-dynamic";
 
 type LessonPayload = {
+  progress: { last_position: number; completed: boolean };
   slug: string;
   title: string;
   kind: string;
@@ -53,6 +56,25 @@ export default async function LessonPlayerPage({
   const { status, lesson } = await fetchLesson(slug, lessonSlug);
 
   if (status === 404) notFound();
+
+  // Ordered lesson list for prev/next navigation (public course payload).
+  let nav: {
+    prev: { slug: string; title: string } | null;
+    next: { slug: string; title: string } | null;
+  } | null = null;
+  if (lesson) {
+    const course = await fetchCourse(slug).catch(() => null);
+    if (course) {
+      const flat = course.modules.flatMap((m) => m.lessons);
+      const i = flat.findIndex((l) => l.slug === lessonSlug);
+      if (i >= 0) {
+        nav = {
+          prev: i > 0 ? { slug: flat[i - 1].slug, title: flat[i - 1].title } : null,
+          next: i < flat.length - 1 ? { slug: flat[i + 1].slug, title: flat[i + 1].title } : null,
+        };
+      }
+    }
+  }
 
   // 401: no account/session — the preview is the reward for signing up.
   if (status === 401) {
@@ -133,14 +155,39 @@ export default async function LessonPlayerPage({
       <p className="mt-1 text-sm text-zinc-500">{lesson.module_title}</p>
 
       {lesson.video && (
-        <div className="mt-6 overflow-hidden rounded-2xl bg-black">
-          <iframe
-            src={lesson.video.embed_url}
+        <div className="mt-6">
+          <LessonPlayer
+            courseSlug={lesson.course_slug}
+            lessonSlug={lesson.slug}
+            embedUrl={lesson.video.embed_url}
             title={lesson.title}
-            className="aspect-video w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
+            duration={lesson.duration_seconds}
+            initialPosition={lesson.progress.last_position}
+            initialCompleted={lesson.progress.completed}
           />
+        </div>
+      )}
+
+      {nav && (
+        <div className="mt-8 flex items-center justify-between text-sm">
+          {nav.prev ? (
+            <Link
+              href={`/courses/${lesson.course_slug}/lessons/${nav.prev.slug}`}
+              className="rounded-full border border-zinc-300 px-4 py-2 transition-colors hover:border-zinc-500 dark:border-zinc-700"
+            >
+              ← {nav.prev.title}
+            </Link>
+          ) : (
+            <span />
+          )}
+          {nav.next && (
+            <Link
+              href={`/courses/${lesson.course_slug}/lessons/${nav.next.slug}`}
+              className="rounded-full bg-zinc-900 px-4 py-2 font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
+            >
+              {nav.next.title} →
+            </Link>
+          )}
         </div>
       )}
 

@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
     from routes.auth_routes import router as auth_router
     from routes.courses import router as courses_router
     from routes.lessons import router as lessons_router
+    from routes.member import router as member_router
 
     app.include_router(auth_router)
     app.include_router(auth_dev_router)
@@ -35,9 +36,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_router)
     app.include_router(courses_router)
     app.include_router(lessons_router)
-
-    # Routers still to land:
-    #   routes/member.py    — enroll, progress, dashboard (P1c continues)
+    app.include_router(member_router)
 
     return app
 

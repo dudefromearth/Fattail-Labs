@@ -27,7 +27,8 @@ YOUTUBE_PARAMS = frozenset(
 )
 
 # Params we set on every embed regardless of lesson config.
-YOUTUBE_BASE = {"rel": "0", "playsinline": "1"}
+# enablejsapi powers the progress-tracking bridge (Progress Tracking spec §4).
+YOUTUBE_BASE = {"rel": "0", "playsinline": "1", "enablejsapi": "1"}
 
 VALID_PROVIDERS = frozenset({"youtube"})
 
