@@ -3,7 +3,7 @@
 
 import type { MetadataRoute } from "next";
 import { apiGet } from "@/lib/api";
-import { siteUrl } from "@/lib/catalog";
+import { fetchCourse, siteUrl } from "@/lib/catalog";
 import type { CourseCard } from "@/lib/types";
 
 export const revalidate = 3600; // refresh hourly; publish also revalidates
@@ -19,6 +19,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly",
     priority: 0.8,
   }));
+
+  // Free-preview lessons are the long-tail landing pages (SEO spec v1.1).
+  const details = await Promise.all(
+    data.courses.map((c) => fetchCourse(c.slug).catch(() => null)),
+  );
+  const freeLessons: MetadataRoute.Sitemap = details
+    .filter((c) => c !== null)
+    .flatMap((c) =>
+      c.modules.flatMap((m) =>
+        m.lessons
+          .filter((l) => l.free_preview)
+          .map((l) => ({
+            url: siteUrl(`/courses/${c.slug}/lessons/${l.slug}`),
+            changeFrequency: "weekly" as const,
+            priority: 0.6,
+          })),
+      ),
+    );
 
   return [
     {
@@ -37,5 +55,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     ...courses,
+    ...freeLessons,
   ];
 }

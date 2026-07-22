@@ -49,3 +49,27 @@ def test_lesson_payload_has_video_config(client, lesson_slugs):
     body = _get(client, free, cookie_for("observer", 901)).json()
     assert body["video"]["provider"] == "youtube"
     assert "youtube-nocookie.com" in body["video"]["embed_url"]
+
+
+def test_public_landing_payload(client, lesson_slugs):
+    """SEO landing endpoint: anonymous-safe, video never leaks,
+    notes only for free previews."""
+    free, gated = lesson_slugs
+    r = client.get(f"/api/courses/{COURSE}/lessons/{free}/public")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["free_preview"] is True
+    assert body["course_title"]
+    assert "video" not in body and "embed_url" not in str(body)
+
+    r = client.get(f"/api/courses/{COURSE}/lessons/{gated}/public")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["free_preview"] is False
+    assert body["body_md"] is None  # gated notes never go public
+
+
+def test_public_landing_404s(client):
+    assert client.get(f"/api/courses/{COURSE}/lessons/nope/public").status_code == 404
+    r = client.get("/api/courses/tail-hedging-workshop/lessons/draft-lesson/public")
+    assert r.status_code == 404  # draft course: publicly invisible

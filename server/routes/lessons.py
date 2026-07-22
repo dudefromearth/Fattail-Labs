@@ -86,3 +86,38 @@ def lesson_detail(course_slug: str, lesson_slug: str, request: Request) -> dict:
             row["video_provider"], row["video_id"], row["video_params"]
         ),
     }
+
+
+@router.get("/{course_slug}/lessons/{lesson_slug}/public")
+def lesson_public(course_slug: str, lesson_slug: str) -> dict:
+    """Public landing payload (SEO spec v1.1): safe lesson metadata for
+    anonymous visitors and crawlers. NEVER includes video fields; lesson notes
+    only for free previews. The watchable lesson stays behind sign-up."""
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT l.slug, l.title, l.kind, l.duration_seconds,
+                          l.free_preview, l.body_md,
+                          m.title AS module_title,
+                          c.slug AS course_slug, c.title AS course_title
+                   FROM lessons l
+                   JOIN modules m ON l.module_id = m.id
+                   JOIN courses c ON m.course_id = c.id
+                   WHERE c.slug = %s AND l.slug = %s AND c.status = 'published'""",
+                (course_slug, lesson_slug),
+            )
+            row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    free = bool(row["free_preview"])
+    return {
+        "slug": row["slug"],
+        "title": row["title"],
+        "kind": row["kind"],
+        "duration_seconds": row["duration_seconds"],
+        "free_preview": free,
+        "module_title": row["module_title"],
+        "course_slug": row["course_slug"],
+        "course_title": row["course_title"],
+        "body_md": row["body_md"] if free else None,
+    }

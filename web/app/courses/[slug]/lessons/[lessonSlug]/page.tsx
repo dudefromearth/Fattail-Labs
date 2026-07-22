@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { apiUrl } from "@/lib/api";
-import { fetchCourse } from "@/lib/catalog";
+import { apiGet, apiUrl } from "@/lib/api";
+import { fetchCourse, siteUrl } from "@/lib/catalog";
 import LessonBody from "@/components/LessonBody";
 import LessonPlayer from "@/components/LessonPlayer";
+import Markdown from "@/components/Markdown";
 import QuizBuilder from "@/components/QuizBuilder";
 import QuizPlayer, { type PublicQuestion } from "@/components/QuizPlayer";
 
-// Rendered per-request: free-preview lessons are public; gated lessons show the
-// members-only state until the member path (P1c) adds session-aware playback.
+// Rendered per-request: sessions see the player; anonymous visitors see the
+// public landing page (SEO spec v1.1) — full HTML for crawlers, video gated.
 export const dynamic = "force-dynamic";
 
 type LessonPayload = {
@@ -24,6 +25,18 @@ type LessonPayload = {
   course_title: string;
   body_md: string | null;
   video: { provider: string; embed_url: string } | null;
+};
+
+type PublicLesson = {
+  slug: string;
+  title: string;
+  kind: string;
+  duration_seconds: number;
+  free_preview: boolean;
+  module_title: string;
+  course_slug: string;
+  course_title: string;
+  body_md: string | null;
 };
 
 async function fetchLesson(
@@ -41,14 +54,222 @@ async function fetchLesson(
   return { status: 200, lesson: (await res.json()) as LessonPayload };
 }
 
+async function fetchPublicLesson(
+  slug: string,
+  lessonSlug: string,
+): Promise<PublicLesson | null> {
+  return apiGet<PublicLesson>(
+    `/api/courses/${encodeURIComponent(slug)}/lessons/${encodeURIComponent(lessonSlug)}/public`,
+  ).catch(() => null);
+}
+
+function describe(pub: PublicLesson): string {
+  if (pub.body_md) {
+    const paragraph = pub.body_md
+      .split("\n\n")
+      .map((p) => p.trim())
+      .find((p) => p && !p.startsWith("#"));
+    if (paragraph) {
+      return paragraph.replace(/[*_`[\]()#>]/g, "").slice(0, 300);
+    }
+  }
+  return `${pub.free_preview ? "Free preview lesson" : "Lesson"} from ${pub.course_title} — ${pub.module_title}.`;
+}
+
+function minutes(seconds: number): string {
+  return `${Math.max(1, Math.round(seconds / 60))} min`;
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string; lessonSlug: string }>;
 }): Promise<Metadata> {
   const { slug, lessonSlug } = await params;
-  const { lesson } = await fetchLesson(slug, lessonSlug);
-  return lesson ? { title: `${lesson.title} — ${lesson.course_title}` } : {};
+  const pub = await fetchPublicLesson(slug, lessonSlug);
+  if (!pub) return {};
+  const description = describe(pub);
+  const url = siteUrl(`/courses/${slug}/lessons/${lessonSlug}`);
+  return {
+    title: `${pub.title} — ${pub.course_title}`,
+    description,
+    alternates: { canonical: url },
+    // Free previews are the landing pages; gated shells stay out of the index.
+    robots: pub.free_preview ? undefined : { index: false, follow: true },
+    openGraph: {
+      title: `${pub.title} — ${pub.course_title}`,
+      description,
+      url,
+      siteName: "FatTail Labs",
+      type: "article",
+    },
+  };
+}
+
+function lessonJsonLd(pub: PublicLesson) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "LearningResource",
+    name: pub.title,
+    description: describe(pub),
+    learningResourceType: pub.kind === "quiz" ? "Quiz" : "Lesson",
+    timeRequired: `PT${Math.max(1, Math.round(pub.duration_seconds / 60))}M`,
+    isAccessibleForFree: false, // watching requires an account, always
+    isPartOf: {
+      "@type": "Course",
+      name: pub.course_title,
+      url: siteUrl(`/courses/${pub.course_slug}`),
+    },
+    provider: { "@type": "Organization", name: "FatTail Labs" },
+  };
+}
+
+function breadcrumbJsonLd(pub: PublicLesson) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Courses", item: siteUrl("/courses") },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: pub.course_title,
+        item: siteUrl(`/courses/${pub.course_slug}`),
+      },
+      { "@type": "ListItem", position: 3, name: pub.title },
+    ],
+  };
+}
+
+type Nav = {
+  prev: { slug: string; title: string } | null;
+  next: { slug: string; title: string } | null;
+};
+
+async function buildNav(slug: string, lessonSlug: string): Promise<Nav | null> {
+  const course = await fetchCourse(slug).catch(() => null);
+  if (!course) return null;
+  const flat = course.modules.flatMap((m) => m.lessons);
+  const i = flat.findIndex((l) => l.slug === lessonSlug);
+  if (i < 0) return null;
+  return {
+    prev: i > 0 ? { slug: flat[i - 1].slug, title: flat[i - 1].title } : null,
+    next: i < flat.length - 1 ? { slug: flat[i + 1].slug, title: flat[i + 1].title } : null,
+  };
+}
+
+function NavRow({ nav, courseSlug }: { nav: Nav | null; courseSlug: string }) {
+  if (!nav) return null;
+  return (
+    <div className="mt-8 flex items-center justify-between text-sm">
+      {nav.prev ? (
+        <Link
+          href={`/courses/${courseSlug}/lessons/${nav.prev.slug}`}
+          className="rounded-full border border-zinc-300 px-4 py-2 transition-colors hover:border-zinc-500 dark:border-zinc-700"
+        >
+          ← {nav.prev.title}
+        </Link>
+      ) : (
+        <span />
+      )}
+      {nav.next && (
+        <Link
+          href={`/courses/${courseSlug}/lessons/${nav.next.slug}`}
+          className="rounded-full bg-zinc-900 px-4 py-2 font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
+        >
+          {nav.next.title} →
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// Anonymous landing page (SEO spec v1.1): the lesson's public face — title,
+// context, notes (free previews only), locked player, sign-up CTA. Crawlable
+// full HTML; the watchable video remains the reward for signing up.
+function AnonymousLanding({ pub, nav }: { pub: PublicLesson; nav: Nav | null }) {
+  return (
+    <main className="mx-auto w-full max-w-5xl px-6 py-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(lessonJsonLd(pub)) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(pub)) }}
+      />
+      <nav className="text-sm text-zinc-500">
+        <Link href="/courses" className="hover:underline">
+          All Courses
+        </Link>
+        <span className="mx-2">›</span>
+        <Link href={`/courses/${pub.course_slug}`} className="hover:underline">
+          {pub.course_title}
+        </Link>
+        <span className="mx-2">›</span>
+        <span>{pub.title}</span>
+      </nav>
+
+      <h1 className="mt-4 text-2xl font-semibold">{pub.title}</h1>
+      <p className="mt-1 text-sm text-zinc-500">
+        {pub.module_title} · {minutes(pub.duration_seconds)}
+        {pub.free_preview && (
+          <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+            Free preview
+          </span>
+        )}
+      </p>
+
+      <div className="mt-6 flex aspect-video w-full flex-col items-center justify-center gap-4 rounded-2xl bg-zinc-900 text-white">
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-2xl">
+          🔒
+        </span>
+        <p className="font-medium">
+          {pub.free_preview
+            ? "Create a free account to watch this preview"
+            : "This lesson is for members"}
+        </p>
+        <div className="flex items-center gap-3">
+          <Link
+            href={pub.free_preview ? "/signup" : "/membership"}
+            className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
+          >
+            {pub.free_preview ? "Create Free Account" : "Become a Member"}
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-full border border-white/30 px-6 py-2.5 font-medium transition-colors hover:border-white/60"
+          >
+            Log In
+          </Link>
+        </div>
+      </div>
+
+      {pub.body_md && (
+        <div className="mt-8">
+          <Markdown>{pub.body_md}</Markdown>
+        </div>
+      )}
+
+      <NavRow nav={nav} courseSlug={pub.course_slug} />
+
+      <div className="mt-10 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900 dark:bg-emerald-950">
+        <p className="font-medium">
+          From “{pub.course_title}” — part of FatTail Labs
+        </p>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          Free accounts watch preview lessons in every course. Members get every
+          lesson, live sessions, and the full resource library.
+        </p>
+        <Link
+          href="/signup"
+          className="mt-4 inline-block rounded-full bg-emerald-500 px-6 py-2 font-medium text-white transition-colors hover:bg-emerald-600"
+        >
+          Join FatTail Labs
+        </Link>
+      </div>
+    </main>
+  );
 }
 
 export default async function LessonPlayerPage({
@@ -61,57 +282,14 @@ export default async function LessonPlayerPage({
 
   if (status === 404) notFound();
 
-  // Ordered lesson list for prev/next navigation (public course payload).
-  let nav: {
-    prev: { slug: string; title: string } | null;
-    next: { slug: string; title: string } | null;
-  } | null = null;
-  if (lesson) {
-    const course = await fetchCourse(slug).catch(() => null);
-    if (course) {
-      const flat = course.modules.flatMap((m) => m.lessons);
-      const i = flat.findIndex((l) => l.slug === lessonSlug);
-      if (i >= 0) {
-        nav = {
-          prev: i > 0 ? { slug: flat[i - 1].slug, title: flat[i - 1].title } : null,
-          next: i < flat.length - 1 ? { slug: flat[i + 1].slug, title: flat[i + 1].title } : null,
-        };
-      }
-    }
-  }
+  const nav = await buildNav(slug, lessonSlug);
 
-  // 401: no account/session — the preview is the reward for signing up.
+  // 401: no session — serve the public landing page (the preview is the
+  // reward for signing up; the page itself is the search-engine entry point).
   if (status === 401) {
-    return (
-      <main className="mx-auto w-full max-w-3xl px-6 py-16 text-center">
-        <h1 className="text-2xl font-semibold">
-          Create a free account to watch
-        </h1>
-        <p className="mt-3 text-zinc-600 dark:text-zinc-400">
-          Free accounts can watch preview lessons in every course. It takes
-          thirty seconds.
-        </p>
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <Link
-            href="/signup"
-            className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
-          >
-            Create Free Account
-          </Link>
-          <Link
-            href="/login"
-            className="rounded-full border border-zinc-300 px-6 py-2.5 font-medium transition-colors hover:border-zinc-500 dark:border-zinc-700"
-          >
-            Log In
-          </Link>
-        </div>
-        <p className="mt-6 text-sm">
-          <Link href={`/courses/${slug}`} className="text-zinc-500 hover:underline">
-            ← Back to course
-          </Link>
-        </p>
-      </main>
-    );
+    const pub = await fetchPublicLesson(slug, lessonSlug);
+    if (!pub) notFound();
+    return <AnonymousLanding pub={pub} nav={nav} />;
   }
 
   // 403: signed in, but this lesson needs membership.
@@ -126,7 +304,7 @@ export default async function LessonPlayerPage({
         <div className="mt-6 flex items-center justify-center gap-3">
           <Link
             href="/membership"
-            className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
+            className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium transition-colors hover:bg-emerald-600 text-white"
           >
             Become a Member
           </Link>
@@ -192,28 +370,7 @@ export default async function LessonPlayerPage({
         </div>
       )}
 
-      {nav && (
-        <div className="mt-8 flex items-center justify-between text-sm">
-          {nav.prev ? (
-            <Link
-              href={`/courses/${lesson.course_slug}/lessons/${nav.prev.slug}`}
-              className="rounded-full border border-zinc-300 px-4 py-2 transition-colors hover:border-zinc-500 dark:border-zinc-700"
-            >
-              ← {nav.prev.title}
-            </Link>
-          ) : (
-            <span />
-          )}
-          {nav.next && (
-            <Link
-              href={`/courses/${lesson.course_slug}/lessons/${nav.next.slug}`}
-              className="rounded-full bg-zinc-900 px-4 py-2 font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
-            >
-              {nav.next.title} →
-            </Link>
-          )}
-        </div>
-      )}
+      <NavRow nav={nav} courseSlug={lesson.course_slug} />
 
       <LessonBody
         courseSlug={lesson.course_slug}

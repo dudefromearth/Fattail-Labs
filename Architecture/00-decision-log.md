@@ -693,3 +693,24 @@ URLs (3 static + 10 published, draft absent); /me carries noindex,nofollow;
 catalog page carries no robots meta; course canonical absolute; og:image
 verified absolute with a probe banner (then reverted). Server suite 44/44.
 Spec: FatTail-Labs-SEO-Spec-v1.0.md.
+
+## 2026-07-21 — SEO v1.1: free-lesson landing pages (Layer 2)
+
+**Decision:** The anonymous lesson page becomes a real landing page instead of
+a contentless sign-in wall. New public endpoint (…/lessons/{slug}/public)
+returns safe metadata + notes for free previews only — no video fields by
+construction, gated notes never public, drafts 404. Anonymous render: breadcrumb,
+title/module/duration, locked player panel with signup/membership CTA, notes
+(free only), prev/next links, LearningResource + BreadcrumbList JSON-LD
+(isAccessibleForFree: false — watching always requires an account, per the
+founding funnel rule). Index policy: free previews indexable with derived
+descriptions; gated shells noindex,follow. Sitemap gains all free-preview
+lessons (11 today). Authoring consequence recorded: notes on free previews are
+now public ranking copy. Signed-in behavior unchanged.
+
+**Verification:** Suite 46/46 (2 new endpoint tests: payload safety + draft
+404s). Anon HTML: full title/h1/JSON-LD/lock CTA, zero "youtube" occurrences;
+gated page noindex,follow + members shell; probe notes rendered in anon HTML
+and drove the meta description, fallback description verified with notes
+absent (probe reverted to NULL). Sitemap 11 lesson URLs.
+Spec: FatTail-Labs-SEO-Spec-v1.1.md.
