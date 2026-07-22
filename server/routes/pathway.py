@@ -6,7 +6,8 @@ import json
 from fastapi import APIRouter, HTTPException, Request
 
 import db
-from routes.member import _course_summary, require_session
+from guards import require_session
+from routes.member import _course_summary
 
 router = APIRouter(tags=["pathway"])
 

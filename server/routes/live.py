@@ -14,7 +14,7 @@ from fastapi.responses import PlainTextResponse
 
 import auth
 import db
-from config import get_config
+from guards import claims_or_none, require_admin
 
 router = APIRouter(tags=["live"])
 
@@ -31,25 +31,6 @@ DAY_KEYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")  # date.weekday() o
 ICS_BYDAY = {"mon": "MO", "tue": "TU", "wed": "WE", "thu": "TH",
              "fri": "FR", "sat": "SA", "sun": "SU"}
 HORIZON_DAYS = 14
-
-
-def _claims_or_none(request: Request) -> dict | None:
-    token = request.cookies.get(get_config().session_cookie)
-    if not token:
-        return None
-    try:
-        return auth.verify_session(token)
-    except auth.AuthError:
-        return None
-
-
-def _require_admin(request: Request) -> dict:
-    claims = _claims_or_none(request)
-    if claims is None:
-        raise HTTPException(status_code=401, detail="Sign in required")
-    if not auth.role_at_least(claims["role"], "administrator"):
-        raise HTTPException(status_code=403, detail="Administrator role required")
-    return claims
 
 
 def _join_state(starts, category, join_url, claims, now) -> dict:
@@ -170,7 +151,7 @@ def list_sessions(request: Request, month: str | None = None) -> dict:
     """Default: rolling upcoming horizon + replays (dashboard shape, v1.1).
     With ?month=YYYY-MM: every session of that ET month for the calendar,
     past occurrences included (join-locked 'ended'), plus replays."""
-    claims = _claims_or_none(request)
+    claims = claims_or_none(request)
     now = datetime.now(timezone.utc)
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -349,7 +330,7 @@ def _validate_session(body: dict) -> dict:
 
 @router.post("/api/admin/live-sessions")
 async def create_session(request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     f = _validate_session(await request.json())
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -365,7 +346,7 @@ async def create_session(request: Request) -> dict:
 
 @router.put("/api/admin/live-sessions/{session_id}")
 async def update_session(session_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     f = _validate_session(await request.json())
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -384,7 +365,7 @@ async def update_session(session_id: int, request: Request) -> dict:
 
 @router.delete("/api/admin/live-sessions/{session_id}")
 def delete_session(session_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM live_sessions WHERE id = %s", (session_id,))
@@ -454,7 +435,7 @@ def _validate_recurrence(body: dict) -> dict:
 
 @router.get("/api/admin/live-recurrences")
 def list_recurrences(request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM live_recurrences ORDER BY id ASC")
@@ -480,7 +461,7 @@ def list_recurrences(request: Request) -> dict:
 
 @router.post("/api/admin/live-recurrences")
 async def create_recurrence(request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     f = _validate_recurrence(await request.json())
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -498,7 +479,7 @@ async def create_recurrence(request: Request) -> dict:
 
 @router.put("/api/admin/live-recurrences/{recurrence_id}")
 async def update_recurrence(recurrence_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     f = _validate_recurrence(await request.json())
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -518,7 +499,7 @@ async def update_recurrence(recurrence_id: int, request: Request) -> dict:
 
 @router.delete("/api/admin/live-recurrences/{recurrence_id}")
 def delete_recurrence(recurrence_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM live_recurrences WHERE id = %s", (recurrence_id,))
@@ -592,7 +573,7 @@ def _validate_partial(body: dict) -> dict:
 
 @router.get("/api/admin/live-sessions/{session_id}")
 def get_session_admin(session_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM live_sessions WHERE id = %s", (session_id,))
@@ -613,7 +594,7 @@ def get_session_admin(session_id: int, request: Request) -> dict:
 @router.get("/api/admin/live-recurrences/{recurrence_id}/occurrences/{ymd}")
 def get_occurrence_admin(recurrence_id: int, ymd: str, request: Request) -> dict:
     """Effective (series ⊕ override) fields for editor prefill."""
-    _require_admin(request)
+    require_admin(request)
     day = _parse_ymd(ymd)
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -680,7 +661,7 @@ def _split_series(cur, rec, day: date, fields: dict) -> int:
 
 @router.put("/api/admin/live-recurrences/{recurrence_id}/occurrences/{ymd}")
 async def edit_occurrence(recurrence_id: int, ymd: str, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     day = _parse_ymd(ymd)
     body = await request.json()
     scope = body.get("scope")
@@ -718,7 +699,7 @@ async def edit_occurrence(recurrence_id: int, ymd: str, request: Request) -> dic
 @router.delete("/api/admin/live-recurrences/{recurrence_id}/occurrences/{ymd}")
 def delete_occurrence(recurrence_id: int, ymd: str, request: Request,
                       scope: str = "one") -> dict:
-    _require_admin(request)
+    require_admin(request)
     day = _parse_ymd(ymd)
     if scope not in VALID_SCOPES:
         raise HTTPException(status_code=422, detail=f"scope must be one of {sorted(VALID_SCOPES)}")

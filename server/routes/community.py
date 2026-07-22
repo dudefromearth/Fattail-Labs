@@ -9,45 +9,12 @@ from fastapi import APIRouter, HTTPException, Request
 
 import auth
 import db
-from config import get_config
+from guards import claims_or_none, require_admin, require_session
+from repo import course_id_by_slug
 
 router = APIRouter(tags=["community"])
 
 VALID_MOD_STATUS = frozenset({"visible", "held"})
-
-
-def _claims_or_none(request: Request) -> dict | None:
-    token = request.cookies.get(get_config().session_cookie)
-    if not token:
-        return None
-    try:
-        return auth.verify_session(token)
-    except auth.AuthError:
-        return None
-
-
-def _require_session(request: Request) -> dict:
-    claims = _claims_or_none(request)
-    if claims is None:
-        raise HTTPException(status_code=401, detail="Sign in required")
-    return claims
-
-
-def _require_admin(request: Request) -> dict:
-    claims = _require_session(request)
-    if not auth.role_at_least(claims["role"], "administrator"):
-        raise HTTPException(status_code=403, detail="Administrator role required")
-    return claims
-
-
-def _course_id(cur, slug: str) -> int:
-    cur.execute(
-        "SELECT id FROM courses WHERE slug = %s AND status = 'published'", (slug,)
-    )
-    row = cur.fetchone()
-    if row is None:
-        raise HTTPException(status_code=404, detail="Course not found")
-    return row["id"]
 
 
 # --- reviews ------------------------------------------------------------------
@@ -74,10 +41,10 @@ def _review_eligibility(cur, identity_id: int, course_id: int) -> tuple[bool, st
 
 @router.get("/api/courses/{slug}/reviews")
 def list_reviews(slug: str, request: Request) -> dict:
-    claims = _claims_or_none(request)
+    claims = claims_or_none(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            course_id = _course_id(cur, slug)
+            course_id = course_id_by_slug(cur, slug, published_only=True)
             cur.execute(
                 """SELECT r.id, r.rating, r.body, r.created_at, r.status,
                           i.display_name, i.email, r.identity_id
@@ -143,7 +110,7 @@ def list_reviews(slug: str, request: Request) -> dict:
 
 @router.post("/api/courses/{slug}/reviews")
 async def upsert_review(slug: str, request: Request) -> dict:
-    claims = _require_session(request)
+    claims = require_session(request)
     body = await request.json()
     try:
         rating = int(body.get("rating"))
@@ -155,7 +122,7 @@ async def upsert_review(slug: str, request: Request) -> dict:
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            course_id = _course_id(cur, slug)
+            course_id = course_id_by_slug(cur, slug, published_only=True)
             eligible, reason = _review_eligibility(cur, claims["identity_id"], course_id)
             if not eligible:
                 raise HTTPException(status_code=403, detail=reason)
@@ -171,7 +138,7 @@ async def upsert_review(slug: str, request: Request) -> dict:
 
 @router.post("/api/admin/reviews/{review_id}/moderate")
 async def moderate_review(review_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     body = await request.json()
     status = body.get("status")
     if status not in VALID_MOD_STATUS:
@@ -190,11 +157,11 @@ async def moderate_review(review_id: int, request: Request) -> dict:
 
 @router.get("/api/courses/{slug}/threads")
 def list_threads(slug: str, request: Request) -> dict:
-    claims = _claims_or_none(request)
+    claims = claims_or_none(request)
     is_admin = bool(claims and auth.role_at_least(claims["role"], "administrator"))
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            course_id = _course_id(cur, slug)
+            course_id = course_id_by_slug(cur, slug, published_only=True)
             status_filter = "" if is_admin else "AND t.status = 'visible'"
             cur.execute(
                 f"""SELECT t.id, t.title, t.status, t.created_at,
@@ -229,7 +196,7 @@ def list_threads(slug: str, request: Request) -> dict:
 
 @router.post("/api/courses/{slug}/threads")
 async def create_thread(slug: str, request: Request) -> dict:
-    claims = _require_session(request)
+    claims = require_session(request)
     body = await request.json()
     title = (body.get("title") or "").strip()
     text = (body.get("body") or "").strip()
@@ -237,7 +204,7 @@ async def create_thread(slug: str, request: Request) -> dict:
         raise HTTPException(status_code=422, detail="title required")
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            course_id = _course_id(cur, slug)
+            course_id = course_id_by_slug(cur, slug, published_only=True)
             cur.execute(
                 """INSERT INTO threads (scope_type, scope_id, identity_id, title, body_md)
                    VALUES ('course', %s, %s, %s, %s)""",
@@ -249,7 +216,7 @@ async def create_thread(slug: str, request: Request) -> dict:
 
 @router.get("/api/threads/{thread_id}")
 def thread_detail(thread_id: int, request: Request) -> dict:
-    claims = _claims_or_none(request)
+    claims = claims_or_none(request)
     is_admin = bool(claims and auth.role_at_least(claims["role"], "administrator"))
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -300,7 +267,7 @@ def thread_detail(thread_id: int, request: Request) -> dict:
 
 @router.post("/api/threads/{thread_id}/comments")
 async def create_comment(thread_id: int, request: Request) -> dict:
-    claims = _require_session(request)
+    claims = require_session(request)
     body = await request.json()
     text = (body.get("body") or "").strip()
     if not text:
@@ -332,7 +299,7 @@ async def moderate_comment(comment_id: int, request: Request) -> dict:
 
 
 async def _moderate(table: str, row_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     body = await request.json()
     status = body.get("status")
     if status not in VALID_MOD_STATUS:
@@ -350,10 +317,10 @@ async def _moderate(table: str, row_id: int, request: Request) -> dict:
 
 @router.get("/api/courses/{slug}/students")
 def course_students(slug: str, request: Request) -> dict:
-    claims = _claims_or_none(request)
+    claims = claims_or_none(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            course_id = _course_id(cur, slug)
+            course_id = course_id_by_slug(cur, slug, published_only=True)
             cur.execute(
                 "SELECT COUNT(*) AS n FROM enrollments WHERE course_id = %s",
                 (course_id,),

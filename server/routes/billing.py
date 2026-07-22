@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Request
 import db
 import identity
 from config import get_config
-from routes.member import require_session
+from guards import require_session
 
 router = APIRouter(tags=["billing"])
 

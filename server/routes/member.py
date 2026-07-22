@@ -9,22 +9,13 @@ from fastapi import APIRouter, HTTPException, Request
 
 import auth
 import db
-from config import get_config
+from guards import require_session
+from repo import course_id_by_slug
 
 router = APIRouter(tags=["member"])
 
 MAX_DELTA = 60          # seconds per report, anti-gaming clamp
 COMPLETE_RATIO = 0.9
-
-
-def require_session(request: Request) -> dict:
-    token = request.cookies.get(get_config().session_cookie)
-    if not token:
-        raise HTTPException(status_code=401, detail="Sign in required")
-    try:
-        return auth.verify_session(token)
-    except auth.AuthError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
 
 
 def _lesson_for_access(cur, course_slug: str, lesson_slug: str, role: str) -> dict:
@@ -106,18 +97,12 @@ def enroll(course_slug: str, request: Request) -> dict:
     claims = require_session(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT id FROM courses WHERE slug = %s AND status = 'published'",
-                (course_slug,),
-            )
-            row = cur.fetchone()
-            if row is None:
-                raise HTTPException(status_code=404, detail="Course not found")
-            _ensure_enrollment(cur, claims["identity_id"], row["id"])
+            course_id = course_id_by_slug(cur, course_slug, published_only=True)
+            _ensure_enrollment(cur, claims["identity_id"], course_id)
             cur.execute(
                 """SELECT enrolled_at, completed_at FROM enrollments
                    WHERE identity_id = %s AND course_id = %s""",
-                (claims["identity_id"], row["id"]),
+                (claims["identity_id"], course_id),
             )
             enr = cur.fetchone()
     return {

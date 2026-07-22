@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 
 import auth
 import db
-from routes.member import require_session
+from guards import require_session
 
 router = APIRouter(tags=["resources"])
 

@@ -15,6 +15,8 @@ from fastapi import APIRouter, HTTPException, Request, UploadFile
 import auth
 import db
 import video
+from guards import require_admin
+from repo import course_id_by_slug
 from config import get_config
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -51,20 +53,6 @@ VALID_STATUS = frozenset({"draft", "published", "archived"})
 _YT_URL = re.compile(
     r"(?:youtube(?:-nocookie)?\.com/(?:watch\?.*?v=|embed/|shorts/)|youtu\.be/)([\w-]{11})"
 )
-
-
-def require_admin(request: Request) -> dict:
-    cfg = get_config()
-    token = request.cookies.get(cfg.session_cookie)
-    if not token:
-        raise HTTPException(status_code=401, detail="No session")
-    try:
-        claims = auth.verify_session(token)
-    except auth.AuthError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
-    if not auth.role_at_least(claims["role"], "administrator"):
-        raise HTTPException(status_code=403, detail="Administrator role required")
-    return claims
 
 
 def normalize_video_id(raw: str | None) -> str | None:
@@ -269,10 +257,7 @@ async def create_module(slug: str, request: Request) -> dict:
         raise HTTPException(status_code=422, detail=f"kind must be one of {sorted(VALID_MODULE_KINDS)}")
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
-            course = cur.fetchone()
-            if course is None:
-                raise HTTPException(status_code=404, detail="Course not found")
+            course = {"id": course_id_by_slug(cur, slug)}
             cur.execute(
                 "SELECT COALESCE(MAX(sort_order), -1) + 1 AS nxt FROM modules WHERE course_id = %s",
                 (course["id"],),
@@ -384,10 +369,7 @@ async def reorder_modules(slug: str, request: Request) -> dict:
     body = await request.json()
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
-            course = cur.fetchone()
-            if course is None:
-                raise HTTPException(status_code=404, detail="Course not found")
+            course = {"id": course_id_by_slug(cur, slug)}
             await _reorder(cur, "modules", "course_id", course["id"], body.get("module_ids"))
     return {"ok": True}
 
@@ -432,10 +414,7 @@ async def set_categories(slug: str, request: Request) -> dict:
         raise HTTPException(status_code=422, detail="category_slugs must be a list")
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
-            course = cur.fetchone()
-            if course is None:
-                raise HTTPException(status_code=404, detail="Course not found")
+            course = {"id": course_id_by_slug(cur, slug)}
             cur.execute("DELETE FROM course_categories WHERE course_id = %s", (course["id"],))
             for cat_slug in slugs:
                 cur.execute(
@@ -455,10 +434,7 @@ async def set_instructors(slug: str, request: Request) -> dict:
         raise HTTPException(status_code=422, detail="instructor_ids must be a list of integers")
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
-            course = cur.fetchone()
-            if course is None:
-                raise HTTPException(status_code=404, detail="Course not found")
+            course = {"id": course_id_by_slug(cur, slug)}
             cur.execute("DELETE FROM course_instructors WHERE course_id = %s", (course["id"],))
             for order, iid in enumerate(ids):
                 cur.execute(
@@ -485,10 +461,7 @@ async def create_attachment(slug: str, request: Request) -> dict:
         raise HTTPException(status_code=422, detail="title, kind (file|link), url required")
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
-            course = cur.fetchone()
-            if course is None:
-                raise HTTPException(status_code=404, detail="Course not found")
+            course = {"id": course_id_by_slug(cur, slug)}
             cur.execute(
                 """INSERT INTO attachments
                      (owner_type, owner_id, title, kind, url, free_preview,
@@ -573,10 +546,7 @@ def delete_course(slug: str, request: Request) -> dict:
     require_admin(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM courses WHERE slug = %s", (slug,))
-            course = cur.fetchone()
-            if course is None:
-                raise HTTPException(status_code=404, detail="Course not found")
+            course = {"id": course_id_by_slug(cur, slug)}
             course_id = course["id"]
 
             # Private files referenced by this course's attachments.

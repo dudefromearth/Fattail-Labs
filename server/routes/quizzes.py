@@ -5,10 +5,9 @@ import json
 
 from fastapi import APIRouter, HTTPException, Request
 
-import auth
 import db
-from config import get_config
-from routes.member import _lesson_for_access, require_session
+from guards import require_admin, require_session
+from routes.member import _lesson_for_access
 
 router = APIRouter(tags=["quizzes"])
 
@@ -149,13 +148,6 @@ def my_quiz_results(request: Request) -> dict:
 
 # --- admin question CRUD ------------------------------------------------------
 
-def _require_admin(request: Request) -> dict:
-    claims = require_session(request)
-    if not auth.role_at_least(claims["role"], "administrator"):
-        raise HTTPException(status_code=403, detail="Administrator role required")
-    return claims
-
-
 def _validate_question(body: dict) -> dict:
     kind = body.get("kind")
     prompt = (body.get("prompt_md") or "").strip()
@@ -191,7 +183,7 @@ def _validate_question(body: dict) -> dict:
 
 @router.get("/api/admin/lessons/{lesson_id}/questions")
 def admin_questions(lesson_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -217,7 +209,7 @@ def admin_questions(lesson_id: int, request: Request) -> dict:
 
 @router.post("/api/admin/lessons/{lesson_id}/questions")
 async def create_question(lesson_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     fields = _validate_question(await request.json())
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -242,7 +234,7 @@ async def create_question(lesson_id: int, request: Request) -> dict:
 
 @router.put("/api/admin/questions/{question_id}")
 async def update_question(question_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     fields = _validate_question(await request.json())
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -260,7 +252,7 @@ async def update_question(question_id: int, request: Request) -> dict:
 
 @router.delete("/api/admin/questions/{question_id}")
 def delete_question(question_id: int, request: Request) -> dict:
-    _require_admin(request)
+    require_admin(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM quiz_questions WHERE id = %s", (question_id,))

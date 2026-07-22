@@ -624,3 +624,18 @@ ship with their tests.
 at the lesson payload's top-level `questions` key, not under `quiz` — the test
 was corrected to match reality (characterization, not aspiration).
 Spec: FatTail-Labs-Test-Suite-Spec-v1.0.md.
+
+## 2026-07-21 — Refactor step 2/4: shared guards + course lookup
+
+**Decision:** server/guards.py (claims_or_none, require_session, require_role,
+require_admin) replaces seven per-module reimplementations of the cookie →
+verify → role-gate dance across admin, live, community, member, and quizzes;
+resources/pathway/billing now import from guards instead of routes.member.
+server/repo.py:course_id_by_slug (published_only flag) replaces eight
+slug → id → 404 lookups (six in admin.py, plus community and member enroll).
+Semantics preserved: 401 "Sign in required" / verifier reason, 403 "<Role>
+role required". Unused imports pruned (quizzes auth/get_config).
+
+**Verification:** Test suite 44/44 before commit (caught a missed quizzes
+import mid-refactor — exactly the net it was built to be). Dev API restarted
+clean; health + live month smoke pass.
