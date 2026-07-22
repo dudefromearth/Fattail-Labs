@@ -833,3 +833,13 @@ question text, answer_md markdown). Public `GET /api/hub`; admin
 default, single open panel) with add/reorder/delete in edit mode; answer
 editor is markdown with image upload (media library). FAQPage JSON-LD from
 DB. Catalog/category blocks remain server-rendered.
+
+## 2026-07-22 — Lesson course navigation rail
+
+**Decision:** Lesson pages use a **9/12 main + 3/12 right rail** layout. The
+rail is course navigation (modules → lessons with links), sticky on desktop,
+with per-lesson completion indicators from `GET /api/me/progress` and live
+updates via `labs:progress` when the player/quiz completes a lesson. Shown for
+authenticated, 403, and anonymous lesson views when course detail loads; the
+lesson API remains access authority. Spec:
+`FatTail-Labs-Lesson-Course-Nav-Spec-v1.0.md` (extends parent §5.3).

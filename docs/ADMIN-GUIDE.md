@@ -39,6 +39,10 @@ editor**. When you're signed in as an administrator:
   field — it normalizes to the ID and plays through the privacy embed
   (youtube-nocookie). *(Lesson Video spec)*
 - Watch progress reports automatically; ~90% marks complete.
+- **Course nav rail** on every lesson page (right column on desktop): modules
+  and lessons with completion ticks. Outline comes from the course; ticks from
+  member progress. Access still enforced by the lesson API when a row is
+  opened. *(Lesson Course Nav spec v1.0)*
 - **Lesson notes** (below the video): click to edit, Markdown with live
   preview. Embed images by the 🖼 toolbar button, **paste**, or
   **drag-drop** — they upload to the media store and insert at the cursor.
