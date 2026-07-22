@@ -754,3 +754,23 @@ Subscription offer; /live has 5 Event entries (remaining July MWF shows);
 /about serves Person + Organization + copy; /membership serves FAQPage +
 visible FAQ; /llms.txt 200; catalog carries the sitewide Organization; nav
 links /about; sitemap +1. Suite 47/47. Spec: FatTail-Labs-SEO-Spec-v1.3.md.
+
+## 2026-07-21 — User's Guide (/guide) + Admin Guide (docs/)
+
+**Decision:** Two guides, two audiences. (1) Member-facing User's Guide at
+/guide — static, indexable (help content doubles as answer-engine content),
+linked in the nav and sitemap; nine sections with anchor chips covering
+accounts/previews, finding courses, taking a course (position resume, 90%
+auto-complete), quizzes, progress surfaces, the live schedule with the
+standing session times and access tiers, resources, membership + the alumni
+year, and Stripe billing. Every claim mirrors shipped behavior — no promised
+features. (2) docs/ADMIN-GUIDE.md — the operator's manual consolidating the
+admin workflows spread across 30 specs: in-place editing model, course
+lifecycle, lessons/video/notes (with the free-preview-notes-are-public
+warning), card/banner/media, quizzes, resources, live schedule management
+(scopes, categories, bounds), category copy, membership ops, and the
+test/build rhythm. Specs remain authoritative; the guide cites them.
+
+**Verification:** /guide 200 with title, section content (alumni year, 0DTE
+show, Manage billing) in prerendered HTML; nav links it; sitemap +1;
+screenshot confirms layout. Build clean, 38 static pages.
