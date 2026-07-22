@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { apiGet, apiUrl } from "@/lib/api";
 import { fetchCourse, siteUrl } from "@/lib/catalog";
+import type { CourseDetail } from "@/lib/types";
 import LessonBody from "@/components/LessonBody";
+import LessonCourseNav from "@/components/LessonCourseNav";
 import LessonPlayer from "@/components/LessonPlayer";
 import Markdown from "@/components/Markdown";
 import QuizBuilder from "@/components/QuizBuilder";
@@ -47,7 +49,9 @@ async function fetchLesson(
   const { cookies } = await import("next/headers");
   const cookieHeader = (await cookies()).toString();
   const res = await fetch(
-    apiUrl(`/api/courses/${encodeURIComponent(slug)}/lessons/${encodeURIComponent(lessonSlug)}`),
+    apiUrl(
+      `/api/courses/${encodeURIComponent(slug)}/lessons/${encodeURIComponent(lessonSlug)}`,
+    ),
     { cache: "no-store", headers: cookieHeader ? { cookie: cookieHeader } : {} },
   );
   if (!res.ok) return { status: res.status, lesson: null };
@@ -94,7 +98,6 @@ export async function generateMetadata({
     title: `${pub.title} — ${pub.course_title}`,
     description,
     alternates: { canonical: url },
-    // Free previews are the landing pages; gated shells stay out of the index.
     robots: pub.free_preview ? undefined : { index: false, follow: true },
     openGraph: {
       title: `${pub.title} — ${pub.course_title}`,
@@ -114,7 +117,7 @@ function lessonJsonLd(pub: PublicLesson) {
     description: describe(pub),
     learningResourceType: pub.kind === "quiz" ? "Quiz" : "Lesson",
     timeRequired: `PT${Math.max(1, Math.round(pub.duration_seconds / 60))}M`,
-    isAccessibleForFree: false, // watching requires an account, always
+    isAccessibleForFree: false,
     isPartOf: {
       "@type": "Course",
       name: pub.course_title,
@@ -129,7 +132,12 @@ function breadcrumbJsonLd(pub: PublicLesson) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Courses", item: siteUrl("/courses") },
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Courses",
+        item: siteUrl("/courses"),
+      },
       {
         "@type": "ListItem",
         position: 2,
@@ -146,15 +154,20 @@ type Nav = {
   next: { slug: string; title: string } | null;
 };
 
-async function buildNav(slug: string, lessonSlug: string): Promise<Nav | null> {
-  const course = await fetchCourse(slug).catch(() => null);
+function buildNavFromCourse(
+  course: CourseDetail | null,
+  lessonSlug: string,
+): Nav | null {
   if (!course) return null;
   const flat = course.modules.flatMap((m) => m.lessons);
   const i = flat.findIndex((l) => l.slug === lessonSlug);
   if (i < 0) return null;
   return {
     prev: i > 0 ? { slug: flat[i - 1].slug, title: flat[i - 1].title } : null,
-    next: i < flat.length - 1 ? { slug: flat[i + 1].slug, title: flat[i + 1].title } : null,
+    next:
+      i < flat.length - 1
+        ? { slug: flat[i + 1].slug, title: flat[i + 1].title }
+        : null,
   };
 }
 
@@ -184,19 +197,52 @@ function NavRow({ nav, courseSlug }: { nav: Nav | null; courseSlug: string }) {
   );
 }
 
-// Anonymous landing page (SEO spec v1.1): the lesson's public face — title,
-// context, notes (free previews only), locked player, sign-up CTA. Crawlable
-// full HTML; the watchable video remains the reward for signing up.
-function AnonymousLanding({ pub, nav }: { pub: PublicLesson; nav: Nav | null }) {
+function LessonLayout({
+  course,
+  currentLessonSlug,
+  children,
+}: {
+  course: CourseDetail | null;
+  currentLessonSlug: string;
+  children: React.ReactNode;
+}) {
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
+    <main className="mx-auto w-full max-w-7xl px-6 py-10">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+        <div className="min-w-0 lg:col-span-9">{children}</div>
+        {course && (
+          <aside className="lg:col-span-3">
+            <LessonCourseNav
+              course={course}
+              currentLessonSlug={currentLessonSlug}
+            />
+          </aside>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function AnonymousLanding({
+  pub,
+  nav,
+  course,
+}: {
+  pub: PublicLesson;
+  nav: Nav | null;
+  course: CourseDetail | null;
+}) {
+  return (
+    <LessonLayout course={course} currentLessonSlug={pub.slug}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(lessonJsonLd(pub)) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(pub)) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd(pub)),
+        }}
       />
       <nav className="text-sm text-zinc-500">
         <Link href="/courses" className="hover:underline">
@@ -268,7 +314,7 @@ function AnonymousLanding({ pub, nav }: { pub: PublicLesson; nav: Nav | null }) 
           Join FatTail Labs
         </Link>
       </div>
-    </main>
+    </LessonLayout>
   );
 }
 
@@ -278,55 +324,60 @@ export default async function LessonPlayerPage({
   params: Promise<{ slug: string; lessonSlug: string }>;
 }) {
   const { slug, lessonSlug } = await params;
-  const { status, lesson } = await fetchLesson(slug, lessonSlug);
+  const [{ status, lesson }, course] = await Promise.all([
+    fetchLesson(slug, lessonSlug),
+    fetchCourse(slug).catch(() => null),
+  ]);
 
   if (status === 404) notFound();
 
-  const nav = await buildNav(slug, lessonSlug);
+  const nav = buildNavFromCourse(course, lessonSlug);
 
-  // 401: no session — serve the public landing page (the preview is the
-  // reward for signing up; the page itself is the search-engine entry point).
   if (status === 401) {
     const pub = await fetchPublicLesson(slug, lessonSlug);
     if (!pub) notFound();
-    return <AnonymousLanding pub={pub} nav={nav} />;
+    return <AnonymousLanding pub={pub} nav={nav} course={course} />;
   }
 
-  // 403: signed in, but this lesson needs membership.
   if (status === 403 || !lesson) {
     return (
-      <main className="mx-auto w-full max-w-3xl px-6 py-16 text-center">
-        <h1 className="text-2xl font-semibold">This lesson is for members</h1>
-        <p className="mt-3 text-zinc-600 dark:text-zinc-400">
-          Your free account unlocks the previews — membership unlocks every
-          lesson, live session, and resource.
-        </p>
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <Link
-            href="/membership"
-            className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium transition-colors hover:bg-emerald-600 text-white"
-          >
-            Become a Member
-          </Link>
-          <Link
-            href={`/courses/${slug}`}
-            className="rounded-full border border-zinc-300 px-6 py-2.5 font-medium transition-colors hover:border-zinc-500 dark:border-zinc-700"
-          >
-            Back to course
-          </Link>
+      <LessonLayout course={course} currentLessonSlug={lessonSlug}>
+        <div className="py-16 text-center">
+          <h1 className="text-2xl font-semibold">This lesson is for members</h1>
+          <p className="mt-3 text-zinc-600 dark:text-zinc-400">
+            Your free account unlocks the previews — membership unlocks every
+            lesson, live session, and resource.
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <Link
+              href="/membership"
+              className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
+            >
+              Become a Member
+            </Link>
+            <Link
+              href={`/courses/${slug}`}
+              className="rounded-full border border-zinc-300 px-6 py-2.5 font-medium transition-colors hover:border-zinc-500 dark:border-zinc-700"
+            >
+              Back to course
+            </Link>
+          </div>
         </div>
-      </main>
+      </LessonLayout>
     );
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-10">
+    <LessonLayout course={course} currentLessonSlug={lesson.slug}>
       <nav className="text-sm text-zinc-500">
         <Link href="/courses" className="hover:underline">
           All Courses
         </Link>
         <span className="mx-2">›</span>
-        <Link href={`/courses/${lesson.course_slug}`} className="hover:underline">
+        <Link
+          href={`/courses/${lesson.course_slug}`}
+          className="hover:underline"
+        >
           {lesson.course_title}
         </Link>
         <span className="mx-2">›</span>
@@ -390,6 +441,6 @@ export default async function LessonPlayerPage({
           Join FatTail Labs
         </Link>
       </div>
-    </main>
+    </LessonLayout>
   );
 }

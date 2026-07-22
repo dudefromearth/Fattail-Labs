@@ -56,7 +56,12 @@ export default function QuizPlayer({
       setError(`Submit failed (${res.status})`);
       return;
     }
-    setGraded(await res.json());
+    const data = await res.json();
+    setGraded(data);
+    if (data?.completed) {
+      const { emitProgress } = await import("@/lib/progressEvents");
+      emitProgress({ courseSlug, lessonSlug, completed: true });
+    }
   }
 
   function fmtCorrect(q: PublicQuestion, r: Result): string {

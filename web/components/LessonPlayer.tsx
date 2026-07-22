@@ -5,6 +5,7 @@
 // samples watch time while playing, reports every 15s + on pause/end/leave.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { emitProgress } from "@/lib/progressEvents";
 
 declare global {
   interface Window {
@@ -68,7 +69,14 @@ export default function LessonPlayer({
       })
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
-          if (d?.completed) setCompleted(true);
+          if (d?.completed) {
+            setCompleted(true);
+            emitProgress({
+              courseSlug,
+              lessonSlug,
+              completed: true,
+            });
+          }
         })
         .catch(() => {
           unsentRef.current += delta; // retry on next report
@@ -154,7 +162,10 @@ export default function LessonPlayer({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ course_slug: courseSlug, lesson_slug: lessonSlug }),
     });
-    if (res.ok) setCompleted(true);
+    if (res.ok) {
+      setCompleted(true);
+      emitProgress({ courseSlug, lessonSlug, completed: true });
+    }
   }
 
   return (
