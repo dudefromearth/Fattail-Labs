@@ -658,3 +658,18 @@ url-or-null) — accepted.
 **Verification:** Build clean; all routes 200. Browser: catalog shows 10
 ✎ Card chips + New Course card, /me fired exactly 2× (SiteHeader + shared
 cache); /resources shows 4 Edit buttons + admin form. Server suite still 44/44.
+
+## 2026-07-21 — Refactor step 4/4: LiveSessions.tsx split
+
+**Decision:** The 979-line LiveSessions.tsx was five components in a trench
+coat — split into components/live/ (types.ts with the shared Session/
+Recurrence types + constants, MonthCalendar, SessionDetail incl. Countdown +
+JoinControl, EventEditor, RecurrenceManager, AdminManager); LiveSessions.tsx
+becomes a 153-line orchestrator (cursor + fetch + selection + replays + admin
+mounting). The moved files adopted the step-3 client helpers and FIELD while
+relocating. No behavior change intended or observed.
+
+**Verification:** Build clean; browser on /live — July renders 46 chips,
+detail card present, Event editor opens with the 3 scope radios, both admin
+managers mounted. Server suite 44/44 (unchanged surface). Refactor sequence
+complete: tests → server guards → web client helpers → component split.
