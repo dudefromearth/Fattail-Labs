@@ -1,0 +1,37 @@
+# FatTail Labs
+
+> Trading education built on capital preservation: "First, stop the bleeding."
+> Courses, a daily live trading room, and resources teaching defined-risk,
+> convex options structures — butterflies on same-day-expiration (0-DTE) index
+> options above all. Founded by Ernie Varitimos (0-DTE.com, the 0DTE Live Show
+> on YouTube). The doctrine: most trading accounts die from unbounded losers,
+> not from missing winners — survive first, then position to harvest the fat
+> tails. Education builds capacity, not dependency.
+
+## Courses
+
+- [Course catalog](/courses): the full library. Category hubs at
+  /courses/category/{slug} (0-DTE, butterflies, convexity, fat-tail doctrine,
+  risk & sizing, journaling & routine, options foundations, psychology,
+  platform).
+- Free-preview lessons are public pages with full lesson notes; watching any
+  video requires a free account. Full course access is a member benefit.
+- The flagship course is "First, Stop the Bleeding" — capital preservation as
+  the prerequisite for everything else.
+
+## Live
+
+- [Live schedule](/live): the public 0DTE Live Show (Mon/Wed/Fri 3:00 PM ET,
+  YouTube), plus member sessions — daily livestream (Mon–Fri 11:00 AM–12:30 PM
+  ET), Friday coach call, Sunday retrospective. Times are US Eastern.
+
+## Membership
+
+- [Membership](/membership): Navigator ($250/mo or $2,500/yr) includes
+  everything. Observer trial: $20/week for four weeks with full access;
+  completing it earns a year of course access.
+
+## About
+
+- [About](/about): FatTail Labs and Ernie Varitimos — entity details and
+  official profiles (YouTube @0dte, 0-dte.com, fattail.ai).

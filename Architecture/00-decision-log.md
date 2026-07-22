@@ -733,3 +733,24 @@ for now — logged future scope.
 9 hub routes; risk-sizing hub HTML carries title/h1/copy/canonical/ItemList
 and its 2 courses; unknown category 404s; catalog links all 9 hubs; hubs
 cross-link; sitemap +9 category URLs. Spec: FatTail-Labs-SEO-Spec-v1.2.md.
+
+## 2026-07-21 — SEO v1.3: structured data + AEO (Layers 3+4)
+
+**Decision:** Course JSON-LD gains offers (Subscription $250 → /membership)
+and the trailer as VideoObject (YouTube thumbnail, embed, uploadDate) —
+lessons deliberately stay VideoObject-free since watching is gated. /live
+emits Event JSON-LD for upcoming PUBLIC sessions only (0DTE Live Show;
+member sessions never in schema), hourly window. New /about entity page:
+Person (Ernie Varitimos) + Organization with sameAs to youtube.com/@0dte,
+0-dte.com, fattail.ai; bio limited to in-repo facts (founder review invited);
+sitewide Organization JSON-LD in the layout; About in nav + sitemap.
+Membership page: six-question FAQ rendered visibly AND as FAQPage JSON-LD
+from one array (no drift possible), grounded in the tier/trial/alumni specs.
+/llms.txt site card for AI crawlers. SEO design v1.0–v1.3 complete; remaining
+work is content-side and post-launch ops.
+
+**Verification:** Course HTML carries VideoObject + i.ytimg thumbnail +
+Subscription offer; /live has 5 Event entries (remaining July MWF shows);
+/about serves Person + Organization + copy; /membership serves FAQPage +
+visible FAQ; /llms.txt 200; catalog carries the sitewide Organization; nav
+links /about; sitemap +1. Suite 47/47. Spec: FatTail-Labs-SEO-Spec-v1.3.md.

@@ -47,6 +47,21 @@ export async function generateMetadata({
   };
 }
 
+// Trailer as VideoObject (SEO spec v1.3) — ties the YouTube channel's
+// authority to the course page. Lessons stay schema-free: watching is gated.
+function trailerVideoJsonLd(course: CourseDetail) {
+  const id = course.trailer?.embed_url.match(/embed\/([\w-]{11})/)?.[1];
+  if (!id) return null;
+  return {
+    "@type": "VideoObject",
+    name: `${course.title} — trailer`,
+    description: course.subtitle || course.title,
+    thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+    embedUrl: course.trailer!.embed_url,
+    ...(course.published_at ? { uploadDate: course.published_at } : {}),
+  };
+}
+
 function courseJsonLd(course: CourseDetail) {
   return {
     "@context": "https://schema.org",
@@ -65,6 +80,14 @@ function courseJsonLd(course: CourseDetail) {
       name: i.name,
     })),
     hasCourseInstance: [{ "@type": "CourseInstance", courseMode: "Online" }],
+    offers: {
+      "@type": "Offer",
+      category: "Subscription",
+      price: "250",
+      priceCurrency: "USD",
+      url: siteUrl("/membership"),
+    },
+    ...(trailerVideoJsonLd(course) ? { video: trailerVideoJsonLd(course) } : {}),
     ...(course.avg_rating !== null
       ? {
           aggregateRating: {

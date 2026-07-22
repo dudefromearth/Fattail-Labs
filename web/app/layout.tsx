@@ -40,6 +40,24 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        {/* Sitewide entity (SEO spec v1.3) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "FatTail Labs",
+              url: process.env.NEXT_PUBLIC_SITE_URL,
+              founder: { "@type": "Person", name: "Ernie Varitimos" },
+              sameAs: [
+                "https://www.youtube.com/@0dte",
+                "https://0-dte.com",
+                "https://fattail.ai",
+              ],
+            }),
+          }}
+        />
         <SiteHeader />
         {children}
       </body>
