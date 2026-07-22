@@ -17,6 +17,7 @@ VALID_LEVELS = frozenset({"beginner", "intermediate", "advanced"})
 
 _LIST_SQL = """
 SELECT c.id, c.slug, c.title, c.subtitle, c.description_md, c.hero_image_url,
+       c.card_color,
        c.level, c.certification_enabled, c.published_at,
        (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS enrolled_count,
        (SELECT COUNT(*) FROM lessons l JOIN modules m ON l.module_id = m.id
@@ -120,6 +121,7 @@ def list_courses(
                 "subtitle": r["subtitle"],
                 "description_md": r["description_md"],
                 "hero_image_url": r["hero_image_url"],
+                "card_color": r["card_color"],
                 "level": r["level"],
                 "certification_enabled": bool(r["certification_enabled"]),
                 "published_at": r["published_at"].isoformat() if r["published_at"] else None,

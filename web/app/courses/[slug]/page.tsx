@@ -138,14 +138,19 @@ export default async function CourseDetailPage({
             <TrailerEditChip />
             <HeroImageChip />
             {course.hero_image_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={course.hero_image_url}
-                alt=""
-                className="h-56 w-full object-cover opacity-70"
-              />
+              // Shared banner (Course Card Editor spec v1.1): sharp on the
+              // catalog card, expanded + Gaussian-blurred + shaded here.
+              <div aria-hidden className="absolute inset-0 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={course.hero_image_url}
+                  alt=""
+                  className="h-full w-full scale-110 object-cover blur-2xl"
+                />
+                <div className="absolute inset-0 bg-zinc-950/60" />
+              </div>
             )}
-            <div className="p-8">
+            <div className="relative p-8">
               <EditableText
                 field="course.title"
                 value={course.title}

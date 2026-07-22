@@ -418,3 +418,174 @@ page itself gains admin create (course selector — resources always belong to a
 course, no orphan store — title, URL or private upload, Free checkbox) plus per-row
 make-free/members toggle and confirmed delete. Verified: observer free-download 302,
 members-only 403, anon 401, live toggle flip, flags in listings.
+
+## 2026-07-21 — Live Sessions v1.1: recurring standing schedule
+
+**Decision:** The real schedule is recurring, not one-off. Added `live_recurrences`
+(migration 007) storing America/New_York wall-clock schedules; occurrences
+materialize at read time over a 14-day horizon (no cron, no generated rows).
+Seeded the standing three: Live Trading Room Mon–Fri 11:00–12:15 ET (navigator+ —
+all members except Activators), Friday Pre-Market Briefing Fri 9:30–10:00 ET
+(activator+ — the one session Activators get), Sunday Retrospective Sun 21:00 ET
+(navigator+). `min_role` widened to public|observer|activator|navigator so a
+public YouTube show (e.g. Mon/Wed/Fri 15:00) can be listed; kind gains `show`.
+Recurrence ICS is a true repeating VEVENT (RRULE WEEKLY, TZID) — add once, holds
+forever. Admin recurrence manager on /live; occurrences are managed through the
+recurrence, not individually. Deleted the demo one-off "Live Trading Room" (now
+covered by the recurrence).
+
+**Verification:** ET→UTC conversion exact under EDT (11:00→15:00, 9:30→13:30,
+Sun 21:00→Mon 01:00). Today's already-ended occurrence correctly absent.
+Activator session: trading room + Sunday locked `role`, Friday briefing passes to
+`too_early`; navigator passes all role gates. ICS shows
+`DTSTART;TZID=America/New_York` + `RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR`.
+Live DOM: 14 Weekly-badged occurrences, recurrence manager lists all three
+standing sessions, delete absent on occurrence cards.
+Spec: FatTail-Labs-Live-Sessions-Spec-v1.1.md.
+
+## 2026-07-21 — Live Sessions v1.2: month calendar replaces the upcoming list
+
+**Decision:** With a standing recurring schedule, a flat list grows linearly with
+occurrences and buries the rhythm — replaced /live's Upcoming list with a
+Monday-first month calendar, opening on the current month, with ‹/Today/›
+navigation. Chips colored by kind; click → detail card (countdown, ICS, gated
+Join, admin delete for one-offs). API gains `?month=YYYY-MM` returning the full
+ET month including past occurrences (locked `ended`); the no-param dashboard
+shape is unchanged. Past sessions always render "Session ended" client-side —
+never a sign-in prompt for something that's over.
+
+**Verification:** July 2026 returns 33 sessions (23 weekday rooms + 5 Friday
+briefings + 4 Sunday retros + 1 one-off), 23 distinct days; August returns 30,
+first = Sun Aug 2 21:00 ET (2026-08-03T01:00Z); bad month → 422. Browser: grid
+renders with today (21st) highlighted, past days dimmed, one-off auto-selected;
+past-chip click shows "ended"; › navigation loads August with 30 chips matching
+the API. Spec: FatTail-Labs-Live-Sessions-Spec-v1.2.md.
+
+## 2026-07-21 — Live Sessions v1.3: membership-based content categories
+
+**Decision:** Live content is categorized by membership audience, not role
+plumbing — `category` (public | members | coaching) replaces `min_role` on both
+tables (migration 008 backfills then drops the column; no dual schemas).
+public = no gate; members = every membership (Observer, Activator, Navigator);
+coaching = Observer & Navigator only. The ladder derivation (members→activator+,
+coaching→navigator+) lives in one mapping and works because Observer trials
+grant the navigator role; alumni fall below activator so they lose all live
+content automatically. Standing schedule revised: 0DTE Live Show (public,
+Mon/Wed/Fri 15:00 ET, youtube.com/@0dte/live), Daily Livestream (coaching,
+Mon–Fri 11:00–12:30), Friday Morning Coach Call (members, Fri 9:30–10:00),
+Sunday Evening Retrospective (coaching, Sun 21:00–22:00). Forward note: agents
+producing live content will author the schedule through the same admin API —
+category is the agent-facing contract (audience, never internal roles).
+
+**Verification:** Full matrix — anonymous: coaching/members locked sign_in,
+public show passes to too_early; activator: coaching locked role, Coach Call
+passes; navigator: all pass. Public one-off in-window exposes join_url to
+anonymous callers; invalid category → 422. Calendar renders the four-show week
+(rose 0DTE chips Mon/Wed/Fri); recurrence manager shows category labels.
+Spec: FatTail-Labs-Live-Sessions-Spec-v1.3.md.
+
+## 2026-07-21 — Live Sessions v1.4: Recurring Event Viewer (scope-aware editing)
+
+**Decision:** Two event types made explicit — single (`live_sessions`) and
+recurring (`live_recurrences` + new `live_recurrence_overrides`, migration 009).
+Editing a recurring occurrence requires a scope choice, iCalendar-style:
+(1) this event only → override row (NULL = inherit, cancelled = removed);
+(2) this and all future → series split (old bounded by `until_date`, clone with
+edits from `start_date`, overrides ≥ split date move to the clone);
+(3) all events → series update. Delete honors the same scopes. Occurrence
+payloads gain `occurrence_date` + `modified`; the UI shows an amber "edited"
+badge and an inline editor on the detail card (scope radio for recurring,
+plain edit for single events). Known limits logged in spec §6 (series ICS shows
+the base pattern; join_url override can't clear a series URL; no one-click
+"restore occurrence to series" yet — re-edit or scope=all covers it).
+
+**Verification:** Disposable series exercised end to end — scope=one changed
+exactly one date (title + 13:00 ET → 17:00Z, modified=true); scope=future split
+at Aug 10 left Aug 3–7 on the old series (30m) and moved Aug 10+ to the clone
+(45m) including a pre-existing Aug 12 override; scope=one delete removed only
+Aug 11; Saturday prefill 404; bad scope 422; scope=all cleanup left zero probe
+sessions and zero orphan overrides. Browser: viewer opens from the calendar with
+the three choices as specified, prefilled 11:00 ET/90m; a scope=one retitle
+round-tripped to the chip + "edited" badge with the rest of the week untouched.
+Spec: FatTail-Labs-Live-Sessions-Spec-v1.4.md.
+
+## 2026-07-21 — Live Sessions v1.5: recurring series end limit
+
+**Decision:** A recurring series can be bounded at creation — `until_date`
+(YYYY-MM-DD, ET) or `until_days` (1–730, converted to a concrete date at save;
+a fixed limit, never a rolling window). Both → 422; past date → 422; neither →
+unbounded as before. No schema change (until_date existed since 009; the
+materializer already honors it). Admin create form gains an Ends selector
+(Never / On date / After N days); manager rows show "until {date}". Ending an
+existing series = v1.4 scope-future delete.
+
+**Verification:** until_days=7 on Jul 21 → until_date Jul 28; July listing ends
+Jul 28, August has zero occurrences; explicit until_date Aug 6 on a Thursday
+series kept only Aug 6; both-fields and past-date both 422. UI: Ends selector
+renders with the three modes; N-days input appears on switch (default 30).
+Probes deleted. Spec: FatTail-Labs-Live-Sessions-Spec-v1.5.md.
+
+## 2026-07-21 — Course Card Editor v1.0: banner color/image + quick-info blurb
+
+**Decision:** Catalog cards become authorable per course (migration 010:
+`card_color`, `card_image_url`, `card_blurb_md`). Banner precedence:
+card image (object-cover, scales to fill the 16:9 banner) → chosen color
+(rendered as the same gradient art style: shade(color,0.3)→color, category
+label + title kept) → hero image → category gradient; all-NULL = previous
+behavior exactly. The hover panel's blurb (Markdown, sanitized pipeline)
+replaces the default subtitle + ✓-outcomes block when set; derived meta
+(duration, level, lesson count, badges) stays computed — not editable, so the
+card can't lie. Editing happens ON the catalog: admin-only "✎ Card" chip flips
+the card face into an inline editor (live preview, palette swatches + custom
+picker, upload via existing public media tier or URL, blurb textarea);
+save → PUT (allowlist +3 fields) → revalidate /courses + course page → reload.
+
+**Verification:** Browser round trip — purple swatch picked, live preview
+showed computed gradient, saved; regenerated catalog renders
+linear-gradient(135deg, rgb(50,26,74), rgb(168,85,247)) and the Markdown blurb
+appears in the hover panel; API returns the stored fields. Image path: PUT an
+uploaded media URL → banner renders the image in prerendered HTML; full revert
+confirmed (banner back to category art, blurb gone). Draft editor adapt()
+extended for the new CourseDetail fields (build was failing until then).
+Spec: FatTail-Labs-Course-Card-Editor-Spec-v1.0.md.
+
+## 2026-07-21 — Card Editor v1.1 + Media Library v1.0: unified banner, popup removed
+
+**Decision:** Same-day revision of Card Editor v1.0 on review. (1) The hover
+quick-view popup is removed — cards click straight through; card_blurb_md dies
+with it. (2) One banner per course: hero_image_url is shared — sharp
+(object-cover) on the catalog card, expanded + Gaussian-blurred (blur-2xl,
+scale-110) + shaded (bg-zinc-950/60) behind the course page header (public page
+and draft editor both). card_image_url superseded; migration 011 drops both
+columns (no dual schema). Precedence: banner image → card_color → category art.
+(3) Banner uploads from two places, one store: the course page hero chip
+(existing) and the new /admin/media Media Library — grid of public-tier uploads
+with copy-URL and delete; delete is referentially safe (409 + who uses it,
+checked against courses.hero_image_url and attachments.url). Card editor keeps
+color + image (now writing hero_image_url) and links to the library.
+
+**Verification:** Catalog HTML contains no group-hover popup; PUT banner →
+card renders the sharp image and the course header renders blur-2xl +
+scale-110 + bg-zinc-950/60 in prerendered HTML; screenshot confirms legible
+title over the blurred, shaded image. Media API lists the store's 1 file;
+deleting the referenced banner → 409 "In use — banner for
+['butterfly-foundations']". Probe banner reverted cleanly. /admin/media 200,
+admin-gated. Specs: Course-Card-Editor v1.1, Media-Library v1.0.
+
+## 2026-07-21 — In-Place Admin v1.5: image embedding in the lesson markdown editor
+
+**Decision:** The lesson-notes editor embeds images by upload, three ways
+(toolbar Insert image…, clipboard paste, drag-drop), GitHub-style: instant
+![Uploading…]() placeholder at the cursor → public-tier media upload (same
+store as banners; visible in /admin/media) → swapped for ![alt](url) with
+alt = filename sans extension; removed + error shown on failure; Save disabled
+mid-upload. Site renderer (already img-safe via sanitize schema) gains image
+styling (max-w-full, rounded). Logged limits: lesson images are public URLs
+(member-only material belongs in private resources); Media Library delete does
+not reference-check body_md (banners/attachments only) — accepted debt.
+
+**Verification:** Browser flow on a real lesson — file fed through the Insert
+input produced ![embed-test](/api/media/6b7fa434….png) at the cursor; Save
+persisted and the page rendered the <img>; original notes restored; the
+dereferenced upload then deleted with 200 (guard releases once unused).
+Spec: FatTail-Labs-InPlace-Admin-Spec-v1.5.md.

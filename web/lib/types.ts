@@ -8,6 +8,7 @@ export type CourseCard = {
   subtitle: string;
   description_md: string;
   hero_image_url: string | null;
+  card_color: string | null;
   level: "beginner" | "intermediate" | "advanced";
   certification_enabled: boolean;
   published_at: string | null;

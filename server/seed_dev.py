@@ -69,6 +69,16 @@ PROVIDER_PLAN_MAP = [
     ("wordpress:0-dte", "labs-membership", "activator"),
 ]
 
+# The standing schedule (Live Sessions spec v1.3 §2). Times are America/New_York.
+# (title, kind, days, start ET, minutes, category, join_url)
+RECURRENCES = [
+    ("0DTE Live Show", "show", "mon,wed,fri", "15:00:00", 60, "public",
+     "https://www.youtube.com/@0dte/live"),
+    ("Daily Livestream", "trading_room", "mon,tue,wed,thu,fri", "11:00:00", 90, "coaching", None),
+    ("Friday Morning Coach Call", "workshop", "fri", "09:30:00", 30, "members", None),
+    ("Sunday Evening Retrospective", "workshop", "sun", "21:00:00", 60, "coaching", None),
+]
+
 INSTRUCTORS = [
     (
         "Ernie Varitimos",
@@ -379,6 +389,15 @@ def seed() -> None:
                        SELECT %s, %s, id FROM plans WHERE slug = %s""",
                     (provider, external_key, plan_slug),
                 )
+            for title, kind, days, start_time, duration, category, join_url in RECURRENCES:
+                cur.execute("SELECT 1 FROM live_recurrences WHERE title = %s", (title,))
+                if cur.fetchone() is None:
+                    cur.execute(
+                        """INSERT INTO live_recurrences
+                           (title, kind, days, start_time, duration_minutes, category, join_url)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                        (title, kind, days, start_time, duration, category, join_url),
+                    )
             for slug, name in CATEGORIES:
                 cur.execute(
                     "INSERT INTO categories (slug, name) VALUES (%s, %s) "

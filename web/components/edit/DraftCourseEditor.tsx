@@ -49,6 +49,7 @@ function adapt(a: AdminCourse): CourseDetail {
     subtitle: a.subtitle,
     description_md: a.description_md || "*No description yet — click to write one.*",
     hero_image_url: a.hero_image_url,
+    card_color: null,
     level: a.level as CourseDetail["level"],
     certification_enabled: false,
     published_at: null,
@@ -110,14 +111,18 @@ function DraftBody({ course }: { course: CourseDetail }) {
         <TrailerEditChip />
         <HeroImageChip />
         {course.hero_image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={course.hero_image_url}
-            alt=""
-            className="h-56 w-full object-cover opacity-70"
-          />
+          // Shared banner: sharp on the card, blurred + shaded here (v1.1).
+          <div aria-hidden className="absolute inset-0 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={course.hero_image_url}
+              alt=""
+              className="h-full w-full scale-110 object-cover blur-2xl"
+            />
+            <div className="absolute inset-0 bg-zinc-950/60" />
+          </div>
         )}
-        <div className="p-8">
+        <div className="relative p-8">
           <EditableText
             field="course.title"
             value={course.title}

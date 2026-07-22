@@ -1,8 +1,10 @@
 "use client";
 
-// Lesson notes under the video (spec v1.1 §5): full markdown for everyone;
-// admins click the block to edit it in place. Standalone save — the lesson
-// page is dynamic, no revalidation needed.
+// Lesson notes under the video (spec v1.1 §5; images per In-Place Admin v1.5):
+// full markdown for everyone; admins click the block to edit it in place.
+// Images embed by toolbar upload, paste, or drag-drop — stored in the public
+// media tier, inserted as ![alt](url) at the cursor. Standalone save — the
+// lesson page is dynamic, no revalidation needed.
 
 import { useEffect, useRef, useState } from "react";
 import Markdown from "@/components/Markdown";
@@ -23,6 +25,7 @@ export default function LessonBody({
   const [preview, setPreview] = useState(false);
   const [draft, setDraft] = useState(current);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -55,6 +58,51 @@ export default function LessonBody({
   useEffect(() => {
     if (editing && !preview) areaRef.current?.focus();
   }, [editing, preview]);
+
+  function insertAtCursor(snippet: string) {
+    const ta = areaRef.current;
+    if (!ta) {
+      setDraft((d) => (d ? `${d}\n${snippet}` : snippet));
+      return;
+    }
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? start;
+    setDraft((d) => d.slice(0, start) + snippet + d.slice(end));
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = start + snippet.length;
+      ta.setSelectionRange(pos, pos);
+    });
+  }
+
+  // GitHub-style flow: placeholder at the cursor immediately, swapped for the
+  // real markdown when the upload lands (or removed on failure).
+  async function embedImages(files: File[]) {
+    const images = files.filter((f) => f.type.startsWith("image/"));
+    if (!images.length) return;
+    setError(null);
+    for (const file of images) {
+      const alt = file.name.replace(/\.[^.]+$/, "");
+      const placeholder = `![Uploading ${file.name}…]()`;
+      insertAtCursor(`${placeholder}\n`);
+      setUploading((n) => n + 1);
+      const form = new FormData();
+      form.append("file", file);
+      const r = await fetch("/api/admin/media", {
+        method: "POST",
+        credentials: "same-origin",
+        body: form,
+      });
+      setUploading((n) => n - 1);
+      if (r.ok) {
+        const { url } = await r.json();
+        setDraft((d) => d.replace(placeholder, `![${alt}](${url})`));
+      } else {
+        setDraft((d) => d.replace(`${placeholder}\n`, "").replace(placeholder, ""));
+        setError(`Image upload failed (${r.status})`);
+      }
+    }
+  }
 
   async function save() {
     if (lessonId === null) return;
@@ -119,6 +167,25 @@ export default function LessonBody({
         >
           Preview
         </button>
+        <label
+          className="cursor-pointer rounded-full border border-zinc-300 px-2.5 py-0.5 font-medium text-zinc-600 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-300"
+          title="Upload an image and embed it at the cursor (or paste / drag one in)"
+        >
+          🖼 Insert image…
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) embedImages([...e.target.files]);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {uploading > 0 && (
+          <span className="text-emerald-600">Uploading image…</span>
+        )}
         {error && <span className="text-red-600">{error}</span>}
         <span className="ml-auto flex gap-2">
           <button onClick={() => setEditing(false)} className="text-zinc-500">
@@ -126,7 +193,7 @@ export default function LessonBody({
           </button>
           <button
             onClick={save}
-            disabled={saving || lessonId === null}
+            disabled={saving || uploading > 0 || lessonId === null}
             className="font-medium text-emerald-600 disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save"}
@@ -142,8 +209,24 @@ export default function LessonBody({
           ref={areaRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onPaste={(e) => {
+            const files = [...e.clipboardData.files];
+            if (files.some((f) => f.type.startsWith("image/"))) {
+              e.preventDefault();
+              embedImages(files);
+            }
+          }}
+          onDrop={(e) => {
+            const files = [...e.dataTransfer.files];
+            if (files.some((f) => f.type.startsWith("image/"))) {
+              e.preventDefault();
+              embedImages(files);
+            }
+          }}
+          onDragOver={(e) => e.preventDefault()}
           rows={Math.max(8, draft.split("\n").length + 2)}
           className="w-full resize-y bg-transparent p-3 font-mono text-sm outline-none"
+          placeholder="Write markdown — paste or drag images straight in."
         />
       )}
     </div>

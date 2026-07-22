@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 COURSE_FIELDS = frozenset(
     {"title", "subtitle", "description_md", "level", "status", "trailer_video_id",
-     "hero_image_url"}
+     "hero_image_url", "card_color"}
 )
 UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 MEDIA_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
@@ -89,7 +89,7 @@ def admin_course(slug: str, request: Request) -> dict:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, slug, title, subtitle, description_md, level, status,
-                          trailer_video_id, hero_image_url
+                          trailer_video_id, hero_image_url, card_color
                    FROM courses WHERE slug = %s""",
                 (slug,),
             )
@@ -594,3 +594,51 @@ def delete_course(slug: str, request: Request) -> dict:
         except OSError:
             pass
     return {"ok": True, "deleted": slug}
+
+
+# --- Media library (Media Library spec v1.0) ----------------------------------
+
+@router.get("/media")
+def list_media(request: Request) -> dict:
+    """Public-tier uploads, newest first (private-tier files are attachments,
+    managed through the resource flows — not listed here)."""
+    require_admin(request)
+    from datetime import datetime, timezone
+    items = []
+    if UPLOADS_DIR.is_dir():
+        for p in sorted(UPLOADS_DIR.iterdir(),
+                        key=lambda x: x.stat().st_mtime, reverse=True):
+            if p.is_file():
+                items.append({
+                    "name": p.name,
+                    "url": f"/api/media/{p.name}",
+                    "bytes": p.stat().st_size,
+                    "modified": datetime.fromtimestamp(
+                        p.stat().st_mtime, tz=timezone.utc).isoformat(),
+                })
+    return {"media": items}
+
+
+@router.delete("/media/{name}")
+def delete_media(name: str, request: Request) -> dict:
+    """Delete an upload — refused (409) while anything still references it."""
+    require_admin(request)
+    if "/" in name or ".." in name or not name:
+        raise HTTPException(status_code=422, detail="Invalid name")
+    path = UPLOADS_DIR / name
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    url = f"/api/media/{name}"
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT slug FROM courses WHERE hero_image_url = %s", (url,))
+            used_by = [r["slug"] for r in cur.fetchall()]
+            cur.execute("SELECT COUNT(*) AS n FROM attachments WHERE url = %s", (url,))
+            attach_n = cur.fetchone()["n"]
+    if used_by or attach_n:
+        raise HTTPException(
+            status_code=409,
+            detail=f"In use — banner for {used_by or 'no courses'}, {attach_n} attachment(s)",
+        )
+    path.unlink()
+    return {"ok": True}
