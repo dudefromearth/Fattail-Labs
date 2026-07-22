@@ -589,3 +589,19 @@ input produced ![embed-test](/api/media/6b7fa434….png) at the cursor; Save
 persisted and the page rendered the <img>; original notes restored; the
 dereferenced upload then deleted with 200 (guard releases once unused).
 Spec: FatTail-Labs-InPlace-Admin-Spec-v1.5.md.
+
+## 2026-07-21 — Resource Library v1.2: in-place editing, descriptions, emoji
+
+**Decision:** Library items become editable on the page (migration 012:
+attachments.description_md + emoji ≤16 chars). Each row renders its emoji
+(fallback by kind: file 📄, link 🔗), title, visibility badge, 2-line
+description, course link; admin Edit swaps the row into an inline editor with
+an emoji quick-pick strip + custom field, title input, and description
+textarea. Create form gains the same fields. Course-tab surfacing of
+emoji/description logged as future scope (payload + draft-adapter ripple).
+
+**Verification:** Browser round trip on "Butterfly Construction Checklist" —
+default 📄 shown, picked 📊 + description, saved; list re-rendered with the
+new emoji and clamped description; reverted to NULL/NULL cleanly (fallback
+returned). Create form shows picker + description field. API payload carries
+both fields. Spec: FatTail-Labs-Resource-Library-Spec-v1.2.md.

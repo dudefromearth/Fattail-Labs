@@ -1,6 +1,7 @@
 "use client";
 
-// Global resource library (Resource Library Spec v1.0 §4).
+// Global resource library (Resource Library Spec v1.2): every item carries a
+// representative emoji and a description; admins edit items in place.
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -10,15 +11,56 @@ type Resource = {
   title: string;
   kind: "file" | "link";
   free: boolean;
+  description_md: string | null;
+  emoji: string | null;
   url: string | null;
   course: { slug: string; title: string };
   categories: { slug: string; name: string }[];
 };
 
+const EMOJI_CHOICES = ["📄", "📊", "📈", "🧮", "🎥", "🔗", "📚", "🧠", "✅", "⚡"];
+const KIND_DEFAULT_EMOJI = { file: "📄", link: "🔗" } as const;
+
+function EmojiPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      {EMOJI_CHOICES.map((e) => (
+        <button
+          key={e}
+          onClick={() => onChange(e)}
+          className={`flex h-7 w-7 items-center justify-center rounded-lg text-base ${
+            value === e
+              ? "bg-emerald-100 ring-2 ring-emerald-500 dark:bg-emerald-950"
+              : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+          }`}
+        >
+          {e}
+        </button>
+      ))}
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="…"
+        maxLength={4}
+        className="h-7 w-10 rounded-lg border border-zinc-300 bg-white text-center text-base dark:border-zinc-700 dark:bg-zinc-950"
+        title="Custom emoji"
+      />
+    </span>
+  );
+}
+
 function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
   const [courses, setCourses] = useState<{ slug: string; title: string }[]>([]);
   const [courseSlug, setCourseSlug] = useState("");
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [emoji, setEmoji] = useState("");
   const [url, setUrl] = useState("");
   const [kind, setKind] = useState<"link" | "file">("link");
   const [free, setFree] = useState(false);
@@ -63,10 +105,14 @@ function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
         kind,
         url: url.trim(),
         free_preview: free,
+        description_md: description.trim() || null,
+        emoji: emoji.trim() || null,
       }),
     });
     if (r.ok) {
       setTitle("");
+      setDescription("");
+      setEmoji("");
       setUrl("");
       setFree(false);
       onChanged();
@@ -125,6 +171,15 @@ function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
           />
           Free
         </label>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <EmojiPicker value={emoji} onChange={setEmoji} />
+        <input
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Short description of the resource"
+          className={`${field} min-w-64 flex-1`}
+        />
         <button
           onClick={create}
           disabled={!courseSlug || !title.trim() || !url.trim()}
@@ -137,12 +192,79 @@ function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
   );
 }
 
+// In-place item editor (spec v1.2): emoji, title, description on the row itself.
+function ResourceRowEditor({
+  r,
+  onDone,
+  onCancel,
+}: {
+  r: Resource;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState(r.title);
+  const [description, setDescription] = useState(r.description_md ?? "");
+  const [emoji, setEmoji] = useState(r.emoji ?? "");
+  const [busy, setBusy] = useState(false);
+
+  const field =
+    "w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+
+  async function save() {
+    setBusy(true);
+    const res = await fetch(`/api/admin/attachments/${r.id}`, {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: title.trim() || r.title,
+        description_md: description.trim() || null,
+        emoji: emoji.trim() || null,
+      }),
+    });
+    setBusy(false);
+    if (res.ok) onDone();
+    else alert(`Save failed: ${await res.text()}`);
+  }
+
+  return (
+    <div className="min-w-0 flex-1 space-y-2">
+      <EmojiPicker value={emoji} onChange={setEmoji} />
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        className={field}
+      />
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={2}
+        placeholder="Short description of the resource"
+        className={`${field} resize-y`}
+      />
+      <div className="flex items-center gap-2">
+        <button
+          onClick={save}
+          disabled={busy || !title.trim()}
+          className="rounded-full bg-emerald-500 px-4 py-1 text-xs font-medium text-white disabled:opacity-50"
+        >
+          Save
+        </button>
+        <button onClick={onCancel} className="text-xs text-zinc-500">
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ResourceLibrary() {
   const [resources, setResources] = useState<Resource[] | null | "anonymous">(null);
   const [category, setCategory] = useState<string | null>(null);
   const [kind, setKind] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -286,57 +408,81 @@ export default function ResourceLibrary() {
         {visible.map((r) => (
           <li
             key={r.id}
-            className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800"
+            className="flex items-start gap-3 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-lg dark:bg-zinc-800">
-              {r.kind === "file" ? "⤓" : "↗"}
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xl dark:bg-zinc-800">
+              {r.emoji ?? KIND_DEFAULT_EMOJI[r.kind]}
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2">
-                <span className="truncate font-medium">{r.title}</span>
-                {r.free ? (
-                  <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                    Free
-                  </span>
-                ) : (
-                  <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800">
-                    Members
-                  </span>
-                )}
-              </span>
-              <Link
-                href={`/courses/${r.course.slug}`}
-                className="block truncate text-xs text-zinc-500 hover:underline"
-              >
-                {r.course.title}
-              </Link>
-              {isAdmin && (
-                <span className="mt-1 flex gap-3 text-xs text-zinc-400">
-                  <button onClick={() => adminToggleFree(r)} className="hover:text-zinc-600">
-                    {r.free ? "Make members-only" : "Make free"}
-                  </button>
-                  <button onClick={() => adminDelete(r)} className="hover:text-red-500">
-                    Delete
-                  </button>
-                </span>
-              )}
-            </span>
-            {r.kind === "file" ? (
-              <button
-                onClick={() => download(r.id)}
-                className="shrink-0 rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-600"
-              >
-                Download
-              </button>
+            {editingId === r.id ? (
+              <ResourceRowEditor
+                r={r}
+                onDone={() => {
+                  setEditingId(null);
+                  setReloadKey((k) => k + 1);
+                }}
+                onCancel={() => setEditingId(null)}
+              />
             ) : (
-              <a
-                href={r.url ?? "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium dark:border-zinc-700"
-              >
-                Open
-              </a>
+              <>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-medium">{r.title}</span>
+                    {r.free ? (
+                      <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                        Free
+                      </span>
+                    ) : (
+                      <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800">
+                        Members
+                      </span>
+                    )}
+                  </span>
+                  {r.description_md && (
+                    <span className="mt-0.5 line-clamp-2 block text-xs text-zinc-600 dark:text-zinc-400">
+                      {r.description_md}
+                    </span>
+                  )}
+                  <Link
+                    href={`/courses/${r.course.slug}`}
+                    className="block truncate text-xs text-zinc-500 hover:underline"
+                  >
+                    {r.course.title}
+                  </Link>
+                  {isAdmin && (
+                    <span className="mt-1 flex gap-3 text-xs text-zinc-400">
+                      <button
+                        onClick={() => setEditingId(r.id)}
+                        className="hover:text-zinc-600"
+                      >
+                        Edit
+                      </button>
+                      <button onClick={() => adminToggleFree(r)} className="hover:text-zinc-600">
+                        {r.free ? "Make members-only" : "Make free"}
+                      </button>
+                      <button onClick={() => adminDelete(r)} className="hover:text-red-500">
+                        Delete
+                      </button>
+                    </span>
+                  )}
+                </span>
+                {r.kind === "file" ? (
+                  <button
+                    onClick={() => download(r.id)}
+                    className="shrink-0 rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-600"
+                  >
+                    Download
+                  </button>
+                ) : (
+                  <a
+                    href={r.url ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium dark:border-zinc-700"
+                  >
+                    Open
+                  </a>
+                )}
+              </>
             )}
           </li>
         ))}

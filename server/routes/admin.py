@@ -477,6 +477,10 @@ async def create_attachment(slug: str, request: Request) -> dict:
     kind = body.get("kind") or "link"
     url = (body.get("url") or "").strip()
     free = 1 if body.get("free_preview") else 0
+    description = (body.get("description_md") or "").strip() or None
+    emoji = (body.get("emoji") or "").strip() or None
+    if emoji and len(emoji) > 16:
+        raise HTTPException(status_code=422, detail="emoji too long")
     if not title or kind not in ("file", "link") or not url:
         raise HTTPException(status_code=422, detail="title, kind (file|link), url required")
     with db.transaction() as conn:
@@ -486,9 +490,11 @@ async def create_attachment(slug: str, request: Request) -> dict:
             if course is None:
                 raise HTTPException(status_code=404, detail="Course not found")
             cur.execute(
-                """INSERT INTO attachments (owner_type, owner_id, title, kind, url, free_preview)
-                   VALUES ('course', %s, %s, %s, %s, %s)""",
-                (course["id"], title, kind, url, free),
+                """INSERT INTO attachments
+                     (owner_type, owner_id, title, kind, url, free_preview,
+                      description_md, emoji)
+                   VALUES ('course', %s, %s, %s, %s, %s, %s, %s)""",
+                (course["id"], title, kind, url, free, description, emoji),
             )
             return {"id": cur.lastrowid}
 
@@ -497,13 +503,22 @@ async def create_attachment(slug: str, request: Request) -> dict:
 async def update_attachment(attachment_id: int, request: Request) -> dict:
     require_admin(request)
     body = await request.json()
-    allowed = {k: v for k, v in body.items() if k in ("title", "kind", "url", "free_preview")}
+    allowed = {
+        k: v for k, v in body.items()
+        if k in ("title", "kind", "url", "free_preview", "description_md", "emoji")
+    }
     if not allowed:
         raise HTTPException(status_code=422, detail="Nothing to update")
     if "kind" in allowed and allowed["kind"] not in ("file", "link"):
         raise HTTPException(status_code=422, detail="kind must be file|link")
     if "free_preview" in allowed:
         allowed["free_preview"] = 1 if allowed["free_preview"] else 0
+    if "description_md" in allowed:
+        allowed["description_md"] = (allowed["description_md"] or "").strip() or None
+    if "emoji" in allowed:
+        allowed["emoji"] = (allowed["emoji"] or "").strip() or None
+        if allowed["emoji"] and len(allowed["emoji"]) > 16:
+            raise HTTPException(status_code=422, detail="emoji too long")
     sets = ", ".join(f"{f} = %s" for f in allowed)
     with db.transaction() as conn:
         with conn.cursor() as cur:

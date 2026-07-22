@@ -24,6 +24,7 @@ def library(request: Request) -> dict:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT a.id, a.title, a.kind, a.url, a.free_preview,
+                          a.description_md, a.emoji,
                           c.slug AS course_slug, c.title AS course_title
                    FROM attachments a
                    JOIN courses c ON a.owner_type = 'course' AND a.owner_id = c.id
@@ -51,6 +52,8 @@ def library(request: Request) -> dict:
                 "title": r["title"],
                 "kind": r["kind"],
                 "free": bool(r["free_preview"]),
+                "description_md": r["description_md"],
+                "emoji": r["emoji"],
                 "url": r["url"] if r["kind"] == "link" else None,
                 "course": {"slug": r["course_slug"], "title": r["course_title"]},
                 "categories": cats_by_course.get(course_ids.get(r["course_slug"], -1), []),
