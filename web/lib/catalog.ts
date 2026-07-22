@@ -6,6 +6,18 @@ export async function fetchCourses(): Promise<CourseCard[]> {
   return data.courses;
 }
 
+export type Category = {
+  slug: string;
+  name: string;
+  description_md: string | null;
+  course_count: number;
+};
+
+export async function fetchCategories(): Promise<Category[]> {
+  const data = await apiGet<{ categories: Category[] }>("/api/categories");
+  return data.categories;
+}
+
 export async function fetchCourse(slug: string): Promise<CourseDetail> {
   return apiGet<CourseDetail>(`/api/courses/${encodeURIComponent(slug)}`);
 }

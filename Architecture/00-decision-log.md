@@ -714,3 +714,22 @@ gated page noindex,follow + members shell; probe notes rendered in anon HTML
 and drove the meta description, fallback description verified with notes
 absent (probe reverted to NULL). Sitemap 11 lesson URLs.
 Spec: FatTail-Labs-SEO-Spec-v1.1.md.
+
+## 2026-07-21 — SEO v1.2: category hub pages (Layer 2b)
+
+**Decision:** Nine prerendered keyword hubs at /courses/category/{slug}.
+Migration 013 adds categories.description_md, seeded with doctrine-voice intro
+copy for every category; public GET /api/categories (separate router — the
+courses router prefix would have swallowed the path, caught by the endpoint's
+own test failing first) returns slug/name/copy/published-count. Hubs render
+copy + the category's courses (CatalogGrid, prerendered) + cross-links to all
+other non-empty hubs; empty categories 404 rather than exist as thin pages.
+Catalog gains a server-rendered "Browse by category" footer (the client-side
+filter chips are invisible to non-JS crawlers). ItemList + BreadcrumbList
+JSON-LD; sitemap gains the 9 hub URLs. Category copy editing is seed/DB-only
+for now — logged future scope.
+
+**Verification:** Suite 47/47 (new categories-endpoint test). Build prerenders
+9 hub routes; risk-sizing hub HTML carries title/h1/copy/canonical/ItemList
+and its 2 courses; unknown category 404s; catalog links all 9 hubs; hubs
+cross-link; sitemap +9 category URLs. Spec: FatTail-Labs-SEO-Spec-v1.2.md.

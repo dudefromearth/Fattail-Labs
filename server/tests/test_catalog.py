@@ -39,3 +39,17 @@ def test_admin_course_requires_admin(client):
     assert client.get(f"/api/admin/courses/{DRAFT_SLUG}").status_code == 401
     r = client.get(f"/api/admin/courses/{DRAFT_SLUG}", cookies=cookie_for("navigator", 902))
     assert r.status_code == 403
+
+
+def test_public_categories_for_hubs(client):
+    """SEO spec v1.2: hub data — slug, name, copy, published-only counts."""
+    r = client.get("/api/categories")
+    assert r.status_code == 200
+    cats = r.json()["categories"]
+    assert len(cats) >= 9
+    by_slug = {c["slug"]: c for c in cats}
+    assert by_slug["risk-sizing"]["description_md"]
+    # counts reflect published courses only: every count within bounds
+    published = len(client.get("/api/courses").json()["courses"])
+    for c in cats:
+        assert 0 <= c["course_count"] <= published

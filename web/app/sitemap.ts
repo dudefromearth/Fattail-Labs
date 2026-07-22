@@ -3,7 +3,7 @@
 
 import type { MetadataRoute } from "next";
 import { apiGet } from "@/lib/api";
-import { fetchCourse, siteUrl } from "@/lib/catalog";
+import { fetchCategories, fetchCourse, siteUrl } from "@/lib/catalog";
 import type { CourseCard } from "@/lib/types";
 
 export const revalidate = 3600; // refresh hourly; publish also revalidates
@@ -19,6 +19,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly",
     priority: 0.8,
   }));
+
+  // Category hub pages (SEO spec v1.2) — only non-empty hubs exist.
+  const cats = await fetchCategories().catch(() => []);
+  const hubs: MetadataRoute.Sitemap = cats
+    .filter((c) => c.course_count > 0)
+    .map((c) => ({
+      url: siteUrl(`/courses/category/${c.slug}`),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
 
   // Free-preview lessons are the long-tail landing pages (SEO spec v1.1).
   const details = await Promise.all(
@@ -54,6 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.7,
     },
+    ...hubs,
     ...courses,
     ...freeLessons,
   ];

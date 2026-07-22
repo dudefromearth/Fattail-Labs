@@ -11,6 +11,7 @@ import db
 import video
 
 router = APIRouter(prefix="/api/courses", tags=["courses"])
+categories_router = APIRouter(tags=["courses"])
 
 VALID_SORTS = frozenset({"newest", "enrolled", "title"})
 VALID_LEVELS = frozenset({"beginner", "intermediate", "advanced"})
@@ -243,3 +244,23 @@ def course_detail(slug: str) -> dict:
         ],
         "attachments": attachments,
     }
+
+
+@categories_router.get("/api/categories")
+def categories() -> dict:
+    """Public category list for hub pages (SEO spec v1.2): slug, name, hub
+    copy, and published-course count. Empty categories are still listed (the
+    hub 404s below a count of 1 client-side is a product choice, not ours)."""
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT cat.slug, cat.name, cat.description_md,
+                          (SELECT COUNT(*) FROM course_categories cc
+                             JOIN courses c ON cc.course_id = c.id
+                            WHERE cc.category_id = cat.id
+                              AND c.status = 'published') AS course_count
+                   FROM categories cat
+                   ORDER BY cat.name""",
+            )
+            rows = cur.fetchall()
+    return {"categories": rows}

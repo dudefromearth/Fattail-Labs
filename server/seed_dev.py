@@ -10,16 +10,45 @@ import json
 
 import db
 
+# (slug, name, hub intro — public copy on /courses/category/{slug}, SEO v1.2)
 CATEGORIES = [
-    ("0-dte", "0-DTE"),
-    ("butterflies", "Butterflies"),
-    ("convexity", "Convexity"),
-    ("fat-tail-doctrine", "Fat-Tail Doctrine"),
-    ("risk-sizing", "Risk & Sizing"),
-    ("journaling-routine", "Journaling & Routine"),
-    ("marketswarm-platform", "MarketSwarm Platform"),
-    ("options-foundations", "Options Foundations"),
-    ("psychology", "Psychology"),
+    ("0-dte", "0-DTE",
+     "Same-day expiration options on the index: maximum gamma, zero overnight "
+     "risk, and a structure-first approach that keeps every trade's worst case "
+     "known before entry. This is the arena the FatTail method was built in."),
+    ("butterflies", "Butterflies",
+     "The defined-risk structure at the heart of the method. A butterfly costs "
+     "what it costs — nothing more, ever — and pays convexly when you're "
+     "right. Construction, strike selection, and management, from first "
+     "principles."),
+    ("convexity", "Convexity",
+     "Asymmetry as a discipline: risk a little to make a lot, repeatedly, and "
+     "let the magnitude of wins — not the frequency — carry the account. The "
+     "mathematics and the mindset of positive-skew trading."),
+    ("fat-tail-doctrine", "Fat-Tail Doctrine",
+     "Markets have fatter tails than the models admit. Most accounts die by "
+     "unbounded losers long before they ever meet a big winner. The doctrine: "
+     "survive first, then position to harvest the tails."),
+    ("risk-sizing", "Risk & Sizing",
+     "Stop the bleeding — the first step, and for many traders the only one "
+     "they need. Position sizing, capital preservation, and the mechanics "
+     "that bound every loss before the trade is ever placed."),
+    ("journaling-routine", "Journaling & Routine",
+     "Trading becomes a practice when it has a record and a rhythm. The daily "
+     "routine, the journal, and the review loop that turn scattered trades "
+     "into deliberate reps."),
+    ("marketswarm-platform", "MarketSwarm Platform",
+     "The FatTail toolset: risk graphs, the heatmap, position intents, and the "
+     "workflows that put structure-first trading on screen. Tool excellence "
+     "is part of the edge."),
+    ("options-foundations", "Options Foundations",
+     "The mechanics that everything else stands on: contracts, pricing, the "
+     "greeks, spreads, and expiration behavior — taught as the foundation for "
+     "defined-risk trading, not as trivia."),
+    ("psychology", "Psychology",
+     "The trader is the variable the market exploits. Behavior under "
+     "uncertainty, discipline under drawdown, and the habits that keep a "
+     "good process running when it matters most."),
 ]
 
 # Labs-native plans (Membership Tiers spec §1). display_json = sellable card data;
@@ -398,11 +427,13 @@ def seed() -> None:
                            VALUES (%s, %s, %s, %s, %s, %s, %s)""",
                         (title, kind, days, start_time, duration, category, join_url),
                     )
-            for slug, name in CATEGORIES:
+            for slug, name, description in CATEGORIES:
                 cur.execute(
-                    "INSERT INTO categories (slug, name) VALUES (%s, %s) "
-                    "ON DUPLICATE KEY UPDATE name = VALUES(name)",
-                    (slug, name),
+                    "INSERT INTO categories (slug, name, description_md) "
+                    "VALUES (%s, %s, %s) "
+                    "ON DUPLICATE KEY UPDATE name = VALUES(name), "
+                    "description_md = VALUES(description_md)",
+                    (slug, name, description),
                 )
 
             instructor_ids: dict[str, int] = {}
