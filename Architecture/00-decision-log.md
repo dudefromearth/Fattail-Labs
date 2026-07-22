@@ -605,3 +605,22 @@ default 📄 shown, picked 📊 + description, saved; list re-rendered with the
 new emoji and clamped description; reverted to NULL/NULL cleanly (fallback
 returned). Create form shows picker + description field. API payload carries
 both fields. Spec: FatTail-Labs-Resource-Library-Spec-v1.2.md.
+
+## 2026-07-21 — Test Suite v1.0: characterization coverage (refactor step 1/4)
+
+**Decision:** Before any structural refactor, the hand-verified behavior from
+16 feature commits is codified as 44 pytest characterization tests
+(server/tests/, FastAPI TestClient in-process, dev DB; probe rows zztest-*
+created and cleaned by fixtures; seeded standing content read-only). Coverage:
+auth/role ladder, catalog + draft visibility, lesson gating matrix, the full
+live-sessions surface (materialization vs an independent calendar oracle,
+category gating matrix, scope edits, bounds, ICS), resource visibility +
+metadata, media upload/reference-guard, enrollment/progress clamps +
+auto-complete, the alumni tenure rule, and quiz answer-leak prevention.
+New rule in CLAUDE.md: server-touching commits must pass the suite; features
+ship with their tests.
+
+**Verification:** 44/44 passing in ~2s. One first-run fix: quiz questions live
+at the lesson payload's top-level `questions` key, not under `quiz` — the test
+was corrected to match reality (characterization, not aspiration).
+Spec: FatTail-Labs-Test-Suite-Spec-v1.0.md.

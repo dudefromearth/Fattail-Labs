@@ -69,4 +69,10 @@ cd server && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 # Frontend
 cd web && npm install && npm run build && npm start
+
+# Tests (characterization suite vs the dev DB — Test Suite spec v1.0)
+cd server && .venv/bin/python -m pytest tests -q
 ```
+
+**Every commit touching `server/` must pass the test suite first.** New
+features add their characterization tests in the same change.
