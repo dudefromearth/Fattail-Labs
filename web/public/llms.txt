@@ -8,16 +8,20 @@
 > not from missing winners — survive first, then position to harvest the fat
 > tails. Education builds capacity, not dependency.
 
-## Courses
+## Course hub (start here)
 
-- [Course catalog](/courses): the full library. Category hubs at
-  /courses/category/{slug} (0-DTE, butterflies, convexity, fat-tail doctrine,
-  risk & sizing, journaling & routine, options foundations, psychology,
-  platform).
+- [Course hub](/): the canonical index of the full library for humans, search
+  engines, and agents — lead answer, flagship, every category, every course
+  with description leads, FAQ, and ItemList / Course / FAQPage structured data.
+- The flagship course is "First, Stop the Bleeding"
+  (/courses/first-stop-the-bleeding) — capital preservation as the prerequisite
+  for everything else. The learning pathway always routes through it first.
+- [Interactive catalog](/courses): filterable card grid of the same library.
+- Category hubs at /courses/category/{slug}: 0-DTE, butterflies, convexity,
+  fat-tail doctrine, risk & sizing, journaling & routine, options foundations,
+  psychology, MarketSwarm platform.
 - Free-preview lessons are public pages with full lesson notes; watching any
   video requires a free account. Full course access is a member benefit.
-- The flagship course is "First, Stop the Bleeding" — capital preservation as
-  the prerequisite for everything else.
 
 ## Live
 

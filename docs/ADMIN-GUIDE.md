@@ -102,6 +102,20 @@ database (`categories.description_md`), seeded from `server/seed_dev.py`.
 No UI editor yet — edit via seed + rerun, or SQL. Empty categories don't get
 hub pages.
 
+### Course hub page (`/`)
+
+The front door is CMS-backed (migration `015_hub_content.sql`). As an
+administrator, open `/` and use **✎ Edit** (same pattern as course pages):
+
+- **Title**, **lead description** (markdown), **intro video** (YouTube ID/URL
+  + overlay title)
+- **FAQ block:** title, description, ordered items — each item is a
+  **question** (plain text) + **answer** (markdown with image upload via
+  🖼 / paste / drag-drop). Accordion UI for members (one open at a time;
+  collapsed by default). Add / reorder / delete items in edit mode.
+- **Save & Publish** writes `site_pages` + `site_faq_items` and revalidates
+  `/`. Category course grids on the hub remain catalog data, not this CMS.
+
 ## 9. Membership operations
 
 - **Plans and entitlements are data**, not code: `plans`,
@@ -115,6 +129,11 @@ hub pages.
 - **The alumni rule is automatic**: ≥28 days of paid tenure at churn grants a
   1-year course-access membership, on both the Stripe and WordPress paths.
 - Create a user by hand: `server/create_user.py`.
+- **Bootstrap administrators** (migration `014_bootstrap_admins.sql`):
+  `ernie@fattail.ai`, `conor@fattail.ai`, `coach@fattail.ai` — each has
+  `role_override = administrator`. Grant a native password with
+  `create_user.py <email> --admin`, or they sign in via WordPress SSO
+  (WP `administrator` role also stamps `role_override` on first SSO if unset).
 
 ## 10. Rhythm & rules
 

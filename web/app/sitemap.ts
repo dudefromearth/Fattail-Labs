@@ -50,9 +50,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     {
+      url: siteUrl("/"),
+      changeFrequency: "weekly",
+      priority: 1,
+    },
+    {
       url: siteUrl("/courses"),
       changeFrequency: "daily",
-      priority: 1,
+      priority: 0.95,
     },
     {
       url: siteUrl("/membership"),

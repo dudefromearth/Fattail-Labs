@@ -774,3 +774,62 @@ test/build rhythm. Specs remain authoritative; the guide cites them.
 **Verification:** /guide 200 with title, section content (alumni year, 0DTE
 show, Manage billing) in prerendered HTML; nav links it; sitemap +1;
 screenshot confirms layout. Build clean, 38 static pages.
+
+## 2026-07-22 — Bootstrap administrators
+
+**Decision:** Three platform administrators, granted via
+`identities.role_override = administrator` (not plan memberships):
+`ernie@fattail.ai`, `conor@fattail.ai`, `coach@fattail.ai`. Seeded
+idempotently by migration `014_bootstrap_admins.sql` so every environment
+has the same operator set. Passwords and WordPress identity links remain
+operator-managed (`create_user.py` / SSO).
+
+## 2026-07-22 — Labs landing page is the front door
+
+**Decision:** `/` is a real public landing page (stop-the-bleeding thesis,
+pillars, flagship callout, featured courses, CTAs) — no longer a redirect
+to `/courses`. Brand link in `SiteHeader` points to `/`. Catalog stays at
+`/courses` as the library storefront. Amends parent Course-Hosting spec
+§4.1 ("`/courses` is the entry point" / "`/` redirects to `/courses`"):
+Labs now owns its own front page; fattail.ai marketing can still deep-link
+to courses. Sitemap priority 1 moves to `/`.
+
+## 2026-07-22 — Front page is the course hub
+
+**Decision:** `/` is the **course hub**, not a marketing funnel. Layout:
+compact hub header → flagship "Start here" strip → category chips → full
+`CatalogGrid` (flagship sorted first) → light membership/guide footer.
+Pillars / sales CTAs removed. `/courses` remains the dedicated library
+route (nav "Courses"); brand still lands on the hub.
+
+## 2026-07-22 — Course hub optimized for SEO / AEO / agents
+
+**Decision:** `/` is the canonical **machine-readable course index**, not a
+card grid. Server-rendered: 40–60-word lead answer, flagship section with
+description lead, every category hub (copy + course title links), complete
+ordered catalog (title, subtitle, description lead, meta, absolute-style
+URL path), visible FAQ matching schema. JSON-LD: `WebSite`,
+`CollectionPage`+`ItemList`, standalone `ItemList` of `Course` items, and
+`FAQPage` (same Q&As as the visible block). Flagship sorted first.
+`/courses` stays the interactive filtered catalog; `/llms.txt` points
+agents at `/` as the hub start. No profit claims — process/doctrine only.
+
+## 2026-07-22 — Course hub layout: categories + 2-col + intro video
+
+**Decision:** Hub courses are grouped by category section with a two-column
+card grid (title, subtitle, description lead). Jump chips to each category.
+Intro video at the top: click-to-play YouTube poster (`HubIntroVideo`),
+resolved from `NEXT_PUBLIC_LABS_INTRO_VIDEO_ID` → flagship trailer →
+fallback id. `VideoObject` JSON-LD + YouTube link for agents/crawlers.
+
+## 2026-07-22 — Hub CMS: editable page + accordion FAQ
+
+**Decision:** Course hub content is CMS-backed like other in-place admin
+pages. Migration `015_hub_content.sql`: `site_pages` (title, description_md,
+intro video, faq_title, faq_description_md) + `site_faq_items` (sort_order,
+question text, answer_md markdown). Public `GET /api/hub`; admin
+`PUT /api/admin/hub` replaces fields + full FAQ list. UI: `HubEditProvider`
++ Edit FAB/bar; title/lead/video editable; FAQ is an accordion (collapsed by
+default, single open panel) with add/reorder/delete in edit mode; answer
+editor is markdown with image upload (media library). FAQPage JSON-LD from
+DB. Catalog/category blocks remain server-rendered.
