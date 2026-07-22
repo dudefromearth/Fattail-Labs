@@ -3,6 +3,7 @@
 // Course lifecycle danger zone (spec v1.4): unpublish -> draft, and
 // title-confirmed deletion. Edit mode only; refused while edits are pending.
 
+import { revalidate } from "@/lib/client";
 import { useState } from "react";
 import { useEdit } from "./EditContext";
 
@@ -46,12 +47,7 @@ export default function DangerZone({
       setBusy(false);
       return;
     }
-    await fetch("/api/revalidate", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: `/courses/${slug}` }),
-    }).catch(() => {});
+    await revalidate([`/courses/${slug}`]).catch(() => {});
     window.location.href = `/admin/courses/${slug}`;
   }
 
@@ -76,12 +72,7 @@ export default function DangerZone({
       setBusy(false);
       return;
     }
-    await fetch("/api/revalidate", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: "/courses" }),
-    }).catch(() => {});
+    await revalidate(["/courses"]).catch(() => {});
     window.location.href = "/courses";
   }
 

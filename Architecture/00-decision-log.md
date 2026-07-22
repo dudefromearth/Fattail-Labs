@@ -639,3 +639,22 @@ role required". Unused imports pruned (quizzes auth/get_config).
 **Verification:** Test suite 44/44 before commit (caught a missed quizzes
 import mid-refactor — exactly the net it was built to be). Dev API restarted
 clean; health + live month smoke pass.
+
+## 2026-07-21 — Refactor step 3/4: web client helpers + useIsAdmin
+
+**Decision:** web/lib/client.ts (getJSON/postJSON/putJSON/del, uploadMedia,
+revalidate) and web/lib/useIsAdmin.ts (module-cached /api/auth/me promise +
+hook) replace the pasted fetch dances: six components converted from their own
+admin-check effect to useIsAdmin (one /me request per page load instead of
+3–4); five upload sites and five revalidate sites now use the helpers;
+ResourceLibrary's JSON verbs converted; lib/ui.ts FIELD replaces the pasted
+form-field class. Deliberately NOT converted: SiteHeader and MembershipPlans
+/me fetches (they consume richer identity data), EditContext's save()
+revalidate (it checks the response and throws) and uploadHero (structureOp
+needs the raw Response), MediaLibrary's list fetch (drives a denied state).
+Failure alerts on uploads lost the HTTP status detail (helper returns
+url-or-null) — accepted.
+
+**Verification:** Build clean; all routes 200. Browser: catalog shows 10
+✎ Card chips + New Course card, /me fired exactly 2× (SiteHeader + shared
+cache); /resources shows 4 Edit buttons + admin form. Server suite still 44/44.

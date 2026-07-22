@@ -4,6 +4,7 @@
 // admin moderation. Client-fetched so it is always fresh; the static page's
 // aggregate refreshes via revalidation after a write.
 
+import { revalidate } from "@/lib/client";
 import { useCallback, useEffect, useState } from "react";
 
 type Review = {
@@ -78,12 +79,7 @@ export default function ReviewsSection({ slug }: { slug: string }) {
       return;
     }
     // Refresh the static page's baked aggregate + JSON-LD in the background.
-    fetch("/api/revalidate", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: `/courses/${slug}` }),
-    }).catch(() => {});
+    revalidate([`/courses/${slug}`]).catch(() => {});
     load();
   }
 

@@ -4,6 +4,7 @@
 // checklist, attachments manager, admin new-course card.
 
 import { useEffect, useRef, useState } from "react";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useRouter } from "next/navigation";
 import { useEdit } from "./EditContext";
 
@@ -234,21 +235,8 @@ export function AttachmentsEditor() {
 
 export function NewCourseCard() {
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((me) => {
-        if (!cancelled && me?.role === "administrator") setIsAdmin(true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   if (!isAdmin) return null;
 

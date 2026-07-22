@@ -4,6 +4,8 @@
 // lesson slug->id mapping, and the save pipeline. Editable components consume this;
 // all authority stays server-side at the admin API.
 
+import { fetchMe } from "@/lib/useIsAdmin";
+import { revalidate as revalidatePages, uploadMedia } from "@/lib/client";
 import {
   createContext,
   useCallback,
@@ -111,12 +113,9 @@ export function EditProvider({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((me) => {
-        if (!cancelled && me?.role === "administrator") setIsAdmin(true);
-      })
-      .catch(() => {});
+    fetchMe().then((me) => {
+      if (!cancelled && me?.role === "administrator") setIsAdmin(true);
+    });
     return () => {
       cancelled = true;
     };
@@ -279,12 +278,7 @@ export function EditProvider({
         setError(`Structure change failed (${r.status}): ${await r.text()}`);
         return;
       }
-      await fetch("/api/revalidate", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: `/courses/${courseSlug}` }),
-      });
+      await revalidatePages([`/courses/${courseSlug}`]);
       window.location.reload();
     },
     [dirty, courseSlug],

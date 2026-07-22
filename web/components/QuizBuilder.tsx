@@ -4,6 +4,7 @@
 // Immediate CRUD against the admin API; reloads to reflect.
 
 import { useEffect, useState } from "react";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type AdminQuestion = {
   id: number;
@@ -174,23 +175,10 @@ export default function QuizBuilder({
   courseSlug: string;
   lessonSlug: string;
 }) {
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
   const [lessonId, setLessonId] = useState<number | null>(null);
   const [questions, setQuestions] = useState<AdminQuestion[]>([]);
   const [editing, setEditing] = useState<number | "new" | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((me) => {
-        if (!cancelled && me?.role === "administrator") setIsAdmin(true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!isAdmin) return;

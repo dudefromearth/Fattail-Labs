@@ -5,6 +5,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 
 type Session = {
   id: number | string;
@@ -834,7 +835,7 @@ export default function LiveSessions() {
   });
   const [data, setData] = useState<{ sessions: Session[]; past: Session[] } | null>(null);
   const [selected, setSelected] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
 
   const load = useCallback(() => {
     fetch(`/api/live/sessions?month=${monthKey(cursor)}`, {
@@ -848,13 +849,6 @@ export default function LiveSessions() {
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((me) => me?.role === "administrator" && setIsAdmin(true))
-      .catch(() => {});
-  }, []);
 
   // Default selection: the next session that hasn't ended, once per load.
   useEffect(() => {

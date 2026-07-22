@@ -5,6 +5,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import { del, postJSON, putJSON, uploadMedia } from "@/lib/client";
+import { FIELD } from "@/lib/ui";
 
 type Resource = {
   id: number;
@@ -79,35 +82,23 @@ function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
 
   async function uploadFile(f: File) {
     setUploading(true);
-    const form = new FormData();
-    form.append("file", f);
-    const r = await fetch("/api/admin/media?private=true", {
-      method: "POST",
-      credentials: "same-origin",
-      body: form,
-    });
+    const stored = await uploadMedia(f, { privateTier: true });
     setUploading(false);
-    if (r.ok) {
-      const d = await r.json();
-      setUrl(d.url);
+    if (stored) {
+      setUrl(stored);
       setKind("file");
     }
   }
 
   async function create() {
     if (!courseSlug || !title.trim() || !url.trim()) return;
-    const r = await fetch(`/api/admin/courses/${courseSlug}/attachments`, {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: title.trim(),
-        kind,
-        url: url.trim(),
-        free_preview: free,
-        description_md: description.trim() || null,
-        emoji: emoji.trim() || null,
-      }),
+    const r = await postJSON(`/api/admin/courses/${courseSlug}/attachments`, {
+      title: title.trim(),
+      kind,
+      url: url.trim(),
+      free_preview: free,
+      description_md: description.trim() || null,
+      emoji: emoji.trim() || null,
     });
     if (r.ok) {
       setTitle("");
@@ -119,8 +110,7 @@ function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
     } else alert(`Create failed: ${await r.text()}`);
   }
 
-  const field =
-    "rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  const field = FIELD;
 
   return (
     <div className="mb-6 rounded-2xl border-2 border-dashed border-emerald-300 p-5 dark:border-emerald-800">
@@ -207,20 +197,14 @@ function ResourceRowEditor({
   const [emoji, setEmoji] = useState(r.emoji ?? "");
   const [busy, setBusy] = useState(false);
 
-  const field =
-    "w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  const field = `w-full ${FIELD}`;
 
   async function save() {
     setBusy(true);
-    const res = await fetch(`/api/admin/attachments/${r.id}`, {
-      method: "PUT",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: title.trim() || r.title,
-        description_md: description.trim() || null,
-        emoji: emoji.trim() || null,
-      }),
+    const res = await putJSON(`/api/admin/attachments/${r.id}`, {
+      title: title.trim() || r.title,
+      description_md: description.trim() || null,
+      emoji: emoji.trim() || null,
     });
     setBusy(false);
     if (res.ok) onDone();
@@ -263,16 +247,9 @@ export default function ResourceLibrary() {
   const [category, setCategory] = useState<string | null>(null);
   const [kind, setKind] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((me) => me?.role === "administrator" && setIsAdmin(true))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -352,21 +329,13 @@ export default function ResourceLibrary() {
     }`;
 
   async function adminToggleFree(r: Resource) {
-    await fetch(`/api/admin/attachments/${r.id}`, {
-      method: "PUT",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ free_preview: !r.free }),
-    });
+    await putJSON(`/api/admin/attachments/${r.id}`, { free_preview: !r.free });
     setReloadKey((k) => k + 1);
   }
 
   async function adminDelete(r: Resource) {
     if (!confirm(`Delete "${r.title}"?`)) return;
-    await fetch(`/api/admin/attachments/${r.id}`, {
-      method: "DELETE",
-      credentials: "same-origin",
-    });
+    await del(`/api/admin/attachments/${r.id}`);
     setReloadKey((k) => k + 1);
   }
 

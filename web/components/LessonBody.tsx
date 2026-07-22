@@ -7,6 +7,8 @@
 // lesson page is dynamic, no revalidation needed.
 
 import { useEffect, useRef, useState } from "react";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import { uploadMedia } from "@/lib/client";
 import Markdown from "@/components/Markdown";
 
 export default function LessonBody({
@@ -18,7 +20,7 @@ export default function LessonBody({
   lessonSlug: string;
   body: string | null;
 }) {
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
   const [lessonId, setLessonId] = useState<number | null>(null);
   const [current, setCurrent] = useState(body ?? "");
   const [editing, setEditing] = useState(false);
@@ -28,19 +30,6 @@ export default function LessonBody({
   const [uploading, setUploading] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((me) => {
-        if (!cancelled && me?.role === "administrator") setIsAdmin(true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     if (!isAdmin || lessonId !== null) return;
@@ -86,20 +75,13 @@ export default function LessonBody({
       const placeholder = `![Uploading ${file.name}…]()`;
       insertAtCursor(`${placeholder}\n`);
       setUploading((n) => n + 1);
-      const form = new FormData();
-      form.append("file", file);
-      const r = await fetch("/api/admin/media", {
-        method: "POST",
-        credentials: "same-origin",
-        body: form,
-      });
+      const url = await uploadMedia(file);
       setUploading((n) => n - 1);
-      if (r.ok) {
-        const { url } = await r.json();
+      if (url) {
         setDraft((d) => d.replace(placeholder, `![${alt}](${url})`));
       } else {
         setDraft((d) => d.replace(`${placeholder}\n`, "").replace(placeholder, ""));
-        setError(`Image upload failed (${r.status})`);
+        setError("Image upload failed");
       }
     }
   }

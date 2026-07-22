@@ -6,6 +6,9 @@
 // or the shared banner image (sharp here, blurred on the course page header).
 
 import { useEffect, useMemo, useState } from "react";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import { putJSON, revalidate, uploadMedia } from "@/lib/client";
+import { FIELD } from "@/lib/ui";
 import Link from "next/link";
 import type { CourseCard } from "@/lib/types";
 import { isNew } from "@/lib/catalog";
@@ -102,49 +105,28 @@ function CardEditor({ course, onClose }: { course: CourseCard; onClose: () => vo
   const [imageUrl, setImageUrl] = useState(course.hero_image_url ?? "");
   const [busy, setBusy] = useState(false);
 
-  const field =
-    "w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950";
+  const field = `w-full ${FIELD}`;
 
   async function upload(file: File) {
     setBusy(true);
-    const form = new FormData();
-    form.append("file", file);
-    const r = await fetch("/api/admin/media", {
-      method: "POST",
-      credentials: "same-origin",
-      body: form,
-    });
+    const url = await uploadMedia(file);
     setBusy(false);
-    if (r.ok) {
-      const { url } = await r.json();
-      setImageUrl(url);
-    } else alert(`Upload failed: ${await r.text()}`);
+    if (url) setImageUrl(url);
+    else alert("Upload failed");
   }
 
   async function save() {
     setBusy(true);
-    const r = await fetch(`/api/admin/courses/${course.slug}`, {
-      method: "PUT",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        card_color: color || null,
-        hero_image_url: imageUrl || null,
-      }),
+    const r = await putJSON(`/api/admin/courses/${course.slug}`, {
+      card_color: color || null,
+      hero_image_url: imageUrl || null,
     });
     if (!r.ok) {
       setBusy(false);
       alert(`Save failed: ${await r.text()}`);
       return;
     }
-    for (const path of ["/courses", `/courses/${course.slug}`]) {
-      await fetch("/api/revalidate", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path }),
-      });
-    }
+    await revalidate(["/courses", `/courses/${course.slug}`]);
     window.location.reload();
   }
 
@@ -275,21 +257,8 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
   const [category, setCategory] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
   const [q, setQ] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = useIsAdmin();
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((me) => {
-        if (!cancelled && me?.role === "administrator") setIsAdmin(true);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const categories = useMemo(() => {
     const map = new Map<string, string>();

@@ -5,6 +5,7 @@
 // Deletion of a referenced file is refused by the server (409).
 
 import { useCallback, useEffect, useState } from "react";
+import { uploadMedia } from "@/lib/client";
 
 type MediaItem = {
   name: string;
@@ -40,16 +41,10 @@ export default function MediaLibrary() {
 
   async function upload(file: File) {
     setBusy(true);
-    const form = new FormData();
-    form.append("file", file);
-    const r = await fetch("/api/admin/media", {
-      method: "POST",
-      credentials: "same-origin",
-      body: form,
-    });
+    const url = await uploadMedia(file);
     setBusy(false);
-    if (r.ok) load();
-    else alert(`Upload failed: ${await r.text()}`);
+    if (url) load();
+    else alert("Upload failed");
   }
 
   async function remove(item: MediaItem) {
