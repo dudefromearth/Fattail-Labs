@@ -673,3 +673,23 @@ relocating. No behavior change intended or observed.
 detail card present, Event editor opens with the 3 scope radios, both admin
 managers mounted. Server suite 44/44 (unchanged surface). Refactor sequence
 complete: tests → server guards → web client helpers → component split.
+
+## 2026-07-21 — SEO v1.0: technical foundation (Layer 1)
+
+**Decision:** Crawl plumbing before the strategy layers. app/sitemap.ts (API-
+driven: 3 static URLs + every published course with lastmod, hourly revalidate),
+app/robots.ts (allow public, disallow /me /dashboard /admin/ /api/ /login,
+sitemap pointer; AI crawlers deliberately welcome), noindex metadata on
+/me + /dashboard, metadataBase + og siteName/type on the root layout so
+relative banner URLs resolve absolute. Canonical-host decision recorded:
+https://labs.fattail.ai only, 301 from every variant at the MiniThree vhost —
+added to infra/deploy.md as a wire-BEFORE-announcing launch step. Roadmap
+(free-lesson landing pages → category hubs → structured-data expansion → AEO)
+and anti-goals (no blog bolt-on, no keyword stuffing, no funnel bypass) live
+in the spec.
+
+**Verification:** robots.txt and sitemap.xml serve correctly; sitemap has 13
+URLs (3 static + 10 published, draft absent); /me carries noindex,nofollow;
+catalog page carries no robots meta; course canonical absolute; og:image
+verified absolute with a probe banner (then reverted). Server suite 44/44.
+Spec: FatTail-Labs-SEO-Spec-v1.0.md.

@@ -3,6 +3,7 @@ import MyLearning from "@/components/MyLearning";
 
 export const metadata: Metadata = {
   title: "My Learning",
+  robots: { index: false, follow: false },
 };
 
 export default function MePage() {

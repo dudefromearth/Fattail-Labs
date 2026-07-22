@@ -14,12 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Fail-loud base URL (SEO spec v1.0): relative OG images and canonicals
+  // resolve against this. Missing env breaks the build, never the crawl.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL!),
   title: {
     default: "FatTail Labs",
     template: "%s — FatTail Labs",
   },
   description:
     "Convex options trading education: courses, live sessions, and resources. First step: stop the bleeding.",
+  openGraph: {
+    siteName: "FatTail Labs",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

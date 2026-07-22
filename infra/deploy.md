@@ -13,6 +13,12 @@ Build happens entirely on the internal network. DNS/cert/vhost wiring is a launc
 two proxied A records in the Cloudflare fattail.ai zone (`labs`, `labs-stage` →
 173.48.54.249), a `*.fattail.ai` Origin CA cert on MiniThree, two nginx server blocks.
 
+**Canonical host (SEO spec v1.0):** `https://labs.fattail.ai` is the ONLY
+canonical origin. The MiniThree vhost must 301 every variant (http, any alias)
+to it, and production `NEXT_PUBLIC_SITE_URL=https://labs.fattail.ai` — the
+sitemap, robots, canonicals, and OG URLs all derive from that env var.
+Wire this BEFORE announcing the domain so the first crawl sees one clean host.
+
 ## MiniTwo provisioning (one-time)
 
 1. **Audit leftovers** (former flyonthewall.ai webserver):
