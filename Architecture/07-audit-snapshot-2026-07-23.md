@@ -60,8 +60,8 @@ describes system shape.
 
 | Severity | Gap | Recommendation |
 |---|---|---|
-| **High (P2)** | No durable content backlog / production board in DB | Spec + migrations when Quebec is mechanized |
-| **High (P2)** | Agent actions use admin session, not agent principals | Agent identity pillar (charter) |
+| **High (P2) → mitigated Phase B** | No durable content backlog / production board in DB | **Shipped:** Kanban board + content_items lifecycle (Board Spec v1.0) |
+| **High (P2) → mitigated Phase A** | Agent actions used only admin session | **Shipped:** agent principals + scoped API keys + actor_events (Identity Spec v1.0) |
 | **Medium** | Connection-per-transaction (no pool) | Monitor; pool if needed |
 | **Medium** | YouTube gated-video leakage | Accept until CDN project |
 | **Medium** | WP SSO production dependency | Keep native login; finish WP endpoints |

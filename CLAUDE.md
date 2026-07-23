@@ -91,7 +91,11 @@ complete([{"role": "user", "content": "..."}], agent="bravo")  # Grok by default
 
 Spec: `Specs/FatTail-Labs-Agent-Model-Interface-Spec-v1.0.md`.
 
-Browser workbench: `/admin/ai` (admin session). Live Playwright:
+Admin control plane: `/admin` (no member header) — **board (Kanban)**, media, AI workbench, agent keys.
+In-place editing remains on production URLs. Agent API keys: `/admin/agents`
+(`Authorization: Bearer ftl_ag_…`).
+
+Browser workbench: `/admin/ai` (admin session or agent bearer). Live Playwright:
 
 ```bash
 # API + web running; XAI_API_KEY set on the API process

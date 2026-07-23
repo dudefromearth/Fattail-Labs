@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import SiteHeader from "@/components/SiteHeader";
+import AppChrome from "@/components/AppChrome";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -58,8 +58,7 @@ export default function RootLayout({
             }),
           }}
         />
-        <SiteHeader />
-        {children}
+        <AppChrome>{children}</AppChrome>
       </body>
     </html>
   );

@@ -16,6 +16,9 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [06-operations-and-verification.md](./06-operations-and-verification.md) | Env, deploy, tests, evidence culture |
 | [07-audit-snapshot-2026-07-23.md](./07-audit-snapshot-2026-07-23.md) | Retroactive code/docs audit findings |
 
+**Phase A (2026-07-23):** Agent identity + dual admin surface — specs
+`FatTail-Labs-Agent-Identity-Spec-v1.0`, `FatTail-Labs-Admin-Dual-Surface-Spec-v1.0`.
+
 **Related**
 
 - Product parent: `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`

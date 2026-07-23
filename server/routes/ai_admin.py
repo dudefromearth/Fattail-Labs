@@ -1,8 +1,6 @@
-"""Admin AI / agent workbench API — operator-only model + task runtime.
+"""Admin AI / agent workbench API — human admin or agent API key (Phase A).
 
-Browser and operators exercise agents through these routes. Completions use
-the agent model interface (Grok primary). Spec:
-FatTail-Labs-Agent-Model-Interface-Spec-v1.0.
+Spec: FatTail-Labs-Agent-Model-Interface-Spec-v1.0 + Agent-Identity-Spec-v1.0.
 """
 
 from __future__ import annotations
@@ -12,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+import agent_auth
 from ai import describe_ai_status
 from ai.agents import (
     AGENT_TASKS,
@@ -21,7 +20,7 @@ from ai.agents import (
     run_agent_task,
 )
 from ai.types import AiConfigError, AiError, AiProviderError
-from guards import require_admin
+from guards import require_actor
 
 router = APIRouter(prefix="/api/admin/ai", tags=["admin-ai"])
 
@@ -36,15 +35,20 @@ class RunTaskBody(BaseModel):
 
 @router.get("/status")
 def ai_status(request: Request) -> dict:
-    require_admin(request)
+    actor = require_actor(request, scopes=["ai:status"])
     status = describe_ai_status()
     status["agents"] = list_seated_agents()
+    status["actor"] = {
+        "kind": actor.kind,
+        "id": actor.id,
+        "label": actor.label,
+    }
     return status
 
 
 @router.get("/agents")
 def ai_agents(request: Request) -> dict:
-    require_admin(request)
+    require_actor(request, scopes=["ai:status"])
     agents = []
     for cs in list_seated_agents():
         tasks = list_tasks(cs)
@@ -65,7 +69,7 @@ def ai_agents(request: Request) -> dict:
 
 @router.get("/agents/{callsign}/tasks/{task_id}/fixture")
 def ai_task_fixture(callsign: str, task_id: str, request: Request) -> dict:
-    require_admin(request)
+    require_actor(request, scopes=["ai:run"])
     try:
         inputs = default_fixture_inputs(callsign, task_id)
     except AiError as exc:
@@ -77,16 +81,18 @@ def ai_task_fixture(callsign: str, task_id: str, request: Request) -> dict:
 def ai_run_task(
     callsign: str, task_id: str, body: RunTaskBody, request: Request
 ) -> dict:
-    """Run a catalogued agent task (live model). Requires API keys for the provider."""
-    require_admin(request)
+    """Run a catalogued agent task (live model). Requires LLM API keys on server."""
+    actor = require_actor(request, scopes=["ai:run"])
     inputs = dict(body.inputs or {})
     if body.use_fixtures or not inputs:
         try:
             fixtures = default_fixture_inputs(callsign, task_id)
         except AiError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
-        # Explicit inputs override fixture keys
-        merged = {**fixtures, **{k: v for k, v in inputs.items() if v not in (None, "")}}
+        merged = {
+            **fixtures,
+            **{k: v for k, v in inputs.items() if v not in (None, "")},
+        }
         inputs = merged
 
     try:
@@ -105,6 +111,18 @@ def ai_run_task(
     except AiError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    agent_auth.record_event(
+        actor,
+        "ai.task.run",
+        resource=f"{result.callsign}/{result.task_id}",
+        detail={
+            "provider": result.provider,
+            "model": result.model,
+            "markers": list(result.markers_found),
+            "usage": result.usage,
+        },
+    )
+
     return {
         "callsign": result.callsign,
         "task_id": result.task_id,
@@ -114,4 +132,5 @@ def ai_run_task(
         "markers_found": list(result.markers_found),
         "usage": result.usage,
         "charter_path": result.charter_path,
+        "actor": {"kind": actor.kind, "id": actor.id, "label": actor.label},
     }

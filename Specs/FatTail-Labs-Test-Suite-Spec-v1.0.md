@@ -34,6 +34,8 @@ the launch.
 | test_ai_models | Grok primary / Claude secondary interface; prefer/auto; fake providers |
 | test_agent_tasks | every studio agent × task via charters + fake Grok; pipeline order |
 | test_ai_admin_api | admin AI gateway auth, status, fixtures; live run skip without `XAI_API_KEY` |
+| test_agent_identity | principals, key mint/revoke, agent bearer AI auth, scopes, actor_events |
+| test_content_board | Kanban lifecycle, illegal transitions, flags block approval, board:operate |
 
 **Browser (separate, web package):** `web/e2e/agent-workbench.spec.ts` (Playwright).
 Requires running web+API; live agent assertions require `XAI_API_KEY` on the API.

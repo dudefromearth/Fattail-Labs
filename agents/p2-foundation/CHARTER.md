@@ -119,15 +119,16 @@ P2 is not a rebuild. The foundation was built agent-ready, mostly on purpose:
    HeyGen avatars are the actors; `heygen-video` produces scenes and, where
    quality allows, finished lesson masters (`docs/P2-Cast-and-HeyGen-Production.md`,
    registry `docs/studio/cast/`).
-1. **Agent identity & authorization** — agents authenticate as themselves
-   (scoped credentials, not admin cookies); every mutation attributable.
-   Today's admin-session-only surface is the gap named in Live Sessions v1.3.
+1. **Agent identity & authorization** — **Phase A shipped** (Identity Spec v1.0):
+   principals + `ftl_ag_` API keys + scopes; `actor_events` on AI runs. Humans still
+   mint keys and own billing/publish. Content scopes reserved for later phases.
 1b. **Agent model interface** — foundation models for agents/workflows via
    `server/ai/`: **Grok primary**, **Claude secondary**
    (`Specs/FatTail-Labs-Agent-Model-Interface-Spec-v1.0.md`).
-2. **The backlog + Production Board** — the work-product model above: seeding,
-   claiming, state, acceptance criteria, evidence. Human UI for seeding and
-   validating; API for claiming and delivering. Owned operationally by Quebec.
+2. **The backlog + Production Board** — **Phase B shipped** (Content Board Spec
+   v1.0): Kanban at `/admin/board`, cards as work products, status lifecycle in
+   MySQL, artifacts/flags, vision doc. Quebec/`board:operate` moves pipeline
+   columns; humans own create/queue/publish/reject.
 3. **Skills** — the operating procedures, written as executable/checkable
    documents with inputs, steps, invariants, and verification. Derived from
    the Admin Guide, governed like specs.

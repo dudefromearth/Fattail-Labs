@@ -125,8 +125,11 @@ WooCommerce (WP)                   ──provider──► memberships
 | Completions fail loud | 503 without key; 502 provider errors |
 | Agent publish authority | Humans approve; Quebec never sets published |
 
-**Open gap (P2 pillar):** agents currently act with **admin session** capability when
-using the workbench — scoped agent credentials are not yet a separate principal.
+**Phase A (shipped):** agents authenticate as **principals** with scoped API keys
+(`ftl_ag_…`, scopes `ai:run` / `ai:status` / …). Human admins mint/revoke keys.
+Workbench accepts human session **or** agent bearer; `actor_events` records runs.
+Agents still do **not** receive billing or key-minting authority. Content mutation
+scopes (`admin:content`) reserved for later phases.
 
 ---
 

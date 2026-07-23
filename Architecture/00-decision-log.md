@@ -878,3 +878,21 @@ backend design, frontend design, domain data model, security/access, operations/
 verification, audit snapshot). Decision log remains append-only authority for
 *why*; Architecture describes *shape*. Specs remain feature contracts. Index:
 `Architecture/README.md`.
+
+## 2026-07-23 — Phase A: agent identity + dual admin surface
+
+Specs: FatTail-Labs-Agent-Identity-Spec-v1.0, FatTail-Labs-Admin-Dual-Surface-Spec-v1.0.
+Migration 016: agent_principals, agent_api_keys, actor_events; studio principals seeded.
+Agents authenticate via `Authorization: Bearer ftl_ag_<prefix>_<secret>` with scopes
+(`ai:run`, `ai:status`, …). Human admins mint/revoke keys. AI workbench accepts human
+session or agent bearer; successful runs write actor_events. Admin app shell at `/admin/*`
+suppresses member SiteHeader (AppChrome); in-place editing remains on production URLs.
+
+## 2026-07-23 — Phase B: content backlog & Kanban production board
+
+Spec: FatTail-Labs-Content-Board-Spec-v1.0. Migration 017: content_vision,
+content_items (work-product cards), transitions, artifacts, guardian flags.
+Kanban UI at `/admin/board` — cards drag across process columns (draft → queued →
+scheduled → in_production → awaiting_approval → published / rejected / revision).
+Human admins create cards and own publish/reject; agents with `board:operate` may
+move pipeline columns (Quebec). Open flags block awaiting_approval.
