@@ -193,13 +193,22 @@ def validate_package(item_id: int, request: Request) -> dict:
 
 
 @router.post("/items/{item_id}/place")
-def place_item(item_id: int, request: Request) -> dict:
-    """Phase D: apply placement to Labs drafts without requiring publish."""
+async def place_item(item_id: int, request: Request) -> dict:
+    """Phase D: apply placement to Labs drafts (create or replace draft structure)."""
     actor = require_human_admin_actor(request)
+    body: dict = {}
+    try:
+        if int(request.headers.get("content-length") or 0) > 0:
+            body = await request.json()
+    except Exception:
+        body = {}
+    replace = bool(body.get("replace", True))
     try:
         import packages as packages_mod
 
-        result = packages_mod.apply_placement(item_id, actor)
+        result = packages_mod.apply_placement(
+            item_id, actor, replace=replace
+        )
         return {"placement": result}
     except Exception as exc:
         from packages import PackageError

@@ -485,7 +485,10 @@ def transition(
         try:
             import packages as packages_mod
 
-            placement_result = packages_mod.apply_placement(item_id, actor)
+            # replace=True refreshes draft structure on re-approve after revision
+            placement_result = packages_mod.apply_placement(
+                item_id, actor, replace=True
+            )
             packages_mod.decide_package(
                 item_id, actor, decision="approved", placement=placement_result
             )

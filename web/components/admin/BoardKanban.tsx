@@ -513,6 +513,37 @@ export default function BoardKanban() {
                     >
                       /courses/{selected.placed_course_slug}
                     </a>
+                    <button
+                      type="button"
+                      className="ml-2 underline"
+                      disabled={busy}
+                      data-testid="board-replace-place"
+                      onClick={async () => {
+                        setBusy(true);
+                        setError(null);
+                        const r = await fetch(
+                          `/api/admin/board/items/${selected.id}/place`,
+                          {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ replace: true }),
+                          },
+                        );
+                        setBusy(false);
+                        if (!r.ok) {
+                          setError(
+                            (await r.json().catch(() => ({}))).detail ||
+                              "Re-place failed",
+                          );
+                          return;
+                        }
+                        void openCard(selected.id);
+                        load();
+                      }}
+                    >
+                      Re-apply placement
+                    </button>
                   </p>
                 )}
               </section>

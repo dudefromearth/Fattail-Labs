@@ -136,8 +136,8 @@ P2 is not a rebuild. The foundation was built agent-ready, mostly on purpose:
    resumable, observable.
 5. **The audit & observability spine** — **Phase C shipped** (Production Package
    Spec v1.0): required stage checklist, `ai_invocations`, frozen approval
-   packages. **Phase D started:** Approve applies draft course placement on Labs
-   (`placed_course_slug`); full multi-module/YouTube placement still open.
+   packages. **Phase D shipped:** multi-module/lesson placement, YouTube ids,
+   trailer, resource links, replace-on-re-approve for drafts only.
 
 ## Content studio bench (archetypes)
 

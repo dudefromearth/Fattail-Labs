@@ -110,9 +110,75 @@ def test_complete_package_freeze_and_place(
     assert item["status"] == "published"
     slug = item["placed_course_slug"]
     assert slug
-    # draft course exists
+    placement = item.get("placement") or {}
+    assert placement.get("module_count") == 2
+    assert placement.get("lesson_count") == 3
+    assert placement.get("resource_count") == 1
+
+    # draft course exists with structure + video ids + attachment
     r = client.get(f"/api/admin/courses/{slug}", cookies=admin_cookies)
     assert r.status_code == 200
+    course = r.json()
+    # admin course payload shape varies — also probe DB
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, status, trailer_video_id FROM courses WHERE slug = %s", (slug,))
+            crow = cur.fetchone()
+            assert crow["status"] == "draft"
+            assert crow["trailer_video_id"] == "dQw4w9WgXcQ"
+            cur.execute(
+                "SELECT COUNT(*) AS c FROM modules WHERE course_id = %s",
+                (crow["id"],),
+            )
+            assert cur.fetchone()["c"] == 2
+            cur.execute(
+                """SELECT l.slug, l.video_id, l.free_preview FROM lessons l
+                   JOIN modules m ON m.id = l.module_id
+                   WHERE m.course_id = %s ORDER BY m.sort_order, l.sort_order""",
+                (crow["id"],),
+            )
+            lessons = cur.fetchall()
+            assert len(lessons) == 3
+            assert lessons[0]["slug"] == "name-max-loss"
+            assert lessons[0]["video_id"] == "aqz-KE-bpKQ"
+            assert lessons[0]["free_preview"] in (1, True)
+            cur.execute(
+                """SELECT COUNT(*) AS c FROM attachments
+                   WHERE owner_type = 'course' AND owner_id = %s""",
+                (crow["id"],),
+            )
+            assert cur.fetchone()["c"] == 1
+
+
+def test_replace_placement_rebuilds_draft(
+    client, admin_cookies, course_card, admin_actor
+):
+    iid = course_card["id"]
+    packages_mod.ensure_stub_artifacts_for_tests(iid, admin_actor, "course")
+    r = client.post(
+        f"/api/admin/board/items/{iid}/place",
+        cookies=admin_cookies,
+        json={"replace": True},
+    )
+    assert r.status_code == 200, r.text
+    slug = r.json()["placement"]["slug"]
+    assert r.json()["placement"]["lesson_count"] == 3
+
+    # place again with replace — still one course, same slug
+    r2 = client.post(
+        f"/api/admin/board/items/{iid}/place",
+        cookies=admin_cookies,
+        json={"replace": True},
+    )
+    assert r2.status_code == 200
+    assert r2.json()["placement"]["slug"] == slug
+    assert r2.json()["placement"]["replaced"] is True
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) AS c FROM courses WHERE slug = %s", (slug,)
+            )
+            assert cur.fetchone()["c"] == 1
 
 
 def test_ai_run_attaches_to_card(client, admin_cookies, course_card, monkeypatch):

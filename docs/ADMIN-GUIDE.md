@@ -126,20 +126,26 @@ Artifacts attach via:
 - Manual API / future UI, or  
 - **AI workbench** with `content_item_id` set to the card id (see §4).
 
-### 2.3 Approve → Labs draft (Phase D start)
+### 2.3 Approve → Labs draft (Phase D)
 
 When you **Approve → Published** on the board:
 
 1. The approval package is marked approved.  
-2. If not already placed, Labs creates a **draft course** (one module, one lesson;
-   script body used as lesson notes when present).  
-3. The card stores `placed_course_slug` — open `/courses/{slug}` and finish in-place
-   (video IDs, structure, publish on the **course** when ready).
+2. Labs **places or re-places** a **draft course** from the package:
+   - Multi-module / multi-lesson graph from `placement_proposal` JSON (or
+     `lesson_plan` JSON, or single-lesson fallback).  
+   - YouTube **video_id**s from each lesson and/or `video_package` map.  
+   - Course **trailer** id when provided.  
+   - Course **resource links** (attachments).  
+3. The card stores `placed_course_slug` — open `/courses/{slug}` and polish
+   in-place, then **publish the course** when ready for members.
 
-Board “Published” means the **work-product process** is approved. The **course** may
-still be draft until you publish it in-place.
+**Re-apply placement** on the card drawer rebuilds the **draft** structure (same
+slug). Refuses to overwrite a course that is already published.
 
-You can also `POST /api/admin/board/items/{id}/place` without board-publishing.
+Board “Published” = process approved. Course “published” is a separate in-place step.
+
+Manual place: `POST /api/admin/board/items/{id}/place` with `{ "replace": true }`.
 
 ### 2.4 Agents on the board
 

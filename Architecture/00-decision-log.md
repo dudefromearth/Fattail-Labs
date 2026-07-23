@@ -920,3 +920,10 @@ Awaiting_approval requires complete stage checklist per product_line; freezes a
 pending package snapshot. AI runs with content_item_id attach artifacts. Publish
 approves package and applies Phase D draft course placement (module+lesson) when
 placement_proposal present. Board drawer shows package checklist.
+
+## 2026-07-23 — Phase D complete: multi-module placement
+
+Placement apply parses placement_proposal / lesson_plan / video_package JSON:
+modules, lessons (video_id, free_preview, body_md), trailer, course resource
+links. Re-place rebuilds draft courses only (refuses published). Board Approve
+uses replace=True; drawer Re-apply placement; Admin Guide updated.
