@@ -31,6 +31,10 @@ def _load_env() -> None:
 
 _load_env()
 
+# Never hit live SMTP during characterization (Hostinger creds may be in .env).
+os.environ.pop("LABS_SMTP_HOST", None)
+os.environ.pop("LABS_NOTIFY_EMAIL_REQUIRED", None)
+
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 

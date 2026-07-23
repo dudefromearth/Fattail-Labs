@@ -31,6 +31,7 @@ class RunTaskBody(BaseModel):
     temperature: float = 0.2
     max_tokens: int = 4096
     use_fixtures: bool = False
+    content_item_id: int | None = None  # Phase C: attach result to board card
 
 
 @router.get("/status")
@@ -120,8 +121,33 @@ def ai_run_task(
             "model": result.model,
             "markers": list(result.markers_found),
             "usage": result.usage,
+            "content_item_id": body.content_item_id,
         },
     )
+
+    attach = None
+    if body.content_item_id is not None:
+        try:
+            import packages as packages_mod
+
+            attach = packages_mod.attach_ai_result_to_item(
+                actor,
+                content_item_id=int(body.content_item_id),
+                callsign=result.callsign,
+                task_id=result.task_id,
+                text=result.text,
+                provider=result.provider,
+                model=result.model,
+                prefer=body.prefer,
+                markers=list(result.markers_found),
+                usage=dict(result.usage or {}),
+            )
+        except Exception as exc:
+            from packages import PackageError
+
+            if isinstance(exc, PackageError):
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            raise
 
     return {
         "callsign": result.callsign,
@@ -133,4 +159,5 @@ def ai_run_task(
         "usage": result.usage,
         "charter_path": result.charter_path,
         "actor": {"kind": actor.kind, "id": actor.id, "label": actor.label},
+        "board_attach": attach,
     }

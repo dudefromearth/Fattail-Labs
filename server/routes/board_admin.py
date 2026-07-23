@@ -155,3 +155,55 @@ def clear_flag(flag_id: int, request: Request) -> dict:
     except board.BoardError as exc:
         raise _http(exc) from exc
     return {"item": item}
+
+
+@router.get("/items/{item_id}/package")
+def get_package(item_id: int, request: Request) -> dict:
+    _board_actor(request)
+    try:
+        import packages as packages_mod
+
+        return packages_mod.package_detail(item_id)
+    except Exception as exc:
+        from packages import PackageError
+
+        if isinstance(exc, PackageError):
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise
+
+
+@router.post("/items/{item_id}/package/validate")
+def validate_package(item_id: int, request: Request) -> dict:
+    _board_actor(request)
+    try:
+        import packages as packages_mod
+
+        checklist = packages_mod.package_checklist(item_id)
+        try:
+            packages_mod.validate_for_approval(item_id)
+            return {"ok": True, "checklist": checklist}
+        except packages_mod.PackageError as exc:
+            return {"ok": False, "detail": str(exc), "checklist": checklist}
+    except Exception as exc:
+        from packages import PackageError
+
+        if isinstance(exc, PackageError):
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise
+
+
+@router.post("/items/{item_id}/place")
+def place_item(item_id: int, request: Request) -> dict:
+    """Phase D: apply placement to Labs drafts without requiring publish."""
+    actor = require_human_admin_actor(request)
+    try:
+        import packages as packages_mod
+
+        result = packages_mod.apply_placement(item_id, actor)
+        return {"placement": result}
+    except Exception as exc:
+        from packages import PackageError
+
+        if isinstance(exc, PackageError):
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise

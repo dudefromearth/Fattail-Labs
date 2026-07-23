@@ -35,6 +35,19 @@ Wire this BEFORE announcing the domain so the first crawl sees one clean host.
 5. Backend env: `cd ~/Fattail-Labs/server && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
 6. `.env` from `.env.example` — production values, `LABS_ENV=production`,
    `LABS_COOKIE_DOMAIN=.fattail.ai`. Secrets never committed.
+   **Outbound mail (admin notifications):** FatTail uses Hostinger SMTP:
+
+   ```bash
+   LABS_SMTP_HOST=smtp.hostinger.com
+   LABS_SMTP_PORT=465
+   LABS_SMTP_MODE=ssl
+   LABS_SMTP_FROM=<full mailbox e.g. labs@fattail.ai>
+   LABS_SMTP_USER=<same mailbox>
+   LABS_SMTP_PASSWORD=<mailbox password>
+   LABS_WEB_ORIGIN=https://labs.fattail.ai
+   ```
+
+   Alternate if SSL/465 fails: `LABS_SMTP_PORT=587` and `LABS_SMTP_MODE=starttls`.
 7. Tailscale up; note the stable LAN IP for MiniThree's upstream.
 8. launchd plists (see below) → `launchctl load`.
 

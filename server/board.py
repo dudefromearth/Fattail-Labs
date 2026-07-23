@@ -119,6 +119,8 @@ def _item_row(row: dict, *, open_flags: int = 0) -> dict:
         "last_actor_label": row.get("last_actor_label"),
         "created_by_identity_id": row.get("created_by_identity_id"),
         "reject_reason": row.get("reject_reason"),
+        "placed_course_slug": row.get("placed_course_slug"),
+        "latest_package_id": row.get("latest_package_id"),
         "created_at": _ts(row.get("created_at")),
         "updated_at": _ts(row.get("updated_at")),
         "open_flag_count": open_flags,
@@ -217,6 +219,14 @@ def get_item(item_id: int) -> dict:
     detail["transitions"] = transitions
     detail["artifacts"] = artifacts
     detail["flags"] = flags
+    detail["placed_course_slug"] = row.get("placed_course_slug")
+    detail["latest_package_id"] = row.get("latest_package_id")
+    try:
+        import packages as packages_mod
+
+        detail["package"] = packages_mod.package_detail(item_id)
+    except Exception:
+        detail["package"] = None
     return detail
 
 
@@ -358,6 +368,19 @@ def transition(
     else:
         sub_stage = None
 
+    # Phase C: package must be complete before entering awaiting_approval
+    if to_status == "awaiting_approval":
+        try:
+            import packages as packages_mod
+
+            packages_mod.validate_for_approval(item_id)
+        except Exception as exc:
+            from packages import PackageError
+
+            if isinstance(exc, PackageError):
+                raise BoardError(str(exc)) from exc
+            raise
+
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -372,17 +395,6 @@ def transition(
                 if to_status not in allowed:
                     raise BoardError(
                         f"illegal transition {from_status} → {to_status}"
-                    )
-
-            if to_status == "awaiting_approval":
-                cur.execute(
-                    """SELECT COUNT(*) AS c FROM content_flags
-                       WHERE item_id = %s AND status = 'open'""",
-                    (item_id,),
-                )
-                if int(cur.fetchone()["c"]) > 0:
-                    raise BoardError(
-                        "cannot move to awaiting_approval while guardian flags are open"
                     )
 
             if to_status in ("rejected", "revision_requested") and not (
@@ -453,7 +465,49 @@ def transition(
         resource=str(item_id),
         detail={"from": from_status, "to": to_status, "sub_stage": new_sub},
     )
-    return get_item(item_id)
+
+    # Phase C: freeze package when entering awaiting_approval
+    if to_status == "awaiting_approval" and from_status != to_status:
+        try:
+            import packages as packages_mod
+
+            packages_mod.freeze_package(item_id, actor)
+        except Exception as exc:
+            from packages import PackageError
+
+            if isinstance(exc, PackageError):
+                raise BoardError(str(exc)) from exc
+            raise
+
+    # Phase C/D: decide package + optional Labs placement on human publish
+    placement_result = None
+    if to_status == "published" and from_status != to_status:
+        try:
+            import packages as packages_mod
+
+            placement_result = packages_mod.apply_placement(item_id, actor)
+            packages_mod.decide_package(
+                item_id, actor, decision="approved", placement=placement_result
+            )
+        except Exception as exc:
+            from packages import PackageError
+
+            if isinstance(exc, PackageError):
+                raise BoardError(str(exc)) from exc
+            raise
+    elif to_status in ("rejected", "revision_requested") and from_status != to_status:
+        try:
+            import packages as packages_mod
+
+            packages_mod.decide_package(item_id, actor, decision="rejected")
+        except Exception:
+            pass
+
+    item = get_item(item_id)
+    if placement_result:
+        item["placement"] = placement_result
+    _notify_transition(item, actor, from_status=from_status, to_status=to_status)
+    return item
 
 
 def add_artifact(
@@ -475,17 +529,21 @@ def add_artifact(
             cur.execute("SELECT id FROM content_items WHERE id = %s", (item_id,))
             if not cur.fetchone():
                 raise BoardError("item not found")
+            import hashlib
+
+            chash = hashlib.sha256((body_md or "").encode("utf-8")).hexdigest()
             cur.execute(
                 """INSERT INTO content_artifacts
-                   (item_id, stage, title, body_md, url,
+                   (item_id, stage, title, body_md, url, content_hash,
                     actor_kind, actor_id, actor_label)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     item_id,
                     stage[:64],
                     title[:512],
                     body_md,
                     url,
+                    chash,
                     actor.kind,
                     actor.id,
                     actor.label,
@@ -529,7 +587,17 @@ def add_flag(
     agent_auth.record_event(
         actor, "board.flag.open", resource=str(item_id), detail={"guardian": g}
     )
-    return get_item(item_id)
+    item = get_item(item_id)
+    if severity == "block":
+        try:
+            import notify
+
+            notify.notify_board_flag(
+                item_id, item.get("title") or f"#{item_id}", g, msg
+            )
+        except Exception:  # noqa: BLE001 — notifications must not fail the write
+            pass
+    return item
 
 
 def clear_flag(flag_id: int, actor: Actor) -> dict:
@@ -567,3 +635,23 @@ def _require_board_write(actor: Actor) -> None:
     if actor.kind == "agent" and actor.has_scopes(["board:operate"]):
         return
     raise BoardError("board write requires human admin or board:operate")
+
+
+def _notify_transition(
+    item: dict, actor: Actor, *, from_status: str, to_status: str
+) -> None:
+    """Email + in-app for admin-action statuses. Never raises to callers."""
+    if from_status == to_status:
+        return
+    try:
+        import notify
+
+        exclude = actor.id if actor.kind == "human" and actor.id else None
+        if to_status == "awaiting_approval":
+            notify.notify_board_awaiting_approval(
+                item, actor_identity_id=exclude
+            )
+        elif to_status == "revision_requested":
+            notify.notify_board_revision(item, actor_identity_id=exclude)
+    except Exception:  # noqa: BLE001
+        pass

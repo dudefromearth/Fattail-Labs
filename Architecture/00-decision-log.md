@@ -896,3 +896,27 @@ Kanban UI at `/admin/board` — cards drag across process columns (draft → que
 scheduled → in_production → awaiting_approval → published / rejected / revision).
 Human admins create cards and own publish/reject; agents with `board:operate` may
 move pipeline columns (Quebec). Open flags block awaiting_approval.
+
+## 2026-07-23 — Admin notifications (email + in-app + browser)
+
+Spec: FatTail-Labs-Admin-Notifications-Spec-v1.0. Migration 018: admin_notifications.
+When a board card moves to awaiting_approval or revision_requested, or a block flag
+opens, all role_override administrators get an in-app inbox row and optional SMTP
+email (LABS_SMTP_*). Admin shell polls unread count, supports browser Notification
+API, deep-links /admin/board?item=N. Dev identity_id=0 has no inbox (use real admin).
+
+## 2026-07-23 — FatTail outbound SMTP is Hostinger
+
+Admin notification email uses **smtp.hostinger.com** (port **465** SSL preferred;
+587 STARTTLS alternate). Env: LABS_SMTP_HOST/PORT/MODE/FROM/USER/PASSWORD.
+Documented in `.env.example`, notifications spec, and `infra/deploy.md`.
+`notify.py` supports SMTP_SSL (465) and STARTTLS (587).
+
+## 2026-07-23 — Phase C production packages + Phase D placement start
+
+Spec: FatTail-Labs-Production-Package-Spec-v1.0. Migration 019: ai_invocations,
+content_approval_packages, artifact hash/invocation FKs, placed_course_slug.
+Awaiting_approval requires complete stage checklist per product_line; freezes a
+pending package snapshot. AI runs with content_item_id attach artifacts. Publish
+approves package and applies Phase D draft course placement (module+lesson) when
+placement_proposal present. Board drawer shows package checklist.

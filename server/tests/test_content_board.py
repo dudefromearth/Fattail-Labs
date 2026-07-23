@@ -43,6 +43,15 @@ def test_board_snapshot_and_vision(client, admin_cookies):
     ]["body_md"]
 
 
+def _stub_package(client, admin_cookies, item_id: int, product_line: str = "course"):
+    """Attach required stage artifacts for Phase C package gate."""
+    import packages as packages_mod
+    from agent_auth import Actor
+
+    actor = Actor(kind="human", id=0, label="test-admin", role="administrator")
+    packages_mod.ensure_stub_artifacts_for_tests(item_id, actor, product_line)
+
+
 def test_create_and_kanban_flow(client, admin_cookies, card):
     assert card["status"] == "draft"
     iid = card["id"]
@@ -75,6 +84,19 @@ def test_create_and_kanban_flow(client, admin_cookies, card):
         assert r.status_code == 200, r.text
 
     assert r.json()["item"]["sub_stage"] == "research"
+
+    # incomplete package blocks awaiting_approval
+    r = client.post(
+        f"/api/admin/board/items/{iid}/transition",
+        cookies=admin_cookies,
+        json={"to_status": "awaiting_approval"},
+    )
+    assert r.status_code == 422
+    assert "package incomplete" in r.json()["detail"].lower() or "missing" in r.json()[
+        "detail"
+    ].lower()
+
+    _stub_package(client, admin_cookies, iid, "course")
 
     # open flag blocks awaiting_approval
     r = client.post(
@@ -113,20 +135,29 @@ def test_create_and_kanban_flow(client, admin_cookies, card):
         json={"to_status": "awaiting_approval"},
     )
     assert r.status_code == 200, r.text
+    assert r.json()["item"].get("latest_package_id") or r.json()["item"].get("package")
 
-    # approve
+    # approve → places draft course (Phase D)
     r = client.post(
         f"/api/admin/board/items/{iid}/transition",
         cookies=admin_cookies,
         json={"to_status": "published"},
     )
-    assert r.status_code == 200
+    assert r.status_code == 200, r.text
     assert r.json()["item"]["status"] == "published"
+    assert r.json()["item"].get("placed_course_slug") or r.json().get("item", {}).get(
+        "placement"
+    )
 
     # on board snapshot under published
     snap = client.get("/api/admin/board", cookies=admin_cookies).json()
     ids = {c["id"] for c in snap["columns"]["published"]}
     assert iid in ids
+
+    # cleanup placed course if any
+    slug = r.json()["item"].get("placed_course_slug")
+    if slug:
+        client.delete(f"/api/admin/courses/{slug}", cookies=admin_cookies)
 
 
 def test_artifact_and_reject_reason(client, admin_cookies, card):
@@ -207,11 +238,14 @@ def test_agent_board_operate_scope(client, admin_cookies):
         headers={"Authorization": f"Bearer {key}"},
         json={"to_status": "in_production", "sub_stage": "research"},
     )
-    client.post(
+    # card product_line is course by default — needs package stubs to submit
+    _stub_package(client, admin_cookies, iid, "course")
+    r = client.post(
         f"/api/admin/board/items/{iid}/transition",
         headers={"Authorization": f"Bearer {key}"},
         json={"to_status": "awaiting_approval"},
     )
+    assert r.status_code == 200, r.text
     r = client.post(
         f"/api/admin/board/items/{iid}/transition",
         headers={"Authorization": f"Bearer {key}"},
@@ -219,6 +253,11 @@ def test_agent_board_operate_scope(client, admin_cookies):
     )
     assert r.status_code == 422
 
+    slug = client.get(
+        f"/api/admin/board/items/{iid}", cookies=admin_cookies
+    ).json()["item"].get("placed_course_slug")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM content_items WHERE id = %s", (iid,))
+    if slug:
+        client.delete(f"/api/admin/courses/{slug}", cookies=admin_cookies)

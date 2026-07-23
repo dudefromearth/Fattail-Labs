@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import AdminNotifications from "@/components/admin/AdminNotifications";
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -37,6 +38,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
+            <AdminNotifications />
             <Link
               href="/courses"
               className="text-zinc-500 underline-offset-2 hover:underline"

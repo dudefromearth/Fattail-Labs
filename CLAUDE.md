@@ -91,7 +91,8 @@ complete([{"role": "user", "content": "..."}], agent="bravo")  # Grok by default
 
 Spec: `Specs/FatTail-Labs-Agent-Model-Interface-Spec-v1.0.md`.
 
-Admin control plane: `/admin` (no member header) — **board (Kanban)**, media, AI workbench, agent keys.
+Admin control plane: `/admin` (no member header) — **board (Kanban)**, media, AI workbench, agent keys,
+notification bell (in-app + browser; email via `LABS_SMTP_*`).
 In-place editing remains on production URLs. Agent API keys: `/admin/agents`
 (`Authorization: Bearer ftl_ag_…`).
 

@@ -62,11 +62,12 @@ describes system shape.
 |---|---|---|
 | **High (P2) → mitigated Phase B** | No durable content backlog / production board in DB | **Shipped:** Kanban board + content_items lifecycle (Board Spec v1.0) |
 | **High (P2) → mitigated Phase A** | Agent actions used only admin session | **Shipped:** agent principals + scoped API keys + actor_events (Identity Spec v1.0) |
-| **Medium** | Connection-per-transaction (no pool) | Monitor; pool if needed |
-| **Medium** | YouTube gated-video leakage | Accept until CDN project |
+| **High (P2) → mitigated Phase C** | No package/evidence spine | **Shipped:** required stages, packages, ai_invocations |
+| **High (P2) → Phase D started** | Board publish ≠ Labs placement | **Draft course apply on approve**; multi-module/video ID placement remaining |
+| **Medium** | Connection-per-transaction (no pool) | Monitor; pool if needed (Phase E) |
+| **Medium** | YouTube gated-video leakage | Accept until CDN project (Phase F) |
 | **Medium** | WP SSO production dependency | Keep native login; finish WP endpoints |
 | **Medium** | Orchestrator boards can go stale (P1 folder) | Prefer charters + Architecture for truth |
-| **Medium** | No durable AI prompt/audit log | Add with P2 audit spine |
 | **Low** | `/admin` still thin | Intentional; expand only as operator hub |
 | **Low** | Frontend visual regression suite absent | Echo process + selective Playwright |
 | **Low** | `web.zip` untracked artifact in workspace | Delete or gitignore |

@@ -1,145 +1,242 @@
 # FatTail Labs — Admin Guide
 
-The operator's manual: every admin workflow in one place. Each section cites
-its spec (in `Specs/`) — the spec is authoritative; this is the how-to.
-Everything here requires the **administrator** role.
+Operator how-to for the membership course platform. **Specs** under `Specs/` are
+authoritative for behavior; this guide is the day-to-day runbook.
+
+Everything here requires the **administrator** role (session cookie), unless noted
+for **agent API keys**.
 
 ---
 
-## 1. The editing model
+## 0. Two admin surfaces
 
-There are no separate admin forms for content — **the production page is the
-editor**. When you're signed in as an administrator:
+| Surface | Where | Job |
+|---|---|---|
+| **In-place editing** | Production URLs (`/courses/…`, `/`, `/live`, `/resources`, …) | Edit the page members see |
+| **Admin app (control plane)** | `/admin/*` | Board, agents, AI, media, notifications — **no member header** |
 
-- Course pages show an **Edit** button (bottom-right). Edit mode turns text
-  blocks into editors on click — title, subtitle, description, lesson fields.
-  Save/Discard in the edit bar; structural changes (add module/lesson,
-  reorder, delete) apply immediately and refuse to run while you have unsaved
-  text edits. *(In-Place Admin specs v1.0–v1.5)*
-- Saving a published course **regenerates its static page** — the public site
-  updates within seconds.
+Specs: *Admin Dual Surface v1.0*, *In-Place Admin v1.0–v1.5*.
 
-## 2. Course lifecycle
+### Sign in
 
-- **Create:** the "+ New Course" card at the end of the catalog. Courses are
-  born as drafts at `/admin/courses/{slug}` — fully editable in place before
-  they exist publicly.
-- **Publish:** set status → published in the edit bar. The page, catalog,
-  sitemap, and category hubs pick it up automatically.
-- **Unpublish / delete:** the Danger Zone at the bottom of the course page in
-  edit mode. Unpublish returns it to draft (public URL 404s; content kept).
-  Delete requires typing the course title and removes everything — modules,
-  lessons, progress, reviews, attachments including private files.
-- Drafts are invisible publicly, but if you open a draft's public URL as
-  admin, the 404 page routes you to its editor.
+- **Production / staging:** native login or WordPress SSO with an admin-capable account.  
+- **Bootstrap admins** (migration 014): `ernie@fattail.ai`, `conor@fattail.ai`, `coach@fattail.ai` — set a password with `server/create_user.py <email> --admin` if needed.  
+- **Dev only:** `/api/auth/dev-login` mints an administrator session (`identity_id=0`). That session **cannot** receive the notification inbox (no identity row); use a real admin email for alerts.
 
-## 3. Lessons & video
+### Admin app map
 
-- Videos are YouTube: paste any YouTube URL or bare ID into a lesson's video
-  field — it normalizes to the ID and plays through the privacy embed
-  (youtube-nocookie). *(Lesson Video spec)*
-- Watch progress reports automatically; ~90% marks complete.
-- **Course nav rail** on every lesson page (right column on desktop): modules
-  and lessons with completion ticks. Outline comes from the course; ticks from
-  member progress. Access still enforced by the lesson API when a row is
-  opened. *(Lesson Course Nav spec v1.0)*
-- **Lesson notes** (below the video): click to edit, Markdown with live
-  preview. Embed images by the 🖼 toolbar button, **paste**, or
-  **drag-drop** — they upload to the media store and insert at the cursor.
-- ⚠️ **Notes on free-preview lessons are public** — they render on the
-  anonymous landing page and drive its search description. Write them as
-  landing copy. *(SEO spec v1.1)*
+| Path | Purpose |
+|---|---|
+| `/admin` | Cockpit overview |
+| `/admin/board` | **Kanban** production board (work-product cards) |
+| `/admin/media` | Public media library |
+| `/admin/ai` | AI agent workbench (Grok primary) |
+| `/admin/agents` | Agent principals & API keys |
+| **Alerts** (header) | In-app notifications + optional browser notifications |
 
-## 4. Card, banner, media
+---
 
-- **✎ Card** on any catalog card (admin only): pick a banner color from the
-  palette, or set the banner image. One image serves both surfaces — sharp on
-  the card, blurred + shaded behind the course page header. *(Card Editor
-  v1.1)*
-- Banners also upload from the course page (Hero image chip in edit mode).
-- **`/admin/media`** — the media library: every public upload, copy URL,
-  delete. Deleting a file still used as a banner or attachment is refused and
-  tells you what uses it.
+## 1. In-place editing (content on production pages)
 
-## 5. Quizzes
+There are no separate “course builder” forms for page content — **the production page is
+the editor** when you are signed in as administrator.
 
-Set a lesson's kind to **quiz**, then build questions on the lesson page
-(admin sees the builder below the player area): multiple choice, true/false,
-short answer (case-insensitive grading), each with an optional explanation.
-Correct answers never reach the browser — grading is server-side.
+- Course pages: **Edit** (bottom-right). Click text blocks to edit; Save/Discard in the
+  edit bar. Structural changes (add module/lesson, reorder, delete) apply immediately and
+  refuse to run while you have unsaved text edits.  
+- Saving a **published** course regenerates its static page (public site updates quickly).  
+- Specs: In-Place Admin v1.0–v1.5.
 
-## 6. Resources
+### 1.1 Course lifecycle
 
-Course attachments ARE the resource library. Manage them in two places:
+- **Create:** “+ New Course” on the catalog, or board **Approve** may create a **draft**
+  course (Phase D placement). Drafts are not public.  
+- **Publish / unpublish / delete:** edit bar + Danger Zone on the course page (confirm
+  title to delete).  
+- Draft public URL as admin routes you toward the editor.
 
-- **Course page → Resources tab** (edit mode): add/rename/delete, toggle
-  Free vs Members.
-- **`/resources`** (admin controls appear on the page): create with course
-  selector, title, URL or private-file upload, Free checkbox, emoji, and
-  description; edit any item in place (emoji picker, title, description).
+### 1.2 Lessons & video
 
-Free = any signed-in account. Members = active membership or alumni. Private
-files are streamed through a role-checked download — never a public URL.
+- YouTube: paste URL or bare ID → server stores ID, embeds via youtube-nocookie.  
+- Progress auto-reports; ~90% marks complete.  
+- Course nav rail on lesson pages; lesson notes are Markdown (🖼 / paste / drag-drop
+  images).  
+- **Free-preview notes are public** — write them as landing copy.  
 
-## 7. Live schedule
+### 1.3 Card, banner, media
 
-On `/live` as admin: *(Live Sessions specs v1.1–v1.5)*
+- Catalog **✎ Card**: banner color / image.  
+- **`/admin/media`**: list, copy URL, delete (blocked if still referenced).
 
-- **Recurring schedule manager:** create a series — title, kind, weekdays,
-  start time (**Eastern**), duration, join URL, **audience category**
-  (Public / All members / Coaching), and an optional end (never / on date /
-  after N days).
-- **One-off scheduler** for specials.
-- **Edit any occurrence:** click its calendar chip → Edit. Choose scope:
-  *this event only* (creates an exception, marked "edited"), *this and all
-  future events* (splits the series), or *all events in this sequence*.
-  Delete honors the same scopes.
-- Categories are the access contract: Public = no sign-in (the 0DTE show),
-  Members = Observer/Activator/Navigator, Coaching = Observer & Navigator.
-- Join URLs only ever reach members who pass the gate, inside the
-  T−15min window.
+### 1.4 Quizzes, resources, live, hub
 
-## 8. Categories & hub copy
+- **Quizzes:** set lesson kind to quiz; build questions on the lesson page.  
+- **Resources:** course Resources tab and/or `/resources` admin controls.  
+- **Live (`/live`):** recurring series, one-offs, occurrence edits, audience
+  **categories** (Public / Members / Coaching).  
+- **Hub (`/`):** Edit title, lead, intro video, FAQ accordion (CMS tables).  
+- Category intro copy is still largely seed/SQL (no full CRUD UI yet).
 
-Category intro copy (shown on `/courses/category/{slug}`) lives in the
-database (`categories.description_md`), seeded from `server/seed_dev.py`.
-No UI editor yet — edit via seed + rerun, or SQL. Empty categories don't get
-hub pages.
+---
 
-### Course hub page (`/`)
+## 2. Production board (Kanban) — `/admin/board`
 
-The front door is CMS-backed (migration `015_hub_content.sql`). As an
-administrator, open `/` and use **✎ Edit** (same pattern as course pages):
+Spec: *Content Board v1.0*, *Production Package v1.0*.
 
-- **Title**, **lead description** (markdown), **intro video** (YouTube ID/URL
-  + overlay title)
-- **FAQ block:** title, description, ordered items — each item is a
-  **question** (plain text) + **answer** (markdown with image upload via
-  🖼 / paste / drag-drop). Accordion UI for members (one open at a time;
-  collapsed by default). Add / reorder / delete items in edit mode.
-- **Save & Publish** writes `site_pages` + `site_faq_items` and revalidates
-  `/`. Category course grids on the hub remain catalog data, not this CMS.
+Each **card** is a work product (course module, short, etc.). Columns:
 
-## 9. Membership operations
+| Column | Meaning | Who typically moves here |
+|---|---|---|
+| Draft | Holding | Admin creates |
+| Queued | Released to production | Admin |
+| Scheduled | Claimed | Admin or agent `board:operate` |
+| In production | Active (sub-stage badge) | Admin or agent |
+| Awaiting approval | Package complete — **your gate** | Admin or agent |
+| Revision | Returned with instructions | Admin |
+| Published | Process approved (board) | **Admin only** |
+| Rejected | Stopped | **Admin only** |
 
-- **Plans and entitlements are data**, not code: `plans`,
-  `provider_plan_map`, and `memberships` tables. *(Identity & Access spec)*
-- Stripe: prices link via `server/link_stripe_price.py`; the webhook is the
-  source of truth for membership state. Keys go in `.env`
-  (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `LABS_WEB_ORIGIN`).
-- WordPress SSO (fattail.ai / 0-dte.com) maps roles through
-  `provider_plan_map` — control access from WooCommerce without touching
-  Labs.
-- **The alumni rule is automatic**: ≥28 days of paid tenure at churn grants a
-  1-year course-access membership, on both the Stripe and WordPress paths.
-- Create a user by hand: `server/create_user.py`.
-- **Bootstrap administrators** (migration `014_bootstrap_admins.sql`):
-  `ernie@fattail.ai`, `conor@fattail.ai`, `coach@fattail.ai` — each has
-  `role_override = administrator`. Grant a native password with
-  `create_user.py <email> --admin`, or they sign in via WordPress SSO
-  (WP `administrator` role also stamps `role_override` on first SSO if unset).
+### 2.1 Day-to-day
 
-## 10. Rhythm & rules
+1. **+ New card** — title + intent (starts in Draft).  
+2. Edit **Content Vision** (strip at top) — binding direction for the factory.  
+3. **Drag** cards across columns, or use the drawer actions.  
+4. Open a card for intent, package checklist, flags, artifacts, history.  
+5. When status is **Awaiting approval**, **Approve** or **Reject** / **Request revision**.
+
+Illegal moves show an error; the board refreshes.
+
+### 2.2 Package checklist (Phase C)
+
+A card **cannot** enter *Awaiting approval* until required stages have artifacts:
+
+| Product line | Required stages (summary) |
+|---|---|
+| **course** | research_pack, lesson_plan, script, video_package, placement_proposal, vision_alignment |
+| **youtube_long** | research_pack, script, video_package, placement_proposal, vision_alignment |
+| **coaching_short / thematic_short** | research_pack, script, video_package, vision_alignment |
+| **other** | research_pack, vision_alignment |
+
+Also: no open **block** guardian flags.
+
+The drawer **Package** section shows ✓ / ○ per stage and any frozen snapshot.
+
+Artifacts attach via:
+
+- Manual API / future UI, or  
+- **AI workbench** with `content_item_id` set to the card id (see §4).
+
+### 2.3 Approve → Labs draft (Phase D start)
+
+When you **Approve → Published** on the board:
+
+1. The approval package is marked approved.  
+2. If not already placed, Labs creates a **draft course** (one module, one lesson;
+   script body used as lesson notes when present).  
+3. The card stores `placed_course_slug` — open `/courses/{slug}` and finish in-place
+   (video IDs, structure, publish on the **course** when ready).
+
+Board “Published” means the **work-product process** is approved. The **course** may
+still be draft until you publish it in-place.
+
+You can also `POST /api/admin/board/items/{id}/place` without board-publishing.
+
+### 2.4 Agents on the board
+
+Mint a key for **quebec** (or another principal) with scope **`board:operate`**
+(`/admin/agents`). That agent may move pipeline columns (scheduled → in production →
+awaiting approval) but **cannot** create cards, publish, or reject.
+
+---
+
+## 3. Agent keys — `/admin/agents`
+
+Spec: *Agent Identity v1.0*.
+
+Agents authenticate **as themselves**, not with your browser cookie.
+
+1. Open **Agent keys**.  
+2. **Mint key** for a callsign (e.g. bravo, quebec).  
+3. **Copy the secret once** (`ftl_ag_<prefix>_<secret>`).  
+4. Use header: `Authorization: Bearer ftl_ag_…`  
+5. **Revoke** when compromised or rotated.
+
+| Scope | Allows |
+|---|---|
+| `ai:run` | Run agent tasks / fixtures |
+| `ai:status` | AI status + agent catalog |
+| `board:operate` | Move pipeline board columns; artifacts/flags |
+| `admin:content` | Reserved (future content mutations) |
+
+Humans only: mint/revoke keys, billing, membership overrides.
+
+---
+
+## 4. AI workbench — `/admin/ai`
+
+Spec: *Agent Model Interface v1.0*.
+
+- Shows whether **Grok** (primary) and **Claude** (secondary) keys are configured on
+  the API (`XAI_API_KEY`, `ANTHROPIC_API_KEY`).  
+- Pick agent + task, load fixture inputs, **Run task (live model)**.  
+- To attach output to a board card, call the API with `"content_item_id": <id>`
+  (workbench UI may pass this in later iterations; API supports it now).
+
+Without `XAI_API_KEY`, live run stays disabled; fixtures still load.
+
+---
+
+## 5. Notifications (email + local)
+
+Spec: *Admin Notifications v1.0*.
+
+When something needs an admin:
+
+| Event | Example |
+|---|---|
+| Card → awaiting approval | “Approval needed: …” |
+| Card → revision requested | “Revision requested: …” |
+| Block guardian flag opened | “Guardian flag (hotel): …” |
+
+### Channels
+
+1. **In-app** — **Alerts** in the admin header (polls ~30s).  
+2. **Browser** — click “Enable browser notifications” once.  
+3. **Email** — Hostinger SMTP when configured (see below).
+
+Deep links open `/admin/board?item=<id>`.
+
+Recipients: identities with `role_override = administrator`. The human who caused the
+event is not re-notified; agent actions notify all admins.
+
+### SMTP (FatTail / Hostinger)
+
+```bash
+LABS_SMTP_HOST=smtp.hostinger.com
+LABS_SMTP_PORT=465
+LABS_SMTP_MODE=ssl
+LABS_SMTP_FROM=labs@fattail.ai
+LABS_SMTP_USER=labs@fattail.ai
+LABS_SMTP_PASSWORD=...          # mailbox password; never commit
+LABS_WEB_ORIGIN=https://labs.fattail.ai
+```
+
+Alternate: port `587`, mode `starttls`. Restart the API after changing env.  
+If SMTP is unset, in-app/browser still work (`email_status=skipped`).
+
+---
+
+## 6. Membership operations
+
+- Plans/entitlements are **data**: `plans`, `provider_plan_map`, `memberships`.  
+- Stripe keys in `.env`; webhook is source of truth for native billing.  
+- WordPress SSO maps through `provider_plan_map`.  
+- Alumni: ≥28 days paid tenure at churn → automatic course-access year.  
+- `server/create_user.py` for manual users / passwords.
+
+---
+
+## 7. Rhythm & rules
 
 ```bash
 # after any server change
@@ -150,7 +247,30 @@ cd server && .venv/bin/python -m pytest tests -q     # must be green
 cd web && npm run build                               # then restart npm start
 ```
 
-- Every feature ships with its spec, decision-log entry, and tests — nothing
-  hidden. `Architecture/00-decision-log.md` is the project's memory.
-- Deploy playbook: `infra/deploy.md` (MiniTwo provisioning, launchd, the
-  canonical-host 301 at launch).
+- Features ship with **spec + decision log + tests**.  
+- Architecture: `Architecture/README.md`.  
+- Deploy: `infra/deploy.md` (MiniTwo, launchd, canonical host).  
+- Process outcomes only in member-facing copy — never profit claims.
+
+---
+
+## 8. Spec index (admin-relevant)
+
+| Topic | Spec |
+|---|---|
+| In-place edit | FatTail-Labs-InPlace-Admin-Spec-v1.x |
+| Dual surface | FatTail-Labs-Admin-Dual-Surface-Spec-v1.0 |
+| Board / Kanban | FatTail-Labs-Content-Board-Spec-v1.0 |
+| Packages / placement | FatTail-Labs-Production-Package-Spec-v1.0 |
+| Agent identity | FatTail-Labs-Agent-Identity-Spec-v1.0 |
+| AI models | FatTail-Labs-Agent-Model-Interface-Spec-v1.0 |
+| Notifications | FatTail-Labs-Admin-Notifications-Spec-v1.0 |
+| Identity / billing | Identity-Access, Native-Billing-Stripe |
+| Live | Live-Sessions-Spec-v1.x |
+| Lesson video | Lesson-Video-YouTube-Spec-v1.0 |
+
+---
+
+*When in doubt: board tracks the **factory**; in-place tracks the **product page**;
+Approve on the board freezes the package and may seed a draft course — you still polish
+and publish the course for members on the production URL.*

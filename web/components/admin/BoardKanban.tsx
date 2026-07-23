@@ -21,6 +21,28 @@ type ItemDetail = Card & {
   intent_md: string;
   acceptance_md: string | null;
   inputs_md: string | null;
+  placed_course_slug?: string | null;
+  latest_package_id?: number | null;
+  placement?: { slug?: string };
+  package?: {
+    checklist: {
+      complete: boolean;
+      missing_stages: string[];
+      open_block_flags: number;
+      stages: {
+        stage: string;
+        required: boolean;
+        complete: boolean;
+        artifact_title: string | null;
+      }[];
+    };
+    latest_package: {
+      id: number;
+      status: string;
+      vision_hash: string;
+      placement_result?: { slug?: string } | null;
+    } | null;
+  } | null;
   transitions: {
     id: number;
     from_status: string | null;
@@ -113,6 +135,16 @@ export default function BoardKanban() {
     }
     setSelected((await r.json()).item as ItemDetail);
   };
+
+  // Deep-link from notification emails / bell: /admin/board?item=123
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("item");
+    if (id && /^\d+$/.test(id)) {
+      void openCard(Number(id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open once on mount
+  }, []);
 
   const transition = async (
     id: number,
@@ -443,6 +475,46 @@ export default function BoardKanban() {
               <section>
                 <h3 className="text-xs font-semibold uppercase text-zinc-500">Inputs</h3>
                 <pre className="mt-1 whitespace-pre-wrap font-sans">{selected.inputs_md}</pre>
+              </section>
+            )}
+            {selected.package?.checklist && (
+              <section data-testid="board-package-checklist">
+                <h3 className="text-xs font-semibold uppercase text-zinc-500">
+                  Package{" "}
+                  {selected.package.checklist.complete ? (
+                    <span className="text-emerald-600">complete</span>
+                  ) : (
+                    <span className="text-amber-600">incomplete</span>
+                  )}
+                </h3>
+                <ul className="mt-1 space-y-1 text-xs">
+                  {selected.package.checklist.stages
+                    .filter((s) => s.required)
+                    .map((s) => (
+                      <li key={s.stage}>
+                        {s.complete ? "✓" : "○"}{" "}
+                        <span className="font-mono">{s.stage}</span>
+                        {s.artifact_title ? ` — ${s.artifact_title}` : ""}
+                      </li>
+                    ))}
+                </ul>
+                {selected.package.latest_package && (
+                  <p className="mt-2 text-[11px] text-zinc-400">
+                    Snapshot #{selected.package.latest_package.id} ·{" "}
+                    {selected.package.latest_package.status}
+                  </p>
+                )}
+                {selected.placed_course_slug && (
+                  <p className="mt-1 text-xs">
+                    Placed draft:{" "}
+                    <a
+                      className="underline"
+                      href={`/courses/${selected.placed_course_slug}`}
+                    >
+                      /courses/{selected.placed_course_slug}
+                    </a>
+                  </p>
+                )}
               </section>
             )}
             <section>

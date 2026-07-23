@@ -36,6 +36,8 @@ the launch.
 | test_ai_admin_api | admin AI gateway auth, status, fixtures; live run skip without `XAI_API_KEY` |
 | test_agent_identity | principals, key mint/revoke, agent bearer AI auth, scopes, actor_events |
 | test_content_board | Kanban lifecycle, illegal transitions, flags block approval, board:operate |
+| test_production_packages | Phase C checklist/freeze; Phase D draft placement; AI attach to card |
+| test_admin_notifications | awaiting_approval + flags create admin inbox rows |
 
 **Browser (separate, web package):** `web/e2e/agent-workbench.spec.ts` (Playwright).
 Requires running web+API; live agent assertions require `XAI_API_KEY` on the API.
