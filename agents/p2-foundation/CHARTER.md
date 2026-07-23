@@ -46,8 +46,8 @@ principle to every surface: **agent-facing contracts speak the domain
 
 | Role | What it is | What it does |
 |---|---|---|
-| **Human** | Sovereign | Seeds intent into the backlog; validates and approves work products; owns publish authority; sets doctrine |
-| **Agent** | Operator | Claims backlog items, produces work products (drafts, media, schedules, copy) through governed APIs |
+| **Administrator (Human)** | Sovereign | Seeds intent into the backlog; maintains Content Vision; prioritizes work; validates and approves work products; owns publish authority; sets doctrine. Current administrators: Coach (Ernie), Conor, Lakesia. |
+| **Agent** | Operator | Claims backlog items (via Quebec), produces work products (drafts, media, schedules, copy) through governed APIs |
 | **Skill** | Procedure | A documented, executable unit of operating knowledge — "publish a course," "schedule a series," "write landing notes." The Admin Guide's sections are proto-skills |
 | **Workflow** | Orchestration | Composes skills and agents into multi-step production with defined gates — "transcript → course draft → review → publish" |
 
@@ -63,6 +63,26 @@ capacity. It must carry: intent (what and why), inputs (sources, transcripts,
 media), acceptance criteria, state (seeded → claimed → in-progress → produced
 → validated → published | rejected), attribution (which agent, which human
 gate), and evidence (what was verified).
+
+**Administrator control surface (minimal):**
+
+1. **Content Vision** — single living document of overall content direction.
+2. **Content Backlog** — ordered list of items; only administrators add, prioritize, and move items to `queued`.
+3. **Production Board** — live status, sub-stage, blockers, guardian flags, artifact links for every non-draft item.
+4. **Approval action** — explicit Approve or Reject (with reason) on any item in `awaiting_approval`. Only Approve moves content to `published`.
+
+## Status lifecycle (canonical)
+
+| Status | Who may set it | Meaning |
+|---|---|---|
+| `draft` / holding | Administrator | Not yet released to the system |
+| `queued` | Administrator | Eligible for production |
+| `scheduled` | Quebec | Claimed; seed being prepared |
+| `in_production` | Quebec | Active work (sub-stage visible) |
+| `awaiting_approval` | Quebec | Pipeline complete; waiting for administrator decision |
+| `published` | Administrator (Approve) | Live |
+| `rejected` | Administrator (Reject) | Stopped; reason recorded |
+| `revision_requested` | Administrator | Returned to production with instructions |
 
 ## The gate principle
 
@@ -102,9 +122,9 @@ P2 is not a rebuild. The foundation was built agent-ready, mostly on purpose:
 1. **Agent identity & authorization** — agents authenticate as themselves
    (scoped credentials, not admin cookies); every mutation attributable.
    Today's admin-session-only surface is the gap named in Live Sessions v1.3.
-2. **The backlog** — the work-product model above: seeding, claiming, state,
-   acceptance criteria, evidence. Human UI for seeding and validating;
-   API for claiming and delivering.
+2. **The backlog + Production Board** — the work-product model above: seeding,
+   claiming, state, acceptance criteria, evidence. Human UI for seeding and
+   validating; API for claiming and delivering. Owned operationally by Quebec.
 3. **Skills** — the operating procedures, written as executable/checkable
    documents with inputs, steps, invariants, and verification. Derived from
    the Admin Guide, governed like specs.
@@ -119,6 +139,7 @@ Seated for P2 production work (charters in `agents/bench/`):
 
 | Callsign | Role | Stage |
 |---|---|---|
+| **Quebec** | Content Production Operations | Production board, status lifecycle, backlog→seed, approval packages |
 | **Bravo** | Content Research Specialist | Research packs, claims, misconceptions |
 | **November** | Instructional Designer | Outcomes, lesson plans, educational guidelines, resources |
 | **Romeo** | Script & Short-Form Writer | Course VO, coaching shorts, thematic shorts, YT scripts |
@@ -128,10 +149,15 @@ Seated for P2 production work (charters in `agents/bench/`):
 | **Whiskey** | Spitznagel Strategy Channel | Preservation-as-strategy, tail hedges, safe havens |
 | **Yankee** | Mandelbrot Lineage Channel | Fat tails, wild randomness, discontinuity |
 
-Pipeline default for courses: **Bravo → Hotel → (Victor/Whiskey/Yankee as frame requires) → November → Romeo → Hotel/Tango/lineage → Papa → human gate**.
+**Default pipeline for courses:**
+Quebec claims item → **Bravo → Hotel → (Victor/Whiskey/Yankee as frame requires) → November → Romeo → Hotel/Tango/lineage → Papa → Quebec assembles package → administrator gate**.
+
 Shorts may skip November when no course bundle is in scope; they still require Bravo
 research (or an approved moment list) and doctrine gates. Lineage channels review when
 the piece invokes their frame — not every short needs all three.
+
+Quebec owns day-to-day factory operation (claim, hand-off, board, package). Juliet remains
+project-level orchestrator and owner of seed-template changes.
 
 ## Non-goals
 

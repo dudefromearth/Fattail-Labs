@@ -52,6 +52,7 @@ product.
 
 | Callsign | Archetype | Core Domain |
 |---|---|---|
+| **Quebec** | Content Production Operations | Production board, status lifecycle, backlog→seed, approval packages |
 | **Bravo** | Content Research Specialist | Source packs, claims inventory, misconceptions, prior art |
 | **November** | Instructional Designer | Learning outcomes, lesson plans, educational guidelines, resource design |
 | **Romeo** | Script & Short-Form Writer | Course VO, coaching shorts, thematic shorts, YouTube long-form scripts |
@@ -83,6 +84,9 @@ integration, P3).
 ## Coordination
 
 - All flows through **Coach** or **Juliet** — no direct agent-to-agent communication.
+- Day-to-day content factory operation is owned by **Quebec** (backlog claim, stage
+  hand-offs, Production Board, approval-package assembly). Juliet remains project-level
+  orchestrator and seed-template owner.
 - Work advances through **Delta gates**; reports live in the project folder's
   `gate-reports/`.
 - Project folders under `agents/<project>/` hold `ORCHESTRATOR.md`, `seeds/`, and
