@@ -35,8 +35,10 @@ Tango: member psychology, cognitive load, capacity-over-dependency, copy honesty
 
 **Phase 4: Domain Review (as applicable)**
 Sierra for catalog/SEO/AEO-touching specs; Mike for auth/entitlement/media-security
-specs; Foxtrot for infra-touching specs. (Hotel joins for trading-content accuracy when
-curriculum production begins.)
+specs; Foxtrot for infra-touching specs; Hotel for trading-content accuracy; November
+for instructional-design / lesson-plan / educational-guidelines specs; Bravo / Romeo /
+Papa for research, script, and video-production pipeline specs; Victor / Whiskey /
+Yankee for Taleb / Spitznagel / Mandelbrot lineage philosophy and strategy.
 
 **Phase 5: Final Approval (Coach)**
 Coach approves the spec version. It lands in `Specs/` as

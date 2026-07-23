@@ -23,7 +23,7 @@ for FatTail.ai. See `CLAUDE.md` and `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0
 | **Juliet** | Orchestrator & Vision Keeper | Spec decomposition, agent sequencing, execution plans, gate scheduling |
 | **India** | Spec & Architecture Guardian | Spec/decision-log integrity, domain model, product boundary, invariants |
 
-### Execution Specialists
+### Execution Specialists — Platform
 
 | Agent | Role | Primary Value |
 |-------|------|---------------|
@@ -32,7 +32,16 @@ for FatTail.ai. See `CLAUDE.md` and `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0
 | **Echo** | Human Interface Designer | Look & feel, design tokens, visual hierarchy, course-page polish |
 | **Foxtrot** | Infrastructure Engineer | MiniTwo/DudeTwo provisioning, launchd, MiniThree nginx, Cloudflare, deploys |
 | **Mike** | Security & Auth Engineer | Dual-issuer SSO, session JWTs, signed video URLs, secrets, WooCommerce webhooks |
-| **Sierra** | Curriculum & AEO Specialist | Course copy formula, SEO/AEO layer (JSON-LD, titles, prerender), content structure |
+| **Sierra** | Curriculum & AEO Specialist | Course copy formula, SEO/AEO layer (JSON-LD, titles, prerender), public catalog surface |
+
+### Execution Specialists — Content Studio (P2)
+
+| Agent | Role | Primary Value |
+|-------|------|---------------|
+| **Bravo** | Content Research Specialist | Source packs, claims inventory, misconceptions, catalog prior art |
+| **November** | Instructional Designer | Learning outcomes, lesson plans, educational guidelines, resource design |
+| **Romeo** | Script & Short-Form Writer | Course VO, coaching shorts, thematic shorts, YouTube long-form scripts |
+| **Papa** | Video Producer | Renders, captions, dual packages (Labs + YouTube), placement proposals |
 
 ### Quality & Memory
 
@@ -42,6 +51,15 @@ for FatTail.ai. See `CLAUDE.md` and `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0
 | **Kilo** | Test & Quality Engineer | Test architecture, edge cases, regression suites |
 | **Lima** | Technical Writer | Decision log entries, docs, interface contracts, institutional memory |
 | **Tango** | Member Archetype Guardian | Trader-learner experience: cognitive load, capacity-over-dependency, honest marketing |
+| **Hotel** | Trading-Domain Guardian | Trading/options education accuracy; blocks false or reckless claims |
+
+### Lineage Channels (philosophy & strategy)
+
+| Agent | Role | Primary Value |
+|-------|------|---------------|
+| **Victor** | Taleb Doctrine Channel | Antifragility, skin in the game, via negativa, epistemic humility |
+| **Whiskey** | Spitznagel Strategy Channel | Capital preservation as strategy, tail hedges, safe-haven process |
+| **Yankee** | Mandelbrot Lineage Channel | Fat tails, wild randomness, discontinuity vs mild Gaussian stories |
 
 ### Not yet seated
 
@@ -50,7 +68,6 @@ Activate when their phase arrives:
 | Agent | Role | When |
 |-------|------|------|
 | **Golf** | Cognitive Systems | Ask Vexy integration (P3) |
-| **Hotel** | Trading-Domain Review | Curriculum production (course content accuracy) |
 
 Full charters: `agents/bench/<callsign>.md` (e.g. `agents/bench/alpha.md`).
 
@@ -67,7 +84,10 @@ All agents operate under two constitutional documents:
   argument, evidence over assertion.
 
 **These are not suggestions.** India and Delta have blocking authority when these are
-violated. Tango blocks capacity-over-dependency and profit-claim violations.
+violated. Tango blocks capacity-over-dependency and profit-claim violations. Hotel blocks
+false or reckless trading education in studio content. Victor / Whiskey / Yankee block
+lineage misuse (Taleb / Spitznagel / Mandelbrot) when philosophy or strategy is central
+to the packet.
 
 ### Sacred product invariants (from CLAUDE.md + doctrine)
 
@@ -92,7 +112,9 @@ Full process: [spec-create-review-workflow.md](./agents/bench/spec-create-review
 3. Sequential review gates:
    - **India** — Spec/architecture alignment, domain model, product boundary
    - **Echo + Tango** — Design system and member psychology
-   - Domain specialists as applicable (Sierra, Mike, Foxtrot; Hotel when curriculum starts)
+   - Domain specialists as applicable (Sierra, Mike, Foxtrot; Hotel / November / Bravo /
+     Romeo / Papa for content-studio and curriculum specs; Victor / Whiskey / Yankee for
+     lineage philosophy and strategy)
 4. **Coach** gives final spec approval → lands in `Specs/` as `<Name>-Spec-vX.Y.md`.
 5. **Lima** logs the decision in `Architecture/00-decision-log.md`.
 6. Only then does **Juliet** produce the execution plan, seeds, and gates under
@@ -167,6 +189,14 @@ First project: `agents/p1-foundation/` — P1 build of the course platform, seed
 | Any significant phase completion | **Delta** runs formal gate with evidence |
 | Tests / regressions / edge cases | **Kilo** alongside the implementing agent |
 | Decisions and durable docs | **Lima** same day |
+| Content research / source packs | **Bravo**; **Hotel** reviews trading claims |
+| Course learning design, lesson plans, resources | **November**; educational guidelines mandatory |
+| Scripts (course, coaching short, thematic, YT) | **Romeo**; plan-locked for courses |
+| Video render, packages, Labs/YT placement proposals | **Papa**; no silent publish |
+| Trading accuracy of educational content | **Hotel** blocks; never invents curriculum |
+| Antifragility / skin-in-the-game / via negativa framing | **Victor** (Taleb lineage); no cargo-cult slogans |
+| Tail-hedge / safe-haven / preservation-as-strategy | **Whiskey** (Spitznagel lineage); insurance has a cost |
+| Fat tails / wild randomness / non-Gaussian markets | **Yankee** (Mandelbrot lineage); tails are not a vibe |
 
 ---
 
@@ -176,8 +206,10 @@ First project: `agents/p1-foundation/` — P1 build of the course platform, seed
 |-------|--------|-----------|
 | Final authority | **Coach** | Vision, scope, ship/no-ship, arbiter on ambiguous gates |
 | Orchestration | **Juliet** | Plans, seeds, board; never executes packets personally |
-| Guardians | **India**, **Delta**, **Tango** | Veto / block on architecture, evidence, member experience |
-| Specialists | Alpha, Charlie, Echo, Foxtrot, Mike, Sierra | Domain execution only |
+| Guardians | **India**, **Delta**, **Tango**, **Hotel** | Veto / block on architecture, evidence, member experience, trading accuracy |
+| Lineage channels | **Victor**, **Whiskey**, **Yankee** | Block misuse of Taleb / Spitznagel / Mandelbrot doctrine when those frames are in play |
+| Specialists (platform) | Alpha, Charlie, Echo, Foxtrot, Mike, Sierra | Domain execution only |
+| Specialists (content studio) | Bravo, November, Romeo, Papa | Research → design → script → produce |
 | Supporting | Kilo, Lima | Tests and institutional memory |
 
 - All coordination flows through **Coach** or **Juliet**. Direct agent-to-agent
@@ -195,17 +227,22 @@ First project: `agents/p1-foundation/` — P1 build of the course platform, seed
    fastest path to architectural rot.
 3. **Use Tango mercilessly.** Ask: *"Would a bleeding trader, short on trust and time,
    feel respected and taught by this?"*
-4. **Keep Coach's bar extremely high.** If you wouldn't put your name on it, don't approve it.
-5. **First Principles is your escape hatch.** After three genuine failed attempts, stop.
+4. **Use Hotel on every trading claim.** Ask: *"Would this make a member worse if they
+   believed a wrong version of it?"*
+5. **Use lineage channels when the frame is theirs.** Victor for antifragility/skin in
+   the game; Whiskey for tail-hedge strategy; Yankee for fat-tail randomness — ask:
+   *"Is this the published idea, or a slogan wearing its jacket?"*
+6. **Keep Coach's bar extremely high.** If you wouldn't put your name on it, don't approve it.
+7. **First Principles is your escape hatch.** After three genuine failed attempts, stop.
    Return to the original purpose. The Doctrine demands this.
-6. **Evidence or it didn't happen.** "It should work" is forbidden. Every claim requires
+8. **Evidence or it didn't happen.** "It should work" is forbidden. Every claim requires
    command + output, curl evidence, or browser walkthrough.
-7. **Lima is your future self's best friend.** Log decisions the day they're made in
+9. **Lima is your future self's best friend.** Log decisions the day they're made in
    `Architecture/00-decision-log.md`.
-8. **Honor the product boundary.** Anything from MarketSwarm is HTTP API only — never
-   import, vendor, or copy MSC code.
-9. **Declare before you touch.** Change control: exact files + changes approved before
-   implementation begins.
+10. **Honor the product boundary.** Anything from MarketSwarm is HTTP API only — never
+    import, vendor, or copy MSC code.
+11. **Declare before you touch.** Change control: exact files + changes approved before
+    implementation begins.
 
 ---
 

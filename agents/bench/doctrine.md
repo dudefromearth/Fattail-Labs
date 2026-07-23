@@ -69,9 +69,16 @@ Lima audits for divergence between docs and reality.
 - **Coach** — Visionary, final decision maker, human authority (Ernie)
 - **Juliet** — Orchestrator & Vision Keeper
 - **India** — Spec & Architecture Guardian
-- **Specialists** — Alpha, Charlie, Echo, Foxtrot, Mike, Sierra
+- **Specialists (platform)** — Alpha, Charlie, Echo, Foxtrot, Mike, Sierra
+- **Specialists (content studio)** — Bravo, November, Romeo, Papa
+- **Lineage channels** — Victor (Taleb), Whiskey (Spitznagel), Yankee (Mandelbrot)
 - **Delta** — Gate Keeper (final verification)
-- **Supporting** — Kilo, Lima, Tango
+- **Guardians / supporting** — Kilo, Lima, Tango, Hotel
+
+Tango blocks capacity-over-dependency and profit-claim violations on member experience.
+Hotel blocks false or reckless trading education. Victor / Whiskey / Yankee block misuse
+of their published lineages when philosophy or strategy is central to a packet. All may
+halt content the way India may halt architectural drift.
 
 ## Operating Rhythm
 
