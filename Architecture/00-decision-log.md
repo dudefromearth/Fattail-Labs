@@ -843,3 +843,30 @@ updates via `labs:progress` when the player/quiz completes a lesson. Shown for
 authenticated, 403, and anonymous lesson views when course detail loads; the
 lesson API remains access authority. Spec:
 `FatTail-Labs-Lesson-Course-Nav-Spec-v1.0.md` (extends parent §5.3).
+
+## 2026-07-23 — Agent model interface: Grok primary, Claude secondary
+
+Spec: FatTail-Labs-Agent-Model-Interface-Spec-v1.0. P2 agents and workflows call
+foundation models through `server/ai/` only — no vendor SDKs scattered in seeds.
+**Primary:** xAI Grok (`XAI_API_KEY`, default model `grok-4.5`). **Secondary:**
+Anthropic Claude (`ANTHROPIC_API_KEY`, default `claude-sonnet-4-5`). Prefer modes:
+`primary` (default), `secondary`, `auto` (fallback on provider failure only).
+AI keys are optional at platform boot (same pattern as Stripe); completions fail
+loud if the selected provider key is missing. No member-facing chat route in v1.
+Agent callsign may set prefer via `LABS_AI_AGENT_<CALLSIGN>_PREFER`.
+
+## 2026-07-23 — Agent task runtime tests for studio bench
+
+`server/ai/agents.py` loads `agents/bench/<callsign>.md` charters and runs
+catalogued tasks via the model interface. Characterization in
+`server/tests/test_agent_tasks.py`: every studio agent × task end-to-end with
+fake Grok; pipeline order smoke; optional live Bravo smoke when `XAI_API_KEY`
+is set. Required section markers fail loud if missing.
+
+## 2026-07-23 — Browser agent workbench + live API key validation
+
+Admin gateway `/api/admin/ai/*` and UI `/admin/ai` let administrators run catalogued
+agent tasks through the browser. Live runs require `XAI_API_KEY` on the API (Grok
+primary). Playwright e2e (`web/e2e/agent-workbench.spec.ts`) validates the workbench
+UI and, when the key is present, live Bravo/November task output section markers.
+Dev login: `/api/auth/dev-login`.

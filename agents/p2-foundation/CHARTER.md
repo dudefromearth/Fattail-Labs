@@ -122,6 +122,9 @@ P2 is not a rebuild. The foundation was built agent-ready, mostly on purpose:
 1. **Agent identity & authorization** — agents authenticate as themselves
    (scoped credentials, not admin cookies); every mutation attributable.
    Today's admin-session-only surface is the gap named in Live Sessions v1.3.
+1b. **Agent model interface** — foundation models for agents/workflows via
+   `server/ai/`: **Grok primary**, **Claude secondary**
+   (`Specs/FatTail-Labs-Agent-Model-Interface-Spec-v1.0.md`).
 2. **The backlog + Production Board** — the work-product model above: seeding,
    claiming, state, acceptance criteria, evidence. Human UI for seeding and
    validating; API for claiming and delivering. Owned operationally by Quebec.

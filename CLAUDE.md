@@ -74,5 +74,28 @@ cd web && npm install && npm run build && npm start
 cd server && .venv/bin/python -m pytest tests -q
 ```
 
+**Agent models (P2 runtime — optional keys; fail loud when used):**
+
+```bash
+export XAI_API_KEY=...                 # primary — Grok (default model grok-4.5)
+export ANTHROPIC_API_KEY=...           # secondary — Claude
+# optional: LABS_AI_PRIMARY_MODEL, LABS_AI_SECONDARY_MODEL, LABS_AI_AGENT_BRAVO_PREFER=secondary
+```
+
+```python
+from ai import complete, describe_ai_status
+complete([{"role": "user", "content": "..."}], agent="bravo")  # Grok by default
+```
+
+Spec: `Specs/FatTail-Labs-Agent-Model-Interface-Spec-v1.0.md`.
+
+Browser workbench: `/admin/ai` (admin session). Live Playwright:
+
+```bash
+# API + web running; XAI_API_KEY set on the API process
+cd web && npm i && npx playwright install chromium
+XAI_API_KEY=... npm run test:e2e:ai
+```
+
 **Every commit touching `server/` must pass the test suite first.** New
 features add their characterization tests in the same change.

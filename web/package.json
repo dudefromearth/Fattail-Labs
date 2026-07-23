@@ -7,7 +7,9 @@
     "prebuild": "rm -rf .next/cache/fetch-cache",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:e2e": "playwright test",
+    "test:e2e:ai": "playwright test e2e/agent-workbench.spec.ts"
   },
   "dependencies": {
     "next": "16.2.10",
@@ -17,6 +19,7 @@
     "rehype-sanitize": "^6.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

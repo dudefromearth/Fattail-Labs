@@ -18,7 +18,7 @@ the launch.
   that hit FK constraints use a real probe identity (created + fully cleaned by
   the `probe_identity` fixture).
 
-## 2. Coverage (44 tests)
+## 2. Coverage
 
 | File | Guards |
 |---|---|
@@ -31,6 +31,12 @@ the launch.
 | test_member_progress | enroll round trip; 60s delta clamp; 90% auto-complete; anon 401 |
 | test_alumni | 5-day tenure → nothing; 35-day → alumni year (period end ≈ +1y); active plan beats alumni; expired membership stops granting |
 | test_quizzes | public payload never leaks correct/explanation; answer-key submission scores 100% |
+| test_ai_models | Grok primary / Claude secondary interface; prefer/auto; fake providers |
+| test_agent_tasks | every studio agent × task via charters + fake Grok; pipeline order |
+| test_ai_admin_api | admin AI gateway auth, status, fixtures; live run skip without `XAI_API_KEY` |
+
+**Browser (separate, web package):** `web/e2e/agent-workbench.spec.ts` (Playwright).
+Requires running web+API; live agent assertions require `XAI_API_KEY` on the API.
 
 ## 3. Rules
 

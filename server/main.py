@@ -26,6 +26,7 @@ def create_app() -> FastAPI:
         return {"status": "ok", "env": cfg.env}
 
     from routes.admin import router as admin_router
+    from routes.ai_admin import router as ai_admin_router
     from routes.auth_dev import router as auth_dev_router
     from routes.auth_routes import integrations as integrations_router
     from routes.auth_routes import router as auth_router
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_dev_router)
     app.include_router(integrations_router)
     app.include_router(admin_router)
+    app.include_router(ai_admin_router)
     app.include_router(courses_router)
     app.include_router(categories_router)
     app.include_router(lessons_router)
