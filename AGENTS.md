@@ -9,7 +9,8 @@ coordination protocols. Same callsigns and governance as the Fly-on-the-Wall / F
 bench; domains remapped to this product.
 
 **Product context:** FatTail Labs (`labs.fattail.ai`) — standalone course hosting platform
-for FatTail.ai. See `CLAUDE.md` and `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`.
+for FatTail.ai. See `CLAUDE.md`, `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`, and
+as-built architecture under `Architecture/` (index: `Architecture/README.md`).
 
 ---
 

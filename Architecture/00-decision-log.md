@@ -870,3 +870,11 @@ agent tasks through the browser. Live runs require `XAI_API_KEY` on the API (Gro
 primary). Playwright e2e (`web/e2e/agent-workbench.spec.ts`) validates the workbench
 UI and, when the key is present, live Bravo/November task output section markers.
 Dev login: `/api/auth/dev-login`.
+
+## 2026-07-23 — Retroactive as-built architecture documentation pack
+
+Code audit of `server/` + `web/` produced Architecture docs 01–07 (system overview,
+backend design, frontend design, domain data model, security/access, operations/
+verification, audit snapshot). Decision log remains append-only authority for
+*why*; Architecture describes *shape*. Specs remain feature contracts. Index:
+`Architecture/README.md`.

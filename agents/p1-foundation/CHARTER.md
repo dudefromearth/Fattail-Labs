@@ -241,6 +241,7 @@ Full mapping: `docs/P2-Capabilities-for-P1.md`.
 | `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md` | Parent product + phase table |
 | `Specs/*` | Feature contracts as built |
 | `Architecture/00-decision-log.md` | Binding decisions |
+| `Architecture/README.md` | As-built system design (01–06) |
 | `docs/ADMIN-GUIDE.md` | Human operator procedures |
 | `docs/P1-Foundations-Review.md` | Post-build assessment |
 | `agents/p1-foundation/ORCHESTRATOR.md` | Original board (historical; foundation complete) |

@@ -6,7 +6,9 @@
 modeled on labs.firstmovers.ai. Membership education product: one subscription unlocks the
 course library, live sessions, resources, and community. Replaces LearnDash.
 
-Full product spec: `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`. Deploy playbook: `infra/deploy.md`.
+Full product spec: `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`.  
+As-built architecture: `Architecture/README.md` (start with `01-system-overview.md`).  
+Deploy playbook: `infra/deploy.md`.
 
 ## Architecture Decisions (locked 2026-07-21)
 
