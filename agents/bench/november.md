@@ -28,7 +28,7 @@ media implement teaching rather than invent it.
 - Learning design: outcomes, prerequisites, pathway placement, module sequence,
   assessment approach
 - Lesson plans per lesson (objectives, beats, CFU/practice, timing, free-preview flags,
-  resource hooks)
+  resource hooks, **cast role** when multi-presenter series need it)
 - Resource download design: job aids, templates, worksheets, practice packs (specs for
   what Romeo/Papa/production must not invent ad hoc)
 - Educational lint: plans must satisfy instructional invariants before script writing

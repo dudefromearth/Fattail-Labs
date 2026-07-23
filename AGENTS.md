@@ -157,8 +157,10 @@ Each seed states: project name, agent callsign, task sequence, files in scope,
 out-of-scope declarations, invariants that apply, completion criteria (verifiable),
 and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
-First project: `agents/p1-foundation/` — P1 build of the course platform, seeded from
-`Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`.
+Projects:
+- `agents/p1-foundation/` — P1 platform spine; charter `CHARTER.md` (load-bearing).
+  Seeded from `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`.
+- `agents/p2-foundation/` — P2 agentic layer + content studio; charter `CHARTER.md`.
 
 ---
 

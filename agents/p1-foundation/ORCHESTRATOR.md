@@ -1,5 +1,9 @@
 # P1 Foundation — Orchestrator Playbook
 
+**Charter:** [`CHARTER.md`](./CHARTER.md) — purpose, pillars, success criteria (retroactive;
+P1 is closed / load-bearing). Prefer the charter over this board for *what P1 is*; this
+file remains the historical execution playbook.
+
 **Your role:** Coach / orchestrator only. You do not run migrations, SQL, or builds.
 You open agent sessions and load seeds; agents report **PASS / FAIL / BLOCKED**.
 

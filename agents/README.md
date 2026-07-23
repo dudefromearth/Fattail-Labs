@@ -43,9 +43,11 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
-- `agents/p1-foundation/` — P1 build of the course platform (backend spine, public read
-  path, member path, admin builder), seeded from
-  `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`.
+- `agents/p1-foundation/` — P1 course platform spine. Charter:
+  `agents/p1-foundation/CHARTER.md` (retroactive; load-bearing). Gate 1 + seeds from
+  `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`. Review:
+  `docs/P1-Foundations-Review.md`.
 - `agents/p2-foundation/` — P2 agentic operating layer + content studio (charter draft;
   studio archetypes: Bravo, November, Romeo, Papa, Hotel; lineage channels: Victor,
-  Whiskey, Yankee).
+  Whiskey, Yankee). Capabilities delivered into P1:
+  `docs/P2-Capabilities-for-P1.md`.

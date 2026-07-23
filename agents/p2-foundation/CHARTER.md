@@ -1,8 +1,11 @@
 # P2 Foundation — The Agentic Operating Layer
 
 **Status:** DRAFT — awaiting founder ratification
-**Supersedes nothing.** P1 (the platform foundation) is closed and load-bearing.
+**Supersedes nothing.** P1 (the platform foundation) is closed and load-bearing —
+see peer charter [`agents/p1-foundation/CHARTER.md`](../p1-foundation/CHARTER.md).
 P2 builds the layer above it.
+
+**Capabilities P2 provides to P1:** [`docs/P2-Capabilities-for-P1.md`](../../docs/P2-Capabilities-for-P1.md)
 
 ---
 
@@ -92,7 +95,10 @@ P2 is not a rebuild. The foundation was built agent-ready, mostly on purpose:
 0. **Agentic video & content studio** — multi-format production: educational
    courses (lesson plans + resources + video), YouTube long-form, coaching
    shorts, thematic short-form. Research and script writing are first-class
-   stages; courses follow educational guidelines and practices.
+   stages; courses follow educational guidelines and practices. **Cast:** named
+   HeyGen avatars are the actors; `heygen-video` produces scenes and, where
+   quality allows, finished lesson masters (`docs/P2-Cast-and-HeyGen-Production.md`,
+   registry `docs/studio/cast/`).
 1. **Agent identity & authorization** — agents authenticate as themselves
    (scoped credentials, not admin cookies); every mutation attributable.
    Today's admin-session-only surface is the gap named in Live Sessions v1.3.
