@@ -26,7 +26,12 @@ type LessonPayload = {
   course_slug: string;
   course_title: string;
   body_md: string | null;
-  video: { provider: string; embed_url: string } | null;
+  video: {
+    provider: string;
+    embed_url: string;
+    expires_at?: number;
+    video_id?: string;
+  } | null;
 };
 
 type PublicLesson = {
@@ -413,6 +418,8 @@ export default async function LessonPlayerPage({
             courseSlug={lesson.course_slug}
             lessonSlug={lesson.slug}
             embedUrl={lesson.video.embed_url}
+            provider={lesson.video.provider}
+            expiresAt={lesson.video.expires_at ?? null}
             title={lesson.title}
             duration={lesson.duration_seconds}
             initialPosition={lesson.progress.last_position}

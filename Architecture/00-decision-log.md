@@ -940,3 +940,10 @@ DB connection pool in `server/db.py` (LABS_DB_POOL_SIZE default 10). Characteriz
 test_db_pool, test_sso_providers (stub WP JWTs + native fallback), test_smoke_member_path.
 Browser smoke: web/e2e/smoke.spec.ts (npm run test:e2e:smoke). Spec:
 FatTail-Labs-Phase-E-Hardening-Spec-v1.0. P1 ORCHESTRATOR marked historical.
+
+## 2026-07-23 — Phase F: Bunny Stream signed embeds for gated video
+
+Spec: FatTail-Labs-Lesson-Video-Signed-CDN-Spec-v1.0. Provider `bunny` builds
+time-limited Stream embed URLs (sha256 token + expires). YouTube remains for free
+preview/trailers. Env: LABS_BUNNY_LIBRARY_ID, LABS_BUNNY_TOKEN_KEY, optional TTL.
+LessonPlayer supports bunny iframe + visibility heartbeat progress.

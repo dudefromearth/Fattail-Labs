@@ -26,7 +26,8 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | **D** Multi-module Labs draft placement | Shipped | Production-Package (§5–6) |
 | Notifications | Shipped | Admin-Notifications |
 | **E** Pool, SSO contracts, smoke tests | Shipped | Phase-E-Hardening |
-| **F–G** CDN, studio scale | Open | — |
+| **F** Signed CDN (Bunny Stream) | Shipped | Lesson-Video-Signed-CDN |
+| **G** Studio scale (cast/HeyGen) | Open | — |
 
 **Related**
 

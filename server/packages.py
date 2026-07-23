@@ -641,20 +641,38 @@ def build_placement_plan(item: dict, artifacts: dict[str, dict | None]) -> dict:
             vid = les.get("video_id") or video_map.get(l_slug) or video_map.get(
                 les.get("slug") or ""
             )
+            vprov = (les.get("video_provider") or video_pkg.get("provider") if video_pkg else None) or "youtube"
+            vprov = str(vprov).strip().lower()
+            if vprov not in ("youtube", "bunny"):
+                vprov = "youtube"
             if isinstance(vid, str):
-                # strip URL to bare id if pasted
-                m = re.search(
-                    r"(?:youtube(?:-nocookie)?\.com/(?:watch\?.*?v=|embed/|shorts/)|youtu\.be/)([\w-]{11})",
+                vid = vid.strip()
+                if vprov == "bunny" or re.fullmatch(
+                    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
                     vid,
-                )
-                if m:
-                    vid = m.group(1)
-                elif not re.fullmatch(r"[\w-]{11}", vid.strip()):
-                    # keep non-youtube as-is only if empty-looking invalid → drop
-                    if len(vid.strip()) != 11:
+                ):
+                    vprov = "bunny"
+                    # leave GUID as-is (lowercase)
+                    if re.fullmatch(
+                        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+                        vid,
+                    ):
+                        vid = vid.lower()
+                    elif re.fullmatch(r"[0-9a-fA-F]{32}", vid):
+                        h = vid.lower()
+                        vid = f"{h[0:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:32]}"
+                    else:
                         vid = None
+                        vprov = "youtube"
                 else:
-                    vid = vid.strip()
+                    m = re.search(
+                        r"(?:youtube(?:-nocookie)?\.com/(?:watch\?.*?v=|embed/|shorts/)|youtu\.be/)([\w-]{11})",
+                        vid,
+                    )
+                    if m:
+                        vid = m.group(1)
+                    elif not re.fullmatch(r"[\w-]{11}", vid):
+                        vid = None
             else:
                 vid = None
             body_md = les.get("body_md") or les.get("notes_md")
@@ -666,7 +684,7 @@ def build_placement_plan(item: dict, artifacts: dict[str, dict | None]) -> dict:
                     "slug": l_slug or f"lesson-{li+1}",
                     "kind": l_kind,
                     "video_id": vid,
-                    "video_provider": "youtube" if vid else "youtube",
+                    "video_provider": vprov if vid else "youtube",
                     "body_md": body_md,
                     "free_preview": bool(les.get("free_preview")),
                     "duration_seconds": int(les.get("duration_seconds") or 0),
@@ -853,13 +871,14 @@ def apply_placement(
                            (module_id, slug, title, sort_order, kind,
                             video_provider, video_id, body_md, free_preview,
                             duration_seconds, external_url)
-                           VALUES (%s,%s,%s,%s,%s,'youtube',%s,%s,%s,%s,%s)""",
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                         (
                             module_id,
                             les["slug"],
                             les["title"],
                             li,
                             les["kind"],
+                            les.get("video_provider") or "youtube",
                             les.get("video_id"),
                             les.get("body_md"),
                             1 if les.get("free_preview") else 0,

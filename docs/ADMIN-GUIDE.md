@@ -57,7 +57,20 @@ the editor** when you are signed in as administrator.
 
 ### 1.2 Lessons & video
 
-- YouTube: paste URL or bare ID → server stores ID, embeds via youtube-nocookie.  
+- **YouTube** (`video_provider=youtube`): paste URL or bare ID → privacy embed
+  (youtube-nocookie). Prefer for **free previews**, trailers, hub intros.  
+- **Bunny Stream** (`video_provider=bunny`, Phase F): paste Stream **video GUID**.
+  API returns a **time-limited signed embed** (not a durable public URL). Configure
+  on the API:
+
+  ```bash
+  LABS_BUNNY_LIBRARY_ID=...
+  LABS_BUNNY_TOKEN_KEY=...      # Stream embed token authentication key
+  LABS_VIDEO_SIGNED_TTL_SECONDS=3600
+  ```
+
+  **Gated (paid) lessons should use Bunny** when Stream is set up. Free previews may
+  stay on YouTube.  
 - Progress auto-reports; ~90% marks complete.  
 - Course nav rail on lesson pages; lesson notes are Markdown (🖼 / paste / drag-drop
   images).  
@@ -286,7 +299,9 @@ API uses a connection pool (`LABS_DB_POOL_SIZE`, default 10). Tune only under lo
 | Phase E hardening | FatTail-Labs-Phase-E-Hardening-Spec-v1.0 |
 | Identity / billing | Identity-Access, Native-Billing-Stripe |
 | Live | Live-Sessions-Spec-v1.x |
-| Lesson video | Lesson-Video-YouTube-Spec-v1.0 |
+| Lesson video (YouTube) | Lesson-Video-YouTube-Spec-v1.0 |
+| Lesson video (signed CDN) | Lesson-Video-Signed-CDN-Spec-v1.0 |
+| Phase E hardening | FatTail-Labs-Phase-E-Hardening-Spec-v1.0 |
 
 ---
 

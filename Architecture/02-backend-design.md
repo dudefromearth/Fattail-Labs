@@ -179,8 +179,15 @@ exception, connection **returned to pool**. Phase E: fixed-size pool
 
 ### 5.4 Video embeds
 
-`video.embed_config(provider, video_id, params)` builds
-`youtube-nocookie.com` URLs server-side. Clients never assemble player URLs from raw DB.
+`video.embed_config(provider, video_id, params)` builds player URLs **server-side only**:
+
+| provider | Behavior |
+|---|---|
+| `youtube` | `youtube-nocookie.com` embed (free preview / trailer) |
+| `bunny` | Bunny Stream embed with **HMAC token + expires** (gated lessons) |
+
+Clients never assemble player URLs from raw DB values. Missing Bunny env when a
+`bunny` lesson is requested → fail loud (503).
 
 ### 5.5 Media
 
@@ -234,7 +241,7 @@ Mandatory before commits that touch `server/`.
 | Limitation | Note |
 |---|---|
 | Connection pool | **Phase E shipped** (`LABS_DB_POOL_SIZE`) |
-| YouTube for gated video | Leakage tradeoff; Phase F CDN |
+| Bunny for gated video | **Phase F shipped**; free preview may stay YouTube |
 | Agent `admin:content` not broadly granted | Placement is human-triggered apply |
 | No member-facing LLM chat | Operator/agent runtime only |
 | Placement does not auto-publish courses | Draft only; in-place publish remains |

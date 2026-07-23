@@ -50,6 +50,14 @@ Wire this BEFORE announcing the domain so the first crawl sees one clean host.
    Alternate if SSL/465 fails: `LABS_SMTP_PORT=587` and `LABS_SMTP_MODE=starttls`.
 
    **DB pool (Phase E):** optional `LABS_DB_POOL_SIZE=10` (default).
+
+   **Bunny Stream (Phase F, gated lessons):**
+
+   ```bash
+   LABS_BUNNY_LIBRARY_ID=<library id>
+   LABS_BUNNY_TOKEN_KEY=<embed token authentication key>
+   LABS_VIDEO_SIGNED_TTL_SECONDS=3600
+   ```
 7. Tailscale up; note the stable LAN IP for MiniThree's upstream.
 8. launchd plists (see below) → `launchctl load`.
 

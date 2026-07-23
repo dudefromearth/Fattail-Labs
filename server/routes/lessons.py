@@ -70,6 +70,16 @@ def lesson_detail(course_slug: str, lesson_slug: str, request: Request) -> dict:
             if row["kind"] == "quiz":
                 questions = public_questions(cur, row["id"])
 
+    try:
+        video_payload = video.embed_config(
+            row["video_provider"], row["video_id"], row["video_params"]
+        )
+    except video.VideoConfigError as exc:
+        # Missing Bunny keys or bad config — fail loud (503 for ops misconfig)
+        msg = str(exc)
+        code = 503 if "not configured" in msg.lower() else 500
+        raise HTTPException(status_code=code, detail=msg) from exc
+
     return {
         "progress": progress,
         "questions": questions,
@@ -82,9 +92,7 @@ def lesson_detail(course_slug: str, lesson_slug: str, request: Request) -> dict:
         "course_slug": row["course_slug"],
         "course_title": row["course_title"],
         "body_md": row["body_md"],
-        "video": video.embed_config(
-            row["video_provider"], row["video_id"], row["video_params"]
-        ),
+        "video": video_payload,
     }
 
 

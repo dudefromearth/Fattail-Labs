@@ -44,6 +44,14 @@ export XAI_API_KEY=...          # Grok primary
 export ANTHROPIC_API_KEY=...    # Claude secondary
 ```
 
+Optional Bunny Stream (Phase F gated video):
+
+```bash
+export LABS_BUNNY_LIBRARY_ID=...
+export LABS_BUNNY_TOKEN_KEY=...
+export LABS_VIDEO_SIGNED_TTL_SECONDS=3600
+```
+
 Optional admin email (FatTail Hostinger):
 
 ```bash

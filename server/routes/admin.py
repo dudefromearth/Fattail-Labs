@@ -43,8 +43,8 @@ PRIVATE_MAX_BYTES = 25 * 1024 * 1024
 MODULE_FIELDS = frozenset({"title", "kind"})
 VALID_MODULE_KINDS = frozenset({"standard", "worksheets", "resources", "bonus"})
 LESSON_FIELDS = frozenset(
-    {"title", "video_id", "video_params", "free_preview", "duration_seconds",
-     "body_md", "kind"}
+    {"title", "video_id", "video_params", "video_provider", "free_preview",
+     "duration_seconds", "body_md", "kind"}
 )
 VALID_LESSON_KINDS = frozenset({"video", "text", "download", "external", "replay", "quiz"})
 VALID_LEVELS = frozenset({"beginner", "intermediate", "advanced"})
@@ -55,19 +55,12 @@ _YT_URL = re.compile(
 )
 
 
-def normalize_video_id(raw: str | None) -> str | None:
-    """Accept a bare 11-char ID or any pasted YouTube URL; store the bare ID."""
-    if raw is None:
-        return None
-    raw = raw.strip()
-    if not raw:
-        return None
-    match = _YT_URL.search(raw)
-    if match:
-        return match.group(1)
-    if re.fullmatch(r"[\w-]{11}", raw):
-        return raw
-    raise HTTPException(status_code=422, detail=f"Not a YouTube URL or video id: {raw!r}")
+def normalize_video_id(raw: str | None, provider: str = "youtube") -> str | None:
+    """Normalize video id for youtube (URL/id) or bunny (Stream GUID)."""
+    try:
+        return video.normalize_video_id(provider, raw)
+    except video.VideoConfigError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/courses/{slug}")
@@ -160,7 +153,10 @@ async def update_course(slug: str, request: Request) -> dict:
     if not body:
         raise HTTPException(status_code=422, detail="Empty update")
     if "trailer_video_id" in body:
-        body["trailer_video_id"] = normalize_video_id(body["trailer_video_id"])
+        # Trailers stay YouTube (marketing / public course page)
+        body["trailer_video_id"] = normalize_video_id(
+            body["trailer_video_id"], "youtube"
+        )
     if "level" in body and body["level"] not in VALID_LEVELS:
         raise HTTPException(status_code=422, detail=f"level must be one of {sorted(VALID_LEVELS)}")
     if "status" in body and body["status"] not in VALID_STATUS:
@@ -193,14 +189,47 @@ async def update_lesson(lesson_id: int, request: Request) -> dict:
 
     if "kind" in body and body["kind"] not in VALID_LESSON_KINDS:
         raise HTTPException(status_code=422, detail=f"kind must be one of {sorted(VALID_LESSON_KINDS)}")
+    if "video_provider" in body:
+        prov = (body["video_provider"] or "youtube").strip().lower()
+        if prov not in video.VALID_PROVIDERS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"video_provider must be one of {sorted(video.VALID_PROVIDERS)}",
+            )
+        body["video_provider"] = prov
+    # Resolve provider for id/params validation (body may only patch video_id)
+    provider_for_val = body.get("video_provider")
+    if provider_for_val is None and ("video_id" in body or "video_params" in body):
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT video_provider FROM lessons WHERE id = %s", (lesson_id,)
+                )
+                row = cur.fetchone()
+                provider_for_val = (row or {}).get("video_provider") or "youtube"
+    provider_for_val = (provider_for_val or "youtube").strip().lower()
     if "video_id" in body:
-        body["video_id"] = normalize_video_id(body["video_id"])
+        body["video_id"] = normalize_video_id(body["video_id"], provider_for_val)
     if "video_params" in body:
-        params = video.parse_params(body["video_params"])
-        if params:
-            # Validate against the allowlist by building the URL (raises on bad params).
-            video.youtube_embed_url(body.get("video_id") or "x" * 11, params)
-        body["video_params"] = json.dumps(params) if params else None
+        try:
+            params = video.parse_params(body["video_params"])
+            if params:
+                # Validate by building embed (raises on bad params / missing bunny cfg)
+                vid = body.get("video_id")
+                if not vid:
+                    with db.transaction() as conn:
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                "SELECT video_id FROM lessons WHERE id = %s",
+                                (lesson_id,),
+                            )
+                            r = cur.fetchone()
+                            vid = (r or {}).get("video_id")
+                if vid:
+                    video.embed_config(provider_for_val, vid, params)
+            body["video_params"] = json.dumps(params) if params else None
+        except video.VideoConfigError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     if "free_preview" in body:
         body["free_preview"] = 1 if body["free_preview"] else 0
     if "duration_seconds" in body:

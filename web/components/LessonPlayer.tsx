@@ -1,8 +1,8 @@
 "use client";
 
-// Progress-tracking player (Progress Tracking spec §4): wraps the server-built
-// YouTube iframe with the official IFrame API, resumes at last position,
-// samples watch time while playing, reports every 15s + on pause/end/leave.
+// Progress-tracking player (Progress Tracking spec §4 + Phase F signed CDN):
+// - youtube: IFrame API resume + sample while PLAYING
+// - bunny: signed embed iframe; wall-clock samples while tab is visible
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { emitProgress } from "@/lib/progressEvents";
@@ -24,24 +24,28 @@ type YTPlayer = {
 };
 
 const REPORT_EVERY = 15; // seconds of accumulated watch time
-const SAMPLE_EVERY = 5;  // seconds
+const SAMPLE_EVERY = 5; // seconds
 
 export default function LessonPlayer({
   courseSlug,
   lessonSlug,
   embedUrl,
+  provider = "youtube",
   title,
   duration,
   initialPosition,
   initialCompleted,
+  expiresAt,
 }: {
   courseSlug: string;
   lessonSlug: string;
   embedUrl: string;
+  provider?: string;
   title: string;
   duration: number;
   initialPosition: number;
   initialCompleted: boolean;
+  expiresAt?: number | null;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
@@ -79,13 +83,15 @@ export default function LessonPlayer({
           }
         })
         .catch(() => {
-          unsentRef.current += delta; // retry on next report
+          unsentRef.current += delta;
         });
     },
     [courseSlug, lessonSlug],
   );
 
+  // YouTube path
   useEffect(() => {
+    if (provider !== "youtube") return;
     let interval: ReturnType<typeof setInterval> | null = null;
     let cancelled = false;
 
@@ -153,7 +159,29 @@ export default function LessonPlayer({
       window.removeEventListener("pagehide", onLeave);
       send({ keepalive: true });
     };
-  }, [send, initialPosition, duration]);
+  }, [send, initialPosition, duration, provider]);
+
+  // Bunny (signed CDN) path — heartbeat while document is visible
+  useEffect(() => {
+    if (provider !== "bunny") return;
+    let interval: ReturnType<typeof setInterval> | null = null;
+    positionRef.current = initialPosition;
+
+    interval = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      positionRef.current += SAMPLE_EVERY;
+      unsentRef.current += SAMPLE_EVERY;
+      if (unsentRef.current >= REPORT_EVERY) send();
+    }, SAMPLE_EVERY * 1000);
+
+    const onLeave = () => send({ keepalive: true });
+    window.addEventListener("pagehide", onLeave);
+    return () => {
+      if (interval) clearInterval(interval);
+      window.removeEventListener("pagehide", onLeave);
+      send({ keepalive: true });
+    };
+  }, [send, initialPosition, provider]);
 
   async function markComplete() {
     const res = await fetch("/api/progress/complete", {
@@ -168,6 +196,11 @@ export default function LessonPlayer({
     }
   }
 
+  const expiringSoon =
+    provider === "bunny" &&
+    typeof expiresAt === "number" &&
+    expiresAt * 1000 - Date.now() < 5 * 60 * 1000;
+
   return (
     <div>
       <div className="overflow-hidden rounded-2xl bg-black">
@@ -178,8 +211,15 @@ export default function LessonPlayer({
           className="aspect-video w-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
+          // Bunny embed needs fullscreen + autoplay capabilities
+          referrerPolicy="origin"
         />
       </div>
+      {provider === "bunny" && expiringSoon && (
+        <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+          Secure playback link expires soon — refresh the page if video stops.
+        </p>
+      )}
       <div className="mt-4 flex items-center gap-3">
         {completed ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
@@ -193,11 +233,14 @@ export default function LessonPlayer({
             Mark complete
           </button>
         )}
-        {initialPosition > 10 && !completed && (
+        {initialPosition > 10 && !completed && provider === "youtube" && (
           <span className="text-xs text-zinc-500">
             Resuming from {Math.floor(initialPosition / 60)}:
             {String(Math.floor(initialPosition % 60)).padStart(2, "0")}
           </span>
+        )}
+        {provider === "bunny" && (
+          <span className="text-xs text-zinc-500">Secure stream</span>
         )}
       </div>
     </div>

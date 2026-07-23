@@ -107,7 +107,7 @@ WooCommerce (WP)                   ──provider──► memberships
 
 | Boundary | Control |
 |---|---|
-| Video player URL | Server-built allowlist only (`video.py`) |
+| Video player URL | Server-built allowlist only (`video.py`); Bunny embeds time-limited |
 | Admin JSON fields | Allowlists; unknown fields 422 |
 | Upload types/sizes | Content-type maps + max bytes |
 | Path traversal on media delete | Rejected |

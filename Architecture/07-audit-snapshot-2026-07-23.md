@@ -65,7 +65,7 @@ describes system shape.
 | **High (P2) → mitigated Phase C** | No package/evidence spine | **Shipped:** required stages, packages, ai_invocations |
 | **High (P2) → mitigated Phase D** | Board publish ≠ Labs placement | **Shipped:** multi-module/lesson place, video ids, trailer, resources, draft replace |
 | **Medium → mitigated Phase E** | Connection-per-transaction (no pool) | **Shipped:** pooled `db.transaction()` |
-| **Medium** | YouTube gated-video leakage | Accept until CDN project (Phase F) |
+| **Medium → mitigated Phase F** | YouTube gated-video leakage | **Shipped:** Bunny Stream signed embeds (`video_provider=bunny`) |
 | **Medium** | WP SSO production dependency | Keep native login; finish WP endpoints |
 | **Medium** | Orchestrator boards can go stale (P1 folder) | Prefer charters + Architecture for truth |
 | **Low** | `/admin` still thin | Intentional; expand only as operator hub |
