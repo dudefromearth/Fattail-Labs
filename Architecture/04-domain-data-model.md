@@ -25,6 +25,10 @@
 | `013_category_descriptions` | Category hub copy |
 | `014_bootstrap_admins` | Seed administrator identities (ops) |
 | `015_hub_content` | site_pages + site_faq_items (hub CMS) |
+| `016_agent_identity` | agent_principals, agent_api_keys, actor_events |
+| `017_content_board` | content_vision, content_items, transitions, artifacts, flags |
+| `018_admin_notifications` | admin_notifications inbox |
+| `019_production_packages` | ai_invocations, content_approval_packages, placement columns |
 
 **Rule:** never edit applied migrations; always append.
 
@@ -39,11 +43,18 @@ credentials                lessons / attachments     lesson_progress
 identity_links             categories / instructors  quiz_*
 plans / memberships        site_pages / faq          certificates
 provider_plan_map
+agent_principals / keys
 
 Live                       Social                    Media (filesystem)
 live_sessions              reviews                   uploads/
 live_recurrences           threads / comments        uploads/private/
 live_recurrence_overrides  students (derived)
+
+Content factory (P2)
+content_vision / content_items (Kanban cards)
+content_transitions / content_artifacts / content_flags
+content_approval_packages / ai_invocations
+admin_notifications
 ```
 
 ---
@@ -107,6 +118,21 @@ Ladder: observer → alumni → activator → navigator → administrator.
 | `site_pages` | Hub title, lead, intro video, FAQ chrome |
 | `site_faq_items` | Ordered FAQ accordion |
 
+### 3.7 Content factory (Phases A–D)
+
+| Table | Purpose |
+|---|---|
+| `agent_principals` / `agent_api_keys` | Machine actors + scoped secrets |
+| `actor_events` | Append-only attribution log |
+| `content_vision` | Living Content Vision markdown |
+| `content_items` | Work-product cards; status; `placed_course_slug` |
+| `content_transitions` | Card status history |
+| `content_artifacts` | Stage outputs (+ hash, optional `ai_invocation_id`) |
+| `content_flags` | Guardian open/cleared blocks |
+| `content_approval_packages` | Frozen package snapshots |
+| `ai_invocations` | LLM run provenance |
+| `admin_notifications` | Per-admin inbox (+ email status) |
+
 ---
 
 ## 4. Important relationships
@@ -143,8 +169,8 @@ attachments → owner_type/owner_id (course|lesson)  [app-enforced, not FK]
 | Banner/image binaries | `server/uploads/` |
 | Private resource files | `server/uploads/private/` |
 | Session state | Signed JWT cookie (not server session table) |
-| LLM transcripts | Not persisted (v1 AI interface) |
-| P2 backlog / production board | Not yet mechanized in DB (charter only) |
+| LLM full prompts | Optional; invocations + artifact bodies are stored |
+| HeyGen renders | External; YouTube ids land via placement |
 
 ---
 

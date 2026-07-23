@@ -63,7 +63,7 @@ describes system shape.
 | **High (P2) → mitigated Phase B** | No durable content backlog / production board in DB | **Shipped:** Kanban board + content_items lifecycle (Board Spec v1.0) |
 | **High (P2) → mitigated Phase A** | Agent actions used only admin session | **Shipped:** agent principals + scoped API keys + actor_events (Identity Spec v1.0) |
 | **High (P2) → mitigated Phase C** | No package/evidence spine | **Shipped:** required stages, packages, ai_invocations |
-| **High (P2) → Phase D started** | Board publish ≠ Labs placement | **Draft course apply on approve**; multi-module/video ID placement remaining |
+| **High (P2) → mitigated Phase D** | Board publish ≠ Labs placement | **Shipped:** multi-module/lesson place, video ids, trailer, resources, draft replace |
 | **Medium** | Connection-per-transaction (no pool) | Monitor; pool if needed (Phase E) |
 | **Medium** | YouTube gated-video leakage | Accept until CDN project (Phase F) |
 | **Medium** | WP SSO production dependency | Keep native login; finish WP endpoints |
@@ -82,8 +82,8 @@ describes system shape.
 | New agents read CLAUDE + 30 specs to understand shape | Start at `Architecture/README.md` |
 | P1/P2 charters without system map | Charters link into Architecture + capabilities |
 
-**Still open (product, not docs):** P2 pillar implementation, agent credentials, backlog
-schema, production AI audit tables.
+**Still open (product):** Phase E (pool/e2e), F (CDN), G (cast/HeyGen scale); skills/
+workflow engine depth; `admin:content` agent mutations; private file placement.
 
 ---
 

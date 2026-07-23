@@ -44,7 +44,20 @@ export XAI_API_KEY=...          # Grok primary
 export ANTHROPIC_API_KEY=...    # Claude secondary
 ```
 
+Optional admin email (FatTail Hostinger):
+
+```bash
+export LABS_SMTP_HOST=smtp.hostinger.com
+export LABS_SMTP_PORT=465
+export LABS_SMTP_MODE=ssl
+export LABS_SMTP_FROM=labs@fattail.ai
+export LABS_SMTP_USER=labs@fattail.ai
+export LABS_SMTP_PASSWORD=...   # never commit
+export LABS_WEB_ORIGIN=https://labs.fattail.ai
+```
+
 Dev admin cookie: open `/api/auth/dev-login` (proxied through Next or hit API origin).
+Note: identity_id=0 has no notification inbox — use a real admin identity for alerts.
 
 ---
 
@@ -76,6 +89,8 @@ Doctrine: **evidence over assertion**. “It should work” is banned.
 | API characterization | `cd server && .venv/bin/python -m pytest tests -q` |
 | Agent/model unit | `test_ai_models.py`, `test_agent_tasks.py` (fakes) |
 | Admin AI API | `test_ai_admin_api.py` (+ live if `XAI_API_KEY`) |
+| Board / packages / place | `test_content_board.py`, `test_production_packages.py` |
+| Agent identity / notify | `test_agent_identity.py`, `test_admin_notifications.py` |
 | Browser AI | `cd web && npm run test:e2e:ai` (Playwright; live needs key + servers) |
 | Manual | curl matrices, browser walk (Delta gates) |
 

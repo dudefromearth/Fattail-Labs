@@ -927,3 +927,9 @@ Placement apply parses placement_proposal / lesson_plan / video_package JSON:
 modules, lessons (video_id, free_preview, body_md), trailer, course resource
 links. Re-place rebuilds draft courses only (refuses published). Board Approve
 uses replace=True; drawer Re-apply placement; Admin Guide updated.
+
+## 2026-07-23 — Architecture docs parity for Phases A–D
+
+Brought Architecture README + 01–07 in line with shipped agent identity, Kanban board,
+packages, multi-module placement, and admin notifications. Admin Guide already covered
+operators; design docs had lagged Phase D completion.

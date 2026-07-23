@@ -16,15 +16,24 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [06-operations-and-verification.md](./06-operations-and-verification.md) | Env, deploy, tests, evidence culture |
 | [07-audit-snapshot-2026-07-23.md](./07-audit-snapshot-2026-07-23.md) | Retroactive code/docs audit findings |
 
-**Phase A (2026-07-23):** Agent identity + dual admin surface — specs
-`FatTail-Labs-Agent-Identity-Spec-v1.0`, `FatTail-Labs-Admin-Dual-Surface-Spec-v1.0`.
+**Hardening phases (2026-07-23):**
+
+| Phase | Status | Specs |
+|---|---|---|
+| **A** Agent identity + dual admin shell | Shipped | Agent-Identity, Admin-Dual-Surface |
+| **B** Kanban backlog / production board | Shipped | Content-Board |
+| **C** Package checklist + freeze + AI attach | Shipped | Production-Package |
+| **D** Multi-module Labs draft placement | Shipped | Production-Package (§5–6) |
+| Notifications | Shipped | Admin-Notifications |
+| **E–G** Pool, CDN, studio scale | Open | — |
 
 **Related**
 
 - Product parent: `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`
 - P1 / P2 charters: `agents/p1-foundation/CHARTER.md`, `agents/p2-foundation/CHARTER.md`
 - Deploy playbook: `infra/deploy.md`
-- Operator guides: `docs/ADMIN-GUIDE.md`, `docs/P2-Capabilities-for-P1.md`
+- Operator guide: `docs/ADMIN-GUIDE.md` (board, packages, agents, alerts)
+- Capabilities map: `docs/P2-Capabilities-for-P1.md`
 
 **How to amend**
 

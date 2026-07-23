@@ -10,7 +10,8 @@
 - **Member product** — player, progress, live, resources, pathway, dashboard  
 - **Auth funnel** — login, signup, membership checkout UI  
 - **In-place admin** — production page becomes editor for administrators  
-- **Operator tools** — media library, agent workbench  
+- **Operator control plane** — `/admin/*` shell (no member header): board Kanban,
+  media, AI workbench, agent keys, notification bell  
 
 The browser never talks to MySQL. All data flows through the Labs API.
 
@@ -46,10 +47,16 @@ web/app/
   live/  pathway/  resources/  dashboard/  me/
   login/  signup/  membership/
   guide/  about/
-  admin/  admin/media/  admin/ai/  admin/courses/[slug]/
+  admin/                    # control plane layout (no SiteHeader)
+  admin/board/              # Kanban production board
+  admin/media/  admin/ai/  admin/agents/
+  admin/courses/[slug]/
   sitemap.ts  robots.ts
   api/revalidate/route.ts          # Next-only; not rewritten away
 ```
+
+Member chrome is suppressed under `/admin` via `AppChrome` + `admin/layout.tsx`
+(Admin Dual Surface Spec v1.0). In-place edit remains on production URLs.
 
 ---
 
@@ -79,7 +86,8 @@ web/app/
 | Resources | `ResourceLibrary` |
 | Hub | `hub/*`, `HubIntroVideo` |
 | In-place admin | `edit/*` — EditContext, bars, editable fields, danger zone, media |
-| Shell | `SiteHeader`, `Markdown` |
+| Admin app | `admin/BoardKanban`, `AdminNotifications`, `AgentsPanel`, `AgentWorkbench` |
+| Shell | `SiteHeader` (member), `AppChrome` (suppress header on `/admin`) |
 
 ### 4.3 In-place admin model
 
@@ -123,17 +131,21 @@ Dev convenience: `/api/auth/dev-login` (API, env=dev only) sets administrator co
 
 ---
 
-## 7. Agent workbench (browser validation)
+## 7. Admin control plane UI
 
-`/admin/ai` → `AgentWorkbench`:
+| Route | Component | Role |
+|---|---|---|
+| `/admin` | Overview cards | Cockpit home |
+| `/admin/board` | `BoardKanban` | Drag cards across process columns; package checklist; approve/place |
+| `/admin/ai` | `AgentWorkbench` | Live Grok/Claude tasks |
+| `/admin/agents` | `AgentsPanel` | Mint/revoke `ftl_ag_` keys |
+| `/admin/media` | `MediaLibrary` | Public uploads |
+| Header **Alerts** | `AdminNotifications` | Inbox + optional browser `Notification` API |
 
-- Shows primary/secondary model configuration (no secrets)  
-- Selects seated agent + task  
-- Loads fixture JSON  
-- Runs live task via admin AI API (requires `XAI_API_KEY` on API)  
-- Displays markers + full text for human inspection  
+Board deep-link: `/admin/board?item=<id>` (from email/alerts).  
+**Re-apply placement** rebuilds draft course structure from the package.
 
-Playwright: `web/e2e/agent-workbench.spec.ts` (`npm run test:e2e:ai`).
+Playwright AI: `web/e2e/agent-workbench.spec.ts` (`npm run test:e2e:ai`).
 
 ---
 
@@ -160,9 +172,10 @@ Playwright: `web/e2e/agent-workbench.spec.ts` (`npm run test:e2e:ai`).
 
 | Limitation | Note |
 |---|---|
-| `/admin` is a hub, not a full CMS | Real editing is in-place |
+| Content CMS remains in-place | Admin app is control plane, not a second course editor |
 | Heavy course page client state | Cost of in-place admin on SSG shells |
-| No Storybook / visual regression suite yet | Echo reviews + Playwright for AI workbench |
+| AI workbench may not always pass `content_item_id` in UI | API supports attach; wire card picker if needed |
+| No Storybook / visual regression suite yet | Echo process + selective Playwright |
 | Member UI not fully offline-capable | Online session required |
 
 ---

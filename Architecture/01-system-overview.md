@@ -90,10 +90,11 @@ Admin: in-place edit on production pages; hubs at `/admin`, `/admin/media`, `/ad
 | Program | Charter | Role |
 |---|---|---|
 | **P1** | `agents/p1-foundation/CHARTER.md` | Platform spine (closed / load-bearing) |
-| **P2** | `agents/p2-foundation/CHARTER.md` | Agentic ops + content studio (draft) |
+| **P2** | `agents/p2-foundation/CHARTER.md` | Agentic ops + content studio |
 
-P2 **does not replace** P1. Agents place content through the same governed admin/API
-surface. Capabilities map: `docs/P2-Capabilities-for-P1.md`.
+P2 **does not replace** P1. Factory path: board cards → packages → draft placement via
+admin/API → human in-place polish/publish. Capabilities: `docs/P2-Capabilities-for-P1.md`.
+Operator how-to: `docs/ADMIN-GUIDE.md`.
 
 ---
 

@@ -125,11 +125,12 @@ WooCommerce (WP)                   ──provider──► memberships
 | Completions fail loud | 503 without key; 502 provider errors |
 | Agent publish authority | Humans approve; Quebec never sets published |
 
-**Phase A (shipped):** agents authenticate as **principals** with scoped API keys
-(`ftl_ag_…`, scopes `ai:run` / `ai:status` / …). Human admins mint/revoke keys.
-Workbench accepts human session **or** agent bearer; `actor_events` records runs.
-Agents still do **not** receive billing or key-minting authority. Content mutation
-scopes (`admin:content`) reserved for later phases.
+**Phases A–D (shipped):** agents authenticate as **principals** with scoped API keys
+(`ftl_ag_…`; scopes include `ai:run`, `ai:status`, `board:operate`). Human admins
+mint/revoke keys and sole-own publish/reject on the board and course publish.
+Workbench accepts human session **or** agent bearer; `actor_events` + packages
+record provenance. Agents do **not** receive billing or key-minting authority.
+Placement creates **drafts** only — never auto-publishes member-visible courses.
 
 ---
 

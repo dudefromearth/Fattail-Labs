@@ -46,6 +46,10 @@ uvicorn main:app
 | `repo.py` | Shared small query helpers |
 | `migrate.py` | Filename-ordered SQL migration runner |
 | `ai/` | LLM interface + agent task runtime |
+| `agent_auth.py` | Agent principals, API keys, scopes |
+| `board.py` | Content backlog / Kanban domain |
+| `packages.py` | Package checklist, freeze, Labs placement |
+| `notify.py` | Admin in-app + optional SMTP notifications |
 | `routes/*` | HTTP surface by domain |
 
 ---
@@ -109,7 +113,7 @@ Pattern: **Stripe and AI are optional at boot**; they fail loud when used withou
 
 ### 4.4 Admin
 
-Prefix `/api/admin/*` — `require_admin`.
+Prefix `/api/admin/*` — human administrator cookie and/or agent bearer (scoped).
 
 - Course/module/lesson CRUD, reorder, categories, instructors  
 - Attachments, media upload/list/delete  
@@ -117,9 +121,26 @@ Prefix `/api/admin/*` — `require_admin`.
 - Quiz question admin  
 - Hub CMS admin  
 - Review/thread moderation  
-- **AI workbench:** `/api/admin/ai/status|agents|…/run`  
+- **AI workbench:** `/api/admin/ai/*` (optional `content_item_id` attaches to board card)  
+- **Agent keys:** `/api/admin/agents/principals|…/keys` (human only)  
+- **Board:** `/api/admin/board` Kanban snapshot, items, transition, artifacts, flags,
+  package validate, **place** (Phase D)  
+- **Notifications:** `/api/admin/notifications` inbox for human admins  
 
-### 4.5 Billing
+### 4.5 Content factory (board → package → place)
+
+```text
+content_items (card)
+  → artifacts (stages) + ai_invocations
+  → validate checklist → content_approval_packages (freeze)
+  → human Approve → apply_placement → draft course (modules/lessons/videos/resources)
+  → human publishes course in-place on /courses/{slug}
+```
+
+Placement plan: JSON in `placement_proposal` (or `lesson_plan` / single-lesson fallback);
+`video_package` supplies per-slug YouTube ids. Re-place rebuilds **draft** only.
+
+### 4.6 Billing
 
 | Method | Path | Notes |
 |---|---|---|
@@ -128,7 +149,7 @@ Prefix `/api/admin/*` — `require_admin`.
 | POST | `/api/billing/portal` | Customer portal |
 | POST | `/api/billing/webhook` | Entitlement sync |
 
-### 4.6 Health
+### 4.7 Health
 
 `GET /api/health` — DB round-trip + env name.
 
@@ -144,10 +165,11 @@ exception, connection closed always. No long-lived connection pool abstraction y
 
 ### 5.2 Authorization
 
-1. Cookie → `auth.verify_session`  
+1. Cookie → `auth.verify_session` **or** `Authorization: Bearer ftl_ag_…` agent key  
 2. Role ladder: `observer < alumni < activator < navigator < administrator`  
-3. Content access often combines **role**, **free_preview**, and **enrollment**  
-4. Live **category** is an audience contract (not raw min_role plumbing)
+3. Agent scopes: `ai:run`, `ai:status`, `board:operate`, … (never billing/key mint by default)  
+4. Content access often combines **role**, **free_preview**, and **enrollment**  
+5. Live **category** is an audience contract (not raw min_role plumbing)
 
 ### 5.3 Fail-loud validation
 
@@ -175,7 +197,7 @@ exception, connection closed always. No long-lived connection pool abstraction y
 | `complete()` | Chat completion orchestration |
 | Providers | xAI Chat Completions (primary), Anthropic Messages (secondary) |
 | `agents.py` | Load `agents/bench/*.md`, task catalog, `run_agent_task` |
-| Admin routes | Browser/workbench gateway |
+| Admin routes | Browser/workbench gateway; optional board attach |
 
 Default model policy: **Grok (`grok-4.5`)** primary; **Claude** secondary.
 Spec: `Specs/FatTail-Labs-Agent-Model-Interface-Spec-v1.0.md`.
@@ -186,6 +208,9 @@ Spec: `Specs/FatTail-Labs-Agent-Model-Interface-Spec-v1.0.md`.
 
 `server/migrate.py` applies `migrations/NNN_*.sql` in filename order; tracks applied
 files. **Never edit an applied migration** — add `NNN+1_*.sql`.
+
+Factory-related: `016` agent identity, `017` content board, `018` admin notifications,
+`019` production packages + placement columns.
 
 See `04-domain-data-model.md` for table map.
 
@@ -199,7 +224,8 @@ See `04-domain-data-model.md` for table map.
 cd server && .venv/bin/python -m pytest tests -q
 ```
 
-Mandatory before commits that touch `server/`. Spec: Test Suite + AI model/agent tests.
+Includes board, packages/placement, agent identity, notifications (SMTP disabled in suite).
+Mandatory before commits that touch `server/`.
 
 ---
 
@@ -207,11 +233,13 @@ Mandatory before commits that touch `server/`. Spec: Test Suite + AI model/agent
 
 | Limitation | Note |
 |---|---|
-| No connection pool | Acceptable at current scale; revisit under load |
-| YouTube for gated video | Leakage tradeoff accepted; CDN path recorded |
-| Agent identity ≠ human admin session | P2 pillar still open (scoped agent credentials) |
-| No member-facing LLM chat | AI is operator/agent runtime only |
-| WP SSO live path | Depends on external WP endpoints; native login always works |
+| No connection pool | Acceptable at current scale; Phase E |
+| YouTube for gated video | Leakage tradeoff; Phase F CDN |
+| Agent `admin:content` not broadly granted | Placement is human-triggered apply |
+| No member-facing LLM chat | Operator/agent runtime only |
+| Placement does not auto-publish courses | Draft only; in-place publish remains |
+| WP SSO live path | External WP endpoints; native login works |
+| Private file binaries not in placement | Resource **links** only in Phase D |
 
 ---
 
