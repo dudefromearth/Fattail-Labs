@@ -25,7 +25,8 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | **C** Package checklist + freeze + AI attach | Shipped | Production-Package |
 | **D** Multi-module Labs draft placement | Shipped | Production-Package (§5–6) |
 | Notifications | Shipped | Admin-Notifications |
-| **E–G** Pool, CDN, studio scale | Open | — |
+| **E** Pool, SSO contracts, smoke tests | Shipped | Phase-E-Hardening |
+| **F–G** CDN, studio scale | Open | — |
 
 **Related**
 

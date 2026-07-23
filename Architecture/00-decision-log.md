@@ -933,3 +933,10 @@ uses replace=True; drawer Re-apply placement; Admin Guide updated.
 Brought Architecture README + 01–07 in line with shipped agent identity, Kanban board,
 packages, multi-module placement, and admin notifications. Admin Guide already covered
 operators; design docs had lagged Phase D completion.
+
+## 2026-07-23 — Phase E hardening: pool, SSO contracts, smoke tests
+
+DB connection pool in `server/db.py` (LABS_DB_POOL_SIZE default 10). Characterization:
+test_db_pool, test_sso_providers (stub WP JWTs + native fallback), test_smoke_member_path.
+Browser smoke: web/e2e/smoke.spec.ts (npm run test:e2e:smoke). Spec:
+FatTail-Labs-Phase-E-Hardening-Spec-v1.0. P1 ORCHESTRATOR marked historical.

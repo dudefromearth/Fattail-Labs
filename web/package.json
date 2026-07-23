@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test e2e/smoke.spec.ts",
     "test:e2e:ai": "playwright test e2e/agent-workbench.spec.ts"
   },
   "dependencies": {

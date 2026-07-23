@@ -91,7 +91,12 @@ Doctrine: **evidence over assertion**. “It should work” is banned.
 | Admin AI API | `test_ai_admin_api.py` (+ live if `XAI_API_KEY`) |
 | Board / packages / place | `test_content_board.py`, `test_production_packages.py` |
 | Agent identity / notify | `test_agent_identity.py`, `test_admin_notifications.py` |
+| Pool / SSO / member smoke | `test_db_pool.py`, `test_sso_providers.py`, `test_smoke_member_path.py` |
+| Browser smoke | `cd web && npm run test:e2e:smoke` (web+API; dev-login) |
 | Browser AI | `cd web && npm run test:e2e:ai` (Playwright; live needs key + servers) |
+
+**WP SSO down:** members use native email/password. SSO buttons only if
+`LABS_SSO_LOGIN_URL_*` set. Labs-side JWT verify covered by `test_sso_providers.py`.
 | Manual | curl matrices, browser walk (Delta gates) |
 
 **Rule:** every commit touching `server/` must pass pytest first.

@@ -160,8 +160,8 @@ Placement plan: JSON in `placement_proposal` (or `lesson_plan` / single-lesson f
 ### 5.1 Transactions
 
 All mutating handlers use `db.transaction()` — commit on success, rollback on
-exception, connection closed always. No long-lived connection pool abstraction yet
-(new connection per transaction).
+exception, connection **returned to pool**. Phase E: fixed-size pool
+(`LABS_DB_POOL_SIZE`, default 10) with ping-on-checkout.
 
 ### 5.2 Authorization
 
@@ -233,7 +233,7 @@ Mandatory before commits that touch `server/`.
 
 | Limitation | Note |
 |---|---|
-| No connection pool | Acceptable at current scale; Phase E |
+| Connection pool | **Phase E shipped** (`LABS_DB_POOL_SIZE`) |
 | YouTube for gated video | Leakage tradeoff; Phase F CDN |
 | Agent `admin:content` not broadly granted | Placement is human-triggered apply |
 | No member-facing LLM chat | Operator/agent runtime only |

@@ -64,7 +64,7 @@ describes system shape.
 | **High (P2) → mitigated Phase A** | Agent actions used only admin session | **Shipped:** agent principals + scoped API keys + actor_events (Identity Spec v1.0) |
 | **High (P2) → mitigated Phase C** | No package/evidence spine | **Shipped:** required stages, packages, ai_invocations |
 | **High (P2) → mitigated Phase D** | Board publish ≠ Labs placement | **Shipped:** multi-module/lesson place, video ids, trailer, resources, draft replace |
-| **Medium** | Connection-per-transaction (no pool) | Monitor; pool if needed (Phase E) |
+| **Medium → mitigated Phase E** | Connection-per-transaction (no pool) | **Shipped:** pooled `db.transaction()` |
 | **Medium** | YouTube gated-video leakage | Accept until CDN project (Phase F) |
 | **Medium** | WP SSO production dependency | Keep native login; finish WP endpoints |
 | **Medium** | Orchestrator boards can go stale (P1 folder) | Prefer charters + Architecture for truth |

@@ -38,6 +38,9 @@ the launch.
 | test_content_board | Kanban lifecycle, illegal transitions, flags block approval, board:operate |
 | test_production_packages | Phase C checklist/freeze; Phase D draft placement; AI attach to card |
 | test_admin_notifications | awaiting_approval + flags create admin inbox rows |
+| test_db_pool | connection pool reuse + concurrent transactions |
+| test_sso_providers | WP SSO JWT verify, bad secret, native login fallback |
+| test_smoke_member_path | health → catalog → enroll → continue |
 
 **Browser (separate, web package):** `web/e2e/agent-workbench.spec.ts` (Playwright).
 Requires running web+API; live agent assertions require `XAI_API_KEY` on the API.

@@ -251,7 +251,19 @@ cd server && .venv/bin/python -m pytest tests -q     # must be green
 
 # after any web change
 cd web && npm run build                               # then restart npm start
+
+# optional browser smoke (API + web running, LABS_ENV=dev)
+cd web && npm run test:e2e:smoke
 ```
+
+### SSO fallback
+
+If WordPress SSO is down, members use **native** email/password. SSO buttons only
+show when `LABS_SSO_LOGIN_URL_*` is set.
+
+### DB pool
+
+API uses a connection pool (`LABS_DB_POOL_SIZE`, default 10). Tune only under load.
 
 - Features ship with **spec + decision log + tests**.  
 - Architecture: `Architecture/README.md`.  
@@ -271,6 +283,7 @@ cd web && npm run build                               # then restart npm start
 | Agent identity | FatTail-Labs-Agent-Identity-Spec-v1.0 |
 | AI models | FatTail-Labs-Agent-Model-Interface-Spec-v1.0 |
 | Notifications | FatTail-Labs-Admin-Notifications-Spec-v1.0 |
+| Phase E hardening | FatTail-Labs-Phase-E-Hardening-Spec-v1.0 |
 | Identity / billing | Identity-Access, Native-Billing-Stripe |
 | Live | Live-Sessions-Spec-v1.x |
 | Lesson video | Lesson-Video-YouTube-Spec-v1.0 |
