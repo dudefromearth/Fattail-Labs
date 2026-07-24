@@ -16,7 +16,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [06-operations-and-verification.md](./06-operations-and-verification.md) | Env, deploy, tests, evidence culture |
 | [07-audit-snapshot-2026-07-23.md](./07-audit-snapshot-2026-07-23.md) | Retroactive code/docs audit findings |
 
-**Hardening phases (2026-07-23):**
+**Hardening phases (2026-07-23) — complete A–G:**
 
 | Phase | Status | Specs |
 |---|---|---|
@@ -27,15 +27,19 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Notifications | Shipped | Admin-Notifications |
 | **E** Pool, SSO contracts, smoke tests | Shipped | Phase-E-Hardening |
 | **F** Signed CDN (Bunny Stream) | Shipped | Lesson-Video-Signed-CDN |
-| **G** Studio scale (cast/HeyGen) | Open | — |
+| **G** Cast + HeyGen factory (G1–G5) | Shipped | Cast-HeyGen v1.0 + **v1.1** |
 
 **Related**
 
 - Product parent: `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`
+- Cast / HeyGen: `Specs/FatTail-Labs-Cast-HeyGen-Spec-v1.1.md`, `docs/P2-Cast-and-HeyGen-Production.md`
 - P1 / P2 charters: `agents/p1-foundation/CHARTER.md`, `agents/p2-foundation/CHARTER.md`
 - Deploy playbook: `infra/deploy.md`
-- Operator guide: `docs/ADMIN-GUIDE.md` (board, packages, agents, alerts)
+- Operator guide: `docs/ADMIN-GUIDE.md` (board, cast, HeyGen, packages, agents, alerts)
+- WooCommerce + WordPress SSO: `docs/WooCommerce-SSO-Integration-Guide.md`
+- Marketing platform (design draft): `docs/Marketing-Platform-Architecture.md`
 - Capabilities map: `docs/P2-Capabilities-for-P1.md`
+- Cast files: `docs/studio/cast/`
 
 **How to amend**
 

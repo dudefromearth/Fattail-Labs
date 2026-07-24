@@ -23,7 +23,7 @@ FatTail Labs replaces LearnDash with a first-party course platform for FatTail.a
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  Operators (administrators) + P2 agents (via admin AI / future backlog)  │
+│  Operators + P2 agents (board, cast, AI workbench, agent keys)           │
 └───────────────────────────────┬──────────────────────────────────────────┘
                                 │
      ┌──────────────────────────┼──────────────────────────┐
@@ -34,13 +34,14 @@ FatTail Labs replaces LearnDash with a first-party course platform for FatTail.a
 │  :3000      │  /api/* │  :4000       │          │                 │
 └─────────────┘         └──────┬───────┘          └─────────────────┘
                                │
-               ┌───────────────┼───────────────┐
-               ▼               ▼               ▼
-        WordPress SSO    Stripe (opt.)    xAI / Anthropic
-        (pluggable)      billing          (agent models, opt.)
-               │
-               ▼
-        YouTube embeds (lesson video delivery)
+        ┌──────────────────────┼──────────────────────┐
+        ▼                      ▼                      ▼
+ WordPress SSO          Stripe (opt.)          xAI / Anthropic
+ (pluggable)            billing                (agent models, opt.)
+        │                      │                      │
+        ▼                      ▼                      ▼
+ YouTube embeds         Bunny Stream           HeyGen Video Agent
+ (free/trailer)         (gated, opt.)          (production only)
 ```
 
 | Layer | Path | Responsibility |
@@ -81,7 +82,8 @@ Deploy details: `infra/deploy.md`.
 | Membership / signup | `/membership`, `/signup`, `/login` | Public funnel |
 | Guide / about | `/guide`, `/about` | Public docs |
 
-Admin: in-place edit on production pages; hubs at `/admin`, `/admin/media`, `/admin/ai`.
+Admin: in-place edit on production pages; control plane at `/admin`, `/admin/board`,
+`/admin/cast`, `/admin/media`, `/admin/ai`, `/admin/agents`.
 
 ---
 
@@ -92,8 +94,17 @@ Admin: in-place edit on production pages; hubs at `/admin`, `/admin/media`, `/ad
 | **P1** | `agents/p1-foundation/CHARTER.md` | Platform spine (closed / load-bearing) |
 | **P2** | `agents/p2-foundation/CHARTER.md` | Agentic ops + content studio |
 
-P2 **does not replace** P1. Factory path: board cards → packages → draft placement via
-admin/API → human in-place polish/publish. Capabilities: `docs/P2-Capabilities-for-P1.md`.
+P2 **does not replace** P1. Factory path:
+
+```text
+cast registry → board card (+ cast_id)
+  → artifacts / AI tasks / HeyGen produce (batch)
+  → Quebec tick → awaiting_approval
+  → human Approve → draft placement → in-place polish → course publish
+```
+
+Capabilities: `docs/P2-Capabilities-for-P1.md`.  
+Cast/HeyGen: `docs/P2-Cast-and-HeyGen-Production.md`, Specs Cast-HeyGen v1.0–v1.1.  
 Operator how-to: `docs/ADMIN-GUIDE.md`.
 
 ---
@@ -118,7 +129,8 @@ Operator how-to: `docs/ADMIN-GUIDE.md`.
 | DB | MySQL utf8mb4 | Ops familiarity; filename-ordered SQL migrations |
 | Web | Next.js App Router | SSG public pages + client member routes |
 | Sessions | HS256 JWT cookie `ft_session` | Shared `.fattail.ai` domain in prod |
-| Lesson video | YouTube nocookie embeds | Launch speed; CDN upgrade path recorded |
+| Lesson video | YouTube + optional Bunny signed embeds | Free/trailer YT; gated Bunny (Phase F) |
+| Studio video | HeyGen Video Agent (P2 factory) | Not learner runtime; YouTube/CDN after human upload |
 | Agent LLMs | xAI Grok primary, Claude secondary | `server/ai/` interface |
 
 ---

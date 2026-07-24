@@ -35,6 +35,19 @@ Wire this BEFORE announcing the domain so the first crawl sees one clean host.
 5. Backend env: `cd ~/Fattail-Labs/server && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
 6. `.env` from `.env.example` — production values, `LABS_ENV=production`,
    `LABS_COOKIE_DOMAIN=.fattail.ai`. Secrets never committed.
+
+   **WordPress SSO + WooCommerce:** secrets must match WP **fotw-sso** (same as
+   MarketSwarm-Canonical `SSO_FOTW_SECRET` / `SSO_0DTE_SECRET`):
+
+   ```bash
+   LABS_SSO_SECRET_FATTAIL=<fotw-sso secret on fattail.ai, ≥32 chars>
+   LABS_SSO_SECRET_0DTE=<fotw-sso secret on 0-dte.com, ≥32 chars>
+   # LABS_SSO_LOGIN_URL_FATTAIL=https://fattail.ai/fotw-sso?redirect=...
+   # LABS_SSO_LOGIN_URL_0DTE=https://0-dte.com/fotw-sso?redirect=...
+   ```
+
+   Full integration (MSC sources, JWT shape, webhooks, plan map):  
+   `docs/WooCommerce-SSO-Integration-Guide.md`.
    **Outbound mail (admin notifications):** FatTail uses Hostinger SMTP:
 
    ```bash
@@ -58,6 +71,24 @@ Wire this BEFORE announcing the domain so the first crawl sees one clean host.
    LABS_BUNNY_TOKEN_KEY=<embed token authentication key>
    LABS_VIDEO_SIGNED_TTL_SECONDS=3600
    ```
+
+   **HeyGen studio (Phase G, optional until live produce):**
+
+   ```bash
+   HEYGEN_API_KEY=<heygen api key>
+   # LABS_HEYGEN_DRY_RUN=1
+   # LABS_HEYGEN_MAX_BATCH=3
+   # LABS_HEYGEN_DAILY_JOB_LIMIT=10
+   # LABS_HEYGEN_MONTHLY_JOB_LIMIT=100
+   # LABS_QUEBEC_AUTO=1
+   ```
+
+   Install HeyGen CLI on the host for live/render (`heygen` on PATH). Cast files ship
+   in-repo under `docs/studio/cast/`. Migrations **020** (cast_id), **021**
+   (heygen_job_ledger), and **022** (password_reset_tokens) must be applied.
+
+   **Password reset emails** need the same Hostinger SMTP block above **and**
+   `LABS_WEB_ORIGIN=https://labs.fattail.ai` so reset links are absolute.
 7. Tailscale up; note the stable LAN IP for MiniThree's upstream.
 8. launchd plists (see below) → `launchctl load`.
 
@@ -88,6 +119,29 @@ curl -s localhost:4000/api/health
 port 4001, same KeepAlive/log pattern.
 
 Never run services by hand in staging/production; launchd owns them.
+
+### Quebec board poller (optional)
+
+Keeps production cards moving (claim → produce stages → awaiting approval).
+**Does not publish.** Spec: `Specs/FatTail-Labs-Quebec-Poller-Spec-v1.0.md`.
+
+```bash
+# in .env on MiniTwo
+LABS_QUEBEC_POLLER=1
+LABS_QUEBEC_AUTO_PRODUCE=1
+LABS_QUEBEC_AUTO_PRODUCE_MODE=fixtures   # or auto/live with XAI_API_KEY
+LABS_QUEBEC_POLL_INTERVAL_SECONDS=60
+```
+
+```bash
+# manual smoke
+cd ~/Fattail-Labs/server && set -a && source ../.env && set +a
+.venv/bin/python quebec_poller.py
+```
+
+launchd: WorkingDirectory `server/`, Program `…/server/.venv/bin/python`,
+args `quebec_poller.py`, EnvironmentVariables from `.env`, KeepAlive true,
+logs under `~/Library/Logs/fattail-labs/quebec-poller.log`.
 
 ## Hard rules (inherited doctrine)
 

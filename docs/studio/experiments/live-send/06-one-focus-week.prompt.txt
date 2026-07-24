@@ -1,0 +1,30 @@
+FORMAT: Educational course lesson for FatTail Labs, landscape 16:9, target duration about 3 minutes.
+TONE: Steady, coaching, dignified. Process outcomes only.
+AVATAR: The selected presenter teaches clearly to a tired intermediate trader.
+MODULE CONTEXT: Practice — tools you keep; capacity over dependency.
+
+LESSON TITLE: One-focus week
+OUTCOMES:
+- Choose one process focus for seven days
+- Define what "done" looks like without a P&L scoreboard
+
+SCRIPT (concept and theme to convey — expand naturally, no silence padding):
+
+Improvement dies when everything is a priority. This lesson is one rule: one focus for seven days. Not five goals. Not a new personality. One observable process focus.
+
+Examples of good focuses: run the checklist before every decision; end session at a fixed clock time; write the weekly review on the same day; zero trades when stand-down criteria fire. Bad focuses: "make money," "be more disciplined" with no behavior attached, "win rate up."
+
+Define done without profit: "I ran the checklist on every discretionary decision," or "I completed one one-page review." If you miss days, the focus is still the focus — count adherence, not drama.
+
+Tie back to stop-the-bleeding: one focus reduces thrashing, which reduces avoidable damage. Capacity over dependency: you choose the focus; no one sells it to you weekly.
+
+Close the course arc: mindset, risk definition, review, checklist, triggers, one focus. Invite them to schedule the next weekly review and keep the tools. Process outcomes only.
+
+CRITICAL ON-SCREEN TEXT (display literally):
+- One focus · Seven days
+- Observable done
+- Process, not P&L
+
+Use minimal, clean styled visuals. Blue, black, and white as main colors.
+Motion graphics for the seven-day frame.
+Short intro, clear course close. One topic only.

@@ -42,6 +42,9 @@ Issue: `auth.issue_session`. Verify: `auth.verify_session`.
 - HS256 JWT verified with per-issuer secrets from env  
 - Claims → `ProviderIdentity` → link identity + map entitlement keys → plans  
 - Login button URLs optional via env (unset → button hidden)  
+- WooCommerce lifecycle: HMAC webhooks → membership upsert  
+- **Operator integration guide:** `docs/WooCommerce-SSO-Integration-Guide.md`  
+
 
 ### 2.4 Dev login
 
@@ -119,11 +122,13 @@ WooCommerce (WP)                   ──provider──► memberships
 
 | Rule | Implementation |
 |---|---|
-| Keys server-side only | `XAI_API_KEY`, `ANTHROPIC_API_KEY` |
+| Keys server-side only | `XAI_API_KEY`, `ANTHROPIC_API_KEY`, `HEYGEN_API_KEY` |
 | No member chat API | Admin `/api/admin/ai/*` only |
 | Status never leaks keys | Booleans + model names |
 | Completions fail loud | 503 without key; 502 provider errors |
-| Agent publish authority | Humans approve; Quebec never sets published |
+| Agent publish authority | Humans approve; Quebec tick never sets published |
+| HeyGen | Production-only (admin board); not learner runtime; live jobs budgeted |
+| Password reset | Token SHA-256 only; enumeration-safe forgot; single-use + TTL; SMTP required |
 
 **Phases A–D (shipped):** agents authenticate as **principals** with scoped API keys
 (`ftl_ag_…`; scopes include `ai:run`, `ai:status`, `board:operate`). Human admins

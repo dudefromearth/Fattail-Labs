@@ -1,0 +1,3066 @@
+openapi: 3.1.0
+info:
+  title: HeyGen API
+  version: 4.0.8
+  description: >-
+    OpenAPI specification for the HeyGen API endpoints referenced across the
+    documentation.
+servers:
+  - url: https://api.heygen.com
+components:
+  securitySchemes:
+    sec0:
+      type: apiKey
+      in: header
+      name: x-api-key
+      x-default: <your-api-key>
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+security:
+  - ApiKeyAuth: []
+paths:
+  /v1/video_status.get:
+    get:
+      summary: Retrieve Video Status/Details
+      description: >-
+        This endpoint allows you to retrieve the status and details of a
+        specific video.
+      operationId: video-status
+      parameters:
+        - name: video_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: |-
+                    {
+                      "code": 400,
+                      "message": "Invlid parameters"
+                    }
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400
+                    default: 0
+                  message:
+                    type: string
+                    example: Invlid parameters
+      deprecated: false
+      x-mint:
+        href: /reference/video-status
+      tags:
+        - Videos
+      security:
+        - ApiKeyAuth: []
+  /v1/webhook/endpoint.list:
+    get:
+      summary: List Webhook Endpoints
+      description: list all your registered webhook endpoints
+      operationId: list-webhook-endpoints
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: >-
+                    {"code": 100, "data": [{"status": "enabled", "username":
+                    "1233456789", "created_at": "2023-04-03T03:25:54", "url":
+                    "https://helloworld.com", "events": null, "endpoint_id":
+                    "6981dc2e59944a4ba195bcc1dd3be1af", "secret":
+                    "whsec_aZUbuN_UAC1zzuuYr_QVHA=="}, {"status": "enabled",
+                    "username": "bcbb0a7445354c34a5bd5870d7bb30a0",
+                    "created_at": "2023-04-03T03:25:54", "url":
+                    "https://craft-api.surreal-ai.com/v1/webhook/callback.test",
+                    "events": null, "endpoint_id":
+                    "fdfbea36e773416ea6acb5e1123079f6", "secret":
+                    "whsec_12345435346534"}], "msg": null}
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 100
+                    default: 0
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status:
+                          type: string
+                          example: enabled
+                        username:
+                          type: string
+                          example: '1233456789'
+                        created_at:
+                          type: string
+                          example: '2023-04-03T03:25:54'
+                        url:
+                          type: string
+                          example: https://helloworld.com
+                        events: {}
+                        endpoint_id:
+                          type: string
+                          example: 6981dc2e59944a4ba195bcc1dd3be1af
+                        secret:
+                          type: string
+                          example: whsec_aZUbuN_UAC1zzuuYr_QVHA==
+                  msg: {}
+      deprecated: false
+      x-mint:
+        href: /reference/list-webhook-endpoints
+      tags:
+        - Webhooks
+      security:
+        - ApiKeyAuth: []
+  /v1/webhook/endpoint.add:
+    post:
+      summary: Add a Webhook Endpoint
+      description: ''
+      operationId: add-a-webhook-endpoint
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  description: The URL where you will receive events from HeyGen.
+                events:
+                  type: array
+                  description: >-
+                    The events that your URL is set to receive. `None` means all
+                    events. You can see supported events at
+                    [`/v1/webhook/webhook.list`](https://docs.heygen.com/reference/list-available-webhook-events).
+                  items:
+                    type: string
+                entity_id:
+                  type: string
+                  description: >-
+                    Optional. The specific entity ID associated with the
+                    webhook. eg. video_id,project_id
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: >-
+                    {"code": 100, "data": {"endpoint_id":
+                    "038fb5f9a62d48e5af08834d20404606", "username": "123456",
+                    "url": "https://helloworld.com", "status": "enabled",
+                    "events": null, "secret": "whsec_123456", "created_at":
+                    "2023-04-03T05:40:46.769845"}, "msg": null}
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 100
+                    default: 0
+                  data:
+                    type: object
+                    properties:
+                      endpoint_id:
+                        type: string
+                        example: 038fb5f9a62d48e5af08834d20404606
+                      username:
+                        type: string
+                        example: '123456'
+                      url:
+                        type: string
+                        example: https://helloworld.com
+                      status:
+                        type: string
+                        example: enabled
+                      events: {}
+                      secret:
+                        type: string
+                        example: whsec_123456
+                      created_at:
+                        type: string
+                        example: '2023-04-03T05:40:46.769845'
+                  msg: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: >-
+                    {"code":400542,"message":"Url of this webhook endpoint is
+                    invalid"}
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400542
+                    default: 0
+                  message:
+                    type: string
+                    example: Url of this webhook endpoint is invalid
+      deprecated: false
+      x-mint:
+        href: /reference/add-a-webhook-endpoint
+      tags:
+        - Webhooks
+      security:
+        - ApiKeyAuth: []
+  /v2/avatars:
+    get:
+      summary: List All Avatars (V2)
+      description: >-
+        You can get your Avatars and Talking Photos(Photo Avatars) with this
+        endpoint.
+      operationId: list-avatars-v2
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/list-avatars-v2
+      tags:
+        - Avatars
+      security:
+        - ApiKeyAuth: []
+  /v1/video.delete:
+    delete:
+      summary: Delete a Video
+      description: ''
+      operationId: delete-a-video
+      parameters:
+        - name: video_id
+          in: query
+          description: id of the video you want to delete
+          schema:
+            type: string
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{"code": 100, "data": null, "msg": null}'
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 100
+                    default: 0
+                  data: {}
+                  msg: {}
+        '404':
+          description: '404'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{"code":40104,"message":"Video not found"}'
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 40104
+                    default: 0
+                  message:
+                    type: string
+                    example: Video not found
+      deprecated: false
+      x-mint:
+        href: /reference/delete-a-video
+      tags:
+        - Videos
+      security:
+        - ApiKeyAuth: []
+  /v2/video/generate:
+    post:
+      summary: Create Avatar Video (V2)
+      description: This API now generates videos with our New AI Studio backend.
+      operationId: create-an-avatar-video-v2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - dimension
+                - video_inputs
+              properties:
+                caption:
+                  type: boolean
+                  description: Whether to add a caption to the video.
+                  default: false
+                title:
+                  type: string
+                  description: Title of this video
+                callback_id:
+                  type: string
+                  description: A custom ID for callback purposes.
+                dimension:
+                  type: object
+                  properties:
+                    width:
+                      type: integer
+                      default: 1280
+                      format: int32
+                    height:
+                      type: integer
+                      default: 720
+                      format: int32
+                video_inputs:
+                  type: array
+                  items:
+                    properties:
+                      character:
+                        type: object
+                        description: Could be an `avatar` or `talking photo`.
+                        properties:
+                          type:
+                            type: string
+                            description: >-
+                              Could be either `avatar` or `talking_photo`(for
+                              photo avatars).
+                            default: avatar
+                            enum:
+                              - avatar
+                              - talking_photo
+                          avatar_id:
+                            type: string
+                            description: Provide either `avatar_id` or `talking_photo_id`.
+                          talking_photo_id:
+                            type: string
+                            description: Provide either `avatar_id` or `talking_photo_id`.
+                          scale:
+                            type: number
+                            description: >-
+                              _applies to both `avatar` and `talking_photo`
+                              type._
+                            default: 1
+                            format: float
+                          avatar_style:
+                            type: string
+                            description: _applies to this `avatar` type._
+                            default: normal
+                            enum:
+                              - circle
+                              - closeUp
+                              - normal
+                          offset:
+                            type: object
+                            description: >-
+                              _applies to both `avatar` and `talking_photo`
+                              type._
+                            properties:
+                              x:
+                                type: number
+                                format: float
+                              'y':
+                                type: number
+                                format: float
+                          matting:
+                            type: string
+                            description: >-
+                              _applies to both `avatar` and `talking_photo`
+                              type._
+                          circle_background_color:
+                            type: string
+                            description: >-
+                              _applies to both `avatar` and `talking_photo`
+                              type._
+                          talking_photo_style:
+                            type: string
+                            description: _applies to this `talking_photo` type._
+                          talking_style:
+                            type: string
+                            description: _applies to this `talking_photo` type._
+                            enum:
+                              - stable
+                              - expressive
+                          expression:
+                            type: string
+                            description: _applies to this `talking_photo` type._
+                            enum:
+                              - default
+                              - happy
+                          super_resolution:
+                            type: string
+                            description: _applies to this `talking_photo` type._
+                      voice:
+                        type: object
+                        description: >-
+                          could be TextVoiceSettings or AudioVoiceSettings or
+                          SilenceVoiceSettings
+                        properties:
+                          type:
+                            type: string
+                            description: must be text
+                          voice_id:
+                            type: string
+                            description: voice id
+                          input_text:
+                            type: string
+                            description: script to drive the voice
+                          speed:
+                            type: number
+                            description: >-
+                              Voice speed, value between 0.5 and 1.5. Default is
+                              1.
+                            format: float
+                          pitch:
+                            type: integer
+                            description: >-
+                              Voice pitch, value between -50 and 50. Default is
+                              0.
+                            format: int32
+                          emotion:
+                            type: string
+                            description: Voice emotion, if voice support emotion.
+                            enum:
+                              - Excited
+                              - Friendly
+                              - Serious
+                              - Soothing
+                              - Broadcaster
+                          locale:
+                            type: string
+                            description: >-
+                              Allows to specify voice accents/locales for
+                              multilingual voices. (e.g., en-US, en-IN, pt-PT,
+                              pt-BR )
+                      background:
+                        type: object
+                        description: >-
+                          could be ColorBackground, ImageBackground or
+                          VideoBackground
+                        properties:
+                          type:
+                            type: string
+                            description: could be `color`, `image`, `video`
+                            enum:
+                              - color
+                              - image
+                              - video
+                          value:
+                            type: string
+                            description: _applies to `color` type._
+                          '':
+                            type: string
+                    type: object
+                folder_id:
+                  type: string
+                  description: Allows them to specify the video output folder destination.
+                callback_url:
+                  type: string
+                  description: A custom curl for callback
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/create-an-avatar-video-v2
+      tags:
+        - Videos
+      security:
+        - ApiKeyAuth: []
+  /v1/webhook/endpoint.update:
+    patch:
+      summary: Update a Webhook Endpoint
+      description: update an existing webhook endpoint
+      operationId: update-a-webhook-endpoint
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endpoint_id:
+                  type: string
+                  description: the endpoint's id you want to update
+                url:
+                  type: string
+                  description: the new post url you want to set for the endpoint
+                events:
+                  type: array
+                  description: the new events array you want to set for your endpoint
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: >-
+                    {"code": 100, "data": {"endpoint_id": "123456", "url":
+                    "https://helloworld.com", "secret": "whsec_123456",
+                    "status": "enabled", "events": null, "username": "123456",
+                    "created_at": "2023-04-03T05:40:47"}, "msg": null}
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 100
+                    default: 0
+                  data:
+                    type: object
+                    properties:
+                      endpoint_id:
+                        type: string
+                        example: '123456'
+                      url:
+                        type: string
+                        example: https://helloworld.com
+                      secret:
+                        type: string
+                        example: whsec_123456
+                      status:
+                        type: string
+                        example: enabled
+                      events: {}
+                      username:
+                        type: string
+                        example: '123456'
+                      created_at:
+                        type: string
+                        example: '2023-04-03T05:40:47'
+                  msg: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: >-
+                    {"code":400542,"message":"Url of this webhook endpoint is
+                    invalid"}
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400542
+                    default: 0
+                  message:
+                    type: string
+                    example: Url of this webhook endpoint is invalid
+        '404':
+          description: '404'
+          content:
+            text/plain:
+              examples:
+                Result:
+                  value: '{"code":400131,"message":"Webhook endpoint not found"}'
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400131
+                    default: 0
+                  message:
+                    type: string
+                    example: Webhook endpoint not found
+      deprecated: false
+      x-mint:
+        href: /reference/update-a-webhook-endpoint
+      tags:
+        - Webhooks
+      security:
+        - ApiKeyAuth: []
+  /v1/webhook/endpoint.delete:
+    delete:
+      summary: Delete a Webhook Endpoint
+      description: delete an existing webhook endpoint
+      operationId: delete-a-webhook-endpoint
+      parameters:
+        - name: endpoint_id
+          in: query
+          description: the endpoint's id you want to delete
+          schema:
+            type: string
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{"code": 100, "data": null, "msg": null}'
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 100
+                    default: 0
+                  data: {}
+                  msg: {}
+        '404':
+          description: '404'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{"code":400131,"message":"Webhook endpoint not found"}'
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 400131
+                    default: 0
+                  message:
+                    type: string
+                    example: Webhook endpoint not found
+      deprecated: false
+      x-mint:
+        href: /reference/delete-a-webhook-endpoint
+      tags:
+        - Webhooks
+      security:
+        - ApiKeyAuth: []
+  /v2/template/{template_id}/generate:
+    post:
+      summary: Generate Video from Template
+      description: This API now supports New AI Studio!
+      operationId: generate-from-template-v2
+      parameters:
+        - name: template_id
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                caption:
+                  type: boolean
+                  default: false
+                callback_id:
+                  type: string
+                  default: <callback_id>
+                title:
+                  type: string
+                  default: Untitled Video
+                variables:
+                  type: object
+                  description: variables
+                  properties: {}
+                dimension:
+                  type: object
+                  description: >-
+                    (Optional)The dimension of the output video, you can use
+                    this to set the output video to be a different one from
+                    template, though the aspect ratio should be the same
+                  properties:
+                    width:
+                      type: integer
+                      default: 1280
+                      format: int32
+                    height:
+                      type: integer
+                      default: 720
+                      format: int32
+                include_gif:
+                  type: boolean
+                  description: include a GIF preview download URL in the webhook response
+                  default: false
+                enable_sharing:
+                  type: boolean
+                  description: make the sharing page of this video public upon creation
+                  default: false
+                folder_id:
+                  type: string
+                  description: enable users to specify video folder destination
+                brand_voice_id:
+                  type: string
+                  description: Brand Voice ID
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/generate-from-template-v2
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+  /v2/template/{template_id}:
+    get:
+      summary: Retrieve Template Details
+      description: This API now supports New AI Studio!
+      operationId: get-template-v2
+      parameters:
+        - name: template_id
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/get-template-v2
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+  /v2/voices:
+    get:
+      summary: List All Voices (V2)
+      description: ''
+      operationId: list-voices-v2
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: |-
+                    {
+                      "error": null,
+                      "data": {
+                        "voices": [
+                          {
+                            "voice_id": "0f059f9e54284391b48300f916cc6a01",
+                            "language": "French",
+                            "gender": "Female",
+                            "name": "Celeste - Professional",
+                            "preview_audio": "https://static.movio.la/voice_preview/ebde256ffc2d4e14a0542bf4bd8719fa.wav",
+                            "support_pause": true
+                          },
+                          {
+                            "voice_id": "1fe966a9dfa14b16ab4d146fabe868b5",
+                            "language": "English",
+                            "gender": "Female",
+                            "name": "Ana - Cheerful",
+                            "preview_audio": "https://static.movio.la/voice_preview/T4MYTkhp7F5SA9HRXHzL9A.wav",
+                            "support_pause": true
+                          },
+                          {
+                            "voice_id": "001cc6d54eae4ca2b5fb16ca8e8eb9bb",
+                            "language": "Spanish",
+                            "gender": "Male",
+                            "name": "Elias - Natural",
+                            "preview_audio": "https://static.movio.la/voice_preview/JmCb3rgMZnCjCAA9aacnGj.wav",
+                            "support_pause": false
+                          },
+                        ]
+                      },
+                    }
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/list-voices-v2
+      tags:
+        - Voices
+      security:
+        - ApiKeyAuth: []
+  /v2/video_translate/target_languages:
+    get:
+      summary: List Supported Languages
+      description: ''
+      operationId: list-supported-languages
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/list-supported-languages
+      tags:
+        - Video Translation
+      security:
+        - ApiKeyAuth: []
+  /v2/video_translate/{video_translate_id}:
+    get:
+      summary: Check Translation Status
+      description: ''
+      operationId: video-translate-status
+      parameters:
+        - name: video_translate_id
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/video-translate-status
+      tags:
+        - Video Translation
+      security:
+        - ApiKeyAuth: []
+  /v1/streaming.task:
+    post:
+      summary: Send Task
+      description: >-
+        This endpoint is used to send a text to an Interactive Avatar, prompting
+        it to speak the provided text.
+      operationId: send-task
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                RAW_BODY:
+                  type: string
+                  default: '{"session_id": "<SESSION_ID>","text": "<TEXT>"}'
+                  format: json
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/send-task
+      tags:
+        - Streaming
+      security:
+        - ApiKeyAuth: []
+  /v1/streaming.stop:
+    post:
+      summary: Close Session
+      description: This endpoint is used to terminate an active streaming session.
+      operationId: close-session
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+                  description: The ID of the session to be stopped.
+                  default: session_id
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/close-session
+      tags:
+        - Streaming
+      security:
+        - ApiKeyAuth: []
+  /v1/streaming.start:
+    post:
+      summary: Start Session
+      description: >-
+        This endpoint is used to start the connection for an existing streaming
+        session.
+      operationId: start-session
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+                  default: '123456'
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/start-session
+      tags:
+        - Streaming
+      security:
+        - ApiKeyAuth: []
+  /v2/user/remaining_quota:
+    get:
+      summary: Get Remaining Quota
+      description: ''
+      operationId: get-remaining-quota-v2
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{"error": null, "data": {"remaining_quota": 60}}'
+              schema:
+                type: object
+                properties:
+                  error: {}
+                  data:
+                    type: object
+                    properties:
+                      remaining_quota:
+                        type: integer
+                        example: 60
+                        default: 0
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/get-remaining-quota-v2
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+  /v1/streaming.list:
+    get:
+      summary: List Sessions
+      description: >-
+        This endpoint is used to retrieve a list of currently active streaming
+        sessions.
+      operationId: list-sessions
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/list-sessions
+      tags:
+        - Streaming
+      security:
+        - ApiKeyAuth: []
+  /v1/streaming.new:
+    post:
+      summary: New Session
+      description: This endpoint is used to initiate a new streaming session.
+      operationId: new-session
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quality:
+                  type: string
+                  default: medium
+                avatar_id:
+                  type: string
+                  description: >-
+                    ID of the Interactive Avatar you would like to use with the
+                    Streaming API
+                voice_name:
+                  type: string
+                  description: voice to use
+                voice:
+                  type: object
+                  properties:
+                    voice_id:
+                      type: string
+                    rate:
+                      type: number
+                      default: 1
+                      format: float
+                    emotion:
+                      type: string
+                knowledge_base:
+                  type: string
+                  description: Knowledge Base prompt used for chat task type.
+                video_encoding:
+                  type: string
+                  default: VP8
+                disable_idle_timeout:
+                  type: boolean
+                  description: >-
+                    By default session has a 2 minute idle timeout, setting to
+                    true disables it
+                  default: false
+                version:
+                  type: string
+                  default: v2
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/new-session
+      tags:
+        - Streaming
+      security:
+        - ApiKeyAuth: []
+  /v1/streaming.create_token:
+    post:
+      summary: Create Session Token
+      description: >-
+        This endpoint is used to generate a new access token for a streaming
+        session.
+      operationId: create-session-token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                RAW_BODY:
+                  type: string
+                  default: '{}'
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/create-session-token
+      tags:
+        - Streaming
+      security:
+        - ApiKeyAuth: []
+  /v1/video.list:
+    get:
+      summary: Retrieve Video List
+      description: This endpoint retrieves a list of videos associated with the user.
+      operationId: video-list
+      parameters:
+        - name: limit
+          in: query
+          description: >-
+            Enter a range from 0-100 for the number of videos you wish to
+            retrieve in one response. If more than 100 videos exist, you can
+            retrieve the remaining videos using the pagination token returned in
+            the response.
+          schema:
+            type: integer
+            format: int32
+            default: null
+        - name: folder_id
+          in: query
+          schema:
+            type: string
+        - name: title
+          in: query
+          schema:
+            type: string
+        - name: token
+          in: query
+          description: pagination token for next page
+          schema:
+            type: string
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/video-list
+      tags:
+        - Videos
+      security:
+        - ApiKeyAuth: []
+  /v1/user/me:
+    get:
+      summary: Get Current User Information
+      description: ''
+      operationId: get-current-user-information
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/get-current-user-information
+      tags:
+        - Account
+      security:
+        - ApiKeyAuth: []
+  /v1/webhook/webhook.list:
+    get:
+      summary: List Available Webhook Events
+      description: list all supported webhook events
+      operationId: list-available-webhook-events
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: >-
+                    {"code": 100, "data": ["avatar_video.success",
+                    "avatar_video.fail"], "msg": null}%
+      deprecated: false
+      x-mint:
+        href: /reference/list-available-webhook-events
+      tags:
+        - Webhooks
+      security:
+        - ApiKeyAuth: []
+  /v1/brand_voice/list:
+    get:
+      summary: List Brand Voices
+      description: This endpoint is used to retrieve a list of brand voices your created
+      operationId: list-brand-voices
+      parameters:
+        - name: limit
+          in: query
+          description: Limit of brand voices to return
+          schema:
+            type: integer
+            format: int32
+            default: 100
+        - name: token
+          in: query
+          description: Pagination token
+          schema:
+            type: string
+        - name: name_only
+          in: query
+          description: Return the name of the brand voices
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/list-brand-voices
+      tags:
+        - Voices
+      security:
+        - ApiKeyAuth: []
+  /v1/video.webm:
+    post:
+      summary: Create a WebM Video
+      description: >-
+        Generates a webm video with transparent background and an avatar
+        speaking the input text. You can customize the avatar's pose, style, and
+        voice, as well as the dimensions of the video.
+      operationId: create-a-webm-video
+      parameters:
+        - name: x-api-key
+          in: header
+          description: You api key
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                avatar_pose_id:
+                  type: string
+                  description: >-
+                    The ID of the avatar's pose. You can specify this field from
+                    the response of avatar.list API
+                  default: Vanessa-invest-20220722
+                avatar_style:
+                  type: string
+                  description: >-
+                    The style of the avatar. Can be "normal" or other styles
+                    supported by the API. 'circle', 'closeUp', 'normal',
+                    'voiceOnly'.
+                  default: normal
+                  enum:
+                    - normal
+                    - closeUp
+                input_text:
+                  type: string
+                  description: The text that the avatar will speak in the video.
+                  default: This is a WebM video generated by HeyGen API
+                voice_id:
+                  type: string
+                  description: The ID of the voice that the avatar will use.
+                  default: 1bd001e7e50f421d891986aad5158bc8
+                input_audio:
+                  type: string
+                  description: >-
+                    input audio url. Specify either input_text/voice_id or
+                    input_audio.
+                dimension:
+                  type: object
+                  description: >-
+                    The dimensions of the output video will be scaled by the
+                    height of the original avatar size.
+                  properties:
+                    width:
+                      type: integer
+                      default: 1280
+                      format: int32
+                    height:
+                      type: integer
+                      default: 720
+                      format: int32
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: >-
+                    {"code": 100, "data": {"video_id": "xxx"}, "msg": null,
+                    "message": null}%
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/create-a-webm-video
+      tags:
+        - Videos
+      security:
+        - ApiKeyAuth: []
+  /v2/templates:
+    get:
+      summary: List Templates
+      description: This API now supports New AI Studio!
+      operationId: list-templates-v2
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/list-templates-v2
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+  /v2/video_translate:
+    post:
+      summary: Translate Video
+      description: ''
+      operationId: video-translate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                video_url:
+                  type: string
+                title:
+                  type: string
+                output_language:
+                  type: string
+                translate_audio_only:
+                  type: boolean
+                speaker_num:
+                  type: integer
+                  format: int32
+                callback_id:
+                  type: string
+                enable_dynamic_duration:
+                  type: string
+                brand_voice_id:
+                  type: string
+                callback_url:
+                  type: string
+                  description: Optional callback_url
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/video-translate
+      tags:
+        - Video Translation
+      security:
+        - ApiKeyAuth: []
+  /v1/streaming.interrupt:
+    post:
+      summary: Interrupt Task
+      description: >-
+        This endpoint is used to interrupt the speaking of an Interactive
+        Avatar.
+      operationId: interrupt-task
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                session_id:
+                  type: string
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/interrupt-task
+      tags:
+        - Streaming
+      security:
+        - ApiKeyAuth: []
+  /v1/streaming/avatar.list:
+    get:
+      summary: List Streaming Avatars
+      description: >-
+        This API endpoint allows you to retrieve a list of public and custom
+        interactive avatars.
+      operationId: streaming-avatar-list
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/streaming-avatar-list
+      tags:
+        - Streaming
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/photo/generate:
+    post:
+      summary: Generate photo avatar photos
+      description: >-
+        This endpoint will generate photos that can be used to create photo
+        avatars, returns a generation id, which can be used in the check
+        generation status endpoint to get status and final image/image keys
+      operationId: generate-photo-avatar-photos
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                age:
+                  type: string
+                  enum:
+                    - Young Adult
+                    - Early Middle Age
+                    - Late Middle Age
+                    - Senior
+                    - Unspecified
+                gender:
+                  type: string
+                  enum:
+                    - Woman
+                    - Man
+                    - Unspecified
+                ethnicity:
+                  type: string
+                  enum:
+                    - White
+                    - Black
+                    - Asian American
+                    - East Asian
+                    - South East Asian
+                    - South Asian
+                    - Middle Eastern
+                    - Pacific
+                    - Hispanic
+                    - Unspecified
+                orientation:
+                  type: string
+                  enum:
+                    - square
+                    - horizontal
+                    - vertical
+                pose:
+                  type: string
+                  enum:
+                    - half_body
+                    - close_up
+                    - full_body
+                style:
+                  type: string
+                  enum:
+                    - Realistic
+                    - Pixar
+                    - Cinematic
+                    - Vintage
+                    - Noir
+                    - Cyberpunk
+                    - Unspecified
+                appearance:
+                  type: string
+                  description: >-
+                    Description/Prompt of the generated avatar photo, maximum
+                    1000 characters
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: |-
+                    {
+                      "error": null,
+                      "data": {
+                        "generation_id": "51be01eda38e4c2b9836f06957f66b7d"
+                      }
+                    }
+              schema:
+                type: object
+                properties:
+                  error: {}
+                  data:
+                    type: object
+                    properties:
+                      generation_id:
+                        type: string
+                        example: 51be01eda38e4c2b9836f06957f66b7d
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/generate-photo-avatar-photos
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/look/generate:
+    post:
+      summary: Generate photo avatar looks
+      description: >-
+        This endpoint can be used to generate additional looks for a trained
+        photo avatar group. The photo avatar group must be trained to use this
+        endpoint.
+      operationId: generate-photo-avatar-looks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group_id:
+                  type: string
+                prompt:
+                  type: string
+                  description: Prompt to generate different looks
+                orientation:
+                  type: string
+                  enum:
+                    - square
+                    - horizontal
+                    - vertical
+                pose:
+                  type: string
+                  enum:
+                    - half_body
+                    - close_up
+                    - full_body
+                style:
+                  type: string
+                  enum:
+                    - Realistic
+                    - Pixar
+                    - Cinematic
+                    - Vintage
+                    - Noir
+                    - Cyberpunk
+                    - Unspecified
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/generate-photo-avatar-looks
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/generation/{generation_id}:
+    get:
+      summary: Check photo/look generation status
+      description: Check photo/look generation status
+      operationId: check-photolook-generation-status
+      parameters:
+        - name: generation_id
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: |-
+                    {
+                      "error": null,
+                      "data": {
+                        "id": "51be01eda38e4c2b9836f06957f66b7d",
+                        "status": "success",
+                        "msg": null,
+                        "image_url_list": [
+                          "https://resource2.heygen.ai/image/d9e6bbbba83a400885fe9df1abe5f131/original",
+                          "https://resource2.heygen.ai/image/d0130e2c57024e208f5aab3bdfd5fefb/original",
+                          "https://resource2.heygen.ai/image/d982e90bb20f410786914732eac634b7/original",
+                          "https://resource2.heygen.ai/image/dfef1b03e4b2439c85ada1458df37fc2/original"
+                        ],
+                        "image_key_list": [
+                          "image/d9e6bbbba83a400885fe9df1abe5f131/original",
+                          "image/d0130e2c57024e208f5aab3bdfd5fefb/original",
+                          "image/d982e90bb20f410786914732eac634b7/original",
+                          "image/dfef1b03e4b2439c85ada1458df37fc2/original"
+                        ]
+                      }
+                    }
+              schema:
+                type: object
+                properties:
+                  error: {}
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: 51be01eda38e4c2b9836f06957f66b7d
+                      status:
+                        type: string
+                        example: success
+                      msg: {}
+                      image_url_list:
+                        type: array
+                        items:
+                          type: string
+                          example: >-
+                            https://resource2.heygen.ai/image/d9e6bbbba83a400885fe9df1abe5f131/original
+                      image_key_list:
+                        type: array
+                        items:
+                          type: string
+                          example: image/d9e6bbbba83a400885fe9df1abe5f131/original
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/check-photolook-generation-status
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/avatar_group/create:
+    post:
+      summary: Create photo avatar group
+      description: >-
+        This api can be used to create a photo avatar group
+
+        For generated photo avatar, pass the generation_id and the image_key
+
+        For user uploaded avatar, first upload the photo using the upload assets
+        api. Then use the key as image_key
+
+        This api only allows using one photo to establish the identity, you can
+        add more photos using the add looks api
+      operationId: create-photo-avatar-group
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                image_key:
+                  type: string
+                generation_id:
+                  type: string
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/create-photo-avatar-group
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/avatar_group/add:
+    post:
+      summary: Add looks to photo avatar group
+      description: Add other looks to existing photo avatar group
+      operationId: add-looks-to-photo-avatar-group
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group_id:
+                  type: string
+                  description: avatar group id to add looks into
+                image_keys:
+                  type: array
+                  description: >-
+                    A list of images you want to add to the avatar group,
+                    maximum 4 at a time
+                  items:
+                    type: string
+                name:
+                  type: string
+                  description: Name of the looks
+                generation_id:
+                  type: string
+                  description: >-
+                    Generation id what is used to generate the image_keys, it
+                    must be passed in if the image is generated, if it's an
+                    upload image, then this is optional
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/add-looks-to-photo-avatar-group
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/train:
+    post:
+      summary: Train photo avatar group
+      description: Train a photo avatar group.
+      operationId: train-photo-avatar-group
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                group_id:
+                  type: string
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/train-photo-avatar-group
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/train/status/{group_id}:
+    get:
+      summary: Get training job status
+      description: Get the training status of a avatar group
+      operationId: get-training-job-status
+      parameters:
+        - name: group_id
+          in: path
+          description: Avatar group id
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: |-
+                    {
+                      "error": null,
+                      "data": {
+                        "status": "pending",
+                        "error_msg": null,
+                        "created_at": 1733861263,
+                        "updated_at": null
+                      }
+                    }
+              schema:
+                type: object
+                properties:
+                  error: {}
+                  data:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: pending
+                      error_msg: {}
+                      created_at:
+                        type: integer
+                        example: 1733861263
+                        default: 0
+                      updated_at: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/get-training-job-status
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/add_motion:
+    post:
+      summary: Add motion
+      description: >-
+        Add motion to an existing photo avatar, returns the id of the new avatar
+        that has motion
+      operationId: add-motion
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  description: photo avatar id
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/add-motion
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/add_sound_effect:
+    post:
+      summary: Add sound effect
+      description: This api adds sound effect into a photo avatar
+      operationId: add-sound-effect
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  description: photo avatar id
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/add-sound-effect
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/{id}:
+    get:
+      summary: Photo avatar details
+      description: Get the details of a photo avatar
+      operationId: photo-avatar-details
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/photo-avatar-details
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/avatar_group.list:
+    get:
+      summary: List All Avatar Groups
+      description: List all avatar groups
+      operationId: list-all-avatar-groups
+      parameters:
+        - name: include_public
+          in: query
+          description: Whether to include all public avatar groups
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/list-all-avatar-groups
+      tags:
+        - Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/avatar_group/{group_id}/avatars:
+    get:
+      summary: List All Avatars in one avatar group
+      description: List all avatars in one avatar group
+      operationId: list-all-avatars-in-one-avatar-group
+      parameters:
+        - name: group_id
+          in: path
+          description: Avatar group id
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/list-all-avatars-in-one-avatar-group
+      tags:
+        - Avatars
+      security:
+        - ApiKeyAuth: []
+  /v2/photo_avatar/upscale:
+    post:
+      summary: Upscale an avatar
+      description: >-
+        Call this api to upscale an avatar, can only be called on an avatar that
+        has motion, returns the photo avatar id that is upscaled
+      operationId: upscale-an-avatar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  description: avatar id
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/upscale-an-avatar
+      tags:
+        - Photo Avatars
+      security:
+        - ApiKeyAuth: []
+  /v1/folders/create:
+    post:
+      summary: Create Folder
+      description: ''
+      operationId: create-folder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Name of the folder
+                  default: test
+                project_type:
+                  type: string
+                  description: >-
+                    Project type: `video_translate`, `instant_avatar`, `video`,
+                    `asset`, `brand_kit`, `mixed`.
+                parent_id:
+                  type: string
+                  description: Parent folder ID
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/create-folder
+      tags:
+        - Folders
+      security:
+        - ApiKeyAuth: []
+  /v1/folders:
+    get:
+      summary: List Folders
+      description: Retrieves a list of folders with optional filters.
+      operationId: list-folders
+      parameters:
+        - name: limit
+          in: query
+          description: Number of folders to return
+          schema:
+            type: integer
+            format: int32
+        - name: parent_id
+          in: query
+          description: Filter by parent folder ID
+          schema:
+            type: string
+        - name: name_filter
+          in: query
+          description: Search folders by name
+          schema:
+            type: string
+        - name: is_trash
+          in: query
+          description: Filter trashed folders
+          schema:
+            type: boolean
+        - name: token
+          in: query
+          description: A pagination token used for fetching the next set of folders
+          schema:
+            type: string
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/list-folders
+      tags:
+        - Folders
+      security:
+        - ApiKeyAuth: []
+  /v1/folders/{folder_id}:
+    post:
+      summary: Update Folder (Rename Only)
+      description: Updates the name of an existing folder.
+      operationId: update-folder
+      parameters:
+        - name: folder_id
+          in: path
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: New folder name
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/update-folder
+      tags:
+        - Folders
+      security:
+        - ApiKeyAuth: []
+  /v1/folders/{folder_id}/trash:
+    post:
+      summary: Trash Folder
+      description: Moves a folder to the trash.
+      operationId: trash-folder
+      parameters:
+        - name: folder_id
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/trash-folder
+      tags:
+        - Folders
+      security:
+        - ApiKeyAuth: []
+  /v1/folders/{folder_id}/restore:
+    post:
+      summary: Restore Folder
+      description: ''
+      operationId: restore-folder
+      parameters:
+        - name: folder_id
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/restore-folder
+      tags:
+        - Folders
+      security:
+        - ApiKeyAuth: []
+  /v1/brand_voice/{brand_voice_id}:
+    post:
+      summary: Update Brand Voice
+      description: >-
+        Updates an existing brand voice with specified changes. Only the fields
+        that need to be modified should be included in the request body.
+      operationId: update-brand-voice
+      parameters:
+        - name: brand_voice_id
+          in: path
+          description: The unique identifier of the brand voice to update
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: New name for the brand voice
+                blacklist:
+                  type: array
+                  description: >-
+                    List of words that should not be translated (e.g., brand
+                    names, person names)
+                  items:
+                    type: string
+                whitelist:
+                  type: array
+                  description: >-
+                    List of word pairs for forced translations | [["AI",
+                    "artificial intelligence"]]
+                  items:
+                    type: string
+                tones:
+                  type: array
+                  description: List of tone keywords to influence the voice
+                  items:
+                    type: string
+                vocabulary:
+                  type: array
+                  description: List of word pairs for pronunciation guidance
+                  items:
+                    type: string
+                tone:
+                  type: string
+                  description: Overall tone description
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+        '400':
+          description: '400'
+          content:
+            application/json:
+              examples:
+                Result:
+                  value: '{}'
+              schema:
+                type: object
+                properties: {}
+      deprecated: false
+      x-mint:
+        href: /reference/update-brand-voice
+      tags:
+        - Voices
+      security:
+        - ApiKeyAuth: []
+  /v1/asset:
+    post:
+      summary: Upload Asset
+      description: >-
+        Uploads a media file (image, video, or audio) to the authenticated
+        user's HeyGen account and returns the asset ID for future use.
+      operationId: upload-asset
+      tags:
+        - Assets
+      servers:
+        - url: https://upload.heygen.com
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: Content-Type
+          in: header
+          description: MIME type of the file to upload.
+          required: true
+          schema:
+            type: string
+            enum:
+              - image/png
+              - image/jpeg
+              - video/mp4
+              - video/webm
+              - audio/mpeg
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: Raw binary file contents.
+      responses:
+        '200':
+          description: Asset uploaded successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 100
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      file_type:
+                        type: string
+                      folder_id:
+                        type: string
+                      meta:
+                        type:
+                          - string
+                          - 'null'
+                      created_ts:
+                        type: integer
+                      url:
+                        type: string
+                      image_key:
+                        type:
+                          - string
+                          - 'null'
+                  msg:
+                    type:
+                      - string
+                      - 'null'
+                  message:
+                    type:
+                      - string
+                      - 'null'
+      x-mint:
+        href: /reference/upload-asset
+  /v2/video_avatar/{avatar_id}:
+    get:
+      summary: Get Digital Twin Generation Status
+      description: >-
+        Checks the current status of the Digital Twin generation process and
+        returns relevant details.
+      operationId: check-video-avatar-generation-status
+      tags:
+        - Digital Twins
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: avatar_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the Digital Twin avatar.
+      responses:
+        '200':
+          description: Status retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type:
+                      - string
+                      - 'null'
+                  data:
+                    type: object
+                    properties:
+                      avatar_id:
+                        type: string
+                      avatar_name:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                          - in_progress
+                          - completed
+                          - failed
+                      created_at:
+                        type: integer
+                      preview_image_url:
+                        type:
+                          - string
+                          - 'null'
+                      preview_video_url:
+                        type:
+                          - string
+                          - 'null'
+                      error_message:
+                        type:
+                          - string
+                          - 'null'
+                      default_voice_id:
+                        type:
+                          - string
+                          - 'null'
+        '404':
+          description: Specified avatar ID was not found.
+      x-mint:
+        href: /reference/check-video-avatar-generation-status
+    delete:
+      summary: Delete Digital Twin
+      description: Deletes a Digital Twin by its ID.
+      operationId: delete-video-avatar
+      tags:
+        - Digital Twins
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: avatar_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the Digital Twin avatar.
+      responses:
+        '200':
+          description: Digital Twin deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 100
+                  data:
+                    type:
+                      - string
+                      - 'null'
+                  msg:
+                    type:
+                      - string
+                      - 'null'
+                  message:
+                    type:
+                      - string
+                      - 'null'
+        '404':
+          description: Avatar ID not found.
+      x-mint:
+        href: /reference/delete-video-avatar
+  /v2/video_avatar:
+    post:
+      summary: Create Digital Twin
+      description: >-
+        Submits the URLs for the required training footage and consent statement
+        to create a Digital Twin.
+      operationId: submit-video-avatar-creation-request
+      tags:
+        - Digital Twins
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - training_footage_url
+                - video_consent_url
+                - avatar_name
+              properties:
+                training_footage_url:
+                  type: string
+                  description: >-
+                    Public direct URL to MP4/H.264 training footage, minimum
+                    720p and at least 30 seconds.
+                video_consent_url:
+                  type: string
+                  description: Public direct URL to the consent statement video.
+                avatar_name:
+                  type: string
+                avatar_group_id:
+                  type: string
+                callback_id:
+                  type: string
+                callback_url:
+                  type: string
+      responses:
+        '200':
+          description: Digital Twin creation initiated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type:
+                      - string
+                      - 'null'
+                  data:
+                    type: object
+                    properties:
+                      avatar_id:
+                        type: string
+                      avatar_group_id:
+                        type: string
+      x-mint:
+        href: /reference/submit-video-avatar-creation-request
+  /v3/template/{template_id}:
+    get:
+      summary: Retrieve Template Details (V3)
+      description: >-
+        Retrieves template details by ID, including variables available for
+        replacement and scene mappings for the New AI Studio.
+      operationId: get-template-v3
+      tags:
+        - Templates
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique identifier of the template.
+      responses:
+        '200':
+          description: Template details retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type:
+                      - string
+                      - 'null'
+                  data:
+                    type: object
+                    properties:
+                      version:
+                        type: string
+                      variables:
+                        type: object
+                      scenes:
+                        type:
+                          - array
+                          - 'null'
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            script:
+                              type: string
+                            variables:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  name:
+                                    type: string
+                                  type:
+                                    type: string
+      x-mint:
+        href: /reference/get-template-v3
+tags:
+  - name: Videos
+    description: Video generation, retrieval, and management endpoints.
+  - name: Webhooks
+    description: Webhook event and endpoint management.
+  - name: Avatars
+    description: Avatar and avatar group discovery endpoints.
+  - name: Templates
+    description: Template listing, retrieval, and template-based video generation.
+  - name: Voices
+    description: Voice listing and voice-management endpoints.
+  - name: Video Translation
+    description: Video translation and supported-language endpoints.
+  - name: Streaming
+    description: Streaming avatar session lifecycle and task endpoints.
+  - name: Account
+    description: Quota and account information endpoints.
+  - name: Photo Avatars
+    description: Photo avatar generation, training, and enhancement endpoints.
+  - name: Folders
+    description: Folder management endpoints.
+  - name: Assets
+    description: Asset upload endpoints.
+  - name: Digital Twins
+    description: Digital Twin creation, status, and deletion endpoints.

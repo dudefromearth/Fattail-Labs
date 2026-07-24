@@ -1,0 +1,30 @@
+FORMAT: Educational course lesson for FatTail Labs, landscape 16:9, target duration about 3 minutes.
+TONE: Honest, non-shaming, adult. No profit claims.
+AVATAR: The selected presenter teaches clearly to a tired intermediate trader.
+MODULE CONTEXT: Practice — tools you keep; capacity over dependency.
+
+LESSON TITLE: Map your emotional triggers
+OUTCOMES:
+- Name three personal triggers that pull you off process
+- Pair each with a pre-committed process response
+
+SCRIPT (concept and theme to convey — expand naturally, no silence padding):
+
+Process fails most often at the emotion–action gap: you know the rule, then FOMO, revenge, boredom, or relief after a win writes a new rule in the moment. Today we map triggers without self-hatred.
+
+A trigger is a state or event that reliably precedes process breaks for you. Examples: after two losses; when a friend posts a win; late session fatigue; news spike. Your list is personal — steal structure, not someone else's biography.
+
+For each trigger, write a response that is process, not pep talk: stand down for N minutes; checklist only; reduce size to zero new risk; end the session. The response must be executable when you are least wise.
+
+This is capacity: you are building a map you own. It is not a guru telling you how you feel. No income language. No "channel the emotion into a bigger trade."
+
+Close: three triggers, three responses, written down. Tomorrow you will pick one focus for a full week so the map gets practice, not shelfware.
+
+CRITICAL ON-SCREEN TEXT (display literally):
+- Emotional triggers
+- Trigger → Process response
+- Three pairs
+
+Use minimal, clean styled visuals. Blue, black, and white as main colors.
+Motion graphics for trigger → response pairs.
+Short intro, clear close. One topic only.

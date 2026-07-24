@@ -1,6 +1,6 @@
 # P2 Capabilities for P1
 
-**Status:** Draft (aligned with `agents/p2-foundation/CHARTER.md`; charter ratification pending)  
+**Status:** Active (aligned with shipped Phases A–G, 2026-07-23)  
 **Audience:** Coach, Juliet, platform specialists (Alpha/Charlie/Mike), content studio  
 **Relationship:** P1 is the load-bearing **product platform**
 ([`agents/p1-foundation/CHARTER.md`](../agents/p1-foundation/CHARTER.md)). P2 is the
@@ -77,16 +77,19 @@ P1 remains the **delivery** system (player, progress, entitlements). P2 is the *
 
 Dual destination is intentional: **one production system**, two publish surfaces (Labs via P1 APIs; YouTube via package + human/channel gate).
 
-### 3.2b Cast presenters (HeyGen)
+### 3.2b Cast presenters (HeyGen) — **shipped Phase G**
 
 | Capability | What P1 gets |
 |---|---|
 | **Stable cast** | Named HeyGen avatars as course/media **actors** — consistent face and voice across the library |
-| **Scene production** | `heygen-video` generates scenes from approved scripts |
-| **Finished lesson masters** | Where duration and quality allow, a single HeyGen job yields a review-ready lesson; otherwise multi-scene assembly |
-| **No runtime HeyGen** | Learners only see YouTube (or future CDN) via P1; HeyGen is a P2 production dependency |
+| **Registry + board assignment** | `docs/studio/cast/AVATAR-*.md`; `/admin/cast`; `content_items.cast_id` |
+| **Batch produce** | Board kick → multi-lesson `video_package` (dry-run or live Video Agent) |
+| **Budgets + Quebec** | Daily/monthly live job caps; Quebec tick advances pipeline without publishing |
+| **Refresh + YouTube map** | Poll sessions; human maps slug→YouTube id for Phase D placement |
+| **No runtime HeyGen** | Learners only see YouTube (or Bunny CDN) via P1; HeyGen is production-only |
 
-Cast registry: `docs/studio/cast/`. Model: `docs/P2-Cast-and-HeyGen-Production.md`.
+Specs: `Specs/FatTail-Labs-Cast-HeyGen-Spec-v1.0.md`, `v1.1.md`.  
+Model narrative: `docs/P2-Cast-and-HeyGen-Production.md`.
 
 ### 3.3 Quality gates that protect P1 members
 

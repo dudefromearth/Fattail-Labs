@@ -21,6 +21,10 @@ Specs: *Admin Dual Surface v1.0*, *In-Place Admin v1.0–v1.5*.
 
 - **Production / staging:** native login or WordPress SSO with an admin-capable account.  
 - **Bootstrap admins** (migration 014): `ernie@fattail.ai`, `conor@fattail.ai`, `coach@fattail.ai` — set a password with `server/create_user.py <email> --admin` if needed.  
+- **Forgot password (native Labs password):** `/forgot-password` → email link →
+  `/reset-password?token=…`. Requires `LABS_SMTP_*` and `LABS_WEB_ORIGIN`. Spec:
+  *Password-Reset v1.0*. Shell fallback: `create_user.py <email>` still overwrites
+  the hash without email.  
 - **Dev only:** `/api/auth/dev-login` mints an administrator session (`identity_id=0`). That session **cannot** receive the notification inbox (no identity row); use a real admin email for alerts.
 
 ### Admin app map
@@ -28,7 +32,8 @@ Specs: *Admin Dual Surface v1.0*, *In-Place Admin v1.0–v1.5*.
 | Path | Purpose |
 |---|---|
 | `/admin` | Cockpit overview |
-| `/admin/board` | **Kanban** production board (work-product cards) |
+| `/admin/board` | **Kanban** production board (cards, cast, HeyGen, Quebec tick) |
+| `/admin/cast` | **Studio cast** registry (`AVATAR-*.md` presenters) |
 | `/admin/media` | Public media library |
 | `/admin/ai` | AI agent workbench (Grok primary) |
 | `/admin/agents` | Agent principals & API keys |
@@ -166,6 +171,79 @@ Mint a key for **quebec** (or another principal) with scope **`board:operate`**
 (`/admin/agents`). That agent may move pipeline columns (scheduled → in production →
 awaiting approval) but **cannot** create cards, publish, or reject.
 
+### 2.5 Cast registry — `/admin/cast`
+
+Specs: *Cast-HeyGen v1.0 / v1.1*.
+
+| Cast member | Role | File |
+|---|---|---|
+| **DUDE-PRIMARY** | primary_coach | `docs/studio/cast/AVATAR-DUDE-PRIMARY.md` |
+| **DUDE-ALT** | specialist_host | `docs/studio/cast/AVATAR-DUDE-ALT.md` |
+
+Source of truth is the markdown files (Group ID + Voice ID), not the database. New cast
+members: create in HeyGen → write `AVATAR-NAME.md` → Coach approves → appears on refresh.
+
+### 2.6 Cast & HeyGen production (Phase G)
+
+1. Set **Cast** on the board card (create form or drawer).  
+2. Add a **script** artifact; for multi-lesson courses add a **lesson_plan** JSON with
+   video lessons (text/quiz lessons are skipped for render).  
+3. **Produce HeyGen (dry-run)** — `video_package` with one render per video lesson;
+   no API spend; does **not** use budget.  
+4. **Produce HeyGen (live)** — submits Video Agent job(s); needs `HEYGEN_API_KEY`,
+   wallet credits, and budget headroom.  
+5. **Refresh HeyGen status** — polls sessions; rewrites the latest package.  
+6. After YouTube (or CDN) upload, **Save YouTube map** (`slug=videoId` per line), then
+   Phase D place / board Approve.
+
+**Board header chip:** `HeyGen X/Y day · A/B mo · batch≤N` (live job budget).
+
+**Quebec tick** (board header):
+
+- **Quebec tick** — advance columns only (queued → scheduled → in production →
+  awaiting approval when package complete). **Never publishes.**  
+- **Tick + produce** — also fills the **next missing package stage** (fixtures or live AI).  
+- Human admins can always force; agents need `LABS_QUEBEC_AUTO=1`.
+
+**Automatic poller** (recommended so cards keep moving without clicking):
+
+```bash
+export LABS_QUEBEC_POLLER=1
+export LABS_QUEBEC_AUTO_PRODUCE=1
+export LABS_QUEBEC_AUTO_PRODUCE_MODE=fixtures   # use live when XAI_API_KEY set
+cd server && .venv/bin/python quebec_poller.py
+```
+
+Board chip **Poller ON/off** shows last cycle. Spec: *Quebec Poller v1.0*.
+
+| Env (optional) | Default | Role |
+|---|---|---|
+| `HEYGEN_API_KEY` | — | Live produce / refresh |
+| `LABS_HEYGEN_DRY_RUN` | off | Force dry-run when body omits `dry_run` |
+| `LABS_HEYGEN_MAX_BATCH` | 3 | Default max renders per produce |
+| `LABS_HEYGEN_DAILY_JOB_LIMIT` | 10 | Live jobs/day (0 = none) |
+| `LABS_HEYGEN_MONTHLY_JOB_LIMIT` | 100 | Live jobs/month |
+| `LABS_QUEBEC_AUTO` | off | Allow agent Quebec ticks |
+| `LABS_QUEBEC_POLLER` | off | Run `quebec_poller.py` process |
+| `LABS_QUEBEC_POLL_INTERVAL_SECONDS` | 60 | Poll interval (≥15) |
+| `LABS_QUEBEC_AUTO_PRODUCE` | off | Poller/tick fills missing stages |
+| `LABS_QUEBEC_AUTO_PRODUCE_MODE` | fixtures | fixtures \| live \| auto |
+| `LABS_QUEBEC_AUTO_HEYGEN` | off | Allow dry-run HeyGen for video_package |
+| `LABS_QUEBEC_MAX_ACTIONS` | 20 | Cap per cycle |
+
+HeyGen is **production intermediate**. Members never hit HeyGen at runtime.
+
+### 2.7 End-to-end factory checklist
+
+1. Create card (Draft) with intent + cast.  
+2. Move to Queued (or let specialists attach research/plan/script).  
+3. **Quebec tick** or drag through Scheduled → In production.  
+4. Attach required stages (course: research, plan, script, video_package, placement,
+   vision). Produce HeyGen for video_package.  
+5. Clear block flags; Submit / Quebec → Awaiting approval.  
+6. **Approve → Published** on the board → draft course placed.  
+7. Polish in-place on `/courses/{slug}`; publish the **course** for members.
+
 ---
 
 ## 3. Agent keys — `/admin/agents`
@@ -184,7 +262,7 @@ Agents authenticate **as themselves**, not with your browser cookie.
 |---|---|
 | `ai:run` | Run agent tasks / fixtures |
 | `ai:status` | AI status + agent catalog |
-| `board:operate` | Move pipeline board columns; artifacts/flags |
+| `board:operate` | Move pipeline board columns; artifacts/flags; Quebec tick when `LABS_QUEBEC_AUTO=1` |
 | `admin:content` | Reserved (future content mutations) |
 
 Humans only: mint/revoke keys, billing, membership overrides.
@@ -253,6 +331,32 @@ If SMTP is unset, in-app/browser still work (`email_status=skipped`).
 - Alumni: ≥28 days paid tenure at churn → automatic course-access year.  
 - `server/create_user.py` for manual users / passwords.
 
+### 6.1 WordPress SSO + WooCommerce
+
+Full wiring (JWT claims, webhook HMAC, plan mapping, cutover):  
+**`docs/WooCommerce-SSO-Integration-Guide.md`**.
+
+### 6.2 Marketing / acquisition (design)
+
+Acquisition architecture (funnel, Good/Better/Best, factory + SEO, **backend-agnostic
+commerce**, **ActiveCampaign** nurture):  
+**`docs/Marketing-Platform-Architecture.md`**.
+
+**Campaigns are first-class** (same Production Board rigor as courses):  
+**`Specs/FatTail-Labs-Campaign-Workflow-Spec-v1.0.md`**. Card `product_line=campaign` →
+package → approve → live lander + distribution kit for YouTube / X / Instagram.
+(Not implemented yet — design locked for build.)
+
+Quick facts:
+
+| Piece | Value |
+|---|---|
+| SSO callback | `GET /api/auth/sso/wordpress:fattail?token=…` (or `wordpress:0-dte`) |
+| Membership webhook | `POST /api/integrations/wordpress:fattail/membership` + `X-Labs-Signature` |
+| Secrets | `LABS_SSO_SECRET_FATTAIL` / `LABS_SSO_SECRET_0DTE` (shared with WP; ≥32 chars) |
+| Login buttons | `LABS_SSO_LOGIN_URL_FATTAIL` / `LABS_SSO_LOGIN_URL_0DTE` |
+| Entitlements | `provider_plan_map` rows (data — not env) |
+
 ---
 
 ## 7. Rhythm & rules
@@ -293,15 +397,18 @@ API uses a connection pool (`LABS_DB_POOL_SIZE`, default 10). Tune only under lo
 | Dual surface | FatTail-Labs-Admin-Dual-Surface-Spec-v1.0 |
 | Board / Kanban | FatTail-Labs-Content-Board-Spec-v1.0 |
 | Packages / placement | FatTail-Labs-Production-Package-Spec-v1.0 |
+| Cast / HeyGen (Phase G) | FatTail-Labs-Cast-HeyGen-Spec-v1.0, **v1.1** |
 | Agent identity | FatTail-Labs-Agent-Identity-Spec-v1.0 |
 | AI models | FatTail-Labs-Agent-Model-Interface-Spec-v1.0 |
 | Notifications | FatTail-Labs-Admin-Notifications-Spec-v1.0 |
 | Phase E hardening | FatTail-Labs-Phase-E-Hardening-Spec-v1.0 |
 | Identity / billing | Identity-Access, Native-Billing-Stripe |
+| Password reset | FatTail-Labs-Password-Reset-Spec-v1.0 |
 | Live | Live-Sessions-Spec-v1.x |
 | Lesson video (YouTube) | Lesson-Video-YouTube-Spec-v1.0 |
 | Lesson video (signed CDN) | Lesson-Video-Signed-CDN-Spec-v1.0 |
-| Phase E hardening | FatTail-Labs-Phase-E-Hardening-Spec-v1.0 |
+
+Product cast model: `docs/P2-Cast-and-HeyGen-Production.md` · files: `docs/studio/cast/`.
 
 ---
 

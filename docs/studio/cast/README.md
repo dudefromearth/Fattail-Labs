@@ -21,7 +21,8 @@ pipeline.
 
 | Cast member | File | Role | Notes |
 |---|---|---|---|
-| *(pending)* | — | — | Two avatars already exist on HeyGen; register here when named |
+| Dude (primary) | `AVATAR-DUDE-PRIMARY.md` | primary | registered on disk |
+| Dude (alt) | `AVATAR-DUDE-ALT.md` | alternate look | registered on disk |
 | | | | Additional cast members planned |
 
 ## Adding a cast member
@@ -31,3 +32,8 @@ pipeline.
    if the HeyGen skill session expects root).
 3. Update the table above with role (primary coach, specialist, short-form host, …).
 4. Coach approves before the avatar is used on member-facing course masters.
+
+## Batch production experiments
+
+Empirical concurrent limits (3 → 4 → 2):  
+[`docs/studio/HeyGen-Batch-Experiment.md`](../HeyGen-Batch-Experiment.md)

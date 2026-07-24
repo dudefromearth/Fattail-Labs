@@ -947,3 +947,215 @@ Spec: FatTail-Labs-Lesson-Video-Signed-CDN-Spec-v1.0. Provider `bunny` builds
 time-limited Stream embed URLs (sha256 token + expires). YouTube remains for free
 preview/trailers. Env: LABS_BUNNY_LIBRARY_ID, LABS_BUNNY_TOKEN_KEY, optional TTL.
 LessonPlayer supports bunny iframe + visibility heartbeat progress.
+
+## 2026-07-23 — Phase G1 cast registry + G2a HeyGen board kick
+
+Spec: FatTail-Labs-Cast-HeyGen-Spec-v1.0. Migration 020: `content_items.cast_id`.
+Cast source of truth remains `docs/studio/cast/AVATAR-*.md` (DUDE-PRIMARY,
+DUDE-ALT registered from existing HeyGen groups). Admin `/admin/cast` lists
+members; board create/patch assigns cast; drawer Produce HeyGen writes
+`video_package` (dry-run or live video-agent submit via CLI). Live requires
+HEYGEN_API_KEY + wallet credits; LABS_HEYGEN_DRY_RUN forces dry path. YouTube
+upload and multi-scene batch remain later G slices.
+
+## 2026-07-23 — Phase G complete (G2b–G5)
+
+Spec: FatTail-Labs-Cast-HeyGen-Spec-v1.1. Migration 021: `heygen_job_ledger`.
+**G2b** multi-lesson batch from lesson_plan/placement/script beats (default batch
+LABS_HEYGEN_MAX_BATCH=3). **G3** daily/monthly live job budgets
+(LABS_HEYGEN_DAILY_JOB_LIMIT / MONTHLY). **G4** Quebec tick advances
+queued→scheduled→in_production→awaiting_approval from artifacts; agents need
+LABS_QUEBEC_AUTO=1; humans force. **G5** refresh-heygen poll + youtube-map on
+package for Phase D. Board UI: budget chip, Quebec tick, render list, YT map.
+No auto YouTube upload; publish remains human.
+
+## 2026-07-23 — Docs parity for Phase G (A–G complete)
+
+Brought operator and architecture docs in line with shipped cast/HeyGen factory:
+Admin Guide (§2.5–2.7, cast map, env table, spec index), root README, Architecture
+01–04/06/README, ops verification tests, deploy.md HeyGen env, P2 capabilities +
+charter, cast registry README, Cast-HeyGen v1.0 cross-link to v1.1.
+
+## 2026-07-23 — Native forgot-password / password reset
+
+Spec: FatTail-Labs-Password-Reset-Spec-v1.0. Migration 022: `password_reset_tokens`
+(SHA-256 of raw token only). `POST /api/auth/forgot-password` (enumeration-safe;
+requires SMTP + LABS_WEB_ORIGIN) emails a one-time link; `POST /api/auth/reset-password`
+sets a new scrypt password. UI: `/forgot-password`, `/reset-password?token=`, link on
+login. Shell `create_user.py` remains operator fallback. TTL default 1h
+(`LABS_PASSWORD_RESET_TTL_SECONDS`).
+
+## 2026-07-23 — WooCommerce + WordPress SSO integration guide
+
+Operator runbook `docs/WooCommerce-SSO-Integration-Guide.md` documents dual-issuer
+SSO JWT claims, Labs callback URLs, HMAC membership webhooks, `provider_plan_map`,
+env secrets, verification curls, and WP plugin checklist. Linked from README,
+Admin Guide, deploy.md, and Architecture security.
+
+## 2026-07-23 — Labs SSO aligned with MarketSwarm-Canonical / fotw-sso
+
+SSO mint remains WP **fotw-sso** (documented in MSC
+`org/reference/softwares/flyonthewall_wordpress.md` and verified like
+`src/auth/sso.py`). Labs `providers.py` now accepts MSC claim shapes: `iss` fotw|fattail
+for `wordpress:fattail`, user id `sub|id|wp_id|wp_user_id`, entitlements
+`membership_plans|plans|subscription_tier`, name `name|display_name`, and query
+param `sso` as well as `token`. Login URLs use `/fotw-sso?redirect=` (MSC LoginPage
+pattern). Still no MSC code import — contract only.
+
+## 2026-07-23 — Marketing platform architecture (design draft)
+
+`docs/Marketing-Platform-Architecture.md`: lightest high-power acquisition system
+built on Labs public SEO/AEO, factory (board/cast/HeyGen/YT), thin attribution
+spine — not a second CMS or heavy Martech. Good/Better/Best; Sierra/Tango gates;
+flagship-first funnel.
+
+## 2026-07-23 — Marketing architecture rev 2: backend-agnostic + ActiveCampaign
+
+Coach: WooCommerce not required. Marketing rides Labs identity/memberships and
+**pluggable commerce** (Stripe native, optional Woo external_url, free signup,
+manual grants). **ActiveCampaign** first-class growth adapter (contacts/tags/events),
+independent of WP; Labs SMTP stays transactional. CTA resolver abstracts convert
+modes. Metrics keyed on membership activations by `source`, not shop vendor.
+
+## 2026-07-23 — Campaigns as first-class factory workflow
+
+Coach: campaigns are peers to courses. Spec:
+`Specs/FatTail-Labs-Campaign-Workflow-Spec-v1.0.md` — board `product_line=campaign`,
+required package stages (brief, lander, script, video, distribution, vision, growth
+hooks), human approve → place lander + `marketing_campaigns` row. Channels YouTube /
+X / Instagram in distribution_plan. Marketing architecture rev 3. Implementation
+not started; Good MVP = full board workflow + manual social publish.
+
+## 2026-07-23 — Quebec automatic poller + forward progress
+
+Coach: automatic poller ensuring board cards move forward. Spec:
+`FatTail-Labs-Quebec-Poller-Spec-v1.0`. Process `server/quebec_poller.py` when
+`LABS_QUEBEC_POLLER=1`; each cycle advances queued→scheduled→in_production and
+optionally produces next missing package stage (`LABS_QUEBEC_AUTO_PRODUCE`, mode
+fixtures|live|auto). Never publishes. Status in `quebec_poller_status` (migration
+023); board UI chip + Tick + produce. Manual tick still available.
+
+## 2026-07-23 — Workflow manager design (course submit must start run)
+
+Design draft `docs/Workflow-Manager-Architecture.md`: generic WFM (definitions,
+runs, steps, worker) with board as control surface. **draft→queued** for a course
+**must** start `course_create` run; worker executes research→plan→script→video→
+placement→vision→awaiting_approval. Human still Approve + member publish. Quebec
+poller becomes step executor. Campaigns reuse same manager later. Awaiting Coach
+decisions before build.
+
+## 2026-07-23 — Content types frozen (four) + Course skills first
+
+Coach ratified `docs/Content-Types-Taxonomy.md`:
+
+| product_line | Shape |
+|---|---|
+| `course` | Header + ≥1 modules + lessons |
+| `tutorial` | Header + exactly one lesson (own type) |
+| `youtube_long` | Header + primary video |
+| `campaign` | Funnel + landing page + mail list |
+
+Shorts/`other` not first-class factory types for v1. Skills are required for type
+components; **Course first** as the most complex pattern. Skill pack:
+`skills/course/` — research, lesson-plan, header, resources, lesson-script,
+lesson-video, placement, vision, package, and orchestrator `course-create`.
+Tutorial / YT Long / Campaign skill packs derive from Course later.
+
+## 2026-07-23 — Course shape refined: Header · Outline · KC · Resources
+
+Coach: a Course has **Header**, **outline with Modules**, **Lessons**, **Knowledge
+Check**, and **Resources**. Modules require **description**. Lessons require
+**video + markdown**. Skill pack v0.2: `course-knowledge-check` added; plan,
+placement, package, and `course-create` enforce the contract.
+
+## 2026-07-23 — Course Blueprint is first validated product (AI chat)
+
+Coach: Header + Outline is the **first product** the system creates that requires
+validation. Minimum bar: **descriptions** (course + each module). Primary UX:
+**AI chat** (not form-first). Human **Approve Blueprint** before scripts/video/KC
+detail. Skill: `skills/course/course-blueprint/`. Second gate remains full package
+approval. Two-gate `course-create` pipeline.
+
+## 2026-07-23 — Course Blueprint Chat API shipped
+
+Migration `024_course_blueprint`: `content_blueprints` + item `blueprint_status` /
+`blueprint_id`. Module `server/blueprint.py`. Board routes:
+
+- `GET/PUT /api/admin/board/items/{id}/blueprint`
+- `POST …/blueprint/chat` (November/Grok live or `use_fixtures`)
+- `POST …/blueprint/validate` (min bar: descriptions)
+- `POST …/blueprint/approve` (human; writes `lesson_plan` artifact)
+
+Tests: `server/tests/test_course_blueprint.py` (7).
+
+## 2026-07-23 — Course Blueprint board UI (drawer panel)
+
+`web/components/admin/CourseBlueprintPanel.tsx` on course cards in board drawer:
+Chat / Preview tabs, fixture toggle, Validate, Approve Blueprint. Card face shows
+`bp:` status chip. Drawer widens to `max-w-lg` for courses.
+
+## 2026-07-23 — Blueprint co-pilot doctrine (chat ≠ project input)
+
+Coach: long-running chat must not be the primary project input. **Approved
+structured Course Blueprint** is system of record for gate 1; chat is **co-pilot
++ provenance** only. Factory advances by skills/stages after Approve, not by
+continuing chat into video. Skills pack v0.4 + UI copy: Preview = product,
+Chat = co-pilot; default tab Preview.
+
+## 2026-07-23 — Blueprint streaming chat + full workspace
+
+Coach: streaming + live-default (Grok-like); drawer felt too small.
+- `POST …/blueprint/chat/stream` SSE (delta/done/error); xAI `stream=true`
+- UI live default (fixtures opt-in); stream bubbles
+- Full workspace `/admin/board/blueprint/{id}` — side-by-side chat + preview
+- Drawer keeps compact panel + **Open full workspace** link
+
+## 2026-07-23 — Outline workspace is chat-first (primary surface)
+
+Coach: chat should be the full-sized workspace for developing course outline,
+modules, and lessons. Board drawer is **launch pad only** (no embedded chat).
+Workspace layout: ~60% streaming chat, ~40% live outline product; near-viewport
+height; wider admin max width.
+
+## 2026-07-23 — HeyGen batch experiment protocol (3 → 4 → 2)
+
+Coach: discover practical concurrent limit and optimal use empirically — not
+assume whole-course dump. Protocol `docs/studio/HeyGen-Batch-Experiment.md`:
+Wave A batch 3, B batch 4, C batch 2; fixed prompt template + lesson briefs;
+JSONL log + results sheet. Default product remains max_batch=3 until data.
+
+## 2026-07-23 — HeyGen delivery-format experiment (outline / scripts / inline)
+
+Coach: try three payloads for the same Foundation module — (α) module outline
+only, (β) outline then separate video scripts, (γ) outline with inline scripts
+(slice per lesson). Protocol
+`docs/studio/HeyGen-Delivery-Format-Experiment.md` + fixtures under
+`docs/studio/experiments/fixtures/`. Concurrent batch held at 2 while comparing
+formats; log `delivery_format` on each job.
+
+## 2026-07-23 — HeyGen live Wave A results (batch 3, format β)
+
+Coach: three Foundation lessons via CLI (Dude Primary, separate script prompts).
+**Quality very good (5/5).** Cost **~$5.50/video**, duration **~2:55 avg**. Batch of
+3 concurrent completed cleanly. Provisional: keep max_batch=3; β (script packets)
+credible default; course cost scale ~$55/10 lessons video-only at this density.
+Logged in `docs/studio/experiments/`.
+
+## 2026-07-23 — Manual vs System two-course experiment started
+
+Coach: full course manually, then next course via system — learn cost/quality.
+Protocol `docs/studio/experiments/manual-vs-system-courses.md`.
+**Course A (manual):** Stop the Bleeding Foundations — 2 modules / 6 lessons;
+L1–3 done; L4 submitted; L5–6 scripts ready; Labs draft
+`/admin/courses/stop-the-bleeding-foundations` with dense video + rich notes.
+**Course B (system):** board item 291 + blueprint workspace
+`/admin/board/blueprint/291` — Capital Preservation Operators — Daily Discipline.
+
+## 2026-07-24 — Hub intro clips submitted to HeyGen (13 jobs)
+
+Coach plan course-hub-intro-v0.5: role-variant opens/closes + shared body.
+Submitted **13/13** Video Agent jobs (body 6–8 separate for Lab re-record), Dude
+Primary, landscape. Manifest:
+`docs/studio/experiments/hub-intro/MANIFEST.md`. Assemble into 5 hub videos
+(Anonymous/Campaign/Observer/Activator/Navigator) in editor with screen-capture
+B-roll; gates Hotel/Tango/Coach before publish.

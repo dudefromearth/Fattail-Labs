@@ -10,8 +10,9 @@
 - **Member product** — player, progress, live, resources, pathway, dashboard  
 - **Auth funnel** — login, signup, membership checkout UI  
 - **In-place admin** — production page becomes editor for administrators  
-- **Operator control plane** — `/admin/*` shell (no member header): board Kanban,
-  media, AI workbench, agent keys, notification bell  
+- **Operator control plane** — `/admin/*` shell (no member header): board Kanban
+  (cast, HeyGen, Quebec tick), studio cast registry, media, AI workbench, agent keys,
+  notification bell  
 
 The browser never talks to MySQL. All data flows through the Labs API.
 
@@ -136,7 +137,8 @@ Dev convenience: `/api/auth/dev-login` (API, env=dev only) sets administrator co
 | Route | Component | Role |
 |---|---|---|
 | `/admin` | Overview cards | Cockpit home |
-| `/admin/board` | `BoardKanban` | Drag cards across process columns; package checklist; approve/place |
+| `/admin/board` | `BoardKanban` | Drag cards; cast; HeyGen batch produce/refresh/YT map; budget chip; Quebec tick; package checklist; approve/place |
+| `/admin/cast` | `CastPanel` | Studio cast registry (`docs/studio/cast/AVATAR-*.md`) |
 | `/admin/ai` | `AgentWorkbench` | Live Grok/Claude tasks |
 | `/admin/agents` | `AgentsPanel` | Mint/revoke `ftl_ag_` keys |
 | `/admin/media` | `MediaLibrary` | Public uploads |

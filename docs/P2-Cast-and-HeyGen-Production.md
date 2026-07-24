@@ -1,6 +1,7 @@
 # P2 Cast & HeyGen Production
 
-**Status:** Draft — product intent recorded 2026-07-23  
+**Status:** Implemented — Phase G complete (G1–G5) 2026-07-23  
+(Specs: `Specs/FatTail-Labs-Cast-HeyGen-Spec-v1.0.md`, `v1.1.md`)  
 **Parent:** `agents/p2-foundation/CHARTER.md`, `docs/P2-Capabilities-for-P1.md`  
 **Producer agent:** **Papa** (`agents/bench/papa.md`)  
 **Skills (external / operator tooling):** `heygen-avatar`, `heygen-video` (and related HeyGen skills)
@@ -84,20 +85,34 @@ assembly → still the same gates and provenance.
 
 ## 4. Pipeline (cast-aware)
 
+**As-built on Labs (Phase G):**
+
+```text
+Admin:    create board card + assign cast_id (DUDE-PRIMARY | …)
+Specialists / AI workbench: research → lesson_plan → script artifacts
+   │
+   ▼
+Admin:    Produce HeyGen (dry-run | live batch from lesson_plan video lessons)
+          → video_package artifact + heygen_job_ledger (budget)
+Admin:    Refresh HeyGen status → session/video ids on package
+Human:    upload masters to YouTube (or CDN)
+Admin:    YouTube map (slug→id) → placement_proposal complete → Approve
+   │
+   ▼
+P1:       draft course placed → in-place polish → course publish
+```
+
+**Archetype narrative (skills path):**
+
 ```text
 November: lesson plan  (+ cast role per lesson / series)
 Romeo:    script       (plan-locked; cast name on package)
-   │
-   ▼
 Papa:     resolve AVATAR-<NAME> → group_id + voice_id
-          resolve look_id for orientation (16:9 lesson / 9:16 short)
-          heygen-video: scene(s) or full lesson prompt
-          package: YT metadata + Labs placement proposal
-   │
-   ▼
-Human:    watch / approve  →  YouTube  →  P1 lesson video_id (draft then publish)
+          heygen-video / board produce
+Human:    gate → YouTube → Labs placement
 ```
 
+Quebec tick advances board columns from artifacts; never publishes.  
 Upstream gates (Bravo, Hotel, lineage, Tango) are unchanged. **Cast does not bypass
 doctrine or educational design.**
 
@@ -149,14 +164,18 @@ for learners.
 
 ## 7. Open items (Coach)
 
-1. **Name and register** the two existing HeyGen avatars into `docs/studio/cast/`.  
-2. **Role map** — who is primary coach vs specialist vs short-form default.  
+1. ~~**Name and register** the two existing HeyGen avatars into `docs/studio/cast/`.~~  
+   Done: `DUDE-PRIMARY` (primary_coach), `DUDE-ALT` (specialist_host).  
+2. **Role map** — refine short-form default (portrait look) vs dual-look policy.  
 3. **Visual style default** for FatTail (HeyGen style_id and/or prompt STYLE block) —
    brand tokens should not drift lesson-to-lesson.  
 4. **Finished-lesson vs multi-scene policy** — duration thresholds and when assembly is
    required.  
 5. **YouTube channel ops** — upload account, unlisted vs public for course masters,
-   naming conventions.
+   naming conventions.  
+6. ~~**Wallet / budgets (G3)**~~ — job caps shipped (`LABS_HEYGEN_*_JOB_LIMIT`); top up
+   HeyGen wallet for live renders.  
+7. **Auto YouTube upload** — still human; youtube-map on package for placement.
 
 ---
 

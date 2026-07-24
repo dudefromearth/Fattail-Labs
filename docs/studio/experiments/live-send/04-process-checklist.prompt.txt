@@ -1,0 +1,30 @@
+FORMAT: Educational course lesson for FatTail Labs, landscape 16:9, target duration about 3 minutes.
+TONE: Calm, practical, checklist-friendly. No profit claims, no income promises.
+AVATAR: The selected presenter teaches clearly to a tired intermediate trader.
+MODULE CONTEXT: Practice — tools you keep; capacity over dependency.
+
+LESSON TITLE: Build your process checklist
+OUTCOMES:
+- Draft a personal process checklist with 5–9 items
+- Use it before the next discretionary decision
+
+SCRIPT (concept and theme to convey — expand naturally, no silence padding):
+
+A process checklist is not bureaucracy. It is how you keep your future self from improvising under stress. Today you build a short checklist you can actually use — not a novel.
+
+Good checklists are binary and observable. "Felt confident" is not a checklist item. "Max loss written before entry" is. "Invalidation named" is. "Stand-down criteria reviewed" is.
+
+We start from capital preservation: if an item does not reduce avoidable damage or increase adherence, cut it. Aim for five to nine lines. If you cannot run the list in under a minute, it will not survive a live session.
+
+Walk through building the list: pre-session state, risk defined, setup criteria, entry only if process green, post-trade note. Emphasize that a broken rule that made money is still a process miss — luck is not a curriculum.
+
+Close: write your first version now. Next lesson we map emotional triggers that make you skip the list. Process outcomes only. Capacity over dependency — this list is yours, not a signal service.
+
+CRITICAL ON-SCREEN TEXT (display literally):
+- Process checklist
+- Observable · Binary · Short
+- 5–9 items
+
+Use minimal, clean styled visuals. Blue, black, and white as main colors.
+Motion graphics for checklist lines appearing one by one.
+Short intro, clear close. One topic only.

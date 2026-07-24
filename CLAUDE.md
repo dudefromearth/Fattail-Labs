@@ -30,6 +30,7 @@ Deploy playbook: `infra/deploy.md`.
   identity. Session cookie: `ft_session`, HttpOnly, SameSite=lax, `.fattail.ai` in prod.
 - **Commerce:** WooCommerce on the WP sites is the ONLY entry point for selling/cancelling.
   Webhooks sync entitlements. The app never touches payments.
+  Integration guide: `docs/WooCommerce-SSO-Integration-Guide.md`.
 - **Admin:** custom in-app `/admin` (role: administrator). No WordPress admin involvement
   in course content.
 - **Hosts:** dev = localhost · staging = DudeTwo (`labs-stage.fattail.ai`) · production =
@@ -91,8 +92,10 @@ complete([{"role": "user", "content": "..."}], agent="bravo")  # Grok by default
 
 Spec: `Specs/FatTail-Labs-Agent-Model-Interface-Spec-v1.0.md`.
 
-Admin control plane: `/admin` (no member header) — **board (Kanban)**, media, AI workbench, agent keys,
-notification bell (in-app + browser; email via `LABS_SMTP_*`).
+Admin control plane: `/admin` (no member header) — **board (Kanban)**, **cast**, media,
+AI workbench, agent keys; notification bell (in-app + browser; email via `LABS_SMTP_*`).
+Phase G: cast registry, HeyGen produce/batch/budget, Quebec tick, refresh + YouTube map.
+Phases B–D: packages and placement. Operator guide: `docs/ADMIN-GUIDE.md`.
 In-place editing remains on production URLs. Agent API keys: `/admin/agents`
 (`Authorization: Bearer ftl_ag_…`).
 

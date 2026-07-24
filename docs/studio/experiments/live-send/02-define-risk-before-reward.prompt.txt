@@ -1,0 +1,29 @@
+FORMAT: Educational course lesson for FatTail Labs, landscape 16:9, target duration about 3 minutes.
+TONE: Calm, instructional, checklist-friendly. No profit claims, no income promises.
+AVATAR: The selected presenter teaches clearly to a tired intermediate trader.
+MODULE CONTEXT: Foundation — capital preservation and process before optimization.
+
+LESSON TITLE: Define risk before reward
+OUTCOMES:
+- Name max-loss framing and invalidation in plain language
+- List stand-down criteria
+
+SCRIPT (concept and theme to convey — not a verbatim transcript. Expand naturally, do not pad with silence):
+
+Today we define risk in plain language — for one structure or strategy, not for the entire market. Risk is not a vibe. It is the set of conditions under which you accept loss, and the conditions under which you refuse to continue.
+
+Three pieces: max-loss framing (what is the most you are willing to be wrong in this setup), invalidation (what observation means the idea is done), and stand-down criteria (what personal or market state means you do not take the next trade even if the setup "looks good").
+
+Misconceptions: risk is only position size; risk is only feeling scared; risk is something you feel after the loss. We flip that: risk is designed before entry.
+
+You will leave with a short checklist you can reuse: max loss defined, invalidation named, stand-down named, process note written. No income claims. Capacity over dependency: this checklist is yours to keep, not a signal feed to rent forever.
+
+CRITICAL ON-SCREEN TEXT (display literally):
+- Define risk first
+- Invalidation
+- Stand down
+
+Use minimal, clean styled visuals. Blue, black, and white as main colors.
+Use motion graphics for the three-part checklist.
+Include a short intro and a clear close.
+One topic only.

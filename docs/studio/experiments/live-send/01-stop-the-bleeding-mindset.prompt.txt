@@ -1,0 +1,31 @@
+FORMAT: Educational course lesson for FatTail Labs, landscape 16:9, target duration about 3 minutes.
+TONE: Calm, adult, process-first trading education. No profit claims, no income promises, no "make it back" language. Capacity over dependency.
+AVATAR: The selected presenter teaches clearly to a tired intermediate trader who has seen too much hype.
+MODULE CONTEXT: Foundation — capital preservation and process before optimization.
+
+LESSON TITLE: The stop-the-bleeding mindset
+OUTCOMES:
+- State why process comes before optimization
+- Write one personal stop-the-bleeding rule (observable, no profit target)
+
+SCRIPT (concept and theme to convey — not a verbatim transcript. Expand naturally, add plain examples, do not pad with silence):
+
+Capital preservation is the first step to trading success — and for many people, the only step they need for a long time. We are not here to sell a dream of easy money. We are here to stop the bleeding: the pattern of avoidable damage that comes from acting without a process.
+
+Bleeding versus thriving is a sequence, not a personality. You do not fix a leaking hull by polishing the sails. First you stop the water. In trading terms: define what "damage" means for you, and put a rule in front of it before you chase upside.
+
+Risk language comes before reward language. If you cannot say what would make you stand down, you are not ready to talk about opportunity. That is not fear — that is professional order of operations.
+
+One habit for this week: review adherence and drawdown behavior, not a highlight reel of wins. Ask: Did I follow the process I claimed? Where did I improvise?
+
+Close by writing one sentence: your personal stop-the-bleeding rule. Keep it observable. No profit targets in that sentence — process only.
+
+CRITICAL ON-SCREEN TEXT (display literally):
+- Stop the bleeding first
+- Process before optimization
+- Your one rule this week
+
+Use minimal, clean styled visuals. Blue, black, and white as main colors.
+Leverage motion graphics as B-rolls and A-roll overlays when teaching checklists or key phrases.
+Include a short intro and a clear close.
+One topic only.

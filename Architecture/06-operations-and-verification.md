@@ -52,6 +52,20 @@ export LABS_BUNNY_TOKEN_KEY=...
 export LABS_VIDEO_SIGNED_TTL_SECONDS=3600
 ```
 
+Optional HeyGen studio production (Phase G):
+
+```bash
+export HEYGEN_API_KEY=...              # live produce / refresh (heygen CLI)
+# export LABS_HEYGEN_DRY_RUN=1         # force dry-run packages
+# export LABS_HEYGEN_MAX_BATCH=3
+# export LABS_HEYGEN_DAILY_JOB_LIMIT=10
+# export LABS_HEYGEN_MONTHLY_JOB_LIMIT=100
+# export LABS_QUEBEC_AUTO=1            # agent board:operate may Quebec tick
+```
+
+Install HeyGen CLI for live/render ops: `https://developers.heygen.com/cli`  
+Cast files: `docs/studio/cast/AVATAR-*.md`.
+
 Optional admin email (FatTail Hostinger):
 
 ```bash
@@ -98,14 +112,16 @@ Doctrine: **evidence over assertion**. “It should work” is banned.
 | Agent/model unit | `test_ai_models.py`, `test_agent_tasks.py` (fakes) |
 | Admin AI API | `test_ai_admin_api.py` (+ live if `XAI_API_KEY`) |
 | Board / packages / place | `test_content_board.py`, `test_production_packages.py` |
+| Cast / HeyGen / Quebec | `test_cast_heygen.py`, `test_phase_g_rest.py` |
 | Agent identity / notify | `test_agent_identity.py`, `test_admin_notifications.py` |
 | Pool / SSO / member smoke | `test_db_pool.py`, `test_sso_providers.py`, `test_smoke_member_path.py` |
+| Bunny signed video | `test_video_signed.py` |
 | Browser smoke | `cd web && npm run test:e2e:smoke` (web+API; dev-login) |
 | Browser AI | `cd web && npm run test:e2e:ai` (Playwright; live needs key + servers) |
+| Manual | curl matrices, browser walk (Delta gates) |
 
 **WP SSO down:** members use native email/password. SSO buttons only if
 `LABS_SSO_LOGIN_URL_*` set. Labs-side JWT verify covered by `test_sso_providers.py`.
-| Manual | curl matrices, browser walk (Delta gates) |
 
 **Rule:** every commit touching `server/` must pass pytest first.
 
@@ -118,10 +134,12 @@ Doctrine: **evidence over assertion**. “It should work” is banned.
 | Liveness | `GET /api/health` (+ DB SELECT 1) |
 | Process | launchd on MiniTwo |
 | App logs | Process stdout/stderr (host-level) |
-| Agent provenance | Workbench response fields; not yet a durable audit table |
+| Agent provenance | `ai_invocations`, `actor_events`, board artifacts |
+| Approval packages | `content_approval_packages` frozen checklist |
+| HeyGen jobs | `heygen_job_ledger` + `video_package` artifacts |
 
-**Gap:** mechanized audit spine (who/when/what for agent packages) is a P2 pillar,
-not shipped as DB tables yet.
+**Still optional:** continuous background HeyGen poller (operator **Refresh** is enough);
+auto YouTube upload.
 
 ---
 

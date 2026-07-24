@@ -115,10 +115,10 @@ P2 is not a rebuild. The foundation was built agent-ready, mostly on purpose:
 0. **Agentic video & content studio** — multi-format production: educational
    courses (lesson plans + resources + video), YouTube long-form, coaching
    shorts, thematic short-form. Research and script writing are first-class
-   stages; courses follow educational guidelines and practices. **Cast:** named
-   HeyGen avatars are the actors; `heygen-video` produces scenes and, where
-   quality allows, finished lesson masters (`docs/P2-Cast-and-HeyGen-Production.md`,
-   registry `docs/studio/cast/`).
+   stages. **Cast + HeyGen (Phase G shipped):** named presenters in
+   `docs/studio/cast/`; board produce (batch), budgets, Quebec tick, refresh +
+   YouTube map (`Specs/FatTail-Labs-Cast-HeyGen-Spec-v1.1.md`). Auto YouTube
+   upload and continuous pollers remain later work.
 1. **Agent identity & authorization** — **Phase A shipped** (Identity Spec v1.0):
    principals + `ftl_ag_` API keys + scopes; `actor_events` on AI runs. Humans still
    mint keys and own billing/publish. Content scopes reserved for later phases.
@@ -127,17 +127,17 @@ P2 is not a rebuild. The foundation was built agent-ready, mostly on purpose:
    (`Specs/FatTail-Labs-Agent-Model-Interface-Spec-v1.0.md`).
 2. **The backlog + Production Board** — **Phase B shipped** (Content Board Spec
    v1.0): Kanban at `/admin/board`, cards as work products, status lifecycle in
-   MySQL, artifacts/flags, vision doc. Quebec/`board:operate` moves pipeline
+   MySQL, artifacts/flags, vision doc. Quebec tick + `board:operate` move pipeline
    columns; humans own create/queue/publish/reject.
 3. **Skills** — the operating procedures, written as executable/checkable
    documents with inputs, steps, invariants, and verification. Derived from
-   the Admin Guide, governed like specs.
+   the Admin Guide, governed like specs. (HeyGen operator skills remain external.)
 4. **Workflows** — orchestration with explicit gates; long-running,
-   resumable, observable.
+   resumable, observable. (Quebec tick is a light board advance, not full workflow engine.)
 5. **The audit & observability spine** — **Phase C shipped** (Production Package
    Spec v1.0): required stage checklist, `ai_invocations`, frozen approval
-   packages. **Phase D shipped:** multi-module/lesson placement, YouTube ids,
-   trailer, resource links, replace-on-re-approve for drafts only.
+   packages. **Phase D shipped:** multi-module/lesson placement. **Phase G:**
+   `heygen_job_ledger` + video_package provenance.
 
 ## Content studio bench (archetypes)
 

@@ -82,8 +82,8 @@ describes system shape.
 | New agents read CLAUDE + 30 specs to understand shape | Start at `Architecture/README.md` |
 | P1/P2 charters without system map | Charters link into Architecture + capabilities |
 
-**Still open (product):** Phase E (pool/e2e), F (CDN), G (cast/HeyGen scale); skills/
-workflow engine depth; `admin:content` agent mutations; private file placement.
+**Still open (product):** skills/workflow engine depth; `admin:content` agent mutations;
+private file placement; auto YouTube upload. (Phases A–G shipped through G2b–G5.)
 
 ---
 

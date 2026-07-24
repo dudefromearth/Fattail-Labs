@@ -28,7 +28,11 @@
 | `016_agent_identity` | agent_principals, agent_api_keys, actor_events |
 | `017_content_board` | content_vision, content_items, transitions, artifacts, flags |
 | `018_admin_notifications` | admin_notifications inbox |
+| `024_course_blueprint` | content_blueprints (Header+Outline chat); item blueprint_status |
 | `019_production_packages` | ai_invocations, content_approval_packages, placement columns |
+| `020_cast_heygen` | content_items.cast_id (Phase G1) |
+| `021_heygen_budget_ledger` | heygen_job_ledger (Phase G3 budgets) |
+| `022_password_reset` | password_reset_tokens (native forgot-password) |
 
 **Rule:** never edit applied migrations; always append.
 
@@ -125,13 +129,14 @@ Ladder: observer → alumni → activator → navigator → administrator.
 | `agent_principals` / `agent_api_keys` | Machine actors + scoped secrets |
 | `actor_events` | Append-only attribution log |
 | `content_vision` | Living Content Vision markdown |
-| `content_items` | Work-product cards; status; `placed_course_slug` |
+| `content_items` | Work-product cards; status; `cast_id`; `placed_course_slug` |
 | `content_transitions` | Card status history |
 | `content_artifacts` | Stage outputs (+ hash, optional `ai_invocation_id`) |
 | `content_flags` | Guardian open/cleared blocks |
 | `content_approval_packages` | Frozen package snapshots |
 | `ai_invocations` | LLM run provenance |
 | `admin_notifications` | Per-admin inbox (+ email status) |
+| `heygen_job_ledger` | Live/dry-run HeyGen job accounting (Phase G3 budgets) |
 
 ---
 
@@ -170,7 +175,7 @@ attachments → owner_type/owner_id (course|lesson)  [app-enforced, not FK]
 | Private resource files | `server/uploads/private/` |
 | Session state | Signed JWT cookie (not server session table) |
 | LLM full prompts | Optional; invocations + artifact bodies are stored |
-| HeyGen renders | External; YouTube ids land via placement |
+| HeyGen renders | External HeyGen; session provenance on `video_package` artifacts + `heygen_job_ledger`; YouTube ids via human map → placement |
 
 ---
 

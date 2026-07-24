@@ -1,0 +1,28 @@
+FORMAT: Educational course lesson for FatTail Labs, landscape 16:9, target duration about 3 minutes.
+TONE: Coaching but dignified. Process outcomes only. No profit scoreboard energy.
+AVATAR: The selected presenter teaches clearly to a tired intermediate trader.
+MODULE CONTEXT: Foundation — capital preservation and process before optimization.
+
+LESSON TITLE: Weekly process review
+OUTCOMES:
+- Complete a one-page weekly process review
+- Choose one focus for next week without a profit scoreboard
+
+SCRIPT (concept and theme to convey — not a verbatim transcript. Expand naturally, do not pad with silence):
+
+A weekly process review is how you turn trading into a craft instead of a mood. This is not a scoreboard of profits. It is a review of adherence, exceptions, and one adjustment.
+
+Template: rules followed; rules broken; emotional triggers; next week's single focus. If you broke a rule and made money, that still counts as a process miss — luck is not a curriculum. If you followed the process and lost, that is data, not a moral failure.
+
+Keep the review to one page. Choose one focus for next week — only one. Capacity grows from repeated honest review, not from collecting gurus.
+
+Close: schedule the review like a standing meeting with yourself. Process outcomes only.
+
+CRITICAL ON-SCREEN TEXT (display literally):
+- Weekly process review
+- Adherence · Exceptions · One focus
+
+Use minimal, clean styled visuals. Blue, black, and white as main colors.
+Use motion graphics for the review template fields.
+Include a short intro and a clear close.
+One topic only.

@@ -124,14 +124,19 @@ Prefix `/api/admin/*` — human administrator cookie and/or agent bearer (scoped
 - **AI workbench:** `/api/admin/ai/*` (optional `content_item_id` attaches to board card)  
 - **Agent keys:** `/api/admin/agents/principals|…/keys` (human only)  
 - **Board:** `/api/admin/board` Kanban snapshot, items, transition, artifacts, flags,
-  package validate, **place** (Phase D)  
+  package validate, **place** (Phase D), **produce-heygen** / **refresh-heygen** /
+  **youtube-map** / **heygen/budget** / **quebec/tick** (Phase G)  
+- **Cast:** `/api/admin/cast` list/get registry from `docs/studio/cast/AVATAR-*.md`  
 - **Notifications:** `/api/admin/notifications` inbox for human admins  
 
 ### 4.5 Content factory (board → package → place)
 
 ```text
-content_items (card)
+content_items (card + cast_id)
+  → quebec/tick advances pipeline from artifacts (never publish)
   → artifacts (stages) + ai_invocations
+  → produce-heygen (batch) → video_package + heygen_job_ledger (budget)
+  → refresh-heygen → session status; youtube-map → videos{}
   → validate checklist → content_approval_packages (freeze)
   → human Approve → apply_placement → draft course (modules/lessons/videos/resources)
   → human publishes course in-place on /courses/{slug}
@@ -231,7 +236,8 @@ See `04-domain-data-model.md` for table map.
 cd server && .venv/bin/python -m pytest tests -q
 ```
 
-Includes board, packages/placement, agent identity, notifications (SMTP disabled in suite).
+Includes board, packages/placement, cast/HeyGen/Quebec (`test_cast_heygen`,
+`test_phase_g_rest`), agent identity, notifications (SMTP disabled in suite).
 Mandatory before commits that touch `server/`.
 
 ---
@@ -242,6 +248,8 @@ Mandatory before commits that touch `server/`.
 |---|---|
 | Connection pool | **Phase E shipped** (`LABS_DB_POOL_SIZE`) |
 | Bunny for gated video | **Phase F shipped**; free preview may stay YouTube |
+| Cast + HeyGen factory | **Phase G shipped** (v1.1); live needs credits + CLI |
+| Auto YouTube upload | Not shipped — human map + place |
 | Agent `admin:content` not broadly granted | Placement is human-triggered apply |
 | No member-facing LLM chat | Operator/agent runtime only |
 | Placement does not auto-publish courses | Draft only; in-place publish remains |
