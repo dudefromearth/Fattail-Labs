@@ -94,7 +94,10 @@ async def register(request: Request):
 
 
 @router.get("/sso/{provider_name:path}")
-def sso_callback(provider_name: str, token: str):
+def sso_callback(provider_name: str, sso: str = "", token: str = ""):
+    token = sso or token  # fotw-sso appends ?sso=<jwt>; keep ?token= as fallback
+    if not token:
+        raise HTTPException(status_code=422, detail="Missing sso token")
     reg = providers.registry()
     if provider_name not in reg:
         raise HTTPException(status_code=404, detail="Unknown provider")

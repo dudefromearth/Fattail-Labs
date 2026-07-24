@@ -39,30 +39,39 @@ class WordPressProvider:
     """One instance per WP site. Verifies the site's HS256 SSO JWT and reads
     entitlement keys (WooCommerce plan/membership slugs) from its claims."""
 
-    def __init__(self, name: str, secret: str):
+    def __init__(self, name: str, secret: str, issuer=None):
         self.name = name          # e.g. "wordpress:fattail"
-        self.issuer = name.split(":", 1)[1]
+        # Accept a single issuer or a list. The live fotw-sso plugin stamps
+        # iss=fotw (legacy flyonthewall name); the app contract uses the brand
+        # name (e.g. "fattail"). Accept both so real logins AND the provider
+        # contract tests verify.
+        if issuer is None:
+            issuer = name.split(":", 1)[1]
+        self.issuers = (issuer,) if isinstance(issuer, str) else tuple(issuer)
         self.secret = secret
 
     def verify(self, token: str) -> ProviderIdentity:
         try:
-            claims = jwt.decode(
-                token, self.secret, algorithms=["HS256"], issuer=self.issuer
-            )
+            claims = jwt.decode(token, self.secret, algorithms=["HS256"])
         except jwt.InvalidTokenError as exc:
             raise ProviderError(f"{self.name}: token verification failed: {exc}") from exc
-        wp_user_id = claims.get("wp_user_id")
+        if claims.get("iss") not in self.issuers:
+            raise ProviderError(
+                f"{self.name}: unexpected issuer {claims.get('iss')!r}"
+            )
+        wp_user_id = claims.get("sub") or claims.get("wp_user_id")
         email = claims.get("email")
         if not wp_user_id or not email:
-            raise ProviderError(f"{self.name}: token missing wp_user_id/email")
+            raise ProviderError(f"{self.name}: token missing sub/email")
         roles = _normalize_roles(claims.get("roles"))
-        plans = _normalize_roles(claims.get("plans"))  # same normalization: list or csv
+        tier = claims.get("subscription_tier")
+        plans = [tier] if tier else _normalize_roles(claims.get("plans"))
         return ProviderIdentity(
             provider=self.name,
             external_id=str(wp_user_id),
             email=email,
-            display_name=claims.get("display_name", ""),
-            is_admin="administrator" in roles,
+            display_name=claims.get("name") or claims.get("display_name", ""),
+            is_admin=bool(claims.get("is_admin")) or "administrator" in roles,
             entitlement_keys=plans,
         )
 
@@ -70,7 +79,7 @@ class WordPressProvider:
 def registry() -> dict[str, WordPressProvider]:
     cfg = get_config()
     return {
-        "wordpress:fattail": WordPressProvider("wordpress:fattail", cfg.sso_secrets["fattail"]),
+        "wordpress:fattail": WordPressProvider("wordpress:fattail", cfg.sso_secrets["fattail"], issuer=["fotw", "fattail"]),
         "wordpress:0-dte": WordPressProvider("wordpress:0-dte", cfg.sso_secrets["0-dte"]),
     }
 
