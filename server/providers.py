@@ -3,7 +3,16 @@ vocabulary; providers translate external tokens/webhooks into ProviderIdentity a
 entitlement keys, which map to Labs plans via provider_plan_map.
 
 Spec: FatTail-Labs-Identity-Access-Spec-v1.0 §4.2.
+
+SSO source of truth (WP mint + claim shapes): MarketSwarm-Canonical
+  - WP plugin: fotw-sso on fattail.ai / 0-dte.com (`/fotw-sso`)
+  - Verify port: MarketSwarm-Canonical/src/auth/sso.py
+  - App callback pattern: GET /api/auth/sso?sso=<jwt>&next=...
+  - Login entry: MarketSwarm-Canonical/UI/src/components/LoginPage.tsx
+  - WP ops ref: MarketSwarm-Canonical/org/reference/softwares/flyonthewall_wordpress.md §SSO
 """
+
+from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
@@ -27,7 +36,8 @@ class ProviderIdentity:
     entitlement_keys: list[str] = field(default_factory=list)
 
 
-def _normalize_roles(raw) -> list[str]:
+def _normalize_list(raw) -> list[str]:
+    """Roles / plans may be list or comma-separated string (MSC + WP variance)."""
     if raw is None:
         return []
     if isinstance(raw, str):
@@ -35,43 +45,96 @@ def _normalize_roles(raw) -> list[str]:
     return [str(r).strip() for r in raw if str(r).strip()]
 
 
-class WordPressProvider:
-    """One instance per WP site. Verifies the site's HS256 SSO JWT and reads
-    entitlement keys (WooCommerce plan/membership slugs) from its claims."""
+# JWT iss values accepted per Labs provider key.
+# MSC / fotw-sso use iss="fotw" for the FatTail (ex-FOTW) site; Labs path is
+# wordpress:fattail. Accept both "fotw" and "fattail".
+_PROVIDER_ISSUERS: dict[str, frozenset[str]] = {
+    "wordpress:fattail": frozenset({"fattail", "fotw"}),
+    "wordpress:0-dte": frozenset({"0-dte"}),
+}
 
-    def __init__(self, name: str, secret: str, issuer=None):
-        self.name = name          # e.g. "wordpress:fattail"
-        # Accept a single issuer or a list. The live fotw-sso plugin stamps
-        # iss=fotw (legacy flyonthewall name); the app contract uses the brand
-        # name (e.g. "fattail"). Accept both so real logins AND the provider
-        # contract tests verify.
-        if issuer is None:
-            issuer = name.split(":", 1)[1]
-        self.issuers = (issuer,) if isinstance(issuer, str) else tuple(issuer)
+
+class WordPressProvider:
+    """One instance per WP site. Verifies the site's HS256 SSO JWT.
+
+    Claim shape is compatible with MarketSwarm-Canonical / fotw-sso:
+      iss, sub|id|wp_id|wp_user_id, email, name|display_name,
+      roles, membership_plans|plans, subscription_tier
+    """
+
+    def __init__(self, name: str, secret: str, *, allowed_issuers: frozenset[str]):
+        self.name = name  # e.g. "wordpress:fattail"
         self.secret = secret
+        self.allowed_issuers = allowed_issuers
 
     def verify(self, token: str) -> ProviderIdentity:
+        if not token or not str(token).strip():
+            raise ProviderError(f"{self.name}: no token provided")
+        token = str(token).strip()
+
+        # Issuer-first selection matches MSC src/auth/sso.py
         try:
-            claims = jwt.decode(token, self.secret, algorithms=["HS256"])
-        except jwt.InvalidTokenError as exc:
-            raise ProviderError(f"{self.name}: token verification failed: {exc}") from exc
-        if claims.get("iss") not in self.issuers:
+            unverified = jwt.decode(token, options={"verify_signature": False})
+        except Exception as exc:
+            raise ProviderError(f"{self.name}: JWT parse failed: {exc}") from exc
+
+        iss = (unverified.get("iss") or "").strip()
+        if iss not in self.allowed_issuers:
             raise ProviderError(
-                f"{self.name}: unexpected issuer {claims.get('iss')!r}"
+                f"{self.name}: issuer {iss!r} not allowed "
+                f"(expected one of {sorted(self.allowed_issuers)})"
             )
-        wp_user_id = claims.get("sub") or claims.get("wp_user_id")
-        email = claims.get("email")
+
+        try:
+            claims = jwt.decode(
+                token,
+                self.secret,
+                algorithms=["HS256"],
+                leeway=10,
+            )
+        except jwt.InvalidTokenError as exc:
+            raise ProviderError(
+                f"{self.name}: token verification failed: {exc}"
+            ) from exc
+
+        # WP user id — MSC uses sub|id; fotw-sso docs also mention wp_id;
+        # Labs historical tests use wp_user_id.
+        wp_user_id = (
+            claims.get("wp_user_id")
+            or claims.get("sub")
+            or claims.get("id")
+            or claims.get("wp_id")
+        )
+        email = (claims.get("email") or "").strip()
         if not wp_user_id or not email:
-            raise ProviderError(f"{self.name}: token missing sub/email")
-        roles = _normalize_roles(claims.get("roles"))
-        tier = claims.get("subscription_tier")
-        plans = [tier] if tier else _normalize_roles(claims.get("plans"))
+            raise ProviderError(
+                f"{self.name}: token missing user id/email "
+                f"(need sub|id|wp_id|wp_user_id + email)"
+            )
+
+        roles = _normalize_list(claims.get("roles"))
+        # Entitlements: MSC/WP membership plan slugs
+        plans = _normalize_list(claims.get("membership_plans"))
+        if not plans:
+            plans = _normalize_list(claims.get("plans"))
+        # Some tokens carry a single subscription_tier slug
+        tier = (claims.get("subscription_tier") or "").strip()
+        if tier and tier not in plans:
+            plans.append(tier)
+
+        display = (
+            (claims.get("display_name") or claims.get("name") or "").strip()
+        )
+        is_admin = "administrator" in [r.lower() for r in roles] or "admin" in [
+            r.lower() for r in roles
+        ]
+
         return ProviderIdentity(
             provider=self.name,
             external_id=str(wp_user_id),
             email=email,
-            display_name=claims.get("name") or claims.get("display_name", ""),
-            is_admin=bool(claims.get("is_admin")) or "administrator" in roles,
+            display_name=display,
+            is_admin=is_admin,
             entitlement_keys=plans,
         )
 
@@ -79,13 +142,28 @@ class WordPressProvider:
 def registry() -> dict[str, WordPressProvider]:
     cfg = get_config()
     return {
-        "wordpress:fattail": WordPressProvider("wordpress:fattail", cfg.sso_secrets["fattail"], issuer=["fotw", "fattail"]),
-        "wordpress:0-dte": WordPressProvider("wordpress:0-dte", cfg.sso_secrets["0-dte"]),
+        "wordpress:fattail": WordPressProvider(
+            "wordpress:fattail",
+            cfg.sso_secrets["fattail"],
+            allowed_issuers=_PROVIDER_ISSUERS["wordpress:fattail"],
+        ),
+        "wordpress:0-dte": WordPressProvider(
+            "wordpress:0-dte",
+            cfg.sso_secrets["0-dte"],
+            allowed_issuers=_PROVIDER_ISSUERS["wordpress:0-dte"],
+        ),
     }
 
 
 def login_urls() -> dict[str, str]:
-    """Configured SSO login pages for the login screen. Unset -> button not shown."""
+    """Configured SSO login pages for the login screen. Unset -> button not shown.
+
+    Recommended (matches MSC LoginPage):
+      LABS_SSO_LOGIN_URL_FATTAIL=
+        https://fattail.ai/fotw-sso?redirect=<encoded Labs callback>
+      LABS_SSO_LOGIN_URL_0DTE=
+        https://0-dte.com/fotw-sso?redirect=<encoded Labs callback>
+    """
     urls = {
         "wordpress:fattail": os.environ.get("LABS_SSO_LOGIN_URL_FATTAIL", "").strip(),
         "wordpress:0-dte": os.environ.get("LABS_SSO_LOGIN_URL_0DTE", "").strip(),

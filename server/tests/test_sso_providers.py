@@ -24,18 +24,33 @@ def _mint_wp_token(
     wp_user_id: int = 900001,
     plans: list[str] | None = None,
     roles: list[str] | None = None,
+    msc_shape: bool = False,
 ) -> str:
+    """Mint a Labs or MSC/fotw-sso shaped JWT for tests."""
     now = int(time.time())
-    payload = {
-        "iss": issuer,
-        "wp_user_id": wp_user_id,
-        "email": email,
-        "display_name": "ZZ SSO Probe",
-        "plans": plans or [],
-        "roles": roles or [],
-        "iat": now,
-        "exp": now + 600,
-    }
+    if msc_shape:
+        # MarketSwarm-Canonical / fotw-sso claim shape
+        payload = {
+            "iss": issuer,
+            "sub": str(wp_user_id),
+            "email": email,
+            "name": "ZZ SSO Probe",
+            "membership_plans": plans or [],
+            "roles": roles or [],
+            "iat": now,
+            "exp": now + 600,
+        }
+    else:
+        payload = {
+            "iss": issuer,
+            "wp_user_id": wp_user_id,
+            "email": email,
+            "display_name": "ZZ SSO Probe",
+            "plans": plans or [],
+            "roles": roles or [],
+            "iat": now,
+            "exp": now + 600,
+        }
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
@@ -55,11 +70,13 @@ def sso_email():
 
 
 def test_sso_unknown_provider_404(client):
+    client.cookies.clear()
     r = client.get("/api/auth/sso/wordpress:nope", params={"token": "x"})
     assert r.status_code == 404
 
 
 def test_sso_bad_token_401(client):
+    client.cookies.clear()
     r = client.get(
         "/api/auth/sso/wordpress:fattail",
         params={"token": "not.a.jwt"},
@@ -104,6 +121,41 @@ def test_sso_fattail_happy_path_sets_session(client, sso_email):
                 (row["identity_id"],),
             )
             assert cur.fetchone()
+    client.cookies.clear()
+
+
+def test_sso_msc_fotw_claim_shape_accepted(client, sso_email):
+    """fotw-sso / MSC mint iss=fotw, sub, membership_plans, name; query ?sso=."""
+    cfg = get_config()
+    token = _mint_wp_token(
+        issuer="fotw",
+        secret=cfg.sso_secrets["fattail"],
+        email=sso_email,
+        wp_user_id=910002,
+        plans=["labs-membership"],
+        msc_shape=True,
+    )
+    r = client.get(
+        "/api/auth/sso/wordpress:fattail",
+        params={"sso": token},  # MSC query name
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 307), r.text
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT external_id FROM identity_links
+                   WHERE provider = 'wordpress:fattail'
+                     AND identity_id = (
+                       SELECT identity_id FROM identities WHERE email = %s
+                     )""",
+                (sso_email,),
+            )
+            link = cur.fetchone()
+            assert link
+            assert str(link["external_id"]) == "910002"
+    # Session-scoped TestClient keeps cookies across tests.
+    client.cookies.clear()
 
 
 def test_sso_wrong_issuer_secret_rejected(client, sso_email):
@@ -148,6 +200,7 @@ def test_native_login_still_works_when_sso_would_fail(client):
         assert r.status_code == 200
         assert r.json()["identity_id"] == iid
     finally:
+        client.cookies.clear()
         with db.transaction() as conn:
             with conn.cursor() as cur:
                 cur.execute(

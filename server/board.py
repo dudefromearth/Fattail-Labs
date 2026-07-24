@@ -108,6 +108,7 @@ def _item_row(row: dict, *, open_flags: int = 0) -> dict:
         "acceptance_md": row.get("acceptance_md"),
         "inputs_md": row.get("inputs_md"),
         "product_line": row["product_line"],
+        "cast_id": row.get("cast_id"),
         "status": row["status"],
         "sub_stage": row.get("sub_stage"),
         "priority": row["priority"],
@@ -121,6 +122,8 @@ def _item_row(row: dict, *, open_flags: int = 0) -> dict:
         "reject_reason": row.get("reject_reason"),
         "placed_course_slug": row.get("placed_course_slug"),
         "latest_package_id": row.get("latest_package_id"),
+        "blueprint_status": row.get("blueprint_status"),
+        "blueprint_id": row.get("blueprint_id"),
         "created_at": _ts(row.get("created_at")),
         "updated_at": _ts(row.get("updated_at")),
         "open_flag_count": open_flags,
@@ -239,6 +242,7 @@ def create_item(
     inputs_md: str | None = None,
     product_line: str = "course",
     priority: int = 0,
+    cast_id: str | None = None,
 ) -> dict:
     if actor.kind != "human" or actor.role != "administrator":
         raise BoardError("only human administrators may create backlog items")
@@ -249,20 +253,29 @@ def create_item(
     pl = (product_line or "course").strip()
     if pl not in PRODUCT_LINES:
         raise BoardError(f"product_line must be one of {sorted(PRODUCT_LINES)}")
+    resolved_cast = None
+    if cast_id is not None and str(cast_id).strip() != "":
+        import cast as cast_mod
+
+        try:
+            resolved_cast = cast_mod.validate_cast_id(str(cast_id))
+        except cast_mod.CastError as exc:
+            raise BoardError(f"invalid cast_id: {exc}") from exc
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO content_items
                    (title, intent_md, acceptance_md, inputs_md, product_line,
-                    status, priority, created_by_identity_id,
+                    cast_id, status, priority, created_by_identity_id,
                     last_actor_kind, last_actor_id, last_actor_label)
-                   VALUES (%s,%s,%s,%s,%s,'draft',%s,%s,%s,%s,%s)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,'draft',%s,%s,%s,%s,%s)""",
                 (
                     title,
                     intent,
                     acceptance_md,
                     inputs_md,
                     pl,
+                    resolved_cast,
                     int(priority),
                     actor.id,
                     actor.kind,
@@ -296,6 +309,7 @@ def update_item(item_id: int, actor: Actor, fields: dict[str, Any]) -> dict:
         "sort_order",
         "vision_aligned",
         "claimed_callsign",
+        "cast_id",
     }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
@@ -306,6 +320,13 @@ def update_item(item_id: int, actor: Actor, fields: dict[str, Any]) -> dict:
         updates["title"] = str(updates["title"]).strip()
         if not updates["title"]:
             raise BoardError("title required")
+    if "cast_id" in updates:
+        import cast as cast_mod
+
+        try:
+            updates["cast_id"] = cast_mod.validate_cast_id(updates["cast_id"])
+        except cast_mod.CastError as exc:
+            raise BoardError(f"invalid cast_id: {exc}") from exc
     sets: list[str] = []
     vals: list[Any] = []
     for k, v in updates.items():

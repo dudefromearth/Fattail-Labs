@@ -9,6 +9,7 @@ export const metadata = {
 const NAV: { href: string; label: string }[] = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/board", label: "Board" },
+  { href: "/admin/cast", label: "Cast" },
   { href: "/admin/media", label: "Media" },
   { href: "/admin/ai", label: "AI workbench" },
   { href: "/admin/agents", label: "Agent keys" },
@@ -17,8 +18,8 @@ const NAV: { href: string; label: string }[] = [
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950" data-testid="admin-shell">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
+      <header className="shrink-0 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-4 px-4 py-3">
           <Link
             href="/admin"
             className="text-sm font-semibold tracking-tight"

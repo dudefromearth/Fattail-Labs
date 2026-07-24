@@ -35,6 +35,9 @@ _load_env()
 os.environ.pop("LABS_SMTP_HOST", None)
 os.environ.pop("LABS_NOTIFY_EMAIL_REQUIRED", None)
 
+# Prefer dry-run HeyGen when tests omit dry_run (still pass dry_run=True explicitly).
+os.environ.setdefault("LABS_HEYGEN_DRY_RUN", "1")
+
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 

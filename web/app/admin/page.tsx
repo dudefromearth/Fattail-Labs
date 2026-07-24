@@ -10,8 +10,14 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
   {
     href: "/admin/board",
     title: "Production board",
-    body: "Kanban of work-product cards — draft → queue → production → approval.",
+    body: "Kanban of work-product cards — cast, HeyGen produce, Quebec tick, packages, approve → place.",
     testId: "admin-card-board",
+  },
+  {
+    href: "/admin/cast",
+    title: "Studio cast",
+    body: "HeyGen presenters (AVATAR registry). Assign cast_id on board cards before produce.",
+    testId: "admin-card-cast",
   },
   {
     href: "/admin/agents",
@@ -47,7 +53,7 @@ export default function AdminPage() {
         <p className="mt-2 max-w-2xl text-sm text-zinc-500">
           Dedicated admin surface (no member header). Content editing stays{" "}
           <strong>in-place</strong> on production pages; this app is the control
-          plane for media, agents, and AI.
+          plane for the production board, cast, media, agents, and AI.
         </p>
       </header>
       <div className="grid gap-4 sm:grid-cols-2">

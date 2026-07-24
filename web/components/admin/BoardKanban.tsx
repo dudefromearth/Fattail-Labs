@@ -5,16 +5,27 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import CourseBlueprintPanel from "./CourseBlueprintPanel";
+
 type Card = {
   id: number;
   title: string;
   product_line: string;
+  cast_id?: string | null;
   status: string;
   sub_stage: string | null;
   priority: number;
   claimed_callsign: string | null;
   open_flag_count: number;
   reject_reason?: string | null;
+  blueprint_status?: string | null;
+  blueprint_id?: number | null;
+};
+
+type CastOption = {
+  cast_id: string;
+  role: string | null;
+  ready: boolean;
 };
 
 type ItemDetail = Card & {
@@ -97,6 +108,30 @@ export default function BoardKanban() {
   const [selected, setSelected] = useState<ItemDetail | null>(null);
   const [dragId, setDragId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [castOptions, setCastOptions] = useState<CastOption[]>([]);
+  const [budget, setBudget] = useState<{
+    daily_used: number;
+    daily_limit: number;
+    monthly_used: number;
+    monthly_limit: number;
+    max_batch: number;
+  } | null>(null);
+  const [tickMsg, setTickMsg] = useState<string | null>(null);
+  const [ytDraft, setYtDraft] = useState("");
+  const [pollerStatus, setPollerStatus] = useState<{
+    config?: {
+      poller_enabled_env?: boolean;
+      auto_produce_env?: boolean;
+      produce_mode?: string;
+      interval_seconds?: number | null;
+    };
+    status?: {
+      last_ok?: boolean | null;
+      last_action_count?: number;
+      last_finished_at?: string | null;
+      last_error?: string | null;
+    } | null;
+  } | null>(null);
 
   // new card form
   const [showNew, setShowNew] = useState(false);
@@ -104,6 +139,25 @@ export default function BoardKanban() {
   const [newIntent, setNewIntent] = useState("");
   const [newLine, setNewLine] = useState("course");
   const [newPriority, setNewPriority] = useState(0);
+  const [newCast, setNewCast] = useState("");
+
+  const loadBudget = useCallback(() => {
+    fetch("/api/admin/board/heygen/budget", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.budget) setBudget(d.budget);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  const loadPoller = useCallback(() => {
+    fetch("/api/admin/board/quebec/status", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setPollerStatus(d);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const load = useCallback(() => {
     fetch("/api/admin/board", { credentials: "same-origin" })
@@ -122,7 +176,21 @@ export default function BoardKanban() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadBudget();
+    loadPoller();
+    const t = window.setInterval(() => loadPoller(), 30000);
+    fetch("/api/admin/cast", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.cast) {
+          setCastOptions(
+            (d.cast as CastOption[]).filter((c) => c.ready !== false),
+          );
+        }
+      })
+      .catch(() => undefined);
+    return () => window.clearInterval(t);
+  }, [load, loadBudget, loadPoller]);
 
   const openCard = async (id: number) => {
     setError(null);
@@ -198,6 +266,7 @@ export default function BoardKanban() {
         intent_md: newIntent,
         product_line: newLine,
         priority: newPriority,
+        cast_id: newCast || null,
       }),
     });
     const body = await r.json().catch(() => ({}));
@@ -209,8 +278,167 @@ export default function BoardKanban() {
     setShowNew(false);
     setNewTitle("");
     setNewIntent("");
+    setNewCast("");
     load();
     setSelected(body.item);
+  };
+
+  const saveCast = async (id: number, castId: string | null) => {
+    setBusy(true);
+    setError(null);
+    const r = await fetch(`/api/admin/board/items/${id}`, {
+      method: "PATCH",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cast_id: castId }),
+    });
+    const body = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (!r.ok) {
+      setError(body.detail || "Cast update failed");
+      return;
+    }
+    setSelected(body.item);
+    load();
+  };
+
+  const produceHeygen = async (id: number, dryRun: boolean) => {
+    setBusy(true);
+    setError(null);
+    const r = await fetch(`/api/admin/board/items/${id}/produce-heygen`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dry_run: dryRun }),
+    });
+    const body = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (!r.ok) {
+      setError(body.detail || "HeyGen produce failed");
+      return;
+    }
+    if (body.item) setSelected(body.item);
+    else void openCard(id);
+    load();
+    loadBudget();
+  };
+
+  const refreshHeygen = async (id: number) => {
+    setBusy(true);
+    setError(null);
+    const r = await fetch(`/api/admin/board/items/${id}/refresh-heygen`, {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    const body = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (!r.ok) {
+      setError(body.detail || "HeyGen refresh failed");
+      return;
+    }
+    if (body.item) setSelected(body.item);
+    else void openCard(id);
+    load();
+  };
+
+  const saveYoutubeMap = async (id: number) => {
+    // Accept lines: slug=youtubeId  or JSON object
+    setBusy(true);
+    setError(null);
+    let videos: Record<string, string> = {};
+    const raw = ytDraft.trim();
+    try {
+      if (raw.startsWith("{")) {
+        videos = JSON.parse(raw) as Record<string, string>;
+      } else {
+        for (const line of raw.split("\n")) {
+          const t = line.trim();
+          if (!t) continue;
+          const eq = t.indexOf("=");
+          if (eq < 1) continue;
+          videos[t.slice(0, eq).trim()] = t.slice(eq + 1).trim();
+        }
+      }
+    } catch {
+      setBusy(false);
+      setError("YouTube map: use slug=id lines or a JSON object");
+      return;
+    }
+    const r = await fetch(`/api/admin/board/items/${id}/youtube-map`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videos }),
+    });
+    const body = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (!r.ok) {
+      setError(body.detail || "YouTube map failed");
+      return;
+    }
+    if (body.item) setSelected(body.item);
+    setYtDraft("");
+    load();
+  };
+
+  const runQuebecTick = async (produce: boolean) => {
+    setBusy(true);
+    setError(null);
+    setTickMsg(null);
+    const r = await fetch("/api/admin/board/quebec/tick", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ force: true, max_actions: 20, produce }),
+    });
+    const body = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (!r.ok) {
+      setError(body.detail || "Quebec tick failed");
+      return;
+    }
+    const n = body.tick?.action_count ?? 0;
+    const p = (body.tick?.produced || []).length;
+    setTickMsg(
+      `Quebec tick: ${n} action${n === 1 ? "" : "s"}` +
+        (produce ? ` · ${p} stage(s) produced` : ""),
+    );
+    if (body.board?.columns) setColumns(body.board.columns);
+    else load();
+    loadPoller();
+    if (selected) void openCard(selected.id);
+  };
+
+  const latestVideoPackage = (item: ItemDetail) => {
+    const arts = [...(item.artifacts || [])]
+      .filter((a) => a.stage === "video_package")
+      .reverse();
+    for (const a of arts) {
+      if (!a.body_md) continue;
+      try {
+        let text = a.body_md.trim();
+        const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+        if (fence) text = fence[1].trim();
+        return JSON.parse(text) as {
+          status?: string;
+          render_count?: number;
+          renders?: {
+            slug: string;
+            title?: string;
+            status?: string;
+            session_id?: string;
+            session_url?: string | null;
+            heygen_video_id?: string | null;
+            video_url?: string | null;
+            error?: string | null;
+          }[];
+          videos?: Record<string, string>;
+        };
+      } catch {
+        continue;
+      }
+    }
+    return null;
   };
 
   const saveVision = async () => {
@@ -248,7 +476,56 @@ export default function BoardKanban() {
         <p className="text-xs text-zinc-500">
           Cards = work products · drag across process columns
         </p>
-        <div className="ml-auto flex flex-wrap gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {budget && (
+            <span
+              className="rounded bg-zinc-100 px-2 py-1 text-[10px] text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+              data-testid="board-heygen-budget"
+              title="Live HeyGen jobs counted toward daily/monthly limits"
+            >
+              HeyGen {budget.daily_used}/{budget.daily_limit} day ·{" "}
+              {budget.monthly_used}/{budget.monthly_limit} mo · batch≤
+              {budget.max_batch}
+            </span>
+          )}
+          {pollerStatus && (
+            <span
+              className="rounded bg-violet-50 px-2 py-1 text-[10px] text-violet-900 dark:bg-violet-950 dark:text-violet-200"
+              data-testid="board-quebec-poller"
+              title={
+                pollerStatus.status?.last_error ||
+                "Automatic Quebec poller status (LABS_QUEBEC_POLLER)"
+              }
+            >
+              Poller{" "}
+              {pollerStatus.config?.poller_enabled_env ? "ON" : "off"}
+              {pollerStatus.config?.auto_produce_env ? " · produce" : ""}
+              {pollerStatus.status?.last_finished_at
+                ? ` · last ${pollerStatus.status.last_action_count ?? 0} acts`
+                : ""}
+              {pollerStatus.status?.last_ok === false ? " · err" : ""}
+            </span>
+          )}
+          <button
+            type="button"
+            className="rounded border border-violet-300 px-3 py-1.5 text-xs text-violet-800 dark:border-violet-700 dark:text-violet-200"
+            disabled={busy}
+            data-testid="board-quebec-tick"
+            title="Advance columns only (no auto-produce stages)"
+            onClick={() => void runQuebecTick(false)}
+          >
+            Quebec tick
+          </button>
+          <button
+            type="button"
+            className="rounded bg-violet-700 px-3 py-1.5 text-xs text-white disabled:opacity-50"
+            disabled={busy}
+            data-testid="board-quebec-tick-produce"
+            title="Advance columns and produce next missing package stage (fixtures/live per env)"
+            onClick={() => void runQuebecTick(true)}
+          >
+            Tick + produce
+          </button>
           <button
             type="button"
             className="rounded border border-zinc-300 px-3 py-1.5 text-xs dark:border-zinc-600"
@@ -268,12 +545,21 @@ export default function BoardKanban() {
           <button
             type="button"
             className="rounded border border-zinc-300 px-3 py-1.5 text-xs dark:border-zinc-600"
-            onClick={() => load()}
+            onClick={() => {
+              load();
+              loadBudget();
+            }}
           >
             Refresh
           </button>
         </div>
       </header>
+
+      {tickMsg && (
+        <div className="mx-4 mt-2 rounded border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-800">
+          {tickMsg}
+        </div>
+      )}
 
       {error && (
         <div
@@ -348,6 +634,20 @@ export default function BoardKanban() {
               onChange={(e) => setNewPriority(Number(e.target.value))}
               title="Priority (higher first)"
             />
+            <select
+              className="rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+              value={newCast}
+              onChange={(e) => setNewCast(e.target.value)}
+              data-testid="board-new-cast"
+            >
+              <option value="">Cast (optional)</option>
+              {castOptions.map((c) => (
+                <option key={c.cast_id} value={c.cast_id}>
+                  {c.cast_id}
+                  {c.role ? ` · ${c.role}` : ""}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="mt-2 flex gap-2">
             <button
@@ -403,6 +703,20 @@ export default function BoardKanban() {
                     <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-zinc-600 dark:bg-zinc-800">
                       {card.product_line}
                     </span>
+                    {card.product_line === "course" && card.blueprint_status && (
+                      <span
+                        className={
+                          card.blueprint_status === "approved"
+                            ? "rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                            : card.blueprint_status === "pending_validation"
+                              ? "rounded bg-amber-50 px-1.5 py-0.5 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                              : "rounded bg-red-50 px-1.5 py-0.5 text-red-700 dark:bg-red-950 dark:text-red-200"
+                        }
+                        title="Course blueprint status"
+                      >
+                        bp:{card.blueprint_status.replace(/_/g, " ")}
+                      </span>
+                    )}
                     {card.priority !== 0 && (
                       <span className="rounded bg-sky-50 px-1.5 py-0.5 text-sky-700 dark:bg-sky-950">
                         P{card.priority}
@@ -417,6 +731,11 @@ export default function BoardKanban() {
                       <span className="rounded bg-red-50 px-1.5 py-0.5 text-red-700">
                         {card.open_flag_count} flag
                         {card.open_flag_count === 1 ? "" : "s"}
+                      </span>
+                    )}
+                    {card.cast_id && (
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                        {card.cast_id}
                       </span>
                     )}
                   </div>
@@ -434,7 +753,11 @@ export default function BoardKanban() {
 
       {selected && (
         <aside
-          className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+          className={
+            selected.product_line === "course"
+              ? "fixed inset-y-0 right-0 z-40 flex w-full max-w-lg flex-col border-l border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+              : "fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+          }
           data-testid="board-drawer"
         >
           <div className="flex items-start gap-2 border-b border-zinc-200 p-4 dark:border-zinc-700">
@@ -444,6 +767,9 @@ export default function BoardKanban() {
                 #{selected.id} · {selected.status}
                 {selected.sub_stage ? ` / ${selected.sub_stage}` : ""} ·{" "}
                 {selected.product_line}
+                {selected.blueprint_status
+                  ? ` · blueprint: ${selected.blueprint_status}`
+                  : ""}
               </p>
             </div>
             <button
@@ -455,6 +781,14 @@ export default function BoardKanban() {
             </button>
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto p-4 text-sm">
+            {selected.product_line === "course" && (
+              <CourseBlueprintPanel
+                itemId={selected.id}
+                layout="drawer"
+                cardTitle={selected.title}
+                onChanged={() => void openCard(selected.id)}
+              />
+            )}
             <section>
               <h3 className="text-xs font-semibold uppercase text-zinc-500">Intent</h3>
               <pre className="mt-1 whitespace-pre-wrap font-sans text-zinc-700 dark:text-zinc-200">
@@ -477,6 +811,139 @@ export default function BoardKanban() {
                 <pre className="mt-1 whitespace-pre-wrap font-sans">{selected.inputs_md}</pre>
               </section>
             )}
+            <section data-testid="board-cast-section">
+              <h3 className="text-xs font-semibold uppercase text-zinc-500">Cast</h3>
+              <select
+                className="mt-1 w-full rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+                value={selected.cast_id || ""}
+                disabled={busy}
+                data-testid="board-cast-select"
+                onChange={(e) => {
+                  const v = e.target.value || null;
+                  void saveCast(selected.id, v);
+                }}
+              >
+                <option value="">— none —</option>
+                {castOptions.map((c) => (
+                  <option key={c.cast_id} value={c.cast_id}>
+                    {c.cast_id}
+                    {c.role ? ` · ${c.role}` : ""}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-zinc-400">
+                Registry:{" "}
+                <a href="/admin/cast" className="underline">
+                  /admin/cast
+                </a>
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded bg-violet-700 px-3 py-1.5 text-xs text-white disabled:opacity-50"
+                  disabled={busy || !selected.cast_id}
+                  data-testid="board-produce-heygen-dry"
+                  title="Write video_package without calling HeyGen API"
+                  onClick={() => void produceHeygen(selected.id, true)}
+                >
+                  Produce HeyGen (dry-run)
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-violet-400 px-3 py-1.5 text-xs text-violet-800 disabled:opacity-50 dark:text-violet-200"
+                  disabled={busy || !selected.cast_id}
+                  data-testid="board-produce-heygen-live"
+                  title="Submit live Video Agent job(s) — counts toward daily budget"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Submit live HeyGen Video Agent job(s)? This spends wallet credits, counts toward the daily budget, and may take 20–45 minutes per render.",
+                      )
+                    ) {
+                      void produceHeygen(selected.id, false);
+                    }
+                  }}
+                >
+                  Produce HeyGen (live)
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-zinc-300 px-3 py-1.5 text-xs disabled:opacity-50 dark:border-zinc-600"
+                  disabled={busy}
+                  data-testid="board-refresh-heygen"
+                  onClick={() => void refreshHeygen(selected.id)}
+                >
+                  Refresh HeyGen status
+                </button>
+              </div>
+              <p className="mt-1 text-[11px] text-zinc-400">
+                Requires <span className="font-mono">script</span>. Multi-lesson batch
+                uses lesson_plan modules when present. Live needs API key + credits +
+                budget headroom.
+              </p>
+              {(() => {
+                const vp = latestVideoPackage(selected);
+                if (!vp) return null;
+                return (
+                  <div
+                    className="mt-3 rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-800/50"
+                    data-testid="board-video-package"
+                  >
+                    <div className="text-[11px] font-medium uppercase text-zinc-500">
+                      Video package · {vp.status || "?"}
+                      {vp.render_count != null ? ` · ${vp.render_count} renders` : ""}
+                    </div>
+                    <ul className="mt-1 max-h-36 space-y-1 overflow-y-auto text-[11px]">
+                      {(vp.renders || []).map((r) => (
+                        <li key={r.slug + (r.session_id || "")}>
+                          <span className="font-mono">{r.slug}</span> · {r.status}
+                          {r.session_url && (
+                            <>
+                              {" "}
+                              <a
+                                className="underline"
+                                href={r.session_url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                session
+                              </a>
+                            </>
+                          )}
+                          {r.error && (
+                            <span className="text-red-600"> — {r.error}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    {vp.videos && Object.keys(vp.videos).length > 0 && (
+                      <p className="mt-1 text-[11px] text-zinc-500">
+                        YouTube map: {Object.keys(vp.videos).length} slug(s)
+                      </p>
+                    )}
+                    <label className="mt-2 block text-[11px] text-zinc-500">
+                      Set YouTube map (slug=videoId per line)
+                      <textarea
+                        className="mt-0.5 w-full rounded border border-zinc-300 bg-white p-1 font-mono text-[11px] dark:border-zinc-600 dark:bg-zinc-950"
+                        rows={3}
+                        value={ytDraft}
+                        onChange={(e) => setYtDraft(e.target.value)}
+                        placeholder={"name-max-loss=dQw4w9WgXcQ"}
+                        data-testid="board-youtube-map"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="mt-1 rounded border px-2 py-1 text-[11px] disabled:opacity-50"
+                      disabled={busy || !ytDraft.trim()}
+                      onClick={() => void saveYoutubeMap(selected.id)}
+                    >
+                      Save YouTube map
+                    </button>
+                  </div>
+                );
+              })()}
+            </section>
             {selected.package?.checklist && (
               <section data-testid="board-package-checklist">
                 <h3 className="text-xs font-semibold uppercase text-zinc-500">

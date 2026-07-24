@@ -58,6 +58,44 @@ async def native_login(request: Request):
     )
 
 
+@router.post("/forgot-password")
+async def forgot_password(request: Request):
+    """Request a password-reset email (enumeration-safe). Spec: Password-Reset v1.0."""
+    import password_reset as pr
+
+    body = await request.json()
+    email = body.get("email") or ""
+    # Client IP for audit only (never trusted for auth)
+    ip = request.client.host if request.client else None
+    try:
+        result = pr.request_reset(email, request_ip=ip)
+    except pr.PasswordResetError as exc:
+        msg = str(exc)
+        if "not configured" in msg.lower() or "LABS_WEB_ORIGIN" in msg:
+            raise HTTPException(status_code=503, detail=msg) from exc
+        if "Valid email" in msg:
+            raise HTTPException(status_code=422, detail=msg) from exc
+        raise HTTPException(status_code=503, detail=msg) from exc
+    return {"ok": True, "detail": result["detail"]}
+
+
+@router.post("/reset-password")
+async def reset_password(request: Request):
+    """Consume reset token and set a new password. Spec: Password-Reset v1.0."""
+    import password_reset as pr
+
+    body = await request.json()
+    token = body.get("token") or ""
+    password = body.get("password") or ""
+    try:
+        result = pr.reset_with_token(token, password)
+    except pr.PasswordResetError as exc:
+        msg = str(exc)
+        code = 422 if "10 characters" in msg or "Password must" in msg else 400
+        raise HTTPException(status_code=code, detail=msg) from exc
+    return result
+
+
 @router.post("/register")
 async def register(request: Request):
     """Self-serve free account (observer tier). Enrollment & Access spec §2."""
@@ -94,15 +132,24 @@ async def register(request: Request):
 
 
 @router.get("/sso/{provider_name:path}")
-def sso_callback(provider_name: str, sso: str = "", token: str = ""):
-    token = sso or token  # fotw-sso appends ?sso=<jwt>; keep ?token= as fallback
-    if not token:
-        raise HTTPException(status_code=422, detail="Missing sso token")
+def sso_callback(
+    provider_name: str,
+    token: str | None = None,
+    sso: str | None = None,
+):
+    """WordPress SSO callback (fotw-sso / MarketSwarm-Canonical compatible).
+
+    Accepts token via `token` or `sso` query param (MSC uses `sso`).
+    Provider path: wordpress:fattail | wordpress:0-dte
+    """
     reg = providers.registry()
     if provider_name not in reg:
         raise HTTPException(status_code=404, detail="Unknown provider")
+    raw = (token or sso or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Missing SSO token")
     try:
-        pid = reg[provider_name].verify(token)
+        pid = reg[provider_name].verify(raw)
     except providers.ProviderError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 

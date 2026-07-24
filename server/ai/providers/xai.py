@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterator
 from typing import Any
 
 import httpx
@@ -66,6 +68,87 @@ class XaiProvider:
             model=model,
             usage=usage,
             raw=data,
+        )
+
+    def stream(
+        self,
+        messages: list[Message],
+        *,
+        model: str,
+        temperature: float,
+        max_tokens: int,
+    ) -> Iterator[str | CompletionResult]:
+        """Yield text delta strings, then a final CompletionResult.
+
+        OpenAI-compatible SSE from xAI chat/completions with stream=true.
+        """
+        url = f"{self._cfg.xai_base_url}/chat/completions"
+        payload = {
+            "model": model,
+            "messages": [m.as_dict() for m in messages],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        headers = {
+            "Authorization": f"Bearer {self._cfg.xai_api_key}",
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+        }
+        # Streaming can run long; separate connect vs read timeouts
+        timeout = httpx.Timeout(
+            self._cfg.timeout_seconds,
+            connect=min(30.0, float(self._cfg.timeout_seconds)),
+        )
+        parts: list[str] = []
+        usage: dict[str, int] = {}
+        try:
+            with httpx.Client(timeout=timeout) as client:
+                with client.stream(
+                    "POST", url, json=payload, headers=headers
+                ) as resp:
+                    if resp.status_code >= 400:
+                        body = resp.read().decode("utf-8", errors="replace")
+                        raise AiProviderError(
+                            f"xAI HTTP {resp.status_code}: "
+                            f"{(body or '')[:500] or '(empty body)'}"
+                        )
+                    for line in resp.iter_lines():
+                        if not line:
+                            continue
+                        if line.startswith(":"):
+                            continue
+                        if not line.startswith("data:"):
+                            continue
+                        data_str = line[5:].strip()
+                        if not data_str or data_str == "[DONE]":
+                            continue
+                        try:
+                            chunk = json.loads(data_str)
+                        except json.JSONDecodeError:
+                            continue
+                        if chunk.get("usage"):
+                            usage = _usage_openai_shape(chunk["usage"])
+                        choices = chunk.get("choices") or []
+                        if not choices:
+                            continue
+                        delta = choices[0].get("delta") or {}
+                        content = delta.get("content")
+                        if isinstance(content, str) and content:
+                            parts.append(content)
+                            yield content
+        except httpx.HTTPError as exc:
+            raise AiProviderError(f"xAI stream transport error: {exc}") from exc
+
+        text = "".join(parts).strip()
+        if not text:
+            raise AiProviderError("xAI stream produced empty assistant text")
+        yield CompletionResult(
+            text=text,
+            provider="xai",
+            model=model,
+            usage=usage,
+            raw=None,
         )
 
 

@@ -25,3 +25,7 @@ out/
 
 # Uploaded media (local storage)
 server/uploads/
+
+# Local HeyGen hub intro masters (large binaries)
+Labs-Intro/**/*.mp4
+Labs-Intro/**/*.m4a
