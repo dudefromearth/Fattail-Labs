@@ -75,10 +75,12 @@ def lesson_detail(course_slug: str, lesson_slug: str, request: Request) -> dict:
             row["video_provider"], row["video_id"], row["video_params"]
         )
     except video.VideoConfigError as exc:
-        # Missing Bunny keys or bad config — fail loud (503 for ops misconfig)
+        # Missing Bunny keys → 503 (ops). Bad per-lesson id/params → null video
+        # so the lesson page still loads (notes/quiz/admin can fix the binding).
         msg = str(exc)
-        code = 503 if "not configured" in msg.lower() else 500
-        raise HTTPException(status_code=code, detail=msg) from exc
+        if "not configured" in msg.lower():
+            raise HTTPException(status_code=503, detail=msg) from exc
+        video_payload = None
 
     return {
         "progress": progress,

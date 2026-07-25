@@ -404,6 +404,13 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                                       ]}
                                       className="text-xs text-zinc-500"
                                     />
+                                    <Link
+                                      href={`/courses/${course.slug}/lessons/${adminLesson.slug}`}
+                                      className="shrink-0 text-xs font-medium text-[var(--color-tint)] hover:underline"
+                                      title="Open lesson page"
+                                    >
+                                      Open
+                                    </Link>
                                     <IconButton
                                       label={`Delete lesson ${adminLesson.title}`}
                                       tone="destructive"

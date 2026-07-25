@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { apiGet, apiUrl } from "@/lib/api";
+import { apiGet, apiUrl, sessionCookieHeader } from "@/lib/api";
 import { fetchCourse, siteUrl } from "@/lib/catalog";
 import type { CourseDetail } from "@/lib/types";
 import LessonBody from "@/components/LessonBody";
@@ -49,18 +49,40 @@ type PublicLesson = {
 async function fetchLesson(
   slug: string,
   lessonSlug: string,
-): Promise<{ status: number; lesson: LessonPayload | null }> {
+): Promise<{ status: number; lesson: LessonPayload | null; error?: string }> {
   // Forward the caller's session cookie — lesson access is session-dependent.
-  const { cookies } = await import("next/headers");
-  const cookieHeader = (await cookies()).toString();
-  const res = await fetch(
-    apiUrl(
-      `/api/courses/${encodeURIComponent(slug)}/lessons/${encodeURIComponent(lessonSlug)}`,
-    ),
-    { cache: "no-store", headers: cookieHeader ? { cookie: cookieHeader } : {} },
-  );
-  if (!res.ok) return { status: res.status, lesson: null };
-  return { status: 200, lesson: (await res.json()) as LessonPayload };
+  // Never let fetch/network failures throw: that becomes Next "couldn't load".
+  try {
+    const cookieHeader = await sessionCookieHeader();
+    const res = await fetch(
+      apiUrl(
+        `/api/courses/${encodeURIComponent(slug)}/lessons/${encodeURIComponent(lessonSlug)}`,
+      ),
+      {
+        cache: "no-store",
+        headers: cookieHeader ? { cookie: cookieHeader } : {},
+      },
+    );
+    if (!res.ok) {
+      return {
+        status: res.status,
+        lesson: null,
+        error: `Lesson API ${res.status}`,
+      };
+    }
+    const lesson = (await res.json()) as LessonPayload;
+    // Normalize so render never crashes on partial payloads.
+    if (!lesson.progress) {
+      lesson.progress = { last_position: 0, completed: false };
+    }
+    return { status: 200, lesson };
+  } catch (e) {
+    return {
+      status: 503,
+      lesson: null,
+      error: e instanceof Error ? e.message : String(e),
+    };
+  }
 }
 
 async function fetchPublicLesson(
@@ -329,7 +351,7 @@ export default async function LessonPlayerPage({
   params: Promise<{ slug: string; lessonSlug: string }>;
 }) {
   const { slug, lessonSlug } = await params;
-  const [{ status, lesson }, course] = await Promise.all([
+  const [{ status, lesson, error: fetchError }, course] = await Promise.all([
     fetchLesson(slug, lessonSlug),
     fetchCourse(slug).catch(() => null),
   ]);
@@ -342,6 +364,38 @@ export default async function LessonPlayerPage({
     const pub = await fetchPublicLesson(slug, lessonSlug);
     if (!pub) notFound();
     return <AnonymousLanding pub={pub} nav={nav} course={course} />;
+  }
+
+  // Upstream API / network failure — never surface as Next.js "couldn't load".
+  if (status >= 500 || (status === 503 && !lesson)) {
+    return (
+      <LessonLayout course={course} currentLessonSlug={lessonSlug}>
+        <div className="py-16 text-center">
+          <h1 className="text-2xl font-semibold">Lesson temporarily unavailable</h1>
+          <p className="mt-3 text-zinc-600 dark:text-zinc-400">
+            We couldn&apos;t load this lesson from the server. Try again in a
+            moment.
+          </p>
+          {fetchError && (
+            <p className="mt-2 font-mono text-xs text-zinc-400">{fetchError}</p>
+          )}
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <Link
+              href={`/courses/${slug}/lessons/${lessonSlug}`}
+              className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
+            >
+              Try again
+            </Link>
+            <Link
+              href={`/courses/${slug}`}
+              className="chip font-medium px-6 py-2.5"
+            >
+              Back to course
+            </Link>
+          </div>
+        </div>
+      </LessonLayout>
+    );
   }
 
   if (status === 403 || !lesson) {
@@ -371,6 +425,8 @@ export default async function LessonPlayerPage({
       </LessonLayout>
     );
   }
+
+  const progress = lesson.progress ?? { last_position: 0, completed: false };
 
   return (
     <LessonLayout course={course} currentLessonSlug={lesson.slug}>
@@ -412,7 +468,7 @@ export default async function LessonPlayerPage({
         </div>
       )}
 
-      {lesson.kind !== "quiz" && lesson.video && (
+      {lesson.kind !== "quiz" && lesson.video?.embed_url && (
         <div className="mt-6">
           <LessonPlayer
             courseSlug={lesson.course_slug}
@@ -422,9 +478,17 @@ export default async function LessonPlayerPage({
             expiresAt={lesson.video.expires_at ?? null}
             title={lesson.title}
             duration={lesson.duration_seconds}
-            initialPosition={lesson.progress.last_position}
-            initialCompleted={lesson.progress.completed}
+            initialPosition={progress.last_position ?? 0}
+            initialCompleted={!!progress.completed}
           />
+        </div>
+      )}
+
+      {lesson.kind !== "quiz" && !lesson.video?.embed_url && (
+        <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
+          {lesson.kind === "download" || lesson.kind === "external"
+            ? "Open resources from the course Resources tab, or add a video/link in edit mode."
+            : "No video is attached to this lesson yet. In edit mode, set a YouTube URL on the Modules tab."}
         </div>
       )}
 
