@@ -13,6 +13,7 @@ import Link from "next/link";
 import type { CourseCard } from "@/lib/types";
 import { isNew } from "@/lib/catalog";
 import { NewCourseCard } from "@/components/edit/EditorExtras";
+import { appAlert } from "@/lib/dialogs";
 
 const LEVELS = ["beginner", "intermediate", "advanced"] as const;
 
@@ -112,7 +113,7 @@ function CardEditor({ course, onClose }: { course: CourseCard; onClose: () => vo
     const url = await uploadMedia(file);
     setBusy(false);
     if (url) setImageUrl(url);
-    else alert("Upload failed");
+    else await appAlert({ title: "Upload failed", message: "Could not upload the image." });
   }
 
   async function save() {
@@ -123,7 +124,7 @@ function CardEditor({ course, onClose }: { course: CourseCard; onClose: () => vo
     });
     if (!r.ok) {
       setBusy(false);
-      alert(`Save failed: ${await r.text()}`);
+      await appAlert({ title: "Save failed", message: await r.text() });
       return;
     }
     await revalidate(["/courses", `/courses/${course.slug}`]);
@@ -175,7 +176,7 @@ function CardEditor({ course, onClose }: { course: CourseCard; onClose: () => vo
         )}
       </div>
       <div className="flex items-center gap-2">
-        <label className="cursor-pointer rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium dark:border-zinc-700">
+        <label className="chip cursor-pointer text-xs font-medium">
           Upload image…
           <input
             type="file"
@@ -221,7 +222,7 @@ function CardEditor({ course, onClose }: { course: CourseCard; onClose: () => vo
         </button>
         <button
           onClick={onClose}
-          className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium dark:border-zinc-700"
+          className="chip font-medium"
         >
           Cancel
         </button>
@@ -241,12 +242,9 @@ function Chip({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`rounded-full px-3 py-1 text-sm border transition-colors ${
-        active
-          ? "bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100"
-          : "border-zinc-300 text-zinc-600 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
-      }`}
+      className={active ? "chip chip-active" : "chip"}
     >
       {children}
     </button>
@@ -307,7 +305,7 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search courses…"
-          className="ml-auto w-56 rounded-full border border-zinc-300 px-4 py-1.5 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900"
+          className="chip-input ml-auto w-56"
         />
       </div>
 
@@ -316,7 +314,7 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
           <div key={c.slug} className="relative">
             <Link
               href={`/courses/${c.slug}`}
-              className="block overflow-hidden rounded-2xl border border-zinc-200 transition-shadow hover:shadow-lg dark:border-zinc-800"
+              className="surface-card block overflow-hidden border border-[var(--color-separator)] transition-shadow hover:shadow-[var(--elevation-2)]"
             >
               <Banner course={c} />
               <div className="p-4">

@@ -1,0 +1,204 @@
+/* FatTail Labs design tokens — Human Interface Spec v1.0
+   Semantic only. Components must reference these, not raw zinc/emerald utilities.
+
+   Apple surface hierarchy (apple.com / HIG marketing pages — ref apple1.png):
+   - canvas  ≈ 5% off-white so pure white/black tiles “lift” off the page
+   - surface = pure #ffffff (cards, chrome)
+   - surface-inverse = pure #000000 (hero product tiles)
+   Measured from reference: canvas ~#f2f2f5, white tiles #ffffff, black tiles #000000.
+*/
+
+:root {
+  /* —— Color (light) —— */
+  /* Soft page wash — never pure white (would erase card edges). */
+  --color-canvas: #f5f5f7;
+  /* Elevated / grouped content — pure white so it pops on canvas. */
+  --color-surface: #ffffff;
+  /* Nested fill inside a white surface (lists, inset groups). */
+  --color-surface-secondary: #f2f2f7;
+  /* Full-bleed black product / hero tiles (HomePod-style). */
+  --color-surface-inverse: #000000;
+  --color-separator: rgba(60, 60, 67, 0.12);
+  --color-label: #1d1d1f;
+  --color-label-secondary: #6e6e73;
+  --color-label-tertiary: #8e8e93;
+  --color-on-inverse: #f5f5f7;
+  --color-tint: #0d9488; /* emerald swatch default */
+  --color-tint-emphasis: #0f766e;
+  --color-tint-soft: rgba(13, 148, 136, 0.12);
+  --color-destructive: #ff3b30;
+  --color-destructive-soft: rgba(255, 59, 48, 0.12);
+  --color-success: #34c759;
+  --color-warning: #ff9f0a;
+  --color-fill: rgba(120, 120, 128, 0.12);
+  --color-overlay: rgba(0, 0, 0, 0.4);
+  --color-on-tint: #ffffff;
+
+  /* —— Type —— */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-large-title: 2.125rem;
+  --text-title-1: 1.75rem;
+  --text-title-2: 1.375rem;
+  --text-title-3: 1.25rem;
+  --text-headline: 1.0625rem;
+  --text-body: 1.0625rem;
+  --text-callout: 1rem;
+  --text-subheadline: 0.9375rem;
+  --text-footnote: 0.8125rem;
+  --text-caption: 0.75rem;
+
+  /* —— Space (4pt base) —— */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  --hit-min: 2.75rem; /* 44px */
+
+  /* —— Chrome / global nav (Apple density; single source of truth) —— */
+  --header-height: 3.5rem; /* 56px — mobile */
+  --header-height-lg: 4rem; /* 64px — sm+ */
+  --header-logo-size: 2.75rem; /* 44px — ~50% above original 28px mark */
+  --header-logo-size-lg: 3rem; /* 48px */
+  --header-nav-gap: 1.25rem; /* 20px */
+  --header-nav-gap-lg: 1.5rem; /* 24px */
+  --header-nav-gap-xl: 1.75rem; /* 28px */
+  --header-link-size: 0.8125rem; /* 13px */
+  --header-z: 40;
+  --header-sticky-offset: var(--header-height-lg); /* for scroll-mt / sticky sidebars */
+
+  /* —— Radius —— */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+  --radius-full: 9999px;
+
+  /* —— Elevation —— */
+  --elevation-1: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --elevation-2: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --elevation-3: 0 12px 40px rgba(0, 0, 0, 0.18);
+
+  /* —— Motion —— */
+  --motion-fast: 120ms;
+  --motion-normal: 200ms;
+  --motion-slow: 320ms;
+  --motion-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Dark: true black canvas; elevated surfaces are slightly lifted gray. */
+    --color-canvas: #000000;
+    --color-surface: #1c1c1e;
+    --color-surface-secondary: #2c2c2e;
+    --color-surface-inverse: #ffffff;
+    --color-on-inverse: #1d1d1f;
+    --color-separator: rgba(84, 84, 88, 0.65);
+    --color-label: #f5f5f7;
+    --color-label-secondary: #98989d;
+    --color-label-tertiary: #636366;
+    --color-tint: #2dd4bf;
+    --color-tint-emphasis: #5eead4;
+    --color-tint-soft: rgba(45, 212, 191, 0.16);
+    --color-destructive: #ff453a;
+    --color-destructive-soft: rgba(255, 69, 58, 0.18);
+    --color-success: #30d158;
+    --color-warning: #ffd60a;
+    --color-fill: rgba(120, 120, 128, 0.24);
+    --color-overlay: rgba(0, 0, 0, 0.55);
+    --color-on-tint: #042f2e;
+  }
+}
+
+/* Explicit scheme overrides (appearance control plane) */
+:root[data-theme="light"] {
+  --color-canvas: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-surface-secondary: #f2f2f7;
+  --color-surface-inverse: #000000;
+  --color-on-inverse: #f5f5f7;
+  --color-separator: rgba(60, 60, 67, 0.12);
+  --color-label: #1d1d1f;
+  --color-label-secondary: #6e6e73;
+  --color-label-tertiary: #8e8e93;
+  --color-tint: #0d9488;
+  --color-tint-emphasis: #0f766e;
+  --color-tint-soft: rgba(13, 148, 136, 0.12);
+  --color-destructive: #ff3b30;
+  --color-destructive-soft: rgba(255, 59, 48, 0.12);
+  --color-fill: rgba(120, 120, 128, 0.12);
+  --color-overlay: rgba(0, 0, 0, 0.4);
+  --color-on-tint: #ffffff;
+}
+
+:root[data-theme="dark"] {
+  --color-canvas: #000000;
+  --color-surface: #1c1c1e;
+  --color-surface-secondary: #2c2c2e;
+  --color-surface-inverse: #ffffff;
+  --color-on-inverse: #1d1d1f;
+  --color-separator: rgba(84, 84, 88, 0.65);
+  --color-label: #f5f5f7;
+  --color-label-secondary: #98989d;
+  --color-label-tertiary: #636366;
+  --color-tint: #2dd4bf;
+  --color-tint-emphasis: #5eead4;
+  --color-tint-soft: rgba(45, 212, 191, 0.16);
+  --color-destructive: #ff453a;
+  --color-destructive-soft: rgba(255, 69, 58, 0.18);
+  --color-fill: rgba(120, 120, 128, 0.24);
+  --color-overlay: rgba(0, 0, 0, 0.55);
+  --color-on-tint: #042f2e;
+}
+
+/* Tint swatches (appearance brand.tint) */
+:root[data-tint="emerald"] {
+  /* default — already set */
+}
+:root[data-tint="blue"] {
+  --color-tint: #007aff;
+  --color-tint-emphasis: #0066d6;
+  --color-tint-soft: rgba(0, 122, 255, 0.12);
+  --color-on-tint: #ffffff;
+}
+:root[data-tint="indigo"] {
+  --color-tint: #5856d6;
+  --color-tint-emphasis: #3634a3;
+  --color-tint-soft: rgba(88, 86, 214, 0.12);
+  --color-on-tint: #ffffff;
+}
+:root[data-tint="orange"] {
+  --color-tint: #ff9500;
+  --color-tint-emphasis: #c93400;
+  --color-tint-soft: rgba(255, 149, 0, 0.14);
+  --color-on-tint: #1d1d1f;
+}
+
+:root[data-density="compact"] {
+  --hit-min: 2.25rem;
+  --text-body: 0.9375rem;
+}
+
+:root[data-corners="smooth"] {
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-normal: 0ms;
+    --motion-slow: 0ms;
+  }
+}

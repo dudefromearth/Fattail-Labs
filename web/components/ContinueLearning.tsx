@@ -53,12 +53,12 @@ export default function ContinueLearning() {
 
   if (state.kind === "anonymous") {
     return (
-      <div className="rounded-2xl border border-zinc-200 p-8 text-center dark:border-zinc-800">
+      <div className="surface-card border border-[var(--color-separator)] p-8 text-center">
         <p className="font-medium">Sign in to see your progress</p>
         <div className="mt-4 flex items-center justify-center gap-3">
           <Link
             href="/login"
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium dark:border-zinc-700"
+            className="chip font-medium"
           >
             Log In
           </Link>
@@ -75,7 +75,7 @@ export default function ContinueLearning() {
 
   if (state.courses.length === 0) {
     return (
-      <div className="rounded-2xl border border-zinc-200 p-8 text-center dark:border-zinc-800">
+      <div className="surface-card border border-[var(--color-separator)] p-8 text-center">
         <p className="font-medium">Nothing in progress yet</p>
         <p className="mt-1 text-sm text-zinc-500">
           Start with the flagship — stop the bleeding first.
@@ -96,7 +96,7 @@ export default function ContinueLearning() {
         <Link
           key={course.slug}
           href={`/courses/${course.slug}/lessons/${resume.lesson_slug}`}
-          className="group rounded-2xl border border-zinc-200 p-5 transition-shadow hover:shadow-lg dark:border-zinc-800"
+          className="group surface-card border border-[var(--color-separator)] p-5 transition-shadow hover:shadow-[var(--elevation-2)]"
         >
           <div className="flex items-baseline justify-between gap-3">
             <h3 className="font-semibold leading-snug group-hover:underline">

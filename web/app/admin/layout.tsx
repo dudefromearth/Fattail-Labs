@@ -13,6 +13,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/media", label: "Media" },
   { href: "/admin/ai", label: "AI workbench" },
   { href: "/admin/agents", label: "Agent keys" },
+  { href: "/admin/appearance", label: "Appearance" },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import CourseBlueprintPanel from "./CourseBlueprintPanel";
+import { appConfirm } from "@/lib/dialogs";
 
 type Card = {
   id: number;
@@ -855,13 +856,19 @@ export default function BoardKanban() {
                   data-testid="board-produce-heygen-live"
                   title="Submit live Video Agent job(s) — counts toward daily budget"
                   onClick={() => {
-                    if (
-                      window.confirm(
-                        "Submit live HeyGen Video Agent job(s)? This spends wallet credits, counts toward the daily budget, and may take 20–45 minutes per render.",
-                      )
-                    ) {
-                      void produceHeygen(selected.id, false);
-                    }
+                    void (async () => {
+                      if (
+                        await appConfirm({
+                          title: "Submit live HeyGen job(s)?",
+                          message:
+                            "This spends wallet credits, counts toward the daily budget, and may take 20–45 minutes per render.",
+                          confirmLabel: "Produce",
+                          destructive: true,
+                        })
+                      ) {
+                        void produceHeygen(selected.id, false);
+                      }
+                    })();
                   }}
                 >
                   Produce HeyGen (live)

@@ -35,20 +35,21 @@ export default function StudentsSection({ slug }: { slug: string }) {
     };
   }, [slug]);
 
-  if (!data) return <p className="mt-6 text-sm text-zinc-400">Loading…</p>;
+  if (!data)
+    return <p className="text-sm text-[var(--color-label-tertiary)]">Loading…</p>;
 
   if (data.students === null) {
     return (
-      <div className="mt-6 rounded-2xl border border-zinc-200 p-8 text-center dark:border-zinc-800">
-        <p className="font-medium">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] p-8 text-center">
+        <p className="font-medium text-[var(--color-label)]">
           {data.count} student{data.count === 1 ? "" : "s"} enrolled
         </p>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
           Sign in to see who is learning alongside you.
         </p>
         <a
           href="/login"
-          className="mt-4 inline-block rounded-full bg-emerald-500 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-600"
+          className="mt-4 inline-block rounded-full bg-[var(--color-tint)] px-5 py-2 text-sm font-medium text-[var(--color-on-tint)] hover:bg-[var(--color-tint-emphasis)]"
         >
           Sign In
         </a>
@@ -57,34 +58,39 @@ export default function StudentsSection({ slug }: { slug: string }) {
   }
 
   return (
-    <div className="mt-6">
-      <p className="text-sm text-zinc-500">
+    <div>
+      <p className="text-sm text-[var(--color-label-secondary)]">
         {data.count} student{data.count === 1 ? "" : "s"} enrolled
       </p>
       <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {data.students.map((s, i) => (
           <li
             key={i}
-            className="flex items-center gap-3 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800"
+            className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] p-4"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-sm font-semibold text-white">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-tint)] text-sm font-semibold text-[var(--color-on-tint)]">
               {initials(s.name)}
             </span>
             <span className="min-w-0">
               <span className="flex items-center gap-1.5">
-                <span className="truncate font-medium">{s.name}</span>
+                <span className="truncate font-medium text-[var(--color-label)]">
+                  {s.name}
+                </span>
                 {s.is_admin && (
-                  <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                  <span className="rounded-full bg-[var(--color-tint-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--color-tint)]">
                     Admin
                   </span>
                 )}
                 {s.completed && (
-                  <span title="Completed the course" className="text-emerald-500">
+                  <span
+                    title="Completed the course"
+                    className="text-[var(--color-tint)]"
+                  >
                     ✓
                   </span>
                 )}
               </span>
-              <span className="block text-xs text-zinc-500">
+              <span className="block text-xs text-[var(--color-label-secondary)]">
                 Joined{" "}
                 {new Date(s.enrolled_at).toLocaleDateString("en-US", {
                   month: "short",

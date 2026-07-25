@@ -73,22 +73,22 @@ export default function EnrollCard({
   }
 
   return (
-    <aside className="h-fit rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
-      <h2 className="font-semibold">My Progress</h2>
+    <aside className="surface-card h-fit border border-[var(--color-separator)] p-6">
+      <h2 className="font-semibold text-[var(--color-label)]">My Progress</h2>
 
       {(state.kind === "loading" ||
         state.kind === "anonymous" ||
         state.kind === "not_enrolled") && (
         <>
-          <div className="mt-3 h-2 rounded-full bg-zinc-100 dark:bg-zinc-800" />
-          <p className="mt-2 text-sm text-zinc-500">Not started yet</p>
+          <div className="mt-3 h-2 rounded-full bg-[var(--color-fill)]" />
+          <p className="mt-2 text-sm text-[var(--color-label-secondary)]">Not started yet</p>
         </>
       )}
 
       {state.kind === "anonymous" && (
         <Link
           href="/signup"
-          className="mt-4 block rounded-full bg-emerald-500 py-2.5 text-center font-medium text-white transition-colors hover:bg-emerald-600"
+          className="mt-4 block rounded-full bg-[var(--color-tint)] py-2.5 text-center font-medium text-[var(--color-on-tint)] transition-colors hover:bg-[var(--color-tint-emphasis)]"
         >
           Join to Enroll
         </Link>
@@ -98,7 +98,7 @@ export default function EnrollCard({
         <button
           onClick={enroll}
           disabled={busy}
-          className="mt-4 block w-full rounded-full bg-emerald-500 py-2.5 text-center font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-50"
+          className="mt-4 block w-full rounded-full bg-[var(--color-tint)] py-2.5 text-center font-medium text-[var(--color-on-tint)] transition-colors hover:bg-[var(--color-tint-emphasis)] disabled:opacity-50"
         >
           {busy ? "Enrolling…" : "Enroll"}
         </button>

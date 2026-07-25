@@ -6,6 +6,7 @@
 
 import { fetchMe } from "@/lib/useIsAdmin";
 import { revalidate as revalidatePages, uploadMedia } from "@/lib/client";
+import { appAlert, appConfirm } from "@/lib/dialogs";
 import {
   createContext,
   useCallback,
@@ -56,8 +57,8 @@ type EditState = {
   uploadHero: (file: File) => void;
   createModule: () => void;
   createLesson: (moduleId: number) => void;
-  deleteModule: (moduleId: number) => void;
-  deleteLesson: (lessonId: number) => void;
+  deleteModule: (moduleId: number, title?: string) => void;
+  deleteLesson: (lessonId: number, title?: string) => void;
   status: string | null;
   setStatus: (s: string) => void;
   saving: boolean;
@@ -79,6 +80,9 @@ export function EditProvider({
   courseSlug: string;
   children: React.ReactNode;
 }) {
+  // Use imperative dialogs (not useConfirm hook) so EditProvider never throws
+  // when ConfirmProvider context is briefly unavailable — a throw here would
+  // kill hydration for CourseTabs and make the tab capsule dead.
   const [isAdmin, setIsAdmin] = useState(false);
   const [editMode, setEditModeState] = useState(false);
   const editKey = `labs-edit-mode:${courseSlug}`;
@@ -269,7 +273,10 @@ export function EditProvider({
   const structureOp = useCallback(
     async (run: () => Promise<Response>) => {
       if (Object.keys(dirty).length > 0) {
-        alert("Save or discard your pending edits first.");
+        await appAlert({
+          title: "Unsaved edits",
+          message: "Save or discard your pending edits first.",
+        });
         return;
       }
       setError(null);
@@ -310,8 +317,16 @@ export function EditProvider({
   );
 
   const deleteModule = useCallback(
-    (moduleId: number) => {
-      if (!confirm("Delete this module and all its lessons?")) return;
+    async (moduleId: number, title?: string) => {
+      const label = (title || "this module").trim() || "this module";
+      const ok = await appConfirm({
+        title: `Delete module “${label}”?`,
+        message:
+          "All lessons in this module will be permanently deleted.\nThis cannot be undone.",
+        confirmLabel: "Delete",
+        destructive: true,
+      });
+      if (!ok) return;
       structureOp(() =>
         fetch(`/api/admin/modules/${moduleId}`, {
           method: "DELETE",
@@ -323,8 +338,15 @@ export function EditProvider({
   );
 
   const deleteLesson = useCallback(
-    (lessonId: number) => {
-      if (!confirm("Delete this lesson?")) return;
+    async (lessonId: number, title?: string) => {
+      const label = (title || "this lesson").trim() || "this lesson";
+      const ok = await appConfirm({
+        title: `Delete lesson “${label}”?`,
+        message: "This cannot be undone.",
+        confirmLabel: "Delete",
+        destructive: true,
+      });
+      if (!ok) return;
       structureOp(() =>
         fetch(`/api/admin/lessons/${lessonId}`, {
           method: "DELETE",
@@ -388,8 +410,14 @@ export function EditProvider({
     [jsonOp],
   );
   const removeAttachment = useCallback(
-    (id: number) => {
-      if (!confirm("Delete this attachment?")) return;
+    async (id: number) => {
+      const ok = await appConfirm({
+        title: "Delete this attachment?",
+        message: "This cannot be undone.",
+        confirmLabel: "Delete",
+        destructive: true,
+      });
+      if (!ok) return;
       jsonOp(`/api/admin/attachments/${id}`, "DELETE");
     },
     [jsonOp],

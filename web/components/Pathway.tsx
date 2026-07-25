@@ -100,8 +100,8 @@ function Assessment({ onDone }: { onDone: (p: PathwayData) => void }) {
                 key={o.value}
                 className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition-colors ${
                   answers[q.key] === o.value
-                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950"
-                    : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-800"
+                    ? "border-[var(--color-tint)] bg-[var(--color-tint-soft)]"
+                    : "border-[var(--color-separator)] bg-[var(--color-surface)] hover:bg-[var(--color-fill)]"
                 }`}
               >
                 <input
@@ -156,7 +156,7 @@ export default function Pathway() {
 
   if (state === "anonymous") {
     return (
-      <div className="rounded-2xl border border-zinc-200 p-8 text-center dark:border-zinc-800">
+      <div className="surface-card border border-[var(--color-separator)] p-8 text-center">
         <p className="font-medium">
           Create a free account to build your personalized pathway
         </p>
@@ -169,7 +169,7 @@ export default function Pathway() {
           </Link>
           <Link
             href="/login"
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium dark:border-zinc-700"
+            className="chip font-medium"
           >
             Log In
           </Link>
@@ -192,10 +192,10 @@ export default function Pathway() {
           return (
             <li
               key={s.slug}
-              className={`flex flex-wrap items-center gap-4 rounded-2xl border p-5 ${
+              className={`surface-card flex flex-wrap items-center gap-4 border p-5 ${
                 isNext
-                  ? "border-emerald-400 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-950/30"
-                  : "border-zinc-200 dark:border-zinc-800"
+                  ? "border-[var(--color-tint)] bg-[var(--color-tint-soft)]"
+                  : "border-[var(--color-separator)]"
               }`}
             >
               <span

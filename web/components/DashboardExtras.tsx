@@ -36,7 +36,7 @@ export default function DashboardExtras() {
 
   return (
     <div className="mt-10 grid gap-4 sm:grid-cols-2">
-      <section className="rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+      <section className="surface-card border border-[var(--color-separator)] p-5">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
           Your Pathway
         </h2>
@@ -74,7 +74,7 @@ export default function DashboardExtras() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+      <section className="surface-card border border-[var(--color-separator)] p-5">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
           Next Live Session
         </h2>

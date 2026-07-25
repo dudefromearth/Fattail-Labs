@@ -1,23 +1,30 @@
 "use client";
 
 // Root chrome: member SiteHeader on learner routes; suppressed under /admin/*
-// so the dedicated admin shell owns operator navigation (Admin Dual Surface v1.0).
+// ConfirmProvider wraps all routes (HIG AlertDialog replaces window.confirm).
+// AppearanceRoot is a sibling (not a content wrapper) so useSearchParams
+// Suspense cannot detach course tabs / other client handlers.
 
 import { usePathname } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
+import { ConfirmProvider } from "@/components/ui";
+import AppearanceRoot from "@/components/appearance/AppearanceRoot";
 
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
   const isAdminApp = pathname === "/admin" || pathname.startsWith("/admin/");
 
-  if (isAdminApp) {
-    return <>{children}</>;
-  }
-
   return (
-    <>
-      <SiteHeader />
-      {children}
-    </>
+    <ConfirmProvider>
+      <AppearanceRoot />
+      {isAdminApp ? (
+        children
+      ) : (
+        <>
+          <SiteHeader />
+          {children}
+        </>
+      )}
+    </ConfirmProvider>
   );
 }

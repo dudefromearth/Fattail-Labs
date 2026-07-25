@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { del, getJSON, putJSON } from "@/lib/client";
 import { FIELD } from "@/lib/ui";
+import { appAlert, appConfirm } from "@/lib/dialogs";
 import {
   CATEGORY_OPTIONS,
   SCOPE_OPTIONS,
@@ -88,14 +89,14 @@ export default function EventEditor({
     if (r.ok) {
       onDone();
       onClose();
-    } else alert(`Save failed: ${await r.text()}`);
+    } else await appAlert({ title: "Save failed", message: await r.text() });
   }
 
   async function removeEvent() {
     const what = s.recurring
       ? SCOPE_OPTIONS.find(([v]) => v === scope)?.[1]
       : "this event";
-    if (!confirm(`Delete — ${what}?`)) return;
+    if (!(await appConfirm({ title: `Delete — ${what}?`, message: "This cannot be undone.", confirmLabel: "Delete", destructive: true }))) return;
     setBusy(true);
     const r = s.recurring
       ? await del(`${prefillUrl}?scope=${scope}`)
@@ -104,7 +105,7 @@ export default function EventEditor({
     if (r.ok) {
       onDone();
       onClose();
-    } else alert(`Delete failed: ${await r.text()}`);
+    } else await appAlert({ title: "Delete failed", message: await r.text() });
   }
 
   if (!loaded) return <p className="mt-3 text-sm text-zinc-400">Loading event…</p>;
@@ -195,7 +196,7 @@ export default function EventEditor({
         </button>
         <button
           onClick={onClose}
-          className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium dark:border-zinc-700"
+          className="chip font-medium"
         >
           Cancel
         </button>

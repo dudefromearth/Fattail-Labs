@@ -1159,3 +1159,36 @@ Primary, landscape. Manifest:
 `docs/studio/experiments/hub-intro/MANIFEST.md`. Assemble into 5 hub videos
 (Anonymous/Campaign/Observer/Activator/Navigator) in editor with screen-capture
 B-roll; gates Hotel/Tango/Coach before publish.
+
+## 2026-07-24 — Human Interface Spec v1.0 (Apple HIG for Labs web)
+
+Coach approved `Specs/FatTail-Labs-Human-Interface-Spec-v1.0.md` as the GUI
+constitution for member site, in-place admin, and `/admin/*`.
+
+**Decisions locked:**
+- Apple HIG principles adapted to web (clarity, deference, depth, 44pt targets,
+  AA a11y); one component kit, member vs operator density dialects.
+- Tokens-only styling; no emoji as chrome; AlertDialog replaces `confirm`/`alert`.
+- **Appearance & Chrome Control Plane:** administrators control brand (swatch
+  tint enum), chrome nav (allowlisted routes), hub region composition, course
+  tabs, announcements, operator shell prefs — typed JSON, draft/publish, no
+  freeform CSS/JS.
+- Tint: closed swatches only (v1). Font: system/SF stack only (v1). Density:
+  admin-published only. Draft preview: admin session + `?appearance=draft`.
+  Hub FAQ body stays in-place CMS; appearance toggles region only.
+
+**Delivery:** phases H0–H7 under `agents/p-hig/`. Foundation (H1) and appearance
+schema/API (H5 scaffold) ship with first implementation wave.
+
+
+## 2026-07-24 — Primary nav: Labs hub; Pathway not a top tab
+
+Coach: Pathway remains a product surface (assessment funnel / future role-based
+sequencing) but is **not** primary chrome. Primary tabs:
+**Courses · Labs · Resources · Live · About · Guide**.
+
+**Labs** (`/labs`) sits between Courses and Resources as the home of member
+practice tools: Trade Log, Journal, Playbook, Statistics, Vexy. Tools ship
+incrementally; no survey-driven customization UI yet — path personalization will
+be seamless by role later.
+

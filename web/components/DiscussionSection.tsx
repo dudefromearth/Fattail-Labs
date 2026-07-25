@@ -128,21 +128,23 @@ export default function DiscussionSection({ slug }: { slug: string }) {
   }
 
   if (threads === null)
-    return <p className="mt-6 text-sm text-zinc-400">Loading…</p>;
+    return <p className="text-sm text-[var(--color-label-tertiary)]">Loading…</p>;
 
   // Thread detail view
   if (openThread) {
     return (
-      <div className="mt-6">
+      <div>
         <button
           onClick={() => setOpenThread(null)}
-          className="text-sm text-zinc-500 hover:underline"
+          className="text-sm text-[var(--color-label-secondary)] hover:underline"
         >
           ← All discussions
         </button>
-        <div className="mt-4 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
-          <h3 className="text-lg font-semibold">{openThread.title}</h3>
-          <p className="mt-1 text-xs text-zinc-500">
+        <div className="mt-4 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] p-6">
+          <h3 className="text-lg font-semibold text-[var(--color-label)]">
+            {openThread.title}
+          </h3>
+          <p className="mt-1 text-xs text-[var(--color-label-secondary)]">
             <AuthorBadge
               name={openThread.author}
               isAdmin={openThread.author_is_admin}
@@ -160,7 +162,7 @@ export default function DiscussionSection({ slug }: { slug: string }) {
           {openThread.comments.map((c) => (
             <li
               key={c.id}
-              className={`rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 ${c.status === "held" ? "opacity-50" : ""}`}
+              className={`rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] p-4 ${c.status === "held" ? "opacity-50" : ""}`}
             >
               <p className="text-xs text-zinc-500">
                 <AuthorBadge name={c.author} isAdmin={c.author_is_admin} /> ·{" "}
@@ -221,47 +223,49 @@ export default function DiscussionSection({ slug }: { slug: string }) {
 
   // Thread list view
   return (
-    <div className="mt-6">
+    <div>
       {viewer.can_post && (
-        <div className="rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
-          <p className="text-sm font-medium">Start a discussion</p>
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] p-5">
+          <p className="text-sm font-medium text-[var(--color-label)]">
+            Start a discussion
+          </p>
           <input
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             placeholder="Title"
-            className="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-950"
+            className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-sm outline-none focus:border-[var(--color-tint)]"
           />
           <textarea
             value={newBody}
             onChange={(e) => setNewBody(e.target.value)}
             placeholder="What's on your mind? (markdown supported)"
             rows={3}
-            className="mt-2 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-950"
+            className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-sm outline-none focus:border-[var(--color-tint)]"
           />
           <button
             onClick={postThread}
             disabled={busy || !newTitle.trim()}
-            className="mt-2 rounded-full bg-emerald-500 px-5 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+            className="mt-2 rounded-full bg-[var(--color-tint)] px-5 py-1.5 text-sm font-medium text-[var(--color-on-tint)] hover:bg-[var(--color-tint-emphasis)] disabled:opacity-50"
           >
             Post
           </button>
         </div>
       )}
       {!viewer.can_post && (
-        <p className="text-sm text-zinc-500">
-          <a href="/login" className="text-emerald-600 hover:underline">
+        <p className="text-sm text-[var(--color-label-secondary)]">
+          <a href="/login" className="text-[var(--color-tint)] hover:underline">
             Sign in
           </a>{" "}
           to start a discussion.
         </p>
       )}
 
-      <ul className="mt-4 divide-y divide-zinc-100 rounded-2xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+      <ul className="mt-4 divide-y divide-[var(--color-separator)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)]">
         {threads.map((t) => (
           <li key={t.id} className={t.status === "held" ? "opacity-50" : ""}>
             <button
               onClick={() => openDetail(t.id)}
-              className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-900"
+              className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-[var(--color-fill)]"
             >
               <span className="flex-1">
                 <span className="block font-medium">{t.title}</span>

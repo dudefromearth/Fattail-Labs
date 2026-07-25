@@ -96,7 +96,7 @@ export default function ReviewsSection({ slug }: { slug: string }) {
   if (!data) return null;
 
   return (
-    <div className="mt-8 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
+    <div className="surface-card mt-8 border border-[var(--color-separator)] p-6">
       <div className="flex items-baseline gap-3">
         <h3 className="font-semibold">Course Review</h3>
         {data.aggregate.avg !== null ? (

@@ -7,6 +7,7 @@ import { useState } from "react";
 import Markdown from "@/components/Markdown";
 import { HubEditableMarkdown, HubEditableText } from "./HubEditable";
 import { useHubEdit, type FaqDraft } from "./HubEditContext";
+import { appConfirm } from "@/lib/dialogs";
 
 // FaqDraft re-exported for callers typing initial items
 
@@ -23,7 +24,7 @@ function FaqItemView({
   const editing = !!edit?.editMode;
 
   return (
-    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800">
+    <div className="surface-card border border-[var(--color-separator)]">
       <h3 className="m-0">
         <button
           type="button"
@@ -83,21 +84,21 @@ function FaqItemView({
               <button
                 type="button"
                 onClick={() => edit!.moveFaq(item.id, -1)}
-                className="rounded-full border border-zinc-300 px-3 py-1 dark:border-zinc-700"
+                className="chip"
               >
                 ↑ Move up
               </button>
               <button
                 type="button"
                 onClick={() => edit!.moveFaq(item.id, 1)}
-                className="rounded-full border border-zinc-300 px-3 py-1 dark:border-zinc-700"
+                className="chip"
               >
                 ↓ Move down
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm("Remove this FAQ item?")) edit!.removeFaq(item.id);
+                onClick={async () => {
+                  if (await appConfirm({ title: "Remove this FAQ item?", message: "This cannot be undone.", confirmLabel: "Delete", destructive: true })) edit!.removeFaq(item.id);
                 }}
                 className="rounded-full border border-red-300 px-3 py-1 text-red-600 dark:border-red-900"
               >

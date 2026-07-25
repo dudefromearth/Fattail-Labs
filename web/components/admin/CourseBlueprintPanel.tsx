@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { appConfirm } from "@/lib/dialogs";
 
 export type ChatTurn = {
   role: string;
@@ -249,9 +250,12 @@ export default function CourseBlueprintPanel({
   const approve = async () => {
     if (busy) return;
     if (
-      !window.confirm(
-        "Approve this Course Blueprint? Downstream production (scripts, video) may proceed from this outline.",
-      )
+      !(await appConfirm({
+        title: "Approve this Course Blueprint?",
+        message:
+          "Downstream production (scripts, video) may proceed from this outline.",
+        confirmLabel: "Approve",
+      }))
     ) {
       return;
     }

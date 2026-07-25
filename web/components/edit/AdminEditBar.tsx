@@ -54,14 +54,14 @@ export default function AdminEditBar() {
           <button
             onClick={edit.discard}
             disabled={edit.saving}
-            className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm dark:border-zinc-700"
+            className="chip"
           >
             Discard
           </button>
           <button
             onClick={() => edit.setEditMode(false)}
             disabled={edit.saving}
-            className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm dark:border-zinc-700"
+            className="chip"
           >
             Exit
           </button>

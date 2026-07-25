@@ -63,8 +63,10 @@ export default async function LivePage() {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(events) }}
         />
       )}
-      <h1 className="text-3xl font-semibold tracking-tight">Live Sessions</h1>
-      <p className="mt-2 max-w-2xl text-zinc-600 dark:text-zinc-400">
+      <h1 className="text-3xl font-semibold tracking-tight text-[var(--color-label)]">
+        Live Sessions
+      </h1>
+      <p className="mt-2 max-w-2xl text-[var(--color-label-secondary)]">
         The live trading room and weekly workshops — trade and build alongside the
         FatTail team. Replays land in the course library.
       </p>

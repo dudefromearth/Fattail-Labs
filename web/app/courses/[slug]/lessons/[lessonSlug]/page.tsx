@@ -183,7 +183,7 @@ function NavRow({ nav, courseSlug }: { nav: Nav | null; courseSlug: string }) {
       {nav.prev ? (
         <Link
           href={`/courses/${courseSlug}/lessons/${nav.prev.slug}`}
-          className="rounded-full border border-zinc-300 px-4 py-2 transition-colors hover:border-zinc-500 dark:border-zinc-700"
+          className="chip"
         >
           ← {nav.prev.title}
         </Link>
@@ -362,7 +362,7 @@ export default async function LessonPlayerPage({
             </Link>
             <Link
               href={`/courses/${slug}`}
-              className="rounded-full border border-zinc-300 px-6 py-2.5 font-medium transition-colors hover:border-zinc-500 dark:border-zinc-700"
+              className="chip font-medium px-6 py-2.5"
             >
               Back to course
             </Link>

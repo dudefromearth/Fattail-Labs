@@ -38,6 +38,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     testId: "admin-card-media",
   },
   {
+    href: "/admin/appearance",
+    title: "Appearance & chrome",
+    body: "Brand tint, density, announcements — publish major interface elements without deploys (HIG v1.0).",
+    testId: "admin-card-appearance",
+  },
+  {
     href: "/courses",
     title: "In-place content editing",
     body: "Edit courses, hub, and live on production URLs — the learner page is the editor.",

@@ -1,6 +1,11 @@
 # Frontend Design — Next.js (`web/`)
 
-**Status:** As-built (retroactive, 2026-07-23)
+**Status:** As-built (retroactive, 2026-07-23); **HIG constitution** approved 2026-07-24  
+
+**Human interface:** `Specs/FatTail-Labs-Human-Interface-Spec-v1.0.md` — Apple HIG for Labs
+web, design tokens (`web/styles/tokens.css`), `web/components/ui/*` primitives, Appearance &
+Chrome Control Plane (`/admin/appearance`, `GET /api/appearance`). Compliance program:
+`agents/p-hig/`.
 
 ---
 

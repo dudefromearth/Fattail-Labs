@@ -153,7 +153,7 @@ function videoObjectJsonLd(hub: HubPage) {
 function CourseCardBlock({ course }: { course: CourseCard }) {
   const isFlagship = course.slug === FLAGSHIP_SLUG;
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+    <article className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-5">
       <h3 className="text-base font-semibold leading-snug tracking-tight">
         <Link
           href={`/courses/${course.slug}`}
@@ -329,7 +329,7 @@ export default async function CourseHubPage() {
               <a
                 key={cat.slug}
                 href={`#category-${cat.slug}`}
-                className="rounded-full border border-zinc-300 px-3 py-1 text-sm text-zinc-600 transition-colors hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
+                className="chip"
               >
                 {cat.name}
                 <span className="ml-1.5 text-zinc-400">{cat.course_count}</span>

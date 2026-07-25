@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { del, getJSON, postJSON } from "@/lib/client";
 import { FIELD } from "@/lib/ui";
+import { appAlert, appConfirm } from "@/lib/dialogs";
 import {
   CATEGORY_OPTIONS,
   DAY_KEYS,
@@ -64,19 +65,19 @@ export default function RecurrenceManager({ onChanged }: { onChanged: () => void
       setEndMode("never");
       load();
       onChanged();
-    } else alert(`Create failed: ${await r.text()}`);
+    } else await appAlert({ title: "Create failed", message: await r.text() });
   }
 
   async function remove(rec: Recurrence) {
-    if (!confirm(`Delete the recurring session "${rec.title}"? All its upcoming occurrences disappear.`)) return;
+    if (!(await appConfirm({ title: `Delete “${rec.title}”?`, message: "All its upcoming occurrences will disappear.", confirmLabel: "Delete", destructive: true }))) return;
     await del(`/api/admin/live-recurrences/${rec.id}`);
     load();
     onChanged();
   }
 
   return (
-    <div className="mt-6 rounded-2xl border-2 border-dashed border-indigo-300 p-5 dark:border-indigo-800">
-      <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">
+    <div className="surface-card mt-6 border border-[var(--color-separator)] p-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-tint)]">
         Recurring schedule (admin) — times are Eastern
       </p>
       {recurrences.length > 0 && (
@@ -84,7 +85,7 @@ export default function RecurrenceManager({ onChanged }: { onChanged: () => void
           {recurrences.map((rec) => (
             <li
               key={rec.id}
-              className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 px-4 py-2.5 text-sm dark:border-zinc-800"
+              className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] px-4 py-2.5 text-sm"
             >
               <span className="font-medium">{rec.title}</span>
               <span className="text-xs text-zinc-500">

@@ -150,7 +150,7 @@ export default function LessonBody({
           Preview
         </button>
         <label
-          className="cursor-pointer rounded-full border border-zinc-300 px-2.5 py-0.5 font-medium text-zinc-600 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-300"
+          className="chip cursor-pointer text-xs font-medium"
           title="Upload an image and embed it at the cursor (or paste / drag one in)"
         >
           🖼 Insert image…

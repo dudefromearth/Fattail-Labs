@@ -45,8 +45,10 @@ def create_app() -> FastAPI:
     from routes.resources import router as resources_router
     from routes.hub import admin as hub_admin_router
     from routes.hub import public as hub_public_router
+    from routes.appearance import router as appearance_router
 
     app.include_router(auth_router)
+    app.include_router(appearance_router)
     app.include_router(auth_dev_router)
     app.include_router(integrations_router)
     app.include_router(admin_router)

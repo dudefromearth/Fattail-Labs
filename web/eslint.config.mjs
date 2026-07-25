@@ -13,6 +13,18 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    // Human Interface Spec v1.0 — ban browser dialogs in product UI
+    files: ["components/**/*.{ts,tsx}", "app/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}"],
+    rules: {
+      "no-alert": "error",
+      "no-restricted-globals": [
+        "error",
+        { name: "confirm", message: "Use appConfirm / useConfirm (HIG AlertDialog)." },
+        { name: "alert", message: "Use appAlert / useConfirm.alert (HIG AlertDialog)." },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -117,7 +117,7 @@ export default function LoginForm() {
               <a
                 key={name}
                 href={url}
-                className="block rounded-full border border-zinc-300 py-2.5 text-center text-sm font-medium transition-colors hover:border-zinc-500 dark:border-zinc-700"
+                className="block rounded-full border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] py-2.5 text-center text-sm font-medium text-[var(--color-label)] transition-colors hover:bg-[var(--color-fill)]"
               >
                 {PROVIDER_LABELS[name] ?? name}
               </a>

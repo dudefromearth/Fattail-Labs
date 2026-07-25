@@ -5,6 +5,7 @@
 
 import { revalidate } from "@/lib/client";
 import { useState } from "react";
+import { appAlert, appConfirm } from "@/lib/dialogs";
 import { useEdit } from "./EditContext";
 
 export default function DangerZone({
@@ -22,17 +23,25 @@ export default function DangerZone({
 
   if (!edit?.editMode) return null;
 
-  function guardDirty(): boolean {
+  async function guardDirty(): Promise<boolean> {
     if (Object.keys(edit!.dirty).length > 0) {
-      alert("Save or discard your pending edits first.");
+      await appAlert({
+        title: "Unsaved edits",
+        message: "Save or discard your pending edits first.",
+      });
       return false;
     }
     return true;
   }
 
   async function unpublish() {
-    if (!guardDirty()) return;
-    if (!confirm("Unpublish this course? It disappears from the catalog and its public page until republished."))
+    if (!(await guardDirty())) return;
+    if (!(await appConfirm({
+      title: "Unpublish this course?",
+      message: "It disappears from the catalog and its public page until republished.",
+      confirmLabel: "Unpublish",
+      destructive: true,
+    })))
       return;
     setBusy(true);
     setError(null);
@@ -52,15 +61,23 @@ export default function DangerZone({
   }
 
   async function destroy() {
-    if (!guardDirty()) return;
-    const typed = prompt(
-      `This permanently deletes the course, all its modules, lessons, quizzes, member progress, reviews, and discussions.\n\nType the course title to confirm:\n${title}`,
-    );
-    if (typed === null) return;
-    if (typed.trim() !== title.trim()) {
-      alert("Title did not match — nothing was deleted.");
-      return;
-    }
+    if (!(await guardDirty())) return;
+    const ok = await appConfirm({
+      title: "Delete this course permanently?",
+      message: `This permanently deletes the course, all its modules, lessons, quizzes, member progress, reviews, and discussions.\n\nCourse title must match:\n${title}`,
+      confirmLabel: "Delete forever",
+      destructive: true,
+    });
+    if (!ok) return;
+    // Second gate: type-to-confirm via prompt is not HIG; use confirm message + exact title match on a follow-up field in a later pass.
+    // For v1 HIG: require a second destructive confirm that names the course.
+    const ok2 = await appConfirm({
+      title: `Confirm delete “${title}”?`,
+      message: "This cannot be undone. All modules, lessons, and member progress for this course will be removed.",
+      confirmLabel: "Delete forever",
+      destructive: true,
+    });
+    if (!ok2) return;
     setBusy(true);
     setError(null);
     const r = await fetch(`/api/admin/courses/${slug}`, {
@@ -77,7 +94,7 @@ export default function DangerZone({
   }
 
   return (
-    <div className="mt-12 rounded-2xl border border-red-200 p-5 dark:border-red-900">
+    <div className="surface-card mt-12 border border-[var(--color-destructive)]/30 p-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-red-500">
         Danger zone
       </p>

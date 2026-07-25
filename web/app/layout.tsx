@@ -1,17 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import AppChrome from "@/components/AppChrome";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   // Fail-loud base URL (SEO spec v1.0): relative OG images and canonicals
@@ -34,12 +23,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Human Interface Spec v1.0: system / SF Pro stack via tokens — no webfont in v1.
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
+    <html lang="en" className="h-full antialiased" data-tint="emerald">
+      <body className="flex min-h-full flex-col">
         {/* Sitewide entity (SEO spec v1.3) */}
         <script
           type="application/ld+json"

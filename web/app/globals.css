@@ -1,26 +1,289 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import "../styles/tokens.css";
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--color-canvas);
+  --color-foreground: var(--color-label);
+  --color-canvas: var(--color-canvas);
+  --color-surface: var(--color-surface);
+  --color-surface-secondary: var(--color-surface-secondary);
+  --color-surface-inverse: var(--color-surface-inverse);
+  --color-on-inverse: var(--color-on-inverse);
+  --color-separator: var(--color-separator);
+  --color-label: var(--color-label);
+  --color-label-secondary: var(--color-label-secondary);
+  --color-label-tertiary: var(--color-label-tertiary);
+  --color-tint: var(--color-tint);
+  --color-tint-emphasis: var(--color-tint-emphasis);
+  --color-tint-soft: var(--color-tint-soft);
+  --color-destructive: var(--color-destructive);
+  --color-destructive-soft: var(--color-destructive-soft);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-fill: var(--color-fill);
+  --color-overlay: var(--color-overlay);
+  --color-on-tint: var(--color-on-tint);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-mono);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100%;
+  background: var(--color-canvas);
+  color: var(--color-label);
+  font-family: var(--font-ui);
+  font-size: var(--text-body);
+  line-height: 1.47;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* HIG focus ring */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--color-tint);
+  outline-offset: 2px;
+}
+
+/* Utility helpers — prefer these over raw zinc/white for HIG hierarchy */
+.bg-canvas {
+  background-color: var(--color-canvas);
+}
+.bg-surface {
+  background-color: var(--color-surface);
+}
+.bg-surface-secondary {
+  background-color: var(--color-surface-secondary);
+}
+.bg-surface-inverse {
+  background-color: var(--color-surface-inverse);
+  color: var(--color-on-inverse);
+}
+.text-label {
+  color: var(--color-label);
+}
+.text-secondary {
+  color: var(--color-label-secondary);
+}
+.border-separator {
+  border-color: var(--color-separator);
+}
+.hit-min {
+  min-height: var(--hit-min);
+  min-width: var(--hit-min);
+}
+
+/* Elevated card on canvas — pure surface, soft edge (Apple product tiles). */
+.surface-card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--elevation-1);
+}
+.surface-card-inverse {
+  background-color: var(--color-surface-inverse);
+  color: var(--color-on-inverse);
+  border-radius: var(--radius-xl);
+}
+
+/*
+ * Elevated chips / secondary buttons — white fill + hairline + soft shadow
+ * so filters and controls lift off the soft canvas (Apple HIG surfaces).
+ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-separator);
+  background-color: var(--color-surface);
+  color: var(--color-label-secondary);
+  box-shadow: var(--elevation-1);
+  font-size: 0.875rem;
+  line-height: 1.25;
+  padding: 0.375rem 0.75rem;
+  transition: color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
+}
+.chip:hover {
+  color: var(--color-label);
+}
+.chip-active {
+  border-color: var(--color-label);
+  background-color: var(--color-label);
+  color: var(--color-canvas);
+}
+.chip-input {
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-separator);
+  background-color: var(--color-surface);
+  color: var(--color-label);
+  box-shadow: var(--elevation-1);
+  font-size: 0.875rem;
+  padding: 0.375rem 1rem;
+  outline: none;
+}
+.chip-input:focus {
+  border-color: var(--color-tint);
+}
+
+/* —— Site header (global nav) —— */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--header-z);
+  width: 100%;
+  background-color: var(--color-surface);
+  color: var(--color-label);
+  box-shadow: 0 1px 0 0 var(--color-separator);
+}
+
+.site-header-bar {
+  display: flex;
+  width: 100%;
+  height: var(--header-height);
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--space-3);
+}
+
+.site-header-cluster {
+  display: flex;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--header-nav-gap);
+}
+
+.site-header-logo-link {
+  display: flex;
+  height: var(--header-logo-size);
+  width: var(--header-logo-size);
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.site-header-logo {
+  height: var(--header-logo-size);
+  width: var(--header-logo-size);
+  object-fit: contain;
+}
+
+.site-header-link {
+  white-space: nowrap;
+  font-size: 0.75rem; /* 12px base */
+  letter-spacing: -0.01em;
+  color: var(--color-label-secondary);
+  transition: color var(--motion-fast) var(--motion-ease);
+}
+
+.site-header-link:hover {
+  color: var(--color-label);
+}
+
+.site-header-link-active {
+  font-weight: 500;
+  color: var(--color-label);
+}
+
+/* Desktop: show primary links; hide mobile menu control */
+.site-header-link-desktop {
+  display: none;
+}
+
+.site-header-menu-btn {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  color: var(--color-label-secondary);
+}
+
+.site-header-menu-btn:hover {
+  background-color: var(--color-fill);
+}
+
+.site-header-signup {
+  display: inline-flex;
+  height: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  white-space: nowrap;
+  border-radius: var(--radius-full);
+  background-color: var(--color-tint);
+  padding-inline: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-on-tint);
+  transition: background-color var(--motion-fast) var(--motion-ease);
+}
+
+.site-header-signup:hover {
+  background-color: var(--color-tint-emphasis);
+}
+
+@media (min-width: 640px) {
+  .site-header-bar {
+    height: var(--header-height-lg);
+    padding-inline: var(--space-4);
+  }
+
+  .site-header-cluster {
+    gap: var(--header-nav-gap-lg);
+  }
+
+  .site-header-logo-link,
+  .site-header-logo {
+    height: var(--header-logo-size-lg);
+    width: var(--header-logo-size-lg);
+  }
+
+  .site-header-link {
+    font-size: var(--header-link-size);
+  }
+
+  .site-header-signup {
+    height: 2rem;
+    padding-inline: 0.875rem;
+    font-size: var(--header-link-size);
+  }
+}
+
+@media (min-width: 768px) {
+  .site-header-link-desktop {
+    display: inline;
+  }
+
+  .site-header-menu-btn {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .site-header-cluster {
+    gap: var(--header-nav-gap-xl);
+  }
+}
+
+/* Sticky offset for in-page anchors / guide sidebar under fixed header */
+.scroll-under-header {
+  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+}
+
+@media (min-width: 640px) {
+  .scroll-under-header {
+    scroll-margin-top: calc(var(--header-height-lg) + var(--space-4));
+  }
 }

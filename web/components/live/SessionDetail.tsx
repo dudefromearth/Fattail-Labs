@@ -48,7 +48,7 @@ export function JoinControl({ s }: { s: Session }) {
       return (
         <Link
           href="/login"
-          className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium dark:border-zinc-700"
+          className="chip font-medium"
         >
           Sign in to join
         </Link>
@@ -86,7 +86,7 @@ export default function SessionDetail({
   const [editing, setEditing] = useState(false);
   useEffect(() => setEditing(false), [s.id]);
   return (
-    <div className="mt-4 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+    <div className="surface-card mt-4 border border-[var(--color-separator)] p-5">
       <div className="flex flex-wrap items-center gap-4">
         <span
           className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${KIND_CHIP[s.kind]}`}
@@ -94,11 +94,11 @@ export default function SessionDetail({
           {KIND_LABELS[s.kind]}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 font-semibold">
+          <span className="flex items-center gap-2 font-semibold text-[var(--color-label)]">
             {s.title}
             {s.recurring && (
               <span
-                className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-500 dark:bg-zinc-800"
+                className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[11px] font-medium text-[var(--color-label-secondary)]"
                 title="Recurring weekly session"
               >
                 ↻ Weekly
@@ -106,14 +106,14 @@ export default function SessionDetail({
             )}
             {s.modified && (
               <span
-                className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400"
+                className="rounded-full bg-[var(--color-warning)]/15 px-2 py-0.5 text-[11px] font-medium text-[var(--color-warning)]"
                 title="This occurrence differs from its series"
               >
                 edited
               </span>
             )}
           </span>
-          <span className="block text-sm text-zinc-500">
+          <span className="block text-sm text-[var(--color-label-secondary)]">
             {new Date(s.starts_at).toLocaleString(undefined, {
               weekday: "short",
               month: "short",
@@ -130,15 +130,16 @@ export default function SessionDetail({
               ? `/api/live/recurrences/${s.recurrence_id}/ics`
               : `/api/live/sessions/${s.id}/ics`
           }
-          className="text-sm text-zinc-500 hover:underline"
+          className="text-sm text-[var(--color-label-secondary)] hover:underline"
         >
           Add to Calendar
         </a>
         <JoinControl s={s} />
         {isAdmin && (
           <button
+            type="button"
             onClick={() => setEditing((e) => !e)}
-            className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium dark:border-zinc-700"
+            className="rounded-full border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] px-4 py-1.5 text-sm font-medium text-[var(--color-label)]"
           >
             {editing ? "Close" : "Edit"}
           </button>

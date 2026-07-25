@@ -169,7 +169,7 @@ export default function MembershipPlans() {
         </div>
       )}
       {status === "cancelled" && (
-        <div className="mb-6 rounded-2xl border border-zinc-200 p-4 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+        <div className="mb-6 surface-card border border-[var(--color-separator)] p-4 text-sm text-[var(--color-label-secondary)]">
           Checkout cancelled — no charge was made.
         </div>
       )}
@@ -183,10 +183,10 @@ export default function MembershipPlans() {
         {visiblePlans.map((plan) => (
           <div
             key={plan.slug}
-            className={`rounded-3xl border p-6 ${
+            className={`surface-card border p-6 ${
               plan.display.featured
-                ? "border-emerald-400 shadow-lg shadow-emerald-500/10 dark:border-emerald-700"
-                : "border-zinc-200 dark:border-zinc-800"
+                ? "border-[var(--color-tint)] shadow-[var(--elevation-2)]"
+                : "border-[var(--color-separator)]"
             }`}
           >
             <div className="flex items-center gap-2">
@@ -224,7 +224,7 @@ export default function MembershipPlans() {
         ))}
       </div>
 
-      <div className="mt-8 rounded-2xl bg-zinc-50 p-5 text-center text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+      <div className="surface-card mt-8 border border-[var(--color-separator)] p-5 text-center text-sm text-[var(--color-label-secondary)]">
         <span className="font-semibold text-zinc-900 dark:text-zinc-100">
           The Alumni promise:
         </span>{" "}

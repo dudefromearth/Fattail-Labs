@@ -111,7 +111,7 @@ export default function AboutPage() {
         </Link>
         <Link
           href="/membership"
-          className="rounded-full border border-zinc-300 px-6 py-2.5 font-medium transition-colors hover:border-zinc-500 dark:border-zinc-700"
+          className="chip font-medium px-6 py-2.5"
         >
           Membership
         </Link>

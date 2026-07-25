@@ -153,7 +153,7 @@ export default async function CategoryHubPage({
               <Link
                 key={c.slug}
                 href={`/courses/category/${c.slug}`}
-                className="rounded-full border border-zinc-300 px-3 py-1 text-sm text-zinc-600 transition-colors hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
+                className="chip"
               >
                 {c.name}
               </Link>

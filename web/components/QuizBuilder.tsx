@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { useIsAdmin } from "@/lib/useIsAdmin";
+import { appAlert, appConfirm } from "@/lib/dialogs";
 
 type AdminQuestion = {
   id: number;
@@ -214,11 +215,11 @@ export default function QuizBuilder({
       body: JSON.stringify(payload),
     });
     if (r.ok) window.location.reload();
-    else alert(`Save failed: ${await r.text()}`);
+    else await appAlert({ title: "Save failed", message: await r.text() });
   }
 
   async function remove(id: number) {
-    if (!confirm("Delete this question?")) return;
+    if (!(await appConfirm({ title: "Delete this question?", message: "This cannot be undone.", confirmLabel: "Delete", destructive: true }))) return;
     await fetch(`/api/admin/questions/${id}`, {
       method: "DELETE",
       credentials: "same-origin",

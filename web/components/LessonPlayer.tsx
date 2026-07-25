@@ -228,7 +228,7 @@ export default function LessonPlayer({
         ) : (
           <button
             onClick={markComplete}
-            className="rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium transition-colors hover:border-emerald-500 hover:text-emerald-600 dark:border-zinc-700"
+            className="chip font-medium hover:border-[var(--color-tint)] hover:text-[var(--color-tint)]"
           >
             Mark complete
           </button>

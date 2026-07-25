@@ -6,6 +6,7 @@ import { useState } from "react";
 import { postJSON } from "@/lib/client";
 import { FIELD } from "@/lib/ui";
 import { CATEGORY_OPTIONS, type Session } from "./types";
+import { appAlert } from "@/lib/dialogs";
 
 export default function AdminManager({ onChanged }: { onChanged: () => void }) {
   const [title, setTitle] = useState("");
@@ -27,12 +28,12 @@ export default function AdminManager({ onChanged }: { onChanged: () => void }) {
       setWhen("");
       setJoinUrl("");
       onChanged();
-    } else alert(`Create failed: ${await r.text()}`);
+    } else await appAlert({ title: "Create failed", message: await r.text() });
   }
 
   return (
-    <div className="mt-8 rounded-2xl border-2 border-dashed border-emerald-300 p-5 dark:border-emerald-800">
-      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+    <div className="surface-card mt-8 border border-[var(--color-separator)] p-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-tint)]">
         Schedule a one-off session (admin)
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">

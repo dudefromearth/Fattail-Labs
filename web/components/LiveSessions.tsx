@@ -13,6 +13,7 @@ import MonthCalendar from "./live/MonthCalendar";
 import RecurrenceManager from "./live/RecurrenceManager";
 import SessionDetail from "./live/SessionDetail";
 import { ENDED_AFTER_MS, monthKey, type Session } from "./live/types";
+import { appConfirm } from "@/lib/dialogs";
 
 export default function LiveSessions() {
   const [cursor, setCursor] = useState(() => {
@@ -48,7 +49,7 @@ export default function LiveSessions() {
   if (!data) return <p className="text-sm text-zinc-400">Loading…</p>;
 
   async function remove(id: number | string) {
-    if (!confirm("Delete this session?")) return;
+    if (!(await appConfirm({ title: "Delete this session?", message: "This cannot be undone.", confirmLabel: "Delete", destructive: true }))) return;
     await del(`/api/admin/live-sessions/${id}`);
     setSelected(null);
     load();
@@ -60,30 +61,44 @@ export default function LiveSessions() {
   }
 
   const navBtn =
-    "flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800";
+    "flex h-8 w-8 items-center justify-center rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]";
 
   return (
-    <div>
-      <section>
+    <div className="space-y-8">
+      <section className="surface-card border border-[var(--color-separator)] p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-lg font-semibold">
-            {cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+          <h2 className="text-lg font-semibold text-[var(--color-label)]">
+            {cursor.toLocaleDateString(undefined, {
+              month: "long",
+              year: "numeric",
+            })}
           </h2>
           <span className="ml-auto flex items-center gap-2">
-            <button onClick={() => shiftMonth(-1)} className={navBtn} title="Previous month">
+            <button
+              type="button"
+              onClick={() => shiftMonth(-1)}
+              className={navBtn}
+              title="Previous month"
+            >
               ‹
             </button>
             <button
+              type="button"
               onClick={() => {
                 const d = new Date();
                 setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
                 setSelected(null);
               }}
-              className="rounded-full border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="rounded-full border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] px-3 py-1.5 text-sm font-medium text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
             >
               Today
             </button>
-            <button onClick={() => shiftMonth(1)} className={navBtn} title="Next month">
+            <button
+              type="button"
+              onClick={() => shiftMonth(1)}
+              className={navBtn}
+              title="Next month"
+            >
               ›
             </button>
           </span>
@@ -101,37 +116,44 @@ export default function LiveSessions() {
         )}
       </section>
 
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">Replays</h2>
+      <section className="surface-card border border-[var(--color-separator)] p-5 sm:p-6">
+        <h2 className="text-lg font-semibold text-[var(--color-label)]">
+          Replays
+        </h2>
         {data.past.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500">No past sessions yet.</p>
+          <p className="mt-3 text-sm text-[var(--color-label-secondary)]">
+            No past sessions yet.
+          </p>
         ) : (
           <ul className="mt-4 space-y-2">
             {data.past.map((s) => (
               <li
                 key={s.id}
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 px-4 py-3 text-sm dark:border-zinc-800"
+                className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] px-4 py-3 text-sm"
               >
-                <span className="font-medium">{s.title}</span>
-                <span className="text-xs text-zinc-500">
+                <span className="font-medium text-[var(--color-label)]">
+                  {s.title}
+                </span>
+                <span className="text-xs text-[var(--color-label-secondary)]">
                   {new Date(s.starts_at).toLocaleDateString()}
                 </span>
                 {s.replay_course_slug ? (
                   <Link
                     href={`/courses/${s.replay_course_slug}`}
-                    className="ml-auto rounded-full border border-zinc-300 px-4 py-1 text-xs font-medium dark:border-zinc-700"
+                    className="ml-auto rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-1 text-xs font-medium text-[var(--color-label)]"
                   >
                     Watch replay
                   </Link>
                 ) : (
-                  <span className="ml-auto text-xs text-zinc-400">
+                  <span className="ml-auto text-xs text-[var(--color-label-tertiary)]">
                     Replay coming soon
                   </span>
                 )}
                 {isAdmin && (
                   <button
+                    type="button"
                     onClick={() => remove(s.id)}
-                    className="text-zinc-400 hover:text-red-500"
+                    className="text-[var(--color-label-tertiary)] hover:text-[var(--color-destructive)]"
                   >
                     🗑
                   </button>

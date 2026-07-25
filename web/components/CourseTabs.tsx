@@ -17,6 +17,7 @@ import {
   InstructorsEditor,
 } from "@/components/edit/EditorExtras";
 import { useEdit } from "@/components/edit/EditContext";
+import { IconButton, IconGrip, IconTrash } from "@/components/ui";
 
 const TABS = ["About", "Modules", "Resources", "Discussion", "Students"] as const;
 const ENABLED: ReadonlySet<string> = new Set([
@@ -96,23 +97,32 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
     <div>
       <div
         role="tablist"
-        className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-zinc-100 p-1 text-sm dark:bg-zinc-900"
+        aria-label="Course sections"
+        className="relative z-10 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-[var(--color-fill)] p-1 text-sm"
       >
         {TABS.map((t) => {
           const enabled = ENABLED.has(t);
+          const selected = tab === t;
           return (
             <button
               key={t}
+              type="button"
               role="tab"
-              aria-selected={tab === t}
+              aria-selected={selected}
+              aria-controls={`course-tab-${t.toLowerCase()}`}
+              id={`course-tab-btn-${t.toLowerCase()}`}
               disabled={!enabled}
-              onClick={() => enabled && setTab(t)}
-              className={`rounded-full px-4 py-1.5 transition-colors ${
-                tab === t
-                  ? "bg-white shadow dark:bg-zinc-700"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (enabled) setTab(t);
+              }}
+              className={`relative z-10 min-h-[var(--hit-min)] shrink-0 rounded-full px-4 py-1.5 transition-colors ${
+                selected
+                  ? "bg-[var(--color-surface)] font-medium text-[var(--color-label)] shadow-[var(--elevation-1)]"
                   : enabled
-                    ? "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                    : "cursor-not-allowed text-zinc-400 dark:text-zinc-600"
+                    ? "cursor-pointer text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
+                    : "cursor-not-allowed text-[var(--color-label-tertiary)]"
               }`}
               title={enabled ? undefined : "Coming soon"}
             >
@@ -122,19 +132,27 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
         })}
       </div>
 
-      {/* All panels stay in the DOM so public pages carry full content in raw HTML. */}
-      <section hidden={tab !== "About"} className="mt-6 space-y-4 leading-relaxed">
+      {/* All panels stay in the DOM so public pages carry full content in raw HTML.
+          Toggle with both `hidden` and display class for reliable show/hide. */}
+      <section
+        id="course-tab-about"
+        role="tabpanel"
+        aria-labelledby="course-tab-btn-about"
+        hidden={tab !== "About"}
+        style={{ display: tab === "About" ? undefined : "none" }}
+        className="mt-6 space-y-4 leading-relaxed"
+      >
         <EditableMarkdown
           field="course.description_md"
           value={course.description_md}
         />
-        <div className="mt-8 rounded-2xl border border-zinc-200 p-6 dark:border-zinc-800">
+        <div className="surface-card mt-8 border border-[var(--color-separator)] p-6">
           {course.instructors.map((i) => (
             <div key={i.name} className="space-y-1">
-              <p className="font-semibold">{i.name}</p>
-              <p className="text-sm text-zinc-500">Instructor</p>
+              <p className="font-semibold text-[var(--color-label)]">{i.name}</p>
+              <p className="text-sm text-[var(--color-label-secondary)]">Instructor</p>
               {i.bio_md && (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">{i.bio_md}</p>
+                <p className="text-sm text-[var(--color-label-secondary)]">{i.bio_md}</p>
               )}
             </div>
           ))}
@@ -143,30 +161,44 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
         <ReviewsSection slug={course.slug} />
       </section>
 
-      <section hidden={tab !== "Modules"} className="mt-6 space-y-4">
+      <section
+        id="course-tab-modules"
+        role="tabpanel"
+        aria-labelledby="course-tab-btn-modules"
+        hidden={tab !== "Modules"}
+        style={{ display: tab === "Modules" ? undefined : "none" }}
+        className="mt-6 space-y-4"
+      >
         <h2 className="font-semibold">Modules ({course.modules.length})</h2>
         {course.modules.map((m, mi) => {
           const adminModule = edit?.editMode ? edit.modules[mi] : undefined;
           return (
           <div
-            key={m.title}
-            draggable={!!adminModule}
-            onDragStart={() =>
-              adminModule && setDrag({ kind: "module", id: adminModule.module_id })
-            }
+            key={adminModule?.module_id ?? m.title}
             onDragOver={(e) => {
               if (drag?.kind === "module") e.preventDefault();
             }}
             onDrop={() => adminModule && dropModule(adminModule.module_id)}
-            className={`overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 ${
-              adminModule ? "cursor-grab" : ""
-            }`}
+            className="surface-card overflow-hidden border border-[var(--color-separator)]"
           >
-            <div className="flex items-center gap-3 bg-zinc-50 px-5 py-3 font-medium dark:bg-zinc-900">
+            <div className="flex items-center gap-3 bg-[var(--color-surface-secondary)] px-5 py-3 font-medium">
               {adminModule ? (
                 <>
-                  <span className="text-zinc-300 dark:text-zinc-600" title="Drag to reorder">
-                    ⠿
+                  {/* Only the grip is draggable — row-level draggable steals
+                      clicks from trash / inputs (HTML5 DnD). */}
+                  <span
+                    draggable
+                    onDragStart={() =>
+                      setDrag({ kind: "module", id: adminModule.module_id })
+                    }
+                    onDragEnd={() => setDrag(null)}
+                    className="inline-flex cursor-grab select-none items-center justify-center text-[var(--color-label-tertiary)] active:cursor-grabbing"
+                    style={{ minHeight: "var(--hit-min)", minWidth: "var(--hit-min)" }}
+                    title="Drag to reorder"
+                    aria-label="Drag module to reorder"
+                    role="button"
+                  >
+                    <IconGrip size={18} />
                   </span>
                   <EditableText
                     field={`module.${adminModule.module_id}.title`}
@@ -179,13 +211,21 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                     options={["standard", "worksheets", "resources", "bonus"]}
                     className="text-xs text-zinc-500"
                   />
-                  <button
-                    onClick={() => edit!.deleteModule(adminModule.module_id)}
-                    title="Delete module"
-                    className="text-zinc-400 hover:text-red-500"
+                  <IconButton
+                    label={`Delete module ${adminModule.title}`}
+                    tone="destructive"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void edit!.deleteModule(
+                        adminModule.module_id,
+                        adminModule.title,
+                      );
+                    }}
                   >
-                    🗑
-                  </button>
+                    <IconTrash size={18} />
+                  </IconButton>
                 </>
               ) : (
                 m.title
@@ -198,16 +238,7 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                   const k = (f: string) => `lesson.${adminLesson.id}.${f}`;
                   return (
                     <li
-                      key={l.slug}
-                      draggable
-                      onDragStart={(e) => {
-                        e.stopPropagation();
-                        setDrag({
-                          kind: "lesson",
-                          moduleId: adminModule.module_id,
-                          id: adminLesson.id,
-                        });
-                      }}
+                      key={adminLesson.id}
                       onDragOver={(e) => {
                         if (
                           drag?.kind === "lesson" &&
@@ -221,11 +252,27 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                         e.stopPropagation();
                         dropLesson(adminModule.module_id, adminLesson.id);
                       }}
-                      className="cursor-grab space-y-2 border-t border-zinc-100 px-5 py-3 text-sm dark:border-zinc-800"
+                      className="space-y-2 border-t border-zinc-100 px-5 py-3 text-sm dark:border-zinc-800"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-zinc-300 dark:text-zinc-600" title="Drag to reorder">
-                          ⠿
+                        <span
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            setDrag({
+                              kind: "lesson",
+                              moduleId: adminModule.module_id,
+                              id: adminLesson.id,
+                            });
+                          }}
+                          onDragEnd={() => setDrag(null)}
+                          className="inline-flex cursor-grab select-none items-center justify-center text-[var(--color-label-tertiary)] active:cursor-grabbing"
+                          style={{ minHeight: "var(--hit-min)", minWidth: "var(--hit-min)" }}
+                          title="Drag to reorder"
+                          aria-label="Drag lesson to reorder"
+                          role="button"
+                        >
+                          <IconGrip size={18} />
                         </span>
                         <LessonIcon kind={l.kind} />
                         <EditableText
@@ -239,13 +286,21 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                           options={["video", "text", "download", "external", "replay", "quiz"]}
                           className="text-xs text-zinc-500"
                         />
-                        <button
-                          onClick={() => edit!.deleteLesson(adminLesson.id)}
-                          title="Delete lesson"
-                          className="text-zinc-400 hover:text-red-500"
+                        <IconButton
+                          label={`Delete lesson ${adminLesson.title}`}
+                          tone="destructive"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void edit!.deleteLesson(
+                              adminLesson.id,
+                              adminLesson.title,
+                            );
+                          }}
                         >
-                          🗑
-                        </button>
+                          <IconTrash size={18} />
+                        </IconButton>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 pl-9 text-xs">
                         <input
@@ -353,44 +408,74 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
         )}
       </section>
 
-      <section hidden={tab !== "Discussion"}>
-        {tab === "Discussion" && <DiscussionSection slug={course.slug} />}
+      <section
+        id="course-tab-discussion"
+        role="tabpanel"
+        aria-labelledby="course-tab-btn-discussion"
+        hidden={tab !== "Discussion"}
+        style={{ display: tab === "Discussion" ? undefined : "none" }}
+        className="mt-6"
+      >
+        {/* Outer elevated surface — pure white on canvas (Apple HIG grouped content) */}
+        <div className="surface-card border border-[var(--color-separator)] p-6">
+          {tab === "Discussion" && <DiscussionSection slug={course.slug} />}
+        </div>
       </section>
 
-      <section hidden={tab !== "Students"}>
-        {tab === "Students" && <StudentsSection slug={course.slug} />}
+      <section
+        id="course-tab-students"
+        role="tabpanel"
+        aria-labelledby="course-tab-btn-students"
+        hidden={tab !== "Students"}
+        style={{ display: tab === "Students" ? undefined : "none" }}
+        className="mt-6"
+      >
+        <div className="surface-card border border-[var(--color-separator)] p-6">
+          {tab === "Students" && <StudentsSection slug={course.slug} />}
+        </div>
       </section>
 
-      <section hidden={tab !== "Resources"} className="mt-6">
-        <h2 className="font-semibold">Resources</h2>
-        <AttachmentsEditor />
-        {course.attachments.length === 0 ? (
-          <p className="mt-2 text-sm text-zinc-500">No course-level resources.</p>
-        ) : (
-          <ul className="mt-3 space-y-2">
-            {course.attachments.map((a) => (
-              <li key={a.id}>
-                <a
-                  href={
-                    a.kind === "link" && a.url
-                      ? a.url
-                      : `/api/attachments/${a.id}/download`
-                  }
-                  target={a.kind === "link" ? "_blank" : undefined}
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 rounded-xl border border-zinc-200 px-4 py-3 text-sm transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-                >
-                  <LessonIcon kind={a.kind === "file" ? "download" : "external"} />
-                  {a.title}
-                  <span className="ml-auto text-xs text-zinc-400">
-                    {a.free ? "Free" : "Members"}
-                    {a.kind === "file" ? " · Download" : " · Open"}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        )}
+      <section
+        id="course-tab-resources"
+        role="tabpanel"
+        aria-labelledby="course-tab-btn-resources"
+        hidden={tab !== "Resources"}
+        style={{ display: tab === "Resources" ? undefined : "none" }}
+        className="mt-6"
+      >
+        <div className="surface-card border border-[var(--color-separator)] p-6">
+          <h2 className="font-semibold text-[var(--color-label)]">Resources</h2>
+          <AttachmentsEditor />
+          {course.attachments.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
+              No course-level resources.
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {course.attachments.map((a) => (
+                <li key={a.id}>
+                  <a
+                    href={
+                      a.kind === "link" && a.url
+                        ? a.url
+                        : `/api/attachments/${a.id}/download`
+                    }
+                    target={a.kind === "link" ? "_blank" : undefined}
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] px-4 py-3 text-sm transition-colors hover:bg-[var(--color-fill)]"
+                  >
+                    <LessonIcon kind={a.kind === "file" ? "download" : "external"} />
+                    {a.title}
+                    <span className="ml-auto text-xs text-[var(--color-label-tertiary)]">
+                      {a.free ? "Free" : "Members"}
+                      {a.kind === "file" ? " · Download" : " · Open"}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
     </div>
   );

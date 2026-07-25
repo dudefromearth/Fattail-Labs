@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { del, postJSON, putJSON, uploadMedia } from "@/lib/client";
 import { FIELD } from "@/lib/ui";
+import { appAlert, appConfirm } from "@/lib/dialogs";
 
 type Resource = {
   id: number;
@@ -107,13 +108,13 @@ function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
       setUrl("");
       setFree(false);
       onChanged();
-    } else alert(`Create failed: ${await r.text()}`);
+    } else await appAlert({ title: "Create failed", message: await r.text() });
   }
 
   const field = FIELD;
 
   return (
-    <div className="mb-6 rounded-2xl border-2 border-dashed border-emerald-300 p-5 dark:border-emerald-800">
+    <div className="surface-card mb-6 border border-[var(--color-separator)] p-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
         Add a resource (admin)
       </p>
@@ -208,7 +209,7 @@ function ResourceRowEditor({
     });
     setBusy(false);
     if (res.ok) onDone();
-    else alert(`Save failed: ${await res.text()}`);
+    else await appAlert({ title: "Save failed", message: await res.text() });
   }
 
   return (
@@ -281,12 +282,12 @@ export default function ResourceLibrary() {
 
   if (resources === "anonymous") {
     return (
-      <div className="rounded-2xl border border-zinc-200 p-8 text-center dark:border-zinc-800">
+      <div className="surface-card border border-[var(--color-separator)] p-8 text-center">
         <p className="font-medium">Sign in to browse the resource library</p>
         <div className="mt-4 flex items-center justify-center gap-3">
           <Link
             href="/login"
-            className="rounded-full border border-zinc-300 px-5 py-2 text-sm font-medium dark:border-zinc-700"
+            className="chip font-medium"
           >
             Log In
           </Link>
@@ -321,12 +322,7 @@ export default function ResourceLibrary() {
     window.location.href = `/api/attachments/${id}/download`;
   }
 
-  const chip = (active: boolean) =>
-    `rounded-full px-3 py-1 text-sm border transition-colors ${
-      active
-        ? "bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900"
-        : "border-zinc-300 text-zinc-600 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-400"
-    }`;
+  const chip = (active: boolean) => (active ? "chip chip-active" : "chip");
 
   async function adminToggleFree(r: Resource) {
     await putJSON(`/api/admin/attachments/${r.id}`, { free_preview: !r.free });
@@ -334,7 +330,7 @@ export default function ResourceLibrary() {
   }
 
   async function adminDelete(r: Resource) {
-    if (!confirm(`Delete "${r.title}"?`)) return;
+    if (!(await appConfirm({ title: `Delete "${r.title}"?`, message: "This cannot be undone.", confirmLabel: "Delete", destructive: true }))) return;
     await del(`/api/admin/attachments/${r.id}`);
     setReloadKey((k) => k + 1);
   }
@@ -377,7 +373,7 @@ export default function ResourceLibrary() {
         {visible.map((r) => (
           <li
             key={r.id}
-            className="flex items-start gap-3 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800"
+            className="surface-card flex items-start gap-3 border border-[var(--color-separator)] p-4"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xl dark:bg-zinc-800">
               {r.emoji ?? KIND_DEFAULT_EMOJI[r.kind]}
@@ -446,7 +442,7 @@ export default function ResourceLibrary() {
                     href={r.url ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="shrink-0 rounded-full border border-zinc-300 px-4 py-1.5 text-sm font-medium dark:border-zinc-700"
+                    className="shrink-0 chip font-medium"
                   >
                     Open
                   </a>

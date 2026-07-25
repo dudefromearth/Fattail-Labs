@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { uploadMedia } from "@/lib/client";
+import { appAlert, appConfirm } from "@/lib/dialogs";
 
 type MediaItem = {
   name: string;
@@ -44,18 +45,18 @@ export default function MediaLibrary() {
     const url = await uploadMedia(file);
     setBusy(false);
     if (url) load();
-    else alert("Upload failed");
+    else await appAlert({ title: "Upload failed", message: "Could not upload the file." });
   }
 
   async function remove(item: MediaItem) {
-    if (!confirm(`Delete ${item.name}? This cannot be undone.`)) return;
+    if (!(await appConfirm({ title: `Delete ${item.name}?`, message: "This cannot be undone.", confirmLabel: "Delete", destructive: true }))) return;
     const r = await fetch(`/api/admin/media/${item.name}`, {
       method: "DELETE",
       credentials: "same-origin",
     });
     if (r.ok) load();
-    else if (r.status === 409) alert(`Still in use: ${(await r.json()).detail}`);
-    else alert(`Delete failed: ${await r.text()}`);
+    else if (r.status === 409) await appAlert({ title: "Still in use", message: String((await r.json()).detail) });
+    else await appAlert({ title: "Delete failed", message: await r.text() });
   }
 
   async function copy(url: string) {
@@ -104,7 +105,7 @@ export default function MediaLibrary() {
           {items.map((m) => (
             <div
               key={m.name}
-              className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800"
+              className="surface-card overflow-hidden border border-[var(--color-separator)]"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -124,7 +125,7 @@ export default function MediaLibrary() {
                 <div className="mt-2 flex items-center gap-2">
                   <button
                     onClick={() => copy(m.url)}
-                    className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-medium dark:border-zinc-700"
+                    className="chip text-xs font-medium"
                   >
                     {copied === m.url ? "Copied ✓" : "Copy URL"}
                   </button>
