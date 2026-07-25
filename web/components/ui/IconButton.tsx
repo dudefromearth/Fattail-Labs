@@ -29,6 +29,7 @@ export default function IconButton({
       className={[
         "relative z-10 inline-flex shrink-0 items-center justify-center rounded-[var(--radius-md)] transition-colors",
         "min-h-[var(--hit-min)] min-w-[var(--hit-min)]",
+        "disabled:pointer-events-none disabled:opacity-30",
         toneCls,
         className,
       ].join(" ")}

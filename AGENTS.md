@@ -159,6 +159,7 @@ out-of-scope declarations, invariants that apply, completion criteria (verifiabl
 and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 Projects:
+- `agents/p-app-framework/` — Application Framework multi-agent plan (W0–W8). Control panel: `ORCHESTRATOR.md`. Specs: Application Framework v1.0 + Member Data & Privacy v0.1.
 - `agents/p1-foundation/` — P1 platform spine; charter `CHARTER.md` (load-bearing).
   Seeded from `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`.
 - `agents/p2-foundation/` — P2 agentic layer + content studio; charter `CHARTER.md`.

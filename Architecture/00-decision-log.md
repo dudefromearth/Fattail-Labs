@@ -1192,3 +1192,39 @@ practice tools: Trade Log, Journal, Playbook, Statistics, Vexy. Tools ship
 incrementally; no survey-driven customization UI yet — path personalization will
 be seamless by role later.
 
+
+## 2026-07-25 — Application Framework + Member Data & Privacy (W0 lock)
+
+**Specs approved for build:**
+- `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md` — L1 Display–Edit, L2
+  Component Contract, L4 Templates; supersedes In-Place Editing System v1.x.
+- `Specs/FatTail-Labs-Member-Data-Privacy-Spec-v0.1.md` — Family B isolation,
+  dual admin access modes (aggregates vs consented examination), member rights.
+
+**Reviews (gate-reports under `agents/p-app-framework/`):** India, Mike, Echo+Tango,
+Hotel+Sierra — all PASS. India amendments applied (L0 privacy co-authority; slot
+policy documentation-enforced v1; AF-B1 no admin back door; Journey delete vs
+derived progress; isolation key `identity_id`).
+
+**Decisions locked:**
+- **F-D1** Application Framework is L1+L2+L4 of record.
+- **F-D2** Lesson URLs are regions of Course Presentation (not a separate template).
+- **T-D1** Family B private tools in scope; privacy model = Member-Data-Privacy;
+  no member-public sharing in v1.
+- **T-D2 Cut A** ship now: W0 + **W1 Family A formalize/stay-put**. Cut B (W2+
+  privacy spine → Journey → Trade Log → …) after Gate 1; production Family B
+  after counsel/DPIA status recorded.
+- **T-D3** Journal is a finite Calendar variant (structure only; own data store).
+- **T-D4** Calendar/Schedule extends `live_sessions` — no parallel event store.
+- **T-D5** Trade Log/Journal process-first; P&L neutral never headline (Hotel).
+- **Privacy D-2** default k=5 cohort floor (Mike).
+- **Privacy D-3** analytics opt-in default false; separate from examination consent.
+- **Privacy D-5** v1 = platform/disk encryption posture; app-level field encryption deferred.
+- **Privacy D-1** starter allowlist: completion/progress distributions, tool usage
+  counts, streak histograms — no free text, no raw P&L series (Mike).
+- **Privacy D-4** sketch: purge authored tools ≤30d after account delete; audit 2y.
+- **Privacy D-6** no competitive/public gamified streaks (Tango default).
+
+**Orchestration:** `agents/p-app-framework/` (CHARTER + ORCHESTRATOR + seeds W0–W8).
+
+**Related:** 2026-07-24 primary nav Labs hub hosts future Trade Log/Journal/Playbook.

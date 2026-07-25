@@ -1,7 +1,7 @@
 "use client";
 
 // Admin quiz builder (Quizzes Spec v1.0 §4) — lives on the quiz lesson page.
-// Immediate CRUD against the admin API; reloads to reflect.
+// Immediate CRUD against the admin API; refreshes local list in place (no reload).
 
 import { useEffect, useState } from "react";
 import { useIsAdmin } from "@/lib/useIsAdmin";
@@ -194,37 +194,52 @@ export default function QuizBuilder({
       .catch(() => {});
   }, [isAdmin, courseSlug, lessonSlug]);
 
+  async function loadQuestions(id: number) {
+    const r = await fetch(`/api/admin/lessons/${id}/questions`, {
+      credentials: "same-origin",
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    setQuestions(d?.questions ?? []);
+  }
+
   useEffect(() => {
     if (lessonId === null) return;
-    fetch(`/api/admin/lessons/${lessonId}/questions`, { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setQuestions(d?.questions ?? []))
-      .catch(() => {});
+    void loadQuestions(lessonId);
   }, [lessonId]);
 
   if (!isAdmin || lessonId === null) return null;
+  const activeLessonId = lessonId;
 
   async function saveQuestion(payload: object, id?: number) {
     const url = id
       ? `/api/admin/questions/${id}`
-      : `/api/admin/lessons/${lessonId}/questions`;
+      : `/api/admin/lessons/${activeLessonId}/questions`;
     const r = await fetch(url, {
       method: id ? "PUT" : "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    if (r.ok) window.location.reload();
-    else await appAlert({ title: "Save failed", message: await r.text() });
+    if (!r.ok) {
+      await appAlert({ title: "Save failed", message: await r.text() });
+      return;
+    }
+    setEditing(null);
+    await loadQuestions(activeLessonId);
   }
 
   async function remove(id: number) {
     if (!(await appConfirm({ title: "Delete this question?", message: "This cannot be undone.", confirmLabel: "Delete", destructive: true }))) return;
-    await fetch(`/api/admin/questions/${id}`, {
+    const r = await fetch(`/api/admin/questions/${id}`, {
       method: "DELETE",
       credentials: "same-origin",
     });
-    window.location.reload();
+    if (!r.ok) {
+      await appAlert({ title: "Delete failed", message: await r.text() });
+      return;
+    }
+    await loadQuestions(activeLessonId);
   }
 
   return (

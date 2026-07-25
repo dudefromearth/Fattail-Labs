@@ -43,6 +43,12 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
+- `agents/p-app-framework/` — **Application Framework implementation** (active plan).
+  Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
+  Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,
+  `Specs/FatTail-Labs-Member-Data-Privacy-Spec-v0.1.md`. Waves W0 (spec lock) →
+  W1 Family A stay-put → W2 privacy spine → W3–W6 Family B tools → W7 admin
+  consent access → W8 close.
 - `agents/p1-foundation/` — P1 course platform spine. Charter:
   `agents/p1-foundation/CHARTER.md` (retroactive; load-bearing). Gate 1 + seeds from
   `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`. Review:
@@ -51,3 +57,4 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   studio archetypes: Bravo, November, Romeo, Papa, Hotel; lineage channels: Victor,
   Whiskey, Yankee). Capabilities delivered into P1:
   `docs/P2-Capabilities-for-P1.md`.
+- `agents/p-hig/` — Human Interface compliance board (tokens, surfaces, appearance).

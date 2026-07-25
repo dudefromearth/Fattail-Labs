@@ -110,3 +110,19 @@ export function IconExclamation(p: IconProps) {
     </svg>
   );
 }
+
+export function IconChevronDown(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+export function IconChevronUp(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M18 15l-6-6-6 6" />
+    </svg>
+  );
+}

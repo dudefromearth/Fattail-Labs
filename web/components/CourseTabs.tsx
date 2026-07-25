@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { CourseDetail } from "@/lib/types";
 import DiscussionSection from "@/components/DiscussionSection";
-import Markdown from "@/components/Markdown";
 import ReviewsSection from "@/components/ReviewsSection";
 import StudentsSection from "@/components/StudentsSection";
 import {
@@ -16,17 +15,21 @@ import {
   AttachmentsEditor,
   InstructorsEditor,
 } from "@/components/edit/EditorExtras";
-import { useEdit } from "@/components/edit/EditContext";
-import { IconButton, IconGrip, IconTrash } from "@/components/ui";
+import {
+  COURSE_TABS,
+  useEdit,
+  type CourseTab,
+} from "@/components/edit/EditContext";
+import {
+  IconButton,
+  IconChevronDown,
+  IconChevronRight,
+  IconChevronUp,
+  IconTrash,
+} from "@/components/ui";
 
-const TABS = ["About", "Modules", "Resources", "Discussion", "Students"] as const;
-const ENABLED: ReadonlySet<string> = new Set([
-  "About",
-  "Modules",
-  "Resources",
-  "Discussion",
-  "Students",
-]);
+const TABS = COURSE_TABS;
+const ENABLED: ReadonlySet<string> = new Set(COURSE_TABS);
 
 function fmtDuration(seconds: number): string {
   if (!seconds) return "";
@@ -46,37 +49,76 @@ function LessonIcon({ kind }: { kind: string }) {
 type ProgressMap = Record<string, { completed: boolean }>;
 
 export default function CourseTabs({ course }: { course: CourseDetail }) {
-  const [tab, setTab] = useState<(typeof TABS)[number]>("About");
-  const [progress, setProgress] = useState<ProgressMap>({});
+  const collapsedKey = `labs-module-collapsed:${course.slug}`;
   const edit = useEdit();
-  const [drag, setDrag] = useState<
-    | { kind: "module"; id: number }
-    | { kind: "lesson"; moduleId: number; id: number }
-    | null
-  >(null);
 
-  function dropModule(targetId: number) {
-    if (!edit || drag?.kind !== "module" || drag.id === targetId) return;
+  // Tab is owned by EditProvider so structure CRUD cannot reset it to About.
+  // Fallback only if CourseTabs is ever mounted outside the provider.
+  const tab: CourseTab = edit?.courseTab ?? "About";
+  const setTab = (t: CourseTab) => {
+    if (edit) edit.setCourseTab(t);
+  };
+
+  const [progress, setProgress] = useState<ProgressMap>({});
+  /** module_id → collapsed (edit mode). Default expanded. */
+  const [collapsed, setCollapsed] = useState<Record<number, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = sessionStorage.getItem(collapsedKey);
+      if (raw) return JSON.parse(raw) as Record<number, boolean>;
+    } catch {
+      /* ignore */
+    }
+    return {};
+  });
+
+  function persistCollapsed(next: Record<number, boolean>) {
+    setCollapsed(next);
+    try {
+      sessionStorage.setItem(collapsedKey, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /** HIG list reordering: step controls (up/down), not freeform drag. */
+  function moveModule(moduleId: number, dir: -1 | 1) {
+    if (!edit) return;
     const ids = edit.modules.map((m) => m.module_id);
-    const from = ids.indexOf(drag.id);
-    const to = ids.indexOf(targetId);
-    ids.splice(from, 1);
-    ids.splice(to, 0, drag.id);
+    const i = ids.indexOf(moduleId);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
     edit.reorderModules(ids);
   }
 
-  function dropLesson(moduleId: number, targetId: number) {
-    if (!edit || drag?.kind !== "lesson" || drag.moduleId !== moduleId) return;
-    if (drag.id === targetId) return;
+  function moveLesson(moduleId: number, lessonId: number, dir: -1 | 1) {
+    if (!edit) return;
     const mod = edit.modules.find((m) => m.module_id === moduleId);
     if (!mod) return;
     const ids = mod.lessons.map((l) => l.id);
-    const from = ids.indexOf(drag.id);
-    const to = ids.indexOf(targetId);
-    ids.splice(from, 1);
-    ids.splice(to, 0, drag.id);
+    const i = ids.indexOf(lessonId);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
     edit.reorderLessons(moduleId, ids);
   }
+
+  function toggleModuleCollapsed(moduleId: number) {
+    persistCollapsed({ ...collapsed, [moduleId]: !collapsed[moduleId] });
+  }
+
+  function setAllModulesCollapsed(value: boolean) {
+    if (!edit?.modules.length) return;
+    const next: Record<number, boolean> = {};
+    for (const m of edit.modules) next[m.module_id] = value;
+    persistCollapsed(next);
+  }
+
+  const allCollapsed =
+    !!edit?.editMode &&
+    edit.modules.length > 0 &&
+    edit.modules.every((m) => collapsed[m.module_id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -169,243 +211,356 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
         style={{ display: tab === "Modules" ? undefined : "none" }}
         className="mt-6 space-y-4"
       >
-        <h2 className="font-semibold">Modules ({course.modules.length})</h2>
-        {course.modules.map((m, mi) => {
-          const adminModule = edit?.editMode ? edit.modules[mi] : undefined;
+        {(() => {
+          // Edit mode: drive exclusively from edit.modules (admin graph) so
+          // create/reorder/delete/save update in place without SSR props.
+          // Member view: public course.modules from the page payload.
+          const useAdminGraph = !!edit?.editMode && edit.modules.length > 0;
+          const moduleCount = useAdminGraph
+            ? edit!.modules.length
+            : course.modules.length;
+
           return (
-          <div
-            key={adminModule?.module_id ?? m.title}
-            onDragOver={(e) => {
-              if (drag?.kind === "module") e.preventDefault();
-            }}
-            onDrop={() => adminModule && dropModule(adminModule.module_id)}
-            className="surface-card overflow-hidden border border-[var(--color-separator)]"
-          >
-            <div className="flex items-center gap-3 bg-[var(--color-surface-secondary)] px-5 py-3 font-medium">
-              {adminModule ? (
-                <>
-                  {/* Only the grip is draggable — row-level draggable steals
-                      clicks from trash / inputs (HTML5 DnD). */}
-                  <span
-                    draggable
-                    onDragStart={() =>
-                      setDrag({ kind: "module", id: adminModule.module_id })
-                    }
-                    onDragEnd={() => setDrag(null)}
-                    className="inline-flex cursor-grab select-none items-center justify-center text-[var(--color-label-tertiary)] active:cursor-grabbing"
-                    style={{ minHeight: "var(--hit-min)", minWidth: "var(--hit-min)" }}
-                    title="Drag to reorder"
-                    aria-label="Drag module to reorder"
-                    role="button"
-                  >
-                    <IconGrip size={18} />
-                  </span>
-                  <EditableText
-                    field={`module.${adminModule.module_id}.title`}
-                    value={adminModule.title}
-                    className="flex-1"
-                  />
-                  <EditableSelect
-                    field={`module.${adminModule.module_id}.kind`}
-                    value={adminModule.kind}
-                    options={["standard", "worksheets", "resources", "bonus"]}
-                    className="text-xs text-zinc-500"
-                  />
-                  <IconButton
-                    label={`Delete module ${adminModule.title}`}
-                    tone="destructive"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      void edit!.deleteModule(
-                        adminModule.module_id,
-                        adminModule.title,
-                      );
-                    }}
-                  >
-                    <IconTrash size={18} />
-                  </IconButton>
-                </>
-              ) : (
-                m.title
-              )}
-            </div>
-            <ul>
-              {m.lessons.map((l) => {
-                const adminLesson = edit?.editMode ? edit.lessons[l.slug] : undefined;
-                if (adminLesson && adminModule) {
-                  const k = (f: string) => `lesson.${adminLesson.id}.${f}`;
-                  return (
-                    <li
-                      key={adminLesson.id}
-                      onDragOver={(e) => {
-                        if (
-                          drag?.kind === "lesson" &&
-                          drag.moduleId === adminModule.module_id
-                        ) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }
-                      }}
-                      onDrop={(e) => {
-                        e.stopPropagation();
-                        dropLesson(adminModule.module_id, adminLesson.id);
-                      }}
-                      className="space-y-2 border-t border-zinc-100 px-5 py-3 text-sm dark:border-zinc-800"
+            <>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="font-semibold text-[var(--color-label)]">
+                  Modules ({moduleCount})
+                </h2>
+                {edit?.editMode && edit.modules.length > 0 && (
+                  <div className="ml-auto flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className="chip text-xs font-medium"
+                      onClick={() => setAllModulesCollapsed(true)}
+                      disabled={allCollapsed}
                     >
-                      <div className="flex items-center gap-3">
-                        <span
-                          draggable
-                          onDragStart={(e) => {
-                            e.stopPropagation();
-                            setDrag({
-                              kind: "lesson",
-                              moduleId: adminModule.module_id,
-                              id: adminLesson.id,
-                            });
-                          }}
-                          onDragEnd={() => setDrag(null)}
-                          className="inline-flex cursor-grab select-none items-center justify-center text-[var(--color-label-tertiary)] active:cursor-grabbing"
-                          style={{ minHeight: "var(--hit-min)", minWidth: "var(--hit-min)" }}
-                          title="Drag to reorder"
-                          aria-label="Drag lesson to reorder"
-                          role="button"
-                        >
-                          <IconGrip size={18} />
-                        </span>
-                        <LessonIcon kind={l.kind} />
-                        <EditableText
-                          field={k("title")}
-                          value={adminLesson.title}
-                          className="flex-1 font-medium"
-                        />
-                        <EditableSelect
-                          field={k("kind")}
-                          value={l.kind}
-                          options={["video", "text", "download", "external", "replay", "quiz"]}
-                          className="text-xs text-zinc-500"
-                        />
-                        <IconButton
-                          label={`Delete lesson ${adminLesson.title}`}
-                          tone="destructive"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            void edit!.deleteLesson(
-                              adminLesson.id,
-                              adminLesson.title,
-                            );
-                          }}
-                        >
-                          <IconTrash size={18} />
-                        </IconButton>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 pl-9 text-xs">
-                        <input
-                          placeholder="YouTube URL or ID"
-                          defaultValue={adminLesson.video_id ?? ""}
-                          onBlur={(e) =>
-                            edit!.setField(k("video_id"), e.target.value)
-                          }
-                          className="w-56 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
-                        />
-                        <input
-                          placeholder="start s"
-                          defaultValue={adminLesson.video_params.start ?? ""}
-                          onBlur={(e) =>
-                            edit!.setField(k("video_start"), e.target.value)
-                          }
-                          className="w-20 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
-                        />
-                        <input
-                          placeholder="end s"
-                          defaultValue={adminLesson.video_params.end ?? ""}
-                          onBlur={(e) =>
-                            edit!.setField(k("video_end"), e.target.value)
-                          }
-                          className="w-20 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
-                        />
-                        <label className="flex items-center gap-1.5">
-                          <input
-                            type="checkbox"
-                            defaultChecked={adminLesson.free_preview}
-                            onChange={(e) =>
-                              edit!.setField(k("free_preview"), e.target.checked)
-                            }
-                          />
-                          Free preview
-                        </label>
-                      </div>
-                    </li>
-                  );
-                }
-                const row = (
-                  <>
-                    <LessonIcon kind={l.kind} />
-                    <span>{l.title}</span>
-                    {progress[l.slug]?.completed && (
-                      <span
-                        className="text-emerald-500"
-                        aria-label="Completed"
-                        title="Completed"
+                      Collapse all
+                    </button>
+                    <button
+                      type="button"
+                      className="chip text-xs font-medium"
+                      onClick={() => setAllModulesCollapsed(false)}
+                      disabled={
+                        !edit.modules.some((m) => collapsed[m.module_id])
+                      }
+                    >
+                      Expand all
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {useAdminGraph
+                ? edit!.modules.map((adminModule, mi) => {
+                    const isCollapsed = !!collapsed[adminModule.module_id];
+                    const canMoveModuleUp = mi > 0;
+                    const canMoveModuleDown = mi < moduleCount - 1;
+                    return (
+                      <div
+                        key={adminModule.module_id}
+                        className="surface-card overflow-hidden border border-[var(--color-separator)]"
                       >
-                        ✓
-                      </span>
-                    )}
-                    <span className="ml-auto flex items-center gap-3 text-xs text-zinc-500">
-                      {fmtDuration(l.duration_seconds)}
-                      {l.free_preview ? (
-                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                          Free preview
-                        </span>
-                      ) : (
-                        <span aria-label="Members only" title="Members only">
-                          🔒
-                        </span>
-                      )}
-                    </span>
-                  </>
-                );
-                const rowClass =
-                  "flex items-center gap-3 border-t border-zinc-100 px-5 py-3 text-sm dark:border-zinc-800";
-                // Every row links to the player; the lesson endpoint is the
-                // access authority and the player renders sign-up/upgrade
-                // prompts (Enrollment & Access spec §4).
-                return (
-                  <li key={l.slug}>
-                    <Link
-                      href={`/courses/${course.slug}/lessons/${l.slug}`}
-                      className={`${rowClass} transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900`}
+                        <div className="flex items-center gap-1 bg-[var(--color-surface-secondary)] px-2 py-2 font-medium sm:gap-2 sm:px-4 sm:py-2.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              toggleModuleCollapsed(adminModule.module_id)
+                            }
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
+                            aria-expanded={!isCollapsed}
+                            aria-label={
+                              isCollapsed
+                                ? `Expand module ${adminModule.title}`
+                                : `Collapse module ${adminModule.title}`
+                            }
+                            title={isCollapsed ? "Expand" : "Collapse"}
+                          >
+                            {isCollapsed ? (
+                              <IconChevronRight size={18} />
+                            ) : (
+                              <IconChevronDown size={18} />
+                            )}
+                          </button>
+                          <div className="flex shrink-0 flex-col">
+                            <IconButton
+                              label={`Move module ${adminModule.title} up`}
+                              disabled={!canMoveModuleUp}
+                              onClick={() =>
+                                moveModule(adminModule.module_id, -1)
+                              }
+                              className="!min-h-8 !min-w-8 !h-8 !w-8"
+                            >
+                              <IconChevronUp size={16} />
+                            </IconButton>
+                            <IconButton
+                              label={`Move module ${adminModule.title} down`}
+                              disabled={!canMoveModuleDown}
+                              onClick={() =>
+                                moveModule(adminModule.module_id, 1)
+                              }
+                              className="!min-h-8 !min-w-8 !h-8 !w-8"
+                            >
+                              <IconChevronDown size={16} />
+                            </IconButton>
+                          </div>
+                          <EditableText
+                            field={`module.${adminModule.module_id}.title`}
+                            value={adminModule.title}
+                            className="min-w-0 flex-1"
+                          />
+                          {!isCollapsed && (
+                            <EditableSelect
+                              field={`module.${adminModule.module_id}.kind`}
+                              value={adminModule.kind}
+                              options={[
+                                "standard",
+                                "worksheets",
+                                "resources",
+                                "bonus",
+                              ]}
+                              className="text-xs text-zinc-500"
+                            />
+                          )}
+                          {isCollapsed && (
+                            <span className="shrink-0 text-xs font-normal text-[var(--color-label-tertiary)]">
+                              {adminModule.lessons.length} lesson
+                              {adminModule.lessons.length === 1 ? "" : "s"}
+                            </span>
+                          )}
+                          <IconButton
+                            label={`Delete module ${adminModule.title}`}
+                            tone="destructive"
+                            onClick={() => {
+                              void edit!.deleteModule(
+                                adminModule.module_id,
+                                adminModule.title,
+                              );
+                            }}
+                          >
+                            <IconTrash size={18} />
+                          </IconButton>
+                        </div>
+
+                        {!isCollapsed && (
+                          <ul>
+                            {adminModule.lessons.map((adminLesson, li) => {
+                              const k = (f: string) =>
+                                `lesson.${adminLesson.id}.${f}`;
+                              const lessonCount = adminModule.lessons.length;
+                              const canMoveLessonUp = li > 0;
+                              const canMoveLessonDown = li < lessonCount - 1;
+                              return (
+                                <li
+                                  key={adminLesson.id}
+                                  className="space-y-2 border-t border-[var(--color-separator)] px-5 py-3 text-sm"
+                                >
+                                  <div className="flex items-center gap-2 sm:gap-3">
+                                    <div className="flex shrink-0 flex-col">
+                                      <IconButton
+                                        label={`Move lesson ${adminLesson.title} up`}
+                                        disabled={!canMoveLessonUp}
+                                        onClick={() =>
+                                          moveLesson(
+                                            adminModule.module_id,
+                                            adminLesson.id,
+                                            -1,
+                                          )
+                                        }
+                                        className="!min-h-8 !min-w-8 !h-8 !w-8"
+                                      >
+                                        <IconChevronUp size={16} />
+                                      </IconButton>
+                                      <IconButton
+                                        label={`Move lesson ${adminLesson.title} down`}
+                                        disabled={!canMoveLessonDown}
+                                        onClick={() =>
+                                          moveLesson(
+                                            adminModule.module_id,
+                                            adminLesson.id,
+                                            1,
+                                          )
+                                        }
+                                        className="!min-h-8 !min-w-8 !h-8 !w-8"
+                                      >
+                                        <IconChevronDown size={16} />
+                                      </IconButton>
+                                    </div>
+                                    <LessonIcon kind={adminLesson.kind} />
+                                    <EditableText
+                                      field={k("title")}
+                                      value={adminLesson.title}
+                                      className="flex-1 font-medium"
+                                    />
+                                    <EditableSelect
+                                      field={k("kind")}
+                                      value={adminLesson.kind}
+                                      options={[
+                                        "video",
+                                        "text",
+                                        "download",
+                                        "external",
+                                        "replay",
+                                        "quiz",
+                                      ]}
+                                      className="text-xs text-zinc-500"
+                                    />
+                                    <IconButton
+                                      label={`Delete lesson ${adminLesson.title}`}
+                                      tone="destructive"
+                                      onClick={() => {
+                                        void edit!.deleteLesson(
+                                          adminLesson.id,
+                                          adminLesson.title,
+                                        );
+                                      }}
+                                    >
+                                      <IconTrash size={18} />
+                                    </IconButton>
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2 pl-9 text-xs">
+                                    <input
+                                      key={`vid-${adminLesson.id}-${adminLesson.video_id ?? ""}`}
+                                      placeholder="YouTube URL or ID"
+                                      defaultValue={adminLesson.video_id ?? ""}
+                                      onBlur={(e) =>
+                                        edit!.setField(
+                                          k("video_id"),
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="w-56 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                                    />
+                                    <input
+                                      key={`start-${adminLesson.id}-${adminLesson.video_params.start ?? ""}`}
+                                      placeholder="start s"
+                                      defaultValue={
+                                        adminLesson.video_params.start ?? ""
+                                      }
+                                      onBlur={(e) =>
+                                        edit!.setField(
+                                          k("video_start"),
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="w-20 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                                    />
+                                    <input
+                                      key={`end-${adminLesson.id}-${adminLesson.video_params.end ?? ""}`}
+                                      placeholder="end s"
+                                      defaultValue={
+                                        adminLesson.video_params.end ?? ""
+                                      }
+                                      onBlur={(e) =>
+                                        edit!.setField(
+                                          k("video_end"),
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="w-20 rounded-lg border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-900"
+                                    />
+                                    <label className="flex items-center gap-1.5">
+                                      <input
+                                        type="checkbox"
+                                        key={`free-${adminLesson.id}-${adminLesson.free_preview}`}
+                                        defaultChecked={adminLesson.free_preview}
+                                        onChange={(e) =>
+                                          edit!.setField(
+                                            k("free_preview"),
+                                            e.target.checked,
+                                          )
+                                        }
+                                      />
+                                      Free preview
+                                    </label>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                            <li className="border-t border-[var(--color-separator)]">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  edit!.createLesson(adminModule.module_id)
+                                }
+                                className="w-full px-5 py-2.5 text-left text-sm text-[var(--color-tint)] hover:bg-[var(--color-tint-soft)]"
+                              >
+                                + Add lesson
+                              </button>
+                            </li>
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })
+                : course.modules.map((m, mi) => (
+                    <div
+                      key={`${m.title}-${mi}`}
+                      className="surface-card overflow-hidden border border-[var(--color-separator)]"
                     >
-                      {row}
-                    </Link>
-                  </li>
-                );
-              })}
-              {adminModule && (
-                <li className="border-t border-zinc-100 dark:border-zinc-800">
-                  <button
-                    onClick={() => edit!.createLesson(adminModule.module_id)}
-                    className="w-full px-5 py-2.5 text-left text-sm text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                  >
-                    + Add lesson
-                  </button>
-                </li>
+                      <div className="flex items-center gap-1 bg-[var(--color-surface-secondary)] px-2 py-2 font-medium sm:gap-2 sm:px-4 sm:py-2.5">
+                        <span className="px-2">{m.title}</span>
+                      </div>
+                      <ul>
+                        {m.lessons.map((l) => {
+                          const row = (
+                            <>
+                              <LessonIcon kind={l.kind} />
+                              <span>{l.title}</span>
+                              {progress[l.slug]?.completed && (
+                                <span
+                                  className="text-emerald-500"
+                                  aria-label="Completed"
+                                  title="Completed"
+                                >
+                                  ✓
+                                </span>
+                              )}
+                              <span className="ml-auto flex items-center gap-3 text-xs text-zinc-500">
+                                {fmtDuration(l.duration_seconds)}
+                                {l.free_preview ? (
+                                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                                    Free preview
+                                  </span>
+                                ) : (
+                                  <span
+                                    aria-label="Members only"
+                                    title="Members only"
+                                  >
+                                    🔒
+                                  </span>
+                                )}
+                              </span>
+                            </>
+                          );
+                          const rowClass =
+                            "flex items-center gap-3 border-t border-[var(--color-separator)] px-5 py-3 text-sm";
+                          return (
+                            <li key={l.slug}>
+                              <Link
+                                href={`/courses/${course.slug}/lessons/${l.slug}`}
+                                className={`${rowClass} transition-colors hover:bg-[var(--color-fill)]`}
+                              >
+                                {row}
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+
+              {edit?.editMode && (
+                <button
+                  type="button"
+                  onClick={() => edit.createModule()}
+                  className="w-full rounded-2xl border-2 border-dashed border-[var(--color-tint)]/40 py-4 font-medium text-[var(--color-tint)] hover:bg-[var(--color-tint-soft)]"
+                >
+                  + Add module
+                </button>
               )}
-            </ul>
-          </div>
+            </>
           );
-        })}
-        {edit?.editMode && (
-          <button
-            onClick={() => edit.createModule()}
-            className="w-full rounded-2xl border-2 border-dashed border-emerald-300 py-4 font-medium text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950/30"
-          >
-            + Add module
-          </button>
-        )}
+        })()}
       </section>
 
       <section

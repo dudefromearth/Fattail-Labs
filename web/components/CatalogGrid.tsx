@@ -101,7 +101,15 @@ function Banner({ course }: { course: CourseCard }) {
 
 // Course Card Editor (spec v1.1): banner color, or the SHARED banner image
 // (hero_image_url — sharp on the card, blurred on the course page header).
-function CardEditor({ course, onClose }: { course: CourseCard; onClose: () => void }) {
+function CardEditor({
+  course,
+  onClose,
+  onSaved,
+}: {
+  course: CourseCard;
+  onClose: () => void;
+  onSaved: (patch: { card_color: string | null; hero_image_url: string | null }) => void;
+}) {
   const [color, setColor] = useState(course.card_color ?? "");
   const [imageUrl, setImageUrl] = useState(course.hero_image_url ?? "");
   const [busy, setBusy] = useState(false);
@@ -118,17 +126,21 @@ function CardEditor({ course, onClose }: { course: CourseCard; onClose: () => vo
 
   async function save() {
     setBusy(true);
-    const r = await putJSON(`/api/admin/courses/${course.slug}`, {
+    const patch = {
       card_color: color || null,
       hero_image_url: imageUrl || null,
-    });
+    };
+    const r = await putJSON(`/api/admin/courses/${course.slug}`, patch);
     if (!r.ok) {
       setBusy(false);
       await appAlert({ title: "Save failed", message: await r.text() });
       return;
     }
-    await revalidate(["/courses", `/courses/${course.slug}`]);
-    window.location.reload();
+    // In-place: patch local catalog state; revalidate for other visitors only.
+    void revalidate(["/courses", `/courses/${course.slug}`]);
+    onSaved(patch);
+    setBusy(false);
+    onClose();
   }
 
   const preview = imageUrl
@@ -257,17 +269,22 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
   const [q, setQ] = useState("");
   const isAdmin = useIsAdmin();
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  /** Local catalog graph so card edits apply without page reload. */
+  const [items, setItems] = useState(courses);
+  useEffect(() => {
+    setItems(courses);
+  }, [courses]);
 
   const categories = useMemo(() => {
     const map = new Map<string, string>();
-    for (const c of courses)
+    for (const c of items)
       for (const cat of c.categories) map.set(cat.slug, cat.name);
     return [...map.entries()].map(([slug, name]) => ({ slug, name }));
-  }, [courses]);
+  }, [items]);
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return courses.filter((c) => {
+    return items.filter((c) => {
       if (category && !c.categories.some((x) => x.slug === category)) return false;
       if (level && c.level !== level) return false;
       if (
@@ -277,7 +294,7 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
         return false;
       return true;
     });
-  }, [courses, category, level, q]);
+  }, [items, category, level, q]);
 
   return (
     <div>
@@ -362,7 +379,23 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
               </button>
             )}
             {editingSlug === c.slug && (
-              <CardEditor course={c} onClose={() => setEditingSlug(null)} />
+              <CardEditor
+                course={c}
+                onClose={() => setEditingSlug(null)}
+                onSaved={(patch) => {
+                  setItems((prev) =>
+                    prev.map((x) =>
+                      x.slug === c.slug
+                        ? {
+                            ...x,
+                            card_color: patch.card_color,
+                            hero_image_url: patch.hero_image_url,
+                          }
+                        : x,
+                    ),
+                  );
+                }}
+              />
             )}
           </div>
         ))}

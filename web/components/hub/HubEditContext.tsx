@@ -192,14 +192,13 @@ export function HubEditProvider({
       return;
     }
     const updated = (await res.json()) as HubPage;
+    // In-place: apply server response to local baseline — never reload.
     setBaseline(updated);
     setDirty({});
     setFaqs(toDrafts(updated.faq_items));
     setFaqDirty(false);
-    await revalidatePages(["/"]);
+    void revalidatePages(["/"]);
     setSaving(false);
-    // Soft reload so static shell matches saved content.
-    window.location.reload();
   }, [dirty, faqDirty, faqs]);
 
   return (
