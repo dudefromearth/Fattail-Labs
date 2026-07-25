@@ -41,11 +41,11 @@
 | **W2** | Privacy data model + consent/audit schema | **PASS** | Mike, India, Alpha | `migrations/026_member_privacy.sql` |
 | W2 | Isolation middleware + member-scoped API skeleton | **PASS** | Alpha, Mike | `routes/privacy.py`, `member_privacy.py` |
 | W2 | **Gate 2 — Privacy spine** | **PASS** | Delta | `gate-reports/gate-2.md` |
-| **W3** | Journey template on existing progress | pending | Charlie, Alpha, India | `seeds/w3-charlie-alpha-journey.md` |
-| W3 | Entitlements for Family B tools | pending | Mike, Alpha | `seeds/w3-mike-alpha-entitlements.md` |
-| W3 | **Gate 3 — Journey + entitlements** | pending | Delta | `seeds/gate3-delta-journey.md` |
-| **W4** | Trade Log domain + UI (process-first) | pending | Alpha, Charlie, Hotel, Tango | `seeds/w4-trade-log.md` |
-| W4 | **Gate 4 — Trade Log MVP** | pending | Delta | `seeds/gate4-delta-trade-log.md` |
+| **W3** | Journey template on existing progress | **PASS** | Charlie, Alpha | `/labs/journey`, `GET /api/me/journey` |
+| W3 | Entitlements for Family B tools | **PARTIAL** | Mike, Alpha | Journey=any session; Trade Log=activator+ |
+| W3 | **Gate 3 — Journey + entitlements** | **PASS** | Delta | `gate-reports/gate-3.md` |
+| **W4** | Trade Log domain + UI (process-first) | **PASS** | Alpha, Charlie | `027_trade_log`, `/labs/trade-log` |
+| W4 | **Gate 4 — Trade Log MVP** | **PASS** | Delta | `gate-reports/gate-4.md` |
 | **W5** | Journal (Calendar variant) | pending | Alpha, Charlie, Echo | `seeds/w5-journal.md` |
 | W5 | **Gate 5 — Journal** | pending | Delta | `seeds/gate5-delta-journal.md` |
 | **W6** | Playbook + optional Method Exemplar | pending | Alpha, Charlie, Sierra | `seeds/w6-playbook-exemplar.md` |
@@ -59,16 +59,18 @@
 
 ## Current junction → what you do
 
-### NOW: W3 Journey (Cut B in progress)
+### NOW: Recommended sequence complete through Trade Log
 
 | Gate | Status |
 |------|--------|
-| Gate 0 Specs locked | **PASS** |
-| Gate 1 Family A framework | **PASS** |
-| Gate 2 Privacy spine | **PASS** |
+| Gate 0 Specs | **PASS** |
+| Gate 1 Family A | **PASS** |
+| Gate 2 Privacy | **PASS** |
+| Gate 3 Journey | **PASS** |
+| Gate 4 Trade Log | **PASS** |
 
-**Done:** Cut A committed; W2 privacy APIs + isolation tests.  
-**Next:** Journey (progress reuse) + entitlements defaults → Gate 3 → Trade Log W4.
+**Shipped on `main` (local, not pushed):** commits through Trade Log MVP.  
+**Optional next:** W5 Journal · W6 Playbook · W7 admin consent UI · push to origin when ready.
 
 ---
 

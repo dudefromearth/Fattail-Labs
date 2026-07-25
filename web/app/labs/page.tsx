@@ -34,7 +34,8 @@ const TOOLS: {
     name: "Trade Log",
     blurb:
       "Record fills and structure outcomes — process first, not P&L theater.",
-    status: "soon",
+    status: "live",
+    href: "/labs/trade-log",
   },
   {
     id: "journal",
