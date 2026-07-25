@@ -30,26 +30,35 @@ const empty = {
 };
 
 export default function TradeLogPage() {
-  const [entries, setEntries] = useState<Entry[] | null | "anon" | "forbidden">(
-    null,
-  );
+  const [entries, setEntries] = useState<
+    Entry[] | null | "anon" | "forbidden" | "err"
+  >(null);
   const [form, setForm] = useState(empty);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
+    setError(null);
     fetch("/api/me/trade-log", { credentials: "same-origin" })
       .then(async (r) => {
         if (r.status === 401) return "anon" as const;
         if (r.status === 403) return "forbidden" as const;
-        if (!r.ok) throw new Error(await r.text());
+        if (r.status === 404) {
+          throw new Error(
+            "Trade Log API not found — restart the Labs API (uvicorn) so new routes load.",
+          );
+        }
+        if (!r.ok) throw new Error((await r.text()) || `HTTP ${r.status}`);
         return r.json();
       })
       .then((d) => {
         if (d === "anon" || d === "forbidden") setEntries(d);
         else setEntries(d.entries ?? []);
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => {
+        setEntries("err");
+        setError(e instanceof Error ? e.message : String(e));
+      });
   }, []);
 
   useEffect(() => {
@@ -115,18 +124,49 @@ export default function TradeLogPage() {
         optional and never the point.
       </p>
 
+      {entries === null && (
+        <p className="mt-8 text-sm text-[var(--color-label-tertiary)]">
+          Loading…
+        </p>
+      )}
       {entries === "anon" && (
-        <p className="mt-8">
-          <Link href="/login" className="text-[var(--color-tint)]">
+        <p className="mt-8 text-sm">
+          <Link href="/login" className="font-medium text-[var(--color-tint)]">
             Sign in
           </Link>{" "}
-          to use Trade Log.
+          to use Trade Log. (This is a private tool — your entries stay with your
+          account.)
         </p>
       )}
       {entries === "forbidden" && (
-        <p className="mt-8 text-sm text-[var(--color-label-secondary)]">
-          Trade Log requires Activator membership or higher.
-        </p>
+        <div className="surface-card mt-8 border border-[var(--color-separator)] p-5 text-sm text-[var(--color-label-secondary)]">
+          <p className="font-medium text-[var(--color-label)]">
+            Membership required
+          </p>
+          <p className="mt-2">
+            Trade Log is available to Activator (member) role and above. Free
+            accounts can use Journey; upgrade for the practice tools.
+          </p>
+          <Link
+            href="/membership"
+            className="mt-3 inline-block font-medium text-[var(--color-tint)] hover:underline"
+          >
+            View membership →
+          </Link>
+        </div>
+      )}
+      {entries === "err" && (
+        <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p className="font-medium">Could not load Trade Log</p>
+          {error && <p className="mt-1 font-mono text-xs opacity-80">{error}</p>}
+          <button
+            type="button"
+            onClick={() => load()}
+            className="mt-3 text-sm font-medium underline"
+          >
+            Try again
+          </button>
+        </div>
       )}
 
       {Array.isArray(entries) && (

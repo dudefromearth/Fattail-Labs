@@ -49,6 +49,7 @@ export default function JourneyPage() {
     fetch("/api/me/journey", { credentials: "same-origin" })
       .then(async (r): Promise<Journey | "anon" | "err"> => {
         if (r.status === 401) return "anon";
+        if (r.status === 404) return "err";
         if (!r.ok) return "err";
         return (await r.json()) as Journey;
       })
@@ -92,7 +93,13 @@ export default function JourneyPage() {
         </p>
       )}
       {data === "err" && (
-        <p className="mt-8 text-sm text-red-600">Could not load journey.</p>
+        <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p className="font-medium">Could not load Journey</p>
+          <p className="mt-1 text-xs opacity-90">
+            If this persists, restart the Labs API so the{" "}
+            <code className="font-mono">/api/me/journey</code> route is loaded.
+          </p>
+        </div>
       )}
       {data && typeof data === "object" && (
         <>
