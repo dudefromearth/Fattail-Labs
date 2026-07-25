@@ -18,9 +18,17 @@ const TOOLS: {
   id: string;
   name: string;
   blurb: string;
-  status: "soon" | "external";
+  status: "soon" | "live" | "external";
   href?: string;
 }[] = [
+  {
+    id: "journey",
+    name: "Journey",
+    blurb:
+      "Your enrollments and lesson progress in one place — process over pace, no leaderboards.",
+    status: "live",
+    href: "/labs/journey",
+  },
   {
     id: "tradelog",
     name: "Trade Log",
@@ -80,6 +88,11 @@ export default function LabsPage() {
                 {t.status === "soon" && (
                   <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
                     Coming soon
+                  </span>
+                )}
+                {t.status === "live" && (
+                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+                    Live
                   </span>
                 )}
               </div>

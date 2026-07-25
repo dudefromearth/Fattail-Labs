@@ -350,3 +350,75 @@ def continue_learning(request: Request) -> dict:
                 if len(out) >= 6:
                     break
     return {"courses": out}
+
+
+@router.get("/api/me/journey")
+def my_journey(request: Request) -> dict:
+    """Journey template: derived view over enrollments + lesson_progress only.
+
+    Member-Data-Privacy DS-2 / Application Framework Journey — no second store.
+    """
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT e.course_id, e.enrolled_at, e.completed_at,
+                          c.slug, c.title, c.level
+                   FROM enrollments e
+                   JOIN courses c ON e.course_id = c.id
+                   WHERE e.identity_id = %s AND c.status = 'published'
+                   ORDER BY e.enrolled_at DESC""",
+                (iid,),
+            )
+            enrollments = cur.fetchall()
+            courses = []
+            completed_courses = 0
+            in_progress = 0
+            for e in enrollments:
+                summary = _course_summary(cur, iid, e["course_id"])
+                done = e["completed_at"] is not None or (
+                    summary["total"] > 0 and summary["done"] >= summary["total"]
+                )
+                if done:
+                    completed_courses += 1
+                elif summary["done"] > 0:
+                    in_progress += 1
+                courses.append(
+                    {
+                        "slug": e["slug"],
+                        "title": e["title"],
+                        "level": e["level"],
+                        "enrolled_at": e["enrolled_at"].isoformat(),
+                        "completed_at": e["completed_at"].isoformat()
+                        if e["completed_at"]
+                        else None,
+                        "percent": summary["percent"],
+                        "lessons_done": summary["done"],
+                        "lessons_total": summary["total"],
+                        "resume": summary["resume"],
+                    }
+                )
+            cur.execute(
+                """SELECT COUNT(*) AS n FROM lesson_progress
+                   WHERE identity_id = %s AND completed_at IS NOT NULL""",
+                (iid,),
+            )
+            lessons_completed = int(cur.fetchone()["n"])
+            cur.execute(
+                """SELECT COALESCE(SUM(watch_seconds), 0) AS w FROM lesson_progress
+                   WHERE identity_id = %s""",
+                (iid,),
+            )
+            watch_seconds = int(cur.fetchone()["w"])
+    return {
+        "source": "enrollments+lesson_progress",
+        "stats": {
+            "courses_enrolled": len(courses),
+            "courses_completed": completed_courses,
+            "courses_in_progress": in_progress,
+            "lessons_completed": lessons_completed,
+            "watch_seconds": watch_seconds,
+        },
+        "courses": courses,
+    }

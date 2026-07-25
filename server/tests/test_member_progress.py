@@ -57,3 +57,14 @@ def test_progress_requires_session(client, video_lesson):
                     json={"course_slug": COURSE, "lesson_slug": video_lesson["slug"],
                           "watched_delta": 10, "position": 0})
     assert r.status_code == 401
+
+
+def test_journey_reuses_enrollments_no_second_store(client, member):
+    """Journey is a derived view (Member-Data-Privacy DS-2)."""
+    client.post(f"/api/courses/{COURSE}/enroll", cookies=member)
+    r = client.get("/api/me/journey", cookies=member)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["source"] == "enrollments+lesson_progress"
+    assert "stats" in body and "courses" in body
+    assert any(c["slug"] == COURSE for c in body["courses"])
