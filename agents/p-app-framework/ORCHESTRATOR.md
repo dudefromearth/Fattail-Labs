@@ -38,9 +38,9 @@
 | W1 | Course Presentation gaps (reload, tab, lists) | **PASS** (pre-satisfied) | Charlie, Alpha | EditContext/CourseTabs already in-place |
 | W1 | Hub FAQ list + Calendar stay-put | **PASS** (pre-satisfied) | Charlie | no reload in hub/live hosts |
 | W1 | **Gate 1 — Family A framework** | **PASS** | Delta | `gate-reports/gate-1.md` |
-| **W2** | Privacy data model + consent/audit schema | pending | Mike, India, Alpha | `seeds/w2-mike-alpha-privacy-schema.md` |
-| W2 | Isolation middleware + member-scoped API skeleton | pending | Alpha, Mike | `seeds/w2-alpha-mike-isolation-api.md` |
-| W2 | **Gate 2 — Privacy spine** | pending | Delta | `seeds/gate2-delta-privacy-spine.md` |
+| **W2** | Privacy data model + consent/audit schema | **PASS** | Mike, India, Alpha | `migrations/026_member_privacy.sql` |
+| W2 | Isolation middleware + member-scoped API skeleton | **PASS** | Alpha, Mike | `routes/privacy.py`, `member_privacy.py` |
+| W2 | **Gate 2 — Privacy spine** | **PASS** | Delta | `gate-reports/gate-2.md` |
 | **W3** | Journey template on existing progress | pending | Charlie, Alpha, India | `seeds/w3-charlie-alpha-journey.md` |
 | W3 | Entitlements for Family B tools | pending | Mike, Alpha | `seeds/w3-mike-alpha-entitlements.md` |
 | W3 | **Gate 3 — Journey + entitlements** | pending | Delta | `seeds/gate3-delta-journey.md` |
@@ -59,19 +59,16 @@
 
 ## Current junction → what you do
 
-### NOW: Cut A complete — await Coach for Cut B (W2+)
+### NOW: W3 Journey (Cut B in progress)
 
 | Gate | Status |
 |------|--------|
 | Gate 0 Specs locked | **PASS** |
 | Gate 1 Family A framework | **PASS** |
+| Gate 2 Privacy spine | **PASS** |
 
-**Cut A (W0+W1) is done.** Characterization: `tests/test_framework_stayput_contract.py`.
-
-**Next (only if Coach opens Cut B):**  
-`seeds/w2-mike-alpha-privacy-schema.md` → privacy spine → Journey → Trade Log…
-
-Do **not** auto-start Family B without Coach.
+**Done:** Cut A committed; W2 privacy APIs + isolation tests.  
+**Next:** Journey (progress reuse) + entitlements defaults → Gate 3 → Trade Log W4.
 
 ---
 
