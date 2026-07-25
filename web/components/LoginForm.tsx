@@ -7,6 +7,13 @@ const PROVIDER_LABELS: Record<string, string> = {
   "wordpress:0-dte": "Continue with 0-DTE.com",
 };
 
+const PROVIDER_LOGOS: Record<string, string> = {
+  "wordpress:fattail":
+    "https://fattail.ai/wp-content/uploads/2026/05/cropped-fattail-logo-900x900-1-192x192.png",
+  "wordpress:0-dte":
+    "https://i0.wp.com/0-dte.com/wp-content/uploads/2021/04/cropped-0dte-zen-logo.png?fit=192%2C192&quality=80&ssl=1",
+};
+
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -117,9 +124,15 @@ export default function LoginForm() {
               <a
                 key={name}
                 href={url}
-                className="block rounded-full border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] py-2.5 text-center text-sm font-medium text-[var(--color-label)] transition-colors hover:bg-[var(--color-fill)]"
+                className="group flex items-center gap-3 rounded-full border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] px-4 py-3 text-sm font-semibold text-[var(--color-label)] shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--color-fill)] hover:shadow-lg"
               >
-                {PROVIDER_LABELS[name] ?? name}
+                {PROVIDER_LOGOS[name] && (
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-zinc-900/5">
+                    <img src={PROVIDER_LOGOS[name]} alt="" className="h-5 w-5 object-contain" />
+                  </span>
+                )}
+                <span className="flex-1 text-center">{PROVIDER_LABELS[name] ?? name}</span>
+                {PROVIDER_LOGOS[name] && <span className="w-7 shrink-0" aria-hidden="true" />}
               </a>
             ))}
           </div>
