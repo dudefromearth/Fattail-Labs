@@ -47,10 +47,10 @@ export default function JourneyPage() {
   useEffect(() => {
     let cancelled = false;
     fetch("/api/me/journey", { credentials: "same-origin" })
-      .then((r) => {
-        if (r.status === 401) return "anon" as const;
-        if (!r.ok) return "err" as const;
-        return r.json() as Promise<Journey>;
+      .then(async (r): Promise<Journey | "anon" | "err"> => {
+        if (r.status === 401) return "anon";
+        if (!r.ok) return "err";
+        return (await r.json()) as Journey;
       })
       .then((d) => {
         if (!cancelled) setData(d);
