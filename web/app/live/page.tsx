@@ -1,19 +1,27 @@
 import type { Metadata } from "next";
 import LiveSessions from "@/components/LiveSessions";
+import SectionHubShell from "@/components/section-hub/SectionHubShell";
 import { apiGet } from "@/lib/api";
 import { siteUrl } from "@/lib/catalog";
+import {
+  fetchSitePage,
+  metaDescriptionFromMd,
+  type SitePage,
+} from "@/lib/sitePage";
 
-// Event JSON-LD for PUBLIC sessions (SEO spec v1.3): the 0DTE Live Show is a
-// genuinely public recurring event — rare, and rankable. Member sessions stay
-// out of the schema. Hourly revalidation keeps the window rolling.
+// Event JSON-LD for PUBLIC sessions (SEO spec v1.3) + CollectionPage for hub.
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
+const FALLBACK: SitePage = {
+  slug: "live",
   title: "Live Sessions",
-  description:
-    "The FatTail Labs live schedule: the public 0DTE Live Show, the daily " +
-    "livestream, coach calls, and the Sunday retrospective.",
-  alternates: { canonical: siteUrl("/live") },
+  description_md:
+    "The FatTail Labs live schedule: the public 0DTE Live Show, member livestreams, coach calls, and the Sunday retrospective.",
+  intro_video_id: null,
+  intro_video_title: null,
+  faq_title: "Live FAQ",
+  faq_description_md: null,
+  faq_items: [],
 };
 
 type PublicSession = {
@@ -53,26 +61,59 @@ async function publicEventsJsonLd() {
   }));
 }
 
+function collectionJsonLd(page: SitePage) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${page.title} — FatTail Labs`,
+    description: metaDescriptionFromMd(page.description_md, page.title),
+    url: siteUrl("/live"),
+    isPartOf: { "@type": "WebSite", name: "FatTail Labs", url: siteUrl("/") },
+  };
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await fetchSitePage("live").catch(() => FALLBACK);
+  const description = metaDescriptionFromMd(
+    page.description_md,
+    "The FatTail Labs live schedule: public 0DTE Live Show, livestreams, and coach calls.",
+  );
+  return {
+    title: page.title,
+    description,
+    alternates: { canonical: siteUrl("/live") },
+    openGraph: {
+      title: `${page.title} — FatTail Labs`,
+      description,
+      url: siteUrl("/live"),
+      siteName: "FatTail Labs",
+      type: "website",
+    },
+  };
+}
+
 export default async function LivePage() {
-  const events = await publicEventsJsonLd();
+  const [page, events] = await Promise.all([
+    fetchSitePage("live").catch(() => FALLBACK),
+    publicEventsJsonLd(),
+  ]);
+  const collection = collectionJsonLd(page);
+
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collection) }}
+      />
       {events && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(events) }}
         />
       )}
-      <h1 className="text-3xl font-semibold tracking-tight text-[var(--color-label)]">
-        Live Sessions
-      </h1>
-      <p className="mt-2 max-w-2xl text-[var(--color-label-secondary)]">
-        The live trading room and weekly workshops — trade and build alongside the
-        FatTail team. Replays land in the course library.
-      </p>
-      <div className="mt-8">
+      <SectionHubShell page={page}>
         <LiveSessions />
-      </div>
+      </SectionHubShell>
     </main>
   );
 }

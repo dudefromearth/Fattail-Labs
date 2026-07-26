@@ -1366,3 +1366,15 @@ Next: R7 project close.
 p-resources v1.0 closed. Evidence: 34 pytest (resources + canonical + production
 packages); R7_SMOKE U1–U10; no outbound fetch on resource paths. Spec status
 approved as built. Residuals: lesson attach UI, attachment row cleanup, bulk repin.
+
+## 2026-07-26 — DL-063 Section hubs (Labs, Resources, Live) CMS + SEO
+
+Labs, Resources, and Live are first-class **section hubs** using `site_pages`
+(same pattern as course hub `slug=hub`):
+
+- Fields: `title`, **`description_md`** (markdown for members + crawlers)
+- Public: `GET /api/site-pages/{slug}` for `labs` | `resources` | `live` | `hub`
+- Admin: `PUT /api/admin/site-pages/{slug}` (in-place **Edit hub** on each page)
+- SEO: generateMetadata from CMS + CollectionPage JSON-LD; Live keeps Event JSON-LD
+- Sitemap includes `/labs` and `/resources`
+- Migration `030_section_hub_pages.sql` seeds default doctrine-safe copy
