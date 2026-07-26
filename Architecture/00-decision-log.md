@@ -1298,3 +1298,17 @@ Version 1 + CourseResourceLink.
 
 **Status:** Spec drafted 2026-07-26; implementation phases R0–R7 in the spec. Not yet
 built as runtime SoR (library still attachment-based until R* ships).
+
+## 2026-07-26 — DL-062a Resource Spec build approved; R1 domain shipped
+
+Coach approved build and started R1. Schema + pure domain ops for first-class
+versioned Resources:
+
+- Migration `029_resources.sql`: `resources`, `resource_versions`,
+  `course_resource_links`, `resource_migration_map`
+- Module `server/resources_domain.py`: create, add_version, publish/unpublish,
+  attach/set_pin/unlink, slug resolve
+- Tests: `server/tests/test_resources_domain.py` (6) — unpublished default,
+  single publish, pin ≠ published, unpublish keeps pin
+
+**Next:** R2 APIs (`agents/p-resources/seeds/R2-alpha-api.md`).

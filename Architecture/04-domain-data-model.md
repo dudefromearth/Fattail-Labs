@@ -34,6 +34,7 @@
 | `021_heygen_budget_ledger` | heygen_job_ledger (Phase G3 budgets) |
 | `022_password_reset` | password_reset_tokens (native forgot-password) |
 | `028_canonical_course_model` | Course fidelity columns + lesson `extra_blocks_json` (Canonical Course Model v1.0) |
+| `029_resources` | First-class `resources` + `resource_versions` + `course_resource_links` (Resource Spec v1.0) |
 
 **Rule:** never edit applied migrations; always append.
 
