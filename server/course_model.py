@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import resources_domain as rd
+
 FORMAT = "fattail.labs.canonical_course"
 LEGACY_PACKAGE_FORMAT = "fattail.labs.course_package"
 MODEL_VERSION = "1.0"
@@ -1016,20 +1018,68 @@ def export_course_document(cur, slug: str) -> dict:
     mod_rows = cur.fetchall()
 
     modules_out = []
-    resource_meta: dict[str, dict] = {}  # id -> lightweight resource pointer metadata
+    resource_meta: dict[str, dict] = {}  # slug or att-* -> lightweight metadata
+    resource_links_out: list[dict] = []
 
-    def _note_resource(a: dict) -> str:
-        aid = f"att-{a['id']}"
-        resource_meta[aid] = {
-            "id": aid,
-            "title": a["title"],
-            "kind": a["kind"],
-            "url": a["url"],  # reference only — no binary (CCM-D12/D13)
-            "free_preview": bool(a.get("free_preview")),
-            "description_md": a.get("description_md"),
-            "emoji": a.get("emoji"),
+    def _bundle_note(meta: dict) -> None:
+        key = meta.get("slug") or meta.get("id")
+        if key:
+            resource_meta[str(key)] = meta
+
+    # First-class course + lesson resource links (Resource Spec / R5)
+    cur.execute(
+        """SELECT r.slug, r.title, r.type, r.emoji, r.description_md,
+                  v.version AS pinned_version, v.kind, v.url, v.id AS version_id,
+                  l.free_preview, l.lesson_id, l.sort_order,
+                  pv.version AS published_version
+           FROM course_resource_links l
+           JOIN resources r ON r.id = l.resource_id
+           JOIN resource_versions v ON v.id = l.pinned_version_id
+           LEFT JOIN resource_versions pv ON pv.id = r.published_version_id
+           WHERE l.course_id = %s
+           ORDER BY l.lesson_id, l.sort_order, r.title""",
+        (course_id,),
+    )
+    fclass_links = cur.fetchall()
+    lesson_resource_slugs: dict[int, list[str]] = {}
+    course_resource_ids: list[str] = []
+    for L in fclass_links:
+        meta = {
+            "id": L["slug"],
+            "slug": L["slug"],
+            "title": L["title"],
+            "type": L["type"],
+            "kind": L["kind"],
+            "url": L["url"],
+            "free_preview": bool(L["free_preview"]),
+            "description_md": L.get("description_md"),
+            "emoji": L.get("emoji"),
+            "pinned_version": L["pinned_version"],
+            "published_version": L.get("published_version"),
         }
-        return aid
+        _bundle_note(meta)
+        lid = int(L["lesson_id"] or 0)
+        if lid == 0:
+            course_resource_ids.append(L["slug"])
+            resource_links_out.append(
+                {
+                    "slug": L["slug"],
+                    "pinned_version": L["pinned_version"],
+                    "free_preview": bool(L["free_preview"]),
+                    "sort_order": L["sort_order"],
+                }
+            )
+        else:
+            lesson_resource_slugs.setdefault(lid, []).append(L["slug"])
+            resource_links_out.append(
+                {
+                    "slug": L["slug"],
+                    "pinned_version": L["pinned_version"],
+                    "free_preview": bool(L["free_preview"]),
+                    "lesson_id": lid,
+                    "sort_order": L["sort_order"],
+                }
+            )
 
     for mi, mod in enumerate(mod_rows):
         cur.execute(
@@ -1068,14 +1118,29 @@ def export_course_document(cur, slug: str) -> dict:
             les_dict["video_params"] = _parse_json_maybe(les.get("video_params")) or {}
             les_dict["extra_blocks_json"] = les.get("extra_blocks_json")
             blocks = _lesson_fields_to_blocks(les_dict)
-            # Lesson resources = pointers to generic Resource (attachment) type
-            cur.execute(
-                """SELECT id, title, kind, url, free_preview, description_md, emoji
-                   FROM attachments
-                   WHERE owner_type = 'lesson' AND owner_id = %s""",
-                (les["id"],),
-            )
-            res_ids = [_note_resource(a) for a in cur.fetchall()]
+            # Prefer first-class lesson links; fall back to legacy attachments
+            res_ids = list(lesson_resource_slugs.get(int(les["id"]), []))
+            if not res_ids:
+                cur.execute(
+                    """SELECT id, title, kind, url, free_preview, description_md, emoji
+                       FROM attachments
+                       WHERE owner_type = 'lesson' AND owner_id = %s""",
+                    (les["id"],),
+                )
+                for a in cur.fetchall():
+                    aid = f"att-{a['id']}"
+                    _bundle_note(
+                        {
+                            "id": aid,
+                            "title": a["title"],
+                            "kind": a["kind"],
+                            "url": a["url"],
+                            "free_preview": bool(a.get("free_preview")),
+                            "description_md": a.get("description_md"),
+                            "emoji": a.get("emoji"),
+                        }
+                    )
+                    res_ids.append(aid)
             lkind = (les["kind"] or "video").lower()
             if lkind not in VALID_LESSON_KINDS:
                 lkind = "video"
@@ -1141,12 +1206,36 @@ def export_course_document(cur, slug: str) -> dict:
             {"id": iid, "name": r["name"], "instructor_id": r["id"]}
         )
 
-    cur.execute(
-        """SELECT id, title, kind, url, free_preview, description_md, emoji
-           FROM attachments WHERE owner_type = 'course' AND owner_id = %s""",
-        (course_id,),
-    )
-    course_resource_ids = [_note_resource(a) for a in cur.fetchall()]
+    # Legacy course attachments not yet represented as first-class links
+    if not course_resource_ids:
+        cur.execute(
+            """SELECT id, title, kind, url, free_preview, description_md, emoji
+               FROM attachments WHERE owner_type = 'course' AND owner_id = %s""",
+            (course_id,),
+        )
+        for a in cur.fetchall():
+            aid = f"att-{a['id']}"
+            _bundle_note(
+                {
+                    "id": aid,
+                    "title": a["title"],
+                    "kind": a["kind"],
+                    "url": a["url"],
+                    "free_preview": bool(a.get("free_preview")),
+                    "description_md": a.get("description_md"),
+                    "emoji": a.get("emoji"),
+                }
+            )
+            course_resource_ids.append(aid)
+            resource_links_out.append(
+                {
+                    "slug": aid,
+                    "id": aid,
+                    "pinned_version": 1,
+                    "free_preview": bool(a.get("free_preview")),
+                }
+            )
+
     bundle_resources = list(resource_meta.values())
 
     outcomes = _parse_json_maybe(row.get("learning_outcomes_json")) or []
@@ -1196,6 +1285,7 @@ def export_course_document(cur, slug: str) -> dict:
         "learning_outcomes": outcomes if isinstance(outcomes, list) else [],
         "modules": modules_out,
         "resource_ids": course_resource_ids,
+        "resource_links": resource_links_out,
         "related_live_series_ids": related if isinstance(related, list) else [],
         "seo": {
             "title": row["title"],
@@ -1290,11 +1380,14 @@ def import_document(
         )
 
     bundle = doc.get("bundle") or {}
-    res_by_id = {
-        r["id"]: r
-        for r in (bundle.get("resources") or [])
-        if isinstance(r, dict) and r.get("id")
-    }
+    res_by_id: dict[str, dict] = {}
+    for r in bundle.get("resources") or []:
+        if not isinstance(r, dict):
+            continue
+        if r.get("slug"):
+            res_by_id[str(r["slug"])] = r
+        if r.get("id"):
+            res_by_id[str(r["id"])] = r
     inst_by_id = {
         str(p.get("id")): p
         for p in (bundle.get("instructors") or [])
@@ -1371,33 +1464,87 @@ def import_document(
         )
         return int(cur.lastrowid)
 
-    def _attach_resource(owner_type: str, owner_id: int, rid: str) -> None:
-        res = res_by_id.get(rid)
-        if not res:
-            # Pointer with no metadata: cannot materialize without a url reference
+    def _resolve_resource_id(ref: str | dict) -> tuple[int, str]:
+        """Return (resource_id, slug). Create from bundle metadata if missing."""
+        if isinstance(ref, dict):
+            slug = (ref.get("slug") or ref.get("id") or "").strip()
+            pin = ref.get("pinned_version")
+            free = bool(ref.get("free_preview"))
+            meta = ref
+        else:
+            slug = str(ref).strip()
+            pin = None
+            free = False
+            meta = res_by_id.get(slug) or {}
+            if meta.get("pinned_version") is not None and pin is None:
+                pin = meta.get("pinned_version")
+            free = bool(meta.get("free_preview")) if meta else free
+
+        if not slug:
+            raise CourseModelError("resource ref missing slug")
+
+        # Legacy att-* keys: create attachment-backed resource once
+        cur.execute("SELECT id FROM resources WHERE slug = %s", (slug,))
+        existing = cur.fetchone()
+        if existing:
+            return int(existing["id"]), slug
+
+        # Bundle metadata for create
+        b = res_by_id.get(slug) or (meta if isinstance(ref, dict) else {})
+        if not b.get("url"):
             raise CourseModelError(
-                f"resource {rid!r} not found in bundle.resources "
-                "(resources are pointers; include metadata with url ref for import)"
+                f"resource {slug!r} not found and bundle.resources has no url reference"
             )
-        if not res.get("url"):
-            raise CourseModelError(f"resource {rid!r} missing url reference")
-        cur.execute(
-            """INSERT INTO attachments
-               (owner_type, owner_id, title, kind, url, free_preview,
-                description_md, emoji)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-            (
-                owner_type,
-                owner_id,
-                res.get("title") or rid,
-                res.get("kind") or "link",
-                res["url"],
-                1 if res.get("free_preview") else 0,
-                res.get("description_md"),
-                res.get("emoji"),
-            ),
-        )
-        key_map[rid] = cur.lastrowid
+        kind = b.get("kind") or "link"
+        if kind not in rd.VALID_KINDS:
+            kind = "link"
+        rtype = b.get("type") or ("link" if kind == "link" else "document")
+        if rtype not in rd.VALID_TYPES:
+            rtype = "other"
+        try:
+            created = rd.create_resource(
+                cur,
+                title=b.get("title") or slug,
+                description_md=b.get("description_md") or "",
+                type=rtype,
+                category_slug=b.get("category_slug") or "",
+                kind=kind,
+                url=b["url"],
+                slug=slug if not slug.startswith("att-") else None,
+                emoji=b.get("emoji"),
+                publish=False,
+            )
+        except rd.ResourceError as exc:
+            raise CourseModelError(str(exc)) from exc
+        key_map[slug] = created["resource_id"]
+        return created["resource_id"], created["slug"]
+
+    def _link_resource_to_course(
+        ref: str | dict, *, course_id: int, lesson_id: int = 0
+    ) -> None:
+        if isinstance(ref, dict):
+            pin = ref.get("pinned_version")
+            free = bool(ref.get("free_preview"))
+            sort_order = int(ref.get("sort_order") or 0)
+        else:
+            meta = res_by_id.get(str(ref)) or {}
+            pin = meta.get("pinned_version")
+            free = bool(meta.get("free_preview"))
+            sort_order = 0
+        rid, _slug = _resolve_resource_id(ref)
+        try:
+            rd.attach_to_course(
+                cur,
+                course_id=course_id,
+                resource_id=rid,
+                pinned_version=int(pin) if pin is not None else None,
+                free_preview=free,
+                lesson_id=lesson_id,
+                sort_order=sort_order,
+            )
+        except rd.ResourceError as exc:
+            raise CourseModelError(str(exc)) from exc
+        key_map[_slug] = rid
 
     # Instructors (full profiles from bundle when creating)
     for ii, iref in enumerate(course.get("instructor_refs") or []):
@@ -1481,13 +1628,27 @@ def import_document(
                         q.get("explanation_md"),
                     ),
                 )
-            # Lesson-level resource pointers
+            # Lesson-level resource pointers (slug or legacy att-*)
             for rid in fields.get("resource_ids") or les.get("resource_ids") or []:
-                _attach_resource("lesson", lesson_id, rid)
+                _link_resource_to_course(rid, course_id=course_id, lesson_id=lesson_id)
 
-    # Course-level resources (pointers + metadata refs)
-    for rid in course.get("resource_ids") or []:
-        _attach_resource("course", course_id, rid)
+    # Course-level resources: prefer resource_links, else resource_ids
+    links = course.get("resource_links") or []
+    if links:
+        for ref in links:
+            if isinstance(ref, dict) and ref.get("lesson_id"):
+                # lesson-scoped links already applied when lessons created if
+                # lesson_id is DB id — package may carry runtime lesson id.
+                # Prefer course-level only here when lesson_id missing/0.
+                lid = int(ref.get("lesson_id") or 0)
+                if lid > 0:
+                    # Map package lesson_id only if it appears in key_map values
+                    # from this import; otherwise skip (lesson resources use resource_ids)
+                    continue
+            _link_resource_to_course(ref, course_id=course_id, lesson_id=0)
+    else:
+        for rid in course.get("resource_ids") or []:
+            _link_resource_to_course(rid, course_id=course_id, lesson_id=0)
 
     if mode == "publish":
         pub_report = validate(
@@ -1516,6 +1677,9 @@ def import_document(
 
 
 def _wipe_course_graph(cur, course_id: int) -> None:
+    cur.execute(
+        "DELETE FROM course_resource_links WHERE course_id = %s", (course_id,)
+    )
     cur.execute("SELECT id FROM modules WHERE course_id = %s", (course_id,))
     mod_ids = [r["id"] for r in cur.fetchall()]
     if mod_ids:

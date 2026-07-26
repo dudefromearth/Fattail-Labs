@@ -19,13 +19,13 @@
 | **R3a** Resources hub UI | **DONE** | Charlie | ResourceLibrary create/version/publish |
 | **R3b** Course builder UI | **DONE** | Charlie | CourseResourcesEditor attach/create/pin |
 | **R4** Migrate attachments | **DONE** | Alpha | migrate_attachments_to_resources.py · 13 tests |
-| **R5** Canonical package | PENDING | Alpha | |
+| **R5** Canonical package | **DONE** | Alpha | export slug+pin; import resolve/create link |
 | **R6** Cutover | PENDING | Alpha · Delta | |
 | **R7** Close | PENDING | Delta · Lima | |
 
 ## Next action
 
-Open **R5** Canonical package slug/pin (`seeds/R5-alpha-ccm-integration.md`).
+Open **R6** cutover off attachment library path (`seeds/R6-alpha-cutover.md`).
 
 ---
 
@@ -33,8 +33,8 @@ Open **R5** Canonical package slug/pin (`seeds/R5-alpha-ccm-integration.md`).
 
 | Seed | Status |
 |------|--------|
-| R1–R4 | **DONE** |
-| R5–R7 | PENDING |
+| R1–R5 | **DONE** |
+| R6–R7 | PENDING |
 
 ## R4 operator command
 

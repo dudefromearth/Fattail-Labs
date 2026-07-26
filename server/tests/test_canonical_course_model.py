@@ -395,3 +395,110 @@ def test_place_uses_canonical_materialize(client, admin_cookies):
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM content_items WHERE id = %s", (iid,))
+
+
+def test_export_import_resource_slug_pin(client, admin_cookies):
+    """R5 U9: package carries resource slug + pinned_version; import links pin."""
+    rslug = _unique("zzccm-res")
+    cr = client.post(
+        "/api/admin/resources",
+        cookies=admin_cookies,
+        json={
+            "title": "Package Trade Log",
+            "type": "spreadsheet",
+            "kind": "link",
+            "url": "https://example.com/pkg-log-v1",
+            "slug": rslug,
+            "publish": True,
+        },
+    )
+    assert cr.status_code == 200, cr.text
+    rslug = cr.json()["slug"]
+    # v2 published on hub, course will pin v1
+    client.post(
+        f"/api/admin/resources/{rslug}/versions",
+        cookies=admin_cookies,
+        json={
+            "kind": "link",
+            "url": "https://example.com/pkg-log-v2",
+            "publish": True,
+        },
+    )
+
+    cslug = _unique("zzccm-rc")
+    doc = _minimal_doc(slug=cslug)
+    r = client.post(
+        "/api/admin/canonical-courses/import",
+        cookies=admin_cookies,
+        json={"document": doc, "mode": "create_draft"},
+    )
+    assert r.status_code == 200
+    course_slug = r.json()["slug"]
+    att = client.post(
+        f"/api/admin/courses/{course_slug}/resources",
+        cookies=admin_cookies,
+        json={
+            "resource_slug": rslug,
+            "pinned_version": 1,
+            "free_preview": True,
+        },
+    )
+    assert att.status_code == 200, att.text
+
+    ex = client.get(
+        f"/api/admin/courses/{course_slug}/canonical", cookies=admin_cookies
+    )
+    assert ex.status_code == 200
+    package = ex.json()
+    assert rslug in package["course"]["resource_ids"]
+    links = package["course"].get("resource_links") or []
+    assert any(
+        L.get("slug") == rslug and L.get("pinned_version") == 1 for L in links
+    )
+    bundle = package.get("bundle", {}).get("resources") or []
+    assert any(b.get("slug") == rslug for b in bundle)
+
+    # Import as new draft — resolve existing slug, pin v1
+    package["course"]["slug"] = _unique("zzccm-rc2")
+    package["course"]["title"] = "Package Trade Log Course Copy"
+    r2 = client.post(
+        "/api/admin/canonical-courses/import",
+        cookies=admin_cookies,
+        json={"document": package, "mode": "create_draft"},
+    )
+    assert r2.status_code == 200, r2.text
+    copy_slug = r2.json()["slug"]
+    cl = client.get(
+        f"/api/admin/courses/{copy_slug}/resources", cookies=admin_cookies
+    )
+    assert cl.status_code == 200
+    rows = cl.json()["resources"]
+    assert len(rows) == 1
+    assert rows[0]["slug"] == rslug
+    assert rows[0]["pinned_version"] == 1
+
+    # cleanup
+    client.delete(
+        f"/api/admin/courses/{course_slug}/resources/{rslug}",
+        cookies=admin_cookies,
+    )
+    client.delete(
+        f"/api/admin/courses/{copy_slug}/resources/{rslug}",
+        cookies=admin_cookies,
+    )
+    client.delete(f"/api/admin/courses/{course_slug}", cookies=admin_cookies)
+    client.delete(f"/api/admin/courses/{copy_slug}", cookies=admin_cookies)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM resources WHERE slug = %s", (rslug,))
+            row = cur.fetchone()
+            if row:
+                rid = row["id"]
+                cur.execute(
+                    "UPDATE resources SET published_version_id = NULL WHERE id = %s",
+                    (rid,),
+                )
+                cur.execute(
+                    "DELETE FROM resource_versions WHERE resource_id = %s", (rid,)
+                )
+                cur.execute("DELETE FROM resources WHERE id = %s", (rid,))

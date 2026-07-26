@@ -1341,3 +1341,11 @@ Idempotent migrator `server/migrate_attachments_to_resources.py`:
 - Type inferred from kind/url/title (spreadsheet/image/document/link)
 
 Tests: `test_resources_migration.py`. Next: R5 Canonical Course package pins.
+
+## 2026-07-26 — DL-062e Resources R5 Canonical Course package pins
+
+Canonical export includes `resource_ids` (slugs) and `resource_links`
+[{slug, pinned_version, free_preview}]. Bundle carries metadata URL refs only.
+Import resolves slug (or creates from bundle), attaches with pin via
+resources_domain. Wipe path clears course_resource_links. Test:
+test_export_import_resource_slug_pin (U9).
