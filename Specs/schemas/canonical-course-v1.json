@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://labs.fattail.ai/schemas/canonical-course-v1.json",
+  "title": "FatTail Labs Canonical Course Model v1.0",
+  "type": "object",
+  "required": ["format", "model_version", "course"],
+  "additionalProperties": true,
+  "properties": {
+    "format": {
+      "const": "fattail.labs.canonical_course"
+    },
+    "model_version": {
+      "type": "string",
+      "pattern": "^1\\."
+    },
+    "exported_at": { "type": "string" },
+    "exported_by": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string" },
+        "label": { "type": "string" }
+      }
+    },
+    "source": { "type": "object" },
+    "course": { "$ref": "#/$defs/course" },
+    "bundle": {
+      "type": "object",
+      "properties": {
+        "resources": { "type": "array" },
+        "categories": { "type": "array" },
+        "media": { "type": "array" },
+        "quizzes": { "type": "array" },
+        "casts": { "type": "array" }
+      }
+    }
+  },
+  "$defs": {
+    "course": {
+      "type": "object",
+      "required": ["id", "slug", "title", "status", "version", "level", "audience_category"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "slug": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "subtitle": { "type": "string" },
+        "description_md": { "type": "string" },
+        "short_description": { "type": "string" },
+        "status": { "enum": ["draft", "published", "archived"] },
+        "version": { "type": "string", "minLength": 1 },
+        "level": { "enum": ["beginner", "intermediate", "advanced"] },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" },
+        "category_slugs": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "instructor_refs": { "type": "array" },
+        "audience_category": { "enum": ["public", "members", "coaching"] },
+        "pathway_position": { "type": ["integer", "null"] },
+        "flagship": { "type": "boolean" },
+        "trailer": { "type": ["object", "null"] },
+        "banner": { "type": ["object", "null"] },
+        "card_color": { "type": ["string", "null"] },
+        "certification_enabled": { "type": "boolean" },
+        "estimated_duration_minutes": { "type": ["integer", "null"] },
+        "learning_outcomes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "modules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/module" }
+        },
+        "lessons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/lesson" }
+        },
+        "resource_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "related_live_series_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "seo": { "type": "object" },
+        "production": { "type": "object" }
+      }
+    },
+    "module": {
+      "type": "object",
+      "required": ["id", "title", "order", "lessons"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description_md": { "type": "string" },
+        "order": { "type": "integer" },
+        "kind": {
+          "enum": ["standard", "worksheets", "resources", "bonus"]
+        },
+        "lessons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/lesson" }
+        }
+      }
+    },
+    "lesson": {
+      "type": "object",
+      "required": ["id", "title", "slug", "order", "content_blocks"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "order": { "type": "integer" },
+        "free_preview": { "type": "boolean" },
+        "estimated_duration_minutes": { "type": ["integer", "null"] },
+        "content_blocks": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "resource_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -12,7 +12,7 @@ import { FIELD } from "@/lib/ui";
 import Link from "next/link";
 import type { CourseCard } from "@/lib/types";
 import { isNew } from "@/lib/catalog";
-import { NewCourseCard } from "@/components/edit/EditorExtras";
+import { ImportCourseCard, NewCourseCard } from "@/components/edit/EditorExtras";
 import { appAlert } from "@/lib/dialogs";
 
 const LEVELS = ["beginner", "intermediate", "advanced"] as const;
@@ -403,6 +403,7 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
           <p className="text-zinc-500">No courses match. Clear a filter and try again.</p>
         )}
         <NewCourseCard />
+        <ImportCourseCard />
       </div>
     </div>
   );

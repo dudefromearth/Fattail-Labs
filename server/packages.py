@@ -11,6 +11,7 @@ import re
 from typing import Any
 
 import agent_auth
+import course_model
 import db
 from agent_auth import Actor
 
@@ -768,6 +769,22 @@ def apply_placement(
                 s: _latest_artifact(cur, item_id, s) for s in stages
             }
             plan = build_placement_plan(item, artifacts)
+            # Canonical Course Model: placement plan is an adapter input.
+            # Full materialize still uses the placement graph below for
+            # backward-compatible characterization; document is validated
+            # so automation fails loud on unusable plans.
+            try:
+                canon_doc = course_model.placement_plan_to_document(plan)
+                vrep = course_model.validate(canon_doc, mode="structural")
+                if not vrep["ok"]:
+                    raise PackageError(
+                        "placement plan failed canonical structural validation: "
+                        + "; ".join(
+                            f"{e['code']}:{e['message']}" for e in vrep["errors"][:5]
+                        )
+                    )
+            except course_model.CourseModelError as exc:
+                raise PackageError(str(exc)) from exc
 
             existing_slug = item.get("placed_course_slug")
             course_id = None

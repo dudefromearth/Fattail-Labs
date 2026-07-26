@@ -15,6 +15,8 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [05-security-and-access.md](./05-security-and-access.md) | Identity, roles, sessions, media, commerce boundaries |
 | [06-operations-and-verification.md](./06-operations-and-verification.md) | Env, deploy, tests, evidence culture |
 | [07-audit-snapshot-2026-07-23.md](./07-audit-snapshot-2026-07-23.md) | Retroactive code/docs audit findings |
+| [08-canonical-course-model.md](./08-canonical-course-model.md) | Portable Course graph: export/import/validate architecture |
+| [09-canonical-course-design.md](./09-canonical-course-design.md) | Admin UX design for packages |
 
 **Hardening phases (2026-07-23) — complete A–G:**
 

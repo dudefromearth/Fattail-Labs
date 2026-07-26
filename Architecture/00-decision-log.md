@@ -1228,3 +1228,47 @@ derived progress; isolation key `identity_id`).
 **Orchestration:** `agents/p-app-framework/` (CHARTER + ORCHESTRATOR + seeds W0–W8).
 
 **Related:** 2026-07-24 primary nav Labs hub hosts future Trade Log/Journal/Playbook.
+
+## 2026-07-26 — DL-061 Canonical Course Model v1.0
+
+**Decision:** Accept Canonical Course Model as the portable, inspectable, validatable
+definition of a Course (Coach draft v0.1 evolved to Spec v1.0).
+
+**Locked:**
+- Format `fattail.labs.canonical_course`, `model_version` `1.0`.
+- **References over duplication** for Resources, Categories, Media, Cast, Live series;
+  full copies only in export `bundle`.
+- Hierarchy: Course → Module → Lesson → **content_blocks** (discriminated union).
+- Runtime MySQL remains SoR for members; document projects to/from lesson columns +
+  `extra_blocks_json` for multi-block fidelity.
+- Import default `create_draft`; never silent overwrite of **published**.
+- ProductionState travels with the document as enrichment; board transitions stay on
+  board APIs.
+- Legacy Course Package / placement plans adapt **into** this model.
+- JSON Schema: `Specs/schemas/canonical-course-v1.json`.
+
+**Shipped with decision (C0–C3 partial + C4 validate hook):**
+- Spec + Architecture/08 + Design/09 + `agents/p-canonical-course/`
+- Migration `028_canonical_course_model.sql`
+- `server/course_model.py` + admin APIs under `/api/admin/canonical-courses/*`
+- Characterization: `server/tests/test_canonical_course_model.py`
+- Admin: Export package (edit bar) + Import package (catalog)
+
+**Specs:** `Specs/FatTail-Labs-Canonical-Course-Model-Spec-v1.0.md`  
+**Orchestration:** `agents/p-canonical-course/ORCHESTRATOR.md`
+
+## 2026-07-26 — DL-061a Canonical Course Model media & free-preview rules
+
+Coach resolved open gap questions on Canonical Course Model v1.0:
+
+| ID | Decision |
+|----|----------|
+| **CCM-D10** | YouTube is the default and current-only video provider (trailers + lessons). Other providers (e.g. local) deferred. |
+| **CCM-D11** | Preserve lesson `kind` exactly: video \| text \| download \| external \| replay \| quiz. |
+| **CCM-D12** | Course- and lesson-level resources are **pointers** to the generic Resource type. |
+| **CCM-D13** | All media except emoji is a **reference** (Resource pointer or YouTube id). No media ZIP in v1.0; no binary embed. |
+| **CCM-D14** | Instructors export **full profiles** (name, bio_md, avatar_url reference, links) in `bundle.instructors[]`; import may create. |
+| **CCM-D15** | SEO JSON-LD: platform regenerates for now; package `seo` stays thin/optional. |
+| **CCM-D16** | `free_preview` is an **authorization flag only** — free-preview lessons have the same content shape as any lesson. |
+
+**Code:** `server/course_model.py` + Spec Canonical Course Model v1.0 coach-decisions block.

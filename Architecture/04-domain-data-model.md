@@ -33,6 +33,7 @@
 | `020_cast_heygen` | content_items.cast_id (Phase G1) |
 | `021_heygen_budget_ledger` | heygen_job_ledger (Phase G3 budgets) |
 | `022_password_reset` | password_reset_tokens (native forgot-password) |
+| `028_canonical_course_model` | Course fidelity columns + lesson `extra_blocks_json` (Canonical Course Model v1.0) |
 
 **Rule:** never edit applied migrations; always append.
 

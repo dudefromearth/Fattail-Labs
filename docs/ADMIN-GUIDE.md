@@ -415,3 +415,24 @@ Product cast model: `docs/P2-Cast-and-HeyGen-Production.md` · files: `docs/stud
 *When in doubt: board tracks the **factory**; in-place tracks the **product page**;
 Approve on the board freezes the package and may seed a draft course — you still polish
 and publish the course for members on the production URL.*
+
+---
+
+## Canonical Course packages (export / import)
+
+**Spec:** *Canonical Course Model v1.0*
+
+A course can be saved as a portable JSON document (`.course.json`), validated offline,
+and re-imported as a **draft**.
+
+| Action | How |
+|--------|-----|
+| **Export** | Open a course → Edit → **Export package** (downloads `{slug}.course.json`) |
+| **Import** | Catalog (admin) → **Import package** card → choose `.course.json` → new draft |
+| **Validate API** | `POST /api/admin/canonical-courses/validate` body `{ "document": …, "mode": "structural"\|"publish"\|"strict" }` |
+| **Inspect API** | `POST /api/admin/canonical-courses/inspect` |
+| **Import API** | `POST /api/admin/canonical-courses/import` modes: `create_draft` (default), `replace_draft`, `publish` |
+| **Export API** | `GET /api/admin/courses/{slug}/canonical` |
+
+**Rules:** Import never wipes a **published** course. Missing category/instructor refs
+fail loud. Member progress and discussions are **not** included in packages.

@@ -58,3 +58,6 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   Whiskey, Yankee). Capabilities delivered into P1:
   `docs/P2-Capabilities-for-P1.md`.
 - `agents/p-hig/` — Human Interface compliance board (tokens, surfaces, appearance).
+- `agents/p-canonical-course/` — **Canonical Course Model** (portable course JSON:
+  export/import/validate). Plan: `IMPLEMENTATION-PLAN.md`. Spec:
+  `Specs/FatTail-Labs-Canonical-Course-Model-Spec-v1.0.md`.

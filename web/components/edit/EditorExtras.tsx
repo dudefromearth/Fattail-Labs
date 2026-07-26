@@ -274,3 +274,87 @@ export function NewCourseCard() {
     </button>
   );
 }
+
+/** Import a Canonical Course package (.course.json) as a new draft. */
+export function ImportCourseCard() {
+  const router = useRouter();
+  const isAdmin = useIsAdmin();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  if (!isAdmin) return null;
+
+  async function onFile(file: File) {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const text = await file.text();
+      const document = JSON.parse(text);
+      const v = await fetch("/api/admin/canonical-courses/validate", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document, mode: "structural" }),
+      });
+      const report = await v.json();
+      if (!v.ok || !report.ok) {
+        const first = report.errors?.[0];
+        setMsg(
+          first
+            ? `${first.code}: ${first.message}`
+            : `Validation failed (${v.status})`,
+        );
+        setBusy(false);
+        return;
+      }
+      const r = await fetch("/api/admin/canonical-courses/import", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ document, mode: "create_draft" }),
+      });
+      if (!r.ok) {
+        const t = await r.text();
+        setMsg(`Import failed: ${t.slice(0, 200)}`);
+        setBusy(false);
+        return;
+      }
+      const { slug } = await r.json();
+      router.push(`/admin/courses/${slug}`);
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Import failed");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-300 p-4 dark:border-zinc-700">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => fileRef.current?.click()}
+        className="font-medium text-zinc-700 hover:text-emerald-600 disabled:opacity-50 dark:text-zinc-200"
+      >
+        Import package
+      </button>
+      <span className="mt-1 text-center text-xs text-zinc-400">
+        .course.json → new draft
+      </span>
+      {msg && (
+        <p className="mt-2 max-w-[14rem] text-center text-xs text-red-600">{msg}</p>
+      )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void onFile(f);
+          e.target.value = "";
+        }}
+      />
+    </div>
+  );
+}
