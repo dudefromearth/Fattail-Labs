@@ -414,12 +414,21 @@ export function EditProvider({
         if (!r.ok) throw new Error(`lesson ${id} save ${r.status}: ${await r.text()}`);
       }
       // Revalidate public HTML for other visitors — do not leave this page.
-      await fetch("/api/revalidate", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: `/courses/${courseSlug}` }),
-      }).catch(() => null);
+      // Catalog index too when status may have changed (publish/unpublish).
+      const paths =
+        status && status !== serverStatus
+          ? [`/courses/${courseSlug}`, "/courses"]
+          : [`/courses/${courseSlug}`];
+      await Promise.all(
+        paths.map((path) =>
+          fetch("/api/revalidate", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path }),
+          }).catch(() => null),
+        ),
+      );
 
       // Fold dirty values into baseline + local admin models so the UI stays put
       // (true in-place: no tab reset, no scroll jump from reload).
@@ -524,6 +533,10 @@ export function EditProvider({
       }
       setDirty({});
       setSaving(false);
+      // Leaving draft shell after first publish so the public course page loads.
+      if (status === "published" && serverStatus !== "published") {
+        window.location.assign(`/courses/${courseSlug}`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setSaving(false);

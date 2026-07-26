@@ -19,6 +19,8 @@ export type CourseCard = {
   avg_rating: number | null;
   categories: Category[];
   instructors: InstructorCard[];
+  /** Present on admin catalog payloads only; public API omits this. */
+  status?: "draft" | "published" | "archived";
 };
 
 export type Lesson = {

@@ -275,6 +275,21 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
     setItems(courses);
   }, [courses]);
 
+  // Admins see drafts + archived too — otherwise new courses "vanish" after create.
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    fetch("/api/admin/courses", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d?.courses) setItems(d.courses as CourseCard[]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin]);
+
   const categories = useMemo(() => {
     const map = new Map<string, string>();
     for (const c of items)
@@ -339,10 +354,19 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
                   {c.title}
                 </h2>
                 <p className="mt-1 truncate text-xs text-zinc-500">
-                  {c.instructors.map((x) => x.name).join(", ")}
+                  {c.instructors.map((x) => x.name).join(", ") ||
+                    (c.status === "draft" ? "No instructors yet" : "")}
                 </p>
                 <div className="mt-1.5 flex items-center gap-1.5 text-sm">
-                  {c.avg_rating !== null ? (
+                  {c.status === "draft" ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                      DRAFT
+                    </span>
+                  ) : c.status === "archived" ? (
+                    <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                      ARCHIVED
+                    </span>
+                  ) : c.avg_rating !== null ? (
                     <>
                       <span className="font-semibold text-amber-700 dark:text-amber-500">
                         {c.avg_rating.toFixed(1)}

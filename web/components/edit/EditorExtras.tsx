@@ -256,7 +256,10 @@ export function NewCourseCard() {
     setBusy(false);
     if (r.ok) {
       const { slug } = await r.json();
-      router.push(`/admin/courses/${slug}`);
+      // Public course URL — draft editor mounts in place via not-found path.
+      router.push(`/courses/${slug}`);
+    } else {
+      setBusy(false);
     }
   }
 
@@ -269,7 +272,7 @@ export function NewCourseCard() {
       <span className="text-3xl">+</span>
       New Course
       <span className="mt-1 text-xs font-normal text-zinc-400">
-        Created as draft
+        Created as draft — visible to admins only
       </span>
     </button>
   );
@@ -510,7 +513,7 @@ export function ImportCourseCard() {
         return;
       }
       const { slug } = await r.json();
-      router.push(`/admin/courses/${slug}`);
+      router.push(`/courses/${slug}`);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Import failed");
       setBusy(false);

@@ -56,8 +56,8 @@ export default function DangerZone({
       setBusy(false);
       return;
     }
-    await revalidate([`/courses/${slug}`]).catch(() => {});
-    window.location.href = `/admin/courses/${slug}`;
+    await revalidate([`/courses/${slug}`, "/courses"]).catch(() => {});
+    window.location.href = `/courses/${slug}`;
   }
 
   async function destroy() {

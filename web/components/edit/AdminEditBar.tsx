@@ -113,8 +113,17 @@ export default function AdminEditBar() {
             onClick={edit.save}
             disabled={edit.saving}
             className="rounded-full bg-emerald-500 px-5 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
+            title={
+              edit.status === "published" && edit.status !== null
+                ? "Save changes. To go public, set Status → published first if still draft."
+                : "Save changes. Set Status to published to list this course publicly."
+            }
           >
-            {edit.saving ? "Saving…" : "Save & Publish"}
+            {edit.saving
+              ? "Saving…"
+              : edit.status === "published"
+                ? "Save"
+                : "Save draft"}
           </button>
         </span>
       </div>

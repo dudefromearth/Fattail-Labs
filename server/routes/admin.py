@@ -79,6 +79,103 @@ def normalize_video_id(raw: str | None, provider: str = "youtube") -> str | None
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@router.get("/courses")
+def list_admin_courses(request: Request) -> dict:
+    """Catalog for administrators: drafts, published, and archived.
+
+    Public ``GET /api/courses`` stays published-only. Admins need every course
+    on /courses so new drafts do not "disappear" after create/save.
+    """
+    require_admin(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT c.id, c.slug, c.title, c.subtitle, c.description_md,
+                          c.hero_image_url, c.card_color, c.level, c.status,
+                          c.certification_enabled, c.published_at,
+                          (SELECT COUNT(*) FROM enrollments e
+                            WHERE e.course_id = c.id) AS enrolled_count,
+                          (SELECT COUNT(*) FROM lessons l
+                             JOIN modules m ON l.module_id = m.id
+                            WHERE m.course_id = c.id) AS lesson_count,
+                          (SELECT COALESCE(SUM(l.duration_seconds), 0)
+                             FROM lessons l JOIN modules m ON l.module_id = m.id
+                            WHERE m.course_id = c.id) AS total_duration_seconds,
+                          (SELECT COUNT(*) FROM reviews r
+                            WHERE r.course_id = c.id
+                              AND r.status = 'visible') AS review_count,
+                          (SELECT ROUND(AVG(r.rating), 1) FROM reviews r
+                            WHERE r.course_id = c.id AND r.status = 'visible'
+                           HAVING COUNT(*) >= 3) AS avg_rating
+                   FROM courses c
+                   ORDER BY
+                     CASE c.status
+                       WHEN 'draft' THEN 0
+                       WHEN 'published' THEN 1
+                       ELSE 2
+                     END,
+                     COALESCE(c.published_at, c.created_at) DESC"""
+            )
+            rows = cur.fetchall()
+            ids = [r["id"] for r in rows]
+            cats: dict[int, list[dict]] = {}
+            instructors: dict[int, list[dict]] = {}
+            if ids:
+                placeholders = ",".join(["%s"] * len(ids))
+                cur.execute(
+                    f"""SELECT cc.course_id, cat.slug, cat.name
+                        FROM course_categories cc
+                        JOIN categories cat ON cc.category_id = cat.id
+                        WHERE cc.course_id IN ({placeholders})""",
+                    ids,
+                )
+                for row in cur.fetchall():
+                    cats.setdefault(row["course_id"], []).append(
+                        {"slug": row["slug"], "name": row["name"]}
+                    )
+                cur.execute(
+                    f"""SELECT ci.course_id, i.name, i.avatar_url
+                        FROM course_instructors ci
+                        JOIN instructors i ON ci.instructor_id = i.id
+                        WHERE ci.course_id IN ({placeholders})
+                        ORDER BY ci.sort_order""",
+                    ids,
+                )
+                for row in cur.fetchall():
+                    instructors.setdefault(row["course_id"], []).append(
+                        {"name": row["name"], "avatar_url": row["avatar_url"]}
+                    )
+
+    courses = []
+    for r in rows:
+        courses.append(
+            {
+                "slug": r["slug"],
+                "title": r["title"],
+                "subtitle": r["subtitle"],
+                "description_md": r["description_md"],
+                "hero_image_url": r["hero_image_url"],
+                "card_color": r["card_color"],
+                "level": r["level"],
+                "status": r["status"],
+                "certification_enabled": bool(r["certification_enabled"]),
+                "published_at": (
+                    r["published_at"].isoformat() if r["published_at"] else None
+                ),
+                "enrolled_count": r["enrolled_count"],
+                "lesson_count": r["lesson_count"],
+                "total_duration_seconds": r["total_duration_seconds"],
+                "review_count": r["review_count"],
+                "avg_rating": (
+                    float(r["avg_rating"]) if r["avg_rating"] is not None else None
+                ),
+                "categories": cats.get(r["id"], []),
+                "instructors": instructors.get(r["id"], []),
+            }
+        )
+    return {"courses": courses}
+
+
 @router.get("/courses/{slug}")
 def admin_course(slug: str, request: Request) -> dict:
     require_admin(request)

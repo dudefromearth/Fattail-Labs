@@ -34,6 +34,22 @@ def test_draft_visible_via_admin_api(client, admin_cookies):
     assert r.json()["status"] == "draft"
 
 
+def test_admin_catalog_includes_drafts(client, admin_cookies):
+    """Admins list drafts on /courses so create/save does not lose them."""
+    r = client.get("/api/admin/courses", cookies=admin_cookies)
+    assert r.status_code == 200
+    courses = r.json()["courses"]
+    assert isinstance(courses, list)
+    by_slug = {c["slug"]: c for c in courses}
+    assert DRAFT_SLUG in by_slug
+    assert by_slug[DRAFT_SLUG]["status"] == "draft"
+    # Public catalog still published-only
+    public = {c["slug"] for c in client.get("/api/courses").json()["courses"]}
+    assert DRAFT_SLUG not in public
+    # Anonymous cannot list admin catalog
+    assert client.get("/api/admin/courses").status_code == 401
+
+
 def test_admin_course_requires_admin(client):
     from conftest import cookie_for
     assert client.get(f"/api/admin/courses/{DRAFT_SLUG}").status_code == 401
