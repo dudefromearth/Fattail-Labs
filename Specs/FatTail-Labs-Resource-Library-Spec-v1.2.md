@@ -1,6 +1,11 @@
 # FatTail Labs — Resource Library Spec v1.2
 
-**Status:** Approved as built (2026-07-21)
+**Status:** Approved as built (2026-07-21)  
+**Domain model supersession:** First-class **Resource + Version + course pin +
+library publish** is specified in  
+`Specs/FatTail-Labs-Resource-Spec-v1.0.md` (DRAFT). Until that ships, this
+document remains the **as-built** library (course `attachments` aggregation).
+
 **Extends:** v1.1 (visibility + admin create/delete). Items become **editable in
 place** and carry a **description** and a **representative emoji**.
 

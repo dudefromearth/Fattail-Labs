@@ -1272,3 +1272,29 @@ Coach resolved open gap questions on Canonical Course Model v1.0:
 | **CCM-D16** | `free_preview` is an **authorization flag only** — free-preview lessons have the same content shape as any lesson. |
 
 **Code:** `server/course_model.py` + Spec Canonical Course Model v1.0 coach-decisions block.
+
+## 2026-07-26 — DL-062 Resource entity (versioned, first-class) Spec v1.0 draft
+
+**Decision:** Resources are first-class versioned materials (logs, worksheets, process
+infographics), not solely course-owned attachments.
+
+**Model locked in** `Specs/FatTail-Labs-Resource-Spec-v1.0.md` **(DRAFT pending Coach
+formal approval of implementation):**
+
+| ID | Decision |
+|----|----------|
+| **RES-D1** | First-class Resource; courses **link** (many courses possible) |
+| **RES-D2** | Immutable integer versions; edit = new version |
+| **RES-D3** | At most one **published** version; **slug → published only** |
+| **RES-D4** | Course **pins** a version; course always shows linked resources at pin |
+| **RES-D5** | Library visibility = publish flag (`published_version_id`) |
+| **RES-D6** | New resources default **unpublished** to hub until explicit publish |
+| **RES-D7** | free_preview = access, separate from publish |
+| **RES-D8** | Canonical packages use slug + optional pin; no binary embed |
+| **RES-D9** | Types include spreadsheet, document, image, link (frequent-update assets) |
+
+**Migration path:** backfill from `attachments` (Resource Library v1.x) → Resource +
+Version 1 + CourseResourceLink.
+
+**Status:** Spec drafted 2026-07-26; implementation phases R0–R7 in the spec. Not yet
+built as runtime SoR (library still attachment-based until R* ships).
