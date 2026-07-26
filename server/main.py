@@ -46,6 +46,7 @@ def create_app() -> FastAPI:
     from routes.pathway import router as pathway_router
     from routes.quizzes import router as quizzes_router
     from routes.resources import router as resources_router
+    from routes.resources_admin import router as resources_admin_router
     from routes.hub import admin as hub_admin_router
     from routes.hub import public as hub_public_router
     from routes.appearance import router as appearance_router
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
     app.include_router(community_router)
     app.include_router(quizzes_router)
     app.include_router(resources_router)
+    app.include_router(resources_admin_router)
     app.include_router(live_router)
     app.include_router(pathway_router)
     app.include_router(billing_router)

@@ -207,6 +207,33 @@ def course_detail(slug: str) -> dict:
                 for a in cur.fetchall()
             ]
 
+            # First-class Resources (R2+): course pins; dual-read with attachments until R6
+            cur.execute(
+                """SELECT r.slug, r.title, r.type, r.emoji,
+                          v.version AS pinned_version, v.id AS pinned_version_id, v.kind,
+                          l.free_preview, l.sort_order
+                   FROM course_resource_links l
+                   JOIN resources r ON r.id = l.resource_id
+                   JOIN resource_versions v ON v.id = l.pinned_version_id
+                   WHERE l.course_id = %s AND l.lesson_id = 0
+                   ORDER BY l.sort_order, r.title""",
+                (course_id,),
+            )
+            linked_resources = [
+                {
+                    "slug": r["slug"],
+                    "title": r["title"],
+                    "type": r["type"],
+                    "emoji": r["emoji"],
+                    "kind": r["kind"],
+                    "pinned_version": r["pinned_version"],
+                    "free": bool(r["free_preview"]),
+                    "url": None,
+                    "download_path": f"/api/resource-versions/{r['pinned_version_id']}/download",
+                }
+                for r in cur.fetchall()
+            ]
+
             cur.execute(
                 "SELECT trailer_video_id, trailer_provider FROM courses WHERE id = %s",
                 (course_id,),
@@ -243,6 +270,7 @@ def course_detail(slug: str) -> dict:
             for m in modules
         ],
         "attachments": attachments,
+        "resources": linked_resources,
     }
 
 

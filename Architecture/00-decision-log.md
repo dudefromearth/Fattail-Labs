@@ -1312,3 +1312,15 @@ versioned Resources:
   single publish, pin ≠ published, unpublish keeps pin
 
 **Next:** R2 APIs (`agents/p-resources/seeds/R2-alpha-api.md`).
+
+## 2026-07-26 — DL-062b Resources R2 APIs shipped
+
+Member + admin HTTP for first-class Resources (p-resources R2):
+
+- `GET /api/resources` dual-read (published resources + legacy attachments)
+- `GET /api/resources/{slug}` published only
+- `GET /api/resource-versions/{id}/download` (published or course-pinned; free/alumni gate)
+- Admin: `/api/admin/resources`, versions, publish, course attach/pin/unlink/list
+- Course detail payload: `resources[]` alongside legacy `attachments`
+
+Tests: `test_resources_api.py` + domain suite (10). Next: R3a hub UI / R3b course UI.

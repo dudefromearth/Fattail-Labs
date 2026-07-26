@@ -15,7 +15,7 @@
 |-------|--------|-------|----------|
 | **R0** Spec + design + plan | **DONE** | Juliet · Lima | Spec + Arch 10 + plan |
 | **R1** Schema + domain | **DONE** | Alpha · Kilo | migration 029 · resources_domain · 6 tests |
-| **R2** APIs | PENDING | Alpha · Mike | |
+| **R2** APIs | **DONE** | Alpha · Mike | resources + resources_admin routes · 10 tests |
 | **R3a** Resources hub UI | PENDING | Charlie · Echo · Tango | |
 | **R3b** Course builder UI | PENDING | Charlie · Echo | |
 | **R4** Migrate attachments | PENDING | Alpha · Foxtrot | |
@@ -25,7 +25,7 @@
 
 ## Next action
 
-Open **R2** (`seeds/R2-alpha-api.md`) — member + admin HTTP APIs.
+Open **R3a** (hub UI) and/or **R3b** (course builder UI) — can run in parallel.
 
 ---
 
@@ -34,10 +34,14 @@ Open **R2** (`seeds/R2-alpha-api.md`) — member + admin HTTP APIs.
 | Seed | Status |
 |------|--------|
 | R1 schema domain | **DONE** |
-| R2–R7 | PENDING |
+| R2 APIs | **DONE** |
+| R3a–R7 | PENDING |
 
-## R1 deliverables
+## R1–R2 deliverables
 
 - `migrations/029_resources.sql`
 - `server/resources_domain.py`
-- `server/tests/test_resources_domain.py` (6 passed)
+- `server/routes/resources.py` — list/slug/download (+ legacy attachment download)
+- `server/routes/resources_admin.py` — CRUD, versions, publish, course attach/pin/unlink
+- Course public payload includes `resources[]` (pins)
+- Tests: domain 6 + API 4 = **10 passed**
