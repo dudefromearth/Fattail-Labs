@@ -61,3 +61,7 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 - `agents/p-canonical-course/` — **Canonical Course Model** (portable course JSON:
   export/import/validate). Plan: `IMPLEMENTATION-PLAN.md`. Spec:
   `Specs/FatTail-Labs-Canonical-Course-Model-Spec-v1.0.md`.
+- `agents/p-resources/` — **First-class versioned Resources** (library publish +
+  course pins). Plan: `IMPLEMENTATION-PLAN.md`. Spec:
+  `Specs/FatTail-Labs-Resource-Spec-v1.0.md`. Design:
+  `Architecture/10-resources-design.md`.

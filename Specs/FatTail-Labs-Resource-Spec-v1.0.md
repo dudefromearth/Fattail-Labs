@@ -1,7 +1,8 @@
 # FatTail Labs — Resource Spec v1.0
 
-**Status:** DRAFT for Coach approval (2026-07-26)  
+**Status:** DRAFT — implementation plan ready (`agents/p-resources/`); awaiting Coach **build** approval  
 **Priority:** Core domain — first-class versioned materials (logs, worksheets, process graphics)  
+**Orchestration:** `agents/p-resources/ORCHESTRATOR.md` · `IMPLEMENTATION-PLAN.md`  
 **Product:** FatTail Labs (`labs.fattail.ai`)  
 **Parents:** Course Hosting Spec v1.0 · Canonical Course Model Spec v1.0 · Media Library Spec v1.0  
 **Supersedes (as domain model):** Resource Library Specs v1.0–v1.2 for **entity shape and ownership**. Library UI/access rules from those specs remain guidance until re-mapped.  
