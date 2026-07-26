@@ -1331,3 +1331,13 @@ Member + admin Resources hub (`ResourceLibrary.tsx`): first-class create, versio
 publish/unpublish; dual-read legacy attachments. Course builder
 (`CourseResourcesEditor`): attach existing, create+link, pin picker, free, unlink.
 Course Resources tab lists pins + legacy attachments.
+
+## 2026-07-26 — DL-062d Resources R4 attachment backfill
+
+Idempotent migrator `server/migrate_attachments_to_resources.py`:
+- Course attachments → Resource + v1 + course link; publish v1 if course published
+- Lesson attachments → link with lesson_id; not auto-published to hub
+- Map table `resource_migration_map` for re-runs
+- Type inferred from kind/url/title (spreadsheet/image/document/link)
+
+Tests: `test_resources_migration.py`. Next: R5 Canonical Course package pins.
