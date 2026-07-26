@@ -7,6 +7,7 @@
 **Plan:** `IMPLEMENTATION-PLAN.md`  
 **Charter:** `CHARTER.md`  
 **Decisions:** DL-061 · DL-061a  
+**Close gate:** `gate-reports/C7-project-close.md` → **PASS** (2026-07-26)
 
 ---
 
@@ -26,18 +27,20 @@ and automated production. YouTube video; resource pointers; free_preview = auth 
 | **C1** Model core | **DONE** | Alpha · Kilo | migration 028 · course_model.py · schema |
 | **C2** API + tests | **DONE** | Alpha · Kilo | routes + test_canonical_course_model |
 | **C3** Admin UI MVP | **DONE** | Charlie | Export package · Import package |
-| **C4** Board converge | **PARTIAL** | Alpha | validate-on-place; materialize residual |
+| **C4** Board converge | **ACCEPTED RESIDUAL** | Alpha | validate-on-place; dual write path OK for v1.0 |
 | **C5** Media ZIP | **DEFERRED** | — | Coach: not now |
-| **C6** New field UI | **PENDING** | Charlie | seed C6 |
-| **C7** Project close | **PENDING** | Delta · Lima | seed C7 |
+| **C6** New field UI | **OPTIONAL** | Charlie | not required for v1.0 close |
+| **C7** Project close | **DONE / PASS** | Delta · Lima · Mike | `gate-reports/C7-project-close.md` |
 
 ---
 
-## Next actions (Coach)
+## Project status: **CLOSED (v1.0)**
 
-1. Prefer **C4 residual** (single materialize path) or skip and run **C7**.  
-2. Optional **C6** admin fields.  
-3. Do **not** open C5 without reopening media-ZIP decision.
+Optional follow-ons (not blocking):
+
+1. C4 full shared materialize in `apply_placement`  
+2. C6 admin fields for flagship / pathway / audience  
+3. C5 media ZIP if Coach reopens  
 
 ---
 
@@ -48,15 +51,13 @@ and automated production. YouTube video; resource pointers; free_preview = auth 
 | `seeds/C1-alpha-model-core.md` | Alpha | DONE |
 | `seeds/C2-alpha-api-import-export.md` | Alpha | DONE |
 | `seeds/C3-charlie-admin-ui.md` | Charlie | DONE |
-| `seeds/C4-alpha-board-converge.md` | Alpha | PARTIAL |
-| `seeds/C6-charlie-course-fields.md` | Charlie | PENDING |
-| `seeds/C7-delta-lima-close.md` | Delta · Lima | PENDING |
-
-Full sequencing: **`IMPLEMENTATION-PLAN.md`**.
+| `seeds/C4-alpha-board-converge.md` | Alpha | ACCEPTED RESIDUAL |
+| `seeds/C6-charlie-course-fields.md` | Charlie | OPTIONAL |
+| `seeds/C7-delta-lima-close.md` | Delta · Lima | DONE |
 
 ---
 
-## Invariants
+## Invariants (still binding for any follow-on)
 
 1. MySQL = runtime SoR for members.  
 2. Fail loud on invalid package / missing refs.  
@@ -75,8 +76,8 @@ Full sequencing: **`IMPLEMENTATION-PLAN.md`**.
 - [x] Admin export/import without SQL  
 - [x] DL-061 / DL-061a  
 - [x] Delta C2 gate report  
-- [ ] C4 residual **or** Coach-accepted dual path  
-- [ ] C7 Delta project PASS  
+- [x] C4 residual accepted (validate shared; materialize dual path)  
+- [x] C7 Delta project PASS  
 
 **Full plan:** [IMPLEMENTATION-PLAN.md](./IMPLEMENTATION-PLAN.md)  
-**Charter:** [CHARTER.md](./CHARTER.md)
+**Charter:** [CHARTER.md](./CHARTER.md)  
