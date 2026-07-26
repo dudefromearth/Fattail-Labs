@@ -29,6 +29,15 @@ export function putJSON(url: string, body: unknown): Promise<Response> {
   });
 }
 
+export function patchJSON(url: string, body: unknown): Promise<Response> {
+  return fetch(url, {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export function del(url: string): Promise<Response> {
   return fetch(url, { method: "DELETE", credentials: "same-origin" });
 }

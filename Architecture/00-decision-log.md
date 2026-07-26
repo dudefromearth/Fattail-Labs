@@ -1324,3 +1324,10 @@ Member + admin HTTP for first-class Resources (p-resources R2):
 - Course detail payload: `resources[]` alongside legacy `attachments`
 
 Tests: `test_resources_api.py` + domain suite (10). Next: R3a hub UI / R3b course UI.
+
+## 2026-07-26 — DL-062c Resources R3a+R3b UI shipped
+
+Member + admin Resources hub (`ResourceLibrary.tsx`): first-class create, version,
+publish/unpublish; dual-read legacy attachments. Course builder
+(`CourseResourcesEditor`): attach existing, create+link, pin picker, free, unlink.
+Course Resources tab lists pins + legacy attachments.

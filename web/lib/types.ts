@@ -40,4 +40,16 @@ export type CourseDetail = Omit<CourseCard, "instructors"> & {
   instructors: InstructorBio[];
   modules: Module[];
   attachments: { id: number; title: string; kind: "file" | "link"; free: boolean; url: string | null }[];
+  /** First-class resource pins (Resource Spec v1.0 / R2+) */
+  resources?: {
+    slug: string;
+    title: string;
+    type?: string;
+    emoji?: string | null;
+    kind: string;
+    pinned_version: number;
+    free: boolean;
+    url: string | null;
+    download_path: string;
+  }[];
 };

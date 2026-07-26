@@ -1,29 +1,46 @@
 "use client";
 
-// Global resource library (Resource Library Spec v1.2): every item carries a
-// representative emoji and a description; admins edit items in place.
+// Resources hub — member browse (published) + admin create/version/publish (R3a).
+// Dual-read: first-class resources + legacy course attachments until R6.
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useIsAdmin } from "@/lib/useIsAdmin";
-import { del, postJSON, putJSON, uploadMedia } from "@/lib/client";
+import { patchJSON, postJSON, uploadMedia } from "@/lib/client";
 import { FIELD } from "@/lib/ui";
 import { appAlert, appConfirm } from "@/lib/dialogs";
 
+type CourseRef = { slug: string; title: string };
+
 type Resource = {
+  source?: "resource" | "attachment";
   id: number;
+  slug?: string | null;
   title: string;
-  kind: "file" | "link";
+  kind: string;
+  type?: string;
   free: boolean;
   description_md: string | null;
   emoji: string | null;
   url: string | null;
-  course: { slug: string; title: string };
+  version?: number | null;
+  version_id?: number;
+  download_path?: string;
+  course?: CourseRef | null;
+  courses?: CourseRef[];
   categories: { slug: string; name: string }[];
 };
 
 const EMOJI_CHOICES = ["📄", "📊", "📈", "🧮", "🎥", "🔗", "📚", "🧠", "✅", "⚡"];
-const KIND_DEFAULT_EMOJI = { file: "📄", link: "🔗" } as const;
+const TYPES = ["spreadsheet", "document", "image", "link", "other"] as const;
+
+function defaultEmoji(r: Resource): string {
+  if (r.emoji) return r.emoji;
+  if (r.kind === "link" || r.type === "link") return "🔗";
+  if (r.type === "spreadsheet") return "📊";
+  if (r.type === "image") return "🖼";
+  return "📄";
+}
 
 function EmojiPicker({
   value,
@@ -37,6 +54,7 @@ function EmojiPicker({
       {EMOJI_CHOICES.map((e) => (
         <button
           key={e}
+          type="button"
           onClick={() => onChange(e)}
           className={`flex h-7 w-7 items-center justify-center rounded-lg text-base ${
             value === e
@@ -59,27 +77,19 @@ function EmojiPicker({
   );
 }
 
+/** First-class resource create (default unpublished to hub). */
 function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
-  const [courses, setCourses] = useState<{ slug: string; title: string }[]>([]);
-  const [courseSlug, setCourseSlug] = useState("");
   const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
   const [emoji, setEmoji] = useState("");
   const [url, setUrl] = useState("");
   const [kind, setKind] = useState<"link" | "file">("link");
-  const [free, setFree] = useState(false);
+  const [type, setType] = useState<string>("document");
+  const [category, setCategory] = useState("");
+  const [publish, setPublish] = useState(false);
   const [uploading, setUploading] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/courses")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.courses) {
-          setCourses(d.courses.map((c: { slug: string; title: string }) => ({ slug: c.slug, title: c.title })));
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const [busy, setBusy] = useState(false);
 
   async function uploadFile(f: File) {
     setUploading(true);
@@ -88,25 +98,34 @@ function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
     if (stored) {
       setUrl(stored);
       setKind("file");
+      if (f.name.match(/\.(xlsx?|csv)$/i)) setType("spreadsheet");
+      else if (f.name.match(/\.(png|jpe?g|webp|gif)$/i)) setType("image");
+      else setType("document");
     }
   }
 
   async function create() {
-    if (!courseSlug || !title.trim() || !url.trim()) return;
-    const r = await postJSON(`/api/admin/courses/${courseSlug}/attachments`, {
+    if (!title.trim() || !url.trim()) return;
+    setBusy(true);
+    const r = await postJSON("/api/admin/resources", {
       title: title.trim(),
+      slug: slug.trim() || undefined,
+      description_md: description.trim() || "",
+      type: type === "link" ? "link" : type,
+      category_slug: category.trim() || "",
       kind,
       url: url.trim(),
-      free_preview: free,
-      description_md: description.trim() || null,
       emoji: emoji.trim() || null,
+      publish,
     });
+    setBusy(false);
     if (r.ok) {
       setTitle("");
+      setSlug("");
       setDescription("");
       setEmoji("");
       setUrl("");
-      setFree(false);
+      setPublish(false);
       onChanged();
     } else await appAlert({ title: "Create failed", message: await r.text() });
   }
@@ -116,27 +135,43 @@ function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
   return (
     <div className="surface-card mb-6 border border-[var(--color-separator)] p-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-        Add a resource (admin)
+        New resource (admin)
+      </p>
+      <p className="mt-1 text-xs text-zinc-500">
+        Creates a first-class library resource. Leave unpublished to keep it course-only until you publish.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <select
-          value={courseSlug}
-          onChange={(e) => setCourseSlug(e.target.value)}
-          className={field}
-        >
-          <option value="">Course…</option>
-          {courses.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.title}
-            </option>
-          ))}
-        </select>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Title"
           className={`${field} w-48`}
         />
+        <input
+          value={slug}
+          onChange={(e) => setSlug(e.target.value)}
+          placeholder="slug (optional)"
+          className={`${field} w-40`}
+        />
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          className={field}
+        >
+          {TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+        <input
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          placeholder="category slug"
+          className={`${field} w-36`}
+        />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -150,17 +185,17 @@ function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) uploadFile(f);
+              if (f) void uploadFile(f);
             }}
           />
         </label>
         <label className="flex items-center gap-1 text-xs">
           <input
             type="checkbox"
-            checked={free}
-            onChange={(e) => setFree(e.target.checked)}
+            checked={publish}
+            onChange={(e) => setPublish(e.target.checked)}
           />
-          Free
+          Publish to hub
         </label>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -168,43 +203,45 @@ function AdminResourceForm({ onChanged }: { onChanged: () => void }) {
         <input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Short description of the resource"
+          placeholder="Description"
           className={`${field} min-w-64 flex-1`}
         />
         <button
-          onClick={create}
-          disabled={!courseSlug || !title.trim() || !url.trim()}
+          type="button"
+          onClick={() => void create()}
+          disabled={busy || !title.trim() || !url.trim()}
           className="rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
         >
-          Add
+          Create
         </button>
       </div>
     </div>
   );
 }
 
-// In-place item editor (spec v1.2): emoji, title, description on the row itself.
-function ResourceRowEditor({
+function ResourceAdminPanel({
   r,
   onDone,
-  onCancel,
 }: {
   r: Resource;
   onDone: () => void;
-  onCancel: () => void;
 }) {
   const [title, setTitle] = useState(r.title);
   const [description, setDescription] = useState(r.description_md ?? "");
   const [emoji, setEmoji] = useState(r.emoji ?? "");
+  const [newUrl, setNewUrl] = useState("");
+  const [changelog, setChangelog] = useState("");
+  const [publishNew, setPublishNew] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const isModern = r.source === "resource" && r.slug;
 
-  const field = `w-full ${FIELD}`;
-
-  async function save() {
+  async function saveHead() {
+    if (!isModern || !r.slug) return;
     setBusy(true);
-    const res = await putJSON(`/api/admin/attachments/${r.id}`, {
+    const res = await patchJSON(`/api/admin/resources/${r.slug}`, {
       title: title.trim() || r.title,
-      description_md: description.trim() || null,
+      description_md: description.trim() || "",
       emoji: emoji.trim() || null,
     });
     setBusy(false);
@@ -212,33 +249,141 @@ function ResourceRowEditor({
     else await appAlert({ title: "Save failed", message: await res.text() });
   }
 
+  async function addVersion() {
+    if (!isModern || !r.slug || !newUrl.trim()) return;
+    setBusy(true);
+    const kind = newUrl.startsWith("private:") || newUrl.startsWith("/api/") ? "file" : "link";
+    const res = await postJSON(`/api/admin/resources/${r.slug}/versions`, {
+      kind,
+      url: newUrl.trim(),
+      changelog_md: changelog.trim() || null,
+      publish: publishNew,
+    });
+    setBusy(false);
+    if (res.ok) {
+      setNewUrl("");
+      setChangelog("");
+      onDone();
+    } else await appAlert({ title: "Version failed", message: await res.text() });
+  }
+
+  async function togglePublish() {
+    if (!isModern || !r.slug) return;
+    const published = r.version != null;
+    // If currently on hub (has version from list), unpublish; else publish latest from detail
+    if (published) {
+      const res = await postJSON(`/api/admin/resources/${r.slug}/publish`, {
+        version: null,
+      });
+      if (res.ok) onDone();
+      else await appAlert({ title: "Unpublish failed", message: await res.text() });
+      return;
+    }
+    // Need a version number — fetch admin detail
+    const d = await fetch(`/api/admin/resources/${r.slug}`, {
+      credentials: "same-origin",
+    });
+    if (!d.ok) {
+      await appAlert({ title: "Load failed", message: await d.text() });
+      return;
+    }
+    const body = await d.json();
+    const versions = body.versions as { version: number }[];
+    const latest = versions[versions.length - 1]?.version;
+    if (latest == null) return;
+    const res = await postJSON(`/api/admin/resources/${r.slug}/publish`, {
+      version: latest,
+    });
+    if (res.ok) onDone();
+    else await appAlert({ title: "Publish failed", message: await res.text() });
+  }
+
+  if (!isModern) {
+    return (
+      <p className="text-xs text-zinc-500">
+        Legacy attachment — manage from the course Resources tab until migration (R4).
+      </p>
+    );
+  }
+
   return (
-    <div className="min-w-0 flex-1 space-y-2">
+    <div className="min-w-0 flex-1 space-y-2 border-t border-zinc-100 pt-2 dark:border-zinc-800">
       <EmojiPicker value={emoji} onChange={setEmoji} />
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className={field}
+        className={`w-full ${FIELD}`}
       />
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         rows={2}
-        placeholder="Short description of the resource"
-        className={`${field} resize-y`}
+        className={`w-full resize-y ${FIELD}`}
       />
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
-          onClick={save}
-          disabled={busy || !title.trim()}
-          className="rounded-full bg-emerald-500 px-4 py-1 text-xs font-medium text-white disabled:opacity-50"
+          type="button"
+          onClick={() => void saveHead()}
+          disabled={busy}
+          className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-medium text-white"
         >
-          Save
+          Save details
         </button>
-        <button onClick={onCancel} className="text-xs text-zinc-500">
-          Cancel
+        <button
+          type="button"
+          onClick={() => void togglePublish()}
+          disabled={busy}
+          className="chip text-xs"
+        >
+          {r.version != null ? "Unpublish from hub" : "Publish to hub"}
         </button>
       </div>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+        New version
+      </p>
+      <input
+        value={newUrl}
+        onChange={(e) => setNewUrl(e.target.value)}
+        placeholder="New file URL or link"
+        className={`w-full ${FIELD}`}
+      />
+      <label className={`inline-flex cursor-pointer items-center gap-1 text-xs ${FIELD}`}>
+        {uploading ? "Uploading…" : "Upload file"}
+        <input
+          type="file"
+          className="hidden"
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            setUploading(true);
+            const stored = await uploadMedia(f, { privateTier: true });
+            setUploading(false);
+            if (stored) setNewUrl(stored);
+          }}
+        />
+      </label>
+      <input
+        value={changelog}
+        onChange={(e) => setChangelog(e.target.value)}
+        placeholder="Changelog (what changed)"
+        className={`w-full ${FIELD}`}
+      />
+      <label className="flex items-center gap-1 text-xs">
+        <input
+          type="checkbox"
+          checked={publishNew}
+          onChange={(e) => setPublishNew(e.target.checked)}
+        />
+        Publish this version now
+      </label>
+      <button
+        type="button"
+        onClick={() => void addVersion()}
+        disabled={busy || !newUrl.trim()}
+        className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900"
+      >
+        Create version
+      </button>
     </div>
   );
 }
@@ -246,11 +391,13 @@ function ResourceRowEditor({
 export default function ResourceLibrary() {
   const [resources, setResources] = useState<Resource[] | null | "anonymous">(null);
   const [category, setCategory] = useState<string | null>(null);
-  const [kind, setKind] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
   const isAdmin = useIsAdmin();
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -273,8 +420,18 @@ export default function ResourceLibrary() {
     if (!Array.isArray(resources)) return [];
     const map = new Map<string, string>();
     for (const r of resources)
-      for (const c of r.categories) map.set(c.slug, c.name);
+      for (const c of r.categories || []) map.set(c.slug, c.name || c.slug);
     return [...map.entries()].map(([slug, name]) => ({ slug, name }));
+  }, [resources]);
+
+  const types = useMemo(() => {
+    if (!Array.isArray(resources)) return [];
+    const s = new Set<string>();
+    for (const r of resources) {
+      if (r.type) s.add(r.type);
+      else if (r.kind) s.add(r.kind);
+    }
+    return [...s].sort();
   }, [resources]);
 
   if (resources === null)
@@ -285,10 +442,7 @@ export default function ResourceLibrary() {
       <div className="surface-card border border-[var(--color-separator)] p-8 text-center">
         <p className="font-medium">Sign in to browse the resource library</p>
         <div className="mt-4 flex items-center justify-center gap-3">
-          <Link
-            href="/login"
-            className="chip font-medium"
-          >
+          <Link href="/login" className="chip font-medium">
             Log In
           </Link>
           <Link
@@ -303,14 +457,22 @@ export default function ResourceLibrary() {
   }
 
   const visible = resources.filter((r) => {
-    if (category && !r.categories.some((c) => c.slug === category)) return false;
-    if (kind && r.kind !== kind) return false;
+    if (category && !(r.categories || []).some((c) => c.slug === category))
+      return false;
+    if (typeFilter) {
+      const t = r.type || r.kind;
+      if (t !== typeFilter) return false;
+    }
     return true;
   });
 
-  async function download(id: number) {
-    // Probe first so observers get a friendly upsell instead of a broken tab.
-    const probe = await fetch(`/api/attachments/${id}/download`, {
+  async function download(r: Resource) {
+    const path =
+      r.download_path ||
+      (r.source === "resource" && r.version_id
+        ? `/api/resource-versions/${r.version_id}/download`
+        : `/api/attachments/${r.id}/download`);
+    const probe = await fetch(path, {
       method: "GET",
       credentials: "same-origin",
       redirect: "manual",
@@ -319,25 +481,23 @@ export default function ResourceLibrary() {
       setDenied(true);
       return;
     }
-    window.location.href = `/api/attachments/${id}/download`;
+    if (probe.status === 0 || (probe.status >= 300 && probe.status < 400)) {
+      const loc = probe.headers.get("location");
+      if (loc) {
+        window.location.href = loc;
+        return;
+      }
+    }
+    window.location.href = path;
   }
 
   const chip = (active: boolean) => (active ? "chip chip-active" : "chip");
-
-  async function adminToggleFree(r: Resource) {
-    await putJSON(`/api/admin/attachments/${r.id}`, { free_preview: !r.free });
-    setReloadKey((k) => k + 1);
-  }
-
-  async function adminDelete(r: Resource) {
-    if (!(await appConfirm({ title: `Delete "${r.title}"?`, message: "This cannot be undone.", confirmLabel: "Delete", destructive: true }))) return;
-    await del(`/api/admin/attachments/${r.id}`);
-    setReloadKey((k) => k + 1);
-  }
+  const rowKey = (r: Resource) =>
+    r.source === "resource" ? `r-${r.slug || r.id}` : `a-${r.id}`;
 
   return (
     <div>
-      {isAdmin && <AdminResourceForm onChanged={() => setReloadKey((k) => k + 1)} />}
+      {isAdmin && <AdminResourceForm onChanged={reload} />}
       {denied && (
         <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950">
           Downloads are a member benefit —{" "}
@@ -351,47 +511,60 @@ export default function ResourceLibrary() {
         {categories.map((c) => (
           <button
             key={c.slug}
+            type="button"
             onClick={() => setCategory(category === c.slug ? null : c.slug)}
             className={chip(category === c.slug)}
           >
             {c.name}
           </button>
         ))}
-        <span className="mx-2 h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
-        {["file", "link"].map((k) => (
+        {categories.length > 0 && types.length > 0 && (
+          <span className="mx-2 h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
+        )}
+        {types.map((t) => (
           <button
-            key={k}
-            onClick={() => setKind(kind === k ? null : k)}
-            className={chip(kind === k)}
+            key={t}
+            type="button"
+            onClick={() => setTypeFilter(typeFilter === t ? null : t)}
+            className={chip(typeFilter === t)}
           >
-            {k === "file" ? "Downloads" : "Links"}
+            {t}
           </button>
         ))}
       </div>
 
       <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-        {visible.map((r) => (
-          <li
-            key={r.id}
-            className="surface-card flex items-start gap-3 border border-[var(--color-separator)] p-4"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xl dark:bg-zinc-800">
-              {r.emoji ?? KIND_DEFAULT_EMOJI[r.kind]}
-            </span>
-            {editingId === r.id ? (
-              <ResourceRowEditor
-                r={r}
-                onDone={() => {
-                  setEditingId(null);
-                  setReloadKey((k) => k + 1);
-                }}
-                onCancel={() => setEditingId(null)}
-              />
-            ) : (
-              <>
+        {visible.map((r) => {
+          const key = rowKey(r);
+          const courses =
+            r.courses && r.courses.length
+              ? r.courses
+              : r.course
+                ? [r.course]
+                : [];
+          const expanded = expandedId === key;
+          return (
+            <li
+              key={key}
+              className="surface-card flex flex-col gap-2 border border-[var(--color-separator)] p-4"
+            >
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xl dark:bg-zinc-800">
+                  {defaultEmoji(r)}
+                </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
+                  <span className="flex flex-wrap items-center gap-2">
                     <span className="truncate font-medium">{r.title}</span>
+                    {r.version != null && (
+                      <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-800">
+                        v{r.version}
+                      </span>
+                    )}
+                    {r.source === "resource" && (
+                      <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
+                        Published
+                      </span>
+                    )}
                     {r.free ? (
                       <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
                         Free
@@ -407,50 +580,51 @@ export default function ResourceLibrary() {
                       {r.description_md}
                     </span>
                   )}
-                  <Link
-                    href={`/courses/${r.course.slug}`}
-                    className="block truncate text-xs text-zinc-500 hover:underline"
-                  >
-                    {r.course.title}
-                  </Link>
-                  {isAdmin && (
-                    <span className="mt-1 flex gap-3 text-xs text-zinc-400">
-                      <button
-                        onClick={() => setEditingId(r.id)}
-                        className="hover:text-zinc-600"
+                  <span className="mt-1 flex flex-wrap gap-1">
+                    {courses.map((c) => (
+                      <Link
+                        key={c.slug}
+                        href={`/courses/${c.slug}`}
+                        className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600 hover:underline dark:bg-zinc-800"
                       >
-                        Edit
-                      </button>
-                      <button onClick={() => adminToggleFree(r)} className="hover:text-zinc-600">
-                        {r.free ? "Make members-only" : "Make free"}
-                      </button>
-                      <button onClick={() => adminDelete(r)} className="hover:text-red-500">
-                        Delete
-                      </button>
-                    </span>
+                        {c.title}
+                      </Link>
+                    ))}
+                  </span>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(expanded ? null : key)}
+                      className="mt-1 text-xs text-emerald-700 hover:underline dark:text-emerald-400"
+                    >
+                      {expanded ? "Hide admin" : "Manage"}
+                    </button>
                   )}
                 </span>
-                {r.kind === "file" ? (
+                {r.kind === "file" || r.download_path?.includes("resource-versions") ? (
                   <button
-                    onClick={() => download(r.id)}
+                    type="button"
+                    onClick={() => void download(r)}
                     className="shrink-0 rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-600"
                   >
                     Download
                   </button>
                 ) : (
-                  <a
-                    href={r.url ?? "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 chip font-medium"
+                  <button
+                    type="button"
+                    onClick={() => void download(r)}
+                    className="chip shrink-0 font-medium"
                   >
                     Open
-                  </a>
+                  </button>
                 )}
-              </>
-            )}
-          </li>
-        ))}
+              </div>
+              {expanded && isAdmin && (
+                <ResourceAdminPanel r={r} onDone={reload} />
+              )}
+            </li>
+          );
+        })}
         {visible.length === 0 && (
           <li className="col-span-full py-8 text-center text-sm text-zinc-500">
             No resources match the filters.

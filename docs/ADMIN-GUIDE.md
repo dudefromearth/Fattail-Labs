@@ -441,3 +441,15 @@ fail loud. Member progress and discussions are **not** included in packages.
 description, learning outcomes, certification flag. Saved with the edit bar; included
 in **Export package**. Board **Place** materializes drafts through the same canonical
 importer as Import package.
+
+### First-class Resources (versioned library)
+
+**Spec:** *Resource Spec v1.0* · plan `agents/p-resources/`
+
+| Where | Admin / creator |
+|-------|-----------------|
+| **`/resources`** | **New resource** (default unpublished); **Manage** → save details, new version, publish/unpublish |
+| **Course → Resources (edit)** | **Attach existing…**, **New resource…**, pin version, free access, unlink |
+| **Members** | Hub lists **published** only; course tab always shows **pinned** version |
+
+Updates create a **new version**. Slug/hub shows one **published** cut. Course pins do not auto-jump.

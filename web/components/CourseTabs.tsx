@@ -12,10 +12,10 @@ import {
   EditableText,
 } from "@/components/edit/Editable";
 import {
-  AttachmentsEditor,
   CourseCanonicalMeta,
   InstructorsEditor,
 } from "@/components/edit/EditorExtras";
+import { CourseResourcesEditor } from "@/components/edit/CourseResourcesEditor";
 import {
   COURSE_TABS,
   useEdit,
@@ -610,36 +610,68 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
       >
         <div className="surface-card border border-[var(--color-separator)] p-6">
           <h2 className="font-semibold text-[var(--color-label)]">Resources</h2>
-          <AttachmentsEditor />
-          {course.attachments.length === 0 ? (
-            <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-              No course-level resources.
-            </p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {course.attachments.map((a) => (
-                <li key={a.id}>
-                  <a
-                    href={
-                      a.kind === "link" && a.url
-                        ? a.url
-                        : `/api/attachments/${a.id}/download`
-                    }
-                    target={a.kind === "link" ? "_blank" : undefined}
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] px-4 py-3 text-sm transition-colors hover:bg-[var(--color-fill)]"
-                  >
-                    <LessonIcon kind={a.kind === "file" ? "download" : "external"} />
-                    {a.title}
-                    <span className="ml-auto text-xs text-[var(--color-label-tertiary)]">
-                      {a.free ? "Free" : "Members"}
-                      {a.kind === "file" ? " · Download" : " · Open"}
-                    </span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
+          <CourseResourcesEditor />
+          {(() => {
+            const linked = course.resources ?? [];
+            const legacy = course.attachments ?? [];
+            if (linked.length === 0 && legacy.length === 0) {
+              return (
+                <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
+                  No course-level resources.
+                </p>
+              );
+            }
+            return (
+              <ul className="mt-3 space-y-2">
+                {linked.map((a) => (
+                  <li key={a.slug}>
+                    <a
+                      href={a.download_path}
+                      className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] px-4 py-3 text-sm transition-colors hover:bg-[var(--color-fill)]"
+                    >
+                      <LessonIcon
+                        kind={a.kind === "file" ? "download" : "external"}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium">{a.title}</span>
+                        <span className="text-xs text-[var(--color-label-tertiary)]">
+                          v{a.pinned_version}
+                          {a.type ? ` · ${a.type}` : ""}
+                        </span>
+                      </span>
+                      <span className="ml-auto text-xs text-[var(--color-label-tertiary)]">
+                        {a.free ? "Free" : "Members"}
+                        {a.kind === "file" ? " · Download" : " · Open"}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+                {legacy.map((a) => (
+                  <li key={`att-${a.id}`}>
+                    <a
+                      href={
+                        a.kind === "link" && a.url
+                          ? a.url
+                          : `/api/attachments/${a.id}/download`
+                      }
+                      target={a.kind === "link" ? "_blank" : undefined}
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] px-4 py-3 text-sm transition-colors hover:bg-[var(--color-fill)]"
+                    >
+                      <LessonIcon
+                        kind={a.kind === "file" ? "download" : "external"}
+                      />
+                      {a.title}
+                      <span className="ml-auto text-xs text-[var(--color-label-tertiary)]">
+                        {a.free ? "Free" : "Members"}
+                        {a.kind === "file" ? " · Download" : " · Open"}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            );
+          })()}
         </div>
       </section>
     </div>

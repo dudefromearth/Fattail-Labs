@@ -16,8 +16,8 @@
 | **R0** Spec + design + plan | **DONE** | Juliet · Lima | Spec + Arch 10 + plan |
 | **R1** Schema + domain | **DONE** | Alpha · Kilo | migration 029 · resources_domain · 6 tests |
 | **R2** APIs | **DONE** | Alpha · Mike | resources + resources_admin routes · 10 tests |
-| **R3a** Resources hub UI | PENDING | Charlie · Echo · Tango | |
-| **R3b** Course builder UI | PENDING | Charlie · Echo | |
+| **R3a** Resources hub UI | **DONE** | Charlie | ResourceLibrary create/version/publish |
+| **R3b** Course builder UI | **DONE** | Charlie | CourseResourcesEditor attach/create/pin |
 | **R4** Migrate attachments | PENDING | Alpha · Foxtrot | |
 | **R5** Canonical package | PENDING | Alpha | |
 | **R6** Cutover | PENDING | Alpha · Delta | |
@@ -25,7 +25,7 @@
 
 ## Next action
 
-Open **R3a** (hub UI) and/or **R3b** (course builder UI) — can run in parallel.
+Open **R4** attachment backfill migration (`seeds/R4-alpha-migrate-attachments.md`).
 
 ---
 
@@ -33,9 +33,8 @@ Open **R3a** (hub UI) and/or **R3b** (course builder UI) — can run in parallel
 
 | Seed | Status |
 |------|--------|
-| R1 schema domain | **DONE** |
-| R2 APIs | **DONE** |
-| R3a–R7 | PENDING |
+| R1–R3b | **DONE** |
+| R4–R7 | PENDING |
 
 ## R1–R2 deliverables
 
