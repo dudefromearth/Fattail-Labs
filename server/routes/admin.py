@@ -568,29 +568,56 @@ async def set_instructors(slug: str, request: Request) -> dict:
 
 @router.post("/courses/{slug}/attachments")
 async def create_attachment(slug: str, request: Request) -> dict:
+    """R6 cutover: create a first-class Resource + course link (not a raw attachment).
+
+    Response keeps ``id`` as version_id for older clients; also returns resource slug.
+    """
     require_admin(request)
+    import resources_domain as rd
+
     body = await request.json()
     title = (body.get("title") or "").strip()
     kind = body.get("kind") or "link"
     url = (body.get("url") or "").strip()
-    free = 1 if body.get("free_preview") else 0
-    description = (body.get("description_md") or "").strip() or None
+    free = bool(body.get("free_preview"))
+    description = (body.get("description_md") or "").strip() or ""
     emoji = (body.get("emoji") or "").strip() or None
     if emoji and len(emoji) > 16:
         raise HTTPException(status_code=422, detail="emoji too long")
     if not title or kind not in ("file", "link") or not url:
         raise HTTPException(status_code=422, detail="title, kind (file|link), url required")
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            course = {"id": course_id_by_slug(cur, slug)}
-            cur.execute(
-                """INSERT INTO attachments
-                     (owner_type, owner_id, title, kind, url, free_preview,
-                      description_md, emoji)
-                   VALUES ('course', %s, %s, %s, %s, %s, %s, %s)""",
-                (course["id"], title, kind, url, free, description, emoji),
-            )
-            return {"id": cur.lastrowid}
+    rtype = "link" if kind == "link" else "document"
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cid = course_id_by_slug(cur, slug)
+                created = rd.create_resource(
+                    cur,
+                    title=title,
+                    description_md=description,
+                    type=rtype,
+                    kind=kind,
+                    url=url,
+                    emoji=emoji,
+                    publish=False,
+                )
+                link = rd.attach_to_course(
+                    cur,
+                    course_id=cid,
+                    resource_id=created["resource_id"],
+                    pinned_version=1,
+                    free_preview=free,
+                )
+                return {
+                    "id": created["version_id"],
+                    "resource_id": created["resource_id"],
+                    "slug": created["slug"],
+                    "version_id": created["version_id"],
+                    "link_id": link["link_id"],
+                    "via": "resource",
+                }
+    except rd.ResourceError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.put("/attachments/{attachment_id}")

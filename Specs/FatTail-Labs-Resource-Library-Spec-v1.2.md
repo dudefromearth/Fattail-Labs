@@ -3,8 +3,9 @@
 **Status:** Approved as built (2026-07-21)  
 **Domain model supersession:** First-class **Resource + Version + course pin +
 library publish** is specified in  
-`Specs/FatTail-Labs-Resource-Spec-v1.0.md` (DRAFT). Until that ships, this
-document remains the **as-built** library (course `attachments` aggregation).
+`Specs/FatTail-Labs-Resource-Spec-v1.0.md`. **R6 cutover (2026-07-26):**  
+`GET /api/resources` is first-class only; new course “attachments” create a
+Resource + link. This v1.2 doc remains historical UI/gating heritage.
 
 **Extends:** v1.1 (visibility + admin create/delete). Items become **editable in
 place** and carry a **description** and a **representative emoji**.

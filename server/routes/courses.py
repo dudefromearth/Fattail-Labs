@@ -191,23 +191,8 @@ def course_detail(slug: str) -> dict:
                         }
                     )
 
-            cur.execute(
-                """SELECT id, title, kind, url, free_preview FROM attachments
-                   WHERE owner_type = 'course' AND owner_id = %s""",
-                (course_id,),
-            )
-            attachments = [
-                {
-                    "id": a["id"],
-                    "title": a["title"],
-                    "kind": a["kind"],
-                    "free": bool(a["free_preview"]),
-                    "url": a["url"] if a["kind"] == "link" else None,
-                }
-                for a in cur.fetchall()
-            ]
-
-            # First-class Resources (R2+): course pins; dual-read with attachments until R6
+            # R6: course resources are first-class pins only (not raw attachments)
+            attachments: list[dict] = []
             cur.execute(
                 """SELECT r.slug, r.title, r.type, r.emoji,
                           v.version AS pinned_version, v.id AS pinned_version_id, v.kind,

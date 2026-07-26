@@ -1,7 +1,7 @@
 "use client";
 
-// Resources hub — member browse (published) + admin create/version/publish (R3a).
-// Dual-read: first-class resources + legacy course attachments until R6.
+// Resources hub — member browse (published) + admin create/version/publish.
+// R6: first-class resources only (single source of truth).
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -301,7 +301,7 @@ function ResourceAdminPanel({
   if (!isModern) {
     return (
       <p className="text-xs text-zinc-500">
-        Legacy attachment — manage from the course Resources tab until migration (R4).
+        Unexpected non-resource row. Re-run attachment migration or recreate as a resource.
       </p>
     );
   }

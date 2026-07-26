@@ -20,12 +20,12 @@
 | **R3b** Course builder UI | **DONE** | Charlie | CourseResourcesEditor attach/create/pin |
 | **R4** Migrate attachments | **DONE** | Alpha | migrate_attachments_to_resources.py · 13 tests |
 | **R5** Canonical package | **DONE** | Alpha | export slug+pin; import resolve/create link |
-| **R6** Cutover | PENDING | Alpha · Delta | |
+| **R6** Cutover | **DONE** | Alpha | hub first-class only; attachment POST → resource |
 | **R7** Close | PENDING | Delta · Lima | |
 
 ## Next action
 
-Open **R6** cutover off attachment library path (`seeds/R6-alpha-cutover.md`).
+Open **R7** project close (`seeds/R7-delta-lima-close.md`).
 
 ---
 
@@ -33,8 +33,8 @@ Open **R6** cutover off attachment library path (`seeds/R6-alpha-cutover.md`).
 
 | Seed | Status |
 |------|--------|
-| R1–R5 | **DONE** |
-| R6–R7 | PENDING |
+| R1–R6 | **DONE** |
+| R7 | PENDING |
 
 ## R4 operator command
 

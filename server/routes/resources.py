@@ -1,7 +1,8 @@
-"""Resource Library + first-class Resources API (Resource Spec v1.0 / R2).
+"""Resource Library + first-class Resources API (Resource Spec v1.0 / R6).
 
 Member: published hub list, slug resolve, version download (gated).
-Legacy: attachment download path retained until R6 cutover.
+R6: GET /api/resources is first-class only (no attachment dual-read).
+Legacy attachment download kept for old bookmarks only.
 """
 
 from __future__ import annotations
@@ -42,51 +43,6 @@ def _serve_file_or_link(*, title: str, kind: str, url: str):
     if url.startswith("https://") or url.startswith("http://") or url.startswith("/"):
         return RedirectResponse(url=url, status_code=302)
     raise HTTPException(status_code=404, detail="Resource not found")
-
-
-def _legacy_library_rows(cur) -> list[dict]:
-    cur.execute(
-        """SELECT a.id, a.title, a.kind, a.url, a.free_preview,
-                  a.description_md, a.emoji,
-                  c.slug AS course_slug, c.title AS course_title, c.id AS course_id
-           FROM attachments a
-           JOIN courses c ON a.owner_type = 'course' AND a.owner_id = c.id
-           WHERE c.status = 'published'
-           ORDER BY c.title, a.title""",
-    )
-    rows = cur.fetchall()
-    cur.execute(
-        """SELECT cc.course_id, cat.slug, cat.name
-           FROM course_categories cc JOIN categories cat ON cc.category_id = cat.id""",
-    )
-    cat_rows = cur.fetchall()
-    cats_by_course: dict[int, list[dict]] = {}
-    for r in cat_rows:
-        cats_by_course.setdefault(r["course_id"], []).append(
-            {"slug": r["slug"], "name": r["name"]}
-        )
-    out = []
-    for r in rows:
-        out.append(
-            {
-                "source": "attachment",
-                "id": r["id"],
-                "slug": None,
-                "title": r["title"],
-                "kind": r["kind"],
-                "type": "other",
-                "free": bool(r["free_preview"]),
-                "description_md": r["description_md"],
-                "emoji": r["emoji"],
-                "version": None,
-                "url": r["url"] if r["kind"] == "link" else None,
-                "course": {"slug": r["course_slug"], "title": r["course_title"]},
-                "courses": [{"slug": r["course_slug"], "title": r["course_title"]}],
-                "categories": cats_by_course.get(r["course_id"], []),
-                "download_path": f"/api/attachments/{r['id']}/download",
-            }
-        )
-    return out
 
 
 def _first_class_library_rows(cur) -> list[dict]:
@@ -153,14 +109,12 @@ def _first_class_library_rows(cur) -> list[dict]:
 
 @router.get("/api/resources")
 def library(request: Request) -> dict:
-    """Published first-class resources + legacy course attachments (dual-read until R6)."""
+    """Published first-class resources only (R6 cutover — single source of truth)."""
     require_session(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             modern = _first_class_library_rows(cur)
-            legacy = _legacy_library_rows(cur)
-    # Prefer modern first; legacy fills until backfill
-    return {"resources": modern + legacy, "sources": ["resource", "attachment"]}
+    return {"resources": modern, "sources": ["resource"]}
 
 
 @router.get("/api/resources/{slug}")
@@ -266,7 +220,7 @@ def download_version(version_id: int, request: Request):
 
 @router.get("/api/attachments/{attachment_id}/download")
 def download_attachment(attachment_id: int, request: Request):
-    """Legacy attachment download (Resource Library v1.x) until R6 cutover."""
+    """Legacy attachment download (bookmarks / unmigrated rows only)."""
     claims = require_session(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:

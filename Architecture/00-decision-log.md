@@ -1349,3 +1349,14 @@ Canonical export includes `resource_ids` (slugs) and `resource_links`
 Import resolves slug (or creates from bundle), attaches with pin via
 resources_domain. Wipe path clears course_resource_links. Test:
 test_export_import_resource_slug_pin (U9).
+
+## 2026-07-26 — DL-062f Resources R6 cutover (single SoR)
+
+Library and course member surfaces use first-class Resources only:
+
+- `GET /api/resources` drops attachment dual-read
+- Course public payload `resources[]` only (attachments empty)
+- `POST /api/admin/courses/{slug}/attachments` creates Resource + link (compat)
+- Legacy `GET /api/attachments/{id}/download` retained for old URLs only
+
+Next: R7 project close.

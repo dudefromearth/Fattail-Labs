@@ -189,6 +189,71 @@ def test_admin_only_mutators(client):
     assert r.status_code in (401, 403)
 
 
+def test_hub_single_source_no_attachment_merge(client, admin_cookies):
+    """R6: library list only returns source=resource."""
+    from conftest import cookie_for
+
+    member = cookie_for("activator", identity_id=1)
+    listed = client.get("/api/resources", cookies=member)
+    assert listed.status_code == 200
+    body = listed.json()
+    assert body.get("sources") == ["resource"]
+    for item in body["resources"]:
+        assert item.get("source") == "resource"
+        assert item.get("slug")
+
+
+def test_legacy_attachment_create_becomes_resource(client, admin_cookies):
+    """POST …/attachments now creates resource + link (compat shim)."""
+    c = client.post(
+        "/api/admin/courses",
+        cookies=admin_cookies,
+        json={"title": "ZZ Attach Shim"},
+    )
+    assert c.status_code == 200
+    cslug = c.json()["slug"]
+    r = client.post(
+        f"/api/admin/courses/{cslug}/attachments",
+        cookies=admin_cookies,
+        json={
+            "title": "Shim Worksheet",
+            "kind": "link",
+            "url": "https://example.com/shim",
+            "free_preview": True,
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("via") == "resource"
+    assert body.get("slug")
+    cl = client.get(
+        f"/api/admin/courses/{cslug}/resources", cookies=admin_cookies
+    )
+    assert cl.status_code == 200
+    assert any(x["slug"] == body["slug"] for x in cl.json()["resources"])
+    client.delete(
+        f"/api/admin/courses/{cslug}/resources/{body['slug']}",
+        cookies=admin_cookies,
+    )
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM resources WHERE slug = %s", (body["slug"],)
+            )
+            row = cur.fetchone()
+            if row:
+                rid = row["id"]
+                cur.execute(
+                    "UPDATE resources SET published_version_id = NULL WHERE id = %s",
+                    (rid,),
+                )
+                cur.execute(
+                    "DELETE FROM resource_versions WHERE resource_id = %s", (rid,)
+                )
+                cur.execute("DELETE FROM resources WHERE id = %s", (rid,))
+    client.delete(f"/api/admin/courses/{cslug}", cookies=admin_cookies)
+
+
 def test_members_only_download_403(client, admin_cookies):
     from conftest import cookie_for
 
