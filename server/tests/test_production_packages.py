@@ -142,9 +142,10 @@ def test_complete_package_freeze_and_place(
             assert lessons[0]["slug"] == "name-max-loss"
             assert lessons[0]["video_id"] == "aqz-KE-bpKQ"
             assert lessons[0]["free_preview"] in (1, True)
+            # R6: placement resources materialize as first-class course links
             cur.execute(
-                """SELECT COUNT(*) AS c FROM attachments
-                   WHERE owner_type = 'course' AND owner_id = %s""",
+                """SELECT COUNT(*) AS c FROM course_resource_links
+                   WHERE course_id = %s AND lesson_id = 0""",
                 (crow["id"],),
             )
             assert cur.fetchone()["c"] == 1

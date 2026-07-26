@@ -309,12 +309,13 @@ cd server && .venv/bin/python migrate.py
 
 ## 9. Definition of done (project)
 
-- [ ] Coach build approval recorded  
-- [ ] R1–R6 complete with Delta notes  
-- [ ] U1–U10 evidence  
-- [ ] ADMIN-GUIDE + domain model updated  
-- [ ] Resource Spec status → approved as built (or v1.1 as-built)  
-- [ ] Attachment-based library path retired  
+- [x] Coach build approval recorded  
+- [x] R1–R6 complete with Delta notes  
+- [x] U1–U10 evidence  
+- [x] ADMIN-GUIDE + domain model updated  
+- [x] Resource Spec status → approved as built  
+- [x] Attachment-based library path retired (R6)  
+- [x] R7 gate PASS (`gate-reports/R7-project-close.md`)
 
 ---
 

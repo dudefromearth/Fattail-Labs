@@ -1,54 +1,46 @@
 # ORCHESTRATOR — First-class Resources (p-resources)
 
 **Project:** Versioned Resources v1.0  
-**Spec:** `Specs/FatTail-Labs-Resource-Spec-v1.0.md`  
+**Spec:** `Specs/FatTail-Labs-Resource-Spec-v1.0.md` (**approved as built**)  
 **Design:** `Architecture/10-resources-design.md`  
 **Plan:** `IMPLEMENTATION-PLAN.md`  
 **Charter:** `CHARTER.md`  
-**Decisions:** DL-062 · build approved 2026-07-26 (Coach)
+**Decisions:** DL-062 … DL-062f  
+**Close gate:** `gate-reports/R7-project-close.md` → **PASS** (2026-07-26)
+
+---
+
+## Vision (Coach)
+
+First-class, versioned materials (logs, infographics, worksheets). Slug serves one
+published cut for the member hub. Courses pin a version and always show linked
+resources. Create from course or library; update = new version.
 
 ---
 
 ## Status board
 
-| Phase | Status | Owner | Evidence |
-|-------|--------|-------|----------|
-| **R0** Spec + design + plan | **DONE** | Juliet · Lima | Spec + Arch 10 + plan |
-| **R1** Schema + domain | **DONE** | Alpha · Kilo | migration 029 · resources_domain · 6 tests |
-| **R2** APIs | **DONE** | Alpha · Mike | resources + resources_admin routes · 10 tests |
-| **R3a** Resources hub UI | **DONE** | Charlie | ResourceLibrary create/version/publish |
-| **R3b** Course builder UI | **DONE** | Charlie | CourseResourcesEditor attach/create/pin |
-| **R4** Migrate attachments | **DONE** | Alpha | migrate_attachments_to_resources.py · 13 tests |
-| **R5** Canonical package | **DONE** | Alpha | export slug+pin; import resolve/create link |
-| **R6** Cutover | **DONE** | Alpha | hub first-class only; attachment POST → resource |
-| **R7** Close | PENDING | Delta · Lima | |
+| Phase | Status |
+|-------|--------|
+| R0 Spec + design + plan | **DONE** |
+| R1 Schema + domain | **DONE** |
+| R2 APIs | **DONE** |
+| R3a Resources hub UI | **DONE** |
+| R3b Course builder UI | **DONE** |
+| R4 Migrate attachments | **DONE** |
+| R5 Canonical package | **DONE** |
+| R6 Cutover | **DONE** |
+| **R7 Close** | **DONE / PASS** |
 
-## Next action
+## Project status: **CLOSED (v1.0)**
 
-Open **R7** project close (`seeds/R7-delta-lima-close.md`).
+Optional follow-ons: lesson-level attach UI, attachment table cleanup, bulk repin.
 
----
-
-## Seeds
-
-| Seed | Status |
-|------|--------|
-| R1–R6 | **DONE** |
-| R7 | PENDING |
-
-## R4 operator command
+### Operator reminders
 
 ```bash
-cd server && set -a && source ../.env && set +a
+# Per environment after deploy
+cd server && .venv/bin/python migrate.py
 .venv/bin/python migrate_attachments_to_resources.py --dry-run
 .venv/bin/python migrate_attachments_to_resources.py
 ```
-
-## R1–R2 deliverables
-
-- `migrations/029_resources.sql`
-- `server/resources_domain.py`
-- `server/routes/resources.py` — list/slug/download (+ legacy attachment download)
-- `server/routes/resources_admin.py` — CRUD, versions, publish, course attach/pin/unlink
-- Course public payload includes `resources[]` (pins)
-- Tests: domain 6 + API 4 = **10 passed**

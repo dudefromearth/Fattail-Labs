@@ -1,23 +1,23 @@
 # FatTail Labs — Resource Spec v1.0
 
-**Status:** DRAFT — implementation plan ready (`agents/p-resources/`); awaiting Coach **build** approval  
+**Status:** Approved as built (R1–R7, 2026-07-26)  
 **Priority:** Core domain — first-class versioned materials (logs, worksheets, process graphics)  
 **Orchestration:** `agents/p-resources/ORCHESTRATOR.md` · `IMPLEMENTATION-PLAN.md`  
 **Product:** FatTail Labs (`labs.fattail.ai`)  
 **Parents:** Course Hosting Spec v1.0 · Canonical Course Model Spec v1.0 · Media Library Spec v1.0  
-**Supersedes (as domain model):** Resource Library Specs v1.0–v1.2 for **entity shape and ownership**. Library UI/access rules from those specs remain guidance until re-mapped.  
-**Does not replace:** MySQL runtime for member delivery; private file storage under `uploads/private/`; Canonical Course Model pointers (`resource_ids` / slug + version).
+**Supersedes (as domain model):** Resource Library Specs v1.0–v1.2 for **entity shape and ownership**.  
+**Does not replace:** MySQL runtime for member delivery; private file storage under `uploads/private/`; Canonical Course Model pointers (`resource_ids` / slug + version).  
+**Gate:** `agents/p-resources/gate-reports/R7-project-close.md` — **PASS**
 
-**Reviewers (PENDING):**
+**Reviewers (build complete):**
 
 | Gate | Reviewer | Concern |
 |------|----------|---------|
-| Architecture | **India** | First-class entity; no dual orphan stores long-term; migration from `attachments` |
+| Architecture | **India** | First-class entity; migration from `attachments` |
 | Backend | **Alpha** | Schema, version immutability, publish invariant |
 | Security | **Mike** | Download gates; private files; admin-only publish |
 | Frontend / UX | **Charlie · Echo** | Library vs course surfaces; version pickers |
-| Member honesty | **Tango** | Visibility = publish, not deceptive “hidden course material” |
-| Approver | **Coach** | Ship / defaults |
+| Approver | **Coach** | Build approved; R7 close |
 
 ---
 

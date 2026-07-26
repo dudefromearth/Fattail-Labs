@@ -1360,3 +1360,9 @@ Library and course member surfaces use first-class Resources only:
 - Legacy `GET /api/attachments/{id}/download` retained for old URLs only
 
 Next: R7 project close.
+
+## 2026-07-26 — DL-062g Resources R7 project close PASS
+
+p-resources v1.0 closed. Evidence: 34 pytest (resources + canonical + production
+packages); R7_SMOKE U1–U10; no outbound fetch on resource paths. Spec status
+approved as built. Residuals: lesson attach UI, attachment row cleanup, bulk repin.

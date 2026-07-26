@@ -45,11 +45,12 @@
 ```text
 Identity & Access          Content Library           Learning Activity
 identities                 courses / modules         enrollments
-credentials                lessons / attachments     lesson_progress
-identity_links             categories / instructors  quiz_*
-plans / memberships        site_pages / faq          certificates
-provider_plan_map
-agent_principals / keys
+credentials                lessons / resources*      lesson_progress
+identity_links             resource_versions         quiz_*
+plans / memberships        course_resource_links     certificates
+provider_plan_map          categories / instructors
+agent_principals / keys    site_pages / faq
+                           (*attachments legacy only)
 
 Live                       Social                    Media (filesystem)
 live_sessions              reviews                   uploads/
@@ -90,7 +91,9 @@ Ladder: observer → alumni → activator → navigator → administrator.
 | `lessons` | slug per module; kind video\|text\|…; video_id + video_params; free_preview; body_md |
 | `categories` / `course_categories` | Taxonomy + hub copy (`description_md`) |
 | `instructors` / `course_instructors` | Presenter bios |
-| `attachments` | Course/lesson files/links; free_preview; description_md; emoji |
+| `resources` / `resource_versions` | First-class versioned materials; slug → published version |
+| `course_resource_links` | Course/lesson pin to a resource version; free_preview access |
+| `attachments` | **Legacy** course/lesson files (pre-R6); hub no longer lists them |
 
 ### 3.3 Learning activity
 
