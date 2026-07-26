@@ -121,8 +121,8 @@ Canonical multi-block list is authoring truth. Materialization:
 
 | Item | Status |
 |------|--------|
-| Dual materialize (place vs import) | **C4 residual** — validate shared; write path still packages-native |
-| Admin UI for new course columns | **C6** optional |
+| Dual materialize (place vs import) | **Resolved (C4)** — `apply_placement` → `course_model.import_document` |
+| Admin UI for new course columns | **Resolved (C6)** — About tab “Course package fields” |
 | Media ZIP | **Deferred** |
 
 ## 10. Evolution

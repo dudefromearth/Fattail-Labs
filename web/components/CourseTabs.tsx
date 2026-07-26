@@ -13,6 +13,7 @@ import {
 } from "@/components/edit/Editable";
 import {
   AttachmentsEditor,
+  CourseCanonicalMeta,
   InstructorsEditor,
 } from "@/components/edit/EditorExtras";
 import {
@@ -188,6 +189,8 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
           field="course.description_md"
           value={course.description_md}
         />
+        {/* Canonical Course Model fields — edit mode only (C6) */}
+        <CourseCanonicalMeta />
         <div className="surface-card mt-8 border border-[var(--color-separator)] p-6">
           {course.instructors.map((i) => (
             <div key={i.name} className="space-y-1">

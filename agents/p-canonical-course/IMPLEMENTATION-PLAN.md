@@ -47,10 +47,10 @@ C0 Docs lock ──► C1 Model core ──► C2 API + tests ──► C3 Admin
 | **C1** | Migration, JSON Schema, pure `course_model` | **Alpha** · Kilo | **DONE** |
 | **C2** | Admin validate/inspect/import/export APIs + tests | **Alpha** · Kilo · Mike | **DONE** |
 | **C3** | Export / Import admin UI (MVP) | **Charlie** · Echo | **DONE (MVP)** |
-| **C4** | Board place → shared materialize | **Alpha** · Quebec | **PARTIAL** |
+| **C4** | Board place → shared materialize | **Alpha** · Quebec | **DONE** |
 | **C5** | Optional media ZIP | Foxtrot · Alpha | **DEFERRED** (Coach: not now) |
-| **C6** | Admin fields for new course columns | Charlie · Echo | **PENDING** |
-| **C7** | Close-out: Delta full gate + Lima parity | Delta · Lima | **PENDING** |
+| **C6** | Admin fields for new course columns | Charlie · Echo | **DONE** |
+| **C7** | Close-out: Delta full gate + Lima parity | Delta · Lima | **DONE** |
 
 ---
 

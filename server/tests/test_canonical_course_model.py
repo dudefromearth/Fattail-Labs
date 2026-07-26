@@ -313,3 +313,85 @@ def test_instructor_bundle_on_export_shape():
     }
     doc = cm.placement_plan_to_document(plan)
     assert doc["course"]["modules"][0]["lessons"][0]["kind"] == "text"
+
+
+def test_admin_canonical_fields_and_export(client, admin_cookies):
+    """C6: new course columns via admin PUT appear on export."""
+    slug = _unique("zzccm-c6")
+    doc = _minimal_doc(slug=slug)
+    r = client.post(
+        "/api/admin/canonical-courses/import",
+        cookies=admin_cookies,
+        json={"document": doc, "mode": "create_draft"},
+    )
+    assert r.status_code == 200
+    imp = r.json()["slug"]
+    r2 = client.put(
+        f"/api/admin/courses/{imp}",
+        cookies=admin_cookies,
+        json={
+            "flagship": "true",
+            "audience_category": "coaching",
+            "pathway_position": "1",
+            "short_description": "Catalog blurb",
+            "learning_outcomes": "Outcome A\nOutcome B",
+            "estimated_duration_minutes": "90",
+            "certification_enabled": "true",
+        },
+    )
+    assert r2.status_code == 200, r2.text
+    g = client.get(f"/api/admin/courses/{imp}", cookies=admin_cookies)
+    assert g.status_code == 200
+    body = g.json()
+    assert body["flagship"] is True
+    assert body["audience_category"] == "coaching"
+    assert body["pathway_position"] == 1
+    assert body["short_description"] == "Catalog blurb"
+    assert body["learning_outcomes"] == ["Outcome A", "Outcome B"]
+    assert body["estimated_duration_minutes"] == 90
+    assert body["certification_enabled"] is True
+
+    ex = client.get(f"/api/admin/courses/{imp}/canonical", cookies=admin_cookies)
+    assert ex.status_code == 200
+    c = ex.json()["course"]
+    assert c["flagship"] is True
+    assert c["audience_category"] == "coaching"
+    assert c["pathway_position"] == 1
+    assert c.get("short_description") == "Catalog blurb"
+    assert c.get("learning_outcomes") == ["Outcome A", "Outcome B"]
+
+    client.delete(f"/api/admin/courses/{imp}", cookies=admin_cookies)
+
+
+def test_place_uses_canonical_materialize(client, admin_cookies):
+    """C4: board place returns materialized_via canonical marker."""
+    r = client.post(
+        "/api/admin/board/items",
+        cookies=admin_cookies,
+        json={
+            "title": "ZZ C4 Canonical Place",
+            "intent_md": "Place via shared importer.",
+            "product_line": "course",
+        },
+    )
+    assert r.status_code == 200
+    iid = r.json()["item"]["id"]
+    from agent_auth import Actor
+    import packages as packages_mod
+
+    actor = Actor(kind="human", id=0, label="test", role="administrator")
+    packages_mod.ensure_stub_artifacts_for_tests(iid, actor, "course")
+    r2 = client.post(
+        f"/api/admin/board/items/{iid}/place",
+        cookies=admin_cookies,
+        json={"replace": True},
+    )
+    assert r2.status_code == 200, r2.text
+    placement = r2.json()["placement"]
+    assert placement.get("materialized_via") == "canonical_course_model"
+    assert placement["lesson_count"] == 3
+    slug = placement["slug"]
+    client.delete(f"/api/admin/courses/{slug}", cookies=admin_cookies)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM content_items WHERE id = %s", (iid,))

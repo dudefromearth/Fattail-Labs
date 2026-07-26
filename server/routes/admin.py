@@ -22,9 +22,25 @@ from config import get_config
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 COURSE_FIELDS = frozenset(
-    {"title", "subtitle", "description_md", "level", "status", "trailer_video_id",
-     "hero_image_url", "card_color"}
+    {
+        "title",
+        "subtitle",
+        "description_md",
+        "short_description",
+        "level",
+        "status",
+        "trailer_video_id",
+        "hero_image_url",
+        "card_color",
+        "flagship",
+        "pathway_position",
+        "audience_category",
+        "estimated_duration_minutes",
+        "learning_outcomes",  # JSON array via PUT
+        "certification_enabled",
+    }
 )
+VALID_AUDIENCE = frozenset({"public", "members", "coaching"})
 UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 MEDIA_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 MEDIA_MAX_BYTES = 5 * 1024 * 1024
@@ -40,7 +56,7 @@ PRIVATE_TYPES = {
     "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
 }
 PRIVATE_MAX_BYTES = 25 * 1024 * 1024
-MODULE_FIELDS = frozenset({"title", "kind"})
+MODULE_FIELDS = frozenset({"title", "kind", "description_md"})
 VALID_MODULE_KINDS = frozenset({"standard", "worksheets", "resources", "bonus"})
 LESSON_FIELDS = frozenset(
     {"title", "video_id", "video_params", "video_provider", "free_preview",
@@ -69,8 +85,11 @@ def admin_course(slug: str, request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT id, slug, title, subtitle, description_md, level, status,
-                          trailer_video_id, hero_image_url, card_color
+                """SELECT id, slug, title, subtitle, description_md, short_description,
+                          level, status, trailer_video_id, hero_image_url, card_color,
+                          certification_enabled, flagship, pathway_position,
+                          audience_category, estimated_duration_minutes,
+                          learning_outcomes_json, model_instance_version
                    FROM courses WHERE slug = %s""",
                 (slug,),
             )
@@ -79,6 +98,7 @@ def admin_course(slug: str, request: Request) -> dict:
                 raise HTTPException(status_code=404, detail="Course not found")
             cur.execute(
                 """SELECT m.id AS module_id, m.title AS module_title, m.kind,
+                          m.description_md AS module_description_md,
                           l.id, l.slug, l.title, l.kind AS lesson_kind,
                           l.duration_seconds, l.free_preview,
                           l.video_provider, l.video_id, l.video_params
@@ -94,8 +114,13 @@ def admin_course(slug: str, request: Request) -> dict:
     for r in rows:
         if not modules or modules[-1]["module_id"] != r["module_id"]:
             modules.append(
-                {"module_id": r["module_id"], "title": r["module_title"],
-                 "kind": r["kind"], "lessons": []}
+                {
+                    "module_id": r["module_id"],
+                    "title": r["module_title"],
+                    "kind": r["kind"],
+                    "description_md": r.get("module_description_md") or "",
+                    "lessons": [],
+                }
             )
         if r["id"] is not None:
             params = r["video_params"]
@@ -134,8 +159,26 @@ def admin_course(slug: str, request: Request) -> dict:
                 (course["id"],),
             )
             attachments = cur.fetchall()
-    return {
+    # Normalize JSON / bools for admin UI
+    outcomes = course.get("learning_outcomes_json")
+    if isinstance(outcomes, (str, bytes)):
+        try:
+            outcomes = json.loads(outcomes)
+        except (json.JSONDecodeError, TypeError):
+            outcomes = []
+    elif outcomes is None:
+        outcomes = []
+    course_out = {
         **course,
+        "flagship": bool(course.get("flagship")),
+        "certification_enabled": bool(course.get("certification_enabled")),
+        "learning_outcomes": outcomes if isinstance(outcomes, list) else [],
+        "short_description": course.get("short_description") or "",
+        "audience_category": course.get("audience_category") or "members",
+    }
+    course_out.pop("learning_outcomes_json", None)
+    return {
+        **course_out,
         "modules": modules,
         "categories": cats,
         "instructors": instructors,
@@ -161,6 +204,55 @@ async def update_course(slug: str, request: Request) -> dict:
         raise HTTPException(status_code=422, detail=f"level must be one of {sorted(VALID_LEVELS)}")
     if "status" in body and body["status"] not in VALID_STATUS:
         raise HTTPException(status_code=422, detail=f"status must be one of {sorted(VALID_STATUS)}")
+    if "audience_category" in body and body["audience_category"] not in VALID_AUDIENCE:
+        raise HTTPException(
+            status_code=422,
+            detail=f"audience_category must be one of {sorted(VALID_AUDIENCE)}",
+        )
+    # Coerce types from admin UI (often stringified via dirty map)
+    if "flagship" in body:
+        v = body["flagship"]
+        body["flagship"] = 1 if v in (True, 1, "1", "true", "True", "yes") else 0
+    if "certification_enabled" in body:
+        v = body["certification_enabled"]
+        body["certification_enabled"] = (
+            1 if v in (True, 1, "1", "true", "True", "yes") else 0
+        )
+    if "pathway_position" in body:
+        v = body["pathway_position"]
+        if v in (None, "", "null", "None"):
+            body["pathway_position"] = None
+        else:
+            try:
+                body["pathway_position"] = int(v)
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(
+                    status_code=422, detail="pathway_position must be an integer or empty"
+                ) from exc
+    if "estimated_duration_minutes" in body:
+        v = body["estimated_duration_minutes"]
+        if v in (None, "", "null", "None"):
+            body["estimated_duration_minutes"] = None
+        else:
+            try:
+                body["estimated_duration_minutes"] = int(v)
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail="estimated_duration_minutes must be an integer or empty",
+                ) from exc
+    if "learning_outcomes" in body:
+        lo = body.pop("learning_outcomes")
+        if isinstance(lo, str):
+            # one outcome per line from UI
+            lines = [ln.strip() for ln in lo.splitlines() if ln.strip()]
+            body["learning_outcomes_json"] = json.dumps(lines) if lines else None
+        elif isinstance(lo, list):
+            body["learning_outcomes_json"] = json.dumps(lo) if lo else None
+        elif lo is None:
+            body["learning_outcomes_json"] = None
+        else:
+            raise HTTPException(status_code=422, detail="learning_outcomes must be list or text")
 
     sets = ", ".join(f"{f} = %s" for f in body)
     publish_touch = ", published_at = COALESCE(published_at, NOW())" if body.get("status") == "published" else ""

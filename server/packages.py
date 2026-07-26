@@ -747,11 +747,22 @@ def apply_placement(
 ) -> dict:
     """Create or refresh a draft Labs course from package artifacts.
 
+    Materializes through the **Canonical Course Model** importer (C4):
+    placement plan → document → ``import_document`` (create_draft / replace_draft).
+
     - First place: create draft course + full module/lesson/resource graph.
-    - replace=True (default on re-approve): wipe modules/lessons/course attachments
-      for the existing draft and rebuild from the latest package.
+    - replace=True (default on re-approve): rebuild draft under same slug.
     - If already placed and replace=False: return already_placed.
+    - Never wipes published courses.
     """
+    already_placed = False
+    replaced = False
+    slug: str
+    course_id: int
+    plan: dict
+    module_ids: list[int] = []
+    lesson_ids: list[int] = []
+
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM content_items WHERE id = %s", (item_id,))
@@ -769,25 +780,9 @@ def apply_placement(
                 s: _latest_artifact(cur, item_id, s) for s in stages
             }
             plan = build_placement_plan(item, artifacts)
-            # Canonical Course Model: placement plan is an adapter input.
-            # Full materialize still uses the placement graph below for
-            # backward-compatible characterization; document is validated
-            # so automation fails loud on unusable plans.
-            try:
-                canon_doc = course_model.placement_plan_to_document(plan)
-                vrep = course_model.validate(canon_doc, mode="structural")
-                if not vrep["ok"]:
-                    raise PackageError(
-                        "placement plan failed canonical structural validation: "
-                        + "; ".join(
-                            f"{e['code']}:{e['message']}" for e in vrep["errors"][:5]
-                        )
-                    )
-            except course_model.CourseModelError as exc:
-                raise PackageError(str(exc)) from exc
 
             existing_slug = item.get("placed_course_slug")
-            course_id = None
+            crow = None
             if existing_slug:
                 cur.execute(
                     "SELECT id, status FROM courses WHERE slug = %s",
@@ -803,142 +798,82 @@ def apply_placement(
                         "admin_url": f"/courses/{existing_slug}",
                         "replaced": False,
                     }
-                if crow:
-                    course_id = crow["id"]
-                    # Rebuild structure only while draft (never wipe published)
-                    if crow["status"] != "draft":
-                        raise PackageError(
-                            f"course {existing_slug!r} is {crow['status']}; "
-                            "refuse to replace non-draft placement"
-                        )
-                    cur.execute(
-                        "SELECT id FROM modules WHERE course_id = %s", (course_id,)
+                if crow and crow["status"] != "draft":
+                    raise PackageError(
+                        f"course {existing_slug!r} is {crow['status']}; "
+                        "refuse to replace non-draft placement"
                     )
-                    mod_ids = [r["id"] for r in cur.fetchall()]
-                    if mod_ids:
-                        cur.execute(
-                            f"DELETE FROM lessons WHERE module_id IN ({','.join(['%s']*len(mod_ids))})",
-                            mod_ids,
-                        )
-                    cur.execute(
-                        "DELETE FROM modules WHERE course_id = %s", (course_id,)
+                if not crow:
+                    existing_slug = None  # stale pointer
+
+            try:
+                canon_doc = course_model.placement_plan_to_document(plan)
+                do_replace = bool(existing_slug and crow and replace)
+                if do_replace:
+                    canon_doc.setdefault("course", {})["slug"] = existing_slug
+                    imp = course_model.import_document(
+                        cur,
+                        canon_doc,
+                        mode="replace_draft",
+                        target_slug=existing_slug,
+                        validate_mode="structural",
                     )
-                    cur.execute(
-                        """DELETE FROM attachments
-                           WHERE owner_type = 'course' AND owner_id = %s""",
-                        (course_id,),
-                    )
-                    cur.execute(
-                        """UPDATE courses SET
-                             title = %s, subtitle = %s, description_md = %s,
-                             level = %s, trailer_video_id = %s, status = 'draft'
-                           WHERE id = %s""",
-                        (
-                            plan["course_title"],
-                            plan["subtitle"],
-                            plan["description_md"],
-                            plan["level"],
-                            plan["trailer_video_id"],
-                            course_id,
-                        ),
-                    )
-                    slug = existing_slug
+                    replaced = True
                 else:
-                    # slug pointer stale — create new
-                    existing_slug = None
-
-            if course_id is None:
-                base = _slugify(plan["course_title"])
-                cur.execute("SELECT slug FROM courses")
-                taken = {r["slug"] for r in cur.fetchall()}
-                slug = base
-                n = 2
-                while slug in taken:
-                    slug = f"{base}-{n}"
-                    n += 1
-                cur.execute(
-                    """INSERT INTO courses
-                       (slug, title, subtitle, description_md, level, status,
-                        trailer_video_id, trailer_provider)
-                       VALUES (%s, %s, %s, %s, %s, 'draft', %s, 'youtube')""",
-                    (
-                        slug,
-                        plan["course_title"],
-                        plan["subtitle"],
-                        plan["description_md"],
-                        plan["level"],
-                        plan["trailer_video_id"],
-                    ),
-                )
-                course_id = cur.lastrowid
-
-            lesson_ids: list[int] = []
-            module_ids: list[int] = []
-            for mi, mod in enumerate(plan["modules"]):
-                cur.execute(
-                    """INSERT INTO modules (course_id, title, sort_order, kind)
-                       VALUES (%s, %s, %s, %s)""",
-                    (course_id, mod["title"], mi, mod["kind"]),
-                )
-                module_id = cur.lastrowid
-                module_ids.append(module_id)
-                for li, les in enumerate(mod["lessons"]):
-                    cur.execute(
-                        """INSERT INTO lessons
-                           (module_id, slug, title, sort_order, kind,
-                            video_provider, video_id, body_md, free_preview,
-                            duration_seconds, external_url)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-                        (
-                            module_id,
-                            les["slug"],
-                            les["title"],
-                            li,
-                            les["kind"],
-                            les.get("video_provider") or "youtube",
-                            les.get("video_id"),
-                            les.get("body_md"),
-                            1 if les.get("free_preview") else 0,
-                            les.get("duration_seconds") or 0,
-                            les.get("external_url"),
-                        ),
+                    imp = course_model.import_document(
+                        cur,
+                        canon_doc,
+                        mode="create_draft",
+                        validate_mode="structural",
                     )
-                    lesson_ids.append(cur.lastrowid)
+            except course_model.CourseModelError as exc:
+                msg = str(exc)
+                if exc.detail and isinstance(exc.detail, dict):
+                    errs = exc.detail.get("errors") or []
+                    if errs:
+                        msg = "; ".join(
+                            f"{e.get('code')}:{e.get('message')}" for e in errs[:5]
+                        )
+                    elif exc.detail.get("code"):
+                        msg = f"{exc.detail.get('code')}: {msg}"
+                raise PackageError(msg) from exc
 
-            for res in plan["resources"]:
-                cur.execute(
-                    """INSERT INTO attachments
-                       (owner_type, owner_id, title, kind, url, free_preview,
-                        description_md, emoji)
-                       VALUES ('course', %s, %s, %s, %s, %s, %s, %s)""",
-                    (
-                        course_id,
-                        res["title"],
-                        res["kind"],
-                        res["url"],
-                        1 if res.get("free_preview") else 0,
-                        res.get("description_md"),
-                        res.get("emoji"),
-                    ),
-                )
+            slug = imp["slug"]
+            course_id = int(imp["course_id"])
 
             cur.execute(
                 "UPDATE content_items SET placed_course_slug = %s WHERE id = %s",
                 (slug, item_id),
             )
 
+            cur.execute(
+                """SELECT id FROM modules WHERE course_id = %s
+                   ORDER BY sort_order, id""",
+                (course_id,),
+            )
+            module_ids = [r["id"] for r in cur.fetchall()]
+            cur.execute(
+                """SELECT l.id FROM lessons l
+                   JOIN modules m ON m.id = l.module_id
+                   WHERE m.course_id = %s
+                   ORDER BY m.sort_order, l.sort_order, l.id""",
+                (course_id,),
+            )
+            lesson_ids = [r["id"] for r in cur.fetchall()]
+
     result = {
-        "already_placed": bool(existing_slug) and not replace,
-        "replaced": bool(existing_slug) and replace,
+        "already_placed": already_placed,
+        "replaced": replaced,
         "slug": slug,
         "course_id": course_id,
         "module_ids": module_ids,
         "lesson_ids": lesson_ids,
         "module_count": len(module_ids),
         "lesson_count": len(lesson_ids),
-        "resource_count": len(plan["resources"]),
+        "resource_count": len(plan.get("resources") or []),
         "status": "draft",
         "admin_url": f"/courses/{slug}",
+        "materialized_via": "canonical_course_model",
         "plan_summary": {
             "title": plan["course_title"],
             "modules": [

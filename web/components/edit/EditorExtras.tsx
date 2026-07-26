@@ -275,6 +275,195 @@ export function NewCourseCard() {
   );
 }
 
+/**
+ * Canonical Course Model meta fields (C6) — flagship, pathway, audience, etc.
+ * Visible in edit mode only; saves via EditContext dirty map → PUT course.
+ */
+export function CourseCanonicalMeta({
+  initial,
+}: {
+  initial?: {
+    short_description?: string;
+    flagship?: boolean;
+    pathway_position?: number | null;
+    audience_category?: string;
+    estimated_duration_minutes?: number | null;
+    learning_outcomes?: string[];
+    certification_enabled?: boolean;
+  };
+}) {
+  const edit = useEdit();
+  const [server, setServer] = useState(initial ?? null);
+
+  useEffect(() => {
+    if (!edit?.editMode || !edit) return;
+    // Prefer prop; otherwise load from admin API when entering edit.
+    if (initial) {
+      setServer(initial);
+      return;
+    }
+    const slug =
+      typeof window !== "undefined"
+        ? window.location.pathname.split("/").filter(Boolean).pop()
+        : "";
+    if (!slug || slug === "courses") return;
+    let cancelled = false;
+    fetch(`/api/admin/courses/${slug}`, { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d) {
+          setServer({
+            short_description: d.short_description || "",
+            flagship: !!d.flagship,
+            pathway_position: d.pathway_position ?? null,
+            audience_category: d.audience_category || "members",
+            estimated_duration_minutes: d.estimated_duration_minutes ?? null,
+            learning_outcomes: d.learning_outcomes || [],
+            certification_enabled: !!d.certification_enabled,
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [edit?.editMode, initial, edit]);
+
+  if (!edit?.editMode) return null;
+
+  const fb = server;
+  const shortDesc = edit.value(
+    "course.short_description",
+    fb?.short_description || "",
+  );
+  const audience = edit.value(
+    "course.audience_category",
+    fb?.audience_category || "members",
+  );
+  const pathway = edit.value(
+    "course.pathway_position",
+    fb?.pathway_position != null ? String(fb.pathway_position) : "",
+  );
+  const duration = edit.value(
+    "course.estimated_duration_minutes",
+    fb?.estimated_duration_minutes != null
+      ? String(fb.estimated_duration_minutes)
+      : "",
+  );
+  const outcomes = edit.value(
+    "course.learning_outcomes",
+    (fb?.learning_outcomes || []).join("\n"),
+  );
+  const flagshipKey = "course.flagship";
+  const flagshipOn =
+    flagshipKey in edit.dirty
+      ? edit.dirty[flagshipKey] === true ||
+        edit.dirty[flagshipKey] === "true" ||
+        edit.dirty[flagshipKey] === "1"
+      : !!fb?.flagship;
+  const certKey = "course.certification_enabled";
+  const certOn =
+    certKey in edit.dirty
+      ? edit.dirty[certKey] === true ||
+        edit.dirty[certKey] === "true" ||
+        edit.dirty[certKey] === "1"
+      : !!fb?.certification_enabled;
+
+  return (
+    <div className="surface-card space-y-3 border border-emerald-200/80 p-4 dark:border-emerald-900">
+      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-300">
+        Course package fields
+      </p>
+      <label className="block text-sm">
+        <span className="text-zinc-500">Short description (catalog)</span>
+        <input
+          className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          value={shortDesc}
+          onChange={(e) => edit.setField("course.short_description", e.target.value)}
+        />
+      </label>
+      <div className="flex flex-wrap gap-4 text-sm">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={flagshipOn}
+            onChange={(e) =>
+              edit.setField("course.flagship", e.target.checked ? "true" : "false")
+            }
+          />
+          <span>Flagship (stop-the-bleeding entry)</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={certOn}
+            onChange={(e) =>
+              edit.setField(
+                "course.certification_enabled",
+                e.target.checked ? "true" : "false",
+              )
+            }
+          />
+          <span>Certification enabled</span>
+        </label>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="block text-sm">
+          <span className="text-zinc-500">Audience</span>
+          <select
+            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-2 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            value={audience}
+            onChange={(e) =>
+              edit.setField("course.audience_category", e.target.value)
+            }
+          >
+            <option value="public">public</option>
+            <option value="members">members</option>
+            <option value="coaching">coaching</option>
+          </select>
+        </label>
+        <label className="block text-sm">
+          <span className="text-zinc-500">Pathway position</span>
+          <input
+            type="number"
+            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            value={pathway}
+            placeholder="empty = off pathway"
+            onChange={(e) =>
+              edit.setField("course.pathway_position", e.target.value)
+            }
+          />
+        </label>
+        <label className="block text-sm">
+          <span className="text-zinc-500">Est. minutes</span>
+          <input
+            type="number"
+            className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            value={duration}
+            onChange={(e) =>
+              edit.setField("course.estimated_duration_minutes", e.target.value)
+            }
+          />
+        </label>
+      </div>
+      <label className="block text-sm">
+        <span className="text-zinc-500">Learning outcomes (one per line)</span>
+        <textarea
+          rows={3}
+          className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          value={outcomes}
+          onChange={(e) =>
+            edit.setField("course.learning_outcomes", e.target.value)
+          }
+        />
+      </label>
+      <p className="text-xs text-zinc-400">
+        Saved with the edit bar. Included in Export package.
+      </p>
+    </div>
+  );
+}
+
 /** Import a Canonical Course package (.course.json) as a new draft. */
 export function ImportCourseCard() {
   const router = useRouter();

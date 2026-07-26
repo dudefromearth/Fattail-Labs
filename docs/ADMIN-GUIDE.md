@@ -436,3 +436,8 @@ and re-imported as a **draft**.
 
 **Rules:** Import never wipes a **published** course. Missing category/instructor refs
 fail loud. Member progress and discussions are **not** included in packages.
+
+**Package fields (edit mode → About):** flagship, audience, pathway position, short
+description, learning outcomes, certification flag. Saved with the edit bar; included
+in **Export package**. Board **Place** materializes drafts through the same canonical
+importer as Import package.
