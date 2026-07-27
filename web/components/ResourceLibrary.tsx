@@ -6,7 +6,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useIsAdmin } from "@/lib/useIsAdmin";
-import { patchJSON, postJSON, uploadMedia } from "@/lib/client";
+import { del, patchJSON, postJSON, uploadMedia } from "@/lib/client";
 import { FIELD } from "@/lib/ui";
 import { appAlert, appConfirm } from "@/lib/dialogs";
 
@@ -29,6 +29,9 @@ type Resource = {
   course?: CourseRef | null;
   courses?: CourseRef[];
   categories: { slug: string; name: string }[];
+  /** Admin list: published to hub? */
+  published?: boolean;
+  published_version?: number | null;
 };
 
 const EMOJI_CHOICES = ["📄", "📊", "📈", "🧮", "🎥", "🔗", "📚", "🧠", "✅", "⚡"];
@@ -234,7 +237,7 @@ function ResourceAdminPanel({
   const [publishNew, setPublishNew] = useState(false);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const isModern = r.source === "resource" && r.slug;
+  const isModern = !!(r.slug && (r.source === "resource" || r.source == null));
 
   async function saveHead() {
     if (!isModern || !r.slug) return;
@@ -286,7 +289,7 @@ function ResourceAdminPanel({
 
   async function togglePublish() {
     if (!isModern || !r.slug) return;
-    const published = r.version != null;
+    const published = r.version != null || r.published === true;
     // If currently on hub (has version from list), unpublish; else publish latest from detail
     if (published) {
       const res = await postJSON(`/api/admin/resources/${r.slug}/publish`, {
@@ -315,6 +318,32 @@ function ResourceAdminPanel({
     else await appAlert({ title: "Publish failed", message: await res.text() });
   }
 
+  async function destroy() {
+    if (!isModern || !r.slug) return;
+    const courseNote =
+      r.courses && r.courses.length
+        ? ` It will also be unlinked from ${r.courses.length} course(s).`
+        : "";
+    if (
+      !(await appConfirm({
+        title: `Delete “${r.title}”?`,
+        message:
+          "Permanently removes this resource, all versions, and every course link." +
+          courseNote +
+          " This cannot be undone.",
+        confirmLabel: "Delete forever",
+        destructive: true,
+      }))
+    ) {
+      return;
+    }
+    setBusy(true);
+    const res = await del(`/api/admin/resources/${r.slug}`);
+    setBusy(false);
+    if (res.ok) onDone();
+    else await appAlert({ title: "Delete failed", message: await res.text() });
+  }
+
   if (!isModern) {
     return (
       <p className="text-xs text-zinc-500">
@@ -322,6 +351,8 @@ function ResourceAdminPanel({
       </p>
     );
   }
+
+  const onHub = r.version != null || r.published === true;
 
   return (
     <div className="min-w-0 flex-1 space-y-2 border-t border-zinc-100 pt-2 dark:border-zinc-800">
@@ -352,7 +383,15 @@ function ResourceAdminPanel({
           disabled={busy}
           className="chip text-xs"
         >
-          {r.version != null ? "Unpublish from hub" : "Publish to hub"}
+          {onHub ? "Unpublish from hub" : "Publish to hub"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void destroy()}
+          disabled={busy}
+          className="rounded-full border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/40"
+        >
+          Delete resource
         </button>
       </div>
       <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
@@ -418,20 +457,62 @@ export default function ResourceLibrary() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/resources", { credentials: "same-origin" })
+    // Members: published hub only. Admins: full library (incl. unpublished).
+    const url = isAdmin ? "/api/admin/resources" : "/api/resources";
+    fetch(url, { credentials: "same-origin" })
       .then((r) => {
         if (r.status === 401) return "anonymous" as const;
         return r.ok ? r.json() : null;
       })
       .then((d) => {
         if (cancelled || d === null) return;
-        setResources(d === "anonymous" ? "anonymous" : d.resources);
+        if (d === "anonymous") {
+          setResources("anonymous");
+          return;
+        }
+        const rows = (d.resources || []) as Record<string, unknown>[];
+        // Normalize admin list shape to the member Resource card model.
+        const mapped: Resource[] = rows.map((raw) => {
+          if (isAdmin && raw.slug != null) {
+            const published = !!raw.published;
+            const courses = (raw.courses as CourseRef[] | undefined) || [];
+            return {
+              source: "resource",
+              id: Number(raw.id),
+              slug: String(raw.slug),
+              title: String(raw.title || ""),
+              kind: "file",
+              type: String(raw.type || "other"),
+              free: false,
+              description_md: (raw.description_md as string | null) ?? null,
+              emoji: (raw.emoji as string | null) ?? null,
+              url: null,
+              version: published
+                ? (raw.published_version as number | null) ?? null
+                : null,
+              published,
+              published_version:
+                (raw.published_version as number | null) ?? null,
+              courses,
+              categories: raw.category_slug
+                ? [
+                    {
+                      slug: String(raw.category_slug),
+                      name: String(raw.category_slug),
+                    },
+                  ]
+                : [],
+            };
+          }
+          return raw as unknown as Resource;
+        });
+        setResources(mapped);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [reloadKey, isAdmin]);
 
   const categories = useMemo(() => {
     if (!Array.isArray(resources)) return [];
@@ -572,14 +653,20 @@ export default function ResourceLibrary() {
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="truncate font-medium">{r.title}</span>
-                    {r.version != null && (
+                    {(r.version != null || r.published_version != null) && (
                       <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-600 dark:bg-zinc-800">
-                        v{r.version}
+                        v{r.version ?? r.published_version}
                       </span>
                     )}
-                    {r.source === "resource" && (
+                    {isAdmin && r.published === false && (
+                      <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                        Unpublished
+                      </span>
+                    )}
+                    {(r.published === true ||
+                      (r.source === "resource" && r.version != null)) && (
                       <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-                        Published
+                        On hub
                       </span>
                     )}
                     {r.free ? (
@@ -598,7 +685,7 @@ export default function ResourceLibrary() {
                     </span>
                   )}
                   <span className="mt-1 flex flex-wrap gap-1">
-                    {r.source === "resource" && r.slug && (
+                    {r.slug && (r.published !== false || r.version != null) && (
                       <Link
                         href={`/resource/${r.slug}`}
                         className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-800 hover:underline dark:bg-emerald-950 dark:text-emerald-200"
@@ -617,16 +704,50 @@ export default function ResourceLibrary() {
                     ))}
                   </span>
                   {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => setExpandedId(expanded ? null : key)}
-                      className="mt-1 text-xs text-emerald-700 hover:underline dark:text-emerald-400"
-                    >
-                      {expanded ? "Hide admin" : "Manage"}
-                    </button>
+                    <div className="mt-1 flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(expanded ? null : key)}
+                        className="text-xs text-emerald-700 hover:underline dark:text-emerald-400"
+                      >
+                        {expanded ? "Hide admin" : "Manage"}
+                      </button>
+                      {r.slug && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (
+                              !(await appConfirm({
+                                title: `Delete “${r.title}”?`,
+                                message:
+                                  "Permanently removes this document from the library and all courses. Cannot be undone.",
+                                confirmLabel: "Delete forever",
+                                destructive: true,
+                              }))
+                            )
+                              return;
+                            const res = await del(
+                              `/api/admin/resources/${r.slug}`,
+                            );
+                            if (res.ok) reload();
+                            else
+                              await appAlert({
+                                title: "Delete failed",
+                                message: await res.text(),
+                              });
+                          }}
+                          className="text-xs font-medium text-red-600 hover:underline dark:text-red-400"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   )}
                 </span>
-                {r.kind === "file" || r.download_path?.includes("resource-versions") ? (
+                {(r.kind === "file" ||
+                  r.download_path?.includes("resource-versions") ||
+                  r.version_id != null) &&
+                r.published !== false ? (
                   <button
                     type="button"
                     onClick={() => void download(r)}
@@ -634,6 +755,10 @@ export default function ResourceLibrary() {
                   >
                     Download
                   </button>
+                ) : r.published === false ? (
+                  <span className="shrink-0 text-xs text-zinc-400">
+                    Not on hub
+                  </span>
                 ) : (
                   <button
                     type="button"
@@ -652,7 +777,9 @@ export default function ResourceLibrary() {
         })}
         {visible.length === 0 && (
           <li className="col-span-full py-8 text-center text-sm text-zinc-500">
-            No resources match the filters.
+            {isAdmin
+              ? "No resources yet — create one above, or clear filters."
+              : "No resources match the filters."}
           </li>
         )}
       </ul>

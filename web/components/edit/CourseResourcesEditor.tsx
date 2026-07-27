@@ -61,7 +61,7 @@ export function CourseResourcesEditor() {
   const load = useCallback(async () => {
     if (!courseSlug) return;
     setLoading(true);
-    const r = await fetch(`/api/admin/courses/${courseSlug}/resource`, {
+    const r = await fetch(`/api/admin/courses/${courseSlug}/resources`, {
       credentials: "same-origin",
     });
     setLoading(false);
@@ -95,7 +95,7 @@ export function CourseResourcesEditor() {
     else if (item.published_version != null)
       body.pinned_version = item.published_version;
     const r = await postJSON(
-      `/api/admin/courses/${courseSlug}/resource`,
+      `/api/admin/courses/${courseSlug}/resources`,
       body,
     );
     if (r.ok) {
@@ -120,7 +120,7 @@ export function CourseResourcesEditor() {
       return;
     }
     const created = await cr.json();
-    const att = await postJSON(`/api/admin/courses/${courseSlug}/resource`, {
+    const att = await postJSON(`/api/admin/courses/${courseSlug}/resources`, {
       resource_slug: created.slug,
       pinned_version: created.version || 1,
       free_preview: free,
@@ -138,7 +138,7 @@ export function CourseResourcesEditor() {
 
   async function setPin(slug: string, version: number) {
     const r = await patchJSON(
-      `/api/admin/courses/${courseSlug}/resource/${slug}`,
+      `/api/admin/courses/${courseSlug}/resources/${slug}`,
       { pinned_version: version },
     );
     if (r.ok) await load();
@@ -147,7 +147,7 @@ export function CourseResourcesEditor() {
 
   async function setFreePreview(slug: string, free_preview: boolean) {
     const r = await patchJSON(
-      `/api/admin/courses/${courseSlug}/resource/${slug}`,
+      `/api/admin/courses/${courseSlug}/resources/${slug}`,
       { free_preview },
     );
     if (r.ok) await load();
@@ -164,10 +164,26 @@ export function CourseResourcesEditor() {
     )
       return;
     const r = await del(
-      `/api/admin/courses/${courseSlug}/resource/${slug}`,
+      `/api/admin/courses/${courseSlug}/resources/${slug}`,
     );
     if (r.ok) await load();
     else await appAlert({ title: "Unlink failed", message: await r.text() });
+  }
+
+  async function destroyResource(slug: string, title: string) {
+    if (
+      !(await appConfirm({
+        title: `Delete “${title}” from the library?`,
+        message:
+          "Permanently removes this resource everywhere (all courses + hub). Prefer Unlink if you only want it off this course.",
+        confirmLabel: "Delete forever",
+        destructive: true,
+      }))
+    )
+      return;
+    const r = await del(`/api/admin/resources/${slug}`);
+    if (r.ok) await load();
+    else await appAlert({ title: "Delete failed", message: await r.text() });
   }
 
   async function loadVersions(slug: string) {
@@ -259,9 +275,18 @@ export function CourseResourcesEditor() {
             <button
               type="button"
               onClick={() => void unlink(a.slug, a.title)}
-              className="text-xs text-zinc-400 hover:text-red-500"
+              className="text-xs text-zinc-400 hover:text-amber-600"
+              title="Remove from this course only"
             >
               Unlink
+            </button>
+            <button
+              type="button"
+              onClick={() => void destroyResource(a.slug, a.title)}
+              className="text-xs font-medium text-red-600 hover:text-red-700"
+              title="Permanently delete from the library"
+            >
+              Delete
             </button>
           </li>
         ))}

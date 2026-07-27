@@ -8,14 +8,15 @@ import { useIsAdmin } from "@/lib/useIsAdmin";
 import { useRouter } from "next/navigation";
 import { useEdit } from "./EditContext";
 
+/** Hero image upload — lives in the banner's lower stats panel (edit mode). */
 export function HeroImageChip() {
   const edit = useEdit();
   const fileRef = useRef<HTMLInputElement>(null);
   if (!edit?.editMode) return null;
   return (
-    <label className="absolute left-3 top-12 z-30 flex cursor-pointer items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-xs text-white backdrop-blur hover:bg-black/80">
-      <span className="font-medium">Hero image</span>
-      <span className="rounded bg-white/10 px-2 py-1 ring-1 ring-emerald-400/60">
+    <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-white/90">
+      <span className="font-medium text-white">Hero image</span>
+      <span className="rounded-lg bg-black/40 px-2.5 py-1.5 ring-1 ring-emerald-400/60 hover:bg-black/55">
         {edit.heroImageUrl ? "Replace…" : "Upload…"}
       </span>
       <input

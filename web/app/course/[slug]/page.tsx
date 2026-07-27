@@ -5,7 +5,7 @@ import EnrollCard from "@/components/EnrollCard";
 import AdminEditBar from "@/components/edit/AdminEditBar";
 import { EditProvider } from "@/components/edit/EditContext";
 import { EditableSelect, EditableText } from "@/components/edit/Editable";
-import { TrailerEditChip, TrailerShell } from "@/components/TrailerHero";
+import { BannerMediaRow, TrailerShell } from "@/components/TrailerHero";
 import { CategoriesCell, HeroImageChip } from "@/components/edit/EditorExtras";
 import DangerZone from "@/components/edit/DangerZone";
 import CourseTabs from "@/components/CourseTabs";
@@ -158,8 +158,6 @@ export default async function CourseDetailPage({
         <div>
           {/* Hero — swaps to a full 16:9 player when the trailer plays */}
           <TrailerShell trailer={course.trailer} title={course.title}>
-            <TrailerEditChip />
-            <HeroImageChip />
             {course.hero_image_url && (
               // Shared banner (Course Card Editor spec v1.1): sharp on the
               // catalog card, expanded + Gaussian-blurred + shaded here.
@@ -173,7 +171,8 @@ export default async function CourseDetailPage({
                 <div className="absolute inset-0 bg-zinc-950/60" />
               </div>
             )}
-            <div className="relative p-8">
+            <div className="relative z-[5] p-8">
+              {/* Title block — clear of media controls */}
               <EditableText
                 field="course.title"
                 value={course.title}
@@ -186,42 +185,46 @@ export default async function CourseDetailPage({
                 as="p"
                 className="mt-2 block max-w-2xl text-zinc-300"
               />
-              <dl className="mt-6 grid grid-cols-2 gap-4 rounded-2xl bg-white/10 p-4 text-sm sm:grid-cols-4">
-                <div>
-                  <dt className="font-semibold capitalize">
-                    <EditableSelect
-                      field="course.level"
-                      value={course.level}
-                      options={["beginner", "intermediate", "advanced"]}
-                      className="capitalize"
-                    />{" "}
-                    Level
-                  </dt>
-                  <dd className="text-zinc-300">Recommended Experience</dd>
-                </div>
-                <div>
-                  <dt className="font-semibold">
-                    {course.avg_rating !== null
-                      ? `${course.avg_rating.toFixed(1)} ★`
-                      : "—"}
-                  </dt>
-                  <dd className="text-zinc-300">Rating</dd>
-                </div>
-                <div>
-                  <dt className="font-semibold">
-                    {course.modules.length} Modules
-                  </dt>
-                  <dd className="text-zinc-300">
-                    {course.lesson_count} lessons in total
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-semibold">Categories</dt>
-                  <dd className="text-zinc-300">
-                    <CategoriesCell display={course.categories} />
-                  </dd>
-                </div>
-              </dl>
+              {/* Lower panel: stats + (edit) trailer URL / hero upload */}
+              <div className="relative z-20 mt-6 space-y-3 rounded-2xl bg-white/10 p-4 text-sm">
+                <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div>
+                    <dt className="font-semibold capitalize">
+                      <EditableSelect
+                        field="course.level"
+                        value={course.level}
+                        options={["beginner", "intermediate", "advanced"]}
+                        className="capitalize"
+                      />{" "}
+                      Level
+                    </dt>
+                    <dd className="text-zinc-300">Recommended Experience</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold">
+                      {course.avg_rating !== null
+                        ? `${course.avg_rating.toFixed(1)} ★`
+                        : "—"}
+                    </dt>
+                    <dd className="text-zinc-300">Rating</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold">
+                      {course.modules.length} Modules
+                    </dt>
+                    <dd className="text-zinc-300">
+                      {course.lesson_count} lessons in total
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold">Categories</dt>
+                    <dd className="text-zinc-300">
+                      <CategoriesCell display={course.categories} />
+                    </dd>
+                  </div>
+                </dl>
+                <BannerMediaRow heroSlot={<HeroImageChip />} />
+              </div>
             </div>
           </TrailerShell>
 

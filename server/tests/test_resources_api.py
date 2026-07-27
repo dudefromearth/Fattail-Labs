@@ -254,6 +254,57 @@ def test_legacy_attachment_create_becomes_resource(client, admin_cookies):
     client.delete(f"/api/admin/courses/{cslug}", cookies=admin_cookies)
 
 
+def test_admin_hard_delete_resource(client, admin_cookies):
+    """DELETE /api/admin/resources/{slug} removes head, versions, and course links."""
+    slug = _uid("zzdel")
+    cr = client.post(
+        "/api/admin/resources",
+        cookies=admin_cookies,
+        json={
+            "title": "Delete Me Worksheet",
+            "type": "document",
+            "kind": "link",
+            "url": "https://example.com/delete-me",
+            "slug": slug,
+            "publish": True,
+        },
+    )
+    assert cr.status_code == 200, cr.text
+    rslug = cr.json()["slug"]
+
+    c = client.post(
+        "/api/admin/courses",
+        cookies=admin_cookies,
+        json={"title": f"ZZ Del Course {slug}"},
+    )
+    assert c.status_code == 200, c.text
+    cslug = c.json()["slug"]
+    att = client.post(
+        f"/api/admin/courses/{cslug}/resources",
+        cookies=admin_cookies,
+        json={"resource_slug": rslug, "pinned_version": 1},
+    )
+    assert att.status_code == 200, att.text
+
+    d = client.delete(f"/api/admin/resources/{rslug}", cookies=admin_cookies)
+    assert d.status_code == 200, d.text
+    body = d.json()
+    assert body["deleted"] is True
+    assert body["unlinked_courses"] >= 1
+
+    assert client.get(f"/api/admin/resources/{rslug}", cookies=admin_cookies).status_code == 404
+    listed = client.get("/api/admin/resources", cookies=admin_cookies).json()["resources"]
+    assert all(x.get("slug") != rslug for x in listed)
+
+    # course link gone
+    crlist = client.get(
+        f"/api/admin/courses/{cslug}/resources", cookies=admin_cookies
+    ).json()["resources"]
+    assert all(x.get("slug") != rslug for x in crlist)
+
+    client.delete(f"/api/admin/courses/{cslug}", cookies=admin_cookies)
+
+
 def test_members_only_download_403(client, admin_cookies):
     from conftest import cookie_for
 

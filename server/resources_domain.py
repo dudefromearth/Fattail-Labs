@@ -392,6 +392,55 @@ def unlink_from_course(
         raise ResourceError("course resource link not found", code="LINK_NOT_FOUND")
 
 
+def delete_resource(cur, resource_id: int) -> dict[str, Any]:
+    """Hard-delete a resource and all versions + course links.
+
+    Order matters: course pins RESTRICT version deletes, and
+    published_version_id must be cleared before versions go away.
+    """
+    cur.execute(
+        "SELECT id, slug, title FROM resources WHERE id = %s",
+        (resource_id,),
+    )
+    res = cur.fetchone()
+    if not res:
+        raise ResourceError(f"resource {resource_id} not found", code="NOT_FOUND")
+
+    cur.execute(
+        "SELECT COUNT(*) AS n FROM course_resource_links WHERE resource_id = %s",
+        (resource_id,),
+    )
+    link_count = int(cur.fetchone()["n"])
+
+    # 1) Drop course links (pin FK would block version delete).
+    cur.execute(
+        "DELETE FROM course_resource_links WHERE resource_id = %s",
+        (resource_id,),
+    )
+    # 2) Clear published pointer so version rows can be removed.
+    cur.execute(
+        "UPDATE resources SET published_version_id = NULL WHERE id = %s",
+        (resource_id,),
+    )
+    # 3) Versions (CASCADE from resource would work after pin clear; explicit is clearer).
+    cur.execute(
+        "DELETE FROM resource_versions WHERE resource_id = %s",
+        (resource_id,),
+    )
+    # 4) Head row (migration_map cascades if present).
+    cur.execute("DELETE FROM resources WHERE id = %s", (resource_id,))
+    if cur.rowcount == 0:
+        raise ResourceError(f"resource {resource_id} not found", code="NOT_FOUND")
+
+    return {
+        "resource_id": resource_id,
+        "slug": res["slug"],
+        "title": res["title"],
+        "unlinked_courses": link_count,
+        "deleted": True,
+    }
+
+
 def get_by_slug(cur, slug: str, *, published_only: bool = False) -> dict | None:
     cur.execute(
         """SELECT r.id, r.slug, r.title, r.description_md, r.type, r.category_slug,

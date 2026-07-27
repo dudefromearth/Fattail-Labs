@@ -266,6 +266,22 @@ async def admin_publish(slug: str, request: Request) -> dict:
     return out
 
 
+@router.delete("/resources/{slug}")
+def admin_delete_resource(slug: str, request: Request) -> dict:
+    """Hard-delete resource, all versions, and every course link."""
+    require_admin(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM resources WHERE slug = %s", (slug,))
+            res = cur.fetchone()
+            if not res:
+                raise HTTPException(status_code=404, detail="Resource not found")
+            try:
+                return rd.delete_resource(cur, int(res["id"]))
+            except rd.ResourceError as exc:
+                raise _http_err(exc) from exc
+
+
 @router.post("/courses/{course_slug}/resources")
 async def admin_attach_resource(course_slug: str, request: Request) -> dict:
     """Attach existing resource: { resource_slug, pinned_version?, free_preview?, lesson_id? }."""

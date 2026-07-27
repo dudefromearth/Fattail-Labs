@@ -12,7 +12,7 @@ import AdminEditBar from "@/components/edit/AdminEditBar";
 import { EditProvider } from "@/components/edit/EditContext";
 import { EditableSelect, EditableText } from "@/components/edit/Editable";
 import { CategoriesCell, HeroImageChip } from "@/components/edit/EditorExtras";
-import { TrailerEditChip } from "@/components/TrailerHero";
+import { BannerMediaRow } from "@/components/TrailerHero";
 import DangerZone from "@/components/edit/DangerZone";
 import type { CourseDetail } from "@/lib/types";
 
@@ -106,8 +106,6 @@ function DraftBody({ course }: { course: CourseDetail }) {
       </nav>
 
       <div className="relative mt-4 overflow-hidden rounded-3xl bg-zinc-900 text-white">
-        <TrailerEditChip />
-        <HeroImageChip />
         {course.hero_image_url && (
           // Shared banner: sharp on the card, blurred + shaded here (v1.1).
           <div aria-hidden className="absolute inset-0 overflow-hidden">
@@ -120,7 +118,7 @@ function DraftBody({ course }: { course: CourseDetail }) {
             <div className="absolute inset-0 bg-zinc-950/60" />
           </div>
         )}
-        <div className="relative p-8">
+        <div className="relative z-[5] p-8">
           <EditableText
             field="course.title"
             value={course.title}
@@ -133,26 +131,29 @@ function DraftBody({ course }: { course: CourseDetail }) {
             as="p"
             className="mt-2 block max-w-2xl text-zinc-300"
           />
-          <dl className="mt-6 grid grid-cols-2 gap-4 rounded-2xl bg-white/10 p-4 text-sm">
-            <div>
-              <dt className="font-semibold capitalize">
-                <EditableSelect
-                  field="course.level"
-                  value={course.level}
-                  options={["beginner", "intermediate", "advanced"]}
-                  className="capitalize"
-                />{" "}
-                Level
-              </dt>
-              <dd className="text-zinc-300">Recommended Experience</dd>
-            </div>
-            <div>
-              <dt className="font-semibold">Categories</dt>
-              <dd className="text-zinc-300">
-                <CategoriesCell display={course.categories} />
-              </dd>
-            </div>
-          </dl>
+          <div className="relative z-20 mt-6 space-y-3 rounded-2xl bg-white/10 p-4 text-sm">
+            <dl className="grid grid-cols-2 gap-4">
+              <div>
+                <dt className="font-semibold capitalize">
+                  <EditableSelect
+                    field="course.level"
+                    value={course.level}
+                    options={["beginner", "intermediate", "advanced"]}
+                    className="capitalize"
+                  />{" "}
+                  Level
+                </dt>
+                <dd className="text-zinc-300">Recommended Experience</dd>
+              </div>
+              <div>
+                <dt className="font-semibold">Categories</dt>
+                <dd className="text-zinc-300">
+                  <CategoriesCell display={course.categories} />
+                </dd>
+              </div>
+            </dl>
+            <BannerMediaRow heroSlot={<HeroImageChip />} />
+          </div>
         </div>
       </div>
 
