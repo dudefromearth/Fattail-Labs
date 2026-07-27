@@ -25,11 +25,14 @@ export default function DangerZone({
 
   async function guardDirty(): Promise<boolean> {
     if (Object.keys(edit!.dirty).length > 0) {
-      await appAlert({
-        title: "Unsaved edits",
-        message: "Save or discard your pending edits first.",
-      });
-      return false;
+      const ok = await edit!.save();
+      if (!ok) {
+        await appAlert({
+          title: "Could not save",
+          message: "Fix the error in the edit bar, then try again.",
+        });
+        return false;
+      }
     }
     return true;
   }
@@ -56,8 +59,8 @@ export default function DangerZone({
       setBusy(false);
       return;
     }
-    await revalidate([`/courses/${slug}`, "/courses"]).catch(() => {});
-    window.location.href = `/courses/${slug}`;
+    await revalidate([`/course/${slug}`, "/course"]).catch(() => {});
+    window.location.href = `/course/${slug}`;
   }
 
   async function destroy() {
@@ -89,8 +92,8 @@ export default function DangerZone({
       setBusy(false);
       return;
     }
-    await revalidate(["/courses"]).catch(() => {});
-    window.location.href = "/courses";
+    await revalidate(["/course"]).catch(() => {});
+    window.location.href = "/course";
   }
 
   return (

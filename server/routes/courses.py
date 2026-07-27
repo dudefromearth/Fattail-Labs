@@ -117,6 +117,7 @@ def list_courses(
     for r in rows:
         courses.append(
             {
+                "id": r["id"],
                 "slug": r["slug"],
                 "title": r["title"],
                 "subtitle": r["subtitle"],
@@ -162,7 +163,7 @@ def course_detail(slug: str) -> dict:
             instructor_bios = cur.fetchall()
 
             cur.execute(
-                """SELECT id, title, sort_order, kind FROM modules
+                """SELECT id, slug, title, sort_order, kind FROM modules
                    WHERE course_id = %s ORDER BY sort_order""",
                 (course_id,),
             )
@@ -174,7 +175,7 @@ def course_detail(slug: str) -> dict:
                 # Public payload: structural fields only — no video_id, body_md,
                 # or external_url. Gated content is served by member routes.
                 cur.execute(
-                    f"""SELECT module_id, slug, title, sort_order, kind,
+                    f"""SELECT id, module_id, slug, title, sort_order, kind,
                                duration_seconds, free_preview
                         FROM lessons WHERE module_id IN ({placeholders})
                         ORDER BY module_id, sort_order""",
@@ -183,6 +184,7 @@ def course_detail(slug: str) -> dict:
                 for lesson in cur.fetchall():
                     lessons_by_module.setdefault(lesson["module_id"], []).append(
                         {
+                            "id": lesson["id"],
                             "slug": lesson["slug"],
                             "title": lesson["title"],
                             "kind": lesson["kind"],
@@ -229,6 +231,7 @@ def course_detail(slug: str) -> dict:
             )
 
     return {
+        "id": course_id,
         "slug": row["slug"],
         "title": row["title"],
         "subtitle": row["subtitle"],
@@ -248,6 +251,8 @@ def course_detail(slug: str) -> dict:
         ],
         "modules": [
             {
+                "id": m["id"],
+                "slug": m["slug"],
                 "title": m["title"],
                 "kind": m["kind"],
                 "lessons": lessons_by_module.get(m["id"], []),

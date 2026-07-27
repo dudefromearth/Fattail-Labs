@@ -50,7 +50,7 @@ export async function generateMetadata({
   const description =
     hub.category.description_md?.slice(0, 300) ??
     `${hub.category.name} courses at FatTail Labs.`;
-  const url = siteUrl(`/courses/category/${catSlug}`);
+  const url = siteUrl(`/course/category/${catSlug}`);
   return {
     title: `${hub.category.name} Courses`,
     description,
@@ -74,7 +74,7 @@ function itemListJsonLd(category: Category, courses: CourseCard[]) {
       "@type": "ListItem",
       position: i + 1,
       name: c.title,
-      url: siteUrl(`/courses/${c.slug}`),
+      url: siteUrl(`/course/${c.slug}`),
     })),
   };
 }
@@ -84,7 +84,7 @@ function breadcrumbJsonLd(category: Category) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Courses", item: siteUrl("/courses") },
+      { "@type": "ListItem", position: 1, name: "Courses", item: siteUrl("/course") },
       { "@type": "ListItem", position: 2, name: category.name },
     ],
   };
@@ -118,7 +118,7 @@ export default async function CategoryHubPage({
         }}
       />
       <nav className="text-sm text-zinc-500">
-        <Link href="/courses" className="hover:underline">
+        <Link href="/course" className="hover:underline">
           All Courses
         </Link>
         <span className="mx-2">›</span>
@@ -152,7 +152,7 @@ export default async function CategoryHubPage({
             {others.map((c) => (
               <Link
                 key={c.slug}
-                href={`/courses/category/${c.slug}`}
+                href={`/course/category/${c.slug}`}
                 className="chip"
               >
                 {c.name}

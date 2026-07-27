@@ -82,7 +82,7 @@ export default function GuidePage() {
             <H2 id="finding-courses">Finding courses</H2>
             <p>
               The{" "}
-              <Link href="/courses" className={link}>
+              <Link href="/course" className={link}>
                 catalog
               </Link>{" "}
               shows every published course. Filter by category or level, or
@@ -98,7 +98,7 @@ export default function GuidePage() {
             <p>
               Not sure where to start? Start where the doctrine starts:{" "}
               <Link
-                href="/courses/first-stop-the-bleeding"
+                href="/course/first-stop-the-bleeding"
                 className={link}
               >
                 First, Stop the Bleeding
@@ -204,7 +204,7 @@ export default function GuidePage() {
             <H2 id="resources">Resources</H2>
             <p>
               The{" "}
-              <Link href="/resources" className={link}>
+              <Link href="/resource" className={link}>
                 library
               </Link>{" "}
               collects downloads and links from every course — checklists,

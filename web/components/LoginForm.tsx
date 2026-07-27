@@ -54,7 +54,7 @@ export default function LoginForm() {
         setBusy(false);
         return;
       }
-      window.location.href = "/courses";
+      window.location.href = "/course";
     } catch {
       setError("Network error — try again.");
       setBusy(false);

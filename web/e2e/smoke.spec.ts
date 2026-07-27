@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Member + admin smoke", () => {
   test("public catalog loads", async ({ page }) => {
-    await page.goto("/courses");
+    await page.goto("/course");
     await expect(page.locator("body")).toBeVisible();
     // Catalog should render course content or empty-state, not a crash
     await expect(page.locator("main, [data-testid], h1").first()).toBeVisible({
@@ -26,7 +26,7 @@ test.describe("Member + admin smoke", () => {
     page,
   }) => {
     await page.goto("/api/auth/dev-login");
-    await page.waitForURL(/\/courses|\/admin|\//, { timeout: 30_000 });
+    await page.waitForURL(/\/course|\/admin|\//, { timeout: 30_000 });
     await page.goto("/admin");
     await expect(page.getByTestId("admin-shell")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("admin-brand")).toContainText("Admin");
@@ -37,7 +37,7 @@ test.describe("Member + admin smoke", () => {
 
   test("admin board kanban loads", async ({ page }) => {
     await page.goto("/api/auth/dev-login");
-    await page.waitForURL(/\/courses|\/admin|\//, { timeout: 30_000 });
+    await page.waitForURL(/\/course|\/admin|\//, { timeout: 30_000 });
     await page.goto("/admin/board");
     await expect(page.getByTestId("board-kanban")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("board-columns")).toBeVisible();

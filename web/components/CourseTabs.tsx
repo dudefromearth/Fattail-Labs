@@ -215,13 +215,32 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
         className="mt-6 space-y-4"
       >
         {(() => {
-          // Edit mode: drive exclusively from edit.modules (admin graph) so
-          // create/reorder/delete/save update in place without SSR props.
-          // Member view: public course.modules from the page payload.
-          const useAdminGraph = !!edit?.editMode && edit.modules.length > 0;
-          const moduleCount = useAdminGraph
+          // Admin graph is the live structure (create/reorder/delete). Once
+          // loaded, keep using it after Exit edit — otherwise the SSR/public
+          // `course.modules` prop is stale and Modules appears empty.
+          // Members never load the admin graph → public payload only.
+          const useAdminGraph =
+            !!edit?.isAdmin && (edit.modules?.length ?? 0) > 0;
+          const showAdminEditor = useAdminGraph && !!edit?.editMode;
+          // View mode (incl. admin after Exit): same list shape as members,
+          // but data from live admin graph when available.
+          const viewModules = useAdminGraph
+            ? edit!.modules.map((m) => ({
+                slug: m.slug,
+                title: m.title,
+                kind: m.kind,
+                lessons: m.lessons.map((l) => ({
+                  slug: l.slug,
+                  title: l.title,
+                  kind: l.kind,
+                  duration_seconds: l.duration_seconds,
+                  free_preview: l.free_preview,
+                })),
+              }))
+            : course.modules;
+          const moduleCount = showAdminEditor
             ? edit!.modules.length
-            : course.modules.length;
+            : viewModules.length;
 
           return (
             <>
@@ -229,7 +248,7 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                 <h2 className="font-semibold text-[var(--color-label)]">
                   Modules ({moduleCount})
                 </h2>
-                {edit?.editMode && edit.modules.length > 0 && (
+                {showAdminEditor && (
                   <div className="ml-auto flex flex-wrap items-center gap-2">
                     <button
                       type="button"
@@ -253,7 +272,7 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                 )}
               </div>
 
-              {useAdminGraph
+              {showAdminEditor
                 ? edit!.modules.map((adminModule, mi) => {
                     const isCollapsed = !!collapsed[adminModule.module_id];
                     const canMoveModuleUp = mi > 0;
@@ -408,9 +427,9 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                                       className="text-xs text-zinc-500"
                                     />
                                     <Link
-                                      href={`/courses/${course.slug}/lessons/${adminLesson.slug}`}
+                                      href={`/course/${edit?.courseSlug || course.slug}/${adminModule.slug}/${adminLesson.slug}`}
                                       className="shrink-0 text-xs font-medium text-[var(--color-tint)] hover:underline"
-                                      title="Open lesson page"
+                                      title="Open lesson page (always the live slug for this content id)"
                                     >
                                       Open
                                     </Link>
@@ -433,7 +452,7 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                                       placeholder="YouTube URL or ID"
                                       defaultValue={adminLesson.video_id ?? ""}
                                       onBlur={(e) =>
-                                        edit!.setField(
+                                        void edit!.commitField(
                                           k("video_id"),
                                           e.target.value,
                                         )
@@ -447,7 +466,7 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                                         adminLesson.video_params.start ?? ""
                                       }
                                       onBlur={(e) =>
-                                        edit!.setField(
+                                        void edit!.commitField(
                                           k("video_start"),
                                           e.target.value,
                                         )
@@ -461,7 +480,7 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                                         adminLesson.video_params.end ?? ""
                                       }
                                       onBlur={(e) =>
-                                        edit!.setField(
+                                        void edit!.commitField(
                                           k("video_end"),
                                           e.target.value,
                                         )
@@ -474,7 +493,7 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                                         key={`free-${adminLesson.id}-${adminLesson.free_preview}`}
                                         defaultChecked={adminLesson.free_preview}
                                         onChange={(e) =>
-                                          edit!.setField(
+                                          void edit!.commitField(
                                             k("free_preview"),
                                             e.target.checked,
                                           )
@@ -502,9 +521,9 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                       </div>
                     );
                   })
-                : course.modules.map((m, mi) => (
+                : viewModules.map((m, mi) => (
                     <div
-                      key={`${m.title}-${mi}`}
+                      key={m.slug || `${m.title}-${mi}`}
                       className="surface-card overflow-hidden border border-[var(--color-separator)]"
                     >
                       <div className="flex items-center gap-1 bg-[var(--color-surface-secondary)] px-2 py-2 font-medium sm:gap-2 sm:px-4 sm:py-2.5">
@@ -545,9 +564,9 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                           const rowClass =
                             "flex items-center gap-3 border-t border-[var(--color-separator)] px-5 py-3 text-sm";
                           return (
-                            <li key={l.slug}>
+                            <li key={`${m.slug}-${l.slug}`}>
                               <Link
-                                href={`/courses/${course.slug}/lessons/${l.slug}`}
+                                href={`/course/${edit?.courseSlug || course.slug}/${m.slug}/${l.slug}`}
                                 className={`${rowClass} transition-colors hover:bg-[var(--color-fill)]`}
                               >
                                 {row}

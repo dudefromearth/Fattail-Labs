@@ -18,16 +18,48 @@ MAX_DELTA = 60          # seconds per report, anti-gaming clamp
 COMPLETE_RATIO = 0.9
 
 
-def _lesson_for_access(cur, course_slug: str, lesson_slug: str, role: str) -> dict:
-    cur.execute(
-        """SELECT l.id, l.kind, l.duration_seconds, l.free_preview,
-                  c.id AS course_id
-           FROM lessons l
-           JOIN modules m ON l.module_id = m.id
-           JOIN courses c ON m.course_id = c.id
-           WHERE c.slug = %s AND l.slug = %s AND c.status = 'published'""",
-        (course_slug, lesson_slug),
-    )
+def _lesson_for_access(
+    cur,
+    course_slug: str,
+    lesson_slug: str,
+    role: str,
+    *,
+    module_slug: str | None = None,
+) -> dict:
+    if module_slug:
+        cur.execute(
+            """SELECT l.id, l.kind, l.duration_seconds, l.free_preview,
+                      c.id AS course_id
+               FROM lessons l
+               JOIN modules m ON l.module_id = m.id
+               JOIN courses c ON m.course_id = c.id
+               WHERE c.slug = %s AND m.slug = %s AND l.slug = %s
+                 AND c.status = 'published'""",
+            (course_slug, module_slug, lesson_slug),
+        )
+    else:
+        # Ambiguous if two modules share a lesson slug — prefer unique match.
+        cur.execute(
+            """SELECT l.id, l.kind, l.duration_seconds, l.free_preview,
+                      c.id AS course_id
+               FROM lessons l
+               JOIN modules m ON l.module_id = m.id
+               JOIN courses c ON m.course_id = c.id
+               WHERE c.slug = %s AND l.slug = %s AND c.status = 'published'""",
+            (course_slug, lesson_slug),
+        )
+        rows = cur.fetchall()
+        if len(rows) > 1:
+            raise HTTPException(
+                status_code=422,
+                detail="module_slug required when lesson slug is not unique in course",
+            )
+        row = rows[0] if rows else None
+        if row is None:
+            raise HTTPException(status_code=404, detail="Lesson not found")
+        if not row["free_preview"] and not auth.role_at_least(role, "alumni"):
+            raise HTTPException(status_code=403, detail="Membership required")
+        return row
     row = cur.fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Lesson not found")
@@ -47,8 +79,8 @@ def _course_summary(cur, identity_id: int, course_id: int) -> dict:
     """Progress summary shared by continue/enrollments (spec rules: percent over
     standard-module lessons; resume = latest-touched incomplete, else first)."""
     cur.execute(
-        """SELECT l.slug, l.title, m.title AS module_title, m.kind,
-                  lp.completed_at, lp.last_position, lp.updated_at AS touched_at
+        """SELECT l.slug, l.title, m.slug AS module_slug, m.title AS module_title,
+                  m.kind, lp.completed_at, lp.last_position, lp.updated_at AS touched_at
            FROM lessons l
            JOIN modules m ON l.module_id = m.id
            LEFT JOIN lesson_progress lp
@@ -69,6 +101,7 @@ def _course_summary(cur, identity_id: int, course_id: int) -> dict:
         touched.sort(key=lambda x: x["touched_at"], reverse=True)
         pick = touched[0] if touched else incomplete[0]
         resume = {
+            "module_slug": pick["module_slug"],
             "lesson_slug": pick["slug"],
             "title": pick["title"],
             "module_title": pick["module_title"],

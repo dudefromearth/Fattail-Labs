@@ -19,7 +19,11 @@ type EnrollmentSummary = {
   course: { slug: string; title: string };
   completed_at: string | null;
   progress: { percent: number; done: number; total: number };
-  resume: { lesson_slug: string; title: string } | null;
+  resume: {
+    module_slug: string;
+    lesson_slug: string;
+    title: string;
+  } | null;
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -32,9 +36,9 @@ const ROLE_LABELS: Record<string, string> = {
 
 /** Primary chrome only — Pathway is a funnel surface, not a top tab. */
 const NAV: { href: string; label: string }[] = [
-  { href: "/courses", label: "Courses" },
-  { href: "/labs", label: "Labs" },
-  { href: "/resources", label: "Resources" },
+  { href: "/course", label: "Courses" },
+  { href: "/app", label: "Apps" },
+  { href: "/resource", label: "Resources" },
   { href: "/live", label: "Live" },
   { href: "/about", label: "About" },
   { href: "/guide", label: "Guide" },
@@ -209,7 +213,7 @@ export default function SiteHeader() {
                             .map((e) => (
                               <li key={e.course.slug}>
                                 <Link
-                                  href={`/courses/${e.course.slug}/lessons/${e.resume!.lesson_slug}`}
+                                  href={`/course/${e.course.slug}/${e.resume!.module_slug}/${e.resume!.lesson_slug}`}
                                   onClick={() => setMenuOpen(false)}
                                   className="block rounded-[var(--radius-md)] p-1.5 -mx-1.5 hover:bg-[var(--color-fill)]"
                                 >

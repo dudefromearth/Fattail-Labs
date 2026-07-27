@@ -4,6 +4,9 @@ import type { NextConfig } from "next";
 // flows without CORS. Next's own route handlers (e.g. /api/revalidate) resolve
 // first; everything else under /api/* forwards to the Labs API. Server-side
 // build fetches keep using NEXT_PUBLIC_LABS_API_URL directly.
+//
+// Public SEO namespaces (canonical from day one — no legacy redirects):
+//   /course, /campaign, /resource, /app
 const nextConfig: NextConfig = {
   async rewrites() {
     const api = process.env.NEXT_PUBLIC_LABS_API_URL;

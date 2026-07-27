@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import SectionHubShell from "@/components/section-hub/SectionHubShell";
+import { apiGet } from "@/lib/api";
 import { siteUrl } from "@/lib/catalog";
 import {
   fetchSitePage,
@@ -11,73 +12,92 @@ import {
 export const revalidate = 3600;
 
 const FALLBACK: SitePage = {
-  slug: "labs",
-  title: "Labs",
+  slug: "labs", // site_pages key (stable); public UI/URL is Apps /app
+  title: "Apps",
   description_md:
     "Member practice tools: Journey, Trade Log, and more — process over P&L theater.",
   intro_video_id: null,
   intro_video_title: null,
-  faq_title: "Labs FAQ",
+  faq_title: "Apps FAQ",
   faq_description_md: null,
   faq_items: [],
 };
 
-/**
- * Labs hub — primary tab between Courses and Resources.
- * CMS title + description_md for SEO/AEO; tools grid is product chrome.
- */
-const TOOLS: {
-  id: string;
-  name: string;
-  blurb: string;
-  status: "soon" | "live" | "external";
-  href?: string;
-}[] = [
+/** Fallback if API/apps table unavailable — same seed as migration 033. */
+const FALLBACK_APPS: AppRow[] = [
   {
-    id: "journey",
-    name: "Journey",
+    id: 0,
+    slug: "journey",
+    title: "Journey",
     blurb:
       "Your enrollments and lesson progress in one place — process over pace, no leaderboards.",
     status: "live",
-    href: "/labs/journey",
+    href: "/app/journey",
   },
   {
-    id: "tradelog",
-    name: "Trade Log",
+    id: 0,
+    slug: "trade-log",
+    title: "Trade Log",
     blurb:
       "Record fills and structure outcomes — process first, not P&L theater.",
     status: "live",
-    href: "/labs/trade-log",
+    href: "/app/trade-log",
   },
   {
-    id: "journal",
-    name: "Journal",
+    id: 0,
+    slug: "journal",
+    title: "Journal",
     blurb:
       "Daily notes tied to the routine: preparation, selection, and review.",
     status: "soon",
+    href: "/app/journal",
   },
   {
-    id: "playbook",
-    name: "Playbook",
+    id: 0,
+    slug: "playbook",
+    title: "Playbook",
     blurb:
       "Your defined-risk setups and rules — the book you actually trade from.",
     status: "soon",
+    href: "/app/playbook",
   },
   {
-    id: "statistics",
-    name: "Statistics",
+    id: 0,
+    slug: "statistics",
+    title: "Statistics",
     blurb:
       "Adherence and process metrics — streaks and discipline, never profit claims.",
     status: "soon",
+    href: "/app/statistics",
   },
   {
-    id: "vexy",
-    name: "Vexy",
+    id: 0,
+    slug: "vexy",
+    title: "Vexy",
     blurb:
       "Cognitive partner for structure and doctrine — when the practice stack is wired.",
     status: "soon",
+    href: "/app/vexy",
   },
 ];
+
+type AppRow = {
+  id: number;
+  slug: string;
+  title: string;
+  blurb: string;
+  status: string;
+  href: string;
+};
+
+async function fetchApps(): Promise<AppRow[]> {
+  try {
+    const data = await apiGet<{ apps: AppRow[] }>("/api/apps");
+    return data.apps?.length ? data.apps : FALLBACK_APPS;
+  } catch {
+    return FALLBACK_APPS;
+  }
+}
 
 function collectionJsonLd(page: SitePage) {
   return {
@@ -85,7 +105,7 @@ function collectionJsonLd(page: SitePage) {
     "@type": "CollectionPage",
     name: `${page.title} — FatTail Labs`,
     description: metaDescriptionFromMd(page.description_md, page.title),
-    url: siteUrl("/labs"),
+    url: siteUrl("/app"),
     isPartOf: { "@type": "WebSite", name: "FatTail Labs", url: siteUrl("/") },
     about: {
       "@type": "Thing",
@@ -94,8 +114,22 @@ function collectionJsonLd(page: SitePage) {
   };
 }
 
+function normalizeAppsPage(page: SitePage): SitePage {
+  if (page.title === "Labs" || page.title === "labs") {
+    return {
+      ...page,
+      title: "Apps",
+      faq_title:
+        page.faq_title === "Labs FAQ" ? "Apps FAQ" : page.faq_title,
+    };
+  }
+  return page;
+}
+
 export async function generateMetadata(): Promise<Metadata> {
-  const page = await fetchSitePage("labs").catch(() => FALLBACK);
+  const page = normalizeAppsPage(
+    await fetchSitePage("labs").catch(() => FALLBACK),
+  );
   const description = metaDescriptionFromMd(
     page.description_md,
     "Member tools for practice: Trade Log, Journal, Playbook, Statistics, and Vexy.",
@@ -103,19 +137,24 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: page.title,
     description,
-    alternates: { canonical: siteUrl("/labs") },
+    alternates: { canonical: siteUrl("/app") },
     openGraph: {
       title: `${page.title} — FatTail Labs`,
       description,
-      url: siteUrl("/labs"),
+      url: siteUrl("/app"),
       siteName: "FatTail Labs",
       type: "website",
     },
   };
 }
 
-export default async function LabsPage() {
-  const page = await fetchSitePage("labs").catch(() => FALLBACK);
+export default async function AppsPage() {
+  const [page, apps] = await Promise.all([
+    fetchSitePage("labs")
+      .then(normalizeAppsPage)
+      .catch(() => FALLBACK),
+    fetchApps(),
+  ]);
   const jsonLd = collectionJsonLd(page);
 
   return (
@@ -126,12 +165,12 @@ export default async function LabsPage() {
       />
       <SectionHubShell page={page}>
         <ul className="grid gap-4 sm:grid-cols-2">
-          {TOOLS.map((t) => (
-            <li key={t.id}>
+          {apps.map((t) => (
+            <li key={t.id || t.slug}>
               <div className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-5">
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-semibold text-[var(--color-label)]">
-                    {t.name}
+                    {t.title}
                   </h2>
                   {t.status === "soon" && (
                     <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
@@ -147,9 +186,9 @@ export default async function LabsPage() {
                 <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--color-label-secondary)]">
                   {t.blurb}
                 </p>
-                {t.href ? (
+                {t.status === "live" ? (
                   <Link
-                    href={t.href}
+                    href={t.href || `/app/${t.slug}`}
                     className="mt-4 text-sm font-medium text-[var(--color-tint)] hover:underline"
                   >
                     Open →
@@ -167,7 +206,7 @@ export default async function LabsPage() {
         <p className="mt-10 text-sm text-[var(--color-label-secondary)]">
           Looking for courses?{" "}
           <Link
-            href="/courses"
+            href="/course"
             className="text-[var(--color-tint)] hover:underline"
           >
             Course library

@@ -139,7 +139,7 @@ export default function LiveSessions() {
                 </span>
                 {s.replay_course_slug ? (
                   <Link
-                    href={`/courses/${s.replay_course_slug}`}
+                    href={`/course/${s.replay_course_slug}`}
                     className="ml-auto rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-1 text-xs font-medium text-[var(--color-label)]"
                   >
                     Watch replay

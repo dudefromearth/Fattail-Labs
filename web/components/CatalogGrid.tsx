@@ -137,7 +137,7 @@ function CardEditor({
       return;
     }
     // In-place: patch local catalog state; revalidate for other visitors only.
-    void revalidate(["/courses", `/courses/${course.slug}`]);
+    void revalidate(["/course", `/course/${course.slug}`]);
     onSaved(patch);
     setBusy(false);
     onClose();
@@ -345,7 +345,7 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
         {visible.map((c) => (
           <div key={c.slug} className="relative">
             <Link
-              href={`/courses/${c.slug}`}
+              href={`/course/${c.slug}`}
               className="surface-card block overflow-hidden border border-[var(--color-separator)] transition-shadow hover:shadow-[var(--elevation-2)]"
             >
               <Banner course={c} />

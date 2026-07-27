@@ -13,14 +13,26 @@ router = APIRouter(prefix="/api/admin", tags=["admin-resources"])
 
 
 def _http_err(exc: rd.ResourceError) -> HTTPException:
-    status = 404 if exc.code in (
+    if exc.code == "NAME_CONFLICT":
+        status = 409
+    elif exc.code in (
         "NOT_FOUND",
         "VERSION_NOT_FOUND",
         "COURSE_NOT_FOUND",
         "LINK_NOT_FOUND",
         "NO_VERSIONS",
-    ) else 422
-    return HTTPException(status_code=status, detail={"message": str(exc), "code": exc.code})
+    ):
+        status = 404
+    else:
+        status = 422
+    return HTTPException(
+        status_code=status,
+        detail={
+            "message": str(exc),
+            "code": exc.code,
+            "field": "title" if exc.code == "NAME_CONFLICT" else None,
+        },
+    )
 
 
 @router.get("/resources")
@@ -160,18 +172,42 @@ async def admin_patch_resource(slug: str, request: Request) -> dict:
         except rd.ResourceError as exc:
             raise _http_err(exc) from exc
 
-    sets = ", ".join(f"{k} = %s" for k in body)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"UPDATE resources SET {sets} WHERE slug = %s",
-                [*body.values(), slug],
+                "SELECT id, slug, title FROM resources WHERE slug = %s", (slug,)
             )
-            if cur.rowcount == 0:
-                cur.execute("SELECT 1 FROM resources WHERE slug = %s", (slug,))
-                if not cur.fetchone():
-                    raise HTTPException(status_code=404, detail="Resource not found")
-    return {"ok": True, "updated": sorted(body)}
+            existing = cur.fetchone()
+            if not existing:
+                raise HTTPException(status_code=404, detail="Resource not found")
+
+            # Name and /resource/{slug} stay in lockstep. Conflicts fail the save.
+            if "title" in body:
+                title = (str(body["title"]) or "").strip() or "Resource"
+                body["title"] = title
+                try:
+                    body["slug"] = rd.claim_slug(
+                        cur, title, exclude_id=int(existing["id"])
+                    )
+                except rd.ResourceError as exc:
+                    raise _http_err(exc) from exc
+
+            sets = ", ".join(f"{k} = %s" for k in body)
+            cur.execute(
+                f"UPDATE resources SET {sets} WHERE id = %s",
+                [*body.values(), existing["id"]],
+            )
+            cur.execute(
+                "SELECT slug, title FROM resources WHERE id = %s",
+                (existing["id"],),
+            )
+            row = cur.fetchone()
+    return {
+        "ok": True,
+        "updated": sorted(body),
+        "slug": row["slug"],
+        "title": row["title"],
+    }
 
 
 @router.post("/resources/{slug}/versions")

@@ -61,7 +61,7 @@ export function CourseResourcesEditor() {
   const load = useCallback(async () => {
     if (!courseSlug) return;
     setLoading(true);
-    const r = await fetch(`/api/admin/courses/${courseSlug}/resources`, {
+    const r = await fetch(`/api/admin/courses/${courseSlug}/resource`, {
       credentials: "same-origin",
     });
     setLoading(false);
@@ -95,7 +95,7 @@ export function CourseResourcesEditor() {
     else if (item.published_version != null)
       body.pinned_version = item.published_version;
     const r = await postJSON(
-      `/api/admin/courses/${courseSlug}/resources`,
+      `/api/admin/courses/${courseSlug}/resource`,
       body,
     );
     if (r.ok) {
@@ -120,7 +120,7 @@ export function CourseResourcesEditor() {
       return;
     }
     const created = await cr.json();
-    const att = await postJSON(`/api/admin/courses/${courseSlug}/resources`, {
+    const att = await postJSON(`/api/admin/courses/${courseSlug}/resource`, {
       resource_slug: created.slug,
       pinned_version: created.version || 1,
       free_preview: free,
@@ -138,7 +138,7 @@ export function CourseResourcesEditor() {
 
   async function setPin(slug: string, version: number) {
     const r = await patchJSON(
-      `/api/admin/courses/${courseSlug}/resources/${slug}`,
+      `/api/admin/courses/${courseSlug}/resource/${slug}`,
       { pinned_version: version },
     );
     if (r.ok) await load();
@@ -147,7 +147,7 @@ export function CourseResourcesEditor() {
 
   async function setFreePreview(slug: string, free_preview: boolean) {
     const r = await patchJSON(
-      `/api/admin/courses/${courseSlug}/resources/${slug}`,
+      `/api/admin/courses/${courseSlug}/resource/${slug}`,
       { free_preview },
     );
     if (r.ok) await load();
@@ -164,7 +164,7 @@ export function CourseResourcesEditor() {
     )
       return;
     const r = await del(
-      `/api/admin/courses/${courseSlug}/resources/${slug}`,
+      `/api/admin/courses/${courseSlug}/resource/${slug}`,
     );
     if (r.ok) await load();
     else await appAlert({ title: "Unlink failed", message: await r.text() });

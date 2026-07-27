@@ -41,7 +41,7 @@ export default async function CoursesPage() {
             {hubs.map((c) => (
               <Link
                 key={c.slug}
-                href={`/courses/category/${c.slug}`}
+                href={`/course/category/${c.slug}`}
                 className="chip"
               >
                 {c.name}

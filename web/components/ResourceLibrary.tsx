@@ -245,8 +245,25 @@ function ResourceAdminPanel({
       emoji: emoji.trim() || null,
     });
     setBusy(false);
-    if (res.ok) onDone();
-    else await appAlert({ title: "Save failed", message: await res.text() });
+    if (res.ok) {
+      onDone();
+      return;
+    }
+    let message = await res.text();
+    try {
+      const j = JSON.parse(message) as {
+        detail?: { message?: string; code?: string } | string;
+      };
+      const d = j.detail;
+      if (typeof d === "object" && d?.message) message = d.message;
+      else if (typeof d === "string") message = d;
+    } catch {
+      /* plain */
+    }
+    await appAlert({
+      title: res.status === 409 ? "Name already in use" : "Save failed",
+      message,
+    });
   }
 
   async function addVersion() {
@@ -581,10 +598,18 @@ export default function ResourceLibrary() {
                     </span>
                   )}
                   <span className="mt-1 flex flex-wrap gap-1">
+                    {r.source === "resource" && r.slug && (
+                      <Link
+                        href={`/resource/${r.slug}`}
+                        className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] text-emerald-800 hover:underline dark:bg-emerald-950 dark:text-emerald-200"
+                      >
+                        Open page
+                      </Link>
+                    )}
                     {courses.map((c) => (
                       <Link
                         key={c.slug}
-                        href={`/courses/${c.slug}`}
+                        href={`/course/${c.slug}`}
                         className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-600 hover:underline dark:bg-zinc-800"
                       >
                         {c.title}

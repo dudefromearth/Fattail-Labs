@@ -11,7 +11,7 @@ type Step = {
   level: string;
   percent: number;
   done: boolean;
-  resume: { lesson_slug: string } | null;
+  resume: { module_slug: string; lesson_slug: string } | null;
 };
 
 type PathwayData = {
@@ -209,7 +209,7 @@ export default function Pathway() {
               </span>
               <span className="min-w-0 flex-1">
                 <Link
-                  href={`/courses/${s.slug}`}
+                  href={`/course/${s.slug}`}
                   className="font-semibold hover:underline"
                 >
                   {s.title}
@@ -228,8 +228,8 @@ export default function Pathway() {
                 <Link
                   href={
                     s.resume
-                      ? `/courses/${s.slug}/lessons/${s.resume.lesson_slug}`
-                      : `/courses/${s.slug}`
+                      ? `/course/${s.slug}/${s.resume.module_slug}/${s.resume.lesson_slug}`
+                      : `/course/${s.slug}`
                   }
                   className="rounded-full bg-emerald-500 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-600"
                 >

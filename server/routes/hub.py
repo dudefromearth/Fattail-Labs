@@ -48,6 +48,7 @@ def _load_page(cur, slug: str) -> dict | None:
 
 
 def _normalize_intro_video_id(raw: str | None) -> str | None:
+    """Return an 11-char YouTube id, or None. Never store truncated URLs."""
     import re
     from urllib.parse import parse_qs, urlparse
 
@@ -58,18 +59,28 @@ def _normalize_intro_video_id(raw: str | None) -> str | None:
         return None
     if re.fullmatch(r"[\w-]{11}", raw):
         return raw
+    # Allow paste without scheme (youtube.com/watch?v=…)
+    if "://" not in raw and ("youtube" in raw or "youtu.be" in raw):
+        raw = "https://" + raw
     try:
         u = urlparse(raw)
-        if "youtu.be" in (u.netloc or ""):
-            cand = u.path.strip("/").split("/")[0]
+        host = (u.netloc or "").lower().lstrip("www.")
+        cand = None
+        if "youtu.be" in host:
+            cand = (u.path or "").strip("/").split("/")[0] or None
         else:
             cand = parse_qs(u.query).get("v", [None])[0]
             if not cand:
-                m = re.search(r"/(?:embed|shorts)/([\w-]{11})", u.path or "")
+                m = re.search(
+                    r"/(?:embed|shorts|live)/([\w-]{11})", u.path or ""
+                )
                 cand = m.group(1) if m else None
-        return cand if cand and re.fullmatch(r"[\w-]{11}", cand) else raw[:32]
+        if cand and re.fullmatch(r"[\w-]{11}", cand):
+            return cand
     except Exception:
-        return raw[:32]
+        pass
+    # Invalid paste: do not silently store a truncated URL in varchar(32).
+    return None
 
 
 def _put_page(cur, slug: str, body: dict) -> dict:
@@ -117,10 +128,20 @@ def _put_page(cur, slug: str, body: dict) -> dict:
                        WHERE id = %s AND page_slug = %s""",
                     (sort_order, q, a, int(item_id), slug),
                 )
+                # MySQL reports rowcount=0 when the row matched but values
+                # were unchanged — that is NOT "not found". Only 404 when
+                # the id truly is missing for this page.
                 if cur.rowcount == 0:
-                    raise HTTPException(
-                        status_code=404, detail=f"FAQ item {item_id} not found"
+                    cur.execute(
+                        """SELECT 1 FROM site_faq_items
+                           WHERE id = %s AND page_slug = %s""",
+                        (int(item_id), slug),
                     )
+                    if cur.fetchone() is None:
+                        raise HTTPException(
+                            status_code=404,
+                            detail=f"FAQ item {item_id} not found",
+                        )
                 keep_ids.append(int(item_id))
             else:
                 cur.execute(

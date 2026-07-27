@@ -16,6 +16,7 @@ type JourneyCourse = {
   enrolled_at: string;
   completed_at: string | null;
   resume: {
+    module_slug: string;
     lesson_slug: string;
     title: string;
     module_title: string;
@@ -67,8 +68,8 @@ export default function JourneyPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-10">
       <nav className="text-sm text-[var(--color-label-secondary)]">
-        <Link href="/labs" className="hover:underline">
-          Labs
+        <Link href="/app" className="hover:underline">
+          Apps
         </Link>
         <span className="mx-2">›</span>
         <span>Journey</span>
@@ -134,7 +135,7 @@ export default function JourneyPage() {
             {data.courses.length === 0 && (
               <li className="text-sm text-[var(--color-label-secondary)]">
                 No enrollments yet.{" "}
-                <Link href="/courses" className="text-[var(--color-tint)]">
+                <Link href="/course" className="text-[var(--color-tint)]">
                   Browse courses
                 </Link>
               </li>
@@ -146,7 +147,7 @@ export default function JourneyPage() {
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <Link
-                    href={`/courses/${c.slug}`}
+                    href={`/course/${c.slug}`}
                     className="font-semibold text-[var(--color-label)] hover:underline"
                   >
                     {c.title}
@@ -163,7 +164,7 @@ export default function JourneyPage() {
                 </div>
                 {c.resume && !c.completed_at && (
                   <Link
-                    href={`/courses/${c.slug}/lessons/${c.resume.lesson_slug}`}
+                    href={`/course/${c.slug}/${c.resume.module_slug}/${c.resume.lesson_slug}`}
                     className="mt-3 inline-block text-sm font-medium text-[var(--color-tint)] hover:underline"
                   >
                     Continue: {c.resume.title} →

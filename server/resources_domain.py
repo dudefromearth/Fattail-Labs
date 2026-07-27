@@ -41,17 +41,48 @@ def _require_kind(k: str) -> str:
     return k
 
 
-def unique_slug(cur, base: str) -> str:
-    """Return base or base-2, base-3, … not already in resources."""
+def unique_slug(
+    cur, base: str, *, exclude_id: int | None = None
+) -> str:
+    """Return base or base-2, base-3, … not already in resources.
+
+    Used for *create* defaults only. Renames use claim_slug (fail on conflict).
+    exclude_id: when renaming legacy callers, that resource's slug is free.
+    """
     base = slugify(base)[:200]
-    cur.execute("SELECT slug FROM resources WHERE slug = %s OR slug LIKE %s", (base, f"{base}-%"))
-    taken = {r["slug"] for r in cur.fetchall()}
+    cur.execute(
+        "SELECT id, slug FROM resources WHERE slug = %s OR slug LIKE %s",
+        (base, f"{base}-%"),
+    )
+    taken: set[str] = set()
+    for r in cur.fetchall():
+        if exclude_id is not None and r["id"] == exclude_id:
+            continue
+        taken.add(r["slug"])
     if base not in taken:
         return base
     n = 2
     while f"{base}-{n}" in taken:
         n += 1
     return f"{base}-{n}"
+
+
+def claim_slug(
+    cur, base: str, *, exclude_id: int | None = None
+) -> str:
+    """Exact slug from title, or raise ResourceError NAME_CONFLICT."""
+    base = slugify(base)[:200]
+    cur.execute("SELECT id, title FROM resources WHERE slug = %s", (base,))
+    row = cur.fetchone()
+    if row is not None and (
+        exclude_id is None or int(row["id"]) != int(exclude_id)
+    ):
+        raise ResourceError(
+            f"Another resource already uses “{row['title']}” "
+            f"(/resource/{base}). Choose a different name.",
+            code="NAME_CONFLICT",
+        )
+    return base
 
 
 def create_resource(

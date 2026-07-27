@@ -53,6 +53,10 @@ function FaqItemView({
                   onChange={(e) =>
                     edit!.setFaqField(item.id, "question", e.target.value)
                   }
+                  onBlur={() => {
+                    // FAQ list only — never coupled to title/video page fields.
+                    void edit!.commitFaqs();
+                  }}
                   className="w-full rounded border border-emerald-400/60 bg-transparent px-2 py-1 outline-none ring-emerald-500 focus:ring-2"
                   placeholder="Question"
                 />
@@ -79,6 +83,9 @@ function FaqItemView({
             <HubEditableMarkdown
               value={item.answer_md}
               onChange={(md) => edit!.setFaqField(item.id, "answer_md", md)}
+              onCommit={async () => {
+                await edit!.commitFaqs();
+              }}
             />
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
               <button

@@ -42,7 +42,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <div className="ml-auto flex items-center gap-3 text-sm">
             <AdminNotifications />
             <Link
-              href="/courses"
+              href="/course"
               className="text-zinc-500 underline-offset-2 hover:underline"
               data-testid="admin-view-site"
             >

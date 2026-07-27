@@ -15,6 +15,7 @@ type ContinueCourse = {
     percent: number;
   };
   resume: {
+    module_slug: string;
     lesson_slug: string;
     title: string;
     module_title: string;
@@ -81,7 +82,7 @@ export default function ContinueLearning() {
           Start with the flagship — stop the bleeding first.
         </p>
         <Link
-          href="/courses/first-stop-the-bleeding"
+          href="/course/first-stop-the-bleeding"
           className="mt-4 inline-block rounded-full bg-emerald-500 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
         >
           First, Stop the Bleeding
@@ -95,7 +96,7 @@ export default function ContinueLearning() {
       {state.courses.map(({ course, resume }) => (
         <Link
           key={course.slug}
-          href={`/courses/${course.slug}/lessons/${resume.lesson_slug}`}
+          href={`/course/${course.slug}/${resume.module_slug}/${resume.lesson_slug}`}
           className="group surface-card border border-[var(--color-separator)] p-5 transition-shadow hover:shadow-[var(--elevation-2)]"
         >
           <div className="flex items-baseline justify-between gap-3">

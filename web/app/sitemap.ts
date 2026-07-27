@@ -14,7 +14,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   );
 
   const courses: MetadataRoute.Sitemap = data.courses.map((c) => ({
-    url: siteUrl(`/courses/${c.slug}`),
+    url: siteUrl(`/course/${c.slug}`),
     lastModified: c.published_at ? new Date(c.published_at) : undefined,
     changeFrequency: "weekly",
     priority: 0.8,
@@ -25,7 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const hubs: MetadataRoute.Sitemap = cats
     .filter((c) => c.course_count > 0)
     .map((c) => ({
-      url: siteUrl(`/courses/category/${c.slug}`),
+      url: siteUrl(`/course/category/${c.slug}`),
       changeFrequency: "weekly" as const,
       priority: 0.7,
     }));
@@ -41,7 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         m.lessons
           .filter((l) => l.free_preview)
           .map((l) => ({
-            url: siteUrl(`/courses/${c.slug}/lessons/${l.slug}`),
+            url: siteUrl(`/course/${c.slug}/${m.slug}/${l.slug}`),
             changeFrequency: "weekly" as const,
             priority: 0.6,
           })),
@@ -55,7 +55,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1,
     },
     {
-      url: siteUrl("/courses"),
+      url: siteUrl("/course"),
       changeFrequency: "daily",
       priority: 0.95,
     },
@@ -70,14 +70,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
-      url: siteUrl("/labs"),
+      url: siteUrl("/app"),
       changeFrequency: "weekly",
       priority: 0.75,
     },
     {
-      url: siteUrl("/resources"),
+      url: siteUrl("/resource"),
       changeFrequency: "weekly",
       priority: 0.75,
+    },
+    {
+      url: siteUrl("/campaign"),
+      changeFrequency: "weekly",
+      priority: 0.6,
     },
     {
       url: siteUrl("/about"),

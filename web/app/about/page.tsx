@@ -104,7 +104,7 @@ export default function AboutPage() {
 
       <div className="mt-10 flex flex-wrap items-center gap-3">
         <Link
-          href="/courses"
+          href="/course"
           className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
         >
           Browse the Courses

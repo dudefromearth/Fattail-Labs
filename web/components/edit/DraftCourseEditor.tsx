@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import CourseTabs from "@/components/CourseTabs";
 import AdminEditBar from "@/components/edit/AdminEditBar";
-import { EditProvider, useEdit } from "@/components/edit/EditContext";
+import { EditProvider } from "@/components/edit/EditContext";
 import { EditableSelect, EditableText } from "@/components/edit/Editable";
 import { CategoriesCell, HeroImageChip } from "@/components/edit/EditorExtras";
 import { TrailerEditChip } from "@/components/TrailerHero";
@@ -29,6 +29,7 @@ type AdminCourse = {
   attachments: { id: number; title: string; kind: string; url: string; free_preview?: boolean }[];
   modules: {
     module_id: number;
+    slug?: string;
     title: string;
     kind: string;
     lessons: {
@@ -66,6 +67,7 @@ function adapt(a: AdminCourse): CourseDetail {
       avatar_url: null,
     })),
     modules: a.modules.map((m) => ({
+      slug: m.slug || `module-${m.module_id}`,
       title: m.title,
       kind: m.kind as CourseDetail["modules"][number]["kind"],
       lessons: m.lessons.map((l) => ({
@@ -87,17 +89,13 @@ function adapt(a: AdminCourse): CourseDetail {
 }
 
 function DraftBody({ course }: { course: CourseDetail }) {
-  const edit = useEdit();
-  useEffect(() => {
-    if (edit && !edit.editMode) edit.setEditMode(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [edit?.isAdmin]);
-
+  // Edit mode is URL-backed (?edit=1). Create/import open with that query;
+  // Exit clears it so browser Back does not re-enter edit.
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10 pb-24">
       <AdminEditBar />
       <nav className="flex items-center gap-2 text-sm text-zinc-500">
-        <Link href="/courses" className="hover:underline">
+        <Link href="/course" className="hover:underline">
           All Courses
         </Link>
         <span>›</span>

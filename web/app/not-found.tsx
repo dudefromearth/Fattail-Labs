@@ -7,7 +7,7 @@ import DraftCourseEditor from "@/components/edit/DraftCourseEditor";
 type Phase = "boot" | "loading" | "draft" | "gone";
 
 /**
- * Global 404. For /courses/{slug}: admins with a draft (or archived) course
+ * Global 404. For /course/{slug}: admins with a draft (or archived) course
  * get the draft editor at the public URL — no /admin bounce. Everyone else
  * sees the standard 404. Drafts stay invisible to non-admins.
  */
@@ -16,7 +16,7 @@ export default function NotFound() {
   const [slug, setSlug] = useState<string | null>(null);
 
   useEffect(() => {
-    const match = window.location.pathname.match(/^\/courses\/([^/]+)\/?$/);
+    const match = window.location.pathname.match(/^\/course\/([^/]+)\/?$/);
     if (!match) {
       setPhase("gone");
       return;
@@ -62,7 +62,7 @@ export default function NotFound() {
         This page doesn&apos;t exist — or isn&apos;t published yet.
       </p>
       <Link
-        href="/courses"
+        href="/course"
         className="mt-8 rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
       >
         Browse the courses

@@ -53,7 +53,7 @@ export default function DashboardExtras() {
           <div className="mt-3">
             <p className="text-sm text-zinc-500">Next step</p>
             <Link
-              href={`/courses/${nextStep.slug}`}
+              href={`/course/${nextStep.slug}`}
               className="font-semibold hover:underline"
             >
               {nextStep.title}

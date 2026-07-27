@@ -4,6 +4,56 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-07-26 — Every named entity: stable id + name-derived slug (for versioning)
+
+Each **course**, **module**, **lesson**, **resource**, and **app** always has:
+- **`id`** — permanent unique primary key (bigint). Never changes on rename.
+- **`title`** — display name.
+- **`slug`** — URL segment derived from title (unique in its scope). Changes with rename.
+
+**Rationale: versioning.** Version rows, pins, and history hang on the stable **id**,
+not the slug. Renaming must not orphan prior versions or break references. Public URLs
+stay human-readable names; identity and version lineage stay on id. Resources already
+version via `resource_versions` → `resource_id`. Course/module/lesson/app content
+versions attach the same way when introduced.
+
+Public and admin APIs return `id` + `slug` + `title` together. Mutations that need a
+stable target use `id` (e.g. `PUT /api/admin/lessons/{id}`); public routes use the
+name path `/course/{course}/{module}/{lesson}` and `/app/{app}` resolved to the
+underlying ids. Apps live in table `apps` (migration 033); catalog is
+`GET /api/apps`.
+
+## 2026-07-26 — Title and public slug stay in lockstep
+
+Whenever an admin renames a **course**, **lesson**, or **resource**, the server
+rewrites the public slug from the new title. Responses return the new `slug`; the
+web editor navigates when a course slug changes so the address bar matches the name.
+**All public URLs must be unique as full paths.** Lesson path is
+`/course/{course}/{module}/{lesson}` — uniqueness is the **combination**. Lesson slugs
+need only be unique **within a module** (same lesson name OK in two modules of one course).
+Module slugs unique within a course; course slugs site-wide under `/course/…`; resources
+under `/resource/…`. Rename collisions return **409 NAME_CONFLICT** (no silent `-2`);
+the editor keeps the field open with a red halo. Create defaults may still allocate
+`-2`/`-3` for default titles.
+
+## 2026-07-26 — Public SEO namespaces: singular content roots
+
+Public URLs use singular category roots for clean SEO hierarchy:
+
+| Namespace | Shape | Notes |
+|-----------|--------|--------|
+| Courses | `/course`, `/course/{course}`, `/course/{course}/{lesson}` | Lesson path drops the old `/lessons/` segment |
+| Campaigns | `/campaign`, `/campaign/{name}` | Catalog + reserved detail (content TBD) |
+| Resources | `/resource`, `/resource/{name}` | Library + first-class resource pages |
+| Apps (Labs tab) | `/app`, `/app/{name}` | Journey, Trade Log, future Journal/Playbook |
+
+Rationale: two primary content families (courses, campaigns) plus resources and member apps
+need distinct, short, crawlable namespaces. No legacy redirects — public URLs were not
+established yet; these are the first canonical shapes. Backend API paths stay plural under
+`/api/courses`, `/api/resources` (API contract, not SEO).
+
+Helpers: `web/lib/paths.ts`.
+
 ## 2026-07-20 — Product model benchmarked on AI Labs by First Movers
 
 Live teardown of labs.firstmovers.ai (custom Next.js + Stripe, no LMS platform). Adopted:

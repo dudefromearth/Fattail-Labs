@@ -28,7 +28,7 @@ function collectionJsonLd(page: SitePage) {
     "@type": "CollectionPage",
     name: `${page.title} — FatTail Labs`,
     description: metaDescriptionFromMd(page.description_md, page.title),
-    url: siteUrl("/resources"),
+    url: siteUrl("/resource"),
     isPartOf: { "@type": "WebSite", name: "FatTail Labs", url: siteUrl("/") },
     about: {
       "@type": "Thing",
@@ -46,11 +46,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: page.title,
     description,
-    alternates: { canonical: siteUrl("/resources") },
+    alternates: { canonical: siteUrl("/resource") },
     openGraph: {
       title: `${page.title} — FatTail Labs`,
       description,
-      url: siteUrl("/resources"),
+      url: siteUrl("/resource"),
       siteName: "FatTail Labs",
       type: "website",
     },

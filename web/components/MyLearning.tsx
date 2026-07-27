@@ -11,7 +11,11 @@ type Enrollment = {
   enrolled_at: string;
   completed_at: string | null;
   progress: { total: number; done: number; percent: number };
-  resume: { lesson_slug: string; title: string } | null;
+  resume: {
+    module_slug: string;
+    lesson_slug: string;
+    title: string;
+  } | null;
 };
 
 type ActivityEvent = {
@@ -19,12 +23,14 @@ type ActivityEvent = {
   at: string;
   course_slug: string;
   course_title: string;
+  module_slug?: string;
   lesson_slug?: string;
   lesson_title?: string;
 };
 
 type QuizAttempt = {
   quiz_title: string;
+  module_slug?: string;
   lesson_slug: string;
   course_slug: string;
   course_title: string;
@@ -162,7 +168,7 @@ export default function MyLearning() {
         {data.enrollments.length === 0 ? (
           <p className="mt-3 text-sm text-zinc-500">
             No enrollments yet —{" "}
-            <Link href="/courses" className="text-emerald-600 hover:underline">
+            <Link href="/course" className="text-emerald-600 hover:underline">
               browse the courses
             </Link>
             .
@@ -177,7 +183,7 @@ export default function MyLearning() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <Link
-                      href={`/courses/${e.course.slug}`}
+                      href={`/course/${e.course.slug}`}
                       className="font-semibold hover:underline"
                     >
                       {e.course.title}
@@ -193,7 +199,7 @@ export default function MyLearning() {
                   </div>
                   {e.completed_at ? (
                     <Link
-                      href={`/courses/${e.course.slug}`}
+                      href={`/course/${e.course.slug}`}
                       className="chip font-medium"
                     >
                       Review
@@ -201,7 +207,7 @@ export default function MyLearning() {
                   ) : (
                     e.resume && (
                       <Link
-                        href={`/courses/${e.course.slug}/lessons/${e.resume.lesson_slug}`}
+                        href={`/course/${e.course.slug}/${e.resume.module_slug}/${e.resume.lesson_slug}`}
                         className="rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
                       >
                         Continue → {e.resume.title.slice(0, 32)}
@@ -242,7 +248,11 @@ export default function MyLearning() {
                 className="surface-card flex flex-wrap items-center gap-x-3 border border-[var(--color-separator)] px-4 py-3 text-sm"
               >
                 <Link
-                  href={`/courses/${q.course_slug}/lessons/${q.lesson_slug}`}
+                  href={
+                    q.module_slug
+                      ? `/course/${q.course_slug}/${q.module_slug}/${q.lesson_slug}`
+                      : `/course/${q.course_slug}`
+                  }
                   className="font-medium hover:underline"
                 >
                   {q.quiz_title}
@@ -278,7 +288,11 @@ export default function MyLearning() {
                 {ev.lesson_slug ? (
                   <>
                     <Link
-                      href={`/courses/${ev.course_slug}/lessons/${ev.lesson_slug}`}
+                      href={
+                        ev.module_slug
+                          ? `/course/${ev.course_slug}/${ev.module_slug}/${ev.lesson_slug}`
+                          : `/course/${ev.course_slug}`
+                      }
                       className="font-medium hover:underline"
                     >
                       {ev.lesson_title}
@@ -287,7 +301,7 @@ export default function MyLearning() {
                   </>
                 ) : (
                   <Link
-                    href={`/courses/${ev.course_slug}`}
+                    href={`/course/${ev.course_slug}`}
                     className="font-medium hover:underline"
                   >
                     {ev.course_title}

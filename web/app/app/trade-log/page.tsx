@@ -110,8 +110,8 @@ export default function TradeLogPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-10 pb-24">
       <nav className="text-sm text-[var(--color-label-secondary)]">
-        <Link href="/labs" className="hover:underline">
-          Labs
+        <Link href="/app" className="hover:underline">
+          Apps
         </Link>
         <span className="mx-2">›</span>
         <span>Trade Log</span>

@@ -59,10 +59,17 @@ async def submit_quiz(course_slug: str, lesson_slug: str, request: Request) -> d
     answers = body.get("answers") or {}
     if not isinstance(answers, dict):
         raise HTTPException(status_code=422, detail="answers must be an object")
+    module_slug = body.get("module_slug") or None
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            lesson = _lesson_for_access(cur, course_slug, lesson_slug, claims["role"])
+            lesson = _lesson_for_access(
+                cur,
+                course_slug,
+                lesson_slug,
+                claims["role"],
+                module_slug=module_slug,
+            )
             if lesson["kind"] != "quiz":
                 raise HTTPException(status_code=422, detail="Not a quiz lesson")
             cur.execute(

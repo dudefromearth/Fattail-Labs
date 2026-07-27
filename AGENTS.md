@@ -269,3 +269,41 @@ process outcomes only; capacity over dependency.
 **New agents:** start from [`agents/bench/agent-template.md`](./agents/bench/agent-template.md).  
 **Process overview:** [`agents/README.md`](./agents/README.md).  
 **Roster deep dive:** [`agents/bench/README.md`](./agents/bench/README.md).
+
+---
+
+## Business Knowledge Vault (cross-project)
+
+Engineering memory stays in this repo. **Business** memory (clients, offers, decisions,
+positioning, commercial journal) lives in the shared vault:
+
+- Path: `/Users/ernie/knowledge`
+- Explainer: `/Users/ernie/knowledge/HOW-IT-WORKS.md`
+- Bench: Oscar (ingest), Uniform (query), X-ray (lint), Zulu (decisions/journal)
+- Activate: `Activate Zulu/Oscar/Uniform/X-ray…` or `/knowledge-bench`
+- User agents: `~/.grok/agents/{oscar,uniform,xray,zulu}.md`
+
+**Brand:** **FatTail / Fat Tail / fattail.ai** is current. FlyOnTheWall is **retired** (trademark vs flyonthewall.com). No new FOTW copy. See vault decision `wiki/decisions/2026-07-27-retire-flyonthewall-for-fattail.md`.
+
+**Priority (Coach):** **All current focus.** **Brand new; launch this week** (`labs.fattail.ai`).  
+
+**Strategic bets:** Labs + course/campaign creation; **agent interaction with the service** (huge growth potential). This **Agent Bench** exists because agents already drive Labs development — keep that leverage.
+
+**Product:** All clients’ **primary tool for managing their journey**.  
+- Member: **course content** + **apps** (Journey Tracker, Trade Log, Journal, …)  
+- Admin: **content distribution**; **agentic team produces courses and campaigns**; **monitor and interact with client journeys**  
+
+**Primary live service** (outside Labs): daily Discord coaching + daily livestreams + Sunday Retrospective.  
+Navigators also get more individual attention, periodic reviews, personal Coach guidance.  
+
+**Three big goals:** Observer acquisition · engagement · upgrade → Navigator Annual.  
+Vault: `/Users/ernie/knowledge/wiki/projects/fattail-labs.md`, `concepts/labs-value-thesis.md`.
+**Public FOTW alert:** Member-facing **UI/marketing copy** with FlyOnTheWall / **FOTW** → report to Coach. **OK for now:** technical `/fotw-sso` login path (not treated as public brand debt).
+### Bridge rules
+
+1. Product **Lima** continues to log engineering decisions in `Architecture/00-decision-log.md`.
+2. When a decision changes **business** reality (pricing, offer kill/keep, client
+   commitment, positioning), also run **Zulu** against the knowledge vault.
+3. Do not fork a second business wiki inside this product repo.
+4. **Uniform** may be asked “what does business memory already say about X?” before large
+   commercial features ship.

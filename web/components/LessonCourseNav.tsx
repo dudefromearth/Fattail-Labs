@@ -125,7 +125,7 @@ export default function LessonCourseNav({
     >
       <div className="border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
         <Link
-          href={`/courses/${course.slug}`}
+          href={`/course/${course.slug}`}
           className="text-sm font-semibold leading-snug hover:text-emerald-600"
         >
           {course.title}
@@ -148,7 +148,7 @@ export default function LessonCourseNav({
 
       <div className="max-h-[min(70vh,36rem)] overflow-y-auto py-2">
         {course.modules.map((mod, mi) => (
-          <div key={`${mi}-${mod.title}`} className="mb-1">
+          <div key={mod.slug || `${mi}-${mod.title}`} className="mb-1">
             <p className="px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
               {mod.title}
             </p>
@@ -157,9 +157,9 @@ export default function LessonCourseNav({
                 const current = l.slug === currentLessonSlug;
                 const completed = !!progress[l.slug]?.completed;
                 return (
-                  <li key={l.slug}>
+                  <li key={`${mod.slug}-${l.slug}`}>
                     <Link
-                      href={`/courses/${course.slug}/lessons/${l.slug}`}
+                      href={`/course/${course.slug}/${mod.slug}/${l.slug}`}
                       aria-current={current ? "page" : undefined}
                       className={`flex items-start gap-2 px-3 py-2 text-sm transition-colors ${
                         current

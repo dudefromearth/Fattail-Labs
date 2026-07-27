@@ -983,9 +983,9 @@ export default function BoardKanban() {
                     Placed draft:{" "}
                     <a
                       className="underline"
-                      href={`/courses/${selected.placed_course_slug}`}
+                      href={`/course/${selected.placed_course_slug}`}
                     >
-                      /courses/{selected.placed_course_slug}
+                      /course/{selected.placed_course_slug}
                     </a>
                     <button
                       type="button"

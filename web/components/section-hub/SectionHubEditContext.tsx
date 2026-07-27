@@ -85,7 +85,7 @@ export function SectionHubEditProvider({
       setDirty({});
       setEditMode(false);
       await revalidate([
-        slug === "labs" ? "/labs" : slug === "resources" ? "/resources" : "/live",
+        slug === "labs" ? "/app" : slug === "resources" ? "/resource" : "/live",
       ]);
     } finally {
       setSaving(false);

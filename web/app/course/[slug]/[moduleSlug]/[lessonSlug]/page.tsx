@@ -22,6 +22,7 @@ type LessonPayload = {
   title: string;
   kind: string;
   duration_seconds: number;
+  module_slug: string;
   module_title: string;
   course_slug: string;
   course_title: string;
@@ -40,6 +41,7 @@ type PublicLesson = {
   kind: string;
   duration_seconds: number;
   free_preview: boolean;
+  module_slug: string;
   module_title: string;
   course_slug: string;
   course_title: string;
@@ -48,6 +50,7 @@ type PublicLesson = {
 
 async function fetchLesson(
   slug: string,
+  moduleSlug: string,
   lessonSlug: string,
 ): Promise<{ status: number; lesson: LessonPayload | null; error?: string }> {
   // Forward the caller's session cookie — lesson access is session-dependent.
@@ -56,7 +59,7 @@ async function fetchLesson(
     const cookieHeader = await sessionCookieHeader();
     const res = await fetch(
       apiUrl(
-        `/api/courses/${encodeURIComponent(slug)}/lessons/${encodeURIComponent(lessonSlug)}`,
+        `/api/courses/${encodeURIComponent(slug)}/modules/${encodeURIComponent(moduleSlug)}/lessons/${encodeURIComponent(lessonSlug)}`,
       ),
       {
         cache: "no-store",
@@ -87,10 +90,11 @@ async function fetchLesson(
 
 async function fetchPublicLesson(
   slug: string,
+  moduleSlug: string,
   lessonSlug: string,
 ): Promise<PublicLesson | null> {
   return apiGet<PublicLesson>(
-    `/api/courses/${encodeURIComponent(slug)}/lessons/${encodeURIComponent(lessonSlug)}/public`,
+    `/api/courses/${encodeURIComponent(slug)}/modules/${encodeURIComponent(moduleSlug)}/lessons/${encodeURIComponent(lessonSlug)}/public`,
   ).catch(() => null);
 }
 
@@ -114,13 +118,13 @@ function minutes(seconds: number): string {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string; lessonSlug: string }>;
+  params: Promise<{ slug: string; moduleSlug: string; lessonSlug: string }>;
 }): Promise<Metadata> {
-  const { slug, lessonSlug } = await params;
-  const pub = await fetchPublicLesson(slug, lessonSlug);
+  const { slug, moduleSlug, lessonSlug } = await params;
+  const pub = await fetchPublicLesson(slug, moduleSlug, lessonSlug);
   if (!pub) return {};
   const description = describe(pub);
-  const url = siteUrl(`/courses/${slug}/lessons/${lessonSlug}`);
+  const url = siteUrl(`/course/${slug}/${moduleSlug}/${lessonSlug}`);
   return {
     title: `${pub.title} — ${pub.course_title}`,
     description,
@@ -148,7 +152,7 @@ function lessonJsonLd(pub: PublicLesson) {
     isPartOf: {
       "@type": "Course",
       name: pub.course_title,
-      url: siteUrl(`/courses/${pub.course_slug}`),
+      url: siteUrl(`/course/${pub.course_slug}`),
     },
     provider: { "@type": "Organization", name: "FatTail Labs" },
   };
@@ -163,38 +167,45 @@ function breadcrumbJsonLd(pub: PublicLesson) {
         "@type": "ListItem",
         position: 1,
         name: "Courses",
-        item: siteUrl("/courses"),
+        item: siteUrl("/course"),
       },
       {
         "@type": "ListItem",
         position: 2,
         name: pub.course_title,
-        item: siteUrl(`/courses/${pub.course_slug}`),
+        item: siteUrl(`/course/${pub.course_slug}`),
       },
       { "@type": "ListItem", position: 3, name: pub.title },
     ],
   };
 }
 
+type NavItem = { moduleSlug: string; slug: string; title: string };
 type Nav = {
-  prev: { slug: string; title: string } | null;
-  next: { slug: string; title: string } | null;
+  prev: NavItem | null;
+  next: NavItem | null;
 };
 
 function buildNavFromCourse(
   course: CourseDetail | null,
+  moduleSlug: string,
   lessonSlug: string,
 ): Nav | null {
   if (!course) return null;
-  const flat = course.modules.flatMap((m) => m.lessons);
-  const i = flat.findIndex((l) => l.slug === lessonSlug);
+  const flat: NavItem[] = course.modules.flatMap((m) =>
+    m.lessons.map((l) => ({
+      moduleSlug: m.slug,
+      slug: l.slug,
+      title: l.title,
+    })),
+  );
+  const i = flat.findIndex(
+    (l) => l.moduleSlug === moduleSlug && l.slug === lessonSlug,
+  );
   if (i < 0) return null;
   return {
-    prev: i > 0 ? { slug: flat[i - 1].slug, title: flat[i - 1].title } : null,
-    next:
-      i < flat.length - 1
-        ? { slug: flat[i + 1].slug, title: flat[i + 1].title }
-        : null,
+    prev: i > 0 ? flat[i - 1] : null,
+    next: i < flat.length - 1 ? flat[i + 1] : null,
   };
 }
 
@@ -204,7 +215,7 @@ function NavRow({ nav, courseSlug }: { nav: Nav | null; courseSlug: string }) {
     <div className="mt-8 flex items-center justify-between text-sm">
       {nav.prev ? (
         <Link
-          href={`/courses/${courseSlug}/lessons/${nav.prev.slug}`}
+          href={`/course/${courseSlug}/${nav.prev.moduleSlug}/${nav.prev.slug}`}
           className="chip"
         >
           ← {nav.prev.title}
@@ -214,7 +225,7 @@ function NavRow({ nav, courseSlug }: { nav: Nav | null; courseSlug: string }) {
       )}
       {nav.next && (
         <Link
-          href={`/courses/${courseSlug}/lessons/${nav.next.slug}`}
+          href={`/course/${courseSlug}/${nav.next.moduleSlug}/${nav.next.slug}`}
           className="rounded-full bg-zinc-900 px-4 py-2 font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
         >
           {nav.next.title} →
@@ -272,11 +283,11 @@ function AnonymousLanding({
         }}
       />
       <nav className="text-sm text-zinc-500">
-        <Link href="/courses" className="hover:underline">
+        <Link href="/course" className="hover:underline">
           All Courses
         </Link>
         <span className="mx-2">›</span>
-        <Link href={`/courses/${pub.course_slug}`} className="hover:underline">
+        <Link href={`/course/${pub.course_slug}`} className="hover:underline">
           {pub.course_title}
         </Link>
         <span className="mx-2">›</span>
@@ -348,20 +359,20 @@ function AnonymousLanding({
 export default async function LessonPlayerPage({
   params,
 }: {
-  params: Promise<{ slug: string; lessonSlug: string }>;
+  params: Promise<{ slug: string; moduleSlug: string; lessonSlug: string }>;
 }) {
-  const { slug, lessonSlug } = await params;
+  const { slug, moduleSlug, lessonSlug } = await params;
   const [{ status, lesson, error: fetchError }, course] = await Promise.all([
-    fetchLesson(slug, lessonSlug),
+    fetchLesson(slug, moduleSlug, lessonSlug),
     fetchCourse(slug).catch(() => null),
   ]);
 
   if (status === 404) notFound();
 
-  const nav = buildNavFromCourse(course, lessonSlug);
+  const nav = buildNavFromCourse(course, moduleSlug, lessonSlug);
 
   if (status === 401) {
-    const pub = await fetchPublicLesson(slug, lessonSlug);
+    const pub = await fetchPublicLesson(slug, moduleSlug, lessonSlug);
     if (!pub) notFound();
     return <AnonymousLanding pub={pub} nav={nav} course={course} />;
   }
@@ -381,13 +392,13 @@ export default async function LessonPlayerPage({
           )}
           <div className="mt-6 flex items-center justify-center gap-3">
             <Link
-              href={`/courses/${slug}/lessons/${lessonSlug}`}
+              href={`/course/${slug}/${moduleSlug}/${lessonSlug}`}
               className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
             >
               Try again
             </Link>
             <Link
-              href={`/courses/${slug}`}
+              href={`/course/${slug}`}
               className="chip font-medium px-6 py-2.5"
             >
               Back to course
@@ -415,7 +426,7 @@ export default async function LessonPlayerPage({
               Become a Member
             </Link>
             <Link
-              href={`/courses/${slug}`}
+              href={`/course/${slug}`}
               className="chip font-medium px-6 py-2.5"
             >
               Back to course
@@ -431,12 +442,12 @@ export default async function LessonPlayerPage({
   return (
     <LessonLayout course={course} currentLessonSlug={lesson.slug}>
       <nav className="text-sm text-zinc-500">
-        <Link href="/courses" className="hover:underline">
+        <Link href="/course" className="hover:underline">
           All Courses
         </Link>
         <span className="mx-2">›</span>
         <Link
-          href={`/courses/${lesson.course_slug}`}
+          href={`/course/${lesson.course_slug}`}
           className="hover:underline"
         >
           {lesson.course_title}

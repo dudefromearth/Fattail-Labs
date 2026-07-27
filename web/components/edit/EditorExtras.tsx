@@ -256,8 +256,8 @@ export function NewCourseCard() {
     setBusy(false);
     if (r.ok) {
       const { slug } = await r.json();
-      // Public course URL — draft editor mounts in place via not-found path.
-      router.push(`/courses/${slug}`);
+      // Open draft in edit mode via ?edit=1 (URL-backed; Exit clears it).
+      router.push(`/course/${slug}?edit=1`);
     } else {
       setBusy(false);
     }
@@ -382,7 +382,12 @@ export function CourseCanonicalMeta({
         <input
           className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           value={shortDesc}
-          onChange={(e) => edit.setField("course.short_description", e.target.value)}
+          onChange={(e) =>
+            edit.setField("course.short_description", e.target.value)
+          }
+          onBlur={(e) =>
+            void edit.commitField("course.short_description", e.target.value)
+          }
         />
       </label>
       <div className="flex flex-wrap gap-4 text-sm">
@@ -391,7 +396,10 @@ export function CourseCanonicalMeta({
             type="checkbox"
             checked={flagshipOn}
             onChange={(e) =>
-              edit.setField("course.flagship", e.target.checked ? "true" : "false")
+              void edit.commitField(
+                "course.flagship",
+                e.target.checked ? "true" : "false",
+              )
             }
           />
           <span>Flagship (stop-the-bleeding entry)</span>
@@ -401,7 +409,7 @@ export function CourseCanonicalMeta({
             type="checkbox"
             checked={certOn}
             onChange={(e) =>
-              edit.setField(
+              void edit.commitField(
                 "course.certification_enabled",
                 e.target.checked ? "true" : "false",
               )
@@ -417,7 +425,7 @@ export function CourseCanonicalMeta({
             className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-2 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             value={audience}
             onChange={(e) =>
-              edit.setField("course.audience_category", e.target.value)
+              void edit.commitField("course.audience_category", e.target.value)
             }
           >
             <option value="public">public</option>
@@ -435,6 +443,9 @@ export function CourseCanonicalMeta({
             onChange={(e) =>
               edit.setField("course.pathway_position", e.target.value)
             }
+            onBlur={(e) =>
+              void edit.commitField("course.pathway_position", e.target.value)
+            }
           />
         </label>
         <label className="block text-sm">
@@ -445,6 +456,12 @@ export function CourseCanonicalMeta({
             value={duration}
             onChange={(e) =>
               edit.setField("course.estimated_duration_minutes", e.target.value)
+            }
+            onBlur={(e) =>
+              void edit.commitField(
+                "course.estimated_duration_minutes",
+                e.target.value,
+              )
             }
           />
         </label>
@@ -458,10 +475,13 @@ export function CourseCanonicalMeta({
           onChange={(e) =>
             edit.setField("course.learning_outcomes", e.target.value)
           }
+          onBlur={(e) =>
+            void edit.commitField("course.learning_outcomes", e.target.value)
+          }
         />
       </label>
       <p className="text-xs text-zinc-400">
-        Saved with the edit bar. Included in Export package.
+        Autosaves when you leave a field. Included in Export package.
       </p>
     </div>
   );
@@ -513,7 +533,7 @@ export function ImportCourseCard() {
         return;
       }
       const { slug } = await r.json();
-      router.push(`/courses/${slug}`);
+      router.push(`/course/${slug}?edit=1`);
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Import failed");
       setBusy(false);

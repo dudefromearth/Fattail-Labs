@@ -35,11 +35,11 @@ export async function generateMetadata({
   return {
     title: course.title,
     description,
-    alternates: { canonical: siteUrl(`/courses/${course.slug}`) },
+    alternates: { canonical: siteUrl(`/course/${course.slug}`) },
     openGraph: {
       title: `${course.title} — FatTail Labs`,
       description,
-      url: siteUrl(`/courses/${course.slug}`),
+      url: siteUrl(`/course/${course.slug}`),
       siteName: "FatTail Labs",
       type: "website",
       ...(course.hero_image_url ? { images: [course.hero_image_url] } : {}),
@@ -68,7 +68,7 @@ function courseJsonLd(course: CourseDetail) {
     "@type": "Course",
     name: course.title,
     description: course.description_md.split("\n\n")[0],
-    url: siteUrl(`/courses/${course.slug}`),
+    url: siteUrl(`/course/${course.slug}`),
     ...(course.hero_image_url ? { image: course.hero_image_url } : {}),
     provider: {
       "@type": "Organization",
@@ -109,13 +109,13 @@ function breadcrumbJsonLd(course: CourseDetail) {
         "@type": "ListItem",
         position: 1,
         name: "All Courses",
-        item: siteUrl("/courses"),
+        item: siteUrl("/course"),
       },
       {
         "@type": "ListItem",
         position: 2,
         name: course.title,
-        item: siteUrl(`/courses/${course.slug}`),
+        item: siteUrl(`/course/${course.slug}`),
       },
     ],
   };
@@ -146,7 +146,7 @@ export default async function CourseDetailPage({
       />
 
       <nav className="text-sm text-zinc-500">
-        <Link href="/courses" className="hover:underline">
+        <Link href="/course" className="hover:underline">
           All Courses
         </Link>
         <span className="mx-2">›</span>

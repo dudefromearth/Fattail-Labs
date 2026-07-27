@@ -194,8 +194,8 @@ def admin_course(slug: str, request: Request) -> dict:
             if course is None:
                 raise HTTPException(status_code=404, detail="Course not found")
             cur.execute(
-                """SELECT m.id AS module_id, m.title AS module_title, m.kind,
-                          m.description_md AS module_description_md,
+                """SELECT m.id AS module_id, m.slug AS module_slug, m.title AS module_title,
+                          m.kind, m.description_md AS module_description_md,
                           l.id, l.slug, l.title, l.kind AS lesson_kind,
                           l.duration_seconds, l.free_preview,
                           l.video_provider, l.video_id, l.video_params
@@ -213,6 +213,7 @@ def admin_course(slug: str, request: Request) -> dict:
             modules.append(
                 {
                     "module_id": r["module_id"],
+                    "slug": r["module_slug"],
                     "title": r["module_title"],
                     "kind": r["kind"],
                     "description_md": r.get("module_description_md") or "",
@@ -351,19 +352,210 @@ async def update_course(slug: str, request: Request) -> dict:
         else:
             raise HTTPException(status_code=422, detail="learning_outcomes must be list or text")
 
-    sets = ", ".join(f"{f} = %s" for f in body)
-    publish_touch = ", published_at = COALESCE(published_at, NOW())" if body.get("status") == "published" else ""
+    publish_touch = (
+        ", published_at = COALESCE(published_at, NOW())"
+        if body.get("status") == "published"
+        else ""
+    )
     with db.transaction() as conn:
         with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, title, slug FROM courses WHERE slug = %s", (slug,)
+            )
+            existing = cur.fetchone()
+            if existing is None:
+                raise HTTPException(status_code=404, detail="Course not found")
+
+            # Name and public URL stay in lockstep: title change rewrites slug.
+            # Conflicts fail the save (no silent -2 suffix) so the editor can highlight.
+            if "title" in body:
+                title = (str(body["title"]) or "").strip() or "New Course"
+                body["title"] = title
+                body["slug"] = _claim_course_slug(
+                    cur, _slugify(title), exclude_slug=slug
+                )
+
+            sets = ", ".join(f"{f} = %s" for f in body)
             cur.execute(
                 f"UPDATE courses SET {sets}{publish_touch} WHERE slug = %s",
                 [*body.values(), slug],
             )
-            if cur.rowcount == 0:
-                cur.execute("SELECT 1 FROM courses WHERE slug = %s", (slug,))
-                if cur.fetchone() is None:
-                    raise HTTPException(status_code=404, detail="Course not found")
-    return {"ok": True, "updated": sorted(body)}
+            cur.execute(
+                "SELECT slug, title FROM courses WHERE id = %s", (existing["id"],)
+            )
+            row = cur.fetchone()
+    return {
+        "ok": True,
+        "updated": sorted(body),
+        "id": int(existing["id"]),
+        "slug": row["slug"],
+        "title": row["title"],
+    }
+
+
+def _slugify(title: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    return slug or "item"
+
+
+# Static first path segments under /course that must never be course slugs.
+_RESERVED_COURSE_SLUGS = frozenset({"category"})
+
+
+def _name_conflict(message: str, *, slug: str) -> HTTPException:
+    return HTTPException(
+        status_code=409,
+        detail={
+            "code": "NAME_CONFLICT",
+            "message": message,
+            "field": "title",
+            "slug": slug,
+        },
+    )
+
+
+def _claim_course_slug(
+    cur, base: str, *, exclude_slug: str | None = None
+) -> str:
+    """Exact course slug from title, or 409 if URL would not be unique."""
+    slug = base or "course"
+    if exclude_slug and slug == exclude_slug:
+        return slug
+    if slug in _RESERVED_COURSE_SLUGS:
+        raise _name_conflict(
+            f"“{slug}” is reserved for the site structure. Choose a different name.",
+            slug=slug,
+        )
+    cur.execute("SELECT title FROM courses WHERE slug = %s", (slug,))
+    row = cur.fetchone()
+    if row is not None:
+        raise _name_conflict(
+            f"Another course already uses the URL /course/{slug} "
+            f"(“{row['title']}”). Choose a different name.",
+            slug=slug,
+        )
+    return slug
+
+
+def _unique_course_slug(
+    cur, base: str, *, exclude_slug: str | None = None
+) -> str:
+    """Allocate free course slug with -2, -3… (create defaults only)."""
+    slug = base or "course"
+    n = 2
+    while True:
+        if exclude_slug and slug == exclude_slug:
+            return slug
+        if slug not in _RESERVED_COURSE_SLUGS:
+            cur.execute("SELECT 1 FROM courses WHERE slug = %s", (slug,))
+            if cur.fetchone() is None:
+                return slug
+        slug = f"{base}-{n}"
+        n += 1
+
+
+def _course_id_for_module(cur, module_id: int) -> int:
+    cur.execute("SELECT course_id FROM modules WHERE id = %s", (module_id,))
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Module not found")
+    return int(row["course_id"])
+
+
+def _claim_module_slug(
+    cur, course_id: int, base: str, *, exclude_id: int | None = None
+) -> str:
+    """Exact module slug unique within the course, or 409."""
+    slug = base or "module"
+    cur.execute(
+        """SELECT m.id, m.title, c.slug AS course_slug
+           FROM modules m
+           JOIN courses c ON c.id = m.course_id
+           WHERE m.course_id = %s AND m.slug = %s""",
+        (course_id, slug),
+    )
+    row = cur.fetchone()
+    if row is not None and (
+        exclude_id is None or int(row["id"]) != int(exclude_id)
+    ):
+        raise _name_conflict(
+            f"Another module already uses the URL segment “{slug}” under "
+            f"/course/{row['course_slug']}/… (“{row['title']}”). "
+            f"Choose a different name.",
+            slug=slug,
+        )
+    return slug
+
+
+def _unique_module_slug(
+    cur, course_id: int, base: str, *, exclude_id: int | None = None
+) -> str:
+    """Allocate free module slug within the course (-2, -3… for create defaults)."""
+    slug = base or "module"
+    n = 2
+    while True:
+        cur.execute(
+            "SELECT id FROM modules WHERE course_id = %s AND slug = %s",
+            (course_id, slug),
+        )
+        row = cur.fetchone()
+        if row is None or (
+            exclude_id is not None and int(row["id"]) == int(exclude_id)
+        ):
+            return slug
+        slug = f"{base}-{n}"
+        n += 1
+
+
+def _claim_lesson_slug(
+    cur,
+    module_id: int,
+    base: str,
+    *,
+    exclude_id: int | None = None,
+) -> str:
+    """Exact lesson slug unique within the module. Full public path is
+    /course/{course}/{module}/{lesson} — uniqueness of the combination."""
+    slug = base or "lesson"
+    cur.execute(
+        """SELECT l.id, l.title, m.slug AS module_slug, c.slug AS course_slug
+           FROM lessons l
+           JOIN modules m ON l.module_id = m.id
+           JOIN courses c ON m.course_id = c.id
+           WHERE l.module_id = %s AND l.slug = %s""",
+        (module_id, slug),
+    )
+    row = cur.fetchone()
+    if row is not None and (
+        exclude_id is None or int(row["id"]) != int(exclude_id)
+    ):
+        raise _name_conflict(
+            f"Another lesson already uses "
+            f"/course/{row['course_slug']}/{row['module_slug']}/{slug} "
+            f"(“{row['title']}”). Choose a different name.",
+            slug=slug,
+        )
+    return slug
+
+
+def _unique_lesson_slug(
+    cur, module_id: int, base: str, *, exclude_id: int | None = None
+) -> str:
+    """Allocate free lesson slug within the module (-2, -3… for create defaults)."""
+    slug = base or "lesson"
+    n = 2
+    while True:
+        cur.execute(
+            "SELECT id FROM lessons WHERE module_id = %s AND slug = %s",
+            (module_id, slug),
+        )
+        row = cur.fetchone()
+        if row is None or (
+            exclude_id is not None and int(row["id"]) == int(exclude_id)
+        ):
+            return slug
+        slug = f"{base}-{n}"
+        n += 1
 
 
 @router.put("/lessons/{lesson_id}")
@@ -424,22 +616,55 @@ async def update_lesson(lesson_id: int, request: Request) -> dict:
     if "duration_seconds" in body:
         body["duration_seconds"] = int(body["duration_seconds"])
 
-    sets = ", ".join(f"{f} = %s" for f in body)
     with db.transaction() as conn:
         with conn.cursor() as cur:
+            cur.execute(
+                """SELECT l.id, l.slug, l.title, l.module_id,
+                          m.course_id, c.status AS course_status, c.slug AS course_slug
+                   FROM lessons l
+                   JOIN modules m ON l.module_id = m.id
+                   JOIN courses c ON m.course_id = c.id
+                   WHERE l.id = %s""",
+                (lesson_id,),
+            )
+            existing = cur.fetchone()
+            if existing is None:
+                raise HTTPException(status_code=404, detail="Lesson not found")
+
+            # Name ↔ URL segment lockstep. Full path unique via (module, lesson).
+            if "title" in body:
+                title = (str(body["title"]) or "").strip() or "New Lesson"
+                body["title"] = title
+                body["slug"] = _claim_lesson_slug(
+                    cur,
+                    int(existing["module_id"]),
+                    _slugify(title),
+                    exclude_id=lesson_id,
+                )
+
+            sets = ", ".join(f"{f} = %s" for f in body)
             cur.execute(
                 f"UPDATE lessons SET {sets} WHERE id = %s",
                 [*body.values(), lesson_id],
             )
-            cur.execute("SELECT slug FROM lessons WHERE id = %s", (lesson_id,))
-            if cur.fetchone() is None:
-                raise HTTPException(status_code=404, detail="Lesson not found")
-    return {"ok": True, "updated": sorted(body)}
-
-
-def _slugify(title: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
-    return slug or "lesson"
+            cur.execute(
+                """SELECT l.slug, l.title, m.slug AS module_slug, c.slug AS course_slug
+                   FROM lessons l
+                   JOIN modules m ON l.module_id = m.id
+                   JOIN courses c ON m.course_id = c.id
+                   WHERE l.id = %s""",
+                (lesson_id,),
+            )
+            row = cur.fetchone()
+    return {
+        "ok": True,
+        "updated": sorted(body),
+        "slug": row["slug"],
+        "title": row["title"],
+        "module_slug": row["module_slug"],
+        "course_slug": row["course_slug"],
+        "id": lesson_id,
+    }
 
 
 @router.put("/modules/{module_id}")
@@ -453,16 +678,44 @@ async def update_module(module_id: int, request: Request) -> dict:
         raise HTTPException(status_code=422, detail="Empty update")
     if "kind" in body and body["kind"] not in VALID_MODULE_KINDS:
         raise HTTPException(status_code=422, detail=f"kind must be one of {sorted(VALID_MODULE_KINDS)}")
-    sets = ", ".join(f"{f} = %s" for f in body)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                f"UPDATE modules SET {sets} WHERE id = %s", [*body.values(), module_id]
+                """SELECT m.id, m.slug, m.course_id, c.slug AS course_slug
+                   FROM modules m JOIN courses c ON c.id = m.course_id
+                   WHERE m.id = %s""",
+                (module_id,),
             )
-            cur.execute("SELECT 1 FROM modules WHERE id = %s", (module_id,))
-            if cur.fetchone() is None:
+            existing = cur.fetchone()
+            if existing is None:
                 raise HTTPException(status_code=404, detail="Module not found")
-    return {"ok": True, "updated": sorted(body)}
+            if "title" in body:
+                title = (str(body["title"]) or "").strip() or "New Module"
+                body["title"] = title
+                body["slug"] = _claim_module_slug(
+                    cur,
+                    int(existing["course_id"]),
+                    _slugify(title),
+                    exclude_id=module_id,
+                )
+            sets = ", ".join(f"{f} = %s" for f in body)
+            cur.execute(
+                f"UPDATE modules SET {sets} WHERE id = %s",
+                [*body.values(), module_id],
+            )
+            cur.execute(
+                "SELECT slug, title FROM modules WHERE id = %s", (module_id,)
+            )
+            row = cur.fetchone()
+    return {
+        "ok": True,
+        "updated": sorted(body),
+        "id": module_id,
+        "slug": row["slug"],
+        "title": row["title"],
+        "course_slug": existing["course_slug"],
+        "module_id": module_id,
+    }
 
 
 @router.post("/courses/{slug}/modules")
@@ -476,17 +729,19 @@ async def create_module(slug: str, request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             course = {"id": course_id_by_slug(cur, slug)}
+            mod_slug = _unique_module_slug(cur, course["id"], _slugify(title))
             cur.execute(
                 "SELECT COALESCE(MAX(sort_order), -1) + 1 AS nxt FROM modules WHERE course_id = %s",
                 (course["id"],),
             )
             nxt = cur.fetchone()["nxt"]
             cur.execute(
-                "INSERT INTO modules (course_id, title, sort_order, kind) VALUES (%s, %s, %s, %s)",
-                (course["id"], title, nxt, kind),
+                """INSERT INTO modules (course_id, title, slug, sort_order, kind)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (course["id"], title, mod_slug, nxt, kind),
             )
             module_id = cur.lastrowid
-    return {"module_id": module_id}
+    return {"module_id": module_id, "slug": mod_slug, "title": title}
 
 
 @router.post("/modules/{module_id}/lessons")
@@ -494,21 +749,19 @@ async def create_lesson(module_id: int, request: Request) -> dict:
     require_admin(request)
     body = await request.json() if int(request.headers.get("content-length") or 0) else {}
     title = (body.get("title") or "New Lesson").strip() or "New Lesson"
-    base = _slugify(title)
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM modules WHERE id = %s", (module_id,))
-            if cur.fetchone() is None:
-                raise HTTPException(status_code=404, detail="Module not found")
             cur.execute(
-                "SELECT slug FROM lessons WHERE module_id = %s", (module_id,)
+                """SELECT m.id, m.slug AS module_slug, c.slug AS course_slug
+                   FROM modules m JOIN courses c ON c.id = m.course_id
+                   WHERE m.id = %s""",
+                (module_id,),
             )
-            taken = {r["slug"] for r in cur.fetchall()}
-            slug = base
-            n = 2
-            while slug in taken:
-                slug = f"{base}-{n}"
-                n += 1
+            mod = cur.fetchone()
+            if mod is None:
+                raise HTTPException(status_code=404, detail="Module not found")
+            # Unique within module: full URL is course/module/lesson.
+            slug = _unique_lesson_slug(cur, module_id, _slugify(title))
             cur.execute(
                 "SELECT COALESCE(MAX(sort_order), -1) + 1 AS nxt FROM lessons WHERE module_id = %s",
                 (module_id,),
@@ -521,7 +774,13 @@ async def create_lesson(module_id: int, request: Request) -> dict:
                 (module_id, slug, title, nxt),
             )
             lesson_id = cur.lastrowid
-    return {"id": lesson_id, "slug": slug}
+    return {
+        "id": lesson_id,
+        "slug": slug,
+        "title": title,
+        "module_slug": mod["module_slug"],
+        "course_slug": mod["course_slug"],
+    }
 
 
 @router.delete("/modules/{module_id}")
@@ -766,22 +1025,16 @@ async def create_course(request: Request) -> dict:
     require_admin(request)
     body = await request.json() if int(request.headers.get("content-length") or 0) else {}
     title = (body.get("title") or "New Course").strip() or "New Course"
-    base = _slugify(title)
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT slug FROM courses")
-            taken = {r["slug"] for r in cur.fetchall()}
-            slug = base
-            n = 2
-            while slug in taken:
-                slug = f"{base}-{n}"
-                n += 1
+            slug = _unique_course_slug(cur, _slugify(title))
             cur.execute(
                 """INSERT INTO courses (slug, title, subtitle, description_md, level, status)
                    VALUES (%s, %s, '', '', 'beginner', 'draft')""",
                 (slug, title),
             )
-    return {"slug": slug}
+            course_id = int(cur.lastrowid)
+    return {"id": course_id, "slug": slug, "title": title}
 
 
 @router.delete("/courses/{slug}")

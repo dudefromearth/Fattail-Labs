@@ -122,8 +122,8 @@ def test_migrate_lesson_attachment_not_auto_published():
             )
             cid = int(cur.lastrowid)
             cur.execute(
-                """INSERT INTO modules (course_id, title, sort_order, kind)
-                   VALUES (%s, 'M1', 0, 'standard')""",
+                """INSERT INTO modules (course_id, title, slug, sort_order, kind)
+                   VALUES (%s, 'M1', 'm1', 0, 'standard')""",
                 (cid,),
             )
             mid = int(cur.lastrowid)

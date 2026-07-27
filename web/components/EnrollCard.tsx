@@ -11,7 +11,11 @@ type Enrollment = {
   course: { slug: string };
   completed_at: string | null;
   progress: { total: number; done: number; percent: number };
-  resume: { lesson_slug: string; title: string } | null;
+  resume: {
+    module_slug: string;
+    lesson_slug: string;
+    title: string;
+  } | null;
 };
 
 export default function EnrollCard({
@@ -127,7 +131,7 @@ export default function EnrollCard({
             </p>
           ) : state.enrollment.resume ? (
             <Link
-              href={`/courses/${slug}/lessons/${state.enrollment.resume.lesson_slug}`}
+              href={`/course/${slug}/${state.enrollment.resume.module_slug}/${state.enrollment.resume.lesson_slug}`}
               className="mt-4 block rounded-full bg-emerald-500 py-2.5 text-center font-medium text-white transition-colors hover:bg-emerald-600"
             >
               Continue

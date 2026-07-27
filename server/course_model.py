@@ -1556,12 +1556,24 @@ def import_document(
         )
 
     for mi, mod in enumerate(modules):
+        mtitle = mod.get("title") or f"Module {mi+1}"
+        mslug = (mod.get("slug") or slugify(mtitle))[:255]
         cur.execute(
-            """INSERT INTO modules (course_id, title, sort_order, kind, description_md)
-               VALUES (%s, %s, %s, %s, %s)""",
+            "SELECT slug FROM modules WHERE course_id = %s", (course_id,)
+        )
+        taken_m = {r["slug"] for r in cur.fetchall()}
+        base_m = mslug
+        n = 2
+        while mslug in taken_m:
+            mslug = f"{base_m}-{n}"[:255]
+            n += 1
+        cur.execute(
+            """INSERT INTO modules (course_id, title, slug, sort_order, kind, description_md)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
             (
                 course_id,
-                mod.get("title") or f"Module {mi+1}",
+                mtitle,
+                mslug,
                 int(mod.get("order") if mod.get("order") is not None else mi),
                 mod.get("kind") if mod.get("kind") in VALID_MODULE_KINDS else "standard",
                 mod.get("description_md") or None,
@@ -1572,6 +1584,7 @@ def import_document(
         for li, les in enumerate(mod.get("lessons") or []):
             fields = materialize_lesson_fields(les)
             lslug = fields["slug"][:255]
+            # Unique within module: public path is /course/{c}/{module}/{lesson}.
             cur.execute(
                 "SELECT slug FROM lessons WHERE module_id = %s",
                 (module_id,),

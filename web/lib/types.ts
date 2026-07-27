@@ -3,6 +3,8 @@ export type InstructorCard = { name: string; avatar_url: string | null };
 export type InstructorBio = InstructorCard & { bio_md: string | null };
 
 export type CourseCard = {
+  /** Stable unique identity (never changes on rename). */
+  id?: number;
   slug: string;
   title: string;
   subtitle: string;
@@ -24,6 +26,8 @@ export type CourseCard = {
 };
 
 export type Lesson = {
+  /** Stable unique identity (never changes on rename). */
+  id?: number;
   slug: string;
   title: string;
   kind: "video" | "text" | "download" | "external" | "replay";
@@ -32,6 +36,9 @@ export type Lesson = {
 };
 
 export type Module = {
+  /** Stable unique identity (never changes on rename). */
+  id?: number;
+  slug: string;
   title: string;
   kind: "standard" | "worksheets" | "resources" | "bonus";
   lessons: Lesson[];

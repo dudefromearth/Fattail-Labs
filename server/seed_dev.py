@@ -7,6 +7,7 @@ Video IDs are real uploads from youtube.com/@0DTE; durations match the videos.
 """
 
 import json
+import re
 
 import db
 
@@ -485,10 +486,12 @@ def seed() -> None:
                         (course_id, instructor_ids[iname], order),
                     )
                 for m_order, module in enumerate(course["modules"]):
+                    mtitle = module["title"]
+                    mslug = re.sub(r"[^a-z0-9]+", "-", mtitle.lower()).strip("-") or f"module-{m_order+1}"
                     cur.execute(
-                        "INSERT INTO modules (course_id, title, sort_order, kind) "
-                        "VALUES (%s, %s, %s, %s)",
-                        (course_id, module["title"], m_order, module["kind"]),
+                        "INSERT INTO modules (course_id, title, slug, sort_order, kind) "
+                        "VALUES (%s, %s, %s, %s, %s)",
+                        (course_id, mtitle, mslug, m_order, module["kind"]),
                     )
                     module_id = cur.lastrowid
                     for l_order, (

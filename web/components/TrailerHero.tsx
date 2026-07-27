@@ -76,7 +76,8 @@ export function TrailerEditChip() {
         value={draft ?? ""}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
-          if (draft !== null) edit.setField("course.trailer_video_id", draft);
+          if (draft !== null)
+            void edit.commitField("course.trailer_video_id", draft);
         }}
         placeholder="YouTube URL or ID (empty = none)"
         className="w-64 rounded bg-white/10 px-2 py-1 outline-none ring-1 ring-emerald-400/60 placeholder:text-zinc-400"

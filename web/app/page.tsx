@@ -85,7 +85,7 @@ function collectionPageJsonLd(hub: HubPage, courses: CourseCard[]) {
         "@type": "ListItem",
         position: i + 1,
         name: c.title,
-        url: siteUrl(`/courses/${c.slug}`),
+        url: siteUrl(`/course/${c.slug}`),
         description: c.subtitle || descriptionLead(c.description_md),
       })),
     },
@@ -105,7 +105,7 @@ function itemListJsonLd(courses: CourseCard[]) {
         "@type": "Course",
         name: c.title,
         description: c.subtitle || descriptionLead(c.description_md),
-        url: siteUrl(`/courses/${c.slug}`),
+        url: siteUrl(`/course/${c.slug}`),
         provider: {
           "@type": "Organization",
           name: "FatTail Labs",
@@ -156,7 +156,7 @@ function CourseCardBlock({ course }: { course: CourseCard }) {
     <article className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-5">
       <h3 className="text-base font-semibold leading-snug tracking-tight">
         <Link
-          href={`/courses/${course.slug}`}
+          href={`/course/${course.slug}`}
           className="hover:text-emerald-700 dark:hover:text-emerald-400"
         >
           {course.title}
@@ -185,7 +185,7 @@ function CourseCardBlock({ course }: { course: CourseCard }) {
           : ""}
       </p>
       <Link
-        href={`/courses/${course.slug}`}
+        href={`/course/${course.slug}`}
         className="mt-3 text-sm font-medium text-emerald-600 hover:underline"
       >
         Open course →
@@ -289,7 +289,7 @@ export default async function CourseHubPage() {
                   className="mt-1 text-2xl font-semibold tracking-tight"
                 >
                   <Link
-                    href={`/courses/${flagship.slug}`}
+                    href={`/course/${flagship.slug}`}
                     className="hover:text-emerald-700 dark:hover:text-emerald-400"
                   >
                     {flagship.title}
@@ -307,7 +307,7 @@ export default async function CourseHubPage() {
                     : ""}
                 </p>
                 <Link
-                  href={`/courses/${flagship.slug}`}
+                  href={`/course/${flagship.slug}`}
                   className="mt-4 inline-block rounded-full bg-emerald-500 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
                 >
                   Open the flagship
@@ -355,7 +355,7 @@ export default async function CourseHubPage() {
                     className="text-xl font-semibold tracking-tight sm:text-2xl"
                   >
                     <Link
-                      href={`/courses/category/${cat.slug}`}
+                      href={`/course/category/${cat.slug}`}
                       className="hover:text-emerald-700 dark:hover:text-emerald-400"
                     >
                       {cat.name}
@@ -377,7 +377,7 @@ export default async function CourseHubPage() {
                     {inCat.length === 1 ? "course" : "courses"} in this category
                     ·{" "}
                     <Link
-                      href={`/courses/category/${cat.slug}`}
+                      href={`/course/category/${cat.slug}`}
                       className="text-emerald-600 hover:underline"
                     >
                       Category hub →
@@ -414,7 +414,7 @@ export default async function CourseHubPage() {
       <footer className="mt-14 border-t border-zinc-200 pt-6 text-sm text-zinc-500 dark:border-zinc-800">
         <p>
           Related:{" "}
-          <Link href="/courses" className="text-emerald-600 hover:underline">
+          <Link href="/course" className="text-emerald-600 hover:underline">
             Interactive catalog
           </Link>
           {" · "}

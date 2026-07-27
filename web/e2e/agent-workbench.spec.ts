@@ -18,7 +18,7 @@ test.describe("Agent workbench (browser)", () => {
   test.beforeEach(async ({ page }) => {
     // Mint administrator session (dev only)
     await page.goto("/api/auth/dev-login");
-    await page.waitForURL(/\/courses|\/admin|\//);
+    await page.waitForURL(/\/course|\/admin|\//);
   });
 
   test("admin can open workbench and see model status", async ({ page }) => {

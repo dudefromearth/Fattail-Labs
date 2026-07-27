@@ -79,7 +79,7 @@ export default function ReviewsSection({ slug }: { slug: string }) {
       return;
     }
     // Refresh the static page's baked aggregate + JSON-LD in the background.
-    revalidate([`/courses/${slug}`]).catch(() => {});
+    revalidate([`/course/${slug}`]).catch(() => {});
     load();
   }
 

@@ -51,3 +51,89 @@ def test_admin_site_page_auth(client):
         json={"title": "Resources"},
     )
     assert r.status_code in (401, 403)
+
+
+def test_admin_hub_intro_video_url_normalizes_and_persists(client, admin_cookies):
+    """Hub intro video must accept a watch URL and store a clean 11-char id."""
+    before = client.get("/api/hub").json()
+    old_id = before.get("intro_video_id")
+    old_title = before.get("intro_video_title")
+
+    r = client.put(
+        "/api/admin/hub",
+        cookies=admin_cookies,
+        json={
+            "intro_video_id": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "intro_video_title": "Hub video persistence probe",
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["intro_video_id"] == "dQw4w9WgXcQ"
+    assert body["intro_video_title"] == "Hub video persistence probe"
+
+    pub = client.get("/api/hub").json()
+    assert pub["intro_video_id"] == "dQw4w9WgXcQ"
+    assert pub["intro_video_title"] == "Hub video persistence probe"
+
+    # restore
+    client.put(
+        "/api/admin/hub",
+        cookies=admin_cookies,
+        json={
+            "intro_video_id": old_id,
+            "intro_video_title": old_title,
+        },
+    )
+
+
+def test_admin_hub_intro_video_rejects_garbage(client, admin_cookies):
+    before = client.get("/api/hub").json()["intro_video_id"]
+    r = client.put(
+        "/api/admin/hub",
+        cookies=admin_cookies,
+        json={"intro_video_id": "not-a-youtube-link-at-all"},
+    )
+    assert r.status_code == 200, r.text
+    # Invalid paste clears rather than storing a truncated URL fragment.
+    assert r.json()["intro_video_id"] is None
+    # restore original
+    client.put(
+        "/api/admin/hub",
+        cookies=admin_cookies,
+        json={"intro_video_id": before},
+    )
+
+
+def test_admin_hub_video_with_unchanged_faqs_does_not_404(client, admin_cookies):
+    """MySQL rowcount=0 on no-op FAQ UPDATE must not abort the video write."""
+    hub = client.get("/api/hub").json()
+    old_id = hub.get("intro_video_id")
+    old_title = hub.get("intro_video_title")
+    faqs = hub["faq_items"]
+    assert faqs, "seed FAQs required"
+    r = client.put(
+        "/api/admin/hub",
+        cookies=admin_cookies,
+        json={
+            "intro_video_id": "https://youtu.be/jNQXAC9IVRw",
+            "intro_video_title": "FAQ no-op probe",
+            "faq_items": [
+                {
+                    "id": f["id"],
+                    "sort_order": f["sort_order"],
+                    "question": f["question"],
+                    "answer_md": f["answer_md"],
+                }
+                for f in faqs
+            ],
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["intro_video_id"] == "jNQXAC9IVRw"
+    # restore
+    client.put(
+        "/api/admin/hub",
+        cookies=admin_cookies,
+        json={"intro_video_id": old_id, "intro_video_title": old_title},
+    )
