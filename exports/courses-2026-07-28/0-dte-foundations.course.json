@@ -1,0 +1,870 @@
+{
+  "format": "fattail.labs.canonical_course",
+  "model_version": "1.0",
+  "exported_at": "2026-07-28T19:37:29Z",
+  "source": {
+    "course_id": 266,
+    "slug": "0-dte-foundations",
+    "runtime_status": "published"
+  },
+  "course": {
+    "id": "course",
+    "slug": "0-dte-foundations",
+    "title": "0-DTE Foundations",
+    "subtitle": "",
+    "description_md": "**0-DTE Foundations** is the core training that underpins *every strategy we teach*. Before you ever place a butterfly, this course builds the way of thinking that makes the rest of it work\u2014and then walks you all the way through to running strategies as live campaigns.\n\nMost traders come to 0-DTE looking for a setup, an indicator, a signal\u2014something to *chase*. This course does the opposite. You\u2019ll learn to read how the 0-DTE market actually behaves, to think in probabilities and risk instead of predictions, and to position deliberately so the math is already working in your favor before you click. That\u2019s the difference between guessing and anticipating\u2014and it\u2019s the **foundation beneath everything we do**.\n\n**This isn\u2019t a strategy bolt-on. It\u2019s the complete ground floor.** The 0-DTE market has its own physics\u2014concentrated time decay, dealer positioning, and volatility that has to be respected rather than forecast\u2014and almost everything traders import from longer timeframes works against them here. Foundations rebuilds your model from the ground up: the logic of the asymmetric out-of-the-money butterfly, why we size width to volatility every session, why we cap what we pay, and why we measure success by *process, not by today\u2019s P&L*.\n\n**Inside the course**\n\n- **Welcome** \u2014 Orientation, your first steps, and a plain-language introduction to the 0-DTE method.\n- **0-DTE Foundational Principles** \u2014 Knowing your edge, and the three places it comes from: price, time, and volatility.\n- **Morning Routine** \u2014 The repeatable pre-trade process\u2014reading morning implied volatility, setting direction and butterfly width, and timing your entry on market structure.\n- **0-DTE Strategies** \u2014 Matching the right structure to the conditions: the Classic OTM Butterfly, the Big-Ass Fly, the Batman for chaotic regimes, and the multi-day Time Warp.\n- **Volume Profile** \u2014 Setting it up in TradingView and reading real market structure, so every level you trade is one the market has already proven it respects.\n- **Risk & Profit Management** \u2014 Position sizing, drawdown control, and a profit framework that protects the asymmetry instead of cutting it short.\n- **Campaign Trading** \u2014 Where it all comes together: running strategies as campaigns with a life cycle, executed as a repeatable, agile process.\n\nBy the time you finish, you\u2019ll know how the 0-DTE market actually works, how to think in probabilities and expectancy rather than predictions, and how to run a complete daily process\u2014from the morning read through trade selection, structure, and risk\u2014with the discipline that makes the math pay off over a large sample, not just on the trade you want to take today.\n\n**Who it\u2019s for**\n\nWhether you\u2019re new to options or rebuilding your approach from the ground up, this program provides the framework, language, and decision-making model you need to trade with confidence and control. If you\u2019ve traded before, expect to set a few old habits down\u2014that\u2019s by design.\n\nOur goal is simple, and we mean it: make you **Consistently Profitable**, become an **Independent Trader**, and **Trade at a Pro level**. Foundations is where that begins.",
+    "short_description": "",
+    "status": "published",
+    "version": "1.0.0",
+    "level": "beginner",
+    "created_at": "2026-07-28T11:01:50",
+    "category_slugs": [
+      "0-dte",
+      "butterflies"
+    ],
+    "instructor_refs": [
+      {
+        "id": "inst-1",
+        "name": "Ernie Varitimos",
+        "instructor_id": 1
+      }
+    ],
+    "audience_category": "members",
+    "pathway_position": null,
+    "flagship": false,
+    "trailer": null,
+    "banner": {
+      "id": "banner",
+      "type": "image",
+      "source": "media_library",
+      "url": "/api/media/239a93b7636563c2f3e8255d.jpg"
+    },
+    "card_color": null,
+    "certification_enabled": false,
+    "estimated_duration_minutes": null,
+    "learning_outcomes": [],
+    "modules": [
+      {
+        "id": "mod-1",
+        "title": "Welcome",
+        "description_md": "",
+        "order": 1,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-1-1",
+            "title": "Welcome Message from Coach Ernie",
+            "slug": "welcome-message-from-coach-ernie",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "2ABtemC9aP0",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "We\u2019re a premier coaching and mentoring service designed for traders who aspire to achieve consistent profitability, independence, and professional-level trading skills. Our program is tailored to guide you through the intricacies of the market, empowering you with strategies and insights to elevate your trading game. Whether you\u2019re just starting out or looking to refine your skills, our expert-led sessions provide the knowledge and support you need to succeed in the dynamic world of trading. Connect with us to transform your trading journey and become a master of the markets."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-1-2",
+            "title": "Your First Steps",
+            "slug": "your-first-steps",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "dtqPmgAz94s",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "### **How to Get Started**\n\nYou\u2019re about to embark on a journey to trade like a professional, using proven strategies and building habits that lead to consistent improvement. While there\u2019s a lot to learn, the key is to focus on a few foundational steps and engage actively with the resources. This guide will help you get started with confidence and clarity.\n\n### **Step 1: Familiarize Yourself with the Certified Strategies**\n\nYour trading journey begins with the four pre-certified strategies These strategies have been rigorously tested and refined, giving you powerful tools to start trading immediately.\n\n**What to Do Now:**\n\n1. **Learn the Basics**:\n\n- Start with the **Asymmetric OTM Butterfly**, the cornerstone of your trading toolkit.\n- Explore the **Batman**, **Big Ass Fly**, and **Time Warp** strategies as you gain confidence.\n\n2. **Understand When to Use Each**:\n\n- Learn the market conditions that suit each strategy.\n- Focus on one strategy at a time (starting with the Asymmetric OTM Butterfly) to build familiarity.\n\n### **Step 2: Set Up Your Daily Trading Routine**\n\nTrading success is built on consistent habits, and your daily routine is the foundation of your process. Every trading day is like a mini-experiment\u2014plan, execute, and reflect to gather valuable insights.\n\n**What to Do Now:**\n\n1. **Morning Preparation**:\n\n- Review market activity and the FOTW Tool Dashboard..\n- Select one strategy for the day and confirm your trading plan.\n- Reaffirm your risk limits and ensure they align with capital preservation.\n\n2. **Market Hours**:\n\n- Execute trades according to your plan with discipline and focus.\n- Log each trade in real-time, including key details like entry, exit, and rationale.\n\n3. **Post-Market Reflection**:\n\n- Review your trade log: Did your trades align with your plan?\n- Write 1-2 insights in your journal about what worked and what can be improved.\n\n**Outcome**: By following your routine, you\u2019ll develop the discipline and habits needed for long-term success.\n\n### **Step 3: Log and Journal Everything**\n\nYour trade log and journal are your tools for improvement. These records help you identify patterns, refine your strategies, and close the feedback loop to ensure you\u2019re always learning.\n\n**What to Do Now:**\n\n1. **Create Your Trade Log**:\n\n- Record details for every trade, including the strategy used, entry/exit points, and performance.\n\n2. **Start Your Trading Journal**:\n\nDocument emotional and behavioral observations. After each day, answer these questions:\n\n- What went well?\n- What could I improve?\n- How did I handle my emotions?\n\n**Outcome**: A well-maintained trade log and journal will become your roadmap for improvement.\n\n### **Step 4: Engage with the Community and Live Sessions**\n\nYour learning experience doesn\u2019t happen in isolation. The **Community Forum** and **Live Sessions** are where you can ask questions, get feedback, and deepen your understanding. Engaging with others is one of the fastest ways to improve as a trader.\n\n**What to Do Now:**\n\n1. **Ask Questions in the Forum**:\n\n- Whenever unsure about something, post your question in the community log.\n- Share your experiences and learn from the insights of other traders.\n\n2. **Attend Weekly Live Sessions**:\n\n- Join the two weekly live sessions, where new topics are introduced, and questions are answered in real-time.\n- Prepare questions ahead of time by reviewing your trade log and journal.\n\n3. **Act on Feedback**:\n\n- Use the answers and feedback you receive to refine your strategies and routines.\n- Share your progress to stay accountable and inspire others.\n\n**Outcome**: By participating actively in the community, you\u2019ll gain clarity, motivation, and practical guidance.\n\n### **Step 5: Keep It Simple and Stay Consistent**\n\nIt\u2019s easy to feel overwhelmed at first, but remember\u2014trading is a journey. Focus on small, consistent steps that build your foundation.\n\n- Stick to one or two strategies at first (start with the Asymmetric OTM Butterfly).\n- Follow your daily routine without skipping any steps.\n- Log and journal every trade, no matter how small.\n\n**Outcome**: By focusing on simplicity and consistency, you\u2019ll build confidence and avoid unnecessary frustration.\n\n### **Your Goal for Month 1**\n\nYour first month is about laying a strong foundation. Success isn\u2019t measured by how much you win\u2014it\u2019s measured by how well you follow the process. By sticking to these steps and engaging actively, you\u2019ll be well on your way to trading with confidence.\n\n**Key Milestones for Month 1**:\n\n1. Understand the basics of the four certified strategies.\n\n2. Complete a full trading week with daily logs and journal entries.\n\n3. Ask your first question in the forum and attend your first live session.\n\n4. Use feedback from the community to refine your routines and strategies.\n\n### **Start Strong, Stay Curious, and Keep Improving**\n\nTrading isn\u2019t about perfection\u2014it\u2019s about continuous improvement. FOTW gives you the tools, strategies, and support to evolve into a disciplined and confident trader.\n\nBy following these steps, asking questions, and engaging with the community, you\u2019ll begin to see progress. This is just the beginning of your journey\u2014let\u2019s get started!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-1-3",
+            "title": "What Mastery Looks Like",
+            "slug": "what-mastery-looks-like",
+            "order": 3,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "LIsOI0wWmVQ",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "Coach Ernie explains why he chose the 0DTE strategy for trading, highlighting its professional roots and the unique advantage of asymmetric risk-to-reward. Originating from observations of options traders on the exchange floor, the strategy evolved by introducing weekly options. It later adapted further for 0DTE trading on indexes as it gained popularity among institutional traders.\n\nThe approach focuses on taking small, calculated risks for significant rewards, allowing even a successful trade to offset multiple losses.\n\nMastery in this strategy involves consistent, measurable growth, emphasizing disciplined application and the importance of steady wins over account size for long-term success."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-1-4",
+            "title": "Introduction to the 0-DTE Method",
+            "slug": "introduction-to-the-0-dte-method",
+            "order": 4,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "LYp0-GfYl8Y",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie breaks down the 0-DTE trading method, designed for traders seeking consistent, long-term success without the stress of constant screen-watching.\n\nErnie shares his step-by-step routine, from early morning market analysis to executing an out-of-the-money butterfly trade. Tackling common trader frustrations like inconsistency and complexity, he explains how this strategy focuses on asymmetric risk-to-reward, efficient time management, and a simple, repeatable process.\n\nPlus, he recommends using platforms like Thinkorswim or Tastyworks for simulated trades, which are perfect for building confidence before diving into live trading.\n\nJoin Ernie to master the essentials of 0-DTE!"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-2",
+        "title": "0-DTE Foundational Principles",
+        "description_md": "",
+        "order": 2,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-2-1",
+            "title": "0-DTE Foundational Principles",
+            "slug": "0-dte-foundational-principles",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "QbQZzJks1Gg",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "Coach Ernie walks you through the foundational principles of the 0-DTE trading strategy, a method built on discipline, risk control, and the power of asymmetric risk-to-reward.\n\nIn this video, he explains the core philosophies that guide every trading decision:\n\n- \u201cThe Best Loser Wins\u201d\n- \u201cCapital Preservation Over Profits\u201d\n- \u201cProcess Over Outcome\u201d\n\nDesigned to thrive even in volatile markets, this approach values growth from market chaos while safeguarding capital during calm periods. Perfect for traders looking to develop consistency and long-term resilience."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-2",
+            "title": "Knowing Your Edge",
+            "slug": "knowing-your-edge",
+            "order": 2,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "g04x5bXpycI",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie explains why knowing your trading edge is essential for success. Without a clear edge, you\u2019re essentially trading blind, leaving your results up to chance.\n\nErnie covers how identifying and understanding your edge\u2014whether in time decay, price movement, or volatility\u2014gives you confidence, allowing you to exploit favorable conditions and adjust when the market shifts.\n\nDon\u2019t just react to the market; learn to trade with intention.\n\nStay tuned as Ernie dives deeper into how 0-DTE leverages these edges for consistent, controlled gains."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-3",
+            "title": "Change in Price Edge",
+            "slug": "change-in-price-edge",
+            "order": 3,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "LphDdakPQ7g",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie dives into the \u201cPrice Edge\u201d in 0-DTE trading, explaining how aligning trades with the trend can capture larger price moves.\n\nHe covers identifying market bias using the closing price relative to a moving average and offers an optional confirmation method using the moving average\u2019s slope. Ernie shows how this straightforward trend-following approach helps maximize returns by trading with momentum, filtering out intraday noise, and capitalizing on asymmetric payoffs.\n\nPerfect for traders looking to improve their entry precision and consistency!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-4",
+            "title": "Change in Time Edge",
+            "slug": "change-in-time-edge",
+            "order": 4,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "JUj6y8M7-tA",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie explains the \u201cTime Edge\u201d in 0-DTE trading, showing how exponential premium decay on expiration day provides a unique opportunity for maximizing profits.\n\nErnie discusses the distinct time decay patterns from morning to close, using strategies like out-of-the-money butterflies to capture premium as it rapidly declines throughout the day.\n\nBy understanding the fractal-like nature of decay, traders can optimize entries and manage risk to make the most of each 0-DTE session.\n\nPerfect for those looking to enhance timing and profitability in their trades!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-5",
+            "title": "Change in Volatility Edge",
+            "slug": "change-in-volatility-edge",
+            "order": 5,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "FdXEi7mP12E",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie explains the \u201cVolatility Edge\u201d in 0-DTE trading, focusing on how adapting to volatility levels can maximize premium decay and control risk.\n\nHe breaks down how different volatility environments affect trade width and risk exposure, using metrics like the VIX to gauge market uncertainty.\n\nBy adjusting strategies like the Classic OTM Butterfly, Batman, and Big Ass Fly based on volatility, traders can preserve a strong risk-to-reward profile across market conditions.\n\nThis video is essential for anyone looking to refine their approach in dynamic markets!"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-3",
+        "title": "Morning Routine",
+        "description_md": "",
+        "order": 3,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-3-1",
+            "title": "Intro to Routines",
+            "slug": "intro-to-routines",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "0mEfNamh9wA",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie shares his essential daily routine for 0-DTE trading success. He begins daily with a \u201csituational analysis\u201d to assess market trends, volatility, and entry points, setting up trades with the right exposure.\n\nBut it\u2019s not just about strategy\u2014Ernie emphasizes physical and mental preparation, clearing distractions, and starting with a clear mind and a focused environment.\n\nThis routine is designed to help traders approach the market with confidence, discipline, and readiness.\n\nPerfect for those looking to elevate their trading habits!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-2",
+            "title": "OTM Fly Direction and Width",
+            "slug": "otm-fly-direction-and-width",
+            "order": 2,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "uYWCtbhNPiM",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie walks you through determining market direction and volatility to set up directional out-of-the-money butterfly trades for 0-DTE.\n\nUsing tools like the Hull Moving Average and the VIX, he explains how to gauge the trend and volatility regime\u2014whether it\u2019s \u201cZombieland,\u201d the \u201cGoldilocks Zone,\u201d or \u201cChaos\u201d\u2014to adjust trade width and risk exposure.\n\nPerfect for traders wanting to fine-tune their morning routine and align their trades with the market\u2019s energy and direction.\n\n### **Resources**\n\nVix Playbook\n\n![](https://flyonthewall.ai/wp-content/uploads/2026/01/Vix-image-Full-Strategy-in-a-Screenshot-300x161.png)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-3",
+            "title": "Interpreting Morning Implied Volatility",
+            "slug": "interpreting-morning-implied-volatility",
+            "order": 3,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "0g_RvlgYb8s",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie explains how to interpret morning implied volatility to fine-tune trade width in 0-DTE strategies.\n\nUsing a \u201cpoor man\u2019s straddle,\u201d a 50-wide butterfly set before the market opens, Ernie shows how to gauge the market\u2019s expected energy. A low debit signals high energy, prompting wider trades, while a high debit indicates a subdued market, leading to narrower setups.\n\nLearn how this simple yet effective approach helps align trades with market conditions for optimal risk-to-reward."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-4",
+            "title": "Setting Butterfly Width",
+            "slug": "setting-butterfly-width",
+            "order": 4,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "owXxWhvDGIw",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie demonstrates how to set the fly width for 0-DTE trades using implied volatility insights.\n\nBy referencing the \u201cpoor man\u2019s straddle\u201d value on the VIX chart, Ernie explains how to interpret the debit range to select the optimal fly width. For example, a debit of around 24 indicates a 20-wide flight is ideal.\n\nThis quick technique allows traders to adjust their setups based on market energy and volatility, ensuring a balanced daily risk-to-reward ratio.\n\nPerfect for traders looking to enhance their morning routine!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-5",
+            "title": "Entry Event on Market Structure",
+            "slug": "entry-event-on-market-structure",
+            "order": 5,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "FiEk01rlyu8",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie explains how to identify the best entry points for 0-DTE trades using market structure.\n\nBy analyzing volume profile and marking structural levels, he targets optimal pullback points in the morning session, a period with high implied volatility that enhances trade setups. Coach Ernie demonstrates how these entry targets align with market dynamics, creating the best opportunity for a high-risk-to-reward trade.\n\nPerfect for traders looking to refine their entry timing and improve trade consistency!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-6",
+            "title": "Economic Reports \u2013 Situational Awareness",
+            "slug": "economic-reports-situational-awareness",
+            "order": 6,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "4sn-oyDeLwY",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie covers how to incorporate economic reports into your morning routine for 0-DTE trading.\n\nUsing a filtered economic calendar, Ernie identifies high-impact U.S. events, such as manufacturing PMI or job openings, that can inject significant energy into the market.\n\nHe encourages traders to study these reports to understand their potential impact on market moves, adding situational awareness that can improve trade timing and decision-making.\n\nThis is great for traders aiming to fine-tune their strategies with economic insights!\n\n### **Resources**\n\n- [Economic Reports](https://flyonthewall.ai/wp-content/uploads/2026/01/Economic-Reports.xlsx)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-7",
+            "title": "Morning Routine Conclusion",
+            "slug": "morning-routine-conclusion",
+            "order": 7,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "d5BVRoa6XL0",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie wraps up his morning routine for 0-DTE trading.\n\nAfter completing a situational analysis, he annotates key details\u2014market direction, trade size, and entry opportunities\u2014and prepares for the market open.\n\nErnie emphasizes waiting for price to pull back to structural support levels before entering a trade, ensuring the setup aligns with his planned strategy.\n\nThis is a great overview for traders wanting a disciplined, pre-market routine to guide their trading day!"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-4",
+        "title": "0-DTE Strategies",
+        "description_md": "",
+        "order": 4,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-4-1",
+            "title": "Assessing Market Conditions",
+            "slug": "assessing-market-conditions",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "hO1m4Wangq4",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie introduces the essentials of the 0-DTE strategy and shares how to assess market conditions to choose the best approach.\n\nHe previews the four core strategies\u2014Classic OTM Butterfly, Big Ass Fly, Batman, and Time Warp\u2014and explains when each is most effective based on market direction and volatility.\n\nThis video lays the groundwork for a solid trading process if you want to enhance your trade selection and align strategies with market setups.\n\nStay tuned as Coach Ernie dives deeper into each strategy in the series!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-2",
+            "title": "Choosing a Strategy",
+            "slug": "choosing-a-strategy",
+            "order": 2,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "WAc71W7A214",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, Coach Ernie introduces strategy selection for the 0-DTE trading approach, explaining how to assess the market direction and volatility to choose the best setup. He previews the primary strategies\u2014the Classic OTM Butterfly for trending markets, along with edge case strategies like the Big Ass Fly, Batman, and Time Warp for varying conditions.\n\nErnie emphasizes adjusting trade width and risk based on volatility, aiming for an asymmetric risk-to-reward profile.\n\nPerfect for traders looking to refine their approach and align strategies with the day\u2019s market dynamics!\n\n### **Edge Case Strategy Guide**\n\nUse this annotated VIX chart (big red box) to help select one of the 0-DTE edge case strategies, such as the Batman or Time Warp multi-day strategies. The edge cases are chosen when there\u2019s an extreme volatility situation.\n\n###"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-3",
+            "title": "Classic OTM Butterfly",
+            "slug": "classic-otm-butterfly",
+            "order": 3,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "VrzL3GxMPs8",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "In this video, you will learn how to execute the Classic OTM Butterfly strategy, the cornerstone of our 0-DTE service. This strategy adapts to all market conditions while prioritizing capital preservation and disciplined execution.\n\n**Key Highlights:**\n\n- **Morning Prep:** Analyze market trends, establish directional bias, and pre-select butterfly strikes using volume profile structural analysis.\n- **Trade Setup:** Structure an asymmetric OTM Butterfly with extreme risk-to-reward, limiting risk to the debit paid.\n- **Risk Management:** Accept 100% debit loss for losing trades; target a ~50% win rate.\n- **Profit Management:** Use trailing stops that shrink through the day:\n  - Morning Session: 50-75% trail\n  - Afternoon Session: 25-50% trail\n  - Closing Session: as low as 15%\n- **Outcomes:** Capture profits outside the profit tent (~38%) or as \u201cpin trades\u201d near the center strike for higher returns.\n- **Core Tenet:** Focus on capital preservation over profit chasing.\n\nThis video equips you to confidently prepare, execute and manage the Classic OTM Butterfly strategy for consistent trading success."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-4",
+            "title": "Big Ass Fly",
+            "slug": "big-ass-fly",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "The Big Ass Fly (BAF) strategy is a powerful options trading approach designed to exploit volatility crush during market conditions characterized by heightened implied volatility (IV).\n\nThis strategy leverages asymmetric risk-to-reward principles, with small, controlled risks offering the potential for outsized returns. The BAF thrives in environments where markets anticipate elevated IV for the day, as indicated by the debit cost during trade setup.\n\n### **Key Objectives**\n\n1. **Capitalize on Volatility Crush:**\n   - Exploit IV contractions that typically follow major market events or economic data releases.\n\n2. **Asymmetric Risk-to-Reward:**\n\n1. - Maintain tightly capped risks (e.g., $3.50 to $10.00) while achieving significantly higher returns (e.g., $25 or more).\n\n3. **Simple Trade Construction:**\n\n1. - Utilize a straightforward butterfly setup to maximize efficiency and precision.\n\n4. **Low Capital Risk:**\n\n1. - Keep capital exposure minimal while aiming for high profit potential.\n\n### **Updated Strategy Guidelines**\n\n1. **When to Use the BAF**\n   - **Pre-Market or Opening Session Trades:**\n     - Ideally enter trades between **7:00\u20138:00 am ET**, before the release of major economic reports.\n     - If no reports are scheduled, trades may still be placed as long as the debit cost meets thresholds.\n   - **Anticipated Volatility Crush Events:**\n     - First volatility crush typically occurs after **8:30 am ET**, aligning with economic data releases.\n     - If no immediate events, consider general heightened IV due to geopolitical, macroeconomic, or other market dynamics.\n\n2. **Asset Selection**\n\n1. - Focus on liquid assets with high implied volatility:\n     - **Indices:** SPX, NDX, XSP\n     - **Futures:** ES (E-mini S&P) and NQ (E-mini Nasdaq)\n\n3. **Trade Mechanics**\n\n1. - **Strike Placement:**\n     - Always use an **ATM setup**, centering the butterfly at the current price.\n     - Ensure strikes meet the following specifications:\n       - **ES/SPX:** 50-point-wide wings.\n       - **NQ/NDX:** 150-point-wide wings.\n       - **NQ/NDX Strike Increments:** Strikes must align with increments of **0.25 (e.g., xxxx.00, xxxx.25, xxxx.50, xxxx.75)**.\n   - **Debit Target:**\n     - Ensure the trade meets the following debit thresholds:\n       - **ES/SPX:** Maximum debit of **$25**.\n       - **NQ/NDX:** Maximum debit of **$60**.\n     - A debit of $25 or less (or $60 for NQ/NDX) ensures the market anticipates adequate IV for profitability.\n\n4. **Risk and Reward**\n\n1. - **Risk:**\n     - Risk is capped at the cost of the trade minus the stop-loss level.\n     - Effective risk limits:\n       - **ES/SPX:** $3.50 per contract.\n       - **NQ/NDX:** $10 per contract.\n   - **Reward:**\n     - Profit potential is significantly higher due to the butterfly structure.\n     - Aim for a **1:7 risk-to-reward ratio** or better, with typical rewards at $25 per contract or higher.\n\n5. **Execution Guidelines**\n\n1. - **Entry Timing:**\n     - Place trades between **7:00\u20138:00 am ET** or prior to major economic reports.\n     - Adjust strikes to ensure an ATM setup based on the current underlying price.\n   - **Trade Adjustments:**\n     - Avoid making adjustments after placement; the BAF is designed to run to maturity.\n     - Only exit early if:\n       - The soft stop-loss is triggered, or\n       - Profits exceed expectations before volatility crush completion.\n   - **Expiration Management:**\n     - Hold trades close to expiration to maximize premium decay, but remain vigilant for gamma risks as expiration nears.BAF Core strategy \u2013 11/30/24, 1:26 PM / 3\n\n### **Common Mistakes to Avoid**\n\n1. **Placing Strikes OTM:**\n   - Reduces the likelihood of capturing meaningful decay.\n\n2. **Exceeding Debit Thresholds:**\n\n1. - Higher debit (e.g., $30+ for ES or $70+ for NQ) diminishes the strategy\u2019s asymmetric payoff.\n\n3. **Entering in Low-Volatility Conditions:**\n\n1. - Avoid trades in environments where IV is subdued, even if debit appears acceptable.\n\n### **Why the BAF Strategy Works**\n\n1. **Exploiting Market Psychology:**\n   - IV inflates option premiums during periods of uncertainty. The BAF profits as premiums collapse after clarity emerges.\n\n2. **Asymmetric Payoff:**\n\n1. - Losses are tightly controlled while profits can scale significantly.\n\n3. **Simple Execution:**\n\n1. - The strategy\u2019s straightforward setup makes it accessible for traders of all experience levels.\n\n### **Example Trade Setup**\n\n- **Asset:** NDX\n- **Current Price:** 15,500\n- **Strike Prices:**\n  - Short Strikes: 15,500 (ATM)\n  - Long Strikes: 15,350 and 15,650 (150-point-wide wings)\n- **Debit:** $58\n- **Risk:** $10 (after applying a soft stop-loss)\n- **Reward:** $70 (minimum target for a 1:7 risk-to-reward ratio)\n\n### **Final Thoughts**\n\nThe Big Ass Fly is a versatile and high-potential strategy tailored for traders who understand the importance of disciplined risk management and capital efficiency.\n\nBy adhering to these updated guidelines, traders can confidently leverage the BAF to capture market opportunities during volatility crush events."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-5",
+            "title": "Batman Strategy \u2013 Edge Case For Chaos",
+            "slug": "batman-strategy-edge-case-for-chaos",
+            "order": 5,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "The Batman Strategy is an advanced 0-DTE options trading approach designed to capitalize on high-volatility environments with precision and disciplined profit management. Whether you\u2019re a seasoned options trader or looking to enhance your trading arsenal, this guide will provide the necessary background, construction methodology, and profit management techniques to effectively implement the Batman Strategy in your trading endeavors.\n\n> Use this ONLY when the VIX is surging and the market is wild.\n\n### **What It Is**\n\nThe Batman Strategy is a high-volatility 0DTE approach using two wide, out-of-the-money butterflies\u2014one on each side of price. It\u2019s built to capitalize on chaos and stay alive in uncertainty.\n\nWhen the market doesn\u2019t know where it\u2019s going, Batman doesn\u2019t care. He\u2019s got both sides covered\u2014with asymmetry baked in.\n\n### **When to Use It**\n\nThe higher the VIX, the more you should consider Batman.\n\n![Screenshot 2025-04-11 at 6.50.53\u202fAM.png](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/9aa63913c00b4d249065cdffd4a9fd02756fcdc7e4414f9da1bebcf32c62ebda \"Screenshot 2025-04-11 at 6.50.53\u202fAM.png\")\n\n![image.png](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/bd4d22d628e344f5970d2e1c5cb34d90fd6b07fbb1a642b39206fde13ca0110d-md.png \"image.png\")\n\n**VIX not enough?** Use the Big Ass Fly debit test:\n\n- Debit < $17 = Extremely high IV\n- Perfect Batman territory\n\n### **What NOT to Do**\n\n- DO NOT use Fibonacci levels to place this trade.\n- DO NOT use trendlines or oscillators to guide it.\n- This isn\u2019t a chart pattern trade. It\u2019s a volatility edge trade. Period.\n\n### **How It\u2019s Built**\n\n- 2 Butterflies:\n  - One Call Fly placed way OTM\n  - One Put Fly placed way OTM\n- 0DTE Only\n- Each fly must have at least a 1:16 R2R\n- Combined structure = no more than 1:8 R2R\n- No stops. Your fly placement defines your risk.\n\n![Screenshot 2025-04-11 at 7.03.40\u202fAM.png](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/fb400377da7b4be081409761e6ecb0d173093b6c37f2481096f97fd067dc4a8a-md.png \"Screenshot 2025-04-11 at 7.03.40\u202fAM.png\")\n\nUse the VIX Playbook Width Map to choose your fly width:\n\n- VIX 22\u201332 \u2192 35\u201345 wide\n- VIX 32+ \u2192 45\u201360+ wide\n\n### **Risk/Reward in Motion**\n\n- You\u2019re not managing this like a normal fly.\n- Once one side goes nearly worthless (i.e. debit < $0.05), pull the ripcord:\n  - Buy back the short strikes\n  - Leave the long strikes open as tail exposure\n  - This is your Hail Mary move for reversals\n\n### **Quick Strategy Rules**\n\n\u2705 Trade it on 0DTE only\n\n\u2705 Wait for high IV or macro event chaos\n\n\u2705 Place wings far and wide\n\n\u2705 Never adjust with stops\u2014adjust with structure\n\n\u2705 No Fibonacci. No trendlines. Only volatility and flow.\n\n### **Bonus: When It Shines**\n\n- Big Fed days (FOMC, CPI, PCE)\n- Overnight chaos rolling into RTH\n- Days with >1.5% expected SPX move\n- When the BAF test says \u201ccheap premium\u201d\n- When one side might rip and the other could still win back\n\n### **Summary**\n\n- The Batman is your edge weapon when the market is on fire.\n- **Only use it when the world is burning.**\n- When you do, trust the process and lean on the VIX Playbook.\n\n### **Resource**\n\n- [Batman Cheat Sheet](https://flyonthewall.ai/wp-content/uploads/2026/01/Batman-Cheat-Sheet.pdf)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-6",
+            "title": "Time Warp \u2013 Multi-Day Strategy",
+            "slug": "time-warp-multi-day-strategy",
+            "order": 6,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **A New Edge Case Tool for Low-Volatility Markets**\n\nWe\u2019re excited to introduce a powerful addition to the Foundations Classroom strategies: The Time Warp Strategy. Designed specifically as an edge case tool, this strategy shines in low-volatility environments, where traditional setups like 0DTE trades struggle to deliver consistent returns.\n\n### **What Is the Time Warp Strategy?**\n\nThe Time Warp is part of our asymmetric butterfly family of trades. Still, it\u2019s specifically tailored for \u201cZombieland\u201d conditions\u2014when the VIX is below 17 and market volatility is at its lowest. These quiet markets pose unique challenges:\n\n- **Overnight Moves Dominate:** Much of the price action happens during the Globex session, leaving little room for significant intraday movement.\n- **Weak Premium Decay:** Low volatility means option premiums decay more slowly, reducing opportunities for traditional setups.\n\nThe Time Warp Strategy was developed to overcome these challenges by extending trades to 1, 2, or even 3 days to expiration (DTE). Capitalizing on multi-day premium decay and high gamma, the Time Warp fills a critical gap in our trading arsenal when volatility is scarce.\n\n### **Why Use Time Warp?**\n\nThis is not your everyday strategy. The Time Warp is purpose-built for specific market conditions where other trades fall short. Here\u2019s why it works:\n\n1. Advanced Premium Decay: The strategy captures decay over multiple sessions, even in slow-moving markets, by placing trades further out in time.\n2. Directional Focus: Unlike dual-sided strategies like Batman, the Time Warp uses single butterflies aligned with the trend to maximize efficiency.\n3. Wider Butterflies for Higher Risk-to-Reward: The Time Warp pushes butterflies further out-of-the-money (OTM), reducing debit costs and achieving higher risk-to-reward ratios, often between 1:11 and 1:14.\n\n### **Key Highlights of the Time Warp Strategy**\n\n1. **Low-Volatility Edge Case:** Time Warp is designed exclusively for low-VIX environments where traditional trades lack an edge.\n2. **Multi-DTE Trade Structure:** To ensure consistent exposure, enter overlapping trades with expirations on 0DTE, 1DTE, 2DTE, and 3DTE.\n3. **Volume Profile Integration:** Trades are entered when prices interact with key support or resistance levels from Volume Profile analysis.\n4. **Profit Management:** Positions are managed to capture **50%+ return on risk**, with future-dated trades replaced daily to maintain exposure.\n\n### **When to Use the Time Warp Strategy**\n\nThe Time Warp is not a replacement for your core strategies; it\u2019s a specialized tool for moments when the market hands us low volatility and narrow ranges. Here\u2019s when you\u2019ll want to deploy it:\n\n- **VIX < 17:** Use Time Warp exclusively during Zombieland conditions.\n- **Directional Trends:** Only place butterflies aligned with the current trend (calls above the market in bullish trends, puts below the market in bearish trends).\n- **Volume Profile Levels:** Ensure entries align with key structural support or resistance levels for high-probability setups.\n\n### **Conclusion**\n\nRemember, this is an edge-case strategy\u2014not one you\u2019ll use every day but one that can shine when the market conditions align.\n\nCheck out the resources below.\n\n- [Visual Strategy Guide](https://flyonthewall.ai/wp-content/uploads/2026/01/Visual-Strategy-Guide.pdf)\n- [Time Warp Trader Guide](https://flyonthewall.ai/wp-content/uploads/2026/01/Time-Warp-Trader-Guide.pdf)"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-5",
+        "title": "Volume Profile",
+        "description_md": "",
+        "order": 5,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-5-1",
+            "title": "TradingView Volume Profile Setup",
+            "slug": "tradingview-volume-profile-setup",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "You MUST get TradingView so you can use their Volume Profile tool. I know you\u2019re gonna tell me it\u2019s on Think or Swim (ToS). Well, stop all that talk because the ToS implementation is useless. Let me repeat (click it to get it)\u2026\n\n[**>>You MUST get TradingView\u2019s Volume Profile NOW!!<<**](https://www.tradingview.com/pricing/?share_your_love=patterncast \"https://www.tradingview.com/pricing/?share_your_love=patterncast\")\n\nIt\u2019s the best implementation anywhere by a long shot. I use it, as do every other 0DTE trader in my coaching service and the tens of thousands of people I have trained to use it over the years. Once you learn how Volume Profile works and you see it in action, you will quickly realize that you may never need another indicator again!\n\nWhen you get it, use the settings in the screenshot to get it to look just like mine. You\u2019ll thank me later.\n\n![Screen Shot 2025-02-15 at 8.32.46\u202fAM.png](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/f230ac7a9c4c4d06ae1ef1a086a248b2c3b3e5f6ad0f46ac8d2540bf53a7aae8 \"Screen Shot 2025-02-15 at 8.32.46\u202fAM.png\")\n\n![Screen Shot 2025-02-15 at 8.32.21\u202fAM.png](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/5224c3bf442b46c7ad933219d098e0c35b9e83319cba4aa48ea2667ccdc6abcf-md.png \"Screen Shot 2025-02-15 at 8.32.21\u202fAM.png\")"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-2",
+            "title": "Volume Profile",
+            "slug": "volume-profile",
+            "order": 2,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "e6iGlzBlVlQ",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "### Resources\n\n- [Volume Profile Book v0.6](https://flyonthewall.ai/wp-content/uploads/2026/01/Volume-Profile-Book-v0.6.pdf)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-3",
+            "title": "Volume Profile Replay",
+            "slug": "volume-profile-replay",
+            "order": 3,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "b-j6nxhus7g",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "This is a course that I have presented to thousands of students. It is the very last seminar I gave way back in 2018. The presentation has aged very well.\n\nWhile some of my tactics these days are slightly modified from back then, this course contains all the fundamental knowledge you need to use Volume Profile effectively."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-6",
+        "title": "Risk & Profit Management",
+        "description_md": "",
+        "order": 6,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-6-1",
+            "title": "Core Risk Management Philosophy",
+            "slug": "core-risk-management-philosophy",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **Introduction to Risk Management in the 0DTE Strategy**\n\nRisk management is the cornerstone of our 0DTE trading philosophy. It is not just about minimizing losses; it is about preserving the capital we\u2019ve worked hard to grow and staying disciplined in the face of market uncertainty. At the heart of our approach are two guiding principles:\n\n1. **Capital Preservation Over Profits:** Success in trading is not measured solely by profits but by the longevity and consistency of those profits. Preserving capital ensures we can remain active in the markets and continuously take advantage of opportunities.\n\n2. **Process over Outcome: Our focus is on executing a disciplined process rather than fixating on individual trade outcomes. This allows us to** align ourselves with the probabilistic nature of the markets and avoid emotional decision-making.\n\n### **The Role of Asymmetry in Risk Management**\n\nTo stay consistent with our philosophy, we rely on **asymmetric positions**\u2014trades where the potential reward significantly outweighs the risk. This approach allows us to keep individual losses small while allowing ourselves to capture outsized returns when market conditions align in our favor.\n\nOur strategy emphasizes **accepting the full spectrum of market results**\u2014small, medium, and large wins alongside controlled losses\u2014while staying in a position of strength. By ensuring that our losses are predefined and manageable, we avoid the emotional traps of fear and greed that lead to bad decisions.\n\n### **Key Tenets of 0DTE Risk Management**\n\n1. **Predefined Risk:**\n   - Each trade is structured with clearly defined risk from the outset, ensuring there are no surprises.\n   - Losing trades can go to 100% loss, but position sizes are kept small enough to align with overall risk tolerance.\n2. **Focus on Profit Management, Not Active Risk Mitigation:**\n   - Rather than constantly reacting to trades in progress, we let our strategy work as designed, focusing on managing profits and maximizing reward.\n   - This approach reduces unnecessary intervention, which can lead to emotional decisions and overtrading.\n3. **Staying in the Game:**\n   - The primary goal is to always be in a position to trade. By controlling risk, we avoid drawdowns that would prevent us from participating in future opportunities.\n   - A steady, measured approach ensures we can weather periods of loss without compromising our ability to capitalize on the next winning opportunity.\n4. **Guarding Against Emotional Decisions:**\n   - Fear and greed are the enemy of good trading. By predetermining and accepting our losses, we maintain clarity and focus, avoiding the pitfalls of emotional decision-making.\n   - Asymmetry helps us stay objective by providing a favorable risk-to-reward framework that supports our long-term goals.\n\n### **Why Defined Risk is Key**\n\nIn our 0DTE strategy, trades are designed with an asymmetric risk-to-reward profile. This means that the losses remain small and manageable even if the market dishes out a series of losing trades. We do not chase or avoid losses\u2014we embrace them as part of the probabilistic nature of trading. This consistency allows us to remain engaged in the market and prepared for the larger, more profitable trades that align with our strategy.\n\n### **The Big Picture**\n\nRisk management is about maintaining control, not just of our trades but of our mindset. By consistently following a disciplined process, we can overcome the emotional challenges of trading and build long-term success. At this core is the recognition that **losing is part of winning**\u2014but only if those losses are controlled and in line with our philosophy.\n\nWith capital preservation as our foundation and a focus on process over outcome, we set ourselves up for sustainable growth and profitability. This is the essence of risk management in the 0DTE strategy. Let\u2019s protect what we\u2019ve built and continue trading with confidence."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-6-2",
+            "title": "Calculating Position Size",
+            "slug": "calculating-position-size",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **Introduction to Position Sizing**\n\nWelcome to the module on position sizing\u2014a critical component for mastering risk management and achieving consistent profitability. Position sizing isn\u2019t just about determining how much to trade; it\u2019s about aligning your trade size with your account\u2019s size, your risk tolerance, and the likely distribution of returns. This ensures you can control drawdowns, smooth the volatility of your returns, and grow your account in a structured, disciplined way.\n\nOur position-sizing philosophy is built on these core principles:\n\n- **Capital Preservation:** The top priority is protecting your account from significant drawdowns, keeping you in the game for the long term.\n- **Controlled Growth:** Position sizes grow gradually as your account increases, following a compounding approach that ensures steady progress.\n- **Risk Alignment:** Trades are sized to reflect the expected distribution of outcomes and worst-case scenarios, giving you confidence even in challenging markets.\n- **Flexibility for Market Conditions:** Adjusting position sizes dynamically based on volatility regimes and the opportunity set for the day.\n\nIn this module, you\u2019ll learn:\n\n1. **Why Position Sizing Matters:** How it impacts your returns and helps mitigate emotional decision-making.\n2. **Calculating Position Size:** From fixed percentage methods to dynamic adjustments based on equity and market volatility.\n3. **Managing Risk Across Trades:** How to allocate risk per session and adjust during losing streaks to protect your capital.\n4. **Adapting to Volatility:** Leveraging volatility as a tool to optimize position sizes for maximum profitability.\n\nBy the end of this course, you\u2019ll have the tools to confidently size your trades, preserve your capital, and achieve sustainable growth with the 0-DTE strategy."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-6-3",
+            "title": "Drawdown Management",
+            "slug": "drawdown-management",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "Drawdown management is a critical aspect of trading, designed to ensure that traders can weather inevitable losing streaks and maintain the emotional discipline necessary for long-term success. This module introduces the principles, strategies, and actionable steps to manage drawdowns effectively, emphasizing **Capital Preservation Over Profits** and the importance of staying in the game.\n\n### **Learning Objectives**\n\nBy the end of this module, you will:\n\n1. Understand the exponential challenges of recovering from increasing drawdowns.\n2. Recognize the importance of setting and adhering to a conservative drawdown limit.\n3. Learn proactive mitigation strategies to stabilize your account during losing streaks.\n4. Develop the emotional discipline to avoid fear and greed during drawdown periods.\n\n### \n\n### **Section 1: The Impact of Drawdowns on Recovery**\n\n**The Drawdown-Recovery Paradox:**\n\n- As drawdowns increase, the percentage gain required to recover becomes exponentially larger.\n- Example: A 10% drawdown requires an 11% recovery; a 50% drawdown requires a 100% recovery.\n\n**Emotional Consequences:**\n\n- Larger drawdowns lead to heightened emotional stress, increasing the risk of irrational decisions driven by fear or greed.\n\n**Statistical Certainties:**\n\n- Losing streaks are inevitable in trading due to the probabilistic nature of markets.\n- Preparation for bad streaks is essential to avoid compounding losses during these periods.\n\n### \n\n### **Section 2: Setting a Drawdown Limit**\n\n**The 6% Standard:**\n\n- While many professional traders use 10% as their drawdown limit, our strategy adopts a more conservative 6%.\n- This ensures a greater margin of safety and reduces the risk of emotional interference.\n\n**What Happens at 6%:**\n\n- Reaching this limit is a signal to stop trading entirely and reassess both strategy and mindset.\n\n### \n\n### **Section 3: Mitigation Strategies for Smaller Drawdowns**\n\n**Thresholds for Action:**\n\n- As drawdowns approach 2%, 3%, or 4%, take proactive steps to stabilize the account.\n\n**Key Mitigation Steps:**\n\n1. **Reduce Position Size:**\n\n- Scale down position sizes proportionally to the drawdown level to limit further losses.\n\n2. **Adopt Conservative Trades:**\n\n- Prioritize trades with lower risk and higher probability of success during recovery phases.\n\n3. **Pause Aggressive Trading:**\n\n- Focus on stability rather than rapid recovery to avoid compounding mistakes.\n\n**Gradual Recovery:**\n\n- Only increase position sizes and return to normal trading behavior after demonstrating consistent performance and stabilization.\n\n### \n\n### **Section 4: Staying in the Game**\n\n**Focus on Preservation:**\n\n- The goal of drawdown management is to ensure you remain active in the market, ready to capitalize on future opportunities.\n\n**Avoid Emotional Traps:**\n\n- By implementing predefined drawdown thresholds and mitigation strategies, you minimize the risk of emotional decision-making during tough periods.\n\n### \n\n### **Section 5: Tools and Techniques for Monitoring Drawdowns**\n\n**Tracking and Analysis:**\n\n- Use detailed account performance tracking to monitor drawdowns in real-time\n- Assess performance against key metrics like win rate, risk-to-reward ratios, and average loss.\n\n**Journaling:**\n\n- Document trades and drawdown phases to identify patterns and refine mitigation strategies.\n\n**Visual Aids:**\n\n- Employ equity curves and drawdown charts to visualize account performance and guide decision-making.\n\n### \n\n### **Section 6: Practical Application and Exercises**\n\n**Scenario-Based Exercises:**\n\n- Practice adjusting position sizes and implementing mitigation strategies based on simulated drawdown scenarios.\n\n**Case Studies:**\n\n- Analyze real-world examples of drawdown management in successful trading accounts.\n\n**Action Plan:**\n\n- Develop a personal drawdown management plan, including:\n  1. Your drawdown thresholds (e.g., 2%, 4%, 6%).\n  2. Position size adjustment strategies.\n  3. Criteria for resuming normal trading.\n\n### \n\n### **Conclusion: Embracing the Inevitable**\n\nDrawdowns are an unavoidable part of trading. What sets successful traders apart is not the absence of losses but their ability to manage them effectively. By adopting a disciplined approach to drawdown management, you safeguard your capital, maintain emotional stability, and ensure long-term success in the 0DTE strategy.\n\n### \n\n### **Next Steps:**\n\n- Complete the exercises provided in this module.\n- Share your drawdown management plan in the community forum for feedback.\n- Review your trading journal to identify past drawdown patterns and refine your approach.\n\n### \n\n### **Resources**\n\n- [Notables on Drawdown](https://flyonthewall.ai/wp-content/uploads/2026/01/Notables-on-Drawdown.pdf)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-6-4",
+            "title": "Profit Management Framework",
+            "slug": "profit-management-framework",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **Dynamic Tolerance Adjustments**\n\nThis module expands on the Profit Management Framework by introducing the interplay of two critical dimensions\u2014**Where** and **When**\u2014and their role in guiding dynamic tolerance adjustments. While suggested tolerance percentages provide a foundational starting point, they are adaptable, allowing traders to adjust their strategies based on volatility regimes, market context, and personal risk tolerance.\n\nThe **Profit Management Framework** is structured around two key dimensions:\n\n1. **The Where Dimension**: This dimension maps to the probabilities of price movement based on the normal distribution of daily market moves and the likelihood of price reaching specific zones within or near the butterfly structure. It provides a statistical foundation for decision-making.\n\n![Distribution.001.jpeg](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/c4d523f4bfb24ad9914f01bc9638db4f1e5fe6d114544cbebfd21a59ff6fe969-md.jpg \"Distribution.001.jpeg\")\n\n2. **The When Dimension**: This dimension reflects the time of day, which impacts the speed of premium decay and gamma risk. As the trading session progresses, this dimension guides adjustments in tolerances to align with evolving market dynamics.\n\nBy integrating these dimensions, traders can systematically manage profits by balancing the statistical likelihood of price movements with real-time market behavior. This approach enables traders to make informed, structured hold or fold decisions, maximizing returns while effectively mitigating risks.\n\n### **Learning Objectives**\n\nBy the end of this module, you will:\n\n1. Understand how the Where and When dimensions influence profit management.\n\n2. Learn to map tolerance zones to the probability distribution of market moves.\n\n3. Dynamically adjust tolerances based on both dimensions for optimal decision-making.\n\n4. Implement a personalized framework for managing profits dynamically.\n\n## **Section 1: The Where Dimension \u2013 Mapping Probabilities**\n\n### **Definition**\n\nThe Where Dimension is based on the **probability distribution of daily market prices**. It reflects:\n\n- The likelihood of price reaching specific areas relative to the butterfly structure.\n- The expected returns for each zone are based on empirical evidence and risk-to-reward profiles.\n\n![Profit Mgmt Framework.001.jpeg](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/9f4784b949214c679a896bc366c69d56e716065476a04fc38b76830ab7c66a29-md.jpg \"Profit Mgmt Framework.001.jpeg\")\n\n### **Mapping to Probability Zones**\n\n1. **37.5% Zone (Far from Butterfly):**\n\n- Represents the bulk of daily market moves (0-1%), which account for ~75% of all price action.\n- Most profits are captured **outside** the butterfly tent.\n\n2. **10% Zone (Within the Butterfly Tent):**\n\n- Represents ~10% of daily moves where price enters the profit tent.\n- Medium-sized profits are captured here.\n\n3. **2.5% Zone (Centered in the Butterfly Tent):**\n\n- Represents ~2.5% of daily moves where the price lands near the butterfly\u2019s center.\n- Produces the largest outsized profits (up to 1000% ROI).\n\n## **Section 2: The When Dimension \u2013 Time of Day**\n\nThe When Dimension represents the **time of day**, segmented into three trading sessions. Each session has distinct market behaviors that influence profit management decisions.\n\n### **Session Breakdown**\n\n1. **Morning Session (9:30 am \u2013 12:30 pm):**\n\n- Higher market volatility; slower premium decay.\n- Wider tolerances (50-75%) to allow trades room to develop.\n\n2. **Afternoon Session (12:30 pm \u2013 2:30 pm):**\n\n- Accelerating premium decay; moderate gamma risk.\n- Moderate tolerances (30-50%) to protect mid-session gains.\n\n3. **Closing Session (2:30 pm \u2013 4:00 pm):**\n\n- Peak gamma risk; rapid price sensitivity.\n- Tight tolerances (<30%) to secure profits and minimize risk.\n\n## **Section 3: Intersecting the Two Dimensions**\n\n### **Dynamic Profit Management**\n\nThe **intersection of Where and When dimensions** determine your tolerance strategy and guide adjustments during the trade:\n\n**Example Scenarios:**\n\n- **Morning Session in 37.5% Zone:**\n  - Wide tolerance (75%) to allow for market volatility and the possibility of price moving toward the butterfly.\n- **Afternoon Session in 10% Zone:**\n  - Moderate tolerance (40-50%) to lock in profits as price moves within the profit tent.\n- **Closing Session in 2.5% Zone:**\n  - Tight tolerance (<15%) to secure outsized gains as gamma risk peaks.\n\n![Screen Shot 2024-12-28 at 11.06.39\u202fAM.png](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/eb4c0225fe594ed6806b4d1d3f09fce8352c344eb98c489f8c45562f6f4a3b5e-md.png \"Screen Shot 2024-12-28 at 11.06.39\u202fAM.png\")\n\n## **Section 4: Incorporating Market Probabilities**\n\n**1. Normal Distribution of Market Moves**\n\n- ~75% of daily moves are within 0-1%.\n- ~10% of daily moves are medium-sized, reaching within the butterfly tent.\n- ~2.5% of daily moves are large, reaching the center of the butterfly.\n\n**2. Aligning Trades to Probabilities**\n\n- Position butterflies to capture the bulk of probability (~75%) while leaving room for medium and outsized moves.\n- Adjust tolerances dynamically to reflect the likelihood of price movement into each zone.\n\n## **Section 5: Practical Application**\n\n**1. Steps to Optimize Hold or Fold Decisions**\n\n1. Identify the **Zone** (Where Dimension) based on price location relative to the butterfly.\n2. Determine the **Session** (When Dimension) based on the time of day.\n3. Adjust tolerances dynamically based on market context, volatility, and structural levels.\n\n**2. Personalizing Your Framework**\n\n- Use the starting tolerances as a baseline, then refine based on your personal risk tolerance and market conditions.\n- Document your trades to track how probability and time influence your decisions.\n\n## **Section 6: Exercises**\n\n1. **Simulate Trades:**\n\n- Practice mapping price movements to probability zones and adjusting tolerances dynamically throughout the session.\n\n2. **Analyze Case Studies:**\n\n- Review historical trades to understand how the Where and When dimensions impacted profit-taking decisions.\n\n3. **Develop Your Framework:**\n\n- Create a personalized profit management plan incorporating probability zones and session timing.\n\n## **Section 7: Conclusion**\n\nThe Profit Management Framework balances statistical probabilities (Where) with session timing (When) to optimize profit-taking decisions. By understanding and dynamically adjusting to the interplay of these dimensions, traders can achieve consistent success while maintaining discipline and control.\n\n### \n\n### **Next Steps**\n\n- Implement the framework in your next trades.\n- Track your outcomes and refine your process.\n- Engage in the community to share insights and learn from other traders\u2019 approaches.\n\n### **Assignment**\n\nSimulate five trading sessions, document your Zone and Session for each trade, and analyze how they influenced your profit management decisions. Present your findings at the next group discussion."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-7",
+        "title": "Campaign Trading",
+        "description_md": "",
+        "order": 7,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-7-1",
+            "title": "Introduction to Campaign Trading",
+            "slug": "introduction-to-campaign-trading",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "Imagine stepping into the spotlight, where every decision counts. This is Campaign Trading\u2014the culmination of the Strategy Life Cycle\u2014where all your preparation, refinement, and skill development come together in live trading. Just as professional athletes progress through rigorous training in the minor leagues before stepping onto the field in the major leagues, traders build, test, and refine their strategies in a structured process before deploying them in a campaign.\n\nIn this course module, you\u2019ll learn to develop, curate, and execute well-tested strategies and establish the habits and routines essential for long-term success. Just as athletes rely on structured training regimens to reach the major leagues, disciplined traders lean on the Strategy Life Cycle to sharpen their skills and achieve consistency in their campaigns.\n\n### **How the Strategy Life Cycle Relates to Campaign Trading**\n\nThe Strategy Life Cycle mirrors the structure of professional baseball, where players progress from Single-A to Triple-A before earning a spot in the major leagues. Similarly, trading strategies evolve from raw ideas in the Development phase, are refined and positioned for success in Curation, and finally make their debut in Campaign Execution, where they prove their value in real-time market conditions.\n\n- **Development**: Consider this your Single-A to Triple-A major league baseball system. Strategies are like rookie players, starting as raw ideas that need refinement, rigorous testing, and time in simulations to prove their potential.\n- **Curation**: At this level, you evaluate which players\u2014or strategies\u2014are ready to step up. You group them into a portfolio, position them for success, and prepare them for live action.\n- **Campaign Execution**: Campaign Execution is your \u2018big game,\u2019 the moment when all your preparation pays off. Success here is built on earlier phases\u2019 discipline, refinement, and hard work, ensuring you\u2019re ready to perform at your best when it matters most.\n\nAre you ready to step up to \u2018The Show\u2019? This module will guide you through the Strategy Life Cycle, equipping you with the skills, discipline, and confidence to thrive in your trading campaigns. Your journey starts now\u2014let\u2019s begin!\n\n**You Are Not Starting From Scratch**\n\nYou\u2019re stepping into the process with a major advantage: four pre-certified strategies already passed through rigorous development and curation phases. These strategies have been tested and refined, ensuring they align with our flexibility, precision, and risk management philosophy. They are designed to help you begin your trading journey with confidence and clarity.\n\n### **Your Certified Strategies**\n\nAt the heart of your trading toolkit is the **Asymmetric OTM Butterfly**, the cornerstone of our approach and the foundation for all other strategies. This strategy reflects the key attributes of our trading philosophy\u2014flexibility, adaptability, and a focus on asymmetric risk-reward opportunities.\n\nBuilding on this core strategy are three versatile derivatives:\n\n- **The Batman**: This strategy divides risk and reward into symmetrical components, making it ideal for adapting to specific market conditions.\n- **Big Ass Fly**: Tailored for higher volatility environments, this strategy captures larger moves while keeping risk under control.\n- **Time Warp**: A time-focused strategy that leverages time decay for profit in more stable market scenarios.\n\nThese strategies form a balanced and versatile portfolio, providing you with the tools to tackle a variety of market conditions. They are your starting lineup, carefully curated to help you build skills, confidence, and discipline as you progress in your trading journey.\n\n### **Our Philosophy in Action**\n\nThese strategies are more than just techniques\u2014they represent the principles that define professional trading. The **Asymmetric OTM Butterfly**, in particular, embodies the flexibility, precision, and disciplined approach we value most. By mastering this strategy and its derivatives, you\u2019ll gain insight into the core attributes that make trading campaigns successful.\n\n### **The Evolutionary Edge: A Glimpse at MOAF**\n\nWe are always innovating and evolving. While the four certified strategies provide an excellent foundation, advanced traders in our coaching service gain access to cutting-edge strategies like the **Mother Of All Flies (MOAF)**. Currently in the development phase, MOAF builds on the Asymmetric OTM Butterfly\u2019s principles but adapts them for high implied volatility conditions. By capitalizing on market mispricings, MOAF creates unusually wide, cost-efficient positions with exceptional potential.\n\nAlthough MOAF is not part of this introductory module, it offers a glimpse into the advanced concepts and opportunities awaiting you in our coaching service."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-7-2",
+            "title": "Strategy Life Cycle Big Picture",
+            "slug": "strategy-life-cycle-big-picture",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "![Full Strategy Life Cycle.png](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/7df596ff11534d17b3427e392d2cd96d86ccefda70e84024be4ea844b09264f5-md.png \"Full Strategy Life Cycle.png\")\n\nThe Strategy Life Cycle is the backbone of a professional 0-DTE trader\u2019s routine. It is a structured process designed to help traders develop, refine, and execute a limited set of core strategies with discipline and precision.\n\nFor 0-DTE traders, this life cycle emphasizes building habits, managing risks, and staying adaptable in the face of constant market dynamics.\n\nBy committing to this iterative framework, traders can focus on sustainable growth, scalable strategies, and consistent performance over time.\n\n### **Development Phase:**\n\n![Development Phase.png](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/ca1f1d1315c54fb6a6943fdf41a070cc635416fe46114a2ab5207700da68b9fc-md.png \"Development Phase.png\")\n\nThis is where every strategy begins, much like an artist sketching an idea or a rookie player learning the basics. In the Development phase, traders focus on turning raw ideas into simple, repeatable, and effective strategies.\n\nThe goal here isn\u2019t perfection but progress\u2014learning to generate ideas, test them in a controlled environment, and refine them for the next step.\n\n1. **Idea/Hypothesis Generation**\n   - Simple and explainable ideas that match trading style.\n   - Exploration of alternative data sources for hypothesis generation.\n\n2. **Modeling**\n   - Classification and preliminary rule-setting.\n   - Market selection and timeframe determination.\n   - Entry and exit strategy development.\n   - Regulatory compliance checks (non-ESG focused).\n\n3. **In-Sample Testing (IS Tests)**\n   - Historical data testing for initial robustness.\n   - Parameter optimization without overfitting.\n   - Prioritization of strategies based on performance metrics.\n\n4. **Out-of-Sample Testing (OOS Tests)**\n   - Performance evaluation using unseen historical data.\n   - Stress testing under extreme market scenarios.\n   - Walk-forward analysis and Monte Carlo simulations.\n   - Liquidity considerations to ensure the market impact is minimal.\n\n5. **Simulation Deployment (Deploy to Sim)**\n   - Real-time risk monitoring integration for dynamic adjustments.\n   - Execution in simulated market conditions with live data.\n   - Monitoring and psychological evaluation of strategy execution.\n   - Automation of transitions where appropriate, with oversight.\n\n### **Curation Phase:**\n\n![Curation Phase.png](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/40b15c847e6a4187a7aaede75cb256e169afd67653394e239ea334de65b31736-md.png \"Curation Phase.png\")\n\nThink of this as assembling your team. In the Curation phase, you identify which strategies are ready for live trading and group them into a portfolio.\n\nFor beginners, this phase is about learning how to manage a handful of strategies while maintaining balance and reducing risk.\n\nAs you grow, so will your ability to curate more complex portfolios, just like a coach builds a winning team.\n\n1. **Categorization**\n   - Classification of strategies into new, in-process, mature, or sick.\n\n2. **Grouping**\n   - Strategy grouping based on low correlation and balanced risk.\n   - Diversification across different markets and instruments.\n\n3. **Position Sizing**\n   - Determining bet size using fixed dollar, fixed risk, or volatility-based methods.\n   - Position sizing is proportional to capital and aligned with risk tolerance.\n\n4. **Monitoring**\n   - Continuous real-time monitoring for performance and risk levels.\n   - Application of advanced analytics to adjust strategies as needed.\n\n5. **Deployment**\n   - Final review and peer evaluation before going live.\n   - Execution of strategies with real capital in live market conditions.\n\n### **Campaign Phase:**\n\n![Campaign Phase.png](https://assets.skool.com/f/4b52985a960b44da9ba4d04de324ab8d/d2ba30c03d66492794846de81454c3275c7c87fc61fc464eb11324250cbee283-md.png \"Campaign Phase.png\")\n\nThis is where the game begins\u2014the Campaign phase is your opportunity to put your strategies into action in live market conditions.\n\nFor new traders, the focus is on discipline, following your plan, and learning from results. It\u2019s about turning preparation into performance while keeping emotions in check.\n\nSuccess here is the result of everything you\u2019ve built in the earlier phases.\n\n1. **Strategy Execution**\n   - Deployment of strategies that passed the curation phase.\n   - Ongoing psychological evaluation to maintain discipline and rationality.\n\n2. **Capital Allocation**\n   - Allocation of funds across strategies based on performance and risk assessment.\n   - Dynamic reallocation as strategies are monitored and evaluated.\n\n3. **Execution Timeline**\n   - Determination of start and end dates for trading campaigns.\n\n4. **Logging and Documentation**\n   - Detailed recording of all trades, strategy adjustments, and performance outcomes.\n   - Automate logging tools should be used where possible for accuracy and efficiency.\n5. **Pruning and Refinement**\n   - Regular assessment and removal of underperforming strategies.\n   - Refinement and scaling of successful strategies.\n\n6. **Retrospective Analysis**\n   - Post-campaign performance analysis to extract lessons and insights.\n   - Application of lessons learned to future strategy development cycles.\n\n7. **Campaign Conclusion**\n   - Decisive end-date implementation based on strategy performance and market conditions.\n\n### **Building a Pathway to Coaching**\n\nWhile this module provides you with the tools and knowledge to start trading professionally, true transformation comes from deeper learning, practice, and refinement.\n\nOur coaching service is designed to elevate what you\u2019ve learned here to mastery, giving you access to advanced techniques, personalized guidance, and the skills needed to trade with confidence in any market condition.\n\nIf this taste of professional trading excites you, the next step is just a conversation away.\n\nApply for Coaching here: <https://go.0-dte.com/application>"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-7-3",
+            "title": "Your Journey Into Campaign Trading",
+            "slug": "your-journey-into-campaign-trading",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "You\u2019ve been introduced to the **Strategy Life Cycle**, the professional trader\u2019s framework for developing, refining, and curating strategies. This life cycle is what brought your certified strategies\u2014like the Asymmetric OTM Butterfly and its derivatives\u2014to life.\n\nBut now, it\u2019s time to take the next step: the **Trading Campaign phase**. This is where you\u2019ll put preparation into practice, executing these strategies in live market conditions.\n\nCampaign Trading is the culmination of the entire process, and this module focuses on what you need to succeed at this stage.\n\n**You\u2019ll learn how to:**\n\n- Execute strategies with discipline and precision.\n- Allocate capital effectively based on your goals and risk tolerance.\n- Stay focused and resilient, even in the face of challenges.\n- Evaluate and refine your performance to ensure continuous improvement.\n\nBy mastering these skills, you\u2019ll not only gain confidence in your trading campaigns but also lay the groundwork for long-term success.\n\nLet\u2019s dive into the Trading Campaign phase and start turning preparation into performance."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-7-4",
+            "title": "An Agile Process",
+            "slug": "an-agile-process",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "DNr3K7r9BDw",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "### **Trading Campaigns: Continuous Improvement in Action**\n\nThe **Trading Campaign Phase** is where preparation becomes performance. But the real goal is not just executing strategies\u2014it\u2019s evolving as a trader.\n\nCampaign Trading is built on a foundation of continuous improvement, guided by core philosophies and values:\n\n- **Preservation of Wealth**: Protecting capital is your first priority. Every decision must align with managing risk effectively.\n- **Asymmetric Risk-to-Reward**: Focus on strategies that offer outsized rewards relative to the risks involved. This is the essence of professional trading.\n- **Compounding**: Consistent performance leads to exponential growth. Small, steady wins build momentum and long-term wealth.\n- **Process Improvement**: Every trade, every day, and every campaign is an opportunity to refine your craft. By staying disciplined and focused, you continuously enhance your edge.\n\nThis phase isn\u2019t just about trading\u2014it\u2019s about becoming a better trader.\n\nSuccess lies in your ability to integrate these philosophies into an agile, recursive process that adapts to changing markets while steadily driving your performance forward.\n\n### \n\n### **Key Framework for the Campaign Phase**\n\nThe Campaign Phase follows a structured yet flexible process, built around three principles:\n\n1. **Agility**: Adapt to the market without losing discipline. Execute strategies confidently while remaining prepared to make adjustments when conditions change.\n2. **Data-Driven Decisions**: Use your trade log and journal to track progress, evaluate performance, and close the feedback loop. Data is the key to process improvement.\n3. **Iterative Refinement**: Treat each campaign as a step in your evolution. Learn, adapt, and refine with each cycle to enhance your skills and confidence.\n\n### \n\n### **Daily Routines: Your Mini-Experiments**\n\n**Philosophy**: Each trading day is a scientific experiment\u2014a self-contained project contributing to the larger campaign.\n\nYour objective is to gather information, protect your capital, and execute strategies aligned with asymmetric risk-to-reward opportunities.\n\n**Morning Preparation**:\n\n- Review overnight news and pre-market activity.\n- Align strategies with current conditions and confirm your trading plan.\n- Reaffirm your risk parameters in line with capital preservation.\n\n**Market Hours**:\n\n- Execute trades as planned, maintaining discipline and focus.\n- Monitor live performance and market behavior.\n- Log each trade with precision, capturing entries, exits, rationale, and performance.\n\n**Post-Market Reflection**:\n\n- Analyze your trades: Did you execute according to plan? What went well, and what didn\u2019t?\n- Journal insights on your decision-making, emotional state, and observations about market behavior.\n- Identify key lessons to explore further during the weekly retrospective.\n\n**End Result**: Your trade log and journal become invaluable tools, feeding into the weekly analysis and creating a feedback loop for improvement.\n\n### \n\n### **Weekly Routines: Reflection and Refinement**\n\n**Philosophy**: Weekly routines provide the time and perspective to step back, assess progress, and align your strategies with your long-term goals.\n\n**Performance Review**:\n\n- Evaluate weekly metrics: win rates, drawdowns, and overall P&L.\n- Assess whether your trades adhered to your core philosophies, especially the preservation of wealth and asymmetric risk-to-reward.\n\n**Strategy Analysis**:\n\n- Review how well each strategy performed in the current market environment.\n- Identify underperformers to adjust or remove and opportunities to scale high performers.\n\n**Feedback Loop Closure**:\n\n- Use your trade log and journal to identify patterns, behavioral insights, and recurring issues.\n- Plan specific improvements for execution, strategy alignment, or emotional resilience.\n\n**Planning Ahead**:\n\n- Set clear, actionable goals for the upcoming week.\n- Adjust capital allocation or strategy parameters based on insights.\n\n### **Monthly Routines: Iterative Campaign Refinement**\n\n**Philosophy**: Each campaign iteration builds on the last. Monthly routines allow you to evaluate your progress on a broader scale, ensuring alignment with your philosophies and compounding growth.\n\n**Campaign Retrospective**:\n\n- Analyze overall performance: Did you achieve your goals for the campaign?\n- Evaluate whether your strategies, routines, and execution align with long-term objectives.\n\n**Pruning and Scaling**:\n\n- Remove strategies that consistently underperform.\n- Scale successful strategies within your risk tolerance to maximize compounding.\n\n**Mindset and Emotional Reflection**:\n\n- Reflect on how well you managed emotions, stress, and decision-making.\n- Reaffirm commitment to your philosophies and set personal growth goals.\n\n### **Campaigns as Continuous Improvement**\n\nThe Campaign Phase is not a one-and-done process\u2014it\u2019s a journey of continuous improvement. Each day, week, and campaign is part of an iterative loop that refines your skills, strengthens your discipline, and compounds your results.\n\nBy living our philosophies\u2014preservation of wealth, asymmetric risk-to-reward, compounding, and process improvement\u2014you\u2019ll build a foundation for consistent success. Success in trading isn\u2019t about winning every trade; it\u2019s about staying disciplined, learning from each experience, and evolving with every campaign.\n\nLet\u2019s get started on making each campaign your best yet."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      }
+    ],
+    "resource_ids": [],
+    "resource_links": [],
+    "related_live_series_ids": [],
+    "seo": {
+      "title": "0-DTE Foundations",
+      "canonical_path": "/courses/0-dte-foundations"
+    },
+    "production": null
+  },
+  "bundle": {
+    "resources": [],
+    "instructors": [
+      {
+        "id": "inst-1",
+        "instructor_id": 1,
+        "name": "Ernie Varitimos",
+        "bio_md": "Founder of FatTail.ai and the 0-DTE methodology. Three decades trading asymmetric structures; teacher of the stop-the-bleeding doctrine.",
+        "avatar_url": null,
+        "links_json": null
+      }
+    ]
+  }
+}

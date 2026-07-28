@@ -1,0 +1,777 @@
+{
+  "format": "fattail.labs.canonical_course",
+  "model_version": "1.0",
+  "exported_at": "2026-07-28T19:37:29Z",
+  "source": {
+    "course_id": 267,
+    "slug": "campaigns",
+    "runtime_status": "published"
+  },
+  "course": {
+    "id": "course",
+    "slug": "campaigns",
+    "title": "Campaigns",
+    "subtitle": "",
+    "description_md": "**Campaigns** is a live, evolving course that documents real-world execution of both **0DTE tactical trades and multi-DTE FatTail campaigns** using the FatTail Protocol. Rather than teaching theory in isolation, this course serves as a transparent campaign log\u2014showing how convex positions are designed, deployed, managed, and retired across different time horizons and volatility regimes.\n\nYou\u2019ll see how short-dated tactics like 0DTE integrate with longer-tail structures, how capital is allocated across campaigns, and how decisions adapt in real time as market conditions change.\n\nCampaigns is about applied convexity: optionality over prediction, discipline over frequency, and learning from live exposure\u2014not hindsight.",
+    "short_description": "",
+    "status": "published",
+    "version": "1.0.0",
+    "level": "intermediate",
+    "created_at": "2026-07-28T11:01:50",
+    "category_slugs": [],
+    "instructor_refs": [
+      {
+        "id": "inst-1",
+        "name": "Ernie Varitimos",
+        "instructor_id": 1
+      }
+    ],
+    "audience_category": "members",
+    "pathway_position": null,
+    "flagship": false,
+    "trailer": null,
+    "banner": {
+      "id": "banner",
+      "type": "image",
+      "source": "media_library",
+      "url": "/api/media/7d81d6fa0e65c4e6fb11639e.jpg"
+    },
+    "card_color": null,
+    "certification_enabled": false,
+    "estimated_duration_minutes": null,
+    "learning_outcomes": [],
+    "modules": [
+      {
+        "id": "mod-1",
+        "title": "Getting started",
+        "description_md": "",
+        "order": 1,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-1-1",
+            "title": "Overview",
+            "slug": "overview",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "## **\ud83e\udded Trading Campaigns**\n\nWelcome to **Trading Campaigns** \u2014 a living documentation of asymmetric campaigns I run using the Fat Tail Protocol.\n\nThis course serves as both a real-time trading journal and an educational case study archive, designed to give fellow traders an inside look at how I apply convex principles in live markets.\n\n---\n\n### **\ud83c\udfaf Purpose**\n\nTo transparently track and analyze a variety of real-money campaigns that embody:\n\n- **Optionality over prediction**\n- **Convex payoffs over frequency**\n- **Low-touch, high-impact setups**\n- **Emotional detachment and repeatable discipline**\n\nEach campaign is guided by the Fat Tail strategy life cycle \u2014 moving from development \u2192 curation \u2192 live deployment \u2192 retrospective.\n\n![Full Strategy Life Cycle.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/c0773d46b338484695ae3fd2480a7b5e846a7dc486ff48929ff8285c27e8aa1c-md.png \"Full Strategy Life Cycle.png\")\n\n---\n\n### **\ud83d\udce6 What You\u2019ll Find Inside**\n\n- **Campaign Profiles:** Capital plan, trade structure, and placement logic\n- **Weekly Logs:** Trades, rationales, outcomes, and protocol alignment checks\n- **Retrospectives:** Honest reviews of what worked, what didn\u2019t, and how I adjusted\n- **Templates:** Journals, trackers, placement prompts, and risk allocation frameworks\n- **Lessons Learned:** Strategy tweaks, pruning decisions, mindset reflections\n- **Replay Potential:** How to simulate or backtest alongside each campaign for your own study\n\n---\n\n### **\ud83d\udc41 Who This Is For**\n\nThis course is built for:\n\n- Traders curious about convexity and tail-risk positioning\n- Students of Taleb, Spitznagel, and Universa\u2019s philosophy\n- Members of the FatTail Skool community looking to model real-world execution\n- Anyone tired of overtrading and ready to plant smarter, smaller, more durable trades\n\n---\n\n### **\ud83d\udca1 Why It Matters**\n\nMost trading content focuses on being right. This course focuses on **being positioned** \u2014 consistently, intelligently, and with minimal risk. If you\u2019ve ever wondered *how* to integrate tail exposure without overthinking or overtrading, this campaign journal is for you."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-1-2",
+            "title": "Fat Tail Campaign Framework",
+            "slug": "fat-tail-campaign-framework",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "*A unified playbook and campaign planner for asymmetric deployment across volatility regimes, timeframes, and structural zones.*\n\n---\n\n## \ud83c\udfaf Objective\n\nTo coordinate the four core Fat Tail Protocol campaigns\u2014**Convexity Alignment Stack, Sigma Drift, Volatility Seed Vault, and Macro Echo Chamber**\u2014into a cohesive portfolio framework that:\n\n- Maintains continuous exposure to convex events\n- Balances short-term optionality with long-duration protection\n- Provides a weekly, monthly, and quarterly rhythm\n\n---\n\n## 1. **\u26a1\ufe0f** 0DTE Tactical\n\n**Purpose:**\n\nExploit same-day volatility, gamma regime shifts, and structural pivots through highly adaptive, hands-on 0DTE strategies\u2014enabling precise, asymmetric risk deployment in the most perishable volatility windows.\n\n**Primary Tactic:**\n\n0DTE out-of-the-money (OTM) butterfly spreads, optimized for low debit and high risk/reward, dynamically placed at volume profile edges, expected move boundaries, or event-driven levels.\n\n**Edge Cases:**\n\nTime Warp (narrow regime, low VIX), Batman (dual-fly, high-vol), Big Ass Fly (pre-market, major macro), Gamma Door (1\u20133 DTE transition trades at GEX flips or compression cliffs).\n\n- **Zone:** LVN/HVN edges, gamma walls, structural inflection points\u2014scanned daily.\n- **Capital:** $200\u2013$500 per trade, rapid cycle (1\u20133x per day if structure presents).\n- **Frequency:** Daily opportunities, but entered only at confirmed inflection/tension.\n\n**Playbook:**\n\n> Deploy hands-on: each fly is actively placed, not rote.\n>\n> Use VP + GEX + VIX context to size, time, and select structure.\n>\n> Layer edge-case setups (Batman, Gamma Door, Big Ass Fly) in response to volatility regime, time-of-day, and macro catalysts.\n>\n> Exit strictly by tent edge or rule\u2014never hope.\n\n---\n\n## \ud83e\uddf1 The Five Campaign Pillars\n\n### \n\n### 2. **\ud83e\udde0 Convexity Alignment Stack\u2122**\n\n**Purpose:** Harvest gamma and volatility expansion from short-term price dislocations inside volume profile wells or near structural edges.\n\n- **Primary Tactic:** 0\u20133 DTE butterflies or straddles near LVNs\n- **Zone:** LVNs / edges of HVNs\n- **Capital:** $25\u2013$50 per trade\n- **Frequency:** 2\u20133x per week (structure-dependent)\n\n**Playbook:**\n\n> Use Convexity Stack preflight checklist\n>\n> Score setup (Tier 1\u20133 alignment)\n>\n> Deploy near AM breakout or post-event compression\n\n---\n\n### 3. **\ud83c\udf2a Sigma Drift Campaign**\n\n**Purpose:** Plant tail exposure across staggered timeframes to capture 7\u201314 day dislocations, especially post-macro catalysts.\n\n- **Primary Tactic:** 3.5\u20135\u03c3 long strangles or wide convex flies\n- **Zone:** Inside HVNs, ahead of scheduled events, or IV crush zones\n- **Capital:** $25\u2013$50 per trade\n- **Frequency:** 1\u20132x per week, staggered by DTE\n\n**Playbook:**\n\n> Deploy ahead of FOMC, CPI, NFP, earnings clusters\n>\n> Prioritize low IV + structural tension setups\n>\n> No management, no rolls\u2014set and forget\n\n---\n\n### 4. **\ud83e\uddf0 Volatility Seed Vault**\n\n**Purpose:** Hold persistent 30\u201390 DTE convex exposure to market crashes, volatility spikes, or systemic drawdowns.\n\n- **Primary Tactic:** Long VIX calls, SPX deep OTM puts (4\u20136\u03c3)\n- **Zone:** Monthly IV floors, quarterly regime shifts\n- **Capital:** ~$200/month budget\n- **Frequency:** Rebalanced monthly or post-payout\n\n**Playbook:**\n\n> Risk $25\u2013$50 per position\n>\n> Allocate 1\u20132% of core account to monthly tranches\n>\n> Profits roll into Convexity Bank\n\n---\n\n### 5. **\ud83c\udf10 Macro Echo Chamber**\n\n**Purpose:** Hedge existential or narrative-driven macro risks: elections, wars, debt crises, policy shocks.\n\n- **Primary Tactic:** Far-dated (60\u2013180 DTE) OTM options on SPX, GLD, TLT, VIX\n- **Zone:** Narrative peaks, geopolitical escalations\n- **Capital:** $150\u2013$300 per quarter\n- **Frequency:** Strategic placements per macro theme\n\n**Playbook:**\n\n> Position 3\u20136 months out, based on macro narrative\n>\n> Pair with historical analogs or regime shifts\n>\n> No overlap with weekly gamma campaigns\n\n---\n\n## \ud83e\uddec How They Work Together\n\n### \ud83d\udd04 Tactical Pair: **Convexity Stack + Sigma Drift**\n\n- Maintain short-term exposure to structure-driven and event-driven volatility.\n- Cover 0\u201314 DTE window with overlapping risk curve.\n- Use VP + VIX Matrix to route trades weekly.\n\n### \ud83d\udee1 Strategic Pair: **Seed Vault + Echo Chamber**\n\n- Serve as antifragile portfolio anchors.\n- Designed to monetize rare, systemic breakdowns.\n- Echo Chamber extends beyond financial volatility into macro narrative territory.\n\n---\n\n## \ud83d\udcc5 Capital Allocation Framework\n\n![Screenshot 2025-05-15 at 2.34.30\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/b323866fe9c540e4bdfa18d03e8c18653cd50cb343dc46e281f6bf781a56a258 \"Screenshot 2025-05-15 at 2.34.30\u202fPM.png\")\n\n---\n\n## \ud83d\udcd8 Weekly Execution Checklist\n\n1. **Monday Scan**\n   - Volume Profile Zones \u2192 Identify LVNs, HVNs\n   - VIX Regime \u2192 Zombieland / Goldilocks / Chaos\n   - Macro Calendar \u2192 CPI, FOMC, Earnings\n   - Deploy:\n     - Convexity Stack (0\u20133 DTE)\n     - Sigma Drift (7\u201314 DTE)\n2. **Monthly / Quarterly Refresh**\n   - Re-seed Volatility Vault positions\n   - Rebalance Macro Echo bets based on narratives (election, war, etc.)\n3. **Friday Review**\n   - Run Weekly Retrospective prompt\n   - Score campaign metrics: hit rate, max R, alignment\n   - Prune non-performers or crowded zones\n\n---\n\n## \ud83e\udde9 Closing Thought\n\n> \u201cSurvival is the only road to riches.\u201d \u2014Spitznagel\n\nThe Fat Tail framework isn\u2019t about prediction\u2014it\u2019s about **posturing for disorder**, fractally and persistently.\n\nUse the **tactical engine** (Convexity + Sigma) to ride gamma and energy. Use the **strategic shield** (Vault + Echo) to endure and compound through chaos.\n\nThis is not trading. This is *antifragile engineering.*"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-2",
+        "title": "0DTE Tactical (0-2 DTE)",
+        "description_md": "",
+        "order": 2,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-2-1",
+            "title": "0DTE Tactical Overview",
+            "slug": "0dte-tactical-overview",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective:**\n\nUnderstand the core mission of 0DTE Tactical trading\u2014why it exists, where its edge lives, and how it deploys asymmetric trades within the Fat Tail Protocol.\n\n**Summary:**\n\n0DTE Tactical exploits same-day (\u201czero days to expiration\u201d) volatility through *hands-on*, highly adaptive structures, most commonly OTM butterflies. When the potential payoff for small risk is greatest, it thrives at structural pivots, gamma regime flips, and volatility windows. 0DTE Tactical includes advanced edge-case setups such as Time Warp (low VIX), Batman (dual OTM flies), Big Ass Fly (pre-market, macro events), and Gamma Door (1\u20133 DTE at gamma boundaries).\n\n**Key Points:**\n\n- **Purpose:** Rapid, asymmetric exposure for catching sharp moves on expiration day.\n- **Philosophy:** Reflection > automation. Each setup is adaptive, structure-first, and optionality-focused.\n- **Structures Used:**\n  - Classic OTM Butterfly (core)\n  - Time Warp Fly (wide in low VIX)\n  - Batman (dual OTM, high vol)\n  - Big Ass Fly (large, pre-macro)\n  - Gamma Door (0\u20133 DTE at GEX flips)\n- **Execution:** Only place trades at confirmed tension/inflection\u2014never chase, never rote."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-2",
+            "title": "0DTE VIX Playbook",
+            "slug": "0dte-vix-playbook",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective:**\n\nLearn how to size and place 0DTE butterflies (and edge-case variants) based on the VIX regime\u2014Zombieland, Goldilocks, or Chaos.\n\n**Summary:**\n\nVIX is your regime gauge. Use it to guide the *width* of your butterflies, the selection of edge-case setups, and your expectations for movement and decay.\n\n- **Zombieland (VIX <17):**\n  - Narrowest flies (15\u201325 wide).\n  - Expect low movement, maximize time decay edge.\n  - Time Warp and Gamma Door setups thrive.\n- **Goldilocks (VIX 17\u201332):**\n  - Classic width range (25\u201345 wide).\n  - Balance of expansion and decay.\n  - Most flexible for OTM, Batman, and Gamma Door.\n- **Chaos (VIX >32):**\n  - Use wide flies (45\u201360+ wide).\n  - Massive moves possible, big tail risk, focus on far OTM and Batman.\n- **Big Ass Fly:**\n  - Pre-market, on major macro days, 50\u201360 wide fly with extremely low debit (see orange arrow in chart).\n\n---\n\n**Visual Guide:**\n\n![VIX_2025-06-26_07-02-30_f762f.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/a1e3b1a49c42431199dd223ed76aac4f040f822a273d41faa3fec081e7dc69d9-md.png \"VIX_2025-06-26_07-02-30_f762f.png\")\n\n- Chart guides width selection:\n  - Blue text = Zombieland (narrow),\n  - Yellow/Orange = Goldilocks (classic),\n  - Red = Chaos (wide)."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-3",
+            "title": "Classic OTM Butterfly Trade",
+            "slug": "classic-otm-butterfly-trade",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective:**\n\nMaster the core 0DTE tactical setup: the OTM butterfly, including width selection, strike placement, and risk/reward logic.\n\n**Summary:**\n\nA Classic OTM Butterfly is structured for minimal debit and maximum convex payoff. Width is set by VIX regime; body and wings are placed near structural tension (LVN, expected move, or GEX boundary).\n\n## Entry Summary\n\n1. Macro and VIX Analysis \u2013 determines specific strategy to employ\n2. Determine width \u2013 VIX & BAF analysis\n3. Directional bias \u2013 Trend analysis\n4. Entry-level event \u2013 market structure via Volume Profile\n\n---\n\n**Execution Steps:**\n\n1. **Scan VIX Regime:**\n   - <17 \u2192 15\u201325 wide;\n   - 17\u201332 \u2192 25\u201345 wide;\n   - 32 \u2192 45\u201360 wide.\n2. **Find Structural Edge:**\n   - Use volume profile to find LVN, HVN edge, or GEX wall.\n   - Place fly tent just OTM or outside expected move.\n3. **Set Debit:**\n   - Target \u226410% of fly width (e.g., $2 on a 20-wide, $4\u2013$5 on a 50-wide in chaos).\n   - If debit too cheap, walk fly back ITM until you see a \u201cconvexity kink\u201d (sudden rise in cost).\n4. **Place and Size:**\n   - Size small (fractional risk unit, e.g., $10\u2013$25 per trade).\n   - Enter as limit, log rationale and structure.\n5. **Manage:**\n   - No chasing\u2014set and forget unless trade lands in the tent.\n   - Exit at tent edge, structural reversal, or rule-based stop.\n\n**Edge-Case Adaptations:**\n\n- If VIX is ultra-low, favor Gamma Door or Time Warp fly (slightly wider, slightly longer DTE).\n- On major macro mornings, Big Ass Fly with extremely low debit, held through open."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-3",
+        "title": "Fly on the Wall (FOTW)",
+        "description_md": "",
+        "order": 3,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-3-1",
+            "title": "FOTW Methodology Overview",
+            "slug": "fotw-methodology-overview",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **Objective**\n\nUnderstand the role of **Fly on the Wall (FOTW)** as a **methodology overlay** for convexity trades, bridging **0DTE Tactical** and **Gamma Door** campaigns.\n\n---\n\n### **Summary**\n\nFOTW is not a campaign. It\u2019s a **methodology lens** that tells you *where to look* for convex setups:\n\n- Anchored in **Gamma Exposure (GEX) walls, LVNs, and volume profile edges**.\n- Uses **Pin vs. Expansion regime tags** to distinguish compression from breakout conditions.\n- Provides a **systematic way to choose strike locations** for OTM flies in both **0DTE Tactical (0\u20132 DTE)** and **Gamma Door (1\u20133 DTE)** campaigns.\n\nIn short: **FOTW shows you where the wall is, and what to do if it breaks.**\n\n---\n\n### **Why It Matters**\n\n- **0DTE Tactical** teaches the mechanics of OTM flies.\n- **Gamma Door** teaches campaign design around dealer flow imbalances.\n- **FOTW bridges them** by explaining *why* you pick a certain LVN, wall, or volume edge as your entry point.\n\nWithout this methodology, you\u2019re flying blind into premium decay.\n\n---\n\n### **Core FOTW Principles**\n\n1. **See the Walls** \u2014 GEX peaks = magnets; GEX troughs = expansion zones.\n2. **Tag the Regime** \u2014 Pin (compression/fade bias) vs. Expansion (breakout/ladder bias).\n3. **Only Trade the Edge** \u2014 flies decay fast in the middle of pins; convexity lives at the boundary.\n4. **Wait for Acceptance** \u2014 conviction only comes once price shows it has accepted above/below the wall.\n\n---\n\n### **How to Use FOTW in This Course**\n\n- As you study **0DTE Tactical** and **Gamma Door**, apply the FOTW lens:\n  - Ask: *\u201cWhere is the wall?\u201d*\n  - Ask: *\u201cIs this Pin or Expansion?\u201d*\n  - Place flies only at these structural edges.\n\n---\n\n### **Next Steps**\n\nThis single lesson introduces FOTW, but it is only a **preview**.\n\nFor full mastery \u2014 including:\n\n- GEX snapshot reading,\n- Regime tagging (Pin vs. Expansion),\n- Convexity Heatmap gating,\n- Scenario ladder design,\n- Journaling templates \u2014"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-4",
+        "title": "Gamma Door (1-3 DTE)",
+        "description_md": "",
+        "order": 4,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-4-1",
+            "title": "Gamma Door \u2013 Overview",
+            "slug": "gamma-door-overview",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **\ud83c\udfaf Campaign Objective**\n\nThe **Gamma Door** campaign is a tactical framework designed to capture asymmetric moves that emerge as price transitions across major gamma exposure (GEX) boundaries\u2014such as call/put walls or the zero gamma line\u2014within the 1\u20133 DTE window. This campaign bridges the hyper-short 0DTE reflex trades and the slower-brewing Convex Stack setups, targeting the \u201chinge point\u201d where dealer hedging can flip and amplify volatility.\n\nThis campaign seeks to:\n\n- **Exploit sudden volatility expansion** at key gamma regime flips and structural boundaries\n- **Position for explosive, fast, optional moves** with limited, known risk\u2014using Time Warp Butterflies and vertical spreads as the core trade structures\n- **Minimize prediction, maximize optionality**\u2014trades are triggered by structural confirmation, not market narratives\n- **Reduce exposure to decay** by favoring quick entries and exits around hinge events rather than slow drift\n\nUnlike Convex Stack or Sigma Drift campaigns, Gamma Door trades are not about waiting for a breakout or playing macro catalysts\u2014they are about *being present at the edge*, ready to benefit from the violent shift in flows when the \u201cdoor\u201d swings open.\n\n# \n\n---\n\n## **\ud83d\udee0\ufe0f Trade Mechanics**\n\n- **Instrument:** SPX (or other highly liquid underlyings with clear GEX data)\n- **Structure:** Time Warp Butterfly (wide wings, 1\u20132 DTE), Vertical Spread (1\u20133 DTE), or small delta overlay\n- **Debit Range:** $0.25\u2013$0.75 per trade (target \u226410% of fly width for risk efficiency)\n- **Widths:** 30\u201375 pts, scaled by VIX regime and proximity to GEX wall\n- **Directional Bias:** Always anchored to the wall/flip; can be directional (fade or breakout) or neutral (double-sided in extreme compression)\n- **Entry Time:** Only after price tests or breaches a GEX wall/flip and confirms with volume, TICK, or options flow anomaly\n\n---\n\n## **\ud83e\uddea Structural Triggers**\n\n- **Gamma Regime Flips:** Price at/near zero gamma line, major call/put wall, or cumulative GEX cliff\n- **Dealer Flow Confirmation:** Observable shift in options flow, OI cluster at/near the wall, or flow anomaly (TICK spike, rapid OI build)\n- **Volume Profile:** Compression or \u201chole\u201d just ahead of wall\u2014look for trapped liquidity or drying volume\n- **Macro Overlap:** Event windows (OpEx, FOMC, CPI) amplify potential; prioritize when macro and gamma align\n- **IV Filters:** IV can be mid/high\u2014focus on convexity, not cheapness; prioritize speed over holding for decay\n\n---\n\n## **\ud83d\udcb0 Capital Allocation**\n\n- **Total Campaign Bank:** $2,500\u2013$4,000 (Gamma Door trades are short-lived, can recycle risk more often)\n- **Per Trade Risk:** $25\u2013$75 (one SRU per setup, no scaling into losers)\n- **Weekly Budget:** ~$75\u2013$225 (3\u20136 trades/week; high selectivity, but more triggers possible than Convex Stack)\n- **Sizing Rule:** No pyramiding. One setup per wall per direction. Let losers expire worthless, winners run to tent or exit at preset target.\n\n---\n\n## **\ud83d\udcc6 Weekly Rhythm**\n\n**Monday:**\n\n- Scan for GEX walls or zero gamma flips forming for Tues\u2013Wed expiry\n- Deploy 1\u20132 trades (usually both sides if compression, single-sided if directional setup confirms)\n\n**Tuesday\u2013Wednesday:**\n\n- Deploy more only if *new* walls or regime flips appear; avoid doubling up on existing walls\n- Avoid clustering multiple trades on the same expiry unless distinct walls/levels\n\n**Thursday\u2013Friday:**\n\n- Let open trades resolve\u2014take profit on rapid moves, exit laggards\n- Log each trade, outcome, and structural notes in [GammaDoor.md](http://gammadoor.md/ \"http://GammaDoor.md\")\n\n---\n\n## **\ud83d\udcca Tracking & Metrics**\n\n- **Win Rate:** Expected 10\u201320% (edge is in payout, not frequency)\n- **Target Payout:** 5x\u201315x (moves into tent, fly centered on wall)\n- **Max Drawdown:** Rolling debit loss tracked; avoid \u201crevenge trading\u201d after missed doors\n- **Weekly Log:** Track regime type (wall break, fade, slingshot), setup clarity, outcome, and emotional/structural notes\n- **Reflection Prompts:** Included in Gamma Door checklist (e.g. \u201cDid I trade confirmation, or anticipation?\u201d)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-2",
+            "title": "Bridge Between 0DTE and Convex Campaigns",
+            "slug": "bridge-between-0dte-and-convex-campaigns",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **\ud83c\udfaf Strategy Overview**\n\nThe **Gamma Door** (a.k.a. Gamma Scalping) strategy fills a unique tactical gap in the asymmetric playbook:\n\n- **0DTE Tactical:** Intraday, high-frequency, short-decay trades\u2014excellent when the premium burns down fast and price moves are realized during the market session.\n- **Convex Stack / Sigma Drift:** Wider, slower campaigns for deeper tails (3\u201314 DTE), designed to let convexity mature and harvest large, rare moves.\n\n**Gamma Door bridges these:** It targets the 1\u20133 DTE window, **especially during \u201cZombieland\u201d volatility**, when the VIX is compressed, overnight gaps dominate, and intraday sessions stall out as Doji.\n\nMost price movement happens outside regular trading hours, making classic 0DTE trades less effective due to accelerated premium decay.\n\n**The Play:**\n\n- Position *across the Gamma Door*\u2014the critical GEX wall or zero gamma line\u2014using Time Warp Butterflies or tactical verticals, with 1\u20133 DTE to catch the \u201covernight escape.\u201d\n- These setups are **not about forecasting direction**\u2014they\u2019re about being present at the hinge, with small risk and large optionality, whenever the regime threatens to flip.\n\n---\n\n## **\ud83d\udd04 Trend, Fade, or Both? \u2014 How Gamma Door Positioning Works**\n\n**Unlike 0DTE Tactical, Gamma Door trades aren\u2019t always with the trend.**\n\n- **Your edge is the regime flip at the wall\u2014not the direction.**\n- Trade *with* the trend if price builds pressure and breaks the wall.\n- Trade *against* the trend if price tags the wall and sharply rejects (fade).\n- When the direction is unclear or compression is extreme, you can structure \u201cdouble-sided\u201d (flies or verticals both above and below the wall).\n- The real driver here is **dealer hedging and GEX flows**, not pure price momentum.\n\n**Bottom line:**\n\nGamma Door is about optionality at the \u201chinge\u201d\u2014sometimes that\u2019s with the trend, sometimes it\u2019s the snap-back.\n\n**Prompt:**\n\n> *Before entry, ask: Am I trading the wall as a breakout, a fade, or both? Am I sizing for the optional move, not the narrative?*\n\n---\n\n## Gamma Door Market Regime Map\n\n![Screenshot 2025-06-22 at 7.41.08\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/703e20c3ebd3473faa915611eb992e64710b2c08fde443f59cacb12972849b76-md.png \"Screenshot 2025-06-22 at 7.41.08\u202fAM.png\")\n\n---\n\n## **\ud83d\udcca Visual Gamma Door Analysis \u2014 The Daily Edge Chart**\n\n**Every Gamma Door trade starts here: with a visual map of gamma regime, put/call volume, and cumulative GEX.**\n\nThis is how you spot the *hinge*\u2014where structure may snap, where you position for optionality.\n\n**Workflow:**\n\n- Use your Python script to generate a daily chart like the example above.\n- **Top Panel:** Gamma Exposure by strike (shows where walls/cliffs exist, and the \u201cside\u201d of the door)\n- **Middle Panel:** Put/Call volume map (where flows and volume may reinforce a wall or reveal a trap)\n- **Bottom Panel:** Cumulative GEX (shows the \u201cflip zone\u201d\u2014the hinge where hedging is most likely to reverse)\n\n---\n\n**How to use this chart in practice:**\n\n- **Step 1:** Plot current SPX spot and overlay on the gamma profile.\n- **Step 2:** Identify *negative to positive* gamma flips, or vice versa\u2014these are your doors.\n- **Step 3:** Map put/call volume clustering\u2014look for outliers or nodes with both high gamma and high volume (potential traps).\n- **Step 4:** Note where cumulative GEX sharply changes slope\u2014these are \u201cstructural hinges.\u201d\n- **Step 5:** Only proceed with tactical setup if today\u2019s chart shows a real potential regime edge (not just noise).\n\n---\n\n### **\ud83e\udde0 Why is this critical?**\n\n- Most traders \u201ceyeball\u201d price and trend. Gamma Door players use **quantified market structure**.\n- *Your edge isn\u2019t guessing direction, it\u2019s knowing where the regime can snap, compress, or explode.*\n\n*Journaling prompt:*\n\n> \u201cDid today\u2019s chart show a true door, or am I forcing a setup? What level is the actual hinge, not just a story?\u201d\n\n---\n\n#### **\ud83e\uddf0 Tactical Analysis: How To Spot, Filter, and Deploy**\n\n---\n\n### **\u2705 Preflight Trade Checklist**\n\n#### **\ud83d\udcd8 TIER 1: Strategic Regime Filters**\n\n(Always reassess daily)\n\n- VIX < 16\u201317 and trending lower (\u201cZombieland\u201d)\n- Multiple doji/inside days on SPX/SPY\n- Overnight gaps > intraday ranges, repeated several sessions\n- Compression near major GEX wall/zero gamma\n- Macro event within next 48 hours (CPI, FOMC, OpEx)\n- Gamma profile: Cumulative GEX \u201chinge\u201d is near price\n\n---\n\n#### **\ud83d\udcd9 TIER 2: Structural Edge Zones**\n\n- Price testing/crowding a key GEX wall, call/put wall, or zero gamma line\n- Volume profile: Compression or drying up right at a regime boundary\n- TICK anomaly or unusual options volume clustering at wall\n- Open Interest build-up at/near the wall or adjacent strikes\n- Spot-vol/term structure divergence (e.g. flat VIX curve, high vol-of-vol)\n\n---\n\n#### **\ud83d\udcd7 TIER 3: Tactical Optionality Enhancers**\n\n- Deploy Time Warp Butterfly (1\u20132 DTE) with wide wings, centered at the GEX wall\n- Vertical Spread (1\u20133 DTE) for clean directional breaks/fades\n- Debit \u2264 10% of width; ideally, <$0.75 for flies, low risk for verticals\n- Place trades late in the session (after confirming compression), or in last hour for overnight move\n- Avoid doubling up; one trade per wall per side\n\n---\n\n### **\ud83e\uddee Execution Plan**\n\nOnce at least 4\u20135 of these factors are confirmed:\n\n\u2705 **Deploy Time Warp Butterfly** or vertical at the wall/flip, 1\u20133 DTE\n\n\u2705 **Width:** Use VIX-based width (see next section); be wide enough to catch gap moves\n\n\u2705 **Cap debit** at \u2264 10% of width\n\n\u2705 **Entry Timing:** Place after confirmation of compression, or after first attempt to break wall fails or succeeds\n\n\u2705 **Exit:** Have a clear time stop (if no move in 24h, exit); never hold through multiple failed breaks\n\n---\n\n### **\ud83d\udcd0 VIX-Based Structure Width Playbook**\n\n- VIX < 15: 40\u201350 pts wide\n- VIX 15\u201318: 50\u201360 pts wide\n- VIX 18\u201322: 60\u201375 pts wide\n- VIX > 22: 75\u2013100 pts (only if volatility spike, use with caution)\n\n---\n\n### **\ud83d\udcc8 Post-Trade Reflection (Optional)**\n\n- Did the regime break as expected? Or did price stay compressed?\n- Was the overnight move caught, or did decay dominate?\n- Did my trade structure capture the volatility burst, or was it too tight?\n- Was the wall/flip the true hinge, or did market structure shift unexpectedly?\n\n---\n\n### **\ud83d\udcca Integration with Campaigns**\n\nThis Gamma Door checklist integrates cleanly with longer-dated campaigns:\n\n- **Sigma Drift:** Use similar regime/edge filters, but stretch DTE and widen strikes for tail risk.\n- **Convex Stack:** If Gamma Door fails to break, the same levels may become the center for next 3\u20135 DTE campaign.\n- **Journaling:** Track pattern recurrence and regime transitions\u2014did Gamma Door precede a Convex Stack winner?\n\n---\n\n### **\ud83e\udde0 Final Thought**\n\nGamma Door is not about predicting direction\u2014it\u2019s about **being present at the hinge**, with conviction in your structure and clarity on your exit.\n\nOptionality is your edge. Let the door open\u2014don\u2019t force it."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-3",
+            "title": "Trading the Gamma Door \u2013 Playbook",
+            "slug": "trading-the-gamma-door-playbook",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "## **\ud83c\udfaf Lesson Objective**\n\nTo give you a repeatable, edge-focused daily playbook for trading regime flips at major SPX gamma walls (\u201cGamma Door\u201d), using visual tools, clear protocols, and campaign discipline.\n\n## **\u26a1 Quickstart Gamma Door Checklist**\n\n\u2013 [ ] Did I chart the Gamma Door regime today?\n\n\u2013 [ ] Is price compressing at a GEX wall or zero gamma?\n\n\u2013 [ ] Are 4+ checklist factors confirmed?\n\n\u2013 [ ] Did I structure for small risk, big move?\n\n\u2013 [ ] Did I define exit before entry?\n\n\u2013 [ ] Did I log the trade and reflection?\n\n---\n\n## **\ud83d\udddd\ufe0f What is the Gamma Door?**\n\n- The \u201cGamma Door\u201d is a regime-flip trade that targets sudden market moves at major GEX (gamma exposure) boundaries\u2014where dealer hedging may shift violently.\n- It **bridges 0DTE scalps and Convex Stack campaigns**\u2014optimal for 1\u20133 DTE setups, especially when VIX is low and intraday price action stalls.\n- Your edge is positioning at the *hinge*\u2014not in predicting direction, but being ready for an explosive move or sharp rejection.\n\n---\n\n## **\ud83d\udd04 Trend, Fade, or Both?**\n\n- Unlike 0DTE, Gamma Door setups are **not always trend-following**.\n- If price builds pressure and breaks the wall: *trade with the move* (trend).\n- If price tags the wall and sharply rejects: *trade the fade* (counter-trend).\n- When in deep compression or unclear, structure for **both sides** (double fly/verticals).\n- **Dealer hedging and flow\u2014not trend\u2014drive these trades.**\n\n---\n\n## **\ud83d\udcca Daily Gamma Door Market Regime Map**\n\n- **Before every trade:** Create a daily chart with Gamma Exposure, Put/Call Volume, and Cumulative GEX.\n  - **Top:** Gamma Exposure by strike (shows walls/cliffs)\n  - **Middle:** Put/Call Volume map (locates flow traps, clusters)\n  - **Bottom:** Cumulative GEX (shows \u201cflip zone\u201d or hinge)\n- **Workflow:**\n  - Mark SPX spot, locate negative-to-positive gamma flips.\n  - Identify volume outliers and cumulative GEX inflection points.\n  - Only proceed if a *true hinge* is present.\n\n---\n\n## **\ud83e\udded Preflight Checklist & Trade Mechanics**\n\n**Tier 1: Strategic Regime Filters**\n\n- VIX < 17 (Zombieland)\n- Multiple dojis/inside days\n- Overnight gaps > intraday moves\n- Macro event within 48h\n- Price compressing near GEX wall\n\n**Tier 2: Structural Edge Zones**\n\n- Spot price at/near major gamma wall/zero gamma\n- Cumulative GEX slope change\n- OI/volume cluster at wall\n- TICK/options flow anomaly\n\n**Tier 3: Tactical Enhancers**\n\n- Time Warp Butterfly (1\u20132 DTE, wide, centered at wall)\n- Vertical spread (1\u20133 DTE, for clean breaks/fades)\n- Debit \u2264 10% of width\n- Late session/confirmation entry\n- Only one trade per wall/side\n\n---\n\n## **\ud83d\udee0\ufe0f Execution Plan**\n\n- Confirm at least 4 checklist factors.\n- Deploy fly/spread at wall\u2014size for small risk, large move.\n- Use VIX-based width:\n  - VIX < 15: 40\u201350 pts; VIX 15\u201318: 50\u201360 pts; VIX 18\u201322: 60\u201375 pts.\n- Exit: If no move in 24h or IV collapses, get out. No \u201chope holds.\u201d\n- Track results in [GammaDoor.md](http://gammadoor.md/ \"http://GammaDoor.md\").\n\n---\n\n## **\ud83d\udee1\ufe0f Risk Management & Failure Modes**\n\n- Never stack losers or double up.\n- If price doesn\u2019t move after entry, exit/roll\u2014don\u2019t wait for decay.\n- If structure shifts (wall moves/disappears), cut the trade.\n- Don\u2019t chase after the door has opened\u2014wait for a new hinge.\n\n---\n\n## **\ud83d\udcdd Journaling & Reflection**\n\n- Log every trade: structure, regime, checklist factors, outcome.\n- Reflect: Did I trade the hinge, not the story? Was my exit plan clear?\n- Note any bias (FOMO, action, narrative).\n- Track patterns\u2014what\u2019s working, what\u2019s not?\n\n---\n\n## **\ud83e\udde0 Troubleshooting & FAQs**\n\n- **What if wall disappears after entry?**\u2192 Exit or reduce risk immediately.\n- **Overnight news?**\u2192 If structure is invalid, get flat at open.\n- **No clear hinge?**\u2192 No trade\u2014wait for next setup.\n- **Gamma Door vs. 0DTE?**\u2192 Use 0DTE for active, intraday moves. Use Gamma Door when overnight/hinge action is more likely (Zombieland)."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-5",
+        "title": "Convex Stack (3-5 DTE)",
+        "description_md": "",
+        "order": 5,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-5-1",
+            "title": "Campaign Overview",
+            "slug": "campaign-overview",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "## **Focus: Convex Swing Trades (1\u20137 DTE) Using OTM Butterflies**\n\n\ud83c\udfaf **Campaign Objective**\n\nThe Convexity Alignment Stack is a campaign framework designed to bridge the gap between short-term 0DTE day trades and the longer-dated Sigma Drift convexity plays. This campaign targets 1.5\u20133\u03c3 market moves over a 1\u20137 DTE window using deep OTM butterfly spreads with a fixed-risk, high-reward structure.\n\nThis campaign seeks to:\n\n- Exploit asymmetric price dislocations across multiple market regimes\n- Minimize trade tinkering and active management\n- Allow option premium to decay and convexity to mature passively\n\nUnlike 0DTE day trades, these setups favor looser profit management and longer time exposure, while still leveraging the OTM butterfly structure as the convex engine.\n\n---\n\n\ud83d\udee0 **Trade Mechanics**\n\n- Instrument: SPX (or equivalent liquid underlyings)\n- Structure: OTM butterfly with fixed 1:10+ R/R\n- Debit Range: $0.15\u2013$0.50 per trade\n- Widths: 25\u2013100 pts, based on VIX regime\n- Directional Bias: Trend-aligned or neutral (double-sided)\n- Entry Time: Ideally during IV compression or before macro catalysts\n\n---\n\n\ud83e\uddea **Structural Triggers**\n\n- **Macro Catalysts:** CPI, PCE, FOMC, NFP, major earnings clusters\n- **Sentiment Divergence:** GEX flips, VIX-VVIX divergence, liquidity vacuum\n- **IV Filters:** IV Rank < 50 preferred (cheap optionality)\n- **Market Structure:** Price compression near LVNs or prior breakout levels\n- **Trend Context:** Bias strikes in the direction of trend (where clear)\n\n---\n\n\ud83d\udcb0 **Capital Allocation**\n\n- Total Campaign Bank: $4,000\n- Per Trade Risk: $15\u2013$50\n- Weekly Budget: ~$75\u2013$200 (3\u20134 trades/week)\n- Sizing Rule: No pyramiding; losers expire worthless, winners run\n\n---\n\n\ud83d\udcc6 **Weekly Rhythm**\n\n**Monday**\n\n- Deploy 1\u20132 trades (1p + 1c or trend-aligned bias)\n- Prioritize setups near LVNs or low IV zones\n\n**Tuesday\u2013Wednesday**\n\n- Deploy 1\u20132 more if structural setups emerge\n- Avoid clustering expirations within 24h windows\n\n**Thursday\u2013Friday**\n\n- Let trades resolve or expire\n- Log outcomes and reflections in Weekly.md\n\n---\n\n\ud83d\udcca **Tracking & Metrics**\n\n- Win Rate: Expected 10\u201315%\n- Target Payout: 5x\u201325x (based on move into tent)\n- Max Drawdown: Tracked via rolling debit loss\n- Weekly Log: Track trade tier alignment, outcome, regime score\n- Reflection Prompts: Included in Convexity Alignment Stack checklist\n\n---\n\nThis campaign captures the next level of the Fat Tail Protocol\u2014less management, more time, and bigger convex swings. Sigma Drift continues the curve beyond 7 DTE. This is the intermediate convexity layer where low-risk options are allowed to bloom."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-2",
+            "title": "Bridge Between 0DTE and Longer DTE",
+            "slug": "bridge-between-0dte-and-longer-dte",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "## \ud83c\udfaf Strategy Overview\n\nThe Convexity Alignment Stack\u2122 strategy bridges two key approaches in your asymmetric trading playbook:\n\n1. **The active 0DTE strategy** \u2014 a precision day trading system designed to profit from **0 to 1.5\u03c3 moves** within the same day.\n2. **This intermediate strategy** \u2014 designed to capture **1.5 to 3\u03c3 moves** over a broader window (1\u20137 DTE), using wider, more passive convex structures with minimal trade tinkering.\n\nWhere the 0DTE strategy is focused on high-frequency setups and fast decay management, the Convexity Alignment Stack shifts into **moderate DTE convexity hunting**, allowing more time for trades to mature and targeting rare but rewarding price excursions into the wings of wide OTM flies.\n\nThis is the **transition zone** between daily convex scalping and campaign-style tail hunting:\n\n![Screenshot 2025-05-10 at 10.23.56\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/5208faa5e78b46b3b36c964ed15d4c7480e23fbc4d5b4066984803e2460894e5-md.png \"Screenshot 2025-05-10 at 10.23.56\u202fAM.png\")\n\n> This strategy uses **OTM butterflies with debits between $0.15 and $0.50**, sized small, targeting medium-range convex opportunities that require **less frequent management**.\n\nThe **active profit management of 0DTE** is replaced here by looser, campaign-aligned rules. Most trades expire worthless \u2014 but those that land in or near the tent make the strategy highly positive asymmetric.\n\nSigma Drift picks up right where the Convexity Alignment Stack leaves off, extending your convex exposure into a longer horizon (7\u201310 DTE) for deeper tail events.\n\n---\n\n## \u2705 Preflight Trade Checklist\n\n### \ud83d\udcd8 TIER 1: Strategic Regime Filters\n\nThese define the backdrop. Reassess daily.\n\n![Screenshot 2025-05-10 at 10.01.47\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/b285415de1c642138736cbe4a10262819c6393aa85a7428897c03c918177384d-md.png \"Screenshot 2025-05-10 at 10.01.47\u202fAM.png\")\n\n---\n\n### \ud83d\udcd9 TIER 2: Structural Edge Zones\n\nThese locate asymmetric expansion points.\n\n![Screenshot 2025-05-10 at 10.03.10\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/1e02d9d5381146dd90992063a337104875341d02e3a2470e803e778aea680f3d-md.png \"Screenshot 2025-05-10 at 10.03.10\u202fAM.png\")\n\n---\n\n### \ud83d\udcd7 TIER 3: Tactical Optionality Enhancers\n\nThese refine structure sizing and direction.\n\n![Screenshot 2025-05-10 at 10.04.08\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/21085c86d74b4a6b8213e74a3f483a3fbf3a537c41b44943a24f157093121521-md.png \"Screenshot 2025-05-10 at 10.04.08\u202fAM.png\")\n\n---\n\n## \ud83e\uddee Execution Plan\n\nOnce at least 5 of 11 factors are checked:\n\n- \u2705 Deploy 0DTE OTM butterfly in trend direction OR double-sided if unsure.\n- \u2705 Use width guidelines based on VIX regime below.\n- \u2705 Cap debit at \u2264 $0.25 (ideally \u2264 $0.15)\n- \u2705 Center strike:\n  - For trend days \u2192 slightly beyond LVN in trend direction\n  - For mean reversion \u2192 center on structural midpoint\n\n---\n\n### \ud83d\udcd0 VIX-Based Butterfly Width Playbook\n\n![Screenshot 2025-05-10 at 10.05.16\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/40b9d081570b4dd5887126f0d675c467197097e117294a849bb110dc2a00f461-md.png \"Screenshot 2025-05-10 at 10.05.16\u202fAM.png\")\n\n---\n\n## \ud83d\udcc8 Post-Trade Reflection (Optional)\n\nUse these prompts to evaluate and reinforce:\n\n- Did the market behave in alignment with the tier signals?\n- Was the width appropriate for the regime?\n- Was premium decay as expected (gamma burst timing)?\n- How could this structure be refined next time?\n\n---\n\n## \ud83d\udcca Integration with Longer-Dated Campaigns\n\nThis checklist applies fractally to 1\u201310 DTE structures like:\n\n- Sigma Drift\n- Earnings Seeding Strategies\n- Macro Catalyst Convex Baskets\n\nUse identical tiers, but adjust width and debit sizing for longer timeframes. Track returns by tier alignment to improve model confidence.\n\n---\n\n## \ud83e\udde0 Final Thought\n\nConvexity is not prediction \u2014 it is **alignment with potential disorder**. Use this stack not to outguess the market, but to catch it when it snaps."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-3",
+            "title": "Volume Profile as Convexity Map",
+            "slug": "volume-profile-as-convexity-map",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "You\u2019re describing a **market regime model based on structure**, not prediction\u2014this is *exactly* how convexity, optionality, and disorder should be mapped under Fat Tail principles.\n\nHere\u2019s the refined logic:\n\n---\n\n### **\ud83e\uddf1 1. Inside a High-Volume Node (HVN / \u201cNode\u201d)**\n\n> \u26a0\ufe0f Congestion zone \u2192 mean-reverting \u2192 \u201cchop = death\u201d\n\n**Behavior**:\n\n- Price tends to oscillate, fake out, and mean-revert\n- Market is *in balance*, absorbing liquidity\n\n**Strategy Implication**:\n\n- **\u274c Avoid centered convex bets here** (straddles/strangles lose to decay)\n- \u2705 Instead, **plant Sigma Drift-style long calls and puts** at the **edges of the node**, especially if:\n  - Price has compressed against an LVN boundary\n  - There\u2019s an IV floor\n  - Macro event is approaching\n\n**Fat Tail Logic**: You\u2019re loading up *potential energy* for breakout, not expecting direction\u2014*positioning for disorder*.\n\n---\n\n### **\ud83c\udf2a 2. Entering or Inside a Low Volume Well (LVL / Volume Gap)**\n\n> \ud83c\udff9 Trend channel \u2192 price moves quickly \u2192 \u201cexpansion mode\u201d\n\n**Behavior**:\n\n- Price tends to **move fast**, fill gaps, or accelerate through vacuums\n- Liquidity is thin \u2192 fewer obstacles \u2192 **greater gamma effect**\n\n**Strategy Implication**:\n\n- \u2705 Deploy **Convexity Alignment Stack-style structures**\n  - ATM straddle\n  - Tight butterfly\n  - Gamma exposure trades\n- Ideal for short DTE plays (1\u20133 days), especially with catalyst triggers\n\n**Fat Tail Logic**: You are *surfing structural asymmetry*\u2014nonlinear price behavior that arises **not from prediction**, but from structure.\n\n---\n\n### **\ud83c\udfaf 3. Targeting the Next Node (Future HVN)**\n\n> \u201cWhen in a well, aim for the next shelf.\u201d\n\n**Behavior**:\n\n- Price often \u201chunts\u201d toward the next high-volume zone\n- That becomes the **magnet** or **target**\n\n**Strategy Implication**:\n\n- \u2705 Structure butterflies or convex risk trades **centered on next node**\n- \u2705 Use **0.15\u20130.25 debit entries**, ideally in \u201cdead IV zones\u201d\n- Position for the \u201csnap\u201d to happen **within 1\u20133 DTE**\n\n**Fat Tail Logic**: You\u2019re using *noisy zones* to bracket entry, and *quiet zones* to bet on movement. This is convexity through *positional awareness*.\n\n---\n\n## **\ud83e\udde0 YOUR FRAMEWORK IN PROTOCOL TERMS**\n\n![Screenshot 2025-05-15 at 3.08.35\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/604ad674e1dd4b42858bc78269e38ae6d58f31077f2b429899c8ab3db73c4613 \"Screenshot 2025-05-15 at 3.08.35\u202fPM.png\")"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-6",
+        "title": "Sigma Drift (5-10 DTE)",
+        "description_md": "",
+        "order": 6,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-6-1",
+            "title": "Inaugural Campaign",
+            "slug": "inaugural-campaign",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "v9omLB0UZQc",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "*A Hybrid FatTail Campaign for Staggered Convexity and Intentional Chaos Exposure*\n\n**Project Sigma Drift** is the inaugural live trading campaign in the *FatTail Trading Campaigns* course. It is a 12-month, hybrid-structured deployment designed to explore the edge between macro catalysts and market structure.\n\nThis campaign uses **deep OTM SPX butterflies**, placed intentionally around:\n\n- \ud83c\udfaf **High-impact economic events** (CPI, FOMC, PCE, etc.)\n- \ud83d\udcc9 **Volume Profile voids and structural zones**\n- \ud83d\udd04 **Staggered timeframes** to diversify across unknowns\n\nThe goal? To plant a **low-cost, convex footprint** that can capitalize on sigma-level dislocations without requiring prediction or active management.\n\n---\n\n### **\ud83d\udee0 What This Campaign Includes:**\n\n- **Campaign Overview & Rationale**\n- **Trade Log & Performance Tracker**\n- **Weekly Journals & Emotional Audit**\n- **Protocol Check-ins & Pruning Decisions**\n- **Live Retrospectives** to refine positioning\n- **Ongoing Results Dashboard** with running stats (win %, avg R, max drawdown, etc.)\n\n---\n\n### **\ud83d\udcc8 What You\u2019ll Learn Along the Way:**\n\n- How to place butterfly structures for tail exposure without prediction\n- How to mix **calendar discipline** with **volatility edge**\n- How to reflect weekly using FatTail journaling prompts\n- How to prune, reinvest, and stay emotionally neutral in the face of frequent losses\n\n---\n\nThis isn\u2019t just theory \u2014 this is **real capital in motion**. You\u2019ll get a front-row seat to the process, outcomes, and thought experiments behind every trade, journal entry, and retrospective.\n\nStay tuned for the running pages on:\n\n- \ud83d\udcd8 **What Is Project Sigma Drift?** (Strategy Rules, Setup Logic)\n- \ud83d\udcca **Performance & Logs** (Trade Tracker, Results Dashboard)\n- \u270d\ufe0f **Weekly Journal Archive**\n- \ud83e\udde0 **Lessons Learned + Adjustments** (Live)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-6-2",
+            "title": "Campaign Overview",
+            "slug": "campaign-overview",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **Focus:** weekly (7\u201310 DTE ) Fat Tail Trades\n\n### **\ud83c\udfaf Campaign Objective**\n\n**Project Sigma Drift** is a live, high-discipline trading initiative designed to harness nonlinear payoffs from market dislocations, economic shocks, and structural inflections. Built around the *Fat Tail Protocol*, the campaign uses low-cost, deep OTM SPX butterflies to achieve scalable convex outcomes. The goal is to remain asymmetrically exposed to rare yet explosive moves, without constant management, by deploying with precision, timing, and antifragile intent.\n\n---\n\n## **\ud83d\udee0 Trade Mechanics**\n\n![Screenshot 2025-05-08 at 2.04.36\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/1596197907fb4a9faa35e074b2931435506bdf98712640c2b5697c34b3bf336d \"Screenshot 2025-05-08 at 2.04.36\u202fPM.png\")\n\n---\n\n### \n\n## **\ud83e\uddea Structural Triggers**\n\n- **Macro Catalysts**: CPI, PCE, FOMC, NFP, earnings clusters, geopolitical events\n- **Sentiment Divergence**: GEX flips, VIX-VVIX divergence, low-volume price compression\n- **IV Filters**: IV Rank < 50 preferred (cheap premium)\n- **Market Structure**: Compression near LVN edges or inflection zones\n- **Fractal Timing**: Deploy across non-overlapping windows to embrace randomness\n\n---\n\n## **\ud83d\udcb0 Capital Allocation**\n\n- **Total Campaign Bank**: $4,000\n- **Per Trade Risk**: $25\u2013$50\n- **Monthly Budget**: ~$300 (6 trades @ $0.50 avg debit)\n- **Scaling Rule**: No pyramiding. No chasing. Winners run, losers expire.\n\n---\n\n## **\ud83d\udcc6 Monthly Rhythm**\n\n- **Week 1**\n  - Deploy 2 trades (1p + 1c ideally) around macro catalyst zones\n  - Prioritize low IV setups and staggered timing\n- **Week 2**\n  - Add 1\u20132 positions if opportunity aligns (mid-month earnings, Fed minutes)\n- **Week 3**\n  - Reassess tail exposure, check for clustering of expirations\n  - Run internal health check on IV conditions + VIX structure\n- **Week 4**\n  - Log outcomes\n  - Publish SigmaDrift\\_[Weekly.md](http://weekly.md/ \"http://Weekly.md\") + full-month notes\n  - Prune stale triggers, rotate asset setups if necessary\n\n---\n\n## **\ud83d\udcca Tracking & Metrics**\n\n![Screenshot 2025-05-08 at 2.03.46\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/fe8b0086754e4e40951c9e4dc6b53c96c42d55c12c5243248b146511cb6f081e \"Screenshot 2025-05-08 at 2.03.46\u202fPM.png\")"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-6-3",
+            "title": "10,000-Run Monte-Carlo Report",
+            "slug": "10-000-run-monte-carlo-report",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "![Sigma Distribution.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/7b2f0c4d8325498faaf01cf2d6fd362d932b7ee22637422f8f4f586beb48b38b-md.png \"Sigma Distribution.png\")\n\n*(All numbers are* ***after*** *intentionally overweighted costs and a 60\u00d7 profit cap)*\n\n---\n\n# **1. Run Monte Carlo Summary**\n\n![Screenshot 2025-05-09 at 3.54.48\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/f5bc2705eba04d8995e732913add5ff7be5b10934fc045ee863c7a4b47f0bba1 \"Screenshot 2025-05-09 at 3.54.48\u202fPM.png\")\n\n---\n\n## \n\n## **\u2699\ufe0f Simulation Setup**\n\n![Screenshot 2025-05-09 at 3.55.38\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/0fe57aced8f649da9dd8d5a6e604f9c3ce600f6fe2c14f9cb62f154ec9791a6a \"Screenshot 2025-05-09 at 3.55.38\u202fPM.png\")\n\n- **Probabilities Used**:\n  - **Risk** (Loss): 87.5%\n  - **Moderate Win**: 7.5%\n  - **Fat Tail Win**: 5.0%\n\n---\n\n**\ud83d\udcc8 Distribution Shape (Visual Recap)**\n\n- **Blue Hump**: Most runs land between **+40% and +150%**\n- **Red Tail (left)**: Controlled losses taper off near **-80%**\n- **Right Tail (fat)**: Returns drift well beyond **300\u2013500%**, showcasing true **sigma drift**\n\n> The histogram confirms optionality payoff structure: **frequent small losses**, **rare high-magnitude wins**.\n\n---\n\n## **\ud83e\udde0 Protocol-Consistent Observations**\n\n- \u2705 **R/R Convexity**: Matches Universa/Fat Tail benchmarks (10x+ average win vs. 1x risk).\n- \u2705 **Pessimism Baked In**: Trade costs and a 50x cap still allow for >90% average returns.\n- \u2705 **Fat Tail Ready**: Designed to capitalize on drift events; 5% of trades deliver explosive moves.\n- \u2705 **Drawdowns Are Tolerable**: At ~21%, these are acceptable within a barbell strategy framework.\n\n---\n\n## **\ud83e\uddfe Plain-English Summary**\n\n> \u201cYou\u2019re wrong 87.5% of the time. But when you\u2019re right, you hit 10x to 60x. And that\u2019s enough to turn $4K into $25K over 70 trades, even with capped profits and no reinvestment. This is convexity working as designed.\u201d\n\n[Sigma Drift\u2014 1,000\u2011Run Monte\u2011Carlo Report](https://flyonthewall.ai/wp-content/uploads/2026/01/Sigma-Drift\u2014-1000\u2011Run-Monte\u2011Carlo-Report.pdf)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-6-4",
+            "title": "Journal & Updates",
+            "slug": "journal-updates",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "![Screenshot 2025-05-08 at 1.45.56\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/658cd723a557483faebcfffe96049367d326765824bb418c9132c22e690fae0c-md.png \"Screenshot 2025-05-08 at 1.45.56\u202fPM.png\")\n\n**May 8, 2025**\n\nThe May 8 fly expires today worthless. May 16 is still in play, and I have high expectations.\n\nI paid too much for them. Had I been patient, I could have gotten the May 16 for 50 cents. It is currently in profit slightly.\n\nThe thesis for this trade was the recently entered Volume Well and President Trump\u2019s announcement of easing Tariff tensions and new deals."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-7",
+        "title": "Volatility Seed Vault (10-30 DTE)",
+        "description_md": "",
+        "order": 7,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-7-1",
+            "title": "Campaign Overview",
+            "slug": "campaign-overview",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **Focus:** Monthly (7\u201310 DTE) Fat Tail Trades\n\n### **\ud83c\udfaf Objective**\n\nCapture asymmetric returns from volatility shocks triggered by macroeconomic events or systemic stress. Designed for traders looking to \u201cplant and walk away\u201d 1\u20132 trades per week.\n\n---\n\n### **\u2699\ufe0f Trade Mechanics**\n\n- **Asset Universe**: SPX, NDX, CL (high IV, multiple expirations)\n- **Strike Zone**: 3\u20134.5\u03c3 OTM puts or calls\n- **Time to Expiry**: 7\u201310 DTE\n- **Debit Target**: $0.10\u2013$0.25\n- **Entry Frequency**: 2x/week, early-week placement (Mon/Tue)\n\n---\n\n### **\ud83e\uddea Structural Triggers**\n\n- **Catalyst Proximity**: CPI, FOMC, earnings clusters, unexpected IV drops\n- **Sentiment Divergence**: VIX-VVIX spreads or sudden quiet in otherwise tense markets\n- **IV Filters**: Only enter when IV Rank < 50 to avoid overpaying\n\n---\n\n### **\ud83d\udcb0 Capital Allocation**\n\n- **Per Trade**: $25\u2013$50\n- **Weekly Cap**: $100 max (2\u20133 trades)\n- **Campaign Bank**: $400 (4 weeks)\n- **Convexity Rule**: No scaling. Winners run. Losers expire.\n\n---\n\n### **\ud83e\udde0 Weekly Rhythm**\n\n- **Monday**: Review macro week \u2192 deploy 2 tail trades (1p + 1c ideally)\n- **Thursday**: Replace or add based on expirations\n- **Friday**: Retrospective\n\n---\n\n### **\ud83d\udcdd Tracking + Metrics**\n\n- **Win Rate Goal**: ~10%\n- **R/R Target**: 10x minimum\n- **Max Win / Avg Win / IV Level** journaled per trade\n\n---\n\n### **\ud83e\ude93 Pruning Rules**\n\n- Pause a ticker if:\n  - 3+ losses with no catalyst impact\n  - IV remains high all week \u2192 skip trades\n- Replace assets weekly using Tail Scanner\n\n---\n\n### **\u2705 Success Criteria**\n\n- Maintain <5% capital-at-risk at any time\n- Minimum one 10x+ outcome per month\n- Campaign can be extended or scaled based on R/R + student confidence"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-7-2",
+            "title": "1,000\u2011Run Monte\u202fCarlo Report",
+            "slug": "1-000-run-monte-carlo-report",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "## 1. Executive Snapshot\n\n- **Campaign Tested:** Volatility\u202fSeed\u202fVault (7\u201310\u202fDTE, 2\u00d7/week seeding)\n- **Runs:** 1,000 independent campaign simulations (each = 1\u2011month cycle)\n- **Starting Bankroll:** $4,000\n- **Edge Thesis:** Cheap OTM option \u201cseeds\u201d collect small daily theta losses while hunting for occasional volatility blooms that deliver 5\u201360\u00d7 pops.\n\n![Screenshot 2025-05-09 at 12.55.05\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/266feedc92c54d4aa6797f812d9cf477bf3deab286484caa9187a36ec65cc800 \"Screenshot 2025-05-09 at 12.55.05\u202fAM.png\")\n\n---\n\n## 2. Distribution at a Glance\n\n![VSV Distribution.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/8d481e0af45b4a769db4b7c638d6b07100300ceb4ea5493985381de7e448599d-md.png \"VSV Distribution.png\")\n\n- **Left Tail (red)**: ~20\u202f% of runs finish negative; worst\u2011case capped at \u201332\u202f% thanks to penny\u2011sized seeds.\n- **Central Hump (blue 0\u201335\u202f%)**: Two\u2011thirds of campaigns land a modest positive month after one or two Mod\u2011bucket wins (5\u201312\u00d7 payouts).\n- **Right Shoulder (40\u2013120\u202f%)**: ~13\u202f% of runs snag a single Fat\u2011bucket explosion (15\u201360\u00d7) and double the bankroll.\n- **Outliers (150\u202f%+)**: Rare double\u2011fat events\u2014portfolio\u2011changing when they hit.\n\n---\n\n## 3. What the Numbers Mean\n\n1. **Bounded Downside** \u2013 Because each seed costs ~$0.20, eight consecutive losers barely dent capital. Worst observed campaign drew down one\u2011third before rebounding or closing.\n2. **Asymmetric Upside** \u2013 Convex payoff delivers a long right tail; mean campaign return sits in the mid\u201120s while median hovers near +15\u202f%.\n3. **Path Dependency** \u2013 Early cold streaks shrink trade size under %\u2011of\u2011equity sizing; patience is mandatory until a Mod or Fat hit resets equity.\n4. **Psychological Fit** \u2013 Slower cadence than Sigma\u202fDrift; traders who prefer a measured rhythm with fewer daily dopamine jolts will vibe with VSV.\n\n---\n\n## 4. Practical Takeaways for Members\n\n- **Expect Variability:** 1\u2011in\u20115 months can finish down. Build a war\u2011chest that tolerates a \u201130\u202f% stretch drawdown.\n- **Let Winners Breathe:** Closing a Fat runner early clips the right tail. Size small enough that you can stomach holding to expiry.\n- **Stick to the Schedule:** Skipping seeds after a losing streak kills your chance of catching the inevitable bloom.\n- **Blend for Smoother Equity:** Pair VSV (Tue/Fri) with Sigma\u202fDrift (daily) to diversify payoff timing and reduce portfolio variance.\n\n---\n\n## 5. Next Experiments\n\n![Screenshot 2025-05-09 at 12.58.43\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/50eba92987c8488db7f340386d6dfea26b2550d326364b5fa5d961675e4f22bd \"Screenshot 2025-05-09 at 12.58.43\u202fAM.png\")\n\n---\n\n### Call to Action\n\nPlease post your questions or proposed tweaks below. If you ran your own variant, post the histogram\u2014let\u2019s crowd\u2011source the optimal configuration.\n\n> \u201cPlant disciplined seeds, harvest disorder.\u201d \u2013Coach\n\n[Volatility Seed Vault \u2013 1,000\u2011Run Monteu202fCarlo Report](https://flyonthewall.ai/wp-content/uploads/2026/01/Volatility-Seed-Vault-\u2013-1000\u2011Run-Monteu202fCarlo-Report.pdf)"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-8",
+        "title": "Macro Echo Chamber (30-90 DTE)",
+        "description_md": "",
+        "order": 8,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-8-1",
+            "title": "Campaign Overview",
+            "slug": "campaign-overview",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **Focus:** Monthly (30\u201345 DTE) Fat Tail Trades\n\n### **\ud83c\udfaf Objective**\n\nDeploy long-range convex trades into macro uncertainty windows (e.g., Fed cycle shifts, geopolitical standoffs, liquidity events). Structure trades to sit idle until volatility reawakens.\n\n---\n\n### **\u2699\ufe0f Trade Mechanics**\n\n- **Asset Universe**: SPX, NDX, GLD, CL, VIX (macro reactive)\n- **Strike Zone**: 4\u20135\u03c3 OTM calls/puts\n- **Time to Expiry**: 30\u201345 DTE\n- **Debit Target**: $0.10\u2013$0.20 (low IV entries only)\n- **Frequency**: 1 trade/week max\n\n---\n\n### **\ud83d\udd14 Structural Triggers**\n\n- **Macro Overhang**: Fed policy uncertainty, credit spreads widening, energy shock risk\n- **Event Calendar Windows**: Place trades 3\u20134 weeks before known inflection points\n- **IV Suppression**: Use VIX < 17 or contango as greenlight\n\n---\n\n### **\ud83d\udcb0 Capital Allocation**\n\n- **Per Trade**: $25\u2013$50\n- **Campaign Bank**: $200/month\n- **Scaling**: Prohibited. All trades fixed-size\n- **Profit Handling**: Wins funneled into Convexity Bank per Playbook pg. 5\n\n---\n\n### **\ud83e\udde0 Monthly Rhythm**\n\n- **Week 1**: Select 1 macro-exposed ticker \u2192 place deep OTM tail trade\n- **Week 3**: Add new position only if initial trade expired\n- **Week 4**: Prepare end-of-month retrospective and thesis adjustment\n\n---\n\n### **\ud83d\udcdd Tracking + Metrics**\n\n- **Monitor**:\n  - Macro event impact on IV\n  - Distance from spot at entry and exit\n  - Number of \u201csaves\u201d (trades that triggered in final week)\n- **Goal**:\n  - 1 in 4 trades hits \u226510x\n  - 80% of trades cost <1% of account\n  - Emotional discipline > predictive accuracy\n\n---\n\n### **\ud83e\ude93 Pruning Rules**\n\n- Eliminate any asset with:\n  - No reaction to macro events\n  - Continuous high IV or decay cost >25%\n- Pause campaign if:\n  - R/R < 8x for 3 consecutive months\n  - All trades expire worthless with no volatility triggers\n\n---\n\n### **\u2705 Success Criteria**\n\n- Systematic execution of 4 trades/month\n- At least one trade reaches 10x return in quarter\n- Emotional detachment improves (journaling proves it)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-8-2",
+            "title": "1,000-Run Monte-Carlo Report",
+            "slug": "1-000-run-monte-carlo-report",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "## 1. Executive Snapshot\n\n- **Campaign Tested:** Macro Echo Chamber (30\u201345\u202fDTE, 1\u00d7 per week seeding)\n- **Runs:** 1,000 independent campaign simulations (\u2248 one trade\u2011cycle each)\n- **Starting Bankroll:** $4\u202f000\n- **Edge Thesis:** Ultra\u2011cheap far\u2011OTM tail hedge that incubates for a month, paying off when a macro shock or IV snap\u2011back lands.\n\n![Screenshot 2025-05-09 at 6.48.59\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/6119b8cbe8554ded8b8da129f98c2c2143da3db253004f0b97a1d04e6a92f6cc \"Screenshot 2025-05-09 at 6.48.59\u202fAM.png\")\n\n---\n\n## 2. Return Distribution\n\n![Macro Echo Chamber.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/c273a3d1ec604a168438a9f536d64c12c0c8d2b6efbc4f00b17173db0e87a538-md.png \"Macro Echo Chamber.png\")\n\n- **Cold\u2011spell zone (red, \u201345\u202f%\u202f\u2192\u202f0\u202f%)** \u2013 30\u202f% of campaigns finish negative; slow trade cadence means it can be weeks before the bloom.\n- **Mode (blue, +10\u202f%\u201325\u202f%)** \u2013 One Mod\u2011bucket win (4\u201310\u00d7) lifts the month into the black.\n- **Right shoulder (+40\u202f%\u2013110\u202f%)** \u2013 Roughly 15\u202f% of campaigns nab a Fat\u2011bucket hit (10\u201350\u00d7) and double capital.\n- **Outliers (+150\u202f%+ )** \u2013 Rare double\u2011fat month; only a handful in 1,000 runs.\n\n---\n\n## 3. Interpretations\n\n1. **Thicker left tail vs. Seed Vault** \u2013 Fewer monthly seeds = bigger equity swings when the garden stays dormant.\n2. **Bigger single\u2011trade pay\u2011offs** \u2013 Longer fuse means more vega + more time for a 2\u20133\u03c3 drift, but theta drag + wide spreads cap the collectible multiplier (~50\u00d7).\n3. **Drawdown discipline critical** \u2013 Worst run chopped equity nearly in half; size seeds at \u2264\u202f0.75\u202f% of equity to keep psychological and margin stress tolerable.\n4. **Portfolio role = insurance** \u2013 Acts like a \u201cmacro umbrella.\u201d Expect to bleed small, then spike when markets misbehave.\n\n---\n\n## 4. Tweaks to Explore\n\n![Screenshot 2025-05-09 at 6.51.08\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/7c02c30004a04425bca811009be2db3e122a18d427ed4b3bb6817e0351e59caa \"Screenshot 2025-05-09 at 6.51.08\u202fAM.png\")\n\n---\n\n## 5. Blending Guidance\n\n- **Pair with Sigma Drift (daily)** \u2013 Drift harvests intraday disorder while Echo Chamber watches the horizon; correlation ~0.3 in back\u2011test.\n- **Add Volatility Seed Vault (Tue/Fri)** \u2013 Creates a three\u2011tier convex stack: micro, meso, and macro. Smooths equity curve and keeps you engaged.\n\n---\n\n## 6. Call to Action\n\nPost below if you rerun with an alternative FatMax or seed cadence. Let\u2019s crowd\u2011source the sweet spot between protection and fireworks.\n\n> \u201cInsurance is boring \u2013 until the day it buys you a new house.\u201d \u2013 Coach"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-9",
+        "title": "Unified Deployment",
+        "description_md": "",
+        "order": 9,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-9-1",
+            "title": "\ud83d\udd04 Convexity Stack + Sigma Drift",
+            "slug": "convexity-stack-sigma-drift",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "This document outlines how to **integrate Convexity Alignment Stack\u2122 and Sigma Drift** into a single tactical engine for consistent weekly exposure to asymmetric opportunities across short- and mid-term timeframes.\n\n---\n\n## \ud83c\udfaf Objective\n\nTo operate a unified deployment model that:\n\n- Uses volume profile and VIX regime to route trades\n- Maintains weekly convexity exposure across 0\u201314 DTE\n- Follows strict risk caps with high asymmetry\n- Reinforces the Fat Tail Protocol\u2019s barbell philosophy\n\n---\n\n## \ud83e\uddec Roles of Each Component\n\n### \ud83e\udde0 Convexity Alignment Stack\u2122\n\n- **Focus:** Short-term gamma expansion (0\u20133 DTE)\n- **Mechanism:** Fly/straddle centered on LVN or edge\n- **Timing:** Enter near morning breakout or post-event coil\n- **Risk Budget:** $25\u2013$50\n- **Style:** High Tier 2 + Tier 3 signal setups only\n\n### \ud83c\udf2a Sigma Drift\n\n- **Focus:** Mid-term tail dislocation (7\u201314 DTE)\n- **Mechanism:** 3.5\u20135\u03c3 long strangles or wide convex flies\n- **Timing:** Enter near HVNs, quiet IV zones, or macro ramps\n- **Risk Budget:** $25\u2013$50 per side\n- **Style:** Staggered entries, layered convexity\n\n---\n\n## \ud83d\udd01 Weekly Deployment Flow\n\n### \ud83d\udd32 Monday\n\n- **Volume Profile Scan:**\n  - Identify price in LVN, HVN, or edge zone\n- **VIX Regime:**\n  - Classify as Zombieland (<17), Goldilocks (17\u201328), or Chaos (>28)\n- **Macro Layer:**\n  - Identify catalysts (FOMC, CPI, NFP, earnings clusters)\n\n### \ud83d\udd27 Trade Routing\n\n- If **price in LVN + VIX < 28**:\n  - \u2705 Convexity fly or straddle (0\u20133 DTE)\n- If **price in HVN + VIX < 21 + upcoming event**:\n  - \u2705 Sigma Drift tail strangle (7\u201314 DTE)\n- If **price at LVN edge**:\n  - \u2705 Consider deploying both:\n    - Core fly (Convexity Stack)\n    - Strangle at +3.5\u03c3 (Sigma Drift)\n\n---\n\n## \ud83d\udee0 Position Structuring Examples\n\n### Example A: Convexity-Only Setup\n\n- SPX at LVN\n- VIX 19\n- CPI Wednesday\n- Trade: 2 DTE butterfly at 1.5\u03c3 above price, debit $0.20\n\n### Example B: Sigma-Only Setup\n\n- SPX compressing inside HVN\n- FOMC 7 days out\n- VIX 16\n- Trade: 7 DTE 5800p + 6400c strangle, $0.12 per leg\n\n### Example C: Combined Setup\n\n- SPX at LVN edge\n- VIX 21\n- Event in 3 days\n- Trade:\n  - 2 DTE convex fly centered at breakout point ($25 risk)\n  - 10 DTE tail strangle targeting next node ($30 risk)\n\n---\n\n## \u2705 Rules of Engagement\n\n- **Risk Cap:** Max $100 total exposure per week\n- **No Management:** All trades are set-and-forget\n- **Structure Before Direction:** Always let volume + IV dictate tactics\n- **Review Friday:** Score setups, prune noise, reinforce winners\n\n---\n\n## \ud83d\udcd8 Journal Tags for Logging\n\n![Screenshot 2025-05-15 at 2.55.19\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/99c0a390d9b64d86ae08bea869789a30adc35025ed674fbf8ff8d906f73f9865 \"Screenshot 2025-05-15 at 2.55.19\u202fPM.png\")\n\n---\n\n## \ud83e\udde0 Final Integration Thought\n\n> One observes energy. The other bets on its escape.\n\nThe **Convexity Stack maps compression**, and the **Sigma Drift monetizes its explosion**. Together, they form a continuous tactical loop that rides the rhythms of structural tension, volatility flow, and narrative catalysts.\n\nUse this system weekly. Journal honestly. Refine relentlessly.\n\nThis is not about frequency\u2014it\u2019s about **fractal preparedness**.\n\n[\ud83d\udd04 Unified Strategy Convexity Stack + Sigma Drift](https://flyonthewall.ai/wp-content/uploads/2026/01/\ud83d\udd04-Unified-Strategy-Convexity-Stack-Sigma-Drift.pdf)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-9-2",
+            "title": "\ud83d\udee1 VSV + MEC",
+            "slug": "vsv-mec",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "# Volatility Seed Vault + Macro Echo Chamber\n\nThis guide outlines how to integrate **Volatility Seed Vault** and **Macro Echo Chamber** into a single strategic campaign framework\u2014designed to deliver antifragile protection, macro convexity, and systemic event hedging.\n\n---\n\n## \ud83c\udfaf Objective\n\nTo structure a long-duration volatility campaign that:\n\n- Maintains constant exposure to catastrophic market risk\n- Hedges narrative, geopolitical, or policy-driven chaos\n- Offers portfolio insurance through deep optionality\n- Serves as the capital preservation and scaling base for shorter campaigns\n\n---\n\n## \ud83e\uddec Roles of Each Component\n\n### \ud83e\uddf0 Volatility Seed Vault\n\n- **Focus:** Persistent crash convexity\n- **Mechanism:** Monthly tail puts or VIX calls (30\u201390 DTE)\n- **Use Case:** Market drawdowns, volatility expansions\n- **Capital Rule:** $150\u2013$200/month\n- **Deployment Timing:** Low IV + macro calm\n\n### \ud83c\udf10 Macro Echo Chamber\n\n- **Focus:** Narrative and geopolitical tail hedging\n- **Mechanism:** Long-dated OTM options (60\u2013180 DTE)\n- **Use Case:** War, credit events, elections, Fed pivots\n- **Capital Rule:** $150\u2013$300/quarter\n- **Deployment Timing:** Narrative peaks or regime transitions\n\n---\n\n## \ud83d\udd01 Strategic Deployment Flow\n\n### \ud83d\udd32 Monthly Routine (Seed Vault)\n\n1. Scan SPX, VIX, GLD, TLT\n2. Identify low IV opportunities\n3. Deploy 2\u20133 long puts or calls (30\u201360 DTE)\n4. Debit: $25\u2013$50 per contract\n5. Roll winners into Convexity Bank\n\n### \ud83d\udd32 Quarterly Routine (Echo Chamber)\n\n1. Track global macro calendar: elections, CPI trends, Middle East, Fed\n2. Identify extreme narratives or policy inflections\n3. Position into:\n   - SPX far OTM puts (e.g., 6\u03c3, 120 DTE)\n   - GLD/SLV calls (monetary panic hedge)\n   - TLT calls (Fed pivot hedge)\n4. Budget: $150\u2013$300 per quarter\n\n---\n\n## \ud83d\udee0 Deployment Examples\n\n### Example A: Seed Vault (SPX/VIX)\n\n- VIX = 13, no major events\n- Deploy:\n  - 45 DTE 3\u03c3 SPX put, $0.20\n  - 30 DTE VIX 18c, $0.15\n  - Total: $40 risk\n\n### Example B: Macro Echo (GLD/TLT)\n\n- Global tensions escalating, dollar weak\n- Deploy:\n  - 120 DTE GLD 240c, $0.25\n  - 90 DTE TLT 110c, $0.18\n\n### Example C: Combined Strategic Layer\n\n- Enter Seed Vault monthly puts \u2192 rotate Echo Chamber narrative overlay once per quarter\n\n---\n\n## \ud83d\udd10 Integration Rules\n\n- No overlap with weekly convex campaigns\n- No management post-entry (set-and-forget)\n- Accept repeated small losses to remain in game\n- Use Convexity Bank (from wins) to fund future entries\n- Do not exceed monthly/quarterly risk budgets\n\n---\n\n## \ud83d\udcd8 Journal Tags\n\n![Screenshot 2025-05-15 at 3.00.22\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/d861831c67ca4829b7e9c7819d5eca64fa2cf27fb932427db0bec2ae7893a8f3 \"Screenshot 2025-05-15 at 3.00.22\u202fPM.png\")\n\n---\n\n## \ud83e\udde0 Final Integration Thought\n\n> Tail protection is not reactive. It is **ritual**.\n\nThe Seed Vault gives you *systemic defense*. The Echo Chamber adds *narrative depth*. Together, they anchor the barbell\u2014allowing your convex tactics to explore volatility while the core capital remains protected.\n\nYour job isn\u2019t to predict the crisis. Just plant optionality in the soil of uncertainty, and let time and chaos do the rest.\n\n[\ud83d\udee1 Unified Strategy Volatility Seed Vault + Macro Echo Chamber](https://flyonthewall.ai/wp-content/uploads/2026/01/\ud83d\udee1-Unified-Strategy-Volatility-Seed-Vault-Macro-Echo-Chamber.pdf)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-9-3",
+            "title": "Why Use a Sim",
+            "slug": "why-use-a-sim",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### \ud83c\udfb2\u00a0 Monte-Carlo Simulator 101\n\n*How we pressure-test the Fat Tail playbook without wagering a single dollar*\n\n---\n\n## 1.\u00a0 Why bother simming at all?\n\nTrading asymmetric tails is like fishing for Moby Dick with anchovies\u2014**most days nothing happens**, and then one day the line snaps in a good way.\n\nA Monte-Carlo (MC) run lets us\u2026\n\n- **Quantify that randomness** \u2013 We tell the computer the *true* odds (Risk / Mod / Fat buckets) and let it roll virtual dice thousands of times.\n- **See the whole distribution** \u2013 Not just \u201caverage return,\u201d but tails, drawdowns, and cold-streak length.\n- **Tune sizing before real money goes in** \u2013 If 20 straight losers bankrupt the bankroll in the sim, it will nuke you live.\n\n---\n\n## 2.\u00a0 Anatomy of the Spreadsheet\n\n![Screenshot 2025-05-09 at 7.12.18\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/fd8c21786bc948ad86203095cdd9ca166f38dcf52fae47aebbfdb217d378cd88-md.png \"Screenshot 2025-05-09 at 7.12.18\u202fPM.png\")\n\n*Pro-tip: \u201cContracts = 4\u201d is just the four legs of a butterfly, not four separate positions.*\n\n---\n\n## 3.\u00a0 Reading the Output\n\n- **Histogram** \u2013 Blue bars = positive campaigns, red bars = negative.\u00a0 Where\u2019s the mode?\u00a0 How fat is the right tail?\n- **High / Low Equity** \u2013 Peek drawdown tolerance.\u00a0 If the worst sim is \u201345 %, can you stomach that IRL?\n- **Win Rate** \u2013 Don\u2019t chase; 5\u201310 % is normal in a convex world.\n- **Average Drawdown** \u2013 Tells you the psychological tax.\n\n---\n\n## 4.\u00a0 Common Tweaks (and what happens)\n\n![Screenshot 2025-05-09 at 7.14.56\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/845d2d46b36e45e9977437eb8efd667c329582b8e7884d2ab6b2806e032d4f6a-md.png \"Screenshot 2025-05-09 at 7.14.56\u202fPM.png\")\n\nRun the sim \u2192 eyeball the histogram \u2192 rinse-repeat until the curve matches your risk temperament.\n\n---\n\n**5.\u00a0 How to use it inside FatTail AI**\n\n1. **Pick the campaign** (Sigma Drift, Seed Vault, Echo Chamber).\n2. **Load the preset inputs** from our templates.\n3. **Fire 10,000 runs** \u2013 that\u2019s enough for a clean curve.\n4. **Screenshot + share** in the Skool classroom. We\u2019ll riff on sizing tweaks, edge cases, and psychological prep.\n\nRemember: **the simulator doesn\u2019t predict the future**\u2014it just shows the range of futures you\u2019ve *already priced in* with your assumptions\u2014garbage in, garbage out\u2014solid assumptions in, antifragile clarity out.\n\n\u2728 *Plant disciplined seeds, harvest disorder.*\u00a0 See you in the results thread.\n\n---\n\n# Monte Carlo Input Templates\n\n![Screenshot 2025-05-09 at 7.17.40\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/097206665f8245da80d5c085f2b48ce25c0664697af44612895c136ce861d73b-md.png \"Screenshot 2025-05-09 at 7.17.40\u202fPM.png\")\n\n*Commission model: Keep your \u201ccharge exit fees only on winning trades\u201d rule for all three sims.*\n\n**Note:** \u201cContracts = 4\u201d refers to the four legs of a single 50-wide butterfly (long\u2013short\u2013short\u2013long).\n\nAdjust *MinRisk/MaxRisk* if you change the fly width or the underlying, but keep Contracts at 4 so commissions calculate correctly.\n\n---\n\n**Quick reference (why each dial matters)**\n\n- **Sigma Drift**\n  - $50 risk \u2248 0-DTE 4-lot debit 50 wide butterfly.\n  - More swings, so a slightly fatter 5 % Fat bucket.\n- **Seed Vault**\n  - $20 seeds reflect 7-10 DTE cheap flies.\n  - 2 % Fat keeps variance sane with a twice-weekly cadence.\n- **Echo Chamber**\n  - $35 risk mirrors 30-45 DTE far-OTM pricing.\n  - Give Fat Bucket a 3 % chance to account for the longer fuse.\n\n---\n\n**Tweaking tips**\n\n\\* **Scaling up / down:** leave the multiplier cells alone and change MinRisk / MaxRisk to the debit you use (or change Contracts from 4 to 1 for micro-testing).\n\n\\* **Dream-pin tests:** bump FatMax to 80 or 99 **and** cut P-Fat by 1\u20132 pts to keep variance believable.\n\n\\* **Streak analysis:** After an MC run, filter for the maximum consecutive losses\u2014use that to sanity-check bankroll sizing.\n\nDrop these values into the yellow cells for each campaign, re-run the Monte-Carlo, and the distributions should line up with the history we\u2019ve already been eyeballing. Adjust the risk cell or contract count if you trade smaller or larger than the 4-lot baseline. Let me know if anything looks off once you fire the next batch!\n\nThe Monte Carlo Simulator uses macros to generate 10,000 runs. Before running it, make sure to clear out the previous run."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-10",
+        "title": "Playbook",
+        "description_md": "",
+        "order": 10,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-10-1",
+            "title": "Introduction",
+            "slug": "introduction",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Course Overview:** Welcome to the FatTail Protocol Playbook\u2014your essential guide to executing targeted, high-impact trading strategies designed for various market conditions. This course represents the foundational framework you\u2019ll need to master the practical application of the FatTail Protocol, guiding you step-by-step through specific trade setups for Zero DTE, Short-Term (7-10 DTE), and Quarterly (Long-Term) opportunities.\n\nThink of this playbook as your initial roadmap\u2014a traditional, structured starting point to anchor your trading journey. Importantly, this isn\u2019t a static manual. Instead, it\u2019s a living document you\u2019ll actively refine and expand as you deepen your expertise, adapt to shifting market conditions, and integrate new insights from real-world experiences. Your engagement with this course will empower you to follow proven strategies and innovate and customize, continuously enhancing your personal trading edge.\n\nAs you progress through the modules, you\u2019ll understand how to precisely execute trades around specific market events, manage risk effectively, and harness market volatility to your advantage. This course is more than just learning predefined methods; it\u2019s about cultivating a dynamic approach to trading that evolves alongside your growth and understanding."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-2",
+            "title": "Zero DTE Trading Playbook",
+            "slug": "zero-dte-trading-playbook",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Rapid Intraday Moves**\n\n**Objective:** Identify and execute precise Zero DTE trades around economic events.\n\n- **Asset Selection (SPX, NDX)**\n  - Why SPX and NDX? High liquidity and volatility make them prime candidates for intraday Zero DTE trades.\n  - Criteria for selecting the right asset based on market conditions.\n- **Entry Criteria for Economic Reports**\n  - Timing trades around economic data releases (e.g., CPI, Jobs Report, Fed announcements). [Refer to Economic Reports Database]\n  - Identifying market sentiment and anticipated volatility through pre-report analysis.\n- **Optimal OTM Strike Selection**\n  - Calculating optimal out-of-the-money (OTM) strikes using implied volatility (IV) and expected move formulas. [Use IV & Expected Move Calculator]\n  - Using historical volatility data to refine strike selection.\n- **Risk Management and Exit Tactics**\n  - Setting clear, disciplined stop-losses and profit-taking targets.\n  - Rapid decision-making for exiting trades as volatility diminishes post-event.\n  - Managing trades effectively during unexpected market moves. [Refer to Zero DTE Quick Reference Guide]\n\n---\n\n**Activities: Executing Zero DTE Trades with Precision**\n\n**Practice Trade Setup (Paper Trading):** Use an upcoming economic event (e.g., CPI or Jobs Report) to place at least two simulated Zero DTE trades in a paper trading account.\n\n- Identify the event using an economic calendar or Grok AI\n- Choose SPX or NDX as your asset\n- Calculate the expected move using implied volatility\n- Select an OTM strike 2\u20134 SD away\n- Set a clear exit target (e.g., 3x return) and log the outcome\n\n**Reflection Question:** What part of the setup was most challenging \u2014 timing, strike selection, or managing the exit?\n\n\ud83d\udc49 Post your answer in the Discord forum. One or two sentences is enough to help others learn from your experience."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-3",
+            "title": "Short-Term (7\u201310 DTE) Trading Playbook",
+            "slug": "short-term-7-10-dte-trading-playbook",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Capturing Multi-Day Volatility**\n\n**Objective:** Execute trades designed to capitalize on significant moves following major economic data.\n\n- **Asset Choices (Indices, Commodities, Impactful Stocks)**\n  - Preferred assets include SPX, NDX, Crude Oil (CL), Natural Gas (NG), and major event-driven stocks (like TSLA during earnings).\n  - Selection based on historical volatility and sensitivity to economic catalysts.\n- **Identifying Key Economic Indicators**\n  - Focus on high-impact reports such as CPI, Non-Farm Payrolls, FOMC Meetings, and GDP reports. [Refer to Economic Reports Database]\n  - Learn how to read event calendars and understand consensus expectations.\n- **Timing Entries Before and After Economic Events**\n  - Strategies for pre-positioning vs. reactive positioning.\n  - Recognizing \u201cfirst reaction\u201d and \u201csecond wave\u201d moves post-announcement.\n- **Strategies for Partial Exits and Profit Optimization**\n  - Scaling out: How to secure gains while leaving a portion for larger moves.\n  - Trailing stop strategies for maximizing asymmetric payoffs.\n\n---\n\n**Activities: Executing 7\u201310 DTE Trades Around Key Events**\n\n**Simulated Trade Practice:** Set up 2\u20133 paper trades using upcoming economic reports (e.g., CPI, FOMC, Jobs Report).\n\n- Choose assets like SPX, NDX, CL, or NG\n- Select expiration dates 7\u201310 days out\n- Base your timing on pre- or post-event positioning\n- Choose OTM strikes using the expected move calculator and IV levelsLog your entries and set clear exit targets (e.g., 3x base, 10x+ tail event scenario)\n\n**Reflection Question:** What\u2019s one short-term trade setup (7\u201310 DTE) you\u2019ve tried \u2014 or are planning to try \u2014 based on a recent or upcoming economic event? Think about:\n\n- The asset (e.g., SPX, CL, TSLA)\n- The timing (pre- or post-event)\n- Why you liked the setup (e.g., volatility, clear direction, news catalyst)\n\n\ud83d\udc49 Post your example in the Discord forum to help others discover smart setups to watch for."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-4",
+            "title": "Quarterly (Long-Term) Trading Playbook",
+            "slug": "quarterly-long-term-trading-playbook",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Positioning for Macro-Driven Events**\n\n**Objective:** Learn to place deep OTM positions anticipating large, macro-driven market shifts.\n\n- **Macro Event Selection (e.g., Geopolitical Shifts, Central Bank Actions)**\n  - Focus on rare but impactful events: wars, political instability, major central bank policy changes, sovereign debt crises.\n  - Utilize macroeconomic calendars, central bank meeting schedules, and geopolitical intelligence.\n- **Deep OTM Options Strategy**\n  - Selecting options that are 2-4 standard deviations out-of-the-money.\n  - Target 90+ DTE expirations to allow enough time for major moves to develop.\n  - Accept small consistent premium losses as \u201cinsurance premiums\u201d against tail events.\n- **Timing and Position Sizing for Maximum Impact**\n  - Entry windows: ideally 2\u20134 weeks ahead of anticipated catalyst windows.\n  - Position sizing should remain small relative to portfolio (1-3%) to maintain convexity.\n  - Layer entries over time if catalyst windows are uncertain.\n- **Long-Term Risk Management Strategies**\n  - Budget for regular \u201creloads\u201d of expiring options.\n  - Avoid overexposure by maintaining diversified positioning across multiple macro catalysts.\n  - Define success not by hit rate, but by occasional large asymmetric wins.\n\n---\n\n**Activities: Planning Trades for Macro-Driven Events**\n\n**Case Study Review:**\n\nChoose one past macro event (e.g., COVID-19 crash, 2008 financial crisis, Brexit) and analyze:\n\n- What triggered the move?\n- What kind of option setup might have captured it (strike, DTE, asset)?\n- What would you do differently today?\n\n**Research Exercise:** Work individually or in a group to identify 1\u20132 potential macro catalysts for the next 6\u201312 months (e.g., Fed policy shifts, geopolitical tensions, sovereign debt instability).\n\n- Choose appropriate assets (SPX, NDX, GLD, TLT)\n- Define a theoretical trade: entry timing, strike, and expiration\n- Keep risk sizing to 1\u20133% of account value\n\n**Reflection Question:** What\u2019s one macro event you\u2019re watching \u2014 and how would you structure a long-dated trade to prepare for it?\n\n\ud83d\udc49 Post your answer in the Discord forum. Share your thesis, asset, and a basic trade plan (strike, DTE, and why)."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-5",
+            "title": "Tactical Application, Real-Life Examples",
+            "slug": "tactical-application-real-life-examples",
+            "order": 5,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Executing Playbook Trades in Real-Time**\n\n**Objective:** Apply theoretical knowledge to practical, real-world market situations.\n\n- **Live Trade Setup Walkthroughs**\n  - Step-by-step demonstrations of placing Zero DTE, Short-Term, and Quarterly trades based on current market conditions.\n  - Evaluating entry points, strike selection, risk sizing, and exit plans in real-time.\n- **Real-Time Scenario Analysis Using Recent Market Data**\n  - Analyzing live economic data releases and market reactions.\n  - Recognizing volatility patterns and price behavior to adjust strategies dynamically.\n- **Adjustments and Troubleshooting Trades**\n  - How to manage trades that move against you.\n  - Adjusting position size, rolling strikes, or closing early when warranted.\n  - Learning to stay agile without emotional decision-making.\n\n---\n\n**Activities: Executing Trades and Responding in Real Time**\n\n**Live Paper Trading Session:** Execute at least one **Zero DTE** trade and one **Short-Term or Quarterly** trade in a paper account during a live market session.\n\n- Focus on entry timing, strike selection, and exit planning\n- Use Grok AI to guide trade ideas based on real-world data\n- Log the trade outcomes and adjustments\n\n**Interactive Q&A / Trade Review:**\n\nJoin a group discussion or recorded session to walk through trade decisions.\n\n- Review setups that worked and those that didn\u2019t\n- Troubleshoot entries, exits, or roll strategies\n- Share how you managed unexpected moves or volatility\n\n**Reflection Question:** Think back to one trade that didn\u2019t go as planned. What did you adjust \u2014 and what would you do differently next time?\n\n\ud83d\udc49 Post your answer in the Discord forum. Even a short lesson learned can help others become more tactical."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-6",
+            "title": "Continuous Improvement",
+            "slug": "continuous-improvement",
+            "order": 6,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Enhancing Your Trading Edge**\n\n**Objective:** Continuously refine your approach for sustained trading success.\n\n- **Reviewing and Adjusting Trades Based on Performance Data**\n  - How to use the Performance Tracking Template to analyze your trade outcomes.\n  - Identifying patterns, strengths, and areas for improvement.\n- **Developing Personal Trading Metrics**\n  - Creating personalized KPIs (Key Performance Indicators) such as win/loss ratio, average reward-to-risk ratio, consistency rate, and emotional discipline score.\n  - Setting benchmarks to measure your evolving performance.\n- **Advanced Tips for Maintaining Discipline and Consistency**\n  - Daily and weekly routines that reinforce high-performance habits.\n  - Techniques for overcoming common psychological pitfalls such as overtrading and revenge trading.\n  - Implementing a \u201cOne Trade at a Time\u201d mindset to stay focused and patient.\n\n---\n\n**Activities: Building a Continuous Improvement Routine**\n\n**Create Your Personalized Improvement Plan:** Review your recent trades using the Performance Tracking Template (PDF).\n\n- Identify one area to improve (e.g., exit timing, overtrading, emotional discipline)\n- Set one benchmark or habit to work on over the next week\n- Record your plan in your trading journal\n\n**Weekly Trading Reflection:** At the end of each trading week, write a short reflection (3\u20135 sentences).\n\n- What went well this week?\n- What didn\u2019t go as planned?\n- What\u2019s one thing you\u2019ll change or reinforce next week?\n\n**Reflection Question:** What\u2019s one change you\u2019ve made (or need to make) that\u2019s had the biggest impact on your consistency or mindset?\n\n\ud83d\udc49 Post your answer in the Discord forum \u2014 even one sentence could spark ideas for someone else."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-7",
+            "title": "Reinvestment: Capital Compounding",
+            "slug": "reinvestment-capital-compounding",
+            "order": 7,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **Purpose**\n\nThe reinvestment strategy ensures that outsized returns from rare events are not consumed or withdrawn immediately, but instead reinjected into the system to expand future convexity \u2014 creating a self-financing cycle of optionality.\n\n# **Steps to Implement**\n\n### **1. Define Your Capital Buckets**\n\n- **Core Capital**: Never risked \u2014 serves as the mothership.\n- **Seed Capital**: Used to fund hybrid trades (e.g., 5-10% of Core).\n- **Convexity Bank**: Profits from large asymmetric wins are funneled here and redeployed only into tail trades.\n\n### **2. Allocate Reinvestment Tranches**\n\n- After a win (e.g., a 10x+ butterfly payout), allocate:\n  - **50% to Convexity Bank** (reserved for more OTM or longer-dated asym trades).\n  - **25% to Seed Capital top-up** (to sustain baseline trade activity).\n  - **25% optional withdrawal** (personal use or risk buffer).\n\n> *Note: these percentages can vary based on volatility regime or trader psychology. The key is creating a rule-based reinjection system.*\n\n### **3. Deploy with Intent**\n\n- Reinvested capital should go into *wider*, *longer-dated*, or *more tail-heavy* trades.\n- Use reinvested profits to fund 90DTE +5 SD trades that would be too expensive under normal risk budgets.\n- Consider scaling into a basket of tails across multiple underlyings (SPX, NDX, GLD, VIX, etc.).\n\n---\n\n## **1. Setting Up the Hybrid Trades**\n\n### **Structure Overview**\n\nThe hybrid strategy fuses a short-duration 0DTE butterfly with a medium-dated tail exposure (7-45 DTE), creating both rapid decay potential and longer convex optionality.\n\n### **Choosing DTE**\n\n- **0DTE**: For rapid exposure to same-day moves, ideal when expecting morning volatility.\n- **7-10 DTE**: Targets a window of known catalysts (FOMC, CPI).\n- **45-60+ DTE**: For far-out tail plays, meant to ride higher vol or trend transitions.\n\n### **Strike Selection for Butterflies**\n\n- Use **Volume Profile**, ATR, and expected move to place wings.\n- Target 2\u20134x expected move for center strike; wings at minimum 2\u20133 strikes out.\n- Debit must be <10% of width for proper convexity.\n\n### **Width and Cost Guidelines**\n\n- Start with 10\u201325pt width for SPX (scale wider in high IV).\n- Aim for **1:5 to 1:15 risk-to-reward**, with max capital risked = 1% of total portfolio.\n\n## **2. Managing the Hybrid Portfolio**\n\n### **Rolling and Adjustments**\n\n- **Don\u2019t roll losers** \u2014 replant new butterflies.\n- For multi-day trades, roll only if underlying structure still supports the original thesis.\n- Use **calendar staggering**: open trades every 3\u20135 days to avoid clustering expiration.\n\n### **Balancing Frequency**\n\n- Cap trade entries to 1\u20132 per day max, avoid overexposure.\n- Reinforce timing discipline \u2014 no trades without a **volatility or structural trigger**.\n\n## **3. Monitoring and Adjustment**\n\n### **Key Indicators**\n\n- **VIX + VVIX divergence**: watch for impending regime shifts.\n- **Volume Profile LVNs**: critical entry/exit zones.\n- **Time-of-Day Windows**: Pre-open, morning breakout, afternoon reversion, and closing gamma squeeze.\n\n### **Adjustment Triggers**\n\n- **Volatility Collapse**: Close or adjust BAF or Time Warp if vol crush hits.\n- **Range Expansion**: Enter Batman or wide convexity trades post-breakout.\n- **Theta Decay Sweet Spot**: Days 3\u20135 in a 7\u201310 DTE trade are critical; monitor decay curves.\n\n## **4. Risk Management**\n\n### **Capital-at-Risk Constraints**\n\n- No single trade should risk >1% of account.\n- Total exposure across all trades should be <5% unless using **Convexity Bank**.\n\n### **Sizing Model**\n\n- **0DTE Fly**: 0.25% to 0.5% notional risk.\n- **Mid-DTE Fly**: 0.5% to 1% max.\n- **Convex Tail Bet**: Use Convexity Bank funds \u2014 accept full loss if OTM.\n\n## **5. Case Studies and Examples**\n\n### **Success Scenario**\n\n- SPX breaks below key LVN; a 20-wide 0DTE put fly is initiated with a $1.50 debit and pays out $18.50.\n- Trader takes $1,650 profit \u2192 $800 into 30DTE +3SD put fly, $400 to top up seed pool, $450 withdrawn.\n- 30DTE trade hits 2.5SD move on FOMC \u2192 $800 becomes $12,000.\n\n### **Learning Scenario**\n\n- 3-day butterfly placed near HVN chop zone. Theta decays, price never moves.\n- Full loss ($250) accepted \u2014 no roll.\n- Lesson: Avoid choppy areas with no directional bias or catalyst.\n\n## **6. Key Takeaways and Action Steps**\n\n### **Strategic Summary**\n\n- The hybrid strategy thrives on positioning *before* the move.\n- Uses **extreme convexity** on both fast and slow timescales.\n- Risk is tightly defined; reward is exponential only if you let winners run.\n\n### **Action Steps**\n\n1. Define your **Core, Seed, and Convexity Bank** allocations.\n2. Build a **rule-based trade journal**: capture rationale, structure, and volatility conditions.\n3. Only enter trades with **clear catalysts** or **structural alignment**.\n4. Reinvest asymmetric wins methodically \u2014 feed the next fat tail hunt."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-8",
+            "title": "Which Style Should I Use?",
+            "slug": "which-style-should-i-use",
+            "order": 8,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "\ud83d\udc49 *When tail-hunting, should you go 0DTE, 10DTE, Monthly, or Quarterly options to get the best cheap asymmetric bang?*\n\n## **Short Answer:**\n\n> **It depends on how you play the fat tails and what specific move you\u2019re targeting.**\n\nBut let\u2019s be real:\n\nNot all DTEs are created equal for this game.\n\nHere\u2019s the cold truth:\n\n---\n\n## **0DTE Options (Same-Day Expiration)**\n\n**Pros:**\n\n- **CHEAPEST** options you will ever find \u2014 literal pennies.\n- **Explode violently** on sudden huge intraday moves.\n- **Incredible gamma** \u2014 tiny moves in SPX can become massive gains.\n\n**Cons:**\n\n- **Ultra-high theta burn** \u2014 if it doesn\u2019t happen NOW, you\u2019re cooked.\n- **Requires near-perfect timing** \u2014 you need the move *today*, *this session*, *this morning*.\n- **Event dependency** \u2014 needs a catalyst (CPI report, Fed minutes, etc.)\n\n**Coach\u2019s Verdict:**\n\n> \u26a1 Great for *speculative sniper shots* on **known event days** (FOMC, CPI).\n\n> \ud83d\udc80 Terrible if you\u2019re relying on \u201cmaybe something will happen.\u201d\n\n---\n\n## **7\u201310 DTE Options (Short-Term Weekly)**\n\n**Pros:**\n\n- **Still pretty cheap** \u2014 a little more expensive than 0DTE, but manageable.\n- **Gives the move some breathing room** \u2014 doesn\u2019t have to happen instantly.\n- **Gamma builds naturally** \u2014 as expiration approaches, even a moderate move can explode your option\u2019s value.\n\n**Cons:**\n\n- **Decay kicks in fast after 3\u20134 days** \u2014 still time-sensitive.\n- **Somewhat more expensive** than 0DTE, so more exposure if wrong.\n\n**Coach\u2019s Verdict:**\n\n> \u26a1 **Probably the sweet spot** for most tail-hunting:\n\n> Cheap enough + gives the move a few days to develop.\n\n---\n\n## **Monthly Options (30\u201345 DTE)**\n\n**Pros:**\n\n- **Lots of time** \u2014 not urgent for an immediate move.\n- **More stable premium** \u2014 less theta decay early on.\n- **Better chance to catch a broader fat tail event.**\n\n**Cons:**\n\n- **Way more expensive** than short-dated options.\n- **Smaller percentage returns** if move happens early (because premium decay isn\u2019t magnified yet).\n\n**Coach\u2019s Verdict:**\n\n> \ud83e\udd71 Meh. **Too expensive** for the \u201ccheap seeds for big moves\u201d strategy.\n\n> Great if you have a *long-term macro view*, not great for *explosive asymmetry*.\n\n---\n\n## **Quarterly Options (90DTE and Beyond)**\n\n**Pros:**\n\n- **Ultra-stable** \u2014 you can literally forget about them for weeks.\n- **Big move insurance** \u2014 survive random fat-tail chaos.\n\n**Cons:**\n\n- **Premium is big** \u2014 you\u2019re buying a *portfolio insurance policy*, not a \u201ccheap shot.\u201d\n- **Slow returns** \u2014 it\u2019s not an agile way to trade volatility bursts.\n\n**Coach\u2019s Verdict:**\n\n> \ud83d\udee1\ufe0f Best for a **permanent long-vol position**, *not active trading*.\n\n> Use quarterly tails only if you\u2019re **building a structural hedge**.\n\n---\n\n# **\ud83e\udd43 FINAL COACH TRUTH:**\n\n![Screenshot 2025-04-27 at 8.24.37\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/dec02f3a950e443091f7c43fe91654cd90cb603821f3418d9bb746bdf5ade98a \"Screenshot 2025-04-27 at 8.24.37\u202fAM.png\")"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-9",
+            "title": "\ud83c\udfaf How We Choose Strike Placement for FatTail",
+            "slug": "how-we-choose-strike-placement-for-fattail",
+            "order": 9,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "When we place **out-of-the-money (OTM) options** to hunt fat tail moves, we\u2019re not guessing.\n\nWe\u2019re *engineering asymmetric trades* based on **expected volatility**, **reasonable probabilities**, and **return on capital**.\n\nLet\u2019s break it down.\n\n---\n\n## **\ud83d\udcc8 What Are We Actually Shooting For?**\n\nWe\u2019re aiming to:\n\n- **Risk a small amount** of capital \u2014 pennies on the dollar.\n- **Capture large, nonlinear payoffs** when rare but explosive moves happen.\n- **Structure our trades so that even rare wins justify repeated small losses**.\n\nThis is not high-frequency flipping.\n\nThis is **planting cheap seeds and waiting for chaos** to water them.\n\n---\n\n## **\ud83e\udde0 How Far OTM Should We Place Our Options?**\n\nThe best placement is **guided by expected volatility** and **realistic market behavior**, not by arbitrary rules.\n\n### **The Sweet Spot:**\n\n![Screenshot 2025-04-27 at 8.40.35\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/85bbd46f823f42548262b723a608f3a3d69bf9bc1a5d4d0aa3a90fac1793b847 \"Screenshot 2025-04-27 at 8.40.35\u202fAM.png\")\n\n---\n\n## **\ud83c\udfaf How We Should Think About It:**\n\n- **1.5\u03c3 to 2.0\u03c3** moves are your **everyday tail trading battleground**.\n- **2.5\u03c3 and beyond** are for **speculative sniper shots** (event days, high VIX, regime shifts).\n\nYou want to **balance the cost of the trade** (premium paid) against **the true odds** of a payoff.\n\nIf you go too conservative (1\u03c3), the premiums are too expensive to offer real asymmetry.\n\nIf you go too extreme (3\u03c3), the hits are too rare to sustain unless you\u2019re hitting big once in a blue moon.\n\n## **2.0\u03c3 is the Goldilocks zone.**\n\n---\n\n## **\ud83d\udd25 How Volatility Regimes Affect Strike Selection**\n\n![Screenshot 2025-04-27 at 8.42.01\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/b05668e10f174624a38d5dba0d9ed276a19b7c839ee541908513c2f952aaa701 \"Screenshot 2025-04-27 at 8.42.01\u202fAM.png\")\n\n---\n\n## **\ud83e\udd43 Final Truth:**\n\n> **Placement isn\u2019t about prediction.**\n\n> It\u2019s about *building cheap structures where the return on risk is massively skewed in your favor* \u2014 even when the odds are long.\n\nYou don\u2019t *hope* for tails.\n\nYou **build a portfolio that can\u2019t wait for them**.\n\nAnd when they show up?\n\nYou\u2019re not the one panicking \u2014\n\n**You\u2019re the one getting paid.**\n\n---\n\n# **\ud83d\ude80 TL;DR Checklist for Strike Placement:**\n\n- **Step 1:** Identify volatility regime (VIX, market tension, event calendar).\n- **Step 2:** Select 1.75\u03c3\u20132.0\u03c3 strikes for routine setups.\n- **Step 3:** For sniper plays (FOMC, CPI), sprinkle 2.5\u03c3\u20133.0\u03c3 positions.\n- **Step 4:** Keep cost per trade ultra-low (pennies relative to capital).\n- **Step 5:** Let the math and time work for you."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-10",
+            "title": "\ud83c\udfaf Strategic + Tactical Toolkit",
+            "slug": "strategic-tactical-toolkit",
+            "order": 10,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "## **1. Volatility Regime Detector**\n\n## **(Simple VIX Model)**\n\n- **Tool:** A visual or daily dashboard saying:\n  - \u201cVIX < 15 \u2192 Tight game \u2014 narrower trades, lower expectation.\u201d\n  - \u201cVIX 15\u201325 \u2192 Fat tail hunting ground active.\u201d\n  - \u201cVIX > 25 \u2192 Chaos unleashed \u2014 widen structures, smaller sizing.\u201d\n- **Tactical Effect:** Helps size trades properly and avoid fighting volatility expansion or contraction.\n- **Deliverable:** One simple VIX thermometer chart or daily bar.\n\n---\n\n## **2. Event Risk Calendar**\n\n- **Tool:** Daily or weekly cheat sheet listing known risk events:\n  - Economic reports (CPI, PPI, NFP)\n  - Fed meetings, Powell speeches\n  - Major earnings releases\n  - Geo-political events (G7, elections, etc.)\n- **Tactical Effect:** Traders can *shift mode* based on scheduled catalysts: sniper vs structured plays.\n- **Deliverable:** Embed it weekly in [FatTail.ai](http://fattail.ai/ \"http://FatTail.ai\").\n\n---\n\n## **3. Fat Tail Probability Meter (Simple version)**\n\n- **Tool:** Based on daily SPX IV and HV:\n  - If IV >> HV \u2192 market pricing in bigger moves \u2192 fat tail likelihood \u2191.\n  - If HV >> IV \u2192 market sleepy \u2192 stay patient.\n- **Tactical Effect:** Helps traders know when the market is *underpricing* or *overpricing* chaos.\n- **Deliverable:** Simple color-coded indicator (Green/Yellow/Red system).\n\n---\n\n## **4. Gamma Exposure Zones**\n\n- **Tool:** Use FOTW gamma exposure chart to:\n  - Identify \u201cpinning\u201d zones (where price gets trapped).\n  - Identify \u201cair pockets\u201d (where price can move violently).\n- **Tactical Effect:** Tells traders when NOT to expect fat tails (pinning days) and when TO expect them (gamma unchained days).\n- **Deliverable:** A simple daily note: \u201cGamma compression\u201d or \u201cGamma free range.\u201d\n\n---\n\n## **5. Market Breadth Heat Map**\n\n- **Tool:** Simple % of stocks above 50-day or 200-day moving averages.\n- **Tactical Effect:**\n  - If everything is breaking down \u2192 higher odds of panic cascades (good for fat tail puts).\n  - If everything is rallying unsustainably \u2192 ripe for snap-back events.\n- **Deliverable:** Simple daily/weekly post: \u201cBreadth strong/weak \u2192 tail setup: YES/NO.\u201d\n\n---\n\n# **\ud83e\udd43 Hard Truth Summary:**\n\n> 90% of trading services throw random indicators at people.\n\n> You can win by giving *real environmental awareness tools* \u2014 showing **WHEN the environment is ripe** for asymmetric plays.\n\n**Trading is a weather game, not a magic signal game.**"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-11",
+            "title": "\ud83c\udfaf Model Setup Examples",
+            "slug": "model-setup-examples",
+            "order": 11,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "# 0DTE Event Sniper Setup\n\n> **Use when:** Known high-impact scheduled events (FOMC, CPI, PPI, Jobs Report)\n\n### **Setup:**\n\n- **When:** Morning of event (7\u20139 AM ET), BEFORE the release.\n- **What to Buy:** Deep OTM puts **and** calls (2.5\u03c3\u20133\u03c3 strikes).\n- **Expiration:** **Same day (0DTE)**.\n- **Cost Target:** $0.05 to $0.20 per side.\n- **Position Size:** Tiny \u2014 <1% of capital per play (true lottery ticket sizing).\n\n### **Objective:**\n\n- Catch **violent moves within minutes or hours** of release.\n- If spike/rout happens, \u2192 options instantly expand 5x\u201320x.\n- Exit 50\u201375% of position **immediately after move** \u2014 trail remainder aggressively.\n\n---\n\n# 7\u201310 DTE Tail Structure\n\n> **Use when:** Market is \u201cpregnant\u201d with tension but no hard date (e.g., VIX rising, earnings season, election uncertainty)\n\n### **Setup:**\n\n- **When:** Any day with clear rising tension but not \u201cevent explosion day.\u201d\n- **What to Buy:** OTM calls OR puts (2\u20132.5\u03c3 strikes).\n- **Expiration:** 7 to 10 DTE.\n- **Cost Target:** $0.30 to $1.00, depending on volatility.\n- **Position Size:** Slightly larger \u2014 2\u20133% of trading capital.\n\n### **Objective:**\n\n- Give the market **room to leak energy** into a move.\n- Options are still cheap, but more time = less theta death.\n- Exit partial position on 2x\u20133x move, let runners trail for massive blowouts.\n\n![Screenshot 2025-04-27 at 8.19.03\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/f37cc3d143364ad7938ce34b3261ef4b3df6fe0b0d6042a68c819e0f02b2b136 \"Screenshot 2025-04-27 at 8.19.03\u202fAM.png\")"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-12",
+            "title": "\ud83c\udfaf FatTail Sigma Target Map",
+            "slug": "fattail-sigma-target-map",
+            "order": 12,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "## **\ud83d\udcc8 Understanding the Fat Tail Sigma Target Map**\n\nIn Fat Tail trading, success isn\u2019t about predicting the future \u2014 it\u2019s about placing smart, cheap bets where the math is overwhelmingly in your favor.\n\nThe **Fat Tail Sigma Target Map** shows where to structure your OTM option placements based on expected volatility and realistic return profiles.\n\nEach ring represents a key sigma (standard deviation) threshold, giving you a visual framework for targeting explosive asymmetry without wasting capital.\n\n**1.75\u03c3 to 2.5\u03c3** is your sweet hunting ground \u2014 where trades are cheap, realistic, and capable of delivering massive payoff when chaos hits.\n\nThis map is your compass for consistently positioning yourself on the right side of probability \u2014 and getting paid when the market forgets that fat tails aren\u2019t a myth, they\u2019re reality.\n\n> **Use it. Trust it. Live by it.**\n\n![FatTail_Sigma_Target_Map.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/66d0d65c30844eddb25c821aca8f664c95fac9fe86d248bb94e5f1124f8d5eb1-md.png \"FatTail_Sigma_Target_Map.png\")"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-13",
+            "title": "\ud83d\udce1 FatTail Readiness Radar",
+            "slug": "fattail-readiness-radar",
+            "order": 13,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "Success in Fat Tail trading isn\u2019t just about finding the right trades \u2014 it\u2019s about knowing when the battlefield is in your favor.\n\nThe **Fat Tail Readiness Radar** gives you a tactical snapshot of the current market environment across five critical factors: volatility regime, event risk, fat tail probability, gamma exposure, and market breadth.\n\nThe larger and greener the radar, the higher the strategic opportunity for asymmetric plays.\n\nWhen the radar shrinks, discipline takes over \u2014 patience becomes the weapon.\n\n> **This is your \u201cevery day\u201d map to decide when to attack, when to build, and when to wait.**\n\n![Fat Tail Readiness Radar.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/4a24744c0ebc486e94d97104720b1101675af19ba2184d279b413567cc2d2f0c-md.png \"Fat Tail Readiness Radar.png\")\n\n# **\ud83e\udd43 Strategic View:**\n\n> **The fatter and greener the radar fills out, the more aggressive the Fat Tail trader should get.**\n\n> **If it\u2019s skinny and small? Conserve ammo\u2014trade light. Be patient.**\n\n# **\ud83c\udfaf How To Build a Trader\u2019s Self-Assessment Fat Tail Radar**\n\n**Goal:** Here\u2019s a **repeatable process** to score the environment each day, and **construct your own radar map** to assess \u201cshould I trade aggressively, defensively, or sit out?\u201d\n\n---\n\n## **\ud83e\udde0 Step 1: Define the Radar Axes (5 Simple Factors)**\n\nEach factor is **objectively observable** \u2014 no guessing games.\n\n![Screenshot 2025-04-27 at 9.50.05\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/e6e46464ffb947b88cd4d0c75a4fbcc9fad4fdcaaeca4f88bdcf3de29a42e132 \"Screenshot 2025-04-27 at 9.50.05\u202fAM.png\")\n\nEach day, **score each factor 1\u20135** based on real conditions.\n\n---\n\n## **\ud83d\udcc8 Step 2: Provide Them a Simple Scoring Sheet**\n\n**Example:**\n\n![Screenshot 2025-04-27 at 9.51.35\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/0ae6e3b00c1d4f6aa903651dd53e44732c7a3cc181ad4ed8b784630b1f9d005a-md.png \"Screenshot 2025-04-27 at 9.51.35\u202fAM.png\")\n\n---\n\n## **\u26a1 Step 3: Calculate Your Average Score**\n\nAdd up your five scores and divide by 5.\n\nThat\u2019s your **Readiness Rating** for the day.\n\nExample:\n\nIf your scores are 3, 5, 4, 4, 2 \u2192\n\n(3+5+4+4+2) \u00f7 5 = **3.6**\n\n---\n\n## **\ud83e\udd77 Step 4: Choose Your Tactical Mode**\n\n![Screenshot 2025-04-27 at 9.54.46\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/f5f07460f0c14f399f5a8eb0d7a70be1be930af359184f00a0ed348e816fe2b8 \"Screenshot 2025-04-27 at 9.54.46\u202fAM.png\")\n\n---\n\n## **\ud83e\udd43 Final Reminder:**\n\n> **Your job isn\u2019t to predict. Your job is to position yourself correctly.**\n\nWhen the environment blooms \u2014 you\u2019re ready to attack while everyone else is frozen.\n\nWhen the environment shrinks \u2014 you sit back, save your bullets, and wait.\n\n**Discipline wins wars. Discipline wins trading.**\n\n---\n\n# **\u2705 Your Daily Mission:**\n\n- Score the battlefield.\n- Choose the right playbook.\n- Execute with precision.\n- Repeat every damn day."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      }
+    ],
+    "resource_ids": [],
+    "resource_links": [],
+    "related_live_series_ids": [],
+    "seo": {
+      "title": "Campaigns",
+      "canonical_path": "/courses/campaigns"
+    },
+    "production": null
+  },
+  "bundle": {
+    "resources": [],
+    "instructors": [
+      {
+        "id": "inst-1",
+        "instructor_id": 1,
+        "name": "Ernie Varitimos",
+        "bio_md": "Founder of FatTail.ai and the 0-DTE methodology. Three decades trading asymmetric structures; teacher of the stop-the-bleeding doctrine.",
+        "avatar_url": null,
+        "links_json": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,1126 @@
+{
+  "format": "fattail.labs.canonical_course",
+  "model_version": "1.0",
+  "exported_at": "2026-07-28T19:37:29Z",
+  "source": {
+    "course_id": 269,
+    "slug": "fattail-foundations",
+    "runtime_status": "published"
+  },
+  "course": {
+    "id": "course",
+    "slug": "fattail-foundations",
+    "title": "FatTail Foundations",
+    "subtitle": "",
+    "description_md": "**FatTail Foundations** is the core course for traders who want to stop predicting markets and start positioning for reality. It introduces the FatTail Protocol\u2014a convexity-first approach to trading built for fat-tailed markets where rare, extreme events drive outcomes.\n\nInstead of chasing win rates or narratives, this course teaches how to structure small, defined-risk positions that benefit from volatility, regime shifts, and market stress. You\u2019ll learn the principles of asymmetry, optionality, and antifragility, how tail risk actually works, and how to think in exposure and positioning across timeframes.\n\nFatTail Foundations is not about being right\u2014it\u2019s about surviving, staying solvent, and being prepared when the market breaks.",
+    "short_description": "",
+    "status": "published",
+    "version": "1.0.0",
+    "level": "beginner",
+    "created_at": "2026-07-28T11:01:50",
+    "category_slugs": [],
+    "instructor_refs": [
+      {
+        "id": "inst-1",
+        "name": "Ernie Varitimos",
+        "instructor_id": 1
+      }
+    ],
+    "audience_category": "members",
+    "pathway_position": null,
+    "flagship": false,
+    "trailer": null,
+    "banner": {
+      "id": "banner",
+      "type": "image",
+      "source": "media_library",
+      "url": "/api/media/b0ab62062fef06e78049f18e.jpg"
+    },
+    "card_color": null,
+    "certification_enabled": false,
+    "estimated_duration_minutes": null,
+    "learning_outcomes": [],
+    "modules": [
+      {
+        "id": "mod-1",
+        "title": "Introduction",
+        "description_md": "",
+        "order": 1,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-1-1",
+            "title": "Core Philosophy to Campaigns",
+            "slug": "core-philosophy-to-campaigns",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "# \ud83d\udcda**From Fast Noise to Structured Signal**\n\n## \n\n## \ud83e\udded Overview\n\nBefore diving into the **Fat Tail Foundations Course**, it\u2019s important to understand the *why* behind the campaign architecture we use inside the Fat Tail Protocol. This short lesson introduces the core trading philosophy and the evolution of strategies you\u2019ll be deploying \u2014 from fast, intraday convex setups to longer-dated tail campaigns.\n\nThis is more than just a trading system. It\u2019s a *framework for scaling asymmetric edge across time*. You don\u2019t have to pick one strategy \u2014 instead, you\u2019ll stack them across different DTEs to maximize your exposure to profitable randomness.\n\n---\n\n## \ud83e\udde0 The Core Philosophy\n\nMarkets are noisy in the short term and nonlinear in the long term. Most traders try to force prediction into both regimes. We do the opposite.\n\n> The Fat Tail Protocol is about **positioning for dislocations**, not forecasting direction.\n\nBut while we avoid prediction, we *don\u2019t avoid structure*. Each campaign in the system is designed to harness convexity \u2014 the ability to risk a little for a lot \u2014 but with a level of signal discipline that matches its timeframe.\n\n---\n\n## \ud83d\udd01 The Evolution of Strategy\n\nHere\u2019s how the system is structured:\n\n![Screenshot 2025-05-10 at 10.46.03\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/7d3a8093ae234ad0bfabb5af3007d0f945f2c1dd8ecf4dee90a6c8370c3f2925-md.png \"Screenshot 2025-05-10 at 10.46.03\u202fAM.png\")\n\nEach of these campaigns uses the same principles:\n\n- **Low debit ($0.15\u2013$0.50)**\n- **Wide OTM butterflies**\n- **Risk defined, reward convex**\n\nWhat changes is the way trades are selected, monitored, and matured.\n\n---\n\n## \ud83d\udcc8 Why This Matters\n\nMost traders plateau because they get stuck in a single strategy mindset.\n\n- They either overtrade short-term noise, or\n- They become too passive and lose edge on long-dated setups.\n\nIn this system:\n\n- You **start with active 0DTE butterflies**, learning market tempo and decay dynamics.\n- You **graduate to structured convex trades (Convexity Alignment Stack)** that teach you to filter signal from structure.\n- You **scale into campaigns like Sigma Drift**, where you trade less but stay long rare events.\n\nThis is about stacking optionality intelligently \u2014 not just trading more.\n\n---\n\n## \ud83d\ude80 How the Campaign Course Works\n\nThe **Fat Tail Campaign Course** shows you how to implement this progression in your own account. It provides:\n\n- A clear philosophy for convex deployment\n- Trade mechanics, sizing models, and width logic\n- Journaling systems and retrospective workflows\n- Preflight checklists and filter guides\n\nYou\u2019ll walk away with a **full-stack playbook** you can apply at any volatility level, account size, or trading schedule.\n\n---\n\n## \ud83d\udccc TL;DR\n\n- The Fat Tail system is built to scale across time: from **0DTE precision** to **10DTE tail protection**.\n- Each campaign teaches you something essential about asymmetry, patience, and structure.\n- This lesson sets the philosophical groundwork. The Foundations course shows you how to *build* it.\n\n\ud83c\udf93 **Next Step**: Begin the Foundations course to start mastering each layer.\n\n> You\u2019re not here to predict the market. You\u2019re here to catch it when it snaps."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-1-2",
+            "title": "Know What You\u2019re Here For",
+            "slug": "know-what-you-re-here-for",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "# \ud83d\udc4b Welcome to FatTail Foundations\n\n## \ud83e\udded Two Paths, One Philosophy\n\nWe teach one core trading philosophy \u2014 but we deliver it in two completely different ways depending on your goals.\n\nThis lesson will help you understand which track you\u2019re on and how to make the most of it.\n\n---\n\n## \ud83e\udde0 The Shared Principle\n\nWhether you\u2019re trading full-time or placing a few high-convexity bets each week, it all comes back to one idea:\n\n> **Risk small, stay in the game, and be positioned for when the market breaks.**\n\nBut how you execute that idea depends on how much time, skill, and energy you want to commit to the craft.\n\nThat\u2019s where the difference lies.\n\n---\n\n## \ud83c\udfaf The FatTail Track: Convexity Without Chaos\n\nIf you joined us through FOTW, you\u2019re here for a *strategy-first*, *system-driven*, and *tech-supported* way to trade the Fat Tail Protocol.\n\nThis track is designed for:\n\n- Traders who want exposure to explosive outcomes without constant screen time\n- Busy professionals who want a simple, structured way to stay in the game\n- People who value consistency, risk control, and behavioral sustainability\n\nYou\u2019ll learn to:\n\n- Place 1\u201310 DTE option trades that cost less than $50\n- Use simple filters to stack your edge (volatility regime, volume profile, etc.)\n- Deploy trades on a weekly cadence with very little management\n- Let optionality do the work, not your predictions\n\nThis is not a passive investing system \u2014 it\u2019s an **engaged, thoughtful, and very doable** way to build long-term asymmetric edge.\n\n---\n\n## \ud83d\udca5 The VIP Coaching Track: Professional-Level Execution\n\nThe other side of our world is the **VIP coaching program through [www.0-dte.com](http://www.0-dte.com)**. That\u2019s where we train traders to go deep.\n\nThis is for people who want to:\n\n- Trade actively, every day\n- Learn how to manage risk in real time\n- Build true discretionary skill and timing\n- Get coaching, feedback, and reps \u2014 like an athlete\n\nThe cornerstone of this track is our **0DTE OTM butterfly strategy**, which is:\n\n- Active\n- Stacked with edges\n- Managed throughout the day\n- Designed to build real confidence and independence as a trader\n\nIt\u2019s powerful \u2014 but it\u2019s not for everyone.\n\nYou don\u2019t need it to succeed with the FatTail Protocol.\n\nBut if you ever *want* to take the leap into active trading mastery, we\u2019ve got a coaching track for that.\n\n---\n\n## \ud83e\udde9 How They Fit Together\n\nHere\u2019s how it works:\n\n- **FatTail**\u00a0helps you get real results without needing pro-level skill.\n- **VIP Coaching** helps you develop those skills if that\u2019s your goal.\n\nSome students start with FatTail AI and later graduate to coaching. Some coached traders run the FatTail Protocol on the side. Both tracks work \u2014 they just serve different needs.\n\n---\n\n## \u2705 What To Do Next\n\nIf you\u2019re here inside FatTail AI:\n\n- Start the **Foundations Course** to learn the strategy\n- Use the **Campaign Playbooks** to run 1\u201310 DTE convex trades\n- Practice logging and reflecting with the **Prompt Toolkit**\n- Follow the **Live Coaching Sessions** to build awareness and discipline\n\nIf you\u2019re in coaching:\n\n- Follow your coach\u2019s training path\n- Use this FOTW as your library for trade logs and references\n\nAnd if you\u2019re curious about switching tracks, just reach out.\n\nWe\u2019re here to help you build an edge \u2014 in whatever way fits your trading life best."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-2",
+        "title": "Tail-Risk Hedging and Fat Tail Protocol",
+        "description_md": "",
+        "order": 2,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-2-1",
+            "title": "Module 1 Overview",
+            "slug": "module-1-overview",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "0iLR-wUUbfs",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "This module cuts through the noise to focus only on the option Greeks that matter for Fat Tail trades \u2014 ultra-cheap, far out-of-the-money puts and calls designed to explode in value during rare, extreme market moves.\n\nWhile most options education emphasizes detailed Greek management, the Fat Tail Protocol ignores what doesn\u2019t serve our edge. We isolate Delta as the most relevant tool for identifying high-convexity opportunities, with Gamma, Vega, and Theta taking a back seat, only surfacing under very specific conditions like volatility spikes or post-move acceleration. You\u2019ll walk away with just enough understanding to support strike selection, scanner filters, and campaign timing \u2014 without ever needing to \u201cmanage Greeks.\u201d This is tactical knowledge for asymmetrical trades, not textbook theory."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-2",
+            "title": "Introduction to Tail-Risk Hedging",
+            "slug": "introduction-to-tail-risk-hedging",
+            "order": 2,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "MtBB0UcL35c",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "## What is Tail-Risk Hedging?\n\n**Objective**: Understand the concept of tail-risk hedging and its importance in trading.\n\n**Definition**: Tail-risk hedging involves strategies to protect portfolios from extreme, low-probability market events, often called \u201cblack swans.\u201d These events, like the 2008 financial crisis or the 2020 COVID-19 market crash, can devastate unprepared portfolios.\n\n**Mechanism**: Uses low-cost, high-reward instruments, such as deep out-of-the-money (OTM) options, to achieve asymmetrical returns\u2014small losses in normal conditions but massive gains during crises.\n\n**Example**: Universa Investments, led by Mark Spitznagel, achieved a 3,600%+ return in Q1 2020 by holding OTM puts that soared when markets plummeted.\n\n**Why It Matters**: Protects small accounts from catastrophic losses while offering life-changing upside, aligning with the Fat Tail Protocol\u2019s philosophy.\n\n---\n\n**Reflection**:\n\n- If a black swan event happened tomorrow, how would your current trading plan respond \u2014 would it crumble, survive, or thrive?\u201d Take a few minutes to think this through:\n  - What trades would be impacted?\n  - What protection do you have in place?\n  - Are you positioned for chaos, or exposed to it?\n\n---\n\n**Resources**:\n\n- Read Chapter 1 of *Safe Haven* by Mark Spitznagel (summary provided as a PDF).\n  - [Chapter 1 Safe Haven](https://flyonthewall.ai/wp-content/uploads/2026/01/Summary-Chp-1-Safe-Haven.pdf)\n- Watch the 2-minute explainer video on black swans and tail risk."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-3",
+            "title": "The Fat Tail Protocol Explained",
+            "slug": "the-fat-tail-protocol-explained",
+            "order": 3,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "f_Z6bRPkbgk",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "### **\ud83e\udde8 Why This Exists**\n\nMost traders are playing a rigged game that rewards overconfidence, punishes patience, and quietly bleeds them dry through small, consistent losses\u2026 until the market finally breaks and wipes them out completely. The Fat Tail Protocol exists to flip that game on its head.\n\nInstead of trying to predict the next move or scalp small wins, this strategy is designed to **thrive in chaos**. It\u2019s built for a world where fat tails \u2014 those rare, extreme moves \u2014 happen more often than conventional finance wants to admit. You\u2019re not trying to be right every day. You\u2019re preparing for the day when almost everyone else is wrong.\n\n---\n\n### **\ud83e\uddcd Who This Is For**\n\nThis protocol isn\u2019t just for seasoned traders or big accounts \u2014 in fact, it\u2019s built precisely for those who\u2019ve been burned chasing setups, trying to follow gurus, or riding strategies that only work in calm markets. You\u2019re a candidate for this approach if you\u2019ve got $25 to risk, a calm mindset, and the ability to stay consistent while the crowd chases noise.\n\nIt\u2019s for independent thinkers who don\u2019t need to be busy to feel productive. It\u2019s for the underdog who wants **massive upside** without risking ruin. It\u2019s for the trader who understands that **the best opportunities are found in the most uncomfortable places** \u2014 far from the herd, deep out of the money.\n\n---\n\n### **\u2699\ufe0f How It Works**\n\nAt the core, the Fat Tail Protocol places **low-cost option trades** \u2014 typically **deep out-of-the-money puts or calls**, with **7\u201314 days to expiration**, priced around **$0.10 to $0.25**. These trades are not \u201chigh probability\u201d in the traditional sense. Most of them will expire worthless.\n\nBut the few that hit \u2014 when the market snaps, when volatility erupts, when tail risk shows up \u2014 can deliver **10x, 20x, even 50x** returns.\n\nWe call this **convexity**: small, fixed risk\u2026 disproportionate upside. We don\u2019t manage the trade. We don\u2019t adjust. We don\u2019t guess. We **plant**, **walk away**, and **check in weekly**. One good tail event funds a dozen future setups. One campaign can change your trajectory.\n\n---\n\n### **\ud83e\udde0 Why It Works**\n\nBecause markets are fragile. Because the worst-case scenario is not as rare as people think. And because almost no one is structurally positioned to benefit from those moments.\n\nThis strategy doesn\u2019t depend on prediction. It depends on **reality catching up to fragility** \u2014 and you being there, ready, with just one small bet that pays off like a lottery ticket\u2026 except you weren\u2019t gambling. You were **prepared**.\n\n---\n\n### \ud83d\udcd6 **Resources**\n\n- [What is the FatTail Protocol?](https://flyonthewall.ai/wp-content/uploads/2026/01/What-is-the-FatTail-Protocol.pdf)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-4",
+            "title": "Universa and Mark Spitznagel Inspiration",
+            "slug": "universa-and-mark-spitznagel-inspiration",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Understand how Universa\u2019s success influences the Fat Tail Protocol.\n\n**Universa\u2019s Approach**: Allocates a small portion of the portfolio (3.33%) to deep OTM options, achieving convexity\u2014minimal losses in stable markets, explosive gains during crises.\n\n**Key Principles from *Safe Haven***:\n\n- Low-cost insurance: Spend small amounts regularly for potential massive payouts.\n- Asymmetry: Risk pennies to make dollars.\n- Patience: Accept frequent small losses for rare, significant wins.\n\n- **Q1 2020 Success**: Universa\u2019s portfolio returned over 3,600% when markets crashed, demonstrating the power of tail-risk hedging.\n\n**Relevance to Retail Traders**: The Fat Tail Protocol adapts Universa\u2019s principles for small accounts, using affordable options to replicate asymmetry.\n\n---\n\n**Activities**:\n\n- **Reading**: Skim the Universa Q1 2020 Letter and note one key takeaway.\n- **Reflection**: Write a short paragraph on why asymmetry matters to you.\n\n---\n\n**Resources**:\n\n- Universa Q1 2020 Letter.\n  - [Universa Q1 Letter](https://flyonthewall.ai/wp-content/uploads/2026/01/UniversaLetter-4272020.pdf)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-5",
+            "title": "The Three Primary Trading Styles",
+            "slug": "the-three-primary-trading-styles",
+            "order": 5,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective:** Understand the three main styles of the Fat Tail Protocol and when to use each.\n\n- **Zero DTE:**\n  - Purpose: Capture rapid, intraday moves post-economic events.\n  - Timeframe: Same day expiration.\n  - Use Case: Short-term volatility surges.\n- **Short-Term (7-10 DTE):**\n  - Purpose: Plant low-cost seeds ahead of macroeconomic catalysts.\n  - Timeframe: 1\u20132 week expirations.\n  - Use Case: Data releases like CPI, jobs reports, Fed meetings.\n- **Quarterly (90+ DTE):**\n  - Purpose: Bet on rare but violent long-term shifts.\n  - Timeframe: 2\u20133 months out.\n  - Use Case: Major geopolitical risk, credit events, long-term economic trends.\n\nHow these styles work together to balance immediacy with patience.\n\n---\n\n**\ud83d\udd0d Self-Assessment: Which Fat Tail Style Fits You Best?:**\n\nEach Fat Tail Protocol style serves a unique purpose \u2014 some are about speed and precision, others are about patience and positioning. Reflect on the following before posting your response in the forum:\n\n1. What kind of trader are you right now?\n\n- Do you prefer fast-paced decisions and quick outcomes \u2014 or are you more comfortable placing a trade and walking away for days or weeks?\n\n2. What is your current capital and time availability?\n\n- Can you monitor markets during key releases (ideal for Zero DTE)? Or are you trading around a busy work schedule and need a \u201cset and forget\u201d model (perfect for Short-Term or Quarterly)?\n\n3. Which market scenarios do you feel most confident analyzing?\n\n- Economic data, long-term macro shifts, or surprise volatility events?\n\n4. Based on your goals and lifestyle, which of the three styles resonates with you the most \u2014 and why?\n\n- **Zero DTE:** Lightning-fast, tactical plays right after catalysts hit.\n- **Short-Term (7\u201310 DTE):** Strategic anticipation of known events.\n- **Quarterly (90+ DTE):** Long-vol moonshots betting on regime shifts.\n\n---\n\n**Resources:**\n\n- \u201cTrading Styles Cheat Sheet\u201d\n  - [FatTail Styles Cheat Sheet](https://flyonthewall.ai/wp-content/uploads/2026/01/FatTail-Styles-Cheat-Sheet.pdf)\n- \u201cFatTail Tactical\u201d\n\n  - [FatTail Protocol Cheat Sheet](https://flyonthewall.ai/wp-content/uploads/2026/01/FatTail-Protocol-Cheat-Sheet.pdf)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-2-6",
+            "title": "The Fusion Fly \u2014 Fat Tail Meets 0DTE",
+            "slug": "the-fusion-fly-fat-tail-meets-0dte",
+            "order": 6,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "## **Tactical Convexity at the 1.75\u20132.0 Standard Deviation Zone**\n\n### **\ud83e\udde0 Lesson Objective**\n\nBy the end of this module, students will be able to:\n\n- Construct a 40\u201350 point wide 0DTE butterfly centered 1.75 to 2.0 SD from the underlying.\n- Identify high-probability conditions for deployment.\n- Manage ultra-low-cost entries between $0.25 and $0.50.\n- Understand the psychology of holding rare-event convexity plays.\n- Integrate the strategy into their daily trading process.\n\n---\n\n#### **Strategy Overview**\n\nThe **Fusion Fly** is a *tail-aware directional butterfly*, built for same-day expiration (0DTE), but with strikes placed well outside the typical price range \u2014 at the **1.75 to 2.0 SD level**.\n\nUnlike the Fat Tail Protocol, which targets black swan moves, this hybrid focuses on **grey swan territory** \u2014 statistically rare but frequent enough to profit **monthly** with **massive asymmetry**.\n\n---\n\n#### **Strategy Mechanics**\n\n- **Type**: Long Call or Put Butterfly\n- **Width**: 40 to 50 points (SPX or equivalent)\n- **Expiration**: 0DTE\n- **Cost Target**: $0.25\u2013$0.50 debit\n- **Strike Selection**:\n  - Center the butterfly 1.75\u20132.0 standard deviations away from current price.\n  - Use IV-based calculators or TradingView\u2019s expected move as a reference.\n- **Direction**: Choose based on structural market bias or catalyst risk.\n\n---\n\n#### **Deployment Criteria**\n\nUse this strategy on days with:\n\n- Major macro **catalysts** (CPI, FOMC, NFP)\n- Unpriced volatility\n- Breakout/imbalance setups in market structure\n- A Big Ass Fly debit that suggests mispriced IV*(e.g., VIX 13 but $25+ BAF = something\u2019s off)*\n\n---\n\n#### **Execution Tactics**\n\n- **Enter Early**: Before 11 AM ET, ideally during the first 90 minutes.\n- **Use Limit Orders**: Let price come to you \u2014 never chase.\n- **Position Size**: Small. These are seeds. Treat each fly like a cheap lottery ticket.\n- **No Averaging In**: If you miss the entry, move on.\n\n#### **Exit Strategy**\n\n![Screenshot 2025-05-01 at 7.13.48\u202fAM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/492d13586f85480e8d3bc66f1bdec391c8a3986791834d4bb1fc80adf9c099d9 \"Screenshot 2025-05-01 at 7.13.48\u202fAM.png\")\n\n#### **Psychology & Positioning**\n\n- These trades will **fail often** \u2014 and that\u2019s the point.\n- Your edge is that you can **risk $0.50 to make $5 to $20**.\n- Winning 1 out of 10 is profitable \u2014 **if your mindset doesn\u2019t self-destruct**.\n- Keep a log of every Fusion Fly you place. Track the move vs expected SD.\n\n---\n\n#### **Sample Case Study (included in video)**\n\n> SPX opens flat on CPI day. IV is low.\n\n> Expected move is 40 points.\n\n> You place a 50-wide put fly centered 90 points below current price for 0.45 debit.\n\n> SPX dumps 105 points by 2:30 PM.\n\n> Fusion Fly hits full profit.\n\n> Risk: $45 \u2192 Reward: $4,950.\n\n---\n\n#### \n\n### **\ud83e\uddd8 Closing Thoughts**\n\nThis is **controlled chaos**.\n\nYou\u2019re betting on the tail \u2014 but not the fat end.\n\nYou\u2019re stalking a real move, not a fantasy.\n\nYou\u2019re risking pennies for a shot at thousands.\n\nIf you treat this like a scalper\u2019s game, you\u2019ll fail.\n\nIf you treat it like a **measured experiment**,\n\nyou\u2019ll discover one of the cleanest intraday edges hiding in plain sight."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-3",
+        "title": "Greeks for FatTail Traders",
+        "description_md": "",
+        "order": 3,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-3-1",
+            "title": "Module 2: Overview",
+            "slug": "module-2-overview",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "3a4EyZkm0lM",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "Welcome to Module 2, where you\u2019ll unlock the power of AI to supercharge your Fat Tail Protocol trading! This module introduces you to two key tools: Grok AI, your market analysis powerhouse, and Coach AI, your conversational guide for trade execution.\n\nAcross three lessons, you\u2019ll learn how these AI components work together to identify tail-risk opportunities, rank assets, and guide you through every step of your trades. You\u2019ll gain the skills to leverage AI effectively in volatile markets through engaging videos, hands-on activities, and community discussions.\n\nWhether analyzing a Grok-generated report or asking Coach AI for trade setup tips, this module will make you a more confident trader. Let\u2019s harness AI to capture those explosive market moves!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-2",
+            "title": "The Only Greek that Matters \u2014 Delta",
+            "slug": "the-only-greek-that-matters-delta",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "#### **\ud83c\udfaf Objective:**\n\nUnderstand how **Delta** functions as a *probability proxy* for far OTM options and helps guide **strike selection**, especially when hunting 3\u20135\u03c3 setups.\n\n#### **\ud83d\udd0d What to Know:**\n\n- **Delta \u2248 Probability of expiring ITM**A 0.01 delta means ~1% chance of finishing ITM.\n- **Fat Tail Filter:** You\u2019re typically buying options with \u0394 < 0.05.\n- **Behavior Near Expiry:** Delta *explodes* during tail events. This is convexity in action \u2014 Delta goes from near-zero to >0.50 in hours.\n- **Delta as a Sigma Shortcut:** 3\u20135\u03c3 puts show up around 0.01\u20130.03 delta in many chains. Useful sanity check for scanner setups.\n\n#### **\u26a0\ufe0f What to Ignore:**\n\n- You *don\u2019t* care about Delta hedging.\n- You *don\u2019t* adjust or offset your Delta. You *want* explosive, nonlinear payoffs.\n\n#### **\ud83d\udee0\ufe0f Activity:**\n\nPull up SPX or CL option chains. Identify a 3\u20135\u03c3 put with ~$0.15\u2013$0.25 premium. Note its delta. Log it."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-3",
+            "title": "How Greeks Express Convexity",
+            "slug": "how-greeks-express-convexity",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "#### **\ud83c\udfaf Objective:**\n\nSee how these Greek mechanics **visualize and validate** the Fat Tail Protocol\u2019s design \u2014 and why you trade the way you do.\n\n#### **\ud83e\udded Key Convexity Insights:**\n\n- You buy **a very low Delta because it costs little, but it can explode**.\n- You **don\u2019t manage Theta** because the premium is near-zero.\n- You **don\u2019t need high Vega**, but you benefit when it pops.\n- You **want Gamma** to go wild *if the market breaks* \u2014 that\u2019s your edge.\n\n#### **\ud83d\udca1 Mental Model:**\n\nThink of the option as a match in a dry forest. Most of the time, it fizzles and dies. But when the wind, timing, and dryness align \u2014 **wildfire.**\n\n#### **\ud83d\udd1a Wrap-Up Summary**\n\nYou now know:\n\n1. **Delta is your best Greek filter** for spotting high-convexity tails.\n2. **Gamma fuels your explosion**, but only if the move starts.\n3. **Vega helps**, but it\u2019s not your focus \u2014 just don\u2019t overpay.\n4. **Theta doesn\u2019t matter** when your premium is $0.10\u2013$0.25.\n\nNo more Greek soup. Just an actionable signal."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-4",
+            "title": "Gamma, Theta, Vega\u2014Know \u2018Em Just Enough",
+            "slug": "gamma-theta-vega-know-em-just-enough",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "#### **\ud83c\udfaf Objective:**\n\nUnderstand how these secondary Greeks behave in deep OTM tails \u2014 so you know when to expect impact and ignore noise.\n\n#### **\u269b\ufe0f Gamma (\u0393):**\n\n- Usually irrelevant for deep OTM.\n- **Becomes critical only during a move.**Gamma fuels the *explosive* change in Delta. If the market crashes, a 0.01 delta can go to 0.30\u20130.70 in a day.\n- **Key Insight:** Gamma is why you\u2019re paid *nonlinearly* \u2014 small input, large outcome.\n\n#### **\u23f3 Theta (\u0398):**\n\n- Decay is **negligible** at far OTM and near-zero delta \u2014 *until* you approach expiry.\n- **You aren\u2019t here to babysit time decay.**Your max loss is capped. Set, forget.\n\n#### **\ud83c\udf2a\ufe0f Vega (\u03bd):**\n\n- Vega *matters a little*, but not in the usual way.\n- IV expansion can double or triple the premium of a 3\u03c3 put, *even without price movement*.\n- **But don\u2019t chase IV spikes.** If you want low-IV tails, let Vega help you *after* the market moves.\n\n#### **\ud83e\udde0 Summary Table:**\n\n![Screenshot 2025-05-04 at 7.20.14\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/4caf16ec2adb454c841672d63a7fc80eb3bf844a8f8241d5b4026b0737d3ade5 \"Screenshot 2025-05-04 at 7.20.14\u202fPM.png\")"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-4",
+        "title": "FatTail Intelligence Report",
+        "description_md": "",
+        "order": 4,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-4-1",
+            "title": "Module 3 \u2013 Overview",
+            "slug": "module-3-overview",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "_MyywM1mNtI",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "## **\ud83c\udfaf Purpose**\n\nTrain Operators to generate a **morning intelligence report** that detects **FatTail trade setups** \u2014 opportunities for asymmetric moves across **short-term, monthly, and quarterly timeframes**.\n\nThe Grok AI is your recon unit \u2014 not your strategist. Your job is to:\n\n- Filter noise from signal\n- Interrogate unreliable data\n- Identify where **tail-risk skew** creates edge\n- Trigger actionable trade ideas with precision timing\n\n---\n\n### **\ud83d\udd04 Cross-Module Integration**\n\nThis module pairs directly with:\n\n> **AI Mastery: Module 6 \u2014 Multi-Angle Analysis**\n\nThat module teaches the **RR-FHP** method:\n\n- **R**oleplay\n- **R**ebuttal\n- **F**ramework Shift\n- **H**istorical Analogy\n- **P**ros/Cons Tree\n\nThese tools are critical for extracting **asymmetric advantage** from Grok\u2019s surface-level summaries. In practice, Grok\u2019s first outputs will often reflect market consensus, media framing, or shallow patterns \u2014 and it\u2019s the Operator\u2019s job to push beyond them.\n\n---\n\n### **\ud83e\udde0 Operator Mindset Installed**\n\n- **Do not trust first answers** \u2014 they are scaffolding, not solutions.\n- **Do not seek headlines** \u2014 build narratives.\n- **Use Grok as a sensor array** \u2014 not as a final judge.\n\nThis module **builds real-time command fluency** and installs the habit of recursive refinement and strategic interrogation. It transforms Grok from a noisy market parrot into a high-value reconnaissance tool \u2014 *if* you know how to wield it."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-2",
+            "title": "Operator Briefing",
+            "slug": "operator-briefing",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **Tail Risk \u2260 Randomness**\n\n> \u201cFatTail trades don\u2019t come from consensus moves. They come from hidden catalysts, underpriced volatility, or structural imbalances. If Grok says everything looks normal \u2014 that\u2019s your signal to dig deeper.\u201d\n\n**Key Point:**\n\nThis report is **not** for market commentary. It is a **FatTail setup detector** \u2014 you\u2019re hunting setups, not summarizing headlines."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-3",
+            "title": "Mission Objective: The Asymmetry Report",
+            "slug": "mission-objective-the-asymmetry-report",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "The report contains **four sections** \u2014 each wired to surface asymmetric opportunity and validate the conditions under which trades may be executed across time horizons.\n\n---\n\n#### **\u2705 Part 1: Executive Summary \u2013 FatTail Radar Sweep**\n\n*Scan for signs of volatility build-up, sentiment extremes, or narrative shifts.*\n\n**Prompt:**\n\n> Generate a tactical executive summary of overnight market developments, focusing on identifying tail-risk scenarios. Include notable index moves, vol spikes, and social/financial sentiment indicators that suggest abnormal skew.\n\n**Follow-up Command:**\n\n> Add preliminary directional bias and confidence level on potential FatTail setups (e.g., \u2018SPX: 15% chance of downside move >3% this week due to CPI/Fed divergence\u2019).\n\n---\n\n#### **\u2705 Part 2: Opportunity Table \u2013 Timeframe-Sorted Triggers**\n\n*Rank FatTail trade ideas across 3 horizons: short-term (7\u201310 days), monthly, and quarterly.*\n\n**Prompt:**\n\n> Create a 3-part opportunity table. For each timeframe (short, monthly, quarterly), rank top 2 assets showing tail-risk potential. For each, include:\n>\n> \u2022 Directional bias\n>\n> \u2022 Estimated move magnitude\n>\n> \u2022 Rationale (trigger or mispricing)\n>\n> \u2022 Suggested instrument (e.g., SPY put spread, QQQ calendar call, VIXY swing)\n\n**Validation Layer:**\n\n> For each pick, confirm that asset pricing data and implied vol are from today or the last 6 hours. If not, fetch fresher data or remove the pick.\n\n---\n\n#### **\u2705 Part 3: Catalyst Calendar \u2013 Vol Events by Risk Window**\n\n*Tie events to timing. Look for macro catalysts that could unlock tail skew.*\n\n**Prompt:**\n\n> Build a catalyst calendar filtered for asymmetric impact. For each upcoming event (e.g., CPI, earnings, geopolitical), list:\n>\n> \u2022 Date & time\n>\n> \u2022 Affected asset(s)\n>\n> \u2022 Directional risk if outcome surprises\n>\n> \u2022 FatTail potential (e.g., binary risk, vol crush)\n\n---\n\n#### **\u2705 Part 4: Risk Alert Panel \u2013 Hedging Thresholds**\n\n*Watch for conditions where defense is mandatory.*\n\n**Prompt:**\n\n> Scan for macro warning indicators. Flag any that breach key thresholds:\n>\n> \u2022 VIX > 35\n>\n> \u2022 Inverted 2s/10s yield curve\n>\n> \u2022 High beta/factor stress\n>\n> \u2022 FX volatility spikes\n>\n> Recommend a hedge if any are triggered.\n\n**Precision Guardrail:**\n\n> Ensure each indicator uses market-close or real-time data from within 4 hours. If you cannot confirm this, alert the user explicitly."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-4",
+            "title": "Execution Drill: Deploy the Report",
+            "slug": "execution-drill-deploy-the-report",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Assignment:**\n\n- Generate and submit your FatTail Morning Report.\n- Highlight **the trade idea you\u2019d be most likely to take** \u2014 and why.\n- Document **one data correction or recursion** Grok required to make the report reliable.\n- If applicable, include **multi-angle prompts** you issued (roleplay, rebuttal, etc)."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-5",
+            "title": "Closing Reflection",
+            "slug": "closing-reflection",
+            "order": 5,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "Every FatTail trade starts with asymmetry \u2014 but only Operators can detect it through chaos, filter noise, and force clear output from flawed tools.\n\nAnswer these after you complete your mission:\n\n\ud83e\udde0 **What surprised you?**\n\n\ud83d\udd01 **Did Grok mislead you \u2014 or did recursion/validation expose the flaw?**\n\n\ud83c\udfaf **Which trade idea felt strongest \u2014 and why was it asymmetric?**\n\n\ud83d\udee1 **If markets opened down 3% tomorrow, how would your report hold up?**\n\n---\n\n### **\ud83e\udde0 Multi-Angle MVP Challenge (Optional but Elite)**\n\nIf you used any of the **RR-FHP tactics** (Roleplay, Rebuttal, Framework Shift, Historical Analogy, Pros/Cons Tree), include a snapshot or summary here:\n\n> Which alternate lens gave you unexpected clarity \u2014 or changed your conviction?\n\nThis earns you consideration for the weekly **Multi-Angle MVP badge**. It marks you as an Operator who doesn\u2019t just scan the surface \u2014 but interrogates reality from every angle."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-5",
+        "title": "Trading with Your AI Coach",
+        "description_md": "",
+        "order": 5,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-5-1",
+            "title": "Module 3a \u2013 Overview",
+            "slug": "module-3a-overview",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "Ds3gCpsIfbs",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "You\u2019ve learned to analyze markets with Grok AI in Module 3\u2014now let\u2019s turn those insights into action with your FatTail Coach! Module 3a introduces you to the FatTail Coach GPT, a ChatGPT-based tool available at the link below. Soon, it will be upgraded to a more advanced **FatTail Coach** bot on [Fattail.ai](http://fattail.ai/ \"http://Fattail.ai\") that will have significantly more advanced features.\n\n[FatTail Coach GPT](http://chatgpt.com/g/g-6802a525672c81919dceb81e5c41bba9-fat-tails-coach \"http://chatgpt.com/g/g-6802a525672c81919dceb81e5c41bba9-fat-tails-coach\")\n\nThis module\u2019s three lessons guide you through accessing the Coach, setting up trades with its help, and managing positions while receiving mentorship and emotional support. Through videos, simulations, and Skool discussions, you\u2019ll confidently execute the Fat Tail Protocol, knowing your Coach acts as a trading mentor and therapist. This module leverages course content to support your journey, preparing you for the bot\u2019s enhanced memory and personalization features. Let\u2019s trade smarter with your AI Coach!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-2",
+            "title": "Accessing the Fat Tail Coach",
+            "slug": "accessing-the-fat-tail-coach",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Navigate and use the Fat Tail Coach GPT (and future bot) to support your trading.\n\n**Introduction to the Coach**: The Fat Tail Coach GPT, introduced in the Skool forum on April 18, 2025, by Ernie Varitimos, is a ChatGPT-based tool designed to help you understand the Fat Tail Protocol, set up trades, stay disciplined, and build confidence. It\u2019s accessible now via a public link, but the upcoming Fat Tail Coach bot on fattail.ai will require a login to enable personalized memory features.\n\n**Accessing the Coach GPT**:\n\n- Visit [chatgpt.com/g/g-6802a525672c81919dceb81e5c41bba9-fat-tails-coach](http://chatgpt.com/g/g-6802a525672c81919dceb81e5c41bba9-fat-tails-coach \"http://chatgpt.com/g/g-6802a525672c81919dceb81e5c41bba9-fat-tails-coach\").\n- No login is required for the GPT; simply start typing in the chat interface.\n- Example: Type \u201cWhat is the Fat Tail Protocol?\u201d to get a summary based on Module 1.\n\n**Future Coach Bot on fattail.ai**:\n\n- Once launched, access the bot at fattail.ai by logging in with your Skool credentials.\n- The bot will remember your conversation history, know your progress through the course modules, and tailor responses to your trading history.\n- Example: After logging in, the bot might say, \u201cI see you\u2019ve completed Module 3; let\u2019s use Grok\u2019s latest SPX report to set up a trade.\u201d\n\n- **Chat Interface**:\n  - For the GPT: Ask questions or make requests (e.g., \u201cHelp me set up a SPX trade\u201d). Responses are session-based, meaning the GPT doesn\u2019t retain history between chats.\n  - For the future bot: The same interface applies, but it will recall past interactions (e.g., \u201cLast week, you set up an SPX put; let\u2019s review its outcome\u201d).\n- **Practical Example**: Using the GPT, ask, \u201cSummarize Module 1 Lesson 2.\u201d It responds with a concise overview of the Fat Tail Protocol\u2019s mechanics, including deep OTM puts and a set-and-forget approach. With the bot, it might add, \u201cYou found this lesson helpful last week; want to apply it to a new trade?\u201d\n\n---\n\n**Activities**:\n\n**Access**: Visit the Coach GPT link and send a sample question\n\n- \u201cWhat is tail-risk hedging?\u201d\n\n**Reflection Question**:\n\n- \u201cHow does having instant access to a trading coach make your process easier, more consistent, or more confident?\u201d Consider:\n  - What task in your routine could this simplify? (e.g., setting up trades, confirming strike prices)\n  - How would this help when you\u2019re feeling uncertain or second-guessing your setup?\n  - Would you use it before placing trades, after, or during your review process?"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-3",
+            "title": "Using Grok & ChatGPT for FatTail",
+            "slug": "using-grok-chatgpt-for-fattail",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "\ud83c\udfaf *How to deploy both AIs \u2014 and when to trust each*\n\n### **\ud83e\udde0 Why This Lesson Matters**\n\nThe FatTail Protocol demands asymmetric insight \u2014 not guesswork. And no single AI sees everything.\n\nThat\u2019s why you\u2019re equipped with **two core AI tools**:\n\n- **Grok (xAI)** \u2013 the **Recon AI**: pulls real-time market data, social sentiment, and emerging narratives\n- **ChatGPT (Coach GPT)** \u2013 the **Protocol AI**: structures decisions, applies the FatTail framework, and walks you through trade logic\n\nIn this lesson, you\u2019ll learn when to use each \u2014 and how to get better results by running **both in sequence or in contrast**.\n\n---\n\n### **\ud83d\udcca Grok vs. ChatGPT: At a Glance**\n\n![Screenshot 2025-05-04 at 4.20.11\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/9df5e19794b348d49fe9a059192acf27f3b850ed3d814cb5ba5ab786c400de72 \"Screenshot 2025-05-04 at 4.20.11\u202fPM.png\")\n\n---\n\n### **\ud83d\udee0\ufe0f Practice Prompt: Dual AI Trade Setup**\n\nLet\u2019s say Grok reports:\n\n> \u201cSPX is top-ranked with a 15% chance of a 3.5% move down due to CPI shock. VIX climbing, tariff speculation circulating.\u201d\n\n#### **Step 1 \u2013 Grok Recon (Live Briefing):**\n\nAsk Grok:\n\n> *\u201cWhat are the top asymmetric opportunities today based on IV, macro risk, and news from X?\u201d*\n\nCopy the report. Look for:\n\n- Asset ranked highest\n- Event triggers\n- Sentiment polarity (bullish/bearish)\n- VIX, implied vol context\n\n#### **Step 2 \u2013 ChatGPT Setup (Protocol Logic):**\n\nNow ask Coach GPT:\n\n> *\u201cGrok ranks SPX first. IV Rank is 60%, with bearish macro sentiment. Set up a FatTail trade.\u201d*\n\nExpect a structured response like:\n\n> \u201cBuy SPX put, 3 SD below spot (~4,930), $0.25, 10 DTE. Risk: $25.\u201d\n\nBonus: Add a follow-up like:\n\n> *\u201cWhat would change this setup?\u201d*\n\n> Coach GPT may use ICE or RR-FHP to show alternate lenses.\n\n---\n\n### **\ud83d\udd04 Use Both for Confirmation or Disagreement**\n\nTry this sequence:\n\n1. **Grok** for signal\n2. **Coach GPT** for structure\n3. **Then ask ChatGPT:** *\u201cDoes this align with Module 4\u2019s risk rules?\u201d*\n\nNow reverse it:\n\nAsk **Grok** to re-check the setup, e.g.:\n\n> *\u201cDoes this SPX trade still make sense in light of the latest VIX and earnings reactions?\u201d*\n\n**You are not choosing a favorite AI \u2014 you are triangulating signal.**\n\n---\n\n### **\ud83e\ude9e Reflection Question**\n\n> \u201cWhere do Grok and ChatGPT disagree \u2014 and what do *you* decide?\u201d\n\nDid you catch something Grok missed?\n\nDid Coach GPT offer a better lens than the raw data?\n\nWhere did your conviction rise \u2014 or waver?"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-4",
+            "title": "Manage Positions & Emotional Support",
+            "slug": "manage-positions-emotional-support",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Monitor positions with minimal effort and receive mentorship and emotional support from the Coach.\n\n**Weekly Check-Ins with the Coach**:\n\n- **GPT**: Ask, \u201cCheck my SPX put position,\u201d providing context: \u201cI bought a 4,930 put for $0.25, expiring May 2, 2025, on April 22, 2025.\u201d The GPT doesn\u2019t retain history, so include trade details each time.\n- **Future Bot**: Ask, \u201cCheck my SPX put position.\u201d The bot recalls your trade history: \u201cYou bought a 4,930 put on April 22, 2025, expiring May 2, 2025.\u201d\n\n**Coach Response**:\n\n- GPT and bot: \u201cCurrent value: $0.50 as of April 29, 2025 (Yahoo Finance). Profit is 2x ($50). IV Rank is now 65%, and Grok reports increased tariff tensions. Hold for potential 3x ($75) or tail event (10x-50x, $250-$1,250). Check again on May 2 or if VIX > 40.\u201d\n- Bot Addition: \u201cYou\u2019ve held through 2x profits before; based on Module 5, consider journaling your emotions to stay disciplined.\u201d\n\n**Set-and-Forget Approach** (Module 4):\n\n- Follow weekly check-ins on Mondays or at expiration, avoiding daily monitoring to reduce emotional stress.\n- The Coach reinforces discipline: \u201cNo action needed unless profit hits 3x or a tail event occurs.\u201d\n\n**Mentorship and Emotional Support**:\n\n- **GPT**: Ask, \u201cHelp me journal this week\u2019s setup.\u201d It responds: \u201cReflect on your SPX put trade (Module 5, Lesson 2). How did you feel placing it? Were you anxious about losses? Write 100 words on staying disciplined.\u201d\n- **Bot**: Ask the same, and it adds: \u201cLast week, you felt anxious after a loss; let\u2019s compare that to this trade to build resilience.\u201d\n- Example: After a $25 loss, ask, \u201cI\u2019m frustrated after a losing trade; what should I do?\u201d The Coach responds, \u201cLosses are expected (Module 5, Lesson 1). Take a break, journal your emotions, and review Grok\u2019s next report for a fresh opportunity.\u201d\n\n- **Practical Example**: On April 29, 2025, you check your SPX put with the Coach GPT: \u201cProfit is 2x; hold for 3x or tail event.\u201d You ask, \u201cI\u2019m worried about another loss; help me stay focused.\u201d The Coach replies, \u201cLosses are part of the protocol\u2019s asymmetry. Reflect on Module 5\u2019s journaling to manage anxiety.\u201d The bot might add, \u201cYou\u2019ve overcome this before; let\u2019s review your journal.\u201d\n\n---\n\n**Activities**:\n\n**Check-In**: Use the Coach GPT to check a mock SPX put position (e.g., bought at $0.25, now $0.50) and note its recommendation.\n\n**Emotional Support**: Use the Coach when you\u2019re feeling frustrated cause everyone takes losses, what matters is how you bounce back.\n\n- **Step 1:** Open the **Coach GPT** and type:*\u201cI\u2019m frustrated after a loss; help me.\u201d*\n- **Step 2:** Let the Coach talk you through it. It might give encouragement, a journaling prompt, or remind you how losses fit into the Fat Tail Protocol.\n\n**Reflection Question:**\n\n- \u201cWhat\u2019s one thing the Coach said that helped you feel more focused, less reactive, or more confident this week?\u201d\n  - It could be a reminder to stick to the plan, a journaling prompt, or reassurance after a loss.\n  - Share a short takeaway or quote that stood out to you \u2014 even just one sentence."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-5",
+            "title": "Exit Strategies and Decision Making",
+            "slug": "exit-strategies-and-decision-making",
+            "order": 5,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Decide when to exit Fat Tail Protocol trades with the Coach\u2019s guidance.\n\n**Exit Strategies Overview**:\n\n- **Early Exit**: Sell at 3x return ($0.25 \u2192 $0.75, $50 profit per contract) to lock in gains while avoiding overexposure to time decay or market reversals. This aligns with Module 4\u2019s risk management principles, ensuring you capture consistent profits.\n- **Tail Event Exit**: Hold for 10x-50x return ($250-$1,250 profit) if the market drops >5% or VIX > 30, indicating a potential black swan event (Module 1). This maximizes the protocol\u2019s asymmetry but requires patience, as per Module 5\u2019s discipline strategies.\n- **Market-Driven Decision**: Base exits on market conditions (e.g., SPX movement, VIX spikes) and Grok AI\u2019s updated reports (Module 3), balancing early profit-taking with tail event potential.\n\n**Using the Coach for Exit Decisions**:\n\n- **GPT**: Ask, \u201cShould I exit my SPX put?\u201d Provide context: \u201cI bought a 4,930 put for $0.25 on April 22, 2025, expiring May 2, 2025; SPX is now 5,600, VIX is 32.\u201d The GPT doesn\u2019t retain history, so include trade and market details.\n- **Future Bot**: Simply ask, \u201cShould I exit my SPX put?\u201d The bot recalls your trade: \u201cYou bought a 4,930 put on April 22, 2025, expiring May 2, 2025.\u201d\n\n**Coach Response**:\n\n- Both GPT and bot: \u201cCurrent value: $1.00 as of April 30, 2025 (Yahoo Finance). Profit is 4x ($100). SPX dropped 3.4%, VIX at 32. Market drop is <5%, but VIX > 30 suggests tail event potential. Sell now for 4x ($100) or hold for 10x+ ($250+) if SPX drops further. Decision: Hold unless SPX stabilizes.\u201d\n- Bot Addition: \u201cYou\u2019ve held through 3x profits before (April 10, 2025, memory); Module 5 suggests journaling your confidence level to decide.\u201d\n\n**Decision-Making Process**:\n\n- Use Grok AI\u2019s latest report to assess market conditions (e.g., SPX downtrend, VIX trend).\n- Apply Module 5\u2019s emotional discipline: Avoid fear-based exits (selling too early) or greed (holding too long past tail event signals).\n- Verify with the Coach: If unsure, ask, \u201cIs now a good time to exit my SPX put?\u201d\n\n**Practical Example**: On May 1, 2025, SPX drops to 5,500, VIX hits 35. Your 4,930 put is worth $2.50 (10x, $250 profit). You ask the Coach GPT, \u201cShould I exit my SPX put?\u201d It advises, \u201cMarket drop >5%, VIX > 30\u2014tail event conditions met. Sell now for 10x ($250) or hold for 50x if VIX climbs further.\u201d The bot might add, \u201cYou journaled confidence in holding last week; consider selling half to lock in gains.\u201d\n\n---\n\n**Activities**:\n\n**Simulation**: Use the **Coach GPT** to check a mock position:\n\n- *\u201cI bought a 4,930 SPX put for $0.25, now it\u2019s worth $1.00. SPX is down 4%, VIX is 32. Should I exit?\u201d*\n- Note what the Coach recommends and whether it leans toward early profit-taking or holding for a tail event.\n\n**Reflection Question:**\n\n- *Do I feel more confident exiting now or holding longer? What part of the Coach\u2019s response helped you decide?*\n- Example: *\u201cThe Coach reminded me VIX > 30 = tail potential. I\u2019m holding a bit longer.\u201d*"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-6",
+        "title": "AI Tools in the Fat Tail Protocol",
+        "description_md": "",
+        "order": 6,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-6-1",
+            "title": "Grok vs ChatGPT for FatTail Operators",
+            "slug": "grok-vs-chatgpt-for-fattail-operators",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Understand Grok AI\u2019s and Coach AI\u2019s roles in the Fat Tail Protocol.\n\n- \ud83c\udfaf *Deploying the right tool for the right phase of the Protocol*\u00a0  \n\n  ---\n\n  ### **\ud83d\udcca Updated Comparison: Grok vs ChatGPT (May 2025)**\n\n  ![Screenshot 2025-05-04 at 4.12.24\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/96d12912858e4f2eba94872a9b74e6c4e40183e389b54f75948552803985f460-md.png \"Screenshot 2025-05-04 at 4.12.24\u202fPM.png\")\n\n  ---\n\n  ## **\ud83d\udd0d How to Choose Based on Task**\n\n  ![Screenshot 2025-05-04 at 4.13.08\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/676ff35ca9d64b51851f183c14ce007d50529e11e5924de8bc9fa31ee16fcffe \"Screenshot 2025-05-04 at 4.13.08\u202fPM.png\")\n\n  ---\n\n  ## **\ud83e\udde0 Instructional Summary (Post Content for Skool)**\n\n  **Which AI should I use for FatTail trades?**\n\n  Simple: Use both \u2014 for different roles.\n\n  - **Grok is your Recon AI** \u2014 real-time scanning, market pulse, and spotting volatility inflections as they unfold. Think: *intel analyst.*\n  - **ChatGPT is your Strategy AI** \u2014 turning intent into structured execution. It helps you write prompts, validate logic, test risk frames, and reinforce your training. Think: *coach + execution planner.*\n\n  ---\n\n  ### **\ud83d\udee0\ufe0f Practice Prompt**\n\n  Try both AIs using this scenario:\n\n  > *\u201cA CPI surprise just dropped. What\u2019s the likely impact on SPX volatility and what FatTail trades might be viable over the next 7 days?\u201d*\n\n  - Use **Grok** for the **real-time brief**\n  - Use **ChatGPT** for the **trade setup** via the FatTail Protocol\n\n  Post both outputs in the comments.\n\n  Compare: What did each model get right? What did you need to fix?"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-6-2",
+            "title": "Using Grok AI for Tail-Risk Recon",
+            "slug": "using-grok-ai-for-tail-risk-recon",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "\ud83c\udfaf *Deploying real-time macro intelligence in the FatTail Protocol*\n\n### **\ud83d\udccd Why This Lesson Matters**\n\nBefore placing any FatTail trade, you need to know:\n\n- What assets are under stress\n- Where sentiment is breaking\n- Which catalysts could trigger an asymmetric move\n\nThat\u2019s Grok\u2019s job.\n\nPowered by xAI\u2019s Grok-3, this AI scans **live financial news,** [**X.com**](http://x.com/ \"http://X.com\") **posts, implied volatility**, and macro events to **rank potential FatTail opportunities** before the market opens.\n\nThis lesson will show you how to interpret Grok\u2019s output **through the lens of the Protocol** \u2014 so you don\u2019t just receive information, you know how to act on it.\n\n---\n\n### **\ud83e\udde0 What Makes Grok Powerful for FatTail Use**\n\n![Screenshot 2025-05-04 at 4.26.15\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/59eb857aaf114d78bf302f0f5d94382e75936ef3d54742e7bccf0a28bcd9f8a2-md.png \"Screenshot 2025-05-04 at 4.26.15\u202fPM.png\")\n\n---\n\n### **\ud83d\udcc5 How We Use Grok in the FatTail Protocol**\n\n#### **\u2705 Morning Briefings (7:00 AM ET)**\n\n- Ranks 5\u20137 assets for asymmetric potential\n- Estimates move probability (>2 SD) and direction\n- Links risk to live news, volatility, and sentiment\n- Suggests put or call type based on IV curve\n\n**Example:**\n\n> \u201cSPX ranked #1 with 15% chance of 3.5% drop. IV 32%. CPI due tomorrow. Bearish X sentiment rising.\u201d\n\n> \ud83d\udd3a Trade setup implied: 3 SD SPX put for $0.25, 10 DTE\n\n---\n\n#### **\ud83c\udf12 Evening Recon (6:00 PM ET)**\n\n- Recaps market structure shifts\n- Analyzes vol, news, macro outlook\n- Prepares next-day setups by scanning overnight headlines + X\n\nUse this to compare **how sentiment has evolved overnight** before making your next move.\n\n---\n\n### **\ud83e\uddea Practice Task: Read Grok Like an Operator**\n\n1. Review a **sample morning Grok report** (posted in the thread)\n2. Identify:\n   - Top-ranked asset\n   - Vol condition (IV Rank, % move potential)\n   - Trigger (news, sentiment, event)\n   - Suggested action\n\nThen answer:\n\n> \u201cWould I place a FatTail trade based on this? Why or why not?\u201d\n\n---\n\n### **\ud83d\udcac Discussion Prompt**\n\n> *\u201cWhat surprised you about Grok\u2019s reasoning behind its top-ranked asset?\u201d*\n\nDid it catch a narrative you missed?\n\nWas the probability too aggressive?\n\nDid the trigger align with what you\u2019d trade?\n\n---\n\n### **\ud83e\ude9e Reflection Prompt**\n\n> *\u201cHow does Grok\u2019s real-time analysis change how you prepare trades?\u201d*\n\nThink about:\n\n- Would you have seen that risk without Grok?\n- How does the news feel different when linked to volatility?\n- Could you have found this insight on your own?"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-6-3",
+            "title": "Introduction to the FatTail Coach GPT",
+            "slug": "introduction-to-the-fattail-coach-gpt",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "\ud83c\udfaf *Deploying Your Personal AI Strategist (Session-Based Version)*\n\n---\n\n### **\ud83d\udccd What You\u2019ll Learn**\n\nThis lesson introduces you to the **FatTail Coach GPT** \u2014 your personal trading assistant and AI strategist available inside the **FatTail AI Skool** community.\n\nBuilt on ChatGPT, this GPT version of the Coach has been custom-trained with deep knowledge of:\n\n- \u2705 The FatTail Fundamentals Course\n- \u2705 The AI Mastery Curriculum\n- \u2705 The FatTail Protocol and trade philosophy\n\nIt is designed to help you:\n\n- Frame trades\n- Follow process\n- Reinforce coaching lessons \u2014 step by step\n\n---\n\n### **\ud83e\udd16 Which Coach Are We Using?**\n\nThere are two versions of the FatTail Coach \u2014 and you\u2019re using the **GPT version** for now:\n\n![Screenshot 2025-05-04 at 3.22.35\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/3e9b0b2313bd4270ae06af12222c85cfc9e77c531f514403af1f3e97f28413e1 \"Screenshot 2025-05-04 at 3.22.35\u202fPM.png\")\n\n\ud83e\udde0 This lesson is **only focused on the GPT version**, which is still a powerful ally when used with precision.\n\n---\n\n### **\ud83d\udee0 How to Use the FatTail Coach GPT**\n\nCoach GPT can help you think and act like an Operator. Here\u2019s how to interact with it:\n\n#### **\ud83d\udccc 1. Trade Setup**\n\nAsk:\n\n> *\u201cHow should I structure a QQQ put with 7 DTE?\u201d*\n\nCoach GPT will reference the FatTail framework to guide you:\n\n- Target price location (e.g., 3 SD below)\n- Budget-conscious entries (e.g., $0.25 options)\n- Current narrative (e.g., based on market structure or event risk)\n\n---\n\n#### **\u23f1 2. Monitoring**\n\nAsk:\n\n> *\u201cDo I need to check my SPX put today?\u201d*\n\nYou\u2019ll get reminders:\n\n- \u201cCheck Monday AM. Hold unless IV surge or Delta > 0.25.\u201d\n- Reinforces your *set-and-forget* discipline\n\n---\n\n#### **\ud83d\udcb0 3. Exit Strategy**\n\nAsk:\n\n> *\u201cWhat\u2019s my profit target?\u201d*\n\nCoach GPT will help define your:\n\n- 3x baseline exit\n- Runner logic toward 10x\u201350x in FatTail events\n- Mental model: small risk, huge payoff, rare strike\n\n---\n\n#### **\ud83d\udee0 4. Protocol Reminders & Clarity**\n\nAsk:\n\n> *\u201cWhat\u2019s the FatTail definition of a \u2018structural edge\u2019?\u201d*\n\nor\n\n> *\u201cWhere does RR-FHP show up in the macro brief?\u201d*\n\nCoach GPT will act like a mentor, not just a dictionary \u2014 it knows the system you\u2019re learning and the mindset you need to run it.\n\n---\n\n#### **\u26a0\ufe0f Limitations**\n\n- Memory is **session-bound** \u2014 it won\u2019t remember previous chats\n- It cannot orchestrate multiple AI avatars or track your journey (that\u2019s the **advanced version**)\n- Always double-check asset prices or vol levels against Grok or your broker\n\n---\n\n### **\ud83c\udf93 Activities**\n\n#### **\ud83e\uddea Practice Task**\n\n\u2192 Use the GPT-based FatTail Coach.\n\nAsk:\n\n> *\u201cHow do I structure a CL put trade using FatTail rules?\u201d*\n\n\ud83e\udde0 Post your output in the comments. What worked? What felt off?\n\n---\n\n#### **\ud83e\ude9e Reflection Prompt**\n\n> \u201cWhere do I usually hesitate in my trade process \u2014 and how could Coach GPT smooth that out?\u201d\n\n- Is your hesitation strike selection?\n- Timing exits?\n- Overanalyzing market noise?\n\n---\n\n#### **\ud83d\udcac Discussion Prompt**\n\n**Post below:**\n\n> *\u201cWhat\u2019s one high-leverage question I could ask Coach GPT every week?\u201d*\n\n(*Bonus: Try asking it and report back on the answer quality.*)"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-7",
+        "title": "Execute & Manage FatTail Trades",
+        "description_md": "",
+        "order": 7,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-7-1",
+            "title": "Module 4 \u2013 Overview",
+            "slug": "module-4-overview",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "wozBP-yQZzw",
+                "params": {},
+                "duration_seconds": 0
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-7-2",
+            "title": "Set Up Trades on a Brokerage Platform",
+            "slug": "set-up-trades-on-a-brokerage-platform",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Learn to place Fat Tail Protocol trades using a brokerage platform.\n\n**Brokerage Selection**: Choose a platform supporting options trading (e.g., Thinkorswim, Interactive Brokers, Robinhood). Ensure it offers access to volatile assets like SPX, ES, NDX, NQ, CL, NG, and TSLR.\n\n**Account Setup**: Fund your account (minimum $500 recommended for small accounts to cover $25-$50 trades). Enable options trading (Level 2 or higher for OTM puts).\n\n**Placing a Trade**:\n\n- Navigate to the options chain for your chosen asset (e.g., SPX).\n- Select a put option 2.5-4 standard deviations (SD) below the current market price, with 7-14 days to expiration (DTE).\n- Set premium to $0.10-$0.25 per contract (e.g., $25 for 1 contract).\n- Example: SPX at 4,800; buy a put at 4,600 (3 SD below), costing $0.25, expiring in 10 days.\n\n- **Order Execution**: Use a limit order to control costs. Confirm the trade in the platform\u2019s order entry screen, ensuring risk is capped at $25-$50.\n- **Avoiding PDT Rule**: With 1-2 trades weekly, you stay below the Pattern Day Trader (PDT) threshold (3 day trades in 5 days for accounts under $25,000).\n\n---\n\n**Activities**:\n\n**Simulation**: Set up a **paper trading account** on Thinkorswim, Interactive Brokers, or another platform you like.\n\n- Place a mock SPX put trade:\n  - Strike: 2.5\u20134 SD below (e.g., 4,600 if SPX is at 4,800)\n  - DTE: 7\u201314 days\n  - Premium: ~$0.25\n  - Order Type: Limit order, 1 contract ($25 risk)\n- Take a screenshot of your mock order ticket (optional \u2014 helps build muscle memory)."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-7-3",
+            "title": "Select Strike Prices & Expiration Dates",
+            "slug": "select-strike-prices-expiration-dates",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Master the criteria for choosing optimal strike prices and expiration dates.\n\n**Strike Price Selection**:\n\n- Choose puts 2.5-4 SD below the current market price, based on implied volatility (IV) and Grok AI\u2019s morning report rankings.\n- Example: SPX at 4,800, IV 30%; 3 SD below is ~4,600 (calculated using 2 \u00d7 IV \u00d7 sqrt(7/365)). Select a strike at or near 4,600.\n- Ensure premium is $0.10-$0.25 to maintain $25-$50 risk per trade.\n\n**Expiration Dates**:\n\n- Target 7-14 DTE to balance cost and time for tail events.\n- Prefer weekly expirations for assets like SPX, CL, or NG, aligning with the protocol\u2019s short-term horizon.\n- Example: On April 21, 2025, choose an SPX Put that expires on April 28 or May 5.\n\n- **Using Grok AI**: Reference the morning report\u2019s ranked opportunities table to confirm high-probability assets (e.g., SPX with 15% chance of a 3.5% move). Coach AI can suggest specific strikes (e.g., \u201cAsk: Recommend a strike for SPX\u201d).\n- **Practical Example**: Grok ranks SPX first due to IV 32 and tariff news. Select a 4,600 put ($0.25 premium, 10 DTE) for a $25 risk, targeting 3x ($50) or 10x+ ($250+) returns.\n\n---\n\n**Activities**:\n\n**Practice**: Use a sample Grok report to select a strike price and expiration for an SPX put trade in a paper trading account.\n\n**Reflection Question:** \u201cWhen choosing your strike and expiration, what mattered more to you \u2014 the math (SD, IV) or the feel (news, intuition, timing)?\u201d\n\n- Think about how you balanced the numbers with what Grok or your gut was telling you.\n- Did you lean more on the formula\u2026 or the bigger picture?"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-7-4",
+            "title": "Risk Management \u2013 Set-and-Forget",
+            "slug": "risk-management-set-and-forget",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Implement risk management strategies and maintain discipline with a set-and-forget approach.\n\n**Content**:\n\n- **Risk Management Principles**:\n  - **Fixed Risk**: Limit each trade to $25-$50 (e.g., 1-2 contracts at $0.10-$0.25 premium).\n  - **No Scaling**: Avoid adding to positions or chasing losses, preserving capital for weekly trades.\n  - **Portfolio Allocation**: Risk no more than 5% of your account per week (e.g., $50/week for a $1,000 account).\n- **Set-and-Forget Approach**:\n  - Place trades and check outcomes only at expiration or weekly (e.g., Monday mornings).\n  - No active management: Do not adjust or close trades mid-week unless a 3x profit ($50) is achievable early.\n  - Example: Buy an SPX put for $25 on Monday; check on next Monday or at expiration. If worthless, log and move on; if profitable, consider early exit at 3x or hold for 10x+.\n- **Avoiding Pitfalls**:\n  - **Overtrading**: Stick to 1-2 trades weekly to avoid emotional decisions.\n  - **Chasing Losses**: Accept a <10% win rate; losses are part of the strategy.\n  - **Ignoring Grok AI**: Always verify trades against Grok\u2019s rankings and Coach AI\u2019s guidance.\n- **Psychological Discipline**: Embrace small, frequent losses for rare, large wins, as inspired by Universa\u2019s 3,600%+ return in Q1 2020.\n\n---\n\n**Activities**:\n\n**Simulation**: Place a mock SPX put trade in a paper trading account and commit to checking it only after 7 days.\n\n**Reflection Question**: How you\u2019ll stay disciplined with a set-and-forget approach."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-7-5",
+            "title": "Track Performance with Fat Tail Tracker",
+            "slug": "track-performance-with-fat-tail-tracker",
+            "order": 5,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Use the Fat Tail Tracker to log trades and analyze performance.\n\n**Content**:\n\n- **Fat Tail Tracker Overview**: A digital tool (Excel/Google Sheets template, downloadable from Skool) for logging trades, tracking metrics, and assessing strategy effectiveness.\n- **Key Metrics**:\n  - **Win Rate**: Target <10%, as most trades expire worthless.\n  - **Reward-to-Risk Ratio (R/R)**: Aim for 3x ($50) on early exits, 10x+ ($250+) on tail events.\n  - **Max Win vs. Average Win**: Track largest wins (e.g., $1,250) against average profitable trades.\n  - **Loss Frequency**: Expect 90%+ of trades to lose $25-$50, offset by rare large wins.\n- **Logging Trades**:\n  - Record: Asset, strike price, premium, DTE, date placed, expiration date, outcome (profit/loss).\n  - Example: SPX put, 4,600 strike, $0.25 premium, 10 DTE, placed April 21, 2025, expired worthless (-$25).\n- **Analyzing Performance**:\n  - Weekly review: Calculate win rate and R/R for the past 4 weeks.\n  - Identify patterns: Are losses within $25-$50? Are wins hitting 3x or 10x+?\n  - Adjust strategy: If no wins after 8 weeks, consult Coach AI or Skool community for refinements.\n- **Practical Example**: Log 4 weeks of SPX puts ($25 each, 8 trades). 7 expire worthless (-$175), 1 hits 10x (+$250), netting +$75. Win rate: 12.5%, R/R: 10x.\n\n---\n\n**Activities**:\n\n- **Practice**: Download the Fat Tail Tracker and log a mock SPX put trade from Lesson 1\u2019s simulation.\n- **Analysis**: Review a sample tracker and calculate the win rate and R/R for 8 trades.\n- **Reflection Question**: \u201cWhat insights did you gain from the sample tracker?\u201d"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-8",
+        "title": "Trading Psychology and Discipline",
+        "description_md": "",
+        "order": 8,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-8-1",
+            "title": "Module 5 \u2013 Overview",
+            "slug": "module-5-overview",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "nRR85RwCKTM",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "You\u2019ve learned how to identify, execute, and manage trades with the Fat Tail Protocol\u2014now it\u2019s time to master the mental game! Module 5 dives into the psychology of trading, helping you navigate a strategy\u2019s emotional highs and lows with a <10% win rate but potential 10x+ returns.\n\nAcross three lessons, you\u2019ll embrace frequent small losses, manage emotions during wins and losses, and build discipline to stay the course. You\u2019ll develop the resilience to thrive in volatile markets with videos, reflective exercises, and discussions. This module is your key to turning psychological challenges into strengths, supported by Fattail and the GPT Fat Tail Coach.\n\nGet ready to forge a trader\u2019s mindset!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-8-2",
+            "title": "Embrace a Low Win Rate with High Rewards",
+            "slug": "embrace-a-low-win-rate-with-high-rewards",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Understand and accept the Fat Tail Protocol\u2019s low win rate (<10%) and its high reward-to-risk ratio (10x+).\n\n**Content**:\n\n- **The Low Win Rate Reality**: The Fat Tail Protocol expects 90%+ of trades to expire worthless, losing $25-$50 each, but a single win can yield $250-$1,250 (10x-50x). This mirrors Universa\u2019s 3,600%+ return in Q1 2020, achieved by enduring years of small losses for rare, massive gains.\n- **Why It Works**: Inspired by Nassim Taleb\u2019s *Fooled by Randomness*, the strategy leverages asymmetry\u2014small, predictable losses for outsized wins during tail events. A <10% win rate is intentional, not a flaw, as long as winners offset losses.\n- **Mindset Shift**: Reframe losses as \u201cinsurance premiums\u201d paid for potential life-changing returns. Focus on long-term probabilistic outcomes, not short-term results.\n- **Practical Example**: Over 10 trades ($25 each, $250 total risk), 9 expire worthless (-$225), but 1 hits 10x (+$250), netting +$25. Over 100 trades, 10 wins at 10x could yield +$2,250, far outweighing -$2,250 in losses.\n- **Overcoming Doubt**: Expect emotional resistance after consecutive losses. Trust the process, as validated by Universa\u2019s historical success and your Fat Tail Tracker data.\n\n---\n\n**Activities**:\n\n**Reflection**: \u201cWhen you imagine losing 9 out of 10 trades, what emotions come up and how would it feel to know the 10th could change everything?\u201d\n\n- Be honest \u2014 does it make you anxious, motivated, doubtful, or disciplined?\n- What mindset shift would help you stay committed when trades don\u2019t work out right away?\n\n\ud83d\udc49 *Share your thoughts in the forum. There\u2019s no wrong answer \u2014 just awareness.*\n\n---\n\n**Homework**:\n\n- Read: *Fooled by Randomness* by Nassim Taleb (Chapter 2) on probabilistic thinking."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-8-3",
+            "title": "Manage Emotions During Wins and Losses",
+            "slug": "manage-emotions-during-wins-and-losses",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Develop strategies to handle emotional highs from wins and lows from losses.\n\n**Emotional Challenges**:\n\n- **Losses**: Frequent $25-$50 losses can trigger frustration, self-doubt, or fear of failure, especially after a losing streak (e.g., 10 trades without a win).\n- **Wins**: A 10x ($250) or 50x ($1,250) win can spark overconfidence, leading to impulsive trades or abandoning the protocol.\n\n**Strategies for Losses**:\n\n- **Reframe Losses**: View each loss as a planned cost of the strategy, like paying for insurance. Universa\u2019s years of small losses preceded its 2020 windfall.\n- **Journaling**: Log emotions after each trade in the Fat Tail Tracker. Example: \u201cLost $25 on SPX put; felt frustrated but reminded myself of the 10x potential.\u201d\n- **Break Routine**: Step away from trading for a day to reset emotionally after a loss.\n\n**Strategies for Wins**:\n\n- **Stay Humble**: Treat wins as part of the probabilistic process, not a sign of genius. Reinvest profits into the strategy, not risky bets.\n- **Set Rules**: Exit at 3x ($50) for early profits or hold for 10x+ only if Grok AI signals continued volatility.\n- **Celebrate Modestly**: Acknowledge wins (e.g., share in Skool) but return to the protocol\u2019s discipline.\n\n- **Practical Example**: After 5 losing SPX puts (-$125), you hit a 10x win (+$250). Journal the loss frustration, take a break, then calmly plan the next trade using Grok\u2019s report, avoiding overconfidence.\n\n**Community Support**: Share emotional experiences in Discord to learn from peers, reducing isolation during losing streaks.\n\n---\n\n**Activities**:\n\n**Journaling**: Log emotions for a mock trade outcome (e.g., $25 loss on SPX put) using the journaling template.\n\n**Practice**: Review a sample Fat Tail Tracker with 5 losses and 1 win; write a 50-word plan to stay calm after the losses.\n\n**Reflection Question:** \u201cWhat\u2019s your personal strategy for staying focused during a losing streak?\u201d\n\n- Do you take a break? Journal your thoughts? Rewatch lessons or check in with the Coach?\n- Think about what\u2019s worked (or not worked) for you in the past \u2014 and what you\u2019ll do differently next time."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-8-4",
+            "title": "Build Long-Term Discipline",
+            "slug": "build-long-term-discipline",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Cultivate lasting discipline to stick with the Fat Tail Protocol through market cycles.\n\n**Why Discipline Matters**: The protocol\u2019s success hinges on consistency\u2014placing 1-2 trades weekly, risking $25-$50, and waiting for tail events. Deviating (e.g., overtrading, scaling up) risks busting your account, as seen in simulation failures with excessive drawdowns (April 21, 2025, memory).\n\n- **Discipline Strategies**:\n  - **Routine**: Trade every Monday, using Grok\u2019s morning report and Coach AI\u2019s guidance. Check outcomes only on expiration or weekly, per the set-and-forget approach.\n  - **Rules-Based Trading**: Follow strict criteria: IV Rank > 50%, $0.10-$0.25 premium, 7-14 DTE. Never chase losses or add to losing positions.\n  - **Accountability**: Share your Fat Tail Tracker weekly in Skool for peer feedback. Example: \u201c8 trades, 7 losses (-$175), 1 win (+$250), net +$75.\u201d\n  - **Mindset Anchors**: Remember Universa\u2019s patience, enduring years of losses for a 3,600%+ return in 2020. Use affirmations like \u201cLosses are my path to wins.\u201d\n- **Handling Market Cycles**:\n  - **Low Volatility**: When VIX < 20, expect more losses but stay disciplined, as tail events are rare.\n  - **High Volatility**: When VIX > 30, capitalize on increased win potential but avoid overtrading.\n- **Practical Example**: In a low VIX market (VIX 18), you place 10 SPX puts ($25 each, -$250 total). All expire worthless, but you log each trade, share in Skool, and stick to the protocol. When VIX spikes to 35, your next put hits 10x (+$250), validating your discipline.\n- **Overcoming Temptations**: Resist FOMO (e.g., trading outside the protocol during news spikes) or despair (e.g., quitting after 20 losses). Coach AI can reinforce discipline: \u201cAsk: How do I stay focused after losses?\u201d\n\n---\n\n**Activities**:\n\n**Routine Setup:** Create your weekly routine. Pick two days this week \u2014 one to place a trade, one to check the outcome.\n\n- Example: *Place on Monday, review on Friday.*\n- Share your routine in the Discord to stay accountable.\n\n**Reflection Questions:**\n\n- If you hit 10 losing trades in a row, what would help you stay disciplined?\n  - Write a short plan (1\u20132 sentences) and post it in the Discord forum.\n  - Example: *I\u2019d remind myself of the 10x potential, take breaks, and follow my set routine.*\n- What\u2019s the biggest temptation that could throw you off \u2014 and what\u2019s your strategy to handle it?\n  - Post your answer below. It might be overtrading, revenge trades, or skipping check-ins. Be real \u2014 your answer might help someone else too."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-9",
+        "title": "Advanced AI Usage and Customization",
+        "description_md": "",
+        "order": 9,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-9-1",
+            "title": "Module 6 \u2013 Overview",
+            "slug": "module-6-overview",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "xDphtwHSZXg",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "You\u2019ve built a solid foundation with the Fat Tail Protocol, from understanding tail risks to executing trades with discipline. Module 6 takes you to the cutting edge by showing you how to customize Grok AI and leverage its capabilities for innovative trading strategies.\n\nIn three lessons, you\u2019ll tailor Grok AI templates to focus on your preferred assets, use AI to research new opportunities, and integrate external data sources for deeper insights. You\u2019ll transform Grok AI into a personalized trading ally through hands-on exercises, videos, and Skool discussions. This module, supported by Fattail.ai and the CGP Fattail Coach, empowers you to adapt and innovate in volatile markets.\n\nLet\u2019s unlock your AI-driven trading potential!"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-9-2",
+            "title": "Customizing Grok AI Templates",
+            "slug": "customizing-grok-ai-templates",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Tailor Grok AI prompt templates to focus on specific assets, timeframes, or criteria for personalized market analysis.\n\n**Why Customize?**: The default evening and morning report prompts analyze a broad asset universe (e.g., SPX, /CL, USD/JPY). Customizing allows you to focus on your preferred assets (e.g., SPX, /CL), timeframes (e.g., 7 DTE), or criteria (e.g., IV Rank > 60%) to streamline analysis and align with your trading style.\n\n- **Modifying Prompts**:\n  - Access the Evening Summary Template and Morning Report Template in the Skool community\u2019s \u201cAI Tools\u201d section.\n  - Edit the asset universe: Replace the full list with specific assets (e.g., \u201cFocus on SPX and /CL\u201d).\n  - Adjust timeframes: Change \u201cwithin 7 days\u201d to \u201cwithin 5 days\u201d for shorter DTE trades.\n  - Add criteria: Include filters like \u201cIV Rank > 60%\u201d or \u201cnews triggers related to tariffs.\u201d\n- **Practical Example**: Modify the Evening Summary Template to:\n\n  ```\n  Generate an evening market summary for April 21, 2025, analyzing SPX and /CL. Filter based on IV Rank > 60%, options volume > 1.5 SD above the 20-day average, or tariff-related news. Include market data, VIX level, economic releases, news highlights, and X sentiment. Limit to 500 words.\n  ```\n\n  This focuses analysis on SPX and /CL, prioritizing high-volatility opportunities.\n- **Testing Modifications**: Run the customized prompt in Grok AI\u2019s chat interface (grok.x.ai) and verify the output emphasizes your chosen assets and criteria. Save the modified template for daily use.\n- **Best Practices**: Keep prompts concise, test changes incrementally, and consult Coach AI for syntax suggestions (e.g., \u201cAsk: How do I modify a prompt for SPX only?\u201d).\n\n---\n\n**Activities**:\n\n**Customization**: Download the Evening Summary Template from the AI Tools section in Skool.\n\n- Edit it to focus on specific assets like SPX and /CL, with criteria such as IV Rank > 60%.\n\n**Test**: Run your customized prompt in Grok AI\u2019s chat interface (or the sandbox, if available).\n\n- Does the output match your chosen focus? Save the updated prompt for daily use.\n\n**Reflection Question:** What assets and filters did you choose for your customized prompt \u2014 and why?\n\n\ud83d\udc49 Share your answer in the Discord forum. (Example: *\u201cI picked SPX and /CL with IV Rank > 60% because I want to focus on high-volatility, directional setups.\u201d*)"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-9-3",
+            "title": "Using AI for Strategy Development",
+            "slug": "using-ai-for-strategy-development",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Leverage Grok AI to research new assets, macro triggers, or trading strategies to innovate within the Fat Tail Protocol.\n\n**Why Innovate?**: The Fat Tail Protocol targets volatile assets like SPX and /CL, but researching new assets (e.g., Natural Gas [NG]) or triggers (e.g., tariff impacts) can uncover untapped tail-risk opportunities. Grok AI\u2019s real-time data analysis and 1-million-token context window make it ideal for exploratory research.\n\n- **Research Prompts**:\n  - **Asset Research**: \u201cAnalyze NG for tail-risk potential based on tariff news, IV Rank, and options volume for April 21, 2025. Provide volatility trends, news triggers, and trade recommendations.\u201d\n  - **Macro Trigger Analysis**: \u201cIdentify macro events (e.g., tariffs, geopolitical tensions) likely to trigger >2 SD moves in SPX or /CL within 7 days, using X sentiment and Reuters news.\u201d\n  - **Strategy Exploration**: \u201cPropose a variation of the Fat Tail Protocol combining OTM puts with a volatility crush play, referencing Universa\u2019s approach.\u201d\n- **Running Research Prompts**:\n  - Input the prompt into Grok AI via grok.x.ai, specifying the date and data sources (e.g., Yahoo Finance, X).\n  - Grok analyzes historical data, current IV, and sentiment, delivering insights like \u201cNG has IV Rank 65% and tariff-driven volume spikes, suggesting a $0.20 put at 3 SD below market.\u201d\n- **Practical Example**: Run: \u201cAnalyze NG for tail-risk potential based on tariff news.\u201d Grok reports NG\u2019s IV Rank at 70%, with X posts citing tariff fears and Reuters noting supply chain risks. Recommendation: Buy an NG put at 3 SD below market, $0.20 premium, 7 DTE, risking $20 for a potential $200+ return.\n- **Verification**: Cross-check Grok\u2019s insights with Coach AI (e.g., \u201cAsk: Is NG a good tail-risk asset today?\u201d) and manual data (e.g., Yahoo Finance IV data).\n\n---\n\n**Activities**:\n\n**Research**:\n\n- Use Grok AI to explore a new asset or macro trigger.Example prompt: *\u201cAnalyze TSLR for tail-risk potential based on earnings news and IV Rank.\u201d*\n\n  Summarize what Grok suggests \u2014 strike, expiration, and trigger \u2014 and what stands out.\n\n**Verification**:\n\n- Check Grok\u2019s IV Rank and news analysis against Yahoo Finance or your platform\u2019s data.Ask Coach AI for backup if needed (e.g., \u201cIs NG still a good tail-risk setup today?\u201d)\n\n**Reflection Question**: \u201cWhat new asset or macro trigger did you explore using Grok AI \u2014 and what trade idea or insight did it give you?\u201d\n\n- You don\u2019t need to be perfect. Just share what you tried and what Grok came back with.\n- Examples could be:\n  - *\u201cI asked Grok to analyze NG with IV Rank > 65%. It suggested a 3 SD put with a 7 DTE option.\u201d*\n  - *\u201cI explored TSLR earnings and got a possible 10x return setup on high volatility.\u201d*\n\n\ud83d\udc49 Post your takeaway in the Discord forum. Just a sentence or two \u2014 you might help someone else think differently about their next trade."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-9-4",
+            "title": "Integrating Additional Data Sources",
+            "slug": "integrating-additional-data-sources",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**Objective**: Enhance Grok AI\u2019s analysis by incorporating external data sources like Yahoo Finance, Bloomberg, and X sentiment.\n\n**Why Integrate Data?**: Grok AI\u2019s default reports use Yahoo Finance, FRED, Reuters, and X, but adding more sources (e.g., Bloomberg for news, X for deeper sentiment) provides richer insights, especially for niche assets or emerging triggers. This enhances the accuracy of tail-risk predictions.\n\n- **Data Sources**:\n  - **Yahoo Finance**: Real-time market data (e.g., SPX levels, IV Rank).\n  - **Bloomberg**: Detailed news and economic analysis (e.g., tariff impacts on /CL).\n  - **X Sentiment**: Social media trends (e.g., bullish or bearish chatter on SPX).\n- **Modifying Prompts for Data Integration**:\n  - Edit the Morning Report Template to include specific sources: \u201cIncorporate Bloomberg news on tariffs and X sentiment on SPX in the executive summary and ranked table.\u201d\n  - Example Modified Prompt:`Using the evening summary from April 21, 2025, and data as of April 22, 2025, at 7:00 AM ET, generate a morning report for SPX, /CL, and NG. Rank the top 3 assets by probability of >2 SD moves within 7 days, using 2 \u00d7 IV \u00d7 sqrt(7/365). Include: 1) executive summary (150-200 words, with Bloomberg news on tariffs and X sentiment on SPX), 2) ranked opportunities table, 3) economic calendar (FXStreet), and 4) early warning indicators. Limit to 800-1,000 words.`\n  - **Running and Interpreting**:\n    - Input the modified prompt into Grok AI at 7:00 AM ET.\n    - Output: A report with an executive summary citing Bloomberg\u2019s tariff analysis (e.g., \u201cTariffs escalate supply chain fears\u201d) and X sentiment (e.g., \u201cBearish SPX posts rise 20%\u201d), ranking SPX first with a $0.25 put recommendation.\n  - **Practical Example**: On April 22, 2025, the report integrates Bloomberg\u2019s report on tariff-driven oil price risks and X\u2019s bearish SPX sentiment, ranking SPX first (16% probability, 3.8% move down) and /CL second (13%, 4.2% move up).\n  - **Verification**: Check Bloomberg articles and X posts to confirm Grok\u2019s data integration. Use Coach AI to validate trade recommendations (e.g., \u201cAsk: Does Bloomberg\u2019s tariff news support an SPX put?\u201d).\n\n---\n\n**Activities**:\n\n**Customization**: Open the Morning Report Template and add new data sources:\n\n- Use **Bloomberg** for macroeconomic/tariff news\n- Add **X sentiment** to detect real-time bullish/bearish chatterUpdate the language in the template to reflect these new data inputs (e.g., *\u201cIncorporate Bloomberg news on tariffs and X sentiment on SPX\u2026\u201d*)\n\n**Test & Analyze**: Run your customized prompt in Grok AI\u2019s sandbox or chat.\n\n- Read the executive summary it produces.\n- Ask: Does the added data confirm or shift Grok\u2019s ranking or recommendations?\n\n**Reflection Question**: \u201cHow did adding Bloomberg or X data change the way you saw Grok\u2019s insights?\u201d\n\n- Did it confirm what Grok was already suggesting? Did it contradict it? Did it make the recommendation feel stronger or more cautious?"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-10",
+        "title": "Strategic Reinvestment",
+        "description_md": "",
+        "order": 10,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-10-1",
+            "title": "Overview of the Fat Tail Protocol",
+            "slug": "overview-of-the-fat-tail-protocol",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**\ud83c\udfaf Goals Recap**\n\nThe Fat Tail Protocol is designed to:\n\n- **Exploit rare, explosive market events** through highly asymmetric OTM options.\n- **Maintain ultra-low risk exposure** via small, calculated position sizing.\n- **Create convex outcomes**, where potential upside dramatically outweighs downside.\n\n**\ud83d\udcd0 Asymmetry & Convexity in Wealth Building**\n\n- *Asymmetry* ensures that even small bets can produce large gains.\n- *Convexity* ensures that your portfolio is positioned to benefit disproportionately from market shocks.\n- These characteristics make reinvestment more powerful\u2014each \u201ctail event\u201d windfall becomes a seed for larger future compounding."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-2",
+            "title": "Importance of Reinvestment",
+            "slug": "importance-of-reinvestment",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**\ud83d\udd01 Why Reinvestment Matters**\n\n- One-off gains from tail events can feel like lottery wins. Without a reinvestment plan, they dissipate.\n- Strategic reinvestment turns **episodic spikes in profit into exponential growth**.\n\n**\ud83d\udcc8 Role in Long-Term Growth**\n\n- Capital isn\u2019t merely preserved\u2014it\u2019s **amplified through repeated asymmetric bets**.\n- Reinvestment forms the **flywheel of the strategy**, especially critical for traders with small to medium-sized accounts."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-3",
+            "title": "The Reinvestment Cycle",
+            "slug": "the-reinvestment-cycle",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**\ud83d\udd04 The Cycle in Practice**\n\n1. **Harvest Gains** \u2013 Capture profits during high-volatility tail events.\n2. **Reallocate Capital** \u2013 During low-volatility periods, reinvest in:\n   - New OTM long option positions\n   - Long-term equity index exposure\n   - Protective hedges or risk-off assets, if appropriate\n3. **Repeat** \u2013 Allow each reinvestment to seed future asymmetric opportunities.\n\n**\u2696\ufe0f Balancing Options & Equities**\n\n- **Options Reinvestment:** Allocate to multiple low-debit \u201cseeds\u201d to preserve convexity.\n- **Equity Reinvestment:** Use S&P 500, QQQ, or sector ETFs for slow-compounding ballast.\n- Advanced traders may ladder options with different durations for tiered exposure."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-4",
+            "title": "Benefits and Expected Outcomes",
+            "slug": "benefits-and-expected-outcomes",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**\ud83c\udf31 Long-Term Benefits**\n\n- Creates a **self-reinforcing system** of risk-managed growth.\n- Harnesses market randomness rather than being victim to it.\n- Promotes **capital efficiency**, not capital drain.\n\n**\ud83d\udcca Illustrative Scenarios**\n\n- Scenario 1: A $500 gain during a spike in IV is split:\n  - $250 into three new 1-3 week tail bets\n  - $250 into broad market ETF\n- Scenario 2: Compounding effect over 6 months with 2\u20133 tail wins and disciplined reinvestment results in **significant net worth expansion without increasing risk profile**."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-10-5",
+            "title": "Key Takeaways",
+            "slug": "key-takeaways",
+            "order": 5,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "**\ud83e\udde0 Summary**\n\n- Reinvestment is the **glue** that binds episodic gains into a cohesive long-term growth strategy.\n- It maintains the core principles of the Fat Tail Protocol: **low cost, high asymmetry, maximum convexity**.\n\n**\ud83d\ude80 Next Steps**\n\n- Develop your personal reinvestment rule: e.g., reinvest 50% of tail event profits into new trades, 25% into index funds, 25% to cash reserve.\n- Track your reinvestment cycle over time using a trade journal or portfolio tracking tool.\n- Begin planning reinvestment allocation *before* the next win\u2014this removes emotional decision-making."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-11",
+        "title": "Prompt Pack \u2014 Journal, Scan, Reflect",
+        "description_md": "",
+        "order": 11,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-11-1",
+            "title": "The AI Prompt Pack",
+            "slug": "the-ai-prompt-pack",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "This module turns your FatTail Coach GPT into a **hands-on execution assistant.** It\u2019s not just about answering questions \u2014 it\u2019s about building operational flow.\n\nBut to be clear:\n\n### **\u26a0\ufe0f What the GPT Can Do:**\n\n- **Walk you through trade journaling** using FatTail principles\n- **Evaluate tail-risk setups** based on strike distance, debit, and thesis\n- **Guide your weekly reflections** to improve discipline and clarity\n- **Format your trades cleanly** (e.g. Markdown tables or bullet summaries)\n\n---\n\n### **\u274c What the GPT Cannot Do (Yet):**\n\n- **Automatically save or remember your trades** between sessions\n- **Store data to a sheet or database** unless paired with external tools (coming soon)\n- **Access your trading history or pull live data**\n- **Give you trade advice** \u2014 it only guides you through the process\n\n---\n\n## **\u2705 How to Log Your Trades**\n\nAfter the Coach formats your trade (from the journaling prompt), you need to **store the output yourself**.\n\n### **Options:**\n\n1. **Copy-paste into your trade journal in Notion or Google Sheets**\u2192 You can use a simple template (provided below)\n2. **Save the GPT output into Obsidian or Markdown files**\u2192 Ideal for long-form journaling and retrospectives\n3. **(Coming soon)** Connect to a GPT-powered trade log via API or plugin\u2192 DM @Ernie if you want early access when this goes live\n\n---\n\n### **\ud83d\udccb Template Example (Google Sheets or Notion)**\n\n![Screenshot 2025-05-04 at 12.21.23\u202fPM.png](https://assets.skool.com/f/0e9329a65c0645e3af3c39182bdc859f/de6496fd83c54ef194a283427b5858a5fd5179b108064479907f6d4ac103d4a4 \"Screenshot 2025-05-04 at 12.21.23\u202fPM.png\")\n\n---\n\n### **\ud83d\udcac Try These Prompts First:**\n\n- \u201cHelp me journal a Fat Tail trade.\u201d\n- \u201cHere are some cheap OTM options \u2014 can you help check them?\u201d\n- \u201cHelp me reflect on this week\u2019s trades.\u201d\n\n---\n\nFatTail Coach is here to help you **operationalize the asymmetric mindset** \u2014 one trade, one reflection, one refinement at a time.\n\nWhen you\u2019re ready, head to the next lesson:\n\n**\ud83e\uddfe Prompt 1: Trade Journal Assistant**"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-11-2",
+            "title": "Prompt 1: Trade Journal Assistant",
+            "slug": "prompt-1-trade-journal-assistant",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "Use this to **log a new trade** or document one post-expiration.\n\n#### **\ud83d\udfe6 Prompt to Copy:**\n\n> Help me journal a Fat Tail trade.\n>\n> Ticker: \n>\n> Strike: \n>\n> Expiration: \n>\n> Debit: \n>\n> Thesis: [event or reason]\n>\n> Sigma Distance: \n>\n> Portfolio % Used: \n>\n> Outcome: [leave blank if pending]\n\n\ud83e\udde0 Coach will return a clean summary and help you stay consistent with the protocol.\n\n---\n\n### **\ud83d\udccb Trade Journal Template (Google Sheets)**\n\nTo log your trades after using the **FatTail Coach GPT**, use this ready-to-import sheet:\n\n\ud83d\udce5 [Download the FatTail Trade Journal Template (CSV)](sandbox:/mnt/data/FatTail_Trade_Journal_Template.csv?_chatgptios_conversationID=68177a2f-ab98-8006-8f9b-3adb9afc2d75&_chatgptios_messageID=d291d842-4eca-4435-80e5-6573d94b68f1 \"sandbox:/mnt/data/FatTail_Trade_Journal_Template.csv?_chatgptios_conversationID=68177a2f-ab98-8006-8f9b-3adb9afc2d75&_chatgptios_messageID=d291d842-4eca-4435-80e5-6573d94b68f1\")\n\n#### **\u2705 How to Use:**\n\n1. Go to [Google Sheets](https://sheets.google.com/ \"https://sheets.google.com/\")\n2. Click **File > Import > Upload**, then select the CSV file you just downloaded\n3. Choose **\u201cInsert new sheet(s)\u201d** or **\u201cReplace current sheet\u201d**\n4. Rename it to FatTail Trade Journal\n5. Log each trade after GPT formats your entry from the journaling prompt\n\n---\n\nThis is where your system lives.\n\nThe Coach walks you through it \u2014 **you capture the data, reflect, and refine.**"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-11-3",
+            "title": "Prompt 2: Tail Setup Scanner",
+            "slug": "prompt-2-tail-setup-scanner",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "Use this to **evaluate tail trades** you\u2019ve found on your own.\n\n#### **\ud83d\udfe6 Prompt to Copy:**\n\nI found some tail options \u2014 can you help check if they meet FatTail criteria?\n\n> Ticker: [e.g. SPX]\n>\n> Options:\n>\n> \u2013 4150p, 15 DTE, $0.18\n>\n> \u2013 4400c, 22 DTE, $0.25\n>\n> \u2013 4700c, 10 DTE, $0.09\n\n\ud83e\udde0 Coach will walk through debit rules, SD distance, timeframes, and capital usage filters."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-11-4",
+            "title": "Prompt 3: Run Weekly Retrospective",
+            "slug": "prompt-3-run-weekly-retrospective",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "Use this every Friday \u2014 or after the last trade of the week expires \u2014 to reflect, refine, and reinforce strategic clarity.\n\n### **\ud83e\udde0 GPT Prompt:**\n\n> Help me run a FatTail Retrospective for this week\u2019s trades.\n\nFatTail Coach will respond with:\n\n---\n\n### **\ud83d\udd39 Step 1: List Your Trades**\n\n> \u201cPlease list the trades you placed this week. Include:\n\n- Ticker\n- Strike & Expiration\n- Debit\n- Outcome (if expired)\n- Thesis (macro/event context)\u201d\n\nCoach will wait for your input and then organize the trades into a log format.\n\n---\n\n### **\ud83d\udd39 Step 2: Protocol Alignment Check**\n\nCoach asks:\n\n- \u201cDid each trade meet the FatTail checklist?\u201d\n  - (3\u20135\u03c3 distance? 1\u20135 week expiry? \u2264$0.25 cost?)\n- \u201cWere there any trades you forced or rushed?\u201d\n- \u201cDid any setups violate capital allocation rules?\u201d\n\n\u2705 *Coach reinforces the checklist. Any drift gets flagged.*\n\n---\n\n### **\ud83d\udd39 Step 3: Pattern Recognition**\n\nCoach asks:\n\n- \u201cWhat themes emerged this week? (e.g., market conditions, catalysts, pricing anomalies)\u201d\n- \u201cWere there repeat behaviors \u2014 good or bad?\u201d\n- \u201cDid the market favor puts, calls, or both?\u201d\n\n\ud83c\udfaf *Coach highlights emergent strategy signals.*\n\n---\n\n### **\ud83d\udd39 Step 4: Mental & Emotional Audit**\n\nCoach asks:\n\n- \u201cAny FOMO or hesitation moments?\u201d\n- \u201cHow did you handle uncertainty, boredom, or wins/losses?\u201d\n- \u201cAny emotional feedback loops that need pruning?\u201d\n\n\ud83e\udde0 *This anchors psychological resilience + process focus.*\n\n---\n\n### **\ud83d\udd39 Step 5: Adjustments & Pruning**\n\nCoach asks:\n\n- \u201cDo you need to prune a trade type or event bias?\u201d\n- \u201cAre there any strike zones or catalysts that deserve more attention?\u201d\n- \u201cDo you want to adjust your watchlist or scanner inputs for next week?\u201d\n\n\ud83e\ude93 *This is how convex strategies compound via intelligent iteration.*\n\n---\n\n## **\u2705 Optional Follow-Up Prompts**\n\nTo keep the momentum into the next week:\n\n- \u201cHelp me create a campaign theme for next week based on this week\u2019s learnings.\u201d\n- \u201cShow me the most valuable insights from the last three retrospectives.\u201d\n- \u201cRemind me on Monday to re-check these lessons.\u201d"
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-12",
+        "title": "Appendix",
+        "description_md": "",
+        "order": 12,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-12-1",
+            "title": "\ud83d\udd25 The Fat Tail Awakening",
+            "slug": "the-fat-tail-awakening",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### The mindset shift you need to stop losing to randomness and start building an edge from chaos.\n\n---\n\n#### **\ud83c\udfc1 Welcome to the Fat Tail Mindset**\n\nIf a \u201cblack swan\u201d event has ever blindsided you\u2026\n\nIf your carefully crafted model collapsed the moment volatility spiked\u2026\n\nIf you\u2019re still clinging to backtests and averages while the market chews up your stops\u2026\n\nThen this is the lesson that changes everything.\n\n---\n\n#### **\ud83d\udcd6 The Gospel According to Taleb**\n\n> \u201c*In fat-tailed domains, the world is dominated by extremes\u2014not the average.*\u201d\n\nNassim Taleb\u2019s *Statistical Consequences of Fat Tails* isn\u2019t just a book\u2014it\u2019s the core of our doctrine.\n\nHere\u2019s the **truth bomb** it drops on most trading strategies:\n\n- Averages? Worthless.\n- Variance? Misleading.\n- P-values? Academic fiction.\n\nIn the real world, one tail event *wipes out* your so-called edge. And you never see it coming.\n\n---\n\n#### **\u26a0\ufe0f Gaussian Thinking is a Lie**\n\nYou\u2019ve been sold the story that:\n\n- More data = more certainty\n- \u201cOver time\u201d it all evens out\n- Proper sizing and tight stops will protect you\n\nWrong.\n\nIn the real world:\n\n- One bad trade ends you\n- One spike guts your account\n- One overlooked outlier bankrupts your fund\n\n---\n\n#### **\ud83d\udca5 TRUTH SHOTS (Your Wake-Up Call)**\n\n**\ud83d\udd25 Your Stats Are Lying to You**\n\nYou\u2019re playing roulette with a ruler. One tail event = 10 years of illusion shattered.\n\n**\ud83d\udd25\ud83d\udd25 The Market Is a Fat-Tailed Monster**\n\nThose \u201conce in a decade\u201d moves that keep showing up every other month? Not bad luck\u2014bad models.\n\n**\ud83d\udd25\ud83d\udd25\ud83d\udd25 Your Psychology Is Built on Lies**\n\nDiscipline doesn\u2019t save you. Stop-losses don\u2019t save you. In a fat-tailed world, only **survival frameworks** matter.\n\n---\n\n#### **\ud83e\udded The FatTail Philosophy**\n\nWe don\u2019t forecast.\n\nWe prepare.\n\nWe don\u2019t optimize for the average.\n\nWe engineer for extremes.\n\nWe don\u2019t build traders.\n\nWe build survivors.\n\n---\n\n### **\ud83c\udfaf Action Items**\n\n1. \ud83d\udccc **Save this lesson.** Reread it every time you feel the urge to \u201coptimize your win rate.\u201d\n2. \ud83e\udde0 **Join the Discord conversation**: Share a moment you got wrecked by a tail event and how it changed your outlook."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-12-2",
+            "title": "\ud83e\udde0 The Coach\u2019s AI Agents \u2014 Core Terms",
+            "slug": "the-coach-s-ai-agents-core-terms",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "A real-talk guide to the language of the Antifragile League. Use this to decode protocols, personas, and playbooks without the jargon.\n\n---\n\n## \ud83d\udcd6 Agents\n\n**@alchemist** \u2014 Convexity Strategist. Designs asymmetric option structures for tail-risk setups.\n\n**@stormwatcher** \u2014 Volatility Mapper. Tracks implied volatility surfaces, gamma exposure, and risk weather.\n\n**@cartographer** \u2014 Structure Sentinel. Maps price inflection zones, compression areas, and volume nodes.\n\n**@inquisitor** \u2014 Narrative Debunker. Challenges consensus macro stories and exposes belief distortion.\n\n**@mirror** \u2014 Mindfulness Coach. Surfaces bias, ego, and conviction drift to keep you from self-sabotage.\n\n**@scribe** \u2014 Historian of Thought. Logs belief changes, trade outcomes, and reflective insights.\n\n**@architect** \u2014 Meta-Orchestrator. Routes decisions, coordinates agents, and ensures strategic coherence.\n\n---\n\n## \ud83d\udd01 Protocols\n\n**Swarm Scan** \u2014 Multi-agent sweep for insight. Used when things feel foggy or uncertain.\n\n**Recursive Belief Loop** \u2014 Audit and revise your convictions. Used when a thesis starts to decay.\n\n**Dialectic Conflict** \u2014 Agent-versus-agent debate. Used to pressure-test strong beliefs.\n\n**Chain of Execution** \u2014 Full trade buildout from signal to structure.\n\n**Weighted Consensus** \u2014 League-wide vote on whether to act, wait, or adapt.\n\n---\n\n## \ud83d\udcca Market Regimes\n\n**Compression Trap** \u2014 IV rank < 25, tight range, macro event ahead. Goal: buy cheap convexity.\n\n**Volatility Expansion** \u2014 Big VIX/IV spike. Goal: ride the shock with long vol plays.\n\n**Narrative Drift** \u2014 Market clings to outdated macro fantasy. Goal: fade the consensus.\n\n**Tail Risk Pulse** \u2014 Volatility anomalies during global instability. Goal: seed deep OTM tail hedges.\n\n**Post-Crush Reversal** \u2014 IV collapses after a catalyst. Goal: mean-reversion flys near center.\n\n---\n\n## \ud83e\udde0 Memory System\n\n**Belief Stack** \u2014 Your current convictions, with scores, evidence, and decay rules.\n\n**Conviction Score** \u2014 0\u2013100 scale showing belief strength. >90 requires audit.\n\n**Bias Flags** \u2014 Tags like Recency, Ego Defense, or Confirmation that warn of flawed thinking.\n\n**Decay Conditions** \u2014 Scenarios where a belief should be downgraded or dropped.\n\n---\n\n## \ud83d\udcac Philosophy\n\n**Antifragility** \u2014 Getting stronger from disorder. Core mindset.\n\n**Convexity** \u2014 Trades with asymmetric payoff \u2014 small risk, large gain.\n\n**Position > Prediction** \u2014 How you\u2019re positioned matters more than being right.\n\n**Impermanence** \u2014 Everything is temporary. Beliefs, structures, setups.\n\n**Extremistan** \u2014 A world where rare events dominate outcomes.\n\n---\n\n## \u2699\ufe0f Execution Tools\n\n**Strategy Sprint** \u2014 5-step loop to create, debate, refine, and log trade ideas.\n\n**Trade Log** \u2014 Post-trade reflection. Captures outcome, insight, and belief change.\n\n**Belief Update** \u2014 Manual or triggered revision of a thesis, often after trade outcomes.\n\n---\n\n> This glossary evolves. Every time a new pattern emerges, it gets added here.\n\n> Don\u2019t memorize it \u2014 use it like a compass. Come back when the map gets foggy."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-12-3",
+            "title": "\ud83d\udcd8 Glossary of Terms",
+            "slug": "glossary-of-terms",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "## **0DTE, Fat Tail Protocol, Options, and Volatility**\n\nThis glossary bridges the language of **0DTE options trading**, **Fat Tail Protocol campaigns**, and key **options, volatility, and distribution terms**, providing clear definitions for tactical and strategic concepts across timeframes.\n\n---\n\n## \u26a1\ufe0f 0DTE Trading Terms\n\n**0DTE**  \n\u201cZero Days to Expiration\u201d \u2014 An options trade executed on the same day the contract expires.\n\n**OTM Butterfly**  \nAn out-of-the-money butterfly spread, structured with low debit and high reward-to-risk (typically 1:10 or better), often used around structural pivots or expected volatility.\n\n**Gamma Exposure (GEX)**  \nMeasures how market makers\u2019 hedging flows can influence price near expiration. High GEX zones are potential magnets or repellents.\n\n**Expected Move**  \nA forecasted price range for an asset based on implied volatility. Helps define butterfly wing placement.\n\n**Mean Reversion Zone**  \nAreas of price congestion (often HVNs) where price tends to return unless disrupted by new volatility.\n\n**Power Hour / Gamma Window**  \nTime-of-day windows (10:00 AM, 2:00 PM ET) when option-related flows may trigger directional moves.\n\n---\n\n## \ud83e\udde0 Fat Tail Protocol Terms\n\n**Fat Tail**  \nA term from probability theory describing rare, extreme events that occur more frequently than predicted by a normal distribution. In trading, these are large market moves (up or down) that break expectations.\n\n**Convexity**  \nA payoff shape where small losses are capped but gains grow rapidly \u2014 the core principle behind Fat Tail positioning. Risk $1 to potentially make $10\u2013$50.\n\n**Optionality**  \nThe embedded right, not obligation, to benefit from extreme market moves. Cheap, far OTM options give you optionality.\n\n**Barbell Strategy**  \nA portfolio model with most capital in safe assets and a small portion in high-risk, high-reward trades (i.e., tail options). Originated by Nassim Taleb.\n\n**Set-and-Forget**  \nA non-managed trade structure. Once placed, the trade is not adjusted. Win or lose, the outcome is accepted and journaled.\n\n**Sigma (\u03c3)**  \nRefers to standard deviation from the mean. A \u201c+3\u03c3\u201d call is 3 standard deviations above the current price.\n\n**Convexity Alignment Stack\u2122**  \nA checklist-based campaign for placing 0\u20133 DTE butterflies and straddles when structure and volatility are aligned.\n\n**Sigma Drift Campaign**  \nA Fat Tail campaign focused on planting 7\u201314 DTE long strangles or flies around macro catalysts and structural compression.\n\n**Volatility Seed Vault**  \nA long-term campaign holding 30\u201390 DTE deep OTM puts or VIX calls for systemic crash protection.\n\n**Macro Echo Chamber**  \nA quarterly campaign placing long-dated OTM options (60\u2013180 DTE) based on narrative risk \u2014 geopolitical, monetary, or fiscal shifts.\n\n**Convexity Bank**  \nProfits from tail trades that are reinvested into new asymmetric setups \u2014 a self-funding system of convexity compounding.\n\n**Fractal Deployment**  \nLayering trades across multiple timeframes (0DTE, 7DTE, 30DTE+) so that optionality exists at every volatility horizon.\n\n---\n\n## \ud83e\uddee Options Terms\n\n**Call Option**  \nGives the buyer the right to purchase an asset at a specific strike price before expiration.\n\n**Put Option**  \nGives the buyer the right to sell an asset at a specific strike price before expiration.\n\n**Strike Price**  \nThe fixed price at which the holder of an option can buy (call) or sell (put) the underlying.\n\n**Premium**  \nThe price paid to purchase an option contract.\n\n**Implied Volatility (IV)**  \nThe market\u2019s expectation of future volatility, reflected in current option prices.\n\n**Historical Volatility (HV)**  \nActual past volatility of a security over a given time period.\n\n**Delta**  \nThe rate of change of an option\u2019s price relative to the change in the underlying asset. Measures directional risk.\n\n**Gamma**  \nThe rate of change of delta. Tells how sensitive delta is to price movements.\n\n**Theta**  \nTime decay \u2014 how much value an option loses with each day that passes.\n\n**Vega**  \nSensitivity of an option\u2019s price to changes in implied volatility.\n\n---\n\n## \ud83d\udcca Volatility & Distribution Terms\n\n**Normal Distribution**  \nA bell curve representing the statistical likelihood of outcomes. Assumes most returns cluster around the mean.\n\n**Fat-Tailed Distribution**  \nA distribution with higher probabilities for extreme outcomes compared to a normal curve. Captures real market behavior more accurately.\n\n**Tail Risk**  \nThe risk of rare but extreme events that can cause massive market moves.\n\n**Skew**  \nAsymmetry in the distribution of returns \u2014 often visible in option pricing when puts cost more than calls.\n\n**Kurtosis**  \nA measure of the \u201cfatness\u201d of the tails. High kurtosis = higher likelihood of outlier events.\n\n**IV Rank**  \nA percentile ranking of current implied volatility compared to its historical range. Helps identify \u201ccheap\u201d or \u201cexpensive\u201d options.\n\n**Zombieland**  \nLow-volatility regime (VIX < 17) where time decay dominates and directional follow-through is rare.\n\n**Goldilocks**  \nA balanced volatility regime (VIX 17\u201328) where expansion and gamma convexity setups thrive. Ideal for structured convexity entries like butterflies or straddles.\n\n**Chaos**  \nHigh-volatility regime (VIX > 28) characterized by disorder, gap risk, and explosive price action. Ideal for long convex tails, but dangerous for centered structures.\n\n**VIX**  \nThe CBOE Volatility Index. Measures market expectations of near-term volatility in the S&P 500. Used as a barometer for Zombieland, Goldilocks, and Chaos conditions.\n\n---\n\n## \ud83e\uddf1 Volume Profile Terms\n\n**Volume Node (VN)**  \nYour term for a High Volume Node (HVN). These are price areas where a large amount of volume has been traded. They act as gravity wells where price often consolidates or returns.\n\n**Volume Well**  \nYour term for a Low Volume Node (LVN). These are thinly traded zones where price moves quickly. Represent imbalance and directional opportunity.\n\n**Parent Node**  \nA larger volume node that dominates surrounding structure. Usually provides macro-level support/resistance.\n\n**Child Node**  \nA smaller volume node adjacent to or inside a Parent Node. Useful for microstructure-based targeting or refinement.\n\n**Node Edge**  \nThe boundary between a Volume Node and a Volume Well. Critical decision zones where expansion or rejection typically occurs.\n\n**Crevasse**  \nA deep crack or void inside a Volume Well. It marks a specific price level of structural vulnerability or strength \u2014 often acting as powerful support or resistance.\n\n**Point of Control (POC)**  \nThe price level with the highest traded volume within a specified range. Serves as a magnetic reference point.\n\n---\n\n## \ud83d\udccc Usage Tips\n\n- Use \u201cConvexity Stack\u201d for intraday structure plays\n- Layer \u201cSigma Drift\u201d for week-long tail bets\n- Backstop your portfolio with \u201cSeed Vault\u201d + \u201cEcho Chamber\u201d\n\n> Understanding these terms helps you move from tactical execution to **system-level trading** \u2014 stacking probability, not predicting it."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-12-4",
+            "title": "\ud83d\udcd8 High-Leverage Questions for Traders",
+            "slug": "high-leverage-questions-for-traders",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "Trading lifecycle domains organize this prompt dictionary, each with 3 high-leverage questions designed to help traders use Convexity GPT effectively. Each question is designed to activate reflection, identify structural edges, surface hidden risks, or optimize execution.\n\n\ud83d\udcdd Follow-up Tip: After any prompt, ask \u201cCan you help me unpack this?\u201d or \u201cWhat would be the next small step?\u201d for deeper support.\n\n---\n\n\ud83e\udded 1. Daily Routine & Trading Process Optimization\n\nGoal: Improve decision clarity, reflection, and consistency over time.\n\n1. \u201cCan you walk me through a clean morning trading routine that includes reflection, bias checks, and market structure prep?\u201d\n\n2. \u201cBased on my current habits, where is my routine decaying or fragile\u2014and what\u2019s one thing I can test to improve it this week?\u201d\n\n3. \u201cHow should I structure my daily trade prep to avoid overtrading or acting from impulse?\u201d\n\n\ud83d\udd0d Insight: Your routine\u2019s quality defines your edge\u2019s quality. Routines are mirrors\u2014refine what they reflect.\n\n---\n\n\ud83e\udde0 2. Bias Audits & Decision Reflection\n\nGoal: Expose hidden mental traps before they cost capital.\n\n1. \u201cWhat bias might be shaping this trade idea right now?\u201d\n\n2. \u201cAm I trading this because it\u2019s in my system\u2014or because I want to feel right?\u201d\n\n3. \u201cWhere do I tend to get pulled into action bias or narrative traps?\u201d\n\n\ud83d\udd0d Insight: Bias ignored is capital endangered. Every trade reflects your psychology.\n\n---\n\n\ud83d\udcd0 3. Trade Setup Design & Edge Identification\n\nGoal: Align setups with structural edges, volatility, and DTE ranges.\n\n1. \u201cWhat\u2019s the most convex setup I can place today based on VIX, market structure, and capital limits?\u201d\n\n2. \u201cHow does this setup gain from volatility, or break under stress?\u201d\n\n3. \u201cIs this idea a testable hypothesis or just a reaction to noise?\u201d\n\n\ud83d\udd0d Insight: Setup clarity equals risk clarity. No structure, no trade.\n\n---\n\n\ud83c\udfd7\ufe0f 4. Strategy Building & Life Cycle Design\n\nGoal: Create robust, antifragile strategies from hypothesis to campaign.\n\n1. \u201cCan you help me design a convexity strategy lifecycle from idea \u2192 test \u2192 live trade \u2192 retrospective?\u201d\n\n2. \u201cWhat decay signals should I watch for as this strategy matures or fails?\u201d\n\n3. \u201cHow can I tell when a strategy needs to be retired or refined?\u201d\n\n\ud83d\udd0d Insight: A strategy is only alive if it evolves. Reflection is the pulse.\n\n---\n\n\ud83e\uddf0 5. Trade Management (Intraday + Multi-DTE)\n\nGoal: Improve live trade handling under pressure.\n\n1. \u201cHow should I manage this open position based on structure, time left, and volatility?\u201d\n\n2. \u201cWhat\u2019s my exit logic right now\u2014and is it distorted by emotion or bias?\u201d\n\n3. \u201cShould I adjust this trade, or let the process play out?\u201d\n\n\ud83d\udd0d Insight: Trade management reveals whether your plan is real or a reaction.\n\n---\n\n\ud83d\udd0d 6. Volume Profile & Market Structure Mapping\n\nGoal: Use volume memory to time entries and exits.\n\n1. \u201cWhere is the structural edge today\u2014node edge, well, or crevasse?\u201d\n\n2. \u201cIs this price move a drift toward memory\u2014or a breakout from structure?\u201d\n\n3. \u201cWhat does the volume profile tell me about potential acceleration or rejection?\u201d\n\n\ud83d\udd0d Insight: Structure is memory. Trades placed in flow ignore the terrain.\n\n---\n\n\ud83d\udcca 7. Journaling & Retrospective Reflection\n\nGoal: Surface pattern decay, mental traps, and system improvements.\n\n1. \u201cWhat did I miss, override, or ignore in this week\u2019s trades\u2014and what will I test next?\u201d\n\n2. \u201cAm I journaling the right details\u2014or just the results?\u201d\n\n3. \u201cWhat\u2019s my biggest pattern of decay or friction\u2014and what\u2019s a micro-adjustment I can make?\u201d\n\n\ud83d\udd0d Insight: Your journal is a live mirror. Don\u2019t just track P&L\u2014track pattern decay.\n\n---\n\n\ud83e\udea2 8. Macro + Event Context Alignment\n\nGoal: Map trades to real-world catalysts and risk cycles.\n\n1. \u201cWhat macro events or volatility regimes should shape my trading today?\u201d\n\n2. \u201cAm I trading the data\u2014or the story about the data?\u201d\n\n3. \u201cWhat date range should I analyze to get a clearer macro picture?\u201d\n\n\ud83d\udd0d Insight: Narrative risk is real risk. Anchor to timing, not opinion.\n\n---\n\n\ud83d\udcb9 9. Price & Market Analysis Queries\n\nGoal: Pull structured macro reports or price trends using specific date ranges or assets.\n\n1. \u201cCan you generate a macro and volatility report for [start date] to [end date]?\u201d\n\n2. \u201cWhat structural levels, volume profiles, or breakout traps exist in [ticker or asset] over the past [X] days?\u201d\n\n3. \u201cWhat\u2019s the most recent behavior of  across macro events, gaps, and volume edges?\u201d\n\n\ud83d\udcdd Tip: Always specify a date range or ticker for best results. For example: \u201cShow me SPX structure from 2025-05-01 to 2025-06-05.\u201d\n\n\ud83d\udd0d Insight: You can\u2019t analyze fog. Precision unlocks clarity.\n\n---\n\n\ud83e\uddf1 10. Trade Sizing & Risk Mapping\n\nGoal: Align size with risk asymmetry and setup confidence.\n\n1. \u201cWhat is the smallest, high-upside trade I can place now?\u201d\n\n2. \u201cIs my sizing based on structure or the desire to make back a loss?\u201d\n\n3. \u201cHow should I size this trade based on VIX, setup structure, and my system rules?\u201d\n\n\ud83d\udd0d Insight: Sizing isn\u2019t conviction\u2014it\u2019s structure revealed through restraint.\n\n---\n\n\ud83e\uddec 11. Strategy Integration & DTE Stacking\n\nGoal: Combine short- and long-DTE setups without overlapping risk.\n\n1. \u201cHow do my 0DTE, Convexity Stack, and Tail Campaigns align\u2014or conflict\u2014this week?\u201d\n\n2. \u201cWhere am I stacking risk unintentionally across timeframes or instruments?\u201d\n\n3. \u201cCan you help me build a barbell trade structure for today or this week?\u201d\n\n\ud83d\udd0d Insight: Integration reveals fragility. Stack with purpose\u2014or not at all.\n\n---\n\n\ud83c\udfaf 12. Playbook Customization\n\nGoal: Build your custom guide using Convexity GPT.\n\n1. \u201cCan you help me create a custom Playbook for how I trade and reflect daily?\u201d\n\n2. \u201cWhat\u2019s missing from my current Playbook that\u2019s costing me clarity or edge?\u201d\n\n3. \u201cCan you convert my trade process into a living mirror I can update over time?\u201d\n\n\ud83d\udd0d Insight: A playbook without reflection is a map without a compass.\n\n---\n\n\ud83d\udd04 13. Recovery After Loss or System Breakdown\n\nGoal: Restore system integrity without revenge trading.\n\n1. \u201cWhat did this loss reveal about my system\u2014or my emotional state?\u201d\n\n2. \u201cWhat\u2019s the smallest, cleanest trade I can take to get back in flow, not get even?\u201d\n\n3. \u201cHow can I build trust in my system after a major deviation?\u201d\n\n\ud83d\udd0d Insight: Recovery is not return\u2014it\u2019s reconstruction.\n\n---\n\n# \n\nFinal Reflection:\n\nUse these prompts as doorways\u2014not prescriptions. Ask them daily, weekly, or whenever you\u2019re unclear. Convexity GPT doesn\u2019t give you answers\u2014it gives you mirrors.\n\nReflection is the filter. Action is the goal. The loop is life. The risk is yours."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-12-5",
+            "title": "\ud83d\udd25 EMOTIONAL TUGS the Fat Tail Protocol Solves",
+            "slug": "emotional-tugs-the-fat-tail-protocol-solves",
+            "order": 5,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "### **1. FOMO (Fear of Missing Out)**\n\n> *\u201cWhy does the big move always happen when I\u2019m not in it?\u201d*\n\n> The Fat Tail sets up *in advance*, so you\u2019re already positioned when chaos erupts.\n\n---\n\n### **2. Blowups from Chasing Volatility**\n\n> *\u201cI caught the move\u2014but blew my account getting there.\u201d*\n\n> Fat Tail contains risk to $25\u2013$50, letting you *lean into volatility* without self-destruction.\n\n---\n\n### **3. Death by Overtrading**\n\n> *\u201cI\u2019m exhausted. Always in trades. Always watching charts.\u201d*\n\n> Fat Tail is emotionally sustainable: set and forget. Weekly check-ins. No constant screen time.\n\n---\n\n### **4. False Precision Fatigue**\n\n> *\u201cI do everything right, and still lose.\u201d*\n\n> Traders burned by TA, indicators, and prediction-based systems finally find peace through *preparedness over precision*.\n\n---\n\n### **5. Inconsistent Identity**\n\n> *\u201cI don\u2019t even know what kind of trader I am anymore.\u201d*\n\n> Fat Tail builds strategic identity: risk-defined, asymmetric, outcome-detached.\n\n---\n\n### **6. Win Rate Addiction Withdrawal**\n\n> *\u201cI\u2019m used to winning a lot, but nothing adds up.\u201d*\n\n> Fat Tail flips this: low win rate, high reward. It\u2019s uncomfortable\u2014but it actually works.\n\n---\n\n### **7. Emotional Overreaction / Tilt**\n\n> *\u201cI spiral after a loss. Revenge trade. Over-size. Wreck myself.\u201d*\n\n> The protocol\u2019s structure removes the need to *react*. One setup, fully defined, already in play.\n\n---\n\n### **8. Lack of Edge During Chaos**\n\n> *\u201cI never know what to do when the market gets wild.\u201d*\n\n> Fat Tail doesn\u2019t just survive chaos\u2014it\u2019s *designed* for it. More volatility = more opportunity.\n\n---\n\n## **\u2705 Top 3 Strongest Emotional Tugs**\n\nBased on impact, relatability, and contrast with most trading systems, the top 3 are:\n\n1. **FOMO / Missing the Big Move**\u2192 *Everyone* has felt this. The protocol gives proactive structure instead of reactive regret.\n2. **False Precision Fatigue**\u2192 Especially powerful for traders tired of \u201cdoing it right\u201d and still losing. Fat Tail shifts the entire mindset.\n3. **Overtrading Exhaustion**\u2192 The quiet killer. Fat Tail offers emotional relief and sustainability: no more burnout from chasing setups daily."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      }
+    ],
+    "resource_ids": [],
+    "resource_links": [],
+    "related_live_series_ids": [],
+    "seo": {
+      "title": "FatTail Foundations",
+      "canonical_path": "/courses/fattail-foundations"
+    },
+    "production": null
+  },
+  "bundle": {
+    "resources": [],
+    "instructors": [
+      {
+        "id": "inst-1",
+        "instructor_id": 1,
+        "name": "Ernie Varitimos",
+        "bio_md": "Founder of FatTail.ai and the 0-DTE methodology. Three decades trading asymmetric structures; teacher of the stop-the-bleeding doctrine.",
+        "avatar_url": null,
+        "links_json": null
+      }
+    ]
+  }
+}

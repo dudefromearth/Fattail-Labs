@@ -1,0 +1,327 @@
+{
+  "format": "fattail.labs.canonical_course",
+  "model_version": "1.0",
+  "exported_at": "2026-07-28T19:37:29Z",
+  "source": {
+    "course_id": 268,
+    "slug": "fattail-app",
+    "runtime_status": "published"
+  },
+  "course": {
+    "id": "course",
+    "slug": "fattail-app",
+    "title": "FatTail App",
+    "subtitle": "",
+    "description_md": "### \ud83d\udcca FatTail App \u2014 Platform Training\n\nThe FatTail App is a dedicated options analysis platform built from the ground up for 0DTE structural trading \u2014 and it has crossed a threshold: the full trading loop is now live, end to end.\n\nThe app follows Apple\u2019s Human Interface Guidelines with a Liquid Glass look and feel. It\u2019s built around one always-visible **workspace** in the center \u2014 the main content area where you analyze options strategies \u2014 flanked by two sidebars you show or hide as you work: a **Routine sidebar** on the left (in development) and a **Process sidebar** on the right (your Trade Log, Journal, and Reports).\n\n![FatTail App layout showing the central workspace and left/right sidebars](https://fattail.ai/wp-content/uploads/2025/09/hero-1024x593.jpg)\n\nThe FatTail App: a central workspace flanked by the Routine and Process sidebars.\n\n**Prepare \u2192 Execute \u2192 Reflect is no longer just the routine. It\u2019s the software.** Spot convexity on the Heatmap, build the position, analyze it on the Risk Graph, submit the order to the built-in MSC Brokerage, and watch the fill land in your Trade Log automatically \u2014 realized P&L, per-leg fills, performance reports, and your Journal, all connected. No spreadsheets. No manual imports. The app closes your feedback loop for you.\n\nThis course teaches you to run that loop station by station:\n\n- \ud83d\udd25 **The Convexity Heatmap** \u2014 read skewed risk/reward across the whole board at a glance, and turn any tile into a live position with one click\n- \ud83d\udcc8 **The Risk Graph** \u2014 every bit as capable as ThinkorSwim\u2019s Risk Analyzer, with capabilities ToS doesn\u2019t have: probability bands with a multi-\u03c3 ladder, Market/Theoretical vol modes, dealer-positioning backdrops (GEX, Volume Profile, zero-gamma zones), and a what-if time machine\n- \ud83e\uddca **The 3D Surface & Price/Time views** \u2014 the same pricing engine rendered across price and time, now supporting every structure including calendars and diagonals\n- \ud83c\udfaf **Submit & Order Flow** \u2014 execute the full submit \u2192 fill \u2192 close cycle against the built-in MSC Brokerage with zero capital at risk. Your training ground for reps that count\n- \ud83d\udcd2 **Trade Log & Reports** \u2014 your book of record: equity curve, win rate, profit factor, expectancy, drawdown, strategy and time-of-day breakdowns\n- \ud83d\udcd3 **Journal & Playbook** \u2014 where reps become method: session-by-session journaling with your actual fills pulled in automatically, and a playbook that turns evidence into rules\n- \ud83d\udd14 **Alerts** \u2014 most price, greek (\u0394/\u0393/\u0398), and position alerts are live, evaluated against your positions in real time; dynamic trailing alerts and algo alerts are in active development\n- \ud83e\udde0 **Vexy** \u2014 the cognitive layer woven through it all: not a chatbot, a reasoning surface wired to your positions, your journal, and the doctrine (a work in progress)\n\nThe focus never changes: **seeing where convexity exists \u2014 not being told what to trade.** \ud83d\udc41\ufe0f\n\nThe app remains in perpetual development \u2014 new capability ships regularly, and the *What\u2019s New* module keeps you current with each release. What\u2019s live today is taught as it actually works; what\u2019s coming next lives on the roadmap, not in the lessons. \u2705\n\n*Updated July 2026 \u2014 reflecting the completed trade lifecycle into the built-in MSC Brokerage, the probability overlay system, Market/Theo pricing modes, multi-expiration support, and greeks-based alerts.*",
+    "short_description": "",
+    "status": "published",
+    "version": "1.0.0",
+    "level": "beginner",
+    "created_at": "2026-07-28T11:01:50",
+    "category_slugs": [
+      "convexity",
+      "marketswarm-platform"
+    ],
+    "instructor_refs": [
+      {
+        "id": "inst-1",
+        "name": "Ernie Varitimos",
+        "instructor_id": 1
+      }
+    ],
+    "audience_category": "members",
+    "pathway_position": null,
+    "flagship": false,
+    "trailer": null,
+    "banner": {
+      "id": "banner",
+      "type": "image",
+      "source": "media_library",
+      "url": "/api/media/ab34017b4628336652cb2151.jpg"
+    },
+    "card_color": null,
+    "certification_enabled": false,
+    "estimated_duration_minutes": null,
+    "learning_outcomes": [],
+    "modules": [
+      {
+        "id": "mod-1",
+        "title": "The FatTail App",
+        "description_md": "",
+        "order": 1,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-1-1",
+            "title": "What\u2019s in the App \u2013 Feature Status",
+            "slug": "what-s-in-the-app-feature-status",
+            "order": 1,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "hX1ijpEhRNE",
+                "params": {},
+                "duration_seconds": 0
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "\ud83e\udded Here\u2019s an honest, current accounting of the FatTail App \u2014 what\u2019s live and ready today, and what\u2019s coming next. The app is in **perpetual development**, so this list grows over time.\n\n**How the app is laid out**\n\nFatTail follows Apple\u2019s Human Interface Guidelines and uses a Liquid Glass look and feel. The screen is built around one always-visible **workspace** in the center \u2014 the main content area where you analyze options strategies \u2014 flanked by two sidebars that you show or hide as you work: the **Routine sidebar** on the left and the **Process sidebar** on the right.\n\n- **Workspace (center)** \u2014 always visible; discover, build, and analyze strategies here (Heatmap + Risk Graph).\n- **Process sidebar (right)** \u2014 where a trade goes after you submit it: Trade Log, Journal, and Reports.\n- **Routine sidebar (left)** \u2014 your pre-trade routine and doctrine. This one is still in development.\n\n![](https://fattail.ai/wp-content/uploads/2026/06/hero-1024x593.png)\n\nOne central workspace, two slide-out sidebars \u2014 Routine on the left, Process on the right.\n\n**\u2705 Live now \u2014 the workspace (analyze options strategies)**\n\n- \ud83d\udd25 **Convexity Heatmap** \u2014 the exclusive trade-discovery grid. Find convex structures at a glance and open one straight into the builder.\n- \ud83e\uddf1 **Position Builder** \u2014 build any structure (verticals, butterflies, broken-wing butterflies, condors, straddles, strangles, iron flies/condors, calendars, and diagonals), from a heatmap tile or from scratch.\n- \ud83d\udcc8 **Risk Graph \u2014 three views** \u2014 Risk (2D P&L), Time (price\u2013time), and Surface (3D), all driven by one shared real-time pricing engine so every view agrees. Includes Mkt / Theo / Both vol surfaces, 1\u03c3 autofit, and a permanent PROB expected-move band.\n- \ud83d\udcca **Market context overlays** \u2014 Volume Profile, GEX (dealer gamma), market structure, and the zero-gamma band, layered right on the Risk view.\n- \ud83d\udd14 **Alerts** \u2014 most Price, Greek, and Position alerts are complete, with real Delta / Gamma / Theta pickers wired to live position data.\n- \ud83d\udccb **ThinkorSwim script export** \u2014 copy any structure straight to ToS.\n\n\ud83d\udcf7 **Screenshot needed:** The workspace showing the Convexity Heatmap and the Risk Graph in action.  \n*Suggested caption:* \u201cThe workspace: the Convexity Heatmap and the shared-engine Risk Graph.\u201d  \n*Alt text:* \u201cFatTail workspace showing the Convexity Heatmap and Risk Graph\u201d\n\n**\u2705 Live now \u2014 the pipeline into the Process sidebar**\n\nThe full practice loop works today, offline (simulated \u2014 no live broker required):\n\n- **Submit** a multileg order to the included **MSC Brokerage** (simulated by default).\n- **Trade Log** \u2014 your book of record; the trade opens here with a SIM badge.\n- **Journal** \u2014 the day\u2019s trades are listed for the date you traded.\n- **Reports** \u2014 account-owned performance: equity curve and strategy breakdown.\n- **Open \u2192 Close** \u2014 close a position and the Trade Log stamps it CLOSED with realized P&L, and Reports update.\n\n\ud83d\udcf7 **Screenshot needed:** The Process sidebar open, showing the Trade Log (with a SIM badge) and a glimpse of the Reports/Journal.  \n*Suggested caption:* \u201cThe Process sidebar: Trade Log, Journal, and Reports, fed automatically from your fills.\u201d  \n*Alt text:* \u201cFatTail Process sidebar showing Trade Log, Journal, and Reports\u201d\n\n**\u23ed In progress \u2014 landing in the next few days**\n\n- \u26a1 **Dynamic trailing alerts** \u2014 an alert that moves with your trade, locking in gains automatically as the position works in your favor.\n- \ud83e\udd16 **Algo alerts** \u2014 the extended, algorithmic alert composition tools.\n\n**\ud83d\udea7 Further out \u2014 in development**\n\n- The **Routine sidebar** \u2014 your pre-trade routine, doctrine, and coaching surfaces on the left.\n- Live-market and external broker integration (e.g. Tradier) \u2014 the practice loop does not need this, but it\u2019s coming.\n- Durable execution notifications, so fills reach you even if the tab is closed.\n\nAs features ship, this course grows with them. For now, the next lessons get you fluent in what\u2019s live \u2014 starting with your morning routine."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-2",
+        "title": "Morning Routine - abbreviated",
+        "description_md": "",
+        "order": 2,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-2-1",
+            "title": "Find a Trade \u2013 Morning Analysis",
+            "slug": "find-a-trade-morning-analysis",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "\ud83c\udf05 Every trading morning, before the market opens \u2014 and usually before the morning economic reports \u2014 you do a quick **morning analysis**. This happens *outside* the FatTail App, on a charting platform like TradingView with a **VIX chart** and an **ES chart**. It\u2019s how you decide what kind of trade you\u2019re hunting for *before* you ever open the Heatmap.\n\nIt\u2019s three steps:\n\n### 1\ufe0f\u20e3 VIX Playbook \u2014 trade type & width\n\nRead the **VIX chart** against the playbook. Where VIX sits tells you the volatility regime \u2014 **ZombieLand, Goldilocks 1, Goldilocks 2, or Chaos** \u2014 and the regime sets two things: your **fly width** and your **trade type** (the classic OTM butterfly, or a regime-specific variant like **Batman** or **Time Warp**). Lower vol \u2192 tighter flies; higher vol \u2192 wider. That\u2019s your structure for the day.\n\n### 2\ufe0f\u20e3 Directional Bias \u2014 call or put fly\n\nPull up the **ES chart with a moving average** and read the trend. Price leaning bullish points you to a **call fly**; bearish points you to a **put fly**. This is the single decision that sets your direction.\n\n### 3\ufe0f\u20e3 Structural Analysis \u2014 your map for the day\n\nMark up the **ES chart** with the structure that matters: volume profile, volume nodes and liquidity pockets, session markers, key price levels, and the scenarios you\u2019re watching for. This tells you *where* the action is and helps you spot your **entry event** when it shows up.\n\n\ud83d\udcac **You don\u2019t have to do this solo on day one.** Coach Ernie posts his full morning analysis \u2014 VIX read, directional bias, and structural levels \u2014 every trading morning in the `fattail-talk` channel on Discord. Follow along with his read while you learn to do your own. Either way, you walk into the app with a plan.\n\n\ud83d\udccb **You leave the morning analysis with three things:**\n\n- \ud83d\udccf A **trade type and width** (from the VIX playbook)\n- \ud83e\udded A **directional bias** \u2014 call fly or put fly\n- \ud83d\uddfa\ufe0f A **structural map** \u2014 key levels and the entry event you\u2019re waiting for\n\nCarry those three into the app, and the Heatmap will make sense the moment you open it.\n\n\ud83d\udcda **This is the abbreviated version.** The full method \u2014 how to read VIX regimes and set width from the playbook, how to confirm trend, and how to read structure and time your entry \u2014 is taught in depth in the **0DTE Foundations** course. Here, the goal is just to know *what* you bring to the app and *why*.\n\n\u27a1\ufe0f With your trade type, width, direction, and key levels in hand, you\u2019re ready. Next: getting into the app."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-3",
+        "title": "Find & Examine a Trade",
+        "description_md": "",
+        "order": 3,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-3-1",
+            "title": "Getting Into the App",
+            "slug": "getting-into-the-app",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "\ud83d\udd10 Getting into the FatTail App takes a few seconds. There are two ways in \u2014 use whichever is handier.\n\n### Two ways to reach the app\n\n- \ud83c\udf10 **Direct URL** \u2014 type **flyonthewall.io** into your browser and hit return.\n- \ud83d\udda5\ufe0f **From your Dashboard** \u2014 on the website, go to **My Account \u2192 Dashboard** and click the **FatTail App** button.\n\nEither path lands you on the same sign-in screen.\n\n### Choose your sign-in\n\nThe app uses **single sign-on**. You\u2019ll see two buttons \u2014 pick the one that matches the membership you signed up with:\n\n- \ud83e\udd8b **\u201cFatTail (Formerly flyonthewall.ai)\u201d** \u2014 for **FatTail / FOTW members.** Sign in with your FatTail website credentials.\n- \ud83d\udcc8 **\u201c0-dte.com\u201d** \u2014 for **0-DTE coaching members.** Sign in with your original 0-dte.com credentials.\n\n![](https://fattail.ai/wp-content/uploads/2026/06/Screen-Shot-2026-06-28-at-11.13.17-AM-1024x630.png)\n\n\ud83d\udca1 **Which button is mine?** Use the one that matches where your membership lives. If you joined through FatTail, take the top button. If you\u2019re a longtime 0-DTE member signing in with your original 0-dte.com login, take the bottom one. Your existing credentials work \u2014 there\u2019s no separate app account to create.\n\nThat\u2019s it \u2014 you\u2019re in. The next lessons walk you through the app, starting with the Convexity Heatmap. \ud83d\udd25"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-2",
+            "title": "Using the Convexity Heatmap",
+            "slug": "using-the-convexity-heatmap",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "\ud83d\udd25 You walk into the Heatmap already knowing two things from your morning analysis: your **width** and your **type** (call fly or put fly). Now you use the Heatmap to find the actual trade \u2014 and specifically, to find **convexity**.\n\nTwo principles guide you before you start hunting: the **debit price range** you\u2019re targeting, and the **risk-to-reward ratio** you\u2019re aiming for. Keep both in mind \u2014 they\u2019re what separate a good tile from a great one.\n\n### \ud83d\udee0\ufe0f Set your controls first\n\nUp top, set the controls to match your plan: **symbol** (SPX / NDX), **strategy** (Butterfly / Vertical / Single), and **side** (Call / Put / Both). Now the grid is showing you exactly the trade you came to find.\n\n### 1\ufe0f\u20e3 Read the grid: columns are width, rows are strike\n\nThe **columns** across the top are **fly width** (20, 25, 30, 35, 40, 45, 50\u2026). The **rows** down the side are **strike price**. Each tile shows the **debit price** for that width-and-strike combination. Start in the column that matches the width from your morning analysis \u2014 that\u2019s your hunting ground.\n\n### 2\ufe0f\u20e3 The 10% rule sets your ceiling\n\nWithin your width column, find a tile priced **at or below 10% of the width**. That\u2019s your maximum \u2014 the most you\u2019d ever consider paying.\n\nSo for a **30-wide**, 10% means **$3.00 is your ceiling.** Never more than that for that structure. The color gradient can guide your eye toward the cheaper tiles, but you don\u2019t need it \u2014 *the debit prices on the tiles tell the whole story.*\n\n### 3\ufe0f\u20e3 Hunt for convexity\n\nHere\u2019s the real skill. **Convexity is the rate of change in the debit price** as you move between adjacent tiles. You\u2019re not just looking for a tile under your ceiling \u2014 you\u2019re looking for one where the price *drops sharply* relative to its neighbors, while the payoff stays the same or gets better.\n\n![](https://fattail.ai/wp-content/uploads/2026/06/Screenshot-2026-06-28-at-11.17.12-AM.png)\n\nLook at the **30-wide column** above. The debit isn\u2019t smooth as you move down the strikes \u2014 it jumps around. One tile sits at **2.22**, a neighbor at **2.63**, another at **2.95**. Under the 10% rule a 30-wide tops out around **$3.00** \u2014 so a tile priced well below that, sitting right next to pricier neighbors with basically the same payoff curve, is your convex trade. **Same structure, real discount on the debit, better on a risk-adjusted basis.**\n\n\ud83c\udfaf **What convexity looks like**\n\nSay a **30-wide** tile is priced at **$3.00**. Under the 10% rule, that\u2019s the *most* you\u2019d pay \u2014 it\u2019s your ceiling, not your target.\n\nNow look at the tiles right next to it. If an adjacent tile (or two) shows a price **25\u201350% lower** \u2014 say **$1.50 to $2.25** \u2014 with basically the **same payoff curve or better**, *that\u2019s* your trade.\n\nYou\u2019re getting a significant discount on the debit for the same or better reward. Same upside, less risk paid, better risk-adjusted. **That\u2019s strong convexity \u2014 take it.**\n\n\ud83c\udfa8 **A note on the colors.** The color gradient guides your eye toward cheaper tiles \u2014 but it\u2019s a helper, not the truth. It often looks **scattered early in the session** (and during quiet or off-market hours), then **organizes and lines up as the day goes on**. So don\u2019t lean on the colors when they\u2019re messy \u2014 and don\u2019t *need* them when they\u2019re clean. Either way, **the debit prices on the tiles always tell the real story.** Read the numbers, find the convex discount, and you\u2019re set.\n\n\ud83d\udcda The deeper principles behind this \u2014 how to set your target debit range, the risk-to-reward ratios we aim for, and how convexity ties to the broader strategy \u2014 are covered in the **0DTE Foundations** course. Here, the goal is to *see* convexity on the Heatmap and act on it.\n\n\u27a1\ufe0f Once you\u2019ve found your convex tile, the next step is to **click it** and examine the strategy on the Risk Graph. That\u2019s the next lesson."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-3",
+            "title": "Analyze the Strategy",
+            "slug": "analyze-the-strategy",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "\ud83d\udcca You found your convex tile on the Heatmap. Click it. The **Position Builder** opens \u2014 already filled in with the exact trade you picked. No typing, no rebuilding. The app did the setup for you, and it opens right away without waiting on a chain fetch.\n\n![FatTail Position Builder prefilled from a heatmap tile](https://fattail.ai/wp-content/uploads/2026/06/Screen-Shot-2026-06-28-at-11.57.24-AM-1024x573.png)\n\n### Read what it pre-filled\n\nEverything reflects the tile you clicked. For our example \u2014 the 2.22 tile from the 30-wide column \u2014 the Position Builder shows:\n\n- **Symbol & Strategy** \u2014 SPX, Butterfly.\n- The three legs, built out automatically: **+1 7410C / \u22122 7440C / +1 7470C**. A 30-wide (7410 \u2192 7440 \u2192 7470), exactly what you were hunting.\n- **Debit** \u2014 2.22, matching the tile. The preview confirms it: SPX Long Call Butterfly, $2.22 debit.\n\nTake a second to confirm it\u2019s the trade you meant \u2014 right width, right strikes, right direction, right debit. (The Builder handles every structure, not just butterflies \u2014 verticals, condors, broken-wing butterflies, straddles, strangles, iron flies/condors, calendars, and diagonals \u2014 whether you open it from a tile or build one from scratch.)\n\n### Send it to the Risk Graph\n\nClick **Analyze**. The butterfly you chose is displayed on the Risk Graph \u2014 so you can see the trade, not just its price.\n\n![FatTail Risk Graph 2D view of a call butterfly with breakevens and readouts](https://fattail.ai/wp-content/uploads/2026/06/Screen-Shot-2026-06-28-at-12.00.59-PM-1024x574.png)\n\nNow you\u2019re looking at the shape of the trade. Here\u2019s how to read it:\n\n- **The P&L tent** \u2014 the classic butterfly shape, peaking at your short strikes (7440). That peak is your max-profit zone; the trade falls off on both sides.\n- **Breakevens** \u2014 marked right on the chart (around 7412 and 7468). Between them you\u2019re in profit; outside them, in loss.\n- **Current spot** \u2014 the vertical line showing where price sits right now relative to your structure.\n- **Two curves** \u2014 the *At Expiry* line (the sharp tent \u2014 what the trade is worth at expiration) and the *Real-Time* line (the rounded curve \u2014 what it\u2019s worth right now). They converge as expiration approaches.\n\n\ud83d\udcb0 **The readouts \u2014 this is where convexity becomes real.**\n\nAlong the bottom: **Max Profit +$3,077**, **Max Loss \u2212$222**, **R2R 12.5**. That risk-to-reward is the whole point \u2014 about $222 at risk for up to $3,077 of upside. That\u2019s what the convex tile bought you: the Heatmap told you it was cheap for its width; the Risk Graph shows you the asymmetric payoff that discount unlocks. (Delta, Gamma, and Theta round out the picture as you go deeper.)\n\n### Three views, one pricing engine\n\nThe Risk Graph isn\u2019t a single chart \u2014 it\u2019s three views of the same position, all driven by one shared real-time pricing engine, so every view agrees down to the debit:\n\n- **Risk** \u2014 the 2D P&L chart you\u2019re looking at now.\n- **Time** \u2014 a price-and-time chart with your strikes and a breakeven envelope, so you can see how the trade behaves as the days tick down.\n- **Surface** \u2014 a full 3D P&L surface across price *and* time, including calendars and diagonals.\n\nA few things sharpen the read on every view:\n\n- **Vol surface mode \u2014 Mkt / Theo / Both.** View the curve priced off live market volatility (Mkt), off a clean package-implied volatility (Theo), or both overlaid.\n- **1\u03c3 autofit.** The chart auto-frames so the 1-standard-deviation expected move fills about a third of the view \u2014 your trade sits in a sensible, comparable window every time.\n- **PROB band.** A permanent expected-move backdrop with a multi-\u03c3 ladder (1\u03c3, 1.5\u03c3, 2\u03c3), so you can weigh your breakevens against the probable range.\n\n![FatTail Risk Graph with PROB expected-move band and Mkt/Theo vol mode](https://fattail.ai/wp-content/uploads/2026/06/theo-1024x611.jpg)\n\nThe PROB band and Mkt/Theo vol modes put your breakevens in probabilistic context.\n\n![FatTail Risk Graph 3D surface view and time view of a call butterfly](https://fattail.ai/wp-content/uploads/2026/06/3d-1024x609.jpg)\n\nThe same position in the Time and 3D Surface views \u2014 one pricing engine, three angles.\n\n\ud83d\udca1 **Analyze \u2260 Submit.** Clicking Analyze only shows the trade on the Risk Graph for you to study \u2014 nothing is placed and no order goes anywhere. It\u2019s a safe sandbox to examine the position. (Placing a trade is a separate step, covered later.)\n\n\u27a1\ufe0f Like what you see and trade ThinkorSwim? The next lesson shows you how to copy this exact position straight to your ToS platform."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-4",
+            "title": "Copy to Thinkorswim",
+            "slug": "copy-to-thinkorswim",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "\ud83d\uddbc\ufe0f You\u2019ve found a convex trade and examined it on the Risk Graph. If you trade on **ThinkorSwim**, the app hands you the position as a ready-to-paste order \u2014 no re-entering legs, no transcription errors. Copy, paste, done.\n\n\ud83d\udca1 **Don\u2019t trade ThinkorSwim?** No problem \u2014 this lesson is for ToS users. You can still build the position by hand on your own platform using the legs shown in the Position Builder. Either way, the trade you found is yours to take.\n\n### 1\ufe0f\u20e3 Copy the script from the app\n\nBack in the **Position Builder**, find the **TOS SCRIPT** box. It holds a ready-made ThinkorSwim order built from your exact trade. Just **click the box to copy it** to your clipboard \u2014 you\u2019ll see the \u201cclick to copy\u201d prompt right on it.\n\n![FatTail Position Builder showing the TOS SCRIPT copy box](https://fattail.ai/wp-content/uploads/2026/06/Screen-Shot-2026-06-28-at-12.15.54-PM-1024x774.png)\n\nFor our example, the script reads:\n\nBUY +1 BUTTERFLY SPX 100 (Weeklys) 29 JUN 26 7410/7440/7470 CALL @2.22 LMT\n\nThat\u2019s your whole butterfly \u2014 all three legs, the expiration, and a limit price at your debit \u2014 in one line ThinkorSwim understands.\n\n### 2\ufe0f\u20e3 Paste it into ThinkorSwim\n\nSwitch to ThinkorSwim and paste the script into the **Order Entry** panel. ToS reads the line and builds the position for you \u2014 same strikes, same structure, same limit price.\n\n### ThinkorSwim Order Entry panel with the pasted FatTail script\n\n### 3\ufe0f\u20e3 Confirm it on the ToS risk profile\n\nPasting the script creates the position definition in ThinkorSwim \u2014 you\u2019ll see it as a **green position line**. To *see* it as a risk graph, do one more step: **right-click the green position definition you just pasted** and select **\u201cAnalyze Position.\u201d** The butterfly appears in the **Risk Profile** panel \u2014 the same tent you saw in the app, now on your trading platform and ready to manage.\n\n![ThinkorSwim Risk Profile showing the loaded butterfly](https://fattail.ai/wp-content/uploads/2026/06/Screen-Shot-2026-06-28-at-12.27.14-PM-1024x604.png)\n\n\ud83c\udf89 **That wraps the Find & Examine a Trade section.** You can now find a convex trade, see exactly what it gets you, and carry it to your platform. Next up: **Read the Market** \u2014 the Volume Profile, GEX, and the dock widgets that sharpen your read."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-4",
+        "title": "Read the Market",
+        "description_md": "",
+        "order": 4,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-4-1",
+            "title": "Volume profile & GEX",
+            "slug": "volume-profile-gex",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "A structure is only half the picture \u2014 the other half is *where price is likely to go and why*. FatTail layers market-context overlays right onto the Risk Graph in the workspace, so you can read dealer positioning and traded volume against your own breakevens and profit tent. You toggle each overlay on or off from the capsules on the Risk view.\n\n### Volume Profile (VP)\n\nVolume Profile shows *how much* trading happened at each price \u2014 the horizontal histogram along the chart. Thick nodes are prices the market has agreed on and tends to gravitate back toward; thin areas are prices it moves through quickly. Reading VP against your structure tells you whether your breakevens sit near heavy, sticky volume or in thin air. You can adjust its mode, row count, height, cap, color, and opacity in the settings panel.\n\n![FatTail Risk Graph with a Volume Profile overlay](https://fattail.ai/wp-content/uploads/2026/06/vp-1024x568.png)\n\nVolume Profile overlaid on the Risk Graph \u2014 read your breakevens against real volume.\n\n### GEX \u2014 dealer gamma by strike\n\nGEX (Gamma Exposure) shows where options dealers are positioned by strike \u2014 and dealer hedging is one of the biggest short-term forces on price. High positive gamma zones tend to pin and dampen movement; negative gamma zones tend to accelerate it. You can view GEX in three modes \u2014 **Net**, **Call/Put**, and **Absolute** \u2014 and filter it by DTE.\n\n![FatTail Risk Graph with a GEX dealer-gamma overlay and mode selector](https://fattail.ai/wp-content/uploads/2026/06/gex-1024x566.jpg)\n\nGEX shows dealer gamma by strike \u2014 Net, Call/Put, or Absolute.\n\n### Market structure & the zero-gamma band\n\nTwo more overlays round out the read: a **market structure** overlay for key structural context, and the **zero-gamma (ZGR)** band \u2014 the region where dealer gamma flips sign, often a pivot between pinning and trending behavior. Layer these under your position to see whether your trade sits in calm or volatile territory.\n\n![FatTail Risk Graph with a zero-gamma band and market structure overlay](https://fattail.ai/wp-content/uploads/2026/06/zgr-1024x565.jpg)\n\nThe zero-gamma band marks where dealer hedging flips from pinning to trending.\n\nUsed together, these overlays turn the Risk Graph from a picture of your trade into a picture of your trade *in its market*. Next: the Dock Widgets."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-4-2",
+            "title": "The Dock Widgets",
+            "slug": "the-dock-widgets",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "The workspace also hosts a set of optional **dock widgets** \u2014 compact, always-available market reads you can expand while you work. They give you live context at a glance without leaving the Risk Graph, so your directional and volatility read stays in front of you as you build and manage trades.\n\n### What the dock gives you\n\nThe dock is a suite of expandable market widgets. The core reads include:\n\n- **Market Mode** \u2014 the current market regime at a glance, so your structure choice stays in sync with conditions.\n- **VIX Playbook** \u2014 where VIX sits mapped against the playbook (the same regime framework \u2014 ZombieLand, Goldilocks, Chaos \u2014 you use in your morning analysis to set fly width and trade type).\n- Additional live market reads in the dock suite, expandable as you need them.\n\n\ud83d\udcf7 **Screenshot needed:** The dock widgets expanded on the workspace, showing Market Mode and the VIX Playbook.  \n*Suggested caption:* \u201cThe dock widgets: live Market Mode, VIX Playbook, and more, always a click away.\u201d  \n*Alt text:* \u201cFatTail dock widgets showing Market Mode and VIX Playbook\u201d\n\n### Why it matters\n\nThe dock keeps your top-down read and your bottom-up structure in one place. Instead of switching to another platform to check the regime, you glance at the dock, confirm conditions still favor your trade, and act. It\u2019s the same read you did in your morning analysis \u2014 now living beside the trade itself.\n\n\ud83d\udcf7 **Screenshot needed:** The dock in its collapsed state and the control used to expand a widget.  \n*Suggested caption:* \u201cExpand a dock widget when you need it; collapse it to keep the workspace clean.\u201d  \n*Alt text:* \u201cFatTail collapsed dock widgets with an expand control\u201d\n\nThat wraps the Read the Market section. With the overlays and the dock, you can read your trade against the market in one view. Next: adding alerts to a strategy."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      },
+      {
+        "id": "mod-5",
+        "title": "TEST, SIMULATE & RECORD",
+        "description_md": "",
+        "order": 5,
+        "kind": "standard",
+        "lessons": [
+          {
+            "id": "les-5-1",
+            "title": "Add Alerts to a Strategy",
+            "slug": "add-alerts-to-a-strategy",
+            "order": 1,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "You can\u2019t watch every position every second \u2014 so let the app watch for you. FatTail\u2019s alerts live right on the Risk Graph and are wired to the same authority that prices your positions, so an alert fires on the *real* state of your trade, not a stale guess. Alerts are part of the main workspace, attached to the strategy you\u2019re analyzing.\n\n### What you can alert on today\n\nMost of the alert system is live. You build alerts in the **Alert Designer**, and they\u2019re saved to a shared alert store and evaluated continuously against your position\u2019s live P&L and greeks.\n\n- **Price alerts** \u2014 thresholds and zones drawn right on the chart. Get notified when the underlier reaches a level that matters to your structure.\n- **Greek alerts** \u2014 trigger on **Delta**, **Gamma**, or **Theta** using real greek pickers, so you can react when your risk profile shifts, not just when price moves.\n- **Position alerts** \u2014 fire off your position\u2019s live P&L and state.\n\n\ud83d\udcf7 **Screenshot needed:** The Alert Designer with the type selector and the Delta / Gamma / Theta greek pickers.  \n*Suggested caption:* \u201cBuild price, greek, and position alerts in the Alert Designer.\u201d  \n*Alt text:* \u201cFatTail Alert Designer showing greek pickers for Delta, Gamma, and Theta\u201d\n\n### Add a price-line alert on the chart\n\nThe quickest alert is a price line: set a level on the Risk Graph and the app watches for the underlier to reach it. Because the alert is attached to the position, it stays meaningful relative to your breakevens and profit tent.\n\n\ud83d\udcf7 **Screenshot needed:** A price-line / zone alert drawn on the Risk Graph relative to a position\u2019s breakevens.  \n*Suggested caption:* \u201cA price-line alert set on the Risk Graph, relative to your structure.\u201d  \n*Alt text:* \u201cFatTail Risk Graph with a price-line alert relative to a butterfly\u2019s breakevens\u201d\n\n**\u23ed Coming soon**\n\nTwo alert capabilities are in active development and expected shortly: **dynamic trailing alerts** that move with your trade to lock in gains automatically as the position works in your favor, and **algo alerts** \u2014 the extended, algorithmic alert composition tools. This lesson will grow to cover them as they ship.\n\nWith alerts doing the watching, you\u2019re free to step away from the screen and still stay on top of the trades that matter. Next: sending a trade to the simulator."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-2",
+            "title": "Send it to the Simulator",
+            "slug": "send-it-to-the-simulator",
+            "order": 2,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "You\u2019ve found a convex trade on the Heatmap and studied it on the Risk Graph. Now you can actually place it \u2014 without a live broker and without a dollar of real capital at risk. FatTail ships with the **MSC Brokerage**, a built-in simulated broker, so you can run the whole submit \u2192 fill \u2192 manage \u2192 close loop as practice. This all happens right on the main workspace, and the results flow into the **Process sidebar** (Trade Log, Journal, Reports) on the right.\n\n**Analyze first, submit second.** Everything up to now has been analysis \u2014 nothing was placed. Submitting is the deliberate next step that turns your analyzed position into an order.\n\n\ud83d\udcf7 **Screenshot needed:** The workspace left rail (position list) showing an analyzed position with its status badge and the **Submit** action.  \n*Suggested caption:* \u201cFind your analyzed position in the list and click Submit.\u201d  \n*Alt text:* \u201cFatTail position list with a Submit button on an analyzed trade\u201d\n\n### Open the Submit Confirmation dialog\n\nClick **Submit** and the Submit Confirmation dialog opens. This is your last look before the order goes to the broker. It shows you everything about the order and lets you fine-tune the price.\n\n- **Account** \u2014 pick the account to trade. Only tradeable MSC accounts appear; read-only and Coach accounts can\u2019t submit, so they\u2019re excluded here.\n- **Leg table** \u2014 the full multi-leg breakdown of your structure, so you can confirm every leg before sending.\n- **Pricing** \u2014 a natural / mid indicator drawn from the option chain, with a position-in-spread bar so you can see where your limit sits between the natural price and the mid.\n- **Editable limit** \u2014 override the limit price before you confirm.\n- **Simulation** \u2014 the order runs against the MSC simulated broker by default, so this is practice, not live money.\n\n\ud83d\udcf7 **Screenshot needed:** The Submit Confirmation dialog with the account selector, leg table, natural/mid position-in-spread bar, and the editable limit price.  \n*Suggested caption:* \u201cThe Submit Confirmation dialog: choose the account, check the legs, set your limit.\u201d  \n*Alt text:* \u201cFatTail Submit Confirmation dialog showing account selector, legs, and limit price\u201d\n\n### Confirm and watch it fill\n\nWhen you confirm, the order goes to the MSC Brokerage and the app *waits for the broker* to report back \u2014 it never invents a status on its own. You\u2019ll see the order move through its lifecycle:\n\n- **Accepted** \u2192 the position shows as **PENDING**.\n- **Opened** (filled) \u2192 the position shows as **OPEN**, stamped with the fill time.\n- If the broker rejects it, you\u2019ll see **REJECTED** and can retry.\n\nOn a fill, the trade is written to your **Trade Log** automatically \u2014 this is your book of record \u2014 with a **SIM** badge so you always know it was a simulated fill. The same trade also shows up under that day in your Journal.\n\n\ud83d\udcf7 **Screenshot needed:** The Trade Log in the Process sidebar showing the newly opened position as **OPEN** with a **SIM** badge.  \n*Suggested caption:* \u201cOnce filled, the trade lands in your Trade Log as OPEN with a SIM badge.\u201d  \n*Alt text:* \u201cFatTail Trade Log showing an OPEN simulated position with a SIM badge\u201d\n\nThat\u2019s a placed trade. Next: managing and closing it \u2014 and watching your realized P&L and reports update."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-3",
+            "title": "Manage & Close a Trade",
+            "slug": "manage-close-a-trade",
+            "order": 3,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "Once a trade is filled, the job shifts from analysis to management. FatTail keeps every position in a single list on the workspace, each tagged with its **status**, and what you\u2019re allowed to do with a position depends on that status. Closing a position writes the result \u2014 including realized P&L \u2014 straight to your Trade Log and Reports in the **Process sidebar**.\n\n### Status is everything\n\nEach position carries a status badge that gates the actions available to it. Here\u2019s the cheat sheet:\n\n| Status | What it means | What you can do |\n| --- | --- | --- |\n| **ANALYSIS** | On the graph for study; not placed. | Edit, reposition on the chart, submit. |\n| **PENDING** | Order sent, not yet filled. | Cancel; reposition is a cancel-and-replace. |\n| **OPEN** | Filled and working. | Close. (No more editing or dragging.) |\n| **CLOSED / CANCELLED / REJECTED** | Done. | Nothing further \u2014 it\u2019s history now. |\n\n*Note:* read-only and Coach accounts are for viewing only \u2014 you can\u2019t submit, cancel, or close from them.\n\n\ud83d\udcf7 **Screenshot needed:** The workspace position list showing several positions with different status badges (e.g., ANALYSIS, PENDING, OPEN).  \n*Suggested caption:* \u201cEvery position is tagged with a status that controls what you can do next.\u201d  \n*Alt text:* \u201cFatTail position list showing ANALYSIS, PENDING, and OPEN status badges\u201d\n\n### Cancel a pending order\n\nIf an order is still **PENDING** (sent but not filled) and you\u2019ve changed your mind, cancel it. The order is pulled from the broker and the position is marked **CANCELLED** \u2014 nothing was ever opened.\n\n### Close an open position\n\nWhen a position is **OPEN**, closing it sends a closing order to the MSC Brokerage. On the close fill, the position is stamped **CLOSED** with its **realized P&L**, and both your Trade Log and Reports update to reflect it.\n\n\ud83d\udcf7 **Screenshot needed:** Closing an OPEN position \u2014 the close action/confirmation for a filled trade.  \n*Suggested caption:* \u201cClose an OPEN position and the broker fills the closing order.\u201d  \n*Alt text:* \u201cFatTail closing an open position from the workspace\u201d\n\n\ud83d\udcf7 **Screenshot needed:** The Trade Log showing the position now **CLOSED** with its realized P&L.  \n*Suggested caption:* \u201cThe Trade Log stamps the trade CLOSED with realized P&L.\u201d  \n*Alt text:* \u201cFatTail Trade Log showing a CLOSED trade with realized profit and loss\u201d\n\nThat completes one full turn of the loop: found, analyzed, submitted, opened, and closed \u2014 all recorded automatically. Next: reading your stats and equity curve in the Reports."
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-5-4",
+            "title": "Read Your Stats & Equity Curve",
+            "slug": "read-your-stats-equity-curve",
+            "order": 4,
+            "kind": "text",
+            "free_preview": false,
+            "estimated_duration_minutes": null,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "notes",
+                "body_md": "Every trade you close feeds your performance record. Because the Trade Log is the app\u2019s book of record, your **Reports** are built straight from your real (simulated) fills \u2014 no spreadsheets, no manual imports. You\u2019ll find Reports and your Journal in the **Process sidebar** on the right, and they belong to your account, not the broker.\n\n### The equity curve\n\nThe headline view is your **equity curve** \u2014 account value over time as trades close. It\u2019s the single fastest read on whether your process is working: a curve that grinds up and to the right is the goal; choppy or declining stretches are where you go looking for what changed.\n\n\ud83d\udcf7 **Screenshot needed:** The Reports view showing the account **equity curve** over time.  \n*Suggested caption:* \u201cYour equity curve, built automatically from every closed trade.\u201d  \n*Alt text:* \u201cFatTail Reports equity curve showing account value over time\u201d\n\n### The metrics that matter\n\nAlongside the curve, Reports summarize the numbers that describe your edge \u2014 drawn from your closed-book history:\n\n- **Realized P&L** \u2014 total profit and loss from closed trades.\n- **Win rate** \u2014 how often your trades finish in profit.\n- **Profit factor & expectancy** \u2014 the size of your wins relative to your losses, and what you can expect per trade.\n- **Drawdown** \u2014 the depth of your worst stretches.\n- **Strategy breakdown** \u2014 performance split by structure, so you can see which setups actually earn.\n\n\ud83d\udcf7 **Screenshot needed:** The Reports metrics panel and **strategy breakdown** (win rate, profit factor, expectancy, drawdown, per-strategy stats).  \n*Suggested caption:* \u201cWin rate, profit factor, expectancy, drawdown, and a breakdown by strategy.\u201d  \n*Alt text:* \u201cFatTail Reports performance metrics and strategy breakdown\u201d\n\n### Journaling the day\n\nYour **Journal** lists the trades you took on any given date, pulled in automatically from the Trade Log. Because the fills are already there, journaling becomes reflection rather than data entry: review the day\u2019s trades, note what you saw and why you acted, and let the record build session by session.\n\n\ud83d\udcf7 **Screenshot needed:** The Journal showing a selected day\u2019s trades pulled from the Trade Log.  \n*Suggested caption:* \u201cThe Journal lists each day\u2019s trades automatically \u2014 reflect, don\u2019t re-type.\u201d  \n*Alt text:* \u201cFatTail Journal showing a day\u2019s trades pulled from the Trade Log\u201d\n\nThat closes the loop: discover, analyze, submit, manage, close, and review \u2014 all in one app, with your record keeping itself."
+              }
+            ],
+            "resource_ids": []
+          }
+        ]
+      }
+    ],
+    "resource_ids": [],
+    "resource_links": [],
+    "related_live_series_ids": [],
+    "seo": {
+      "title": "FatTail App",
+      "canonical_path": "/courses/fattail-app"
+    },
+    "production": null
+  },
+  "bundle": {
+    "resources": [],
+    "instructors": [
+      {
+        "id": "inst-1",
+        "instructor_id": 1,
+        "name": "Ernie Varitimos",
+        "bio_md": "Founder of FatTail.ai and the 0-DTE methodology. Three decades trading asymmetric structures; teacher of the stop-the-bleeding doctrine.",
+        "avatar_url": null,
+        "links_json": null
+      }
+    ]
+  }
+}

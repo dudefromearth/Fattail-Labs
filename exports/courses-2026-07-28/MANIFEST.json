@@ -1,0 +1,127 @@
+{
+  "format": "fattail.labs.course_export_bundle",
+  "version": "1.0",
+  "exported_at": "2026-07-28T19:37:29Z",
+  "categories": [
+    {
+      "slug": "0-dte",
+      "name": "0-DTE"
+    },
+    {
+      "slug": "butterflies",
+      "name": "Butterflies"
+    },
+    {
+      "slug": "convexity",
+      "name": "Convexity"
+    },
+    {
+      "slug": "fat-tail-doctrine",
+      "name": "Fat-Tail Doctrine"
+    },
+    {
+      "slug": "journaling-routine",
+      "name": "Journaling & Routine"
+    },
+    {
+      "slug": "marketswarm-platform",
+      "name": "MarketSwarm Platform"
+    },
+    {
+      "slug": "options-foundations",
+      "name": "Options Foundations"
+    },
+    {
+      "slug": "psychology",
+      "name": "Psychology"
+    },
+    {
+      "slug": "risk-sizing",
+      "name": "Risk & Sizing"
+    }
+  ],
+  "packages": [
+    {
+      "file": "start-here.course.json",
+      "slug": "start-here",
+      "title": "Start Here",
+      "status": "published",
+      "sort_order": 10,
+      "catalog_section": "",
+      "modules": 1,
+      "lessons": 6,
+      "bytes": 22942
+    },
+    {
+      "file": "fattail-foundations.course.json",
+      "slug": "fattail-foundations",
+      "title": "FatTail Foundations",
+      "status": "published",
+      "sort_order": 20,
+      "catalog_section": "",
+      "modules": 12,
+      "lessons": 52,
+      "bytes": 140643
+    },
+    {
+      "file": "fattail-app.course.json",
+      "slug": "fattail-app",
+      "title": "FatTail App",
+      "status": "published",
+      "sort_order": 30,
+      "catalog_section": "",
+      "modules": 5,
+      "lessons": 12,
+      "bytes": 48286
+    },
+    {
+      "file": "campaigns.course.json",
+      "slug": "campaigns",
+      "title": "Campaigns",
+      "status": "published",
+      "sort_order": 40,
+      "catalog_section": "",
+      "modules": 10,
+      "lessons": 36,
+      "bytes": 124284
+    },
+    {
+      "file": "0-dte-foundations.course.json",
+      "slug": "0-dte-foundations",
+      "title": "0-DTE Foundations",
+      "status": "published",
+      "sort_order": 50,
+      "catalog_section": "",
+      "modules": 7,
+      "lessons": 33,
+      "bytes": 95280
+    }
+  ],
+  "catalog_order": [
+    {
+      "slug": "start-here",
+      "sort_order": 10,
+      "catalog_section": ""
+    },
+    {
+      "slug": "fattail-foundations",
+      "sort_order": 20,
+      "catalog_section": ""
+    },
+    {
+      "slug": "fattail-app",
+      "sort_order": 30,
+      "catalog_section": ""
+    },
+    {
+      "slug": "campaigns",
+      "sort_order": 40,
+      "catalog_section": ""
+    },
+    {
+      "slug": "0-dte-foundations",
+      "sort_order": 50,
+      "catalog_section": ""
+    }
+  ]
+}
