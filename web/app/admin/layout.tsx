@@ -15,6 +15,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/agents", label: "Agent keys" },
   { href: "/admin/appearance", label: "Appearance" },
   { href: "/admin/gates", label: "Gates" },
+  { href: "/admin/users", label: "Users" },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

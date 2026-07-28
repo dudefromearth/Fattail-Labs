@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-07-28 — DL-065 Admin Users section + activity analytics
+
+**Decision:** New `/admin/users` section shows every identity (keyed by email)
+with login history, membership, and engagement. Adds migration `039`
+(`login_events`, `page_views`), `server/activity.py` (best-effort write helpers +
+gap-based `estimate_sessions`), `routes/pageview.py` (member page-view ingest),
+`routes/users_admin.py` (roster list/detail/CSV, admin-only), a login hook in
+`_session_response`, and a client `PageViewTracker` mounted in `AppChrome`.
+
+**Rationale / scope:** Auth was stateless with no login record and no telemetry.
+Login logging is captured at the single session choke-point; page views only for
+authenticated members on non-`/admin` routes (anonymous + admin navigation are
+never recorded). Analytics writes are best-effort and **never** block login or
+navigation. Membership/"how they logged in" reuse existing `memberships` /
+`identity_links` (SSO already syncs fattail.ai / 0-dte). "Time on platform" is an
+**estimate** from page-view sessionisation (30-min gap), single-view sessions = 0
+(no heartbeats, no guessing). Engagement metadata only — member private content
+stays under the Member-Data-Privacy spec. Spec:
+`FatTail-Labs-User-Activity-Analytics-Spec-v1.0`. Tests: `test_user_activity.py`.
+Open: consent/disclosure line + `page_views` retention (flagged to Coach).
+
+---
+
 ## 2026-07-28 — DL-064 ActiveCampaign lead sync (free waitlist leads only)
 
 **Decision:** Free waitlist signups (`feature_gate_emails`) are pushed to the

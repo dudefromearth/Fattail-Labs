@@ -7,6 +7,7 @@ import hmac
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
+import activity
 import auth
 import db
 import identity
@@ -16,7 +17,7 @@ from config import get_config
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-def _session_response(resp, identity_id: int, provider: str, role: str):
+def _session_response(resp, identity_id: int, provider: str, role: str, request=None):
     cfg = get_config()
     token = auth.issue_session(identity_id=identity_id, issuer=provider, role=role)
     resp.set_cookie(
@@ -27,6 +28,8 @@ def _session_response(resp, identity_id: int, provider: str, role: str):
         samesite="lax",
         **({"domain": cfg.cookie_domain} if cfg.cookie_domain else {}),
     )
+    # Record the login for the admin Users analytics (best-effort, never raises).
+    activity.record_login(identity_id, provider, role, request=request)
     return resp
 
 
@@ -54,7 +57,7 @@ async def native_login(request: Request):
 
     return _session_response(
         JSONResponse({"identity_id": row["identity_id"], "role": role}),
-        row["identity_id"], "native", role,
+        row["identity_id"], "native", role, request=request,
     )
 
 
@@ -127,13 +130,14 @@ async def register(request: Request):
 
     return _session_response(
         JSONResponse({"identity_id": identity_id, "role": role}, status_code=201),
-        identity_id, "native", role,
+        identity_id, "native", role, request=request,
     )
 
 
 @router.get("/sso/{provider_name:path}")
 def sso_callback(
     provider_name: str,
+    request: Request,
     token: str | None = None,
     sso: str | None = None,
 ):
@@ -174,7 +178,7 @@ def sso_callback(
 
     return _session_response(
         RedirectResponse(url="/courses", status_code=302),
-        identity_id, pid.provider, role,
+        identity_id, pid.provider, role, request=request,
     )
 
 

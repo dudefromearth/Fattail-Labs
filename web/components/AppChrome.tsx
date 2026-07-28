@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import { ConfirmProvider } from "@/components/ui";
 import AppearanceRoot from "@/components/appearance/AppearanceRoot";
+import PageViewTracker from "@/components/PageViewTracker";
 
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
@@ -19,6 +20,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   return (
     <ConfirmProvider>
       <AppearanceRoot />
+      {!isAdminApp && <PageViewTracker />}
       {isAdminApp || isLaunchHome ? (
         children
       ) : (
