@@ -453,3 +453,19 @@ importer as Import package.
 | **Members** | Hub lists **published** only; course tab always shows **pinned** version |
 
 Updates create a **new version**. Slug/hub shows one **published** cut. Course pins do not auto-jump.
+
+### Member Wiki (publish flow + reindex)
+
+**Spec:** *Member Wiki v0.1 + Wiki Interface v0.1* · plan `agents/p-wiki/`
+
+Content lives in the **lab-wiki repo** (`~/lab-wiki`, GitHub `dudefromearth/lab-wiki`)
+— not in the database. The site serves a derived index of it.
+
+| Action | How |
+|--------|-----|
+| **Publish a page** | Edit the page's frontmatter in lab-wiki: `status: draft` → `status: published`, commit + push. Production pulls + reindexes on its 5-minute tick. |
+| **Force refresh now** | `POST /api/admin/wiki/reindex` (admin session or agent key with `wiki:reindex`) — returns page/link counts |
+| **See drafts** | Admins see draft pages and draft search results on the live site; members get 404s until published |
+| **New pages** | Author in Obsidian (or let the lab-wiki bench compile); `[[wikilinks]]` resolve automatically; unresolved links render muted until the target page exists |
+
+Members only ever see `status: published` pages. No wiki content is edited in `/admin`.

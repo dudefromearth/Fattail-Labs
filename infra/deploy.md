@@ -143,6 +143,42 @@ launchd: WorkingDirectory `server/`, Program `…/server/.venv/bin/python`,
 args `quebec_poller.py`, EnvironmentVariables from `.env`, KeepAlive true,
 logs under `~/Library/Logs/fattail-labs/quebec-poller.log`.
 
+### Member Wiki content checkout + sync tick
+
+The wiki serves content from a **git checkout of `dudefromearth/lab-wiki`**
+(Member-Wiki Spec §3.0). The API refuses to boot without it (fail-loud).
+
+```bash
+# one-time per host (dev = already at /Users/ernie/lab-wiki)
+git clone git@github.com:dudefromearth/lab-wiki.git ~/lab-wiki
+
+# in .env on every host
+LABS_WIKI_ROOT=/Users/ernie/lab-wiki
+```
+
+After deploy or content change, rebuild the derived index:
+
+```bash
+curl -s -X POST localhost:4000/api/admin/wiki/reindex -H "Cookie: ft_session=<admin>"
+# expect counts: {"pages":N,"published":P,...} — N must match the checkout
+```
+
+**Sync tick (MiniTwo, production):** pull + reindex every 5 minutes so pushes
+from StudioTwo (agents/Coach) go live without a deploy. launchd job
+`com.fattail.labwiki.sync` — plist template: `infra/labwiki-sync.plist`;
+script logic:
+
+```bash
+git -C "$LABS_WIKI_ROOT" pull --ff-only && \
+  curl -fsS -X POST localhost:4000/api/admin/wiki/reindex \
+    -H "Authorization: Bearer $LABS_WIKI_SYNC_KEY" || echo "labwiki-sync FAILED $(date)" >&2
+```
+
+(v1: reindex needs an admin session or an agent key with admin scope — mint a
+dedicated agent key at `/admin/agents` for the tick; never reuse a human session.)
+Logs: `~/Library/Logs/fattail-labs/labwiki-sync.log`. A failed pull or reindex
+must log loudly; the previous index keeps serving (stale beats broken).
+
 ## Hard rules (inherited doctrine)
 
 - Migrations run BEFORE service restart, every deploy.

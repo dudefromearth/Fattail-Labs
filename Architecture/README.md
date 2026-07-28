@@ -17,6 +17,8 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [07-audit-snapshot-2026-07-23.md](./07-audit-snapshot-2026-07-23.md) | Retroactive code/docs audit findings |
 | [08-canonical-course-model.md](./08-canonical-course-model.md) | Portable Course graph: export/import/validate architecture |
 | [09-canonical-course-design.md](./09-canonical-course-design.md) | Admin UX design for packages |
+| [10-resources-design.md](./10-resources-design.md) | Resources: first-class versioned library |
+| [11-wiki-design.md](./11-wiki-design.md) | Member Wiki: lab-wiki checkout → derived index → /app/wiki |
 
 **Hardening phases (2026-07-23) — complete A–G:**
 

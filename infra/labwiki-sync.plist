@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.fattail.labwiki.sync</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>git -C "$LABS_WIKI_ROOT" pull --ff-only &amp;&amp; curl -fsS -X POST localhost:4000/api/admin/wiki/reindex -H "Authorization: Bearer $LABS_WIKI_SYNC_KEY" || echo "labwiki-sync FAILED $(date)" &gt;&amp;2</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>LABS_WIKI_ROOT</key><string>/Users/ernie/lab-wiki</string>
+    <key>LABS_WIKI_SYNC_KEY</key><string>REPLACE_WITH_ftl_ag_KEY</string>
+  </dict>
+  <key>StartInterval</key><integer>300</integer>
+  <key>StandardOutPath</key><string>/Users/ernie/Library/Logs/fattail-labs/labwiki-sync.log</string>
+  <key>StandardErrorPath</key><string>/Users/ernie/Library/Logs/fattail-labs/labwiki-sync.log</string>
+</dict>
+</plist>
