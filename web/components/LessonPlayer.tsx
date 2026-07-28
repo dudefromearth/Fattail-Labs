@@ -203,12 +203,16 @@ export default function LessonPlayer({
 
   return (
     <div>
-      <div className="overflow-hidden rounded-2xl bg-black">
+      {/*
+        Player shell: pure black letterbox only — no brand-tint rings, scrims,
+        or opacity layers over the iframe (those read as a “tint overlay”).
+      */}
+      <div className="lesson-player isolate overflow-hidden rounded-2xl bg-black">
         <iframe
           ref={iframeRef}
           src={embedUrl}
           title={title}
-          className="aspect-video w-full"
+          className="lesson-player__frame aspect-video w-full border-0 outline-none"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
           // Bunny embed needs fullscreen + autoplay capabilities

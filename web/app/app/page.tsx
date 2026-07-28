@@ -12,10 +12,10 @@ import {
 export const revalidate = 3600;
 
 const FALLBACK: SitePage = {
-  slug: "labs", // site_pages key (stable); public UI/URL is Apps /app
+  slug: "labs",
   title: "Apps",
   description_md:
-    "Member practice tools: Journey, Trade Log, and more — process over P&L theater.",
+    "Member practice tools: Journey, Practice Log, Strategy Lab, and more — process over P&L theater.",
   intro_video_id: null,
   intro_video_title: null,
   faq_title: "Apps FAQ",
@@ -23,7 +23,32 @@ const FALLBACK: SitePage = {
   faq_items: [],
 };
 
-/** Fallback if API/apps table unavailable — same seed as migration 033. */
+type AppRow = {
+  id: number;
+  slug: string;
+  title: string;
+  blurb: string;
+  status: string;
+  href: string;
+};
+
+/**
+ * Top-level Apps grid (2-col). Trade Log + Journal are not listed here —
+ * they live under Practice Log → /app/practice hub.
+ * Display order is fixed for a clean IA; unknown API apps append at the end.
+ */
+const TOP_LEVEL_ORDER = [
+  "journey",
+  "practice-log",
+  "strategy-lab",
+  "playbook",
+  "statistics",
+  "wiki",
+] as const;
+
+/** Child app slugs hidden from the top-level grid (shown on Practice hub). */
+const NESTED_UNDER_PRACTICE = new Set(["trade-log", "journal"]);
+
 const FALLBACK_APPS: AppRow[] = [
   {
     id: 0,
@@ -36,21 +61,21 @@ const FALLBACK_APPS: AppRow[] = [
   },
   {
     id: 0,
-    slug: "trade-log",
-    title: "Trade Log",
+    slug: "practice-log",
+    title: "Practice Log",
     blurb:
-      "Record fills and structure outcomes — process first, not P&L theater.",
+      "Trade Log and Journal in one hub — fills, adherence, prep, and review. Process first, not P&L theater.",
     status: "live",
-    href: "/app/trade-log",
+    href: "/app/practice",
   },
   {
     id: 0,
-    slug: "journal",
-    title: "Journal",
+    slug: "strategy-lab",
+    title: "Strategy Life Cycle",
     blurb:
-      "Daily notes tied to the routine: preparation, selection, and review.",
+      "Build, Prove, Paper, Run. Validate edges before capital. Most ideas die; survivors get a campaign.",
     status: "soon",
-    href: "/app/journal",
+    href: "/app/strategy-lab",
   },
   {
     id: 0,
@@ -72,23 +97,14 @@ const FALLBACK_APPS: AppRow[] = [
   },
   {
     id: 0,
-    slug: "vexy",
-    title: "Vexy",
+    slug: "wiki",
+    title: "Wiki",
     blurb:
-      "Cognitive partner for structure and doctrine — when the practice stack is wired.",
+      "The compiled map of everything we teach — courses, live sessions, and videos, cross-linked and searchable.",
     status: "soon",
-    href: "/app/vexy",
+    href: "/app/wiki",
   },
 ];
-
-type AppRow = {
-  id: number;
-  slug: string;
-  title: string;
-  blurb: string;
-  status: string;
-  href: string;
-};
 
 async function fetchApps(): Promise<AppRow[]> {
   try {
@@ -97,6 +113,67 @@ async function fetchApps(): Promise<AppRow[]> {
   } catch {
     return FALLBACK_APPS;
   }
+}
+
+/**
+ * Build the top-level catalog: drop nested trade-log/journal, inject Practice
+ * Log + Strategy Life Cycle cards, preserve a stable 2-col order.
+ */
+function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
+  const bySlug = new Map(apiApps.map((a) => [a.slug, a]));
+
+  // Prefer live status from children if either is live.
+  const trade = bySlug.get("trade-log");
+  const journal = bySlug.get("journal");
+  const practiceLive =
+    trade?.status === "live" || journal?.status === "live" ? "live" : "soon";
+
+  const practice: AppRow = {
+    id: 0,
+    slug: "practice-log",
+    title: "Practice Log",
+    blurb:
+      "Trade Log and Journal in one hub — fills, adherence, prep, and review. Process first, not P&L theater.",
+    status: practiceLive,
+    href: "/app/practice",
+  };
+
+  const strategyFromApi = bySlug.get("strategy-lab");
+  const strategy: AppRow = strategyFromApi
+    ? {
+        ...strategyFromApi,
+        title: "Strategy Life Cycle",
+        href: strategyFromApi.href || "/app/strategy-lab",
+      }
+    : (FALLBACK_APPS.find((a) => a.slug === "strategy-lab") as AppRow);
+
+  const composed = new Map<string, AppRow>();
+  for (const a of apiApps) {
+    if (NESTED_UNDER_PRACTICE.has(a.slug)) continue;
+    if (a.slug === "strategy-lab") continue; // use composed title below
+    composed.set(a.slug, a);
+  }
+  composed.set("practice-log", practice);
+  composed.set("strategy-lab", strategy);
+
+  const ordered: AppRow[] = [];
+  for (const slug of TOP_LEVEL_ORDER) {
+    const row = composed.get(slug);
+    if (row) {
+      ordered.push(row);
+      composed.delete(slug);
+    }
+  }
+  // Any other apps (future) append in API order
+  for (const a of apiApps) {
+    if (composed.has(a.slug)) {
+      ordered.push(composed.get(a.slug)!);
+      composed.delete(a.slug);
+    }
+  }
+  for (const row of composed.values()) ordered.push(row);
+
+  return ordered;
 }
 
 function collectionJsonLd(page: SitePage) {
@@ -126,13 +203,72 @@ function normalizeAppsPage(page: SitePage): SitePage {
   return page;
 }
 
+function StatusBadge({ status }: { status: string }) {
+  if (status === "soon") {
+    return (
+      <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
+        Coming soon
+      </span>
+    );
+  }
+  if (status === "live") {
+    return (
+      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+        Live
+      </span>
+    );
+  }
+  return null;
+}
+
+function AppCard({ t }: { t: AppRow }) {
+  // Wiki + Strategy Life Cycle landing: open while workspace is still "soon".
+  // Practice Log hub is live when Trade Log is.
+  const canOpen =
+    t.status === "live" ||
+    t.slug === "wiki" ||
+    t.slug === "practice-log" ||
+    t.slug === "strategy-lab";
+  const badgeStatus =
+    t.slug === "practice-log"
+      ? "live"
+      : t.slug === "strategy-lab"
+        ? "soon"
+        : t.status;
+  return (
+    <div className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-lg font-semibold text-[var(--color-label)]">
+          {t.title}
+        </h2>
+        <StatusBadge status={badgeStatus} />
+      </div>
+      <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+        {t.blurb}
+      </p>
+      {canOpen ? (
+        <Link
+          href={t.href || `/app/${t.slug}`}
+          className="mt-4 text-sm font-medium text-[var(--color-tint)] hover:underline"
+        >
+          Open →
+        </Link>
+      ) : (
+        <p className="mt-4 text-xs text-[var(--color-label-tertiary)]">
+          Ships with the practice stack — process-first, not P&L theater.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const page = normalizeAppsPage(
     await fetchSitePage("labs").catch(() => FALLBACK),
   );
   const description = metaDescriptionFromMd(
     page.description_md,
-    "Member tools for practice: Trade Log, Journal, Playbook, Statistics, and Vexy.",
+    "Member tools: Journey, Practice Log, Strategy Life Cycle, Playbook, and more.",
   );
   return {
     title: page.title,
@@ -149,12 +285,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AppsPage() {
-  const [page, apps] = await Promise.all([
+  const [page, appsRaw] = await Promise.all([
     fetchSitePage("labs")
       .then(normalizeAppsPage)
       .catch(() => FALLBACK),
     fetchApps(),
   ]);
+  const apps = buildTopLevelCatalog(appsRaw);
   const jsonLd = collectionJsonLd(page);
 
   return (
@@ -167,38 +304,7 @@ export default async function AppsPage() {
         <ul className="grid gap-4 sm:grid-cols-2">
           {apps.map((t) => (
             <li key={t.id || t.slug}>
-              <div className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-5">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-[var(--color-label)]">
-                    {t.title}
-                  </h2>
-                  {t.status === "soon" && (
-                    <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
-                      Coming soon
-                    </span>
-                  )}
-                  {t.status === "live" && (
-                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-                      Live
-                    </span>
-                  )}
-                </div>
-                <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--color-label-secondary)]">
-                  {t.blurb}
-                </p>
-                {t.status === "live" ? (
-                  <Link
-                    href={t.href || `/app/${t.slug}`}
-                    className="mt-4 text-sm font-medium text-[var(--color-tint)] hover:underline"
-                  >
-                    Open →
-                  </Link>
-                ) : (
-                  <p className="mt-4 text-xs text-[var(--color-label-tertiary)]">
-                    Ships with the practice stack — not a survey-driven pathway.
-                  </p>
-                )}
-              </div>
+              <AppCard t={t} />
             </li>
           ))}
         </ul>
@@ -212,7 +318,10 @@ export default async function AppsPage() {
             Course library
           </Link>
           . Live sessions stay on{" "}
-          <Link href="/live" className="text-[var(--color-tint)] hover:underline">
+          <Link
+            href="/live"
+            className="text-[var(--color-tint)] hover:underline"
+          >
             Live
           </Link>
           .

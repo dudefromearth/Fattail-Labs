@@ -9,6 +9,7 @@ const ALLOWED_PREFIXES = [
   "/resource",
   "/app",
   "/live",
+  "/hub",
   "/",
 ] as const;
 

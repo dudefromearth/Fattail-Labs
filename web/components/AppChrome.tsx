@@ -13,11 +13,13 @@ import AppearanceRoot from "@/components/appearance/AppearanceRoot";
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
   const isAdminApp = pathname === "/admin" || pathname.startsWith("/admin/");
+  // Countdown landing owns the full viewport — keep global nav off it.
+  const isLaunchHome = pathname === "/";
 
   return (
     <ConfirmProvider>
       <AppearanceRoot />
-      {isAdminApp ? (
+      {isAdminApp || isLaunchHome ? (
         children
       ) : (
         <>

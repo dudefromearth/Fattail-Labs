@@ -54,6 +54,28 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * Lesson / media players: never paint brand-tint focus rings or translucent
+ * layers over embeds — they show up as a colored cast on the video.
+ */
+.lesson-player,
+.lesson-player__frame,
+.lesson-player iframe,
+.lesson-player :focus,
+.lesson-player :focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.lesson-player__frame,
+.lesson-player iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+  /* Full opacity — parent filters/opacity must not mute the picture */
+  opacity: 1;
+  filter: none;
+}
+
 /* Utility helpers — prefer these over raw zinc/white for HIG hierarchy */
 .bg-canvas {
   background-color: var(--color-canvas);

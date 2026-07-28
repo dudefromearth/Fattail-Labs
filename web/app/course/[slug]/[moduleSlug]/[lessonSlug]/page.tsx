@@ -22,6 +22,7 @@ type LessonPayload = {
   title: string;
   kind: string;
   duration_seconds: number;
+  free_preview?: boolean;
   module_slug: string;
   module_title: string;
   course_slug: string;
@@ -511,18 +512,21 @@ export default async function LessonPlayerPage({
         body={lesson.body_md}
       />
 
-      <div className="mt-10 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900 dark:bg-emerald-950">
-        <p className="font-medium">Enjoying the free preview?</p>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Members get every lesson, live sessions, and the full resource library.
-        </p>
-        <Link
-          href="/signup"
-          className="mt-4 inline-block rounded-full bg-emerald-500 px-6 py-2 font-medium text-white transition-colors hover:bg-emerald-600"
-        >
-          Join FatTail Labs
-        </Link>
-      </div>
+      {/* Membership CTA only on free-preview lessons (not every video page). */}
+      {lesson.free_preview && (
+        <div className="mt-10 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900 dark:bg-emerald-950">
+          <p className="font-medium">Enjoying the free preview?</p>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            Members get every lesson, live sessions, and the full resource library.
+          </p>
+          <Link
+            href="/membership"
+            className="mt-4 inline-block rounded-full bg-emerald-500 px-6 py-2 font-medium text-white transition-colors hover:bg-emerald-600"
+          >
+            Become a Member
+          </Link>
+        </div>
+      )}
     </LessonLayout>
   );
 }

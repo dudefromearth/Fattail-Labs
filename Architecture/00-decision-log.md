@@ -4,6 +4,77 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-07-28 — Member Wiki W1: two-store split + spine shipped (p-wiki)
+
+**Decision (WIK-D1):** Wiki content system-of-record is the `dudefromearth/lab-wiki`
+git checkout (`LABS_WIKI_ROOT`, boot fail-loud); MySQL holds a rebuildable derived
+index only (migration 035: `wiki_pages_idx` FULLTEXT + `wiki_links_idx`).
+**Decision (WIK-D2):** member visibility = `status: published` frontmatter; drafts
+404 for members, render for admins. **WIK-D3:** search v1 = FULLTEXT over pages;
+transcripts join in parent-spec W2. **WIK-D5:** card slug `wiki` replaced Vexy
+(034). **WIK-D6:** `[[wikilinks]]`; unresolved render muted, never 500. **WIK-D7:**
+reindex = idempotent full rebuild (`POST /api/admin/wiki/reindex`, human admin or
+agent key w/ `wiki:reindex`).
+**Shipped:** `server/wiki_store.py` + `routes/wiki.py` + tests; frontend surfaces
+wired (`/app/wiki`, `[slug]`, `search`, `graph`, ⌘K); sync tick documented
+(`infra/deploy.md`, `infra/labwiki-sync.plist`). Evidence:
+`agents/p-wiki/gate-reports/W1-delta-gate.md`. As-built:
+`Architecture/11-wiki-design.md`. Specs: Member-Wiki v0.1 + Wiki-Interface v0.1
+(DRAFT — Coach approval pending; W0 gate).
+
+**Related:** deferred to parent phases: corpus/transcripts (W2), compiler+board
+(W3), practice rail (W4, Mike gate).
+
+## 2026-07-28 — Apps hub: Practice Log section + Strategy Life Cycle
+
+**Decision:** `/app` organizes tools into sections, not a flat grid: **Journey** ·
+**Practice Log** (Trade Log + Journal cards) · **Strategy Life Cycle** (Strategy
+Lab, `slug=strategy-lab`, soon) · **Playbook** · **Insights** (Statistics + Wiki).
+Section map is UI IA in `web/app/app/page.tsx`; migration `036` seeds Strategy Lab
+and refreshes Practice Log blurbs. Full Practice Log merge (`/app/practice` modes)
+and Strategy Lab product ship in later waves — hub presents the organization now.
+
+**Related:** `docs/Apps-Practice-Stack-and-Strategy-Life-Cycle-Proposal.md`.
+
+## 2026-07-28 — Apps hub: flat 2-col + Practice Log parent card
+
+**Decision:** Revert disheveled multi-section layout. `/app` is again a **flat
+two-column card grid**. **Practice Log** is a **single card** → `/app/practice`
+hub, which shows **Trade Log** and **Journal** as child cards (2-col). Strategy
+Life Cycle remains its own top-level card (`strategy-lab`, soon). Nested
+`trade-log` / `journal` are omitted from the top-level grid.
+
+## 2026-07-28 — Strategy Life Cycle landing organization
+
+**Decision:** `/app/strategy-lab` is an **orientation landing** (open while tool
+is soon), organized as: (1) hero + kill rule, (2) **The path** — Build / Prove /
+Paper / Run as primary IA (2×2 stage cards + under-the-covers line each),
+(3) **two entry paths** (validate existing vs develop new), (4) connected tools
+(Practice Log, Playbook, Journey), (5) courseware promise (process assessment
+only). Workspace/kanban ships later; landing is the map for members and
+courseware deep-links.
+
+## 2026-07-28 — Strategy Life Cycle hub: 2-col cards + courseware backlog
+
+**Decision:** Strategy Lab page uses **section headers + two-column card grids**
+throughout (The path, How you enter, The one rule, Connected tools, Courseware).
+**Courseware** is a **hub of backlog course cards** (code, overview, “students
+will learn”) — not published catalog links yet; titles feed course development
+backlog. Process-only assessment language retained.
+
+## 2026-07-28 — Wiki card replaces Vexy on Apps grid
+
+**Decision:** The sixth `/app` card is **Wiki** (`slug=wiki`), not Vexy. Open →
+`/app/wiki`. Badge remains `soon` until Member Wiki W1; entry/search/graph routes
+are scaffolded per Wiki Interface Spec v0.1 §1–2, §4–5.
+
+**Rationale:** Specs `FatTail-Labs-Member-Wiki-Spec-v0.1` + `Wiki-Interface-Spec-v0.1`
+(D-i4: retire Vexy row; Ask-mode absorbs the cognitive-partner role in v2). Migration
+`034_wiki_replaces_vexy_app.sql`.
+
+**Not yet:** corpus registrar, transcripts, lab-wiki checkout, FULLTEXT search, graph
+data — those track the parent wiki phasing.
+
 ## 2026-07-26 — Every named entity: stable id + name-derived slug (for versioning)
 
 Each **course**, **module**, **lesson**, **resource**, and **app** always has:

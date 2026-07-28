@@ -124,12 +124,14 @@ async function fetchLiveHub(): Promise<HubPage | null> {
 }
 
 async function revalidateHub(): Promise<void> {
-  await fetch("/api/revalidate", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: "/", tag: "hub" }),
-  }).catch(() => null);
+  for (const path of ["/", "/hub"]) {
+    await fetch("/api/revalidate", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, tag: "hub" }),
+    }).catch(() => null);
+  }
 }
 
 export function HubEditProvider({
