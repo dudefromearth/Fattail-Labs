@@ -15,6 +15,9 @@ from config import get_config
 
 def create_app() -> FastAPI:
     cfg = get_config()  # fail loud at boot if config is incomplete
+    import wiki_store
+
+    wiki_store.wiki_root()  # fail loud: LABS_WIKI_ROOT must be a lab-wiki checkout (WIK-D4)
     app = FastAPI(title="FatTail Labs API", docs_url=None, redoc_url=None)
 
     @app.get("/api/health")
@@ -51,9 +54,11 @@ def create_app() -> FastAPI:
     from routes.hub import public as hub_public_router
     from routes.appearance import router as appearance_router
     from routes.apps import router as apps_router
+    from routes.wiki import router as wiki_router
 
     app.include_router(auth_router)
     app.include_router(apps_router)
+    app.include_router(wiki_router)
     app.include_router(appearance_router)
     app.include_router(auth_dev_router)
     app.include_router(integrations_router)

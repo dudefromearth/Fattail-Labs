@@ -110,6 +110,7 @@ Pattern: **Stripe and AI are optional at boot**; they fail loud when used withou
 | GET/POST | `/api/me/pathway` |
 | Quiz | `/api/courses/.../quiz`, `/api/me/quiz-results` |
 | Social | reviews, threads, comments, students under `/api/courses/{slug}/…` |
+| Wiki | `/api/wiki/index`, `/api/wiki/pages/{slug}`, `/api/wiki/search?q=`, `/api/wiki/graph` — member session; drafts 404 for members, visible to admin. Derived index over the `lab-wiki` checkout (`LABS_WIKI_ROOT`, fail-loud at boot); rebuild via `POST /api/admin/wiki/reindex` (admin). `routes/wiki.py` + `wiki_store.py`, migration 035. |
 
 ### 4.4 Admin
 
