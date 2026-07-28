@@ -4,6 +4,16 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-07-28 — Feature gates (countdown / waitlist) admin-only
+
+**Decision:** Feature gates hide public surfaces until ready and create anticipation
+via countdown + optional email waitlist. **Admin UI only** at `/admin/gates` (card
+on operator cockpit). Data: `feature_gates` + `feature_gate_emails` (migration 037).
+Public: `GET /api/feature-gates/{surface}`, `POST …/waitlist`. Email CSV export for
+mail management. Surfaces seeded: home (enabled for Labs launch), hub, app,
+resource, live, wiki (disabled until adopted). Env launch vars are superseded for
+home by DB when gate is active.
+
 ## 2026-07-28 — Member Wiki W1: two-store split + spine shipped (p-wiki)
 
 **Decision (WIK-D1):** Wiki content system-of-record is the `dudefromearth/lab-wiki`

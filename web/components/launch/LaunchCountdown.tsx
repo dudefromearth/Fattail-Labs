@@ -24,11 +24,11 @@ function split(ms: number): Parts {
 
 function Unit({ value, label }: { value: number; label: string }) {
   return (
-    <div className="flex min-w-[4.5rem] flex-col items-center rounded-2xl border border-white/15 bg-white/10 px-3 py-3 backdrop-blur sm:min-w-[5.5rem] sm:px-4 sm:py-4">
+    <div className="flex min-w-[4.5rem] flex-col items-center rounded-2xl border border-white/15 bg-zinc-950/70 px-3 py-3 shadow-inner shadow-black/30 sm:min-w-[5.5rem] sm:px-4 sm:py-4">
       <span className="font-mono text-3xl font-semibold tabular-nums tracking-tight text-white sm:text-4xl">
         {String(value).padStart(2, "0")}
       </span>
-      <span className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-white/70">
+      <span className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
         {label}
       </span>
     </div>

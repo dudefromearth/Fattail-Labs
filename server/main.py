@@ -55,10 +55,14 @@ def create_app() -> FastAPI:
     from routes.appearance import router as appearance_router
     from routes.apps import router as apps_router
     from routes.wiki import router as wiki_router
+    from routes.feature_gates import admin as feature_gates_admin_router
+    from routes.feature_gates import public as feature_gates_public_router
 
     app.include_router(auth_router)
     app.include_router(apps_router)
     app.include_router(wiki_router)
+    app.include_router(feature_gates_public_router)
+    app.include_router(feature_gates_admin_router)
     app.include_router(appearance_router)
     app.include_router(auth_dev_router)
     app.include_router(integrations_router)
