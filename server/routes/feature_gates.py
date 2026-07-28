@@ -6,14 +6,18 @@ state and POST to collect waitlist emails.
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 
+import activecampaign
 import db
 from guards import require_admin
+
+log = logging.getLogger("labs.feature_gates")
 
 public = APIRouter(tags=["feature-gates"])
 admin = APIRouter(prefix="/api/admin", tags=["admin-feature-gates"])
@@ -189,6 +193,29 @@ async def join_waitlist(surface_key: str, request: Request) -> dict:
                    ON DUPLICATE KEY UPDATE source = VALUES(source)""",
                 (sk, email, source),
             )
+
+    # The email is now durably captured. Best-effort push to ActiveCampaign as a
+    # "Labs Lead" — never allowed to fail the waitlist write (AC may be disabled,
+    # misconfigured, or down). Outcome is persisted for admin observability.
+    result = {"status": "skipped"}
+    try:
+        result = activecampaign.sync_lead(email, source=source, surface_key=sk)
+    except Exception as exc:  # noqa: BLE001 — AC must never fail the waitlist write
+        log.warning("AC lead sync raised unexpectedly for %s: %s", email, exc)
+        result = {"status": "failed", "error": str(exc)[:512]}
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE feature_gate_emails
+                       SET ac_status = %s, ac_error = %s,
+                           ac_synced_at = CURRENT_TIMESTAMP
+                       WHERE surface_key = %s AND email = %s""",
+                    (result.get("status"), result.get("error"), sk, email),
+                )
+    except Exception as exc:  # noqa: BLE001 — status persistence is non-critical
+        log.warning("AC lead status persist failed for %s: %s", email, exc)
+
     return {"ok": True, "email": email, "surface_key": sk}
 
 

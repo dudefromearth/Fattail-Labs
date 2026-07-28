@@ -4,6 +4,27 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-07-28 — DL-064 ActiveCampaign lead sync (free waitlist leads only)
+
+**Decision:** Free waitlist signups (`feature_gate_emails`) are pushed to the
+shared FatTail/0-DTE ActiveCampaign account as contacts tagged **`Labs Lead`**.
+New optional module `server/activecampaign.py` (`sync_lead()`), called from
+`join_waitlist` **after** the email is committed; migration `038` adds
+`ac_status`/`ac_error`/`ac_synced_at` for observability.
+
+**Rationale / scope:** Marketing needs a live, taggable pre-launch lead audience
+without manual CSV export. Modelled on `notify.py` SMTP: env-driven
+(`LABS_AC_*`), disabled when unconfigured (`skipped`), fail-loud when
+half-configured or `LABS_AC_REQUIRED=1`, and **never** allowed to fail the
+waitlist write (best-effort, post-commit, wrapped). **Customers are out of
+scope** — buyers enter via WooCommerce and are already tagged by the WordPress
+`membership-auto-upgrade` plugin in the same AC account; Labs does not
+double-plumb them. Stripe not integrated with AC. Spec:
+`FatTail-Labs-ActiveCampaign-Lead-Sync-Spec-v1.0`. Tests:
+`test_activecampaign.py`. Status: draft pending live staging smoke.
+
+---
+
 ## 2026-07-28 — Feature gates (countdown / waitlist) admin-only
 
 **Decision:** Feature gates hide public surfaces until ready and create anticipation
