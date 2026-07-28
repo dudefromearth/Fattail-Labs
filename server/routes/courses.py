@@ -13,12 +13,12 @@ import video
 router = APIRouter(prefix="/api/courses", tags=["courses"])
 categories_router = APIRouter(tags=["courses"])
 
-VALID_SORTS = frozenset({"newest", "enrolled", "title"})
+VALID_SORTS = frozenset({"order", "newest", "enrolled", "title"})
 VALID_LEVELS = frozenset({"beginner", "intermediate", "advanced"})
 
 _LIST_SQL = """
 SELECT c.id, c.slug, c.title, c.subtitle, c.description_md, c.hero_image_url,
-       c.card_color,
+       c.card_color, c.sort_order, c.catalog_section,
        c.level, c.certification_enabled, c.published_at,
        (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS enrolled_count,
        (SELECT COUNT(*) FROM lessons l JOIN modules m ON l.module_id = m.id
@@ -78,7 +78,7 @@ def list_courses(
     category: str | None = None,
     level: str | None = None,
     q: str | None = None,
-    sort: str = Query(default="newest"),
+    sort: str = Query(default="order"),
 ) -> dict:
     if sort not in VALID_SORTS:
         raise HTTPException(status_code=422, detail=f"sort must be one of {sorted(VALID_SORTS)}")
@@ -99,6 +99,7 @@ def list_courses(
         args.append(category)
 
     order = {
+        "order": " ORDER BY c.sort_order ASC, c.published_at DESC",
         "newest": " ORDER BY c.published_at DESC",
         "enrolled": " ORDER BY enrolled_count DESC, c.published_at DESC",
         "title": " ORDER BY c.title ASC",
@@ -124,6 +125,8 @@ def list_courses(
                 "description_md": r["description_md"],
                 "hero_image_url": r["hero_image_url"],
                 "card_color": r["card_color"],
+                "sort_order": r["sort_order"],
+                "catalog_section": r["catalog_section"] or "",
                 "level": r["level"],
                 "certification_enabled": bool(r["certification_enabled"]),
                 "published_at": r["published_at"].isoformat() if r["published_at"] else None,

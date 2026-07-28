@@ -32,6 +32,7 @@ COURSE_FIELDS = frozenset(
         "trailer_video_id",
         "hero_image_url",
         "card_color",
+        "catalog_section",
         "flagship",
         "pathway_position",
         "audience_category",
@@ -838,6 +839,29 @@ async def _reorder(cur, table: str, parent_col: str, parent_id: int, ids: list) 
         raise HTTPException(status_code=422, detail="ids must match existing children exactly")
     for order, row_id in enumerate(ids):
         cur.execute(f"UPDATE {table} SET sort_order = %s WHERE id = %s", (order, row_id))
+
+
+@router.post("/courses/reorder")
+async def reorder_courses(request: Request) -> dict:
+    """Full catalog order: body {course_ids: [...]} — rewrites sort_order x10
+    (Catalog-Order Spec v1.0; mirrors module/lesson reorder)."""
+    require_admin(request)
+    body = await request.json()
+    ids = body.get("course_ids")
+    if not isinstance(ids, list) or not ids or not all(isinstance(i, int) for i in ids):
+        raise HTTPException(status_code=422, detail="course_ids must be a non-empty list of ids")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM courses")
+            known = {r["id"] for r in cur.fetchall()}
+            unknown = [i for i in ids if i not in known]
+            if unknown:
+                raise HTTPException(status_code=422, detail=f"Unknown course ids: {unknown}")
+            for pos, cid in enumerate(ids, 1):
+                cur.execute(
+                    "UPDATE courses SET sort_order = %s WHERE id = %s", (pos * 10, cid)
+                )
+    return {"ok": True, "count": len(ids)}
 
 
 @router.post("/courses/{slug}/reorder-modules")
