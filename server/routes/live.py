@@ -14,9 +14,12 @@ from fastapi.responses import PlainTextResponse
 
 import auth
 import db
-from guards import claims_or_none, require_admin
+import journey_scores as js
+from guards import claims_or_none, require_admin, require_session
 
 router = APIRouter(tags=["live"])
+
+_SESSION_KEY_RE = __import__("re").compile(r"^(?:\d+|r\d+-\d{4}-\d{2}-\d{2})$")
 
 VALID_KINDS = frozenset({"trading_room", "workshop", "show"})
 # Membership-based content categories (spec v1.3): the single place audience
@@ -208,6 +211,87 @@ def list_sessions(request: Request, month: str | None = None) -> dict:
         )
     upcoming.sort(key=lambda s: s["starts_at"])
     return {"upcoming": upcoming, "past": past[:20]}
+
+
+@router.post("/api/live/check-in")
+async def live_check_in(request: Request) -> dict:
+    """Member check-in for attendance streak (Journey Gamification Spec v1.0).
+
+    Body: { "session_key": "42" | "r3-2026-07-29", "starts_at": ISO datetime }
+    Window: [starts_at - 15m, starts_at + 4h]. Idempotent per identity × key.
+    """
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    if iid == 0:
+        raise HTTPException(status_code=400, detail="No identity for this session")
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="JSON body required") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="JSON object required")
+    session_key = str(body.get("session_key") or "").strip()
+    if not _SESSION_KEY_RE.match(session_key):
+        raise HTTPException(status_code=422, detail="Invalid session_key")
+    starts_raw = body.get("starts_at")
+    if not starts_raw:
+        raise HTTPException(status_code=422, detail="starts_at required")
+    try:
+        starts = datetime.fromisoformat(str(starts_raw).replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="starts_at must be ISO datetime") from exc
+    if starts.tzinfo is None:
+        starts = starts.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    if not js.checkin_window_ok(starts, now=now):
+        raise HTTPException(
+            status_code=422,
+            detail="Check-in window is 15 minutes before start through 4 hours after",
+        )
+    starts_naive = starts.astimezone(timezone.utc).replace(tzinfo=None)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT IGNORE INTO live_session_checkins
+                     (identity_id, session_key, starts_at)
+                   VALUES (%s, %s, %s)""",
+                (iid, session_key, starts_naive),
+            )
+            cur.execute(
+                """SELECT checked_in_at FROM live_session_checkins
+                   WHERE identity_id = %s AND session_key = %s""",
+                (iid, session_key),
+            )
+            row = cur.fetchone()
+    return {
+        "checked_in": True,
+        "session_key": session_key,
+        "checked_in_at": row["checked_in_at"].isoformat() if row else now.isoformat(),
+    }
+
+
+@router.get("/api/live/check-in")
+def live_check_in_status(request: Request, session_key: str = "") -> dict:
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    key = (session_key or "").strip()
+    if not key or not _SESSION_KEY_RE.match(key):
+        raise HTTPException(status_code=422, detail="session_key required")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT checked_in_at FROM live_session_checkins
+                   WHERE identity_id = %s AND session_key = %s""",
+                (iid, key),
+            )
+            row = cur.fetchone()
+    if row is None:
+        return {"checked_in": False, "session_key": key, "checked_in_at": None}
+    return {
+        "checked_in": True,
+        "session_key": key,
+        "checked_in_at": row["checked_in_at"].isoformat(),
+    }
 
 
 @router.get("/api/live/sessions/{session_id}/ics")

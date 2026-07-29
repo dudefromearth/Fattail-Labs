@@ -136,8 +136,8 @@ export default function GuidePage() {
               short answer. Submit and you&apos;re scored immediately, with
               explanations where the author added them. Your results live on
               your{" "}
-              <Link href="/me" className={link}>
-                My Learning
+              <Link href="/app/journey" className={link}>
+                Journey
               </Link>{" "}
               page.
             </p>
@@ -146,22 +146,24 @@ export default function GuidePage() {
             <p>
               Click your avatar (top right) for the quick menu:{" "}
               <strong>Continue Learning</strong> jumps straight to your next
-              unfinished lesson. Two pages keep the full picture:
+              unfinished lesson. From the same menu:
             </p>
             <ul>
               <li>
-                <Link href="/me" className={link}>
-                  My Learning
+                <Link href="/app/journey" className={link}>
+                  Journey
                 </Link>{" "}
-                — every enrollment with completion percentages, quiz results,
-                and your recent activity.
+                — enrollments, quiz results, activity, and{" "}
+                <strong>My presence</strong> process scores (reputation, personal
+                growth, attendance streak, contribution). The{" "}
+                <strong>Community board</strong> shows peers who opt in so you can
+                compare participation — never profit.
               </li>
               <li>
-                <Link href="/dashboard" className={link}>
-                  Dashboard
+                <Link href="/me" className={link}>
+                  Profile
                 </Link>{" "}
-                — the day&apos;s view: pick up where you left off, and see the
-                next live session.
+                — display name, profile photo, and Journey board visibility.
               </li>
             </ul>
 
@@ -243,7 +245,7 @@ export default function GuidePage() {
             <p>
               Subscriptions are handled by Stripe. From{" "}
               <Link href="/me" className={link}>
-                My Learning
+                Profile
               </Link>
               , <strong>Manage billing</strong> opens your secure billing
               portal — update cards, download invoices, or cancel there.

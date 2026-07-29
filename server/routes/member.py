@@ -1,11 +1,15 @@
-"""Member endpoints: progress, enrollment records, student-page data.
+"""Member endpoints: progress, enrollment records, student-page data, profile.
 
-Specs: Progress Tracking v1.0 §3 · Enrollment Records & Student Page v1.0 §2–3.
+Specs: Progress Tracking v1.0 §3 · Enrollment Records & Student Page v1.0 §2–3 ·
+Member Profile + Journey Visibility v1.0.
 Access follows the Enrollment & Access matrix; enrollment itself is bookkeeping,
 never a gate.
 """
 
-from fastapi import APIRouter, HTTPException, Request
+import hashlib
+from pathlib import Path
+
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
 import auth
 import db
@@ -16,6 +20,16 @@ router = APIRouter(tags=["member"])
 
 MAX_DELTA = 60          # seconds per report, anti-gaming clamp
 COMPLETE_RATIO = 0.9
+
+AVATAR_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
+AVATAR_MAX_BYTES = 2 * 1024 * 1024
+AVATAR_DIR = Path(__file__).resolve().parent.parent / "uploads" / "avatars"
+DISPLAY_NAME_MAX = 64
+
+# Idle timeout preference (minutes) — all roles except administrator
+SESSION_IDLE_MIN_DEFAULT = 30
+SESSION_IDLE_MIN_LO = 15
+SESSION_IDLE_MIN_HI = 60
 
 
 def _lesson_for_access(
@@ -454,4 +468,332 @@ def my_journey(request: Request) -> dict:
             "watch_seconds": watch_seconds,
         },
         "courses": courses,
+    }
+
+
+# --- Profile + Journey presence (Member Profile + Journey Visibility Spec v1.0) ---
+
+
+def _clamp_idle_minutes(value: object) -> int:
+    try:
+        n = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"session_idle_minutes must be an integer {SESSION_IDLE_MIN_LO}–{SESSION_IDLE_MIN_HI}",
+        ) from exc
+    if not SESSION_IDLE_MIN_LO <= n <= SESSION_IDLE_MIN_HI:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"session_idle_minutes must be between "
+                f"{SESSION_IDLE_MIN_LO} and {SESSION_IDLE_MIN_HI}"
+            ),
+        )
+    return n
+
+
+def _profile_row(cur, identity_id: int) -> dict | None:
+    cur.execute(
+        """SELECT identity_id, email, display_name, avatar_url, journey_visible,
+                  journey_visible_at, share_reputation, share_personal_growth,
+                  share_attendance, session_idle_minutes
+           FROM identities WHERE identity_id = %s""",
+        (identity_id,),
+    )
+    return cur.fetchone()
+
+
+def _profile_payload(row: dict, role: str) -> dict:
+    idle = row.get("session_idle_minutes")
+    try:
+        idle_n = int(idle) if idle is not None else SESSION_IDLE_MIN_DEFAULT
+    except (TypeError, ValueError):
+        idle_n = SESSION_IDLE_MIN_DEFAULT
+    if not SESSION_IDLE_MIN_LO <= idle_n <= SESSION_IDLE_MIN_HI:
+        idle_n = SESSION_IDLE_MIN_DEFAULT
+    return {
+        "identity_id": int(row["identity_id"]),
+        "email": row["email"] or "",
+        "display_name": row["display_name"] or "",
+        "avatar_url": row["avatar_url"],
+        "journey_visible": bool(row["journey_visible"]),
+        "journey_visible_at": row["journey_visible_at"].isoformat()
+        if row.get("journey_visible_at")
+        else None,
+        "share_reputation": bool(row.get("share_reputation", 1)),
+        "share_personal_growth": bool(row.get("share_personal_growth", 0)),
+        "share_attendance": bool(row.get("share_attendance", 1)),
+        "session_idle_minutes": idle_n,
+        "session_idle_minutes_min": SESSION_IDLE_MIN_LO,
+        "session_idle_minutes_max": SESSION_IDLE_MIN_HI,
+        "session_idle_minutes_default": SESSION_IDLE_MIN_DEFAULT,
+        "role": role,
+    }
+
+
+@router.get("/api/me/profile")
+def get_profile(request: Request) -> dict:
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    if iid == 0:
+        raise HTTPException(status_code=400, detail="No identity for this session")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            row = _profile_row(cur, iid)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Identity not found")
+    return _profile_payload(row, claims["role"])
+
+
+@router.patch("/api/me/profile")
+async def patch_profile(request: Request) -> dict:
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    if iid == 0:
+        raise HTTPException(status_code=400, detail="No identity for this session")
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="JSON body required") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="JSON object required")
+
+    updates: list[str] = []
+    params: list = []
+
+    if "display_name" in body:
+        name = str(body["display_name"] or "").strip()
+        if len(name) > DISPLAY_NAME_MAX:
+            raise HTTPException(
+                status_code=422,
+                detail=f"display_name max {DISPLAY_NAME_MAX} characters",
+            )
+        updates.append("display_name = %s")
+        params.append(name)
+
+    if "journey_visible" in body:
+        visible = body["journey_visible"]
+        if not isinstance(visible, bool):
+            raise HTTPException(
+                status_code=422, detail="journey_visible must be boolean"
+            )
+        updates.append("journey_visible = %s")
+        params.append(1 if visible else 0)
+        if visible:
+            updates.append("journey_visible_at = CURRENT_TIMESTAMP")
+        else:
+            updates.append("journey_visible_at = NULL")
+
+    for field in (
+        "share_reputation",
+        "share_personal_growth",
+        "share_attendance",
+    ):
+        if field in body:
+            val = body[field]
+            if not isinstance(val, bool):
+                raise HTTPException(
+                    status_code=422, detail=f"{field} must be boolean"
+                )
+            updates.append(f"{field} = %s")
+            params.append(1 if val else 0)
+
+    if "session_idle_minutes" in body:
+        idle = _clamp_idle_minutes(body["session_idle_minutes"])
+        updates.append("session_idle_minutes = %s")
+        params.append(idle)
+
+    if not updates:
+        raise HTTPException(status_code=422, detail="No recognized fields")
+
+    params.append(iid)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"UPDATE identities SET {', '.join(updates)} WHERE identity_id = %s",
+                tuple(params),
+            )
+            row = _profile_row(cur, iid)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Identity not found")
+    return _profile_payload(row, claims["role"])
+
+
+@router.post("/api/me/profile/avatar")
+async def upload_avatar(
+    request: Request, file: UploadFile = File(...)
+) -> dict:
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    if iid == 0:
+        raise HTTPException(status_code=400, detail="No identity for this session")
+    ctype = (file.content_type or "").split(";")[0].strip().lower()
+    ext = AVATAR_TYPES.get(ctype)
+    if ext is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported type: {file.content_type}. Use PNG, JPEG, or WebP.",
+        )
+    data = await file.read()
+    if len(data) > AVATAR_MAX_BYTES:
+        raise HTTPException(status_code=422, detail="Avatar exceeds 2 MB")
+    if len(data) == 0:
+        raise HTTPException(status_code=422, detail="Empty file")
+
+    name = "avt_" + hashlib.sha256(data).hexdigest()[:24] + ext
+    AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+    (AVATAR_DIR / name).write_bytes(data)
+    url = f"/api/media/avatars/{name}"
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT avatar_url FROM identities WHERE identity_id = %s",
+                (iid,),
+            )
+            prev = cur.fetchone()
+            cur.execute(
+                "UPDATE identities SET avatar_url = %s WHERE identity_id = %s",
+                (url, iid),
+            )
+            row = _profile_row(cur, iid)
+
+    # Best-effort remove previous Labs avatar file if unshared path.
+    if prev and prev.get("avatar_url"):
+        _maybe_unlink_avatar(prev["avatar_url"], keep_url=url)
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Identity not found")
+    return _profile_payload(row, claims["role"])
+
+
+@router.delete("/api/me/profile/avatar")
+def delete_avatar(request: Request) -> dict:
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    if iid == 0:
+        raise HTTPException(status_code=400, detail="No identity for this session")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT avatar_url FROM identities WHERE identity_id = %s",
+                (iid,),
+            )
+            prev = cur.fetchone()
+            cur.execute(
+                "UPDATE identities SET avatar_url = NULL WHERE identity_id = %s",
+                (iid,),
+            )
+            row = _profile_row(cur, iid)
+    if prev and prev.get("avatar_url"):
+        _maybe_unlink_avatar(prev["avatar_url"], keep_url=None)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Identity not found")
+    return _profile_payload(row, claims["role"])
+
+
+def _maybe_unlink_avatar(url: str, keep_url: str | None) -> None:
+    if not url or url == keep_url:
+        return
+    prefix = "/api/media/avatars/"
+    if not url.startswith(prefix):
+        return
+    name = url[len(prefix) :]
+    if not name or "/" in name or ".." in name:
+        return
+    path = AVATAR_DIR / name
+    try:
+        if path.is_file():
+            path.unlink()
+    except OSError:
+        pass
+
+
+@router.get("/api/journey/presence")
+def journey_presence(request: Request) -> dict:
+    """Opt-in presence roster — display name + avatar only (compat).
+
+    Prefer GET /api/journey/leaderboard for process scores (Gamification Spec v1.0).
+    """
+    require_session(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT display_name, avatar_url
+                   FROM identities
+                   WHERE journey_visible = 1
+                     AND TRIM(COALESCE(display_name, '')) <> ''
+                   ORDER BY display_name ASC, identity_id ASC
+                   LIMIT 500"""
+            )
+            rows = cur.fetchall()
+    return {
+        "members": [
+            {
+                "display_name": (r["display_name"] or "").strip(),
+                "avatar_url": r["avatar_url"],
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.get("/api/me/journey/scores")
+def my_journey_scores(request: Request) -> dict:
+    """Self presence: process meters (private) + contribution scores.
+
+    Personal path = process health meters (routine, learning, live, adherence).
+    Community path = reputation / public contribution when opted in.
+    """
+    import journey_scores as js
+
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    if iid == 0:
+        raise HTTPException(status_code=400, detail="No identity for this session")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            scores = js.scores_for_identity(cur, iid)
+            process = js.process_meters(
+                cur, iid, role=str(claims.get("role") or "observer")
+            )
+            cur.execute(
+                "SELECT journey_visible FROM identities WHERE identity_id = %s",
+                (iid,),
+            )
+            row = cur.fetchone()
+            visible = bool(row and row["journey_visible"])
+            rank = None
+            if visible:
+                board = js.leaderboard_rows(cur, viewer_identity_id=iid)
+                rank = js.rank_for_identity(board)
+    return {
+        **scores,
+        "process": process,
+        "journey_visible": visible,
+        "rank": rank,
+        "weights": {
+            "reputation": js.W_REP,
+            "personal_growth": js.W_GROW,
+            "attendance_streak": js.W_ATT,
+            "streak_cap": js.STREAK_CAP,
+        },
+    }
+
+
+@router.get("/api/journey/leaderboard")
+def journey_leaderboard(request: Request) -> dict:
+    """Community Leaderboard — opt-in process peers (Contribution Score rank)."""
+    import journey_scores as js
+
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            members = js.leaderboard_rows(cur, viewer_identity_id=iid)
+    return {
+        "members": members,
+        "sort": "contribution_desc",
+        "framing": "process_peers",
     }

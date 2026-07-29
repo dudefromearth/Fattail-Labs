@@ -1,23 +1,6 @@
-import type { Metadata } from "next";
-import ContinueLearning from "@/components/ContinueLearning";
-import DashboardExtras from "@/components/DashboardExtras";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-  robots: { index: false, follow: false },
-};
-
+// Dashboard folded into Journey (Member Profile + Journey Visibility Spec v1.0).
 export default function DashboardPage() {
-  return (
-    <main className="mx-auto w-full max-w-6xl px-6 py-10">
-      <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold">Continue Learning</h2>
-        <div className="mt-4">
-          <ContinueLearning />
-        </div>
-      </section>
-      <DashboardExtras />
-    </main>
-  );
+  redirect("/app/journey");
 }

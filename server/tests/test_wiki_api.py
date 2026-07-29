@@ -109,6 +109,30 @@ def test_search_published_only_with_snippet(client, seeded_index):
     assert "zzwikitest-draft" not in slugs  # draft never leaks via search
     hit = results[0]
     assert hit["snippet"] and "zzwikitest" in hit["snippet"].lower()
+    # Snippets must be plain text — no raw markdown source in the UI
+    assert "**" not in hit["snippet"]
+    assert "[[" not in hit["snippet"]
+    assert "#" not in hit["snippet"]
+
+
+def test_md_to_plain_strips_markup():
+    from routes.wiki import _md_to_plain, _snippet
+
+    raw = (
+        "---\ntitle: x\n---\n\n"
+        "# Heading\n\n"
+        "See **bold** and [[slug|Label]] and [link](https://ex.com).\n\n"
+        "| a | b |\n|---|---|\n| 1 | 2 |\n"
+    )
+    plain = _md_to_plain(raw)
+    assert "**" not in plain
+    assert "[[" not in plain
+    assert "https://" not in plain
+    assert "Label" in plain
+    assert "bold" in plain
+    snip = _snippet(raw, "bold")
+    assert "bold" in snip.lower()
+    assert "**" not in snip
 
 
 def test_graph_excludes_drafts_for_members(client, seeded_index):

@@ -177,7 +177,8 @@ def sso_callback(
             role = identity.derive_role(cur, identity_id)
 
     return _session_response(
-        RedirectResponse(url="/courses", status_code=302),
+        # Member landing after SSO (login-landing mock).
+        RedirectResponse(url="/home", status_code=302),
         identity_id, pid.provider, role, request=request,
     )
 
@@ -198,30 +199,41 @@ def me(request: Request):
     except auth.AuthError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 
-    display_name, email = "", ""
+    display_name, email, avatar_url = "", "", None
+    session_idle_minutes = 30
     if claims["identity_id"] != 0:
         with db.transaction() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT email, display_name FROM identities WHERE identity_id = %s",
+                    """SELECT email, display_name, avatar_url, session_idle_minutes
+                       FROM identities WHERE identity_id = %s""",
                     (claims["identity_id"],),
                 )
                 row = cur.fetchone()
                 if row:
                     email, display_name = row["email"], row["display_name"]
+                    avatar_url = row.get("avatar_url")
+                    try:
+                        idle = int(row.get("session_idle_minutes") or 30)
+                    except (TypeError, ValueError):
+                        idle = 30
+                    if 15 <= idle <= 60:
+                        session_idle_minutes = idle
     return {
         "identity_id": claims["identity_id"],
         "role": claims["role"],
         "provider": claims.get("sso_issuer", ""),
         "email": email,
         "display_name": display_name,
+        "avatar_url": avatar_url,
+        "session_idle_minutes": session_idle_minutes,
     }
 
 
 @router.get("/logout")
 def logout():
     cfg = get_config()
-    resp = RedirectResponse(url="/courses", status_code=302)
+    resp = RedirectResponse(url="/course", status_code=302)  # public catalog
     resp.delete_cookie(cfg.session_cookie)
     return resp
 

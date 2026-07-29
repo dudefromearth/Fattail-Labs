@@ -1,10 +1,14 @@
 "use client";
 
-// Journey — Family B presentation of existing progress (no second store).
-// Application Framework C5 · Member-Data-Privacy DS-2
+// Journey — single progress surface (absorbs My Learning + Dashboard).
+// Application Framework C5 · Member-Data-Privacy DS-2 · Profile Visibility v1.0
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import DashboardExtras from "@/components/DashboardExtras";
+import JourneyHistory from "@/components/JourneyHistory";
+import JourneyLeaderboard from "@/components/JourneyLeaderboard";
+import JourneyScores from "@/components/JourneyScores";
 
 type JourneyCourse = {
   slug: string;
@@ -74,13 +78,24 @@ export default function JourneyPage() {
         <span className="mx-2">›</span>
         <span>Journey</span>
       </nav>
-      <h1 className="mt-4 text-3xl font-semibold tracking-tight text-[var(--color-label)]">
-        Journey
-      </h1>
-      <p className="mt-2 text-[var(--color-label-secondary)]">
-        Your path through the library — enrollments and progress only. Process
-        over pace; no leaderboards.
-      </p>
+      <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-[var(--color-label)]">
+            Journey
+          </h1>
+          <p className="mt-2 max-w-xl text-[var(--color-label-secondary)]">
+            Your path through the library — and how you show up as someone who
+            contributes. Compare process participation with peers who opt in;
+            never profit rankings.
+          </p>
+        </div>
+        <Link
+          href="/me"
+          className="shrink-0 text-sm font-medium text-[var(--color-tint)] hover:underline"
+        >
+          Profile &amp; visibility →
+        </Link>
+      </div>
 
       {data === null && (
         <p className="mt-8 text-sm text-[var(--color-label-tertiary)]">Loading…</p>
@@ -104,6 +119,8 @@ export default function JourneyPage() {
       )}
       {data && typeof data === "object" && (
         <>
+          <JourneyScores />
+
           <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {(
               [
@@ -131,7 +148,12 @@ export default function JourneyPage() {
             {data.source}
           </p>
 
-          <ul className="mt-8 space-y-3">
+          <DashboardExtras />
+
+          <h2 className="mt-8 text-lg font-semibold text-[var(--color-label)]">
+            Enrollments
+          </h2>
+          <ul className="mt-3 space-y-3">
             {data.courses.length === 0 && (
               <li className="text-sm text-[var(--color-label-secondary)]">
                 No enrollments yet.{" "}
@@ -173,6 +195,9 @@ export default function JourneyPage() {
               </li>
             ))}
           </ul>
+
+          <JourneyHistory />
+          <JourneyLeaderboard />
         </>
       )}
     </main>

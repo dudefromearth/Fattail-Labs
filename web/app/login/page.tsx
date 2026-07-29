@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import LoginForm from "@/components/LoginForm";
+import LoginIdleNotice from "@/components/LoginIdleNotice";
 
 export const metadata: Metadata = {
   title: "Sign In",
@@ -15,6 +17,9 @@ export default function LoginPage() {
         <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
           Enter your email and password, or use your membership site login.
         </p>
+        <Suspense fallback={null}>
+          <LoginIdleNotice />
+        </Suspense>
         <LoginForm />
       </div>
     </main>

@@ -10,6 +10,7 @@ import SiteHeader from "@/components/SiteHeader";
 import { ConfirmProvider } from "@/components/ui";
 import AppearanceRoot from "@/components/appearance/AppearanceRoot";
 import PageViewTracker from "@/components/PageViewTracker";
+import IdleSessionGuard from "@/components/IdleSessionGuard";
 
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
@@ -20,6 +21,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   return (
     <ConfirmProvider>
       <AppearanceRoot />
+      <IdleSessionGuard />
       {!isAdminApp && <PageViewTracker />}
       {isAdminApp || isLaunchHome ? (
         children

@@ -27,6 +27,76 @@ export function Countdown({ iso }: { iso: string }) {
   );
 }
 
+export function CheckInControl({ s }: { s: Session }) {
+  const [state, setState] = useState<"load" | "out" | "in" | "err" | "busy">("load");
+  const key = String(s.id);
+  const starts = new Date(s.starts_at).getTime();
+  const now = Date.now();
+  const open = starts - 15 * 60_000;
+  const close = starts + ENDED_AFTER_MS;
+  const inWindow = now >= open && now <= close;
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/live/check-in?session_key=${encodeURIComponent(key)}`, {
+      credentials: "same-origin",
+    })
+      .then(async (r) => {
+        if (r.status === 401) return "out" as const;
+        if (!r.ok) return "err" as const;
+        const d = await r.json();
+        return d.checked_in ? ("in" as const) : ("out" as const);
+      })
+      .then((st) => {
+        if (!cancelled) setState(st);
+      })
+      .catch(() => {
+        if (!cancelled) setState("err");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
+
+  async function checkIn() {
+    setState("busy");
+    try {
+      const r = await fetch("/api/live/check-in", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_key: key, starts_at: s.starts_at }),
+      });
+      if (!r.ok) {
+        setState("err");
+        return;
+      }
+      setState("in");
+    } catch {
+      setState("err");
+    }
+  }
+
+  if (!inWindow && state !== "in") return null;
+  if (state === "in") {
+    return (
+      <span className="text-sm font-medium text-emerald-600">Checked in ✓</span>
+    );
+  }
+  if (!inWindow) return null;
+  return (
+    <button
+      type="button"
+      disabled={state === "busy" || state === "load"}
+      onClick={checkIn}
+      className="rounded-full border border-emerald-400 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950"
+      title="Counts toward your Journey attendance streak"
+    >
+      {state === "busy" ? "Checking in…" : "Check in"}
+    </button>
+  );
+}
+
 export function JoinControl({ s }: { s: Session }) {
   if (new Date(s.starts_at).getTime() < Date.now() - ENDED_AFTER_MS) {
     return <span className="text-sm text-zinc-400">Session ended</span>;
@@ -134,6 +204,7 @@ export default function SessionDetail({
         >
           Add to Calendar
         </a>
+        <CheckInControl s={s} />
         <JoinControl s={s} />
         {isAdmin && (
           <button

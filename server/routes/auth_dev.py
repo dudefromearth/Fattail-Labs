@@ -17,7 +17,8 @@ def dev_login() -> RedirectResponse:
     if cfg.env != "dev":
         raise HTTPException(status_code=404, detail="Not found")
     token = auth.issue_session(identity_id=0, issuer="internal", role="administrator")
-    resp = RedirectResponse(url="/courses", status_code=302)
+    # Member landing after login (login-landing mock).
+    resp = RedirectResponse(url="/home", status_code=302)
     resp.set_cookie(
         key=cfg.session_cookie,
         value=token,

@@ -2,10 +2,14 @@
 
 // Wiki search results — Interface Spec v0.1 §4, bound to /api/wiki/search.
 // Grouped rendering: "pages" first; the archive group slots in alongside later.
+//
+// Note: fully client-side (useSearchParams). Avoid nesting Suspense with a
+// permanent "Loading…" fallback — that can stick if hydration is delayed
+// (seen under Turbopack + broken CSS chunk cache).
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import WikiSearchSnippet from "@/components/wiki/WikiSearchSnippet";
 
 type SearchResult = {
   slug: string;
@@ -38,11 +42,24 @@ function groupResults(results: SearchResult[]): [string, SearchResult[]][] {
   return keys.map((k) => [k, groups.get(k) as SearchResult[]]);
 }
 
-function SearchBody() {
-  const params = useSearchParams();
-  const q = (params.get("q") || "").trim();
+function readQueryQ(): string {
+  if (typeof window === "undefined") return "";
+  return (new URLSearchParams(window.location.search).get("q") || "").trim();
+}
+
+export default function WikiSearchPage() {
+  // Prefer window.location over useSearchParams so the page never suspends
+  // forever under Next/Turbopack when the search-params boundary misbehaves.
+  const [q, setQ] = useState("");
   const [auth, setAuth] = useState<"loading" | "ok" | "anon">("loading");
   const [results, setResults] = useState<SearchResult[] | null>(null);
+
+  useEffect(() => {
+    setQ(readQueryQ());
+    const onPop = () => setQ(readQueryQ());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,110 +97,6 @@ function SearchBody() {
     };
   }, [auth, q]);
 
-  if (auth === "loading") {
-    return (
-      <p className="text-sm text-[var(--color-label-secondary)]">Loading…</p>
-    );
-  }
-
-  if (auth === "anon") {
-    return (
-      <div className="surface-card border border-[var(--color-separator)] p-8 text-center">
-        <p className="font-medium text-[var(--color-label)]">Sign in to search</p>
-        <Link
-          href={`/login?next=${encodeURIComponent(`/app/wiki/search?q=${q}`)}`}
-          className="mt-4 inline-block text-sm font-medium text-[var(--color-tint)] hover:underline"
-        >
-          Log in →
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <h1 className="mt-4 text-2xl font-semibold text-[var(--color-label)]">
-        Search
-      </h1>
-      {q ? (
-        <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-          Results for <span className="font-medium text-[var(--color-label)]">“{q}”</span>
-        </p>
-      ) : (
-        <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-          Enter a query on the{" "}
-          <Link href="/app/wiki" className="text-[var(--color-tint)] hover:underline">
-            Wiki
-          </Link>{" "}
-          entry page.
-        </p>
-      )}
-
-      {q && results === null && (
-        <p className="mt-8 text-sm text-[var(--color-label-secondary)]">
-          Searching…
-        </p>
-      )}
-
-      {q && results !== null && results.length === 0 && (
-        <div className="mt-8 rounded-2xl border border-dashed border-[var(--color-separator)] p-6 text-sm text-[var(--color-label-secondary)]">
-          <p className="font-medium text-[var(--color-label)]">
-            No results for “{q}”
-          </p>
-          <p className="mt-2">
-            Try a different term, or{" "}
-            <Link
-              href="/app/wiki/graph"
-              className="text-[var(--color-tint)] hover:underline"
-            >
-              explore the map
-            </Link>
-            .
-          </p>
-        </div>
-      )}
-
-      {q && results !== null && results.length > 0 && (
-        <div className="mt-8 space-y-8">
-          {groupResults(results).map(([group, items]) => (
-            <section key={group} aria-label={GROUP_LABELS[group] || group}>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                {GROUP_LABELS[group] || group}
-              </h2>
-              <ul className="mt-3 space-y-4">
-                {items.map((r) => (
-                  <li
-                    key={r.slug}
-                    className="surface-card border border-[var(--color-separator)] p-4"
-                  >
-                    <div className="flex items-baseline justify-between gap-3">
-                      <Link
-                        href={`/app/wiki/${encodeURIComponent(r.slug)}`}
-                        className="font-medium text-[var(--color-tint)] hover:underline"
-                      >
-                        {r.title}
-                      </Link>
-                      <span className="shrink-0 text-xs uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                        {r.kind}
-                      </span>
-                    </div>
-                    {r.snippet && (
-                      <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-                        {r.snippet}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
-
-export default function WikiSearchPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-10">
       <nav className="text-sm text-[var(--color-label-secondary)]">
@@ -197,15 +110,115 @@ export default function WikiSearchPage() {
         <span className="mx-2">›</span>
         <span>Search</span>
       </nav>
-      <Suspense
-        fallback={
-          <p className="mt-4 text-sm text-[var(--color-label-secondary)]">
-            Loading…
+
+      {auth === "loading" && (
+        <p className="mt-4 text-sm text-[var(--color-label-secondary)]">
+          Loading…
+        </p>
+      )}
+
+      {auth === "anon" && (
+        <div className="surface-card mt-4 border border-[var(--color-separator)] p-8 text-center">
+          <p className="font-medium text-[var(--color-label)]">
+            Sign in to search
           </p>
-        }
-      >
-        <SearchBody />
-      </Suspense>
+          <Link
+            href={`/login?next=${encodeURIComponent(`/app/wiki/search?q=${q}`)}`}
+            className="mt-4 inline-block text-sm font-medium text-[var(--color-tint)] hover:underline"
+          >
+            Log in →
+          </Link>
+        </div>
+      )}
+
+      {auth === "ok" && (
+        <>
+          <h1 className="mt-4 text-2xl font-semibold text-[var(--color-label)]">
+            Search
+          </h1>
+          {q ? (
+            <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
+              Results for{" "}
+              <span className="font-medium text-[var(--color-label)]">
+                “{q}”
+              </span>
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
+              Enter a query on the{" "}
+              <Link
+                href="/app/wiki"
+                className="text-[var(--color-tint)] hover:underline"
+              >
+                Wiki
+              </Link>{" "}
+              entry page.
+            </p>
+          )}
+
+          {q && results === null && (
+            <p className="mt-8 text-sm text-[var(--color-label-secondary)]">
+              Searching…
+            </p>
+          )}
+
+          {q && results !== null && results.length === 0 && (
+            <div className="mt-8 rounded-2xl border border-dashed border-[var(--color-separator)] p-6 text-sm text-[var(--color-label-secondary)]">
+              <p className="font-medium text-[var(--color-label)]">
+                No results for “{q}”
+              </p>
+              <p className="mt-2">
+                Try a different term, or{" "}
+                <Link
+                  href="/app/wiki/graph"
+                  className="text-[var(--color-tint)] hover:underline"
+                >
+                  explore the map
+                </Link>
+                .
+              </p>
+            </div>
+          )}
+
+          {q && results !== null && results.length > 0 && (
+            <div className="mt-8 space-y-8">
+              {groupResults(results).map(([group, items]) => (
+                <section
+                  key={group}
+                  aria-label={GROUP_LABELS[group] || group}
+                >
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                    {GROUP_LABELS[group] || group}
+                  </h2>
+                  <ul className="mt-3 space-y-4">
+                    {items.map((r) => (
+                      <li
+                        key={r.slug}
+                        className="surface-card border border-[var(--color-separator)] p-4"
+                      >
+                        <div className="flex items-baseline justify-between gap-3">
+                          <Link
+                            href={`/app/wiki/${encodeURIComponent(r.slug)}`}
+                            className="font-medium text-[var(--color-tint)] hover:underline"
+                          >
+                            {r.title}
+                          </Link>
+                          <span className="shrink-0 text-xs uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                            {r.kind}
+                          </span>
+                        </div>
+                        {r.snippet && (
+                          <WikiSearchSnippet text={r.snippet} query={q} />
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </main>
   );
 }

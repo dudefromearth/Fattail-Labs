@@ -39,11 +39,46 @@ def _page_row(r: dict) -> dict:
     }
 
 
+def _md_to_plain(body: str) -> str:
+    """Strip markdown / HTML so search snippets never show raw source markup."""
+    if not body:
+        return ""
+    text = body
+    # YAML front matter (if still present on any rows)
+    text = re.sub(r"^---\s*\n.*?\n---\s*\n", "", text, count=1, flags=re.S)
+    # Fenced / inline code
+    text = re.sub(r"```[\s\S]*?```", " ", text)
+    text = re.sub(r"`([^`]+)`", r"\1", text)
+    # Images → alt text; links → label only
+    text = re.sub(r"!\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
+    # Wikilinks [[slug]] / [[slug|label]]
+    text = re.sub(
+        r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]",
+        lambda m: (m.group(2) or m.group(1)).strip(),
+        text,
+    )
+    # HTML tags
+    text = re.sub(r"<[^>]+>", " ", text)
+    # ATX headings, blockquotes, list markers
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.M)
+    text = re.sub(r"^>\s?", "", text, flags=re.M)
+    text = re.sub(r"^\s*[-*+]\s+", "", text, flags=re.M)
+    text = re.sub(r"^\s*\d+\.\s+", "", text, flags=re.M)
+    # Table pipes / emphasis / leftover md punctuation
+    text = re.sub(r"[*_~`|#]+", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
 def _snippet(body: str, q: str) -> str:
     """~SNIPPET_WORDS words centred on the first query-term hit (plain text)."""
-    text = re.sub(r"[#*_\[\]`>|-]+", " ", body)
-    text = re.sub(r"\s+", " ", text).strip()
-    words = text.split(" ")
+    text = _md_to_plain(body or "")
+    if not text:
+        return ""
+    words = [w for w in text.split(" ") if w]
+    if not words:
+        return ""
     terms = [t.lower() for t in q.split() if t]
     lower = [w.lower() for w in words]
     hit = 0

@@ -1687,3 +1687,147 @@ Labs, Resources, and Live are first-class **section hubs** using `site_pages`
 - SEO: generateMetadata from CMS + CollectionPage JSON-LD; Live keeps Event JSON-LD
 - Sitemap includes `/labs` and `/resources`
 - Migration `030_section_hub_pages.sql` seeds default doctrine-safe copy
+
+## 2026-07-29 — DL-064 Member Profile + Journey visibility (presence roster)
+
+**Coach intent:** Refashion header account menu; consolidate My Learning + Dashboard
+into **Profile** preferences and **Journey** as the single progress surface.
+
+**Product decisions:**
+- Menu: Continue Learning strip + **Profile** + **Journey** (+ member/admin/sign out)
+- `/me` = Profile (display name, avatar upload, Journey visibility)
+- `/app/journey` owns enrollments, quizzes, activity, pathway, next live
+- `/dashboard` redirects to Journey
+- Journey **presence roster** (opt-in): display name + avatar only — not a P&L or
+  progress ranking; private-by-default (`journey_visible=0`)
+
+**Privacy amendment:** Member-Data-Privacy MR-1 “no sharing v1” amended for this
+surface only (opt-in name/photo). Family B content remains private.
+
+**Implementation:** migration `042_member_profile.sql`; APIs `GET/PATCH /api/me/profile`,
+avatar POST/DELETE, `GET /api/journey/presence`; `/api/auth/me` returns `avatar_url`.
+Spec: `Specs/FatTail-Labs-Member-Profile-Journey-Visibility-Spec-v1.0.md`.
+Tests: `tests/test_member_profile.py` (5 passed).
+
+## 2026-07-29 — DL-065 Journey gamification (self presence + community board)
+
+**Coach intent:** Gamify Labs as presence for self and community so members are
+seen as people who **contribute**, and can gauge **personal growth** vs process peers.
+
+**Locked:**
+- Opt-in via existing `journey_visible` (default off)
+- Pillars: Reputation, Personal Growth, Attendance streak, Contribution (rank axis)
+- v1 events: course completion, threads/comments/reviews, lessons/quizzes, live check-in
+- **Strategy Life Cycle / Strategy Lab sharing reserved** for a later Spec addendum
+  (never auto-publish private strategy content)
+- Framing: process peers, not P&L competition (amends Privacy D-6 for opt-in only)
+- Derive-on-read in `server/journey_scores.py`; migration `043_journey_gamification.sql`
+- Spec: `Specs/FatTail-Labs-Journey-Gamification-Spec-v1.0.md`
+
+**APIs:** `GET /api/me/journey/scores`, `GET /api/journey/leaderboard`,
+`POST|GET /api/live/check-in`.
+
+## 2026-07-29 — DL-066 Granular Journey share (community vs personal growth)
+
+**Coach:** Community presence can be tailored. Members may keep personal growth
+as a trader completely private while increasing community presence.
+
+**Ship:** `share_reputation` (default on), `share_personal_growth` (default **off**),
+`share_attendance` (default on). Board ranks by **public contribution** (shared pillars
+only). Unshared pillars return null on leaderboard. Migration `044_journey_share_pillars.sql`.
+
+## 2026-07-29 — DL-067 Member login-landing at /home
+
+**Coach mock:** `landing.png` (First Movers–style member home).
+**Ship:** `/home` MemberHome — welcome + streak, continue hero, process CTA,
+my learning progress tabs, recommended courses, right rail (activity, achievements,
+community board compact, get started). Login/SSO/dev-login redirect → `/home`.
+Journey remains deep scores surface; Profile visibility unchanged.
+
+## 2026-07-29 — DL-068 Personal standing = process meter (not achievements)
+
+**Coach:** Personal progress is not about winning achievements — it is a **meter**
+for how well you do the work that improves long-term success (daily routine,
+retrospectives, growth, live presence, plan adherence).
+
+**Ship:** `process_meters()` on `/api/me/journey/scores` → `process` payload;
+`ProcessMeter` UI on `/home` Personal standing and Journey. Community presence
+stays separate (reputation / board). No P&L in meters.
+
+## 2026-07-29 — DL-069 Process meter includes practice persistence
+
+**Coach:** Meter also measures **persistence** with the things that advance practice
+(Trade Log, Journal, lessons, live) — not only short-window routine.
+
+**Ship:** `practice_persistence` / `persistence` meter (12-week window, target 8 weeks);
+included in overall process health. Spec §3.2b updated.
+
+## 2026-07-29 — DL-070 Process meter profiles by membership
+
+**Coach:** Meter profiles — Observer ~6-week focus; Navigator monthly vs yearly
+adjusts persistence horizon.
+
+**Ship:** `resolve_meter_profile` + profiles in `journey_scores.py`;
+`process.profile` on `/api/me/journey/scores`; UI chip for profile/horizon.
+
+## 2026-07-29 — DL-070 Process meter profiles by membership
+
+**Coach:** Meter profiles — Observer ~6-week focus; Navigator monthly vs yearly
+adjusts persistence horizon.
+
+**Ship:** `resolve_meter_profile` + profiles in `journey_scores.py`;
+`process.profile` on `/api/me/journey/scores`; UI chip for profile/horizon.
+
+## 2026-07-29 — DL-071 G1 north star: Observer → Navigator + continued practice
+
+**Coach:** Goal for Observers is to **maximize chance they upgrade to Navigator
+and continue their practice** (process-first; not “leave happy” as co-equal target).
+
+**Docs:** `docs/Dual-Goal-Product-Strategy-2026-07-29.md` G1 success + metrics updated.
+**Product:** Observer trial process-meter copy; `/home` G1 framing + honest
+“Continue as Navigator” CTA (membership). Alumni fairness remains doctrine.
+
+## 2026-07-29 — DL-072 Journey Experience Spec v1.0
+
+**Decision:** Land umbrella Spec for Journey as-built experience + implementation:
+`Specs/FatTail-Labs-Journey-Experience-Spec-v1.0.md`.
+
+Covers: dual standing (process meter vs community board), G1/G2, meter profiles,
+share pillars, APIs, routes (/app/journey, /home, /me), live check-in, DS-2 no second
+store, frontend/backend file maps, verification, DL index. Gamification Spec remains
+formula detail; Profile Visibility remains opt-in fields.
+
+## 2026-07-29 — DL-073 Process integrity grade scale (Poor→Excellent)
+
+**Coach:** Process health 
+## 2026-07-29 — DL-073 Process integrity grade scale (Poor to Excellent)
+
+**Coach:** Process health percent also presented as color grades aligned with trading-psych norms (journal process scores).
+
+**Scale:** Poor (0-24) · Fair (25-49) · Good (50-69) · Great (70-84) · Excellent (85-100).
+Colors and blurbs are process-focused (not P&L / identity shame). API `process.grade` +
+`grade_scale`; UI badge + segmented scale on ProcessMeter. Spec Journey Experience §4.0b.
+
+## 2026-07-29 — DL-074 Tenure-weighted process grades (earn extremes)
+
+**Coach:** Fresh members cannot start at Poor; time in the game weights grades.
+Extremes (Poor / Excellent) are earned — square ease-in toward center until
+profile grade_ramp_days. Establishing grade for early zero-signal period.
+
+
+## 2026-07-29 — DL-075 Journey Experience Spec updated (grades + tenure)
+
+**Decision:** Refresh `Specs/FatTail-Labs-Journey-Experience-Spec-v1.0.md` as-built for:
+process integrity grade scale (Poor-Excellent + Establishing), tenure-weighted grades,
+needle UI, G1 success criteria, scores API shape, verification 8-11, DL index through
+DL-074. Journey Gamification Spec 3.2b/c points at Experience Spec as canonical meter detail.
+
+
+## 2026-07-29 — DL-076 Session idle timeout (15–60 min, default 30)
+
+**Coach:** Timeout after no activity for every role except admin. Default 30 minutes;
+member may set 15–60. On timeout: logout and return to login page.
+
+**Ship:** migration `045_session_idle_timeout.sql`; Profile + auth/me fields;
+`IdleSessionGuard` client; login `?idle=1` notice. Journey Experience Spec §2.3b.
+

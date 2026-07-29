@@ -17,6 +17,11 @@ export function fetchMe(): Promise<Me> {
   return mePromise;
 }
 
+/** Call after logout so the next page load re-fetches /api/auth/me. */
+export function clearMeCache(): void {
+  mePromise = null;
+}
+
 export function useIsAdmin(): boolean {
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {

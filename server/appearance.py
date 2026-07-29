@@ -21,13 +21,17 @@ ALLOWED_CORNERS = frozenset({"rounded", "smooth"})
 ALLOWED_FONT = frozenset({"system"})  # v1.0 system only
 ALLOWED_MEMBER_HREFS = frozenset({
     "/",
-    "/courses",
+    "/course",  # public catalog (canonical)
+    "/courses",  # legacy path still allowlisted for old chrome links
     "/labs",  # member practice tools hub (Trade Log, Journal, Playbook, …)
+    "/app",
     "/live",
     "/resources",
     "/pathway",  # funnel surface — not primary chrome; keep for deep links
-    "/dashboard",
-    "/me",
+    "/dashboard",  # redirects to Journey; keep allowlisted for old chrome
+    "/home",  # member login-landing
+    "/me",  # Profile
+    "/app/journey",
     "/membership",
     "/guide",
     "/about",

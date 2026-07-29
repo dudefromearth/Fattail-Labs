@@ -8,11 +8,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+// Account menu: Continue Learning + Profile + Journey (My Learning / Dashboard retired).
+
 type Me = {
   identity_id: number;
   role: string;
   email: string;
   display_name: string;
+  avatar_url?: string | null;
 };
 
 type EnrollmentSummary = {
@@ -178,16 +181,27 @@ export default function SiteHeader() {
                 aria-label={`Account menu — ${ROLE_LABELS[me.role] ?? me.role}`}
                 className="flex items-center gap-2 rounded-full outline-offset-2"
               >
-                <span
-                  className={[
-                    "flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white",
-                    me.role === "observer" || me.role === "alumni"
-                      ? "bg-[var(--color-label-tertiary)]"
-                      : "bg-[var(--color-tint)]",
-                  ].join(" ")}
-                >
-                  {initials(me)}
-                </span>
+                {me.avatar_url ? (
+                  <Image
+                    src={me.avatar_url}
+                    alt=""
+                    width={32}
+                    height={32}
+                    unoptimized
+                    className="h-8 w-8 rounded-full object-cover ring-1 ring-[var(--color-separator)]"
+                  />
+                ) : (
+                  <span
+                    className={[
+                      "flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white",
+                      me.role === "observer" || me.role === "alumni"
+                        ? "bg-[var(--color-label-tertiary)]"
+                        : "bg-[var(--color-tint)]",
+                    ].join(" ")}
+                  >
+                    {initials(me)}
+                  </span>
+                )}
               </button>
               {menuOpen && (
                 <div className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-2)]">
@@ -241,18 +255,25 @@ export default function SiteHeader() {
                     )}
                   <div className="py-1 text-sm">
                     <Link
+                      href="/home"
+                      className="block px-4 py-2 hover:bg-[var(--color-fill)]"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Home
+                    </Link>
+                    <Link
                       href="/me"
                       className="block px-4 py-2 hover:bg-[var(--color-fill)]"
                       onClick={() => setMenuOpen(false)}
                     >
-                      My Learning
+                      Profile
                     </Link>
                     <Link
-                      href="/dashboard"
+                      href="/app/journey"
                       className="block px-4 py-2 hover:bg-[var(--color-fill)]"
                       onClick={() => setMenuOpen(false)}
                     >
-                      Dashboard
+                      Journey
                     </Link>
                     {me.role === "observer" && (
                       <Link
