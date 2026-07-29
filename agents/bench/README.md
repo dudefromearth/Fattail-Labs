@@ -43,7 +43,7 @@ product.
 |---|---|---|
 | **Alpha** | Backend Engineer | FastAPI service, MySQL schema/migrations, auth/SSO, entitlements, API surface |
 | **Charlie** | Frontend Engineer | Next.js app: catalog, course detail, player, dashboard, admin UI |
-| **Echo** | Human Interface Designer | Look & feel, design tokens, visual hierarchy, course-page polish |
+| **Echo** | Human Interface & Interaction Designer | Apple HIG for Labs web, design tokens, control grammar, interactive design, visual review |
 | **Foxtrot** | Infrastructure Engineer | MiniTwo/DudeTwo provisioning, launchd, MiniThree nginx, Cloudflare, deploys |
 | **Mike** | Security & Auth Engineer | Dual-issuer SSO, session JWTs, signed video URLs, secrets, WooCommerce webhooks |
 | **Sierra** | Curriculum & AEO Specialist | Course copy formula, SEO/AEO layer (JSON-LD, titles, prerender), public catalog surface |

@@ -1,326 +1,330 @@
 "use client";
 
-// Trade Log MVP — process-first (T-D5). P&L optional/neutral.
+// Trade Log v1.1 P1 — table-first blotter, right sheet, accounts (broker|sim).
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { appConfirm } from "@/lib/dialogs";
+import { useSearchParams } from "next/navigation";
+import TradeLogTable from "@/components/trade-log/TradeLogTable";
+import TradeLogToolbar from "@/components/trade-log/TradeLogToolbar";
+import TradeSheet from "@/components/trade-log/TradeSheet";
+import ImportSheet from "@/components/trade-log/ImportSheet";
+import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
+import { Button } from "@/components/ui";
+import type { Account, Catalog, Trade } from "@/lib/tradeLog";
 
-type Entry = {
-  id: number;
-  traded_on: string | null;
-  setup_md: string;
-  plan_md: string;
-  rules_md: string;
-  adherence: string;
-  deviation_md: string;
-  lesson_md: string;
-  pnl_amount: number | null;
-};
+type LoadState = "loading" | "ok" | "anon" | "forbidden" | "err";
 
-const empty = {
-  traded_on: "",
-  setup_md: "",
-  plan_md: "",
-  rules_md: "",
-  adherence: "unknown",
-  deviation_md: "",
-  lesson_md: "",
-  pnl_amount: "",
-};
-
-export default function TradeLogPage() {
-  const [entries, setEntries] = useState<
-    Entry[] | null | "anon" | "forbidden" | "err"
-  >(null);
-  const [form, setForm] = useState(empty);
-  const [busy, setBusy] = useState(false);
+function TradeLogClient() {
+  const searchParams = useSearchParams();
+  const deepLinkId = Number(searchParams.get("id") || "");
+  const [state, setState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [accountId, setAccountId] = useState<number | "all">("all");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetMode, setSheetMode] = useState<"create" | "edit">("create");
+  const [selected, setSelected] = useState<Trade | null>(null);
+  const [acctOpen, setAcctOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newBroker, setNewBroker] = useState("thinkorswim");
+  const [acctBusy, setAcctBusy] = useState(false);
+  const [deepLinked, setDeepLinked] = useState(false);
 
   const load = useCallback(() => {
     setError(null);
-    fetch("/api/me/trade-log", { credentials: "same-origin" })
-      .then(async (r) => {
-        if (r.status === 401) return "anon" as const;
-        if (r.status === 403) return "forbidden" as const;
-        if (r.status === 404) {
-          throw new Error(
-            "Trade Log API not found — restart the Labs API (uvicorn) so new routes load.",
-          );
+    const q =
+      accountId !== "all" ? `?account_id=${accountId}` : "";
+    Promise.all([
+      fetch(`/api/me/trade-log/trades${q}`, { credentials: "same-origin" }),
+      fetch("/api/me/trade-log/venues", { credentials: "same-origin" }),
+    ])
+      .then(async ([tr, vn]) => {
+        if (tr.status === 401 || vn.status === 401) {
+          setState("anon");
+          return;
         }
-        if (!r.ok) throw new Error((await r.text()) || `HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((d) => {
-        if (d === "anon" || d === "forbidden") setEntries(d);
-        else setEntries(d.entries ?? []);
+        if (tr.status === 403 || vn.status === 403) {
+          setState("forbidden");
+          return;
+        }
+        if (!tr.ok) {
+          throw new Error((await tr.text()) || `HTTP ${tr.status}`);
+        }
+        const tdata = await tr.json();
+        setTrades(tdata.trades || []);
+        const accts = tdata.accounts || [];
+        setAccounts(accts);
+        // Prefer server default_account_id (auto-provisioned Primary)
+        if (tdata.default_account_id != null && accountId === "all") {
+          // keep "all" as list scope; sheet/import use defaultAcct from active list
+        }
+        if (vn.ok) {
+          const v = await vn.json();
+          setCatalog({ venues: v.venues || [], strategies: v.strategies || [] });
+        }
+        setState("ok");
       })
       .catch((e) => {
-        setEntries("err");
+        setState("err");
         setError(e instanceof Error ? e.message : String(e));
       });
-  }, []);
+  }, [accountId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const body = {
-      ...form,
-      traded_on: form.traded_on || null,
-      pnl_amount: form.pnl_amount === "" ? null : Number(form.pnl_amount),
-    };
-    const r = await fetch("/api/me/trade-log", {
+  // Journal (and other) deep-link: ?id= → select trade, open sheet, scroll into view
+  useEffect(() => {
+    if (state !== "ok" || !deepLinkId || deepLinked) return;
+    const t = trades.find((x) => x.id === deepLinkId);
+    if (!t) return;
+    setSelected(t);
+    setSheetMode("edit");
+    setSheetOpen(true);
+    setDeepLinked(true);
+    // Wait a frame for paint, then scroll the blotter row into view
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`trade-row-${t.id}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [state, trades, deepLinkId, deepLinked]);
+
+  useEffect(() => {
+    // New deep-link id → allow re-select
+    setDeepLinked(false);
+  }, [deepLinkId]);
+
+  async function createAccount() {
+    if (!newLabel.trim()) return;
+    setAcctBusy(true);
+    const r = await fetch("/api/me/trade-log/accounts", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ label: newLabel.trim(), broker: newBroker }),
     });
-    setBusy(false);
+    setAcctBusy(false);
     if (!r.ok) {
       setError(await r.text());
       return;
     }
-    setForm(empty);
+    const a = await r.json();
+    setNewLabel("");
+    setAcctOpen(false);
+    setAccountId(a.id);
     load();
   }
 
-  async function remove(id: number) {
-    const ok = await appConfirm({
-      title: "Delete this entry?",
-      message: "This cannot be undone.",
-      confirmLabel: "Delete",
-      destructive: true,
-    });
-    if (!ok) return;
-    await fetch(`/api/me/trade-log/${id}`, {
-      method: "DELETE",
-      credentials: "same-origin",
-    });
-    load();
-  }
-
-  const field =
-    "mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-sm";
+  const activeAccounts = accounts.filter((a) => a.status === "active");
+  const primary =
+    activeAccounts.find((a) => a.label === "Primary") || activeAccounts[0];
+  const defaultAcct =
+    accountId !== "all" ? accountId : primary?.id ?? null;
+  const exportAccount =
+    accountId !== "all"
+      ? accounts.find((a) => a.id === accountId)
+      : primary;
+  const nativeVenueLabel =
+    exportAccount?.broker && exportAccount.broker !== "unset"
+      ? exportAccount.broker
+      : "FatTail if unset";
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-10 pb-24">
-      <nav className="text-sm text-[var(--color-label-secondary)]">
-        <Link href="/app" className="hover:underline">
-          Apps
-        </Link>
-        <span className="mx-2">›</span>
-        <span>Trade Log</span>
-      </nav>
-      <h1 className="mt-4 text-3xl font-semibold text-[var(--color-label)]">
-        Trade Log
-      </h1>
-      <p className="mt-2 text-[var(--color-label-secondary)]">
-        Process first: setup, plan, rules, adherence, lesson learned. P&amp;L is
-        optional and never the point.
-      </p>
+    <main className="mx-auto w-full max-w-[1400px] px-4 py-6 pb-24 sm:px-6">
+      <PracticeSuiteChrome active="trade-log" hideTitle>
+      <TradeLogToolbar
+        activeAccounts={activeAccounts}
+        accountId={accountId}
+        onAccountId={setAccountId}
+        accountsOpen={acctOpen}
+        onToggleAccounts={() => setAcctOpen((o) => !o)}
+        onImport={() => setImportOpen(true)}
+        onNewTrade={() => {
+          setSheetMode("create");
+          setSelected(null);
+          setSheetOpen(true);
+        }}
+        nativeVenueLabel={nativeVenueLabel}
+        onExport={(fmt) => {
+          const q = new URLSearchParams({ format: fmt });
+          if (accountId !== "all") q.set("account_id", String(accountId));
+          if (fmt === "native" && accountId === "all" && primary?.id) {
+            q.set("account_id", String(primary.id));
+          }
+          window.location.href = `/api/me/trade-log/export?${q.toString()}`;
+        }}
+      />
 
-      {entries === null && (
+      {acctOpen && state === "ok" && (
+        <div className="surface-card mt-4 border border-[var(--color-separator)] p-4">
+          <h2
+            className="font-semibold text-[var(--color-label)]"
+            style={{ fontSize: "var(--text-headline)" }}
+          >
+            Accounts
+          </h2>
+          <p
+            className="mt-1 text-[var(--color-label-tertiary)]"
+            style={{ fontSize: "var(--text-footnote)" }}
+          >
+            Broker or sim · max 10 active. Default{" "}
+            <strong className="font-medium text-[var(--color-label-secondary)]">
+              Primary
+            </strong>{" "}
+            is provisioned automatically. Venue is set on first import or first
+            trade — not assumed.
+          </p>
+          <ul className="mt-3 divide-y divide-[var(--color-separator)] rounded-[var(--radius-md)] bg-[var(--color-surface-secondary)]">
+            {accounts.map((a) => (
+              <li
+                key={a.id}
+                className="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2.5 text-sm"
+              >
+                <span className="font-medium text-[var(--color-label)]">
+                  {a.label}
+                </span>
+                <span className="text-[var(--color-label-secondary)]">
+                  {a.broker && a.broker !== "unset"
+                    ? a.broker
+                    : "Venue not set"}
+                  <span className="text-[var(--color-label-tertiary)]">
+                    {" "}
+                    · {a.status}
+                    {a.broker && a.broker !== "unset"
+                      ? ` · ${a.venue_kind}`
+                      : ""}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <input
+              className="min-h-[var(--hit-min)] min-w-[8rem] flex-1 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 text-sm text-[var(--color-label)]"
+              placeholder="Label"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              aria-label="New account label"
+            />
+            <select
+              className="min-h-[var(--hit-min)] rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 text-sm text-[var(--color-label)]"
+              value={newBroker}
+              onChange={(e) => setNewBroker(e.target.value)}
+              aria-label="Venue"
+            >
+              {(catalog?.venues || []).map((v) => (
+                <option key={v.code} value={v.code}>
+                  {v.kind === "sim" ? "Sim" : "Live"}: {v.label}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              variant="primary"
+              disabled={acctBusy || !newLabel.trim()}
+              onClick={() => void createAccount()}
+            >
+              Create
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {state === "loading" && (
         <p className="mt-8 text-sm text-[var(--color-label-tertiary)]">
           Loading…
         </p>
       )}
-      {entries === "anon" && (
+      {state === "anon" && (
         <p className="mt-8 text-sm">
           <Link href="/login" className="font-medium text-[var(--color-tint)]">
             Sign in
           </Link>{" "}
-          to use Trade Log. (This is a private tool — your entries stay with your
-          account.)
+          to use Trade Log.
         </p>
       )}
-      {entries === "forbidden" && (
-        <div className="surface-card mt-8 border border-[var(--color-separator)] p-5 text-sm text-[var(--color-label-secondary)]">
+      {state === "forbidden" && (
+        <div className="surface-card mt-8 border border-[var(--color-separator)] p-5 text-sm">
           <p className="font-medium text-[var(--color-label)]">
             Membership required
           </p>
-          <p className="mt-2">
-            Trade Log is available to Activator (member) role and above. Free
-            accounts can use Journey; upgrade for the practice tools.
+          <p className="mt-2 text-[var(--color-label-secondary)]">
+            Trade Log is available to Activator and above.
           </p>
           <Link
             href="/membership"
-            className="mt-3 inline-block font-medium text-[var(--color-tint)] hover:underline"
+            className="mt-3 inline-block font-medium text-[var(--color-tint)]"
           >
             View membership →
           </Link>
         </div>
       )}
-      {entries === "err" && (
+      {state === "err" && (
         <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           <p className="font-medium">Could not load Trade Log</p>
           {error && <p className="mt-1 font-mono text-xs opacity-80">{error}</p>}
-          <button
-            type="button"
-            onClick={() => load()}
-            className="mt-3 text-sm font-medium underline"
-          >
+          <button type="button" onClick={() => load()} className="mt-3 underline">
             Try again
           </button>
         </div>
       )}
 
-      {Array.isArray(entries) && (
-        <>
-          <form
-            onSubmit={submit}
-            className="surface-card mt-8 space-y-3 border border-[var(--color-separator)] p-5"
-          >
-            <h2 className="font-semibold text-[var(--color-label)]">
-              New entry
-            </h2>
-            <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-              Date
-              <input
-                type="date"
-                className={field}
-                value={form.traded_on}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, traded_on: e.target.value }))
-                }
-              />
-            </label>
-            <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-              Setup
-              <textarea
-                className={field}
-                rows={2}
-                value={form.setup_md}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, setup_md: e.target.value }))
-                }
-                placeholder="What structure / context?"
-              />
-            </label>
-            <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-              Plan
-              <textarea
-                className={field}
-                rows={2}
-                value={form.plan_md}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, plan_md: e.target.value }))
-                }
-                placeholder="What did you plan to do?"
-              />
-            </label>
-            <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-              Rules checked
-              <textarea
-                className={field}
-                rows={2}
-                value={form.rules_md}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, rules_md: e.target.value }))
-                }
-              />
-            </label>
-            <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-              Adherence
-              <select
-                className={field}
-                value={form.adherence}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, adherence: e.target.value }))
-                }
-              >
-                <option value="followed">Followed plan</option>
-                <option value="partial">Partial</option>
-                <option value="broke">Broke rules</option>
-                <option value="unknown">Not sure</option>
-              </select>
-            </label>
-            <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-              Deviation
-              <textarea
-                className={field}
-                rows={2}
-                value={form.deviation_md}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, deviation_md: e.target.value }))
-                }
-              />
-            </label>
-            <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-              Lesson learned
-              <textarea
-                className={field}
-                rows={2}
-                value={form.lesson_md}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, lesson_md: e.target.value }))
-                }
-              />
-            </label>
-            <label className="block text-xs font-medium text-[var(--color-label-tertiary)]">
-              P&amp;L (optional, neutral)
-              <input
-                type="number"
-                step="any"
-                className={field}
-                value={form.pnl_amount}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, pnl_amount: e.target.value }))
-                }
-              />
-            </label>
-            {error && <p className="text-xs text-red-600">{error}</p>}
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded-full bg-[var(--color-tint)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {busy ? "Saving…" : "Save entry"}
-            </button>
-          </form>
-
-          <ul className="mt-8 space-y-3">
-            {entries.length === 0 && (
-              <li className="text-sm text-[var(--color-label-secondary)]">
-                No entries yet. Log process, not trophies.
-              </li>
-            )}
-            {entries.map((en) => (
-              <li
-                key={en.id}
-                className="surface-card border border-[var(--color-separator)] p-4 text-sm"
-              >
-                <div className="flex justify-between gap-2">
-                  <span className="font-medium text-[var(--color-label)]">
-                    {en.traded_on || "No date"} · {en.adherence}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => void remove(en.id)}
-                    className="text-xs text-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-                {en.setup_md && (
-                  <p className="mt-2 text-[var(--color-label-secondary)]">
-                    <strong>Setup:</strong> {en.setup_md}
-                  </p>
-                )}
-                {en.lesson_md && (
-                  <p className="mt-1 text-[var(--color-label-secondary)]">
-                    <strong>Lesson:</strong> {en.lesson_md}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
+      {state === "ok" && (
+        <TradeLogTable
+          trades={trades}
+          selectedId={selected?.id}
+          onNewTrade={() => {
+            setSheetMode("create");
+            setSelected(null);
+            setSheetOpen(true);
+          }}
+          onSelect={(t) => {
+            setSelected(t);
+            setSheetMode("edit");
+            setSheetOpen(true);
+          }}
+        />
       )}
+
+      <TradeSheet
+        open={sheetOpen && state === "ok"}
+        mode={sheetMode}
+        trade={sheetMode === "edit" ? selected : null}
+        accounts={accounts}
+        catalog={catalog}
+        defaultAccountId={defaultAcct}
+        onClose={() => setSheetOpen(false)}
+        onSaved={() => load()}
+      />
+      <ImportSheet
+        open={importOpen && state === "ok"}
+        accounts={accounts}
+        defaultAccountId={defaultAcct}
+        onClose={() => setImportOpen(false)}
+        onImported={() => load()}
+      />
+      </PracticeSuiteChrome>
     </main>
+  );
+}
+
+export default function TradeLogPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto w-full max-w-[1400px] px-4 py-6">
+          <p className="text-sm text-[var(--color-label-tertiary)]">
+            Loading Trade Log…
+          </p>
+        </main>
+      }
+    >
+      <TradeLogClient />
+    </Suspense>
   );
 }

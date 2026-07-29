@@ -27,6 +27,79 @@ Open: consent/disclosure line + `page_views` retention (flagged to Coach).
 
 ---
 
+## 2026-07-29 — Retrospective first-class Practice nav + shell
+
+**Decision:** **Retrospective** is a first-class Practice suite player between
+**Journal** and **Playbook** (`/app/retrospective`). Spec updated:
+`Specs/FatTail-Labs-Journal-Retrospective-Spec-v0.1.md` (§3.1–3.3). Retrospectives
+**filter up into Journey** as process milestones (read model; later slices).
+Slice **P0** ships nav + page shell only — no week roll-up/agent yet.
+
+**Nav order:** Trade Log · Reports · Journal · **Retrospective** · Playbook.
+
+## 2026-07-28 — Practice home = Reports (equity + drawdown)
+
+**Decision:** Navigating to **Practice** opens **Reports** (`/app/practice` →
+`/app/reports`). Layout: suite nav (Trade Log · Reports · Journal · Playbook);
+**equity curve** primary; **drawdown** directly under; **stat blocks**; then
+**outcome + strategy distribution** charts. Multi-account via pager (All + each
+active account). Curves computed client-side from Trade Log fills until
+`records/summary|series` API lands. Framing remains process-first (path health,
+not profit theater).
+
+## 2026-07-28 — Practice suite: Reports + shared nav + Journal calendar
+
+**Decision:** Product name for process totals/charts is **Reports** (not
+Statistics, not Records). Shared Practice suite chrome:
+**Trade Log · Reports · Journal · Playbook** (`PracticeSuiteNav` on every suite
+route). Top-level Apps grid nests all four under **Practice** (`/app/practice`).
+Legacy `/app/statistics` and `/app/records` redirect to `/app/reports`.
+
+**Journal:** calendar-first shell (month tiles, view segment, day panel) —
+kinship with Live calendar; entry CRUD awaits Journal Spec. Journal app status
+`live` for the shell. Migration `041_practice_suite_reports.sql` renames
+`statistics` → `reports` in `apps`.
+
+**Rationale:** Coach mockup + coupling of the four tools; FatTail App process
+sidebar already says Reports. API path `records/summary|series` may stay until
+Reports build renames endpoints.
+
+## 2026-07-28 — Echo agency upgrade: HIG + interactive design authority
+
+**Decision:** Expand **Echo** from thin “look & feel / polish” owner to full
+**Human Interface & Interaction Designer**: Apple HIG for Labs web, design tokens,
+control grammar, toolbar/header recipes, and blocking review on visual +
+interactive changes. Charter: `agents/bench/echo.md`. Constitution remains
+`Specs/FatTail-Labs-Human-Interface-Spec-v1.0.md`.
+
+**Locked split:** Echo designs/reviews; Charlie implements. Domain work surfaces
+may keep domain skins (e.g. ToS blotter **table body** only); Labs **shell,
+headers, buttons, sheets, dialogs** stay HIG — never broker-skinned chrome.
+Default tool-header recipe: ≤1 primary CTA per region; secondary/plain; overflow
+Menu when crowded; no equal-weight pill farms.
+
+**Rationale:** Trade Log header shipped as ad-hoc outline pills without Echo
+depth — symptom of under-specified agency, not missing product taste. Coach
+directed HIG mastery + strong interactive principles into Echo so design work
+routes through the bench correctly.
+
+## 2026-07-28 — Trade Log v1.1 Spec + Agent Bench (p-trade-log)
+
+**Decision:** Land `Specs/FatTail-Labs-Trade-Log-Spec-v1.1.md` (DRAFT) defining the
+options-first ToS-style Trade Log: table-never-leave shell, right slide-out,
+multi-leg strategies, accounts with required **broker or sim** (≤10 active),
+canonical `fattail.labs.trade_log` + adapters, and integration contracts for
+**Journal** (link field + shared process vocabulary) and **Records**
+(formerly “Statistics”: multi-account **totals and charts** via
+`records/summary` + `records/series` read models). Implementation is **Agent
+Bench only** via `agents/p-trade-log/` (seeds TL0–TL6). Supersedes MVP form-first
+shape for product direction; production may keep MVP until build approval and ship.
+
+**Rationale:** Coach design direction (2026-07-28); doctrine T-D5 process-first;
+Family B isolation; Practice stack compatibility without merging stores in v1.1.
+**Records** is the aggregation surface across broker/sim accounts; Trade Log
+remains the blotter.
+
 ## 2026-07-28 — DL-064 ActiveCampaign lead sync (free waitlist leads only)
 
 **Decision:** Free waitlist signups (`feature_gate_emails`) are pushed to the

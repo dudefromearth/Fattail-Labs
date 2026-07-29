@@ -43,6 +43,10 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
+- `agents/p-trade-log/` — **Trade Log v1.1** (options blotter, accounts, canonical I/O,
+  Journal/Records contracts — multi-account totals & charts). Spec:
+  `Specs/FatTail-Labs-Trade-Log-Spec-v1.1.md`. Board:
+  `agents/p-trade-log/ORCHESTRATOR.md`. Seeds TL0–TL6.
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,

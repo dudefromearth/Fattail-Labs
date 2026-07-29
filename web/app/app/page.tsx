@@ -33,21 +33,27 @@ type AppRow = {
 };
 
 /**
- * Top-level Apps grid (2-col). Trade Log + Journal are not listed here —
- * they live under Practice Log → /app/practice hub.
- * Display order is fixed for a clean IA; unknown API apps append at the end.
+ * Top-level Apps grid (2-col). Practice suite tools are nested under Practice
+ * (Trade Log · Reports · Journal · Playbook) — not listed individually here.
  */
 const TOP_LEVEL_ORDER = [
   "journey",
   "practice-log",
   "strategy-lab",
-  "playbook",
-  "statistics",
   "wiki",
 ] as const;
 
-/** Child app slugs hidden from the top-level grid (shown on Practice hub). */
-const NESTED_UNDER_PRACTICE = new Set(["trade-log", "journal"]);
+/** Suite slugs hidden from the top-level grid (Practice hub + suite nav). */
+const NESTED_UNDER_PRACTICE = new Set([
+  "trade-log",
+  "journal",
+  "retrospective",
+  "retrospectives",
+  "playbook",
+  "reports",
+  "statistics",
+  "records",
+]);
 
 const FALLBACK_APPS: AppRow[] = [
   {
@@ -62,9 +68,9 @@ const FALLBACK_APPS: AppRow[] = [
   {
     id: 0,
     slug: "practice-log",
-    title: "Practice Log",
+    title: "Practice",
     blurb:
-      "Trade Log and Journal in one hub — fills, adherence, prep, and review. Process first, not P&L theater.",
+      "Reports home (equity & drawdown), Trade Log, Journal, and Playbook — process first.",
     status: "live",
     href: "/app/practice",
   },
@@ -76,24 +82,6 @@ const FALLBACK_APPS: AppRow[] = [
       "Build, Prove, Paper, Run. Validate edges before capital. Most ideas die; survivors get a campaign.",
     status: "soon",
     href: "/app/strategy-lab",
-  },
-  {
-    id: 0,
-    slug: "playbook",
-    title: "Playbook",
-    blurb:
-      "Your defined-risk setups and rules — the book you actually trade from.",
-    status: "soon",
-    href: "/app/playbook",
-  },
-  {
-    id: 0,
-    slug: "statistics",
-    title: "Statistics",
-    blurb:
-      "Adherence and process metrics — streaks and discipline, never profit claims.",
-    status: "soon",
-    href: "/app/statistics",
   },
   {
     id: 0,
@@ -122,19 +110,13 @@ async function fetchApps(): Promise<AppRow[]> {
 function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
   const bySlug = new Map(apiApps.map((a) => [a.slug, a]));
 
-  // Prefer live status from children if either is live.
-  const trade = bySlug.get("trade-log");
-  const journal = bySlug.get("journal");
-  const practiceLive =
-    trade?.status === "live" || journal?.status === "live" ? "live" : "soon";
-
   const practice: AppRow = {
     id: 0,
     slug: "practice-log",
-    title: "Practice Log",
+    title: "Practice",
     blurb:
-      "Trade Log and Journal in one hub — fills, adherence, prep, and review. Process first, not P&L theater.",
-    status: practiceLive,
+      "Reports home (equity & drawdown), Trade Log, Journal, and Playbook — process first.",
+    status: "live",
     href: "/app/practice",
   };
 
@@ -234,7 +216,9 @@ function AppCard({ t }: { t: AppRow }) {
       ? "live"
       : t.slug === "strategy-lab"
         ? "soon"
-        : t.status;
+        : t.slug === "wiki"
+          ? t.status
+          : t.status;
   return (
     <div className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -268,7 +252,7 @@ export async function generateMetadata(): Promise<Metadata> {
   );
   const description = metaDescriptionFromMd(
     page.description_md,
-    "Member tools: Journey, Practice Log, Strategy Life Cycle, Playbook, and more.",
+    "Member tools: Journey, Practice suite, Strategy Life Cycle, Wiki, and more.",
   );
   return {
     title: page.title,

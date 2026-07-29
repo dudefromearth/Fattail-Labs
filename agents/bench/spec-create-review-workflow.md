@@ -29,7 +29,7 @@ compliance; product-boundary check; maintainability.
 → APPROVED or RETURNED with required changes.
 
 **Phase 3: Design & Experience Review (Echo + Tango)**
-Echo: visual system, hierarchy, token impact, polish bar.
+Echo: Apple HIG for Labs web, tokens, control grammar, interactive design, hierarchy, polish bar (see `echo.md`).
 Tango: member psychology, cognitive load, capacity-over-dependency, copy honesty.
 → Each APPROVED or RETURNED with specifics.
 

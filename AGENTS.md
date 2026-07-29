@@ -30,7 +30,7 @@ as-built architecture under `Architecture/` (index: `Architecture/README.md`).
 |-------|------|---------------|
 | **Alpha** | Backend Engineer | FastAPI service, MySQL schema/migrations, auth/SSO, entitlements, API surface |
 | **Charlie** | Frontend Engineer | Next.js app: catalog, course detail, player, dashboard, admin UI |
-| **Echo** | Human Interface Designer | Look & feel, design tokens, visual hierarchy, course-page polish |
+| **Echo** | Human Interface & Interaction Designer | Apple HIG for Labs web, tokens, control grammar, toolbars, visual + interactive review |
 | **Foxtrot** | Infrastructure Engineer | MiniTwo/DudeTwo provisioning, launchd, MiniThree nginx, Cloudflare, deploys |
 | **Mike** | Security & Auth Engineer | Dual-issuer SSO, session JWTs, signed video URLs, secrets, WooCommerce webhooks |
 | **Sierra** | Curriculum & AEO Specialist | Course copy formula, SEO/AEO layer (JSON-LD, titles, prerender), public catalog surface |
@@ -184,7 +184,7 @@ Projects:
 | Situation | Pairing |
 |-----------|---------|
 | Complex feature or refactor | **Juliet** (plan) + **India** (spec/architecture review) |
-| Anything visual / UX | **Echo** owns design; **Charlie** implements; **Echo** reviews |
+| Anything visual / UX / controls / toolbars | **Echo** owns HIG + interaction design; **Charlie** implements; **Echo** reviews before Delta |
 | Auth, SSO, entitlements, webhooks, media security | **Mike** designs/reviews; **Alpha** implements |
 | Backend API / schema / migrations | **Alpha**; migrations must trace to the spec (India) |
 | Public SEO/AEO, course copy, catalog | **Sierra** defines; **Charlie** implements |
