@@ -12,6 +12,11 @@ import ImportSheet from "@/components/trade-log/ImportSheet";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import { Button } from "@/components/ui";
 import type { Account, Catalog, Trade } from "@/lib/tradeLog";
+import {
+  exportUrl,
+  fetchCatalog,
+  fetchTrades,
+} from "@/lib/tradeLogApi";
 
 type LoadState = "loading" | "ok" | "anon" | "forbidden" | "err";
 
@@ -36,35 +41,27 @@ function TradeLogClient() {
 
   const load = useCallback(() => {
     setError(null);
-    const q =
-      accountId !== "all" ? `?account_id=${accountId}` : "";
-    Promise.all([
-      fetch(`/api/me/trade-log/trades${q}`, { credentials: "same-origin" }),
-      fetch("/api/me/trade-log/venues", { credentials: "same-origin" }),
-    ])
+    const aid = accountId !== "all" ? accountId : null;
+    Promise.all([fetchTrades(aid), fetchCatalog()])
       .then(async ([tr, vn]) => {
-        if (tr.status === 401 || vn.status === 401) {
-          setState("anon");
-          return;
-        }
-        if (tr.status === 403 || vn.status === 403) {
-          setState("forbidden");
-          return;
-        }
         if (!tr.ok) {
-          throw new Error((await tr.text()) || `HTTP ${tr.status}`);
+          setState(tr.error.kind === "err" ? "err" : tr.error.kind);
+          if (tr.error.kind === "err") setError(tr.error.message);
+          return;
         }
-        const tdata = await tr.json();
-        setTrades(tdata.trades || []);
-        const accts = tdata.accounts || [];
-        setAccounts(accts);
-        // Prefer server default_account_id (auto-provisioned Primary)
-        if (tdata.default_account_id != null && accountId === "all") {
-          // keep "all" as list scope; sheet/import use defaultAcct from active list
+        if (!vn.ok) {
+          if (vn.error.kind === "anon" || vn.error.kind === "forbidden") {
+            setState(vn.error.kind);
+            return;
+          }
         }
+        setTrades(tr.data.trades || []);
+        setAccounts(tr.data.accounts || []);
         if (vn.ok) {
-          const v = await vn.json();
-          setCatalog({ venues: v.venues || [], strategies: v.strategies || [] });
+          setCatalog({
+            venues: vn.data.venues || [],
+            strategies: vn.data.strategies || [],
+          });
         }
         setState("ok");
       })
@@ -151,12 +148,12 @@ function TradeLogClient() {
         }}
         nativeVenueLabel={nativeVenueLabel}
         onExport={(fmt) => {
-          const q = new URLSearchParams({ format: fmt });
-          if (accountId !== "all") q.set("account_id", String(accountId));
+          let aid: number | null =
+            accountId !== "all" ? accountId : null;
           if (fmt === "native" && accountId === "all" && primary?.id) {
-            q.set("account_id", String(primary.id));
+            aid = primary.id;
           }
-          window.location.href = `/api/me/trade-log/export?${q.toString()}`;
+          window.location.href = exportUrl({ accountId: aid, format: fmt });
         }}
       />
 

@@ -228,3 +228,133 @@ def test_butterfly_multi_leg_create(client):
         assert any(v["code"] == "thinkorswim" for v in venues.json()["venues"])
     finally:
         _purge(a)
+
+
+def test_identity_zero_fallback_blocked_outside_dev(client):
+    """PH0-1: claims identity_id=0 must not map to ernie/coach/admin outside dev.
+
+    Useful: locks the isolation/fail-loud gate. Not a coverage checkbox.
+    """
+    from config import get_config
+
+    cfg = get_config()
+    original = cfg.env
+    try:
+        cfg.env = "production"
+        zero = cookie_for("administrator", 0)
+        r = client.get("/api/me/trade-log/trades", cookies=zero)
+        assert r.status_code == 401, r.text
+        assert "Invalid session identity" in r.json().get("detail", "")
+
+        cfg.env = "staging"
+        r2 = client.get("/api/me/trade-log/trades", cookies=zero)
+        assert r2.status_code == 401, r2.text
+    finally:
+        cfg.env = original
+
+
+def test_real_identity_trade_log_works_when_env_not_dev(client):
+    """PH0-1: identity gate must not brick legitimate sessions outside dev.
+
+    Useful: proves the fail-loud path is id=0-specific, not a blanket env block.
+    """
+    from config import get_config
+
+    a = _id("zztest-tl-prod-env@labs.test")
+    cfg = get_config()
+    original = cfg.env
+    try:
+        cfg.env = "production"
+        ca = cookie_for("activator", a)
+        r = client.get("/api/me/trade-log/trades", cookies=ca)
+        assert r.status_code == 200, r.text
+        assert "accounts" in r.json()
+    finally:
+        cfg.env = original
+        _purge(a)
+
+
+def test_list_trades_batch_loads_multi_leg_legs(client, monkeypatch):
+    """PH0-2: list returns full legs for every trade without per-trade leg queries.
+
+    Useful scale + correctness invariant — not a coverage checkbox.
+    """
+    from routes.trade_log import common as tl_common
+
+    a = _id("zztest-tl-batch-legs@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "BatchSim", "broker": "thinkorswim"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = acct.json()["id"]
+        created_ids: list[int] = []
+        for i in range(6):
+            r = client.post(
+                "/api/me/trade-log/trades",
+                cookies=ca,
+                json={
+                    "account_id": aid,
+                    "exec_at": f"2026-03-{10 + i:02d}T10:00:00",
+                    "asset_class": "equity_option",
+                    "strategy": "VERTICAL",
+                    "order_type": "LMT",
+                    "legs": [
+                        {
+                            "side": "BUY",
+                            "quantity": 1,
+                            "pos_effect": "TO_OPEN",
+                            "underlier": "SPX",
+                            "expiry": "2026-04-21",
+                            "strike": 5000 + i,
+                            "right": "PUT",
+                            "fill_price": 2.5,
+                        },
+                        {
+                            "side": "SELL",
+                            "quantity": 1,
+                            "pos_effect": "TO_OPEN",
+                            "underlier": "SPX",
+                            "expiry": "2026-04-21",
+                            "strike": 4995 + i,
+                            "right": "PUT",
+                            "fill_price": 1.1,
+                        },
+                    ],
+                },
+            )
+            assert r.status_code == 200, r.text
+            body = r.json()
+            assert len(body["legs"]) == 2
+            created_ids.append(body["id"])
+
+        def _forbid_single_trade_leg_load(*_args, **_kwargs):
+            raise AssertionError(
+                "list_trades must batch-load legs; _load_legs is single-trade only"
+            )
+
+        # Patch where list path binds: common module used by trades/io
+        monkeypatch.setattr(tl_common, "_load_legs", _forbid_single_trade_leg_load)
+
+        listed = client.get("/api/me/trade-log/trades", cookies=ca)
+        assert listed.status_code == 200, listed.text
+        trades = listed.json()["trades"]
+        by_id = {t["id"]: t for t in trades}
+        for tid in created_ids:
+            assert tid in by_id, f"missing trade {tid} in list"
+            assert len(by_id[tid]["legs"]) == 2, by_id[tid]
+            assert by_id[tid]["legs"][0]["leg_index"] == 0
+            assert by_id[tid]["legs"][1]["leg_index"] == 1
+
+        # Detail path still allowed to use single-trade loader
+        monkeypatch.undo()
+        detail = client.get(
+            f"/api/me/trade-log/trades/{created_ids[0]}", cookies=ca
+        )
+        assert detail.status_code == 200
+        assert len(detail.json()["legs"]) == 2
+    finally:
+        _purge(a)

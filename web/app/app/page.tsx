@@ -3,6 +3,7 @@ import Link from "next/link";
 import SectionHubShell from "@/components/section-hub/SectionHubShell";
 import { apiGet } from "@/lib/api";
 import { siteUrl } from "@/lib/catalog";
+import { PRACTICE_NESTED_SLUGS as NESTED_UNDER_PRACTICE } from "@/lib/practiceSuite";
 import {
   fetchSitePage,
   metaDescriptionFromMd,
@@ -42,18 +43,6 @@ const TOP_LEVEL_ORDER = [
   "strategy-lab",
   "wiki",
 ] as const;
-
-/** Suite slugs hidden from the top-level grid (Practice hub + suite nav). */
-const NESTED_UNDER_PRACTICE = new Set([
-  "trade-log",
-  "journal",
-  "retrospective",
-  "retrospectives",
-  "playbook",
-  "reports",
-  "statistics",
-  "records",
-]);
 
 const FALLBACK_APPS: AppRow[] = [
   {

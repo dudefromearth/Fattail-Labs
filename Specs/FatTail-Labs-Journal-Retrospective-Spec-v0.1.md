@@ -1,14 +1,16 @@
 # FatTail Labs — Journal Retrospective & Progress Analysis Spec v0.1
 
-**Status:** DRAFT — idea capture for Coach review; **not approved for build**  
+**Status:** DRAFT (content) · **P0 shell SHIPPED** (nav + page chrome only)  
 **Date:** 2026-07-29  
 **Authoring stance:** Work-through document — prefer incremental slices over a big-bang ship  
-**Routes (proposed / partial ship):**
-- Journal (Practice suite): `/app/journal` — calendar + day/session surface  
-- **Retrospective (Practice suite, first-class nav):** `/app/retrospective` — between Journal and Playbook  
-- Retrospectives remain a **kind** of Journal event, but **surface** as their own Practice player  
-- Reports journal progress (proposed): `/app/reports/journal` and/or feed into **Journey** tracker  
-- Journey: `/app/journey` — process progress; retrospectives **filter up** as milestones
+**Honesty (2026-07-29):** Do **not** claim week roll-up, agent co-author, or Journey
+milestone pipeline as live. Those remain later slices.  
+**Routes (partial ship / proposed):**
+- Journal (Practice suite): `/app/journal` — calendar + day book from Trade Log analytics  
+- **Retrospective (Practice suite, first-class nav):** `/app/retrospective` — **P0 shell only**  
+- Retrospectives remain a **kind** of Journal event (future); **surface** as own Practice player  
+- Reports journal progress (proposed): `/app/reports/journal` and/or feed into **Journey**  
+- Journey: `/app/journey` — process progress; retrospectives **filter up** as milestones (later)
 
 **Family:** B (member-private) · **Entitlement:** activator+ (administrators always)  
 

@@ -27,6 +27,67 @@ Open: consent/disclosure line + `page_views` retention (flagged to Coach).
 
 ---
 
+## 2026-07-29 — Practice harden H0–H3 institutional close
+
+**Decision:** p-practice-harden phases **H0–H2 PASS**; **H3** documents as-built truth.
+
+| Topic | Record |
+|-------|--------|
+| Identity | `_storage_identity_id` fallback for session id `0` only when `LABS_ENV=dev`; else 401 |
+| List legs | Batch load; not N+1 |
+| Domain | `server/trade_log_domain/` single source for match / open-on-day / estimated PnL / series |
+| API | `analytics/day-book`, `analytics/days-interest`, `analytics/reports-book` |
+| Client | No dual TS domain; `web/lib/tradeLogApi.ts` shared client |
+| Routes package | `server/routes/trade_log/{common,accounts,trades,analytics,io}.py` |
+| Spec honesty | Trade Log Spec §15 as-built; Journal-Retrospective P0 shell honesty |
+| Ops vs product | `agents/p-practice-harden/OPS-VS-PRODUCT.md` |
+| Migrations | Practice suite / trade log already on `040`/`041` era; no new H0–H2 migrations |
+
+**Non-goals locked:** live brokers; Retrospective content; productizing ops xlsx/seeds;
+H4 virtualization only after Coach GO.
+
+**Evidence:** `agents/p-practice-harden/gate-reports/H{0,1,2}-delta-gate.md` · H3 Spec/docs.
+
+## 2026-07-29 — Practice domain single-source shipped (H1 PASS)
+
+**Decision:** H1 of p-practice-harden **PASS**. Authoritative domain is
+`server/trade_log_domain/`. Read models:
+
+- `GET /api/me/trade-log/analytics/day-book`
+- `GET /api/me/trade-log/analytics/days-interest`
+- `GET /api/me/trade-log/analytics/reports-book`
+
+Reports and Journal consume these APIs; client dual match/PnL algorithms removed.
+`seed_reports_demo_pnl` uses the same domain. Behavior freeze: ported client formulas.
+
+**Evidence:** `agents/p-practice-harden/gate-reports/H1-delta-gate.md` · pytest 20 passed
+(domain + analytics + trade_log).
+
+## 2026-07-29 — Practice domain single-source design (PH1-0)
+
+**Decision:** Position matching, open-on-day, synthetic realized PnL, and Reports
+equity/DD series move to server package `server/trade_log_domain/` with pure
+functions. Clients consume read models:
+
+- `GET /api/me/trade-log/analytics/day-book`
+- `GET /api/me/trade-log/analytics/reports-book`
+
+**Behavior freeze:** port current `journalDayBook` / `reportsBook` formulas 1:1 —
+no intentional metric change. Starting capital stays client preference (query
+param). Spec `records/*` may alias later; as-built analytics paths are primary
+until Spec honesty (H3). Design: `Architecture/11-practice-domain-single-source.md`.
+
+## 2026-07-29 — Practice stack hardening board (p-practice-harden)
+
+**Decision:** Architectural hardening of the Practice suite is run as Agent Bench
+project `agents/p-practice-harden/`: phased H0–H4, **mandatory multi-agent
+collaboration** (Primary + required Reviewers + Delta gate per phase). Goals:
+isolation fail-loud, kill N+1 list, single-source position/PnL, module splits,
+Spec/as-built truth — without behavior change unless Coach-labeled usability wins.
+H0 **PASS** (identity gate + batch legs + useful-only tests).
+
+**Board:** `ORCHESTRATOR.md` · **Charter:** `CHARTER.md` · Seeds start at PH0-*.
+
 ## 2026-07-29 — Retrospective first-class Practice nav + shell
 
 **Decision:** **Retrospective** is a first-class Practice suite player between

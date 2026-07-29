@@ -190,7 +190,8 @@ export default function ImportSheet({
             CSV (we use the <em>Account Trade History</em> block). If this is
             the account&apos;s first use, venue is set from the file type (ToS →
             thinkorswim, canonical → FatTail). Preview before commit; duplicates
-            skipped.
+            skipped. Imported PnL is your recorded process data — not a
+            performance advertisement.
           </p>
 
           <label className="block text-xs font-medium text-[var(--color-label-secondary)]">

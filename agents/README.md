@@ -43,6 +43,10 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
+- `agents/p-practice-harden/` — **Practice stack architectural hardening** (H0–H4:
+  isolation, batch legs, single-source position/PnL, module splits, Spec truth).
+  Collaboration-mandatory seeds. Board: `agents/p-practice-harden/ORCHESTRATOR.md`.
+  Charter: `agents/p-practice-harden/CHARTER.md`.
 - `agents/p-trade-log/` — **Trade Log v1.1** (options blotter, accounts, canonical I/O,
   Journal/Records contracts — multi-account totals & charts). Spec:
   `Specs/FatTail-Labs-Trade-Log-Spec-v1.1.md`. Board:

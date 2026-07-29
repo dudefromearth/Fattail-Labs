@@ -1,10 +1,11 @@
 # FatTail Labs — Trade Log Spec v1.1
 
-**Status:** DRAFT — Coach-directed (2026-07-28); pending formal Coach flip to approved-for-build  
-**Date:** 2026-07-28  
+**Status:** AS-BUILT (v1.1 + harden appendix) — product surface live; formal Coach “approved”
+label retained from p-trade-log delivery; **harden truth** in §15 (2026-07-29)  
+**Date:** 2026-07-28 · **As-built notes:** 2026-07-29  
 **Route:** `/app/trade-log`  
 **Family:** B (member-private) · **Entitlement:** activator+ (administrators always)  
-**Execution:** Agent Bench project [`agents/p-trade-log/`](../agents/p-trade-log/)  
+**Execution:** [`agents/p-trade-log/`](../agents/p-trade-log/) · harden [`agents/p-practice-harden/`](../agents/p-practice-harden/)
 
 **Parents:**
 - [`FatTail-Labs-Application-Framework-Spec-v1.0.md`](./FatTail-Labs-Application-Framework-Spec-v1.0.md) — Trade Log template, T-D5 process-first, Family B
@@ -477,6 +478,80 @@ See [`agents/p-trade-log/ORCHESTRATOR.md`](../agents/p-trade-log/ORCHESTRATOR.md
 | D7 | Records P&amp;L charts/totals off by default |
 | D8 | Journal: link field only in v1.1 |
 | D9 | Product name **Reports** (not Statistics); multi-account totals/charts home |
+
+---
+
+## 15. As-built harden notes (2026-07-29) — p-practice-harden H0–H2
+
+**Purpose:** Spec honesty for the **shipped** Practice stack after architectural
+hardening. §9–§10 remain the original v1.1 contract; this section records what is
+**actually live** so agents do not invent or re-implement dual domain logic.
+
+**Design reference:** [`Architecture/11-practice-domain-single-source.md`](../Architecture/11-practice-domain-single-source.md)  
+**Board:** [`agents/p-practice-harden/`](../agents/p-practice-harden/) · Gates H0–H2 **PASS**
+
+### 15.1 Domain single source of truth
+
+| Concern | Authoritative implementation |
+|---------|------------------------------|
+| Structure key / FIFO open→close | `server/trade_log_domain/` |
+| Synthetic / estimated realized PnL | same (when `pnl_amount` null on closes) |
+| Open-on-day / day book | same |
+| Equity series + drawdown + stats numbers | same via `build_reports_book` |
+
+Clients (**Reports**, **Journal**) **consume** HTTP read models. They must **not**
+reimplement match/PnL domain (removed in H1). Presentation (histogram bins, money
+formatting, HIG chrome) stays client-side.
+
+### 15.2 Analytics API (as-built; supersedes default path for Reports/Journal)
+
+Live under `/api/me/trade-log/analytics/*` (session + activator+; Family B identity):
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/analytics/day-book?day=YYYY-MM-DD&account_id=` | Journal day book |
+| GET | `/analytics/days-interest?from_day=&to_day=&account_id=` | Calendar interest days |
+| GET | `/analytics/reports-book?account_id=&starting_capital=` | Reports equity / DD / stats |
+
+- `starting_capital` is a **client preference** (localStorage); not a server ledger.  
+- Effective PnL may be **estimated** when fills lack stored `pnl_amount` — process
+  honesty; not a performance claim (Tango/Hotel).  
+- Spec §10.2 `records/summary` and `records/series` remain the **process-first
+  contract** for future totals/adherence metrics; **not yet** the primary path for
+  the equity UI. Do not claim they are wired until a later seed lands aliases.
+
+### 15.3 List / isolation / performance (H0)
+
+| Rule | As-built |
+|------|----------|
+| Legs on list/export | Batch `IN (...)` via `_load_legs_for_trades` — not N+1 |
+| Trade list limit | 10000 (full multi-year books; no silent small truncate) |
+| Identity | Real sessions use claims `identity_id`; storage fallback for internal id `0` is **`LABS_ENV=dev` only** (401 outside dev) |
+| Route layout | Package `server/routes/trade_log/` (`common`, `accounts`, `trades`, `analytics`, `io`) |
+
+### 15.4 Practice suite nav (as-built)
+
+Order: **Trade Log · Reports · Journal · Retrospective · Playbook**  
+Canonical slugs: `web/lib/practiceSuite.ts` → `PRACTICE_NESTED_SLUGS` (Apps grid nests these).
+
+### 15.5 Non-goals (harden / this Spec honesty)
+
+- Live broker APIs.  
+- Member productization of bench/ops scripts (`import_0dte_xlsx`, demo seeds) — see
+  [`agents/p-practice-harden/OPS-VS-PRODUCT.md`](../agents/p-practice-harden/OPS-VS-PRODUCT.md).  
+- Retrospective **content** (week roll-up, agent) — Journal-Retrospective Spec **P0 shell only**.  
+- Formula changes without Coach-labeled seed (behavior freeze unless explicitly approved).  
+- Virtualization/pagination of blotter — optional H4 only after Coach GO.  
+
+### 15.6 Acceptance delta vs §12
+
+| §12 item | As-built note |
+|----------|----------------|
+| 10 `records/summary` (+ series) | **Deferred** as primary Reports path; use §15.2 analytics until records aliases ship |
+| Isolation / multi-leg / import | Covered by characterization suite (`server/tests/test_trade_log*.py`) |
+
+**Version note:** A formal Spec **v1.2** may later merge §15 into §9–§10. Until then,
+§15 is **normative for as-built** Practice harden.
 
 ---
 

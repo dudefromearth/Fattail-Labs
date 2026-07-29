@@ -1,21 +1,34 @@
 "use client";
 
 /**
- * Journal calendar suite — Year · Month · Week · Day (Coach mockups).
- * Day panel lists Trade Log fills for the selected date (Vexy session later).
+ * Journal calendar suite — Year · Month · Week · Day.
+ * Day trades panel extracted (PH2-3); date helpers in dateUtils.
  */
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui";
-import type { Trade } from "@/lib/tradeLog";
-import { formatQtyEffect } from "@/lib/tradeLog";
 import {
-  buildDayBook,
-  dayBookBadge,
-  daysWithBookInterest,
-  type DayBookItem,
+  dayBookFromServer,
+  emptyDayBook,
+  ymdLocal,
+  type DayBook,
 } from "@/lib/journalDayBook";
+import { fetchDayBook, fetchDaysInterest } from "@/lib/tradeLogApi";
+import DayTradesPanel, { DayPanel } from "./DayTradesPanel";
+import {
+  addDays,
+  formatDayTitle,
+  formatLong,
+  monthCells,
+  monthTitle,
+  sameDay,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+  weekTitle,
+  ymd,
+} from "./dateUtils";
 
 type ViewMode = "year" | "month" | "week" | "day";
 
@@ -60,367 +73,11 @@ const MONTH_SHORT = [
   "Dec",
 ] as const;
 
-function startOfDay(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function startOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-
-/** Monday-first start of week containing d. */
-function startOfWeek(d: Date) {
-  const x = startOfDay(d);
-  const monOffset = (x.getDay() + 6) % 7;
-  x.setDate(x.getDate() - monOffset);
-  return x;
-}
-
-function addDays(d: Date, n: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
-
-function ymd(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function sameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function formatLong(d: Date) {
-  return d.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatDayTitle(d: Date) {
-  return d.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function monthTitle(d: Date) {
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-}
-
-function weekTitle(weekStart: Date) {
-  const end = addDays(weekStart, 6);
-  const sameMonth = weekStart.getMonth() === end.getMonth();
-  if (sameMonth) {
-    return `${weekStart.toLocaleDateString(undefined, { month: "short" })} ${weekStart.getDate()} – ${end.getDate()}`;
-  }
-  return `${weekStart.toLocaleDateString(undefined, { month: "short" })} ${weekStart.getDate()} – ${end.toLocaleDateString(undefined, { month: "short" })} ${end.getDate()}`;
-}
-
-function monthCells(year: number, month: number): (Date | null)[] {
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const leading = (new Date(year, month, 1).getDay() + 6) % 7;
-  const cells: (Date | null)[] = [
-    ...Array.from({ length: leading }, () => null),
-    ...Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1)),
-  ];
-  while (cells.length % 7 !== 0) cells.push(null);
-  return cells;
-}
-
 const navBtn =
   "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] text-[var(--color-label-secondary)] shadow-[var(--elevation-1)] transition-colors hover:bg-[var(--color-fill)] hover:text-[var(--color-label)] sm:min-h-9 sm:min-w-9";
 
 const tileBase =
   "bg-[var(--color-surface)] shadow-[var(--elevation-1)] rounded-[var(--radius-md)]";
-
-function tradeSummaryLine(t: Trade): string {
-  const legs = t.legs || [];
-  const under =
-    legs.find((l) => l.underlier)?.underlier ||
-    legs.find((l) => l.symbol)?.symbol ||
-    "—";
-  const legBits = legs
-    .slice(0, 3)
-    .map((l) => formatQtyEffect(l))
-    .join(" · ");
-  const more = legs.length > 3 ? ` · +${legs.length - 3}` : "";
-  return `${under}${legBits ? ` · ${legBits}${more}` : ""}`;
-}
-
-function tradeNetLabel(t: Trade): string {
-  if (t.net_price == null) return "—";
-  const side = t.net_side ? ` ${t.net_side}` : "";
-  const sign = t.net_side === "CREDIT" ? "+" : "";
-  return `${sign}${Number(t.net_price).toFixed(2)}${side}`;
-}
-
-function DayPanel({
-  selected,
-  onOpen,
-  itemCount,
-  openCount,
-  closedCount,
-  openedCount,
-}: {
-  selected: Date;
-  onOpen: () => void;
-  itemCount: number;
-  openCount: number;
-  closedCount: number;
-  openedCount: number;
-}) {
-  let blurb = "No entries on this day.";
-  if (itemCount > 0) {
-    const parts: string[] = [];
-    if (openCount > 0) {
-      parts.push(`${openCount} open`);
-    }
-    if (openedCount > 0) {
-      parts.push(`${openedCount} opened`);
-    }
-    if (closedCount > 0) {
-      parts.push(`${closedCount} closed`);
-    }
-    blurb =
-      (parts.length > 0 ? parts.join(" · ") : `${itemCount} on the book`) +
-      " · no journal entries yet";
-  }
-  return (
-    <div className="surface-card flex flex-wrap items-start justify-between gap-3 border border-[var(--color-separator)] px-4 py-4 sm:px-5">
-      <div className="min-w-0">
-        <p
-          className="font-semibold text-[var(--color-label)]"
-          style={{ fontSize: "var(--text-headline)" }}
-        >
-          {formatLong(selected)}
-        </p>
-        <p
-          className="mt-1 text-[var(--color-label-secondary)]"
-          style={{ fontSize: "var(--text-subheadline)" }}
-        >
-          {blurb}
-        </p>
-      </div>
-      <Button type="button" variant="secondary" className="shrink-0" onClick={onOpen}>
-        Open
-      </Button>
-    </div>
-  );
-}
-
-function TradeRow({
-  item,
-  badge,
-}: {
-  item: DayBookItem;
-  badge: string;
-}) {
-  const t = item.trade;
-  const time = t.exec_at ? t.exec_at.replace("T", " ").slice(11, 16) : "";
-  const isClose = item.role === "fill_close";
-  const isOpenPos = item.role === "open";
-  const logHref = `/app/trade-log?id=${t.id}`;
-  const chartHref = `/app/reports?trade=${t.id}`;
-
-  function go(e: React.MouseEvent) {
-    // Option/Alt-click → equity chart at this trade; plain click → Trade Log selected
-    if (e.altKey) {
-      e.preventDefault();
-      window.location.href = chartHref;
-    }
-    // plain / ⌘-click: follow logHref (same tab or new tab)
-  }
-
-  return (
-    <li>
-      <a
-        href={logHref}
-        onClick={go}
-        title="Open in Trade Log · Option-click: show on equity curve"
-        className={[
-          "flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-2.5 text-sm transition-colors",
-          "bg-[var(--color-surface)] hover:bg-[var(--color-fill)]",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
-        ].join(" ")}
-      >
-        <span
-          className={[
-            "inline-block h-2 w-2 shrink-0 rounded-full",
-            isClose
-              ? "bg-[var(--color-destructive)]"
-              : "bg-[var(--color-success)]",
-          ].join(" ")}
-          title={badge}
-          aria-hidden
-        />
-        <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
-          {badge}
-        </span>
-        <span className="font-semibold text-[var(--color-label)]">
-          {t.strategy}
-        </span>
-        {!isOpenPos && time && (
-          <span className="tabular-nums text-[var(--color-label-tertiary)]">
-            {time}
-          </span>
-        )}
-        {isOpenPos && (
-          <span className="text-[var(--color-label-tertiary)]">
-            opened {item.opened_on}
-            {item.expires_on ? ` · exp ${item.expires_on}` : ""}
-          </span>
-        )}
-        <span className="min-w-0 flex-1 truncate text-[var(--color-label-secondary)]">
-          {tradeSummaryLine(t)}
-        </span>
-        <span className="ml-auto font-medium tabular-nums text-[var(--color-label)]">
-          {tradeNetLabel(t)}
-        </span>
-      </a>
-    </li>
-  );
-}
-
-function DayTradesPanel({
-  book,
-  loadState,
-  onRetry,
-}: {
-  book: ReturnType<typeof buildDayBook>;
-  loadState: "loading" | "ok" | "anon" | "forbidden" | "err";
-  onRetry: () => void;
-}) {
-  const n = book.items.length;
-  const openN = book.items.filter(
-    (i) => i.role === "open" && i.opened_on !== book.day,
-  ).length;
-  const openedN = book.items.filter(
-    (i) =>
-      (i.role === "open" || i.role === "fill_open") && i.opened_on === book.day,
-  ).length;
-  const closedN = book.items.filter((i) => i.role === "fill_close").length;
-
-  return (
-    <section data-testid="journal-day-trades" className="space-y-3">
-      <div className="flex items-baseline justify-between gap-3 border-b border-[var(--color-separator)] pb-2">
-        <div>
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-label)]">
-            Trades on this day
-          </h3>
-          <p className="mt-0.5 text-xs text-[var(--color-label-tertiary)]">
-            Opened, closed, or still open · click → Trade Log · Option-click →
-            equity chart
-          </p>
-        </div>
-        <span className="text-sm tabular-nums text-[var(--color-label-tertiary)]">
-          {loadState === "loading"
-            ? "…"
-            : n > 0
-              ? [
-                  openN > 0 ? `${openN} open` : null,
-                  openedN > 0 ? `${openedN} opened` : null,
-                  closedN > 0 ? `${closedN} closed` : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || `${n}`
-              : "0 trades"}
-        </span>
-      </div>
-
-      {loadState === "loading" && (
-        <p className="text-sm text-[var(--color-label-tertiary)]">
-          Loading Trade Log…
-        </p>
-      )}
-
-      {loadState === "anon" && (
-        <p className="text-sm text-[var(--color-label-secondary)]">
-          <Link href="/login" className="font-medium text-[var(--color-tint)]">
-            Sign in
-          </Link>{" "}
-          to see Trade Log context for this day.
-        </p>
-      )}
-
-      {loadState === "forbidden" && (
-        <p className="text-sm text-[var(--color-label-secondary)]">
-          Trade Log requires Activator membership.{" "}
-          <Link href="/membership" className="text-[var(--color-tint)]">
-            View membership
-          </Link>
-        </p>
-      )}
-
-      {loadState === "err" && (
-        <p className="text-sm text-[var(--color-label-secondary)]">
-          Could not load trades.{" "}
-          <button
-            type="button"
-            className="font-medium text-[var(--color-tint)] underline"
-            onClick={onRetry}
-          >
-            Retry
-          </button>
-        </p>
-      )}
-
-      {loadState === "ok" && n === 0 && (
-        <>
-          <p className="text-sm text-[var(--color-label-secondary)]">
-            No trades opened, closed, or still open on this date.
-          </p>
-          <p className="text-xs text-[var(--color-label-tertiary)]">
-            From{" "}
-            <Link href="/app/trade-log" className="text-[var(--color-tint)]">
-              Trade Log
-            </Link>
-            : longer-dated opens stay listed until closed or past expiry.
-          </p>
-        </>
-      )}
-
-      {loadState === "ok" && n > 0 && (
-        <>
-          <ul className="space-y-2">
-            {book.items.map((item) => (
-              <TradeRow
-                key={`${item.role}-${item.trade.id}`}
-                item={item}
-                badge={dayBookBadge(item, book.day)}
-              />
-            ))}
-          </ul>
-          <p className="text-xs text-[var(--color-label-tertiary)]">
-            <strong className="font-medium text-[var(--color-label-secondary)]">
-              Open
-            </strong>{" "}
-            = still live ·{" "}
-            <strong className="font-medium text-[var(--color-label-secondary)]">
-              Opened
-            </strong>{" "}
-            /{" "}
-            <strong className="font-medium text-[var(--color-label-secondary)]">
-              Closed
-            </strong>{" "}
-            = executed this calendar day. Source:{" "}
-            <Link href="/app/trade-log" className="text-[var(--color-tint)]">
-              Trade Log
-            </Link>
-            .
-          </p>
-        </>
-      )}
-    </section>
-  );
-}
 
 function MonthGrid({
   year,
@@ -679,7 +336,7 @@ function DayView({
   draft: string;
   onDraft: (v: string) => void;
   onPrompt: (label: string) => void;
-  book: ReturnType<typeof buildDayBook>;
+  book: DayBook;
   tradesLoadState: "loading" | "ok" | "anon" | "forbidden" | "err";
   onRetryTrades: () => void;
 }) {
@@ -799,58 +456,63 @@ export default function JournalCalendar() {
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [draft, setDraft] = useState("");
   const [activePrompt, setActivePrompt] = useState<string | null>(null);
-  const [allTrades, setAllTrades] = useState<Trade[]>([]);
+  const [dayBook, setDayBook] = useState<DayBook>(() =>
+    emptyDayBook(ymdLocal(new Date())),
+  );
+  const [daysWithTrades, setDaysWithTrades] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [tradesLoadState, setTradesLoadState] =
     useState<TradesLoadState>("loading");
 
-  const loadTrades = useCallback(() => {
+  const selectedYmd = useMemo(() => ymdLocal(selected), [selected]);
+
+  const loadDayBook = useCallback(async () => {
     setTradesLoadState("loading");
-    fetch("/api/me/trade-log/trades", { credentials: "same-origin" })
-      .then(async (r) => {
-        if (r.status === 401) {
-          setTradesLoadState("anon");
-          setAllTrades([]);
-          return;
+    try {
+      const res = await fetchDayBook(selectedYmd);
+      if (!res.ok) {
+        setTradesLoadState(
+          res.error.kind === "err" ? "err" : res.error.kind,
+        );
+        setDayBook(emptyDayBook(selectedYmd));
+        return;
+      }
+      setDayBook(dayBookFromServer(res.data));
+      setTradesLoadState("ok");
+    } catch {
+      setTradesLoadState("err");
+      setDayBook(emptyDayBook(selectedYmd));
+    }
+  }, [selectedYmd]);
+
+  const loadDaysInterest = useCallback(async () => {
+    const y = today.getFullYear();
+    try {
+      const res = await fetchDaysInterest(`${y - 1}-01-01`, `${y + 1}-12-31`);
+      if (!res.ok) {
+        if (res.error.kind === "anon" || res.error.kind === "forbidden") {
+          setTradesLoadState(res.error.kind);
         }
-        if (r.status === 403) {
-          setTradesLoadState("forbidden");
-          setAllTrades([]);
-          return;
-        }
-        if (!r.ok) {
-          setTradesLoadState("err");
-          setAllTrades([]);
-          return;
-        }
-        const data = await r.json();
-        setAllTrades((data.trades || []) as Trade[]);
-        setTradesLoadState("ok");
-      })
-      .catch(() => {
-        setTradesLoadState("err");
-        setAllTrades([]);
-      });
-  }, []);
+        setDaysWithTrades(new Set());
+        return;
+      }
+      setDaysWithTrades(new Set(res.data.days || []));
+    } catch {
+      setDaysWithTrades(new Set());
+    }
+  }, [today]);
 
   useEffect(() => {
-    loadTrades();
-  }, [loadTrades]);
+    loadDaysInterest();
+  }, [loadDaysInterest]);
+
+  useEffect(() => {
+    loadDayBook();
+  }, [loadDayBook]);
 
   const weekStart = useMemo(() => startOfWeek(selected), [selected]);
   const year = cursor.getFullYear();
-  const dayBook = useMemo(
-    () => buildDayBook(allTrades, selected),
-    [allTrades, selected],
-  );
-  const daysWithTrades = useMemo(() => {
-    // Interest range: ~2 years around today for calendar dots (open span + fills)
-    const y = today.getFullYear();
-    return daysWithBookInterest(
-      allTrades,
-      `${y - 1}-01-01`,
-      `${y + 1}-12-31`,
-    );
-  }, [allTrades, today]);
 
   function setViewAndSync(v: ViewMode) {
     setView(v);
@@ -1051,7 +713,7 @@ export default function JournalCalendar() {
             onPrompt={onPrompt}
             book={dayBook}
             tradesLoadState={tradesLoadState}
-            onRetryTrades={loadTrades}
+            onRetryTrades={loadDayBook}
           />
         )}
       </div>
