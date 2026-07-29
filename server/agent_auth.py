@@ -20,6 +20,7 @@ VALID_SCOPES = frozenset(
         "admin:read",
         "admin:content",
         "board:operate",
+        "wiki:reindex",
     }
 )
 DEFAULT_AI_SCOPES = ["ai:run", "ai:status"]
