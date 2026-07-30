@@ -21,6 +21,10 @@ export type CourseCard = {
   avg_rating: number | null;
   categories: Category[];
   instructors: InstructorCard[];
+  /** Manual catalog position, ascending (Catalog Order spec v1.0). */
+  sort_order?: number;
+  /** Catalog display section heading; "" = unsectioned (Catalog Order spec v1.0). */
+  catalog_section?: string;
   /** Present on admin catalog payloads only; public API omits this. */
   status?: "draft" | "published" | "archived";
 };

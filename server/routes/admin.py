@@ -93,6 +93,7 @@ def list_admin_courses(request: Request) -> dict:
             cur.execute(
                 """SELECT c.id, c.slug, c.title, c.subtitle, c.description_md,
                           c.hero_image_url, c.card_color, c.level, c.status,
+                          c.sort_order, c.catalog_section,
                           c.certification_enabled, c.published_at,
                           (SELECT COUNT(*) FROM enrollments e
                             WHERE e.course_id = c.id) AS enrolled_count,
@@ -109,12 +110,7 @@ def list_admin_courses(request: Request) -> dict:
                             WHERE r.course_id = c.id AND r.status = 'visible'
                            HAVING COUNT(*) >= 3) AS avg_rating
                    FROM courses c
-                   ORDER BY
-                     CASE c.status
-                       WHEN 'draft' THEN 0
-                       WHEN 'published' THEN 1
-                       ELSE 2
-                     END,
+                   ORDER BY c.sort_order ASC,
                      COALESCE(c.published_at, c.created_at) DESC"""
             )
             rows = cur.fetchall()
@@ -151,12 +147,15 @@ def list_admin_courses(request: Request) -> dict:
     for r in rows:
         courses.append(
             {
+                "id": r["id"],
                 "slug": r["slug"],
                 "title": r["title"],
                 "subtitle": r["subtitle"],
                 "description_md": r["description_md"],
                 "hero_image_url": r["hero_image_url"],
                 "card_color": r["card_color"],
+                "sort_order": r["sort_order"],
+                "catalog_section": r["catalog_section"] or "",
                 "level": r["level"],
                 "status": r["status"],
                 "certification_enabled": bool(r["certification_enabled"]),

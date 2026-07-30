@@ -7,15 +7,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useIsAdmin } from "@/lib/useIsAdmin";
-import { putJSON, revalidate, uploadMedia } from "@/lib/client";
+import { postJSON, putJSON, revalidate, uploadMedia } from "@/lib/client";
 import { FIELD } from "@/lib/ui";
 import Link from "next/link";
 import type { CourseCard } from "@/lib/types";
 import { isNew } from "@/lib/catalog";
 import { ImportCourseCard, NewCourseCard } from "@/components/edit/EditorExtras";
+import { IconButton, IconChevronDown, IconChevronUp } from "@/components/ui";
 import { appAlert } from "@/lib/dialogs";
 
 const LEVELS = ["beginner", "intermediate", "advanced"] as const;
+
+/** One grid definition shared by the flat and section-grouped layouts. */
+const GRID = "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3";
 
 // Deterministic banner art per category (until a color/image is chosen).
 const BANNER_GRADIENTS: Record<string, string> = {
@@ -103,15 +107,23 @@ function Banner({ course }: { course: CourseCard }) {
 // (hero_image_url — sharp on the card, blurred on the course page header).
 function CardEditor({
   course,
+  sections,
   onClose,
   onSaved,
 }: {
   course: CourseCard;
+  /** Distinct existing section names, for the datalist. */
+  sections: string[];
   onClose: () => void;
-  onSaved: (patch: { card_color: string | null; hero_image_url: string | null }) => void;
+  onSaved: (patch: {
+    card_color: string | null;
+    hero_image_url: string | null;
+    catalog_section: string;
+  }) => void;
 }) {
   const [color, setColor] = useState(course.card_color ?? "");
   const [imageUrl, setImageUrl] = useState(course.hero_image_url ?? "");
+  const [section, setSection] = useState(course.catalog_section ?? "");
   const [busy, setBusy] = useState(false);
 
   const field = `w-full ${FIELD}`;
@@ -129,6 +141,7 @@ function CardEditor({
     const patch = {
       card_color: color || null,
       hero_image_url: imageUrl || null,
+      catalog_section: section.trim(),
     };
     const r = await putJSON(`/api/admin/courses/${course.slug}`, patch);
     if (!r.ok) {
@@ -224,6 +237,21 @@ function CardEditor({
         The image is the course banner: sharp here, blurred behind the course
         page header.
       </p>
+      <input
+        value={section}
+        onChange={(e) => setSection(e.target.value)}
+        placeholder="Catalog section (blank = none)"
+        list="catalog-section-names"
+        className={field}
+      />
+      <datalist id="catalog-section-names">
+        {sections.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+      <p className="text-[11px] leading-snug text-zinc-400">
+        Courses with the same section group under one heading on the catalog.
+      </p>
       <div className="mt-auto flex items-center gap-2">
         <button
           onClick={save}
@@ -269,6 +297,8 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
   const [q, setQ] = useState("");
   const isAdmin = useIsAdmin();
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
+  /** One reorder write in flight at a time (steppers disabled meanwhile). */
+  const [orderBusy, setOrderBusy] = useState(false);
   /** Local catalog graph so card edits apply without page reload. */
   const [items, setItems] = useState(courses);
   useEffect(() => {
@@ -282,13 +312,32 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
     fetch("/api/admin/courses", { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!cancelled && d?.courses) setItems(d.courses as CourseCard[]);
+        if (cancelled || !d?.courses) return;
+        // The admin listing may omit sort_order/catalog_section and orders
+        // draft-first — backfill both fields from the public payload (by slug)
+        // and re-sort to the manual default order (sort_order ASC,
+        // published_at DESC) so grouping and the reorder steppers stay
+        // truthful. Drafts/archived without a known position go last.
+        const pub = new Map(courses.map((c) => [c.slug, c]));
+        const merged = (d.courses as CourseCard[]).map((c) => ({
+          ...c,
+          sort_order: c.sort_order ?? pub.get(c.slug)?.sort_order,
+          catalog_section:
+            c.catalog_section ?? pub.get(c.slug)?.catalog_section ?? "",
+        }));
+        merged.sort((a, b) => {
+          const sa = a.sort_order ?? Number.MAX_SAFE_INTEGER;
+          const sb = b.sort_order ?? Number.MAX_SAFE_INTEGER;
+          if (sa !== sb) return sa - sb;
+          return (b.published_at ?? "").localeCompare(a.published_at ?? "");
+        });
+        setItems(merged);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [isAdmin]);
+  }, [isAdmin, courses]);
 
   const categories = useMemo(() => {
     const map = new Map<string, string>();
@@ -311,38 +360,77 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
     });
   }, [items, category, level, q]);
 
-  return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2">
-        {categories.map((cat) => (
-          <Chip
-            key={cat.slug}
-            active={category === cat.slug}
-            onClick={() => setCategory(category === cat.slug ? null : cat.slug)}
-          >
-            {cat.name}
-          </Chip>
-        ))}
-        <span className="mx-2 h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
-        {LEVELS.map((lv) => (
-          <Chip
-            key={lv}
-            active={level === lv}
-            onClick={() => setLevel(level === lv ? null : lv)}
-          >
-            {lv}
-          </Chip>
-        ))}
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search courses…"
-          className="chip-input ml-auto w-56"
-        />
-      </div>
+  /** Distinct section names in first-appearance order (list is sort_order asc). */
+  const sectionNames = useMemo(() => {
+    const seen = new Set<string>();
+    for (const c of items) {
+      const s = (c.catalog_section ?? "").trim();
+      if (s) seen.add(s);
+    }
+    return [...seen];
+  }, [items]);
 
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {visible.map((c) => (
+  // Section-grouped rendering applies only in default (manual) order with no
+  // active filters. This grid has no sort control — the server already delivers
+  // the manual sort_order — so "default order" reduces to: no category chip,
+  // no level chip, no search text (Catalog Order spec §5).
+  const grouped = !category && !level && !q.trim();
+  const groups = useMemo(() => {
+    if (!grouped) return null;
+    const order: string[] = [];
+    const map = new Map<string, CourseCard[]>();
+    for (const c of visible) {
+      const s = (c.catalog_section ?? "").trim();
+      if (!map.has(s)) {
+        map.set(s, []);
+        if (s) order.push(s);
+      }
+      map.get(s)!.push(c);
+    }
+    // No sectioned course → identical flat rendering, no headings.
+    if (order.length === 0) return null;
+    return {
+      unsectioned: map.get("") ?? [],
+      sections: order.map((name) => ({ name, courses: map.get(name)! })),
+    };
+  }, [grouped, visible]);
+
+  /** B4 steppers: swap with the neighbor in the FULL flat order (position
+   *  only — section membership unchanged), optimistic + stay-put. */
+  async function moveCourse(slug: string, dir: -1 | 1) {
+    const i = items.findIndex((x) => x.slug === slug);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= items.length) return;
+    const swapped = [...items];
+    [swapped[i], swapped[j]] = [swapped[j], swapped[i]];
+    const ids = swapped
+      .map((x) => x.id)
+      .filter((id): id is number => id !== undefined);
+    if (ids.length !== swapped.length) return; // reorder contract needs every id
+    // Mirror the server rewrite (x10) so local sort_order stays truthful.
+    const next = swapped.map((x, pos) => ({ ...x, sort_order: (pos + 1) * 10 }));
+    const prev = items;
+    setItems(next); // optimistic; no reload, filters/edit state untouched
+    setOrderBusy(true);
+    const r = await postJSON("/api/admin/courses/reorder", {
+      course_ids: ids,
+    }).catch(() => null);
+    setOrderBusy(false);
+    if (!r || !r.ok) {
+      setItems(prev); // revert
+      await appAlert({
+        title: "Reorder failed",
+        message: r ? await r.text() : "Network error.",
+      });
+      return;
+    }
+    // Fire-and-forget: regenerate the public page for other visitors.
+    void revalidate(["/course"]);
+  }
+
+  function renderCard(c: CourseCard) {
+    const flatIndex = items.findIndex((x) => x.slug === c.slug);
+    return (
           <div key={c.slug} className="relative">
             <Link
               href={`/course/${c.slug}`}
@@ -394,17 +482,41 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
               </div>
             </Link>
             {isAdmin && editingSlug !== c.slug && (
-              <button
-                onClick={() => setEditingSlug(c.slug)}
-                className="absolute right-2 top-2 z-20 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 shadow hover:bg-white dark:bg-zinc-900/90 dark:text-zinc-200"
-                title="Edit card appearance"
-              >
-                ✎ Card
-              </button>
+              <>
+                {/* B4 ordered-list steppers (Catalog Order spec §4). */}
+                <div className="absolute left-2 top-2 z-20 flex flex-col overflow-hidden rounded-full bg-white/90 shadow dark:bg-zinc-900/90">
+                  <IconButton
+                    label={`Move ${c.title} up`}
+                    disabled={orderBusy || flatIndex <= 0}
+                    onClick={() => void moveCourse(c.slug, -1)}
+                    className="!h-7 !w-7 !min-h-7 !min-w-7"
+                  >
+                    <IconChevronUp size={14} />
+                  </IconButton>
+                  <IconButton
+                    label={`Move ${c.title} down`}
+                    disabled={
+                      orderBusy || flatIndex < 0 || flatIndex >= items.length - 1
+                    }
+                    onClick={() => void moveCourse(c.slug, 1)}
+                    className="!h-7 !w-7 !min-h-7 !min-w-7"
+                  >
+                    <IconChevronDown size={14} />
+                  </IconButton>
+                </div>
+                <button
+                  onClick={() => setEditingSlug(c.slug)}
+                  className="absolute right-2 top-2 z-20 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-zinc-700 shadow hover:bg-white dark:bg-zinc-900/90 dark:text-zinc-200"
+                  title="Edit card appearance"
+                >
+                  ✎ Card
+                </button>
+              </>
             )}
             {editingSlug === c.slug && (
               <CardEditor
                 course={c}
+                sections={sectionNames}
                 onClose={() => setEditingSlug(null)}
                 onSaved={(patch) => {
                   setItems((prev) =>
@@ -414,6 +526,7 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
                             ...x,
                             card_color: patch.card_color,
                             hero_image_url: patch.hero_image_url,
+                            catalog_section: patch.catalog_section,
                           }
                         : x,
                     ),
@@ -422,13 +535,71 @@ export default function CatalogGrid({ courses }: { courses: CourseCard[] }) {
               />
             )}
           </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        {categories.map((cat) => (
+          <Chip
+            key={cat.slug}
+            active={category === cat.slug}
+            onClick={() => setCategory(category === cat.slug ? null : cat.slug)}
+          >
+            {cat.name}
+          </Chip>
         ))}
-        {visible.length === 0 && (
-          <p className="text-zinc-500">No courses match. Clear a filter and try again.</p>
-        )}
-        <NewCourseCard />
-        <ImportCourseCard />
+        <span className="mx-2 h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
+        {LEVELS.map((lv) => (
+          <Chip
+            key={lv}
+            active={level === lv}
+            onClick={() => setLevel(level === lv ? null : lv)}
+          >
+            {lv}
+          </Chip>
+        ))}
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search courses…"
+          className="chip-input ml-auto w-56"
+        />
       </div>
+
+      {groups ? (
+        // Default order, no filters, at least one sectioned course: unsectioned
+        // run first (no heading), then each section under a plain heading.
+        <div className="mt-8 space-y-10">
+          {groups.unsectioned.length > 0 && (
+            <div className={GRID}>{groups.unsectioned.map(renderCard)}</div>
+          )}
+          {groups.sections.map((s) => (
+            <section key={s.name}>
+              <h2 className="text-lg font-semibold text-[var(--color-label-secondary)]">
+                {s.name}
+              </h2>
+              <div className={`mt-4 ${GRID}`}>{s.courses.map(renderCard)}</div>
+            </section>
+          ))}
+          {isAdmin && (
+            <div className={GRID}>
+              <NewCourseCard />
+              <ImportCourseCard />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className={`mt-8 ${GRID}`}>
+          {visible.map(renderCard)}
+          {visible.length === 0 && (
+            <p className="text-zinc-500">No courses match. Clear a filter and try again.</p>
+          )}
+          <NewCourseCard />
+          <ImportCourseCard />
+        </div>
+      )}
     </div>
   );
 }

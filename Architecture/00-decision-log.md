@@ -4,6 +4,19 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-07-29 — Catalog manual order + sections (Catalog-Order v1.0)
+
+**Decision:** Course catalog order is editorial, not computed: `courses.sort_order`
+(migration 038, default sort) + `courses.catalog_section` display grouping (section
+order derived from lowest member sort_order — no second table). Reorder via
+`POST /api/admin/courses/reorder` (full id list, x10 rewrite) with B4 stepper UX on
+the catalog cards; section assigned in the card editor. Filters/explicit sorts render
+flat (headings would mislead). Fix landed same-day: admin course list now returns
+`id`/`sort_order`/`catalog_section` and follows manual order (the missing `id` made
+the steppers silently no-op for admins).
+
+**Spec:** `Specs/FatTail-Labs-Catalog-Order-Spec-v1.0.md` (DRAFT — Coach approval pending).
+
 ## 2026-07-28 — DL-065 Admin Users section + activity analytics
 
 **Decision:** New `/admin/users` section shows every identity (keyed by email)
