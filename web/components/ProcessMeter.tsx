@@ -23,6 +23,11 @@ export type ProcessMeterItem = {
   empty?: boolean;
   soon?: boolean;
   grade?: ProcessGrade;
+  /** RT7 cadence: d > H invitational nudge (never shame) */
+  nudge?: boolean;
+  days_since?: number;
+  horizon_days?: number;
+  clock?: string;
 };
 
 export type ProcessPayload = {
@@ -45,6 +50,8 @@ export type ProcessPayload = {
     label: string;
     horizon_label: string;
     focus: string;
+    retro_horizon_days?: number | null;
+    grade_ramp_days?: number;
   };
   window?: Record<string, number>;
 };
@@ -292,23 +299,39 @@ export default function ProcessMeter({
               ? null
               : m.grade ?? gradeFromPercent(m.percent);
           const color = g?.color ?? "var(--color-label-tertiary)";
+          const isCadence = m.id === "retrospective";
           return (
-            <li key={m.id}>
+            <li
+              key={m.id}
+              data-testid={isCadence ? "process-meter-retrospective" : undefined}
+              data-cadence-empty={isCadence && m.empty ? "1" : undefined}
+              data-cadence-nudge={isCadence && m.nudge ? "1" : undefined}
+            >
               <div className="flex items-baseline justify-between gap-2 text-sm">
-                <span className="font-medium text-[var(--color-label)]">
+                <span
+                  className="font-medium text-[var(--color-label)]"
+                  title={m.hint}
+                >
                   {m.label}
                 </span>
                 <span className="flex items-center gap-1.5 text-xs">
                   {g && (
                     <span
-                      className="font-semibold uppercase tracking-wide"
-                      style={{ color: g.color }}
+                      className="rounded px-1.5 py-0.5 font-semibold uppercase tracking-wide text-white"
+                      style={{ background: g.color }}
+                      data-testid={
+                        isCadence ? "process-meter-retro-grade" : undefined
+                      }
                     >
                       {g.label}
                     </span>
                   )}
                   <span className="tabular-nums text-[var(--color-label-secondary)]">
-                    {m.soon || m.empty ? m.detail : `${m.percent}%`}
+                    {m.soon
+                      ? m.detail
+                      : m.empty
+                        ? "—"
+                        : `${m.percent}%`}
                   </span>
                 </span>
               </div>
@@ -327,7 +350,7 @@ export default function ProcessMeter({
                   {m.detail}
                   {!m.soon && !m.empty
                     ? ` · ${m.hint}`
-                    : m.soon
+                    : m.empty || m.soon
                       ? ` · ${m.hint}`
                       : ""}
                 </p>

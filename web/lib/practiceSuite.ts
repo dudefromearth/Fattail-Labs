@@ -55,7 +55,7 @@ export const PRACTICE_SUITE: PracticeSuiteItem[] = [
     href: "/app/retrospective",
     slugs: ["retrospective", "retrospectives"],
     blurb:
-      "End-of-week process review — roll up the week’s notes and track your journey.",
+      "Start from Journal type Retrospective — gather since last (or maiden journey), dual report, integrity.",
     status: "live",
   },
   {

@@ -51,6 +51,7 @@ web/app/
   courses/[slug]/lessons/[lessonSlug]/page.tsx
   courses/category/[catSlug]/page.tsx
   live/  pathway/  resources/  dashboard/  me/
+  journal/  retrospective/  retrospective/[id]/  journey/
   login/  signup/  membership/
   guide/  about/
   admin/                    # control plane layout (no SiteHeader)
@@ -87,7 +88,8 @@ Member chrome is suppressed under `/admin` via `AppChrome` + `admin/layout.tsx`
 | Catalog / course | `CatalogGrid`, `CourseTabs`, `TrailerHero`, `EnrollCard` |
 | Player | `LessonPlayer`, `LessonBody`, `LessonCourseNav`, `QuizPlayer` |
 | Live | `LiveSessions`, `live/*` admin managers |
-| Member | `MyLearning`, `ContinueLearning`, `Pathway`, `MembershipPlans` |
+| Member | `MyLearning`, `ContinueLearning`, `Pathway`, `MembershipPlans`, `member-home/*` |
+| Practice | `ProcessMeter`, `JourneyScores`, `RetroCadenceNudge`, retrospective workspace under `app/app/retrospective/` |
 | Social | `ReviewsSection`, `DiscussionSection`, `StudentsSection` |
 | Resources | `ResourceLibrary` |
 | Hub | `hub/*`, `HubIntroVideo` |

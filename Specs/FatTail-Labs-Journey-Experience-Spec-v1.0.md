@@ -156,13 +156,55 @@ not winning achievements. Presented as both a **%** and a **process integrity gr
 | `learning` | Learning rhythm | Days with completed lesson in learning window |
 | `live` | Live presence | Attendance streak vs profile live-streak cap |
 | `adherence` | Process adherence | % trades tagged `followed`/`partial` (not P&L) |
-| `retrospective` | Retrospectives | Placeholder until retro store ships (`soon`) |
+| `retrospective` | Retrospectives | **Days since last completed retrospective** vs profile `retro_horizon_days` — see **§4.1a**. Not `soon`. |
 
 **Raw overall** = average of non-empty, non-soon meter raw percents  
 (`process.overall_raw_percent`).  
 **Graded overall** = tenure-adjusted (`process.overall_percent` — drives needle + grade).
 
 Each meter object may include: `percent` (graded), `raw_percent`, `grade`, `empty?`, `soon?`.
+
+### 4.1a Retrospective cadence meter
+
+**Authority:** Journal Retrospective Spec v0.5 §7.5 · **v0.51** (teaching H) · **as-built v0.6**.  
+**Implementation:** p-retrospective **R7** — **shipped** RT7-1…RT7-G **PASS** (`journey_scores.py` +  
+`ProcessMeter` + `RetroCadenceNudge` on home / journey / retro library).  
+**v0.51 horizons:** trial cadence **H=7** (weekly teach); `grade_ramp_days` trial remains **42**.
+
+```
+H = profile.retro_horizon_days
+d = days since last COMPLETED retrospective
+    (if none completed: days since practice_epoch)
+
+d ≤ H        →  raw = 100
+H < d < 2H   →  raw = round(100 × (2H − d) / H)
+d ≥ 2H       →  raw = 0
+```
+
+Linear decay across one horizon after H; floor at 0. Timezone: **America/New_York**
+(calendar days), consistent with attendance streak.
+
+**Only `completed_at` moves the clock.** Status `draft` / `gathering` / `ready` / `abandoned`
+does not. Open retros do not freeze decay.
+
+**Empty (exclude from overall average — never score zero for “can’t use feature”):**
+
+| # | Condition |
+|---|-----------|
+| E1 | Member cannot create retrospectives (no `observer-trial` plan and not activator+/admin) |
+| E2 | No completed retrospective **and** `d ≤ H` (one full horizon of grace — G1 friendly) |
+| E3 | `practice_epoch` unresolvable |
+
+After E2 lapses, meter goes live on the decay curve (`d = H+1` ≈ 99, not a cliff).
+
+**Tenure:** §4.3 weighting applies. Cadence is one of six meters (~≤16.7 pts influence on raw average).
+
+**Quality tradeoff (accepted):** Meter measures **completion cadence**, not reflection quality.
+Shallow completes stop the clock; quality-gating prose would violate capacity-over-dependency.
+
+**Nudge** (Retrospective Spec §7.5 + **Tango RT0-3**): invitational when `d > H`; same `H`;
+never “marked down” copy. Canonical strings N1–N3 and meter labels live in Retrospective
+Spec §7.5 / §19 — Journey does not invent alternate shame phrasing.
 
 ### 4.2 Process integrity grade (color scale)
 
@@ -238,20 +280,23 @@ UI may show **Grade confidence N% · day X of ramp** while `weight < 1`.
 
 Resolved in `resolve_meter_profile(cur, identity_id, role)` from active memberships + role.
 
-| Profile id | When | Persistence horizon | Target weeks | grade_ramp_days | Product intent |
-|------------|------|---------------------|--------------|-----------------|----------------|
-| `observer_trial` | Plan `observer-trial` | **6 weeks** | 5 | 42 | **G1** — install habit; path to Navigator |
-| `navigator_monthly` | Navigator/coaching ~monthly period | 12 weeks | 8 | 30 | **G2** — month-to-month CI |
-| `navigator_annual` | Period span ≥ ~180 days | 26 weeks | 18 | 90 | **G2** — season-long CI |
-| `activator` | Activator / labs-membership | 12 weeks | 8 | 30 | **G2** entry |
-| `alumni` | courses-alumni | 12 weeks | 6 | 21 | Library rhythm |
-| `free_observer` | No paid plan | 4 weeks | 3 | 14 | Getting started → trial/membership |
-| `administrator` | Admin | 12 weeks | 8 | 30 | Member defaults |
+`grade_ramp_days` = tenure ramp for integrity grades (unrelated to retrospective cadence).  
+`retro_horizon_days` = cadence nudge + cadence meter **H** (must stay single-sourced).
 
-**Coach:** Observer meter focus is **6 weeks** (even if marketing bills a 4-week trial).  
-**G1 north star:** maximize **Observer → Navigator upgrade** and **continued practice**.
+| Profile id | When | Persistence | grade_ramp_days | **retro_horizon_days** | Product intent |
+|------------|------|-------------|-----------------|------------------------|----------------|
+| `observer_trial` | Plan `observer-trial` | 6 weeks | 42 | **7** | **G1** — weekly teaching rhythm (v0.51); tenure ramp stays 42 |
+| `navigator_monthly` | Navigator ~monthly | 12 weeks | 30 | **30** | **G2** primary paid |
+| `navigator_annual` | Period ≥ ~180 days | 26 weeks | 90 | **90** | **G2** season |
+| `activator` | Activator / labs-membership | 12 weeks | 30 | **30** | **Legacy** self-directed; not advertised |
+| `alumni` | courses-alumni | 12 weeks | 21 | **90** | Library rhythm (v0.51) |
+| `free_observer` | No paid plan | 4 weeks | 14 | **n/a** (E1) | No retro create |
+| `administrator` | Admin | 12 weeks | 30 | **30** | Ops |
 
-API returns `process.profile`: `{ id, label, horizon_label, focus }`.
+**Coach:** Observer trial meter focus **6 weeks**. Marketed path **trial → Navigator**.  
+**Activator** is legacy. Free no-plan never graded on retros.
+
+API returns `process.profile`: `{ id, label, horizon_label, focus, retro_horizon_days? }`.
 
 ### 4.5 ProcessMeter UI (as-built)
 
@@ -606,7 +651,7 @@ Amendments to Privacy D-6 / MR-1 for **opt-in process scores** are logged (DL-06
 ## 18. Open / follow-on
 
 1. Align marketing trial length (4 vs 6) with Membership Spec vs meter focus.  
-2. Retrospective meter when Journal-Retrospective store ships.  
+2. Retrospective meter when Journal-Retrospective Spec **v0.2** ships (Journal type → gather since last / maiden journey → dual report → integrity → agent habit plans).  
 3. Strategy Lab share → reputation addendum.  
 4. Optional score cache if leaderboard scale requires it (must remain rebuildable).  
 5. G1 conversion analytics instrumentation (events for upgrade funnel).  

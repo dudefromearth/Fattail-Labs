@@ -6,8 +6,10 @@
  */
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui";
+import { createRetrospective } from "@/lib/retrospectiveApi";
 import {
   dayBookFromServer,
   emptyDayBook,
@@ -54,6 +56,7 @@ const DAY_PROMPTS = [
   "Pre-Market",
   "Deep Dive",
   "Lessons",
+  "Retrospective",
 ] as const;
 
 const DOW_SHORT = ["M", "T", "W", "T", "F", "S", "S"] as const;
@@ -331,6 +334,8 @@ function DayView({
   book,
   tradesLoadState,
   onRetryTrades,
+  retroBusy = false,
+  retroErr = null,
 }: {
   selected: Date;
   draft: string;
@@ -339,6 +344,8 @@ function DayView({
   book: DayBook;
   tradesLoadState: "loading" | "ok" | "anon" | "forbidden" | "err";
   onRetryTrades: () => void;
+  retroBusy?: boolean;
+  retroErr?: string | null;
 }) {
   return (
     <div className="space-y-6">
@@ -350,12 +357,25 @@ function DayView({
               key={label}
               type="button"
               onClick={() => onPrompt(label)}
-              className="chip min-h-9 px-3.5 text-sm font-medium text-[var(--color-label)]"
+              disabled={label === "Retrospective" && retroBusy}
+              className={[
+                "chip min-h-9 px-3.5 text-sm font-medium text-[var(--color-label)]",
+                label === "Retrospective"
+                  ? "border-[var(--color-tint)] text-[var(--color-tint)]"
+                  : "",
+              ].join(" ")}
             >
-              {label}
+              {label === "Retrospective" && retroBusy
+                ? "Starting retrospective…"
+                : label}
             </button>
           ))}
         </div>
+        {retroErr && (
+          <p className="mt-3 text-center text-sm text-red-600" role="alert">
+            {retroErr}
+          </p>
+        )}
         <p className="mt-4 text-center">
           <button
             type="button"
@@ -449,6 +469,7 @@ function SendIcon() {
 type TradesLoadState = "loading" | "ok" | "anon" | "forbidden" | "err";
 
 export default function JournalCalendar() {
+  const router = useRouter();
   const today = useMemo(() => startOfDay(new Date()), []);
 
   const [view, setView] = useState<ViewMode>("month");
@@ -456,6 +477,8 @@ export default function JournalCalendar() {
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [draft, setDraft] = useState("");
   const [activePrompt, setActivePrompt] = useState<string | null>(null);
+  const [retroBusy, setRetroBusy] = useState(false);
+  const [retroErr, setRetroErr] = useState<string | null>(null);
   const [dayBook, setDayBook] = useState<DayBook>(() =>
     emptyDayBook(ymdLocal(new Date())),
   );
@@ -486,10 +509,20 @@ export default function JournalCalendar() {
     }
   }, [selectedYmd]);
 
+  // Calendar dots must cover Trade Log history (e.g. 2022+), not only last/next year.
+  // Previously only [today.year-1, today.year+1] was requested — older fills never dotted.
   const loadDaysInterest = useCallback(async () => {
-    const y = today.getFullYear();
+    const years = [
+      today.getFullYear(),
+      cursor.getFullYear(),
+      selected.getFullYear(),
+    ];
+    const fromYear = Math.min(...years) - 15; // wide enough for multi-year books
+    const toYear = Math.max(...years) + 1;
+    const fromDay = `${fromYear}-01-01`;
+    const toDay = `${toYear}-12-31`;
     try {
-      const res = await fetchDaysInterest(`${y - 1}-01-01`, `${y + 1}-12-31`);
+      const res = await fetchDaysInterest(fromDay, toDay);
       if (!res.ok) {
         if (res.error.kind === "anon" || res.error.kind === "forbidden") {
           setTradesLoadState(res.error.kind);
@@ -501,7 +534,7 @@ export default function JournalCalendar() {
     } catch {
       setDaysWithTrades(new Set());
     }
-  }, [today]);
+  }, [today, cursor, selected]);
 
   useEffect(() => {
     loadDaysInterest();
@@ -564,7 +597,20 @@ export default function JournalCalendar() {
     setActivePrompt(null);
   }
 
-  function onPrompt(label: string) {
+  async function onPrompt(label: string) {
+    if (label === "Retrospective") {
+      // Spec v0.2: Journal type = Retrospective starts gather workspace
+      setRetroErr(null);
+      setRetroBusy(true);
+      try {
+        const r = await createRetrospective({ gather: true });
+        router.push(`/app/retrospective/${r.id}`);
+      } catch (e) {
+        setRetroErr(e instanceof Error ? e.message : "Could not start retrospective");
+        setRetroBusy(false);
+      }
+      return;
+    }
     setActivePrompt(label);
     if (label !== "Manual" && !draft.trim()) {
       setDraft(`${label}: `);
@@ -714,6 +760,8 @@ export default function JournalCalendar() {
             book={dayBook}
             tradesLoadState={tradesLoadState}
             onRetryTrades={loadDayBook}
+            retroBusy={retroBusy}
+            retroErr={retroErr}
           />
         )}
       </div>

@@ -12,6 +12,11 @@
 
 These goals are **sequential for a person** (trial → paid continuum) but **parallel as product investments**. **G1 = trust + habit → Navigator upgrade.** **G2 = retention + process outcomes** once paid.
 
+**Tier note (Coach 2026-07-29):** The marketed path is **Observer trial → Navigator**.
+**Activator** is a **legacy** self-directed membership — not advertised, few signups.
+Keep it working for existing/self-serve members; do not design funnel or marketing
+around it. Free accounts without trial are not on the retrospective create path.
+
 ### G1 north star (Coach lock)
 
 > **Maximize Observer → Navigator upgrades while they keep practicing** — process-first, no shame, no profit theater. Every trial surface (home, process meter, pathway, live) should make the next practice step obvious and make continuing as Navigator the natural next chapter when trust and habit form.

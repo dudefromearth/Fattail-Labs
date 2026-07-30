@@ -497,7 +497,8 @@ def _profile_row(cur, identity_id: int) -> dict | None:
     cur.execute(
         """SELECT identity_id, email, display_name, avatar_url, journey_visible,
                   journey_visible_at, share_reputation, share_personal_growth,
-                  share_attendance, session_idle_minutes
+                  share_attendance, session_idle_minutes,
+                  retrospective_pnl_expanded
            FROM identities WHERE identity_id = %s""",
         (identity_id,),
     )
@@ -528,6 +529,9 @@ def _profile_payload(row: dict, role: str) -> dict:
         "session_idle_minutes_min": SESSION_IDLE_MIN_LO,
         "session_idle_minutes_max": SESSION_IDLE_MIN_HI,
         "session_idle_minutes_default": SESSION_IDLE_MIN_DEFAULT,
+        "retrospective_pnl_expanded": bool(
+            row.get("retrospective_pnl_expanded") or 0
+        ),
         "role": role,
     }
 
@@ -603,6 +607,16 @@ async def patch_profile(request: Request) -> dict:
         idle = _clamp_idle_minutes(body["session_idle_minutes"])
         updates.append("session_idle_minutes = %s")
         params.append(idle)
+
+    if "retrospective_pnl_expanded" in body:
+        exp = body["retrospective_pnl_expanded"]
+        if not isinstance(exp, bool):
+            raise HTTPException(
+                status_code=422,
+                detail="retrospective_pnl_expanded must be boolean",
+            )
+        updates.append("retrospective_pnl_expanded = %s")
+        params.append(1 if exp else 0)
 
     if not updates:
         raise HTTPException(status_code=422, detail="No recognized fields")

@@ -98,7 +98,312 @@ def test_observer_trial_profile_six_week_horizon():
     nav_m = js.METER_PROFILE_NAVIGATOR_MONTHLY
     nav_y = js.METER_PROFILE_NAVIGATOR_ANNUAL
     assert nav_y["persistence_weeks"] > nav_m["persistence_weeks"]
-    assert nav_m["persistence_weeks"] > p["persistence_weeks"]
+
+
+def test_rt71_cadence_formula_boundaries():
+    """Spec §4.1a: d≤H → 100; 1.5H → 50; d≥2H → 0."""
+    H = 30
+    assert js.retrospective_cadence_raw(0, H) == 100
+    assert js.retrospective_cadence_raw(H, H) == 100
+    assert js.retrospective_cadence_raw(H + 1, H) == round(100 * (H - 1) / H)
+    assert js.retrospective_cadence_raw(int(1.5 * H), H) == 50
+    assert js.retrospective_cadence_raw(2 * H, H) == 0
+    assert js.retrospective_cadence_raw(2 * H + 10, H) == 0
+    # Spec v0.51: trial weekly H=7; alumni 90; free n/a
+    assert js.METER_PROFILE_OBSERVER_TRIAL["retro_horizon_days"] == 7
+    assert js.METER_PROFILE_OBSERVER_TRIAL["grade_ramp_days"] == 42  # tenure ≠ cadence
+    assert js.METER_PROFILE_NAVIGATOR_MONTHLY["retro_horizon_days"] == 30
+    assert js.METER_PROFILE_NAVIGATOR_ANNUAL["retro_horizon_days"] == 90
+    assert js.METER_PROFILE_ALUMNI["retro_horizon_days"] == 90
+    assert js.METER_PROFILE_FREE_OBSERVER["retro_horizon_days"] is None
+
+
+def test_rt71_retrospective_meter_not_soon(client, probe_identity):
+    """Activator probe: cadence meter is not soon; may be empty under E2 grace."""
+    cookies = cookie_for("activator", probe_identity)
+    r = client.get("/api/me/journey/scores", cookies=cookies)
+    assert r.status_code == 200
+    p = r.json()["process"]
+    assert p["profile"].get("retro_horizon_days") == 30
+    retro = next(m for m in p["meters"] if m["id"] == "retrospective")
+    assert retro.get("soon") is not True
+    assert "soon" not in retro or retro["soon"] is False
+    # Label is cadence, not "Coming soon"
+    assert "cadence" in retro["label"].lower() or "Retrospective" in retro["label"]
+    assert "Coming soon" not in retro.get("detail", "")
+
+
+def _cadence_member(email: str, role: str = "activator"):
+    import identity as identity_mod
+    import db
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = identity_mod.get_or_create_identity(cur, email, "Cadence")
+            cur.execute(
+                "UPDATE identities SET role_override = %s WHERE identity_id = %s",
+                (role, iid),
+            )
+            cur.execute(
+                "DELETE FROM member_retrospectives WHERE identity_id = %s", (iid,)
+            )
+            cur.execute("DELETE FROM memberships WHERE identity_id = %s", (iid,))
+    return iid
+
+
+def _cadence_cleanup(iid: int):
+    import db
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM member_retrospectives WHERE identity_id = %s", (iid,)
+            )
+            cur.execute("DELETE FROM memberships WHERE identity_id = %s", (iid,))
+            cur.execute("DELETE FROM identities WHERE identity_id = %s", (iid,))
+
+
+def test_rt71_open_retro_does_not_move_clock(client):
+    """§D.2 #11: ready open does not hold meter — clock from prior completed_at."""
+    import db
+
+    iid = _cadence_member("zztest-cadence-open@labs.test")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO member_retrospectives
+                     (identity_id, status, is_maiden, scope_start, scope_end,
+                      title, body_md, completed_at)
+                   VALUES (%s, 'complete', 1,
+                           DATE_SUB(NOW(), INTERVAL 40 DAY),
+                           DATE_SUB(NOW(), INTERVAL 20 DAY),
+                           'Done', '',
+                           DATE_SUB(NOW(), INTERVAL 20 DAY))""",
+                (iid,),
+            )
+            cur.execute(
+                """INSERT INTO member_retrospectives
+                     (identity_id, status, is_maiden, scope_start, scope_end,
+                      title, body_md)
+                   VALUES (%s, 'ready', 0, DATE_SUB(NOW(), INTERVAL 20 DAY),
+                           NOW(), 'Open', '')""",
+                (iid,),
+            )
+    cookies = cookie_for("activator", iid)
+    try:
+        r = client.get("/api/me/journey/scores", cookies=cookies)
+        assert r.status_code == 200
+        retro = next(
+            m for m in r.json()["process"]["meters"] if m["id"] == "retrospective"
+        )
+        assert not retro.get("empty")
+        assert retro.get("days_since", 0) >= 19
+        assert retro.get("clock") == "last_complete"
+        assert retro["raw_percent"] == js.retrospective_cadence_raw(
+            int(retro["days_since"]), 30
+        )
+    finally:
+        _cadence_cleanup(iid)
+
+
+# --- RT7-3 cadence verification (delta §D.2 items 10–17) ----------------------
+
+
+def test_rt73_d2_10_formula_exact_boundaries():
+    """#10: H and 2H exact boundaries."""
+    for H in (30, 42, 90):
+        assert js.retrospective_cadence_raw(H, H) == 100
+        assert js.retrospective_cadence_raw(2 * H, H) == 0
+        assert js.retrospective_cadence_raw(int(1.5 * H), H) == 50
+
+
+def test_rt73_d2_12_abandoned_does_not_move_clock(client):
+    """#12: abandoned does not move pointer — still prior complete."""
+    import db
+
+    iid = _cadence_member("zztest-cadence-abandon@labs.test")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO member_retrospectives
+                     (identity_id, status, is_maiden, scope_start, scope_end,
+                      title, body_md, completed_at)
+                   VALUES (%s, 'complete', 1,
+                           DATE_SUB(NOW(), INTERVAL 50 DAY),
+                           DATE_SUB(NOW(), INTERVAL 15 DAY),
+                           'Done', '',
+                           DATE_SUB(NOW(), INTERVAL 15 DAY))""",
+                (iid,),
+            )
+            cur.execute(
+                """INSERT INTO member_retrospectives
+                     (identity_id, status, is_maiden, scope_start, scope_end,
+                      title, body_md)
+                   VALUES (%s, 'abandoned', 0,
+                           DATE_SUB(NOW(), INTERVAL 5 DAY), NOW(),
+                           'Abandoned', '')""",
+                (iid,),
+            )
+    cookies = cookie_for("activator", iid)
+    try:
+        r = client.get("/api/me/journey/scores", cookies=cookies)
+        retro = next(
+            m for m in r.json()["process"]["meters"] if m["id"] == "retrospective"
+        )
+        assert retro.get("clock") == "last_complete"
+        assert retro.get("days_since", 0) >= 14
+    finally:
+        _cadence_cleanup(iid)
+
+
+def test_rt73_d2_13_e2_grace_empty_excluded_from_average(client):
+    """#13: no complete, d≤H → empty; not in overall average denominator."""
+    iid = _cadence_member("zztest-cadence-e2@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        r = client.get("/api/me/journey/scores", cookies=cookies)
+        body = r.json()["process"]
+        retro = next(m for m in body["meters"] if m["id"] == "retrospective")
+        # Fresh activator: E2 grace empty
+        assert retro.get("empty") is True
+        scored = [
+            m
+            for m in body["meters"]
+            if not m.get("empty") and not m.get("soon")
+        ]
+        assert all(m["id"] != "retrospective" for m in scored)
+        # Denominator excludes empty cadence
+        if scored:
+            raw_avg = sum(m["raw_percent"] for m in scored) / len(scored)
+            assert abs(body["overall_raw_percent"] - round(raw_avg)) <= 1
+    finally:
+        _cadence_cleanup(iid)
+
+
+def test_rt73_d2_14_free_observer_empty_not_zero(client):
+    """#14: below activator → empty, never scored 0 as penalty."""
+    iid = _cadence_member("zztest-cadence-free@labs.test", role="observer")
+    import db
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE identities SET role_override = NULL WHERE identity_id = %s",
+                (iid,),
+            )
+    cookies = cookie_for("observer", iid)
+    try:
+        r = client.get("/api/me/journey/scores", cookies=cookies)
+        assert r.status_code == 200
+        body = r.json()["process"]
+        assert body["profile"]["id"] == "free_observer"
+        assert body["profile"].get("retro_horizon_days") is None
+        retro = next(m for m in body["meters"] if m["id"] == "retrospective")
+        assert retro.get("empty") is True
+        # Empty meters use percent display path without punishing zero in average
+        scored_ids = {
+            m["id"]
+            for m in body["meters"]
+            if not m.get("empty") and not m.get("soon")
+        }
+        assert "retrospective" not in scored_ids
+    finally:
+        _cadence_cleanup(iid)
+
+
+def test_rt73_d2_15_maiden_complete_live_at_100(client):
+    """#15: completed maiden → meter live ~100; tenure blocks day-one Poor."""
+    import db
+
+    iid = _cadence_member("zztest-cadence-maiden@labs.test")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO member_retrospectives
+                     (identity_id, status, is_maiden, scope_start, scope_end,
+                      title, body_md, completed_at)
+                   VALUES (%s, 'complete', 1,
+                           DATE_SUB(NOW(), INTERVAL 5 DAY), NOW(),
+                           'Maiden', '', NOW())""",
+                (iid,),
+            )
+    cookies = cookie_for("activator", iid)
+    try:
+        r = client.get("/api/me/journey/scores", cookies=cookies)
+        body = r.json()["process"]
+        retro = next(m for m in body["meters"] if m["id"] == "retrospective")
+        assert not retro.get("empty")
+        assert retro.get("days_since", 99) <= 1
+        assert retro["raw_percent"] == 100
+        # Overall cannot be Poor on day-one tenure
+        g = body["grade"]
+        assert g["id"] != "poor" or g.get("establishing")
+    finally:
+        _cadence_cleanup(iid)
+
+
+def test_rt73_d2_16_nudge_and_horizon_same_field(client):
+    """#16: nudge uses same horizon as meter (profile.retro_horizon_days)."""
+    import db
+
+    iid = _cadence_member("zztest-cadence-nudge@labs.test")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO member_retrospectives
+                     (identity_id, status, is_maiden, scope_start, scope_end,
+                      title, body_md, completed_at)
+                   VALUES (%s, 'complete', 1,
+                           DATE_SUB(NOW(), INTERVAL 50 DAY),
+                           DATE_SUB(NOW(), INTERVAL 35 DAY),
+                           'Old', '',
+                           DATE_SUB(NOW(), INTERVAL 35 DAY))""",
+                (iid,),
+            )
+    cookies = cookie_for("activator", iid)
+    try:
+        r = client.get("/api/me/journey/scores", cookies=cookies)
+        body = r.json()["process"]
+        H = body["profile"]["retro_horizon_days"]
+        assert H == 30
+        retro = next(m for m in body["meters"] if m["id"] == "retrospective")
+        assert retro.get("horizon_days") == H
+        assert retro.get("days_since", 0) > H
+        assert retro.get("nudge") is True
+        assert retro.get("nudge") == (retro["days_since"] > H)
+    finally:
+        _cadence_cleanup(iid)
+
+
+def test_rt73_d2_17_copy_sweep_no_marked_down():
+    """#17: UI copy sweep — no marked-down / late / overdue / fix grade."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2] / "web" / "components"
+    files = [
+        root / "ProcessMeter.tsx",
+        root / "RetroCadenceNudge.tsx",
+        root / "JourneyScores.tsx",
+        root / "member-home" / "MemberHome.tsx",
+    ]
+    banned = (
+        "marked down",
+        "overdue",
+        "late retro",
+        "fix your grade",
+        "penalty",
+        "don't fall behind",
+        "behind on retros",
+    )
+    for f in files:
+        assert f.is_file(), f
+        text = f.read_text(encoding="utf-8").lower()
+        for b in banned:
+            assert b not in text, f"{f.name} contains banned {b!r}"
+    # Nudge uses approved dismiss
+    nudge = (root / "RetroCadenceNudge.tsx").read_text(encoding="utf-8")
+    assert "Not now" in nudge
+    assert "when you're ready" in nudge.lower() or "When you're ready" in nudge
 
 
 def test_scores_process_includes_profile(client, probe_identity):

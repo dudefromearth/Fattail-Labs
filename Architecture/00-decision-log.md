@@ -1831,3 +1831,388 @@ member may set 15–60. On timeout: logout and return to login page.
 **Ship:** migration `045_session_idle_timeout.sql`; Profile + auth/me fields;
 `IdleSessionGuard` client; login `?idle=1` notice. Journey Experience Spec §2.3b.
 
+
+## 2026-07-29 — DL-077 Retrospective Spec v0.2 (Coach model)
+
+**Coach intent:** A Retrospective is started in the **trading journal** by selecting
+journal type Retrospective. That tells the system to **gather all work since the last
+retrospective** (or **maiden journey** if none). Gather produces a dual report:
+**actual P&L performance** + **process performance**, plus **Process Integrity** review.
+If prior retros exist, **compare for progress**. Agent analysis flags **concerns**,
+helps uncover **root cause(s)**, and drafts **habit-altering plan(s)** (member owns plans).
+
+**Spec:** `Specs/FatTail-Labs-Journal-Retrospective-Spec-v0.2.md` (direction approved;
+implementation slices R1–R5 not yet built). v0.1 remains historical + P0 shell honesty.
+
+
+## 2026-07-29 — DL-078 Retrospective R1–R3 build
+
+**Ship:** Journal-Retrospective Spec v0.2 slices R1–R3.
+- Migration `046_retrospectives.sql` (`member_retrospectives`)
+- Domain `server/retrospective_domain.py` + routes `server/routes/retrospectives.py`
+- Create from Journal type **Retrospective** or `/app/retrospective` Start
+- Gather: dual P&L + process report, Process Integrity, prior comparison / maiden
+- Complete sets next scope boundary; one open retro at a time
+- UI: library, workspace `/app/retrospective/[id]`; agent R4 deferred
+- Tests: `tests/test_retrospectives.py`
+
+
+## 2026-07-29 — DL-079 Retrospective Spec v0.4 (advisor draft)
+
+**Action:** Landed `Specs/FatTail-Labs-Journal-Retrospective-Spec-v0.4.md` for India /
+Hotel / Tango / Mike / Sierra / Delta review, then Coach GO and implementation plan.
+
+Unifies v0.2 gather model + v0.3 process-first quality fixes; reconciles as-built R1–R3;
+MIN_INFERENCE_N default 20; process-first workspace; collapsed book performance;
+normalized comparison; agent anchoring; habit plan cap 2. Not yet Coach-approved for
+build of R1b–R7 deltas.
+
+
+## 2026-07-29 — DL-080 Observer trial on retros; Activator is legacy
+
+**Coach:** Only **Observer trial** (among free/trial populations) gets retrospective
+create + G1 cadence story. **Activator is legacy** — self-directed traders, not
+advertised, few signups; keep technical Practice/retro access. Marketed path is
+**Observer trial → Navigator**. Free observer with no trial plan: no retro create.
+
+Landed in: Retrospective cadence delta §E.2 (closed); Journal-Retrospective Spec v0.4
+entitlement + dual-goal map; Dual-Goal Product Strategy tier note.
+
+
+## 2026-07-29 — DL-081 RT0-1 Spec fold (Retrospective v0.5 + Journey §4.1a)
+
+**India (p-retrospective RT0-1):** Landed build-authority draft Specs:
+- `Specs/FatTail-Labs-Journal-Retrospective-Spec-v0.5.md` (v0.4 + cadence delta fold)
+- Journey Experience Spec §4.1a retrospective cadence meter + `retro_horizon_days` on §4.4
+Coach structural ack / full GO remains after W0 reviews (RT0-2…G).
+
+## 2026-07-29 — DL-082 RT0-2 Hotel sample gate (`MIN_INFERENCE_N=20`)
+
+**Hotel (p-retrospective RT0-2), India APPROVED:**
+- Locked **`MIN_INFERENCE_N = 20`** trades for outcome sample banner, no outcome-trend language, and suppression of outcome-corroborated agent hypotheses. Change only via Spec bump.
+- Banner locked: *"This is a small sample. It describes what happened; it does not measure process quality."* (precision fix vs “whether process is working.”)
+- Deviations remain legitimate at n=1; P&amp;L stays neutral sample. Domain constant required (no UI-only magic number).
+- Tango RT0-3 still owns shame/cadence tone; must not reintroduce resulting.
+
+## 2026-07-29 — DL-083 RT0-3 Tango member-facing copy
+
+**Tango (p-retrospective RT0-3), Hotel APPROVED on sample-banner interaction:**
+- Locked carry-forward evidence language; collapsed book chrome; nudge strings N1–N3; meter labels/tooltip; dismiss = **Not now**.
+- Accepted Hotel RT0-2 sample banner without diluting process/outcome split.
+- Added Retrospective Spec **§19** banned-phrase glossary (resulting, cadence shame, carry-forward moralizing, book bait, person grading).
+- Invariant: nudge and meter never cross-link in copy (“start or lose points” banned).
+
+## 2026-07-29 — DL-084 RT0-4 Mike isolation + plan entitlement
+
+**Mike (p-retrospective RT0-4), India APPROVED:**
+- Create/gather: **admin OR role activator+ OR active membership plan slug `observer-trial`** (live `memberships`+`plans.slug`). Free no-plan **403**. Not role-only for trial (as-built role gate admits trial only because grants_role=navigator).
+- Isolation: `identity_id` only; cross-member GET → **404**; body identity ignored; PD-8 no admin raw Family B.
+- Family B forever: pre_market quotes, report/agent JSON, book sample; Option C no coverage indicator.
+- Attack notes A1–A8 for RT1-2 characterization. R1b implements plan-aware gate.
+
+## 2026-07-29 — DL-085 RT0-5 Sierra marketing boundary
+
+**Sierra (p-retrospective RT0-5), Tango APPROVED:**
+- Retrospective book performance / dual-report P&amp;L is **never** a public acquisition source.
+- Spec **§20**: ban public member-results pages, SEO/AEO derived from retros, testimonials/ads quoting retro book, public board leakage, average-P&amp;L marketing stats.
+- Explicit non-goal: no SSR/index of member results from `member_retrospectives`; no marketing export pipeline in v0.5.
+- Catalog may describe the *feature* (practice loop) without sample numbers. Process-outcomes doctrine unchanged.
+
+## 2026-07-29 — DL-086 RT0-G Spec lock PASS (p-retrospective W0)
+
+**Delta:** Gate **PASS** — all eight checklist items evidenced.
+Report: `agents/p-retrospective/gate-reports/RT0-G-spec-lock.md`.
+Build authority: Retrospective Spec v0.5 + Journey §4.1a (after **Coach GO**).
+Residuals: Coach GO; then Juliet RT0-0 freeze; do not start R1b without GO.
+
+## 2026-07-29 — DL-087 Coach GO + RT0-0 board freeze (p-retrospective)
+
+**Coach GO** on Journal Retrospective Spec v0.5 + Journey Experience §4.1a.
+**Juliet RT0-0:** Program status **BUILDING**; seed list frozen (no silent adds); non-goals reaffirmed; parallelism rules active; R5 left open for RT5-0 GO/DEFER.
+Freeze note: `agents/p-retrospective/gate-reports/RT0-0-board-freeze.md`.
+Next: **RT1-1** (Alpha — schema + plan-aware entitlement).
+
+## 2026-07-29 — DL-088 RT1-1 plan-aware entitlement + R1b schema
+
+**Alpha (p-retrospective RT1-1), Mike · India APPROVED:**
+- Migration `047_retrospective_r1b.sql`: `member_habit_plans`; `identities.retrospective_pnl_expanded` default 0.
+- Create/gather/preview: `can_create_or_gather` = admin OR role activator+ OR active plan slug `observer-trial` (live memberships). Free no-plan **403**.
+- List/get/patch/complete/abandon: session + `identity_id` isolation (downgrade preserves own rows); draft→complete gather still gated.
+- Characterization: trial create OK (observer cookie + plan), free 403, activator OK, cross-member 404, concurrent 409.
+
+## 2026-07-29 — DL-089 RT1-2 entitlement/isolation characterization
+
+**Kilo (p-retrospective RT1-2), Alpha · Mike APPROVED:**
+- Extended `tests/test_retrospectives.py` — 11 tests, run twice green (flake check).
+- Covers seed matrix + A1 body identity spoof ignored, A5 expired trial → 403 (live membership), A6 concurrent 409, unit matrix for `can_create_or_gather`.
+- Residual: stale JWT navigator after trial expiry still passes role path until session re-issue (Mike session lifecycle).
+
+## 2026-07-29 — DL-090 RT1-G R1b phase gate PASS
+
+**Delta:** Gate **PASS** — migration 047 live; entitlement matrix + isolation proven (11 pytest); no UI scope this phase.
+Report: `agents/p-retrospective/gate-reports/RT1-G-r1b.md`.
+Next: RT2-1 process-first gather DTO.
+
+## 2026-07-29 — DL-091 RT2-1 retrospective report DTO contract
+
+**India · Alpha (p-retrospective RT2-1), Charlie APPROVED:**
+- Locked workspace/`report_json` contract: `Architecture/12-retrospective-report-dto.md` (version 0.5 target + v0.2 fallback map for Charlie).
+- Domain stubs: `MIN_INFERENCE_N`, `SAMPLE_BANNER`, `ReportV05` TypedDict in `retrospective_domain.py`.
+- Gather fill remains RT2-2; UI may start RT2-3 on contract + fallbacks.
+
+## 2026-07-29 — DL-092 RT2-2 process-first gather (report v0.5)
+
+**Alpha (p-retrospective RT2-2), India · Hotel APPROVED:**
+- `gather_report` emits Spec §6 process rates, integrity_review, deviations (broke + journal gap N=3, max 5), what_worked (process-only), book_performance with sample gate (`MIN_INFERENCE_N=20`, Hotel banner).
+- Option C scope boundaries unchanged. `pnl` alias retained for compat. carry_forward / expected_vs_actual null until R4/R6.
+- Characterization: 13 tests green including sample-gate assertions.
+
+## 2026-07-29 — DL-093 RT2-3 process-first workspace UI
+
+**Charlie (p-retrospective RT2-3), Echo · Tango APPROVED:**
+- `RetrospectiveWorkspace` render order matches Spec §6; book last and **collapsed by default**.
+- Expand preference: `identities.retrospective_pnl_expanded` via `GET/PATCH /api/me/profile`.
+- Toggle copy: Show/Hide book sample; collapsed summary + sample banner when expanded.
+
+## 2026-07-29 — DL-094 RT2-4 report/UI characterization
+
+**Kilo (p-retrospective RT2-4), Alpha · Charlie APPROVED:**
+- Extended `tests/test_retrospectives.py` to 18 cases; run twice green.
+- Proved sample_below_min true at n=7 and false at n=22; DTO required keys; profile expand pref; workspace §6 source order.
+
+## 2026-07-29 — DL-095 RT2-G R2b phase gate PASS
+
+**Delta:** Gate **PASS** — process-first UI order; book collapsed + sample gate; deviations bounded; 18 pytest green.
+Report: `agents/p-retrospective/gate-reports/RT2-G-r2b.md`.
+Next: RT3-1 normalized comparison.
+
+## 2026-07-29 — DL-096 RT3-1 normalized comparison (§7)
+
+**Alpha (p-retrospective RT3-1), India · Hotel APPROVED:**
+- Comparison emits `metrics[]` with rates, `window_days`, `n`, `comparable` / `comparable_reason`.
+- Floors: activity `window_days < 14`; adherence/book `n < 20`; window length ratio **≥ 3** not comparable (21d vs 63d).
+- Heading: “This window (Nw) vs previous (Mw)”. Integrity delta only when comparable.
+
+## 2026-07-29 — DL-097 RT3-2 comparison UI
+
+**Charlie (p-retrospective RT3-2), Tango APPROVED:**
+- Workspace renders §7 heading + side-by-side metric values; “Not comparable” when `comparable=false` (no arrows/delta pts).
+- Maiden: baseline copy only. Integrity grades as labels, not trend theater.
+
+## 2026-07-29 — DL-098 RT3-3 comparison characterization
+
+**Kilo (p-retrospective RT3-3), Alpha APPROVED:**
+- 30 tests (×2 green): 21d vs 63d all metrics not comparable; book per-trade math; adherence n-floor; UI Not comparable markers.
+
+## 2026-07-29 — DL-099 RT3-G R3b phase gate PASS
+
+**Delta:** Gate **PASS** — normalized comparison payload; UI suppresses non-comparable deltas; 21d vs 63d tests green (30 pytest).
+Report: `agents/p-retrospective/gate-reports/RT3-G-r3b.md`.
+Next: RT4-1 habit plans.
+
+## 2026-07-29 — DL-100 RT4-1 habit plans API + cap
+
+**Alpha (p-retrospective RT4-1), Mike · India APPROVED:**
+- CRUD `/api/me/habit-plans`; `observable_signal` required enum; states proposed→active→kept|partial|lapsed|retired.
+- Max **2** active per identity → **409** (row lock + count). Isolation by `identity_id`.
+- Gather `carry_forward` populated for non-maiden when plans exist.
+
+## 2026-07-29 — DL-101 RT4-2 carry-forward UI
+
+**Charlie (p-retrospective RT4-2), Tango · Echo APPROVED:**
+- Workspace opens with carry-forward first (maiden: absent); empty Tango copy when no plans.
+- Member sets Kept / Partial / Lapsed via habit-plans PATCH; no success/fail moralizing.
+
+## 2026-07-29 — DL-102 RT4-3 habit plan characterization
+
+**Kilo (p-retrospective RT4-3), Alpha APPROVED:**
+- 12 tests ×2 green: third active 409, maiden carry_forward null, empty non-maiden message, isolation 404, invalid transition 409, UI maiden gate.
+
+## 2026-07-29 — DL-103 RT4-G R4 phase gate PASS
+
+**Delta:** Gate **PASS** — max 2 active 409; carry-forward first in UI; isolation OK; 42 pytest (habit + retro).
+Report: `agents/p-retrospective/gate-reports/RT4-G-r4.md`.
+Next: **RT5-0** Coach GO/DEFER agent analyze.
+
+## 2026-07-29 — DL-104 RT5-0 Coach GO agent analyze
+
+**Coach:** **GO** on retrospective agent path (p-retrospective R5).
+- Ship `POST …/analyze` with Spec §8 constraints (anchoring, sample gate, symmetry).
+- Observer trial: agent **off by default** (config to open later).
+- Missing agent config → fail loud (no silent empty analysis).
+- Local deterministic analyzer allowed when `LABS_RETRO_AGENT_MODE=local`.
+Report: `agents/p-retrospective/gate-reports/RT5-0-agent-go.md`.
+Next: RT5-1.
+
+## 2026-07-29 — DL-105 RT5-1 agent analyze endpoint
+
+**Alpha · Mike (p-retrospective RT5-1), India · Hotel · Tango APPROVED:**
+- `POST /api/me/retrospectives/{id}/analyze`; `LABS_RETRO_AGENT_MODE=local` or **503**.
+- Validation: anchors required; no P&amp;L-origin hypotheses; symmetry what_worked; sample gate.
+- Trial agent off unless `LABS_RETRO_AGENT_TRIAL=1`. Local analyzer from staged report.
+
+## 2026-07-29 — DL-106 RT5-2 agent panel UI
+
+**Charlie (p-retrospective RT5-2), Tango APPROVED:**
+- Workspace agent panel: Run analysis; show what_worked / concerns / hypotheses / proposed plans.
+- Human gate: edit title → Accept (creates proposed habit plan) or Reject. No profit copy.
+
+## 2026-07-29 — DL-107 RT5-3 agent validation characterization
+
+**Kilo (p-retrospective RT5-3), Alpha · Mike APPROVED:**
+- 14 tests ×2 green: empty anchors rejected; symmetry what_worked; isolation 404; sample-gate drops P&L-supported hyps; 503 unconfigured; trial 403.
+
+## 2026-07-29 — DL-108 RT5-G R5 phase gate PASS
+
+**Delta:** Gate **PASS** (Coach GO path) — analyze endpoint; fail-loud config; validation; trial off; UI accept/reject; 56 pytest.
+Report: `agents/p-retrospective/gate-reports/RT5-G-r5.md`.
+Next: RT6-1 (what worked / expected vs actual).
+
+## 2026-07-29 — DL-109 RT6-1 what worked + expected vs actual gather
+
+**Alpha (p-retrospective RT6-1), Hotel · Tango APPROVED:**
+- `what_worked`: adherence runs, journal stretch, adverse “followed on negative book day” without printing P&amp;L figures.
+- `expected_vs_actual`: from `pre_market` notes (surface or journal markers); **null** if none; intent verbatim after marker strip.
+
+## 2026-07-29 — DL-110 RT6-2 what worked + expected vs actual UI
+
+**Charlie (p-retrospective RT6-2), Tango APPROVED:**
+- Workspace §6.4–6.5 polish: process-only framing; stated intent / what executed grid; honest empty; gap optional.
+
+## 2026-07-29 — DL-111 RT6-G R6 phase gate PASS
+
+**Delta:** Gate **PASS** — what_worked / expected_vs_actual present or honestly absent; no P&amp;L figures in adverse what-worked; 33 pytest.
+Report: `agents/p-retrospective/gate-reports/RT6-G-r6.md`.
+Next: RT7-1 cadence meter.
+
+## 2026-07-29 — DL-112 RT7-1 retrospective cadence meter
+
+**Alpha (p-retrospective RT7-1), India · Tango APPROVED:**
+- Meter profiles carry `retro_horizon_days` (trial 42 / monthly 30 / annual 90 / free n/a).
+- `retrospective` meter uses §4.1a formula; not `soon`; E1–E3 empty; only `completed_at` moves clock; `nudge` when d>H.
+
+## 2026-07-29 — DL-113 RT7-2 cadence UI + nudge
+
+**Charlie (p-retrospective RT7-2), Tango · Echo APPROVED:**
+- ProcessMeter shows Retrospective cadence with grade chip (not soon; empty = "—").
+- `RetroCadenceNudge`: Tango N1 + **Not now** (session dismiss); home, journey, retro library.
+- No grade↔late cross-link in copy.
+
+## 2026-07-29 — DL-114 RT7-3 cadence verification (§D.2 10–17)
+
+**Kilo (p-retrospective RT7-3), Alpha APPROVED:**
+- Characterization in `test_journey_scores.py`: formula boundaries, open/abandoned clock, E2 grace excluded from average, free observer empty, maiden live 100, nudge↔horizon same field, UI copy sweep + N1 dismiss.
+- Suite: 23 passed ×2. Comment-only fix on `RetroCadenceNudge.tsx` so whole-file sweep does not match banned tokens in docs.
+- Next: RT7-G phase gate.
+
+## 2026-07-29 — DL-115 RT7-G R7 phase gate PASS
+
+**Delta (p-retrospective RT7-G):** R7 cadence meter + nudge **PASS**.
+- Meter un-soon; formula + E1–E3 + completed_at-only clock proven; nudge/horizon single field; copy sweep clean.
+- Gate re-run: `test_journey_scores.py` 23 passed; adjacent retro/habit/agent 59 passed.
+- Report: `agents/p-retrospective/gate-reports/RT7-G-r7.md`.
+- Next: RT8-1 as-built + program close.
+
+## 2026-07-29 — DL-116 RT8-1 Journal Retrospective as-built (program close docs)
+
+**Lima · India (p-retrospective RT8-1), India APPROVED; Coach pending RT8-G:**
+
+**Decision:** Land **Spec v0.6** as as-built product truth for Journal Retrospectives. v0.5 remains historical build authority (Coach GO). Locked product decisions (Option C, MIN_INFERENCE_N=20, §10.1 entitlement, cadence formula, copy/marketing locks) are unchanged. Honesty and residuals live in v0.6.
+
+**As-built shipped (R1b–R7, gates RT0-G…RT7-G PASS):** plan-aware create; process-first gather/UI; normalized comparison; habit plans (max 2); local agent analyze; what worked / expected vs actual; cadence meter + N1 nudge.
+
+**Docs updated:** Spec v0.6; v0.51 marked non-binding (H=7 draft ≠ shipped trial H=42); Journey §4.1a R7 shipped; Architecture 02/03/04/12 + README; CHARTER DoD.
+
+**Residuals (not shipped — do not claim):** cost-of-deviation counterfactual; external agent LLM; trial agent default-on; N2/N3 nudge rotation; Journey milestone feed from complete; alumni create TBD.
+
+**Suite snapshot:** 82 passed (`test_retrospectives` + habit + agent + journey_scores).
+
+**Next:** Delta **RT8-G** program gate.
+
+## 2026-07-29 — DL-117 RT8-G p-retrospective program COMPLETE
+
+**Delta (p-retrospective RT8-G): PASS — program closed.**
+
+- CHARTER Definition of Done satisfied; phase gates RT0-G…RT7-G + RT8-G all **PASS** on file.
+- Live suite: retro + habit + agent + journey_scores **82 passed**.
+- As-built truth: Spec **v0.6**; decisions from v0.5 locks unchanged.
+- Residuals (cost-of-deviation, external agent LLM, trial agent default-on, N2/N3 rotation, Journey milestone feed, alumni create) remain explicit non-ship — not blocking.
+- Report: `agents/p-retrospective/gate-reports/RT8-G-program-close.md`.
+- Board: **COMPLETE**. Future residual work requires a new Spec / new board.
+
+## 2026-07-29 — DL-118 Spec v0.51 cadence teaching horizons (Coach amendment)
+
+**Coach decision (landed after RT8-G close as post-close amendment):**
+
+1. Retrospectives are immutable process, not gated features — Observer trial full create path remains.
+2. **Cadence horizons are teaching rhythms:** Observer trial **weekly** (`retro_horizon_days = 7`). Navigators own rhythm after convert (monthly 30 / annual 90). Alumni **90**.
+3. **Meter is signal, not enforcement** — one of six process meters; integrity is contextual.
+
+**Code:** `journey_scores.py` — trial H **7** (was 42); alumni H **90** (was 60). `grade_ramp_days` trial still **42** (tenure ≠ cadence).
+
+**Docs:** Spec v0.51 restored as COACH AMENDMENT; Journey §4.4; Spec v0.6 honesty; `Specs/Advisor-Gates-Retrospective-v0.51.md` filed; CHARTER G1 H=7.
+
+**Tests:** profile assertions updated in `test_journey_scores.py`.
+
+## 2026-07-29 — DL-124 Demo Practice pack generator
+
+**Ops/demo:** `server/seed_practice_demo_pack.py` builds a canonical member export
+(ZIP/JSON) with trades, journal, retrospective, habit, check-ins; optional
+`--import-email` / `--purge-first`. Walkthrough: `agents/p-member-export/DEMO.md`.
+
+## 2026-07-29 — DL-123 Purge Practice data (keep membership)
+
+**Coach:** Member may delete all Practice data while keeping membership, then load from export.
+- `POST /api/me/practice-data/purge` with confirm `DELETE_PRACTICE_DATA`.
+- Deletes: trade log, journal notes, retros, habits, live check-ins.
+- Keeps: identity, memberships, enrollments, lesson progress, privacy prefs.
+- Full replace = download → purge → additive load.
+- Profile UI: **Delete Practice data…** warns; **Download backup first** offered; delete requires acknowledge checkbox; audit `purge_practice`.
+
+## 2026-07-29 — DL-122 Import is additive only (non-destructive)
+
+**Coach:** Load must not be destructive — **insert only**, never overwrite or delete.
+- Import policy fixed to **`additive`**: matching `export_key` / external id / session_key → **skip**.
+- No UPDATE of notes, retros, habits, check-ins, or privacy prefs on load.
+- Journey: new check-ins only; meters never written.
+- Spec v1.1 amended; UI copy states additive; tests include no-overwrite case.
+
+## 2026-07-29 — DL-121 Member Practice portability two-way (import)
+
+**Coach GO (plan defaults I1–I6 + Profile load UI):**
+- Spec **v1.1**: `Specs/FatTail-Labs-Member-Practice-Export-Spec-v1.1.md` — reverse export-only D6.
+- Migration `048_practice_export_keys.sql` — `export_key` on notes / retros / habit plans.
+- API: `POST /api/me/import/detect|preview|commit`; pack ZIP or JSON.
+- **Superseded on merge:** see DL-122 additive-only.
+- UI: Profile **Load Practice data** (preview → confirm).
+- Tests: round-trip + isolation in `test_member_export.py`.
+
+## 2026-07-29 — DL-120 Member Practice Canonical Export v1.0
+
+**Coach plan GO (recommended D1–D7) + Alpha/Lima implement:**
+
+- Spec: `Specs/FatTail-Labs-Member-Practice-Export-Spec-v1.0.md`
+- Formats: `fattail.labs.journal` · `fattail.labs.retrospective` · `fattail.labs.journey` · `fattail.labs.member_export` (embeds existing `fattail.labs.trade_log`)
+- API: `GET /api/me/export` (zip default / json), per-surface export routes; audit action=`export`
+- UI: Profile **Download my data** (ZIP)
+- Export-only v1; omit raw identity_id; include email; Journey is derived snapshot
+- Tests: `server/tests/test_member_export.py` (isolation, pack, zip, audit)
+- Board: `agents/p-member-export/`
+
+## 2026-07-29 — DL-119 Advisor Gates v0.51 packet filed + clearance
+
+**Lima (post-close docs):** Canonical advisor packet landed at
+`Specs/Advisor-Gates-Retrospective-v0.51.md` (Coach text + clearance matrix).
+
+| Gate | Clearance |
+|------|-----------|
+| Hotel MIN_INFERENCE_N=20 | RT0-2 · DL-082 |
+| Tango sample banner / collapsed book | RT0-3 · DL-083 |
+| Mike Family B / pre_market isolation | RT0-4 · DL-084 |
+| India habit_plans + pnl_expanded on identities | RT1-1 · DL-088 (schema) · RT0-1 fold |
+| Sierra no marketing reuse of book P&L | RT0-5 · DL-085 · Spec §20 |
+| Delta evidence plan R2b–R7 | RT0-G…RT8-G PASS · characterization suites |
+
+**Deferred (unchanged):** cost-of-deviation; external agent provider; anti-gaming empty-retro clock.
+Cross-ref Spec v0.51, v0.6 residuals, DL-118.
+

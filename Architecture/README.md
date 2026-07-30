@@ -19,6 +19,22 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [09-canonical-course-design.md](./09-canonical-course-design.md) | Admin UX design for packages |
 | [10-resources-design.md](./10-resources-design.md) | Resources: first-class versioned library |
 | [11-wiki-design.md](./11-wiki-design.md) | Member Wiki: lab-wiki checkout → derived index → /app/wiki |
+| [12-retrospective-report-dto.md](./12-retrospective-report-dto.md) | Retrospective workspace DTO (gather/report/comparison) — as-built v0.6 |
+
+**Practice / retrospectives (2026-07-29) — p-retrospective R1b–R7 PASS:**
+
+| Doc | Role |
+|---|---|
+| Spec **v0.6** as-built | `Specs/FatTail-Labs-Journal-Retrospective-Spec-v0.6.md` |
+| Journey §4.1a | Cadence meter formula + profiles |
+| Board / gates | `agents/p-retrospective/` |
+
+**Member Practice export (2026-07-29):**
+
+| Doc | Role |
+|---|---|
+| Spec **v1.0** | `Specs/FatTail-Labs-Member-Practice-Export-Spec-v1.0.md` |
+| Board | `agents/p-member-export/` |
 
 **Hardening phases (2026-07-23) — complete A–G:**
 

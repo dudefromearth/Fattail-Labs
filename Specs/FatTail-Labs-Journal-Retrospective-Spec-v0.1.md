@@ -1,6 +1,8 @@
 # FatTail Labs — Journal Retrospective & Progress Analysis Spec v0.1
 
 **Status:** DRAFT (content) · **P0 shell SHIPPED** (nav + page chrome only)  
+**Superseded for product shape by:** [`FatTail-Labs-Journal-Retrospective-Spec-v0.2.md`](./FatTail-Labs-Journal-Retrospective-Spec-v0.2.md)  
+(v0.2: start from Journal type, gather since last retro / maiden journey, dual P&amp;L + process report, integrity, comparison, agent habit plans.)  
 **Date:** 2026-07-29  
 **Authoring stance:** Work-through document — prefer incremental slices over a big-bang ship  
 **Honesty (2026-07-29):** Do **not** claim week roll-up, agent co-author, or Journey

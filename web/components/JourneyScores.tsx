@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import ProcessMeter, { type ProcessPayload } from "@/components/ProcessMeter";
+import RetroCadenceNudge from "@/components/RetroCadenceNudge";
 
 type Scores = {
   reputation: number;
@@ -83,6 +84,9 @@ export default function JourneyScores() {
             </p>
           )}
         </div>
+        {data.process && (
+          <RetroCadenceNudge process={data.process} className="mt-4" />
+        )}
       </div>
 
       <div className="surface-card border border-[var(--color-separator)] p-5">

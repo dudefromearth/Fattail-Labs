@@ -35,6 +35,8 @@
 | `022_password_reset` | password_reset_tokens (native forgot-password) |
 | `028_canonical_course_model` | Course fidelity columns + lesson `extra_blocks_json` (Canonical Course Model v1.0) |
 | `029_resources` | First-class `resources` + `resource_versions` + `course_resource_links` (Resource Spec v1.0) |
+| `046_retrospectives` | `member_retrospectives` (Journal Retrospective) |
+| `047_retrospective_r1b` | `member_habit_plans` + `identities.retrospective_pnl_expanded` |
 
 **Rule:** never edit applied migrations; always append.
 
@@ -57,10 +59,10 @@ live_sessions              reviews                   uploads/
 live_recurrences           threads / comments        uploads/private/
 live_recurrence_overrides  students (derived)
 
-Content factory (P2)
-content_vision / content_items (Kanban cards)
-content_transitions / content_artifacts / content_flags
-content_approval_packages / ai_invocations
+Practice (Family B)        Content factory (P2)
+member_retrospectives      content_vision / items (Kanban)
+member_habit_plans         packages / ai_invocations
+(trade log / journal tables as Practice domain — see Specs)
 admin_notifications
 ```
 
@@ -112,7 +114,20 @@ Ladder: observer → alumni → activator → navigator → administrator.
 | `live_recurrences` | RRULE-like series definition |
 | `live_recurrence_overrides` | Cancel/modify single dates |
 
-### 3.5 Social & pathway
+### 3.5 Practice — retrospectives (as-built 2026-07-29)
+
+| Table / column | Purpose |
+|---|---|
+| `member_retrospectives` | Family B dual-report workspace; status draft→…→complete/abandoned; `report_json` / `comparison_json` / `agent_json` |
+| `member_habit_plans` | Capped active habits (max **2**); linked optionally to a retrospective |
+| `identities.retrospective_pnl_expanded` | Book section expand preference (default false) |
+
+**Entitlement (create/gather):** admin OR role activator+ OR active plan slug `observer-trial`.  
+**Cadence:** Journey process meter `retrospective` via `retro_horizon_days` (Spec v0.6 · Journey §4.1a).  
+**DTO:** `Architecture/12-retrospective-report-dto.md`.  
+**Specs:** Journal Retrospective **v0.6** (as-built) · build authority was v0.5.
+
+### 3.6 Social & pathway
 
 | Table | Purpose |
 |---|---|

@@ -43,6 +43,12 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
+- `agents/p-retrospective/` — **Journal Retrospective product** (v0.4/v0.5 process-first
+  dual report, habit plans, agent, Journey cadence meter; G1 Observer trial → Navigator).
+  Board: `agents/p-retrospective/ORCHESTRATOR.md`. Plan:
+  `agents/p-retrospective/IMPLEMENTATION-PLAN.md`. Specs:
+  `Specs/FatTail-Labs-Journal-Retrospective-Spec-v0.4.md`,
+  `Specs/Retrospective-Cadence-Meter-Delta-for-v0.5.md`.
 - `agents/p-practice-harden/` — **Practice stack architectural hardening** (H0–H4:
   isolation, batch legs, single-source position/PnL, module splits, Spec truth).
   Collaboration-mandatory seeds. Board: `agents/p-practice-harden/ORCHESTRATOR.md`.

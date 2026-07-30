@@ -10,6 +10,8 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import auth
+
 # Spec constants — change only with Spec version bump
 PTS_COURSE_COMPLETED = 50
 PTS_THREAD = 15
@@ -337,6 +339,7 @@ def _profile(
     adherence_window_days: int = 30,
     live_streak_cap: int = 12,
     grade_ramp_days: int | None = None,
+    retro_horizon_days: int | None = 30,
     focus: str = "",
 ) -> dict[str, Any]:
     # Default ramp = full persistence horizon (must earn extremes over that arc).
@@ -358,6 +361,8 @@ def _profile(
         "adherence_window_days": adherence_window_days,
         "live_streak_cap": live_streak_cap,
         "grade_ramp_days": ramp,
+        # Cadence meter H (Journey §4.1a) — None = E1 cannot create / n/a
+        "retro_horizon_days": retro_horizon_days,
         "focus": focus,
     }
 
@@ -376,7 +381,9 @@ METER_PROFILE_OBSERVER_TRIAL = _profile(
     learning_target_days=6,
     adherence_window_days=42,
     live_streak_cap=6,
-    grade_ramp_days=42,  # full trial before extremes fully open
+    grade_ramp_days=42,  # full trial before extremes fully open (tenure; not cadence)
+    # Spec v0.51: teaching rhythm weekly (zero-DTE funnel) — cadence H only
+    retro_horizon_days=7,
     focus=(
         "6-week focus: install the routine, show up most weeks, build trust — "
         "so continuing as Navigator is a natural next step, not a hard sell."
@@ -392,6 +399,7 @@ METER_PROFILE_NAVIGATOR_MONTHLY = _profile(
     adherence_window_days=30,
     live_streak_cap=12,
     grade_ramp_days=30,
+    retro_horizon_days=30,
     focus="Month-to-month practice: steady weeks beat heroic spikes.",
 )
 
@@ -406,6 +414,7 @@ METER_PROFILE_NAVIGATOR_ANNUAL = _profile(
     learning_window_days=21,
     learning_target_days=6,
     grade_ramp_days=90,  # season before full Excellent/Poor range
+    retro_horizon_days=90,
     focus="Year-scale membership: persistence across months compounds.",
 )
 
@@ -417,6 +426,7 @@ METER_PROFILE_ACTIVATOR = _profile(
     persistence_target_weeks=8,
     live_streak_cap=8,
     grade_ramp_days=30,
+    retro_horizon_days=30,
     focus="Member practice loop — log, learn, show up.",
 )
 
@@ -430,6 +440,7 @@ METER_PROFILE_ALUMNI = _profile(
     learning_target_days=5,
     live_streak_cap=4,
     grade_ramp_days=21,
+    retro_horizon_days=90,  # Spec v0.51 — library rhythm (not active trading loop)
     focus="Keep learning from the library; practice when you return.",
 )
 
@@ -443,6 +454,7 @@ METER_PROFILE_FREE_OBSERVER = _profile(
     learning_target_days=3,
     live_streak_cap=4,
     grade_ramp_days=14,
+    retro_horizon_days=None,  # E1 — cannot create retros
     focus="Previews and pathway — upgrade when you're ready to practice fully.",
 )
 
@@ -453,6 +465,7 @@ METER_PROFILE_ADMIN = _profile(
     persistence_weeks=12,
     persistence_target_weeks=8,
     grade_ramp_days=30,
+    retro_horizon_days=30,
     focus="Uses member defaults for personal practice metering.",
 )
 
@@ -643,6 +656,176 @@ def practice_persistence(
         if streak > 104:
             break
     return pct, active, streak
+
+
+def _ny_date(dt: datetime) -> date:
+    """Calendar date in America/New_York (cadence / attendance consistency)."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(EASTERN).date()
+
+
+def retrospective_cadence_raw(days_since: int, horizon_days: int) -> int:
+    """Journey §4.1a formula. H = horizon_days, d = days_since completed."""
+    H = max(1, int(horizon_days))
+    d = max(0, int(days_since))
+    if d <= H:
+        return 100
+    if d >= 2 * H:
+        return 0
+    return int(round(100.0 * (2 * H - d) / H))
+
+
+def _can_create_retrospectives(cur, identity_id: int, role: str) -> bool:
+    """E1 inverse — same entitlement idea as Spec §10.1 (no import cycle)."""
+    if role == "administrator":
+        return True
+    try:
+        if auth.role_at_least(role, "activator"):
+            return True
+    except Exception:
+        pass
+    cur.execute(
+        """SELECT 1
+           FROM memberships m
+           JOIN plans p ON p.id = m.plan_id
+           WHERE m.identity_id = %s
+             AND p.slug = 'observer-trial'
+             AND m.status IN ('active', 'grace')
+             AND (m.current_period_end IS NULL OR m.current_period_end > NOW())
+           LIMIT 1""",
+        (identity_id,),
+    )
+    return cur.fetchone() is not None
+
+
+def _last_completed_retro_at(cur, identity_id: int) -> datetime | None:
+    cur.execute(
+        """SELECT completed_at FROM member_retrospectives
+           WHERE identity_id = %s AND status = 'complete'
+             AND completed_at IS NOT NULL
+           ORDER BY completed_at DESC
+           LIMIT 1""",
+        (identity_id,),
+    )
+    row = cur.fetchone()
+    if not row or not row.get("completed_at"):
+        return None
+    dt = row["completed_at"]
+    if isinstance(dt, datetime) and dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _practice_epoch_for_cadence(cur, identity_id: int) -> datetime | None:
+    """Earliest practice signal or identity.created_at — None if unresolvable (E3)."""
+    candidates: list[datetime] = []
+    for sql in (
+        "SELECT MIN(exec_at) AS t FROM member_trade_log_trades WHERE identity_id = %s",
+        """SELECT MIN(created_at) AS t FROM member_tool_notes
+           WHERE identity_id = %s AND surface IN ('journal', 'pre_market')""",
+        "SELECT MIN(checked_in_at) AS t FROM live_session_checkins WHERE identity_id = %s",
+        """SELECT MIN(completed_at) AS t FROM lesson_progress
+           WHERE identity_id = %s AND completed_at IS NOT NULL""",
+        "SELECT created_at AS t FROM identities WHERE identity_id = %s",
+    ):
+        cur.execute(sql, (identity_id,))
+        row = cur.fetchone()
+        if row and row.get("t"):
+            t = row["t"]
+            if isinstance(t, datetime):
+                if t.tzinfo is None:
+                    t = t.replace(tzinfo=timezone.utc)
+                candidates.append(t)
+    if not candidates:
+        return None
+    return min(candidates)
+
+
+def _retrospective_meter(
+    cur,
+    identity_id: int,
+    *,
+    role: str,
+    profile: dict[str, Any],
+    now: datetime,
+    tenure_days: float,
+    ramp_days: float,
+    _meter,
+) -> dict[str, Any]:
+    """Journey §4.1a retrospective cadence — not soon; E1–E3 empty."""
+    H = profile.get("retro_horizon_days")
+    hint = (
+        "Days since last completed retrospective vs your plan horizon — "
+        "closing the review loop is part of process"
+    )
+
+    # E1 — cannot create
+    if H is None or not _can_create_retrospectives(cur, identity_id, role):
+        return _meter(
+            "retrospective",
+            "Retrospective cadence",
+            hint,
+            0,
+            "Not available on this plan",
+            empty=True,
+            has_signal=False,
+        )
+
+    H = int(H)
+    last_complete = _last_completed_retro_at(cur, identity_id)
+    if last_complete is not None:
+        anchor = last_complete
+        clock = "last_complete"
+    else:
+        epoch = _practice_epoch_for_cadence(cur, identity_id)
+        if epoch is None:
+            # E3
+            return _meter(
+                "retrospective",
+                "Retrospective cadence",
+                hint,
+                0,
+                "Practice start unresolvable",
+                empty=True,
+                has_signal=False,
+            )
+        anchor = epoch
+        clock = "practice_epoch"
+
+    d = max(0, (_ny_date(now) - _ny_date(anchor)).days)
+
+    # E2 — no complete yet and still within first horizon of grace
+    if last_complete is None and d <= H:
+        return _meter(
+            "retrospective",
+            "Retrospective cadence",
+            hint,
+            0,
+            f"Grace period — first review due within {H} days of practice start",
+            empty=True,
+            has_signal=False,
+        )
+
+    raw = retrospective_cadence_raw(d, H)
+    detail = (
+        f"{d} day{'s' if d != 1 else ''} since "
+        f"{'last completed retrospective' if clock == 'last_complete' else 'practice start'}"
+        f" · horizon {H}d"
+    )
+    m = _meter(
+        "retrospective",
+        "Retrospective cadence",
+        hint,
+        raw,
+        detail,
+        has_signal=True,
+    )
+    m["days_since"] = d
+    m["horizon_days"] = H
+    m["nudge"] = d > H  # same H as meter — invitational only (Tango)
+    m["clock"] = clock
+    return m
 
 
 def process_meters(
@@ -855,15 +1038,15 @@ def process_meters(
         )
 
     meters.append(
-        _meter(
-            "retrospective",
-            "Retrospectives",
-            "Weekly process review — meter activates when retros ship",
-            0,
-            "Coming soon",
-            empty=True,
-            soon=True,
-            has_signal=False,
+        _retrospective_meter(
+            cur,
+            identity_id,
+            role=role,
+            profile=profile,
+            now=now,
+            tenure_days=tenure_days,
+            ramp_days=ramp_days,
+            _meter=_meter,
         )
     )
 
@@ -905,6 +1088,8 @@ def process_meters(
             "label": profile["label"],
             "horizon_label": profile["horizon_label"],
             "focus": profile.get("focus") or "",
+            "retro_horizon_days": profile.get("retro_horizon_days"),
+            "grade_ramp_days": profile.get("grade_ramp_days"),
         },
         "overall_percent": display_pct,
         "overall_raw_percent": overall_raw,

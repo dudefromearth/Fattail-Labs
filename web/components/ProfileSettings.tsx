@@ -39,7 +39,50 @@ export default function ProfileSettings() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [purging, setPurging] = useState(false);
+  const [purgeOpen, setPurgeOpen] = useState(false);
+  const [purgeExported, setPurgeExported] = useState(false);
+  const [purgeAck, setPurgeAck] = useState(false);
+  const [importPreview, setImportPreview] = useState<{
+    ok: boolean;
+    surfaces: Record<string, { counts?: Record<string, number>; note?: string }>;
+    errors?: string[];
+  } | null>(null);
+  const [importPayload, setImportPayload] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  async function downloadPracticeData(): Promise<boolean> {
+    setExporting(true);
+    setErr(null);
+    try {
+      const r = await fetch("/api/me/export?format=zip", {
+        credentials: "same-origin",
+      });
+      if (!r.ok) {
+        setErr("Could not prepare your download. Try again.");
+        return false;
+      }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "fattail-member-export.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setMsg("Download started — keep that file if you may want your data later.");
+      return true;
+    } catch {
+      setErr("Could not prepare your download. Try again.");
+      return false;
+    } finally {
+      setExporting(false);
+    }
+  }
 
   function applyProfile(p: Profile) {
     setProfile(p);
@@ -211,6 +254,300 @@ export default function ProfileSettings() {
           {err || msg}
         </p>
       )}
+
+      {/* Data portability — Spec Member Practice Export/Import v1.1 */}
+      <section className="surface-card border border-[var(--color-separator)] p-6">
+        <h2 className="text-lg font-semibold">Your data</h2>
+        <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
+          Download a copy of your Practice data (Trade Log, Journal,
+          Retrospectives, Journey), or load a backup. Load is{" "}
+          <strong>additive only</strong> — existing entries are never overwritten
+          by load. To fully replace from a backup: download first, delete Practice
+          data (membership stays), then load. Journey grades recalculate from
+          activity.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={exporting}
+            data-testid="download-my-data"
+            className="rounded-full bg-[var(--color-tint)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+            onClick={async () => {
+              setMsg(null);
+              await downloadPracticeData();
+            }}
+          >
+            {exporting ? "Preparing…" : "Download my data"}
+          </button>
+          <input
+            ref={importFileRef}
+            type="file"
+            accept=".json,.zip,application/json,application/zip"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (!file) return;
+              setImporting(true);
+              setErr(null);
+              setMsg(null);
+              setImportPreview(null);
+              setImportPayload(null);
+              try {
+                const buf = await file.arrayBuffer();
+                const bytes = new Uint8Array(buf);
+                let binary = "";
+                for (let i = 0; i < bytes.length; i++) {
+                  binary += String.fromCharCode(bytes[i]!);
+                }
+                const b64 = btoa(binary);
+                const r = await fetch("/api/me/import/preview", {
+                  method: "POST",
+                  credentials: "same-origin",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ base64: b64, policy: "additive" }),
+                });
+                const data = await r.json().catch(() => ({}));
+                if (!r.ok) {
+                  setErr(
+                    (data as { detail?: { message?: string } })?.detail?.message ||
+                      "Could not read that file.",
+                  );
+                  return;
+                }
+                setImportPayload(b64);
+                setImportPreview(data as typeof importPreview);
+              } catch {
+                setErr("Could not read that file.");
+              } finally {
+                setImporting(false);
+              }
+            }}
+          />
+          <button
+            type="button"
+            disabled={importing}
+            data-testid="load-practice-data"
+            className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-fill)] disabled:opacity-60"
+            onClick={() => importFileRef.current?.click()}
+          >
+            {importing ? "Reading…" : "Load Practice data"}
+          </button>
+          <button
+            type="button"
+            disabled={purging}
+            data-testid="delete-practice-data"
+            className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+            onClick={() => {
+              setPurgeOpen(true);
+              setPurgeExported(false);
+              setPurgeAck(false);
+              setErr(null);
+              setMsg(null);
+            }}
+          >
+            Delete Practice data…
+          </button>
+        </div>
+
+        {purgeOpen && (
+          <div
+            className="mt-4 rounded-[var(--radius-md)] border border-red-200 bg-red-50/80 p-4 text-sm"
+            data-testid="purge-confirm"
+            role="alertdialog"
+            aria-labelledby="purge-title"
+          >
+            <p id="purge-title" className="font-medium text-red-900">
+              Before you delete Practice data
+            </p>
+            <p className="mt-2 text-red-900/90">
+              This permanently removes Trade Log, Journal notes, Retrospectives,
+              habit plans, and live check-ins from this account. It cannot be
+              undone unless you have a backup file.{" "}
+              <strong>Membership, courses, and progress are not removed.</strong>
+            </p>
+            <p className="mt-2 font-medium text-red-900">
+              We strongly recommend downloading a copy first.
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={exporting}
+                data-testid="purge-export-first"
+                className="rounded-full bg-[var(--color-tint)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+                onClick={async () => {
+                  setMsg(null);
+                  const ok = await downloadPracticeData();
+                  if (ok) setPurgeExported(true);
+                }}
+              >
+                {exporting ? "Preparing…" : "Download backup first"}
+              </button>
+              {purgeExported && (
+                <span
+                  className="self-center text-xs font-medium text-green-800"
+                  data-testid="purge-export-done"
+                >
+                  Backup download started
+                </span>
+              )}
+            </div>
+
+            <label className="mt-4 flex cursor-pointer items-start gap-2 text-red-900/95">
+              <input
+                type="checkbox"
+                className="mt-1"
+                data-testid="purge-ack"
+                checked={purgeAck}
+                onChange={(e) => setPurgeAck(e.target.checked)}
+              />
+              <span>
+                I understand this deletes Practice data permanently, and I have
+                downloaded a backup (or I choose not to keep one).
+              </span>
+            </label>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={purging || !purgeAck}
+                data-testid="purge-confirm-yes"
+                className="rounded-full bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-60"
+                onClick={async () => {
+                  if (!purgeAck) return;
+                  setPurging(true);
+                  setErr(null);
+                  try {
+                    const r = await fetch("/api/me/practice-data/purge", {
+                      method: "POST",
+                      credentials: "same-origin",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        confirm: "DELETE_PRACTICE_DATA",
+                      }),
+                    });
+                    const data = await r.json().catch(() => ({}));
+                    if (!r.ok) {
+                      setErr(
+                        (data as { detail?: { message?: string } })?.detail
+                          ?.message || "Could not delete Practice data.",
+                      );
+                      return;
+                    }
+                    setMsg(
+                      "Practice data deleted. Membership kept. You can Load a backup now.",
+                    );
+                    setPurgeOpen(false);
+                    setPurgeExported(false);
+                    setPurgeAck(false);
+                    setImportPreview(null);
+                    setImportPayload(null);
+                  } catch {
+                    setErr("Could not delete Practice data.");
+                  } finally {
+                    setPurging(false);
+                  }
+                }}
+              >
+                {purging ? "Deleting…" : "Yes, delete Practice data"}
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-[var(--color-separator)] bg-white px-4 py-2 text-sm"
+                onClick={() => {
+                  setPurgeOpen(false);
+                  setPurgeExported(false);
+                  setPurgeAck(false);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {importPreview && (
+          <div
+            className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill)] p-4 text-sm"
+            data-testid="import-preview"
+          >
+            <p className="font-medium text-[var(--color-label)]">
+              Preview — nothing has been written yet
+            </p>
+            <ul className="mt-2 space-y-1 text-[var(--color-label-secondary)]">
+              {Object.entries(importPreview.surfaces || {}).map(([name, info]) => {
+                const c = info.counts || {};
+                return (
+                  <li key={name}>
+                    <span className="font-medium text-[var(--color-label)]">
+                      {name}
+                    </span>
+                    : {c.new ?? 0} new, {c.skip ?? 0} already present (skipped)
+                    {info.note ? ` — ${info.note}` : ""}
+                  </li>
+                );
+              })}
+            </ul>
+            {importPreview.errors && importPreview.errors.length > 0 && (
+              <p className="mt-2 text-red-600">
+                {importPreview.errors.join(" · ")}
+              </p>
+            )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={!importPreview.ok || !importPayload || importing}
+                className="rounded-full bg-[var(--color-tint)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+                data-testid="import-confirm"
+                onClick={async () => {
+                  if (!importPayload) return;
+                  setImporting(true);
+                  setErr(null);
+                  try {
+                    const r = await fetch("/api/me/import/commit", {
+                      method: "POST",
+                      credentials: "same-origin",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        base64: importPayload,
+                        policy: "additive",
+                      }),
+                    });
+                    const data = await r.json().catch(() => ({}));
+                    if (!r.ok) {
+                      setErr(
+                        (data as { detail?: { message?: string } })?.detail
+                          ?.message || "Load failed.",
+                      );
+                      return;
+                    }
+                    setMsg("Practice data loaded.");
+                    setImportPreview(null);
+                    setImportPayload(null);
+                  } catch {
+                    setErr("Load failed.");
+                  } finally {
+                    setImporting(false);
+                  }
+                }}
+              >
+                Confirm load
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-sm"
+                onClick={() => {
+                  setImportPreview(null);
+                  setImportPayload(null);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Avatar */}
       <section className="surface-card border border-[var(--color-separator)] p-6">

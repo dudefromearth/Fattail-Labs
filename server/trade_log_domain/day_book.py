@@ -152,8 +152,9 @@ def days_with_book_interest(
         last = _parse_ymd(stop)
         if not cur or not last:
             continue
+        # Cap walk length (multi-year open books); fill days still come from exec_at above.
         guard = 0
-        while cur <= last and guard < 400:
+        while cur <= last and guard < 4000:
             y = cur.isoformat()
             if not close_exclusive or y < close_exclusive:
                 if exp and y > exp:
@@ -162,3 +163,4 @@ def days_with_book_interest(
             cur += timedelta(days=1)
             guard += 1
     return sorted(days)
+

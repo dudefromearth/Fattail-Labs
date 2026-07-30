@@ -51,6 +51,9 @@ uvicorn main:app
 | `packages.py` | Package checklist, freeze, Labs placement |
 | `notify.py` | Admin in-app + optional SMTP notifications |
 | `routes/*` | HTTP surface by domain |
+| `retrospective_domain.py` | Scope, gather dual report, comparison, habit helpers, entitlement |
+| `retrospective_agent.py` | Local analyze + anchoring validation (R5) |
+| `journey_scores.py` | Process integrity meters + cadence |
 
 ---
 
@@ -66,9 +69,10 @@ Loaded once at boot (`get_config()`). **Missing structural env → process abort
 | Session | `LABS_SESSION_SECRET`, `LABS_SESSION_TTL_SECONDS`, `LABS_COOKIE_DOMAIN` |
 | Billing (optional) | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `LABS_WEB_ORIGIN` |
 | AI (optional) | `XAI_API_KEY`, `ANTHROPIC_API_KEY`, `LABS_AI_*` |
+| Retro agent (optional) | `LABS_RETRO_AGENT_MODE=local` (required to enable analyze); `LABS_RETRO_AGENT_TRIAL=1` (default off) |
 
 Pattern: **Stripe and AI are optional at boot**; they fail loud when used without keys
-(same product doctrine as “no silent half-config”).
+(same product doctrine as “no silent half-config”). Retro analyze fails **503** if mode off.
 
 ---
 
@@ -111,6 +115,10 @@ Pattern: **Stripe and AI are optional at boot**; they fail loud when used withou
 | Quiz | `/api/courses/.../quiz`, `/api/me/quiz-results` |
 | Social | reviews, threads, comments, students under `/api/courses/{slug}/…` |
 | Wiki | `/api/wiki/index`, `/api/wiki/pages/{slug}`, `/api/wiki/search?q=`, `/api/wiki/graph` — member session; drafts 404 for members, visible to admin. Derived index over the `lab-wiki` checkout (`LABS_WIKI_ROOT`, fail-loud at boot); rebuild via `POST /api/admin/wiki/reindex` (admin). `routes/wiki.py` + `wiki_store.py`, migration 035. |
+| Retrospectives | `/api/me/retrospectives` (+ preview-scope, gather, complete, abandon, analyze) — Family B; plan-aware create (`observer-trial` \| activator+ \| admin). `routes/retrospectives.py` · `retrospective_domain.py` · mig 046–047. Spec **v0.6** as-built. |
+| Habit plans | `/api/me/habit-plans` CRUD — max **2** active (409). `routes/habit_plans.py`. |
+| Journey scores | `/api/me/journey/scores` — process meters incl. retrospective cadence (`journey_scores.py` · Journey §4.1a). |
+| Member export | `/api/me/export` (+ `/journal`, `/retrospectives`, `/journey`) — Practice pack ZIP/JSON; Spec Member-Practice-Export v1.0 · `export_domain.py`. |
 
 ### 4.4 Admin
 
@@ -238,7 +246,8 @@ cd server && .venv/bin/python -m pytest tests -q
 ```
 
 Includes board, packages/placement, cast/HeyGen/Quebec (`test_cast_heygen`,
-`test_phase_g_rest`), agent identity, notifications (SMTP disabled in suite).
+`test_phase_g_rest`), agent identity, notifications (SMTP disabled in suite),
+retrospectives / habit plans / retro agent / journey scores (p-retrospective).
 Mandatory before commits that touch `server/`.
 
 ---
@@ -253,6 +262,8 @@ Mandatory before commits that touch `server/`.
 | Auto YouTube upload | Not shipped — human map + place |
 | Agent `admin:content` not broadly granted | Placement is human-triggered apply |
 | No member-facing LLM chat | Operator/agent runtime only |
+| Retro agent external LLM | **Not shipped** — local deterministic analyzer only |
+| Cost-of-deviation counterfactual | Deferred (Retro Spec v0.6 residuals) |
 | Placement does not auto-publish courses | Draft only; in-place publish remains |
 | WP SSO live path | External WP endpoints; native login works |
 | Private file binaries not in placement | Resource **links** only in Phase D |
