@@ -43,12 +43,21 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
-- `agents/p-retrospective/` — **Journal Retrospective product** (v0.4/v0.5 process-first
-  dual report, habit plans, agent, Journey cadence meter; G1 Observer trial → Navigator).
-  Board: `agents/p-retrospective/ORCHESTRATOR.md`. Plan:
-  `agents/p-retrospective/IMPLEMENTATION-PLAN.md`. Specs:
-  `Specs/FatTail-Labs-Journal-Retrospective-Spec-v0.4.md`,
-  `Specs/Retrospective-Cadence-Meter-Delta-for-v0.5.md`.
+- `agents/p-tag-manager/` — **Platform Tag Manager FIRST** (admin-only CRUD; members
+  assign only; Resources hub Lexicon; no `/me` tags). **Completes before Journal Session.**
+  Plan: `docs/Tag-Manager-Implementation-Plan.md`. Board:
+  `agents/p-tag-manager/ORCHESTRATOR.md`. **Next: Spec amend + TM0 GO.**
+- `agents/p-journal-session-v05/` — **Journal Session greenfield** — **J1+ blocked until
+  Tag Manager TM7-G**. Spec v0.5. Board: `agents/p-journal-session-v05/ORCHESTRATOR.md`.
+  J0 Spec review may run parallel with Tag Manager build.
+- `agents/p-journal-session-v04/` — **COMPLETE under Spec v0.4a** — **superseded** by v0.5
+  greenfield. Historical only.
+- `agents/p-journal-session/` — **COMPLETE under Spec v0.2** — historical only.
+- `agents/p-retrospective/` — **Journal Retrospective product** (**COMPLETE** RT8-G;
+  process-first dual report, habits, agent, cadence; G1 Observer → Navigator).
+  Board: `agents/p-retrospective/ORCHESTRATOR.md`. Specs: Retrospective **v0.5/v0.6**.
+- `agents/p-member-export/` — **Practice portability** (export/import/purge, demo pack).
+  Spec: `Specs/FatTail-Labs-Member-Practice-Export-Spec-v1.1.md`.
 - `agents/p-practice-harden/` — **Practice stack architectural hardening** (H0–H4:
   isolation, batch legs, single-source position/PnL, module splits, Spec truth).
   Collaboration-mandatory seeds. Board: `agents/p-practice-harden/ORCHESTRATOR.md`.

@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Request
 
 import db
+import journal_session_domain as jsd
 import retrospective_agent as ra
 import retrospective_domain as rd
 from guards import require_session
@@ -284,6 +285,31 @@ async def patch_retrospective(retro_id: int, request: Request) -> dict:
     return rd.serialize_row(row)
 
 
+@router.get("/api/me/retrospectives/{retro_id}/closure-preview")
+def closure_preview(retro_id: int, request: Request) -> dict:
+    """Dates that will close on complete (Session Spec §10 · Appendix B)."""
+    claims = require_session(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            cur.execute(
+                """SELECT id, scope_start, scope_end, status
+                   FROM member_retrospectives
+                   WHERE id = %s AND identity_id = %s""",
+                (retro_id, iid),
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="Not found")
+            preview = jsd.preview_closures_for_retro(
+                cur,
+                iid,
+                scope_start=row["scope_start"],
+                scope_end=row["scope_end"],
+            )
+    return preview
+
+
 @router.post("/api/me/retrospectives/{retro_id}/complete")
 def complete_retrospective(retro_id: int, request: Request) -> dict:
     claims = require_session(request)
@@ -291,15 +317,23 @@ def complete_retrospective(retro_id: int, request: Request) -> dict:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
             cur.execute(
-                """SELECT id, status FROM member_retrospectives
+                """SELECT id, status, scope_start, scope_end FROM member_retrospectives
                    WHERE id = %s AND identity_id = %s""",
                 (retro_id, iid),
             )
             row = cur.fetchone()
             if row is None:
                 raise HTTPException(status_code=404, detail="Not found")
+            closed_dates: list[str] = []
             if row["status"] == "complete":
-                pass  # idempotent
+                # Idempotent re-apply closures for safety
+                closed_dates = jsd.apply_closures_on_retro_complete(
+                    cur,
+                    iid,
+                    retrospective_id=retro_id,
+                    scope_start=row["scope_start"],
+                    scope_end=row["scope_end"],
+                )
             elif row["status"] not in ("ready", "draft"):
                 raise HTTPException(
                     status_code=409,
@@ -310,11 +344,27 @@ def complete_retrospective(retro_id: int, request: Request) -> dict:
                 if row["status"] == "draft":
                     _require_create_or_gather(cur, claims, iid)
                     _run_gather(cur, claims, iid, retro_id)
+                    cur.execute(
+                        """SELECT scope_start, scope_end FROM member_retrospectives
+                           WHERE id = %s AND identity_id = %s""",
+                        (retro_id, iid),
+                    )
+                    refreshed = cur.fetchone()
+                    if refreshed:
+                        row = {**row, **refreshed}
                 cur.execute(
                     """UPDATE member_retrospectives
                        SET status = 'complete', completed_at = CURRENT_TIMESTAMP
                        WHERE id = %s AND identity_id = %s""",
                     (retro_id, iid),
+                )
+                # Session Spec §10 — close NY days strictly before gather date
+                closed_dates = jsd.apply_closures_on_retro_complete(
+                    cur,
+                    iid,
+                    retrospective_id=retro_id,
+                    scope_start=row["scope_start"],
+                    scope_end=row["scope_end"],
                 )
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
@@ -325,7 +375,10 @@ def complete_retrospective(retro_id: int, request: Request) -> dict:
                 (retro_id, iid),
             )
             out = cur.fetchone()
-    return rd.serialize_row(out)
+    result = rd.serialize_row(out)
+    result["closed_journal_dates"] = closed_dates
+    result["gather_date_stays_open"] = True
+    return result
 
 
 @router.post("/api/me/retrospectives/{retro_id}/abandon")

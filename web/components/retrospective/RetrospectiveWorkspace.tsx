@@ -18,6 +18,7 @@ import { Button } from "@/components/ui";
 import {
   analyzeRetrospective,
   completeRetrospective,
+  fetchClosurePreview,
   createHabitPlan,
   gatherRetrospective,
   getRetrospective,
@@ -248,6 +249,26 @@ export default function RetrospectiveWorkspace({
     setBusy(true);
     setErr(null);
     try {
+      // Appendix B: name dates before irreversible complete
+      let previewMsg = "";
+      try {
+        const prev = await fetchClosurePreview(retroId);
+        const named =
+          prev.dates_to_close?.length > 0
+            ? prev.dates_to_close.join(", ")
+            : "none";
+        previewMsg =
+          `Complete this review?\n\n` +
+          `This closes ${named} to new journal entries and attachments. ` +
+          `Those dates were reviewed here, so the record stays as it is.\n` +
+          `Gather date (${prev.gather_date}) stays open.`;
+      } catch {
+        previewMsg =
+          "Complete this review? Prior journal dates may close to new entries. Today stays open.";
+      }
+      if (typeof window !== "undefined" && !window.confirm(previewMsg)) {
+        return;
+      }
       await patchRetrospective(retroId, {
         title: title.trim(),
         body_md: body,

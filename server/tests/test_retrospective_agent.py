@@ -181,7 +181,8 @@ def test_analyze_endpoint_local_ok(client, monkeypatch):
         monkeypatch.delenv("LABS_RETRO_AGENT_MODE", raising=False)
 
 
-def test_analyze_trial_off_by_default(client, monkeypatch):
+def test_analyze_observer_trial_parity_with_navigator(client, monkeypatch):
+    """Coach DL-126/127: Observer trial may analyze when agent mode is on (no TRIAL flag)."""
     monkeypatch.setenv("LABS_RETRO_AGENT_MODE", "local")
     monkeypatch.delenv("LABS_RETRO_AGENT_TRIAL", raising=False)
     iid = _member("zztest-agent-trial@labs.test", role="observer")
@@ -207,7 +208,8 @@ def test_analyze_trial_off_by_default(client, monkeypatch):
             f"/api/me/retrospectives/{rid}/analyze",
             cookies=cookies,
         )
-        assert a.status_code == 403, a.text
+        assert a.status_code == 200, a.text
+        assert a.json()["agent"] is not None
     finally:
         _cleanup(iid)
         monkeypatch.delenv("LABS_RETRO_AGENT_MODE", raising=False)

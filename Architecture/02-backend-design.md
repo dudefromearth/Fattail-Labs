@@ -69,7 +69,7 @@ Loaded once at boot (`get_config()`). **Missing structural env → process abort
 | Session | `LABS_SESSION_SECRET`, `LABS_SESSION_TTL_SECONDS`, `LABS_COOKIE_DOMAIN` |
 | Billing (optional) | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `LABS_WEB_ORIGIN` |
 | AI (optional) | `XAI_API_KEY`, `ANTHROPIC_API_KEY`, `LABS_AI_*` |
-| Retro agent (optional) | `LABS_RETRO_AGENT_MODE=local` (required to enable analyze); `LABS_RETRO_AGENT_TRIAL=1` (default off) |
+| Retro agent (optional) | `LABS_RETRO_AGENT_MODE=local` enables analyze for Observer/Navigator/Activator/admin (Observer = Navigator; no trial flag gate) |
 
 Pattern: **Stripe and AI are optional at boot**; they fail loud when used without keys
 (same product doctrine as “no silent half-config”). Retro analyze fails **503** if mode off.

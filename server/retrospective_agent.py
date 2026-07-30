@@ -1,8 +1,10 @@
-"""Retrospective agent analyze — Spec v0.5 §8 (R5).
+"""Retrospective agent analyze — Spec v0.5 §8 (R5) · Coach DL-126/127 parity.
 
 Config (optional env; analyze fails loud if mode off/missing):
-  LABS_RETRO_AGENT_MODE=local|off   (default off)
-  LABS_RETRO_AGENT_TRIAL=1          (default off — trial cannot analyze)
+  LABS_RETRO_AGENT_MODE=local|off   (default off — product-wide, not tier-based)
+
+Observer (incl. observer-trial) has the **same** agent access as Navigator when
+agent mode is on. LABS_RETRO_AGENT_TRIAL is ignored (legacy env; no longer gates).
 
 Local mode builds deterministic, process-anchored output from the staged report
 (no external LLM). Validation always runs before store.
@@ -34,6 +36,11 @@ def agent_mode() -> str:
 
 
 def trial_agent_enabled() -> bool:
+    """Deprecated: trial no longer separately gated (Observer = Navigator).
+
+    Kept for tests/ops that still set LABS_RETRO_AGENT_TRIAL; always treated as
+    parity path via can_run_agent_for_role.
+    """
     return (os.environ.get("LABS_RETRO_AGENT_TRIAL") or "").strip() in (
         "1",
         "true",
@@ -57,8 +64,16 @@ def require_agent_configured() -> str:
     return mode
 
 
-def can_run_agent_for_role(role: str, *, has_observer_trial: bool) -> bool:
-    """Trial agent off by default (Coach RT5-0). Activator+ always when configured."""
+def can_run_agent_for_role(role: str, *, has_observer_trial: bool = False) -> bool:
+    """Practice agent entitlement — Coach DL-126/127: Observer = Navigator.
+
+    When agent mode is configured, allow:
+    - administrator
+    - role activator+ (includes Navigator; Activator legacy)
+    - active observer-trial membership (even if claims.role is still observer)
+
+    Free no-plan (no trial, not activator+) remains denied.
+    """
     if role == "administrator":
         return True
     try:
@@ -66,7 +81,8 @@ def can_run_agent_for_role(role: str, *, has_observer_trial: bool) -> bool:
             return True
     except Exception:
         pass
-    if has_observer_trial and trial_agent_enabled():
+    # Observer trial plan = full Practice parity (not a diminished tier)
+    if has_observer_trial:
         return True
     return False
 
@@ -382,8 +398,8 @@ def run_analyze(
     """Config + entitlement + local generate + validate."""
     if not can_run_agent_for_role(role, has_observer_trial=has_observer_trial):
         raise PermissionError(
-            "Agent analysis requires Activator/Navigator (or trial with "
-            "LABS_RETRO_AGENT_TRIAL enabled)"
+            "Agent analysis requires Observer, Navigator, Activator, or admin "
+            "(same Practice entitlement as create/gather)"
         )
     require_agent_configured()
     raw = local_analyze(report)

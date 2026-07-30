@@ -47,7 +47,7 @@ export function DayPanel({
   closedCount: number;
   openedCount: number;
 }) {
-  let blurb = "No entries on this day.";
+  let blurb = "Open the day to start a journal entry or review the trade book.";
   if (itemCount > 0) {
     const parts: string[] = [];
     if (openCount > 0) {
@@ -61,7 +61,7 @@ export function DayPanel({
     }
     blurb =
       (parts.length > 0 ? parts.join(" · ") : `${itemCount} on the book`) +
-      " · no journal entries yet";
+      " · open day for journal entries";
   }
   return (
     <div className="surface-card flex flex-wrap items-start justify-between gap-3 border border-[var(--color-separator)] px-4 py-4 sm:px-5">

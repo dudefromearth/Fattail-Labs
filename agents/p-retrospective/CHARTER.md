@@ -27,10 +27,10 @@ aligned with dual goals **G1 (Observer trial → Navigator)** and **G2 (Navigato
 
 | Goal | Population | Retrospective role |
 |------|------------|-------------------|
-| **G1** | **Observer trial** only (among free/trial) | Create retros; dual report without agent is enough; cadence **H=7** (weekly teach, v0.51); path to Navigator |
-| **G2** | **Navigator** | Full measure → act → report; agent when enabled |
+| **G1** | **Observer** (not free) | **Same Practice features as Navigator**; membership **term = 6 weeks only** (DL-128); then convert or lose create |
+| **G2** | **Navigator** | Same Practice features; ongoing membership term |
 | **Activator** | **Legacy** self-directed (not advertised) | Keep technical access; do not design funnel around this tier |
-| Free observer (no trial) | — | **No** create; never grade on retros |
+| Free no-plan (not Observer) | — | **No** create; never grade on retros |
 
 ---
 

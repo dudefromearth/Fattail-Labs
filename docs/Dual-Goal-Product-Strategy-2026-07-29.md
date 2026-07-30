@@ -7,7 +7,7 @@
 
 | ID | Goal | Audience | Success looks like |
 |----|------|----------|-------------------|
-| **G1** | **Engage the trial** — solid habits + trust in FatTail coaching | **Observer** trial members (~6-week focus; marketing may still say 4-week $20/wk trial with full Navigator access) | **Primary (Coach 2026-07-29):** do our best to **increase the chance they upgrade to Navigator and continue their practice.** Supporting: show up, stop-the-bleeding path, live/coaching touch, weekly habit, trust. Fair alumni/course access if they leave remains doctrine — never bait-and-switch — but **product optimization target is Navigator upgrade + continued practice**, not “leave happy as a peer goal.” |
+| **G1** | **Engage Observer** — solid habits + trust in FatTail coaching | **Observer** members — **6-week membership term**; **full Navigator Practice access** for that term (sole product difference vs Navigator is term length — DL-128) | **Primary (Coach 2026-07-29):** maximize **Observer → Navigator** upgrade + continued practice. Supporting: show up, stop-the-bleeding path, live/coaching touch, habit, trust. Fair alumni/course access if they leave remains doctrine — never bait-and-switch. |
 | **G2** | **Continuous improvement path** — measure → act → report | **Activator** and **Navigator** members | They can measure process (not fantasy P&L), get analysis they trust, act on suggestions, and see improvement if they stay — tools make discipline **material**, not theatrical |
 
 These goals are **sequential for a person** (trial → paid continuum) but **parallel as product investments**. **G1 = trust + habit → Navigator upgrade.** **G2 = retention + process outcomes** once paid.
@@ -36,7 +36,7 @@ around it. Free accounts without trial are not on the retrospective create path.
 
 \*Activator FAQ: courses, Discord, app, Friday coach call — not daily room / Sunday retro.
 
-**Implication for G1:** If the trial truly grants full Navigator access, Practice tools **are** available during trial — but they may overwhelm a new bleeder. G1 should **sequence** Practice, not dump the full suite on day 1.
+**Implication for G1:** Observer **has** full Navigator Practice access for 6 weeks (Coach lock). UX may still **sequence** onboarding (habit + trust first) without locking features.
 
 **Implication for G2:** Practice harden (H0–H3) is the **measurement spine**. What’s missing is habit loop completion (Journal spine, Retrospective, Playbook) and “suggestions/analysis you act on” without profit claims.
 
@@ -251,7 +251,7 @@ WAVE C — scale / agent
 
 ## Coach decisions needed
 
-1. **Trial length and access:** 4 vs 6 weeks; confirm trial **role** (navigator full access vs limited).  
+1. **Observer term + access:** **LOCKED** — 6-week term; full Navigator Practice access (DL-128).  
 2. **G1 success definition:** convert-only vs “complete trial + keep courses” also success.  
 3. **G2 “materially improve”:** which process metrics are in-bounds (adherence, review cadence, open-book hygiene, max DD awareness — pick 3).  
 4. **Coach visibility:** does paid coaching see member Practice data only with consent? (Privacy Spec).  

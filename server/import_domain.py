@@ -702,6 +702,38 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
         counts[label] = int(cur.rowcount or 0)
 
     # Order respects FKs
+    # Tag assignments on member-owned objects (platform vocabulary retained)
+    try:
+        import tag_domain as tdom
+
+        counts["tag_assignments"] = tdom.purge_assignments_for_identity(
+            cur, identity_id
+        )
+    except Exception:
+        counts["tag_assignments"] = 0
+    # Journal sessions (J1+) — media binaries then rows
+    try:
+        import journal_session_media as jsm
+
+        counts["journal_media_files"] = jsm.purge_media_for_identity(cur, identity_id)
+    except Exception:
+        counts["journal_media_files"] = 0
+    _del(
+        "journal_attachments",
+        "DELETE FROM member_journal_attachments WHERE identity_id = %s",
+    )
+    _del(
+        "journal_messages",
+        "DELETE FROM member_journal_messages WHERE identity_id = %s",
+    )
+    _del(
+        "journal_sessions",
+        "DELETE FROM member_journal_sessions WHERE identity_id = %s",
+    )
+    _del(
+        "journal_date_closures",
+        "DELETE FROM member_journal_date_closures WHERE identity_id = %s",
+    )
     _del(
         "habit_plans",
         "DELETE FROM member_habit_plans WHERE identity_id = %s",

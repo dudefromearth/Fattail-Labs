@@ -2167,6 +2167,366 @@ Next: RT7-1 cadence meter.
 
 **Tests:** profile assertions updated in `test_journey_scores.py`.
 
+## 2026-07-30 — DL-159 Tag Manager v1 land (admin lexicon)
+
+**Coach locks + Alpha/Charlie (p-tag-manager):**
+
+- **Admin-only** tag definition CRUD; members **assign/unassign** existing tags only
+- No `/me` tag manager; no free-text auto-create; no personal tag ownership table
+- Schema mig **053**: `tag_categories`, `tags`, `tag_assignments` + seed vocabulary
+- APIs: `GET /api/tags`, assign PUT/POST/DELETE, admin `/api/admin/tags` (+ merge, retire)
+- UI: `/admin/tags` Tag Manager; Resources hub **Library | Lexicon** browse
+- `TagPicker` component for Practice consumers (Journal next)
+- Export journal sessions include assigned tags; purge removes assignments
+- Tests: `tests/test_tags.py` (7 passed)
+- Spec v0.2 personal-tier text superseded by product locks; amend to v0.3 residual
+- **Journal Session v0.5 J1 unblocked** after this program (TM ready)
+
+## 2026-07-30 — DL-158 Journal Session v0.4a program land (J1–J9)
+
+**Alpha · Charlie · Kilo (p-journal-session-v04 autonext after JS0-0 GO):**
+
+- Migration **052**: tags join, absence keys, closed denorm, market_calendar_config,
+  status map partial→open, sealed→closed iff closure exists
+- Domain: optional tags; create without tag; seal deprecated no-op (stays open);
+  dual-read includes open pre_market + pre_open turns; retro complete closes sessions
+- Agent: `llm|local|off`; once-only keys; no depth refusal; RTH quiet/silent; LLM path
+  via `ai.client.complete`; plain-text degrade
+- UI: **Start conversation** primary; closed status labels
+- Tests: journal 52 + retro suite green (85 combined)
+- Gates: JS0-G…JS9-G PASS · board COMPLETE
+
+## 2026-07-30 — DL-157 Journal Session Spec v0.4a BUILD AUTHORITY (Coach GO)
+
+**Coach (p-journal-session-v04 JS0-0) · India:**
+
+- Spec: `Specs/FatTail-Labs-Journal-Session-Spec-v0.4a.md` → **BUILD AUTHORITY**
+- Board: `agents/p-journal-session-v04/` (v0.2 board complete and **not reopened**)
+- **Locks:**
+  - **§20.9 scope-true closure** — close NY dates from `scope_start` through gather−1
+  - **§20.11 agent mode** — product `llm` when configured; `local` test/offline only;
+    `off` fail-loud; member plain-text always available
+  - **§20.10** — no Journal create without Practice membership (planless/lapsed)
+  - **§20.6 interim** — `agent_service` + member session Family B ACL until P2 principals
+  - **Migration** — `partial`→`open`; `sealed`→`closed` only if a closure covers the date,
+    else `open`; never reopen grandfathered closed dates
+- Product frame: chat primary · optional structured · phase gate · one seal on retro complete
+- Program executes J1–J9 autonomously under this GO
+
+## 2026-07-30 — DL-156 Journal agent chat default ON (product flip)
+
+**Coach product lock (post JS3-G):**
+- **Agent interview chat is the default primary path.** Structured form is the
+  **alternative**, not the default UI surface.
+- `LABS_JOURNAL_AGENT_MODE`: unset → **`local`** (was default `off` per DL-148).
+  Explicit `off` still fails loud on agent routes (503). Form always available.
+- Code: `journal_session_agent.agent_mode()` default local; day view form collapsed
+  behind “Structured form · alternative”; chat remains above.
+- Spec board line updated. Dev `.env`: `LABS_JOURNAL_AGENT_MODE=local`.
+- Tests: `test_agent_off_fail_loud` uses explicit off; `test_agent_default_mode_is_local`.
+
+## 2026-07-30 — DL-155 p-journal-session program complete (J5–J9)
+
+**Juliet autonext (Coach: seeds to gates without pause):**
+- **J5** media: mig 050 · `journal_session_media` · attach API · isolation 404 · private Cache-Control
+- **J6** export `fattail.labs.journal_session` dual-read in pack/zip; purge sessions+media
+- **J7** retrospective tag navigate-only (422 create)
+- **J8** mig 051 `identities.is_demo`
+- **J9** as-built + **JS9-G PASS** program close
+- Residuals: full session import rehydrate, LLM agent path, media paste UI polish, Journey wording
+
+## 2026-07-30 — DL-154 JS4 date closure + JS4-G PASS
+
+**Alpha · Charlie · Kilo · Delta (p-journal-session J4):**
+- On retro complete: write `member_journal_date_closures` for NY days strictly before
+  gather date; gather stays open. Preview + list APIs; 409 with retro link.
+- UI: complete confirm names dates; journal day closed banner.
+- JS4-G **PASS**. Suite 51+. Next: **JS5** private media.
+
+## 2026-07-30 — DL-153 JS3-G Delta phase PASS
+
+**Delta (p-journal-session JS3-G):**
+- Verdict **PASS** — `gate-reports/JS3-G-phase.md`. Agent path: mode off-by-default,
+  Appendix A, D7/D8, validator + form fallback, chat UI, **49 tests**.
+- Next: **JS4-1** date closure (autonext per Coach).
+
+## 2026-07-30 — DL-152 JS3-4 journal agent characterization (Kilo)
+
+**Kilo (p-journal-session JS3-4) · Alpha · Mike:**
+- Expanded agent tests: validator corpus, intraday silent, isolation on agent
+  routes, observer-trial agent, depth status, no author escalation.
+- Flake check: **49 passed** ×2. Next: **JS3-G** Delta phase gate.
+
+## 2026-07-30 — DL-151 JS3-3 journal interview chat UI
+
+**Charlie (p-journal-session JS3-3) · Tango:**
+- `SessionInterviewChat` on day view: agent transcript, depth budget, auto first
+  probe, member reply via `…/agent/turn`; intraday quiet hint; clean_day max-1 copy;
+  form fallback uses Appendix B tone (no “AI failed”).
+- Structured form remains always below. `tsc --noEmit` clean.
+- Next: **JS3-4** Kilo agent tests · JS3-G.
+
+## 2026-07-30 — DL-150 JS3-2 agent turn validator + form fallback
+
+**Alpha (p-journal-session JS3-2) · Mike:**
+- `journal_session_validator.py` — Spec §8.2 block rules before render.
+- One retry with safe fallback; double-fail → form_fallback, **no** agent row inserted.
+- Wired in `run_agent_turn`. Tests: **42 passed**. Next: **JS3-3** chat UI.
+
+## 2026-07-30 — DL-149 JS3-1 journal session agent interview API
+
+**Alpha · Mike (p-journal-session JS3-1) · India · Tango · Hotel:**
+- `journal_session_agent.py`: `LABS_JOURNAL_AGENT_MODE=local|off`; Appendix A as
+  `JOURNAL_SESSION_SYSTEM_PROMPT_V1`; local checklist-driven probes; D8 depth caps;
+  intraday silent; D7 via `append_agent_message`.
+- Routes: `GET/POST …/agent` + `…/agent/turn`. Depth exhausted → 409 form_fallback.
+- Tests: **38 passed**. Next: **JS3-2** turn validator + double-fail → form.
+
+## 2026-07-30 — DL-148 JS3-0 Coach GO journal session agent path
+
+**Coach (p-journal-session JS3-0):**
+- **GO** on J3 agent interview track (not DEFER).
+- Product-wide mode: `LABS_JOURNAL_AGENT_MODE=local|off` (default **off**; fail loud when
+  off). When on: Observer trial = Navigator for agent (D6). Free no-plan still no create.
+- Form path remains DoD and always available; validator double-fail → J2 form (§8.2).
+- D7 attribution + D8 depth + Appendix A apply. J3 still requires JS3-G evidence.
+- Next: **JS3-1** interview endpoint + system prompt constant.
+
+## 2026-07-30 — DL-147 JS2-G Delta phase PASS
+
+**Delta (p-journal-session JS2-G):**
+- Verdict **PASS** — report `agents/p-journal-session/gate-reports/JS2-G-phase.md`.
+- Falsifiable pre_market **without LLM** proven: schemas/checklist, form UI + seal
+  confirm, tests (33 passed). Seeds JS2-1…JS2-3 APPROVED.
+- Next: **JS3-0** Coach agent GO/DEFER, or **JS4-1** date closure (form path shippable).
+
+## 2026-07-30 — DL-146 JS2-3 form characterization (Kilo)
+
+**Kilo (p-journal-session JS2-3) · Alpha:**
+- Expanded form tests: absent fields not invented on seal; PATCH structured-only;
+  complete seal path; empty→absent; require_complete gate; multi-tag schemas.
+- Flake check: **33 passed** ×2. Next: **JS2-G** Delta phase gate.
+
+## 2026-07-30 — DL-145 JS2-2 structured form UI + seal confirm
+
+**Charlie (p-journal-session JS2-2) · Tango · Echo:**
+- `StructuredSessionForm` on journal day view: schema fields, save, checklist,
+  seal confirmation (complete vs absences), partial path; create uses `prefill: true`.
+- Free-text notes remain optional under the form. No agent required.
+- Tango: no shame/grade; Echo: tokens consistent. `tsc --noEmit` clean.
+- Next: **JS2-3** Kilo form tests · JS2-G.
+
+## 2026-07-30 — DL-144 JS2-1 structured_json schemas + checklist
+
+**Alpha · India (p-journal-session JS2-1) · Hotel:**
+- `journal_session_structured.py` — per-tag field specs; code checklist;
+  `invalidation` required_for_complete; uncertainty phrases allowed; normalize drops
+  unknown keys; prefill instrument/size from prior plan + day trades — **never**
+  invent invalidation.
+- API: GET schemas/schema/prefill; create `prefill`; seal `require_complete`;
+  session payload includes `checklist`.
+- Tests: **26 passed** in `test_journal_sessions.py`.
+- Next: **JS2-2** confirmation UI.
+
+## 2026-07-30 — DL-143 JS1-G Delta phase PASS
+
+**Delta (p-journal-session JS1-G):**
+- Verdict **PASS** — report `agents/p-journal-session/gate-reports/JS1-G-phase.md`.
+- J1 complete: schema 049 · domain/API · dual-read · calendar attach · Kilo suite.
+- Live evidence: `pytest tests/test_journal_sessions.py tests/test_retrospectives.py`
+  → **54 passed**. Seeds JS1-1…JS1-5 all APPROVED; no waived reviews.
+- Residuals named (J2 form, J3 agent, J4 closure, J5 media, J6 export).
+- Next: **JS2-1** structured form (no LLM).
+
+## 2026-07-30 — DL-142 JS1-5 Journal session characterization (Kilo)
+
+**Kilo (p-journal-session JS1-5) · Alpha · Mike:**
+- Expanded `tests/test_journal_sessions.py` — isolation, multi-entry, seal locks,
+  free 403, trial/navigator create, dual-read, open excluded from §6.5, list filters,
+  unauth deny, entitlement unit matrix.
+- Flake check: **21 passed** ×2 identical; retro regression **33 passed**.
+- Next: **JS1-G** Delta phase gate.
+
+## 2026-07-30 — DL-141 JS1-4 Journal calendar session attach
+
+**Charlie (p-journal-session JS1-4) · Echo:**
+- Day view starts sessions by tag via `/api/me/journal-sessions`; lists entries for
+  `journal_date`; member notes + partial/seal; retrospective chip still navigates.
+- `web/lib/journalSessionApi.ts`; `JournalCalendar` day shell; day-book trades panel
+  unchanged; multi-year trade interest dots untouched.
+- `tsc --noEmit` clean. Next: **JS1-5** Kilo tests · JS1-G.
+
+## 2026-07-30 — DL-140 JS1-3 dual-read notes + sessions
+
+**Alpha (p-journal-session JS1-3) · India:**
+- Spec §2.1 dual-read: gather §6.5, process journal days, activity gaps, what-worked
+  stretch, Journey routine (D2) union legacy `member_tool_notes` with
+  `member_journal_sessions` (`session_started_at` NY day; pre_market sessions by
+  `journal_date` for expected-vs-actual).
+- Helpers on `journal_session_domain`; wired in `retrospective_domain` + `journey_scores`.
+- Never invent structured fields. Tests: journal + retro suites **46 passed**.
+- Next: **JS1-4** calendar UI · **JS1-5** more isolation tests · JS1-G.
+
+## 2026-07-30 — DL-139 JS1-2 Journal session domain + API
+
+**Alpha (p-journal-session JS1-2) · India:**
+- `server/journal_session_domain.py` + `routes/journal_sessions.py` wired in `main.py`.
+- Endpoints: list/create/get/patch/messages/seal/partial under `/api/me/journal-sessions`.
+- Entitlement D6 via `can_create_or_gather`; free 403; sealed/closed 409; isolation 404;
+  multi entry/date; member messages only (agent J3); phase interim US RTH NY.
+- Tests: `tests/test_journal_sessions.py` — **10 passed**.
+- Next: **JS1-3** dual-read notes → sessions for gather/routine.
+
+## 2026-07-30 — DL-138 JS1-1 Journal session schema migration
+
+**Alpha (p-journal-session JS1-1) · Mike · India:**
+- Migration `migrations/049_journal_sessions.sql` applied on dev (`migrate.py`).
+- Tables: `member_journal_sessions`, `member_journal_messages`,
+  `member_journal_date_closures` — Spec v0.2 §14 SoR.
+- Attachments deferred to J5. Closures: `closed_by_retrospective_id` ON DELETE SET NULL
+  (date stays closed). Messages append-only (no updated_at). export_key unique per owner.
+- Next: **JS1-2** domain + API.
+
+## 2026-07-30 — DL-137 Journal Session Spec v0.2 Coach GO (BUILD AUTHORITY)
+
+**Coach (p-journal-session JS0-0):**
+- **GO** — Spec `FatTail-Labs-Journal-Session-Spec-v0.2.md` is **BUILD AUTHORITY**.
+- Prerequisite: Delta JS0-G **PASS** (`gate-reports/JS0-G-spec-lock.md`).
+- **D1–D9 locked** (D9 promoted LOCKED at GO: additive import; never overwrite sealed
+  transcript). D6 Observer = Navigator features; sole difference = 6-week term.
+- Ship order: **J1–J2 before LLM**; J3 agent needs separate product enablement / JS3-0.
+- Carry residuals: Journey routine wording (JS1/J9); Export Spec `journal_session` (JS6-1).
+- Board: J0 frozen · **next JS1-1** (Alpha schema). Program board
+  `agents/p-journal-session/`.
+
+## 2026-07-30 — DL-136 JS0-G Delta Spec lock PASS
+
+**Delta (p-journal-session JS0-G):**
+- Verdict **PASS** — report `agents/p-journal-session/gate-reports/JS0-G-spec-lock.md`.
+- Parent citations real (Retro v0.6, Journey §4.1a, Export v1.1); D3–D5 APPROVED (no
+  silent waive); D1–D2·D4·D7·D8·§20 also locked with seed+DL evidence; D6/DL-128
+  Observer 6-week term + parity stated; J1–J2 before LLM + §8.2 form fallback present.
+- Named residuals (non-blocking): D9 formal LOCK row; Journey routine wording patch;
+  Export Spec `journal_session` section; Spec Status remains DRAFT until Coach GO.
+- **Do not start J1** until **JS0-0 Coach GO**.
+
+## 2026-07-30 — DL-135 JS0-6 Sierra marketing / public boundary APPROVED
+
+**Sierra (p-journal-session JS0-6) · Tango co-sign:**
+- **§20 LOCKED** — Journal sessions are Family B only; **no** SEO/AEO/public marketing
+  pipeline from transcripts, structured fields, media, or session aggregates.
+- **Demo ban** — `is_demo` content never used as real member proof/testimonials (D5).
+- Aligns Retrospective Spec v0.5 §20 (RT0-5). Process-outcome catalog copy OK; no
+  production quotes; no JSON-LD from practice data; no marketing CMS export.
+- Tango: trust > acquisition; member not turned into content.
+- Owner seeds JS0-1…JS0-6 complete. Next: **JS0-G** Delta → **JS0-0** Coach GO.
+
+## 2026-07-30 — DL-134 JS0-5 Hotel tag scripts + D8 APPROVED
+
+**Hotel (p-journal-session JS0-5) · Tango co-sign:**
+- **D8 LOCKED** — ≤8 agent **absence** questions per interview phase (ceiling not quota);
+  trade-log/prior-plan prefill; ≥2 slots reserved for **invalidation** if missing;
+  confirmation restatement is one code-owned turn outside the 8 absence budget.
+- **pre_market §5.1** — field meanings; invalidation load-bearing; never invent levels;
+  “I don’t know” > false precision; same checklist for agent and J2 form.
+- **Scripts §8.4** — clean_day = one process question (not a day grade); post_session
+  member-named deviations; reflection does not feed §6.5 as plan.
+- Appendix A soft-review PASS (no text change). Feeds JS2-1 / JS3-1.
+- Next: JS0-6 Sierra → JS0-G → Coach GO.
+
+## 2026-07-29 — DL-133 JS0-4 India·Mike D5 is_demo APPROVED
+
+**India · Mike (p-journal-session JS0-4):**
+- **D5 LOCKED** — `identities.is_demo TINYINT(1) NOT NULL DEFAULT 0`; set only at identity
+  create (ops/CLI); **immutable** (no flip via API/webhook/admin); never convert flag off.
+- Identity-level only (no per-session demo column). Migration named for **JS8-1**
+  (`0NN_identities_is_demo.sql`). Wholesale purge+reseed; admin date reopen demo-only.
+- Hard exclude: leaderboard, journey peer visibility, live aggregates, marketing proof.
+- Audit still fires with demo label. `is_demo` is not an auth bypass.
+- Spec §13 full. D1–D7 now locked at owner level; build still needs JS0-G + Coach GO.
+- Next: JS0-5 · JS0-6 → JS0-G → Coach GO.
+
+## 2026-07-29 — DL-132 JS0-3 Mike D4 media + D7 attribution APPROVED
+
+**Mike (p-journal-session JS0-3) · India co-sign:**
+- **D4 LOCKED** — separate Family B journal media store (not course `uploads/private` /
+  `private:` / `/api/media/`). Config root fail-loud; owner via `ft_session` only;
+  **no public URL**; cookie-authenticated stream; export_ref + purge binaries; PD-8 no
+  admin back door; never journey-public. Spec §11.2 · §14 attachments SoR for J5.
+- **D7 LOCKED** — `author=agent` ⇒ `agent_service=labs-journal-session`; member owns ACL;
+  server sets attribution; audit every turn; P2 principals later without re-key. Spec §11.3.
+- Isolation: identity from cookie only; cross-member → 404. Attack notes listed for J1/J3/J5.
+- Next: JS0-4 (D5) … JS0-6 → JS0-G → Coach GO.
+
+## 2026-07-29 — DL-131 JS0-2 Tango D3 + Appendix B APPROVED
+
+**Tango (p-journal-session JS0-2) · Hotel co-sign:**
+- **D3 LOCKED** — journal session image/book P&L chrome inherits Retrospective process-first
+  section collapse (default collapsed; member expands). Spec §11.1 SoR for JS5-3.
+- **Appendix B APPROVED** — leave/gather/complete copy; banned late/grade/meter/P&L-hero phrases;
+  agent→form capacity path added.
+- **Capacity §16 APPROVED** — form always a path; validator withdraws to form; no member-facing ratio.
+- **D2 soft-review PASS** — routine copy = days started a sitting; no backdate shame.
+- Hotel: D3 prevents resulting; Appendix B no trading falsehoods; clean_day/invalidation → JS0-5.
+- Next: JS0-3…JS0-6 → JS0-G → Coach GO. D4–D5 still open.
+
+## 2026-07-29 — DL-130 JS0-1 India Spec integrity APPROVED
+
+**India (p-journal-session JS0-1):**
+- Session Spec v0.2 consistent with Retrospective v0.6, Journey §4.1a, Practice Export v1.1.
+- **D1 LOCKED** — tags replace dual surface/type taxonomy.
+- **D2 LOCKED** — Journey routine keys `session_started_at` NY day; `journal_date` scopes retros only.
+- Schema §14 approved as JS1-1 migration SoR (expanded indexes/FKs/phase enum).
+- Dual-read plan §2.1 mandatory until cutover (gather, routine, export union notes + sessions).
+- Next: JS0-2…JS0-6 owner gates → JS0-G → Coach GO.
+
+## 2026-07-29 — DL-129 p-journal-session Agent Bench board
+
+**Juliet:** Full multi-agent implementation board for Journal Session Spec v0.2:
+- `agents/p-journal-session/` — CHARTER, ORCHESTRATOR, IMPLEMENTATION-PLAN, seeds JS0–JS9,
+  gate-reports.
+- Phases: J0 Spec GO → J1 schema → J2 form (no LLM) → J3 agent (optional) → J4 closure →
+  J5 media → J6 portability → J7 retro routing → J8 demo → J9 close.
+- Program status **READY**; **do not code J1** until JS0-G PASS + Coach GO.
+- Coach locks already in force: D6/DL-128 (Observer 6-week term, full Navigator access);
+  D3–D5 still owner gates.
+
+## 2026-07-29 — DL-128 Observer vs Navigator: only difference is 6-week term
+
+**Coach:** The **only** product difference between **Observer** membership and **Navigator** is that
+Observer’s membership **term is limited to 6 weeks**. Feature access is identical for that term
+(Trade Log, Journal, Retrospective, habits, agent when product-enabled). Observer is **not free**.
+Free no-plan remains a separate, non-Practice-create population.
+
+Docs updated: Journal Session D6, Retrospective v0.5/v0.6 entitlement matrix, CHARTER G1,
+Dual-Goal strategy. Agent parity remains DL-127.
+
+## 2026-07-29 — DL-127 Retrospective agent: Observer parity (fix RT5-0 trial lockout)
+
+**Coach correction:** Retrospective Spec/code wrongly treated Observer trial agent as optional
+(403 unless `LABS_RETRO_AGENT_TRIAL`). **Observer = Navigator** for Practice including analyze.
+
+**Code:** `can_run_agent_for_role` allows active `observer-trial` whenever agent mode is on
+(no trial env flag). Tests: `test_analyze_observer_trial_parity_with_navigator`.  
+**Docs:** Spec v0.5/v0.6 agent tables + Architecture 02 updated. Free no-plan still no create.
+
+## 2026-07-29 — DL-126 Observer = Navigator Practice access (not free)
+
+**Coach:** Observers are **not** free accounts. **Observer has the same Practice access as Navigator**
+for the membership term. **Refined in DL-128:** sole difference is **6-week term**.  
+Free no-plan remains outside Practice create. Agent lockout fixed in **DL-127**.
+
+## 2026-07-29 — DL-125 Journal Session Spec v0.2 (then critique fix)
+
+**v0.2** supersedes v0.1 (as-built honesty, phasing, portability, citations to Retrospective **v0.6**).
+
+**Post-critique amendment (same day):** Status = **DRAFT** only (not dual “build authority + draft”).
+D3/D4/D5 proposed-pending Tango / Mike·Alpha·India / India·Mike — not waived gates.
+D6 free-observer create **OPEN for Coach**. Validator double-fail → J2 form (not dead partial).
+Interview depth **≤8** with trade-log prefill. Schema: `status` only (no redundant incomplete).
+Format id **`fattail.labs.journal_session`**. Warning copy + system prompt inlined (App A/B).
+Script telemetry + backdate-into-closure restored.
+
 ## 2026-07-29 — DL-124 Demo Practice pack generator
 
 **Ops/demo:** `server/seed_practice_demo_pack.py` builds a canonical member export

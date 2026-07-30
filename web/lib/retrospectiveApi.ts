@@ -122,7 +122,28 @@ export async function gatherRetrospective(id: number): Promise<Retrospective> {
   return parse(r);
 }
 
-export async function completeRetrospective(id: number): Promise<Retrospective> {
+export type ClosurePreview = {
+  gather_date: string;
+  dates_to_close: string[];
+  gather_date_stays_open: boolean;
+  warning: string;
+};
+
+export async function fetchClosurePreview(id: number): Promise<ClosurePreview> {
+  const r = await fetch(`/api/me/retrospectives/${id}/closure-preview`, {
+    credentials: "same-origin",
+  });
+  return parse(r);
+}
+
+export type CompleteRetrospectiveResult = Retrospective & {
+  closed_journal_dates?: string[];
+  gather_date_stays_open?: boolean;
+};
+
+export async function completeRetrospective(
+  id: number,
+): Promise<CompleteRetrospectiveResult> {
   const r = await fetch(`/api/me/retrospectives/${id}/complete`, {
     method: "POST",
     credentials: "same-origin",

@@ -19,6 +19,7 @@ EASTERN = ZoneInfo("America/New_York")
 
 MODEL_VERSION = "1.0"
 FMT_JOURNAL = "fattail.labs.journal"
+FMT_JOURNAL_SESSION = "fattail.labs.journal_session"
 FMT_RETRO = "fattail.labs.retrospective"
 FMT_JOURNEY = "fattail.labs.journey"
 FMT_PACK = "fattail.labs.member_export"
@@ -132,6 +133,82 @@ def build_journal_document(cur, identity_id: int) -> dict[str, Any]:
 
     doc["entries"] = entries
     doc["day_index"] = day_index
+    return doc
+
+
+def build_journal_session_document(cur, identity_id: int) -> dict[str, Any]:
+    """Session Spec §12 — dual-read alongside legacy journal notes."""
+    email = _member_email(cur, identity_id)
+    doc = envelope(FMT_JOURNAL_SESSION, email=email)
+    doc["format"] = FMT_JOURNAL_SESSION
+    doc["model_version"] = "1.0"
+    try:
+        cur.execute(
+            """SELECT id, tag, journal_date, session_started_at, status,
+                      structured_json, export_key, created_at
+               FROM member_journal_sessions
+               WHERE identity_id = %s
+               ORDER BY session_started_at ASC, id ASC""",
+            (identity_id,),
+        )
+        sessions = cur.fetchall()
+    except Exception:
+        doc["entries"] = []
+        return doc
+    entries = []
+    for s in sessions:
+        sid = int(s["id"])
+        cur.execute(
+            """SELECT author, agent_service, body_md, phase, created_at
+               FROM member_journal_messages
+               WHERE session_id = %s AND identity_id = %s
+               ORDER BY created_at ASC, id ASC""",
+            (sid, identity_id),
+        )
+        messages = [
+            {
+                "author": m["author"],
+                "phase": m["phase"],
+                "body_md": m.get("body_md") or "",
+                "at": _iso(m.get("created_at")),
+            }
+            for m in cur.fetchall()
+        ]
+        structured = s.get("structured_json")
+        if isinstance(structured, str):
+            try:
+                structured = json.loads(structured)
+            except Exception:
+                structured = None
+        jd = s.get("journal_date")
+        # System tags assigned to this session (Tag Manager)
+        tag_labels: list[str] = []
+        try:
+            cur.execute(
+                """SELECT t.slug, t.label FROM tag_assignments a
+                   JOIN tags t ON t.id = a.tag_id
+                   WHERE a.object_type = 'journal_session' AND a.object_id = %s
+                   ORDER BY t.label ASC""",
+                (sid,),
+            )
+            tag_labels = [
+                {"slug": t["slug"], "label": t["label"]} for t in cur.fetchall()
+            ]
+        except Exception:
+            tag_labels = []
+        entries.append(
+            {
+                "id": (s.get("export_key") or f"js-{sid}").strip(),
+                "tag": s["tag"],
+                "tags": tag_labels,
+                "journal_date": jd.isoformat() if hasattr(jd, "isoformat") else str(jd),
+                "session_started_at": _iso(s.get("session_started_at")),
+                "status": s["status"],
+                "structured": structured if isinstance(structured, dict) else {},
+                "messages": messages,
+            }
+        )
+    doc["entries"] = entries
     return doc
 
 
@@ -329,12 +406,20 @@ def build_member_pack(cur, identity_id: int, *, role: str = "observer") -> dict[
     pack = envelope(FMT_PACK, email=email)
     trade_log = build_trade_log_document(cur, identity_id)
     journal = build_journal_document(cur, identity_id)
+    journal_session = build_journal_session_document(cur, identity_id)
     retrospective = build_retrospective_document(cur, identity_id)
     journey = build_journey_document(cur, identity_id, role=role)
-    pack["surfaces"] = ["trade_log", "journal", "retrospective", "journey"]
+    pack["surfaces"] = [
+        "trade_log",
+        "journal",
+        "journal_session",
+        "retrospective",
+        "journey",
+    ]
     pack["documents"] = {
         "trade_log": trade_log,
         "journal": journal,
+        "journal_session": journal_session,
         "retrospective": retrospective,
         "journey": journey,
     }
@@ -354,6 +439,7 @@ def pack_to_zip_bytes(pack: dict[str, Any]) -> bytes:
             "files": {
                 "trade_log": "trade_log.tradlog.json",
                 "journal": "journal.json",
+                "journal_session": "journal_session.json",
                 "retrospective": "retrospective.json",
                 "journey": "journey.json",
             },
@@ -366,6 +452,10 @@ def pack_to_zip_bytes(pack: dict[str, Any]) -> bytes:
         zf.writestr(
             "journal.json",
             json.dumps(docs.get("journal") or {}, indent=2, default=str),
+        )
+        zf.writestr(
+            "journal_session.json",
+            json.dumps(docs.get("journal_session") or {}, indent=2, default=str),
         )
         zf.writestr(
             "retrospective.json",

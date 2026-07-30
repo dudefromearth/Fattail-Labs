@@ -5,11 +5,27 @@
  * Day trades panel extracted (PH2-3); date helpers in dateUtils.
  */
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Button } from "@/components/ui";
 import { createRetrospective } from "@/lib/retrospectiveApi";
+import {
+  createJournalSession,
+  getJournalSession,
+  listJournalClosures,
+  listJournalSessions,
+  postJournalMessage,
+  PROMPT_TO_TAG,
+  TAG_LABELS,
+  type JournalSession,
+} from "@/lib/journalSessionApi";
 import {
   dayBookFromServer,
   emptyDayBook,
@@ -18,6 +34,8 @@ import {
 } from "@/lib/journalDayBook";
 import { fetchDayBook, fetchDaysInterest } from "@/lib/tradeLogApi";
 import DayTradesPanel, { DayPanel } from "./DayTradesPanel";
+import SessionInterviewChat from "./SessionInterviewChat";
+import StructuredSessionForm from "./StructuredSessionForm";
 import {
   addDays,
   formatDayTitle,
@@ -326,6 +344,14 @@ function WeekView({
   );
 }
 
+function statusLabel(status: string): string {
+  if (status === "open") return "Open";
+  if (status === "closed") return "Closed";
+  if (status === "partial") return "Open"; // legacy
+  if (status === "sealed") return "Closed"; // legacy
+  return status;
+}
+
 function DayView({
   selected,
   draft,
@@ -336,6 +362,18 @@ function DayView({
   onRetryTrades,
   retroBusy = false,
   retroErr = null,
+  sessionBusy = false,
+  sessionErr = null,
+  sessions = [],
+  sessionsLoad = "idle",
+  activeSession = null,
+  selectedClosed = false,
+  onSelectSession,
+  onSendMessage,
+  onSessionUpdated,
+  onSessionBusy,
+  onSessionError,
+  onRefreshSessions,
 }: {
   selected: Date;
   draft: string;
@@ -346,109 +384,276 @@ function DayView({
   onRetryTrades: () => void;
   retroBusy?: boolean;
   retroErr?: string | null;
+  sessionBusy?: boolean;
+  sessionErr?: string | null;
+  sessions?: JournalSession[];
+  sessionsLoad?: "idle" | "loading" | "ok" | "err";
+  activeSession?: JournalSession | null;
+  selectedClosed?: boolean;
+  onSelectSession?: (id: number | null) => void;
+  onSendMessage?: () => void;
+  onSessionUpdated?: (s: JournalSession) => void;
+  onSessionBusy?: (v: boolean) => void;
+  onSessionError?: (msg: string | null) => void;
+  onRefreshSessions?: () => void;
 }) {
+  const mutable =
+    activeSession &&
+    (activeSession.status === "open" || activeSession.status === "partial");
+  const msgs = activeSession?.messages || [];
+  /** Soft highlight when agent has no more probes — form is always visible too. */
+  const [formHint, setFormHint] = useState(false);
+  useEffect(() => {
+    setFormHint(false);
+  }, [activeSession?.id]);
+
   return (
-    <div className="space-y-6">
-      {/* Session shell for Vexy (agent wiring later) */}
+    <div className="space-y-6" data-testid="journal-day-view">
+      {/* Spec v0.4a: Start conversation is primary; tags optional labels */}
       <div className="rounded-[var(--radius-xl)] bg-[var(--color-surface-secondary)] px-4 py-6 sm:px-6">
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {DAY_PROMPTS.map((label) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => onPrompt(label)}
-              disabled={label === "Retrospective" && retroBusy}
-              className={[
-                "chip min-h-9 px-3.5 text-sm font-medium text-[var(--color-label)]",
-                label === "Retrospective"
-                  ? "border-[var(--color-tint)] text-[var(--color-tint)]"
-                  : "",
-              ].join(" ")}
-            >
-              {label === "Retrospective" && retroBusy
-                ? "Starting retrospective…"
-                : label}
-            </button>
-          ))}
-        </div>
-        {retroErr && (
-          <p className="mt-3 text-center text-sm text-red-600" role="alert">
-            {retroErr}
+        <p className="mb-3 text-center text-sm text-[var(--color-label-secondary)]">
+          Start a conversation for this day — chat is the record. Optional labels
+          below are context only.
+        </p>
+        {selectedClosed && (
+          <p
+            className="mb-3 text-center text-sm text-[var(--color-label-secondary)]"
+            data-testid="journal-day-closed"
+            role="status"
+          >
+            This date is closed after a completed retrospective — no new journal
+            entries. You can still review the day-book and existing entries.
           </p>
         )}
-        <p className="mt-4 text-center">
+        <div className="mb-4 flex justify-center">
           <button
             type="button"
-            className="text-sm text-[var(--color-label-secondary)] underline underline-offset-2 hover:text-[var(--color-label)]"
-            onClick={() => onPrompt("Manual")}
+            onClick={() => onPrompt("Start conversation")}
+            disabled={sessionBusy || selectedClosed}
+            className="min-h-10 rounded-full bg-[var(--color-tint)] px-5 text-sm font-semibold text-[var(--color-on-tint)] disabled:opacity-40"
+            data-testid="journal-start-conversation"
           >
-            Write manually
+            {sessionBusy ? "Starting…" : "Start conversation"}
           </button>
-        </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {DAY_PROMPTS.map((label) => {
+            const busy =
+              (label === "Retrospective" && retroBusy) ||
+              (label !== "Retrospective" && sessionBusy);
+            const blockNew =
+              selectedClosed && label !== "Retrospective";
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => onPrompt(label)}
+                disabled={busy || blockNew}
+                className={[
+                  "chip min-h-9 px-3.5 text-sm font-medium text-[var(--color-label)]",
+                  label === "Retrospective"
+                    ? "border-[var(--color-tint)] text-[var(--color-tint)]"
+                    : "",
+                  blockNew ? "opacity-40" : "",
+                ].join(" ")}
+              >
+                {label === "Retrospective" && retroBusy
+                  ? "Starting retrospective…"
+                  : sessionBusy && label !== "Retrospective"
+                    ? "Starting…"
+                    : label}
+              </button>
+            );
+          })}
+        </div>
+        {(retroErr || sessionErr) && (
+          <p className="mt-3 text-center text-sm text-red-600" role="alert">
+            {sessionErr || retroErr}
+          </p>
+        )}
 
-        <div className="relative mt-5">
-          <textarea
-            value={draft}
-            onChange={(e) => onDraft(e.target.value)}
-            rows={5}
-            placeholder="Tell Vexy about your day, a trade, or what's on your mind…"
-            className="w-full resize-y rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-24 text-sm text-[var(--color-label)] shadow-[var(--elevation-1)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
-            aria-label="Message to Vexy"
-          />
-          <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
-            <button
-              type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] text-[var(--color-label-tertiary)]"
-              title="Voice input — with Vexy"
-              aria-label="Voice input"
-              disabled
-            >
-              <MicIcon />
-            </button>
-            <button
-              type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-fill)] text-[var(--color-label-secondary)] disabled:opacity-40"
-              title="Send — Vexy session later"
-              aria-label="Send"
-              disabled={!draft.trim()}
-              onClick={() => {
-                /* Vexy session later */
-              }}
-            >
-              <SendIcon />
-            </button>
+        {/* Entries for this day */}
+        <div className="mt-6" data-testid="journal-day-sessions">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-[var(--color-label)]">
+              Entries this day
+            </h3>
+            {onRefreshSessions && (
+              <button
+                type="button"
+                className="text-xs text-[var(--color-label-secondary)] underline underline-offset-2"
+                onClick={onRefreshSessions}
+              >
+                Refresh
+              </button>
+            )}
           </div>
+          {sessionsLoad === "loading" && (
+            <p className="text-center text-sm text-[var(--color-label-tertiary)]">
+              Loading entries…
+            </p>
+          )}
+          {sessionsLoad === "ok" && sessions.length === 0 && (
+            <p className="text-center text-sm text-[var(--color-label-tertiary)]">
+              No journal entries for this day yet.
+            </p>
+          )}
+          {sessions.length > 0 && (
+            <ul className="space-y-2">
+              {sessions.map((s) => {
+                const on = activeSession?.id === s.id;
+                return (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectSession?.(on ? null : s.id)}
+                      className={[
+                        "flex w-full items-center justify-between gap-3 rounded-[var(--radius-md)] border px-3 py-2.5 text-left text-sm transition-colors",
+                        on
+                          ? "border-[var(--color-tint)] bg-[var(--color-surface)]"
+                          : "border-[var(--color-separator)] bg-[var(--color-surface)] hover:bg-[var(--color-fill)]",
+                      ].join(" ")}
+                      data-testid={`journal-session-row-${s.id}`}
+                    >
+                      <span className="font-medium text-[var(--color-label)]">
+                        {(s.tag && TAG_LABELS[s.tag]) ||
+                          s.tag ||
+                          (s.tags && s.tags[0]) ||
+                          "Conversation"}
+                      </span>
+                      <span className="text-[var(--color-label-secondary)]">
+                        {statusLabel(s.status)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
 
-        <p className="mt-5 text-center text-sm text-[var(--color-label-tertiary)]">
-          No journal entries for this day yet.
-        </p>
+        {/* Active entry: chat (always primary) + form (always available) + free-text */}
+        {activeSession && (
+          <div
+            className="mt-5 space-y-5 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-4"
+            data-testid="journal-session-active"
+          >
+            <p className="text-sm font-semibold text-[var(--color-label)]">
+              {(activeSession.tag && TAG_LABELS[activeSession.tag]) ||
+                activeSession.tag ||
+                "Conversation"}{" "}
+              ·{" "}
+              {statusLabel(activeSession.status)}
+            </p>
+
+            {/* J3 chat — always primary while open; never removed by form use */}
+            <SessionInterviewChat
+              session={activeSession}
+              busy={sessionBusy}
+              onBusy={onSessionBusy}
+              onError={onSessionError}
+              onUpdated={(s) => {
+                onSessionUpdated?.(s);
+              }}
+              onFormFallback={() => setFormHint(true)}
+            />
+
+            <div
+              className={[
+                "border-t border-[var(--color-separator)] pt-4",
+                formHint
+                  ? "rounded-[var(--radius-md)] ring-1 ring-[var(--color-tint)]/30"
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              data-testid="journal-session-form-alt"
+            >
+              <h4 className="mb-1 text-sm font-semibold text-[var(--color-label)]">
+                Structured fields
+              </h4>
+              <p className="mb-3 text-xs text-[var(--color-label-tertiary)]">
+                Same checklist as chat — always available. Use with the chat
+                above; nothing locks you out of either.
+              </p>
+              <StructuredSessionForm
+                session={activeSession}
+                busy={sessionBusy}
+                onBusy={onSessionBusy}
+                onError={onSessionError}
+                onUpdated={(s) => {
+                  onSessionUpdated?.(s);
+                }}
+              />
+            </div>
+
+            {/* Free-text notes — optional sitting log outside chat/form */}
+            <div className="border-t border-[var(--color-separator)] pt-4">
+              <h4 className="mb-2 text-sm font-semibold text-[var(--color-label)]">
+                Free-text notes
+              </h4>
+              <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
+                Optional notes outside the guided chat. Chat and structured
+                fields remain available above.
+              </p>
+              <div className="mb-3 max-h-32 space-y-2 overflow-y-auto">
+                {msgs.filter((m) => m.author === "member").length === 0 && (
+                  <p className="text-sm text-[var(--color-label-tertiary)]">
+                    No free-text notes yet.
+                  </p>
+                )}
+                {msgs
+                  .filter((m) => m.author === "member")
+                  .map((m) => (
+                    <div
+                      key={m.id}
+                      className="rounded-[var(--radius-md)] bg-[var(--color-fill)]/60 px-3 py-2 text-sm text-[var(--color-label)]"
+                    >
+                      <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                        you{m.phase ? ` · ${m.phase}` : ""}
+                      </p>
+                      <p className="whitespace-pre-wrap">{m.body_md}</p>
+                    </div>
+                  ))}
+              </div>
+              {mutable ? (
+                <div className="relative">
+                  <textarea
+                    value={draft}
+                    onChange={(e) => onDraft(e.target.value)}
+                    rows={2}
+                    placeholder="Optional free-text note…"
+                    className="w-full resize-y rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-20 text-sm text-[var(--color-label)] shadow-[var(--elevation-1)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
+                    aria-label="Journal free-text note"
+                    data-testid="journal-session-draft"
+                  />
+                  <div className="absolute bottom-3 right-3">
+                    <button
+                      type="button"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] disabled:opacity-40"
+                      title="Add note"
+                      aria-label="Add note"
+                      disabled={!draft.trim() || sessionBusy}
+                      onClick={onSendMessage}
+                      data-testid="journal-session-send"
+                    >
+                      <SendIcon />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Day-book (trades) unchanged */}
       <DayTradesPanel
         book={book}
         loadState={tradesLoadState}
         onRetry={onRetryTrades}
       />
     </div>
-  );
-}
-
-function MicIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-      />
-      <path
-        d="M5 11a7 7 0 0014 0M12 18v3"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }
 
@@ -479,16 +684,28 @@ export default function JournalCalendar() {
   const [activePrompt, setActivePrompt] = useState<string | null>(null);
   const [retroBusy, setRetroBusy] = useState(false);
   const [retroErr, setRetroErr] = useState<string | null>(null);
+  const [sessionBusy, setSessionBusy] = useState(false);
+  const [sessionErr, setSessionErr] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<JournalSession[]>([]);
+  const [sessionsLoad, setSessionsLoad] = useState<
+    "idle" | "loading" | "ok" | "err"
+  >("idle");
+  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
+  const [activeSession, setActiveSession] = useState<JournalSession | null>(
+    null,
+  );
   const [dayBook, setDayBook] = useState<DayBook>(() =>
     emptyDayBook(ymdLocal(new Date())),
   );
   const [daysWithTrades, setDaysWithTrades] = useState<Set<string>>(
     () => new Set(),
   );
+  const [closedDates, setClosedDates] = useState<Set<string>>(() => new Set());
   const [tradesLoadState, setTradesLoadState] =
     useState<TradesLoadState>("loading");
 
   const selectedYmd = useMemo(() => ymdLocal(selected), [selected]);
+  const selectedClosed = closedDates.has(selectedYmd);
 
   const loadDayBook = useCallback(async () => {
     setTradesLoadState("loading");
@@ -544,6 +761,83 @@ export default function JournalCalendar() {
     loadDayBook();
   }, [loadDayBook]);
 
+  const loadClosures = useCallback(async () => {
+    try {
+      const rows = await listJournalClosures();
+      setClosedDates(new Set(rows.map((r) => r.journal_date)));
+    } catch {
+      setClosedDates(new Set());
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadClosures();
+  }, [loadClosures]);
+
+  const loadSessions = useCallback(async () => {
+    setSessionsLoad("loading");
+    setSessionErr(null);
+    try {
+      const rows = await listJournalSessions({
+        journal_date: selectedYmd,
+        limit: 50,
+      });
+      setSessions(rows);
+      setSessionsLoad("ok");
+    } catch {
+      setSessions([]);
+      setSessionsLoad("err");
+      // Silent for anon — day view still usable for trade book
+    }
+  }, [selectedYmd]);
+
+  const autoOpenedForDay = useRef<string | null>(null);
+
+  useEffect(() => {
+    loadSessions();
+    setActiveSessionId(null);
+    setActiveSession(null);
+    setDraft("");
+    setSessionErr(null);
+    autoOpenedForDay.current = null;
+  }, [loadSessions]);
+
+  // Once per day: auto-open newest open/partial entry so chat appears without an extra click.
+  // User can still collapse the row; we do not force re-open after they clear.
+  useEffect(() => {
+    if (sessionsLoad !== "ok") return;
+    if (autoOpenedForDay.current === selectedYmd) return;
+    autoOpenedForDay.current = selectedYmd;
+    const open = sessions.find(
+      (s) => s.status === "open" || s.status === "partial",
+    );
+    if (open) setActiveSessionId(open.id);
+  }, [sessionsLoad, sessions, selectedYmd]);
+
+  useEffect(() => {
+    if (activeSessionId == null) {
+      setActiveSession(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const s = await getJournalSession(activeSessionId);
+        if (!cancelled) setActiveSession(s);
+      } catch (e) {
+        if (!cancelled) {
+          setSessionErr(
+            e instanceof Error ? e.message : "Could not load entry",
+          );
+          setActiveSession(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSessionId]);
+
   const weekStart = useMemo(() => startOfWeek(selected), [selected]);
   const year = cursor.getFullYear();
 
@@ -598,23 +892,66 @@ export default function JournalCalendar() {
   }
 
   async function onPrompt(label: string) {
-    if (label === "Retrospective") {
-      // Spec v0.2: Journal type = Retrospective starts gather workspace
+    const mapped = PROMPT_TO_TAG[label] || PROMPT_TO_TAG.Manual;
+    if (mapped === "retrospective" || label === "Retrospective") {
+      // Spec: retrospective navigates — does not create a journal session row
       setRetroErr(null);
+      setSessionErr(null);
       setRetroBusy(true);
       try {
         const r = await createRetrospective({ gather: true });
         router.push(`/app/retrospective/${r.id}`);
       } catch (e) {
-        setRetroErr(e instanceof Error ? e.message : "Could not start retrospective");
+        setRetroErr(
+          e instanceof Error ? e.message : "Could not start retrospective",
+        );
         setRetroBusy(false);
       }
       return;
     }
     setActivePrompt(label);
-    if (label !== "Manual" && !draft.trim()) {
-      setDraft(`${label}: `);
+    setSessionErr(null);
+    setSessionBusy(true);
+    try {
+      const session = await createJournalSession({
+        ...(mapped ? { tag: mapped, prefill: true } : {}),
+        journal_date: selectedYmd,
+      });
+      await loadSessions();
+      setActiveSessionId(session.id);
+      setActiveSession(session);
+      setDraft("");
+      setView("day");
+    } catch (e) {
+      setSessionErr(
+        e instanceof Error ? e.message : "Could not start journal entry",
+      );
+    } finally {
+      setSessionBusy(false);
     }
+  }
+
+  async function onSendMessage() {
+    if (!activeSessionId || !draft.trim()) return;
+    setSessionBusy(true);
+    setSessionErr(null);
+    try {
+      await postJournalMessage(activeSessionId, draft.trim());
+      setDraft("");
+      const s = await getJournalSession(activeSessionId);
+      setActiveSession(s);
+      await loadSessions();
+    } catch (e) {
+      setSessionErr(e instanceof Error ? e.message : "Could not save note");
+    } finally {
+      setSessionBusy(false);
+    }
+  }
+
+  function onSessionUpdated(s: JournalSession) {
+    setActiveSession(s);
+    setActiveSessionId(s.id);
+    void loadSessions();
   }
 
   const title: ReactNode =
@@ -762,6 +1099,18 @@ export default function JournalCalendar() {
             onRetryTrades={loadDayBook}
             retroBusy={retroBusy}
             retroErr={retroErr}
+            sessionBusy={sessionBusy}
+            sessionErr={sessionErr}
+            sessions={sessions}
+            sessionsLoad={sessionsLoad}
+            activeSession={activeSession}
+            selectedClosed={selectedClosed}
+            onSelectSession={(id) => setActiveSessionId(id)}
+            onSendMessage={onSendMessage}
+            onSessionUpdated={onSessionUpdated}
+            onSessionBusy={setSessionBusy}
+            onSessionError={setSessionErr}
+            onRefreshSessions={loadSessions}
           />
         )}
       </div>

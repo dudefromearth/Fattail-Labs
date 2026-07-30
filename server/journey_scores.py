@@ -11,6 +11,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import auth
+import journal_session_domain as jsd
 
 # Spec constants — change only with Spec version bump
 PTS_COURSE_COMPLETED = 50
@@ -604,6 +605,12 @@ def _practice_week_keys(
     )
     _add_dates(cur.fetchall())
 
+    # Dual-read: journal session_started_at NY weeks count toward persistence
+    for d in jsd.list_session_activity_ny_dates(cur, identity_id, since=since):
+        if hasattr(d, "isocalendar"):
+            iso = d.isocalendar()
+            weeks.add((iso[0], iso[1]))
+
     cur.execute(
         """SELECT DISTINCT DATE(completed_at) AS d FROM lesson_progress
            WHERE identity_id = %s AND completed_at IS NOT NULL
@@ -887,18 +894,30 @@ def process_meters(
     checkins = load_checkin_times(cur, identity_id)
     streak = attendance_streak_weeks(checkins, now=now)
 
+    # Dual-read Spec §2.1 / D2: trades ∪ legacy journal notes ∪
+    # session_started_at NY days (so meters do not cliff when sessions ship)
     cur.execute(
-        """SELECT COUNT(*) AS n FROM (
-             SELECT DATE(exec_at) AS d FROM member_trade_log_trades
-               WHERE identity_id = %s AND exec_at >= %s
-             UNION
-             SELECT DATE(updated_at) FROM member_tool_notes
-               WHERE identity_id = %s AND surface = 'journal'
-                 AND updated_at >= %s
-           ) u""",
-        (identity_id, routine_since, identity_id, routine_since),
+        """SELECT DATE(exec_at) AS d FROM member_trade_log_trades
+           WHERE identity_id = %s AND exec_at >= %s""",
+        (identity_id, routine_since),
     )
-    routine_days = int(cur.fetchone()["n"] or 0)
+    routine_dates: set[date] = set()
+    for row in cur.fetchall():
+        if row["d"] is not None:
+            routine_dates.add(row["d"])
+    cur.execute(
+        """SELECT DATE(updated_at) AS d FROM member_tool_notes
+           WHERE identity_id = %s AND surface = 'journal'
+             AND updated_at >= %s""",
+        (identity_id, routine_since),
+    )
+    for row in cur.fetchall():
+        if row["d"] is not None:
+            routine_dates.add(row["d"])
+    routine_dates |= jsd.list_session_activity_ny_dates(
+        cur, identity_id, since=routine_since
+    )
+    routine_days = len(routine_dates)
     routine_pct = _clamp_pct(100.0 * routine_days / float(r_tgt))
     learning_pct = _clamp_pct(100.0 * learn_days / float(l_tgt))
     live_pct = _clamp_pct(100.0 * streak / float(live_cap))

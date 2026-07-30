@@ -80,7 +80,7 @@ Additions retained from v0.3:
 | **Nudge vs meter** | Nudge invitational only; meter is process signal. Never “you were marked down for a late retro.” (§7.5) |
 | **`retro_horizon_days`** | Own profile field — **not** `grade_ramp_days`. **Amended by v0.51:** Observer trial **7** (weekly teach; `grade_ramp_days` still **42**), Navigator monthly **30**, annual **90**, Activator legacy **30**, alumni **90**. |
 | **Empty rules** | E1 cannot-create → exclude; E2 no complete + d≤H → exclude; E3 unresolvable epoch → exclude |
-| **Entitlement (E.2 closed)** | **Observer trial** may create; free no-plan may not; Activator legacy keeps access; marketed path trial → Navigator |
+| **Entitlement (E.2 · DL-128)** | **Observer** = Navigator Practice features; **term = 6 weeks** (sole difference). Free no-plan may not create; Activator legacy keeps access; marketed path Observer → Navigator |
 
 ---
 
@@ -630,7 +630,7 @@ can_create_or_gather =
 
 | Goal | Role of retrospectives |
 |------|------------------------|
-| **G1** Observer trial | **Primary trial path.** May create retros; do not force week-1; maiden after enough practice; dual report without agent is enough for the loop |
+| **G1** Observer | **Primary path into Navigator.** **Full Navigator Practice access** for the membership term — **only difference vs Navigator is term length: 6 weeks** (DL-128). Not free. Create retros, agent when mode on, same tools. Do not force week-1 maiden |
 | **G2** Navigator | **Primary paid path.** Full measure → act → report (+ agent when enabled) |
 | **Activator** | **Legacy** self-directed tier — not advertised; few signups. Technical access to Practice/retros remains; product narrative is trial → Navigator |
 
@@ -647,7 +647,7 @@ Board: `agents/p-retrospective/` (seeds RT0–RT8).
 | **R2b** | Gather §6.1–6.6; process-first UI; P&amp;L collapsed + sample banner; deviations | **Refactor** existing gather/UI |
 | **R3b** | Normalized comparison + `comparable` + window labels | **Replace** crude delta |
 | **R4** | Carry-forward + habit plan cap API | Maiden clean |
-| **R5** | Agent analyze + validation | Coach GO/DEFER; trial agent optional off |
+| **R5** | Agent analyze + validation | Coach GO; **Observer = Navigator** for agent when mode on (DL-127) |
 | **R6** | What worked + expected vs actual (if not in R2b) | Honest empty states |
 | **R7** | `retro_horizon_days` + cadence meter + nudge | Journey §4.1a; empty E1–E3 |
 | **R8** | As-built Spec + program close | Lima · Delta |
@@ -809,7 +809,7 @@ must never ingest retro dual-report data.
 
 - Cost-of-deviation counterfactual  
 - Agent provider (Labs principal vs Vexy) — HTTP-only to MSC  
-- Agent on Observer trial (default off until Coach opens)  
+- ~~Agent on Observer trial default off~~ — **SUPERSEDED DL-127:** Observer agent parity with Navigator when `LABS_RETRO_AGENT_MODE` on  
 
 ---
 

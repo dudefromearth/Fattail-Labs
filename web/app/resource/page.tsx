@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import ResourceLibrary from "@/components/ResourceLibrary";
+import ResourcesHub from "@/components/resources/ResourcesHub";
 import SectionHubShell from "@/components/section-hub/SectionHubShell";
 import { siteUrl } from "@/lib/catalog";
 import {
@@ -14,7 +14,7 @@ const FALLBACK: SitePage = {
   slug: "resources",
   title: "Resources",
   description_md:
-    "Worksheets, templates, and tools from every course — the Trade Lab library.",
+    "Worksheets, templates, and the shared process lexicon — the Trade Lab resources hub.",
   intro_video_id: null,
   intro_video_title: null,
   faq_title: "Resources FAQ",
@@ -68,7 +68,7 @@ export default async function ResourcesPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <SectionHubShell page={page}>
-        <ResourceLibrary />
+        <ResourcesHub />
       </SectionHubShell>
     </main>
   );

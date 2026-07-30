@@ -77,7 +77,7 @@ cd server && .venv/bin/python -m pytest \
 | GET/PATCH | `/api/me/retrospectives/{id}` | Workspace + body/title |
 | POST | `…/gather` | Dual report gather |
 | POST | `…/complete` · `…/abandon` | Terminal |
-| POST | `…/analyze` | Agent — **503** if mode off; **403** trial unless `LABS_RETRO_AGENT_TRIAL` |
+| POST | `…/analyze` | Agent — **503** if mode off; Observer trial **same as Navigator** when on (DL-126/127) |
 | GET/POST/PATCH/DELETE | `/api/me/habit-plans[/{id}]` | Cap **2** active → **409** |
 | GET | `/api/me/journey/scores` | Process meters incl. cadence |
 
@@ -161,7 +161,7 @@ d ≥ 2H       → raw = 0
 | Mode | `LABS_RETRO_AGENT_MODE=local` only |
 | External LLM HTTP | **Not shipped** |
 | Anchoring / sample gate / symmetry | Validated (RT5-3) |
-| Trial analyze | **403** unless `LABS_RETRO_AGENT_TRIAL=1` |
+| Observer trial analyze | **Same as Navigator** when `LABS_RETRO_AGENT_MODE` on (not trial-flag gated) |
 | Fail loud | Unconfigured → **503** |
 
 ---
@@ -172,7 +172,7 @@ d ≥ 2H       → raw = 0
 |----------|----------------|
 | Cost-of-deviation counterfactual | Deferred (v0.5 §21 · Hotel+Tango) |
 | External agent provider (HTTP) | Deferred; local deterministic only |
-| Agent on Observer trial (default on) | Coach may open via env; product default **off** |
+| ~~Agent trial-only flag~~ | **Superseded DL-127** — Observer analyze parity with Navigator when agent mode on |
 | Nudge copy rotation N2/N3 | Spec-approved; product uses fixed N1 |
 | Journey **milestones** from retro complete | Still “later” — cadence meter shipped; milestone feed not required for R7 |
 | Alumni create entitlement | TBD; profile H=60 if create allowed |
@@ -185,8 +185,8 @@ d ≥ 2H       → raw = 0
 
 | Population | Create / gather | Cadence meter | Agent analyze (default) |
 |------------|-----------------|---------------|-------------------------|
-| Observer trial (`observer-trial`) | **Yes** | Yes (H=7 weekly teach, E2 grace) | **No** (unless trial env) |
-| Free observer (no plan) | **No** (403) | Empty E1 | No |
+| Observer (`observer-trial`) | **Yes** — **same features as Navigator**; membership **term = 6 weeks** (sole difference, DL-128) | Yes (profile H may teach weekly during term) | **Yes** when agent mode on (parity) |
+| Free no-plan (not Observer) | **No** (403) | Empty E1 | No |
 | Navigator | Yes | Yes | Yes if agent mode on |
 | Activator (legacy) | Yes | Yes | Yes if agent mode on |
 | Administrator | Yes | Yes | Yes if agent mode on |

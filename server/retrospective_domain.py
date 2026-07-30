@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal, NotRequired, TypedDict
 
 import auth
+import journal_session_domain as jsd
 import journey_scores as js
 from identity import ACTIVE_STATUSES
 from trade_log_domain.pnl import enrich_trades_with_synthetic_pnl, realized_pnl
@@ -537,13 +538,36 @@ def _process_performance(
         (identity_id, scope_start, scope_end),
     )
     journal_notes = int(cur.fetchone()["n"] or 0)
+    # Dual-read §2.1 — count sealed/partial/open sessions in window too
+    cur.execute(
+        f"""SELECT COUNT(*) AS n FROM member_journal_sessions
+           WHERE identity_id = %s
+             AND status IN ('open', 'partial', 'sealed')
+             AND session_started_at {op} %s AND session_started_at <= %s""",
+        (identity_id, scope_start, scope_end),
+    )
+    journal_notes += int(cur.fetchone()["n"] or 0)
 
     cur.execute(
-        f"""SELECT COUNT(DISTINCT DATE(created_at)) AS n FROM member_tool_notes
+        f"""SELECT DISTINCT DATE(created_at) AS d FROM member_tool_notes
            WHERE identity_id = %s AND created_at {op} %s AND created_at <= %s""",
         (identity_id, scope_start, scope_end),
     )
-    journal_days = int(cur.fetchone()["n"] or 0)
+    journal_day_set: set = set()
+    from datetime import date as date_cls
+
+    for row in cur.fetchall():
+        d = row["d"]
+        if d is not None:
+            journal_day_set.add(d if isinstance(d, date_cls) else d)
+    journal_day_set |= jsd.list_session_activity_ny_dates(
+        cur,
+        identity_id,
+        scope_start,
+        scope_end,
+        is_maiden=is_maiden,
+    )
+    journal_days = len(journal_day_set)
 
     cur.execute(
         f"""SELECT COUNT(*) AS n FROM live_session_checkins
@@ -594,17 +618,32 @@ def _process_performance(
     activity_days = trade_days  # trade days already distinct
     # journal-only days may add — approximate with max of journal_days vs trade_days
     # Better: activity_days_per_week uses distinct trade OR journal days
+    # Dual-read: trades ∪ note days ∪ session_started_at NY days (Spec §2.1)
     cur.execute(
-        f"""SELECT COUNT(*) AS n FROM (
-              SELECT DATE(exec_at) AS d FROM member_trade_log_trades
-               WHERE identity_id = %s AND exec_at {op} %s AND exec_at <= %s
-              UNION
-              SELECT DATE(created_at) AS d FROM member_tool_notes
-               WHERE identity_id = %s AND created_at {op} %s AND created_at <= %s
-            ) u""",
-        (identity_id, scope_start, scope_end, identity_id, scope_start, scope_end),
+        f"""SELECT DATE(exec_at) AS d FROM member_trade_log_trades
+           WHERE identity_id = %s AND exec_at {op} %s AND exec_at <= %s""",
+        (identity_id, scope_start, scope_end),
     )
-    activity_days = int(cur.fetchone()["n"] or 0)
+    activity_set: set = set()
+    for row in cur.fetchall():
+        if row["d"] is not None:
+            activity_set.add(row["d"])
+    cur.execute(
+        f"""SELECT DATE(created_at) AS d FROM member_tool_notes
+           WHERE identity_id = %s AND created_at {op} %s AND created_at <= %s""",
+        (identity_id, scope_start, scope_end),
+    )
+    for row in cur.fetchall():
+        if row["d"] is not None:
+            activity_set.add(row["d"])
+    activity_set |= jsd.list_session_activity_ny_dates(
+        cur,
+        identity_id,
+        scope_start,
+        scope_end,
+        is_maiden=is_maiden,
+    )
+    activity_days = len(activity_set)
 
     return {
         "framing": "process_performance",
@@ -706,6 +745,14 @@ def _activity_dates(
     for row in cur.fetchall():
         if row["d"]:
             dates.add(row["d"] if isinstance(row["d"], date_cls) else row["d"])
+    # Dual-read §2.1 — session_started_at NY day
+    dates |= jsd.list_session_activity_ny_dates(
+        cur,
+        identity_id,
+        scope_start,
+        scope_end,
+        is_maiden=is_maiden,
+    )
     return dates
 
 
@@ -867,6 +914,19 @@ def _what_worked(
         if not isinstance(d, date_cls):
             continue
         jdays.append(d)
+    # Dual-read §2.1 — session activity days (NY)
+    jdays.extend(
+        sorted(
+            jsd.list_session_activity_ny_dates(
+                cur,
+                identity_id,
+                scope_start,
+                scope_end,
+                is_maiden=is_maiden,
+            )
+        )
+    )
+    jdays = sorted(set(jdays))
     stretch = 0
     best_stretch = 0
     prev: date_cls | None = None
@@ -968,7 +1028,10 @@ def _expected_vs_actual(
     is_maiden: bool,
     filtered_trades: list[dict],
 ) -> list[dict[str, Any]] | None:
-    """Spec §6.5 — null when no pre_market notes in window."""
+    """Spec §6.5 — dual-read legacy notes + pre_market sessions (Spec §2.1).
+
+    Null when neither source contributes intent in the window.
+    """
     op = ">=" if is_maiden else ">"
     cur.execute(
         f"""SELECT id, surface, body_md, created_at
@@ -984,8 +1047,6 @@ def _expected_vs_actual(
         for r in notes
         if _is_pre_market_note(str(r.get("surface") or ""), str(r.get("body_md") or ""))
     ]
-    if not pre_rows:
-        return None
 
     trades_by_day: dict[str, list[dict]] = {}
     for t in filtered_trades:
@@ -993,6 +1054,17 @@ def _expected_vs_actual(
         if not dk:
             continue
         trades_by_day.setdefault(dk, []).append(t)
+
+    def _executed_for_day(day: str) -> str:
+        day_trades = trades_by_day.get(day) or []
+        if day_trades:
+            parts = []
+            for t in day_trades:
+                adh = (t.get("adherence") or "unknown").strip().lower()
+                sym = t.get("strategy") or t.get("symbol") or "trade"
+                parts.append(f"{sym} ({adh})")
+            return f"{len(day_trades)} trade(s): " + "; ".join(parts[:12])
+        return "No trades logged this day"
 
     out: list[dict[str, Any]] = []
     for r in pre_rows:
@@ -1003,25 +1075,40 @@ def _expected_vs_actual(
         if not day:
             continue
         intent = _strip_pre_market_prefix(str(r.get("body_md") or ""))
-        day_trades = trades_by_day.get(day) or []
-        if day_trades:
-            parts = []
-            for t in day_trades:
-                adh = (t.get("adherence") or "unknown").strip().lower()
-                sym = t.get("strategy") or t.get("symbol") or "trade"
-                parts.append(f"{sym} ({adh})")
-            executed = f"{len(day_trades)} trade(s): " + "; ".join(parts[:12])
-        else:
-            executed = "No trades logged this day"
         out.append(
             {
                 "day": day,
                 "stated_intent": intent,  # verbatim after marker strip only
-                "what_executed": executed,
+                "what_executed": _executed_for_day(day),
                 "gap": None,  # member-authored later
                 "note_id": int(r["id"]) if r.get("id") else None,
+                "session_id": None,
+                "source": "tool_note",
             }
         )
+
+    # Dual-read: journal sessions (tag=pre_market, partial|sealed)
+    for item in jsd.pre_market_intents_from_sessions(
+        cur,
+        identity_id,
+        scope_start,
+        scope_end,
+        is_maiden=is_maiden,
+    ):
+        day = item["day"]
+        out.append(
+            {
+                "day": day,
+                "stated_intent": item["stated_intent"],
+                "what_executed": _executed_for_day(day),
+                "gap": None,
+                "note_id": None,
+                "session_id": item.get("session_id"),
+                "source": "journal_session",
+            }
+        )
+
+    out.sort(key=lambda x: (x.get("day") or "", x.get("source") or ""))
     return out if out else None
 
 
