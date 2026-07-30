@@ -204,6 +204,110 @@ def derive_phase(journal_date: date, message_at: datetime, *, cur=None) -> str:
     return "intraday"
 
 
+def session_band(
+    journal_date: date, message_at: datetime, *, cur=None
+) -> str:
+    """Week-view band for a message timestamp (Spec v0.6 §1.6).
+
+    GX before open · AM open→midpoint · PM midpoint→close · CL after close
+    or later_day. Off-session (weekend/holiday): local-clock halves map to
+    GX/AM/PM/CL as interim until Coach lock §17-12.
+    """
+    cal = load_market_calendar(cur)
+    tz = cal["tz"]
+    msg = message_at
+    if msg.tzinfo is None:
+        msg = msg.replace(tzinfo=timezone.utc)
+    local = msg.astimezone(tz)
+    local_day = local.date()
+    t = local.time()
+
+    # Later-written material about this journal date → CL (spec §1.6)
+    if local_day > journal_date:
+        return "cl"
+
+    rth_open = cal["rth_open"]
+    rth_close = cal["rth_close"]
+    day_iso = journal_date.isoformat()
+    half = cal["half_days"].get(day_iso)
+    if isinstance(half, dict) and half.get("close"):
+        parts = str(half["close"]).split(":")
+        rth_close = time(int(parts[0]), int(parts[1]))
+
+    off = (
+        day_iso in cal["holidays"]
+        or journal_date.weekday() >= 5
+        or local_day != journal_date
+    )
+    if off and local_day <= journal_date:
+        # Interim: four quarters of the local day
+        mins = local.hour * 60 + local.minute
+        if mins < 6 * 60:
+            return "gx"
+        if mins < 12 * 60:
+            return "am"
+        if mins < 18 * 60:
+            return "pm"
+        return "cl"
+
+    open_m = rth_open.hour * 60 + rth_open.minute
+    close_m = rth_close.hour * 60 + rth_close.minute
+    mid_m = (open_m + close_m) // 2
+    tm = t.hour * 60 + t.minute
+    if tm < open_m:
+        return "gx"
+    if tm < mid_m:
+        return "am"
+    if tm < close_m:
+        return "pm"
+    return "cl"
+
+
+def week_activity_bands(
+    cur,
+    identity_id: int,
+    date_from: date,
+    date_to: date,
+) -> dict[str, dict]:
+    """Member-message band activity for Week map (agent turns ignored)."""
+    cur.execute(
+        """SELECT s.id AS session_id, s.journal_date, m.id AS message_id, m.created_at
+           FROM member_journal_sessions s
+           JOIN member_journal_messages m
+             ON m.session_id = s.id AND m.identity_id = s.identity_id
+           WHERE s.identity_id = %s
+             AND s.journal_date >= %s AND s.journal_date <= %s
+             AND m.author = 'member'
+           ORDER BY m.created_at ASC, m.id ASC""",
+        (identity_id, date_from, date_to),
+    )
+    out: dict[str, dict] = {}
+    for r in cur.fetchall():
+        jd = r["journal_date"]
+        day_key = jd.isoformat() if hasattr(jd, "isoformat") else str(jd)[:10]
+        created = r["created_at"]
+        if created is None:
+            continue
+        if getattr(created, "tzinfo", None) is None:
+            created = created.replace(tzinfo=timezone.utc)
+        band = session_band(_as_date(jd), created, cur=cur)
+        slot = out.setdefault(
+            day_key,
+            {
+                "session_id": int(r["session_id"]),
+                "bands": {"gx": False, "am": False, "pm": False, "cl": False},
+                "first_message_id_by_band": {},
+            },
+        )
+        if not slot["bands"].get(band):
+            slot["bands"][band] = True
+            slot["first_message_id_by_band"][band] = int(r["message_id"])
+        # Prefer earliest session id for the day
+        if int(r["session_id"]) < int(slot["session_id"]):
+            slot["session_id"] = int(r["session_id"])
+    return out
+
+
 def get_closure(cur, identity_id: int, journal_date: date) -> dict | None:
     cur.execute(
         """SELECT identity_id, journal_date, closed_by_retrospective_id, closed_at
@@ -472,6 +576,7 @@ def serialize_session(
             else None
         ),
         "closed_at": _iso(row.get("closed_at")) if row.get("closed_at") else None,
+        "prompt_version_id": row.get("prompt_version_id"),
         "created_at": _iso(row.get("created_at")),
         "updated_at": _iso(row.get("updated_at")),
     }
@@ -548,6 +653,20 @@ def create_session(
     # Warm calendar cache (fail loud if empty)
     load_market_calendar(cur)
 
+    # Spec v0.6 §3 — one conversation per date: return existing if present.
+    cur.execute(
+        """SELECT id FROM member_journal_sessions
+           WHERE identity_id = %s AND journal_date = %s
+           ORDER BY session_started_at ASC, id ASC
+           LIMIT 1""",
+        (identity_id, jd),
+    )
+    existing = cur.fetchone()
+    if existing:
+        return get_session(
+            cur, identity_id, int(existing["id"]), include_messages=True
+        )
+
     merged: dict | None = None
     if prefill and primary:
         merged = dict(jss.prefill_structured(cur, identity_id, primary, jd))
@@ -568,12 +687,14 @@ def create_session(
 
     sj = json.dumps(merged) if merged else None
     legacy_tag = primary if primary else None
+    prompt_vid = active_prompt_version_id(cur)
     cur.execute(
         """INSERT INTO member_journal_sessions
              (identity_id, tag, journal_date, session_started_at, status,
-              structured_json, export_key, spawned_retrospective_id)
-           VALUES (%s, %s, %s, %s, 'open', %s, NULL, NULL)""",
-        (identity_id, legacy_tag, jd, started, sj),
+              structured_json, export_key, spawned_retrospective_id,
+              prompt_version_id)
+           VALUES (%s, %s, %s, %s, 'open', %s, NULL, NULL, %s)""",
+        (identity_id, legacy_tag, jd, started, sj, prompt_vid),
     )
     sid = int(cur.lastrowid)
     if tag_list:
@@ -581,10 +702,26 @@ def create_session(
     return get_session(cur, identity_id, sid, include_messages=True)
 
 
+def active_prompt_version_id(cur) -> str | None:
+    """Stamp for new sessions (Spec v0.6 §8.3 / J3)."""
+    try:
+        cur.execute(
+            """SELECT id FROM journal_session_prompt_versions
+               WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1"""
+        )
+        row = cur.fetchone()
+        if row:
+            return str(row["id"])
+    except Exception:
+        pass
+    return "JOURNAL_SESSION_SYSTEM_PROMPT_V1"
+
+
 _SESSION_COLS = """id, identity_id, tag, journal_date, session_started_at, status,
                   structured_json, export_key, spawned_retrospective_id,
                   closed_by_retrospective_id, closed_at,
-                  absence_keys_raised_json, created_at, updated_at"""
+                  absence_keys_raised_json, prompt_version_id,
+                  created_at, updated_at"""
 
 
 def get_session(
@@ -940,6 +1077,44 @@ def format_structured_intent(structured: dict | None) -> str:
     return " · ".join(parts)
 
 
+def list_member_message_ny_dates(
+    cur,
+    identity_id: int,
+    *,
+    since: datetime | None = None,
+    until: datetime | None = None,
+) -> set[date]:
+    """Routine days — Spec Retrospective v0.7.1 §12.2 / Journal Session amendment.
+
+    A routine day is a local America/New_York calendar day on which the member
+    authored at least one journal message (by message timestamp), independent of
+    the session's journal_date. Agent turns do not count.
+    """
+    clauses = [
+        "m.identity_id = %s",
+        "m.author = 'member'",
+    ]
+    params: list[Any] = [identity_id]
+    if since is not None:
+        clauses.append("m.created_at >= %s")
+        params.append(_naive_utc(since))
+    if until is not None:
+        clauses.append("m.created_at <= %s")
+        params.append(_naive_utc(until))
+    where = " AND ".join(clauses)
+    cur.execute(
+        f"""SELECT m.created_at FROM member_journal_messages m
+           WHERE {where}""",
+        tuple(params),
+    )
+    out: set[date] = set()
+    for row in cur.fetchall():
+        d = session_started_ny_date(row.get("created_at"))
+        if d is not None:
+            out.add(d)
+    return out
+
+
 def list_session_activity_ny_dates(
     cur,
     identity_id: int,
@@ -949,16 +1124,22 @@ def list_session_activity_ny_dates(
     is_maiden: bool = True,
     since: datetime | None = None,
 ) -> set[date]:
-    """Days with any journal session (session_started_at → NY day). Spec §2.1."""
+    """Journal activity NY days for meters.
+
+    Spec v0.7.1 §12.2: prefer **member message** timestamps (routine day).
+    Falls back to session_started_at only when no message window is usable.
+    """
     if since is not None:
-        cur.execute(
-            """SELECT session_started_at FROM member_journal_sessions
-               WHERE identity_id = %s
-                 AND status IN ('open', 'closed', 'partial', 'sealed')
-                 AND session_started_at >= %s""",
-            (identity_id, _naive_utc(since)),
+        return list_member_message_ny_dates(cur, identity_id, since=since)
+    if scope_start is not None and scope_end is not None:
+        # Scope uses message times when present; dual-read session start for empty
+        msgs = list_member_message_ny_dates(
+            cur,
+            identity_id,
+            since=scope_start if is_maiden else scope_start,
+            until=scope_end,
         )
-    elif scope_start is not None and scope_end is not None:
+        # Also include session starts in window for pre-message-era dual-read
         op = ">=" if is_maiden else ">"
         cur.execute(
             f"""SELECT session_started_at FROM member_journal_sessions
@@ -967,19 +1148,13 @@ def list_session_activity_ny_dates(
                  AND session_started_at {op} %s AND session_started_at <= %s""",
             (identity_id, _naive_utc(scope_start), _naive_utc(scope_end)),
         )
-    else:
-        cur.execute(
-            """SELECT session_started_at FROM member_journal_sessions
-               WHERE identity_id = %s
-                 AND status IN ('open', 'closed', 'partial', 'sealed')""",
-            (identity_id,),
-        )
-    out: set[date] = set()
-    for row in cur.fetchall():
-        d = session_started_ny_date(row.get("session_started_at"))
-        if d is not None:
-            out.add(d)
-    return out
+        out = set(msgs)
+        for row in cur.fetchall():
+            d = session_started_ny_date(row.get("session_started_at"))
+            if d is not None:
+                out.add(d)
+        return out
+    return list_member_message_ny_dates(cur, identity_id)
 
 
 def pre_market_intents_from_sessions(

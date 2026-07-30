@@ -11,10 +11,12 @@ one seal on retrospective complete (scope-true). Central to trader process integ
 
 **Parent Spec:**  
 [`Specs/FatTail-Labs-Journal-Session-Spec-v0.5.md`](../../Specs/FatTail-Labs-Journal-Session-Spec-v0.5.md)  
-**(DRAFT until Coach GO)**
+**(DRAFT until Coach GO)** — includes **Tag Manager compliance §5**
 
-**Hard dependency:**  
-[`agents/p-tag-manager/`](../p-tag-manager/) — Tag Manager **TM2** before Journal **J4**.
+**Full plan:**  
+[`docs/Journal-Session-v0.5-Implementation-Plan.md`](../../docs/Journal-Session-v0.5-Implementation-Plan.md)
+
+**Tag Manager:** Spec **v0.3** as-built (COMPLETE). Journal **assigns** system tags only.
 
 **Supersedes product frame:** Session Specs v0.1–v0.4a and boards  
 `p-journal-session` / `p-journal-session-v04` (do **not** reopen as product path).

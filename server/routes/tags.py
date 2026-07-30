@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 
 import db
+import journal_session_domain as jsd
 import tag_domain as td
 from guards import require_session
 from routes.trade_log.common import _storage_identity_id
@@ -19,6 +20,33 @@ def _raise(exc: td.TagError) -> None:
     else:
         payload = exc.detail
     raise HTTPException(status_code=exc.code, detail=payload)
+
+
+def _assert_journal_session_mutable(cur, object_id: int, claims: dict, iid: int) -> int:
+    """Ownership + open-only for tag changes (Spec v0.5 §5.1 / J4-3)."""
+    role = str(claims.get("role") or "observer")
+    cur.execute(
+        """SELECT identity_id, status, journal_date
+           FROM member_journal_sessions WHERE id = %s""",
+        (object_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Object not found")
+    owner_id = int(row["identity_id"])
+    if role != "administrator" and owner_id != int(iid):
+        raise HTTPException(status_code=403, detail="Not your object")
+    status = str(row.get("status") or "")
+    if status not in ("open", "partial"):
+        raise HTTPException(
+            status_code=409,
+            detail="This journal entry is closed — tags can no longer be changed.",
+        )
+    try:
+        jsd.assert_date_open(cur, owner_id, jsd._as_date(row["journal_date"]))
+    except jsd.JournalSessionError as e:
+        raise HTTPException(status_code=e.code, detail=e.detail) from e
+    return owner_id
 
 
 @router.get("/api/tags")
@@ -121,19 +149,8 @@ async def put_object_assignments(request: Request) -> dict:
                     detail="Administrator role required to tag public objects",
                 )
             owner_id = iid if ot in td.MEMBER_OBJECT_TYPES else None
-            # Ownership check for member objects (journal_session etc.)
             if ot == "journal_session":
-                cur.execute(
-                    """SELECT identity_id FROM member_journal_sessions
-                       WHERE id = %s""",
-                    (object_id,),
-                )
-                row = cur.fetchone()
-                if not row:
-                    raise HTTPException(status_code=404, detail="Object not found")
-                if role != "administrator" and int(row["identity_id"]) != int(iid):
-                    raise HTTPException(status_code=403, detail="Not your object")
-                owner_id = int(row["identity_id"])
+                owner_id = _assert_journal_session_mutable(cur, object_id, claims, iid)
             try:
                 items = td.set_assignments_for_object(
                     cur,
@@ -179,16 +196,7 @@ async def post_assignment(request: Request) -> dict:
                 )
             owner_id = iid if ot in td.MEMBER_OBJECT_TYPES else None
             if ot == "journal_session":
-                cur.execute(
-                    "SELECT identity_id FROM member_journal_sessions WHERE id = %s",
-                    (object_id,),
-                )
-                row = cur.fetchone()
-                if not row:
-                    raise HTTPException(status_code=404, detail="Object not found")
-                if role != "administrator" and int(row["identity_id"]) != int(iid):
-                    raise HTTPException(status_code=403, detail="Not your object")
-                owner_id = int(row["identity_id"])
+                owner_id = _assert_journal_session_mutable(cur, object_id, claims, iid)
             try:
                 a = td.assign_tag(
                     cur,
@@ -232,6 +240,10 @@ async def delete_assignment(request: Request) -> dict:
                     detail="Administrator role required",
                 )
             owner_check = iid if ot in td.MEMBER_OBJECT_TYPES else None
+            if ot == "journal_session":
+                owner_check = _assert_journal_session_mutable(
+                    cur, object_id, claims, iid
+                )
             try:
                 td.unassign_tag(
                     cur,

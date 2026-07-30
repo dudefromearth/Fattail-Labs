@@ -166,6 +166,33 @@ def read_attachment_bytes(
     return path.read_bytes(), str(row["content_type"])
 
 
+def update_caption(
+    cur,
+    identity_id: int,
+    session_id: int,
+    attachment_id: int,
+    caption_md: str | None,
+) -> dict:
+    """Edit caption while session/date open (Spec v0.6 §1.4 lightbox)."""
+    row = jsd._load_mutable_row(cur, identity_id, session_id)
+    jd = jsd._as_date(row["journal_date"])
+    jsd.assert_date_open(cur, identity_id, jd)
+    cur.execute(
+        """UPDATE member_journal_attachments SET caption_md = %s
+           WHERE id = %s AND session_id = %s AND identity_id = %s""",
+        (caption_md, attachment_id, session_id, identity_id),
+    )
+    if cur.rowcount == 0:
+        raise MediaError(404, "Attachment not found")
+    cur.execute(
+        """SELECT id, session_id, identity_id, trade_id, content_type, byte_size,
+                  caption_md, export_key, created_at
+           FROM member_journal_attachments WHERE id = %s""",
+        (attachment_id,),
+    )
+    return _ser(cur.fetchone())
+
+
 def delete_attachment(
     cur, identity_id: int, session_id: int, attachment_id: int
 ) -> None:

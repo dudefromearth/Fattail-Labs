@@ -18,13 +18,15 @@ import { Button } from "@/components/ui";
 import { createRetrospective } from "@/lib/retrospectiveApi";
 import {
   createJournalSession,
+  fetchWeekActivity,
   getJournalSession,
   listJournalClosures,
   listJournalSessions,
+  postAgentTurn,
   postJournalMessage,
-  PROMPT_TO_TAG,
-  TAG_LABELS,
   type JournalSession,
+  type WeekBandId,
+  type WeekDayActivity,
 } from "@/lib/journalSessionApi";
 import {
   dayBookFromServer,
@@ -33,9 +35,11 @@ import {
   type DayBook,
 } from "@/lib/journalDayBook";
 import { fetchDayBook, fetchDaysInterest } from "@/lib/tradeLogApi";
-import DayTradesPanel, { DayPanel } from "./DayTradesPanel";
+import DayTradesPanel from "./DayTradesPanel";
 import SessionInterviewChat from "./SessionInterviewChat";
+import SessionMediaHeader from "./SessionMediaHeader";
 import StructuredSessionForm from "./StructuredSessionForm";
+import JournalTagsControl from "./JournalTagsControl";
 import {
   addDays,
   formatDayTitle,
@@ -65,16 +69,6 @@ const WEEK_BANDS = [
   { id: "am", label: "AM" },
   { id: "pm", label: "PM" },
   { id: "cl", label: "CL" },
-] as const;
-
-/** Day-view entry prompts (process-first, not P&L). */
-const DAY_PROMPTS = [
-  "End of Day",
-  "Trade Reflection",
-  "Pre-Market",
-  "Deep Dive",
-  "Lessons",
-  "Retrospective",
 ] as const;
 
 const DOW_SHORT = ["M", "T", "W", "T", "F", "S", "S"] as const;
@@ -225,19 +219,26 @@ function YearView({
   year,
   selected,
   today,
-  onSelect,
+  onOpenMonth,
   daysWithTrades,
 }: {
   year: number;
   selected: Date;
   today: Date;
-  onSelect: (d: Date) => void;
+  /** Spec §1.7 — Year cell navigates to Month view for that month */
+  onOpenMonth: (year: number, month: number) => void;
   daysWithTrades?: Set<string>;
 }) {
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {MONTH_SHORT.map((label, month) => (
-        <div key={label}>
+        <button
+          key={label}
+          type="button"
+          onClick={() => onOpenMonth(year, month)}
+          className="rounded-[var(--radius-md)] p-1 text-left transition-colors hover:bg-[var(--color-fill)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
+          data-testid={`journal-year-month-${year}-${month}`}
+        >
           <p className="mb-1.5 text-sm font-semibold text-[var(--color-label)]">
             {label}
           </p>
@@ -246,11 +247,11 @@ function YearView({
             month={month}
             selected={selected}
             today={today}
-            onSelect={onSelect}
+            onSelect={() => onOpenMonth(year, month)}
             compact
             daysWithTrades={daysWithTrades}
           />
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -260,21 +261,23 @@ function WeekView({
   weekStart,
   selected,
   today,
-  onSelect,
+  onOpenDay,
+  onOpenBand,
+  activity,
 }: {
   weekStart: Date;
   selected: Date;
   today: Date;
-  onSelect: (d: Date) => void;
+  onOpenDay: (d: Date) => void;
+  /** Spec §1.6 — band click → day scrolled to first message in band */
+  onOpenBand: (d: Date, band: WeekBandId) => void;
+  activity: Record<string, WeekDayActivity>;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   return (
-    // Horizontal scroll can clip Y overflow (rings/shadows). Pad inside so the
-    // last band (CL) and selection chrome fully paint before the day panel.
     <div className="overflow-x-auto px-1 pb-5 pt-1">
       <div className="min-w-[640px]">
-        {/* Day headers */}
         <div className="mb-3 grid grid-cols-[2.5rem_repeat(7,minmax(0,1fr))] gap-2">
           <div />
           {days.map((d, i) => {
@@ -284,8 +287,9 @@ function WeekView({
               <button
                 key={ymd(d)}
                 type="button"
-                onClick={() => onSelect(d)}
-                className="text-center"
+                onClick={() => onOpenDay(d)}
+                className="rounded-[var(--radius-sm)] text-center hover:bg-[var(--color-fill)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-tint)]"
+                data-testid={`journal-week-header-${ymd(d)}`}
               >
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
                   {DOW_WEEK[i]}
@@ -308,7 +312,6 @@ function WeekView({
           })}
         </div>
 
-        {/* Session bands × days */}
         <div className="space-y-2.5 pb-1">
           {WEEK_BANDS.map((band) => (
             <div
@@ -319,21 +322,35 @@ function WeekView({
                 {band.label}
               </div>
               {days.map((d) => {
+                const key = ymd(d);
                 const isSelected = sameDay(d, selected);
+                const hasDot = Boolean(
+                  activity[key]?.bands?.[band.id as WeekBandId],
+                );
                 return (
                   <button
-                    key={`${band.id}-${ymd(d)}`}
+                    key={`${band.id}-${key}`}
                     type="button"
-                    onClick={() => onSelect(d)}
+                    onClick={() => onOpenBand(d, band.id as WeekBandId)}
                     className={[
-                      "min-h-[3.5rem] rounded-[var(--radius-md)] transition-shadow",
+                      "relative flex min-h-[3.5rem] items-center justify-center rounded-[var(--radius-md)] transition-shadow",
                       tileBase,
                       isSelected
                         ? "ring-2 ring-[var(--color-tint)] ring-offset-2 ring-offset-[var(--color-canvas)]"
                         : "hover:brightness-[0.99]",
+                      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
                     ].join(" ")}
-                    aria-label={`${band.label} ${formatLong(d)}`}
-                  />
+                    aria-label={`${band.label} ${formatLong(d)}${hasDot ? ", has notes" : ""}`}
+                    data-testid={`journal-week-band-${band.id}-${key}`}
+                  >
+                    {hasDot && (
+                      <span
+                        className="h-2.5 w-2.5 rounded-full bg-[var(--color-tint)]"
+                        data-testid={`journal-week-dot-${band.id}-${key}`}
+                        aria-hidden
+                      />
+                    )}
+                  </button>
                 );
               })}
             </div>
@@ -344,19 +361,12 @@ function WeekView({
   );
 }
 
-function statusLabel(status: string): string {
-  if (status === "open") return "Open";
-  if (status === "closed") return "Closed";
-  if (status === "partial") return "Open"; // legacy
-  if (status === "sealed") return "Closed"; // legacy
-  return status;
-}
-
 function DayView({
   selected,
   draft,
   onDraft,
-  onPrompt,
+  onFirstSend,
+  onOpenRetrospective,
   book,
   tradesLoadState,
   onRetryTrades,
@@ -364,21 +374,18 @@ function DayView({
   retroErr = null,
   sessionBusy = false,
   sessionErr = null,
-  sessions = [],
-  sessionsLoad = "idle",
   activeSession = null,
   selectedClosed = false,
-  onSelectSession,
-  onSendMessage,
   onSessionUpdated,
   onSessionBusy,
   onSessionError,
-  onRefreshSessions,
+  scrollToMessageId = null,
 }: {
   selected: Date;
   draft: string;
   onDraft: (v: string) => void;
-  onPrompt: (label: string) => void;
+  onFirstSend: () => void;
+  onOpenRetrospective: () => void;
   book: DayBook;
   tradesLoadState: "loading" | "ok" | "anon" | "forbidden" | "err";
   onRetryTrades: () => void;
@@ -386,167 +393,86 @@ function DayView({
   retroErr?: string | null;
   sessionBusy?: boolean;
   sessionErr?: string | null;
-  sessions?: JournalSession[];
-  sessionsLoad?: "idle" | "loading" | "ok" | "err";
   activeSession?: JournalSession | null;
   selectedClosed?: boolean;
-  onSelectSession?: (id: number | null) => void;
-  onSendMessage?: () => void;
   onSessionUpdated?: (s: JournalSession) => void;
   onSessionBusy?: (v: boolean) => void;
   onSessionError?: (msg: string | null) => void;
-  onRefreshSessions?: () => void;
+  scrollToMessageId?: number | null;
 }) {
   const mutable =
     activeSession &&
     (activeSession.status === "open" || activeSession.status === "partial");
-  const msgs = activeSession?.messages || [];
-  /** Soft highlight when agent has no more probes — form is always visible too. */
-  const [formHint, setFormHint] = useState(false);
+  const [interviewOpen, setInterviewOpen] = useState(false);
   useEffect(() => {
-    setFormHint(false);
+    setInterviewOpen(false);
   }, [activeSession?.id]);
 
   return (
     <div className="space-y-6" data-testid="journal-day-view">
-      {/* Spec v0.4a: Start conversation is primary; tags optional labels */}
+      {/* Spec v0.6 §1.1 — date, retro, header (tags+media), thread, composer, interview, trades */}
       <div className="rounded-[var(--radius-xl)] bg-[var(--color-surface-secondary)] px-4 py-6 sm:px-6">
-        <p className="mb-3 text-center text-sm text-[var(--color-label-secondary)]">
-          Start a conversation for this day — chat is the record. Optional labels
-          below are context only.
-        </p>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <p
+            className="text-sm font-medium text-[var(--color-label)]"
+            data-testid="journal-day-date"
+          >
+            {formatLong(selected)}
+          </p>
+          <button
+            type="button"
+            onClick={onOpenRetrospective}
+            disabled={retroBusy}
+            className="text-xs font-medium text-[var(--color-tint)] underline underline-offset-2 disabled:opacity-40"
+            data-testid="journal-open-retrospective"
+          >
+            {retroBusy ? "Opening…" : "Open retrospective"}
+          </button>
+        </div>
+
         {selectedClosed && (
           <p
             className="mb-3 text-center text-sm text-[var(--color-label-secondary)]"
             data-testid="journal-day-closed"
             role="status"
           >
-            This date is closed after a completed retrospective — no new journal
-            entries. You can still review the day-book and existing entries.
+            This date is closed after a completed retrospective — no new
+            writing. You can still review the day-book and existing notes.
           </p>
         )}
-        <div className="mb-4 flex justify-center">
-          <button
-            type="button"
-            onClick={() => onPrompt("Start conversation")}
-            disabled={sessionBusy || selectedClosed}
-            className="min-h-10 rounded-full bg-[var(--color-tint)] px-5 text-sm font-semibold text-[var(--color-on-tint)] disabled:opacity-40"
-            data-testid="journal-start-conversation"
-          >
-            {sessionBusy ? "Starting…" : "Start conversation"}
-          </button>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {DAY_PROMPTS.map((label) => {
-            const busy =
-              (label === "Retrospective" && retroBusy) ||
-              (label !== "Retrospective" && sessionBusy);
-            const blockNew =
-              selectedClosed && label !== "Retrospective";
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => onPrompt(label)}
-                disabled={busy || blockNew}
-                className={[
-                  "chip min-h-9 px-3.5 text-sm font-medium text-[var(--color-label)]",
-                  label === "Retrospective"
-                    ? "border-[var(--color-tint)] text-[var(--color-tint)]"
-                    : "",
-                  blockNew ? "opacity-40" : "",
-                ].join(" ")}
-              >
-                {label === "Retrospective" && retroBusy
-                  ? "Starting retrospective…"
-                  : sessionBusy && label !== "Retrospective"
-                    ? "Starting…"
-                    : label}
-              </button>
-            );
-          })}
-        </div>
+
         {(retroErr || sessionErr) && (
-          <p className="mt-3 text-center text-sm text-red-600" role="alert">
+          <p className="mb-3 text-center text-sm text-red-600" role="alert">
             {sessionErr || retroErr}
           </p>
         )}
 
-        {/* Entries for this day */}
-        <div className="mt-6" data-testid="journal-day-sessions">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-[var(--color-label)]">
-              Entries this day
-            </h3>
-            {onRefreshSessions && (
-              <button
-                type="button"
-                className="text-xs text-[var(--color-label-secondary)] underline underline-offset-2"
-                onClick={onRefreshSessions}
-              >
-                Refresh
-              </button>
-            )}
-          </div>
-          {sessionsLoad === "loading" && (
-            <p className="text-center text-sm text-[var(--color-label-tertiary)]">
-              Loading entries…
-            </p>
-          )}
-          {sessionsLoad === "ok" && sessions.length === 0 && (
-            <p className="text-center text-sm text-[var(--color-label-tertiary)]">
-              No journal entries for this day yet.
-            </p>
-          )}
-          {sessions.length > 0 && (
-            <ul className="space-y-2">
-              {sessions.map((s) => {
-                const on = activeSession?.id === s.id;
-                return (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      onClick={() => onSelectSession?.(on ? null : s.id)}
-                      className={[
-                        "flex w-full items-center justify-between gap-3 rounded-[var(--radius-md)] border px-3 py-2.5 text-left text-sm transition-colors",
-                        on
-                          ? "border-[var(--color-tint)] bg-[var(--color-surface)]"
-                          : "border-[var(--color-separator)] bg-[var(--color-surface)] hover:bg-[var(--color-fill)]",
-                      ].join(" ")}
-                      data-testid={`journal-session-row-${s.id}`}
-                    >
-                      <span className="font-medium text-[var(--color-label)]">
-                        {(s.tag && TAG_LABELS[s.tag]) ||
-                          s.tag ||
-                          (s.tags && s.tags[0]) ||
-                          "Conversation"}
-                      </span>
-                      <span className="text-[var(--color-label-secondary)]">
-                        {statusLabel(s.status)}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-
-        {/* Active entry: chat (always primary) + form (always available) + free-text */}
         {activeSession && (
           <div
-            className="mt-5 space-y-5 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-4"
+            className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-4"
             data-testid="journal-session-active"
           >
-            <p className="text-sm font-semibold text-[var(--color-label)]">
-              {(activeSession.tag && TAG_LABELS[activeSession.tag]) ||
-                activeSession.tag ||
-                "Conversation"}{" "}
-              ·{" "}
-              {statusLabel(activeSession.status)}
-            </p>
+            {/* §1.4 session header: tags + image thumbnails */}
+            <div
+              className="flex flex-col gap-2 sm:flex-row sm:items-start"
+              data-testid="journal-session-header"
+            >
+              <div className="min-w-0 flex-1">
+                <JournalTagsControl
+                  sessionId={activeSession.id}
+                  disabled={!mutable || sessionBusy}
+                  onError={onSessionError}
+                />
+              </div>
+              <div className="min-w-0 flex-[1.2]">
+                <SessionMediaHeader
+                  sessionId={activeSession.id}
+                  disabled={!mutable || sessionBusy}
+                  onError={onSessionError}
+                />
+              </div>
+            </div>
 
-            {/* J3 chat — always primary while open; never removed by form use */}
             <SessionInterviewChat
               session={activeSession}
               busy={sessionBusy}
@@ -555,99 +481,84 @@ function DayView({
               onUpdated={(s) => {
                 onSessionUpdated?.(s);
               }}
-              onFormFallback={() => setFormHint(true)}
+              scrollToMessageId={scrollToMessageId}
             />
 
             <div
-              className={[
-                "border-t border-[var(--color-separator)] pt-4",
-                formHint
-                  ? "rounded-[var(--radius-md)] ring-1 ring-[var(--color-tint)]/30"
-                  : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              data-testid="journal-session-form-alt"
+              className="border-t border-[var(--color-separator)] pt-3"
+              data-testid="journal-interview-bar"
             >
-              <h4 className="mb-1 text-sm font-semibold text-[var(--color-label)]">
-                Structured fields
-              </h4>
-              <p className="mb-3 text-xs text-[var(--color-label-tertiary)]">
-                Same checklist as chat — always available. Use with the chat
-                above; nothing locks you out of either.
-              </p>
-              <StructuredSessionForm
-                session={activeSession}
-                busy={sessionBusy}
-                onBusy={onSessionBusy}
-                onError={onSessionError}
-                onUpdated={(s) => {
-                  onSessionUpdated?.(s);
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-2 text-left text-sm"
+                onClick={() => setInterviewOpen((v) => !v)}
+                aria-expanded={interviewOpen}
+                data-testid="journal-interview-toggle"
+              >
+                <span className="font-semibold text-[var(--color-label)]">
+                  Structured interview
+                </span>
+                <span className="text-xs text-[var(--color-label-tertiary)]">
+                  {interviewOpen ? "Hide" : "Show"}
+                </span>
+              </button>
+              {interviewOpen && (
+                <div className="mt-3">
+                  <StructuredSessionForm
+                    session={activeSession}
+                    busy={sessionBusy}
+                    onBusy={onSessionBusy}
+                    onError={onSessionError}
+                    onUpdated={(s) => {
+                      onSessionUpdated?.(s);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!activeSession && !selectedClosed && (
+          <div
+            className="rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-4"
+            data-testid="journal-composer-empty"
+          >
+            <div className="relative">
+              <textarea
+                value={draft}
+                onChange={(e) => onDraft(e.target.value)}
+                rows={4}
+                placeholder="Write in your words…"
+                className="w-full resize-y rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-20 text-sm text-[var(--color-label)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
+                aria-label="Journal message"
+                data-testid="journal-composer-empty-draft"
+                disabled={sessionBusy}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    if (draft.trim() && !sessionBusy) onFirstSend();
+                  }
                 }}
               />
-            </div>
-
-            {/* Free-text notes — optional sitting log outside chat/form */}
-            <div className="border-t border-[var(--color-separator)] pt-4">
-              <h4 className="mb-2 text-sm font-semibold text-[var(--color-label)]">
-                Free-text notes
-              </h4>
-              <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
-                Optional notes outside the guided chat. Chat and structured
-                fields remain available above.
-              </p>
-              <div className="mb-3 max-h-32 space-y-2 overflow-y-auto">
-                {msgs.filter((m) => m.author === "member").length === 0 && (
-                  <p className="text-sm text-[var(--color-label-tertiary)]">
-                    No free-text notes yet.
-                  </p>
-                )}
-                {msgs
-                  .filter((m) => m.author === "member")
-                  .map((m) => (
-                    <div
-                      key={m.id}
-                      className="rounded-[var(--radius-md)] bg-[var(--color-fill)]/60 px-3 py-2 text-sm text-[var(--color-label)]"
-                    >
-                      <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                        you{m.phase ? ` · ${m.phase}` : ""}
-                      </p>
-                      <p className="whitespace-pre-wrap">{m.body_md}</p>
-                    </div>
-                  ))}
+              <div className="absolute bottom-3 right-3">
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] disabled:opacity-40"
+                  title="Send"
+                  aria-label="Send"
+                  disabled={!draft.trim() || sessionBusy}
+                  onClick={onFirstSend}
+                  data-testid="journal-composer-empty-send"
+                >
+                  <SendIcon />
+                </button>
               </div>
-              {mutable ? (
-                <div className="relative">
-                  <textarea
-                    value={draft}
-                    onChange={(e) => onDraft(e.target.value)}
-                    rows={2}
-                    placeholder="Optional free-text note…"
-                    className="w-full resize-y rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-20 text-sm text-[var(--color-label)] shadow-[var(--elevation-1)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
-                    aria-label="Journal free-text note"
-                    data-testid="journal-session-draft"
-                  />
-                  <div className="absolute bottom-3 right-3">
-                    <button
-                      type="button"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] disabled:opacity-40"
-                      title="Add note"
-                      aria-label="Add note"
-                      disabled={!draft.trim() || sessionBusy}
-                      onClick={onSendMessage}
-                      data-testid="journal-session-send"
-                    >
-                      <SendIcon />
-                    </button>
-                  </div>
-                </div>
-              ) : null}
             </div>
           </div>
         )}
       </div>
 
-      {/* Day-book (trades) unchanged */}
       <DayTradesPanel
         book={book}
         loadState={tradesLoadState}
@@ -703,9 +614,16 @@ export default function JournalCalendar() {
   const [closedDates, setClosedDates] = useState<Set<string>>(() => new Set());
   const [tradesLoadState, setTradesLoadState] =
     useState<TradesLoadState>("loading");
+  const [weekActivity, setWeekActivity] = useState<
+    Record<string, WeekDayActivity>
+  >({});
+  const [scrollToMessageId, setScrollToMessageId] = useState<number | null>(
+    null,
+  );
 
   const selectedYmd = useMemo(() => ymdLocal(selected), [selected]);
   const selectedClosed = closedDates.has(selectedYmd);
+  const weekStart = useMemo(() => startOfWeek(selected), [selected]);
 
   const loadDayBook = useCallback(async () => {
     setTradesLoadState("loading");
@@ -782,37 +700,49 @@ export default function JournalCalendar() {
         journal_date: selectedYmd,
         limit: 50,
       });
-      setSessions(rows);
+      // Spec v0.6 §3 — one conversation per date (prefer earliest / sole row)
+      const sorted = [...rows].sort((a, b) => a.id - b.id);
+      setSessions(sorted);
       setSessionsLoad("ok");
+      if (sorted[0]) {
+        setActiveSessionId(sorted[0].id);
+      } else {
+        setActiveSessionId(null);
+        setActiveSession(null);
+      }
     } catch {
       setSessions([]);
       setSessionsLoad("err");
-      // Silent for anon — day view still usable for trade book
+      setActiveSessionId(null);
+      setActiveSession(null);
     }
   }, [selectedYmd]);
 
-  const autoOpenedForDay = useRef<string | null>(null);
-
   useEffect(() => {
-    loadSessions();
-    setActiveSessionId(null);
-    setActiveSession(null);
     setDraft("");
     setSessionErr(null);
-    autoOpenedForDay.current = null;
+    setScrollToMessageId(null);
+    void loadSessions();
   }, [loadSessions]);
 
-  // Once per day: auto-open newest open/partial entry so chat appears without an extra click.
-  // User can still collapse the row; we do not force re-open after they clear.
+  // Week activity map (member-message dots)
   useEffect(() => {
-    if (sessionsLoad !== "ok") return;
-    if (autoOpenedForDay.current === selectedYmd) return;
-    autoOpenedForDay.current = selectedYmd;
-    const open = sessions.find(
-      (s) => s.status === "open" || s.status === "partial",
-    );
-    if (open) setActiveSessionId(open.id);
-  }, [sessionsLoad, sessions, selectedYmd]);
+    if (view !== "week") return;
+    const from = ymdLocal(weekStart);
+    const to = ymdLocal(addDays(weekStart, 6));
+    let cancelled = false;
+    (async () => {
+      try {
+        const days = await fetchWeekActivity(from, to);
+        if (!cancelled) setWeekActivity(days);
+      } catch {
+        if (!cancelled) setWeekActivity({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [view, weekStart]);
 
   useEffect(() => {
     if (activeSessionId == null) {
@@ -838,7 +768,6 @@ export default function JournalCalendar() {
     };
   }, [activeSessionId]);
 
-  const weekStart = useMemo(() => startOfWeek(selected), [selected]);
   const year = cursor.getFullYear();
 
   function setViewAndSync(v: ViewMode) {
@@ -877,72 +806,86 @@ export default function JournalCalendar() {
     setCursor(startOfMonth(t));
     setDraft("");
     setActivePrompt(null);
+    setView("day");
   }
 
-  function selectDay(d: Date) {
+  /** Spec §1.7 — Month cell → Day view */
+  function openDayFromCell(d: Date) {
     const x = startOfDay(d);
     setSelected(x);
     setCursor(startOfMonth(x));
-  }
-
-  function openDay() {
+    setScrollToMessageId(null);
     setView("day");
     setDraft("");
     setActivePrompt(null);
   }
 
-  async function onPrompt(label: string) {
-    const mapped = PROMPT_TO_TAG[label] || PROMPT_TO_TAG.Manual;
-    if (mapped === "retrospective" || label === "Retrospective") {
-      // Spec: retrospective navigates — does not create a journal session row
-      setRetroErr(null);
-      setSessionErr(null);
-      setRetroBusy(true);
-      try {
-        const r = await createRetrospective({ gather: true });
-        router.push(`/app/retrospective/${r.id}`);
-      } catch (e) {
-        setRetroErr(
-          e instanceof Error ? e.message : "Could not start retrospective",
-        );
-        setRetroBusy(false);
-      }
-      return;
+  /** Spec §1.7 — Year cell → Month view */
+  function openMonthFromYear(y: number, month: number) {
+    const d = new Date(y, month, 1);
+    setCursor(startOfMonth(d));
+    setSelected(startOfDay(d));
+    setView("month");
+  }
+
+  /** Spec §1.6 — Week band → Day scrolled to first message in band */
+  function openDayFromBand(d: Date, band: WeekBandId) {
+    const x = startOfDay(d);
+    const key = ymdLocal(x);
+    const msgId =
+      weekActivity[key]?.first_message_id_by_band?.[band] ?? null;
+    setSelected(x);
+    setCursor(startOfMonth(x));
+    setScrollToMessageId(msgId);
+    setView("day");
+    setDraft("");
+  }
+
+  /** Spec §6 — retrospective is a dedicated action, not a tag chip. */
+  async function onOpenRetrospective() {
+    setRetroErr(null);
+    setSessionErr(null);
+    setRetroBusy(true);
+    try {
+      const r = await createRetrospective({ gather: true });
+      router.push(`/app/retrospective/${r.id}`);
+    } catch (e) {
+      setRetroErr(
+        e instanceof Error ? e.message : "Could not start retrospective",
+      );
+      setRetroBusy(false);
     }
-    setActivePrompt(label);
+  }
+
+  /** Spec v0.5 §1.1 / J1 — empty composer first send creates open session + message. */
+  async function onFirstSend() {
+    if (!draft.trim() || selectedClosed) return;
+    const text = draft.trim();
     setSessionErr(null);
     setSessionBusy(true);
     try {
       const session = await createJournalSession({
-        ...(mapped ? { tag: mapped, prefill: true } : {}),
         journal_date: selectedYmd,
       });
+      // Prefer agent turn (member message + reply); plain-text if agent unavailable.
+      try {
+        const res = await postAgentTurn(session.id, { body_md: text });
+        setDraft("");
+        setActiveSessionId(session.id);
+        setActiveSession(res.session);
+      } catch {
+        await postJournalMessage(session.id, text);
+        setDraft("");
+        setActiveSessionId(session.id);
+        const s = await getJournalSession(session.id);
+        setActiveSession(s);
+      }
       await loadSessions();
-      setActiveSessionId(session.id);
-      setActiveSession(session);
-      setDraft("");
       setView("day");
     } catch (e) {
       setSessionErr(
         e instanceof Error ? e.message : "Could not start journal entry",
       );
-    } finally {
-      setSessionBusy(false);
-    }
-  }
-
-  async function onSendMessage() {
-    if (!activeSessionId || !draft.trim()) return;
-    setSessionBusy(true);
-    setSessionErr(null);
-    try {
-      await postJournalMessage(activeSessionId, draft.trim());
-      setDraft("");
-      const s = await getJournalSession(activeSessionId);
-      setActiveSession(s);
-      await loadSessions();
-    } catch (e) {
-      setSessionErr(e instanceof Error ? e.message : "Could not save note");
     } finally {
       setSessionBusy(false);
     }
@@ -1057,7 +1000,7 @@ export default function JournalCalendar() {
             year={year}
             selected={selected}
             today={today}
-            onSelect={selectDay}
+            onOpenMonth={openMonthFromYear}
             daysWithTrades={daysWithTrades}
           />
         )}
@@ -1070,7 +1013,7 @@ export default function JournalCalendar() {
                 month={cursor.getMonth()}
                 selected={selected}
                 today={today}
-                onSelect={selectDay}
+                onSelect={openDayFromCell}
                 daysWithTrades={daysWithTrades}
               />
             </div>
@@ -1083,7 +1026,9 @@ export default function JournalCalendar() {
               weekStart={weekStart}
               selected={selected}
               today={today}
-              onSelect={selectDay}
+              onOpenDay={openDayFromCell}
+              onOpenBand={openDayFromBand}
+              activity={weekActivity}
             />
           </div>
         )}
@@ -1093,7 +1038,8 @@ export default function JournalCalendar() {
             selected={selected}
             draft={draft}
             onDraft={setDraft}
-            onPrompt={onPrompt}
+            onFirstSend={() => void onFirstSend()}
+            onOpenRetrospective={() => void onOpenRetrospective()}
             book={dayBook}
             tradesLoadState={tradesLoadState}
             onRetryTrades={loadDayBook}
@@ -1101,50 +1047,15 @@ export default function JournalCalendar() {
             retroErr={retroErr}
             sessionBusy={sessionBusy}
             sessionErr={sessionErr}
-            sessions={sessions}
-            sessionsLoad={sessionsLoad}
             activeSession={activeSession}
             selectedClosed={selectedClosed}
-            onSelectSession={(id) => setActiveSessionId(id)}
-            onSendMessage={onSendMessage}
             onSessionUpdated={onSessionUpdated}
             onSessionBusy={setSessionBusy}
             onSessionError={setSessionErr}
-            onRefreshSessions={loadSessions}
+            scrollToMessageId={scrollToMessageId}
           />
         )}
       </div>
-
-      {view !== "day" && (
-        <div className="mt-1 shrink-0">
-          <DayPanel
-            selected={selected}
-            onOpen={openDay}
-            itemCount={dayBook.items.length}
-            openCount={
-              dayBook.items.filter(
-                (i) => i.role === "open" && i.opened_on !== dayBook.day,
-              ).length
-            }
-            openedCount={
-              dayBook.items.filter(
-                (i) =>
-                  (i.role === "open" || i.role === "fill_open") &&
-                  i.opened_on === dayBook.day,
-              ).length
-            }
-            closedCount={
-              dayBook.items.filter((i) => i.role === "fill_close").length
-            }
-          />
-        </div>
-      )}
-
-      {activePrompt && view === "day" && (
-        <p className="sr-only" aria-live="polite">
-          Prompt: {activePrompt}
-        </p>
-      )}
     </div>
   );
 }

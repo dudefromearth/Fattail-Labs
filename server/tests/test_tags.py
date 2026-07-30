@@ -342,3 +342,55 @@ def test_set_assignments_replace(client, admin_cookies):
         assert r2.json()["assignments"][0]["tag_id"] == ids[0]
     finally:
         _cleanup(iid)
+
+
+def test_closed_journal_session_refuses_tag_changes(client, admin_cookies):
+    """J4-3 / Spec v0.5 §5.1 — closed session: no assign/replace/unassign."""
+    iid = _member("zztest-tags-closed@labs.test")
+    cookies = cookie_for("administrator", iid)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE identities SET role_override = 'administrator' WHERE identity_id = %s",
+                    (iid,),
+                )
+        import journal_session_domain as jsd
+
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                sess = jsd.create_session(
+                    cur, iid, tag="reflection", journal_date=date.today()
+                )
+                sid = sess["id"]
+                cur.execute(
+                    """UPDATE member_journal_sessions SET status = 'closed'
+                       WHERE id = %s AND identity_id = %s""",
+                    (sid, iid),
+                )
+        tags = client.get("/api/tags", cookies=cookies).json()["tags"]
+        assert tags, "need at least one active system tag"
+        tid = tags[0]["id"]
+        r = client.put(
+            "/api/tags/assignments",
+            json={
+                "object_type": "journal_session",
+                "object_id": sid,
+                "tag_ids": [tid],
+            },
+            cookies=cookies,
+        )
+        assert r.status_code == 409, r.text
+        assert "closed" in r.json()["detail"].lower()
+        r2 = client.post(
+            "/api/tags/assignments",
+            json={
+                "tag_id": tid,
+                "object_type": "journal_session",
+                "object_id": sid,
+            },
+            cookies=cookies,
+        )
+        assert r2.status_code == 409, r2.text
+    finally:
+        _cleanup(iid)

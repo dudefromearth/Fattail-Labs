@@ -47,15 +47,25 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   assign only; Resources hub Lexicon; no `/me` tags). **Completes before Journal Session.**
   Plan: `docs/Tag-Manager-Implementation-Plan.md`. Board:
   `agents/p-tag-manager/ORCHESTRATOR.md`. **Next: Spec amend + TM0 GO.**
-- `agents/p-journal-session-v05/` — **Journal Session greenfield** — **J1+ blocked until
-  Tag Manager TM7-G**. Spec v0.5. Board: `agents/p-journal-session-v05/ORCHESTRATOR.md`.
-  J0 Spec review may run parallel with Tag Manager build.
-- `agents/p-journal-session-v04/` — **COMPLETE under Spec v0.4a** — **superseded** by v0.5
-  greenfield. Historical only.
+- `agents/p-journal-session-v06/` — **Journal Session v0.6** (one conversation per date;
+  calendar cells = control; fixed thread; header media; Tag Manager assign-only).  
+  **Canonical full agent bench plan:**
+  `docs/Journal-Session-v0.6-Full-Agent-Bench-Plan.md`. Spec:
+  `Specs/FatTail-Labs-Journal-Session-Spec-v0.6.md`. Board:
+  `agents/p-journal-session-v06/ORCHESTRATOR.md`. **PROGRAM COMPLETE** (DL-161/162 · JS6-9-G).
+  Residual plan: `docs/Journal-Session-v0.6-Residual-Agent-Bench-Plan.md`.
+- `agents/p-journal-session-v05/` — **Substrate only** (v0.5 partial land). Product frame
+  **superseded** by v0.6. Do not expand multi-entry chrome.
+- `agents/p-journal-session-v04/` — **COMPLETE under Spec v0.4a** — **superseded** by v0.5/v0.6.
+  Historical only.
 - `agents/p-journal-session/` — **COMPLETE under Spec v0.2** — historical only.
-- `agents/p-retrospective/` — **Journal Retrospective product** (**COMPLETE** RT8-G;
-  process-first dual report, habits, agent, cadence; G1 Observer → Navigator).
-  Board: `agents/p-retrospective/ORCHESTRATOR.md`. Specs: Retrospective **v0.5/v0.6**.
+- `agents/p-retrospective-v07/` — **Journal Retrospective v0.7.1** (ceremony walk, not report;
+  anti-wizard; trader cadence; message routine day; keep-rate fact + specificity).
+  Spec: `Specs/FatTail-Labs-Journal-Retrospective-Spec-v0.7.1.md`.  
+  **Canonical plan:** `docs/Journal-Retrospective-v0.7.1-Full-Agent-Bench-Plan.md`.  
+  Board: `agents/p-retrospective-v07/ORCHESTRATOR.md`. **Next: R0 reviews → Coach GO.**
+- `agents/p-retrospective/` — **v0.6 as-built substrate** (**COMPLETE** RT8-G). Historical /
+  dual-read until v0.7.1 R-phases land. Specs: Retrospective **v0.5/v0.6**.
 - `agents/p-member-export/` — **Practice portability** (export/import/purge, demo pack).
   Spec: `Specs/FatTail-Labs-Member-Practice-Export-Spec-v1.1.md`.
 - `agents/p-practice-harden/` — **Practice stack architectural hardening** (H0–H4:

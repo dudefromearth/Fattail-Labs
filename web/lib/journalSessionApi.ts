@@ -317,3 +317,105 @@ export function displayMessageBody(body: string, author: string): string {
   }
   return t;
 }
+
+/** Spec v0.6 — interim agent speaker name (until §17-5 persona lock). */
+export const JOURNAL_AGENT_DISPLAY_NAME = "Journal";
+
+export type JournalAttachment = {
+  id: number;
+  session_id: number;
+  identity_id: number;
+  content_type: string;
+  byte_size: number;
+  caption_md: string | null;
+  created_at: string | null;
+  download_path: string;
+};
+
+export const MAX_JOURNAL_ATTACHMENTS = 5;
+
+export async function listJournalAttachments(
+  sessionId: number,
+): Promise<JournalAttachment[]> {
+  const r = await fetch(
+    `/api/me/journal-sessions/${sessionId}/attachments`,
+    { credentials: "same-origin" },
+  );
+  const d = await parse<{ attachments: JournalAttachment[] }>(r);
+  return d.attachments || [];
+}
+
+export async function uploadJournalAttachment(
+  sessionId: number,
+  file: File,
+  caption?: string,
+): Promise<JournalAttachment> {
+  const fd = new FormData();
+  fd.append("file", file);
+  if (caption) fd.append("caption", caption);
+  const r = await fetch(
+    `/api/me/journal-sessions/${sessionId}/attachments`,
+    { method: "POST", credentials: "same-origin", body: fd },
+  );
+  const d = await parse<{ attachment: JournalAttachment }>(r);
+  return d.attachment;
+}
+
+export async function patchJournalAttachmentCaption(
+  sessionId: number,
+  attachmentId: number,
+  caption_md: string,
+): Promise<JournalAttachment> {
+  const r = await fetch(
+    `/api/me/journal-sessions/${sessionId}/attachments/${attachmentId}`,
+    {
+      method: "PATCH",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caption_md }),
+    },
+  );
+  const d = await parse<{ attachment: JournalAttachment }>(r);
+  return d.attachment;
+}
+
+export type WeekBandId = "gx" | "am" | "pm" | "cl";
+
+export type WeekDayActivity = {
+  session_id: number;
+  bands: Record<WeekBandId, boolean>;
+  first_message_id_by_band: Partial<Record<WeekBandId, number>>;
+};
+
+export async function fetchWeekActivity(
+  dateFrom: string,
+  dateTo: string,
+): Promise<Record<string, WeekDayActivity>> {
+  const q = new URLSearchParams({ date_from: dateFrom, date_to: dateTo });
+  const r = await fetch(
+    `/api/me/journal-sessions/week-activity?${q}`,
+    { credentials: "same-origin" },
+  );
+  if (!r.ok) return {};
+  const d = await parse<{ days: Record<string, WeekDayActivity> }>(r);
+  return d.days || {};
+}
+
+/** Format message timestamp for thread (America/New_York, always visible). */
+export function formatMessageTimestamp(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(d);
+  } catch {
+    return "";
+  }
+}

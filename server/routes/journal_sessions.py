@@ -37,6 +37,26 @@ def _require_create(cur, claims: dict, identity_id: int) -> None:
         raise HTTPException(status_code=403, detail=jsd.CREATE_DENY_DETAIL)
 
 
+@router.get("/api/me/journal-sessions/week-activity")
+def journal_week_activity(
+    request: Request,
+    date_from: str,
+    date_to: str,
+) -> dict:
+    """Member-message band dots for Week view (Spec v0.6 §1.6)."""
+    claims = require_session(request)
+    try:
+        d0 = date.fromisoformat(date_from[:10])
+        d1 = date.fromisoformat(date_to[:10])
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail="Invalid date range") from e
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            days = jsd.week_activity_bands(cur, iid, d0, d1)
+    return {"days": days}
+
+
 @router.get("/api/me/journal-sessions/closures")
 def list_journal_closures(
     request: Request,
@@ -403,6 +423,37 @@ def download_attachment(
         media_type=ctype,
         headers={"Cache-Control": "private, no-store"},
     )
+
+
+@router.patch(
+    "/api/me/journal-sessions/{session_id}/attachments/{attachment_id}"
+)
+async def patch_attachment(
+    request: Request, session_id: int, attachment_id: int
+) -> dict:
+    """Update caption (Spec v0.6 lightbox)."""
+    claims = require_session(request)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    caption = body.get("caption_md")
+    if caption is not None:
+        caption = str(caption)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            try:
+                att = jsm.update_caption(
+                    cur, iid, session_id, attachment_id, caption
+                )
+            except jsm.MediaError as e:
+                raise HTTPException(status_code=e.code, detail=e.detail) from e
+            except jsd.JournalSessionError as e:
+                _raise_domain(e)
+    return {"attachment": att}
 
 
 @router.delete("/api/me/journal-sessions/{session_id}/attachments/{attachment_id}")

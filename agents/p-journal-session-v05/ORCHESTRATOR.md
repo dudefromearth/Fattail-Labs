@@ -6,10 +6,9 @@
 |-----|------|
 | Charter | [`CHARTER.md`](./CHARTER.md) |
 | Plan | [`IMPLEMENTATION-PLAN.md`](./IMPLEMENTATION-PLAN.md) |
-| Spec | [`Specs/FatTail-Labs-Journal-Session-Spec-v0.5.md`](../../Specs/FatTail-Labs-Journal-Session-Spec-v0.5.md) |
-| Tag Manager | [`../p-tag-manager/ORCHESTRATOR.md`](../p-tag-manager/ORCHESTRATOR.md) · Spec **v0.2** |
-| Tag eval | [`docs/Tag-Manager-Spec-v0.2-Evaluation.md`](../../docs/Tag-Manager-Spec-v0.2-Evaluation.md) |
-| Joint plan | [`docs/Journal-Session-v0.5-and-Tag-Manager-v0.1-Evaluation-and-Plan.md`](../../docs/Journal-Session-v0.5-and-Tag-Manager-v0.1-Evaluation-and-Plan.md) (tags section superseded by v0.2 eval) |
+| Spec | [`Specs/FatTail-Labs-Journal-Session-Spec-v0.5.md`](../../Specs/FatTail-Labs-Journal-Session-Spec-v0.5.md) (**Tag Manager §5**) |
+| **Full plan** | [`docs/Journal-Session-v0.5-Implementation-Plan.md`](../../docs/Journal-Session-v0.5-Implementation-Plan.md) |
+| Tag Manager | [`../p-tag-manager/`](../p-tag-manager/) · Spec **v0.3** as-built · **COMPLETE** |
 
 **Superseded boards (do not use for product):**  
 `p-journal-session` (v0.2) · `p-journal-session-v04` (v0.4a)
@@ -25,22 +24,22 @@
 
 ## Status board
 
-**Program status:** **Tag Manager READY** (TM7-G PASS) · Spec v0.5 DRAFT · **J0 NEXT**  
-**Product frame:** chatbot = journal · interview on request · system tags via Tag Manager · one seal  
+**Program status:** **J0 COMPLETE — GO** · Spec v0.5 **BUILD AUTHORITY** (DL-160) · **J1–J5 UI substrate landed** · continue J2–J9  
+**Product frame:** chatbot = journal · interview on request · tags list window · one seal  
 
 | Phase | Intent | Status |
 |-------|--------|--------|
-| **—** | Tag Manager program | **COMPLETE** — unblocks J1 |
-| **J0** | Spec GO + keep/kill + open decisions | **NEXT** |
-| **J1** | Composer-first chat surface + schema | pending (unblocked) |
-| **J2** | Agent + code guardrails | blocked on J1 |
-| **J3** | Admin prompt versions | blocked on J2 |
-| **J4** | Tag chips (TagPicker + assign API) | blocked on TM3+ |
-| **J5** | Interview collapse bar | blocked on J2 |
-| **J6** | Private media paste | blocked on J1 |
-| **J7** | Retro routing + warnings | blocked on J1 |
-| **J8** | Scope-true closure | blocked on J7 |
-| **J9** | Portability + program close | blocked on J1 |
+| **—** | Tag Manager program | **COMPLETE** |
+| **J0** | Spec GO + locks | **COMPLETE** — JS0-G PASS · DL-160 |
+| **J1** | Composer-first chat surface + schema | **LANDED (UI)** — empty composer first-send; dual Write path removed · formal J1-G pending |
+| **J2** | Agent + code guardrails | **PARTIAL** — member-first UI; TM labels in LLM context · guardrail corpus pending |
+| **J3** | Admin prompt versions | pending |
+| **J4** | Compact tags + list window | **LANDED** — `JournalTagsControl` list window · closed refuses assign (409) |
+| **J5** | Interview collapse bar | **LANDED (UI)** — bar default collapsed · formal gate pending |
+| **J6** | Private media paste | pending |
+| **J7** | Retro action + warnings | pending (dedicated control present) |
+| **J8** | Scope-true closure | pending (substrate exists) |
+| **J9** | Portability + program close | pending |
 
 ### Critical path
 

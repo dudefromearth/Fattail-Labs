@@ -141,7 +141,7 @@ def build_journal_session_document(cur, identity_id: int) -> dict[str, Any]:
     email = _member_email(cur, identity_id)
     doc = envelope(FMT_JOURNAL_SESSION, email=email)
     doc["format"] = FMT_JOURNAL_SESSION
-    doc["model_version"] = "1.0"
+    doc["model_version"] = "1.1"  # v0.6: one session/date · tags · attachments
     try:
         cur.execute(
             """SELECT id, tag, journal_date, session_started_at, status,
@@ -196,6 +196,28 @@ def build_journal_session_document(cur, identity_id: int) -> dict[str, Any]:
             ]
         except Exception:
             tag_labels = []
+        # Attachments (Family B media — captions + export keys; binaries separate)
+        attachments: list[dict[str, Any]] = []
+        try:
+            cur.execute(
+                """SELECT id, content_type, byte_size, caption_md, export_key, created_at
+                   FROM member_journal_attachments
+                   WHERE session_id = %s AND identity_id = %s
+                   ORDER BY id ASC""",
+                (sid, identity_id),
+            )
+            for a in cur.fetchall():
+                attachments.append(
+                    {
+                        "id": (a.get("export_key") or f"jsa-{a['id']}").strip(),
+                        "content_type": a.get("content_type"),
+                        "byte_size": int(a["byte_size"] or 0),
+                        "caption_md": a.get("caption_md") or "",
+                        "created_at": _iso(a.get("created_at")),
+                    }
+                )
+        except Exception:
+            attachments = []
         entries.append(
             {
                 "id": (s.get("export_key") or f"js-{sid}").strip(),
@@ -206,13 +228,14 @@ def build_journal_session_document(cur, identity_id: int) -> dict[str, Any]:
                 "status": s["status"],
                 "structured": structured if isinstance(structured, dict) else {},
                 "messages": messages,
+                "attachments": attachments,
             }
         )
     doc["entries"] = entries
     return doc
 
 
-def build_retrospective_document(cur, identity_id: int) -> dict[str, Any]:
+def build_retrospective_documentdef build_retrospective_document(cur, identity_id: int) -> dict[str, Any]:
     import retrospective_domain as rd
 
     email = _member_email(cur, identity_id)

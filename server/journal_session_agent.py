@@ -495,9 +495,44 @@ def _llm_turn(
     except Exception:
         day_ctx = ""
 
+    # Spec v0.5 §5.1 / §8.1 — Tag Manager labels as description only (never script/gate)
+    tag_labels_ctx = ""
+    try:
+        import tag_domain as td
+
+        assigns = td.list_assignments_for_object(
+            cur,
+            object_type="journal_session",
+            object_id=session_id,
+            identity_id=identity_id,
+        )
+        labels = []
+        for a in assigns:
+            t = a.get("tag") or {}
+            lab = (t.get("label") or "").strip()
+            if lab:
+                labels.append(lab)
+        if labels:
+            tag_labels_ctx = (
+                "Member tagged (context only; do not open interview or change "
+                "behavior based on tags): " + ", ".join(labels) + "."
+            )
+        else:
+            tag_labels_ctx = "Member tagged: (none)."
+    except Exception:
+        tag_labels_ctx = ""
+
+    # Legacy column tag is not SoR — mention only as weak legacy if no TM labels
+    legacy_tag = (tag or "").strip()
+    legacy_bit = (
+        f" Legacy session.tag={legacy_tag}."
+        if legacy_tag and not tag_labels_ctx.startswith("Member tagged:")
+        else ""
+    )
+
     system = JOURNAL_SESSION_SYSTEM_PROMPT_V1
     user = (
-        f"Phase={phase}. Tag context={tag}. "
+        f"Phase={phase}. {tag_labels_ctx}{legacy_bit} "
         f"Structured confirmed fields={json.dumps(structured)}. "
         f"Absence keys already raised={raised}. {day_ctx}\n"
         f"Transcript:\n" + ("\n".join(lines) if lines else "(empty)")

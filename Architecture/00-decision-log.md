@@ -4,6 +4,43 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-07-30 — DL-162 Journal Session v0.6 residual program close
+
+**Decision:** Residual agent-bench program for Journal Session **v0.6** is **COMPLETE**
+(JS6-9-G PASS). Closed: agent guardrail corpus + RTH member-first tests (J2); admin
+prompt version API + `/admin/journal-prompts` UI with session stamp (J3); formal surface
+gate bundle; retro closure-preview warning evidence (J7); scope-true closure suite (J8);
+Practice Export Spec **v1.2** for one-session/date · tags · attachments (J9).
+
+**Plan:** `docs/Journal-Session-v0.6-Residual-Agent-Bench-Plan.md`  
+**Board:** `agents/p-journal-session-v06/` — PROGRAM COMPLETE.
+
+**Non-blocking residuals:** live LLM CI optional; Trade Log SoR R2R field later.
+
+---
+
+## 2026-07-30 — DL-161 Journal Session Spec v0.6 BUILD AUTHORITY (implement GO)
+
+**Decision:** Journal Session **v0.6** is BUILD AUTHORITY. One conversation per
+`(identity_id, journal_date)` (mig **054** merge + UNIQUE); get-or-create API; chatbot
+surface with fixed-height thread, visible timestamps, header media (drop/click/lightbox
+caption), Week member-message band dots with deep-link scroll, calendar cell navigation
+(no Open panel), trades strip width/R:R/entry-exit (process framing), Tag Manager
+assign-only. Board `agents/p-journal-session-v06/`. Supersedes v0.5 multi-entry product
+frame. Tag Manager prerequisite remains COMPLETE (DL-159).
+
+**Evidence / as-built:** domain get-or-create; `SessionMediaHeader`; `week-activity` API;
+`JournalCalendar` nav; export model_version 1.1 attachments; prompt_version_id stamp;
+collision table for dual structured merges.
+
+**Locks (interim):** agent display name "Journal"; client structural R:R until Trade Log
+SoR; band midpoint AM/PM + later_day→CL.
+
+**Program remaining:** formal Delta gates JS6-2-G…JS6-9-G; admin prompt edit UI; full
+guardrail corpus; retro warning polish; export Spec bump formal.
+
+---
+
 ## 2026-07-29 — Catalog manual order + sections (Catalog-Order v1.0)
 
 **Decision:** Course catalog order is editorial, not computed: `courses.sort_order`
@@ -2166,6 +2203,21 @@ Next: RT7-1 cadence meter.
 **Docs:** Spec v0.51 restored as COACH AMENDMENT; Journey §4.4; Spec v0.6 honesty; `Specs/Advisor-Gates-Retrospective-v0.51.md` filed; CHARTER G1 H=7.
 
 **Tests:** profile assertions updated in `test_journey_scores.py`.
+
+## 2026-07-30 — DL-160 Journal Session Spec v0.5 BUILD AUTHORITY (Coach GO)
+
+**Coach (p-journal-session-v05 J0-0):**
+
+- Spec: `Specs/FatTail-Labs-Journal-Session-Spec-v0.5.md` → **BUILD AUTHORITY**
+- Product: chatbot = journal; interview on request → bar; no second write path
+- **Tags:** Tag Manager v0.3 only; admin vocabulary; members assign via **compact control +
+  list window** (not chip wall); never gate/script/instruct agent
+- **Retro nav:** Session action, not a system tag
+- **Seal:** retrospective complete only, scope-true
+- Prerequisite Tag Manager shipped (DL-159)
+- Board: `agents/p-journal-session-v05/` · plan
+  `docs/Journal-Session-v0.5-Implementation-Plan.md`
+- §17 open items residual unless they block critical path (voice optional; principals interim)
 
 ## 2026-07-30 — DL-159 Tag Manager v1 land (admin lexicon)
 

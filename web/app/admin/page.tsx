@@ -38,6 +38,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     testId: "admin-card-media",
   },
   {
+    href: "/admin/journal-prompts",
+    title: "Journal prompts",
+    body: "Versioned agent system prompts for Journal Session. New sessions stamp the active version.",
+    testId: "admin-card-journal-prompts",
+  },
+  {
     href: "/admin/tags",
     title: "Tag Manager",
     body: "System-wide process vocabulary — create, merge, retire. Members only assign.",

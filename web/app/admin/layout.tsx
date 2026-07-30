@@ -12,6 +12,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/cast", label: "Cast" },
   { href: "/admin/media", label: "Media" },
   { href: "/admin/tags", label: "Tags" },
+  { href: "/admin/journal-prompts", label: "Journal prompts" },
   { href: "/admin/ai", label: "AI workbench" },
   { href: "/admin/agents", label: "Agent keys" },
   { href: "/admin/appearance", label: "Appearance" },

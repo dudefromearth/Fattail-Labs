@@ -142,7 +142,8 @@ def test_create_list_get_message_seal(client):
         _cleanup(iid)
 
 
-def test_multi_entry_per_date(client):
+def test_one_conversation_per_date(client):
+    """Spec v0.6 §3 — second create same date returns the same session."""
     iid = _member("zztest-jsession-multi@labs.test")
     cookies = cookie_for("activator", iid)
     today = date.today().isoformat()
@@ -158,13 +159,131 @@ def test_multi_entry_per_date(client):
             cookies=cookies,
         )
         assert a.status_code == 200 and b.status_code == 200
-        assert a.json()["session"]["id"] != b.json()["session"]["id"]
+        assert a.json()["session"]["id"] == b.json()["session"]["id"]
         listed = client.get(
             f"/api/me/journal-sessions?journal_date={today}",
             cookies=cookies,
         )
         assert listed.status_code == 200
-        assert len(listed.json()["sessions"]) >= 2
+        assert len(listed.json()["sessions"]) == 1
+        sess = a.json()["session"]
+        assert sess.get("prompt_version_id") in (
+            None,
+            "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
+        ) or isinstance(sess.get("prompt_version_id"), str)
+    finally:
+        _cleanup(iid)
+
+
+def test_routine_day_by_member_message_timestamp():
+    """Retrospective v0.7.1 §12.2 — Mon session + Wed/Thu msgs → 3 routine days."""
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+
+    iid = _member("zztest-jsession-routine-day@labs.test")
+    try:
+        ny = ZoneInfo("America/New_York")
+        # Fixed Monday
+        mon = date(2026, 7, 6)  # Monday
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                sess = jsd.create_session(cur, iid, journal_date=mon)
+                sid = sess["id"]
+                # Monday message
+                jsd.append_member_message(
+                    cur,
+                    iid,
+                    sid,
+                    body_md="mon note",
+                    now=datetime(2026, 7, 6, 14, 0, tzinfo=ny).astimezone(timezone.utc),
+                )
+                # Wednesday message into Monday's session
+                jsd.append_member_message(
+                    cur,
+                    iid,
+                    sid,
+                    body_md="wed note",
+                    now=datetime(2026, 7, 8, 15, 0, tzinfo=ny).astimezone(timezone.utc),
+                )
+                # Thursday
+                jsd.append_member_message(
+                    cur,
+                    iid,
+                    sid,
+                    body_md="thu note",
+                    now=datetime(2026, 7, 9, 16, 0, tzinfo=ny).astimezone(timezone.utc),
+                )
+                days = jsd.list_member_message_ny_dates(
+                    cur,
+                    iid,
+                    since=datetime(2026, 7, 1, tzinfo=timezone.utc),
+                )
+        assert mon in days
+        assert date(2026, 7, 8) in days
+        assert date(2026, 7, 9) in days
+        assert len(days) >= 3
+        # session_started-only would count 1; message-based counts 3
+        assert len(days) == 3
+    finally:
+        _cleanup(iid)
+
+
+def test_week_activity_member_dots_only(client):
+    """Spec v0.6 §1.6 — member messages produce band activity; agent does not."""
+    iid = _member("zztest-jsession-weekact@labs.test")
+    cookies = cookie_for("activator", iid)
+    today = date.today()
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                sess = jsd.create_session(
+                    cur, iid, journal_date=today, tag="reflection"
+                )
+                sid = sess["id"]
+                # Pre-open member message (GX band on RTH day)
+                jsd.append_member_message(
+                    cur,
+                    iid,
+                    sid,
+                    body_md="pre plan",
+                    now=datetime(today.year, today.month, today.day, 12, 0, tzinfo=timezone.utc),
+                )
+        # Force known UTC → NY mapping: use midday UTC ≈ morning NY for many dates
+        r = client.get(
+            f"/api/me/journal-sessions/week-activity"
+            f"?date_from={today.isoformat()}&date_to={today.isoformat()}",
+            cookies=cookies,
+        )
+        assert r.status_code == 200, r.text
+        days = r.json()["days"]
+        assert today.isoformat() in days
+        bands = days[today.isoformat()]["bands"]
+        assert any(bands.values()), bands
+        assert days[today.isoformat()]["session_id"] == sid
+    finally:
+        _cleanup(iid)
+
+
+def test_unique_owner_date_constraint(client):
+    """Mig 054: cannot insert second row for same identity+date at SQL level."""
+    iid = _member("zztest-jsession-unique@labs.test")
+    today = date.today()
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                jsd.create_session(cur, iid, journal_date=today)
+                # Direct insert should fail unique
+                try:
+                    cur.execute(
+                        """INSERT INTO member_journal_sessions
+                             (identity_id, tag, journal_date, session_started_at, status)
+                           VALUES (%s, 'reflection', %s, UTC_TIMESTAMP(6), 'open')""",
+                        (iid, today),
+                    )
+                    raised = False
+                except Exception:
+                    raised = True
+                assert raised, "expected unique constraint on (identity_id, journal_date)"
     finally:
         _cleanup(iid)
 
@@ -409,25 +528,21 @@ def test_dual_read_legacy_note_still_works(client):
         _cleanup(iid)
 
 
-def test_dual_read_routine_counts_session_day():
-    """D2 dual-read: session_started_at NY day counts for journey routine union."""
+def test_dual_read_routine_counts_member_message_day():
+    """v0.7.1 §12.2: routine days key on member message NY day (not session start alone)."""
     iid = _member("zztest-jsession-dual-routine@labs.test")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
-                now = datetime.now(timezone.utc).replace(tzinfo=None)
-                cur.execute(
-                    """INSERT INTO member_journal_sessions
-                         (identity_id, tag, journal_date, session_started_at, status)
-                       VALUES (%s, 'reflection', %s, %s, 'sealed')""",
-                    (iid, date.today(), now),
+                now = datetime.now(timezone.utc)
+                sess = jsd.create_session(cur, iid, journal_date=date.today())
+                jsd.append_member_message(
+                    cur, iid, sess["id"], body_md="today note", now=now
                 )
                 days = jsd.list_session_activity_ny_dates(
                     cur, iid, since=now.replace(year=now.year - 1)
                 )
-        assert date.today() in days or jsd.session_started_ny_date(
-            now.replace(tzinfo=timezone.utc)
-        ) in days
+        assert jsd.session_started_ny_date(now) in days
     finally:
         _cleanup(iid)
 
@@ -1194,6 +1309,7 @@ def test_agent_free_observer_403(client, monkeypatch):
 
 
 def test_validator_blocks_banned_content():
+    """J2 guardrail corpus — Spec v0.6 §9."""
     import journal_session_validator as jsv
 
     cases = [
@@ -1205,6 +1321,7 @@ def test_validator_blocks_banned_content():
         ("What is the level? And what size?", "multi_question"),
         ("The chart shows a double bottom.", "chart_or_price_claim"),
         ("Be brief please.", "brevity_request"),
+        ("", "empty"),
     ]
     for body, code in cases:
         r = jsv.validate_agent_turn(body)
@@ -1216,6 +1333,128 @@ def test_validator_blocks_banned_content():
         "What would prove this plan wrong — your invalidation, in your words?"
     )
     assert ok["ok"] is True
+
+
+def test_agent_member_first_empty_session_no_unprompted_during_rth(client, monkeypatch):
+    """J2-3: empty agent turn with no member text during intraday → quiet, no probe."""
+    monkeypatch.setenv("LABS_JOURNAL_AGENT_MODE", "local")
+    iid = _member("zztest-jsession-rth-quiet@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        # Pick a weekday that is "today" - use known open date with forced phase
+        d = date.today()
+        r = client.post(
+            "/api/me/journal-sessions",
+            json={"journal_date": d.isoformat()},
+            cookies=cookies,
+        )
+        assert r.status_code == 200, r.text
+        sid = r.json()["session"]["id"]
+        # Monkeypatch phase to intraday so RTH path runs
+        import journal_session_domain as jsd_mod
+
+        monkeypatch.setattr(
+            jsd_mod, "derive_phase", lambda *a, **k: "intraday"
+        )
+        t = client.post(
+            f"/api/me/journal-sessions/{sid}/agent/turn",
+            json={},
+            cookies=cookies,
+        )
+        assert t.status_code == 200, t.text
+        turn = t.json()["turn"]
+        assert turn["kind"] in ("quiet", "silent", "done", "absence", "confirm")
+        # No member text → must not invent a multi-question probe that violates member-first
+        if turn.get("kind") == "quiet":
+            assert turn.get("message") is None
+        s = client.get(f"/api/me/journal-sessions/{sid}", cookies=cookies)
+        msgs = s.json()["session"].get("messages") or []
+        member_msgs = [m for m in msgs if m.get("author") == "member"]
+        assert member_msgs == []
+    finally:
+        _cleanup(iid)
+
+
+def test_admin_journal_prompt_versions(client):
+    """J3 — admin list / create / activate; new session stamps active id."""
+    iid = _member("zztest-jsession-prompt-admin@labs.test")
+    cookies = cookie_for("administrator", iid)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE identities SET role_override = 'administrator' WHERE identity_id = %s",
+                    (iid,),
+                )
+        lst = client.get("/api/admin/journal-prompts", cookies=cookies)
+        assert lst.status_code == 200, lst.text
+        assert "versions" in lst.json()
+        vid = "JOURNAL_TEST_PROMPT_V_TMP"
+        # cleanup leftover
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM journal_session_prompt_versions WHERE id = %s",
+                    (vid,),
+                )
+        body = (
+            "You are conducting a trading journal interview. "
+            "Ask one process question. Never give advice or name motives."
+        )
+        cr = client.post(
+            "/api/admin/journal-prompts",
+            json={
+                "id": vid,
+                "label": "Test prompt",
+                "body_md": body,
+                "activate": True,
+            },
+            cookies=cookies,
+        )
+        assert cr.status_code == 200, cr.text
+        assert cr.json()["version"]["is_active"] is True
+        act = client.post(
+            f"/api/admin/journal-prompts/{vid}/activate",
+            cookies=cookies,
+        )
+        assert act.status_code == 200, act.text
+        # Member session stamps active version
+        mcookies = cookie_for("activator", iid)
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE identities SET role_override = 'activator' WHERE identity_id = %s",
+                    (iid,),
+                )
+        s = client.post(
+            "/api/me/journal-sessions",
+            json={"journal_date": date.today().isoformat()},
+            cookies=mcookies,
+        )
+        assert s.status_code == 200, s.text
+        assert s.json()["session"].get("prompt_version_id") == vid
+        # Restore default active
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE journal_session_prompt_versions SET is_active = 0"
+                )
+                cur.execute(
+                    """UPDATE journal_session_prompt_versions SET is_active = 1
+                       WHERE id = 'JOURNAL_SESSION_SYSTEM_PROMPT_V1'"""
+                )
+                cur.execute(
+                    "DELETE FROM journal_session_prompt_versions WHERE id = %s",
+                    (vid,),
+                )
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM journal_session_prompt_versions WHERE id = %s",
+                    ("JOURNAL_TEST_PROMPT_V_TMP",),
+                )
+        _cleanup(iid)
 
 
 def test_validator_retry_then_accept(client, monkeypatch):
@@ -1565,8 +1804,13 @@ def test_retro_complete_writes_closures(client):
             cookies=cookies,
         )
         assert prev.status_code == 200, prev.text
-        assert "dates_to_close" in prev.json()
-        assert prev.json().get("gather_date_stays_open") is True
+        body = prev.json()
+        assert "dates_to_close" in body
+        assert body.get("gather_date_stays_open") is True
+        # J7 — warning names dates + open session count
+        assert "open_session_count" in body
+        assert isinstance(body.get("warning"), str) and body["warning"]
+        assert "open_sessions_to_close" in body
 
         c = client.post(
             f"/api/me/retrospectives/{rid}/complete",
