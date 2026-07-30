@@ -1,6 +1,6 @@
 """Member Practice canonical export builders.
 
-Spec: FatTail-Labs-Member-Practice-Export-Spec-v1.0
+Spec: FatTail-Labs-Member-Practice-Export-Spec-v1.0 … **v1.3**
 Formats: fattail.labs.journal | retrospective | journey | member_export
 """
 
@@ -18,6 +18,8 @@ from config import get_config
 EASTERN = ZoneInfo("America/New_York")
 
 MODEL_VERSION = "1.0"
+# Retrospective document bumped for v0.7.1 ceremony columns (Export Spec v1.3)
+RETRO_MODEL_VERSION = "1.1"
 FMT_JOURNAL = "fattail.labs.journal"
 FMT_JOURNAL_SESSION = "fattail.labs.journal_session"
 FMT_RETRO = "fattail.labs.retrospective"
@@ -235,11 +237,13 @@ def build_journal_session_document(cur, identity_id: int) -> dict[str, Any]:
     return doc
 
 
-def build_retrospective_documentdef build_retrospective_document(cur, identity_id: int) -> dict[str, Any]:
+def build_retrospective_document(cur, identity_id: int) -> dict[str, Any]:
+    """Export Spec v1.3 — ceremony columns, in-app notifications, cadence history."""
     import retrospective_domain as rd
 
     email = _member_email(cur, identity_id)
     doc = envelope(FMT_RETRO, email=email)
+    doc["model_version"] = RETRO_MODEL_VERSION
 
     cur.execute(
         """SELECT * FROM member_retrospectives
@@ -251,7 +255,21 @@ def build_retrospective_documentdef build_retrospective_document(cur, identity_i
     retros = []
     for row in rows:
         s = rd.serialize_row(row)
+        s.pop("identity_id", None)
         s["id"] = (row.get("export_key") or f"retro-{int(row['id'])}").strip()
+        # Explicit v0.7.1 ceremony fields (serialize already includes; assert contract)
+        s.setdefault("prompt_version_id", row.get("prompt_version_id"))
+        s.setdefault(
+            "cadence_days_at_period",
+            int(row["cadence_days_at_period"])
+            if row.get("cadence_days_at_period") is not None
+            else None,
+        )
+        s.setdefault(
+            "period_index",
+            int(row["period_index"]) if row.get("period_index") is not None else None,
+        )
+        s.setdefault("interrupted", bool(row.get("interrupted")))
         retros.append(s)
 
     cur.execute(
@@ -282,8 +300,67 @@ def build_retrospective_documentdef build_retrospective_document(cur, identity_i
             p["retrospective_id"] = None
         plans.append(p)
 
+    # In-app notifications (Family B material — Export Spec v1.3)
+    notifications: list[dict[str, Any]] = []
+    try:
+        cur.execute(
+            """SELECT id, kind, title, body, href, channel, period_key,
+                      resource_type, resource_id, email_status, read_at, created_at
+               FROM member_notifications
+               WHERE identity_id = %s
+               ORDER BY id ASC""",
+            (identity_id,),
+        )
+        for row in cur.fetchall() or []:
+            notifications.append(
+                {
+                    "id": f"mn-{int(row['id'])}",
+                    "kind": row.get("kind"),
+                    "title": row.get("title") or "",
+                    "body": row.get("body") or "",
+                    "href": row.get("href") or "",
+                    "channel": row.get("channel") or "in_app",
+                    "period_key": row.get("period_key"),
+                    "resource_type": row.get("resource_type"),
+                    "resource_id": row.get("resource_id"),
+                    "email_status": row.get("email_status") or "skipped",
+                    "read_at": _iso(row.get("read_at")),
+                    "created_at": _iso(row.get("created_at")),
+                }
+            )
+    except Exception:
+        notifications = []
+
+    # Forward-only cadence history (identity setting itself is not purged)
+    cadence_history: list[dict[str, Any]] = []
+    try:
+        cur.execute(
+            """SELECT cadence_days, effective_from, created_at
+               FROM member_retro_cadence_history
+               WHERE identity_id = %s
+               ORDER BY id ASC""",
+            (identity_id,),
+        )
+        for row in cur.fetchall() or []:
+            eff = row.get("effective_from")
+            if hasattr(eff, "isoformat"):
+                eff_s = eff.isoformat()[:10]
+            else:
+                eff_s = str(eff)[:10] if eff else None
+            cadence_history.append(
+                {
+                    "cadence_days": int(row["cadence_days"]),
+                    "effective_from": eff_s,
+                    "created_at": _iso(row.get("created_at")),
+                }
+            )
+    except Exception:
+        cadence_history = []
+
     doc["retrospectives"] = retros
     doc["habit_plans"] = plans
+    doc["notifications"] = notifications
+    doc["cadence_history"] = cadence_history
     return doc
 
 

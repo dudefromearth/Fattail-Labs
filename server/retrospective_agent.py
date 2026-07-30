@@ -1,18 +1,20 @@
-"""Retrospective agent analyze — Spec v0.5 §8 (R5) · Coach DL-126/127 parity.
+"""Retrospective sequence agent — Spec v0.7.1 §16 · R8.
+
+Holds the ceremony sequence. Does not interpret, diagnose, or prescribe.
+Assembly only — the trader supplies judgment.
 
 Config (optional env; analyze fails loud if mode off/missing):
   LABS_RETRO_AGENT_MODE=local|off   (default off — product-wide, not tier-based)
 
 Observer (incl. observer-trial) has the **same** agent access as Navigator when
-agent mode is on. LABS_RETRO_AGENT_TRIAL is ignored (legacy env; no longer gates).
-
-Local mode builds deterministic, process-anchored output from the staged report
-(no external LLM). Validation always runs before store.
+agent mode is on. Local mode builds deterministic sequence + assembly from the
+staged report (no external LLM). Guardrails are enforced in code before render.
 """
 
 from __future__ import annotations
 
 import os
+import re
 from typing import Any
 
 import retrospective_domain as rd
@@ -20,7 +22,127 @@ import retrospective_domain as rd
 AGENT_MODE_OFF = "off"
 AGENT_MODE_LOCAL = "local"
 
+# Default stamped prompt id (seeded by mig 057)
+DEFAULT_PROMPT_VERSION_ID = "RETROSPECTIVE_SEQUENCE_PROMPT_V1"
+
 ANCHOR_TYPES = frozenset({"process_event", "adherence_tag", "journal_passage"})
+
+# Spec §16 — nine ceremony steps (must match UI CEREMONY_STEPS order)
+CEREMONY_STEPS: list[dict[str, Any]] = [
+    {
+        "id": 1,
+        "key": "commitments",
+        "title": "Commitments",
+        "focus_question": (
+            "Which carried plans did you keep, partial, or let lapse — "
+            "in process terms only?"
+        ),
+    },
+    {
+        "id": 2,
+        "key": "practice",
+        "title": "Practice",
+        "focus_question": (
+            "Looking at this period's practice readings only — what stands out "
+            "without judging yourself?"
+        ),
+    },
+    {
+        "id": 3,
+        "key": "obstacles",
+        "title": "Obstacles",
+        "focus_question": (
+            "What did you name this period — tags you applied and words you wrote?"
+        ),
+    },
+    {
+        "id": 4,
+        "key": "clustered",
+        "title": "Where it clustered",
+        "focus_question": (
+            "Where did deviations and tags co-occur? Observation only — "
+            "you name the cause next."
+        ),
+    },
+    {
+        "id": 5,
+        "key": "cause",
+        "title": "What I name as the cause",
+        "focus_question": (
+            "In your words — what got in the way? The system does not diagnose."
+        ),
+    },
+    {
+        "id": 6,
+        "key": "worked",
+        "title": "What worked",
+        "focus_question": (
+            "What process strengths show in this window — not P&L theater?"
+        ),
+    },
+    {
+        "id": 7,
+        "key": "eva",
+        "title": "Expected versus actual",
+        "focus_question": (
+            "Where did pre-open intent and what executed diverge — process only?"
+        ),
+    },
+    {
+        "id": 8,
+        "key": "onething",
+        "title": "The one thing",
+        "focus_question": (
+            "What one checkable commitment will you own? "
+            "The system does not prescribe it."
+        ),
+    },
+    {
+        "id": 9,
+        "key": "book",
+        "title": "The book",
+        "focus_question": (
+            "When you want the numbers, open the book sample — neutral context only."
+        ),
+    },
+]
+
+# Code-enforced prohibitions (Spec §16) — not admin-editable
+GUARDRAIL_BANS: tuple[str, ...] = (
+    "you should have",
+    "you must",
+    "you need to",
+    "you ought",
+    "i recommend",
+    "i suggest you",
+    "try to be",
+    "be more patient",
+    "stop being",
+    "you were impatient",
+    "you felt",
+    "you seemed",
+    "you always",
+    "you never",
+    "good job",
+    "well done",
+    "poor performance",
+    "you failed",
+    "expectancy",
+    "profit factor",
+    "your grade",
+    "your streak",
+    "process produces money",
+)
+
+# Prescription patterns — agent must not invent corrective actions
+PRESCRIPTION_BANS: tuple[str, ...] = (
+    "you should",
+    "you must",
+    "corrective action:",
+    "do this next",
+    "fix your habit to",
+    "i prescribe",
+)
 
 
 class AgentConfigError(RuntimeError):
@@ -268,125 +390,261 @@ def validate_agent_output(
     }
 
 
-def local_analyze(report: dict[str, Any]) -> dict[str, Any]:
-    """Deterministic facilitator output from staged process report (no LLM)."""
-    book = report.get("book_performance") or report.get("pnl") or {}
-    trade_count = int(
-        (report.get("meta") or {}).get("trade_count")
-        or book.get("trade_count")
-        or 0
-    )
-    process = report.get("process") or {}
-    deviations = report.get("deviations") or []
-    existing_ww = report.get("what_worked") or []
-
-    what_worked = list(existing_ww)[: rd.MAX_WHAT_WORKED]
-    if not what_worked:
-        adh = process.get("adherence") or {}
-        followed = int(adh.get("followed") or 0)
-        if followed >= 2:
-            what_worked.append(
-                {
-                    "observation": f"{followed} trades tagged followed in window",
-                    "evidence": "adherence count",
-                    "window_n": followed,
-                }
+def assert_no_guardrail_violation(text: str, *, field: str = "text") -> None:
+    """Code guardrails before any agent turn renders (Spec §16)."""
+    low = (text or "").lower()
+    for ban in GUARDRAIL_BANS + PRESCRIPTION_BANS:
+        if ban in low:
+            raise AgentValidationError(
+                f"guardrail violation in {field}: banned phrase {ban!r}"
             )
-        routine = process.get("routine") or {}
-        act = routine.get("activity_days_per_week")
-        if act is not None and float(act) >= 2:
-            what_worked.append(
-                {
-                    "observation": f"Activity rhythm ~{act} days/week",
-                    "evidence": "routine rate",
-                    "window_n": int(routine.get("activity_days") or 0),
-                }
-            )
+    # P&L figures in process copy
+    if re.search(r"\$\s*-?\d", text or ""):
+        raise AgentValidationError(
+            f"guardrail violation in {field}: P&L figure not allowed in process copy"
+        )
 
-    concerns = []
-    hyps = []
-    for d in deviations[:5]:
-        if not isinstance(d, dict):
-            continue
-        kind = str(d.get("kind") or "process")
-        label = str(d.get("label") or kind)
-        count = d.get("count")
-        concerns.append(
-            {
-                "area": label,
-                "evidence": str(d.get("note") or f"count={count}"),
-                "severity": "med" if (count or 0) >= 2 else "low",
-                "anchors": [f"deviation:{kind}"],
-            }
+
+def active_prompt_version_id(cur) -> str:
+    """Stamp id for new retrospectives / sequence runs (mirror Journal J3)."""
+    try:
+        cur.execute(
+            """SELECT id FROM retrospective_prompt_versions
+               WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1"""
         )
-        anchor_type = (
-            "adherence_tag" if kind == "adherence_broke" else "process_event"
+        row = cur.fetchone()
+        if row and row.get("id"):
+            return str(row["id"])
+    except Exception:
+        pass
+    return DEFAULT_PROMPT_VERSION_ID
+
+
+def load_active_prompt_body(cur) -> tuple[str, str]:
+    """Return (version_id, body_md) for the active prompt."""
+    vid = active_prompt_version_id(cur)
+    try:
+        cur.execute(
+            """SELECT id, body_md FROM retrospective_prompt_versions
+               WHERE id = %s""",
+            (vid,),
         )
-        hyps.append(
-            {
-                "hypothesis": (
-                    f"Process gap may relate to: {label} "
-                    f"(observed {count} time(s) in window)"
-                ),
-                "anchors": [
+        row = cur.fetchone()
+        if row:
+            return str(row["id"]), str(row.get("body_md") or "")
+    except Exception:
+        pass
+    return vid, ""
+
+
+def _step_inventory(report: dict[str, Any], step_id: int) -> list[dict[str, Any]]:
+    """Assembly only — cite staged report inventory for a ceremony step."""
+    items: list[dict[str, Any]] = []
+    if step_id == 1:
+        cf = report.get("carry_forward") or {}
+        for p in (cf.get("plans") or [])[:5]:
+            if isinstance(p, dict):
+                items.append(
                     {
-                        "type": anchor_type,
-                        "ref": kind if kind else label,
+                        "kind": "habit_plan",
+                        "label": str(p.get("title") or p.get("habit") or "plan"),
+                        "source": "carry_forward",
                     }
-                ],
-                "supports": [str(d.get("note") or label)],
-                "conflicts": [],
-            }
-        )
-
-    # Sample gate: do not attach P&L supports when below min
-    if trade_count < rd.MIN_INFERENCE_N:
-        for h in hyps:
-            h["supports"] = [
-                s
-                for s in h.get("supports") or []
-                if not any(
-                    k in str(s).lower()
-                    for k in ("pnl", "p&l", "profit", "loss")
                 )
-            ]
+    elif step_id == 2:
+        pi = report.get("period_indicator") or {}
+        if pi:
+            items.append(
+                {
+                    "kind": "period_indicator",
+                    "label": str(pi.get("headline") or pi.get("status") or "period"),
+                    "source": "period_indicator",
+                }
+            )
+        for r in (pi.get("readings") or [])[:4]:
+            if isinstance(r, dict):
+                items.append(
+                    {
+                        "kind": "reading",
+                        "label": str(r.get("label") or r.get("id") or "reading"),
+                        "source": "period_indicator",
+                    }
+                )
+    elif step_id == 3:
+        em = report.get("emotion_mirror") or {}
+        for t in (em.get("behavior_tags") or [])[:5]:
+            if isinstance(t, dict):
+                items.append(
+                    {
+                        "kind": "behavior_tag",
+                        "label": str(t.get("mirror") or t.get("label") or "tag"),
+                        "source": "emotion_mirror",
+                    }
+                )
+        for d in (report.get("deviations") or [])[:5]:
+            if isinstance(d, dict):
+                items.append(
+                    {
+                        "kind": "deviation",
+                        "label": str(d.get("label") or d.get("kind") or "deviation"),
+                        "source": "deviations",
+                    }
+                )
+    elif step_id == 4:
+        for s in ((report.get("clustering") or {}).get("statements") or [])[:5]:
+            if isinstance(s, dict):
+                items.append(
+                    {
+                        "kind": "co_occurrence",
+                        "label": str(s.get("observation") or s.get("kind") or ""),
+                        "source": "clustering",
+                    }
+                )
+    elif step_id == 6:
+        for w in (report.get("what_worked") or [])[: rd.MAX_WHAT_WORKED]:
+            if isinstance(w, dict):
+                items.append(
+                    {
+                        "kind": "what_worked",
+                        "label": str(w.get("observation") or ""),
+                        "source": "what_worked",
+                    }
+                )
+        em = report.get("emotion_mirror") or {}
+        for t in (em.get("insight_tags") or [])[:3]:
+            if isinstance(t, dict):
+                items.append(
+                    {
+                        "kind": "insight_tag",
+                        "label": str(t.get("mirror") or t.get("label") or ""),
+                        "source": "emotion_mirror",
+                    }
+                )
+    elif step_id == 7:
+        for row in (report.get("expected_vs_actual") or [])[:5]:
+            if isinstance(row, dict):
+                items.append(
+                    {
+                        "kind": "eva",
+                        "label": str(row.get("day") or "day"),
+                        "source": "expected_vs_actual",
+                    }
+                )
+    # steps 5, 8, 9: trader-authored / book — inventory optional
+    return [i for i in items if (i.get("label") or "").strip()]
 
-    plans = []
-    if any(
-        isinstance(d, dict) and d.get("kind") == "adherence_broke"
-        for d in deviations
-    ):
-        plans.append(
-            {
-                "title": "Tag adherence same day",
-                "habit": "Mark followed/partial/broke on each trade the day it closes",
-                "why_process": "Makes deviations reviewable without memory bias",
-                "observable_signal": "adherence_rate",
-                "check_in": "daily",
-                "status": "proposed",
-            }
-        )
-    if any(
-        isinstance(d, dict) and d.get("kind") == "journal_activity_gap"
-        for d in deviations
-    ):
-        plans.append(
-            {
-                "title": "Close journal gaps",
-                "habit": "Note or log activity at least every other practice day",
-                "why_process": "Routine continuity is process integrity",
-                "observable_signal": "routine_days",
-                "check_in": "weekly",
-                "status": "proposed",
-            }
-        )
+
+def build_sequence_guide(
+    report: dict[str, Any],
+    *,
+    prompt_version_id: str,
+    focused_step: int | None = None,
+    body_md: str = "",
+    cause_filled: bool = False,
+) -> dict[str, Any]:
+    """Spec §16 — sequence keeper: order, one question, inventory, nothing-here.
+
+    Does not prescribe corrective actions. Guardrails run on all prompts.
+    """
+    focus = int(focused_step or 1)
+    if focus < 1 or focus > 9:
+        focus = 1
+
+    steps_out: list[dict[str, Any]] = []
+    for spec in CEREMONY_STEPS:
+        sid = int(spec["id"])
+        inv = _step_inventory(report, sid)
+        q = str(spec["focus_question"])
+        assert_no_guardrail_violation(q, field=f"step_{sid}_question")
+
+        if sid == 5:
+            nothing = not cause_filled and not inv
+            status = "answered" if cause_filled else ("empty" if nothing else "ready")
+        elif sid == 8:
+            # Trader owns commitment — agent never fills it
+            status = "ready"
+            nothing = False
+        elif sid == 9:
+            book = report.get("book_performance") or report.get("pnl")
+            nothing = not book
+            status = "empty" if nothing else "ready"
+        else:
+            nothing = len(inv) == 0
+            status = "empty" if nothing else "ready"
+
+        step_payload = {
+            "id": sid,
+            "key": spec["key"],
+            "title": spec["title"],
+            "focus_question": q,
+            "status": status,
+            "nothing_here": nothing,
+            "inventory": inv,
+            "is_focused": sid == focus,
+        }
+        # One question only when focused (anti multi-question turns)
+        if sid != focus:
+            step_payload["focus_question_hidden"] = True
+        steps_out.append(step_payload)
+
+    focused = next(s for s in steps_out if s["is_focused"])
+    turn = {
+        "step_id": focused["id"],
+        "question": focused["focus_question"],
+        "inventory": focused["inventory"],
+        "nothing_here": focused["nothing_here"],
+        "instruction": (
+            "Answer this step or mark nothing here. "
+            "The agent does not fill empty fields or prescribe."
+        ),
+    }
+    assert_no_guardrail_violation(turn["question"], field="turn.question")
+    assert_no_guardrail_violation(turn["instruction"], field="turn.instruction")
 
     return {
-        "what_worked": what_worked,
-        "concerns": concerns,
-        "root_cause_hypotheses": hyps,
-        "habit_plans": plans[: rd.MAX_ACTIVE_HABIT_PLANS],
+        "role": "sequence_keeper",
+        "version": "0.7.1",
+        "prompt_version_id": prompt_version_id,
+        "focused_step": focus,
+        "steps": steps_out,
+        "turn": turn,
+        "guardrails": {
+            "enforced_in_code": True,
+            "admin_editable": False,
+            "bans_sample": list(GUARDRAIL_BANS[:8]),
+            "no_prescription": True,
+            "one_question_per_turn": True,
+        },
+        # Assembly mirrors report — trader judgment still required
+        "assembly": {
+            "what_worked": list(report.get("what_worked") or [])[: rd.MAX_WHAT_WORKED],
+            "deviations": list(report.get("deviations") or [])[: rd.MAX_DEVIATIONS],
+            "clustering_statements": list(
+                ((report.get("clustering") or {}).get("statements") or [])[:5]
+            ),
+        },
+        # Spec §16: agent does not prescribe — empty plans from sequence path
+        "habit_plans": [],
+        "what_worked": list(report.get("what_worked") or [])[: rd.MAX_WHAT_WORKED],
+        "concerns": [],
+        "root_cause_hypotheses": [],
+        "meta": {
+            "mode": agent_mode(),
+            "prompt_version_id": prompt_version_id,
+            "role": "sequence_keeper",
+            "prescribes": False,
+        },
+        "prompt_body_preview": (body_md or "")[:240],
     }
+
+
+def local_analyze(report: dict[str, Any]) -> dict[str, Any]:
+    """Legacy name — R8 sequence path (no prescription)."""
+    return build_sequence_guide(
+        report,
+        prompt_version_id=DEFAULT_PROMPT_VERSION_ID,
+        focused_step=1,
+    )
 
 
 def run_analyze(
@@ -394,26 +652,36 @@ def run_analyze(
     *,
     role: str,
     has_observer_trial: bool,
+    prompt_version_id: str | None = None,
+    focused_step: int | None = None,
+    cause_filled: bool = False,
+    prompt_body: str = "",
 ) -> dict[str, Any]:
-    """Config + entitlement + local generate + validate."""
+    """Config + entitlement + sequence guide + guardrails (Spec §16)."""
     if not can_run_agent_for_role(role, has_observer_trial=has_observer_trial):
         raise PermissionError(
-            "Agent analysis requires Observer, Navigator, Activator, or admin "
+            "Sequence agent requires Observer, Navigator, Activator, or admin "
             "(same Practice entitlement as create/gather)"
         )
     require_agent_configured()
-    raw = local_analyze(report)
-    book = report.get("book_performance") or report.get("pnl") or {}
-    trade_count = int(
-        (report.get("meta") or {}).get("trade_count")
-        or book.get("trade_count")
-        or 0
+    pvid = (prompt_version_id or DEFAULT_PROMPT_VERSION_ID).strip()
+    guide = build_sequence_guide(
+        report,
+        prompt_version_id=pvid,
+        focused_step=focused_step,
+        body_md=prompt_body,
+        cause_filled=cause_filled,
     )
-    ww_available = bool(report.get("what_worked")) or bool(
-        (report.get("process") or {}).get("adherence", {}).get("followed")
+    # Full-payload guardrail scan
+    assert_no_guardrail_violation(
+        str(guide.get("turn") or {}), field="turn"
     )
-    return validate_agent_output(
-        raw,
-        trade_count=trade_count,
-        process_what_worked_available=ww_available,
-    )
+    for s in guide.get("steps") or []:
+        assert_no_guardrail_violation(
+            str(s.get("focus_question") or ""),
+            field=f"step_{s.get('id')}",
+        )
+    # No habit plans from agent (prescription ban)
+    if guide.get("habit_plans"):
+        raise AgentValidationError("sequence agent must not prescribe habit_plans")
+    return guide

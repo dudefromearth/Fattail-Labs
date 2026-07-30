@@ -407,7 +407,7 @@ def test_rt43_build_carry_forward_unit():
 
 
 def test_rt43_workspace_maiden_hides_carry_forward_source():
-    """UI: carry-forward gated on !isMaiden."""
+    """UI: maiden still renders step 1 with nothing-here (Spec v0.7.1 §6.1)."""
     from pathlib import Path
 
     path = (
@@ -419,5 +419,7 @@ def test_rt43_workspace_maiden_hides_carry_forward_source():
     )
     src = path.read_text(encoding="utf-8")
     assert "retro-carry-forward" in src
-    assert "!isMaiden" in src or "isMaiden &&" in src or "{!isMaiden &&" in src
+    # Anti-wizard: step always present; maiden uses honest empty
+    assert "isMaiden" in src
+    assert "retro-cf-maiden" in src
     assert "Kept" in src and "Partial" in src and "Lapsed" in src

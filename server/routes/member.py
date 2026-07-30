@@ -498,7 +498,7 @@ def _profile_row(cur, identity_id: int) -> dict | None:
         """SELECT identity_id, email, display_name, avatar_url, journey_visible,
                   journey_visible_at, share_reputation, share_personal_growth,
                   share_attendance, session_idle_minutes,
-                  retrospective_pnl_expanded
+                  retrospective_pnl_expanded, retro_cadence_days
            FROM identities WHERE identity_id = %s""",
         (identity_id,),
     )
@@ -513,6 +513,11 @@ def _profile_payload(row: dict, role: str) -> dict:
         idle_n = SESSION_IDLE_MIN_DEFAULT
     if not SESSION_IDLE_MIN_LO <= idle_n <= SESSION_IDLE_MIN_HI:
         idle_n = SESSION_IDLE_MIN_DEFAULT
+    cadence = row.get("retro_cadence_days")
+    try:
+        cadence_n = int(cadence) if cadence is not None else None
+    except (TypeError, ValueError):
+        cadence_n = None
     return {
         "identity_id": int(row["identity_id"]),
         "email": row["email"] or "",
@@ -532,6 +537,8 @@ def _profile_payload(row: dict, role: str) -> dict:
         "retrospective_pnl_expanded": bool(
             row.get("retrospective_pnl_expanded") or 0
         ),
+        # Spec v0.7.1 — trader cadence; null = use meter-profile default
+        "retro_cadence_days": cadence_n,
         "role": role,
     }
 
@@ -618,16 +625,40 @@ async def patch_profile(request: Request) -> dict:
         updates.append("retrospective_pnl_expanded = %s")
         params.append(1 if exp else 0)
 
-    if not updates:
+    # Spec v0.7.1 §12 — cadence change is forward-only (history row; never
+    # rewrites past retrospectives' cadence_days_at_period).
+    cadence_change: int | None = None
+    if "retro_cadence_days" in body:
+        raw = body["retro_cadence_days"]
+        if raw is None:
+            # Clear preference → fall back to meter profile
+            updates.append("retro_cadence_days = NULL")
+        else:
+            try:
+                cadence_change = int(raw)
+            except (TypeError, ValueError) as exc:
+                raise HTTPException(
+                    status_code=422, detail="retro_cadence_days must be an integer"
+                ) from exc
+
+    if not updates and cadence_change is None and "retro_cadence_days" not in body:
         raise HTTPException(status_code=422, detail="No recognized fields")
 
     params.append(iid)
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                f"UPDATE identities SET {', '.join(updates)} WHERE identity_id = %s",
-                tuple(params),
-            )
+            if updates:
+                cur.execute(
+                    f"UPDATE identities SET {', '.join(updates)} WHERE identity_id = %s",
+                    tuple(params),
+                )
+            if cadence_change is not None:
+                import retrospective_domain as rd
+
+                try:
+                    rd.set_retro_cadence_days(cur, iid, cadence_change)
+                except ValueError as exc:
+                    raise HTTPException(status_code=422, detail=str(exc)) from exc
             row = _profile_row(cur, iid)
     if row is None:
         raise HTTPException(status_code=404, detail="Identity not found")

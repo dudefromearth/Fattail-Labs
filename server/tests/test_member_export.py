@@ -21,6 +21,11 @@ def _cleanup(iid: int) -> None:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             for sql, args in (
+                ("DELETE FROM member_notifications WHERE identity_id = %s", (iid,)),
+                (
+                    "DELETE FROM member_retro_cadence_history WHERE identity_id = %s",
+                    (iid,),
+                ),
                 ("DELETE FROM member_tool_notes WHERE identity_id = %s", (iid,)),
                 ("DELETE FROM member_habit_plans WHERE identity_id = %s", (iid,)),
                 ("DELETE FROM member_retrospectives WHERE identity_id = %s", (iid,)),
@@ -86,8 +91,10 @@ def test_export_retrospectives_and_habits(client):
                 cur.execute(
                     """INSERT INTO member_retrospectives
                          (identity_id, status, is_maiden, scope_start, scope_end,
-                          title, body_md, completed_at)
-                       VALUES (%s, 'complete', 1, NOW(), NOW(), 'Maiden', 'body', NOW())""",
+                          title, body_md, completed_at, prompt_version_id,
+                          cadence_days_at_period, period_index, interrupted)
+                       VALUES (%s, 'complete', 1, NOW(), NOW(), 'Maiden', 'body', NOW(),
+                               'RETROSPECTIVE_SEQUENCE_PROMPT_V1', 7, 1, 0)""",
                     (iid,),
                 )
                 rid = cur.lastrowid
@@ -98,6 +105,22 @@ def test_export_retrospectives_and_habits(client):
                        VALUES (%s, %s, 'Plan', 'Do X', 'process', 'routine_days', 'active')""",
                     (iid, rid),
                 )
+                # Cadence history + notification (v1.3)
+                cur.execute(
+                    """INSERT INTO member_retro_cadence_history
+                         (identity_id, cadence_days, effective_from)
+                       VALUES (%s, 14, CURDATE())""",
+                    (iid,),
+                )
+                cur.execute(
+                    """INSERT INTO member_notifications
+                         (identity_id, kind, title, body, href, channel, period_key,
+                          email_status)
+                       VALUES (%s, 'retrospective.material_ready', 'Your week is ready',
+                               '14 trades.', '/app/retrospective', 'in_app',
+                               'maiden:test', 'skipped')""",
+                    (iid,),
+                )
         r = client.get(
             "/api/me/export/retrospectives",
             cookies=cookie_for("activator", iid),
@@ -105,10 +128,24 @@ def test_export_retrospectives_and_habits(client):
         assert r.status_code == 200
         doc = r.json()
         assert doc["format"] == "fattail.labs.retrospective"
+        assert doc.get("model_version") == "1.1"
         assert len(doc["retrospectives"]) >= 1
-        assert doc["retrospectives"][0]["id"].startswith("retro-")
+        retro = doc["retrospectives"][0]
+        assert retro["id"].startswith("retro-")
+        assert retro.get("prompt_version_id") == "RETROSPECTIVE_SEQUENCE_PROMPT_V1"
+        assert retro.get("cadence_days_at_period") == 7
+        assert retro.get("period_index") == 1
+        assert retro.get("interrupted") is False
+        assert "identity_id" not in retro
         assert doc["habit_plans"][0]["id"].startswith("plan-")
         assert "identity_id" not in doc["habit_plans"][0]
+        assert isinstance(doc.get("notifications"), list)
+        assert len(doc["notifications"]) >= 1
+        assert doc["notifications"][0]["id"].startswith("mn-")
+        assert doc["notifications"][0]["channel"] == "in_app"
+        assert doc["notifications"][0]["email_status"] == "skipped"
+        assert isinstance(doc.get("cadence_history"), list)
+        assert any(h.get("cadence_days") == 14 for h in doc["cadence_history"])
     finally:
         _cleanup(iid)
 
@@ -378,7 +415,7 @@ def test_purge_practice_keeps_membership_then_load(client):
         assert body["deleted"]["tool_notes"] >= 1
         assert body["deleted"]["retrospectives"] >= 1
 
-        # Identity still valid
+        # Identity still valid; retro_cadence_days setting path preserved
         with db.transaction() as conn:
             with conn.cursor() as cur:
                 cur.execute(

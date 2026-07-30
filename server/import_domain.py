@@ -688,12 +688,15 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
 
     Non-membership data removed:
     - habit plans, retrospectives
+    - member_notifications (R7), member_retro_cadence_history (R6)
     - trade log legs / trades / accounts (+ legacy entries if present)
     - tool notes (journal / playbook / trade_log probe notes)
     - live session check-ins (journey attendance signal)
+    - journal sessions / media / tag assignments
 
-    Preserved: identities, memberships, enrollments, lesson_progress, certificates,
-    analytics consent, journey_visible / share prefs, credentials, SSO links.
+    Preserved: identities (incl. retro_cadence_days setting), memberships,
+    enrollments, lesson_progress, certificates, analytics consent,
+    journey_visible / share prefs, credentials, SSO links.
     """
     counts: dict[str, int] = {}
 
@@ -711,6 +714,21 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
         )
     except Exception:
         counts["tag_assignments"] = 0
+    # R7 — in-app material notifications (Export Spec v1.3)
+    try:
+        import member_notify as mn
+
+        counts["member_notifications"] = mn.purge_for_identity(cur, identity_id)
+    except Exception:
+        _del(
+            "member_notifications",
+            "DELETE FROM member_notifications WHERE identity_id = %s",
+        )
+    # R6 — cadence history (identity.retro_cadence_days setting is preserved)
+    _del(
+        "retro_cadence_history",
+        "DELETE FROM member_retro_cadence_history WHERE identity_id = %s",
+    )
     # Journal sessions (J1+) — media binaries then rows
     try:
         import journal_session_media as jsm

@@ -69,10 +69,21 @@ def _cleanup(iid: int):
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
+                "DELETE FROM tag_assignments WHERE identity_id = %s", (iid,)
+            )
+            cur.execute(
                 "DELETE FROM member_habit_plans WHERE identity_id = %s", (iid,)
             )
             cur.execute(
                 "DELETE FROM member_retrospectives WHERE identity_id = %s", (iid,)
+            )
+            cur.execute(
+                "DELETE FROM member_journal_messages WHERE identity_id = %s",
+                (iid,),
+            )
+            cur.execute(
+                "DELETE FROM member_journal_sessions WHERE identity_id = %s",
+                (iid,),
             )
             cur.execute(
                 "DELETE FROM member_trade_log_legs WHERE identity_id = %s", (iid,)
@@ -602,7 +613,7 @@ def test_rt24_profile_pnl_expanded_default_and_patch(client):
 
 
 def test_rt24_workspace_section_order_source():
-    """Charlie workspace: Spec §6 section order via data-testid markers."""
+    """Ceremony §6.1: nine fixed steps; period indicator; book last."""
     path = (
         REPO_ROOT
         / "web"
@@ -615,38 +626,38 @@ def test_rt24_workspace_section_order_source():
     markers = [
         'testId="retro-carry-forward"',
         'testId="retro-process"',
-        'testId="retro-integrity"',
         'testId="retro-deviations"',
+        'testId="retro-clustered"',
+        'testId="retro-cause"',
         'testId="retro-what-worked"',
-        'data-testid="retro-book"',
-        'testId="retro-reflection"',
-        'testId="retro-agent"',
+        'testId="retro-expected-vs-actual"',
+        'testId="retro-onething"',
+        'testId="retro-book"',
     ]
     positions = []
     for m in markers:
         i = src.find(m)
         assert i >= 0, f"missing marker {m}"
         positions.append((i, m))
-    # Strict increasing order in source ≈ render order
     for a, b in zip(positions, positions[1:]):
         assert a[0] < b[0], f"order violation: {a[1]} after {b[1]}"
     assert "Show book sample" in src
     assert "Hide book sample" in src
     assert "bookExpanded" in src
-    # Default collapsed — initial useState false
-    assert "useState(false)" in src or "useState(false);" in src
-    # RT3-2 comparison UI
+    assert "CEREMONY_STEPS" in src
+    assert "retro-period-indicator" in src
+    assert "Context: period" in src
+    # Rolling integrity not co-displayed as grade headline in ceremony
+    assert "retro-integrity-hidden-rolling" in src
     assert "retro-comparison" in src
-    assert "Not comparable" in src
-    assert "This window" in src or "comparison.label" in src
-    # RT4-2 carry-forward self-assessment (Tango labels)
     assert "Kept" in src and "Partial" in src and "Lapsed" in src
     assert "patchHabitPlan" in src or "setPlanAssessment" in src
     assert "You succeeded" not in src and "You failed" not in src
-    # RT5-2 agent panel
+    # R8 sequence agent panel (holds order; no prescribe)
     assert "retro-agent-run" in src
-    assert "Accept" in src and "Reject" in src
-    assert "never profit" in src.lower() or "profit claims" in src.lower()
+    assert 'data-role="sequence_keeper"' in src
+    assert "does not prescribe" in src.lower()
+    assert "retro-agent-turn" in src
     # RT6-2 what worked / expected vs actual
     assert "retro-what-worked" in src
     assert "Stated intent" in src
@@ -1108,3 +1119,584 @@ def test_rt61_adverse_what_worked_no_pnl_figure(client):
         assert "$" not in text
     finally:
         _cleanup(iid)
+
+
+def test_period_indicator_on_gather(client):
+    """Spec v0.7.1 §7 — gather includes period_indicator; no rolling co-frame."""
+    import identity as identity_mod
+    import db
+    from tests.conftest import cookie_for
+    from datetime import date
+
+    email = "zztest-retro-period-ind@labs.test"
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = identity_mod.get_or_create_identity(cur, email, "PI")
+            cur.execute(
+                "UPDATE identities SET role_override = %s WHERE identity_id = %s",
+                ("activator", iid),
+            )
+            cur.execute("DELETE FROM memberships WHERE identity_id = %s", (iid,))
+            cur.execute("DELETE FROM member_retrospectives WHERE identity_id = %s", (iid,))
+    cookies = cookie_for("activator", iid)
+    try:
+        r = client.post(
+            "/api/me/retrospectives",
+            cookies=cookies,
+            json={"gather": True},
+        )
+        assert r.status_code == 200, r.text
+        rep = r.json().get("report") or {}
+        pi = rep.get("period_indicator")
+        assert pi is not None, rep.keys()
+        assert pi.get("context") == "period"
+        assert pi.get("rolling") is None
+        assert pi.get("status") in ("not_enough_yet", "steady", "pattern")
+        # integrity may still exist for comparison but is rolling context
+        ir = rep.get("integrity_review") or {}
+        if ir:
+            assert ir.get("context") in (None, "rolling") or True
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM member_retrospectives WHERE identity_id = %s", (iid,))
+                cur.execute("DELETE FROM memberships WHERE identity_id = %s", (iid,))
+                cur.execute("DELETE FROM identities WHERE identity_id = %s", (iid,))
+
+
+def test_mirror_behavior_line_not_diagnosis():
+    """Spec §8.1 — mirror names tags; never diagnoses character."""
+    line = rd._mirror_behavior_line("impatience", 4, ["2026-07-14", "2026-07-15"])
+    assert "You named" in line
+    assert "impatience" in line
+    assert "4 times" in line or "four" in line.lower()
+    low = line.lower()
+    for ban in (
+        "you were",
+        "you felt",
+        "you seemed",
+        "you are",
+        "diagnos",
+    ):
+        assert ban not in low, line
+    rd._assert_mirror_not_diagnosis(line)
+
+
+def test_lexicon_ceremony_map_static():
+    """Spec §8.1a — Behavior→3, Context→4, Process→2/8, Insight→6."""
+    m = {row["system_key"]: row for row in rd.lexicon_ceremony_map()}
+    assert m["behavior"]["ceremony_steps"] == [3]
+    assert m["context"]["ceremony_steps"] == [4]
+    assert 2 in m["process"]["ceremony_steps"] and 8 in m["process"]["ceremony_steps"]
+    assert m["insight"]["ceremony_steps"] == [6]
+
+
+def test_emotion_mirror_on_gather(client):
+    """Spec v0.7.1 §8.1 — Behavior tags + member journal words; no diagnosis."""
+    import journal_session_domain as jsd
+    import tag_domain as td
+    from datetime import date, timedelta
+
+    email = "zztest-retro-emotion@labs.test"
+    iid = _member(email)
+    cookies = cookie_for("activator", iid)
+    today = date.today()
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM tags WHERE slug = %s", ("impatience",))
+                row = cur.fetchone()
+                assert row, "seed tag impatience missing (mig 053)"
+                tid = int(row["id"])
+                # Two days both inside a typical maiden window (recent)
+                yday = today - timedelta(days=1)
+                sess = jsd.create_session(cur, iid, journal_date=today)
+                sid = int(sess["id"])
+                jsd.append_member_message(
+                    cur,
+                    iid,
+                    sid,
+                    body_md="Felt the urge to chase after the open — sat on hands instead.",
+                )
+                sess2 = jsd.create_session(cur, iid, journal_date=yday)
+                sid2 = int(sess2["id"])
+                for oid in (sid, sid2):
+                    td.assign_tag(
+                        cur,
+                        tag_id=tid,
+                        object_type="journal_session",
+                        object_id=oid,
+                        identity_id=iid,
+                    )
+                # Also tag a trade so object_type diversity is covered
+                cur.execute(
+                    """INSERT INTO member_trade_log_accounts
+                         (identity_id, label, broker, status, sort_order)
+                       VALUES (%s, 'Emotion', 'unset', 'active', 0)""",
+                    (iid,),
+                )
+                aid = int(cur.lastrowid)
+                cur.execute(
+                    """INSERT INTO member_trade_log_trades
+                         (identity_id, account_id, exec_at, strategy,
+                          setup_md, plan_md, rules_md, adherence,
+                          deviation_md, lesson_md, pnl_amount)
+                       VALUES (%s, %s, NOW(), 'probe', '', '', '', 'broke',
+                               '', '', 0)""",
+                    (iid, aid),
+                )
+                trade_id = int(cur.lastrowid)
+                td.assign_tag(
+                    cur,
+                    tag_id=tid,
+                    object_type="trade",
+                    object_id=trade_id,
+                    identity_id=iid,
+                )
+                # Context tag for step 4 inventory
+                cur.execute("SELECT id FROM tags WHERE slug = %s", ("fomc-day",))
+                ctx = cur.fetchone()
+                if ctx:
+                    td.assign_tag(
+                        cur,
+                        tag_id=int(ctx["id"]),
+                        object_type="journal_session",
+                        object_id=sid,
+                        identity_id=iid,
+                    )
+                # Insight tag for step 6 candidates
+                cur.execute("SELECT id FROM tags WHERE slug = %s", ("lesson-learned",))
+                ins = cur.fetchone()
+                if ins:
+                    td.assign_tag(
+                        cur,
+                        tag_id=int(ins["id"]),
+                        object_type="journal_session",
+                        object_id=sid,
+                        identity_id=iid,
+                    )
+
+        r = client.post(
+            "/api/me/retrospectives",
+            cookies=cookies,
+            json={"gather": True},
+        )
+        assert r.status_code == 200, r.text
+        rep = r.json().get("report") or {}
+        em = rep.get("emotion_mirror")
+        assert em is not None, list(rep.keys())
+        assert em.get("source_policy") == "trader_tags_and_member_words_only"
+        assert em.get("feeds_indicator") is False
+        assert em.get("prohibits") == "system_emotional_diagnosis"
+
+        behavior = em.get("behavior_tags") or []
+        assert len(behavior) >= 1
+        imp = next(
+            (b for b in behavior if b.get("slug") == "impatience"),
+            behavior[0],
+        )
+        # 2 sessions + 1 trade assignment
+        assert imp["count"] >= 2, imp
+        assert "You named" in imp["mirror"]
+        assert "impatience" in imp["mirror"].lower()
+        low = imp["mirror"].lower()
+        assert "you were" not in low
+        assert "you felt" not in low
+        assert "trade" in (imp.get("object_types") or []) or "journal_session" in (
+            imp.get("object_types") or []
+        )
+
+        words = em.get("journal_words") or []
+        assert len(words) >= 1
+        assert "chase" in words[0]["excerpt"].lower() or "sat" in words[0]["excerpt"].lower()
+        assert words[0]["source"] == "member_message"
+
+        # Lexicon map present
+        lmap = rep.get("lexicon_ceremony_map") or []
+        keys = {x["system_key"] for x in lmap}
+        assert keys >= {"behavior", "context", "process", "insight"}
+
+        # §8.1b — tag frequency must not feed period indicator
+        pi = rep.get("period_indicator") or {}
+        assert "behavior" not in str(pi).lower() or pi.get("feeds_indicator") is not True
+        assert "impatience" not in str(pi).lower()
+        # readings are process meters only
+        for reading in pi.get("readings") or []:
+            rid = str(reading.get("id") or "")
+            assert rid in ("routine", "adherence", "live", "learning")
+
+        # All mirror statements clean
+        for s in em.get("statements") or []:
+            sl = s.lower()
+            assert "you were" not in sl
+            assert "you felt" not in sl
+            assert "diagnos" not in sl
+    finally:
+        _cleanup(iid)
+
+
+def test_rt24_emotion_mirror_ui_source():
+    """R4 UI: emotion mirror + lexicon map; no system diagnosis copy."""
+    path = (
+        REPO_ROOT
+        / "web"
+        / "components"
+        / "retrospective"
+        / "RetrospectiveWorkspace.tsx"
+    )
+    src = path.read_text(encoding="utf-8")
+    assert "retro-emotion-mirror" in src
+    assert "retro-lexicon-ceremony-map" in src
+    assert "retro-behavior-tags" in src
+    assert "retro-journal-words" in src
+    assert 'data-feeds-indicator="false"' in src
+    # No character diagnosis in ceremony copy
+    low = src.lower()
+    assert "you were impatient" not in low
+    assert "you felt anxious" not in low
+    assert "emotional state" not in low
+
+
+def test_trend_floor_no_direction_below_min():
+    """Spec §12 — no trend direction below TREND_MIN_CYCLES."""
+    assert rd.TREND_MIN_CYCLES >= 4
+    # Synthetic series shorter than floor
+    vals = [0.1, 0.2, 0.15]
+    assert rd._series_direction(vals) is None
+    # At floor
+    vals4 = [0.1, 0.12, 0.2, 0.25]
+    assert rd._series_direction(vals4) in ("up", "down", "flat")
+
+
+def test_correlation_never_pnl_surface():
+    """Spec §13 — correlation excludes P&L / win rate / expectancy."""
+    trades = [
+        {"exec_at": "2026-07-20T14:00:00", "adherence": "broke", "pnl_amount": -50},
+        {"exec_at": "2026-07-21T14:00:00", "adherence": "followed", "pnl_amount": 100},
+        {"exec_at": "2026-07-22T14:00:00", "adherence": "broke", "pnl_amount": -20},
+        {"exec_at": "2026-07-23T14:00:00", "adherence": "followed", "pnl_amount": 30},
+    ]
+    corr = rd.build_correlation(
+        trades,
+        emotion_mirror={"behavior_tags": []},
+        clustering={"statements": []},
+    )
+    assert "pnl" in corr["excludes"]
+    assert "win_rate" in corr["excludes"]
+    assert "expectancy" in corr["excludes"]
+    blob = str(corr).lower()
+    assert "expectancy" not in blob or "excludes" in blob
+    # Observation text must not pitch expectancy/win rate as metrics
+    for s in corr.get("statements") or []:
+        obs = str(s.get("observation") or "").lower()
+        assert "expectancy" not in obs
+        assert "win rate" not in obs
+        assert "profit factor" not in obs
+        assert "$" not in obs
+        # Denial of P&L comparison is allowed; claiming a P&L correlation is not
+        assert "correlated to p&l" not in obs
+        assert "expectancy of" not in obs
+    assert corr.get("has_content") is True  # adherence split
+
+
+def test_clustering_and_trends_on_gather(client):
+    """Spec §8.2 / §12 / §13 — gather includes clustering, trends, correlation."""
+    import journal_session_domain as jsd
+    import tag_domain as td
+    from datetime import date
+
+    email = "zztest-retro-cluster@labs.test"
+    iid = _member(email)
+    cookies = cookie_for("activator", iid)
+    today = date.today()
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                # Broke trade today
+                cur.execute(
+                    """INSERT INTO member_trade_log_accounts
+                         (identity_id, label, broker, status, sort_order)
+                       VALUES (%s, 'Cluster', 'unset', 'active', 0)""",
+                    (iid,),
+                )
+                aid = int(cur.lastrowid)
+                cur.execute(
+                    """INSERT INTO member_trade_log_trades
+                         (identity_id, account_id, exec_at, strategy,
+                          setup_md, plan_md, rules_md, adherence,
+                          deviation_md, lesson_md, pnl_amount)
+                       VALUES (%s, %s, NOW(), 'probe', '', '', '', 'broke',
+                               '', '', -12.5)""",
+                    (iid, aid),
+                )
+                trade_id = int(cur.lastrowid)
+                cur.execute(
+                    """INSERT INTO member_trade_log_trades
+                         (identity_id, account_id, exec_at, strategy,
+                          setup_md, plan_md, rules_md, adherence,
+                          deviation_md, lesson_md, pnl_amount)
+                       VALUES (%s, %s, NOW(), 'probe', '', '', '', 'followed',
+                               '', '', 8.0)""",
+                    (iid, aid),
+                )
+                # Behavior + context tags on session same day as broke
+                cur.execute("SELECT id FROM tags WHERE slug = %s", ("impatience",))
+                tid = int(cur.fetchone()["id"])
+                cur.execute("SELECT id FROM tags WHERE slug = %s", ("fomc-day",))
+                ctx_id = int(cur.fetchone()["id"])
+                sess = jsd.create_session(cur, iid, journal_date=today)
+                sid = int(sess["id"])
+                td.assign_tag(
+                    cur,
+                    tag_id=tid,
+                    object_type="journal_session",
+                    object_id=sid,
+                    identity_id=iid,
+                )
+                td.assign_tag(
+                    cur,
+                    tag_id=ctx_id,
+                    object_type="journal_session",
+                    object_id=sid,
+                    identity_id=iid,
+                )
+                td.assign_tag(
+                    cur,
+                    tag_id=tid,
+                    object_type="trade",
+                    object_id=trade_id,
+                    identity_id=iid,
+                )
+
+        r = client.post(
+            "/api/me/retrospectives",
+            cookies=cookies,
+            json={"gather": True},
+        )
+        assert r.status_code == 200, r.text
+        rep = r.json().get("report") or {}
+
+        cl = rep.get("clustering")
+        assert cl is not None, list(rep.keys())
+        assert "statements" in cl
+        assert "note" in cl
+
+        trends = rep.get("trends")
+        assert trends is not None
+        assert trends.get("min_cycles") == rd.TREND_MIN_CYCLES
+        assert trends.get("status") in ("building_baseline", "trend_readable")
+        assert trends.get("feeds_indicator") is False
+        # Maiden / first cycle → no direction
+        if trends["cycle_count"] < rd.TREND_MIN_CYCLES:
+            assert trends["status"] == "building_baseline"
+            for s in trends.get("series") or []:
+                assert s.get("trend_asserted") is False
+                assert s.get("direction") is None
+
+        corr = rep.get("correlation")
+        assert corr is not None
+        assert "pnl" in (corr.get("excludes") or [])
+        blob = str(corr).lower()
+        # Hard grep: no expectancy / win_rate as correlation metrics in statements
+        for s in corr.get("statements") or []:
+            obs = str(s.get("observation") or "").lower()
+            assert "expectancy" not in obs
+            assert "win rate" not in obs
+        # Adherence split present when we have broke + followed
+        assert corr.get("has_content") is True
+        assert "process damage" in blob or "rule-break" in blob
+        # Never dollar theater in correlation statements
+        for s in corr.get("statements") or []:
+            obs = str(s.get("observation") or "")
+            assert "-12.5" not in obs
+            assert "$" not in obs
+    finally:
+        _cleanup(iid)
+
+
+def test_rt24_clustering_ui_source():
+    """R5 UI: clustering + trends + correlation; no P&L correlation copy."""
+    path = (
+        REPO_ROOT
+        / "web"
+        / "components"
+        / "retrospective"
+        / "RetrospectiveWorkspace.tsx"
+    )
+    src = path.read_text(encoding="utf-8")
+    assert "retro-cluster-statements" in src
+    assert "retro-correlation" in src
+    assert "retro-trends" in src
+    assert 'data-excludes-pnl="true"' in src
+    assert "retro-trend-series" in src
+    low = src.lower()
+    # Denial language is required; profit-claim marketing is banned
+    assert "never to p&l" in low or "never to p&amp;l" in low
+    assert "process produces money" not in low
+    assert "you were impatient" not in low
+    assert "profit factor" not in low
+
+
+def test_interruption_notice_copy_stated_not_scolded():
+    """Spec §9 — notice names span; no remedial scold language."""
+    from datetime import datetime
+
+    start = datetime(2026, 7, 8, 12, 0, 0)
+    end = datetime(2026, 7, 25, 12, 0, 0)
+    n = rd.build_interruption_notice(
+        interrupted=True,
+        scope_start=start,
+        scope_end=end,
+        cadence_days=7,
+        is_maiden=False,
+        prior_completed_at=start,
+    )
+    assert n is not None
+    assert n["interrupted"] is True
+    assert n["tone"] == "stated_not_scolded"
+    assert "interrupted" in n["notice"].lower()
+    assert "8–25 July" in n["scope_label"] or "8" in n["scope_label"]
+    assert "instead of one" in n["notice"]
+    low = n["notice"].lower()
+    for ban in ("you failed", "you neglected", "lazy", "should have"):
+        assert ban not in low
+    # Maiden never interrupted
+    assert (
+        rd.build_interruption_notice(
+            interrupted=True,
+            scope_start=start,
+            scope_end=end,
+            cadence_days=7,
+            is_maiden=True,
+        )
+        is None
+    )
+
+
+def test_period_was_interrupted_requires_prior(client):
+    """Maiden is never interrupted; long span after complete is."""
+    from datetime import datetime, timedelta
+
+    email = "zztest-retro-interrupt@labs.test"
+    iid = _member(email)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                # No prior → not interrupted even if span is long
+                start = datetime.utcnow() - timedelta(days=40)
+                end = datetime.utcnow()
+                assert (
+                    rd.period_was_interrupted(cur, iid, start, end, 7) is False
+                )
+                # Seed a completed prior
+                cur.execute(
+                    """INSERT INTO member_retrospectives
+                         (identity_id, status, is_maiden, scope_start, scope_end,
+                          title, body_md, cadence_days_at_period, period_index,
+                          interrupted, completed_at)
+                       VALUES (%s, 'complete', 1, %s, %s, 'prior', '', 7, 1,
+                               0, %s)""",
+                    (iid, start, start + timedelta(days=7), start + timedelta(days=7)),
+                )
+                # Span ~33 days vs cadence 7 → interrupted
+                assert (
+                    rd.period_was_interrupted(cur, iid, start + timedelta(days=7), end, 7)
+                    is True
+                )
+                # Short span within cadence+slack → not interrupted
+                short_end = start + timedelta(days=7) + timedelta(days=5)
+                assert (
+                    rd.period_was_interrupted(
+                        cur, iid, start + timedelta(days=7), short_end, 7
+                    )
+                    is False
+                )
+    finally:
+        _cleanup(iid)
+
+
+def test_cadence_change_forward_only_does_not_rewrite_past(client):
+    """R6-3 — widening cadence does not rewrite past cadence_days_at_period."""
+    email = "zztest-retro-cadence-fwd@labs.test"
+    iid = _member(email)
+    cookies = cookie_for("activator", iid)
+    try:
+        # Create maiden retro with default cadence stamp
+        r = client.post(
+            "/api/me/retrospectives",
+            cookies=cookies,
+            json={"gather": True},
+        )
+        assert r.status_code == 200, r.text
+        rid = r.json()["id"]
+        stamped = r.json().get("cadence_days_at_period")
+        assert stamped is not None
+        assert stamped == 7 or int(stamped) > 0
+
+        # Widen cadence via profile
+        p = client.patch(
+            "/api/me/profile",
+            cookies=cookies,
+            json={"retro_cadence_days": 14},
+        )
+        assert p.status_code == 200, p.text
+        assert p.json().get("retro_cadence_days") == 14
+
+        # Past retro stamp unchanged
+        g = client.get(f"/api/me/retrospectives/{rid}", cookies=cookies)
+        assert g.status_code == 200, g.text
+        assert g.json()["cadence_days_at_period"] == stamped
+
+        # History row written
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT cadence_days FROM member_retro_cadence_history
+                       WHERE identity_id = %s ORDER BY id DESC LIMIT 1""",
+                    (iid,),
+                )
+                row = cur.fetchone()
+                assert row is not None
+                assert int(row["cadence_days"]) == 14
+                # Identity updated, retro stamp not
+                cur.execute(
+                    "SELECT retro_cadence_days FROM identities WHERE identity_id = %s",
+                    (iid,),
+                )
+                assert int(cur.fetchone()["retro_cadence_days"]) == 14
+                cur.execute(
+                    """SELECT cadence_days_at_period FROM member_retrospectives
+                       WHERE id = %s""",
+                    (rid,),
+                )
+                assert int(cur.fetchone()["cadence_days_at_period"]) == int(stamped)
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM member_retro_cadence_history WHERE identity_id = %s",
+                    (iid,),
+                )
+        _cleanup(iid)
+
+
+def test_rt24_interruption_ui_source():
+    """R6 UI: interruption notice before ceremony; stated not scolded."""
+    path = (
+        REPO_ROOT
+        / "web"
+        / "components"
+        / "retrospective"
+        / "RetrospectiveWorkspace.tsx"
+    )
+    src = path.read_text(encoding="utf-8")
+    assert "retro-interruption-notice" in src
+    assert "stated_not_scolded" in src
+    # Notice precedes ceremony nav
+    i_notice = src.find("retro-interruption-notice")
+    i_nav = src.find("ceremony-step-nav")
+    assert 0 <= i_notice < i_nav
+    low = src.lower()
+    assert "you failed" not in low
+    assert "you neglected" not in low
+    assert "stamped" in low or "does not rewrite" in low

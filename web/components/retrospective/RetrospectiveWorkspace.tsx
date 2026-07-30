@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Retrospective workspace — Spec v0.5 §6 render order (RT2-3).
- * Contract: Architecture/12-retrospective-report-dto.md
- * Copy: Tango RT0-3 (no success/fail moralizing; book last collapsed).
+ * Retrospective workspace — Spec v0.7.1 §6 ceremony (R2).
+ * Fixed-order sections, all present, current step focused — not a wizard.
+ * Contract: Architecture/12-retrospective-report-dto.md · carry-forward first · book last.
  */
 
 import Link from "next/link";
@@ -130,31 +130,84 @@ async function setPnlExpanded(expanded: boolean): Promise<void> {
   }
 }
 
-function Section({
+/** Spec v0.7.1 §6.1 — nine fixed steps; not a Next-button wizard. */
+const CEREMONY_STEPS = [
+  { id: 1, key: "commitments", title: "1 · Commitments" },
+  { id: 2, key: "practice", title: "2 · Practice" },
+  { id: 3, key: "obstacles", title: "3 · Obstacles" },
+  { id: 4, key: "clustered", title: "4 · Where it clustered" },
+  { id: 5, key: "cause", title: "5 · What I name as the cause" },
+  { id: 6, key: "worked", title: "6 · What worked" },
+  { id: 7, key: "eva", title: "7 · Expected versus actual" },
+  { id: 8, key: "onething", title: "8 · The one thing" },
+  { id: 9, key: "book", title: "9 · The book" },
+] as const;
+
+function CeremonyStep({
+  step,
   title,
   children,
   testId,
+  focused,
+  onFocus,
   dashed,
 }: {
+  step: number;
   title: string;
   children: ReactNode;
   testId?: string;
+  focused: boolean;
+  onFocus: () => void;
   dashed?: boolean;
 }) {
   return (
     <section
+      id={`ceremony-step-${step}`}
       data-testid={testId}
-      className={`surface-card border p-5 ${
+      data-ceremony-step={step}
+      data-focused={focused ? "1" : "0"}
+      className={[
+        "scroll-mt-4 rounded-[var(--radius-lg)] border p-5 transition-shadow",
         dashed
           ? "border-dashed border-[var(--color-separator)]"
-          : "border-[var(--color-separator)]"
-      }`}
+          : "border-[var(--color-separator)]",
+        focused
+          ? "bg-[var(--color-surface)] shadow-[var(--elevation-2)] ring-2 ring-[var(--color-tint)] ring-offset-2 ring-offset-[var(--color-canvas)]"
+          : "surface-card opacity-95",
+      ].join(" ")}
     >
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-        {title}
-      </h2>
+      <button
+        type="button"
+        className="flex w-full items-baseline justify-between gap-2 text-left"
+        onClick={onFocus}
+        data-testid={`ceremony-step-focus-${step}`}
+      >
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+          {title}
+        </h2>
+        <span className="text-[10px] font-medium text-[var(--color-label-tertiary)]">
+          {focused ? "Focused" : "Focus"}
+        </span>
+      </button>
       <div className="mt-3">{children}</div>
     </section>
+  );
+}
+
+function NothingHere({
+  testId,
+  children,
+}: {
+  testId?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <p
+      className="text-sm text-[var(--color-label-secondary)]"
+      data-testid={testId}
+    >
+      {children ?? "Nothing here."}
+    </p>
   );
 }
 
@@ -174,6 +227,8 @@ export default function RetrospectiveWorkspace({
   /** Proposed plans from agent — local accept/reject before create. */
   const [proposedPlans, setProposedPlans] = useState<Dict[]>([]);
   const [planEdits, setPlanEdits] = useState<Record<number, string>>({});
+  /** Spec §6.1 — current ceremony step focused (all steps still visible). */
+  const [focusedStep, setFocusedStep] = useState(1);
 
   const load = useCallback(() => {
     setErr(null);
@@ -282,16 +337,18 @@ export default function RetrospectiveWorkspace({
     }
   }
 
-  async function runAnalysis() {
+  async function runSequenceAgent() {
     setBusy(true);
     setErr(null);
     try {
-      const d = await analyzeRetrospective(retroId);
+      const d = await analyzeRetrospective(retroId, {
+        focused_step: focusedStep,
+      });
       setData(d);
-      const ag = asDict(d.agent);
-      setProposedPlans(asList(ag?.habit_plans));
+      // Sequence agent does not prescribe habit plans (Spec §16)
+      setProposedPlans([]);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Analysis failed");
+      setErr(e instanceof Error ? e.message : "Sequence agent failed");
     } finally {
       setBusy(false);
     }
@@ -369,6 +426,16 @@ export default function RetrospectiveWorkspace({
   const integrity =
     asDict(report?.integrity_review) ||
     asDict(asDict(report?.process)?.integrity);
+  /** Spec v0.7.1 §7 — period only; never co-display with Journey rolling */
+  const periodIndicator = asDict(report?.period_indicator);
+  /** Spec v0.7.1 §8.1 — Behavior tags + member journal words only */
+  const emotionMirror = asDict(report?.emotion_mirror);
+  /** Spec v0.7.1 §8.1a — category → ceremony step */
+  const lexiconMap = asList(report?.lexicon_ceremony_map);
+  /** Spec v0.7.1 §8.2 / §12 / §13 — R5 */
+  const clustering = asDict(report?.clustering);
+  const trends = asDict(report?.trends);
+  const correlation = asDict(report?.correlation);
   const book =
     asDict(report?.book_performance) || asDict(report?.pnl);
   const deviations = asList(report?.deviations);
@@ -376,9 +443,44 @@ export default function RetrospectiveWorkspace({
   const expectedVsActual = report?.expected_vs_actual;
   const carryForward = asDict(report?.carry_forward);
   const comparison = asDict(data?.comparison);
+  const behaviorTags = asList(emotionMirror?.behavior_tags);
+  const contextTags = asList(emotionMirror?.context_tags);
+  const insightTags = asList(emotionMirror?.insight_tags);
+  const journalWords = asList(emotionMirror?.journal_words);
+  const clusterStatements = asList(clustering?.statements);
+  const correlationStatements = asList(correlation?.statements);
+  const trendSeries = asList(trends?.series);
+  const tagTrendSeries = asList(trends?.tag_frequency_series);
   const isMaiden = Boolean(
     data?.is_maiden || asDict(report?.meta)?.is_maiden,
   );
+
+  function Step({
+    step,
+    title,
+    children,
+    testId,
+    dashed,
+  }: {
+    step: number;
+    title: string;
+    children: ReactNode;
+    testId?: string;
+    dashed?: boolean;
+  }) {
+    return (
+      <CeremonyStep
+        step={step}
+        title={title}
+        testId={testId}
+        dashed={dashed}
+        focused={focusedStep === step}
+        onFocus={() => setFocusedStep(step)}
+      >
+        {children}
+      </CeremonyStep>
+    );
+  }
 
   if (err && !data) {
     return (
@@ -464,14 +566,103 @@ export default function RetrospectiveWorkspace({
         </p>
       )}
 
-      {/* 1. Carry-forward (§6.0) — FIRST after chrome; absent for maiden only */}
-      {!isMaiden && (
-        <Section title="Carry-forward" testId="retro-carry-forward">
+      {/* Spec §9 interruption notice — before ceremony body; stated, not scolded */}
+      {data.interrupted && (
+        <div
+          className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill)]/50 px-4 py-3 text-sm text-[var(--color-label)]"
+          data-testid="retro-interruption-notice"
+          role="status"
+          data-tone={str(
+            asDict(data.interruption)?.tone,
+            "stated_not_scolded",
+          )}
+        >
+          <p className="font-medium">
+            {str(
+              asDict(data.interruption)?.notice,
+              `Your cadence was interrupted — no review completed for a prior period. This one covers ${fmtDate(data.scope_start)} → ${fmtDate(data.scope_end)}.`,
+            )}
+          </p>
+          <p className="mt-1 text-xs text-[var(--color-label-tertiary)]">
+            Named so unequal windows are not silently compared.
+            {data.cadence_days_at_period != null && (
+              <>
+                {" "}
+                Cadence at this period: {num(data.cadence_days_at_period)}{" "}
+                days (stamped — later setting changes do not rewrite it).
+              </>
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* Spec §6.1 — all steps listed; click focuses without hiding others */}
+      <nav
+        className="flex flex-wrap gap-1.5"
+        aria-label="Ceremony steps"
+        data-testid="ceremony-step-nav"
+      >
+        {CEREMONY_STEPS.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => {
+              setFocusedStep(s.id);
+              document
+                .getElementById(`ceremony-step-${s.id}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            className={[
+              "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+              focusedStep === s.id
+                ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]"
+                : "bg-[var(--color-fill)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
+            ].join(" ")}
+            data-testid={`ceremony-nav-${s.id}`}
+          >
+            {s.id}
+          </button>
+        ))}
+      </nav>
+
+      {/* Spec §8.1a — lexicon categories map onto ceremony steps */}
+      {lexiconMap.length > 0 && (
+        <div
+          className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-3 py-2"
+          data-testid="retro-lexicon-ceremony-map"
+        >
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-label-tertiary)]">
+            Lexicon → ceremony
+          </p>
+          <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--color-label-secondary)]">
+            {lexiconMap.map((row, i) => {
+              const steps = Array.isArray(row.ceremony_steps)
+                ? (row.ceremony_steps as unknown[])
+                    .map((n) => String(n))
+                    .join(" · ")
+                : "";
+              return (
+                <li key={`${str(row.system_key)}-${i}`}>
+                  <span className="font-medium text-[var(--color-label)]">
+                    {str(row.label)}
+                  </span>
+                  {steps ? ` → step ${steps}` : ""}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* 1. Commitments / carry-forward — always present (§6.1 nothing-here) */}
+      <Step step={1} title="1 · Commitments" testId="retro-carry-forward">
           <p className="mb-3 text-xs text-[var(--color-label-tertiary)]">
             Plans you committed to — review the work, not yourself. Set Kept,
             Partial, or Lapsed for each plan.
           </p>
-          {carryForward && asList(carryForward.plans).length > 0 ? (
+          {isMaiden ? (
+            <NothingHere testId="retro-cf-maiden" />
+          ) : carryForward && asList(carryForward.plans).length > 0 ? (
             <ul className="space-y-3 text-sm">
               {asList(carryForward.plans).map((p, i) => {
                 const planId = Number(p.id);
@@ -565,18 +756,64 @@ export default function RetrospectiveWorkspace({
               {str(carryForward?.empty_message, CARRY_FORWARD_EMPTY)}
             </p>
           )}
-        </Section>
-      )}
+      </Step>
 
-      {/* 2. Process performance (§6.1) */}
-      <Section title="Process performance" testId="retro-process">
+      {/* 2. Practice — period-scoped indicator only (Spec §7; never + rolling) */}
+      <Step step={2} title="2 · Practice" testId="retro-process">
         <p className="text-xs text-[var(--color-label-tertiary)]">
-          {str(
-            process?.note,
-            "How you practiced in this window — habits, not P&L theater.",
-          )}
+          Period readings for this review window only. Journey keeps rolling
+          health separately — never side by side.
         </p>
-        {process ? (
+
+        {periodIndicator ? (
+          <div
+            className="mt-3"
+            data-testid="retro-period-indicator"
+            data-context={str(periodIndicator.context, "period")}
+            data-status={str(periodIndicator.status)}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+              Context: period
+            </p>
+            <p className="mt-1 text-xl font-semibold text-[var(--color-label)]">
+              {str(periodIndicator.headline)}
+            </p>
+            <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
+              {str(
+                periodIndicator.summary,
+                str(periodIndicator.pattern, ""),
+              )}
+            </p>
+            {asList(periodIndicator.readings).length > 0 && (
+              <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                {asList(periodIndicator.readings).map((r) => {
+                  const id = str(r.id);
+                  const unit = str(r.unit);
+                  let display = num(r.value);
+                  if (r.value != null && unit === "rate") {
+                    display = `${Math.round(Number(r.value) * 100)}%`;
+                  }
+                  return (
+                    <div key={id}>
+                      <dt className="text-[var(--color-label-tertiary)]">
+                        {str(r.label)}
+                      </dt>
+                      <dd className="text-lg font-semibold tabular-nums">
+                        {display}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            )}
+            <p className="mt-2 text-xs text-[var(--color-label-tertiary)]">
+              n={num(periodIndicator.trade_count)} trades · window{" "}
+              {num(periodIndicator.window_days)}d
+              {periodIndicator.status === "not_enough_yet" &&
+                ` · floor ${num(periodIndicator.min_inference_n)}`}
+            </p>
+          </div>
+        ) : process ? (
           <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
             <div>
               <dt className="text-[var(--color-label-tertiary)]">
@@ -584,8 +821,7 @@ export default function RetrospectiveWorkspace({
               </dt>
               <dd className="text-lg font-semibold tabular-nums">
                 {num(
-                  routine?.activity_days_per_week ??
-                    process.trade_days,
+                  routine?.activity_days_per_week ?? process.trade_days,
                 )}
               </dd>
             </div>
@@ -620,81 +856,103 @@ export default function RetrospectiveWorkspace({
               </dt>
               <dd className="tabular-nums">
                 {num(
-                  learning?.lesson_days_per_week ??
-                    process.lessons_completed,
+                  learning?.lesson_days_per_week ?? process.lessons_completed,
                 )}
               </dd>
             </div>
           </dl>
         ) : (
-          <p className="text-sm text-[var(--color-label-secondary)]">
-            No process report yet — run gather.
+          <NothingHere testId="retro-process-empty" />
+        )}
+        {/* Rolling integrity grade intentionally not rendered here (§7 one frame). */}
+        {integrity && (
+          <p className="sr-only" data-testid="retro-integrity-hidden-rolling">
+            Rolling integrity available for comparison only, not co-displayed.
           </p>
         )}
-      </Section>
+      </Step>
 
-      {/* 3. Process Integrity (§6.2) */}
-      <Section title="Process Integrity review" testId="retro-integrity">
-        {integrity ? (
-          <div>
-            <p className="text-2xl font-semibold text-[var(--color-label)]">
-              {str(integrity.grade)}
-              {integrity.overall_percent != null && (
-                <span className="ml-2 text-base font-medium text-[var(--color-label-secondary)]">
-                  {str(integrity.overall_percent)}%
-                </span>
-              )}
-              {integrity.direction != null && integrity.direction !== "" ? (
-                <span className="ml-2 text-sm font-normal text-[var(--color-label-secondary)]">
-                  · {str(integrity.direction)}
-                </span>
-              ) : null}
-            </p>
-            <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-              {str(integrity.blurb, "")}
-            </p>
-            <p className="mt-2 text-xs text-[var(--color-label-tertiary)]">
+      {/* 3. Obstacles — deviations + emotion mirror (Spec §8.1) */}
+      <Step step={3} title="3 · Obstacles" testId="retro-deviations">
+        <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
+          What you named — tags you applied and words you wrote. Not a diagnosis.
+        </p>
+
+        {/* Emotion mirror — Behavior tags + journal words only */}
+        <div
+          className="mb-4 space-y-3"
+          data-testid="retro-emotion-mirror"
+          data-feeds-indicator="false"
+        >
+          <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-label-tertiary)]">
+            Emotion mirror · your language
+          </p>
+          {behaviorTags.length === 0 && journalWords.length === 0 ? (
+            <NothingHere testId="retro-emotion-mirror-empty">
               {str(
-                integrity.note,
-                "Integrity describes how you practiced — not whether the book made money.",
+                emotionMirror?.empty_message,
+                "Nothing from Behavior tags or your journal words this period.",
               )}
-            </p>
-            {asList(integrity.drivers).length > 0 && (
-              <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                {asList(integrity.drivers).map((m) => (
-                  <li
-                    key={str(m.id)}
-                    className="rounded-[var(--radius-md)] bg-[var(--color-fill-quaternary)] px-3 py-2 text-sm"
-                  >
-                    <span className="font-medium">{str(m.label)}</span>
-                    {m.percent != null && (
-                      <span className="ml-2 tabular-nums text-[var(--color-label-secondary)]">
-                        {str(m.percent)}%
-                      </span>
-                    )}
-                    {m.grade != null && (
-                      <span className="ml-1 text-xs text-[var(--color-label-tertiary)]">
-                        {str(m.grade)}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-[var(--color-label-secondary)]">
-            Integrity snapshot appears after gather.
-          </p>
-        )}
-      </Section>
+            </NothingHere>
+          ) : (
+            <>
+              {behaviorTags.length > 0 && (
+                <ul
+                  className="space-y-2 text-sm"
+                  data-testid="retro-behavior-tags"
+                >
+                  {behaviorTags.map((t, i) => (
+                    <li
+                      key={`${str(t.slug)}-${i}`}
+                      data-testid={`retro-behavior-tag-${i}`}
+                      data-source="tag"
+                      className="rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-2"
+                    >
+                      <p className="text-[var(--color-label)]">
+                        {str(t.mirror)}
+                      </p>
+                      <p className="mt-0.5 text-[11px] tabular-nums text-[var(--color-label-tertiary)]">
+                        ×{num(t.count)}
+                        {Array.isArray(t.days) && t.days.length > 0
+                          ? ` · ${(t.days as unknown[])
+                              .map((d) => str(d))
+                              .filter((d) => d !== "—")
+                              .join(", ")}`
+                          : ""}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {journalWords.length > 0 && (
+                <ul
+                  className="space-y-2 text-sm"
+                  data-testid="retro-journal-words"
+                >
+                  {journalWords.map((j, i) => (
+                    <li
+                      key={`${str(j.message_id)}-${i}`}
+                      data-testid={`retro-journal-word-${i}`}
+                      data-source="member_message"
+                      className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-separator)] px-3 py-2"
+                    >
+                      <p className="text-[var(--color-label)]">
+                        {str(j.mirror)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
 
-      {/* 4. Deviations (§6.3) */}
-      <Section title="Bounded deviations" testId="retro-deviations">
+        {/* Process deviations inventory (facts, not tag scores) */}
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[var(--color-label-tertiary)]">
+          Process inventory
+        </p>
         {deviations.length === 0 ? (
-          <p className="text-sm text-[var(--color-label-secondary)]">
-            No process deviations listed for this window.
-          </p>
+          <NothingHere testId="retro-deviations-empty" />
         ) : (
           <ul className="space-y-2 text-sm">
             {deviations.map((d, i) => (
@@ -724,22 +982,140 @@ export default function RetrospectiveWorkspace({
             ))}
           </ul>
         )}
-      </Section>
+      </Step>
 
-      {/* 5. What worked (§6.4) — process strengths; adverse rows never show $ */}
-      <Section title="What worked" testId="retro-what-worked">
+      {/* 4. Clustering — co-occurrence + context inventory (Spec §8.2 · R5) */}
+      <Step step={4} title="4 · Where it clustered" testId="retro-clustered">
         <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
-          Process strengths in this window — not P&amp;L theater.
+          Co-occurrence only — observations stop here. You name the cause in
+          step 5. No market-regime inference.
         </p>
-        {whatWorked.length === 0 ? (
-          <p
-            className="text-sm text-[var(--color-label-secondary)]"
-            data-testid="retro-what-worked-empty"
-          >
-            No process strengths listed for this window yet. Strengths show up
-            when adherence runs, routine stretches, or process-held days are
-            visible in the data.
+
+        {clusterStatements.length === 0 && contextTags.length === 0 ? (
+          <NothingHere testId="retro-clustered-empty">
+            {str(
+              clustering?.empty_message,
+              "No co-occurrence stood out this period — inventory only.",
+            )}
+          </NothingHere>
+        ) : (
+          <>
+            {clusterStatements.length > 0 && (
+              <ul
+                className="mb-4 space-y-2 text-sm"
+                data-testid="retro-cluster-statements"
+              >
+                {clusterStatements.map((s, i) => (
+                  <li
+                    key={i}
+                    data-testid={`retro-cluster-stmt-${i}`}
+                    data-kind={str(s.kind, "")}
+                    className="rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-2"
+                  >
+                    <p className="text-[var(--color-label)]">
+                      {str(s.observation)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {contextTags.length > 0 && (
+              <>
+                <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                  Context you marked
+                </p>
+                <ul
+                  className="space-y-2 text-sm"
+                  data-testid="retro-context-tags"
+                >
+                  {contextTags.map((t, i) => (
+                    <li
+                      key={`${str(t.slug)}-${i}`}
+                      data-testid={`retro-context-tag-${i}`}
+                      className="flex flex-wrap items-baseline justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-2"
+                    >
+                      <p className="text-[var(--color-label)]">
+                        {str(t.mirror)}
+                      </p>
+                      <p className="tabular-nums text-[var(--color-label-secondary)]">
+                        ×{num(t.count)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        )}
+        {clustering?.note != null && (
+          <p className="mt-2 text-xs text-[var(--color-label-tertiary)]">
+            {str(clustering.note)}
           </p>
+        )}
+
+        {/* Correlation — process damage only; never P&L (§13) */}
+        <div
+          className="mt-5 border-t border-[var(--color-separator)] pt-4"
+          data-testid="retro-correlation"
+          data-excludes-pnl="true"
+        >
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[var(--color-label-tertiary)]">
+            Correlation · process only
+          </p>
+          <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
+            Behavior to process and avoidable damage — never to P&amp;L, win
+            rate, or expectancy.
+          </p>
+          {correlationStatements.length === 0 ? (
+            <NothingHere testId="retro-correlation-empty">
+              {str(
+                correlation?.empty_message,
+                "Not enough paired process observations yet.",
+              )}
+            </NothingHere>
+          ) : (
+            <ul className="space-y-2 text-sm" data-testid="retro-correlation-list">
+              {correlationStatements.map((s, i) => (
+                <li
+                  key={i}
+                  data-testid={`retro-correlation-${i}`}
+                  data-layer={str(s.layer, "")}
+                  className="rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-2"
+                >
+                  <p className="text-[var(--color-label)]">
+                    {str(s.observation)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Step>
+
+      {/* 5. Cause — trader-authored */}
+      <Step step={5} title="5 · What I name as the cause" testId="retro-cause">
+        <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
+          You name the cause. The system does not diagnose.
+        </p>
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          disabled={data.status === "complete"}
+          rows={4}
+          placeholder="In your words — what got in the way?"
+          className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-tint)] disabled:opacity-70"
+          data-testid="retro-cause-input"
+        />
+      </Step>
+
+      {/* 6. What worked — process strengths + Insight tags you named */}
+      <Step step={6} title="6 · What worked" testId="retro-what-worked">
+        <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
+          Process strengths in this window — not P&amp;L theater. Insight tags
+          you applied are candidates, in your words.
+        </p>
+        {whatWorked.length === 0 && insightTags.length === 0 ? (
+          <NothingHere testId="retro-what-worked-empty" />
         ) : (
           <ul className="space-y-2 text-sm" data-testid="retro-what-worked-list">
             {whatWorked.map((w, i) => (
@@ -761,21 +1137,33 @@ export default function RetrospectiveWorkspace({
                 )}
               </li>
             ))}
+            {insightTags.map((t, i) => (
+              <li
+                key={`insight-${str(t.slug)}-${i}`}
+                data-testid={`retro-insight-tag-${i}`}
+                data-source="tag"
+                className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-separator)] px-3 py-2"
+              >
+                <p className="font-medium text-[var(--color-label)]">
+                  {str(t.mirror)}
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-label-tertiary)]">
+                  Insight tag · your label
+                </p>
+              </li>
+            ))}
           </ul>
         )}
-      </Section>
+      </Step>
 
-      {/* 6. Expected vs actual (§6.5) — omit when null (no pre_market) */}
-      {expectedVsActual != null && (
-        <Section title="Expected vs actual" testId="retro-expected-vs-actual">
+      {/* 7. Expected vs actual — always present */}
+      <Step step={7} title="7 · Expected versus actual" testId="retro-expected-vs-actual">
           <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
-            Your pre-market intent (your words) vs what executed that day.
+            Your pre-open intent (your words) vs what executed that day.
             Process pairing — not a scorecard.
           </p>
-          {asList(expectedVsActual).length === 0 ? (
-            <p className="text-sm text-[var(--color-label-secondary)]">
-              No pre-market intents in this window.
-            </p>
+          {expectedVsActual == null || asList(expectedVsActual).length === 0 ? (
+            <NothingHere testId="retro-eva-empty" />
           ) : (
             <ul
               className="space-y-3 text-sm"
@@ -822,19 +1210,89 @@ export default function RetrospectiveWorkspace({
               ))}
             </ul>
           )}
-        </Section>
+      </Step>
+
+      {/* Rate-normalized trends (§12) — not a ceremony step; after EVA */}
+      {trends && (
+        <div
+          className="surface-card border border-[var(--color-separator)] p-5"
+          data-testid="retro-trends"
+          data-status={str(trends.status)}
+          data-feeds-indicator="false"
+        >
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+            Trends · rates only
+          </h2>
+          <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
+            {str(trends.message)}
+          </p>
+          <p className="mt-1 text-xs text-[var(--color-label-tertiary)]">
+            Cycles: {num(trends.cycle_count)} · floor {num(trends.min_cycles)} ·
+            tag frequency reported, never scored
+          </p>
+          {trendSeries.length > 0 && (
+            <ul className="mt-3 space-y-2 text-sm" data-testid="retro-trend-series">
+              {trendSeries.map((s, i) => {
+                const pts = Array.isArray(s.points) ? s.points : [];
+                const last = pts.length
+                  ? (pts[pts.length - 1] as Dict)
+                  : null;
+                return (
+                  <li
+                    key={str(s.id, String(i))}
+                    data-testid={`retro-trend-${str(s.id, String(i))}`}
+                    className="flex flex-wrap items-baseline justify-between gap-2 rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-2"
+                  >
+                    <div>
+                      <p className="font-medium text-[var(--color-label)]">
+                        {str(s.label)}
+                      </p>
+                      {s.trend_asserted ? (
+                        <p className="text-xs text-[var(--color-label-tertiary)]">
+                          Direction: {str(s.direction, "—")}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-[var(--color-label-tertiary)]">
+                          No direction below floor
+                        </p>
+                      )}
+                    </div>
+                    <p className="tabular-nums text-[var(--color-label-secondary)]">
+                      {last != null ? num(last.value) : "—"}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {tagTrendSeries.length > 0 && trends.status === "trend_readable" && (
+            <ul
+              className="mt-3 space-y-1 text-xs text-[var(--color-label-secondary)]"
+              data-testid="retro-tag-trend-series"
+            >
+              {tagTrendSeries.slice(0, 4).map((s, i) => (
+                <li key={str(s.id, String(i))}>
+                  {str(s.label)}
+                  {s.trend_asserted ? ` · ${str(s.direction)}` : ""}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
 
-      {/* Comparison — Spec §7 / RT3-2: side-by-side rates; no delta when not comparable */}
+      {/* Comparison — under practice context (not a ceremony step); keep after EVA for skimmability */}
       {comparison && (
-        <Section
-          title={
-            comparison.has_prior
-              ? str(comparison.label, "Progress comparison")
-              : "Baseline"
-          }
-          testId="retro-comparison"
+        <div
+          className="surface-card border border-[var(--color-separator)] p-5"
+          data-testid="retro-comparison"
         >
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+            {comparison.has_prior
+              ? str(comparison.label, "Progress comparison")
+              : "Baseline"}
+          </h2>
+          <div className="mt-3">
           {!comparison.has_prior ? (
             <p
               className="text-sm text-[var(--color-label-secondary)]"
@@ -955,21 +1413,179 @@ export default function RetrospectiveWorkspace({
               )}
             </div>
           )}
-        </Section>
+          </div>
+        </div>
       )}
 
-      {/* 7. Book performance LAST, collapsed by default (§6.6) */}
-      <section
+      {/* 8. The one thing — trader-owned commitment; sequence agent assists only */}
+      <Step step={8} title="8 · The one thing" testId="retro-onething">
+        <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
+          Your checkable commitment — you own every one. Cause notes are in
+          step 5. The agent does not prescribe.
+        </p>
+      </Step>
+
+      {/* Sequence agent panel — Spec §16; does not replace ceremony steps (anti-wizard) */}
+      <div
         className="surface-card border border-[var(--color-separator)] p-5"
-        data-testid="retro-book"
+        data-testid="retro-agent"
+        data-role="sequence_keeper"
       >
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+          Sequence agent
+        </h2>
+        <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
+          Holds the ceremony order and one focus question. Assembles inventory —
+          you supply judgment. Never diagnoses or prescribes.
+        </p>
+        {data.prompt_version_id != null && (
+          <p
+            className="mt-1 text-[11px] text-[var(--color-label-tertiary)]"
+            data-testid="retro-prompt-version"
+          >
+            Prompt version: {str(data.prompt_version_id)}
+          </p>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={
+              busy ||
+              !data.report ||
+              (data.status !== "ready" && data.status !== "complete")
+            }
+            onClick={runSequenceAgent}
+            data-testid="retro-agent-run"
+          >
+            {busy ? "Running…" : "Refresh sequence for current step"}
+          </Button>
+        </div>
+
+        {(() => {
+          const agent = asDict(data.agent);
+          if (!agent) {
+            return (
+              <p className="mt-3 text-xs text-[var(--color-label-tertiary)]">
+                No sequence yet. Gather first, then refresh (server:
+                LABS_RETRO_AGENT_MODE=local).
+              </p>
+            );
+          }
+          const turn = asDict(agent.turn);
+          const steps = asList(agent.steps);
+          const role = str(agent.role, "sequence_keeper");
+          return (
+            <div className="mt-4 space-y-4" data-testid="retro-agent-results">
+              <p className="text-[11px] text-[var(--color-label-tertiary)]">
+                Role: {role}
+                {agent.meta != null &&
+                  asDict(agent.meta)?.prescribes === false && (
+                    <> · does not prescribe</>
+                  )}
+              </p>
+              {turn && (
+                <div
+                  className="rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-3"
+                  data-testid="retro-agent-turn"
+                  data-step={str(turn.step_id)}
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                    Focus · step {str(turn.step_id)}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--color-label)]">
+                    {str(turn.question)}
+                  </p>
+                  {turn.nothing_here === true && (
+                    <p className="mt-2 text-xs text-[var(--color-label-secondary)]">
+                      Nothing here in inventory — still answer or skip
+                      explicitly in the ceremony step.
+                    </p>
+                  )}
+                  {asList(turn.inventory).length > 0 && (
+                    <ul className="mt-2 space-y-1 text-xs text-[var(--color-label-secondary)]">
+                      {asList(turn.inventory)
+                        .slice(0, 6)
+                        .map((inv, i) => (
+                          <li key={i}>· {str(inv.label)}</li>
+                        ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {steps.length > 0 && (
+                <ol
+                  className="flex flex-wrap gap-1.5 text-[11px]"
+                  data-testid="retro-agent-step-strip"
+                  aria-label="Sequence steps (all present — not a wizard)"
+                >
+                  {steps.map((s) => (
+                    <li
+                      key={str(s.id)}
+                      className={[
+                        "rounded-full px-2 py-0.5",
+                        s.is_focused
+                          ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]"
+                          : "bg-[var(--color-fill)] text-[var(--color-label-secondary)]",
+                      ].join(" ")}
+                      data-status={str(s.status)}
+                    >
+                      {str(s.id)}
+                      {s.nothing_here === true ? " · ∅" : ""}
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {/* Manual habit plans remain member-owned (not agent-prescribed) */}
+              {proposedPlans.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                    Your proposed plans
+                  </h3>
+                  <ul className="mt-2 space-y-3">
+                    {proposedPlans.map((p, i) => (
+                      <li
+                        key={i}
+                        data-testid={`retro-agent-plan-${i}`}
+                        className="rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-3 text-sm"
+                      >
+                        <p className="text-sm">{str(p.habit, str(p.title))}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="primary"
+                            disabled={busy}
+                            onClick={() => acceptProposedPlan(i)}
+                            data-testid={`retro-agent-accept-${i}`}
+                          >
+                            Accept
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={busy}
+                            onClick={() => rejectProposedPlan(i)}
+                            data-testid={`retro-agent-reject-${i}`}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* 9. The book — last, collapsed by default */}
+      <Step step={9} title="9 · The book" testId="retro-book">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-              Book performance (results)
-            </h2>
             {!bookExpanded && (
-              <p className="mt-1 max-w-xl text-sm text-[var(--color-label-secondary)]">
+              <p className="max-w-xl text-sm text-[var(--color-label-secondary)]">
                 {str(book?.collapsed_summary, BOOK_COLLAPSED_FALLBACK)}
               </p>
             )}
@@ -984,7 +1600,6 @@ export default function RetrospectiveWorkspace({
             {bookExpanded ? "Hide book sample" : "Show book sample"}
           </Button>
         </div>
-
         {bookExpanded && (
           <div className="mt-4" data-testid="retro-book-body">
             {book ? (
@@ -1032,10 +1647,7 @@ export default function RetrospectiveWorkspace({
                   </div>
                 </dl>
                 <p className="mt-3 text-xs text-[var(--color-label-tertiary)]">
-                  {str(
-                    book.note,
-                    "Neutral book context — not a success score.",
-                  )}
+                  {str(book.note, "Neutral book context — not a success score.")}
                 </p>
               </>
             ) : (
@@ -1045,202 +1657,7 @@ export default function RetrospectiveWorkspace({
             )}
           </div>
         )}
-      </section>
-
-      {/* 8. Member reflection */}
-      <Section title="Your reflection" testId="retro-reflection">
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          disabled={data.status === "complete"}
-          rows={8}
-          placeholder="What did this period teach you about your process?"
-          className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-tint)] disabled:opacity-70"
-        />
-      </Section>
-
-      {/* 9. Agent analysis (R5) — optional facilitator; dual report works without it */}
-      <Section title="Agent analysis" testId="retro-agent" dashed>
-        <p className="text-sm text-[var(--color-label-secondary)]">
-          Optional facilitator — process only, never profit claims. You accept,
-          edit, or reject every plan. The dual report above works without
-          running analysis.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={
-              busy ||
-              !data.report ||
-              (data.status !== "ready" && data.status !== "complete")
-            }
-            onClick={runAnalysis}
-            data-testid="retro-agent-run"
-          >
-            {busy ? "Running…" : "Run analysis"}
-          </Button>
-        </div>
-
-        {(() => {
-          const agent = asDict(data.agent);
-          if (!agent) {
-            return (
-              <p className="mt-3 text-xs text-[var(--color-label-tertiary)]">
-                No analysis yet. Requires gather, then Run analysis (server:
-                LABS_RETRO_AGENT_MODE=local).
-              </p>
-            );
-          }
-          const ww = asList(agent.what_worked);
-          const concerns = asList(agent.concerns);
-          const hyps = asList(agent.root_cause_hypotheses);
-          return (
-            <div className="mt-4 space-y-4" data-testid="retro-agent-results">
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                  What worked
-                </h3>
-                {ww.length === 0 ? (
-                  <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-                    None listed.
-                  </p>
-                ) : (
-                  <ul className="mt-1 list-disc space-y-1 pl-5 text-sm">
-                    {ww.map((w, i) => (
-                      <li key={i}>{str(w.observation)}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                  Concerns
-                </h3>
-                {concerns.length === 0 ? (
-                  <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-                    None listed.
-                  </p>
-                ) : (
-                  <ul className="mt-1 space-y-2 text-sm">
-                    {concerns.map((c, i) => (
-                      <li
-                        key={i}
-                        className="rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-2"
-                      >
-                        <p className="font-medium">{str(c.area)}</p>
-                        <p className="text-xs text-[var(--color-label-secondary)]">
-                          {str(c.evidence, "")}
-                          {c.severity != null && <> · {str(c.severity)}</>}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                  Hypotheses (not diagnoses)
-                </h3>
-                {hyps.length === 0 ? (
-                  <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-                    None listed.
-                  </p>
-                ) : (
-                  <ul className="mt-1 space-y-2 text-sm">
-                    {hyps.map((h, i) => (
-                      <li
-                        key={i}
-                        className="rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-2"
-                      >
-                        <p>{str(h.hypothesis)}</p>
-                        <p className="mt-1 text-xs text-[var(--color-label-tertiary)]">
-                          Anchors:{" "}
-                          {asList(h.anchors)
-                            .map((a) =>
-                              typeof a === "object" && a
-                                ? `${str((a as Dict).type)}:${str((a as Dict).ref)}`
-                                : str(a),
-                            )
-                            .join("; ") || "—"}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                  Proposed habit plans
-                </h3>
-                <p className="mt-1 text-xs text-[var(--color-label-tertiary)]">
-                  You own activation — accept creates a proposed plan (max 2
-                  active when you activate later).
-                </p>
-                {proposedPlans.length === 0 ? (
-                  <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-                    No open proposals (accepted or none generated).
-                  </p>
-                ) : (
-                  <ul className="mt-2 space-y-3">
-                    {proposedPlans.map((p, i) => (
-                      <li
-                        key={i}
-                        data-testid={`retro-agent-plan-${i}`}
-                        className="rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 py-3 text-sm"
-                      >
-                        <label className="block text-xs text-[var(--color-label-tertiary)]">
-                          Title (edit before accept)
-                        </label>
-                        <input
-                          value={
-                            planEdits[i] ??
-                            str(p.title, str(p.habit, ""))
-                          }
-                          onChange={(e) =>
-                            setPlanEdits((prev) => ({
-                              ...prev,
-                              [i]: e.target.value,
-                            }))
-                          }
-                          className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-[var(--color-tint)]"
-                        />
-                        <p className="mt-2 text-xs text-[var(--color-label-secondary)]">
-                          {str(p.habit)}
-                        </p>
-                        <p className="text-xs text-[var(--color-label-tertiary)]">
-                          Why (process): {str(p.why_process, "—")} · signal:{" "}
-                          {str(p.observable_signal)}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant="primary"
-                            disabled={busy}
-                            onClick={() => acceptProposedPlan(i)}
-                            data-testid={`retro-agent-accept-${i}`}
-                          >
-                            Accept
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            disabled={busy}
-                            onClick={() => rejectProposedPlan(i)}
-                            data-testid={`retro-agent-reject-${i}`}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-      </Section>
+      </Step>
     </div>
   );
 }

@@ -20,6 +20,22 @@ export type Retrospective = {
   report: Record<string, unknown> | null;
   comparison: Record<string, unknown> | null;
   agent: Record<string, unknown> | null;
+  prompt_version_id?: string | null;
+  cadence_days_at_period?: number | null;
+  period_index?: number | null;
+  interrupted?: boolean;
+  /** Spec §9 — structured interruption notice when period was missed */
+  interruption?: {
+    interrupted?: boolean;
+    notice?: string;
+    scope_label?: string;
+    missed_label?: string;
+    span_days?: number;
+    expected_cadence_days?: number;
+    instead_of_one?: string;
+    tone?: string;
+    note?: string;
+  } | null;
   completed_at: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -172,10 +188,15 @@ export async function patchRetrospective(
   return parse(r);
 }
 
-export async function analyzeRetrospective(id: number): Promise<Retrospective> {
+export async function analyzeRetrospective(
+  id: number,
+  opts?: { focused_step?: number },
+): Promise<Retrospective> {
   const r = await fetch(`/api/me/retrospectives/${id}/analyze`, {
     method: "POST",
     credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(opts || {}),
   });
   return parse(r);
 }

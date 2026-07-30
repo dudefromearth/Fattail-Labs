@@ -302,6 +302,227 @@ def can_create_or_gather(cur, identity_id: int, role: str) -> bool:
     return has_active_plan_slug(cur, identity_id, OBSERVER_TRIAL_SLUG)
 
 
+def next_period_index(cur, identity_id: int) -> int:
+    """Ordinal complete+open count for baseline/trend floors (Spec v0.7.1)."""
+    cur.execute(
+        """SELECT COUNT(*) AS n FROM member_retrospectives
+           WHERE identity_id = %s AND status IN ('complete', 'draft', 'gathering', 'ready')""",
+        (identity_id,),
+    )
+    return int(cur.fetchone()["n"] or 0) + 1
+
+
+# Cadence setting bounds (trader-owned; forward-only when changed)
+CADENCE_DAYS_MIN = 1
+CADENCE_DAYS_MAX = 90
+# Slack days beyond cadence before we call the span "interrupted" (§9)
+INTERRUPTION_SLACK_DAYS = 2
+
+
+def effective_cadence_days(cur, identity_id: int, claims: dict | None = None) -> int:
+    """Trader setting if set; else meter-profile retro_horizon_days (default 7).
+
+    Spec: cadence is the trader setting, not the meter profile — profile is
+    fallback only when the trader has never set a preference.
+    """
+    try:
+        cur.execute(
+            "SELECT retro_cadence_days FROM identities WHERE identity_id = %s",
+            (identity_id,),
+        )
+        row = cur.fetchone()
+        if row and row.get("retro_cadence_days") is not None:
+            d = int(row["retro_cadence_days"])
+            if d > 0:
+                return d
+    except Exception:
+        pass
+    # Profile default — weekly for daily traders
+    try:
+        import journey_scores as js
+
+        role = str((claims or {}).get("role") or "observer")
+        profile = js.resolve_meter_profile(cur, identity_id, role)
+        H = profile.get("retro_horizon_days")
+        if H is not None and int(H) > 0:
+            return int(H)
+    except Exception:
+        pass
+    return 7
+
+
+def set_retro_cadence_days(
+    cur,
+    identity_id: int,
+    cadence_days: int,
+    *,
+    effective_from: Any = None,
+) -> int:
+    """Set trader cadence and append forward-only history (Spec v0.7.1 §12).
+
+    Never rewrites ``cadence_days_at_period`` on past retrospectives.
+    """
+    from datetime import date as date_cls
+
+    d = int(cadence_days)
+    if d < CADENCE_DAYS_MIN or d > CADENCE_DAYS_MAX:
+        raise ValueError(
+            f"cadence_days must be {CADENCE_DAYS_MIN}–{CADENCE_DAYS_MAX}"
+        )
+    cur.execute(
+        "UPDATE identities SET retro_cadence_days = %s WHERE identity_id = %s",
+        (d, int(identity_id)),
+    )
+    if effective_from is None:
+        eff = date_cls.today()
+    elif isinstance(effective_from, date_cls):
+        eff = effective_from
+    elif isinstance(effective_from, datetime):
+        eff = _as_naive_utc(effective_from).date()
+    else:
+        eff = date_cls.fromisoformat(str(effective_from)[:10])
+    cur.execute(
+        """INSERT INTO member_retro_cadence_history
+             (identity_id, cadence_days, effective_from)
+           VALUES (%s, %s, %s)""",
+        (int(identity_id), d, eff),
+    )
+    return d
+
+
+def period_was_interrupted(
+    cur,
+    identity_id: int,
+    scope_start: datetime,
+    scope_end: datetime,
+    cadence_days: int,
+) -> bool:
+    """True when a prior period was missed — span >> one cadence (Spec §9).
+
+    Maiden / first retrospective is never interrupted (long baseline is expected).
+    Requires a prior complete retrospective.
+    """
+    prior = last_complete_retrospective(cur, identity_id)
+    if prior is None:
+        return False
+    start = _as_naive_utc(scope_start)
+    end = _as_naive_utc(scope_end)
+    span = max(0, (end - start).days)
+    cadence = max(1, int(cadence_days))
+    return span > cadence + INTERRUPTION_SLACK_DAYS
+
+
+def _format_day_month(dt: datetime | Any) -> str:
+    """e.g. '14 July' — no leading zero on day."""
+    if isinstance(dt, datetime):
+        d = _as_naive_utc(dt)
+    else:
+        # date
+        d = datetime(dt.year, dt.month, dt.day)
+    months = (
+        "January February March April May June July August "
+        "September October November December"
+    ).split()
+    return f"{d.day} {months[d.month - 1]}"
+
+
+def _format_scope_range(scope_start: datetime, scope_end: datetime) -> str:
+    """e.g. '8–25 July' or '28 June – 12 July'."""
+    a = _as_naive_utc(scope_start)
+    b = _as_naive_utc(scope_end)
+    months = (
+        "January February March April May June July August "
+        "September October November December"
+    ).split()
+    if a.year == b.year and a.month == b.month:
+        return f"{a.day}–{b.day} {months[b.month - 1]}"
+    if a.year == b.year:
+        return (
+            f"{a.day} {months[a.month - 1]} – "
+            f"{b.day} {months[b.month - 1]}"
+        )
+    return (
+        f"{a.day} {months[a.month - 1]} {a.year} – "
+        f"{b.day} {months[b.month - 1]} {b.year}"
+    )
+
+
+def _span_instead_of_one(span_days: int, cadence_days: int) -> str:
+    """'three weeks instead of one' / 'two periods instead of one'."""
+    cadence = max(1, int(cadence_days))
+    periods = max(2, int(round(span_days / float(cadence))))
+    words = {
+        2: "two",
+        3: "three",
+        4: "four",
+        5: "five",
+        6: "six",
+        7: "seven",
+        8: "eight",
+    }
+    n = words.get(periods, str(periods))
+    unit = "week" if cadence == 7 else "period"
+    plural = "s" if periods != 1 else ""
+    return f"{n} {unit}{plural} instead of one"
+
+
+def build_interruption_notice(
+    *,
+    interrupted: bool,
+    scope_start: datetime | Any,
+    scope_end: datetime | Any,
+    cadence_days: int | None,
+    is_maiden: bool = False,
+    prior_completed_at: datetime | Any | None = None,
+) -> dict[str, Any] | None:
+    """Spec §9 — stated, not scolded. Names the actual span.
+
+    Returns None when not interrupted (including maiden).
+    """
+    if not interrupted or is_maiden:
+        return None
+    start = _as_naive_utc(scope_start) if scope_start is not None else None
+    end = _as_naive_utc(scope_end) if scope_end is not None else None
+    if start is None or end is None:
+        return None
+    cadence = max(1, int(cadence_days or 7))
+    span_days = max(0, (end - start).days)
+    # Missed window starts at prior complete (= scope_start for non-maiden)
+    missed_anchor = prior_completed_at or start
+    if not isinstance(missed_anchor, datetime):
+        try:
+            missed_anchor = _as_naive_utc(missed_anchor)  # type: ignore[arg-type]
+        except Exception:
+            missed_anchor = start
+    else:
+        missed_anchor = _as_naive_utc(missed_anchor)
+
+    scope_label = _format_scope_range(start, end)
+    missed_label = f"the week of {_format_day_month(missed_anchor)}"
+    if cadence != 7:
+        missed_label = f"the period starting {_format_day_month(missed_anchor)}"
+    instead = _span_instead_of_one(span_days, cadence)
+    notice = (
+        f"Your cadence was interrupted — no review completed for "
+        f"{missed_label}. This one covers {scope_label}, {instead}."
+    )
+    return {
+        "interrupted": True,
+        "tone": "stated_not_scolded",
+        "span_days": span_days,
+        "expected_cadence_days": cadence,
+        "scope_start": _iso(start),
+        "scope_end": _iso(end),
+        "scope_label": scope_label,
+        "missed_label": missed_label,
+        "instead_of_one": instead,
+        "notice": notice,
+        "note": (
+            "Named so comparison across unequal windows is not silently wrong."
+        ),
+    }
+
+
 def _iso(dt: datetime | None) -> str | None:
     if dt is None:
         return None
@@ -685,7 +906,11 @@ def _process_performance(
 def _integrity_review(
     cur, identity_id: int, *, role: str, direction: str | None
 ) -> dict[str, Any]:
-    """Spec §6.2 — Journey process meters snapshot."""
+    """Legacy rolling Journey snapshot — retained for comparison metrics.
+
+    Ceremony UI must use ``period_indicator`` (Spec v0.7.1 §7), not this
+    rolling grade, so period and rolling never share one frame.
+    """
     process = js.process_meters(cur, identity_id, role=role)
     grade = process.get("grade") or {}
     drivers = [
@@ -701,6 +926,7 @@ def _integrity_review(
     ]
     return {
         "headline": "Process Integrity review",
+        "context": "rolling",  # Journey health — not for ceremony co-display
         "grade": grade.get("label"),
         "grade_id": grade.get("id"),
         "blurb": grade.get("blurb"),
@@ -711,8 +937,1026 @@ def _integrity_review(
         "direction": direction,
         "drivers": drivers,
         "note": (
-            "Integrity describes how you practiced — not whether the book "
-            "made money."
+            "Rolling Journey snapshot for comparison only — ceremony uses "
+            "period_indicator (Spec v0.7.1 §7)."
+        ),
+    }
+
+
+def build_period_indicator(
+    process: dict[str, Any] | None,
+    book: dict[str, Any] | None,
+    *,
+    window_days: int,
+    direction: str | None = None,
+) -> dict[str, Any]:
+    """Spec v0.7.1 §7 — period-scoped indicator for the ceremony only.
+
+    One instrument, two contexts, never one frame: this object is **period**
+    only. Rolling Journey meters must not appear here.
+    """
+    process = process or {}
+    book = book or {}
+    trade_count = int(book.get("trade_count") or 0)
+    min_n = int(MIN_INFERENCE_N)
+    routine = process.get("routine") or {}
+    live = process.get("live") or {}
+    learning = process.get("learning") or {}
+    adherence = process.get("adherence") or {}
+
+    readings: list[dict[str, Any]] = [
+        {
+            "id": "routine",
+            "label": "Routine (activity days / week)",
+            "value": routine.get("activity_days_per_week"),
+            "unit": "days_per_week",
+        },
+        {
+            "id": "adherence",
+            "label": "Adherence (followed + partial)",
+            "value": adherence.get("followed_or_partial_rate"),
+            "unit": "rate",
+        },
+        {
+            "id": "live",
+            "label": "Live check-ins / week",
+            "value": live.get("checkins_per_week"),
+            "unit": "per_week",
+        },
+        {
+            "id": "learning",
+            "label": "Lesson days / week",
+            "value": learning.get("lesson_days_per_week"),
+            "unit": "per_week",
+        },
+    ]
+
+    if trade_count < min_n:
+        return {
+            "context": "period",
+            "status": "not_enough_yet",
+            "headline": "Not enough yet",
+            "summary": (
+                f"This period has {trade_count} trade"
+                f"{'' if trade_count == 1 else 's'} — below the floor "
+                f"({min_n}) for grading. The ceremony still holds; "
+                "statistics wait."
+            ),
+            "pattern": None,
+            "readings": readings,
+            "window_days": window_days,
+            "trade_count": trade_count,
+            "min_inference_n": min_n,
+            # Explicit: no rolling payload co-located
+            "rolling": None,
+        }
+
+    # Pattern language — conduct, never character (Tango)
+    if direction in (None, "stable", ""):
+        status = "steady"
+        pattern = "Nothing moved much this period — steady is a valid reading."
+        headline = "Steady"
+    elif direction == "improved":
+        status = "pattern"
+        pattern = (
+            "Several practice readings are up from a comparable prior period."
+        )
+        headline = "Practice readings moved up"
+    elif direction == "slipped":
+        status = "pattern"
+        pattern = (
+            "Several practice readings are down from a comparable prior period "
+            "— look at the inventory below, not at yourself."
+        )
+        headline = "Practice readings moved down"
+    else:
+        status = "pattern"
+        pattern = f"Practice direction vs prior: {direction}."
+        headline = "Practice readings"
+
+    return {
+        "context": "period",
+        "status": status,
+        "headline": headline,
+        "summary": pattern,
+        "pattern": pattern,
+        "readings": readings,
+        "window_days": window_days,
+        "trade_count": trade_count,
+        "min_inference_n": min_n,
+        "direction": direction,
+        "rolling": None,
+    }
+
+
+# Spec v0.7.1 §8.1a — lexicon category → ceremony step (Hotel · Tango)
+# Tag frequency never feeds meters/grades/indicator (§8.1b).
+LEXICON_CEREMONY_MAP: list[dict[str, Any]] = [
+    {
+        "system_key": "behavior",
+        "label": "Behavior",
+        "ceremony_steps": [3],
+        "role": "obstacles_mirror",
+        "note": "Emotional-behavioral vocabulary the trader applied.",
+    },
+    {
+        "system_key": "context",
+        "label": "Context",
+        "ceremony_steps": [4],
+        "role": "clustering_conditions",
+        "note": "External conditions the trader marked (no regime inference).",
+    },
+    {
+        "system_key": "process",
+        "label": "Process",
+        "ceremony_steps": [2, 8],
+        "role": "adherence_and_commit",
+        "note": "Process labels for adherence review and forward commit.",
+    },
+    {
+        "system_key": "insight",
+        "label": "Insight",
+        "ceremony_steps": [6],
+        "role": "what_worked_candidates",
+        "note": "Lessons and biases the trader named — candidates for step 6.",
+    },
+]
+
+EMOTION_MIRROR_EMPTY = (
+    "Nothing from Behavior tags or your journal words this period. "
+    "Your language shows up here when you use it."
+)
+
+# Banned diagnosis fragments for mirror strings (Tango / §16)
+_DIAGNOSIS_BAN = (
+    "you were ",
+    "you felt ",
+    "you seemed ",
+    "you are ",
+    "you always ",
+    "diagnos",
+    "impatient this",
+    "anxious this",
+    "emotional state",
+)
+
+MAX_EMOTION_TAG_ITEMS = 12
+MAX_JOURNAL_WORD_EXCERPTS = 5
+MAX_JOURNAL_EXCERPT_CHARS = 160
+
+# Spec v0.7.1 §12 — trends need a floor (4–6 cycles); assert none below
+TREND_MIN_CYCLES = 4
+MAX_CLUSTER_STATEMENTS = 5
+MAX_CORRELATION_STATEMENTS = 4
+# Banned P&L / performance correlation surface language (Hotel · Sierra)
+CORRELATION_BANNED_METRICS = frozenset(
+    {"pnl", "p&l", "expectancy", "win_rate", "win rate", "profit", "net_pnl"}
+)
+
+
+def lexicon_ceremony_map() -> list[dict[str, Any]]:
+    """Static Spec §8.1a map — pure data, no DB."""
+    return [dict(row) for row in LEXICON_CEREMONY_MAP]
+
+
+def _day_str(v: Any) -> str | None:
+    if v is None:
+        return None
+    if hasattr(v, "isoformat"):
+        try:
+            return v.isoformat()[:10]
+        except Exception:
+            pass
+    s = str(v).strip()
+    return s[:10] if s else None
+
+
+def _count_phrase(n: int) -> str:
+    if n == 1:
+        return "once"
+    if n == 2:
+        return "twice"
+    return f"{n} times"
+
+
+def _mirror_behavior_line(
+    label: str, count: int, days: list[str]
+) -> str:
+    """Trader-language mirror only — never a character diagnosis (§8.1)."""
+    lab = (label or "").strip() or "that tag"
+    base = f'You named "{lab}" {_count_phrase(count)} this period'
+    # Day clustering when we have concrete days the trader tagged
+    uniq = sorted({d for d in days if d})
+    if not uniq:
+        return base + "."
+    if len(uniq) == 1:
+        return f"{base} — on {uniq[0]}."
+    if len(uniq) == 2:
+        return f"{base} — on {uniq[0]} and {uniq[1]}."
+    # Cap listed days; remainder as count
+    head = uniq[:3]
+    rest = len(uniq) - 3
+    listed = ", ".join(head)
+    if rest > 0:
+        return f"{base} — days include {listed} (+{rest} more)."
+    return f"{base} — days include {listed}."
+
+
+def _assert_mirror_not_diagnosis(text: str) -> None:
+    low = (text or "").lower()
+    for ban in _DIAGNOSIS_BAN:
+        if ban in low:
+            raise ValueError(
+                f"emotion mirror diagnosis leak ({ban!r}): {text!r}"
+            )
+
+
+def _collect_period_tag_rows(
+    cur,
+    identity_id: int,
+    scope_start: datetime,
+    scope_end: datetime,
+    *,
+    is_maiden: bool,
+) -> list[dict[str, Any]]:
+    """Tag assignments on journal sessions + trades inside the period window."""
+    scope_start = _as_naive_utc(scope_start)
+    scope_end = _as_naive_utc(scope_end)
+    d0 = scope_start.date()
+    d1 = scope_end.date()
+    op = ">=" if is_maiden else ">"
+    rows: list[dict[str, Any]] = []
+
+    # Journal sessions by journal_date (NY trading day for the conversation)
+    date_op = ">=" if is_maiden else ">"
+    cur.execute(
+        f"""SELECT a.tag_id, a.object_type, a.object_id, a.created_at,
+                  t.slug, t.label, t.category_id,
+                  c.system_key AS category_key, c.label AS category_label,
+                  s.journal_date AS day
+           FROM tag_assignments a
+           JOIN tags t ON t.id = a.tag_id
+           LEFT JOIN tag_categories c ON c.id = t.category_id
+           JOIN member_journal_sessions s
+             ON s.id = a.object_id AND a.object_type = 'journal_session'
+           WHERE a.identity_id = %s
+             AND s.identity_id = %s
+             AND s.journal_date {date_op} %s
+             AND s.journal_date <= %s""",
+        (int(identity_id), int(identity_id), d0, d1),
+    )
+    for r in cur.fetchall() or []:
+        rows.append(dict(r))
+
+    # Trades by exec_at
+    cur.execute(
+        f"""SELECT a.tag_id, a.object_type, a.object_id, a.created_at,
+                  t.slug, t.label, t.category_id,
+                  c.system_key AS category_key, c.label AS category_label,
+                  DATE(tr.exec_at) AS day
+           FROM tag_assignments a
+           JOIN tags t ON t.id = a.tag_id
+           LEFT JOIN tag_categories c ON c.id = t.category_id
+           JOIN member_trade_log_trades tr
+             ON tr.id = a.object_id AND a.object_type = 'trade'
+           WHERE a.identity_id = %s
+             AND tr.identity_id = %s
+             AND tr.exec_at {op} %s
+             AND tr.exec_at <= %s""",
+        (int(identity_id), int(identity_id), scope_start, scope_end),
+    )
+    for r in cur.fetchall() or []:
+        rows.append(dict(r))
+
+    return rows
+
+
+def _member_journal_excerpts(
+    cur,
+    identity_id: int,
+    scope_start: datetime,
+    scope_end: datetime,
+    *,
+    is_maiden: bool,
+) -> list[dict[str, Any]]:
+    """Member-authored journal text only — no agent turns (§8.1)."""
+    scope_start = _as_naive_utc(scope_start)
+    scope_end = _as_naive_utc(scope_end)
+    d0 = scope_start.date()
+    d1 = scope_end.date()
+    date_op = ">=" if is_maiden else ">"
+    cur.execute(
+        f"""SELECT m.id AS message_id, m.body_md, m.created_at,
+                  s.id AS session_id, s.journal_date
+           FROM member_journal_messages m
+           JOIN member_journal_sessions s ON s.id = m.session_id
+           WHERE m.identity_id = %s
+             AND s.identity_id = %s
+             AND m.author = 'member'
+             AND s.journal_date {date_op} %s
+             AND s.journal_date <= %s
+           ORDER BY m.created_at DESC, m.id DESC
+           LIMIT 40""",
+        (int(identity_id), int(identity_id), d0, d1),
+    )
+    out: list[dict[str, Any]] = []
+    for r in cur.fetchall() or []:
+        body = str(r.get("body_md") or "").strip()
+        if not body:
+            continue
+        # Collapse whitespace; keep the trader's wording
+        body = " ".join(body.split())
+        if len(body) < 8:
+            continue
+        excerpt = body
+        if len(excerpt) > MAX_JOURNAL_EXCERPT_CHARS:
+            excerpt = excerpt[: MAX_JOURNAL_EXCERPT_CHARS - 1].rstrip() + "…"
+        day = _day_str(r.get("journal_date"))
+        item = {
+            "day": day,
+            "excerpt": excerpt,
+            "session_id": int(r["session_id"]),
+            "message_id": int(r["message_id"]),
+            "source": "member_message",
+            "mirror": (
+                f'From your journal on {day}: "{excerpt}"'
+                if day
+                else f'From your journal: "{excerpt}"'
+            ),
+        }
+        _assert_mirror_not_diagnosis(item["mirror"])
+        out.append(item)
+        if len(out) >= MAX_JOURNAL_WORD_EXCERPTS:
+            break
+    return out
+
+
+def build_emotion_mirror(
+    cur,
+    identity_id: int,
+    scope_start: datetime,
+    scope_end: datetime,
+    *,
+    is_maiden: bool,
+) -> dict[str, Any]:
+    """Spec v0.7.1 §8.1 — Behavior tags + member journal words only.
+
+    Mirror language names what the trader applied/wrote. Never diagnoses
+    character or emotional state. Tag counts never feed indicator/meters.
+    """
+    tag_rows = _collect_period_tag_rows(
+        cur,
+        identity_id,
+        scope_start,
+        scope_end,
+        is_maiden=is_maiden,
+    )
+
+    # Aggregate by category + tag
+    by_cat: dict[str, dict[int, dict[str, Any]]] = {}
+    for r in tag_rows:
+        key = (r.get("category_key") or "").strip().lower() or "uncategorized"
+        tid = int(r["tag_id"])
+        bucket = by_cat.setdefault(key, {})
+        if tid not in bucket:
+            bucket[tid] = {
+                "tag_id": tid,
+                "slug": r.get("slug"),
+                "label": r.get("label") or r.get("slug") or "tag",
+                "category_key": key,
+                "category_label": r.get("category_label"),
+                "count": 0,
+                "days": [],
+                "object_types": set(),
+                "most_recent_at": None,
+            }
+        item = bucket[tid]
+        item["count"] += 1
+        day = _day_str(r.get("day"))
+        if day and day not in item["days"]:
+            item["days"].append(day)
+        ot = r.get("object_type")
+        if ot:
+            item["object_types"].add(ot)
+        ca = r.get("created_at")
+        ca_iso = _iso(ca) if ca is not None else None
+        if ca_iso and (
+            item["most_recent_at"] is None or ca_iso > item["most_recent_at"]
+        ):
+            item["most_recent_at"] = ca_iso
+
+    def _sorted_items(cat_key: str) -> list[dict[str, Any]]:
+        items = list(by_cat.get(cat_key, {}).values())
+        items.sort(
+            key=lambda it: (
+                -int(it["count"]),
+                it.get("most_recent_at") or "",
+                str(it.get("label") or ""),
+            )
+        )
+        out: list[dict[str, Any]] = []
+        for it in items[:MAX_EMOTION_TAG_ITEMS]:
+            days = sorted(it["days"])
+            label = str(it["label"])
+            mirror = _mirror_behavior_line(label, int(it["count"]), days)
+            _assert_mirror_not_diagnosis(mirror)
+            out.append(
+                {
+                    "tag_id": it["tag_id"],
+                    "slug": it["slug"],
+                    "label": label,
+                    "category_key": it["category_key"],
+                    "category_label": it["category_label"],
+                    "count": int(it["count"]),
+                    "days": days,
+                    "object_types": sorted(it["object_types"]),
+                    "most_recent_at": it["most_recent_at"],
+                    "mirror": mirror,
+                    "source": "tag",
+                }
+            )
+        return out
+
+    behavior = _sorted_items("behavior")
+    context = _sorted_items("context")
+    process = _sorted_items("process")
+    insight = _sorted_items("insight")
+
+    journal_words = _member_journal_excerpts(
+        cur,
+        identity_id,
+        scope_start,
+        scope_end,
+        is_maiden=is_maiden,
+    )
+
+    statements: list[str] = [b["mirror"] for b in behavior]
+    for j in journal_words:
+        statements.append(j["mirror"])
+
+    return {
+        "source_policy": "trader_tags_and_member_words_only",
+        "prohibits": "system_emotional_diagnosis",
+        "feeds_indicator": False,  # §8.1b — explicit contract
+        "behavior_tags": behavior,
+        "context_tags": context,
+        "process_tags": process,
+        "insight_tags": insight,
+        "journal_words": journal_words,
+        "statements": statements,
+        "empty_message": EMOTION_MIRROR_EMPTY,
+        "has_content": bool(behavior or journal_words),
+    }
+
+
+def _trade_day_sets(
+    filtered_trades: list[dict],
+) -> tuple[set[str], set[str], dict[str, int]]:
+    """Return (all_trade_days, broke_days, broke_count_by_day) as ISO date strings."""
+    all_days: set[str] = set()
+    broke_days: set[str] = set()
+    broke_by_day: dict[str, int] = {}
+    for t in filtered_trades:
+        ex = _parse_exec(t.get("exec_at"))
+        day = _day_key(ex)
+        if not day:
+            continue
+        all_days.add(day)
+        adh = (t.get("adherence") or "").strip().lower()
+        if adh == "broke":
+            broke_days.add(day)
+            broke_by_day[day] = broke_by_day.get(day, 0) + 1
+    return all_days, broke_days, broke_by_day
+
+
+def _tag_days_by_category(
+    emotion_mirror: dict[str, Any] | None, category_key: str
+) -> dict[str, list[str]]:
+    """label → list of days from emotion_mirror category buckets."""
+    em = emotion_mirror or {}
+    key = {
+        "behavior": "behavior_tags",
+        "context": "context_tags",
+        "process": "process_tags",
+        "insight": "insight_tags",
+    }.get(category_key, "behavior_tags")
+    out: dict[str, list[str]] = {}
+    for item in em.get(key) or []:
+        label = str(item.get("label") or item.get("slug") or "tag")
+        days = [str(d) for d in (item.get("days") or []) if d]
+        if days:
+            out[label] = days
+    return out
+
+
+def build_clustering(
+    cur,
+    identity_id: int,
+    scope_start: datetime,
+    scope_end: datetime,
+    *,
+    is_maiden: bool,
+    filtered_trades: list[dict],
+    emotion_mirror: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Spec v0.7.1 §8.2 — co-occurrence as observation only; trader names cause.
+
+    Never invents market regime. Context tags are the external conditions.
+    """
+    trade_days, broke_days, _broke_by = _trade_day_sets(filtered_trades)
+    statements: list[dict[str, Any]] = []
+
+    # Routine days (member message NY local — §12.2), period-scoped
+    routine_raw = jsd.list_member_message_ny_dates(
+        cur,
+        identity_id,
+        since=_as_naive_utc(scope_start),
+        until=_as_naive_utc(scope_end),
+    )
+    # Normalize to ISO date strings
+    routine_days: set[str] = set()
+    for d in routine_raw or []:
+        ds = _day_str(d)
+        if ds:
+            routine_days.add(ds)
+
+    # --- Context tags ∩ broke days ---
+    for label, days in _tag_days_by_category(emotion_mirror, "context").items():
+        shared = sorted(set(days) & broke_days)
+        if not shared:
+            continue
+        if len(shared) == 1:
+            obs = (
+                f'Your rule-break trades clustered on the day you marked '
+                f'"{label}" ({shared[0]}).'
+            )
+        else:
+            listed = ", ".join(shared[:4])
+            more = len(shared) - 4
+            tail = f" (+{more} more)" if more > 0 else ""
+            obs = (
+                f'Your rule-break trades clustered on days you marked '
+                f'"{label}": {listed}{tail}.'
+            )
+        statements.append(
+            {
+                "kind": "context_tag_x_deviation",
+                "observation": obs,
+                "days": shared,
+                "tag_label": label,
+                "source": "trader_tags",
+            }
+        )
+
+    # --- Behavior tags ∩ broke days ---
+    for label, days in _tag_days_by_category(emotion_mirror, "behavior").items():
+        shared = sorted(set(days) & broke_days)
+        if len(shared) < 1:
+            continue
+        if len(shared) == 1:
+            obs = (
+                f'You applied "{label}" on a day that also had a rule-break trade '
+                f"({shared[0]})."
+            )
+        else:
+            listed = ", ".join(shared[:4])
+            obs = (
+                f'You applied "{label}" on {len(shared)} days that also had '
+                f"rule-break trades: {listed}."
+            )
+        statements.append(
+            {
+                "kind": "behavior_tag_x_deviation",
+                "observation": obs,
+                "days": shared,
+                "tag_label": label,
+                "source": "trader_tags",
+            }
+        )
+
+    # --- Deviations on days without routine (skipped morning / no journal msg) ---
+    if broke_days and trade_days:
+        no_routine_broke = sorted(broke_days - routine_days)
+        with_routine_broke = sorted(broke_days & routine_days)
+        if len(no_routine_broke) >= 1 and len(no_routine_broke) >= len(
+            with_routine_broke
+        ):
+            if len(no_routine_broke) == 1:
+                obs = (
+                    "Rule-break trades clustered on a day without a member "
+                    f"journal message ({no_routine_broke[0]})."
+                )
+            else:
+                listed = ", ".join(no_routine_broke[:3])
+                more = len(no_routine_broke) - 3
+                tail = f" (+{more} more)" if more > 0 else ""
+                obs = (
+                    f"Rule-break trades clustered on {len(no_routine_broke)} "
+                    f"days without a member journal message: {listed}{tail}."
+                )
+            statements.append(
+                {
+                    "kind": "no_routine_x_deviation",
+                    "observation": obs,
+                    "days": no_routine_broke,
+                    "source": "routine_day_x_adherence",
+                }
+            )
+
+    # Cap and rank: more days first
+    statements.sort(key=lambda s: (-len(s.get("days") or []), s.get("kind") or ""))
+    statements = statements[:MAX_CLUSTER_STATEMENTS]
+
+    return {
+        "statements": statements,
+        "broke_days": sorted(broke_days),
+        "routine_days_in_window": sorted(routine_days),
+        "trade_days": sorted(trade_days),
+        "empty_message": (
+            "No co-occurrence stood out this period — inventory only."
+        ),
+        "note": (
+            "Observations stop at co-occurrence. You name the cause (step 5)."
+        ),
+        "has_content": bool(statements),
+    }
+
+
+def _extract_rate_snapshot(report: dict[str, Any] | None) -> dict[str, Any]:
+    """Rate-normalized snapshot from a stored or current report (counts → rates)."""
+    rep = report or {}
+    meta = rep.get("meta") or {}
+    process = rep.get("process") or {}
+    book = rep.get("book_performance") or rep.get("pnl") or {}
+    adh = process.get("adherence") or {}
+    routine = process.get("routine") or {}
+    trade_count = int(
+        book.get("trade_count")
+        or meta.get("trade_count")
+        or adh.get("total")
+        or 0
+    )
+    broke = int(adh.get("broke") or 0)
+    window_days = int(meta.get("window_days") or process.get("window_days") or 0)
+    avoidable = (
+        round(broke / trade_count, 4) if trade_count > 0 else None
+    )
+    # Tag frequency as counts (reported, never scored) — rate per trade when possible
+    em = rep.get("emotion_mirror") or {}
+    tag_rates: list[dict[str, Any]] = []
+    for t in (em.get("behavior_tags") or [])[:5]:
+        c = int(t.get("count") or 0)
+        tag_rates.append(
+            {
+                "slug": t.get("slug"),
+                "label": t.get("label"),
+                "count": c,
+                "per_trade": (
+                    round(c / trade_count, 4) if trade_count > 0 else None
+                ),
+            }
+        )
+    return {
+        "trade_count": trade_count,
+        "window_days": window_days,
+        "avoidable_loss_rate": avoidable,  # broke / trades — process damage, not $
+        "broke_count": broke,
+        "followed_or_partial_rate": adh.get("followed_or_partial_rate"),
+        "routine_days_per_week": routine.get("activity_days_per_week"),
+        "behavior_tag_rates": tag_rates,
+    }
+
+
+def _list_completed_report_snapshots(
+    cur, identity_id: int
+) -> list[dict[str, Any]]:
+    """Prior complete retrospectives for trend series (oldest first)."""
+    cur.execute(
+        """SELECT id, period_index, report_json, scope_start, scope_end,
+                  completed_at, title
+           FROM member_retrospectives
+           WHERE identity_id = %s AND status = 'complete'
+           ORDER BY completed_at ASC, id ASC""",
+        (int(identity_id),),
+    )
+    out: list[dict[str, Any]] = []
+    for row in cur.fetchall() or []:
+        rep = row.get("report_json")
+        if isinstance(rep, (bytes, bytearray)):
+            rep = rep.decode("utf-8")
+        if isinstance(rep, str):
+            try:
+                rep = json.loads(rep)
+            except json.JSONDecodeError:
+                rep = {}
+        rep = rep or {}
+        snap = _extract_rate_snapshot(rep)
+        pidx = row.get("period_index")
+        out.append(
+            {
+                "retrospective_id": int(row["id"]),
+                "period_index": int(pidx) if pidx is not None else len(out) + 1,
+                "completed_at": _iso(row.get("completed_at")),
+                "title": row.get("title") or "",
+                **snap,
+            }
+        )
+    return out
+
+
+def _series_direction(values: list[float | None]) -> str | None:
+    """Simple last-vs-first direction when enough non-null points exist."""
+    nums = [float(v) for v in values if v is not None]
+    if len(nums) < TREND_MIN_CYCLES:
+        return None
+    first = nums[0]
+    last = nums[-1]
+    # Relative band: 10% of range or absolute 0.02 for rates
+    span = max(abs(last - first), 1e-9)
+    delta = last - first
+    if abs(delta) < max(0.02, 0.05 * (max(nums) - min(nums) + 1e-9)):
+        return "flat"
+    return "up" if delta > 0 else "down"
+
+
+def build_period_trends(
+    cur,
+    identity_id: int,
+    current_report: dict[str, Any],
+    *,
+    period_index: int | None,
+) -> dict[str, Any]:
+    """Spec v0.7.1 §12 — rate-normalized trends; no assert below cycle floor."""
+    prior = _list_completed_report_snapshots(cur, identity_id)
+    current_snap = _extract_rate_snapshot(current_report)
+    current_point = {
+        "retrospective_id": None,
+        "period_index": int(period_index) if period_index is not None else (len(prior) + 1),
+        "completed_at": None,
+        "title": "This period",
+        "is_current": True,
+        **current_snap,
+    }
+    points = prior + [current_point]
+    cycle_count = len(points)
+    floor = TREND_MIN_CYCLES
+    readable = cycle_count >= floor
+
+    def _metric_series(
+        mid: str, label: str, unit: str, getter
+    ) -> dict[str, Any]:
+        series_pts = []
+        vals: list[float | None] = []
+        for p in points:
+            v = getter(p)
+            vals.append(v)
+            series_pts.append(
+                {
+                    "period_index": p.get("period_index"),
+                    "value": v,
+                    "window_days": p.get("window_days"),
+                    "trade_count": p.get("trade_count"),
+                    "is_current": bool(p.get("is_current")),
+                }
+            )
+        direction = _series_direction(vals) if readable else None
+        return {
+            "id": mid,
+            "label": label,
+            "unit": unit,
+            "points": series_pts,
+            "direction": direction,
+            "trend_asserted": bool(readable and direction is not None),
+        }
+
+    series = [
+        _metric_series(
+            "avoidable_loss_rate",
+            "Avoidable-loss rate (rule-breaks per trade)",
+            "rate",
+            lambda p: p.get("avoidable_loss_rate"),
+        ),
+        _metric_series(
+            "followed_or_partial_rate",
+            "Followed + partial rate",
+            "rate",
+            lambda p: p.get("followed_or_partial_rate"),
+        ),
+        _metric_series(
+            "routine_days_per_week",
+            "Routine activity days / week",
+            "days_per_week",
+            lambda p: p.get("routine_days_per_week"),
+        ),
+    ]
+
+    # Tag frequency over periods (trader's language; reported, never scored)
+    tag_labels: dict[str, str] = {}
+    for p in points:
+        for t in p.get("behavior_tag_rates") or []:
+            slug = str(t.get("slug") or "")
+            if slug:
+                tag_labels[slug] = str(t.get("label") or slug)
+    tag_trends = []
+    for slug, label in list(tag_labels.items())[:6]:
+        def _getter(p, s=slug):
+            for t in p.get("behavior_tag_rates") or []:
+                if t.get("slug") == s:
+                    # Prefer rate when trade_count allows
+                    if t.get("per_trade") is not None:
+                        return t.get("per_trade")
+                    return float(t.get("count") or 0)
+            return 0.0 if p.get("trade_count") else None
+
+        tag_trends.append(
+            _metric_series(
+                f"tag:{slug}",
+                f'Tag frequency — "{label}" (per trade)',
+                "per_trade",
+                _getter,
+            )
+        )
+
+    if not readable:
+        status = "building_baseline"
+        message = (
+            f"Building your baseline — {cycle_count} cycle"
+            f"{'' if cycle_count == 1 else 's'} so far "
+            f"(trend floor is {floor}). Rates are shown without a direction."
+        )
+    else:
+        status = "trend_readable"
+        message = (
+            f"Rate-normalized across {cycle_count} cycles "
+            f"(floor {floor}). Counts are never compared raw across unequal windows."
+        )
+
+    return {
+        "status": status,
+        "cycle_count": cycle_count,
+        "min_cycles": floor,
+        "message": message,
+        "series": series,
+        "tag_frequency_series": tag_trends,
+        "feeds_indicator": False,
+        "note": (
+            "Trends use rates only. Tag frequency is reported, never scored (§8.1b)."
+        ),
+    }
+
+
+def build_correlation(
+    filtered_trades: list[dict],
+    *,
+    emotion_mirror: dict[str, Any] | None,
+    clustering: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Spec v0.7.1 §13 — behavior ↔ process / avoidable damage. Never P&L.
+
+    Within-book comparison of rule-following vs rule-breaking process outcomes.
+    No win rate, expectancy, or dollar P&L correlation surfaces.
+    """
+    statements: list[dict[str, Any]] = []
+    total = len(filtered_trades)
+    broke = [
+        t
+        for t in filtered_trades
+        if (t.get("adherence") or "").strip().lower() == "broke"
+    ]
+    followed = [
+        t
+        for t in filtered_trades
+        if (t.get("adherence") or "").strip().lower() == "followed"
+    ]
+    partial = [
+        t
+        for t in filtered_trades
+        if (t.get("adherence") or "").strip().lower() == "partial"
+    ]
+    broke_n = len(broke)
+    followed_n = len(followed)
+    partial_n = len(partial)
+    plan_n = followed_n + partial_n
+
+    # --- Layer: behavior to process damage (adherence only, not $) ---
+    if total >= 1 and (broke_n > 0 or plan_n > 0):
+        broke_rate = round(broke_n / total, 4) if total else None
+        plan_rate = round(plan_n / total, 4) if total else None
+        statements.append(
+            {
+                "layer": "behavior_to_damage",
+                "kind": "adherence_split",
+                "observation": (
+                    f"In this window: {broke_n} rule-break trade"
+                    f"{'' if broke_n == 1 else 's'} "
+                    f"({broke_rate:.0%} of {total}) vs "
+                    f"{plan_n} followed/partial "
+                    f"({plan_rate:.0%} of {total}). "
+                    "Process damage only — not a P&L comparison."
+                ),
+                "metrics": {
+                    "broke_count": broke_n,
+                    "followed_or_partial_count": plan_n,
+                    "trade_count": total,
+                    "broke_rate": broke_rate,
+                    "followed_or_partial_rate": plan_rate,
+                },
+            }
+        )
+
+    # Behavior-tagged object days vs broke (from clustering)
+    em = emotion_mirror or {}
+    for t in (em.get("behavior_tags") or [])[:4]:
+        label = str(t.get("label") or t.get("slug") or "tag")
+        days = set(str(d) for d in (t.get("days") or []) if d)
+        if not days:
+            continue
+        _, broke_days, _ = _trade_day_sets(filtered_trades)
+        shared = days & broke_days
+        if not shared:
+            continue
+        statements.append(
+            {
+                "layer": "behavior_to_process",
+                "kind": "tag_x_rule_break",
+                "observation": (
+                    f'Days you named "{label}" overlapped rule-break trade days '
+                    f"on {len(shared)} day{'s' if len(shared) != 1 else ''} "
+                    f"({', '.join(sorted(shared)[:4])}"
+                    f"{'…' if len(shared) > 4 else ''}). "
+                    "Co-occurrence in your data — not a market claim."
+                ),
+                "tag_label": label,
+                "days": sorted(shared),
+            }
+        )
+
+    # Routine skip vs rule breaks (from clustering payload when present)
+    cl = clustering or {}
+    for s in cl.get("statements") or []:
+        if s.get("kind") == "no_routine_x_deviation":
+            statements.append(
+                {
+                    "layer": "behavior_to_process",
+                    "kind": "routine_skip_x_deviation",
+                    "observation": s.get("observation"),
+                    "days": s.get("days") or [],
+                }
+            )
+            break
+
+    statements = statements[:MAX_CORRELATION_STATEMENTS]
+
+    # Hard invariant: metrics dicts never carry P&L / expectancy keys
+    for s in statements:
+        metrics = s.get("metrics") or {}
+        for k in metrics:
+            kl = str(k).lower()
+            for ban in ("pnl", "expectancy", "win_rate", "profit", "net_pnl"):
+                if ban == kl or ban in kl:
+                    raise ValueError(
+                        f"correlation metrics leaked banned key {k!r}"
+                    )
+        # Observation may *deny* P&L ("not a P&L comparison") but must not
+        # report expectancy/win-rate as findings
+        obs = str(s.get("observation") or "").lower()
+        for phrase in (
+            "expectancy of",
+            "win rate of",
+            "net pnl",
+            "profit factor",
+            "$",
+        ):
+            if phrase in obs:
+                raise ValueError(
+                    f"correlation observation leaked performance phrase {phrase!r}"
+                )
+
+    return {
+        "layers": [
+            {
+                "id": "behavior_to_process",
+                "label": "Behavior to process",
+                "statements": [
+                    s for s in statements if s.get("layer") == "behavior_to_process"
+                ],
+            },
+            {
+                "id": "behavior_to_damage",
+                "label": "Behavior to avoidable process damage",
+                "statements": [
+                    s for s in statements if s.get("layer") == "behavior_to_damage"
+                ],
+            },
+        ],
+        "statements": statements,
+        "excludes": ["pnl", "win_rate", "expectancy", "profit"],
+        "empty_message": (
+            "Not enough paired process observations for a correlation read yet."
+        ),
+        "has_content": bool(statements),
+        "note": (
+            "Correlate behavior to avoidable process damage. Never to P&L (§13)."
         ),
     }
 
@@ -1504,8 +2748,52 @@ def gather_report(
     }
 
     comparison = _comparison(cur, identity_id, report, prior_id)
+    direction = None
     if comparison.get("has_prior") and comparison.get("integrity_direction"):
-        report["integrity_review"]["direction"] = comparison["integrity_direction"]
+        direction = comparison["integrity_direction"]
+        report["integrity_review"]["direction"] = direction
+
+    # Spec v0.7.1 §7 — ceremony indicator (period only; no rolling co-frame)
+    report["period_indicator"] = build_period_indicator(
+        process,
+        book,
+        window_days=window_days,
+        direction=direction,
+    )
+
+    # Spec v0.7.1 §8.1 / §8.1a — emotion mirror + lexicon map (R4)
+    # Tag frequency never reaches period_indicator (asserted in tests).
+    report["emotion_mirror"] = build_emotion_mirror(
+        cur,
+        identity_id,
+        scope_start,
+        scope_end,
+        is_maiden=is_maiden,
+    )
+    report["lexicon_ceremony_map"] = lexicon_ceremony_map()
+
+    # Spec v0.7.1 §8.2 / §12 / §13 — clustering, trends, correlation (R5)
+    report["clustering"] = build_clustering(
+        cur,
+        identity_id,
+        scope_start,
+        scope_end,
+        is_maiden=is_maiden,
+        filtered_trades=filtered,
+        emotion_mirror=report["emotion_mirror"],
+    )
+    report["correlation"] = build_correlation(
+        filtered,
+        emotion_mirror=report["emotion_mirror"],
+        clustering=report["clustering"],
+    )
+    # Trends: prior completes + this period (rate-normalized; floor TREND_MIN_CYCLES)
+    report["trends"] = build_period_trends(
+        cur,
+        identity_id,
+        report,
+        period_index=None,
+    )
 
     return report, comparison
 
@@ -1525,17 +2813,51 @@ def serialize_row(row: dict) -> dict[str, Any]:
                 return None
         return v
 
+    interrupted = bool(row.get("interrupted"))
+    is_maiden = bool(row.get("is_maiden"))
+    cadence_at = (
+        int(row["cadence_days_at_period"])
+        if row.get("cadence_days_at_period") is not None
+        else None
+    )
+    report = _json_field(row.get("report_json"))
+    # Spec §9 — interruption notice before ceremony body (structured + copy)
+    interruption = None
+    if interrupted and not is_maiden:
+        # Prefer notice already stamped into report at gather
+        if isinstance(report, dict) and isinstance(report.get("interruption"), dict):
+            interruption = report["interruption"]
+        else:
+            interruption = build_interruption_notice(
+                interrupted=True,
+                scope_start=row.get("scope_start"),
+                scope_end=row.get("scope_end"),
+                cadence_days=cadence_at,
+                is_maiden=is_maiden,
+                prior_completed_at=row.get("scope_start"),
+            )
+        # Keep report in sync for ceremony consumers
+        if isinstance(report, dict) and interruption is not None:
+            report = {**report, "interruption": interruption}
+
     return {
         "id": int(row["id"]),
         "status": row["status"],
-        "is_maiden": bool(row.get("is_maiden")),
+        "is_maiden": is_maiden,
         "scope_start": _iso(row.get("scope_start")),
         "scope_end": _iso(row.get("scope_end")),
         "title": row.get("title") or "",
         "body_md": row.get("body_md") or "",
-        "report": _json_field(row.get("report_json")),
+        "report": report,
         "comparison": _json_field(row.get("comparison_json")),
         "agent": _json_field(row.get("agent_json")),
+        "prompt_version_id": row.get("prompt_version_id"),
+        "cadence_days_at_period": cadence_at,
+        "period_index": (
+            int(row["period_index"]) if row.get("period_index") is not None else None
+        ),
+        "interrupted": interrupted,
+        "interruption": interruption,
         "completed_at": _iso(row.get("completed_at")),
         "created_at": _iso(row.get("created_at")),
         "updated_at": _iso(row.get("updated_at")),

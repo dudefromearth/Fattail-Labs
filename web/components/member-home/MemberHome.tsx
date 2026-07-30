@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CourseCard } from "@/lib/types";
 import ProcessMeter, { type ProcessPayload } from "@/components/ProcessMeter";
 import RetroCadenceNudge from "@/components/RetroCadenceNudge";
+import RetroMaterialNotice from "@/components/RetroMaterialNotice";
 
 type Me = {
   display_name: string;
@@ -534,6 +535,7 @@ export default function MemberHome() {
                 className="mt-3"
               />
             )}
+            <RetroMaterialNotice className="mt-3" />
             <Link
               href="/app/journey"
               className="mt-3 block text-xs font-medium text-[var(--color-tint)] hover:underline"

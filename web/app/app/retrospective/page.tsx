@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import RetroCadenceNudge from "@/components/RetroCadenceNudge";
+import RetroMaterialNotice from "@/components/RetroMaterialNotice";
 import { Button } from "@/components/ui";
 import type { ProcessPayload } from "@/components/ProcessMeter";
 import {
@@ -84,6 +85,7 @@ export default function RetrospectivePage() {
         subtitle="Periodic look-back: gather since last retrospective, dual report, integrity."
       >
         <div className="mt-6 space-y-6" data-testid="retrospective-library">
+          <RetroMaterialNotice />
           {process && <RetroCadenceNudge process={process} />}
           <section className="surface-card border border-[var(--color-separator)] px-5 py-6 sm:px-8">
             <h1

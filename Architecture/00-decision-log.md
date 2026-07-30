@@ -4,6 +4,58 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-07-30 — DL-164 Journal Retrospective v0.7.1 PROGRAM COMPLETE
+
+**Decision:** Agent-bench program `agents/p-retrospective-v07/` is **COMPLETE** (RT07-9-G
+**PASS**). Ceremony frame as-built through R1–R9:
+
+| Phase | As-built |
+|-------|----------|
+| R1 | mig **055** cadence + columns; routine day = member message NY |
+| R2 | Nine fixed-order ceremony steps (anti-wizard) |
+| R3 | `period_indicator` (period only; rolling not co-framed) |
+| R4 | `emotion_mirror` + lexicon→step map |
+| R5 | clustering · trends (floor 4) · process correlation (no P&L) |
+| R6 | interruption notice + forward-only cadence stamp/history |
+| R7 | mig **056** in-app material notifications (once/period; RTH suppress) |
+| R8 | mig **057** sequence agent + prompt stamp; code guardrails |
+| R9 | Practice Export Spec **v1.3**; export/purge for new Family B surfaces |
+
+**Export:** `Specs/FatTail-Labs-Member-Practice-Export-Spec-v1.3.md` — retrospective
+model_version **1.1**, notifications + cadence_history; purge keeps
+`identities.retro_cadence_days` setting.
+
+**Evidence:** pytest suite (retrospectives · habits · agent sequence · notify · export ·
+journey · journal sessions) **165 passed** (2026-07-30).
+
+**Board:** `agents/p-retrospective-v07/` — **PROGRAM COMPLETE**.
+
+**Deferred (unchanged §20):** optimal-window mechanism; email Family B payload until Mike
+approves; external LLM for sequence agent; first-class open-position model.
+
+---
+
+## 2026-07-30 — DL-163 Journal Retrospective Spec v0.7.1 BUILD AUTHORITY (Coach GO)
+
+**Decision:** Journal Retrospective **v0.7.1** is BUILD AUTHORITY. Product frame: ceremony
+that is walked (anti-wizard fixed-order sections), not a scrollable report. Cadence is a
+trader setting (forward-only history). Indicator uses Journey meters only — period-scoped
+in ceremony, rolling in Journey, never one frame. Routine day = member message local day
+(amends Journal Session / Journey dual-read). Keep rate member-facing fact only, paired
+with specificity for product eval. Notification in-app first. Board
+`agents/p-retrospective-v07/`. v0.6 remains as-built for shipped APIs until R-phases land.
+
+**Locks (§20):** 1 interim rules SoR · 2 two contexts · 3 one retro · 5 period adherence ·
+9 routine day · 10 keep-rate fact · 11 in-app notify first.
+
+**R1 landed same day:** mig **055** (`retro_cadence_days`, cadence history, retro columns);
+`list_member_message_ny_dates` / routine dual-read; create stamps period_index /
+cadence_days_at_period / interrupted.
+
+**Plan:** `docs/Journal-Retrospective-v0.7.1-Full-Agent-Bench-Plan.md`
+
+---
+
 ## 2026-07-30 — DL-162 Journal Session v0.6 residual program close
 
 **Decision:** Residual agent-bench program for Journal Session **v0.6** is **COMPLETE**

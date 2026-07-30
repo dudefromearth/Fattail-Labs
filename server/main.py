@@ -48,10 +48,12 @@ def create_app() -> FastAPI:
     from routes.export import router as export_router
     from routes.trade_log import router as trade_log_router
     from routes.retrospectives import router as retrospectives_router
+    from routes.member_notifications import router as member_notifications_router
     from routes.journal_sessions import router as journal_sessions_router
     from routes.tags import router as tags_router
     from routes.tags_admin import router as tags_admin_router
     from routes.journal_prompt_admin import router as journal_prompt_admin_router
+    from routes.retro_prompt_admin import router as retro_prompt_admin_router
     from routes.habit_plans import router as habit_plans_router
     from routes.pathway import router as pathway_router
     from routes.quizzes import router as quizzes_router
@@ -92,10 +94,12 @@ def create_app() -> FastAPI:
     app.include_router(export_router)
     app.include_router(trade_log_router)
     app.include_router(retrospectives_router)
+    app.include_router(member_notifications_router)
     app.include_router(journal_sessions_router)
     app.include_router(tags_router)
     app.include_router(tags_admin_router)
     app.include_router(journal_prompt_admin_router)
+    app.include_router(retro_prompt_admin_router)
     app.include_router(habit_plans_router)
     app.include_router(community_router)
     app.include_router(quizzes_router)

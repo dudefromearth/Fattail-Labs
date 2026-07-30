@@ -69,7 +69,8 @@ def list_retrospectives(request: Request) -> dict:
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,
-                          completed_at, created_at, updated_at
+                          prompt_version_id, cadence_days_at_period, period_index,
+                          interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
                    WHERE identity_id = %s AND status <> 'abandoned'
                    ORDER BY COALESCE(completed_at, created_at) DESC
@@ -117,17 +118,30 @@ async def create_retrospective(request: Request) -> dict:
                     if is_maiden
                     else f"Retrospective {scope['scope_end'].date().isoformat()}"
                 )
+            # Spec v0.7.1 — period_index, cadence stamp, interruption flag,
+            # prompt version stamp (R8 · mirror Journal J3)
+            period_index = rd.next_period_index(cur, iid)
+            cadence_days = rd.effective_cadence_days(cur, iid, claims)
+            interrupted = rd.period_was_interrupted(
+                cur, iid, scope["scope_start"], scope["scope_end"], cadence_days
+            )
+            prompt_vid = ra.active_prompt_version_id(cur)
             cur.execute(
                 """INSERT INTO member_retrospectives
                      (identity_id, status, is_maiden, scope_start, scope_end,
-                      title, body_md)
-                   VALUES (%s, 'draft', %s, %s, %s, %s, '')""",
+                      title, body_md, prompt_version_id, cadence_days_at_period,
+                      period_index, interrupted)
+                   VALUES (%s, 'draft', %s, %s, %s, %s, '', %s, %s, %s, %s)""",
                 (
                     iid,
                     1 if is_maiden else 0,
                     scope["scope_start"],
                     scope["scope_end"],
                     title,
+                    prompt_vid,
+                    cadence_days,
+                    period_index,
+                    1 if interrupted else 0,
                 ),
             )
             rid = int(cur.lastrowid)
@@ -136,7 +150,8 @@ async def create_retrospective(request: Request) -> dict:
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,
-                          completed_at, created_at, updated_at
+                          prompt_version_id, cadence_days_at_period, period_index,
+                          interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
                    WHERE id = %s AND identity_id = %s""",
                 (rid, iid),
@@ -147,7 +162,8 @@ async def create_retrospective(request: Request) -> dict:
 
 def _run_gather(cur, claims: dict, iid: int, rid: int) -> None:
     cur.execute(
-        """SELECT id, status, is_maiden, scope_start, scope_end
+        """SELECT id, status, is_maiden, scope_start, scope_end,
+                  cadence_days_at_period, interrupted
            FROM member_retrospectives
            WHERE id = %s AND identity_id = %s""",
         (rid, iid),
@@ -179,7 +195,36 @@ def _run_gather(cur, claims: dict, iid: int, rid: int) -> None:
         role=str(claims.get("role") or "activator"),
         trades=trades,
     )
+    # Spec §9 — stamp interruption notice into report (stated, not scolded)
+    notice = rd.build_interruption_notice(
+        interrupted=bool(row.get("interrupted")),
+        scope_start=row.get("scope_start"),
+        scope_end=row.get("scope_end"),
+        cadence_days=(
+            int(row["cadence_days_at_period"])
+            if row.get("cadence_days_at_period") is not None
+            else None
+        ),
+        is_maiden=is_maiden,
+        prior_completed_at=row.get("scope_start"),
+    )
+    report["interruption"] = notice
     scope_end = datetime.now(timezone.utc).replace(tzinfo=None)
+    # Refresh notice with final scope_end after Option C end = gather time
+    if notice is not None:
+        notice = rd.build_interruption_notice(
+            interrupted=True,
+            scope_start=row.get("scope_start"),
+            scope_end=scope_end,
+            cadence_days=(
+                int(row["cadence_days_at_period"])
+                if row.get("cadence_days_at_period") is not None
+                else None
+            ),
+            is_maiden=is_maiden,
+            prior_completed_at=row.get("scope_start"),
+        )
+        report["interruption"] = notice
     cur.execute(
         """UPDATE member_retrospectives
            SET status = 'ready',
@@ -208,7 +253,8 @@ def gather_retrospective(retro_id: int, request: Request) -> dict:
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,
-                          completed_at, created_at, updated_at
+                          prompt_version_id, cadence_days_at_period, period_index,
+                          interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
                    WHERE id = %s AND identity_id = %s""",
                 (retro_id, iid),
@@ -228,7 +274,8 @@ def get_retrospective(retro_id: int, request: Request) -> dict:
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,
-                          completed_at, created_at, updated_at
+                          prompt_version_id, cadence_days_at_period, period_index,
+                          interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
                    WHERE id = %s AND identity_id = %s""",
                 (retro_id, iid),
@@ -276,7 +323,8 @@ async def patch_retrospective(retro_id: int, request: Request) -> dict:
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,
-                          completed_at, created_at, updated_at
+                          prompt_version_id, cadence_days_at_period, period_index,
+                          interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
                    WHERE id = %s AND identity_id = %s""",
                 (retro_id, iid),
@@ -369,7 +417,8 @@ def complete_retrospective(retro_id: int, request: Request) -> dict:
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,
-                          completed_at, created_at, updated_at
+                          prompt_version_id, cadence_days_at_period, period_index,
+                          interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
                    WHERE id = %s AND identity_id = %s""",
                 (retro_id, iid),
@@ -402,9 +451,24 @@ def abandon_retrospective(retro_id: int, request: Request) -> dict:
 
 
 @router.post("/api/me/retrospectives/{retro_id}/analyze")
-def analyze_retrospective(retro_id: int, request: Request) -> dict:
-    """Spec §8 agent analyze — fail loud if unconfigured; local mode only (R5)."""
+async def analyze_retrospective(retro_id: int, request: Request) -> dict:
+    """Spec §16 sequence agent — holds order; no prescribe; stamps prompt version.
+
+    Body (optional): ``{"focused_step": 1-9}`` — one step focus for the turn.
+    """
     claims = require_session(request)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    focused_step = body.get("focused_step")
+    try:
+        focused_step_n = int(focused_step) if focused_step is not None else None
+    except (TypeError, ValueError):
+        focused_step_n = None
+
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
@@ -412,7 +476,8 @@ def analyze_retrospective(retro_id: int, request: Request) -> dict:
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,
-                          completed_at, created_at, updated_at
+                          prompt_version_id, cadence_days_at_period, period_index,
+                          interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
                    WHERE id = %s AND identity_id = %s""",
                 (retro_id, iid),
@@ -423,7 +488,7 @@ def analyze_retrospective(retro_id: int, request: Request) -> dict:
             if row["status"] not in ("ready", "complete"):
                 raise HTTPException(
                     status_code=409,
-                    detail="Gather a dual report before running analysis",
+                    detail="Gather a dual report before running the sequence agent",
                 )
             report = row.get("report_json")
             if isinstance(report, (bytes, bytearray)):
@@ -441,11 +506,26 @@ def analyze_retrospective(retro_id: int, request: Request) -> dict:
 
             role = str(claims.get("role") or "observer")
             has_trial = rd.has_active_plan_slug(cur, iid, rd.OBSERVER_TRIAL_SLUG)
+            # Stamp / refresh prompt version at sequence run (R8)
+            pvid = row.get("prompt_version_id") or ra.active_prompt_version_id(cur)
+            _, prompt_body = ra.load_active_prompt_body(cur)
+            if not row.get("prompt_version_id"):
+                cur.execute(
+                    """UPDATE member_retrospectives
+                       SET prompt_version_id = %s
+                       WHERE id = %s AND identity_id = %s""",
+                    (pvid, retro_id, iid),
+                )
+            cause_filled = bool(str(row.get("body_md") or "").strip())
             try:
                 agent_out = ra.run_analyze(
                     report,
                     role=role,
                     has_observer_trial=has_trial,
+                    prompt_version_id=str(pvid),
+                    focused_step=focused_step_n,
+                    cause_filled=cause_filled,
+                    prompt_body=prompt_body,
                 )
             except ra.AgentConfigError as exc:
                 raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -456,14 +536,16 @@ def analyze_retrospective(retro_id: int, request: Request) -> dict:
 
             cur.execute(
                 """UPDATE member_retrospectives
-                   SET agent_json = %s
+                   SET agent_json = %s,
+                       prompt_version_id = COALESCE(prompt_version_id, %s)
                    WHERE id = %s AND identity_id = %s""",
-                (json.dumps(agent_out), retro_id, iid),
+                (json.dumps(agent_out), pvid, retro_id, iid),
             )
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,
-                          completed_at, created_at, updated_at
+                          prompt_version_id, cadence_days_at_period, period_index,
+                          interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
                    WHERE id = %s AND identity_id = %s""",
                 (retro_id, iid),
