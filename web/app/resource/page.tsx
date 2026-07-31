@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import ResourcesHub from "@/components/resources/ResourcesHub";
-import SectionHubShell from "@/components/section-hub/SectionHubShell";
+import ResourcesPageClient from "./ResourcesPageClient";
 import { siteUrl } from "@/lib/catalog";
 import {
   fetchSitePage,
@@ -67,9 +66,7 @@ export default async function ResourcesPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <SectionHubShell page={page}>
-        <ResourcesHub />
-      </SectionHubShell>
+      <ResourcesPageClient page={page} />
     </main>
   );
 }

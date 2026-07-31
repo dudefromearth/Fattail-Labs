@@ -237,13 +237,17 @@ function Header({ page }: { page: SitePage }) {
 export default function SectionHubShell({
   page,
   children,
+  /** Spec Tag Manager §9a / Practice §0 — sub-app pills sit above the title. */
+  beforeHeader,
 }: {
   page: SitePage;
   children: React.ReactNode;
+  beforeHeader?: React.ReactNode;
 }) {
   return (
     <SectionHubEditProvider slug={page.slug} initial={page}>
       <EditBar />
+      {beforeHeader ? <div className="mb-4">{beforeHeader}</div> : null}
       <Header page={page} />
       <div className="mt-8 pb-20">{children}</div>
     </SectionHubEditProvider>

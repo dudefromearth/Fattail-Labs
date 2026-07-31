@@ -45,7 +45,13 @@ export default function TagPicker({
       ]);
       setTags(vocab.tags || []);
       setCategories(vocab.categories || []);
-      setSelected(new Set(assigns.map((a) => a.tag_id)));
+      setSelected(
+        new Set(
+          assigns
+            .map((a) => a.member_tag_id ?? a.tag_id)
+            .filter((x): x is number => x != null),
+        ),
+      );
       setLoad("ok");
     } catch (e) {
       setLoad("err");

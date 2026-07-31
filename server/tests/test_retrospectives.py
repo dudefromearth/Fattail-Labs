@@ -658,6 +658,11 @@ def test_rt24_workspace_section_order_source():
     assert 'data-role="sequence_keeper"' in src
     assert "does not prescribe" in src.lower()
     assert "retro-agent-turn" in src
+    # Spec §6.2 — 3×3 ceremony map + one expanded body
+    assert 'data-layout="map-3x3"' in src
+    assert "ceremony-step-body" in src
+    assert "needs_you" in src
+    assert "ceremonyTiles" in src
     # RT6-2 what worked / expected vs actual
     assert "retro-what-worked" in src
     assert "Stated intent" in src

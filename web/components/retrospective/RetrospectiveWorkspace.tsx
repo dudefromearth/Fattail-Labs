@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Retrospective workspace — Spec v0.7.1 §6 ceremony (R2).
- * Fixed-order sections, all present, current step focused — not a wizard.
+ * Retrospective workspace — Spec v0.7.1 + layout §6.2 (3×3 map ceremony).
+ * Fixed-order steps; persistent 3×3 grid; one step expanded below — not a wizard.
  * Contract: Architecture/12-retrospective-report-dto.md · carry-forward first · book last.
  */
 
@@ -26,6 +26,7 @@ import {
   patchRetrospective,
   type Retrospective,
 } from "@/lib/retrospectiveApi";
+import { usePracticeContextOptional } from "@/lib/practiceContext";
 
 type Dict = Record<string, unknown>;
 
@@ -130,34 +131,41 @@ async function setPnlExpanded(expanded: boolean): Promise<void> {
   }
 }
 
-/** Spec v0.7.1 §6.1 — nine fixed steps; not a Next-button wizard. */
+/** Spec §6 — nine fixed steps; layout §6.2 map + one expanded body. */
 const CEREMONY_STEPS = [
-  { id: 1, key: "commitments", title: "1 · Commitments" },
-  { id: 2, key: "practice", title: "2 · Practice" },
-  { id: 3, key: "obstacles", title: "3 · Obstacles" },
-  { id: 4, key: "clustered", title: "4 · Where it clustered" },
-  { id: 5, key: "cause", title: "5 · What I name as the cause" },
-  { id: 6, key: "worked", title: "6 · What worked" },
-  { id: 7, key: "eva", title: "7 · Expected versus actual" },
-  { id: 8, key: "onething", title: "8 · The one thing" },
-  { id: 9, key: "book", title: "9 · The book" },
+  { id: 1, key: "commitments", title: "Commitments", short: "Commit" },
+  { id: 2, key: "practice", title: "Practice", short: "Practice" },
+  { id: 3, key: "obstacles", title: "Obstacles", short: "Obstacles" },
+  { id: 4, key: "clustered", title: "Where it clustered", short: "Clustered" },
+  { id: 5, key: "cause", title: "What I name as the cause", short: "Cause" },
+  { id: 6, key: "worked", title: "What worked", short: "Worked" },
+  { id: 7, key: "eva", title: "Expected versus actual", short: "Expected" },
+  { id: 8, key: "onething", title: "The one thing", short: "One thing" },
+  { id: 9, key: "book", title: "The book", short: "Book" },
 ] as const;
+
+type TileState = "needs_you" | "has_content" | "nothing_here";
+
+type TileInfo = {
+  id: number;
+  key: string;
+  title: string;
+  short: string;
+  state: TileState;
+  summary: string;
+};
 
 function CeremonyStep({
   step,
   title,
   children,
   testId,
-  focused,
-  onFocus,
   dashed,
 }: {
   step: number;
   title: string;
   children: ReactNode;
   testId?: string;
-  focused: boolean;
-  onFocus: () => void;
   dashed?: boolean;
 }) {
   return (
@@ -165,30 +173,18 @@ function CeremonyStep({
       id={`ceremony-step-${step}`}
       data-testid={testId}
       data-ceremony-step={step}
-      data-focused={focused ? "1" : "0"}
+      data-focused="1"
       className={[
-        "scroll-mt-4 rounded-[var(--radius-lg)] border p-5 transition-shadow",
+        "scroll-mt-4 rounded-[var(--radius-lg)] border p-5",
         dashed
           ? "border-dashed border-[var(--color-separator)]"
           : "border-[var(--color-separator)]",
-        focused
-          ? "bg-[var(--color-surface)] shadow-[var(--elevation-2)] ring-2 ring-[var(--color-tint)] ring-offset-2 ring-offset-[var(--color-canvas)]"
-          : "surface-card opacity-95",
+        "bg-[var(--color-surface)] shadow-[var(--elevation-2)] ring-2 ring-[var(--color-tint)] ring-offset-2 ring-offset-[var(--color-canvas)]",
       ].join(" ")}
     >
-      <button
-        type="button"
-        className="flex w-full items-baseline justify-between gap-2 text-left"
-        onClick={onFocus}
-        data-testid={`ceremony-step-focus-${step}`}
-      >
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-          {title}
-        </h2>
-        <span className="text-[10px] font-medium text-[var(--color-label-tertiary)]">
-          {focused ? "Focused" : "Focus"}
-        </span>
-      </button>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+        {step} · {title}
+      </h2>
       <div className="mt-3">{children}</div>
     </section>
   );
@@ -213,9 +209,15 @@ function NothingHere({
 
 export default function RetrospectiveWorkspace({
   retroId,
+  onStatusChange,
 }: {
   retroId: number;
+  /** Notify chrome when complete so contexts show as inert (§4). */
+  onStatusChange?: (status: string) => void;
 }) {
+  const practice = usePracticeContextOptional();
+  const accountIdParam = practice?.accountIdParam ?? null;
+
   const [data, setData] = useState<Retrospective | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -227,8 +229,9 @@ export default function RetrospectiveWorkspace({
   /** Proposed plans from agent — local accept/reject before create. */
   const [proposedPlans, setProposedPlans] = useState<Dict[]>([]);
   const [planEdits, setPlanEdits] = useState<Record<number, string>>({});
-  /** Spec §6.1 — current ceremony step focused (all steps still visible). */
+  /** Spec §6.2 — focused step; only that body expands under the 3×3 map. */
   const [focusedStep, setFocusedStep] = useState(1);
+  const [focusInitialized, setFocusInitialized] = useState(false);
 
   const load = useCallback(() => {
     setErr(null);
@@ -239,9 +242,11 @@ export default function RetrospectiveWorkspace({
         setTitle(d.title || "");
         const ag = asDict(d.agent);
         setProposedPlans(asList(ag?.habit_plans));
+        setFocusInitialized(false);
+        onStatusChange?.(d.status);
       })
       .catch((e) => setErr(e instanceof Error ? e.message : "Load failed"));
-  }, [retroId]);
+  }, [retroId, onStatusChange]);
 
   useEffect(() => {
     load();
@@ -288,11 +293,21 @@ export default function RetrospectiveWorkspace({
   }
 
   async function reGather() {
+    if (data?.status === "complete") {
+      setErr(
+        "Completed retrospectives are fixed at gather — re-gather is blocked.",
+      );
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
-      const d = await gatherRetrospective(retroId);
+      // Open retro book follows current Practice account until gather fixes it (§4).
+      const d = await gatherRetrospective(retroId, {
+        accountId: accountIdParam,
+      });
       setData(d);
+      onStatusChange?.(d.status);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Gather failed");
     } finally {
@@ -330,6 +345,7 @@ export default function RetrospectiveWorkspace({
       });
       const d = await completeRetrospective(retroId);
       setData(d);
+      onStatusChange?.(d.status);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Complete failed");
     } finally {
@@ -391,7 +407,9 @@ export default function RetrospectiveWorkspace({
       // Open workspace: re-gather so carry_forward reflects assessment.
       // Complete: optimistically patch local report (gather blocked on complete).
       if (data?.status === "ready" || data?.status === "draft") {
-        const d = await gatherRetrospective(retroId);
+        const d = await gatherRetrospective(retroId, {
+          accountId: accountIdParam,
+        });
         setData(d);
       } else {
         setData((prev) => {
@@ -455,6 +473,127 @@ export default function RetrospectiveWorkspace({
     data?.is_maiden || asDict(report?.meta)?.is_maiden,
   );
 
+  /** Spec §6.2 — tile state + summary (process/inventory only; no $ / character grades). */
+  const ceremonyTiles: TileInfo[] = useMemo(() => {
+    const plans = asList(carryForward?.plans);
+    const pi = periodIndicator;
+    const piStatus = str(pi?.status, "");
+    const clusterN = clusterStatements.length;
+    const ctxN = contextTags.length;
+    const behN = behaviorTags.length;
+    const devN = deviations.length;
+    const wwN = whatWorked.length + insightTags.length;
+    const evaN = asList(expectedVsActual).length;
+    const causeEmpty = !body.trim();
+    const complete = data?.status === "complete";
+
+    function tile(
+      id: number,
+      state: TileState,
+      summary: string,
+    ): TileInfo {
+      const meta = CEREMONY_STEPS[id - 1];
+      return {
+        id,
+        key: meta.key,
+        title: meta.title,
+        short: meta.short,
+        state,
+        summary,
+      };
+    }
+
+    const t1: TileInfo = (() => {
+      if (isMaiden) return tile(1, "nothing_here", "Nothing here");
+      if (plans.length === 0) return tile(1, "nothing_here", "Nothing here");
+      return tile(1, "has_content", `${plans.length} plan${plans.length === 1 ? "" : "s"}`);
+    })();
+
+    const t2: TileInfo = (() => {
+      if (!pi || Object.keys(pi).length === 0)
+        return tile(2, "nothing_here", "Nothing here");
+      if (piStatus === "not_enough_yet")
+        return tile(2, "has_content", "Not enough yet");
+      if (piStatus === "steady") return tile(2, "has_content", "Steady");
+      return tile(2, "has_content", str(pi.headline, "Practice"));
+    })();
+
+    const t3: TileInfo = (() => {
+      if (behN === 0 && devN === 0 && journalWords.length === 0)
+        return tile(3, "nothing_here", "Nothing here");
+      const parts: string[] = [];
+      if (behN > 0) parts.push(`${behN} tag${behN === 1 ? "" : "s"}`);
+      if (devN > 0) parts.push(`${devN} deviation${devN === 1 ? "" : "s"}`);
+      if (journalWords.length > 0 && parts.length === 0)
+        parts.push("journal words");
+      return tile(3, "has_content", parts.join(", "));
+    })();
+
+    const t4: TileInfo = (() => {
+      if (clusterN === 0 && ctxN === 0)
+        return tile(4, "nothing_here", "Nothing here");
+      if (clusterN > 0)
+        return tile(
+          4,
+          "has_content",
+          `${clusterN} co-occurrence${clusterN === 1 ? "" : "s"}`,
+        );
+      return tile(4, "has_content", `${ctxN} context tag${ctxN === 1 ? "" : "s"}`);
+    })();
+
+    const t5: TileInfo = causeEmpty
+      ? tile(5, complete ? "nothing_here" : "needs_you", complete ? "Nothing here" : "Needs you")
+      : tile(5, "has_content", "Named");
+
+    const t6: TileInfo =
+      wwN === 0
+        ? tile(6, "nothing_here", "Nothing here")
+        : tile(6, "has_content", `${wwN} item${wwN === 1 ? "" : "s"}`);
+
+    const t7: TileInfo =
+      evaN === 0
+        ? tile(7, "nothing_here", "Nothing here")
+        : tile(7, "has_content", `${evaN} day${evaN === 1 ? "" : "s"}`);
+
+    const t8: TileInfo = complete
+      ? tile(8, "has_content", "Complete")
+      : tile(8, "needs_you", "Needs you");
+
+    const t9: TileInfo = (() => {
+      if (!book || Object.keys(book).length === 0)
+        return tile(9, "nothing_here", "Nothing here");
+      const n = Number(book.trade_count);
+      if (!Number.isFinite(n) || n <= 0)
+        return tile(9, "has_content", "Book sample");
+      return tile(9, "has_content", `${n} trade${n === 1 ? "" : "s"}`);
+    })();
+
+    return [t1, t2, t3, t4, t5, t6, t7, t8, t9];
+  }, [
+    body,
+    book,
+    behaviorTags.length,
+    carryForward,
+    clusterStatements.length,
+    contextTags.length,
+    data?.status,
+    deviations.length,
+    expectedVsActual,
+    insightTags.length,
+    isMaiden,
+    journalWords.length,
+    periodIndicator,
+    whatWorked.length,
+  ]);
+
+  // Default focus: first "needs you", else step 1 (Coach L4)
+  useEffect(() => {
+    if (!data || focusInitialized) return;
+    const needs = ceremonyTiles.find((t) => t.state === "needs_you");
+    setFocusedStep(needs?.id ?? 1);
+    setFocusInitialized(true);
+  }, [data, ceremonyTiles, focusInitialized]);
+
   function Step({
     step,
     title,
@@ -468,15 +607,9 @@ export default function RetrospectiveWorkspace({
     testId?: string;
     dashed?: boolean;
   }) {
+    if (focusedStep !== step) return null;
     return (
-      <CeremonyStep
-        step={step}
-        title={title}
-        testId={testId}
-        dashed={dashed}
-        focused={focusedStep === step}
-        onFocus={() => setFocusedStep(step)}
-      >
+      <CeremonyStep step={step} title={title} testId={testId} dashed={dashed}>
         {children}
       </CeremonyStep>
     );
@@ -596,36 +729,83 @@ export default function RetrospectiveWorkspace({
         </div>
       )}
 
-      {/* Spec §6.1 — all steps listed; click focuses without hiding others */}
-      <nav
-        className="flex flex-wrap gap-1.5"
+      {/* Spec §6.2 — persistent 3×3 ceremony map; only multi-column chrome */}
+      <div
+        className="grid grid-cols-3 gap-1.5 sm:gap-2"
+        role="tablist"
         aria-label="Ceremony steps"
         data-testid="ceremony-step-nav"
+        data-layout="map-3x3"
       >
-        {CEREMONY_STEPS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => {
-              setFocusedStep(s.id);
-              document
-                .getElementById(`ceremony-step-${s.id}`)
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-            className={[
-              "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
-              focusedStep === s.id
-                ? "bg-[var(--color-tint)] text-[var(--color-on-tint)]"
-                : "bg-[var(--color-fill)] text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
-            ].join(" ")}
-            data-testid={`ceremony-nav-${s.id}`}
-          >
-            {s.id}
-          </button>
-        ))}
-      </nav>
+        {ceremonyTiles.map((t) => {
+          const selected = focusedStep === t.id;
+          const needsYou = t.state === "needs_you";
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={`ceremony-step-${t.id}`}
+              id={`ceremony-tab-${t.id}`}
+              onClick={() => setFocusedStep(t.id)}
+              data-testid={`ceremony-nav-${t.id}`}
+              data-tile-state={t.state}
+              data-needs-you={needsYou ? "1" : "0"}
+              className={[
+                "flex min-h-[4.25rem] flex-col items-stretch rounded-[var(--radius-md)] border px-2 py-2 text-left transition-colors sm:min-h-[4.75rem] sm:px-2.5",
+                selected
+                  ? "border-[var(--color-tint)] bg-[var(--color-tint)]/10 ring-2 ring-[var(--color-tint)]"
+                  : "border-[var(--color-separator)] bg-[var(--color-surface)] hover:border-[var(--color-label-tertiary)]",
+                needsYou && !selected
+                  ? "border-[var(--color-tint)]/60 bg-[var(--color-tint)]/5"
+                  : "",
+                t.state === "nothing_here" && !selected
+                  ? "opacity-75"
+                  : "",
+              ].join(" ")}
+            >
+              <span className="flex items-baseline justify-between gap-1">
+                <span
+                  className={[
+                    "text-[11px] font-semibold tabular-nums sm:text-xs",
+                    selected
+                      ? "text-[var(--color-tint)]"
+                      : "text-[var(--color-label-tertiary)]",
+                  ].join(" ")}
+                >
+                  {t.id}
+                </span>
+                {needsYou && (
+                  <span
+                    className="rounded-full bg-[var(--color-tint)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[var(--color-on-tint)]"
+                    data-testid={`ceremony-tile-needs-you-${t.id}`}
+                  >
+                    You
+                  </span>
+                )}
+              </span>
+              <span className="mt-0.5 text-[11px] font-medium leading-tight text-[var(--color-label)] sm:text-xs">
+                <span className="sm:hidden">{t.short}</span>
+                <span className="hidden sm:inline">{t.title}</span>
+              </span>
+              <span
+                className={[
+                  "mt-auto pt-1 text-[10px] leading-snug sm:text-[11px]",
+                  needsYou
+                    ? "font-medium text-[var(--color-tint)]"
+                    : "text-[var(--color-label-tertiary)]",
+                ].join(" ")}
+                data-testid={`ceremony-tile-summary-${t.id}`}
+              >
+                {t.summary}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-      {/* Spec §8.1a — lexicon categories map onto ceremony steps */}
+      {/* Spec §8.1a — lexicon map (compact; not ceremony multi-column) */}
       {lexiconMap.length > 0 && (
         <div
           className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-3 py-2"
@@ -654,8 +834,11 @@ export default function RetrospectiveWorkspace({
         </div>
       )}
 
+      {/* Focused step body — one column under the map (§6.2) */}
+      <div data-testid="ceremony-step-body" data-focused-step={focusedStep}>
+
       {/* 1. Commitments / carry-forward — always present (§6.1 nothing-here) */}
-      <Step step={1} title="1 · Commitments" testId="retro-carry-forward">
+      <Step step={1} title="Commitments" testId="retro-carry-forward">
           <p className="mb-3 text-xs text-[var(--color-label-tertiary)]">
             Plans you committed to — review the work, not yourself. Set Kept,
             Partial, or Lapsed for each plan.
@@ -759,7 +942,7 @@ export default function RetrospectiveWorkspace({
       </Step>
 
       {/* 2. Practice — period-scoped indicator only (Spec §7; never + rolling) */}
-      <Step step={2} title="2 · Practice" testId="retro-process">
+      <Step step={2} title="Practice" testId="retro-process">
         <p className="text-xs text-[var(--color-label-tertiary)]">
           Period readings for this review window only. Journey keeps rolling
           health separately — never side by side.
@@ -873,7 +1056,7 @@ export default function RetrospectiveWorkspace({
       </Step>
 
       {/* 3. Obstacles — deviations + emotion mirror (Spec §8.1) */}
-      <Step step={3} title="3 · Obstacles" testId="retro-deviations">
+      <Step step={3} title="Obstacles" testId="retro-deviations">
         <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
           What you named — tags you applied and words you wrote. Not a diagnosis.
         </p>
@@ -985,7 +1168,7 @@ export default function RetrospectiveWorkspace({
       </Step>
 
       {/* 4. Clustering — co-occurrence + context inventory (Spec §8.2 · R5) */}
-      <Step step={4} title="4 · Where it clustered" testId="retro-clustered">
+      <Step step={4} title="Where it clustered" testId="retro-clustered">
         <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
           Co-occurrence only — observations stop here. You name the cause in
           step 5. No market-regime inference.
@@ -1093,7 +1276,7 @@ export default function RetrospectiveWorkspace({
       </Step>
 
       {/* 5. Cause — trader-authored */}
-      <Step step={5} title="5 · What I name as the cause" testId="retro-cause">
+      <Step step={5} title="What I name as the cause" testId="retro-cause">
         <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
           You name the cause. The system does not diagnose.
         </p>
@@ -1109,7 +1292,7 @@ export default function RetrospectiveWorkspace({
       </Step>
 
       {/* 6. What worked — process strengths + Insight tags you named */}
-      <Step step={6} title="6 · What worked" testId="retro-what-worked">
+      <Step step={6} title="What worked" testId="retro-what-worked">
         <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
           Process strengths in this window — not P&amp;L theater. Insight tags
           you applied are candidates, in your words.
@@ -1157,7 +1340,7 @@ export default function RetrospectiveWorkspace({
       </Step>
 
       {/* 7. Expected vs actual — always present */}
-      <Step step={7} title="7 · Expected versus actual" testId="retro-expected-vs-actual">
+      <Step step={7} title="Expected versus actual" testId="retro-expected-vs-actual">
           <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
             Your pre-open intent (your words) vs what executed that day.
             Process pairing — not a scorecard.
@@ -1212,10 +1395,10 @@ export default function RetrospectiveWorkspace({
           )}
       </Step>
 
-      {/* Rate-normalized trends (§12) — not a ceremony step; after EVA */}
-      {trends && (
+      {/* Rate-normalized trends (§12) — under practice context (step 2) */}
+      {focusedStep === 2 && trends && (
         <div
-          className="surface-card border border-[var(--color-separator)] p-5"
+          className="mt-4 surface-card border border-[var(--color-separator)] p-5"
           data-testid="retro-trends"
           data-status={str(trends.status)}
           data-feeds-indicator="false"
@@ -1281,10 +1464,10 @@ export default function RetrospectiveWorkspace({
         </div>
       )}
 
-      {/* Comparison — under practice context (not a ceremony step); keep after EVA for skimmability */}
-      {comparison && (
+      {/* Comparison — under practice context (step 2) */}
+      {focusedStep === 2 && comparison && (
         <div
-          className="surface-card border border-[var(--color-separator)] p-5"
+          className="mt-4 surface-card border border-[var(--color-separator)] p-5"
           data-testid="retro-comparison"
         >
           <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
@@ -1418,14 +1601,115 @@ export default function RetrospectiveWorkspace({
       )}
 
       {/* 8. The one thing — trader-owned commitment; sequence agent assists only */}
-      <Step step={8} title="8 · The one thing" testId="retro-onething">
+      <Step step={8} title="The one thing" testId="retro-onething">
         <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
           Your checkable commitment — you own every one. Cause notes are in
           step 5. The agent does not prescribe.
         </p>
       </Step>
 
-      {/* Sequence agent panel — Spec §16; does not replace ceremony steps (anti-wizard) */}
+      {/* 9. The book — last, collapsed by default; account-scoped at gather (§2 / §4) */}
+      <Step step={9} title="The book" testId="retro-book">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            {!bookExpanded && (
+              <p className="max-w-xl text-sm text-[var(--color-label-secondary)]">
+                {str(book?.collapsed_summary, BOOK_COLLAPSED_FALLBACK)}
+              </p>
+            )}
+            {(() => {
+              const scope = asDict(report?.account_scope);
+              const label = scope
+                ? str(scope.label, "All accounts")
+                : "All accounts";
+              return (
+                <p
+                  className="mt-1 text-xs text-[var(--color-label-tertiary)]"
+                  data-testid="retro-book-account-scope"
+                >
+                  Book account at gather:{" "}
+                  <span className="font-medium text-[var(--color-label-secondary)]">
+                    {label}
+                  </span>
+                  {data.status === "complete" &&
+                    " · fixed (chrome account does not change this)"}
+                </p>
+              );
+            })()}
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!bookPrefReady}
+            onClick={toggleBook}
+            data-testid="retro-book-toggle"
+          >
+            {bookExpanded ? "Hide book sample" : "Show book sample"}
+          </Button>
+        </div>
+        {bookExpanded && (
+          <div className="mt-4" data-testid="retro-book-body">
+            {book ? (
+              <>
+                {book.sample_below_min && book.sample_banner && (
+                  <p
+                    className="mb-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill-quaternary)] px-3 py-2 text-sm text-[var(--color-label-secondary)]"
+                    data-testid="retro-sample-banner"
+                    role="status"
+                  >
+                    {str(book.sample_banner)}
+                    <span className="ml-2 tabular-nums text-xs text-[var(--color-label-tertiary)]">
+                      n={num(book.trade_count)}
+                    </span>
+                  </p>
+                )}
+                <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                  <div>
+                    <dt className="text-[var(--color-label-tertiary)]">
+                      Trades
+                    </dt>
+                    <dd className="text-lg font-semibold tabular-nums">
+                      {num(book.trade_count)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--color-label-tertiary)]">
+                      Net P&amp;L
+                    </dt>
+                    <dd className="text-lg font-semibold tabular-nums">
+                      {num(book.net_pnl)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--color-label-tertiary)]">
+                      Winners
+                    </dt>
+                    <dd className="tabular-nums">{num(book.winners)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--color-label-tertiary)]">
+                      Losers
+                    </dt>
+                    <dd className="tabular-nums">{num(book.losers)}</dd>
+                  </div>
+                </dl>
+                <p className="mt-3 text-xs text-[var(--color-label-tertiary)]">
+                  {str(book.note, "Neutral book context — not a success score.")}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-[var(--color-label-secondary)]">
+                No book sample yet — run gather.
+              </p>
+            )}
+          </div>
+        )}
+      </Step>
+
+      </div>
+      {/* end ceremony-step-body */}
+
+      {/* Sequence agent — outside the nine tiles (Spec §16); not a 10th step */}
       <div
         className="surface-card border border-[var(--color-separator)] p-5"
         data-testid="retro-agent"
@@ -1435,8 +1719,9 @@ export default function RetrospectiveWorkspace({
           Sequence agent
         </h2>
         <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-          Holds the ceremony order and one focus question. Assembles inventory —
-          you supply judgment. Never diagnoses or prescribes.
+          Holds the ceremony order and one focus question for step{" "}
+          {focusedStep}. Assembles inventory — you supply judgment. Never
+          diagnoses or prescribes.
         </p>
         {data.prompt_version_id != null && (
           <p
@@ -1536,7 +1821,6 @@ export default function RetrospectiveWorkspace({
                   ))}
                 </ol>
               )}
-              {/* Manual habit plans remain member-owned (not agent-prescribed) */}
               {proposedPlans.length > 0 && (
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
@@ -1579,85 +1863,6 @@ export default function RetrospectiveWorkspace({
           );
         })()}
       </div>
-
-      {/* 9. The book — last, collapsed by default */}
-      <Step step={9} title="9 · The book" testId="retro-book">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            {!bookExpanded && (
-              <p className="max-w-xl text-sm text-[var(--color-label-secondary)]">
-                {str(book?.collapsed_summary, BOOK_COLLAPSED_FALLBACK)}
-              </p>
-            )}
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={!bookPrefReady}
-            onClick={toggleBook}
-            data-testid="retro-book-toggle"
-          >
-            {bookExpanded ? "Hide book sample" : "Show book sample"}
-          </Button>
-        </div>
-        {bookExpanded && (
-          <div className="mt-4" data-testid="retro-book-body">
-            {book ? (
-              <>
-                {book.sample_below_min && book.sample_banner && (
-                  <p
-                    className="mb-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill-quaternary)] px-3 py-2 text-sm text-[var(--color-label-secondary)]"
-                    data-testid="retro-sample-banner"
-                    role="status"
-                  >
-                    {str(book.sample_banner)}
-                    <span className="ml-2 tabular-nums text-xs text-[var(--color-label-tertiary)]">
-                      n={num(book.trade_count)}
-                    </span>
-                  </p>
-                )}
-                <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                  <div>
-                    <dt className="text-[var(--color-label-tertiary)]">
-                      Trades
-                    </dt>
-                    <dd className="text-lg font-semibold tabular-nums">
-                      {num(book.trade_count)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--color-label-tertiary)]">
-                      Net P&amp;L
-                    </dt>
-                    <dd className="text-lg font-semibold tabular-nums">
-                      {num(book.net_pnl)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--color-label-tertiary)]">
-                      Winners
-                    </dt>
-                    <dd className="tabular-nums">{num(book.winners)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--color-label-tertiary)]">
-                      Losers
-                    </dt>
-                    <dd className="tabular-nums">{num(book.losers)}</dd>
-                  </div>
-                </dl>
-                <p className="mt-3 text-xs text-[var(--color-label-tertiary)]">
-                  {str(book.note, "Neutral book context — not a success score.")}
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-[var(--color-label-secondary)]">
-                No book sample yet — run gather.
-              </p>
-            )}
-          </div>
-        )}
-      </Step>
     </div>
   );
 }

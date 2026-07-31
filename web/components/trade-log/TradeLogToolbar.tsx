@@ -2,13 +2,13 @@
 
 /**
  * Trade Log page chrome — Apple HIG (Echo packet TL-echo-header-hig).
+ * Account scope lives in Practice chrome (Context Spec v0.2).
  * Domain ToS skin is table body only; this toolbar stays kit + tokens.
  */
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { IconChevronDown, IconPlus } from "@/components/ui/icons";
-import type { Account } from "@/lib/tradeLog";
 
 const EXPORT_FORMATS: { value: string; label: string; hint?: string }[] = [
   {
@@ -33,29 +33,19 @@ const EXPORT_FORMATS: { value: string; label: string; hint?: string }[] = [
   },
 ];
 
-const selectClass =
-  "min-h-[var(--hit-min)] cursor-pointer appearance-none rounded-[var(--radius-full)] border-0 bg-[var(--color-fill)] py-2 pl-4 pr-9 text-sm font-medium text-[var(--color-label)] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]";
-
 export default function TradeLogToolbar({
-  activeAccounts,
-  accountId,
-  onAccountId,
-  accountsOpen,
-  onToggleAccounts,
   onImport,
   onNewTrade,
   onExport,
   nativeVenueLabel,
+  accountLabel,
 }: {
-  activeAccounts: Account[];
-  accountId: number | "all";
-  onAccountId: (id: number | "all") => void;
-  accountsOpen: boolean;
-  onToggleAccounts: () => void;
   onImport: () => void;
   onNewTrade: () => void;
   onExport: (format: string) => void;
   nativeVenueLabel: string;
+  /** Stated account from Practice context (always named). */
+  accountLabel: string;
 }) {
   const [exportOpen, setExportOpen] = useState(false);
   const exportWrapRef = useRef<HTMLDivElement>(null);
@@ -98,6 +88,15 @@ export default function TradeLogToolbar({
           Options-first blotter — multi-leg groups, process on the side. Never
           leave the log.
         </p>
+        <p
+          className="mt-1 text-xs text-[var(--color-label-tertiary)]"
+          data-testid="trade-log-account-scope"
+        >
+          Showing:{" "}
+          <span className="font-medium text-[var(--color-label-secondary)]">
+            {accountLabel}
+          </span>
+        </p>
       </div>
 
       <div
@@ -105,31 +104,6 @@ export default function TradeLogToolbar({
         role="toolbar"
         aria-label="Trade Log actions"
       >
-        {/* Scope filter — not a competing CTA */}
-        <label className="relative inline-flex min-h-[var(--hit-min)] items-center">
-          <span className="sr-only">Account</span>
-          <select
-            className={selectClass}
-            value={accountId === "all" ? "all" : String(accountId)}
-            onChange={(e) => {
-              const v = e.target.value;
-              onAccountId(v === "all" ? "all" : Number(v));
-            }}
-            aria-label="Filter by account"
-          >
-            <option value="all">All active</option>
-            {activeAccounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-                {a.broker && a.broker !== "unset" ? ` · ${a.broker}` : ""}
-              </option>
-            ))}
-          </select>
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-label-secondary)]">
-            <IconChevronDown size={16} />
-          </span>
-        </label>
-
         <Button type="button" variant="secondary" onClick={onImport}>
           Import
         </Button>
@@ -162,9 +136,7 @@ export default function TradeLogToolbar({
                   onClick={() => {
                     setExportOpen(false);
                     onExport(
-                      fmt.value === "native"
-                        ? "native"
-                        : fmt.value,
+                      fmt.value === "native" ? "native" : fmt.value,
                     );
                   }}
                 >
@@ -183,15 +155,6 @@ export default function TradeLogToolbar({
             </div>
           )}
         </div>
-
-        <Button
-          type="button"
-          variant={accountsOpen ? "tint" : "plain"}
-          onClick={onToggleAccounts}
-          aria-expanded={accountsOpen}
-        >
-          Accounts
-        </Button>
 
         <Button type="button" variant="primary" onClick={onNewTrade}>
           <IconPlus size={18} />

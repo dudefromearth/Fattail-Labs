@@ -1,46 +1,61 @@
 "use client";
 
 /**
- * Shared chrome for Practice suite apps: breadcrumb + centered suite nav.
- * Work surfaces (blotter, calendar, etc.) render as children.
+ * Shared chrome for Practice suite apps:
+ * breadcrumb · centered suite nav · Practice Context (account + date).
+ * Work surfaces render as children.
+ * Spec: Practice Context v0.2 — shared contexts in topmost chrome.
  */
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import PracticeSuiteNav from "./PracticeSuiteNav";
+import PracticeContextBar from "./PracticeContextBar";
+import { PracticeContextProvider } from "@/lib/practiceContext";
 import { suiteItem, type PracticeSuiteId } from "@/lib/practiceSuite";
 
-export default function PracticeSuiteChrome({
+function PracticeSuiteChromeInner({
   active,
   children,
-  /** When true, omit the large page title (Journal calendar is the hero). */
   hideTitle = false,
   subtitle,
+  contextInert = false,
+  contextInertMessage,
 }: {
   active: PracticeSuiteId;
-  children: React.ReactNode;
+  children: ReactNode;
   hideTitle?: boolean;
   subtitle?: string;
+  contextInert?: boolean;
+  contextInertMessage?: string;
 }) {
   const item = suiteItem(active);
 
   return (
     <>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <nav className="text-sm text-[var(--color-label-secondary)]">
-          <Link href="/app" className="hover:underline">
-            Apps
-          </Link>
-          <span className="mx-2">›</span>
-          <Link href="/app/practice" className="hover:underline">
-            Practice
-          </Link>
-          <span className="mx-2">›</span>
-          <span className="text-[var(--color-label)]">{item.label}</span>
-        </nav>
-        <div className="flex justify-center sm:justify-end">
-          <PracticeSuiteNav active={active} />
-        </div>
+      {/* Breadcrumb — left aligned */}
+      <nav className="text-sm text-[var(--color-label-secondary)]">
+        <Link href="/app" className="hover:underline">
+          Apps
+        </Link>
+        <span className="mx-2">›</span>
+        <Link href="/app/practice" className="hover:underline">
+          Practice
+        </Link>
+        <span className="mx-2">›</span>
+        <span className="text-[var(--color-label)]">{item.label}</span>
+      </nav>
+
+      {/* Suite nav — centered on the page axis (Spec §0) */}
+      <div className="mt-4 flex justify-center">
+        <PracticeSuiteNav active={active} />
       </div>
+
+      {/* Account + Date — Practice-level only, always stated */}
+      <PracticeContextBar
+        inertHint={contextInert}
+        inertMessage={contextInertMessage}
+      />
 
       {!hideTitle && (
         <header className="mt-4 max-w-2xl">
@@ -63,5 +78,36 @@ export default function PracticeSuiteChrome({
 
       {children}
     </>
+  );
+}
+
+export default function PracticeSuiteChrome({
+  active,
+  children,
+  hideTitle = false,
+  subtitle,
+  contextInert = false,
+  contextInertMessage,
+}: {
+  active: PracticeSuiteId;
+  children: ReactNode;
+  hideTitle?: boolean;
+  subtitle?: string;
+  /** Completed retrospective: contexts visible but do not change render. */
+  contextInert?: boolean;
+  contextInertMessage?: string;
+}) {
+  return (
+    <PracticeContextProvider>
+      <PracticeSuiteChromeInner
+        active={active}
+        hideTitle={hideTitle}
+        subtitle={subtitle}
+        contextInert={contextInert}
+        contextInertMessage={contextInertMessage}
+      >
+        {children}
+      </PracticeSuiteChromeInner>
+    </PracticeContextProvider>
   );
 }

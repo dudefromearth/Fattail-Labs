@@ -18,6 +18,7 @@ import retrospective_agent as ra
 import retrospective_domain as rd
 from guards import require_session
 from routes.trade_log.common import (
+    _get_account,
     _load_member_book,
     _storage_identity_id,
 )
@@ -95,6 +96,14 @@ async def create_retrospective(request: Request) -> dict:
     run_gather = body.get("gather", True)
     if not isinstance(run_gather, bool):
         run_gather = True
+    account_id = body.get("account_id")
+    if account_id is not None:
+        try:
+            account_id = int(account_id)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=422, detail="account_id must be an integer"
+            ) from exc
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -146,7 +155,7 @@ async def create_retrospective(request: Request) -> dict:
             )
             rid = int(cur.lastrowid)
             if run_gather:
-                _run_gather(cur, claims, iid, rid)
+                _run_gather(cur, claims, iid, rid, account_id=account_id)
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,
@@ -160,7 +169,19 @@ async def create_retrospective(request: Request) -> dict:
     return rd.serialize_row(row)
 
 
-def _run_gather(cur, claims: dict, iid: int, rid: int) -> None:
+def _run_gather(
+    cur,
+    claims: dict,
+    iid: int,
+    rid: int,
+    account_id: int | None = None,
+) -> None:
+    """Gather dual report.
+
+    account_id scopes the book sample only (Practice Context Spec v0.2 §2 / §4).
+    Stored permanently on the report so completed retrospectives ignore later
+    chrome changes.
+    """
     cur.execute(
         """SELECT id, status, is_maiden, scope_start, scope_end,
                   cadence_days_at_period, interrupted
@@ -181,7 +202,17 @@ def _run_gather(cur, claims: dict, iid: int, rid: int) -> None:
            WHERE id = %s AND identity_id = %s""",
         (rid, iid),
     )
-    trades, _accounts = _load_member_book(cur, iid, None)
+    # Book is account-scoped; steps 1–8 stay trader-level (domain uses iid).
+    book_account_id = int(account_id) if account_id is not None else None
+    account_scope: dict = {"account_id": None, "label": "All accounts"}
+    if book_account_id is not None:
+        acct = _get_account(cur, iid, book_account_id)
+        account_scope = {
+            "account_id": int(acct["id"]),
+            "label": str(acct.get("label") or f"Account {book_account_id}"),
+            "broker": acct.get("broker"),
+        }
+    trades, _accounts = _load_member_book(cur, iid, book_account_id)
     prior = rd.last_complete_retrospective(cur, iid)
     prior_id = int(prior["id"]) if prior else None
     is_maiden = bool(row["is_maiden"])
@@ -195,6 +226,8 @@ def _run_gather(cur, claims: dict, iid: int, rid: int) -> None:
         role=str(claims.get("role") or "activator"),
         trades=trades,
     )
+    # Freeze account scope at gather — completed renders ignore chrome (§4).
+    report["account_scope"] = account_scope
     # Spec §9 — stamp interruption notice into report (stated, not scolded)
     notice = rd.build_interruption_notice(
         interrupted=bool(row.get("interrupted")),
@@ -243,13 +276,28 @@ def _run_gather(cur, claims: dict, iid: int, rid: int) -> None:
 
 
 @router.post("/api/me/retrospectives/{retro_id}/gather")
-def gather_retrospective(retro_id: int, request: Request) -> dict:
+async def gather_retrospective(retro_id: int, request: Request) -> dict:
     claims = require_session(request)
+    body: dict = {}
+    try:
+        raw = await request.json()
+        if isinstance(raw, dict):
+            body = raw
+    except Exception:
+        body = {}
+    account_id = body.get("account_id")
+    if account_id is not None:
+        try:
+            account_id = int(account_id)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=422, detail="account_id must be an integer"
+            ) from exc
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
             _require_create_or_gather(cur, claims, iid)
-            _run_gather(cur, claims, iid, retro_id)
+            _run_gather(cur, claims, iid, retro_id, account_id=account_id)
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,

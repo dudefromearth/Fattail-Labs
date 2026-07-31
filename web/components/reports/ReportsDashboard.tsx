@@ -2,21 +2,20 @@
 
 /**
  * Reports dashboard shell — charts/cards live in sibling modules (PH2-4).
+ * Account + date from Practice Context Spec v0.2 (replaces local pager).
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Button } from "@/components/ui";
-import type { Account } from "@/lib/tradeLog";
 import {
-  accountPages,
   loadStartingCapital,
   reportsBookFromServer,
   saveStartingCapital,
   type ReportsBook,
 } from "@/lib/reportsBook";
-import { fetchAccounts, fetchReportsBook } from "@/lib/tradeLogApi";
+import { fetchReportsBook } from "@/lib/tradeLogApi";
+import { usePracticeContext } from "@/lib/practiceContext";
 import EquityChart from "./EquityChart";
 import DrawdownChart from "./DrawdownChart";
 import StatsTable from "./StatsTable";
@@ -33,100 +32,60 @@ export default function ReportsDashboard() {
     const n = Number(raw);
     return Number.isFinite(n) && n > 0 ? n : null;
   })();
+
+  const {
+    accountId,
+    accountLabel,
+    rangeFromYmd,
+    rangeToYmd,
+    periodLabel,
+    dateFilterActive,
+  } = usePracticeContext();
+
   const [state, setState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [book, setBook] = useState<ReportsBook | null>(null);
-  const [pageIdx, setPageIdx] = useState(0);
   const [capital, setCapital] = useState(50000);
 
   useEffect(() => {
     setCapital(loadStartingCapital(50000));
   }, []);
 
-  const pages = useMemo(() => accountPages(accounts), [accounts]);
-  const safeIdx = Math.min(pageIdx, Math.max(0, pages.length - 1));
-  const page = pages[safeIdx] || pages[0];
-  const filter: number | "all" = page?.kind === "one" ? page.id : "all";
-
-  const loadAccounts = useCallback(async () => {
+  const loadBook = useCallback(async () => {
     setState("loading");
     setError(null);
     try {
-      const res = await fetchAccounts();
+      const res = await fetchReportsBook({
+        accountId,
+        startingCapital: capital,
+        fromDay: dateFilterActive ? rangeFromYmd : undefined,
+        toDay: dateFilterActive ? rangeToYmd : undefined,
+      });
       if (!res.ok) {
         setState(res.error.kind === "err" ? "err" : res.error.kind);
         if (res.error.kind === "err") setError(res.error.message);
-        setAccounts([]);
         setBook(null);
         return;
       }
-      setAccounts(res.data.accounts || []);
+      setBook(reportsBookFromServer(res.data));
       setState("ok");
     } catch (e) {
       setState("err");
       setError(e instanceof Error ? e.message : String(e));
-      setAccounts([]);
       setBook(null);
     }
-  }, []);
+  }, [accountId, capital, rangeFromYmd, rangeToYmd, dateFilterActive]);
 
   useEffect(() => {
-    loadAccounts();
-  }, [loadAccounts]);
-
-  // Server domain read model — re-fetch when account filter or capital changes
-  useEffect(() => {
-    if (state !== "ok") return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetchReportsBook({
-          accountId: filter,
-          startingCapital: capital,
-        });
-        if (cancelled) return;
-        if (!res.ok) {
-          if (res.error.kind === "anon" || res.error.kind === "forbidden") {
-            setState(res.error.kind);
-            setBook(null);
-            return;
-          }
-          setError(res.error.message);
-          setBook(null);
-          return;
-        }
-        setError(null);
-        setBook(reportsBookFromServer(res.data));
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : String(e));
-          setBook(null);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [state, filter, capital]);
+    void loadBook();
+  }, [loadBook]);
 
   function onCapital(n: number) {
     setCapital(n);
     saveStartingCapital(n);
   }
 
-  const load = loadAccounts;
-
-  function shiftPage(delta: number) {
-    setPageIdx((i) => {
-      const next = i + delta;
-      if (next < 0) return pages.length - 1;
-      if (next >= pages.length) return 0;
-      return next;
-    });
-  }
-
-  if (state === "loading") {
+  if (state === "loading" && !book) {
     return (
       <p className="mt-8 text-sm text-[var(--color-label-tertiary)]">
         Loading reports…
@@ -155,11 +114,11 @@ export default function ReportsDashboard() {
       </div>
     );
   }
-  if (state === "err") {
+  if (state === "err" && !book) {
     return (
       <div className="mt-8 text-sm">
         Could not load.{" "}
-        <button type="button" className="text-[var(--color-tint)] underline" onClick={load}>
+        <button type="button" className="text-[var(--color-tint)] underline" onClick={() => void loadBook()}>
           Retry
         </button>
         {error && <p className="mt-1 font-mono text-xs opacity-70">{error}</p>}
@@ -178,53 +137,34 @@ export default function ReportsDashboard() {
     );
   }
 
-  return (
+return (
     <div className="mt-6 space-y-6" data-testid="reports-dashboard">
-      {/* Account pager — HIG secondary controls */}
+      {/* Scope stated — Practice Context Spec v0.2 (no local pager) */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p
             className="font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]"
             style={{ fontSize: "var(--text-caption)" }}
           >
-            Account
+            Account · window
           </p>
           <p
             className="font-semibold text-[var(--color-label)]"
             style={{ fontSize: "var(--text-headline)" }}
+            data-testid="reports-account-label"
           >
-            {book.accountLabel}
+            {book.accountLabel || accountLabel}
+          </p>
+          <p
+            className="mt-0.5 text-xs text-[var(--color-label-tertiary)]"
+            data-testid="reports-period-label"
+          >
+            Analysis window:{" "}
+            {dateFilterActive
+              ? `${periodLabel} (${rangeFromYmd} → ${rangeToYmd})`
+              : "All time"}
           </p>
         </div>
-        {pages.length > 1 && (
-          <div
-            className="inline-flex items-center gap-1 rounded-full bg-[var(--color-fill)] p-1"
-            role="group"
-            aria-label="Account page"
-          >
-            <Button
-              type="button"
-              variant="plain"
-              className="!min-h-9 !rounded-full !px-3"
-              onClick={() => shiftPage(-1)}
-              aria-label="Previous account"
-            >
-              ‹
-            </Button>
-            <span className="min-w-[4.5rem] text-center text-sm tabular-nums text-[var(--color-label-secondary)]">
-              {safeIdx + 1} / {pages.length}
-            </span>
-            <Button
-              type="button"
-              variant="plain"
-              className="!min-h-9 !rounded-full !px-3"
-              onClick={() => shiftPage(1)}
-              aria-label="Next account"
-            >
-              ›
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Main: stats | charts — equity fills remaining height; no dead gap */}

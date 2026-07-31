@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
@@ -9,6 +10,8 @@ export default function RetrospectiveDetailPage() {
   const params = useParams();
   const raw = params?.id;
   const id = typeof raw === "string" ? Number(raw) : Number(raw?.[0]);
+  const [status, setStatus] = useState<string | null>(null);
+  const onStatusChange = useCallback((s: string) => setStatus(s), []);
 
   if (!Number.isFinite(id) || id <= 0) {
     return (
@@ -21,14 +24,21 @@ export default function RetrospectiveDetailPage() {
     );
   }
 
+  const complete = status === "complete";
+
   return (
     <main className="mx-auto w-full max-w-[1100px] px-4 py-6 pb-24 sm:px-6">
       <PracticeSuiteChrome
         active="retrospective"
         subtitle="Gather since last retrospective — dual report, integrity, progress."
+        contextInert={complete}
+        contextInertMessage="This completed retrospective is fixed at gather — account and date do not change what is shown. Period was set when you gathered; the book uses the account scope stored then."
       >
         <div className="mt-6">
-          <RetrospectiveWorkspace retroId={id} />
+          <RetrospectiveWorkspace
+            retroId={id}
+            onStatusChange={onStatusChange}
+          />
         </div>
       </PracticeSuiteChrome>
     </main>

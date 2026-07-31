@@ -1,7 +1,6 @@
 # FatTail Labs — Tag Manager Spec v0.2
 
-**Status:** DRAFT — active build target (two-tier). Re-asserted 2026-07-30; as-built includes
-migration `058`, personal vocab APIs, Resources › Tags. Spec v0.3 admin-only lock is historical.
+**Status:** DRAFT — for bench review and Coach GO. Not build authority.
 **Supersedes:** Tag Manager Spec v0.1 (Labs, single shared vocabulary — insufficient).
 **Level:** Platform. One system for courses, every Practice app, and later surfaces.
 **Phase:** P1 — the platform structures content (INSTRUCTIONS §4 routing test).
@@ -216,6 +215,59 @@ Labs has no settings modal; placement follows existing Labs chrome.
 
 ---
 
+## 9a. Member browse surface — Resources › Tags
+
+The vocabulary is browsable by members under **Resources**, beside the Library.
+
+**Naming:** the pill reads **Tags**, not "Lexicon." Members do not have a word for lexicon, and the
+thing has a plain name.
+
+**Chrome:** pill nav **above the page title**, matching the Practice app nav — one pattern for
+section navigation across the product.
+
+```
+Resources
+  [ Library ][ Tags ]
+```
+
+**Layout**, following the MSC Tag System panel:
+
+| Element | Behavior |
+|---|---|
+| Category chips | `All` plus one per category, across the top |
+| Sort | Alphabetical, by category, by the member's usage |
+| Show retired | Off by default; retired terms remain readable |
+| Term row | Name, description, category, and **the member's own usage count** |
+
+**Usage count is the member's own** and is Family B — how often *they* have applied a term. Never
+another member's, never an aggregate presented as personal.
+
+**Read-only for members.** No Edit, Retire, Delete, or New Tag on this surface — the vocabulary is
+curated (§7). The admin equivalents live in `/admin`.
+
+**Not borrowed from MSC:** member tag CRUD, and "track P&L performance on any tag." The second is
+invariant 8 and does not cross over in any form (§8).
+
+**This is also a teaching surface.** A member reading descriptions is learning the vocabulary the
+retrospective will speak back to them, which is why seed descriptions are Hotel's and Tango's (§5)
+rather than filler.
+
+### 9a.1 Category coverage — open
+
+MSC's set runs to ten: Behavior, Context, Process, Insight, plus **Sleep, Focus, Distractions, Body
+State, Friction**. Labs carries four.
+
+The five Labs lacks describe the trader's **state** rather than their trading — and state is what
+explains behavior. A member who tags *slept badly* on a day they also tag *impatience* has supplied
+that co-occurrence themselves, which §8.2's clustering can then observe without inferring anything.
+Without those categories the retrospective can see the behavior and never the condition behind it.
+
+Cost: more categories is more vocabulary to learn, and a picker that is longer at the moment of use.
+
+*Decision: **Coach**, with **Hotel** and **Tango** on which additional categories earn their place.*
+
+---
+
 ## 10. Schema sketch
 
 ```
@@ -296,6 +348,7 @@ Capabilities rather than endpoints; contracts belong to India and Alpha.
 | 4 | Aggregate concept counts — admin-visible at all, and at what minimum population before a count is shown | Mike |
 | 5 | Whether a member's repeated use of a concept may surface the course carrying the same `lexicon_key`. Real teaching payoff, but it is the system acting on tag usage — decide deliberately rather than by drift | Coach + Tango |
 | 6 | Migration of Journal Session v0.5 §5's inline vocabulary | India |
+| 7 | Whether the four categories extend to cover trader **state** — sleep, focus, distraction, body, friction (§9a.1) | Coach + Hotel + Tango |
 
 ---
 

@@ -10,11 +10,8 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
-  type ReactNode,
 } from "react";
-import { Button } from "@/components/ui";
 import { createRetrospective } from "@/lib/retrospectiveApi";
 import {
   createJournalSession,
@@ -42,26 +39,20 @@ import StructuredSessionForm from "./StructuredSessionForm";
 import JournalTagsControl from "./JournalTagsControl";
 import {
   addDays,
-  formatDayTitle,
   formatLong,
   monthCells,
-  monthTitle,
   sameDay,
   startOfDay,
   startOfMonth,
   startOfWeek,
-  weekTitle,
   ymd,
 } from "./dateUtils";
+import {
+  usePracticeContext,
+  type DateGranularity,
+} from "@/lib/practiceContext";
 
 type ViewMode = "year" | "month" | "week" | "day";
-
-const VIEWS: { id: ViewMode; label: string }[] = [
-  { id: "year", label: "Year" },
-  { id: "month", label: "Month" },
-  { id: "week", label: "Week" },
-  { id: "day", label: "Day" },
-];
 
 /** Week bands — process day structure (mockup). */
 const WEEK_BANDS = [
@@ -87,9 +78,6 @@ const MONTH_SHORT = [
   "Nov",
   "Dec",
 ] as const;
-
-const navBtn =
-  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] text-[var(--color-label-secondary)] shadow-[var(--elevation-1)] transition-colors hover:bg-[var(--color-fill)] hover:text-[var(--color-label)] sm:min-h-9 sm:min-w-9";
 
 const tileBase =
   "bg-[var(--color-surface)] shadow-[var(--elevation-1)] rounded-[var(--radius-md)]";
@@ -588,8 +576,18 @@ export default function JournalCalendar() {
   const router = useRouter();
   const today = useMemo(() => startOfDay(new Date()), []);
 
-  const [view, setView] = useState<ViewMode>("month");
-  const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
+  // Date + account from Practice chrome (Context Spec v0.2).
+  const {
+    selectedDate: selected,
+    setSelectedDate,
+    granularity,
+    setGranularity,
+    accountIdParam,
+  } = usePracticeContext();
+  // accountIdParam scopes day trades only; conversation stays trader-level.
+  // "All" is not a calendar layout — fall back to month for the work surface.
+  const view: ViewMode =
+    granularity === "all" ? "month" : (granularity as ViewMode);
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [draft, setDraft] = useState("");
   const [activePrompt, setActivePrompt] = useState<string | null>(null);
@@ -621,6 +619,11 @@ export default function JournalCalendar() {
     null,
   );
 
+  // Keep month/year grid cursor aligned with shared date.
+  useEffect(() => {
+    setCursor(startOfMonth(selected));
+  }, [selected]);
+
   const selectedYmd = useMemo(() => ymdLocal(selected), [selected]);
   const selectedClosed = closedDates.has(selectedYmd);
   const weekStart = useMemo(() => startOfWeek(selected), [selected]);
@@ -628,7 +631,11 @@ export default function JournalCalendar() {
   const loadDayBook = useCallback(async () => {
     setTradesLoadState("loading");
     try {
-      const res = await fetchDayBook(selectedYmd);
+      // Trades on this day are account-scoped; conversation is not (§2).
+      const res = await fetchDayBook(
+        selectedYmd,
+        accountIdParam ?? undefined,
+      );
       if (!res.ok) {
         setTradesLoadState(
           res.error.kind === "err" ? "err" : res.error.kind,
@@ -642,22 +649,25 @@ export default function JournalCalendar() {
       setTradesLoadState("err");
       setDayBook(emptyDayBook(selectedYmd));
     }
-  }, [selectedYmd]);
+  }, [selectedYmd, accountIdParam]);
 
-  // Calendar dots must cover Trade Log history (e.g. 2022+), not only last/next year.
-  // Previously only [today.year-1, today.year+1] was requested — older fills never dotted.
+  // Calendar dots — account-scoped interest for trade markers.
   const loadDaysInterest = useCallback(async () => {
     const years = [
       today.getFullYear(),
       cursor.getFullYear(),
       selected.getFullYear(),
     ];
-    const fromYear = Math.min(...years) - 15; // wide enough for multi-year books
+    const fromYear = Math.min(...years) - 15;
     const toYear = Math.max(...years) + 1;
     const fromDay = `${fromYear}-01-01`;
     const toDay = `${toYear}-12-31`;
     try {
-      const res = await fetchDaysInterest(fromDay, toDay);
+      const res = await fetchDaysInterest(
+        fromDay,
+        toDay,
+        accountIdParam ?? undefined,
+      );
       if (!res.ok) {
         if (res.error.kind === "anon" || res.error.kind === "forbidden") {
           setTradesLoadState(res.error.kind);
@@ -669,7 +679,7 @@ export default function JournalCalendar() {
     } catch {
       setDaysWithTrades(new Set());
     }
-  }, [today, cursor, selected]);
+  }, [today, cursor, selected, accountIdParam]);
 
   useEffect(() => {
     loadDaysInterest();
@@ -770,52 +780,12 @@ export default function JournalCalendar() {
 
   const year = cursor.getFullYear();
 
-  function setViewAndSync(v: ViewMode) {
-    setView(v);
-    if (v === "month") setCursor(startOfMonth(selected));
-    if (v === "year") setCursor(new Date(selected.getFullYear(), 0, 1));
-  }
-
-  function shift(delta: number) {
-    if (view === "year") {
-      setCursor((c) => new Date(c.getFullYear() + delta, 0, 1));
-      setSelected((s) => new Date(s.getFullYear() + delta, s.getMonth(), s.getDate()));
-      return;
-    }
-    if (view === "month") {
-      setCursor((c) => new Date(c.getFullYear(), c.getMonth() + delta, 1));
-      return;
-    }
-    if (view === "week") {
-      const next = addDays(selected, delta * 7);
-      setSelected(next);
-      setCursor(startOfMonth(next));
-      return;
-    }
-    // day
-    const next = addDays(selected, delta);
-    setSelected(next);
-    setCursor(startOfMonth(next));
-    setDraft("");
-    setActivePrompt(null);
-  }
-
-  function goToday() {
-    const t = startOfDay(new Date());
-    setSelected(t);
-    setCursor(startOfMonth(t));
-    setDraft("");
-    setActivePrompt(null);
-    setView("day");
-  }
-
   /** Spec §1.7 — Month cell → Day view */
   function openDayFromCell(d: Date) {
     const x = startOfDay(d);
-    setSelected(x);
-    setCursor(startOfMonth(x));
+    setSelectedDate(x);
     setScrollToMessageId(null);
-    setView("day");
+    setGranularity("day");
     setDraft("");
     setActivePrompt(null);
   }
@@ -823,9 +793,8 @@ export default function JournalCalendar() {
   /** Spec §1.7 — Year cell → Month view */
   function openMonthFromYear(y: number, month: number) {
     const d = new Date(y, month, 1);
-    setCursor(startOfMonth(d));
-    setSelected(startOfDay(d));
-    setView("month");
+    setSelectedDate(startOfDay(d));
+    setGranularity("month");
   }
 
   /** Spec §1.6 — Week band → Day scrolled to first message in band */
@@ -834,10 +803,9 @@ export default function JournalCalendar() {
     const key = ymdLocal(x);
     const msgId =
       weekActivity[key]?.first_message_id_by_band?.[band] ?? null;
-    setSelected(x);
-    setCursor(startOfMonth(x));
+    setSelectedDate(x);
     setScrollToMessageId(msgId);
-    setView("day");
+    setGranularity("day");
     setDraft("");
   }
 
@@ -847,7 +815,10 @@ export default function JournalCalendar() {
     setSessionErr(null);
     setRetroBusy(true);
     try {
-      const r = await createRetrospective({ gather: true });
+      const r = await createRetrospective({
+        gather: true,
+        accountId: accountIdParam,
+      });
       router.push(`/app/retrospective/${r.id}`);
     } catch (e) {
       setRetroErr(
@@ -881,7 +852,7 @@ export default function JournalCalendar() {
         setActiveSession(s);
       }
       await loadSessions();
-      setView("day");
+      setGranularity("day");
     } catch (e) {
       setSessionErr(
         e instanceof Error ? e.message : "Could not start journal entry",
@@ -897,102 +868,13 @@ export default function JournalCalendar() {
     void loadSessions();
   }
 
-  const title: ReactNode =
-    view === "year" ? (
-      year
-    ) : view === "month" ? (
-      monthTitle(cursor)
-    ) : view === "week" ? (
-      weekTitle(weekStart)
-    ) : (
-      formatDayTitle(selected)
-    );
-
-  const prevLabel =
-    view === "year"
-      ? "Previous year"
-      : view === "month"
-        ? "Previous month"
-        : view === "week"
-          ? "Previous week"
-          : "Previous day";
-  const nextLabel =
-    view === "year"
-      ? "Next year"
-      : view === "month"
-        ? "Next month"
-        : view === "week"
-          ? "Next week"
-          : "Next day";
-
   return (
     <div
       className="mt-6 flex flex-col gap-6"
       data-testid="journal-calendar"
       data-view={view}
     >
-      {/* Controls: view · period · today */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div
-          className="inline-flex rounded-full bg-[var(--color-fill)] p-0.5"
-          role="group"
-          aria-label="Calendar view"
-        >
-          {VIEWS.map((v) => {
-            const on = view === v.id;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setViewAndSync(v.id)}
-                className={[
-                  "min-h-8 rounded-full px-3 py-1 text-sm font-medium transition-colors",
-                  on
-                    ? "bg-[var(--color-tint)] text-[var(--color-on-tint)] shadow-sm"
-                    : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
-                ].join(" ")}
-                aria-pressed={on}
-              >
-                {v.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-1 flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            className={navBtn}
-            onClick={() => shift(-1)}
-            aria-label={prevLabel}
-          >
-            <span className="text-lg leading-none" aria-hidden>
-              ‹
-            </span>
-          </button>
-          <h2
-            className="min-w-[10rem] text-center font-semibold text-[var(--color-label)]"
-            style={{ fontSize: "var(--text-headline)" }}
-          >
-            {title}
-          </h2>
-          <button
-            type="button"
-            className={navBtn}
-            onClick={() => shift(1)}
-            aria-label={nextLabel}
-          >
-            <span className="text-lg leading-none" aria-hidden>
-              ›
-            </span>
-          </button>
-        </div>
-
-        <Button type="button" variant="secondary" onClick={goToday}>
-          Today
-        </Button>
-      </div>
-
+      {/* Date chrome lives in PracticeSuiteChrome (Context Spec v0.2). */}
       {/* Work surface — extra bottom pad so last tile row + selection ring clear the panel */}
       <div className="min-w-0 pb-1">
         {view === "year" && (

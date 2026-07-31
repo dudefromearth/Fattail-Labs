@@ -67,17 +67,39 @@ def analytics_reports_book(
     request: Request,
     account_id: int | None = None,
     starting_capital: float = 50000.0,
+    from_day: str | None = None,
+    to_day: str | None = None,
 ) -> dict:
-    """Reports home: equity series, drawdown, stats (domain build_reports_book)."""
+    """Reports home: equity series, drawdown, stats (domain build_reports_book).
+
+    Optional from_day/to_day (YYYY-MM-DD) adopt Practice Context date as the
+    analysis window (Practice Context Spec v0.2 §0.1 / open #6).
+    """
     claims = require_session(request)
     _require_tool_member(claims)
     if starting_capital < 0:
         raise HTTPException(status_code=422, detail="starting_capital must be ≥ 0")
+    for label, val in (("from_day", from_day), ("to_day", to_day)):
+        if val is not None and (
+            len(val) < 10 or val[4] != "-" or val[7] != "-"
+        ):
+            raise HTTPException(
+                status_code=422, detail=f"{label} must be YYYY-MM-DD"
+            )
     from trade_log_domain import build_reports_book
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
             trades, accounts = _load_member_book(cur, iid, account_id)
+    if from_day or to_day:
+        lo = (from_day or "0000-01-01")[:10]
+        hi = (to_day or "9999-12-31")[:10]
+        trades = [
+            t
+            for t in trades
+            if (t.get("exec_at") or "")[:10] >= lo
+            and (t.get("exec_at") or "")[:10] <= hi
+        ]
     filt: int | str = "all" if account_id is None else int(account_id)
     return build_reports_book(trades, accounts, filt, float(starting_capital))

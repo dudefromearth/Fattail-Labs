@@ -35,7 +35,8 @@
 ## Status board
 
 **Program status:** **PROGRAM COMPLETE** · Spec **v0.7.1 AS-BUILT** (DL-163 GO · **DL-164** close · mig 055–057)  
-**Next:** — (deferred items in RT07-9-G residuals)
+**Layout:** **§6.2 map chrome** shipped (RT07-L) — 3×3 grid + one-step body on as-built ceremony  
+**Next:** — (deferred items in RT07-9-G residuals; Spec rename to v0.7.2 optional)
 
 | Phase | Intent | Status |
 |-------|--------|--------|

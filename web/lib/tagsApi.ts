@@ -1,4 +1,4 @@
-/** Client for platform Tag Manager APIs (admin lexicon + assign-only). */
+/** Client for Tag Manager APIs — platform lexicon + personal vocabulary. */
 
 export type TagCategory = {
   id: number;
@@ -9,19 +9,24 @@ export type TagCategory = {
 
 export type Tag = {
   id: number;
-  slug: string;
+  slug?: string;
   label: string;
   description: string | null;
   category_id: number | null;
   category?: TagCategory | null;
   color: string | null;
+  lexicon_key?: string | null;
+  source?: string;
   status: string;
+  usage_count?: number | null;
+  member_tag?: boolean;
   merged_into_tag_id?: number | null;
 };
 
 export type TagAssignment = {
   id: number;
-  tag_id: number;
+  tag_id: number | null;
+  member_tag_id?: number | null;
   object_type: string;
   object_id: number;
   identity_id: number | null;
@@ -45,12 +50,56 @@ async function parse<T>(r: Response): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+/** Platform lexicon (admin-curated). */
 export async function fetchTags(): Promise<{
   categories: TagCategory[];
   tags: Tag[];
 }> {
   const r = await fetch("/api/tags", { credentials: "same-origin" });
   return parse(r);
+}
+
+/** Personal vocabulary (seeded from lexicon; Family B). */
+export async function fetchMyTags(opts?: {
+  withUsage?: boolean;
+  includeRetired?: boolean;
+}): Promise<{ categories: TagCategory[]; tags: Tag[] }> {
+  const q = new URLSearchParams();
+  if (opts?.withUsage) q.set("with_usage", "1");
+  if (opts?.includeRetired) q.set("include_retired", "1");
+  const qs = q.toString();
+  const r = await fetch(`/api/me/tags${qs ? `?${qs}` : ""}`, {
+    credentials: "same-origin",
+  });
+  return parse(r);
+}
+
+export async function resolveMyTag(
+  label: string,
+  allowCreate = true,
+): Promise<{
+  tag: Tag;
+  created: boolean;
+  near_duplicates: { tag: Tag; score: number }[];
+}> {
+  const r = await fetch("/api/me/tags/resolve", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ label, allow_create: allowCreate }),
+  });
+  return parse(r);
+}
+
+export async function adoptLexiconKey(lexiconKey: string): Promise<Tag> {
+  const r = await fetch("/api/me/tags/adopt", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lexicon_key: lexiconKey }),
+  });
+  const d = await parse<{ tag: Tag }>(r);
+  return d.tag;
 }
 
 export async function fetchObjectAssignments(
@@ -72,16 +121,19 @@ export async function setObjectTags(
   objectType: string,
   objectId: number,
   tagIds: number[],
+  opts?: { personal?: boolean },
 ): Promise<TagAssignment[]> {
+  const body: Record<string, unknown> = {
+    object_type: objectType,
+    object_id: objectId,
+  };
+  if (opts?.personal) body.member_tag_ids = tagIds;
+  else body.tag_ids = tagIds;
   const r = await fetch("/api/tags/assignments", {
     method: "PUT",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      object_type: objectType,
-      object_id: objectId,
-      tag_ids: tagIds,
-    }),
+    body: JSON.stringify(body),
   });
   const d = await parse<{ assignments: TagAssignment[] }>(r);
   return d.assignments || [];

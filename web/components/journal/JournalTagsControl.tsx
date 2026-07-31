@@ -1,14 +1,16 @@
 "use client";
 
 /**
- * Spec v0.5 §5.0 — compact tags control; full list in a window (not a chip wall).
+ * Spec Tag Manager v0.2 — personal vocabulary picker + free-text resolve.
+ * Auto-create on submit; near-duplicate is a hint, never a block.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui";
 import {
+  fetchMyTags,
   fetchObjectAssignments,
-  fetchTags,
+  resolveMyTag,
   setObjectTags,
   type Tag,
 } from "@/lib/tagsApi";
@@ -31,16 +33,21 @@ export default function JournalTagsControl({
   const [labels, setLabels] = useState<string[]>([]);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     onError?.(null);
     try {
       const [vocab, assigns] = await Promise.all([
-        fetchTags(),
+        fetchMyTags(),
         fetchObjectAssignments("journal_session", sessionId),
       ]);
       setTags(vocab.tags || []);
-      const ids = new Set(assigns.map((a) => a.tag_id));
+      const ids = new Set(
+        assigns
+          .map((a) => a.member_tag_id ?? a.tag_id)
+          .filter((x): x is number => x != null),
+      );
       setSelected(ids);
       setDraft(new Set(ids));
       setLabels(
@@ -61,6 +68,7 @@ export default function JournalTagsControl({
     if (open) {
       setDraft(new Set(selected));
       setQ("");
+      setHint(null);
     }
   }, [open, selected]);
 
@@ -82,6 +90,36 @@ export default function JournalTagsControl({
     });
   }
 
+  async function addFromQuery() {
+    const label = q.trim();
+    if (!label || busy || disabled) return;
+    setBusy(true);
+    onError?.(null);
+    setHint(null);
+    try {
+      const res = await resolveMyTag(label, true);
+      if (res.near_duplicates?.length && res.created) {
+        const names = res.near_duplicates
+          .slice(0, 2)
+          .map((h) => h.tag.label)
+          .join(", ");
+        setHint(`Created “${res.tag.label}”. Similar: ${names}`);
+      }
+      setTags((prev) => {
+        if (prev.some((t) => t.id === res.tag.id)) return prev;
+        return [...prev, res.tag].sort((a, b) =>
+          a.label.localeCompare(b.label),
+        );
+      });
+      setDraft((prev) => new Set(prev).add(res.tag.id));
+      setQ("");
+    } catch (e) {
+      onError?.(e instanceof Error ? e.message : "Could not create tag");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function save() {
     if (disabled || busy) return;
     setBusy(true);
@@ -91,8 +129,13 @@ export default function JournalTagsControl({
         "journal_session",
         sessionId,
         Array.from(draft),
+        { personal: true },
       );
-      const ids = new Set(assigns.map((a) => a.tag_id));
+      const ids = new Set(
+        assigns
+          .map((a) => a.member_tag_id ?? a.tag_id)
+          .filter((x): x is number => x != null),
+      );
       setSelected(ids);
       setLabels(
         assigns
@@ -113,6 +156,10 @@ export default function JournalTagsControl({
       : labels.length <= 2
         ? labels.join(" · ")
         : `${labels.slice(0, 2).join(" · ")} +${labels.length - 2}`;
+
+  const exactMatch = tags.some(
+    (t) => t.label.toLowerCase() === q.trim().toLowerCase(),
+  );
 
   return (
     <div className="relative" data-testid="journal-tags-control">
@@ -157,18 +204,43 @@ export default function JournalTagsControl({
                 Tags
               </h3>
               <p className="mt-0.5 text-xs text-[var(--color-label-tertiary)]">
-                Optional framing from the system lexicon. Does not change the
-                interview.
+                Your vocabulary — pick a seed term or type a new one. Optional;
+                does not change the interview.
               </p>
-              <input
-                type="search"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search…"
-                className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-sm"
-                aria-label="Search tags"
-                autoFocus
-              />
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="search"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && q.trim() && !exactMatch) {
+                      e.preventDefault();
+                      void addFromQuery();
+                    }
+                  }}
+                  placeholder="Search or type a new tag…"
+                  className="min-w-0 flex-1 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+                  aria-label="Search or create tags"
+                  autoFocus
+                  data-testid="journal-tags-search"
+                />
+                {q.trim() && !exactMatch && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy || disabled}
+                    onClick={() => void addFromQuery()}
+                    data-testid="journal-tags-create"
+                  >
+                    Add
+                  </Button>
+                )}
+              </div>
+              {hint && (
+                <p className="mt-1 text-xs text-[var(--color-label-secondary)]">
+                  {hint}
+                </p>
+              )}
             </div>
             <ul className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
               {filtered.map((t) => {
@@ -213,7 +285,9 @@ export default function JournalTagsControl({
               })}
               {filtered.length === 0 && (
                 <li className="px-2 py-4 text-center text-sm text-[var(--color-label-tertiary)]">
-                  No tags match.
+                  {q.trim()
+                    ? "No match — press Add to create this tag."
+                    : "No tags yet."}
                 </li>
               )}
             </ul>

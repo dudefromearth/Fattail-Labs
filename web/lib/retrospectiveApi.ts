@@ -110,6 +110,8 @@ export async function listRetrospectives(): Promise<Retrospective[]> {
 export async function createRetrospective(opts?: {
   title?: string;
   gather?: boolean;
+  /** Book sample account scope at gather (null = all). */
+  accountId?: number | null;
 }): Promise<Retrospective> {
   const r = await fetch("/api/me/retrospectives", {
     method: "POST",
@@ -118,6 +120,7 @@ export async function createRetrospective(opts?: {
     body: JSON.stringify({
       title: opts?.title || "",
       gather: opts?.gather !== false,
+      account_id: opts?.accountId ?? null,
     }),
   });
   return parse(r);
@@ -130,10 +133,17 @@ export async function getRetrospective(id: number): Promise<Retrospective> {
   return parse(r);
 }
 
-export async function gatherRetrospective(id: number): Promise<Retrospective> {
+export async function gatherRetrospective(
+  id: number,
+  opts?: { accountId?: number | null },
+): Promise<Retrospective> {
   const r = await fetch(`/api/me/retrospectives/${id}/gather`, {
     method: "POST",
     credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      account_id: opts?.accountId ?? null,
+    }),
   });
   return parse(r);
 }

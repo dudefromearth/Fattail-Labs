@@ -93,12 +93,17 @@ export async function fetchAccounts(): Promise<
 export async function fetchReportsBook(opts: {
   accountId?: number | "all";
   startingCapital: number;
+  /** Inclusive analysis window (Practice Context date). */
+  fromDay?: string;
+  toDay?: string;
 }): Promise<AnalyticsResult<ServerReportsBook>> {
   const params = new URLSearchParams();
   params.set("starting_capital", String(opts.startingCapital));
   if (opts.accountId != null && opts.accountId !== "all") {
     params.set("account_id", String(opts.accountId));
   }
+  if (opts.fromDay) params.set("from_day", opts.fromDay.slice(0, 10));
+  if (opts.toDay) params.set("to_day", opts.toDay.slice(0, 10));
   const r = await fetch(
     `/api/me/trade-log/analytics/reports-book?${params}`,
     { credentials: "same-origin" },
