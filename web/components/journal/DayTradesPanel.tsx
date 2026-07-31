@@ -30,18 +30,49 @@ export function tradeNetLabel(t: Trade): string {
   return `${sign}${Number(t.net_price).toFixed(2)}${side}`;
 }
 
-/** Spread width from option strikes (structural; Spec v0.6 §1.5). */
+/**
+ * Spread width from option strikes (structural; Spec v0.6 §1.5).
+ *
+ * Industry butterfly width is **one wing** (body → wing), not wing-to-wing.
+ * Example: long 100 / short 2×150 / long 200 is a **50**-wide fly, not 100.
+ * Verticals / condors still use full strike span (max − min).
+ */
 export function tradeSpreadWidth(t: Trade): number | null {
   const strikes = (t.legs || [])
     .map((l) => l.strike)
     .filter((s): s is number => s != null && Number.isFinite(s));
   if (strikes.length < 2) return null;
-  const w = Math.max(...strikes) - Math.min(...strikes);
-  return w > 0 ? w : null;
+  const unique = [...new Set(strikes.map((s) => Number(s)))].sort(
+    (a, b) => a - b,
+  );
+  if (unique.length < 2) return null;
+  const span = unique[unique.length - 1]! - unique[0]!;
+  if (!(span > 0)) return null;
+
+  const strategy = (t.strategy || "").toUpperCase().replace(/[\s-]+/g, "_");
+  const isFly =
+    strategy === "BUTTERFLY" ||
+    strategy === "IRON_BUTTERFLY" ||
+    strategy.includes("BUTTERFLY");
+
+  if (isFly) {
+    // Symmetric fly: adjacent spacing = span/2. Broken wing: report tighter wing.
+    if (unique.length >= 3) {
+      let wing = Infinity;
+      for (let i = 1; i < unique.length; i++) {
+        wing = Math.min(wing, unique[i]! - unique[i - 1]!);
+      }
+      return Number.isFinite(wing) && wing > 0 ? wing : span / 2;
+    }
+    return span / 2;
+  }
+
+  return span;
 }
 
 /**
  * Risk-to-reward from structure when Trade Log does not yet expose R2R (§17-4b).
+ * Uses industry butterfly wing width (body→wing), not wing-to-wing span.
  * Defined-risk credit: reward ≈ |net|, risk ≈ width − |net| (points).
  * Debit: risk ≈ |net|, reward ≈ width − |net|.
  * Returns null when not computable — never invent expectancy.
