@@ -3,15 +3,16 @@ import Link from "next/link";
 import { siteUrl } from "@/lib/catalog";
 
 /**
- * Strategy Life Cycle hub — map for the advanced-trader sub-process and
- * courseware backlog. Two-column cards under section headers throughout.
+ * Strategy Lab hub — map for the advanced-trader sub-process and courseware
+ * backlog. Two-column cards under section headers throughout.
  * Workspace product ships later; this page orients members and curriculum.
+ * Scope (Coach): Build · Test · Run bots · live and paper.
  */
 
 export const metadata: Metadata = {
-  title: "Strategy Life Cycle",
+  title: "Strategy Lab",
   description:
-    "Build, Prove, Paper, Run — the FatTail path for validating strategies before capital. Courseware hub and practice map. Process over profit claims.",
+    "Build, Test, Run bots — live and paper. FatTail Strategy Lab for validating strategies before capital. Process over profit claims.",
   alternates: { canonical: siteUrl("/app/strategy-lab") },
 };
 
@@ -22,7 +23,7 @@ const STAGES = [
     id: "build",
     n: "1",
     name: "Build",
-    oneLiner: "Turn an idea into written, tradable rules.",
+    oneLiner: "Turn an idea into written, tradable rules a bot or human can follow.",
     learn: [
       "Write a Spec card a peer can understand",
       "Attach a Risk Shell (max loss per trade and day)",
@@ -30,35 +31,38 @@ const STAGES = [
     ],
   },
   {
-    id: "prove",
+    id: "test",
     n: "2",
-    name: "Prove",
-    oneLiner: "Test history fairly — with costs — then freeze.",
+    name: "Test",
+    oneLiner:
+      "Two gates: historical replay on a frozen window, and live tape — both required.",
     learn: [
-      "Baseline with fees and conservative slippage",
-      "Freeze parameters (tweaks = new version)",
-      "Out-of-sample / walk-forward honesty",
+      "Historical: replay stored underliers + chain snapshots (build the archive forward)",
+      "Live: run on Massive stream — signal-only or paper — before real size",
+      "Freeze parameters; costs on; kill or continue with a written reason",
     ],
   },
   {
-    id: "paper",
+    id: "run-bots",
     n: "3",
-    name: "Paper",
-    oneLiner: "Live market, no (or tiny) capital — does the path continue?",
+    name: "Run bots",
+    oneLiner:
+      "Encode the Spec as an automated bot — still process-first, never a black box.",
     learn: [
-      "Run a fixed paper window on live data",
-      "Journal every signal: taken, skipped, why",
-      "Measure adherence — no mid-window retunes",
+      "Map every rule to something a bot can execute",
+      "Define brakes: max loss, kill switch, session windows",
+      "Log every bot decision for review — capacity over dependency",
     ],
   },
   {
-    id: "run",
+    id: "live-paper",
     n: "4",
-    name: "Run",
-    oneLiner: "Real capital as a time-boxed campaign — then prune or retire.",
+    name: "Live and paper",
+    oneLiner:
+      "Run the same bot in paper and/or live — fixed windows, then prune or retire.",
     learn: [
-      "Start a campaign with dates and size policy",
-      "Daily brakes, logging, and sick-strategy prune",
+      "Paper first (or tiny size) on live data with no mid-window retunes",
+      "Live only as a time-boxed campaign with size policy",
       "Retrospective → one lesson back into Build",
     ],
   },
@@ -68,7 +72,7 @@ const ENTRY_PATHS = [
   {
     title: "Validate what you already trade",
     overview:
-      "Import today’s rules into a Spec, run an honest Prove (costs on), then Paper before you scale size.",
+      "Import today’s rules into a Spec, Test honestly (costs on), then Run bots in paper before live size.",
     learn: [
       "Separate “I trade this” from “this earned capital”",
       "Find where the current edge fails OOS or on adherence",
@@ -81,7 +85,7 @@ const ENTRY_PATHS = [
       "Hypothesis first, Risk Shell always, many candidates, few survivors. Throughput is a feature.",
     learn: [
       "Generate simple, style-fit ideas without shiny-object chase",
-      "Use the full Build → Prove → Paper filter",
+      "Use the full Build → Test → bot filter",
       "Keep a small live book under a hard limit",
     ],
   },
@@ -92,14 +96,14 @@ const CONNECTIONS = [
     href: "/app/practice",
     title: "Practice Log",
     overview:
-      "Trade Log and Journal — evidence for Paper and Run (fills, adherence, daily routine).",
+      "Trade Log and Journal — evidence for paper and live (fills, adherence, daily routine).",
     status: "live" as const,
   },
   {
     href: "/app/journey",
     title: "Journey",
     overview:
-      "Curriculum progress. Life-cycle courseware will deep-link into each stage.",
+      "Curriculum progress. Strategy Lab courseware will deep-link into each stage.",
     status: "live" as const,
   },
   {
@@ -125,12 +129,12 @@ const CONNECTIONS = [
 const COURSES = [
   {
     code: "SLC-01",
-    title: "Strategy Life Cycle Overview",
+    title: "Strategy Lab Overview",
     overview:
-      "The whole map in one course: why most ideas die, how the four stages work together, and how this sits on FatTail doctrine (capital preservation first).",
+      "The whole map in one course: why most ideas die, how Build · Test · Run bots · live and paper fit together, and how this sits on FatTail doctrine (capital preservation first).",
     learn: [
-      "Name and explain Build, Prove, Paper, and Run",
-      "Use the one rule: kill early, capital only after paper",
+      "Name and explain Build, Test, Run bots, and live and paper",
+      "Use the one rule: kill early, live capital only after paper",
       "Place the Lab next to Practice Log and Playbook",
     ],
   },
@@ -147,33 +151,33 @@ const COURSES = [
   },
   {
     code: "SLC-03",
-    title: "Prove — Fair History",
+    title: "Test — Fair History",
     overview:
       "Backtesting without fooling yourself: costs, freeze, out-of-sample checks, and metrics that matter (drawdown and expectancy over win rate).",
     learn: [
       "Run a costed baseline before optimizing",
       "Freeze params and document a version",
-      "Read IS vs OOS degradation and decide kill or paper",
+      "Read IS vs OOS degradation and decide kill or continue",
     ],
   },
   {
     code: "SLC-04",
-    title: "Paper — Incubation",
+    title: "Run bots — Automation",
     overview:
-      "Forward test on live data with no (or tiny) capital. Adherence and path continuity beat a pretty historical curve.",
+      "Turn a frozen Spec into a bot with brakes and logs. Automation is capacity support — not a black-box dependency.",
     learn: [
-      "Design a paper window (sessions + min signals)",
-      "Journal taken/skipped signals with reasons",
-      "Pass or kill without mid-window retuning",
+      "Encode rules a bot can execute without discretion",
+      "Define kill switch, max loss, and session windows",
+      "Review bot logs as process evidence",
     ],
   },
   {
     code: "SLC-05",
-    title: "Run — Campaigns & Prune",
+    title: "Live and paper — Campaigns",
     overview:
-      "Real capital as a time-boxed campaign: size policy, daily brakes, logging, prune, and retrospective into the next Build cycle.",
+      "Run the same bot in paper and/or live as a time-boxed campaign: size policy, daily brakes, prune, and retrospective into the next Build cycle.",
     learn: [
-      "Open and close a campaign with dates",
+      "Open and close a paper or live campaign with dates",
       "Apply a written size policy and risk brakes",
       "Retire sick strategies and extract one process lesson",
     ],
@@ -185,7 +189,7 @@ const COURSES = [
       "For traders who already run an edge: import current rules, stress-test honesty, and decide keep, paper, or kill — without building from zero.",
     learn: [
       "Capture what you actually trade today as a Spec",
-      "Find the weakest gate (Prove vs Paper vs adherence)",
+      "Find the weakest gate (Test vs paper vs adherence)",
       "Produce a written keep / paper / kill decision",
     ],
   },
@@ -239,7 +243,7 @@ function StatusBadge({ status }: { status: "live" | "soon" | "backlog" }) {
   );
 }
 
-export default function StrategyLifeCycleLandingPage() {
+export default function StrategyLabLandingPage() {
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-10 pb-16">
       <nav className="text-sm text-[var(--color-label-secondary)]">
@@ -247,7 +251,7 @@ export default function StrategyLifeCycleLandingPage() {
           Apps
         </Link>
         <span className="mx-2">›</span>
-        <span className="text-[var(--color-label)]">Strategy Life Cycle</span>
+        <span className="text-[var(--color-label)]">Strategy Lab</span>
       </nav>
 
       {/* Hero — full width */}
@@ -256,7 +260,7 @@ export default function StrategyLifeCycleLandingPage() {
           Advanced trader · Apps
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--color-label)] sm:text-4xl">
-          Strategy Life Cycle
+          Strategy Lab
         </h1>
         <p className="mt-3 text-lg leading-relaxed text-[var(--color-label-secondary)]">
           Develop and validate strategies before they earn capital.{" "}
@@ -265,8 +269,15 @@ export default function StrategyLifeCycleLandingPage() {
           </strong>
         </p>
         <p className="mt-3 text-sm text-[var(--color-label-secondary)]">
-          Four stages on the surface. Complete gates underneath. Process
-          outcomes only — never profit promises.
+          Build, Test, Run bots — live and paper. Complete gates underneath.
+          Process outcomes only — never profit promises.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+          <strong className="font-medium text-[var(--color-label)]">
+            Execution partner:
+          </strong>{" "}
+          Tradier — paper/virtual first, then live. Optional TradingView alerts
+          can feed signals; Labs owns Spec, brakes, and logs.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <span className="rounded-full bg-[var(--color-fill)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
@@ -278,11 +289,45 @@ export default function StrategyLifeCycleLandingPage() {
         </div>
       </header>
 
+      {/* —— Execution rails —— */}
+      <section className="mt-14" aria-labelledby="rails-heading">
+        <SectionHeader id="rails-heading" title="Execution rails">
+          One broker target in v1 so the path is dogfoodable end-to-end. Other
+          desks stay for human trading and later adapters.
+        </SectionHeader>
+        <ul className="grid gap-4 sm:grid-cols-2">
+          <li>
+            <article className="surface-card h-full border border-emerald-200 bg-emerald-50/50 p-5 dark:border-emerald-900 dark:bg-emerald-950/25">
+              <h3 className="font-semibold text-[var(--color-label)]">
+                Tradier (target)
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+                Primary venue for Run bots and live/paper campaigns. API-first,
+                options multi-leg, paper before live. FatTail partnership and
+                hub path support distribution — not a black-box money machine.
+              </p>
+            </article>
+          </li>
+          <li>
+            <article className="surface-card h-full border border-[var(--color-separator)] p-5">
+              <h3 className="font-semibold text-[var(--color-label)]">
+                TradingView (reach + funnel)
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+                Charts, ideas, and optional alerts into Labs. Broad reach — not
+                the risk system of record. Webhooks create candidates and paper
+                bots; they do not silently size live capital.
+              </p>
+            </article>
+          </li>
+        </ul>
+      </section>
+
       {/* —— The path —— */}
       <section className="mt-14" aria-labelledby="path-heading">
         <SectionHeader id="path-heading" title="The path">
-          Four stages. Kill is normal at every gate — professional hygiene, not
-          a failure of nerve.
+          Build · Test · Run bots · live and paper. Kill is normal at every
+          gate — professional hygiene, not a failure of nerve.
         </SectionHeader>
         <ul className="grid gap-4 sm:grid-cols-2">
           {STAGES.map((s) => (
@@ -314,8 +359,7 @@ export default function StrategyLifeCycleLandingPage() {
       {/* —— How you enter —— */}
       <section className="mt-14" aria-labelledby="enter-heading">
         <SectionHeader id="enter-heading" title="How you enter">
-          Same four stages either way — different front door when the workspace
-          ships.
+          Same path either way — different front door when the workspace ships.
         </SectionHeader>
         <ul className="grid gap-4 sm:grid-cols-2">
           {ENTRY_PATHS.map((p) => (
@@ -354,7 +398,7 @@ export default function StrategyLifeCycleLandingPage() {
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
                 Most ideas die. A kill with a written reason is success of the
-                filter. Capital only after Paper.
+                filter. Live capital only after paper.
               </p>
             </article>
           </li>

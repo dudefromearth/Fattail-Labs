@@ -100,3 +100,7 @@ language when this is stop-the-bleeding content.
 → Stays inside **`course-blueprint`** until human Approves Blueprint  
 → Only after approval: scripts/video/KC/resources  
 → Eventually consumed by **`course-placement`**  
+
+---
+
+**Handoff contract:** see [`Specs/FatTail-Labs-Handoff-Contract-v1.0.md`](../../../Specs/FatTail-Labs-Handoff-Contract-v1.0.md) — emit `handoff_v1` with empty `inputs_missing` before Green.

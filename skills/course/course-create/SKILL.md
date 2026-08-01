@@ -68,7 +68,8 @@ Does **not** member-publish.
 | 2 | [`course-research`](../course-research/SKILL.md) | After blueprint (or light research before chat — optional) |
 | 3 | [`course-knowledge-check`](../course-knowledge-check/SKILL.md) | Only if blueprint approved |
 | 4 | [`course-resources`](../course-resources/SKILL.md) | Only if blueprint approved |
-| 5 | [`course-lesson-script`](../course-lesson-script/SKILL.md) | Only if blueprint approved |
+| 5 | [`course-lesson-script`](../course-lesson-script/SKILL.md) | Only if blueprint approved; voice + FILL IN + coverage matrix |
+| 5b | [`course-lesson-edit`](../course-lesson-edit/SKILL.md) | **Optional** — default **ON** for live HeyGen; **OFF** for map-only/fixture |
 | 6 | [`course-lesson-video`](../course-lesson-video/SKILL.md) | Only if blueprint approved |
 | 7 | [`course-placement`](../course-placement/SKILL.md) | Full shape |
 | 8 | [`course-vision`](../course-vision/SKILL.md) | |
@@ -77,6 +78,11 @@ Does **not** member-publish.
 `course-header` and `course-lesson-plan` run **inside** `course-blueprint` (chat tools / structure).
 
 **Hard rule:** Steps 3–9 must not start while `blueprint_status != approved`.
+
+**Handoffs:** Each step emits/consumes [`handoff_v1`](../../../Specs/FatTail-Labs-Handoff-Contract-v1.0.md).  
+Non-empty `inputs_missing` → Red / fail loud. Chat is not a handoff after blueprint approve.
+
+**Not in this workflow:** CGE `video-idea-finder`, `holy-trifecta` (YouTube acquisition only).
 
 ---
 
@@ -98,8 +104,9 @@ Does **not** member-publish.
 
 1. Start run `course_create`.  
 2. Enter **course-blueprint** (chat → min validate → human Approve).  
-3. On approve, continue steps 2–9.  
-4. Stop at final package human gate.  
+3. On approve, continue steps 2–9 with **handoff_v1** between skills.  
+4. After scripts: run **course-lesson-edit** when video mode is live HeyGen (unless Coach skips).  
+5. Stop at final package human gate.  
 
 ---
 

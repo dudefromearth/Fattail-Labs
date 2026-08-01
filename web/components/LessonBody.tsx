@@ -13,15 +13,25 @@ import Markdown from "@/components/Markdown";
 
 export default function LessonBody({
   courseSlug,
+  moduleSlug,
   lessonSlug,
+  lessonId: lessonIdProp,
   body,
 }: {
   courseSlug: string;
+  /** Required to disambiguate duplicate lesson slugs across modules. */
+  moduleSlug?: string;
   lessonSlug: string;
+  /** Prefer server-provided lesson id — avoids wrong-row save on duplicate slugs. */
+  lessonId?: number | null;
   body: string | null;
 }) {
   const isAdmin = useIsAdmin();
-  const [lessonId, setLessonId] = useState<number | null>(null);
+  const [lessonId, setLessonId] = useState<number | null>(
+    lessonIdProp != null && Number.isFinite(lessonIdProp)
+      ? Number(lessonIdProp)
+      : null,
+  );
   const [current, setCurrent] = useState(body ?? "");
   const [editing, setEditing] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -31,18 +41,38 @@ export default function LessonBody({
   const [error, setError] = useState<string | null>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Keep in sync when navigating between lessons (client re-use of component).
   useEffect(() => {
-    if (!isAdmin || lessonId !== null) return;
+    setCurrent(body ?? "");
+    if (!editing) setDraft(body ?? "");
+  }, [body, lessonSlug, moduleSlug]);
+
+  useEffect(() => {
+    if (lessonIdProp != null && Number.isFinite(lessonIdProp)) {
+      setLessonId(Number(lessonIdProp));
+      return;
+    }
+    if (!isAdmin) return;
+    // Fallback: resolve id from admin course tree — match module + lesson slug.
     fetch(`/api/admin/courses/${courseSlug}`, { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d) return;
-        for (const m of d.modules)
-          for (const l of m.lessons)
-            if (l.slug === lessonSlug) setLessonId(l.id);
+        for (const m of d.modules as {
+          slug: string;
+          lessons: { id: number; slug: string }[];
+        }[]) {
+          if (moduleSlug && m.slug !== moduleSlug) continue;
+          for (const l of m.lessons) {
+            if (l.slug === lessonSlug) {
+              setLessonId(l.id);
+              return;
+            }
+          }
+        }
       })
       .catch(() => {});
-  }, [isAdmin, lessonId, courseSlug, lessonSlug]);
+  }, [isAdmin, courseSlug, moduleSlug, lessonSlug, lessonIdProp]);
 
   useEffect(() => {
     if (editing && !preview) areaRef.current?.focus();
@@ -87,7 +117,12 @@ export default function LessonBody({
   }
 
   async function save() {
-    if (lessonId === null) return;
+    if (lessonId === null) {
+      setError(
+        "Cannot save yet — lesson id not loaded. Wait a moment and try again.",
+      );
+      return;
+    }
     setSaving(true);
     setError(null);
     const res = await fetch(`/api/admin/lessons/${lessonId}`, {
@@ -98,7 +133,10 @@ export default function LessonBody({
     });
     setSaving(false);
     if (!res.ok) {
-      setError(`Save failed (${res.status})`);
+      const detail = await res.text().catch(() => "");
+      setError(
+        `Save failed (${res.status})${detail ? `: ${detail.slice(0, 120)}` : ""}`,
+      );
       return;
     }
     setCurrent(draft);

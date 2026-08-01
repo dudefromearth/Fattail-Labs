@@ -134,3 +134,7 @@ Artifact stage `placement_proposal`:
 → **`course-vision`** → **`course-package`**  
 
 Missing video, markdown, module description, or KC → **Red**.  
+
+---
+
+**Handoff contract:** see [`Specs/FatTail-Labs-Handoff-Contract-v1.0.md`](../../../Specs/FatTail-Labs-Handoff-Contract-v1.0.md) — emit `handoff_v1` with empty `inputs_missing` before Green.

@@ -35,7 +35,12 @@ Required stages for `course` (Production Package Spec):
 | `placement_proposal` | course-placement |
 | `vision_alignment` | course-vision |
 
-Also: no open **block** flags.
+| Optional enrichment | Skill |
+|---|---|
+| `script_edit_brief` | `course-lesson-edit` (preferred when videos were live HeyGen) |
+| `voice_profile` | produced with script |
+
+Also: no open **block** flags. Handoffs: [`handoff_v1`](../../../Specs/FatTail-Labs-Handoff-Contract-v1.0.md).
 
 ---
 
@@ -85,3 +90,7 @@ Also: no open **block** flags.
 → **Human administrator:** Approve → place draft course · Reject / revision  
 
 Member **publish** remains in-place admin on the course URL (outside this skill).  
+
+---
+
+**Handoff contract:** see [`Specs/FatTail-Labs-Handoff-Contract-v1.0.md`](../../../Specs/FatTail-Labs-Handoff-Contract-v1.0.md) — emit `handoff_v1` with empty `inputs_missing` before Green.

@@ -71,3 +71,7 @@ Artifact stage `vision_alignment` (markdown):
 ## Handoff
 
 → **`course-package`**  
+
+---
+
+**Handoff contract:** see [`Specs/FatTail-Labs-Handoff-Contract-v1.0.md`](../../../Specs/FatTail-Labs-Handoff-Contract-v1.0.md) — emit `handoff_v1` with empty `inputs_missing` before Green.

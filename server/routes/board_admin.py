@@ -350,6 +350,68 @@ def _blueprint_http(exc: Exception) -> HTTPException:
     return HTTPException(status_code=500, detail=msg)
 
 
+@router.get("/items/{item_id}/process-chat")
+def get_process_chat(item_id: int, request: Request) -> dict:
+    """Card-scoped process co-pilot history (full lifecycle companion)."""
+    _board_actor(request)
+    import process_copilot as pc
+
+    try:
+        return {"process_chat": pc.get_chat(item_id)}
+    except board.BoardError as exc:
+        raise _http(exc) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/items/{item_id}/process-chat")
+async def post_process_chat(item_id: int, request: Request) -> dict:
+    """Ask the process co-pilot (insight / diagnose / draft fixes).
+
+    Body: { message, use_fixtures?, prefer?, temperature?, max_tokens? }
+    Note: Grok calls can take 30–90s; web uses a long-timeout route proxy.
+    """
+    try:
+        actor = require_actor(request, scopes=["ai:run"])
+    except HTTPException:
+        actor = require_human_admin_actor(request)
+
+    body = await request.json()
+    import process_copilot as pc
+    import logging
+
+    log = logging.getLogger("process_copilot")
+
+    try:
+        result = pc.chat(
+            item_id,
+            actor,
+            message=body.get("message") or "",
+            use_fixtures=bool(body.get("use_fixtures")),
+            prefer=body.get("prefer"),
+            temperature=float(
+                body.get("temperature") if body.get("temperature") is not None else 0.3
+            ),
+            max_tokens=int(body.get("max_tokens") or 2500),
+        )
+        result["proposed_artifacts"] = pc.parse_proposed_artifacts(
+            result.get("assistant_message") or ""
+        )
+        return result
+    except pc.ProcessCopilotError as exc:
+        log.warning("process_copilot ProcessCopilotError item=%s: %s", item_id, exc)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except board.BoardError as exc:
+        raise _http(exc) from exc
+    except Exception as exc:  # noqa: BLE001
+        log.exception("process_copilot failed item=%s", item_id)
+        # Always return JSON detail — avoid opaque proxy 500s when possible
+        raise HTTPException(
+            status_code=500,
+            detail=f"Process co-pilot failed: {exc}",
+        ) from exc
+
+
 @router.get("/items/{item_id}/blueprint")
 def get_blueprint(item_id: int, request: Request) -> dict:
     """Latest Course Blueprint (Header + Outline + chat) or empty shell."""

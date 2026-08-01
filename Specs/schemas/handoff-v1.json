@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fattail.labs/schemas/handoff-v1.json",
+  "title": "FatTail Labs Handoff v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "handoff_version",
+    "from_skill",
+    "to_skill",
+    "product_line",
+    "inputs_resolved",
+    "inputs_missing",
+    "constraints",
+    "artifacts_out_expected"
+  ],
+  "properties": {
+    "handoff_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "from_skill": {
+      "type": "string",
+      "minLength": 1
+    },
+    "to_skill": {
+      "type": "string",
+      "minLength": 1
+    },
+    "card_id": {
+      "type": ["string", "null"]
+    },
+    "product_line": {
+      "type": "string",
+      "enum": ["course", "tutorial", "youtube_long", "campaign"]
+    },
+    "blueprint_version": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "inputs_resolved": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "inputs_missing": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "voice_profile_ref": {
+      "type": ["string", "null"]
+    },
+    "artifacts_out_expected": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "human_gate": {
+      "type": ["string", "null"]
+    },
+    "notes_md": {
+      "type": ["string", "null"]
+    }
+  }
+}

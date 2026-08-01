@@ -154,4 +154,24 @@ Artifact stage `lesson_plan` — markdown and/or JSON:
 → Remains under **`course-blueprint`** until human Approves Blueprint  
 → Then **`course-knowledge-check`**, **`course-resources`**, **`course-lesson-script`**  
 
-Do **not** hand off to Romeo/Papa while blueprint is unapproved.  
+Do **not** hand off to Romeo/Papa while blueprint is unapproved.
+
+### Outbound handoff_v1 (after blueprint approved, toward script)
+
+```text
+---
+HANDOFF → course-lesson-script
+from: course-lesson-plan
+product_line: course
+inputs_resolved:
+  lesson_plan_ref: artifact://lesson_plan
+  research_pack_ref: artifact://research_pack
+  lesson_slugs: […]
+inputs_missing: []
+constraints: [blueprint_approved, plan_locked, claims_trace_to_research, one_primary_idea_per_lesson, process_outcomes_only, no_silent_publish]
+artifacts_out_expected: [script]
+human_gate: null
+---
+```
+
+See [`Specs/FatTail-Labs-Handoff-Contract-v1.0.md`](../../../Specs/FatTail-Labs-Handoff-Contract-v1.0.md).  

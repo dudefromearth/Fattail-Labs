@@ -92,4 +92,21 @@ Artifact stage `research_pack` (markdown, structured):
 
 → **Hotel** (if trading claims) → **`course-lesson-plan`** (November)  
 
+```text
+---
+HANDOFF → course-lesson-plan
+from: course-research
+product_line: course
+inputs_resolved:
+  research_pack_ref: artifact://research_pack
+  card_intent_ref: card://intent_md
+inputs_missing: []
+constraints: [process_outcomes_only, claims_trace_to_research, no_silent_publish]
+artifacts_out_expected: [lesson_plan]
+human_gate: null
+---
+```
+
+See [`Specs/FatTail-Labs-Handoff-Contract-v1.0.md`](../../../Specs/FatTail-Labs-Handoff-Contract-v1.0.md).  
+
 On failure / thin pack → card **Red** `hold_code=missing_inputs` or `step_failed`.  

@@ -18,6 +18,7 @@ export const dynamic = "force-dynamic";
 type LessonPayload = {
   progress: { last_position: number; completed: boolean };
   questions: PublicQuestion[] | null;
+  id: number;
   slug: string;
   title: string;
   kind: string;
@@ -496,7 +497,9 @@ export default async function LessonPlayerPage({
         </div>
       )}
 
-      {lesson.kind !== "quiz" && !lesson.video?.embed_url && (
+      {lesson.kind !== "quiz" &&
+        lesson.kind !== "text" &&
+        !lesson.video?.embed_url && (
         <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
           {lesson.kind === "download" || lesson.kind === "external"
             ? "Open resources from the course Resources tab, or add a video/link in edit mode."
@@ -508,7 +511,9 @@ export default async function LessonPlayerPage({
 
       <LessonBody
         courseSlug={lesson.course_slug}
+        moduleSlug={lesson.module_slug}
         lessonSlug={lesson.slug}
+        lessonId={lesson.id}
         body={lesson.body_md}
       />
 

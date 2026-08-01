@@ -6,6 +6,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import CourseBlueprintPanel from "./CourseBlueprintPanel";
+import CourseWorkflowPanel from "./CourseWorkflowPanel";
+import ProcessCopilotPanel from "./ProcessCopilotPanel";
 import { appConfirm } from "@/lib/dialogs";
 
 type Card = {
@@ -475,7 +477,8 @@ export default function BoardKanban() {
       <header className="flex flex-wrap items-center gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="text-lg font-semibold">Production board</h1>
         <p className="text-xs text-zinc-500">
-          Cards = work products · drag across process columns
+          Cards = work products · drag columns · open a card for the{" "}
+          <strong>workflow cockpit</strong> (where you are, what&apos;s next)
         </p>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {budget && (
@@ -756,8 +759,8 @@ export default function BoardKanban() {
         <aside
           className={
             selected.product_line === "course"
-              ? "fixed inset-y-0 right-0 z-40 flex w-full max-w-lg flex-col border-l border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
-              : "fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+              ? "fixed inset-y-0 right-0 z-40 flex w-full max-w-xl flex-col border-l border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+              : "fixed inset-y-0 right-0 z-40 flex w-full max-w-lg flex-col border-l border-zinc-200 bg-white shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
           }
           data-testid="board-drawer"
         >
@@ -782,6 +785,30 @@ export default function BoardKanban() {
             </button>
           </div>
           <div className="flex-1 space-y-4 overflow-y-auto p-4 text-sm">
+            <ProcessCopilotPanel
+              itemId={selected.id}
+              busy={busy}
+              onChanged={() => {
+                void openCard(selected.id);
+                load();
+              }}
+              onError={(m) => setError(m)}
+            />
+            {selected.product_line === "course" && (
+              <CourseWorkflowPanel
+                item={selected}
+                busy={busy}
+                onChanged={() => {
+                  void openCard(selected.id);
+                  load();
+                }}
+                onError={(m) => setError(m)}
+                onTransition={async (id, to, extra) => {
+                  const ok = await transition(id, to, extra);
+                  if (ok) void openCard(id);
+                }}
+              />
+            )}
             {selected.product_line === "course" && (
               <CourseBlueprintPanel
                 itemId={selected.id}
@@ -954,13 +981,17 @@ export default function BoardKanban() {
             {selected.package?.checklist && (
               <section data-testid="board-package-checklist">
                 <h3 className="text-xs font-semibold uppercase text-zinc-500">
-                  Package{" "}
+                  Package stages (detail){" "}
                   {selected.package.checklist.complete ? (
                     <span className="text-emerald-600">complete</span>
                   ) : (
                     <span className="text-amber-600">incomplete</span>
                   )}
                 </h3>
+                <p className="mt-0.5 text-[11px] text-zinc-400">
+                  Same checklist as the cockpit above — technical stage keys for
+                  agents and debugging.
+                </p>
                 <ul className="mt-1 space-y-1 text-xs">
                   {selected.package.checklist.stages
                     .filter((s) => s.required)
@@ -1057,11 +1088,19 @@ export default function BoardKanban() {
               </ul>
             </section>
             <section>
-              <h3 className="text-xs font-semibold uppercase text-zinc-500">Artifacts</h3>
+              <h3 className="text-xs font-semibold uppercase text-zinc-500">
+                Artifacts ({selected.artifacts.length})
+              </h3>
+              <p className="mt-0.5 text-[11px] text-zinc-400">
+                These fill the package checklist. Prefer{" "}
+                <strong>Add package artifact</strong> in the workflow cockpit so
+                the process can reply with what is still missing.
+              </p>
               <ul className="mt-1 space-y-1">
                 {selected.artifacts.map((a) => (
                   <li key={a.id} className="rounded bg-zinc-50 p-2 text-xs dark:bg-zinc-800">
                     <span className="font-mono">{a.stage}</span> — {a.title}
+                    <span className="text-zinc-400"> · {a.actor_label}</span>
                   </li>
                 ))}
                 {!selected.artifacts.length && (

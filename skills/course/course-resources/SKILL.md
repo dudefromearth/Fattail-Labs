@@ -95,3 +95,7 @@ If plan has no resources: output explicit empty list with reason
 ## Handoff
 
 → **`course-placement`** (include `resources[]`)  
+
+---
+
+**Handoff contract:** see [`Specs/FatTail-Labs-Handoff-Contract-v1.0.md`](../../../Specs/FatTail-Labs-Handoff-Contract-v1.0.md) — emit `handoff_v1` with empty `inputs_missing` before Green.

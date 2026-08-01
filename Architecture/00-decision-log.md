@@ -4,6 +4,76 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-01 — DL-187 Chain archive: collect local, not on-demand history
+
+**Decision (Coach):** Option chain **history for Test is local**. Collect forward
+into `data/market/chains/`. **Do not** rely on on-demand re-fetch for historical
+windows. On-demand is only optional “latest” live fill-in.
+
+**Coach feed reality (2026-08-01):** Full SPX chain already arrives as fast as the
+vendor delivers (**~5–10 s**) with Greeks; **SPX underlier differential pricing
+~4 Hz**. Labs should **ingest those feeds** as primary — not re-poll Massive for
+the same SPX surface. Massive poller remains a fallback / other-underlier tool.
+
+**Ingest design (Coach):** **Tee/pipe a copy** of whatever is already delivered to
+the FatTail app each trading day into a local archive. That archive is the
+historical backtest corpus. Production consumers stay unchanged.
+
+**Other symbols:** For the supported non-SPX-chain universe (Mag 7, ETFs, few
+futures underliers), **download ~1 year of history** (Massive bars/trades) for
+historical Test. Refresh incrementally. Still **no** multi-year Mag 7 option-chain
+warehouse.
+
+**Landed:** `server/market_data/` (`MassiveClient`, `ChainStore`, `chain_collector`
+CLI), unit tests for store, gitignore `data/market/`. Next: pipe from FatTail app
+feed → archive; underlier history bulk load.
+
+---
+
+## 2026-08-01 — DL-186 Strategy Lab: Massive data, dual Test, chain collect-forward
+
+**Decision (Coach):**
+
+1. **Market data = Massive** (already paid). **Do not** buy Tradier ~$400/mo streaming.  
+2. **Execution / deploy = Tradier** only (paper → live orders and fills).  
+3. **Test has two modes — both required:**  
+   - **Historical** — replay frozen underlier history + stored option chain snaps  
+   - **Live** — Massive WebSocket (signal-only or Tradier paper)  
+4. **SPX chains:** no deep historical archive assumed. **Collect forward** (e.g. few weeks
+   of periodic snapshots), then run historical structure tests on that recent window.
+   Until enough history exists: underlier historical tests + live tests still ship.
+
+**Doc:** `Architecture/09-strategy-lab-tradier.md` (expanded).
+
+---
+
+## 2026-08-01 — DL-185 Strategy Lab execution target: Tradier
+
+**Decision (Coach):** **Tradier is the target broker platform** for Strategy Lab
+bots and live/paper execution rails.
+
+| Item | Lock |
+|------|------|
+| **Primary broker** | **Tradier** (Coach relationship + business hub page) |
+| **Scope stages** | Build · Test · Run bots · live and paper |
+| **Dogfood** | Coach has Tradier; IB / TradeStation **not** v1 targets |
+| **TradingView** | **Reach + funnel** (alerts / ideas / optional webhooks) — not source of truth for risk or fills |
+| **tastytrade / ToS** | Optional later adapters or human desk; not v1 bot host of record |
+| **Robinhood** | Out of product scope for bots |
+| **Architecture** | Broker-agnostic adapter interface; **Tradier first implementation only** |
+
+**Rationale:** Relationship + hub page enable distribution and integration
+partnership; REST API fits Labs FastAPI; options multi-leg automation is dogfoodable
+without Gateway. Futures remain phase-2 after equity-options path works.
+
+**Product promise:** Process brakes, kill switch, logs — never “set and forget”
+profit claims. Paper/virtual before live.
+
+**Landing:** Strategy Lab member copy names Tradier as intended execution partner
+when workspace ships. Spec / adapter implementation is a later build packet.
+
+---
+
 ## 2026-07-31 — DL-180 FatTail Hard H3 — MT on Journey composite
 
 **Decision:** Mental Toughness meter wired into Process Integrity overall when

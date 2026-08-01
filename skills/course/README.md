@@ -101,7 +101,7 @@ Not a random quiz dump. Knowledge checks:
 | **Blueprint** (Header + Outline) | **`course-blueprint`** — AI chat + first validation gate |
 | **Header** | `course-header` (used inside blueprint) |
 | **Outline** | `course-lesson-plan` (used inside blueprint) |
-| **Lesson video** | `course-lesson-script` → `course-lesson-video` (**after** blueprint approve) |
+| **Lesson video** | `course-lesson-script` → `course-lesson-edit?` → `course-lesson-video` (**after** blueprint approve) |
 | **Lesson markdown** | filled post-blueprint; finalized in placement |
 | **Knowledge Check** | `course-knowledge-check` (**after** blueprint approve) |
 | **Resources** | `course-resources` (**after** blueprint approve) |
@@ -121,7 +121,8 @@ Not a random quiz dump. Knowledge checks:
 | [`course-header`](./course-header/SKILL.md) | November / Sierra | Header fields | Inside blueprint |
 | [`course-knowledge-check`](./course-knowledge-check/SKILL.md) | November | KC questions | **After** blueprint approve |
 | [`course-resources`](./course-resources/SKILL.md) | November | Resources | **After** blueprint approve |
-| [`course-lesson-script`](./course-lesson-script/SKILL.md) | Romeo | scripts | **After** blueprint approve |
+| [`course-lesson-script`](./course-lesson-script/SKILL.md) | Romeo | scripts (voice + FILL IN + coverage) | **After** blueprint approve |
+| [`course-lesson-edit`](./course-lesson-edit/SKILL.md) | Papa | `script_edit_brief` (optional) | After script; default ON for live HeyGen |
 | [`course-lesson-video`](./course-lesson-video/SKILL.md) | Papa | videos | **After** blueprint approve |
 | [`course-placement`](./course-placement/SKILL.md) | Papa / Quebec | Full Course JSON | Late |
 | [`course-vision`](./course-vision/SKILL.md) | Quebec | vision notes | Late |
@@ -144,11 +145,15 @@ course-create
   ├─ 2. course-research        ← optional enrichment; not “more chat as input”
   ├─ 3. course-knowledge-check
   ├─ 4. course-resources
-  ├─ 5. course-lesson-script
+  ├─ 5. course-lesson-script   ← plan-locked VO + voice profile + FILL IN
+  ├─ 5b course-lesson-edit     ← optional production blueprint (default ON live HeyGen)
   ├─ 6. course-lesson-video
   ├─ 7. course-placement       ← full Header + Outline(video+md) + KC + Resources
   ├─ 8. course-vision
   └─ 9. course-package         → final awaiting_approval (second human gate)
+
+Handoffs: Specs/FatTail-Labs-Handoff-Contract-v1.0.md (handoff_v1)
+CGE integration: docs/CGE-Skills-Course-Integration-Plan.md
 ```
 
 **Two human gates for Course:**

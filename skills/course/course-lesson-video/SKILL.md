@@ -29,15 +29,20 @@ existing YouTube IDs into a complete package — without silent publish.
 |---|---|
 | `script` artifact | `course-lesson-script` |
 | `lesson_plan` | structure + slugs |
-| Cast | `cast_id` on card or per-script assignment |
+| Cast | `cast_id` on card or per-script assignment (live mode) |
 
-| Mode | |
+| Preferred (live HeyGen) | Source |
 |---|---|
-| **Fixture / stub** | Dev/test: placeholder package with provenance notes |
-| **Live HeyGen** | Budget + keys; batch by lesson |
-| **Map-only** | Admin supplies YT ids; package records map |
+| `script_edit_brief` | `course-lesson-edit` — on-screen, cuts, B-roll, retention priorities |
 
-**Fail loud if:** no script; live mode without cast; budget hard-stop.
+| Mode | Edit brief |
+|---|---|
+| **Fixture / stub** | Skip edit skill |
+| **Live HeyGen** | **Prefer** `course-lesson-edit` first (default ON) |
+| **Map-only** | Skip edit skill; map YT ids |
+
+**Fail loud if:** no script; live mode without cast; budget hard-stop.  
+Missing edit brief on live path → warn; may proceed with `script` only (`edit_brief_optional`).
 
 ---
 
@@ -79,12 +84,14 @@ Artifact stage `video_package` (JSON preferred):
 
 ## Steps
 
-1. Resolve lesson list from plan + scripts.  
-2. Resolve cast from registry (`docs/studio/cast/`).  
-3. For each lesson: render (heygen-video) **or** accept mapped id **or** fixture stub.  
-4. Optional trailer render/map.  
-5. Write `video_package` with provenance.  
-6. Update board; do not place course.  
+1. Validate inbound handoff (`script_ref`; optional `script_edit_brief_ref`).  
+2. Resolve lesson list from plan + scripts.  
+3. Resolve cast from registry (`docs/studio/cast/`).  
+4. If live HeyGen and no edit brief: note skip; use script callouts only.  
+5. For each lesson: render (heygen-video) using edit brief when present **or** accept mapped id **or** fixture stub.  
+6. Optional trailer render/map.  
+7. Write `video_package` with provenance (include `script_edit_brief_ref` when used).  
+8. Emit handoff_v1 → `course-placement`. Do not place course.  
 
 ---
 
@@ -95,10 +102,26 @@ Artifact stage `video_package` (JSON preferred):
 - [ ] Provenance rows for produced assets  
 - [ ] Budget events recorded when live  
 - [ ] No member publish  
+- [ ] Outbound handoff_v1 present  
 
 ---
 
 ## Handoff
+
+```text
+---
+HANDOFF → course-placement
+from: course-lesson-video
+product_line: course
+inputs_resolved:
+  video_package_ref: artifact://video_package
+  lesson_plan_ref: artifact://lesson_plan
+inputs_missing: []
+constraints: [blueprint_approved, no_silent_publish, process_outcomes_only]
+artifacts_out_expected: [placement_proposal]
+human_gate: null
+---
+```
 
 → **`course-placement`** (merge video ids into placement graph)  
 

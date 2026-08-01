@@ -76,9 +76,9 @@ const FALLBACK_APPS: AppRow[] = [
   {
     id: 0,
     slug: "strategy-lab",
-    title: "Strategy Life Cycle",
+    title: "Strategy Lab",
     blurb:
-      "Build, Prove, Paper, Run. Validate edges before capital. Most ideas die; survivors get a campaign.",
+      "Build, Test, Run bots — live and paper on Tradier. Validate edges before capital. Most ideas die; survivors get a campaign.",
     status: "soon",
     href: "/app/strategy-lab",
   },
@@ -104,7 +104,7 @@ async function fetchApps(): Promise<AppRow[]> {
 
 /**
  * Build the top-level catalog: drop nested trade-log/journal, inject Practice,
- * Toughness, Strategy Life Cycle cards — even when API has not seeded them yet.
+ * Toughness, Strategy Lab cards — even when API has not seeded them yet.
  */
 function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
   const bySlug = new Map(apiApps.map((a) => [a.slug, a]));
@@ -133,7 +133,14 @@ function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
   const strategy: AppRow = strategyFromApi
     ? {
         ...strategyFromApi,
-        title: "Strategy Life Cycle",
+        title: "Strategy Lab",
+        // Prefer expanded-scope blurb if API still has legacy Prove/Paper/Run line.
+        blurb:
+          strategyFromApi.blurb &&
+          !/Prove|Paper, Run|Build, Prove/i.test(strategyFromApi.blurb)
+            ? strategyFromApi.blurb
+            : (FALLBACK_APPS.find((a) => a.slug === "strategy-lab") as AppRow)
+                .blurb,
         href: strategyFromApi.href || "/app/strategy-lab",
       }
     : (FALLBACK_APPS.find((a) => a.slug === "strategy-lab") as AppRow);
@@ -215,7 +222,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function AppCard({ t }: { t: AppRow }) {
-  // Wiki + Strategy Life Cycle landing: open while workspace is still "soon".
+  // Wiki + Strategy Lab landing: open while workspace is still "soon".
   // Practice Log hub is live when Trade Log is.
   const canOpen =
     t.status === "live" ||
@@ -264,7 +271,7 @@ export async function generateMetadata(): Promise<Metadata> {
   );
   const description = metaDescriptionFromMd(
     page.description_md,
-    "Member tools: Journey, Practice suite, Strategy Life Cycle, Wiki, and more.",
+    "Member tools: Journey, Practice suite, Strategy Lab, Wiki, and more.",
   );
   return {
     title: page.title,

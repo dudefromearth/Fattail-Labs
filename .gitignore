@@ -26,6 +26,9 @@ out/
 # Uploaded media (local storage)
 server/uploads/
 
+# Strategy Lab market data archive (chain snapshots — large, local)
+data/market/
+
 # Local HeyGen hub intro masters (large binaries)
 Labs-Intro/**/*.mp4
 Labs-Intro/**/*.m4a
