@@ -10,6 +10,10 @@ product.
 
 **Governed by:** `doctrine.md` and `first-principles-doctrine.md`
 **Pre-implementation process:** `spec-create-review-workflow.md`
+**Core growth law:** doctrine principle 10 — **the bench strengthens with every invocation**
+**Coach Content Law:** doctrine §11 · DL-176 — nothing of Coach’s is removed; research before
+questioning; block only invariant/law/system; opinions labeled opinions
+**Memory aids:** `Architecture/flagged-ideas.md` · decision log · gate-reports
 **New agents:** start from `agent-template.md`
 
 ---

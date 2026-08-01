@@ -105,7 +105,7 @@ def _parse_exec_at(raw: Any) -> datetime:
 
 
 def _account_row(r: dict) -> dict:
-    return {
+    out = {
         "id": r["id"],
         "label": r["label"],
         "broker": r["broker"],
@@ -119,6 +119,10 @@ def _account_row(r: dict) -> dict:
         "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
         "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
     }
+    # Optional fill count (list_accounts JOIN) — helps Practice Context avoid empty books
+    if "trade_count" in r and r["trade_count"] is not None:
+        out["trade_count"] = int(r["trade_count"])
+    return out
 
 
 def _leg_row(r: dict) -> dict:
@@ -195,14 +199,19 @@ def _ensure_default_account(cur, iid: int) -> dict:
 
     Venue is **not** assumed (thinkorswim, FatTail, sim, …). It stays `unset`
     until the first import (detected adapter → venue) or first trade create
-    (user-chosen broker/sim). Prefer any existing active account before insert.
+    (user-chosen broker/sim). Prefer the active account with the **most trades**
+    so default_account_id is not an empty "Primary" when the book lives elsewhere.
     """
     cur.execute(
-        """SELECT * FROM member_trade_log_accounts
-           WHERE identity_id = %s AND status = 'active'
-           ORDER BY
-             CASE label WHEN %s THEN 0 ELSE 1 END,
-             sort_order ASC, id ASC
+        """SELECT a.*
+           FROM member_trade_log_accounts a
+           LEFT JOIN member_trade_log_trades t
+             ON t.account_id = a.id AND t.identity_id = a.identity_id
+           WHERE a.identity_id = %s AND a.status = 'active'
+           GROUP BY a.id
+           ORDER BY COUNT(t.id) DESC,
+             CASE a.label WHEN %s THEN 0 ELSE 1 END,
+             a.sort_order ASC, a.id ASC
            LIMIT 1""",
         (iid, DEFAULT_ACCOUNT_LABEL),
     )

@@ -167,6 +167,78 @@ def test_synthetic_pnl_scales_butterfly_units():
     assert close["pnl_amount"] == 363.0
 
 
+def test_match_refuses_year_long_hold():
+    """Spreadsheet year typo must not pair open→close a year later."""
+    open_t = _trade(
+        100,
+        1,
+        "2026-05-12T10:00:00",
+        "BUTTERFLY",
+        [
+            _leg("BUY", 2, "TO_OPEN", 7400, exp="2027-05-12"),
+            _leg("SELL", 4, "TO_OPEN", 7425, exp="2027-05-12"),
+            _leg("BUY", 2, "TO_OPEN", 7450, exp="2027-05-12"),
+        ],
+        net_price=1.45,
+        net_side="DEBIT",
+    )
+    close_t = _trade(
+        101,
+        1,
+        "2027-05-12T15:30:00",
+        "BUTTERFLY",
+        [
+            _leg("SELL", 2, "TO_CLOSE", 7400, exp="2027-05-12"),
+            _leg("BUY", 4, "TO_CLOSE", 7425, exp="2027-05-12"),
+            _leg("SELL", 2, "TO_CLOSE", 7450, exp="2027-05-12"),
+        ],
+        net_price=0.0,
+        net_side="CREDIT",
+    )
+    matched = match_open_close([open_t, close_t])
+    assert len(matched) == 1
+    assert matched[0]["close"] is None  # refused year-long pair
+
+    # Day book must not show open interest for months after open
+    book = build_day_book([open_t, close_t], "2026-07-01")
+    assert book["open"] == []
+    assert book["open_ids"] == []
+
+
+def test_match_allows_short_multi_day_hold():
+    open_t = _trade(
+        1,
+        1,
+        "2026-05-04T10:00:00",
+        "BUTTERFLY",
+        [
+            _leg("BUY", 1, "TO_OPEN", 100, exp="2026-05-05"),
+            _leg("SELL", 2, "TO_OPEN", 125, exp="2026-05-05"),
+            _leg("BUY", 1, "TO_OPEN", 150, exp="2026-05-05"),
+        ],
+        net_price=1.0,
+        net_side="DEBIT",
+    )
+    close_t = _trade(
+        2,
+        1,
+        "2026-05-05T15:30:00",
+        "BUTTERFLY",
+        [
+            _leg("SELL", 1, "TO_CLOSE", 100, exp="2026-05-05"),
+            _leg("BUY", 2, "TO_CLOSE", 125, exp="2026-05-05"),
+            _leg("SELL", 1, "TO_CLOSE", 150, exp="2026-05-05"),
+        ],
+        net_price=0.5,
+        net_side="CREDIT",
+    )
+    matched = match_open_close([open_t, close_t])
+    assert matched[0]["close"] is not None
+    assert matched[0]["close_day"] == "2026-05-05"
+    book = build_day_book([open_t, close_t], "2026-05-04")
+    assert len(book["open"]) == 1
+
+
 def test_open_on_day_and_same_day_close():
     open_t = _trade(
         1,

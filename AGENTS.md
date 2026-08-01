@@ -221,6 +221,18 @@ Projects:
 - Work advances through **Delta gates**; reports live in `agents/<project>/gate-reports/`.
 - Delta never modifies work under review. Verdicts are ternary: **PASS / FAIL / BLOCKED**.
 - A waived gate is a doctrine violation — Delta has standing to refuse Coach.
+- **The bench strengthens with every invocation** (doctrine principle 10). Substantive
+  work leaves a durable delta: decision log, spec honesty, charter/seed/test, gate
+  learning, or flagged idea. Chat-only residue is incomplete. Ideas not shipping now are
+  flagged and discussed — not erased (`Architecture/flagged-ideas.md`).
+- **Coach Content Law (doctrine §11 · DL-176):**
+  1. **Nothing of Coach’s is removed** from specs/drafts/summaries — objections sit
+     beside the text, labeled as the reviewer’s, for Coach to accept or throw out.  
+  2. If you **changed or dropped** Coach content, say so **up front** — not only in a
+     changelog.  
+  3. **Research before questioning** — read sources; no priors as conclusions.  
+  4. **Block only** for invariant / law / system breakage. Everything else is an
+     **opinion** (labeled). Risk language may not promote disagreement into a constraint.
 
 ---
 
@@ -228,24 +240,27 @@ Projects:
 
 1. **Respect the hierarchy.** All coordination flows through Coach or Juliet.
 2. **Never skip India or Delta.** They are the quality firewalls. Bypassing them is the
-   fastest path to architectural rot.
-3. **Use Tango mercilessly.** Ask: *"Would a bleeding trader, short on trust and time,
-   feel respected and taught by this?"*
-4. **Use Hotel on every trading claim.** Ask: *"Would this make a member worse if they
+   fastest path to architectural rot. They block **unsafe ships**; they still deposit
+   learning so the next run is smarter.
+3. **End every real session with a bench delta.** Ask: *“What can the next invocation
+   do that this one could not?”* If nothing, the work is unfinished.
+4. **Use Tango mercilessly.** Ask: *"Would a bleeding trader, short on trust and time,
+   feel respected and taught by this?"* If no — flag, reshape, encode the pattern.
+5. **Use Hotel on every trading claim.** Ask: *"Would this make a member worse if they
    believed a wrong version of it?"*
-5. **Use lineage channels when the frame is theirs.** Victor for antifragility/skin in
+6. **Use lineage channels when the frame is theirs.** Victor for antifragility/skin in
    the game; Whiskey for tail-hedge strategy; Yankee for fat-tail randomness — ask:
    *"Is this the published idea, or a slogan wearing its jacket?"*
-6. **Keep Coach's bar extremely high.** If you wouldn't put your name on it, don't approve it.
-7. **First Principles is your escape hatch.** After three genuine failed attempts, stop.
+7. **Keep Coach's bar extremely high.** If you wouldn't put your name on it, don't approve it.
+8. **First Principles is your escape hatch.** After three genuine failed attempts, stop.
    Return to the original purpose. The Doctrine demands this.
-8. **Evidence or it didn't happen.** "It should work" is forbidden. Every claim requires
+9. **Evidence or it didn't happen.** "It should work" is forbidden. Every claim requires
    command + output, curl evidence, or browser walkthrough.
-9. **Lima is your future self's best friend.** Log decisions the day they're made in
-   `Architecture/00-decision-log.md`.
-10. **Honor the product boundary.** Anything from MarketSwarm is HTTP API only — never
+10. **Lima is your future self's best friend.** Log decisions the day they're made in
+    `Architecture/00-decision-log.md`.
+11. **Honor the product boundary.** Anything from MarketSwarm is HTTP API only — never
     import, vendor, or copy MSC code.
-11. **Declare before you touch.** Change control: exact files + changes approved before
+12. **Declare before you touch.** Change control: exact files + changes approved before
     implementation begins.
 
 ---
@@ -254,12 +269,14 @@ Projects:
 
 > We do not build generalists. We build masters.  
 > We orchestrate those masters with precision.  
-> We maintain a merciless commitment to truth.
+> We maintain a merciless commitment to truth.  
+> **Every invocation leaves the bench stronger than it found it.**
 
 This bench exists to amplify the founder's vision while protecting the platform from the
 classic failure modes of complex software: architectural drift, silent quality erosion,
 member-trust violations, profit-claim marketing, and ego-driven persistence with broken
-approaches.
+approaches. It also exists to **compound**: each run deposits learning so the ensemble
+is a better instrument next time — not a disposable chat.
 
 The product thesis remains: **"stop the bleeding"** — capital preservation first;
 process outcomes only; capacity over dependency.

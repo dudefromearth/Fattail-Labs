@@ -58,7 +58,12 @@ def test_scores_include_process_meters(client, probe_identity):
     assert "process" in body
     p = body["process"]
     assert p["framing"] == "process_meter"
+    assert p.get("scoring_model_version") == js.SCORING_MODEL_VERSION
+    assert "weights" in p and isinstance(p["weights"], dict)
+    assert sum(p["weights"].values()) == 100
     assert 0 <= p["overall_percent"] <= 100
+    assert 0 <= p["overall_raw_percent"] <= 100
+    assert "overall_raw_equal_mean" in p
     assert "grade" in p and p["grade"]["label"] in (
         "Establishing",
         "Poor",
@@ -72,8 +77,81 @@ def test_scores_include_process_meters(client, probe_identity):
     ids = {m["id"] for m in p["meters"]}
     assert "persistence" in ids
     assert "routine" in ids and "learning" in ids and "retrospective" in ids
+    for m in p["meters"]:
+        assert "weight" in m
     # No achievement / trophy framing
     assert "achievement" not in p["overall_label"].lower()
+
+
+def test_process_weights_all_profiles_sum_100():
+    for pid in js.PROCESS_METER_WEIGHTS:
+        w = js.process_weights_for_profile(pid)
+        assert sum(w.values()) == 100, pid
+        # Option 1: quality share meaningful (adherence+retro)
+        q = w["adherence"] + w["retrospective"]
+        assert q >= 30, f"{pid} quality share {q} too low for Option 1"
+        w_mt = js.process_weights_for_profile(pid, include_mental_toughness=True)
+        assert sum(w_mt.values()) == 100, pid
+        assert w_mt["mental_toughness"] >= 8
+        assert "mental_toughness" not in w
+
+
+def test_process_weights_unknown_profile_fails_loud():
+    try:
+        js.process_weights_for_profile("not_a_real_profile")
+        assert False, "expected RuntimeError"
+    except RuntimeError as e:
+        assert "weights missing" in str(e)
+
+
+def test_weighted_overall_raw_arithmetic():
+    """raw_i already 0–100 — no 100× blow-up; renorm on empty."""
+    weights = {
+        "a": 50,
+        "b": 50,
+        "c": 0,
+    }
+    meters = [
+        {"id": "a", "raw_percent": 100},
+        {"id": "b", "raw_percent": 0},
+        {"id": "c", "raw_percent": 50, "empty": True},
+    ]
+    # 50*100 + 50*0 / 100 = 50
+    overall, applied = js.weighted_overall_raw(meters, weights)
+    assert overall == 50
+    assert applied == {"a": 50, "b": 50}
+    assert overall <= 100
+
+
+def test_weighted_overall_quality_dominates_engagement():
+    """Option 1 observer: high engagement + zero quality must not look Excellent raw."""
+    w = js.process_weights_for_profile("observer_trial")
+    meters = [
+        {"id": "persistence", "raw_percent": 100},
+        {"id": "routine", "raw_percent": 100},
+        {"id": "learning", "raw_percent": 100},
+        {"id": "live", "raw_percent": 100},
+        {"id": "adherence", "raw_percent": 0},
+        {"id": "retrospective", "raw_percent": 0},
+    ]
+    overall, _ = js.weighted_overall_raw(meters, w)
+    # engagement weights 55% at 100, quality 45% at 0 → 55
+    assert overall == 55
+    # Equal mean would be ~67 — weighted is lower (quality drag)
+    equal = round(sum(m["raw_percent"] for m in meters) / 6)
+    assert overall < equal
+
+
+def test_adherence_dual_empty():
+    # No trades → empty
+    raw, empty = js.adherence_raw_from_counts(0, 0, 0)
+    assert empty is True and raw is None
+    # Trades but untagged → raw 0, not empty (do not renorm away)
+    raw, empty = js.adherence_raw_from_counts(10, 0, 0)
+    assert empty is False and raw == 0
+    # Tagged 4/10 good
+    raw, empty = js.adherence_raw_from_counts(10, 10, 4)
+    assert empty is False and raw == 40
 
 
 def test_practice_persistence_weeks():
@@ -433,6 +511,110 @@ def test_attendance_streak_grace_current_week_empty():
         datetime(2026, 7, 14, 14, 0, tzinfo=timezone.utc),
     ]
     assert js.attendance_streak_weeks(times, now=now) == 2
+
+
+def _weekly_checkins(n_weeks: int, *, end: datetime) -> list[datetime]:
+    """n consecutive weekly check-ins ending at ``end`` (walk back 7 days)."""
+    out: list[datetime] = []
+    cursor = end
+    for _ in range(n_weeks):
+        out.append(cursor)
+        cursor = cursor - timedelta(days=7)
+    return out
+
+
+def test_live_presence_full_window_scores_100():
+    """Perfect presence over horizon → EWMA settles at 100%."""
+    now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
+    times = _weekly_checkins(16, end=datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc))
+    pct, streak, active, horizon = js.live_presence_percent(
+        times, now=now, streak_cap=12, horizon_weeks=16
+    )
+    assert streak >= 12
+    assert active == 16 and horizon == 16
+    assert pct == 100
+
+
+def test_live_presence_streak_after_drought_below_perfect():
+    """10-week streak after older empty weeks scores below continuous presence.
+
+    Near-term EWMA rewards the comeback, but residual drought still dings vs 100.
+    """
+    now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
+    times = _weekly_checkins(10, end=datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc))
+    pct, streak, active, horizon = js.live_presence_percent(
+        times, now=now, streak_cap=12, horizon_weeks=16
+    )
+    assert streak == 10
+    assert active == 10 and horizon == 16
+    assert pct < 100
+    # Near-term heavy: comeback scores above flat coverage (10/16 ≈ 62)
+    assert pct > 62
+
+
+def test_live_presence_recent_drought_dings_harder_than_old():
+    """Same density, different placement: recent gaps hurt more than old gaps."""
+    now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
+    # Recent consistency after old drought: last 10 weeks present
+    comeback = _weekly_checkins(
+        10, end=datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc)
+    )
+    # Recent drought after old consistency: first 10 of a 16w block present,
+    # then 6 empty — end the block 6 weeks before "now"
+    faded = _weekly_checkins(
+        10, end=datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc) - timedelta(days=7 * 6)
+    )
+    pct_comeback, _, a1, _ = js.live_presence_percent(
+        comeback, now=now, streak_cap=12, horizon_weeks=16
+    )
+    pct_faded, _, a2, _ = js.live_presence_percent(
+        faded, now=now, streak_cap=12, horizon_weeks=16
+    )
+    assert a1 == a2 == 10
+    assert pct_comeback > pct_faded, (
+        f"near-term weight: comeback={pct_comeback} faded={pct_faded}"
+    )
+    assert pct_faded < 50  # recent slack is punished hard
+
+
+def test_live_presence_inconsistency_scores_below_consecutive():
+    """Alternating show-ups (inconsistent) score below a solid recent block."""
+    now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
+    end = datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc)
+    # 8 consecutive recent weeks
+    solid = _weekly_checkins(8, end=end)
+    # 8 alternating weeks over 16 (every other week, including most recent)
+    alt: list[datetime] = []
+    cursor = end
+    for i in range(16):
+        if i % 2 == 0:
+            alt.append(cursor)
+        cursor = cursor - timedelta(days=7)
+    pct_solid, _, _, _ = js.live_presence_percent(
+        solid, now=now, streak_cap=12, horizon_weeks=16
+    )
+    pct_alt, _, active_alt, _ = js.live_presence_percent(
+        alt, now=now, streak_cap=12, horizon_weeks=16
+    )
+    assert active_alt == 8
+    assert pct_solid > pct_alt
+
+
+def test_live_presence_sparse_over_months_dings_hard():
+    """Scattered check-ins with no consistency score low under EWMA."""
+    now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
+    times = [
+        datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc),
+        datetime(2026, 6, 30, 14, 0, tzinfo=timezone.utc),
+        datetime(2026, 6, 2, 14, 0, tzinfo=timezone.utc),
+        datetime(2026, 5, 5, 14, 0, tzinfo=timezone.utc),
+    ]
+    pct, streak, active, horizon = js.live_presence_percent(
+        times, now=now, streak_cap=12, horizon_weeks=16
+    )
+    assert streak == 1
+    assert active == 4
+    assert pct < 45  # inconsistency / sparsity punished
 
 
 def test_checkin_window():

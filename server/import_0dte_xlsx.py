@@ -434,6 +434,15 @@ def import_log(
             continue
 
         right = _right(typ)
+        # Guard bad spreadsheet years (e.g. open 2026-05-12 / close 2027-05-12)
+        # that used to create year-long OPEN interest in the day book.
+        hold_days = (close_d.date() - open_d.date()).days
+        if hold_days < 0 or hold_days > 30:
+            print(
+                f"skip row {i}: open={open_d.date()} close={close_d.date()} "
+                f"hold_days={hold_days} (max 30) — not imported"
+            )
+            continue
         # Same-day 0DTE: open morning / close afternoon for ordering
         open_at = open_d.replace(hour=10, minute=0, second=0)
         close_at = close_d.replace(hour=15, minute=30, second=0)

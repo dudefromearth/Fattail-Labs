@@ -39,9 +39,13 @@ def list_accounts(request: Request) -> dict:
             iid = _storage_identity_id(cur, claims)
             _ensure_default_account(cur, iid)
             cur.execute(
-                """SELECT * FROM member_trade_log_accounts
-                   WHERE identity_id = %s
-                   ORDER BY status ASC, sort_order ASC, id ASC""",
+                """SELECT a.*,
+                          (SELECT COUNT(*) FROM member_trade_log_trades t
+                           WHERE t.account_id = a.id AND t.identity_id = a.identity_id
+                          ) AS trade_count
+                   FROM member_trade_log_accounts a
+                   WHERE a.identity_id = %s
+                   ORDER BY a.status ASC, a.sort_order ASC, a.id ASC""",
                 (iid,),
             )
             rows = cur.fetchall()

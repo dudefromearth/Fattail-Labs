@@ -21,6 +21,8 @@ export type Account = {
   status: string;
   venue_kind: string;
   sort_order: number;
+  /** Present on list accounts API — fills on this book. */
+  trade_count?: number;
 };
 
 export type Leg = {

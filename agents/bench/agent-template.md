@@ -48,6 +48,12 @@ Before you ever report completion, you **must**:
 - [ ] Checklist item 1
 - [ ] Checklist item 2
 
+If this agent runs a **substantive invocation**, also:
+
+- [ ] **Bench delta** — what the next run gains (doctrine principle 10)
+- [ ] **Coach Content Law (§11):** Coach text retained; any objection labeled next to it;
+      scope changes stated up front; research before challenge; blocks vs opinions split
+
 ---
 
 ## COOPERATION

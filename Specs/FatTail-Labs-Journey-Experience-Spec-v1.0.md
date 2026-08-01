@@ -154,15 +154,28 @@ not winning achievements. Presented as both a **%** and a **process integrity gr
 | `persistence` | Practice persistence | Weeks with Trade Log, Journal notes, lessons, or live check-in |
 | `routine` | Daily routine | Days with Trade Log or Journal in routine window |
 | `learning` | Learning rhythm | Days with completed lesson in learning window |
-| `live` | Live presence | Attendance streak vs profile live-streak cap |
-| `adherence` | Process adherence | % trades tagged `followed`/`partial` (not P&L) |
+| `live` | Live presence | **EWMA** of weekly live check-in presence (1/0) over `live_horizon_weeks`, half-life **4 weeks** (near-term consistency weighs more; gaps and recent slack ding harder). Detail still shows streak + flat week counts. Leaderboard contribution uses streak alone. |
+| `adherence` | Process adherence | **Dual empty (v1.0.1 / PI Spec v0.4):** no trades in window → **empty** (exclude). Trades present but none tagged → raw **0**, **not** empty (must not renorm away). Else % of tagged trades `followed`/`partial` (not P&L). |
 | `retrospective` | Retrospectives | **Days since last completed retrospective** vs profile `retro_horizon_days` — see **§4.1a**. Not `soon`. |
+| `mental_toughness` | Mental toughness | **Hard Spec v1.0:** empty until **active** FatTail Hard / True 75 enrollment; when enrolled, 0–100 from streak + completion rate (compliance, not a brain scan). Physiology cited on `/app/toughness`. |
 
-**Raw overall** = average of non-empty, non-soon meter raw percents  
-(`process.overall_raw_percent`).  
+**Scoring model version:** `process.scoring_model_version` (as-built: `pi-weights-v1-option1+mt`).  
+Bump only with this section amend + characterization tests.
+
+**Raw overall** (`process.overall_raw_percent`) = **profile-weighted** mean of non-empty, non-soon meter raw percents (raw already 0–100):
+
+```
+overall_raw = round( Σ(w_i · raw_i) / Σ w_i )
+```
+
+Weights by `meter_profile` (Option 1 — Coach DL-171): quality (adherence + retrospective) carries real weight from day one (trial quality share **45%**). When MT is non-empty, use **seven-weight** maps (`PROCESS_METER_WEIGHTS_WITH_MT` — Hard Spec §8.3). Tables: `journey_scores.py`. Empty/soon meters excluded; remaining weights renormalize. Fail loud if profile has no weight map.
+
+**Shadow (migration):** `process.overall_raw_equal_mean` = equal average of the same meters (legacy). Remove after cutover explainer period.
+
 **Graded overall** = tenure-adjusted (`process.overall_percent` — drives needle + grade).
 
-Each meter object may include: `percent` (graded), `raw_percent`, `grade`, `empty?`, `soon?`.
+Each meter object may include: `percent` (graded), `raw_percent`, `weight`, `grade`, `empty?`, `soon?`.  
+API may also expose `weights` (full profile map) and `weights_applied` (after empty filter).
 
 ### 4.1a Retrospective cadence meter
 

@@ -31,6 +31,7 @@ function TradeLogBody() {
     accountLabel,
     accounts: ctxAccounts,
     refreshAccounts,
+    prefsReady,
   } = usePracticeContext();
 
   const [state, setState] = useState<LoadState>("loading");
@@ -45,6 +46,11 @@ function TradeLogBody() {
   const [deepLinked, setDeepLinked] = useState(false);
 
   const load = useCallback(() => {
+    // Wait for Practice Context prefs — same flash loop as Reports otherwise.
+    if (!prefsReady) {
+      setState("loading");
+      return;
+    }
     setError(null);
     Promise.all([fetchTrades(accountIdParam), fetchCatalog()])
       .then(async ([tr, vn]) => {
@@ -87,7 +93,7 @@ function TradeLogBody() {
         setState("err");
         setError(e instanceof Error ? e.message : String(e));
       });
-  }, [accountIdParam, refreshAccounts, setAccountId]);
+  }, [accountIdParam, prefsReady, refreshAccounts, setAccountId]);
 
   useEffect(() => {
     load();

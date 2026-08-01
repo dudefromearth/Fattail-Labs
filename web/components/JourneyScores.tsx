@@ -68,12 +68,20 @@ export default function JourneyScores() {
               Trade Log, Journal, lessons, and live — not a scoreboard of wins.
             </p>
           </div>
-          <Link
-            href="/app/journal"
-            className="text-xs font-medium text-[var(--color-tint)] hover:underline"
-          >
-            Practice suite →
-          </Link>
+          <div className="flex flex-col items-end gap-1 text-xs font-medium">
+            <Link
+              href="/app/journal"
+              className="text-[var(--color-tint)] hover:underline"
+            >
+              Practice suite →
+            </Link>
+            <Link
+              href="/app/toughness"
+              className="text-[var(--color-tint)] hover:underline"
+            >
+              Toughness (Hard) →
+            </Link>
+          </div>
         </div>
         <div className="mt-5">
           {data.process ? (

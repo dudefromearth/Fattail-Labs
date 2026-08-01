@@ -275,6 +275,20 @@ export default function SiteHeader() {
                     >
                       Journey
                     </Link>
+                    <Link
+                      href="/app/toughness"
+                      className="block px-4 py-2 hover:bg-[var(--color-fill)]"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Toughness
+                    </Link>
+                    <Link
+                      href="/app/practice"
+                      className="block px-4 py-2 hover:bg-[var(--color-fill)]"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Practice
+                    </Link>
                     {me.role === "observer" && (
                       <Link
                         href="/membership"

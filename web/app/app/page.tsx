@@ -40,6 +40,7 @@ type AppRow = {
 const TOP_LEVEL_ORDER = [
   "journey",
   "practice-log",
+  "toughness",
   "strategy-lab",
   "wiki",
 ] as const;
@@ -62,6 +63,15 @@ const FALLBACK_APPS: AppRow[] = [
       "Reports home (equity & drawdown), Trade Log, Journal, and Playbook — process first.",
     status: "live",
     href: "/app/practice",
+  },
+  {
+    id: 0,
+    slug: "toughness",
+    title: "Toughness",
+    blurb:
+      "FatTail Hard and True 75 Hard — voluntary capacity training for mental toughness under load (aMCC / willpower).",
+    status: "live",
+    href: "/app/toughness",
   },
   {
     id: 0,
@@ -93,8 +103,8 @@ async function fetchApps(): Promise<AppRow[]> {
 }
 
 /**
- * Build the top-level catalog: drop nested trade-log/journal, inject Practice
- * Log + Strategy Life Cycle cards, preserve a stable 2-col order.
+ * Build the top-level catalog: drop nested trade-log/journal, inject Practice,
+ * Toughness, Strategy Life Cycle cards — even when API has not seeded them yet.
  */
 function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
   const bySlug = new Map(apiApps.map((a) => [a.slug, a]));
@@ -109,6 +119,16 @@ function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
     href: "/app/practice",
   };
 
+  const toughnessFromApi = bySlug.get("toughness");
+  const toughness: AppRow = toughnessFromApi
+    ? {
+        ...toughnessFromApi,
+        title: toughnessFromApi.title || "Toughness",
+        href: toughnessFromApi.href || "/app/toughness",
+        status: "live",
+      }
+    : (FALLBACK_APPS.find((a) => a.slug === "toughness") as AppRow);
+
   const strategyFromApi = bySlug.get("strategy-lab");
   const strategy: AppRow = strategyFromApi
     ? {
@@ -122,9 +142,11 @@ function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
   for (const a of apiApps) {
     if (NESTED_UNDER_PRACTICE.has(a.slug)) continue;
     if (a.slug === "strategy-lab") continue; // use composed title below
+    if (a.slug === "toughness") continue; // use composed row below
     composed.set(a.slug, a);
   }
   composed.set("practice-log", practice);
+  composed.set("toughness", toughness);
   composed.set("strategy-lab", strategy);
 
   const ordered: AppRow[] = [];
@@ -199,9 +221,10 @@ function AppCard({ t }: { t: AppRow }) {
     t.status === "live" ||
     t.slug === "wiki" ||
     t.slug === "practice-log" ||
+    t.slug === "toughness" ||
     t.slug === "strategy-lab";
   const badgeStatus =
-    t.slug === "practice-log"
+    t.slug === "practice-log" || t.slug === "toughness"
       ? "live"
       : t.slug === "strategy-lab"
         ? "soon"

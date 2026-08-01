@@ -73,6 +73,16 @@ function PracticeSuiteChromeInner({
               {subtitle || item.blurb}
             </p>
           )}
+          <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
+            <Link
+              href="/app/toughness"
+              className="font-medium text-[var(--color-tint)] hover:underline"
+            >
+              Toughness
+            </Link>
+            {" — "}
+            FatTail Hard / True 75 (capacity training, Mental Toughness meter)
+          </p>
         </header>
       )}
 

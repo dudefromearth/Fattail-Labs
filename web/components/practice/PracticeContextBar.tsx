@@ -84,6 +84,7 @@ export default function PracticeContextBar({
               <option key={a.id} value={a.id}>
                 {a.label}
                 {a.broker && a.broker !== "unset" ? ` · ${a.broker}` : ""}
+                {typeof a.trade_count === "number" ? ` (${a.trade_count})` : ""}
               </option>
             ))}
           </select>

@@ -47,3 +47,9 @@ writing. "We might need it later" is not justification.
 ### 7. The Spec is the Contract
 If implementation reveals the spec is wrong, stop and amend the spec (new version,
 logged decision) — never silently diverge.
+
+### 8. Leave the Bench Stronger
+Every substantive invocation deposits learning back into the bench — decision log,
+spec honesty, charter/seed/test, gate report, or flagged idea. Conversation-only
+residue is incomplete work. The ensemble compounds; it does not rent intelligence
+for one session and forget. (Doctrine principle 10.)

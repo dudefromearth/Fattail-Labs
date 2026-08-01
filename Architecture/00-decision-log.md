@@ -4,6 +4,451 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-07-31 — DL-180 FatTail Hard H3 — MT on Journey composite
+
+**Decision:** Mental Toughness meter wired into Process Integrity overall when
+member has **active** Hard enrollment (Hard Spec v1.0 §8 · H3).
+
+| Item | As-built |
+|------|----------|
+| Model version | `pi-weights-v1-option1+mt` |
+| Meter | `mental_toughness` empty if not enrolled/paused/exited |
+| Raw | 50% streak vs sprint cap + 50% completion rate (window) |
+| Weights | `PROCESS_METER_WEIGHTS_WITH_MT` seven-maps (Spec §8.3 integers) |
+| Journey Spec | §4.1 amended — seventh meter |
+| Tests | `test_hard.py::test_process_meters_mt_empty_then_enrolled` |
+
+**Not in H3:** photos (H4), agent (H5). Coach may retune MT weight integers later.
+
+---
+
+## 2026-07-31 — DL-179 FatTail Hard H2 — Toughness UI shipped
+
+**Decision:** H2 member surfaces for Hard Spec v1.0.
+
+| Route | Content |
+|-------|---------|
+| `/app/toughness` | Hub: physiology cite, status, True 75 + FatTail Hard cards |
+| `/app/toughness/true-75` | Frisella credit + honor-system enroll |
+| `/app/toughness/fattail-hard` | Progressive program enroll (20/40/75) |
+| `/app/toughness/today` | Daily task log + progress record |
+
+**UI:** `web/components/hard/*` · `web/lib/hardApi.ts` · Apps grid card **Toughness**.  
+**Cite block:** mandatory Touroutoglou et al. 2020 on hub and program pages.  
+**Not in H2:** photos (H4), MT in Journey composite (H3), agent (H5).
+
+---
+
+## 2026-07-31 — DL-178 FatTail Hard H1 — domain + API shipped
+
+**Decision:** H1 domain spine for Hard Spec v1.0 implemented.
+
+| Item | As-built |
+|------|----------|
+| Migration | `059_hard_mental_toughness.sql` — `member_hard_enrollments`, `member_hard_daily_logs` |
+| Domain | `server/hard_domain.py` — variants (True 75 honor + FatTail 20/40/75), how_it_works, miss→restart day one, enroll, daily, pause/exit/resume, compliance, MT raw empty-until-active |
+| API | `GET /api/me/hard`, `/variants`, `POST enroll|daily|pause|exit|resume` |
+| Privacy | Identity-scoped FKs; private by default; no board routes; physiology cite on snapshot |
+| Photos | Column `photo_resource_id` nullable (H4); H1 progress_note for record |
+| Tests | `server/tests/test_hard.py` — 4 passed |
+
+**Not in H1:** UI, PI composite MT weight, photo upload, agent.  
+**Next:** H2 `/toughness` UI.
+
+---
+
+## 2026-07-31 — DL-184 Life events & priority shift (Hard copy)
+
+**Decision (Coach):** Member copy must warn that people often are **not prepared**
+for how the program changes **lives and priorities** — especially **no drinking**
+and **no diet cheating**. Vacations, weddings, and other life events will challenge
+resolve; rules do not pause.
+
+**Landed:** `HOW_IT_WORKS.life_and_priorities` + body/rules; HowItWorks + FatTail/
+Today copy; Hard Spec §6.
+
+---
+
+## 2026-07-31 — DL-183 Ladder psychology 20→40→75
+
+**Decision (Coach):** Member copy must name the lived path:
+
+- After **20**, people may give up or choose **40**; some need **20 twice** before
+  40 feels possible (capacity, not failure).
+- At **40**, most hit a **major period of despair**; through that → end is reachable.
+- **75** by stacking rungs, not skipping the middle.
+
+**Landed:** `HOW_IT_WORKS.ladder` + per-variant `ladder_blurb`; HowItWorks + FatTail
+enroll UI; Hard Spec §6.
+
+---
+
+## 2026-07-31 — DL-182 Toughness How-it-works + 20/40/75 ladder
+
+**Decision (Coach):**
+
+1. **How it works** must be explicit on `/app/toughness`: these programs develop
+   **Mental Toughness**; complete all required activities every day for the full
+   length; fail any activity → **restart day one**; hard but most effective for
+   real physiology/mindset change; become mentally tough by progressing the set.
+2. **Intro video** slot on hub (YouTube via `HARD_INTRO_VIDEO_ID` when published);
+   written rules are the contract until the video ships.
+3. **FatTail Hard lengths:** **20 / 40 / 75 days** (breakthrough periods), not
+   7/14/30. Variants: `fattail_sprint_20|40|75`. `miss_policy: restart`.
+
+**Landed:** `hard_domain.HOW_IT_WORKS` + restart engine; `HowItWorks` UI; Hard Spec
+§6–7; tests for 20/40/75.
+
+---
+
+## 2026-07-31 — DL-181 Product term: mental toughness (not tenacity)
+
+**Decision (Coach):** Member-facing Hard / physiology copy uses **mental toughness**,
+not “tenacity.” Academic sources may retain “tenacity” in titles/quotes only;
+product never surfaces that synonym in UI — maps the capacity to mental toughness.
+
+**Updated:** PhysiologyCite (no member-facing “tenacity”), hard API note, journey MT
+hint, Apps blurb, Hard Spec §4, PI Spec §5.1b, aMCC source pack product claim lines.
+
+---
+
+## 2026-07-31 — DL-177 FatTail Hard H0 GO — Spec v1.0 build authority
+
+**Decision (Coach):** **GO on H0** for FatTail Hard / Mental Toughness program.
+
+**Landed:**
+
+| Artifact | Path |
+|----------|------|
+| Implementation plan | `agents/p-fattail-hard/IMPLEMENTATION-PLAN.md` |
+| Orchestrator | `agents/p-fattail-hard/ORCHESTRATOR.md` |
+| **Hard Spec v1.0** | `Specs/FatTail-Labs-Hard-Mental-Toughness-Spec-v1.0.md` (**BUILD AUTHORITY**) |
+| Science pack | `agents/p-fattail-hard/science/aMCC-source-pack-v1.md` |
+
+**Coach inventory C1–C10** retained in Spec (True 75 + FatTail Hard + MT composite when
+enrolled + mandatory aMCC cites). Photos: requirement **kept**; H2 ships progress
+**record**, photo upload **H4** (stated up front — not silent drop).
+
+**Primary science:** Touroutoglou et al. (2020) *Cortex* “The tenacious brain” (PMID
+31733343). Hotel formal secondary verify before H2 copy.
+
+**Next:** H1 domain + privacy + API. No Track C product deletion without Coach.
+
+---
+
+## 2026-07-31 — DL-176 Coach Content Law (hard rules for all agents)
+
+**Decision (Coach):** Non-negotiable operating law for every agent and every review
+folded into the repo. Doctrine **§11**.
+
+1. **Nothing of Coach’s is removed** — not from a spec, draft, or summary. If something
+   “doesn’t belong,” it **stays** and the objection goes **next to it**, marked as the
+   objector’s, for Coach to accept or throw out.  
+2. If an agent **changed or dropped** Coach content, say so **up front** — not buried in
+   a changelog where a downstream agent turns it into a fait accompli.  
+3. **Research before questioning** — search, read actual sources, check evidence; not
+   priors dressed up as conclusions.  
+4. **Blocking** only when something breaks an **invariant**, breaks the **law**, or breaks
+   the **system**. Everything else is an **opinion**, free to discard, and **labeled**
+   that way. Disagreement may **not** be promoted into a constraint by reaching for risk
+   language.
+
+**Why:** DL-173 (FatTail Hard silent de-scope) is the failure mode this law prevents.
+External reviews remain valuable **input**; they never become silent product law.
+
+**As-built:** `agents/bench/doctrine.md` §11 · `spec-create-review-workflow.md` · India/Tango
+charters · `AGENTS.md` · agent-template completion checklist.
+
+---
+
+## 2026-07-31 — DL-175 Hard must cite physiological underpinnings (Coach)
+
+**Decision (Coach):** FatTail Hard / Mental Toughness **shall cite the physiological
+underpinnings** of the program — not slogan-only discipline marketing.
+
+**Required on member-facing Hard surfaces:** what is trained (mental
+toughness/persistence under effort cost), **aMCC** as the literature locus, why
+repeated voluntary challenge is the intervention, and **named sources**
+(paraphrase-and-attribute). Product term: mental toughness (DL-181).
+
+**Canonical anchor paper (minimum pack):**
+
+- Touroutoglou, A., Andreano, J., Dickerson, B. C., & Barrett, L. F. (2020). The tenacious
+  brain: How the anterior mid-cingulate contributes to achieving goals. *Cortex, 123*,
+  12–29. https://doi.org/10.1016/j.cortex.2019.09.011
+
+**Forbidden:** guaranteed brain growth, medical diagnosis/treatment claims, uncited
+“science says,” profit claims from willpower.
+
+**Gates:** Hotel (+ Bravo) on sources · Tango on capacity/shame · Sierra/Charlie on cite
+blocks in UI · agent source IDs when explaining MT/Hard.
+
+**Spec:** PI Scoring Guidance v0.4 **§5.1b**. Supersedes soft language in DL-174 on
+“may use” — citation is **mandatory**, not optional flavor.
+
+---
+
+## 2026-07-31 — DL-174 FatTail Hard thesis: aMCC / willpower (Coach)
+
+**Decision (Coach):** FatTail Hard / Mental Toughness product framing is **capacity
+training for persistence and willpower**, associated with the **anterior mid-cingulate
+cortex (aMCC)** — sometimes called the “willpower muscle” — described as a brain region
+linked to persistence that can strengthen with repeated challenging use (75 Hard–class
+protocols, deliberate hardship training as analogy).
+
+**Product consequences:**
+
+- Hard remains **Coach product scope** (DL-173); not a side gimmick.  
+- MT meter (when enrolled) scores **behavioral compliance**, not medical imaging.  
+- Education copy uses aMCC framing with paraphrase-and-attribute + no guaranteed
+  clinical outcomes / no profit claims.  
+- Spec: PI Scoring Guidance v0.4 **§5.1a**.  
+- Build still needs Privacy/safety/counsel work for photos/health-adjacent data — constraints
+  on *how*, not *whether*.
+
+**Amended by:** DL-175 — citing physiology is **required**, not optional.
+
+**Not decided here:** exact MT weight table when enrolled; Track C ship date.
+
+---
+
+## 2026-07-31 — DL-173 FatTail Hard restored — unauthorized de-scope failure
+
+**Failure (owned):** Coach **explicitly included** FatTail Hard / True 75 / Mental
+Toughness in Process Integrity Scoring v0.1 and **never removed it**. An external
+review (Claude) recommended parking Hard and never feeding the composite. The agent
+folding that review into Spec v0.3 / DL-169 **treated that as product law without
+Coach disposition and without telling Coach** the feature was being removed from
+scope. That is a **colossal process failure**: reverse of doctrine principle 10
+(ideas flagged, not discarded) and of Coach final authority.
+
+**Correction (Coach 2026-07-31, this entry):**
+
+| Item | Status |
+|------|--------|
+| FatTail Hard / True 75 / MT | **Coach product scope — restored** |
+| “PARKED / never feeds composite” as *product* decision | **Void** |
+| Privacy, consent, counsel, safety reviews | Remain **implementation constraints** — do not authorize deletion |
+| MT scoring design | Empty until enrolled; **may enter composite when enrolled**; never zero non-enrollees; never membership gate; never inject MT because PI is weak |
+| Spec | v0.4 §1, §5 rewritten · FI-002 `ADOPTED` · FI-010 `RESHAPED` |
+
+**Rule going forward:** No agent or external review may drop or “park forever” a
+feature Coach put in a thesis/spec **unless Coach explicitly disposes it and is
+notified the same day**. Reviews may **flag risks**; only Coach **removes scope**.
+
+**Apology:** Coach was right to call this. Silence + de-scope is worse than a hard
+conversation about constraints.
+
+---
+
+## 2026-07-31 — DL-172 Process Integrity Track A P0 shipped (Option 1 weights)
+
+**Decision:** Implement PI Scoring Spec v0.4 Track A P0 in as-built Journey meters.
+
+| Item | As-built |
+|------|----------|
+| Model version | `scoring_model_version` = `pi-weights-v1-option1` on `process` |
+| Overall | Weighted mean `round(Σ w·raw / Σ w)` — raw already 0–100 |
+| Weights | `PROCESS_METER_WEIGHTS` all seven `meter_profile` ids (Option 1) |
+| Adherence dual-empty | no trades → empty; trades untagged → raw 0 included |
+| Shadow | `overall_raw_equal_mean` during migration |
+| Meter field | `weight` per meter; `weights` + `weights_applied` on process |
+| Specs | Journey Experience §4.1 amended; PI Spec v0.4 points to code/Journey SOT |
+| Tests | `test_journey_scores.py` — weights, arithmetic, dual-empty, API version |
+
+**Code:** `server/journey_scores.py`. **Not in this ship:** Track B/C, self-assessment, journal scanning.
+
+**Cross-ref:** DL-171 Option 1 · Spec v0.4 · FI-001/017/018/019/020.
+
+---
+
+## 2026-07-31 — DL-171 Process Integrity weights: Option 1 rebalance (Coach)
+
+**Decision (Coach):** Process Integrity scoring uses **Option 1 — rebalance**, not
+Option 2 rename.
+
+- Keep the name **Process Integrity** for all stages (including Observer trial).  
+- **Adherence + retrospective** carry real weight from day one.  
+- Establishing/tenure absorb early noise — do not use engagement-majority weights to
+  “protect” new members.  
+- Canonical tables: Spec **v0.4 §3.6** (trial quality share **45%**).  
+- Dual-empty adherence (v0.4 §3.5) remains mandatory so quality weight cannot be
+  renormed away by never tagging.
+
+**Rejected:** Renaming observer overall to “Practice engagement” / Labs loop.
+
+**Flags:** FI-017 → `ADOPTED`. FI-001 → `ADOPTED` (weighted overall under Option 1).
+
+**Next for build:** India/Tango on v0.4 Track A P0 → Alpha implement weighted overall +
+dual-empty + `scoring_model_version` + Journey Experience Spec amend in same body of
+work. Integer tweaks to §3.6 still allowed before Alpha if Coach edits; default **as-is**.
+
+---
+
+## 2026-07-31 — DL-170 PI Scoring Spec v0.4 (design review folded)
+
+**Decision:** Design review of Spec **v0.3** (Claude) accepted as high-quality input
+(not a standing gate). Landed in:
+
+- `agents/bench/reviews/2026-07-31-pi-scoring-v03-design-review.md`
+- `Specs/FatTail-Labs-Process-Integrity-Scoring-Guidance-Spec-v0.4.md`
+- Flags FI-017…FI-022
+
+**Correctness fixed in v0.4:**
+
+1. Weighted overall formula — drop erroneous `100 ·` when raw is already 0–100  
+2. Weight tables for all seven `meter_profile` ids  
+3. Dual empty for adherence (untagged trades → raw 0, not renorm-away)
+
+**Coach decision blocking P0 weight GO:** engagement-majority trial score vs true
+Process Integrity — **Option 1 rebalance (recommended)** or **Option 2 rename** (§3.0 / Q6).
+
+**Also:** doc EOL into Journey on P0; no waiver language; no self-assessment collect
+until Track B; no journal-body distress scan; checkable floor-support/graduation
+proposals; mandatory model version + shadow migration.
+
+**India/Tango:** still own formal gates independently when Coach requests them.
+
+---
+
+## 2026-07-31 — DL-169 PI Scoring Spec v0.3 (Claude review folded)
+
+**Decision:** External review of Process Integrity Scoring **v0.1** (Claude) is accepted
+as high-quality. Folded into:
+
+- Review artifact: `agents/bench/reviews/2026-07-31-pi-scoring-v01-external-review.md`
+- Spec: `Specs/FatTail-Labs-Process-Integrity-Scoring-Guidance-Spec-v0.3.md` (supersedes v0.2)
+- Flags FI-008…FI-016
+
+**Build disposition:**
+
+| Track | GO |
+|-------|-----|
+| **A Scoring** (deterministic meters/weights) | Eligible after Coach GO + Journey amend + tests |
+| **B Analyst + chat** | BLOCKED — phase route + scoped agent credentials |
+| **C FatTail Hard / True 75** | PARKED — counsel + DPIA; **default never feeds PI composite** |
+
+**Accepted blocks from external review:** no self-SSOT; agent must not mutate profiles;
+Hard health/photo/trademark out of scoring doc; floor-support not hardship-on-fragility;
+conversion firewall on weights; `meter_profile` derived only; paraphrase-only excerpts;
+no Monday multi-track launch; gradeable math + characterization tests.
+
+**Already fixed before Claude (kept):** MT inverted gate rejected; equal-mean honesty;
+Live EWMA; private PI vs contribution board.
+
+**Not build GO yet:** v0.3 remains DRAFT until Coach Phase-5 per track.
+
+---
+
+## 2026-07-31 — DL-168 The bench strengthens with every invocation
+
+**Decision (Coach intent):** The Agent Bench’s primary process law is **compounding
+strength**, not merely “don’t discard ideas.”
+
+**Doctrine principle 10 (restated):** Every substantive invocation must leave the
+ensemble stronger — at least one durable delta (truth, memory, skill, doctrine, or
+capacity learning). Conversation-only residue is incomplete work.
+
+**Supporting mechanics (not the goal):**
+
+- Ideas that cannot ship as written → **flag + discuss** (ADOPTED / DEFERRED / PARKED /
+  RESHAPED) via `Architecture/flagged-ideas.md`
+- Review verdicts require **§ Bench delta** (+ flags when relevant)
+- First-principles law 8: Leave the Bench Stronger
+- India / Tango / templates: completion includes bench delta
+
+**Unchanged:** Guardians still block unsafe **build**. Strengthening does not mean
+shipping unsafe design; it means the *next* invocation is smarter for having run this one.
+
+**Rationale:** The bench exists to compound mastery. Renting intelligence for one
+session and forgetting is failure — even when the immediate packet “passes.”
+
+---
+
+## 2026-07-31 — DL-167 Process Integrity Scoring & Guidance Spec v0.2 (draft)
+
+**Decision:** Coach draft “Trader Process Integrity Scoring & Guidance System v0.1”
+is **reviewed and superseded** by design-authority draft:
+
+`Specs/FatTail-Labs-Process-Integrity-Scoring-Guidance-Spec-v0.2.md`
+
+**Review outcomes folded into v0.2:**
+
+| Keep | Change / reject |
+|------|-----------------|
+| Process-only; no P&L | Drop “v1.0 / Monday full system” build claim |
+| Six Journey dimensions + Live EWMA | Anchor to **as-built** meters/tenure/empty |
+| Profile-shaped weights (target) | Equal mean remains interim until P0 weights ship |
+| Analyst + self-assessment + Hard (phased) | MT **empty until enrolled** — reject v0.1 “inject MT when PI weak” |
+| Research grounding | Soft self-assessment (skip OK); Hard never membership gate |
+| | Profiles = as-built set (monthly/annual nav, alumni, free) |
+| | P0–P3 delivery; Monday = P0 weights only if anything |
+
+**Not build GO:** v0.2 is DRAFT design authority. P0 (weighted overall + transparency)
+needs explicit Coach GO + Journey Spec bump in same work. Hard / agent = P2.
+
+**Cross-ref:** DL-165/166 (Live), Journey Experience §4, Gamification §3.3, Privacy v0.1.
+
+---
+
+## 2026-07-31 — DL-166 Live presence meter: weekly EWMA (near-term heavier)
+
+**Decision:** Process Integrity **Live presence** is an **EWMA of weekly check-in
+presence** (binary 1/0 per Eastern ISO week), not streak-only and not a flat
+streak/coverage blend.
+
+```
+α = 1 − 0.5^(1/half_life)   # half_life = 4 weeks
+s_t = α · x_t + (1−α) · s_{t−1}   # oldest → newest over live_horizon_weeks
+raw% = round(100 · s_final)
+```
+
+Grace: incomplete current week with no check-in is omitted (same spirit as streak).
+
+**Rationale (Coach):** Reward consistency; punish lack of consistency; weight
+**near-term** consistency heavier than long-term — exponential decay of older
+weeks. Recent slack dings harder than an equal-length drought further back;
+comeback streaks recover faster than a flat multi-month average but still sit
+below continuous presence. Leaderboard / contribution remains streak-only (§3.4).
+
+**Supersedes:** DL-165 blend formula (same day). Horizons unchanged (trial 6 /
+monthly 16 / annual 20 / …).
+
+**As-built:** `live_presence_ewma` · `live_week_presence_series` ·
+`LIVE_HALF_LIFE_WEEKS=4`. Detail: `{pct}% EWMA · {streak}w streak ·
+{active}/{horizon} weeks present`. Specs + `test_journey_scores` (near-term vs
+faded drought, alternating vs consecutive).
+
+---
+
+## 2026-07-31 — DL-165 Live presence meter: streak + coverage blend
+
+**Decision:** Process Integrity **Live presence** is no longer streak-only.
+Formula (personal process meter only):
+
+```
+streak_pct   = min(streak, live_streak_cap) / live_streak_cap
+coverage_pct = active_weeks / live_horizon_weeks   # empty weeks ding
+raw          = 0.5 * streak_pct + 0.5 * coverage_pct
+```
+
+**Rationale:** A 10-week check-in streak after slacking the prior couple of months
+must not read as full Live integrity — coverage over a multi-month horizon pulls
+the score down. Leaderboard / contribution still uses attendance streak alone
+(Journey Gamification Spec §3.3–3.4).
+
+**Profile horizons:** Observer trial 6w · Navigator monthly 16w · annual 20w ·
+Activator 16w · Alumni 12w · Free 8w. Caps unchanged.
+
+**As-built:** `journey_scores.live_presence_percent` · meter detail
+`{streak}w streak · {active}/{horizon} weeks present`. Specs: Journey Experience
+§4.1 live · Gamification §3.3. Tests: drought vs pure-streak cases in
+`test_journey_scores.py`.
+
+**Superseded by:** DL-166 (EWMA; same day).
+
+---
+
 ## 2026-07-30 — DL-164 Journal Retrospective v0.7.1 PROGRAM COMPLETE
 
 **Decision:** Agent-bench program `agents/p-retrospective-v07/` is **COMPLETE** (RT07-9-G

@@ -56,6 +56,16 @@ def iso_week_key(d: date) -> tuple[int, int]:
     return (iso.year, iso.week)
 
 
+def checkin_week_keys(checkin_times: list[datetime]) -> set[tuple[int, int]]:
+    """Eastern ISO (year, week) keys with ≥1 live check-in."""
+    weeks: set[tuple[int, int]] = set()
+    for ts in checkin_times:
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        weeks.add(iso_week_key(ts.astimezone(EASTERN).date()))
+    return weeks
+
+
 def attendance_streak_weeks(
     checkin_times: list[datetime], *, now: datetime | None = None
 ) -> int:
@@ -66,12 +76,7 @@ def attendance_streak_weeks(
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
     today_et = now.astimezone(EASTERN).date()
-
-    weeks: set[tuple[int, int]] = set()
-    for ts in checkin_times:
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=timezone.utc)
-        weeks.add(iso_week_key(ts.astimezone(EASTERN).date()))
+    weeks = checkin_week_keys(checkin_times)
 
     # Grace: if current week empty, start from last week
     cursor = today_et
@@ -84,6 +89,134 @@ def attendance_streak_weeks(
         # jump to previous ISO week
         cursor = cursor - timedelta(days=7)
     return streak
+
+
+# Live presence meter — EWMA of weekly show-up (1/0).
+# Rewards consistency, punishes gaps; near-term weeks weigh more than older ones.
+# half-life = weeks until an observation's weight is halved (α = 1 − 0.5^(1/H)).
+LIVE_HALF_LIFE_WEEKS = 4.0
+
+
+def live_ewma_alpha(half_life_weeks: float = LIVE_HALF_LIFE_WEEKS) -> float:
+    """Smoothing factor for weekly presence EWMA (near-term heavier)."""
+    h = float(half_life_weeks)
+    if h <= 0:
+        return 1.0
+    return 1.0 - (0.5 ** (1.0 / h))
+
+
+def live_week_presence_series(
+    week_keys: set[tuple[int, int]],
+    *,
+    now: datetime | None = None,
+    horizon_weeks: int = 16,
+    grace_current_week: bool = True,
+) -> list[int]:
+    """Binary presence per Eastern ISO week, **oldest → newest**, length = horizon.
+
+    Grace (same spirit as streak): if the current week has no check-in yet, do not
+    treat mid-week as an absence — the series starts from last week. Empty weeks
+    inside the window still score 0 and pull the EWMA down.
+    """
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    horizon = max(1, int(horizon_weeks))
+    today = now.astimezone(EASTERN).date()
+    cursor = today
+    if grace_current_week and iso_week_key(cursor) not in week_keys:
+        cursor = cursor - timedelta(days=7)
+
+    newest_first: list[int] = []
+    for _ in range(horizon):
+        newest_first.append(1 if iso_week_key(cursor) in week_keys else 0)
+        cursor = cursor - timedelta(days=7)
+    newest_first.reverse()
+    return newest_first
+
+
+def live_coverage_weeks(
+    week_keys: set[tuple[int, int]],
+    *,
+    now: datetime | None = None,
+    horizon_weeks: int = 16,
+) -> tuple[int, int]:
+    """Count weeks with a check-in in the last ``horizon_weeks`` Eastern ISO weeks.
+
+    Flat count for display only (EWMA drives the meter). Includes current week
+    even if empty so detail matches the calendar window. Returns
+    ``(active_count, horizon_weeks)``.
+    """
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    horizon = max(1, int(horizon_weeks))
+    today = now.astimezone(EASTERN).date()
+    active = 0
+    cursor = today
+    for _ in range(horizon):
+        if iso_week_key(cursor) in week_keys:
+            active += 1
+        cursor = cursor - timedelta(days=7)
+    return active, horizon
+
+
+def live_presence_ewma(
+    presence_oldest_first: list[int],
+    *,
+    half_life_weeks: float = LIVE_HALF_LIFE_WEEKS,
+) -> float:
+    """EWMA of binary weekly presence in [0, 1]. Empty series → 0.0."""
+    if not presence_oldest_first:
+        return 0.0
+    alpha = live_ewma_alpha(half_life_weeks)
+    s: float | None = None
+    for x in presence_oldest_first:
+        v = 1.0 if x else 0.0
+        s = v if s is None else alpha * v + (1.0 - alpha) * s
+    return 0.0 if s is None else max(0.0, min(1.0, s))
+
+
+def live_presence_percent(
+    checkin_times: list[datetime],
+    *,
+    now: datetime | None = None,
+    streak_cap: int = 12,
+    horizon_weeks: int | None = None,
+    half_life_weeks: float = LIVE_HALF_LIFE_WEEKS,
+) -> tuple[int, int, int, int]:
+    """Live presence raw % for process meters.
+
+    Returns ``(percent, streak, active_in_horizon, horizon)``.
+
+    Formula (Journey Experience Spec §4.1 live):
+      For each of the last ``horizon`` Eastern weeks (oldest → newest), x_t ∈ {0,1}
+      (1 = ≥1 check-in). Grace: incomplete current week with no check-in is skipped.
+      α = 1 − 0.5^(1/half_life)   # default half-life 4 weeks — near-term heavier
+      s_t = α·x_t + (1−α)·s_{t−1}
+      raw% = round(100 · s_final)
+
+    Consistency (runs of 1s) lifts the EWMA; gaps and on/off patterns suppress it.
+    Recent absences ding harder than equal-length absences further back.
+    Leaderboard contribution still uses streak alone (Spec §3.4).
+    ``streak_cap`` only sizes the default horizon when ``horizon_weeks`` is omitted.
+    """
+    cap = max(1, int(streak_cap))
+    horizon = (
+        max(1, int(horizon_weeks))
+        if horizon_weeks is not None
+        else max(cap * 2, 12)
+    )
+    streak = attendance_streak_weeks(checkin_times, now=now)
+    keys = checkin_week_keys(checkin_times)
+    active, horizon = live_coverage_weeks(
+        keys, now=now, horizon_weeks=horizon
+    )
+    series = live_week_presence_series(
+        keys, now=now, horizon_weeks=horizon, grace_current_week=True
+    )
+    ewma = live_presence_ewma(series, half_life_weeks=half_life_weeks)
+    return _clamp_pct(100.0 * ewma), streak, active, horizon
 
 
 def checkin_window_ok(starts_at: datetime, now: datetime | None = None) -> bool:
@@ -179,6 +312,223 @@ def scores_for_identity(cur, identity_id: int, *, now: datetime | None = None) -
 
 def _clamp_pct(n: float) -> int:
     return max(0, min(100, int(round(n))))
+
+
+# Process Integrity composite — Spec v0.4 Option 1 (Coach DL-171) + Hard Spec §8.3 MT.
+# Version bumps only with Journey Spec amend + characterization tests.
+SCORING_MODEL_VERSION = "pi-weights-v1-option1+mt"
+
+# Profile id → meter weights (integers sum to 100). Quality = adherence + retro.
+# Fail loud if a resolve_meter_profile id is missing here.
+PROCESS_METER_WEIGHTS: dict[str, dict[str, int]] = {
+    "observer_trial": {
+        "persistence": 15,
+        "routine": 15,
+        "learning": 15,
+        "live": 10,
+        "adherence": 25,
+        "retrospective": 20,
+    },
+    "activator": {
+        "persistence": 14,
+        "routine": 14,
+        "learning": 12,
+        "live": 12,
+        "adherence": 24,
+        "retrospective": 24,
+    },
+    "navigator_monthly": {
+        "persistence": 12,
+        "routine": 12,
+        "learning": 10,
+        "live": 12,
+        "adherence": 28,
+        "retrospective": 26,
+    },
+    "navigator_annual": {
+        "persistence": 14,
+        "routine": 12,
+        "learning": 10,
+        "live": 12,
+        "adherence": 26,
+        "retrospective": 26,
+    },
+    "alumni": {
+        "persistence": 15,
+        "routine": 10,
+        "learning": 25,
+        "live": 10,
+        "adherence": 20,
+        "retrospective": 20,
+    },
+    "free_observer": {
+        "persistence": 15,
+        "routine": 15,
+        "learning": 30,
+        "live": 10,
+        "adherence": 15,
+        "retrospective": 15,
+    },
+    # Same as navigator_monthly (spec v0.4 §3.6)
+    "administrator": {
+        "persistence": 12,
+        "routine": 12,
+        "learning": 10,
+        "live": 12,
+        "adherence": 28,
+        "retrospective": 26,
+    },
+}
+
+# Seven-weight maps when Mental Toughness is non-empty (Hard Spec v1.0 §8.3 proposed;
+# Coach GO H3 — integers sum 100). MT weight from Spec defaults.
+PROCESS_METER_WEIGHTS_WITH_MT: dict[str, dict[str, int]] = {
+    "observer_trial": {
+        "persistence": 14,
+        "routine": 14,
+        "learning": 13,
+        "live": 9,
+        "adherence": 22,
+        "retrospective": 18,
+        "mental_toughness": 10,
+    },
+    "activator": {
+        "persistence": 12,
+        "routine": 12,
+        "learning": 11,
+        "live": 11,
+        "adherence": 21,
+        "retrospective": 21,
+        "mental_toughness": 12,
+    },
+    "navigator_monthly": {
+        "persistence": 11,
+        "routine": 10,
+        "learning": 9,
+        "live": 11,
+        "adherence": 24,
+        "retrospective": 23,
+        "mental_toughness": 12,
+    },
+    "navigator_annual": {
+        "persistence": 12,
+        "routine": 11,
+        "learning": 9,
+        "live": 11,
+        "adherence": 23,
+        "retrospective": 22,
+        "mental_toughness": 12,
+    },
+    "alumni": {
+        "persistence": 14,
+        "routine": 9,
+        "learning": 23,
+        "live": 9,
+        "adherence": 18,
+        "retrospective": 19,
+        "mental_toughness": 8,
+    },
+    "free_observer": {
+        "persistence": 14,
+        "routine": 14,
+        "learning": 28,
+        "live": 9,
+        "adherence": 14,
+        "retrospective": 13,
+        "mental_toughness": 8,
+    },
+    "administrator": {
+        "persistence": 11,
+        "routine": 10,
+        "learning": 9,
+        "live": 11,
+        "adherence": 24,
+        "retrospective": 23,
+        "mental_toughness": 12,
+    },
+}
+
+for _pid, _wmap in PROCESS_METER_WEIGHTS.items():
+    _s = sum(_wmap.values())
+    if _s != 100:
+        raise RuntimeError(
+            f"PROCESS_METER_WEIGHTS[{_pid!r}] sum to {_s}, expected 100"
+        )
+for _pid, _wmap in PROCESS_METER_WEIGHTS_WITH_MT.items():
+    _s = sum(_wmap.values())
+    if _s != 100:
+        raise RuntimeError(
+            f"PROCESS_METER_WEIGHTS_WITH_MT[{_pid!r}] sum to {_s}, expected 100"
+        )
+    if "mental_toughness" not in _wmap:
+        raise RuntimeError(
+            f"PROCESS_METER_WEIGHTS_WITH_MT[{_pid!r}] missing mental_toughness"
+        )
+
+
+def process_weights_for_profile(
+    profile_id: str, *, include_mental_toughness: bool = False
+) -> dict[str, int]:
+    """Return Option 1 weights; seven-map when MT is enrolled/active."""
+    table = (
+        PROCESS_METER_WEIGHTS_WITH_MT
+        if include_mental_toughness
+        else PROCESS_METER_WEIGHTS
+    )
+    w = table.get(profile_id)
+    if not w:
+        raise RuntimeError(
+            f"process meter weights missing for profile {profile_id!r} "
+            f"(include_mt={include_mental_toughness})"
+        )
+    return dict(w)
+
+
+def adherence_raw_from_counts(
+    n_trades: int, n_tagged: int, n_good: int
+) -> tuple[int | None, bool]:
+    """Dual-empty adherence (Spec v0.4 §3.5).
+
+    Returns ``(raw_percent, empty)``:
+    - no trades → empty (exclude from composite)
+    - trades but none tagged → raw 0, not empty (do not renorm away)
+    - some tagged → percent followed/partial among tagged
+    """
+    if n_trades <= 0:
+        return None, True
+    if n_tagged <= 0:
+        return 0, False
+    good = max(0, min(int(n_good), int(n_tagged)))
+    return _clamp_pct(100.0 * good / float(n_tagged)), False
+
+
+def weighted_overall_raw(
+    meters: list[dict[str, Any]],
+    weights: dict[str, int],
+) -> tuple[int, dict[str, int]]:
+    """Profile-weighted overall from meter raw percents (0–100 scale).
+
+    ``overall_raw = round(Σ w_i · raw_i / Σ w_i)`` over non-empty, non-soon meters
+    with w_i > 0. Raw is already percent — do **not** multiply by 100 again.
+    Returns ``(overall_raw, applied_weights)``. If no scorable meters, (0, {}).
+    """
+    num = 0.0
+    den = 0
+    applied: dict[str, int] = {}
+    for m in meters:
+        if m.get("empty") or m.get("soon"):
+            continue
+        mid = str(m.get("id") or "")
+        w = int(weights.get(mid, 0))
+        if w <= 0:
+            continue
+        raw = int(m.get("raw_percent") or 0)
+        num += w * raw
+        den += w
+        applied[mid] = w
+    if den <= 0:
+        return 0, {}
+    return _clamp_pct(num / float(den)), applied
 
 
 # Process integrity grades — trading-psych norms (process, not P&L / identity).
@@ -339,6 +689,7 @@ def _profile(
     learning_target_days: int = 5,
     adherence_window_days: int = 30,
     live_streak_cap: int = 12,
+    live_horizon_weeks: int | None = None,
     grade_ramp_days: int | None = None,
     retro_horizon_days: int | None = 30,
     focus: str = "",
@@ -348,6 +699,13 @@ def _profile(
         grade_ramp_days
         if grade_ramp_days is not None
         else max(7, int(persistence_weeks) * 7)
+    )
+    # Coverage window for Live presence: long enough that a multi-month drought
+    # before a comeback streak still dings the meter (default ~2× streak cap).
+    live_h = (
+        int(live_horizon_weeks)
+        if live_horizon_weeks is not None
+        else max(12, int(live_streak_cap) * 2)
     )
     return {
         "id": pid,
@@ -361,6 +719,7 @@ def _profile(
         "learning_target_days": learning_target_days,
         "adherence_window_days": adherence_window_days,
         "live_streak_cap": live_streak_cap,
+        "live_horizon_weeks": max(1, live_h),
         "grade_ramp_days": ramp,
         # Cadence meter H (Journey §4.1a) — None = E1 cannot create / n/a
         "retro_horizon_days": retro_horizon_days,
@@ -382,6 +741,7 @@ METER_PROFILE_OBSERVER_TRIAL = _profile(
     learning_target_days=6,
     adherence_window_days=42,
     live_streak_cap=6,
+    live_horizon_weeks=6,  # trial window only — no pre-trial drought ding
     grade_ramp_days=42,  # full trial before extremes fully open (tenure; not cadence)
     # Spec v0.51: teaching rhythm weekly (zero-DTE funnel) — cadence H only
     retro_horizon_days=7,
@@ -399,6 +759,7 @@ METER_PROFILE_NAVIGATOR_MONTHLY = _profile(
     persistence_target_weeks=8,
     adherence_window_days=30,
     live_streak_cap=12,
+    live_horizon_weeks=16,  # ~4 months — couple-month droughts still visible
     grade_ramp_days=30,
     retro_horizon_days=30,
     focus="Month-to-month practice: steady weeks beat heroic spikes.",
@@ -412,6 +773,7 @@ METER_PROFILE_NAVIGATOR_ANNUAL = _profile(
     persistence_target_weeks=18,
     adherence_window_days=60,
     live_streak_cap=12,
+    live_horizon_weeks=20,  # season window for live coverage
     learning_window_days=21,
     learning_target_days=6,
     grade_ramp_days=90,  # season before full Excellent/Poor range
@@ -426,6 +788,7 @@ METER_PROFILE_ACTIVATOR = _profile(
     persistence_weeks=12,
     persistence_target_weeks=8,
     live_streak_cap=8,
+    live_horizon_weeks=16,
     grade_ramp_days=30,
     retro_horizon_days=30,
     focus="Member practice loop — log, learn, show up.",
@@ -440,6 +803,7 @@ METER_PROFILE_ALUMNI = _profile(
     learning_window_days=21,
     learning_target_days=5,
     live_streak_cap=4,
+    live_horizon_weeks=12,
     grade_ramp_days=21,
     retro_horizon_days=90,  # Spec v0.51 — library rhythm (not active trading loop)
     focus="Keep learning from the library; practice when you return.",
@@ -454,6 +818,7 @@ METER_PROFILE_FREE_OBSERVER = _profile(
     learning_window_days=14,
     learning_target_days=3,
     live_streak_cap=4,
+    live_horizon_weeks=8,
     grade_ramp_days=14,
     retro_horizon_days=None,  # E1 — cannot create retros
     focus="Previews and pathway — upgrade when you're ready to practice fully.",
@@ -860,6 +1225,7 @@ def process_meters(
     l_tgt = int(profile["learning_target_days"])
     a_win = int(profile["adherence_window_days"])
     live_cap = max(1, int(profile["live_streak_cap"]))
+    live_horizon = max(1, int(profile.get("live_horizon_weeks") or max(12, live_cap * 2)))
 
     now_naive = now.astimezone(timezone.utc).replace(tzinfo=None)
     routine_since = now_naive - timedelta(days=r_win)
@@ -878,6 +1244,7 @@ def process_meters(
 
     cur.execute(
         """SELECT
+             COUNT(*) AS n_trades,
              SUM(CASE WHEN adherence IN ('followed', 'partial')
                       THEN 1 ELSE 0 END) AS good,
              SUM(CASE WHEN adherence IS NOT NULL
@@ -888,11 +1255,20 @@ def process_meters(
         (identity_id, adh_since),
     )
     adh = cur.fetchone()
+    n_trades = int(adh["n_trades"] or 0)
     tagged = int(adh["tagged"] or 0)
     good = int(adh["good"] or 0)
+    adherence_pct, adherence_empty = adherence_raw_from_counts(
+        n_trades, tagged, good
+    )
 
     checkins = load_checkin_times(cur, identity_id)
-    streak = attendance_streak_weeks(checkins, now=now)
+    live_pct, streak, live_active, live_h = live_presence_percent(
+        checkins,
+        now=now,
+        streak_cap=live_cap,
+        horizon_weeks=live_horizon,
+    )
 
     # Dual-read Spec §2.1 / D2: trades ∪ legacy journal notes ∪
     # session_started_at NY days (so meters do not cliff when sessions ship)
@@ -920,8 +1296,6 @@ def process_meters(
     routine_days = len(routine_dates)
     routine_pct = _clamp_pct(100.0 * routine_days / float(r_tgt))
     learning_pct = _clamp_pct(100.0 * learn_days / float(l_tgt))
-    live_pct = _clamp_pct(100.0 * streak / float(live_cap))
-    adherence_pct = _clamp_pct(100.0 * good / tagged) if tagged > 0 else None
 
     p_keys = _practice_week_keys(cur, identity_id, persistence_since, now=now)
     persist_pct, persist_active, practice_streak = practice_persistence(
@@ -1026,33 +1400,45 @@ def process_meters(
         _meter(
             "live",
             "Live presence",
-            f"Consecutive weeks with a live check-in (cap {live_cap} for your profile)",
+            (
+                f"EWMA of weekly live check-ins over {live_h} weeks "
+                f"(half-life {LIVE_HALF_LIFE_WEEKS:g}w — near-term consistency "
+                f"weighs more; gaps and recent slack ding harder)"
+            ),
             live_pct,
-            f"{streak} week streak",
-            has_signal=streak > 0,
+            (
+                f"{live_pct}% EWMA · {streak}w streak · "
+                f"{live_active}/{live_h} weeks present"
+            ),
+            has_signal=streak > 0 or live_active > 0,
         ),
     ]
-    if adherence_pct is not None:
-        meters.append(
-            _meter(
-                "adherence",
-                "Process adherence",
-                f"Trades tagged followed/partial (last {a_win} days) — not P&L",
-                adherence_pct,
-                f"{good}/{tagged} tagged trades",
-                has_signal=tagged > 0,
-            )
-        )
-    else:
+    if adherence_empty:
         meters.append(
             _meter(
                 "adherence",
                 "Process adherence",
                 "Tag adherence on Trade Log fills to meter plan-following",
                 0,
-                "No tagged trades yet",
+                "No trades in window",
                 empty=True,
                 has_signal=False,
+            )
+        )
+    else:
+        adh_detail = (
+            f"{good}/{tagged} tagged trades"
+            if tagged > 0
+            else f"0/{n_trades} tagged — untagged trades count as process gap"
+        )
+        meters.append(
+            _meter(
+                "adherence",
+                "Process adherence",
+                f"Trades tagged followed/partial (last {a_win} days) — not P&L",
+                int(adherence_pct or 0),
+                adh_detail,
+                has_signal=n_trades > 0,
             )
         )
 
@@ -1069,12 +1455,71 @@ def process_meters(
         )
     )
 
+    # Mental Toughness — Hard Spec v1.0 §8; empty until active Hard enrollment
+    import hard_domain as hard_dom
+
+    mt_raw, mt_empty, mt_detail = hard_dom.mental_toughness_raw(
+        cur, identity_id, today=now.astimezone(EASTERN).date()
+    )
+    if mt_empty:
+        meters.append(
+            _meter(
+                "mental_toughness",
+                "Mental toughness",
+                (
+                    "FatTail Hard / True 75 compliance when enrolled — empty until "
+                    "you start a challenge (not a zero). aMCC / mental toughness "
+                    "capacity training; process signal only."
+                ),
+                0,
+                "Not enrolled in Hard",
+                empty=True,
+                has_signal=False,
+            )
+        )
+    else:
+        stats = (mt_detail.get("stats") or {}) if isinstance(mt_detail, dict) else {}
+        en = (mt_detail.get("enrollment") or {}) if isinstance(mt_detail, dict) else {}
+        detail = (
+            f"{int(mt_raw or 0)}% · {stats.get('streak_days', 0)}d streak · "
+            f"completion {int(round(100 * float(stats.get('completion_rate') or 0)))}% · "
+            f"{en.get('variant_id') or 'hard'}"
+        )
+        meters.append(
+            _meter(
+                "mental_toughness",
+                "Mental toughness",
+                (
+                    "Compliance with your active Hard challenge (streak + completion). "
+                    "Not a brain scan — physiology cited on /app/toughness."
+                ),
+                int(mt_raw or 0),
+                detail,
+                has_signal=True,
+            )
+        )
+
+    weights = process_weights_for_profile(
+        str(profile["id"]), include_mental_toughness=not mt_empty
+    )
+    for m in meters:
+        mid = str(m.get("id") or "")
+        m["weight"] = (
+            0
+            if m.get("empty") or m.get("soon")
+            else int(weights.get(mid, 0))
+        )
+
+    # Shadow: equal mean during migration (Spec v0.4 §3.10)
     scored_raw = [
         m["raw_percent"]
         for m in meters
         if not m.get("empty") and not m.get("soon")
     ]
-    overall_raw = _clamp_pct(sum(scored_raw) / len(scored_raw)) if scored_raw else 0
+    overall_raw_equal = (
+        _clamp_pct(sum(scored_raw) / len(scored_raw)) if scored_raw else 0
+    )
+    overall_raw, weights_applied = weighted_overall_raw(meters, weights)
     overall_graded, _ = apply_tenure_to_percent(
         overall_raw, tenure_days, ramp_days
     )
@@ -1102,6 +1547,7 @@ def process_meters(
 
     return {
         "framing": "process_meter",
+        "scoring_model_version": SCORING_MODEL_VERSION,
         "profile": {
             "id": profile["id"],
             "label": profile["label"],
@@ -1112,6 +1558,11 @@ def process_meters(
         },
         "overall_percent": display_pct,
         "overall_raw_percent": overall_raw,
+        # Shadow during pi-weights-v1 migration (Spec v0.4 §3.10) — equal mean of
+        # non-empty meters; remove after cutover explainer period.
+        "overall_raw_equal_mean": overall_raw_equal,
+        "weights": weights,
+        "weights_applied": weights_applied,
         "overall_label": (
             "Establishing your process — grades open as you practice"
             if establishing
@@ -1139,6 +1590,7 @@ def process_meters(
             "persistence_weeks": p_weeks,
             "persistence_target_weeks": p_target,
             "live_streak_cap": live_cap,
+            "live_horizon_weeks": live_h,
             "grade_ramp_days": int(ramp_days),
         },
     }

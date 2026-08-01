@@ -90,7 +90,7 @@ trophies. Never P&L. On `GET /api/me/journey/scores` → `process` (private).
 | **Practice persistence** | Weeks with Trade Log, Journal, lessons, or live check-in |
 | Daily routine | Trade Log or Journal days in profile window |
 | Learning rhythm | Days with completed lesson |
-| Live presence | Check-in streak vs profile cap |
+| Live presence | EWMA of weekly check-ins (half-life 4w; near-term heavier) |
 | Process adherence | % trades `followed`/`partial` |
 | Retrospectives | Placeholder (`soon`) |
 
@@ -103,13 +103,27 @@ trophies. Never P&L. On `GET /api/me/journey/scores` → `process` (private).
 See Journey Experience Spec §4.4. Profiles set persistence windows **and**
 `grade_ramp_days` (Observer trial 42d, Navigator monthly 30d, annual 90d, …).
 
-### 3.3 Attendance streak
+### 3.3 Attendance streak (leaderboard) + Live presence meter
 
 - Source: `live_session_checkins` (one row per identity × `live_sessions.id`).  
 - Week key: ISO year-week in **America/New_York**.  
-- Streak: consecutive weeks with ≥1 check-in, walking backward from the current Eastern week.  
-  If the current week has zero check-ins, start from last week (grace: streak not zeroed mid-week).  
-- Display = streak length in weeks.
+- **Streak** (contribution / leaderboard): consecutive weeks with ≥1 check-in, walking
+  backward from the current Eastern week. If the current week has zero check-ins, start
+  from last week (grace: streak not zeroed mid-week). Display = streak length in weeks.
+- **Live presence meter** (process integrity — personal standing): EWMA of weekly
+  show-up, not streak-only and not flat average.
+  ```
+  For t over last live_horizon_weeks Eastern weeks (oldest → newest):
+    x_t = 1 if ≥1 check-in that week else 0
+  Grace: if current week has zero check-ins, omit it (mid-week not scored absent yet).
+  α = 1 − 0.5^(1/half_life)     # half_life = 4 weeks (near-term heavier)
+  s_t = α · x_t + (1−α) · s_{t−1}
+  raw% = round(100 · s_final)
+  ```
+  **Consistency** (runs of 1s) lifts s; **gaps / on-off patterns** suppress it.
+  **Recent** absences ding harder than the same gap further back. Detail may still
+  show streak weeks and flat `active/horizon` counts. Profile horizons: Navigator
+  monthly **16**w; annual **20**; Observer trial **6**.
 
 **Check-in window:** `[starts_at − 15 minutes, starts_at + 4 hours]` (aligned with live join window). Session must exist. Auth required. Idempotent unique (identity, session).
 

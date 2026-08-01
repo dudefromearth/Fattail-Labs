@@ -40,6 +40,7 @@ export default function ReportsDashboard() {
     rangeToYmd,
     periodLabel,
     dateFilterActive,
+    prefsReady,
   } = usePracticeContext();
 
   const [state, setState] = useState<LoadState>("loading");
@@ -52,6 +53,12 @@ export default function ReportsDashboard() {
   }, []);
 
   const loadBook = useCallback(async () => {
+    // Do not fetch until Practice Context prefs are final — prevents equity flash
+    // (full book) then empty (saved Primary / day scope).
+    if (!prefsReady) {
+      setState("loading");
+      return;
+    }
     setState("loading");
     setError(null);
     try {
@@ -74,7 +81,7 @@ export default function ReportsDashboard() {
       setError(e instanceof Error ? e.message : String(e));
       setBook(null);
     }
-  }, [accountId, capital, rangeFromYmd, rangeToYmd, dateFilterActive]);
+  }, [accountId, capital, rangeFromYmd, rangeToYmd, dateFilterActive, prefsReady]);
 
   useEffect(() => {
     void loadBook();

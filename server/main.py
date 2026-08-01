@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
     from routes.journal_prompt_admin import router as journal_prompt_admin_router
     from routes.retro_prompt_admin import router as retro_prompt_admin_router
     from routes.habit_plans import router as habit_plans_router
+    from routes.hard import router as hard_router
     from routes.pathway import router as pathway_router
     from routes.quizzes import router as quizzes_router
     from routes.resources import router as resources_router
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(journal_prompt_admin_router)
     app.include_router(retro_prompt_admin_router)
     app.include_router(habit_plans_router)
+    app.include_router(hard_router)
     app.include_router(community_router)
     app.include_router(quizzes_router)
     app.include_router(resources_router)

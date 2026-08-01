@@ -187,7 +187,9 @@ rounded borders.
 
 1. Compare screenshots (or live UI) to the packet + HI Spec.
 2. Check light/dark if both apply; check narrow viewport.
-3. Verdict: **APPROVED** or **RETURNED** with token- and primitive-level fixes
+3. Verdict: **APPROVED** or **RETURNED** (*build*) with token- and primitive-level fixes;
+   always include **§ Bench delta** (what the next UI pass gains); flag deferred design
+   intent when relevant (doctrine principle 10)
    (not vague “make it nicer”).
 4. Domain table exceptions: verify shell is still HIG.
 

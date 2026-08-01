@@ -64,6 +64,83 @@ Coach must be able to read `Specs/` and know exactly what the system is and inte
 be, without reading the code. India blocks work that arrives without its documentation;
 Lima audits for divergence between docs and reality.
 
+### 10. The Bench Strengthens With Every Invocation
+The purpose of the bench is not only to ship the current packet. **Every substantive
+invocation must leave the ensemble stronger than it found it.**
+
+An invocation that only produces chat, then evaporates, is a process failure — even if
+the immediate task “worked.”
+
+**Stronger means at least one durable delta**, in proportion to the work:
+
+| Kind of delta | Examples |
+|---------------|----------|
+| Truth | Spec amend, decision-log entry, as-built honesty, architecture note |
+| Memory | Flagged idea, gate-report pattern, “what failed and why” |
+| Skill | Charter/seed/test improvement so the *next* agent runs colder and better |
+| Doctrine | First-principles note, invariant clarification, anti-pattern named |
+| Capacity | Tango/Hotel/lineage learning encoded so the next review is sharper |
+
+**Ideas are a form of strength.** Valuable intent is not discarded; it is **flagged**,
+discussed, and disposed (ADOPTED / DEFERRED / PARKED / RESHAPED) so future invocations
+can find it. That is a *means* of principle 10 — not a separate bureaucracy.  
+Register: `Architecture/flagged-ideas.md` · workflow: `spec-create-review-workflow.md`.
+
+Blocking **unsafe build** remains mandatory (India, Delta, Tango, Hotel, lineage). Blocks
+must still leave a delta: what was blocked, why, and what idea or learning remains.
+
+**Coach standard:** After any real bench use, ask: *“What can the next invocation do
+that this one could not?”* If the answer is “nothing,” the invocation is incomplete.
+
+### 10a. Coach Scope Is Not Optional
+Coach-included product intent (thesis or draft) is **not** removed by an external
+review, an agent rewrite, or a “safer architecture.” Reviewers **flag** risks
+(privacy, safety, phase routing). **Only Coach** disposes scope — and must be
+**told the same day** if anything Coach put in is proposed out. Silent de-scope is
+a doctrine violation (see DL-173 FatTail Hard failure).
+
+### 11. Coach Content Law (hard rules — 2026-07-31)
+
+These are **non-negotiable** for every agent and every external review folded into the repo.
+
+#### 11.1 Nothing of Coach’s is removed
+If Coach put it in a **spec, draft, summary, or thesis**, it **stays**.
+
+- Not deleted by a rewrite, “cleanup,” “phasing,” “parking,” or “safer architecture.”
+- If an agent or reviewer believes something does not belong, the content **remains in
+  place** and the objection is written **next to it**, marked as the objector’s
+  (e.g. `Agent note:`, `India:`, `Claude review:`) — for **Coach** to accept or throw out.
+- Downstream agents must not treat an objection as deletion.
+
+#### 11.2 Scope changes are stated up front
+If an agent has **changed or dropped** anything of Coach’s, that fact is stated
+**at the top of the response / document** in plain language — not only buried in a
+changelog, diff, or “as-built map” where another agent can turn it into a fait accompli.
+
+#### 11.3 Research before questioning
+Before challenging Coach’s product or scientific framing:
+
+1. **Search** and **read the actual sources** (or state that sources were not reachable).  
+2. Check the **evidence**, not priors dressed up as conclusions.  
+3. Cite what was read. “That seems risky” without sources is not research.
+
+#### 11.4 Blocking is narrow; opinions are labeled
+**Blocking** (and only blocking) is allowed when something:
+
+| May block | May **not** block |
+|-----------|-------------------|
+| Breaks a **doctrine / agent invariant** | Aesthetic disagreement |
+| Breaks the **law** (or clear legal duty) | Preference for smaller scope |
+| Breaks the **system** (as-built integrity, security, data isolation, fail-loud contract) | “Risk language” used to promote a disagreement into a constraint |
+
+Everything else is an **opinion**. Opinions must be labeled as opinions (or “reviewer
+recommendation”). Coach is free to discard them. **No agent may promote a disagreement
+into a hard constraint by reaching for risk language** (e.g. turning “I worry about X”
+into “PARKED forever / out of product” without Coach).
+
+**Canonical failure:** DL-173 FatTail Hard — external opinion + risk language became
+silent de-scope. Forbidden under 11.1–11.4.
+
 ## Agent Hierarchy
 
 - **Coach** — Visionary, final decision maker, human authority (Ernie)
