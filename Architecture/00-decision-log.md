@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-02 — DL-195 Access Control Spec v0.1 (DRAFT)
+
+**Coach intent:** Admin-controlled gating by role/plan for **pages (surfaces), apps,
+and course elements**, with campaign design control (time, CTAs, soft/hard lock)
+without deploys.
+
+**Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.1.md` (Status: **DRAFT** —
+not build authority until Coach Phase 5 / India–Mike–Tango gates).
+
+**Direction:** Unified Access Policy Engine + `/admin/access` cockpit; consumes
+Identity Access memberships; absorbs feature_gates and free_preview over phases P0–P2.
+
+**Does not reverse:** Woo commerce; provider_plan_map; server-side auth only.
+
+---
+
 ## 2026-08-02 — DL-194 Observer ≡ Navigator via `feature_role` (all gates)
 
 **Decision (Coach):** Paid **Observer** membership (`observer-trial`) has the **same
