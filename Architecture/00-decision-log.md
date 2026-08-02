@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-02 — DL-194 Observer ≡ Navigator via `feature_role` (all gates)
+
+**Decision (Coach):** Paid **Observer** membership (`observer-trial`) has the **same
+feature access as Navigator** for the term (DL-126/128). Implement centrally:
+
+- `identity.feature_role(cur, identity_id, session_role)` elevates active Observer
+  membership to **navigator** for gates (live coaching, courses, resources, Practice).
+- `identity.role_meets(...)` is the single comparison helper.
+- `GET /api/auth/me` returns `access_role` for UI chrome (hide free-only CTAs).
+
+**Wired:** live join gates · lessons · progress · resources · Practice
+(`can_create_or_gather` / Trade Log) · Journey retro eligibility.
+
+**Free no-plan** stays true `observer` (previews only). Sole product difference remains
+**6-week term**, not feature cuts.
+
 ## 2026-08-02 — DL-193 Trade Log / Reports: Observer = Navigator Practice gate
 
 **Decision (Coach):** Trade Log and Reports use the **same Practice entitlement** as
@@ -15,7 +31,7 @@ active **observer-trial** membership — even when the session role cookie is st
 have full Navigator Practice access for the 6-week term (DL-126 / DL-128).
 
 **Code:** `server/routes/trade_log/common.py` `_require_tool_member` · UI copy on Trade Log
-and Reports forbidden states.
+and Reports forbidden states. Superseded in part by **DL-194** central elevation.
 
 **Does not reverse:** free observer = previews only; alumni course library only.
 

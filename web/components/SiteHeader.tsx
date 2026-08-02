@@ -13,6 +13,8 @@ import { useEffect, useRef, useState } from "react";
 type Me = {
   identity_id: number;
   role: string;
+  /** Live membership elevation (Observer trial ≡ navigator). Prefer for gates. */
+  access_role?: string;
   email: string;
   display_name: string;
   avatar_url?: string | null;
@@ -36,6 +38,11 @@ const ROLE_LABELS: Record<string, string> = {
   navigator: "Coaching member",
   administrator: "Admin",
 };
+
+/** Prefer access_role (Observer membership ≡ navigator) for chrome + CTAs. */
+function gateRole(me: Me): string {
+  return me.access_role || me.role;
+}
 
 /** Primary chrome only — Pathway is a funnel surface, not a top tab. */
 const NAV: { href: string; label: string }[] = [
@@ -178,7 +185,7 @@ export default function SiteHeader() {
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                aria-label={`Account menu — ${ROLE_LABELS[me.role] ?? me.role}`}
+                aria-label={`Account menu — ${ROLE_LABELS[gateRole(me)] ?? gateRole(me)}`}
                 className="flex items-center gap-2 rounded-full outline-offset-2"
               >
                 {me.avatar_url ? (
@@ -194,7 +201,7 @@ export default function SiteHeader() {
                   <span
                     className={[
                       "flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-white",
-                      me.role === "observer" || me.role === "alumni"
+                      gateRole(me) === "observer" || gateRole(me) === "alumni"
                         ? "bg-[var(--color-label-tertiary)]"
                         : "bg-[var(--color-tint)]",
                     ].join(" ")}
@@ -210,7 +217,7 @@ export default function SiteHeader() {
                       {me.display_name || me.email}
                     </p>
                     <p className="text-xs text-[var(--color-label-secondary)]">
-                      {ROLE_LABELS[me.role] ?? me.role}
+                      {ROLE_LABELS[gateRole(me)] ?? gateRole(me)}
                     </p>
                   </div>
                   {learning !== null &&
@@ -289,7 +296,7 @@ export default function SiteHeader() {
                     >
                       Practice
                     </Link>
-                    {me.role === "observer" && (
+                    {gateRole(me) === "observer" && (
                       <Link
                         href="/membership"
                         className="block px-4 py-2 font-medium text-[var(--color-tint)] hover:bg-[var(--color-fill)]"

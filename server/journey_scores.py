@@ -1135,26 +1135,10 @@ def retrospective_cadence_raw(days_since: int, horizon_days: int) -> int:
 
 
 def _can_create_retrospectives(cur, identity_id: int, role: str) -> bool:
-    """E1 inverse — same entitlement idea as Spec §10.1 (no import cycle)."""
-    if role == "administrator":
-        return True
-    try:
-        if auth.role_at_least(role, "activator"):
-            return True
-    except Exception:
-        pass
-    cur.execute(
-        """SELECT 1
-           FROM memberships m
-           JOIN plans p ON p.id = m.plan_id
-           WHERE m.identity_id = %s
-             AND p.slug = 'observer-trial'
-             AND m.status IN ('active', 'grace')
-             AND (m.current_period_end IS NULL OR m.current_period_end > NOW())
-           LIMIT 1""",
-        (identity_id,),
-    )
-    return cur.fetchone() is not None
+    """E1 inverse — same Practice entitlement as Spec §10.1 / DL-128."""
+    import identity as identity_mod
+
+    return identity_mod.role_meets(cur, identity_id, role, "activator")
 
 
 def _last_completed_retro_at(

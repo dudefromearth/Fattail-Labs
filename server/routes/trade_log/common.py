@@ -17,8 +17,8 @@ from config import get_config
 # DL-126 / DL-128: Observer membership = Navigator Practice access (Trade Log,
 # Reports). Free no-plan observer stays denied. Same gate as Journal / Retro.
 _TOOL_DENY_DETAIL = (
-    "Trade Log and Reports require an active Observer or Navigator membership "
-    "(or Activator legacy / administrator)"
+    "Trade Log and Reports require an active Observer trial or Navigator "
+    "membership (or Activator legacy / administrator)"
 )
 
 

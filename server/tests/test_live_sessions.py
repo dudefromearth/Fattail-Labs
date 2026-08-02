@@ -67,6 +67,50 @@ def test_category_gating_matrix(month_payload, client):
             assert seen[category] == locked, (role, category)
 
 
+def test_observer_trial_plan_unlocks_coaching_live(client):
+    """DL-128: observer-trial elevates feature_role → coaching join not role-locked."""
+    import db
+    import identity as identity_mod
+
+    email = "zztest-live-observer-trial@labs.test"
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = identity_mod.get_or_create_identity(cur, email, "Live Obs")
+            cur.execute(
+                "UPDATE identities SET role_override = NULL WHERE identity_id = %s",
+                (iid,),
+            )
+            cur.execute("DELETE FROM memberships WHERE identity_id = %s", (iid,))
+            cur.execute("SELECT id FROM plans WHERE slug = %s", ("observer-trial",))
+            plan = cur.fetchone()
+            assert plan is not None
+            identity_mod.upsert_membership(
+                cur, iid, int(plan["id"]), "active", "zztest"
+            )
+    try:
+        y, m = _next_month()
+        # Free observer cookie without plan would role-lock coaching; with plan → not role
+        free = cookie_for("observer", 999001)
+        sessions_free = client.get(
+            f"/api/live/sessions?month={y}-{m:02d}", cookies=free
+        ).json()["sessions"]
+        coaching_free = next(s for s in sessions_free if s["category"] == "coaching")
+        assert coaching_free["join_locked"] == "role"
+
+        paid = cookie_for("observer", iid)
+        sessions_paid = client.get(
+            f"/api/live/sessions?month={y}-{m:02d}", cookies=paid
+        ).json()["sessions"]
+        coaching_paid = next(s for s in sessions_paid if s["category"] == "coaching")
+        assert coaching_paid["join_locked"] != "role"
+        assert coaching_paid["join_locked"] in ("too_early", "ended", None)
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM memberships WHERE identity_id = %s", (iid,))
+                cur.execute("DELETE FROM identities WHERE identity_id = %s", (iid,))
+
+
 def test_public_session_in_window_exposes_join_to_anon(client, admin_cookies):
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     r = client.post(

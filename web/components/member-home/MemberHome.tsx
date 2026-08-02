@@ -177,12 +177,14 @@ export default function MemberHome() {
 
   const nextPathway = (pathway ?? []).find((s) => !s.done) ?? null;
   const meterProfileId = scores?.process?.profile?.id;
-  /** G1: maximize Observer → Navigator + continued practice */
+  /** G1: trial Observers + free accounts — encourage Navigator when ready */
   const isG1Audience =
     meterProfileId === "observer_trial" ||
     meterProfileId === "free_observer" ||
     me === null ||
-    (typeof me === "object" && me.role === "observer");
+    (typeof me === "object" &&
+      ((me as { access_role?: string }).access_role ??
+        (me as { role?: string }).role) === "observer");
 
   if (me === null) {
     return (

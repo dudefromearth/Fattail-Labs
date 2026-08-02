@@ -13,6 +13,7 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
 import auth
 import db
+import identity
 from guards import require_session
 from repo import course_id_by_slug
 
@@ -38,6 +39,7 @@ def _lesson_for_access(
     lesson_slug: str,
     role: str,
     *,
+    identity_id: int,
     module_slug: str | None = None,
 ) -> dict:
     if module_slug:
@@ -71,13 +73,17 @@ def _lesson_for_access(
         row = rows[0] if rows else None
         if row is None:
             raise HTTPException(status_code=404, detail="Lesson not found")
-        if not row["free_preview"] and not auth.role_at_least(role, "alumni"):
+        if not row["free_preview"] and not identity.role_meets(
+            cur, identity_id, role, "alumni"
+        ):
             raise HTTPException(status_code=403, detail="Membership required")
         return row
     row = cur.fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Lesson not found")
-    if not row["free_preview"] and not auth.role_at_least(role, "alumni"):
+    if not row["free_preview"] and not identity.role_meets(
+        cur, identity_id, role, "alumni"
+    ):
         raise HTTPException(status_code=403, detail="Membership required")
     return row
 
@@ -173,7 +179,13 @@ async def report_progress(request: Request) -> dict:
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            lesson = _lesson_for_access(cur, course_slug, lesson_slug, claims["role"])
+            lesson = _lesson_for_access(
+                cur,
+                course_slug,
+                lesson_slug,
+                claims["role"],
+                identity_id=int(claims["identity_id"]),
+            )
             _ensure_enrollment(cur, claims["identity_id"], lesson["course_id"])
             duration = lesson["duration_seconds"] or 0
             if duration:
@@ -216,8 +228,11 @@ async def mark_complete(request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             lesson = _lesson_for_access(
-                cur, body.get("course_slug") or "", body.get("lesson_slug") or "",
+                cur,
+                body.get("course_slug") or "",
+                body.get("lesson_slug") or "",
                 claims["role"],
+                identity_id=int(claims["identity_id"]),
             )
             _ensure_enrollment(cur, claims["identity_id"], lesson["course_id"])
             cur.execute(

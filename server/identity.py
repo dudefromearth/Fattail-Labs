@@ -8,12 +8,15 @@ import hashlib
 import hmac
 import secrets
 
-from auth import ROLE_ORDER
+from auth import ROLE_ORDER, role_at_least
 
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 16384, 8, 1
 ACTIVE_STATUSES = ("active", "grace")
 ALUMNI_PLAN_SLUG = "courses-alumni"
 ALUMNI_MIN_TENURE_DAYS = 28
+# Paid Observer membership plan (Membership Tiers + DL-126/128).
+# During the term, feature access is identical to Navigator.
+OBSERVER_TRIAL_SLUG = "observer-trial"
 
 
 class IdentityError(Exception):
@@ -177,6 +180,51 @@ def derive_role(cur, identity_id: int) -> str:
     if not roles:
         return "observer"
     return max(roles, key=ROLE_ORDER.index)
+
+
+def has_active_plan_slug(cur, identity_id: int, slug: str) -> bool:
+    """True if identity has an unexpired active/grace membership for plan slug."""
+    placeholders = ",".join(["%s"] * len(ACTIVE_STATUSES))
+    cur.execute(
+        f"""SELECT 1
+            FROM memberships m
+            JOIN plans p ON p.id = m.plan_id
+            WHERE m.identity_id = %s
+              AND p.slug = %s
+              AND m.status IN ({placeholders})
+              AND (m.current_period_end IS NULL OR m.current_period_end > NOW())
+            LIMIT 1""",
+        (identity_id, slug, *ACTIVE_STATUSES),
+    )
+    return cur.fetchone() is not None
+
+
+def feature_role(cur, identity_id: int, session_role: str) -> str:
+    """Role used for **feature gates** (DL-126 / DL-128).
+
+    Active paid Observer membership (``observer-trial``) elevates access to
+    **navigator** for the term — same as Navigator for Trade Log, Reports,
+    Journal, live coaching, courses, resources, etc.
+
+    Free no-plan accounts stay at session role ``observer`` (previews only).
+    Session role is still stored on the JWT; this is live membership elevation.
+    """
+    role = session_role if session_role in ROLE_ORDER else "observer"
+    if role == "administrator":
+        return "administrator"
+    if has_active_plan_slug(cur, identity_id, OBSERVER_TRIAL_SLUG):
+        if ROLE_ORDER.index(role) < ROLE_ORDER.index("navigator"):
+            return "navigator"
+    return role
+
+
+def role_meets(cur, identity_id: int, session_role: str, minimum: str) -> bool:
+    """True if feature_role(session) is at least *minimum* on the role ladder."""
+    try:
+        return role_at_least(feature_role(cur, identity_id, session_role), minimum)
+    except Exception:
+        # Unknown role comparison → deny (fail closed for gates)
+        return False
 
 
 # --- alumni rule (Membership Tiers spec §3) -----------------------------------

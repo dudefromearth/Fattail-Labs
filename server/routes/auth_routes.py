@@ -237,6 +237,8 @@ def me(request: Request):
 
     display_name, email, avatar_url = "", "", None
     session_idle_minutes = 30
+    # access_role: live membership elevation (Observer trial ≡ navigator, DL-128)
+    access_role = str(claims.get("role") or "observer")
     if claims["identity_id"] != 0:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -255,9 +257,13 @@ def me(request: Request):
                         idle = 30
                     if 15 <= idle <= 60:
                         session_idle_minutes = idle
+                access_role = identity.feature_role(
+                    cur, int(claims["identity_id"]), str(claims.get("role") or "observer")
+                )
     return {
         "identity_id": claims["identity_id"],
         "role": claims["role"],
+        "access_role": access_role,
         "provider": claims.get("sso_issuer", ""),
         "email": email,
         "display_name": display_name,

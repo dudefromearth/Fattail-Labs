@@ -195,6 +195,9 @@ def can_run_agent_for_role(role: str, *, has_observer_trial: bool = False) -> bo
     - active observer-trial membership (even if claims.role is still observer)
 
     Free no-plan (no trial, not activator+) remains denied.
+
+    Prefer identity.role_meets when a DB cursor is available; this helper
+    keeps the has_observer_trial flag for call sites that already checked.
     """
     if role == "administrator":
         return True

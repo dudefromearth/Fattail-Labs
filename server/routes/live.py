@@ -14,6 +14,7 @@ from fastapi.responses import PlainTextResponse
 
 import auth
 import db
+import identity
 import journey_scores as js
 from guards import claims_or_none, require_admin, require_session
 
@@ -23,8 +24,9 @@ _SESSION_KEY_RE = __import__("re").compile(r"^(?:\d+|r\d+-\d{4}-\d{2}-\d{2})$")
 
 VALID_KINDS = frozenset({"trading_room", "workshop", "show"})
 # Membership-based content categories (spec v1.3): the single place audience
-# maps to the role ladder. public = no gate; members = every membership;
-# coaching = Observer & Navigator (trial Observers carry the navigator role).
+# maps to the role ladder. public = no gate; members = every membership
+# (Activator+); coaching = Navigator + paid Observer (feature_role elevates
+# observer-trial → navigator per DL-128).
 CATEGORY_MIN_ROLE = {"public": None, "members": "activator", "coaching": "navigator"}
 JOIN_OPENS_BEFORE = timedelta(minutes=15)
 JOIN_CLOSES_AFTER = timedelta(hours=4)
@@ -36,13 +38,18 @@ ICS_BYDAY = {"mon": "MO", "tue": "TU", "wed": "WE", "thu": "TH",
 HORIZON_DAYS = 14
 
 
-def _join_state(starts, category, join_url, claims, now) -> dict:
-    """Decide join visibility. join_url NEVER leaves unless every gate passes."""
+def _join_state(starts, category, join_url, claims, now, *, access_role: str | None = None) -> dict:
+    """Decide join visibility. join_url NEVER leaves unless every gate passes.
+
+    *access_role* is identity.feature_role (Observer trial ≡ navigator). Falls
+    back to the session JWT role when not provided.
+    """
     min_role = CATEGORY_MIN_ROLE[category]
     if min_role is not None:
         if claims is None:
             return {"join_url": None, "join_locked": "sign_in"}
-        if not auth.role_at_least(claims["role"], min_role):
+        role = access_role if access_role is not None else claims["role"]
+        if not auth.role_at_least(role, min_role):
             return {"join_url": None, "join_locked": "role"}
     if now < starts - JOIN_OPENS_BEFORE:
         return {"join_url": None, "join_locked": "too_early"}
@@ -51,7 +58,7 @@ def _join_state(starts, category, join_url, claims, now) -> dict:
     return {"join_url": join_url, "join_locked": None}
 
 
-def _serialize(row, claims, now, include_join: bool) -> dict:
+def _serialize(row, claims, now, include_join: bool, *, access_role: str | None = None) -> dict:
     starts = row["starts_at"].replace(tzinfo=timezone.utc)
     base = {
         "id": row["id"],
@@ -64,7 +71,12 @@ def _serialize(row, claims, now, include_join: bool) -> dict:
         "replay_course_title": row.get("replay_title"),
     }
     if include_join:
-        base.update(_join_state(starts, row["category"], row["join_url"], claims, now))
+        base.update(
+            _join_state(
+                starts, row["category"], row["join_url"], claims, now,
+                access_role=access_role,
+            )
+        )
     return base
 
 
@@ -92,8 +104,10 @@ def _effective_fields(rec, ov) -> dict:
     return eff
 
 
-def _occurrences(rec, claims, now, first_day: date, last_day: date,
-                 skip_ended: bool, overrides: dict) -> list[dict]:
+def _occurrences(
+    rec, claims, now, first_day: date, last_day: date,
+    skip_ended: bool, overrides: dict, *, access_role: str | None = None,
+) -> list[dict]:
     """Materialize a recurrence's concrete occurrences over [first_day, last_day)
     (ET dates), in UTC — respecting series bounds and per-occurrence overrides."""
     days = {d.strip() for d in rec["days"].split(",") if d.strip()}
@@ -131,7 +145,12 @@ def _occurrences(rec, claims, now, first_day: date, last_day: date,
             "replay_course_slug": None,
             "replay_course_title": None,
         }
-        entry.update(_join_state(starts, eff["category"], eff["join_url"], claims, now))
+        entry.update(
+            _join_state(
+                starts, eff["category"], eff["join_url"], claims, now,
+                access_role=access_role,
+            )
+        )
         out.append(entry)
     return out
 
@@ -156,6 +175,7 @@ def list_sessions(request: Request, month: str | None = None) -> dict:
     past occurrences included (join-locked 'ended'), plus replays."""
     claims = claims_or_none(request)
     now = datetime.now(timezone.utc)
+    access_role: str | None = None
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -173,10 +193,14 @@ def list_sessions(request: Request, month: str | None = None) -> dict:
             overrides = {
                 (o["recurrence_id"], o["occurrence_date"]): o for o in cur.fetchall()
             }
+            if claims and int(claims.get("identity_id") or 0) != 0:
+                access_role = identity.feature_role(
+                    cur, int(claims["identity_id"]), str(claims.get("role") or "observer")
+                )
 
     cutoff = now - JOIN_CLOSES_AFTER
     past = [
-        _serialize(row, claims, now, include_join=False)
+        _serialize(row, claims, now, include_join=False, access_role=access_role)
         for row in rows
         if row["starts_at"].replace(tzinfo=timezone.utc) < cutoff
     ]
@@ -188,26 +212,34 @@ def list_sessions(request: Request, month: str | None = None) -> dict:
         for row in rows:
             starts_et = row["starts_at"].replace(tzinfo=timezone.utc).astimezone(EASTERN)
             if first_day <= starts_et.date() < last_day:
-                sessions.append(_serialize(row, claims, now, include_join=True))
+                sessions.append(
+                    _serialize(
+                        row, claims, now, include_join=True, access_role=access_role
+                    )
+                )
         for rec in recurrences:
             sessions.extend(
-                _occurrences(rec, claims, now, first_day, last_day,
-                             skip_ended=False, overrides=overrides)
+                _occurrences(
+                    rec, claims, now, first_day, last_day,
+                    skip_ended=False, overrides=overrides, access_role=access_role,
+                )
             )
         sessions.sort(key=lambda s: s["starts_at"])
         return {"sessions": sessions, "past": past[:20]}
 
     today_et = now.astimezone(EASTERN).date()
     upcoming = [
-        _serialize(row, claims, now, include_join=True)
+        _serialize(row, claims, now, include_join=True, access_role=access_role)
         for row in rows
         if row["starts_at"].replace(tzinfo=timezone.utc) >= cutoff
     ]
     for rec in recurrences:
         upcoming.extend(
-            _occurrences(rec, claims, now, today_et,
-                         today_et + timedelta(days=HORIZON_DAYS + 1),
-                         skip_ended=True, overrides=overrides)
+            _occurrences(
+                rec, claims, now, today_et,
+                today_et + timedelta(days=HORIZON_DAYS + 1),
+                skip_ended=True, overrides=overrides, access_role=access_role,
+            )
         )
     upcoming.sort(key=lambda s: s["starts_at"])
     return {"upcoming": upcoming, "past": past[:20]}

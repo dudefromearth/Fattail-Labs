@@ -34,8 +34,8 @@ VALID_PHASE = frozenset(
 AGENT_SERVICE = "labs-journal-session"
 
 CREATE_DENY_DETAIL = (
-    "Journal sessions require an active Observer trial plan, "
-    "Activator or Navigator membership, or administrator access"
+    "Journal sessions require an active Observer trial or Navigator membership "
+    "(or Activator legacy / administrator)"
 )
 
 CLOSED_DATE_DETAIL = (

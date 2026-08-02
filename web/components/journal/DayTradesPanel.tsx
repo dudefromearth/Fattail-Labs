@@ -291,7 +291,7 @@ export default function DayTradesPanel({
 
       {loadState === "forbidden" && (
         <p className="text-sm text-[var(--color-label-secondary)]">
-          Trade Log requires Activator membership.{" "}
+          Trade Log requires an Observer or Navigator membership.{" "}
           <Link href="/membership" className="text-[var(--color-tint)]">
             View membership
           </Link>

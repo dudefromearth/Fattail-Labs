@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 
 import auth
 import db
+import identity
 from guards import require_session
 
 router = APIRouter(tags=["resources"])
@@ -196,26 +197,35 @@ def download_version(version_id: int, request: Request):
             )
             any_links = cur.fetchall()
 
-    free = False
-    allowed = is_admin
-    if is_published_cut:
-        free = any(bool(L["free_preview"]) for L in any_links)
-        allowed = True  # listed material; access gated below
-    elif pin_links:
-        free = any(bool(L["free_preview"]) for L in pin_links)
-        allowed = True
-    elif not is_admin:
-        raise HTTPException(status_code=404, detail="Resource not found")
+            free = False
+            allowed = is_admin
+            if is_published_cut:
+                free = any(bool(L["free_preview"]) for L in any_links)
+                allowed = True  # listed material; access gated below
+            elif pin_links:
+                free = any(bool(L["free_preview"]) for L in pin_links)
+                allowed = True
+            elif not is_admin:
+                raise HTTPException(status_code=404, detail="Resource not found")
 
-    if not allowed:
-        raise HTTPException(status_code=404, detail="Resource not found")
+            if not allowed:
+                raise HTTPException(status_code=404, detail="Resource not found")
 
-    if not free and not is_admin and not auth.role_at_least(claims["role"], "alumni"):
-        raise HTTPException(
-            status_code=403, detail="Membership required to download resources"
-        )
+            if not free and not is_admin:
+                if not identity.role_meets(
+                    cur,
+                    int(claims["identity_id"]),
+                    str(claims.get("role") or "observer"),
+                    "alumni",
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Membership required to download resources",
+                    )
 
-    return _serve_file_or_link(title=row["title"], kind=row["kind"], url=row["url"] or "")
+            return _serve_file_or_link(
+                title=row["title"], kind=row["kind"], url=row["url"] or ""
+            )
 
 
 @router.get("/api/attachments/{attachment_id}/download")
@@ -231,13 +241,19 @@ def download_attachment(attachment_id: int, request: Request):
                 (attachment_id,),
             )
             row = cur.fetchone()
-    if row is None:
-        raise HTTPException(status_code=404, detail="Resource not found")
-    if not row["free_preview"] and not auth.role_at_least(claims["role"], "alumni"):
-        if claims.get("role") != "administrator":
-            raise HTTPException(
-                status_code=403, detail="Membership required to download resources"
+            if row is None:
+                raise HTTPException(status_code=404, detail="Resource not found")
+            if not row["free_preview"] and claims.get("role") != "administrator":
+                if not identity.role_meets(
+                    cur,
+                    int(claims["identity_id"]),
+                    str(claims.get("role") or "observer"),
+                    "alumni",
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Membership required to download resources",
+                    )
+            return _serve_file_or_link(
+                title=row["title"], kind=row["kind"], url=row["url"] or ""
             )
-    return _serve_file_or_link(
-        title=row["title"], kind=row["kind"], url=row["url"] or ""
-    )

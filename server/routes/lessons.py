@@ -4,14 +4,15 @@ Public URL shape: /course/{course}/{module}/{lesson}
 API: /api/courses/{course}/modules/{module}/lessons/{lesson}
 
 Anonymous: 401 always (even free previews — signup is the price of the preview).
-observer: previews play, gated lessons 403 (upgrade prompt).
-activator+: everything plays (member playback).
+Free observer (no plan): previews only.
+Paid Observer / alumni+: full member playback (DL-128 Observer ≡ Navigator).
 """
 
 from fastapi import APIRouter, HTTPException, Request
 
 import auth
 import db
+import identity
 import video
 from config import get_config
 from routes.quizzes import public_questions
@@ -64,17 +65,21 @@ def lesson_detail(
 
     if claims is None:
         raise HTTPException(status_code=401, detail="Sign in to watch")
-    if (
-        not is_admin
-        and not row["free_preview"]
-        and not auth.role_at_least(claims["role"], "alumni")
-    ):
-        raise HTTPException(status_code=403, detail="Membership required")
-
     progress = {"last_position": 0, "completed": False}
     questions = None
     with db.transaction() as conn:
         with conn.cursor() as cur:
+            if (
+                not is_admin
+                and not row["free_preview"]
+                and not identity.role_meets(
+                    cur,
+                    int(claims["identity_id"]),
+                    str(claims.get("role") or "observer"),
+                    "alumni",
+                )
+            ):
+                raise HTTPException(status_code=403, detail="Membership required")
             cur.execute(
                 """SELECT last_position, completed_at FROM lesson_progress
                    WHERE identity_id = %s AND lesson_id = %s""",

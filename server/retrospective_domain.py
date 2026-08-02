@@ -15,9 +15,10 @@ from datetime import datetime, timezone
 from typing import Any, Literal, NotRequired, TypedDict
 
 import auth
+import identity as identity_mod
 import journal_session_domain as jsd
 import journey_scores as js
-from identity import ACTIVE_STATUSES
+from identity import ACTIVE_STATUSES, OBSERVER_TRIAL_SLUG
 from trade_log_domain.pnl import enrich_trades_with_synthetic_pnl, realized_pnl
 
 
@@ -26,12 +27,9 @@ VALID_STATUS = frozenset(
 )
 OPEN_STATUSES = frozenset({"draft", "gathering", "ready"})
 
-# Spec §10.1 — Observer trial plan slug (live memberships, not role-only)
-OBSERVER_TRIAL_SLUG = "observer-trial"
-
 CREATE_DENY_DETAIL = (
-    "Retrospectives require an active Observer trial plan, "
-    "Activator or Navigator membership, or administrator access"
+    "Retrospectives require an active Observer trial or Navigator membership "
+    "(or Activator legacy / administrator)"
 )
 
 # Spec constants (Hotel / §6.3) — RT2-2 uses these; fail loud, no UI-only magic
@@ -143,19 +141,7 @@ class ReportV05(TypedDict):
 
 def has_active_plan_slug(cur, identity_id: int, slug: str) -> bool:
     """True if identity has an unexpired active/grace membership for plan slug."""
-    placeholders = ",".join(["%s"] * len(ACTIVE_STATUSES))
-    cur.execute(
-        f"""SELECT 1
-            FROM memberships m
-            JOIN plans p ON p.id = m.plan_id
-            WHERE m.identity_id = %s
-              AND p.slug = %s
-              AND m.status IN ({placeholders})
-              AND (m.current_period_end IS NULL OR m.current_period_end > NOW())
-            LIMIT 1""",
-        (identity_id, slug, *ACTIVE_STATUSES),
-    )
-    return cur.fetchone() is not None
+    return identity_mod.has_active_plan_slug(cur, identity_id, slug)
 
 
 def count_active_habit_plans(cur, identity_id: int, *, for_update: bool = False) -> int:
@@ -287,19 +273,12 @@ def build_carry_forward(cur, identity_id: int, *, is_maiden: bool) -> dict | Non
 
 
 def can_create_or_gather(cur, identity_id: int, role: str) -> bool:
-    """Spec §10.1: admin OR activator+ OR active observer-trial plan.
+    """Spec §10.1 / DL-128: Practice access = activator+ on the feature ladder.
 
-    Plan check is live against memberships — do not rely on grants_role alone
-    (trial currently grants navigator, which is accidental for entitlement).
+    Active Observer membership elevates feature_role to navigator (same as
+    Navigator for the term). Free no-plan remains denied.
     """
-    if role == "administrator":
-        return True
-    try:
-        if auth.role_at_least(role, "activator"):
-            return True
-    except auth.AuthError:
-        return False
-    return has_active_plan_slug(cur, identity_id, OBSERVER_TRIAL_SLUG)
+    return identity_mod.role_meets(cur, identity_id, role, "activator")
 
 
 def next_period_index(cur, identity_id: int) -> int:
