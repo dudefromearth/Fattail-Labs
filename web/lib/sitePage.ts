@@ -5,6 +5,8 @@ export type SitePage = {
   slug: string;
   title: string;
   description_md: string | null;
+  /** Markdown daily rules checklist (Toughness hub, etc.). */
+  daily_rules_md?: string | null;
   intro_video_id: string | null;
   intro_video_title: string | null;
   faq_title: string;
