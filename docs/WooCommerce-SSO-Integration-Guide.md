@@ -165,8 +165,16 @@ Example seed rows (`seed_dev.py`) — **replace with production slugs** from Woo
 | Provider | `external_key` (Woo plan slug) | Labs plan |
 |---|---|---|
 | `wordpress:fattail` | `labs-membership` | `activator` |
+| `wordpress:fattail` | `observer-access`, `observer`, `observer-trial`, `labs-observer` | `observer-trial` (full Navigator features for the term) |
+| `wordpress:fattail` | `activator-access` | `activator` |
+| `wordpress:fattail` | `navigator-access`, `navigator`, `coaching-access` | `navigator` |
 | `wordpress:0-dte` | `coaching` | `navigator` |
 | `wordpress:0-dte` | `labs-membership` | `activator` |
+| `wordpress:0-dte` | `observer-access`, `observer` | `observer-trial` |
+
+**Symptom if unmapped:** SSO cookie is set, but `/api/auth/me` shows `role: "observer"`
+and `access_role: "observer"` with no paid plan — UI says Free account. Unknown JWT
+plan slugs are logged: `entitlement keys not in provider_plan_map`.
 
 FOTW Woo memberships (from MSC WP audit — map as you retire FOTW/LearnDash):
 
@@ -178,9 +186,9 @@ FOTW Woo memberships (from MSC WP audit — map as you retire FOTW/LearnDash):
 | Coaching Access | `coaching-access` |
 
 ```sql
--- Map a real Woo membership slug → Labs plan
+-- Map a real Woo membership slug → Labs plan (Observer example)
 INSERT INTO provider_plan_map (provider, external_key, plan_id)
-SELECT 'wordpress:fattail', 'activator-access', id FROM plans WHERE slug = 'activator'
+SELECT 'wordpress:fattail', 'YOUR-WOO-PLAN-SLUG', id FROM plans WHERE slug = 'observer-trial'
 ON DUPLICATE KEY UPDATE plan_id = VALUES(plan_id);
 ```
 

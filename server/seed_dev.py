@@ -102,8 +102,20 @@ PLANS = [
 ]
 PROVIDER_PLAN_MAP = [
     ("wordpress:fattail", "labs-membership", "activator"),
+    # Woo Membership plan slugs from JWT membership_plans (fotw-sso)
+    ("wordpress:fattail", "observer-access", "observer-trial"),
+    ("wordpress:fattail", "observer", "observer-trial"),
+    ("wordpress:fattail", "observer-trial", "observer-trial"),
+    ("wordpress:fattail", "labs-observer", "observer-trial"),
+    ("wordpress:fattail", "activator-access", "activator"),
+    ("wordpress:fattail", "navigator-access", "navigator"),
+    ("wordpress:fattail", "navigator", "navigator"),
+    ("wordpress:fattail", "coaching-access", "navigator"),
     ("wordpress:0-dte", "coaching", "navigator"),
     ("wordpress:0-dte", "labs-membership", "activator"),
+    ("wordpress:0-dte", "observer-access", "observer-trial"),
+    ("wordpress:0-dte", "observer", "observer-trial"),
+    ("wordpress:0-dte", "navigator-access", "navigator"),
 ]
 
 # The standing schedule (Live Sessions spec v1.3 §2). Times are America/New_York.

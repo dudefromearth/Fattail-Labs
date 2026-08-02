@@ -119,13 +119,31 @@ def upsert_membership(cur, identity_id: int, plan_id: int, status: str,
 def sync_provider_memberships(cur, identity_id: int, provider: str,
                               entitlement_keys: list[str]) -> None:
     """Replace-by-source: provider's current entitlements become the memberships
-    from that source; anything from this source not in the list expires."""
+    from that source; anything from this source not in the list expires.
+
+    Unknown external_key values are ignored (no membership) — they must exist in
+    provider_plan_map. Unmapped keys are logged so ops can add the Woo plan slug.
+    """
+    import logging
+
+    log = logging.getLogger("labs.identity")
     granted_plan_ids = []
+    unmapped: list[str] = []
     for key in entitlement_keys:
         plan_id = plan_id_for_provider_key(cur, provider, key)
         if plan_id is not None:
             granted_plan_ids.append(plan_id)
             upsert_membership(cur, identity_id, plan_id, "active", provider)
+        else:
+            unmapped.append(key)
+    if unmapped:
+        log.warning(
+            "SSO/webhook entitlement keys not in provider_plan_map "
+            "(member stays free if none mapped): provider=%s identity_id=%s keys=%s",
+            provider,
+            identity_id,
+            unmapped,
+        )
     # Expiring rows first pass the alumni tenure check (Membership Tiers spec §3).
     if granted_plan_ids:
         placeholders = ",".join(["%s"] * len(granted_plan_ids))

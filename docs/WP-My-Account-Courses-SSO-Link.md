@@ -166,7 +166,16 @@ Each button can use a **different** fotw-sso URL with a different `next` (Course
 3. You should land on **`/course`** with a session (not free-account wall, not countdown `/`).
 4. Same browser: `https://labs.fattail.ai/api/auth/me` → email + role JSON.
 
-If SSO works but access still looks free: map their Woo plan slug in Labs `provider_plan_map` (see full SSO guide).
+If SSO works but Labs still shows **Free account**: the JWT arrived without a mapped
+Woo plan slug. Check:
+
+1. WooCommerce → Memberships → Plans → the plan’s **slug** (e.g. `observer-access`).
+2. Labs DB `provider_plan_map`: `wordpress:fattail` + that slug → Labs plan
+   `observer-trial` (Observer) or `navigator` / `activator`.
+3. Re-SSO after adding the map (session role is snapshotted at login).
+4. API logs: `entitlement keys not in provider_plan_map` lists the unmapped slug(s).
+
+See also [WooCommerce-SSO-Integration-Guide.md](./WooCommerce-SSO-Integration-Guide.md) §5.
 
 ---
 
