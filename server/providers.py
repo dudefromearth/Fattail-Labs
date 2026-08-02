@@ -7,7 +7,7 @@ Spec: FatTail-Labs-Identity-Access-Spec-v1.0 §4.2.
 SSO source of truth (WP mint + claim shapes): MarketSwarm-Canonical
   - WP plugin: fotw-sso on fattail.ai / 0-dte.com (`/fotw-sso`)
   - Verify port: MarketSwarm-Canonical/src/auth/sso.py
-  - App callback pattern: GET /api/auth/sso?sso=<jwt>&next=...
+  - App callback pattern: GET /api/auth/sso/wordpress:{issuer}?sso=<jwt>&next=/path
   - Login entry: MarketSwarm-Canonical/UI/src/components/LoginPage.tsx
   - WP ops ref: MarketSwarm-Canonical/org/reference/softwares/flyonthewall_wordpress.md §SSO
 """

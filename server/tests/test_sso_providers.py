@@ -99,9 +99,9 @@ def test_sso_fattail_happy_path_sets_session(client, sso_email):
         follow_redirects=False,
     )
     assert r.status_code in (302, 307)
-    assert r.headers.get("location") in ("/courses", "http://testserver/courses") or (
-        r.headers.get("location") or ""
-    ).endswith("/courses")
+    loc = r.headers.get("location") or ""
+    # Default post-SSO landing is member home when next= is omitted.
+    assert loc in ("/home", "http://testserver/home") or loc.endswith("/home")
     # Session cookie set
     assert cfg.session_cookie in r.cookies or any(
         cfg.session_cookie in (c or "") for c in r.headers.get_list("set-cookie")
@@ -121,6 +121,77 @@ def test_sso_fattail_happy_path_sets_session(client, sso_email):
                 (row["identity_id"],),
             )
             assert cur.fetchone()
+    client.cookies.clear()
+
+
+def test_sso_next_path_lands_on_course(client, sso_email):
+    """WP My Account deep-link: next=/course after session mint."""
+    cfg = get_config()
+    token = _mint_wp_token(
+        issuer="fattail",
+        secret=cfg.sso_secrets["fattail"],
+        email=sso_email,
+        wp_user_id=910011,
+    )
+    r = client.get(
+        "/api/auth/sso/wordpress:fattail",
+        params={"token": token, "next": "/course"},
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 307)
+    loc = r.headers.get("location") or ""
+    assert loc in ("/course", "http://testserver/course") or loc.endswith("/course")
+    client.cookies.clear()
+
+
+def test_sso_next_deep_path_with_query(client, sso_email):
+    cfg = get_config()
+    token = _mint_wp_token(
+        issuer="fattail",
+        secret=cfg.sso_secrets["fattail"],
+        email=sso_email,
+        wp_user_id=910012,
+    )
+    dest = "/app/wiki/search?q=process"
+    r = client.get(
+        "/api/auth/sso/wordpress:fattail",
+        params={"token": token, "next": dest},
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 307)
+    assert (r.headers.get("location") or "") == dest
+    client.cookies.clear()
+
+
+@pytest.mark.parametrize(
+    "evil",
+    [
+        "https://evil.example/phish",
+        "//evil.example/phish",
+        "\\\\evil.example",
+        "http://labs.fattail.ai/course",
+        "/\\evil",
+        "",
+        "course",  # not absolute path
+    ],
+)
+def test_sso_next_rejects_open_redirects(client, sso_email, evil):
+    cfg = get_config()
+    token = _mint_wp_token(
+        issuer="fattail",
+        secret=cfg.sso_secrets["fattail"],
+        email=sso_email,
+        wp_user_id=910013,
+    )
+    r = client.get(
+        "/api/auth/sso/wordpress:fattail",
+        params={"token": token, "next": evil},
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 307)
+    loc = r.headers.get("location") or ""
+    assert loc in ("/home", "http://testserver/home") or loc.endswith("/home")
+    assert "evil" not in loc.lower()
     client.cookies.clear()
 
 

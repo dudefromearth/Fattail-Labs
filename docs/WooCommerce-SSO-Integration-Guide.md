@@ -42,7 +42,7 @@ Labs does **not** mint SSO tokens. WordPress does, via the same plugin MarketSwa
 │  GET /api/auth/sso/             │
 │    wordpress:fattail|0-dte      │
 │  verify → identity + membership │
-│  Set ft_session → /courses      │
+│  Set ft_session → next or /home │
 └─────────────────────────────────┘
 
 Optional continuous sync (Labs-specific surface):
@@ -137,7 +137,22 @@ Documented in MSC WP reference + consumed by `src/auth/user_store.py` / Labs `pr
 1. Verify signature with issuer secret (leeway 10s, MSC-compatible).  
 2. Resolve identity by link `(provider, external_id)`, else email.  
 3. Sync memberships from entitlement keys via `provider_plan_map` (replace-by-source).  
-4. Issue `ft_session` → 302 `/courses`.
+4. Issue `ft_session` → 302 to `next` (site-relative path) or **`/home`** if `next` is omitted/unsafe.
+
+### 4.1 Post-login deep links (`next`)
+
+Optional query on the Labs callback: `next=/course` (any same-site path starting with `/`).
+
+```text
+# Labs callback with landing
+https://labs.fattail.ai/api/auth/sso/wordpress:fattail?next=/course
+
+# Full WP My Account button (redirect= is URL-encoded callback above)
+https://fattail.ai/fotw-sso?redirect=https%3A%2F%2Flabs.fattail.ai%2Fapi%2Fauth%2Fsso%2Fwordpress%3Afattail%3Fnext%3D%2Fcourse
+```
+
+Open redirects rejected (absolute URLs, `//…`, etc.) → fallback `/home`.  
+Ops paste sheet: [WP-My-Account-Courses-SSO-Link.md](./WP-My-Account-Courses-SSO-Link.md).
 
 ---
 

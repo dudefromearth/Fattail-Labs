@@ -16,6 +16,34 @@ from config import get_config
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+# Default post-SSO landing (member home). Override with safe relative `next`.
+_DEFAULT_SSO_LANDING = "/home"
+_MAX_NEXT_LEN = 512
+
+
+def safe_next_path(next_raw: str | None, default: str = _DEFAULT_SSO_LANDING) -> str:
+    """Allow only same-origin relative paths after SSO (open-redirect safe).
+
+    Accepts site-relative destinations so WP My Account buttons can deep-link
+    anywhere on Labs, e.g. next=/course or next=/app/journey.
+
+    Rejects: empty, scheme/host absolute URLs, protocol-relative //…, backslashes,
+    control characters. Invalid values fall back to *default*.
+    """
+    if next_raw is None:
+        return default
+    n = str(next_raw).strip()
+    if not n or len(n) > _MAX_NEXT_LEN:
+        return default
+    # Must be a single-site path: starts with one slash, not //.
+    if not n.startswith("/") or n.startswith("//"):
+        return default
+    if "://" in n or "\\" in n:
+        return default
+    if any(ord(c) < 32 for c in n):
+        return default
+    return n
+
 
 def _session_response(resp, identity_id: int, provider: str, role: str, request=None):
     cfg = get_config()
@@ -140,11 +168,19 @@ def sso_callback(
     request: Request,
     token: str | None = None,
     sso: str | None = None,
+    next: str | None = None,
 ):
     """WordPress SSO callback (fotw-sso / MarketSwarm-Canonical compatible).
 
     Accepts token via `token` or `sso` query param (MSC uses `sso`).
+    Optional `next` = site-relative path after session mint (default `/home`).
     Provider path: wordpress:fattail | wordpress:0-dte
+
+    WP My Account deep-link pattern (redirect value is the Labs callback, including
+    next, then URL-encoded as fotw-sso's redirect= query):
+      https://fattail.ai/fotw-sso?redirect=<urlencoded
+        https://labs.fattail.ai/api/auth/sso/wordpress:fattail?next=/course>
+    fotw-sso appends &sso=<JWT> (callback already has ?next=).
     """
     reg = providers.registry()
     if provider_name not in reg:
@@ -176,9 +212,9 @@ def sso_callback(
             )
             role = identity.derive_role(cur, identity_id)
 
+    landing = safe_next_path(next)
     return _session_response(
-        # Member landing after SSO (login-landing mock).
-        RedirectResponse(url="/home", status_code=302),
+        RedirectResponse(url=landing, status_code=302),
         identity_id, pid.provider, role, request=request,
     )
 

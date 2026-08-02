@@ -4,6 +4,24 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-02 — DL-192 SSO post-login deep links (`next`)
+
+**Decision (Coach):** WordPress My Account (and any member CTA) may deep-link into any
+Labs path after SSO. Labs callback accepts optional site-relative query `next`
+(e.g. `?next=/course`). Default remains `/home`. Unsafe values (absolute URL,
+`//…`, etc.) fall back to `/home` — open-redirect safe.
+
+**Why:** Bare `labs.fattail.ai/…` never mints `ft_session`; members hit free-account
+CTAs. fotw-sso must always be the entry. `next` lets one SSO hop land on catalog,
+Journey, Journal, etc. without hardcoding a single post-login page.
+
+**Ops paste sheet:** `docs/WP-My-Account-Courses-SSO-Link.md`  
+**Code:** `server/routes/auth_routes.py` (`safe_next_path`, SSO `next` param)
+
+**Does not reverse:** dual-issuer SSO, `ft_session`, Woo as commerce only.
+
+---
+
 ## 2026-08-02 — DL-191 Continuous journaling + day-start routine
 
 **Decision (Coach):** Journaling is **not** an end-of-day task. It is capture **with every
