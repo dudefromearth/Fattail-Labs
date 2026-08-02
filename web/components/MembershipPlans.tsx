@@ -228,7 +228,7 @@ export default function MembershipPlans() {
         <span className="font-semibold text-zinc-900 dark:text-zinc-100">
           The Alumni promise:
         </span>{" "}
-        stay a full month — or complete the 4-week trial — and the entire course
+        stay a full month — or complete the 6-week Observer membership — and the entire course
         library is yours for a year, even if you leave.
       </div>
 
@@ -256,8 +256,8 @@ export default function MembershipPlans() {
             <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
               Try <span className="font-semibold">everything</span> — coaching,
               the trading room, every course — for{" "}
-              <span className="font-semibold">$20/week, four weeks</span>. Finish
-              the trial and the course library is yours for a year no matter
+              <span className="font-semibold">6 weeks / $102</span>. Finish
+              the membership and the course library is yours for a year no matter
               what you decide.
             </p>
             <div className="mt-6 space-y-2">
@@ -266,7 +266,7 @@ export default function MembershipPlans() {
                   onClick={() => checkout(trial.prices[0].price_id)}
                   className="w-full rounded-full bg-emerald-500 py-2.5 font-medium text-white hover:bg-emerald-600"
                 >
-                  Start the 4-Week Trial
+                  Start the 6-Week Observer
                 </button>
               ) : (
                 <p className="text-sm text-zinc-400">Trial checkout opens soon.</p>

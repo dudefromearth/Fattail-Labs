@@ -8,8 +8,8 @@ export const metadata: Metadata = {
   title: "Membership",
   description:
     "FatTail Labs membership: every course, the daily live trading room, " +
-    "coach calls, resources, Discord, and the FatTail app. $20/week trial " +
-    "with full access.",
+    "coach calls, resources, Discord, and the FatTail app. Observer: 6 weeks " +
+    "for $102 with full access.",
   alternates: { canonical: siteUrl("/membership") },
 };
 
@@ -24,13 +24,13 @@ const FAQ: { id: string; q: string; a: string }[] = [
   },
   {
     id: "trial",
-    q: "How does the $20/week trial work?",
-    a: "The Observer trial runs four weeks at $20 per week with full Navigator access — coaching, live sessions, Discord, the app, and every course. Nothing is held back during the trial.",
+    q: "How does the 6-week Observer membership work?",
+    a: "Observer runs 6 weeks for $102 total (~$17/week) with full Navigator access — coaching, live sessions, Discord, the app, and every course. Nothing is held back during the membership.",
   },
   {
     id: "trial-ends",
-    q: "What happens when my trial ends?",
-    a: "Complete the full four weeks and you keep access to every course for a full year, even if you don't continue. Live sessions, Discord, and the app are for active members only.",
+    q: "What happens when my Observer membership ends?",
+    a: "Complete the full six weeks and you keep access to every course for a full year, even if you don't continue. Live sessions, Discord, and the app are for active members only.",
   },
   {
     id: "cancel",

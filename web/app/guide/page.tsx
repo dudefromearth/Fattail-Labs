@@ -547,12 +547,12 @@ export default function GuidePage() {
                 resources, Discord, and the FatTail app.
               </li>
               <li>
-                <strong>Observer trial</strong> — $20/week for four weeks, with
-                full Navigator access. Nothing held back.
+                <strong>Observer membership</strong> — 6 weeks for $102 total
+                (~$17/week), with full Navigator access. Nothing held back.
               </li>
               <li>
-                <strong>The alumni year:</strong> complete the full four-week
-                trial — or be a paying member for at least a month — and if you
+                <strong>The alumni year:</strong> complete the full six-week
+                membership — or be a paying member for at least a month — and if you
                 leave, you keep access to every course for a full year. Live
                 sessions, Discord, and the app are for active members.
               </li>

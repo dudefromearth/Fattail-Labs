@@ -17,7 +17,7 @@ livestreams only.
 |---|---|---|---|
 | **Navigator** (`navigator`) | **$250/mo · $2,500/yr** — the featured offer | Everything: live trading room + coaching, workshops/livestreams, all courses & certifications, resources, Discord, app | `navigator` |
 | **Activator** (`activator`) | **$100/mo — promotions only** (revealed by promo link/code, never on the open pricing page) | Discord, app, all courses, workshops | `activator` |
-| **Observer trial** (`observer-trial`) | **$20/wk for 4 weeks** | **Full Navigator access during the trial** | `navigator` |
+| **Observer trial** (`observer-trial`) | **6 weeks for $102 total** (~$17/wk × 6) | **Full Navigator access during the membership** | `navigator` |
 | **Course Alumni** (`courses-alumni`) | Not sold — granted (§3) | Course library + resources for 1 year. No Discord, no livestreams, no app | `alumni` (new) |
 
 ## 2. Role ladder change
@@ -30,14 +30,14 @@ livestreams only.
 
 ## 3. The Alumni rule (retention grandfather)
 
-Leave after a **full 4-week Observer trial**, or after **≥ 28 days** on Activator or
+Leave after a **full 6-week Observer membership**, or after **≥ 28 days** on Activator or
 Navigator, and you keep the **course library for 1 year** (membership
 `courses-alumni`, `current_period_end = +1 year`, source `system`).
 
 - Enforcement: when a provider membership expires (Stripe webhook, WP sync), the
-  expiring membership's tenure (`started_at → now`) is checked; ≥ 28 days →
-  alumni granted automatically. Manual grant: `grant_alumni` is also callable by
-  operators.
+  expiring membership's tenure (`started_at → now`) is checked; ≥ 28 days (or
+  completed full Observer term) → alumni granted automatically. Manual grant:
+  `grant_alumni` is also callable by operators.
 - **Memberships now expire by date**: role derivation ignores memberships whose
   `current_period_end` has passed (this is what ends the alumni year — and applies
   to all memberships generally).
@@ -51,7 +51,7 @@ Navigator, and you keep the **course library for 1 year** (membership
   **Activator card renders only with a promo parameter** (`?promo=...`). "Continue
   with your free account" link → `/pathway` (the free path is never hidden).
 - **Exit intent** (step 2, once per session): leaving the page surfaces the retention
-  offer — ours pitches the **$20/wk Observer trial** ("try everything for 4 weeks")
+  offer — ours pitches the **6-week Observer membership** ("try everything for 6 weeks / $102")
   rather than a discount.
 - Alumni promise shown under the cards: stay a full month (or complete the trial)
   and the courses are yours for a year even if you leave.
@@ -64,9 +64,9 @@ Navigator, and you keep the **course library for 1 year** (membership
   (checkout buttons appear only when billing is enabled and prices are mapped).
 - Stripe wiring (MiniTwo): prices — navigator monthly $250 + annual $2,500 →
   `navigator`; activator $100 (promo codes via Stripe promotion codes) →
-  `activator`; observer weekly $20 → `observer-trial`, with the 4-week cap applied
-  post-checkout (webhook sets `cancel_at = start + 28d` — requires live key; noted
-  as wiring work).
+  `activator`; observer weekly (~$17) → `observer-trial`, with the **6-week** cap applied
+  post-checkout (webhook sets `cancel_at = start + 42d` — requires live key; noted
+  as wiring work). Total package **$102**.
 
 ## 6. Invariants
 
