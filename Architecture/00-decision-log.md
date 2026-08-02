@@ -4,6 +4,38 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-02 — DL-190 Process Flow: state of being + recent-weighted scoring
+
+**Decision (Coach):** Reposition what was branded **Process Integrity (score)** as
+**Process Flow** — a **state of being**, the **flow state of your trading process**,
+not a test result you “got after the exam.”
+
+**Scoring intent (same decision):**
+- Keep **dimension weights** on key parts (quality: adherence, retrospective, etc.).
+- Apply **exponential average / decay (EWMA)** so **more recent behavior weighs more**
+  than older history — extend the live-presence EWMA pattern to the other time-series
+  meters and the overall state, not only Live.
+- Language: weight recent more heavily; never “punish.”
+
+**Does not reverse:** DL-171 Option 1 **rebalance** (adherence + retro real weight;
+not engagement-majority). This is **not** the rejected rename of trial overall to
+“Practice engagement.”
+
+**Working member name:** **Process Flow** (Coach may refine).  
+**API key `process`:** keep during migration; framing/UI first.  
+**Privacy / no P&L:** unchanged.
+
+**Artifacts:**
+- `Specs/FatTail-Labs-Process-Flow-Repositioning-Note-2026-08-02.md`
+- Course spine Journey lesson (Process Flow framing)
+- Guide copy aligned to Process Flow language
+- PI Spec v0.4 header pointer → this decision (full formula EOL in next Journey/PI amend)
+
+**Next build:** India formulas + Alpha `scoring_model_version` bump + shadow; Charlie
+UI strings; characterization tests for EWMA half-lives.
+
+---
+
 ## 2026-08-01 — DL-189 Navigator pricing $267/mo · $2,997/yr
 
 **Decision (Coach):** Navigator list prices are **$267/month** and **$2,997/year**

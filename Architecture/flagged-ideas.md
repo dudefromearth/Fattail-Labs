@@ -43,13 +43,14 @@ Do **not** use `DISCARDED` / `REJECTED` as idea status.
 | FI-014 | 2026-07-31 | Claude review v0.1 | meter_profile derived only — not agent-writable archetype | Claude (India) | Parallel identity store | `ADOPTED` | v0.3 §3.5 |
 | FI-015 | 2026-07-31 | Claude review v0.1 | Paraphrase-only research; add FatTail lineage option | Claude | Copyright + positioning | `OPEN` | v0.3 Track B · Hotel/lineage |
 | FI-016 | 2026-07-31 | Claude review v0.1 | Gradeable algorithms + characterization tests; no vague floors | Claude (Delta) | Evidence readiness | `ADOPTED` | v0.3 §3.4/3.9 — floors removed |
-| FI-017 | 2026-07-31 | Claude v0.3 design | Engagement-majority trial weights vs Process Integrity name | Claude (Tango) | 85% Labs show-up; dark-pattern mechanism | `ADOPTED` | **Coach 2026-07-31: Option 1 rebalance** — v0.4 §3.0/§3.6 canonical; not rename |
+| FI-017 | 2026-07-31 | Claude v0.3 design | Engagement-majority trial weights vs Process Integrity name | Claude (Tango) | 85% Labs show-up; dark-pattern mechanism | `ADOPTED` | **Coach 2026-07-31: Option 1 rebalance** — v0.4 §3.0/§3.6; rejected trial “Practice engagement” rename. **2026-08-02 DL-190:** separate rename to **Process Flow** (state of being) + EWMA recent-weight — not FI-017 reversal |
 | FI-018 | 2026-07-31 | Claude v0.3 design | Dual empty: no trades vs untagged trades | Claude | Renorm rewards non-tagging | `ADOPTED` | v0.4 §3.5 |
 | FI-019 | 2026-07-31 | Claude v0.3 design | Weight tables for all seven meter_profile ids | Claude | Fail-loud on alumni/free/admin | `ADOPTED` | v0.4 §3.6 |
 | FI-020 | 2026-07-31 | Claude v0.3 design | Model migration: version + shadow period | Claude | One-day score cliff | `ADOPTED` | v0.4 §3.10 |
 | FI-021 | 2026-07-31 | Claude v0.3 design | Checkable graduation + floor-support thresholds | Claude | I7/I12 unenforceable | `OPEN` | v0.4 §9–10 proposed numbers |
 | FI-022 | 2026-07-31 | Claude v0.3 design | Track A never reads journal body for distress | Claude (Tango/Mike) | Privacy + instrument destruction | `ADOPTED` | v0.4 I15 · §9 |
 | FI-023 | 2026-07-31 | Coach | aMCC / willpower-muscle education in Hard + agent explainers | Coach | Scientific copy needs Hotel/Tango pass before curriculum ship | `ADOPTED` | **DL-175/177:** Hard Spec v1.0 §4 + `science/aMCC-source-pack-v1.md` · Hotel secondary verify before H2 |
+| FI-024 | 2026-08-02 | Coach | Process Integrity → **Process Flow** (state of being) + EWMA recent-weight on key meters | Coach | “Score” framing mismatches product; flat windows under-weight recency | `ADOPTED` | **DL-190** · repositioning note · Option 1 weights kept; UI/scoring model cutover pending |
 
 ---
 

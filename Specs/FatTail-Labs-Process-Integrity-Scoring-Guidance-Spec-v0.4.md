@@ -4,7 +4,8 @@
 **Date:** 2026-07-31  
 **Status:** **Track A P0 AS-BUILT** (2026-07-31) — weighted overall + dual-empty + model version shipped in `journey_scores.py`; Journey Experience Spec §4.1 amended same day. Formal India/Tango retrospective gate still welcome; not a block on running code.  
 **Supersedes:** v0.3 · v0.2 · v0.1  
-**Coach decision (2026-07-31):** §3.0 **Option 1 — rebalance** (not rename). Process Integrity keeps its name; adherence + retrospective carry real weight from day one.  
+**Coach decision (2026-07-31):** §3.0 **Option 1 — rebalance**. Adherence + retrospective carry real weight from day one. *(The 2026-07-31 “keep name Process Integrity / reject rename” applied to rejecting a trial “Practice engagement” overall — see DL-171.)*  
+**Coach decision (2026-08-02) — DL-190:** Member-facing concept renames to **Process Flow** (state of being / flow state of trading process, not a test score). Scoring must use **exponential average + dimension weights** so **recent data dominates**. Design note: [`FatTail-Labs-Process-Flow-Repositioning-Note-2026-08-02.md`](./FatTail-Labs-Process-Flow-Repositioning-Note-2026-08-02.md). Full formula + UI rename ship in a subsequent model version; as-built may still say Process Integrity until cutover.  
 **Implementation SOT for weights/formulas:** Journey Experience Spec v1.0 §4.1 (amended) + `server/journey_scores.py` (`SCORING_MODEL_VERSION`, `PROCESS_METER_WEIGHTS`). §3.4–3.6 below remain design mirror until next EOL pass; **prefer Journey + code on conflict**.  
 
 **Reviews (input only — not India/Tango standing):**

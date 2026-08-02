@@ -185,8 +185,8 @@ export default function GuidePage() {
                 Retrospective (and Playbook when it ships).
               </li>
               <li>
-                <strong>Journey</strong> — path + process integrity across the
-                Lab.
+                <strong>Journey</strong> — path + Process Flow (the flow state of
+                your trading process) across the Lab.
               </li>
               <li>
                 <strong>Toughness</strong> — optional Hard programs; can feed
@@ -358,11 +358,12 @@ export default function GuidePage() {
             </p>
             <ul>
               <li>
-                <strong>Personal process</strong> — a Process Integrity meter for
-                long-term habits (learning rhythm, live presence, practice
-                persistence, adherence, and more). Grades respect how long
-                you&apos;ve been practicing; new members are not labeled “Poor”
-                for starting.
+                <strong>Process Flow</strong> — the flow state of your trading
+                process: a state of being, not a test score. Long-term habits
+                (learning rhythm, live presence, practice persistence, adherence,
+                and more), with recent weeks weighted more heavily. Grades
+                respect how long you&apos;ve been practicing; new members are not
+                labeled “Poor” for starting.
               </li>
               <li>
                 <strong>Community presence</strong> — an opt-in board of process
@@ -392,8 +393,8 @@ export default function GuidePage() {
               </li>
               <li>
                 <strong>Practice</strong> (Trade Log, Journal, Retrospective)
-                feeds the process meter — consistency of practice, not who made
-                money this week.
+                feeds Process Flow — consistency of practice, not who made money
+                this week.
               </li>
               <li>
                 <strong>Toughness</strong> adds a Mental Toughness reading only
@@ -442,9 +443,9 @@ export default function GuidePage() {
               </li>
               <li>
                 <strong>Journey:</strong> when a challenge is <em>active</em>,
-                Mental Toughness enters your Process Integrity meter. When you
-                are not enrolled, that dimension stays empty — it does not score
-                as a zero or punish you for opting out.
+                Mental Toughness enters Process Flow. When you are not enrolled,
+                that dimension stays empty — it does not count as a zero or
+                punish you for opting out.
               </li>
             </ul>
 
