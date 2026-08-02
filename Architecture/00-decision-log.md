@@ -4,6 +4,23 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-02 — DL-193 Trade Log / Reports: Observer = Navigator Practice gate
+
+**Decision (Coach):** Trade Log and Reports use the **same Practice entitlement** as
+Journal / Retrospective (`can_create_or_gather`): administrator, role activator+, or
+active **observer-trial** membership — even when the session role cookie is still
+`observer`. Free no-plan remains denied.
+
+**Why:** Trade Log wrongly required Activator+ only, blocking paid Observers who should
+have full Navigator Practice access for the 6-week term (DL-126 / DL-128).
+
+**Code:** `server/routes/trade_log/common.py` `_require_tool_member` · UI copy on Trade Log
+and Reports forbidden states.
+
+**Does not reverse:** free observer = previews only; alumni course library only.
+
+---
+
 ## 2026-08-02 — DL-192 SSO post-login deep links (`next`)
 
 **Decision (Coach):** WordPress My Account (and any member CTA) may deep-link into any

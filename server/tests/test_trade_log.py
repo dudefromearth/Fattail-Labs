@@ -66,6 +66,7 @@ def test_trade_log_legacy_prose_and_isolation(client):
         assert all(e["id"] != eid for e in peer.json()["entries"])
         assert all(t["id"] != eid for t in peer.json()["trades"])
 
+        # Free no-plan observer — Practice denied (previews only).
         obs = cookie_for("observer", a)
         denied = client.get("/api/me/trade-log", cookies=obs)
         assert denied.status_code == 403
@@ -74,6 +75,48 @@ def test_trade_log_legacy_prose_and_isolation(client):
     finally:
         _purge(a)
         _purge(b)
+
+
+def test_observer_trial_plan_trade_log_ok(client):
+    """DL-126/128: active Observer plan has Trade Log even if cookie role is observer."""
+    a = _id("zztest-tl-observer-trial@labs.test")
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE identities SET role_override = NULL WHERE identity_id = %s",
+                    (a,),
+                )
+                cur.execute("DELETE FROM memberships WHERE identity_id = %s", (a,))
+                cur.execute("SELECT id FROM plans WHERE slug = %s", ("observer-trial",))
+                plan = cur.fetchone()
+                assert plan is not None, "observer-trial plan missing — seed_dev"
+                identity_mod.upsert_membership(
+                    cur, a, int(plan["id"]), "active", "zztest"
+                )
+        # Session role observer (stale cookie) — plan path must admit Practice.
+        cookies = cookie_for("observer", a)
+        r = client.get("/api/me/trade-log", cookies=cookies)
+        assert r.status_code == 200, r.text
+        rb = client.get(
+            "/api/me/trade-log/analytics/reports-book",
+            cookies=cookies,
+        )
+        assert rb.status_code == 200, rb.text
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM memberships WHERE identity_id = %s", (a,))
+        _purge(a)
+
+
+def test_navigator_role_trade_log_ok(client):
+    a = _id("zztest-tl-navigator@labs.test")
+    try:
+        r = client.get("/api/me/trade-log", cookies=cookie_for("navigator", a))
+        assert r.status_code == 200, r.text
+    finally:
+        _purge(a)
 
 
 def test_default_account_auto_provisioned_venue_unset(client):

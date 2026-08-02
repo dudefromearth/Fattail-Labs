@@ -10,19 +10,31 @@ from fastapi import HTTPException
 
 import auth
 import db
+import retrospective_domain as rd
 import trade_log_catalog as cat
 from config import get_config
 
+# DL-126 / DL-128: Observer membership = Navigator Practice access (Trade Log,
+# Reports). Free no-plan observer stays denied. Same gate as Journal / Retro.
+_TOOL_DENY_DETAIL = (
+    "Trade Log and Reports require an active Observer or Navigator membership "
+    "(or Activator legacy / administrator)"
+)
+
+
 def _require_tool_member(claims: dict) -> None:
-    role = claims["role"]
-    if not (
-        auth.role_at_least(role, "activator")
-        or auth.role_at_least(role, "administrator")
-    ):
-        raise HTTPException(
-            status_code=403,
-            detail="Trade Log requires Activator membership or higher",
-        )
+    """Practice suite entitlement — parity with retrospective_domain.can_create_or_gather.
+
+    Allows: administrator, role activator+, or active observer-trial plan
+    (even when the session role cookie is still ``observer``).
+    """
+    role = str(claims.get("role") or "observer")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            if rd.can_create_or_gather(cur, iid, role):
+                return
+    raise HTTPException(status_code=403, detail=_TOOL_DENY_DETAIL)
 
 
 def _storage_identity_id(cur, claims: dict) -> int:

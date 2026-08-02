@@ -174,7 +174,7 @@ function TradeLogBody() {
             Membership required
           </p>
           <p className="mt-2 text-[var(--color-label-secondary)]">
-            Trade Log is available to Activator and above.
+            Trade Log is included with Observer and Navigator memberships.
           </p>
           <Link
             href="/membership"

@@ -116,7 +116,7 @@ export default function ReportsDashboard() {
           Membership required
         </p>
         <p className="mt-2 text-[var(--color-label-secondary)]">
-          Practice tools are available to Activator and above.
+          Reports are included with Observer and Navigator memberships.
         </p>
       </div>
     );
