@@ -58,7 +58,7 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
   {
     href: "/admin/gates",
     title: "Feature gates",
-    body: "Hide surfaces until ready, run a countdown for anticipation, collect waitlist emails for your mail system.",
+    body: "Edit the home landing: markdown body, intro video, countdown, waitlist, CTAs. Hide any surface until ready.",
     testId: "admin-card-gates",
   },
   {
