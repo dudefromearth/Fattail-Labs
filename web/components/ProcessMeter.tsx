@@ -139,19 +139,103 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-/** 3-pass EMA so sample stairs become a gentle curve (display + scrub). */
-function smoothSeries(values: number[], passes = 2): number[] {
+/** How strongly the shape path is smoothed (user control). */
+export type PathSmoothMode = "tight" | "medium" | "loose";
+
+const PATH_SMOOTH_STORAGE_KEY = "ft.labs.processPathSmooth";
+
+const PATH_SMOOTH_OPTIONS: {
+  id: PathSmoothMode;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    id: "tight",
+    label: "Tight",
+    hint: "Follows samples closely — more detail, more steps",
+  },
+  {
+    id: "medium",
+    label: "Medium",
+    hint: "Balanced curve — default",
+  },
+  {
+    id: "loose",
+    label: "Loose",
+    hint: "Longer lookback smooth — trend without the noise",
+  },
+];
+
+/**
+ * Tight = light 3-pt (1 pass). Medium = 3-pt (2 passes).
+ * Loose = wider 5-pt kernel + more passes (longer “lookback” along the series).
+ */
+function smoothSeries(
+  values: number[],
+  mode: PathSmoothMode = "medium",
+): number[] {
   if (values.length < 3) return values.slice();
   let out = values.map((v) => Math.min(100, Math.max(0, v)));
-  for (let p = 0; p < passes; p++) {
-    const next = out.slice();
-    // Light end-preserving smooth: y'[i] = 0.25 y[i-1] + 0.5 y[i] + 0.25 y[i+1]
-    for (let i = 1; i < out.length - 1; i++) {
-      next[i] = 0.25 * out[i - 1] + 0.5 * out[i] + 0.25 * out[i + 1];
+
+  const run3 = (arr: number[], wSide: number, wCenter: number) => {
+    const next = arr.slice();
+    for (let i = 1; i < arr.length - 1; i++) {
+      next[i] =
+        wSide * arr[i - 1] + wCenter * arr[i] + wSide * arr[i + 1];
     }
-    out = next;
+    return next;
+  };
+
+  const run5 = (arr: number[]) => {
+    // 5-point binomial-ish: 1/16, 4/16, 6/16, 4/16, 1/16
+    const next = arr.slice();
+    for (let i = 2; i < arr.length - 2; i++) {
+      next[i] =
+        (1 * arr[i - 2] +
+          4 * arr[i - 1] +
+          6 * arr[i] +
+          4 * arr[i + 1] +
+          1 * arr[i + 2]) /
+        16;
+    }
+    // ends: still soft 3-pt so they move a little
+    if (arr.length > 2) {
+      next[1] = 0.2 * arr[0] + 0.6 * arr[1] + 0.2 * arr[2];
+      const j = arr.length - 2;
+      next[j] = 0.2 * arr[j - 1] + 0.6 * arr[j] + 0.2 * arr[j + 1];
+    }
+    return next;
+  };
+
+  if (mode === "tight") {
+    out = run3(out, 0.15, 0.7);
+  } else if (mode === "medium") {
+    for (let p = 0; p < 2; p++) out = run3(out, 0.25, 0.5);
+  } else {
+    // loose — longer effective lookback along the sample series
+    for (let p = 0; p < 2; p++) out = run5(out);
+    for (let p = 0; p < 2; p++) out = run3(out, 0.3, 0.4);
   }
-  return out;
+  return out.map((v) => Math.min(100, Math.max(0, v)));
+}
+
+function loadPathSmoothMode(): PathSmoothMode {
+  if (typeof window === "undefined") return "medium";
+  try {
+    const v = window.localStorage.getItem(PATH_SMOOTH_STORAGE_KEY);
+    if (v === "tight" || v === "medium" || v === "loose") return v;
+  } catch {
+    /* ignore */
+  }
+  return "medium";
+}
+
+function savePathSmoothMode(mode: PathSmoothMode) {
+  try {
+    window.localStorage.setItem(PATH_SMOOTH_STORAGE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
 }
 
 /**
@@ -568,11 +652,15 @@ function ProcessPathTimelineChart({
   points,
   scrub,
   onSelectScrub,
+  smoothMode,
+  onSmoothModeChange,
 }: {
   points: ProcessTimelinePoint[];
   /** Continuous index in [0, n-1] */
   scrub: number;
   onSelectScrub?: (s: number) => void;
+  smoothMode: PathSmoothMode;
+  onSmoothModeChange?: (m: PathSmoothMode) => void;
 }) {
   const n = points.length;
   if (n < 2) return null;
@@ -589,7 +677,7 @@ function ProcessPathTimelineChart({
   const raw = points.map((p) =>
     Math.min(100, Math.max(0, Number(p.overall_percent) || 0)),
   );
-  const vals = smoothSeries(raw, 2);
+  const vals = smoothSeries(raw, smoothMode);
 
   // Fixed 0–100 vertical scale so slope is honest across members
   const yAt = (v: number) => padT + plotH * (1 - v / 100);
@@ -624,9 +712,12 @@ function ProcessPathTimelineChart({
   const scrubY = yAt(scrubV);
   const scrubColor = gradeFromPercent(Math.round(scrubV)).color;
 
+  const modeHint =
+    PATH_SMOOTH_OPTIONS.find((o) => o.id === smoothMode)?.hint || "";
+
   return (
     <div className="w-full" data-testid="process-path-timeline">
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
             Progress over time
@@ -635,14 +726,49 @@ function ProcessPathTimelineChart({
             Shape path
           </p>
         </div>
-        <p className="text-xs font-medium" style={{ color: slopeColor }}>
-          {slopeLabel}
-          <span className="ml-1.5 tabular-nums text-[var(--color-label-tertiary)]">
-            {delta > 0 ? "+" : ""}
-            {Math.round(delta)} pts
-          </span>
-        </p>
+        <div className="flex flex-col items-end gap-1.5">
+          <p className="text-xs font-medium" style={{ color: slopeColor }}>
+            {slopeLabel}
+            <span className="ml-1.5 tabular-nums text-[var(--color-label-tertiary)]">
+              {delta > 0 ? "+" : ""}
+              {Math.round(delta)} pts
+            </span>
+          </p>
+          {onSmoothModeChange && (
+            <div
+              className="inline-flex rounded-full border border-[var(--color-separator)] bg-[var(--color-fill)]/40 p-0.5"
+              role="group"
+              aria-label="Path smoothing"
+              data-testid="path-smooth-mode"
+            >
+              {PATH_SMOOTH_OPTIONS.map((o) => {
+                const on = o.id === smoothMode;
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => onSmoothModeChange(o.id)}
+                    title={o.hint}
+                    className={
+                      on
+                        ? "rounded-full bg-[var(--color-surface)] px-2.5 py-1 text-[11px] font-semibold text-[var(--color-label)] shadow-sm"
+                        : "rounded-full px-2.5 py-1 text-[11px] font-medium text-[var(--color-label-tertiary)] hover:text-[var(--color-label-secondary)]"
+                    }
+                    aria-pressed={on}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
+      {modeHint && (
+        <p className="mb-2 text-right text-[10px] text-[var(--color-label-tertiary)]">
+          {modeHint}
+        </p>
+      )}
       <svg
         viewBox={`0 0 ${w} ${h}`}
         className="w-full overflow-visible"
@@ -742,8 +868,8 @@ function ProcessPathTimelineChart({
         </text>
       </svg>
       <p className="mt-1 text-center text-[11px] text-[var(--color-label-tertiary)]">
-        Smoothed path of shape strength (0–100). Drag the slider for a continuous
-        scrub — radar morphs between sample days.
+        Shape strength (0–100). Tight follows samples; Loose lengthens the smooth
+        lookback. Slider scrubs the radar continuously.
       </p>
     </div>
   );
@@ -847,6 +973,16 @@ export default function ProcessMeter({
   const lastIdx = points ? points.length - 1 : 0;
   /** Continuous scrub in [0, lastIdx] for smooth radar + path playhead */
   const [scrub, setScrub] = useState(lastIdx);
+  const [smoothMode, setSmoothMode] = useState<PathSmoothMode>("medium");
+
+  useEffect(() => {
+    setSmoothMode(loadPathSmoothMode());
+  }, []);
+
+  function setSmoothModePersist(m: PathSmoothMode) {
+    setSmoothMode(m);
+    savePathSmoothMode(m);
+  }
 
   // Keep scrub pinned to "today" when a new timeline arrives
   useEffect(() => {
@@ -978,6 +1114,8 @@ export default function ProcessMeter({
                 points={points}
                 scrub={scrub}
                 onSelectScrub={setScrub}
+                smoothMode={smoothMode}
+                onSmoothModeChange={setSmoothModePersist}
               />
             </div>
 
