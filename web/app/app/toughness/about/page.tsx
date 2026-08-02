@@ -39,7 +39,7 @@ export default function ToughnessAboutPage() {
 
   if (data === null) {
     return (
-      <ToughnessShell crumb="How it works">
+      <ToughnessShell crumb="About this program">
         <p className="mt-8 text-sm text-[var(--color-label-secondary)]">
           Loading…
         </p>
@@ -48,7 +48,7 @@ export default function ToughnessAboutPage() {
   }
   if (data === "err") {
     return (
-      <ToughnessShell crumb="How it works">
+      <ToughnessShell crumb="About this program">
         <p className="mt-8 text-sm text-[var(--color-destructive)]">
           Could not load the guide. Try again later.
         </p>
@@ -73,13 +73,13 @@ export default function ToughnessAboutPage() {
   const phys = data.physiology;
 
   return (
-    <ToughnessShell crumb="How it works">
+    <ToughnessShell crumb="About this program">
       <header className="mt-6 max-w-2xl">
         <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-label)]">
-          How Toughness programs work
+          About this program
         </h1>
         <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-          Full rules, the 20 → 40 → 75 ladder, and the physiology behind the
+          Rules, the 20 → 40 → 75 ladder, and the physiology behind the
           training. Prefer the video when you have one.
         </p>
       </header>

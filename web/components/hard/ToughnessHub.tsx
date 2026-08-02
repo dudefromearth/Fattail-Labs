@@ -187,26 +187,14 @@ function IntroStrip({
       data-testid="toughness-intro-strip"
       aria-labelledby="toughness-intro-heading"
     >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <h2
-          id="toughness-intro-heading"
-          className="text-sm font-semibold text-[var(--color-label)]"
-        >
-          New here?
-        </h2>
-        <Link
-          href="/app/toughness/about"
-          className="text-sm font-medium text-[var(--color-tint)] hover:underline"
-        >
-          Full guide: rules, ladder, physiology →
-        </Link>
-      </div>
-      <p className="mt-1 text-xs text-[var(--color-label-secondary)]">
-        The video covers the program. Written rules and the 20 → 40 → 75 path
-        are on the guide page — not every visit.
-      </p>
+      <h2
+        id="toughness-intro-heading"
+        className="sr-only"
+      >
+        Program intro
+      </h2>
       {videoId ? (
-        <div className="mt-4 aspect-video overflow-hidden rounded-xl border border-[var(--color-separator)] bg-black">
+        <div className="aspect-video overflow-hidden rounded-xl border border-[var(--color-separator)] bg-black">
           <iframe
             title={title}
             src={youtubeEmbedUrl(videoId)}
@@ -215,17 +203,20 @@ function IntroStrip({
             allowFullScreen
           />
         </div>
-      ) : (
-        <p className="mt-3 text-sm text-[var(--color-label-secondary)]">
-          Intro video not set yet.{" "}
-          <Link
-            href="/app/toughness/about"
-            className="font-medium text-[var(--color-tint)] hover:underline"
-          >
-            Read how the programs work →
-          </Link>
+      ) : null}
+      <p className="mt-3 text-center text-sm">
+        <Link
+          href="/app/toughness/about"
+          className="font-medium text-[var(--color-tint)] hover:underline"
+        >
+          About this program →
+        </Link>
+      </p>
+      {!videoId ? (
+        <p className="mt-1 text-center text-xs text-[var(--color-label-secondary)]">
+          Rules, ladder, and physiology on the about page.
         </p>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -361,7 +352,7 @@ export default function ToughnessHub() {
             </Link>
             {" · "}
             <Link href="/app/toughness/about" className="hover:underline">
-              How it works
+              About this program
             </Link>
           </p>
         </div>
