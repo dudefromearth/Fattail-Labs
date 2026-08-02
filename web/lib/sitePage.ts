@@ -1,6 +1,6 @@
 import { apiGet } from "./api";
 
-/** CMS-backed section hub (labs | resources | live | hub). */
+/** CMS-backed section hub (labs | resources | live | hub | toughness). */
 export type SitePage = {
   slug: string;
   title: string;

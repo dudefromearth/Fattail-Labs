@@ -12,8 +12,10 @@ from guards import require_admin
 public = APIRouter(tags=["hub"])
 admin = APIRouter(prefix="/api/admin", tags=["admin"])
 
-# Public section hubs + course hub
-ALLOWED_PAGE_SLUGS = frozenset({"hub", "labs", "resources", "live"})
+# Public section hubs + course hub + Toughness (Hard programs)
+ALLOWED_PAGE_SLUGS = frozenset(
+    {"hub", "labs", "resources", "live", "toughness"}
+)
 
 PAGE_FIELDS = frozenset(
     {

@@ -221,6 +221,44 @@ function EditableDescription({ pageDescription }: { pageDescription: string }) {
   );
 }
 
+function EditableIntroVideo({
+  pageVideoId,
+  pageVideoTitle,
+}: {
+  pageVideoId: string;
+  pageVideoTitle: string;
+}) {
+  const edit = useSectionHubEdit();
+  if (!edit?.editMode) return null;
+  const vid = edit.value("intro_video_id", pageVideoId);
+  const title = edit.value("intro_video_title", pageVideoTitle);
+  return (
+    <div className="mt-4 space-y-2 rounded-xl border border-dashed border-emerald-400/60 bg-emerald-50/40 p-3 dark:bg-emerald-950/20">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+        Intro video (admin)
+      </p>
+      <label className="block text-xs text-[var(--color-label-secondary)]">
+        YouTube URL or 11-char id
+        <input
+          value={vid}
+          onChange={(e) => edit.setField("intro_video_id", e.target.value)}
+          placeholder="https://www.youtube.com/watch?v=… or izSfocWOB0E"
+          className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 font-mono text-sm text-[var(--color-label)] outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+      </label>
+      <label className="block text-xs text-[var(--color-label-secondary)]">
+        Video title (accessibility)
+        <input
+          value={title}
+          onChange={(e) => edit.setField("intro_video_title", e.target.value)}
+          placeholder="How this works"
+          className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-label)] outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+      </label>
+    </div>
+  );
+}
+
 function Header({ page }: { page: SitePage }) {
   return (
     <header className="max-w-3xl">
@@ -230,6 +268,10 @@ function Header({ page }: { page: SitePage }) {
       <div className="mt-3 text-base leading-relaxed text-[var(--color-label-secondary)]">
         <EditableDescription pageDescription={page.description_md ?? ""} />
       </div>
+      <EditableIntroVideo
+        pageVideoId={page.intro_video_id ?? ""}
+        pageVideoTitle={page.intro_video_title ?? ""}
+      />
     </header>
   );
 }

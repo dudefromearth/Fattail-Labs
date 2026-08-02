@@ -6,6 +6,8 @@ import Button from "@/components/ui/Button";
 import HowItWorks from "@/components/hard/HowItWorks";
 import PhysiologyCite from "@/components/hard/PhysiologyCite";
 import ToughnessShell from "@/components/hard/ToughnessShell";
+import SectionHubShell from "@/components/section-hub/SectionHubShell";
+import { useSectionHubEdit } from "@/components/section-hub/SectionHubEditContext";
 import {
   enrollHard,
   exitHard,
@@ -14,6 +16,19 @@ import {
   type HardVariant,
   pauseHard,
 } from "@/lib/hardApi";
+import type { SitePage } from "@/lib/sitePage";
+
+const FALLBACK_PAGE: SitePage = {
+  slug: "toughness",
+  title: "Toughness",
+  description_md:
+    "Voluntary capacity training for persistence under load — part of Process Integrity's Mental Toughness story. Never a membership requirement; never P&L theater.",
+  intro_video_id: null,
+  intro_video_title: "How Toughness programs work",
+  faq_title: "Toughness FAQ",
+  faq_description_md: null,
+  faq_items: [],
+};
 
 function StatusCard({ data }: { data: HardSnapshot }) {
   const mt = data.mental_toughness;
@@ -139,14 +154,51 @@ function ProgramCard({
   );
 }
 
+/** Prefer CMS intro video (live edit value) over hard snapshot / env. */
+function HowItWorksWithCms({
+  block,
+  fallbackVideoId,
+  fallbackVideoTitle,
+}: {
+  block?: HardSnapshot["how_it_works"] | null;
+  fallbackVideoId: string | null;
+  fallbackVideoTitle: string | null;
+}) {
+  const edit = useSectionHubEdit();
+  const cmsId =
+    edit?.value("intro_video_id", fallbackVideoId ?? "") ||
+    fallbackVideoId ||
+    null;
+  const cmsTitle =
+    edit?.value("intro_video_title", fallbackVideoTitle ?? "") ||
+    fallbackVideoTitle ||
+    null;
+  const base = block ?? undefined;
+  const merged = {
+    ...(base || {}),
+    intro_video_id: (cmsId || base?.intro_video_id || null) as string | null,
+    intro_video_title: (cmsTitle ||
+      base?.intro_video_title ||
+      null) as string | null,
+  };
+  return <HowItWorks block={merged as HardSnapshot["how_it_works"]} />;
+}
+
 export default function ToughnessHub() {
   const [data, setData] = useState<HardSnapshot | null | "anon" | "err">(null);
+  const [page, setPage] = useState<SitePage>(FALLBACK_PAGE);
 
   const load = useCallback(() => {
+    fetch("/api/site-pages/toughness", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p: SitePage | null) => {
+        if (p?.slug) setPage(p);
+      })
+      .catch(() => {});
+
     fetchHard()
       .then((d) => {
         if (!d) {
-          // distinguish 401 via re-fetch status is hard with getJSON; try again raw
           return fetch("/api/me/hard", { credentials: "same-origin" }).then(
             (r) => {
               if (r.status === 401) setData("anon");
@@ -174,27 +226,28 @@ export default function ToughnessHub() {
   if (data === "anon") {
     return (
       <ToughnessShell>
-        <h1 className="mt-6 text-2xl font-semibold text-[var(--color-label)]">
-          Toughness
-        </h1>
-        <p className="mt-3 text-[var(--color-label-secondary)]">
-          Sign in to enroll in FatTail Hard or True 75 Hard.
-        </p>
-        <Link
-          href="/login"
-          className="mt-4 inline-block text-[var(--color-tint)] hover:underline"
-        >
-          Log in
-        </Link>
+        <SectionHubShell page={page}>
+          <p className="text-[var(--color-label-secondary)]">
+            Sign in to enroll in FatTail Hard or True 75 Hard.
+          </p>
+          <Link
+            href="/login"
+            className="mt-4 inline-block text-[var(--color-tint)] hover:underline"
+          >
+            Log in
+          </Link>
+        </SectionHubShell>
       </ToughnessShell>
     );
   }
   if (data === "err") {
     return (
       <ToughnessShell>
-        <p className="mt-8 text-sm text-[var(--color-destructive)]">
-          Could not load Toughness. Try again later.
-        </p>
+        <SectionHubShell page={page}>
+          <p className="text-sm text-[var(--color-destructive)]">
+            Could not load Toughness. Try again later.
+          </p>
+        </SectionHubShell>
       </ToughnessShell>
     );
   }
@@ -203,84 +256,79 @@ export default function ToughnessHub() {
 
   return (
     <ToughnessShell>
-      <header className="mt-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-label)]">
-          Toughness
-        </h1>
-        <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-[var(--color-label-secondary)]">
-          Voluntary capacity training for persistence under load — part of
-          Process Integrity&apos;s Mental Toughness story. Never a membership
-          requirement; never P&amp;L theater.
-        </p>
-      </header>
+      <SectionHubShell page={page}>
+        <div className="space-y-6">
+          <HowItWorksWithCms
+            block={data.how_it_works}
+            fallbackVideoId={page.intro_video_id}
+            fallbackVideoTitle={page.intro_video_title}
+          />
 
-      <div className="mt-8 space-y-6">
-        <HowItWorks block={data.how_it_works} />
+          <PhysiologyCite
+            citation={phys.primary.citation}
+            doi={phys.primary.doi}
+            note={phys.note}
+          />
 
-        <PhysiologyCite
-          citation={phys.primary.citation}
-          doi={phys.primary.doi}
-          note={phys.note}
-        />
+          {data.restart?.restarted ? (
+            <p
+              className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-[var(--color-label)]"
+              role="status"
+            >
+              Missed or failed day — your program restarted at{" "}
+              <strong>day one</strong>. Complete every required activity each
+              day without fail.
+            </p>
+          ) : null}
 
-        {data.restart?.restarted ? (
-          <p
-            className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-[var(--color-label)]"
-            role="status"
-          >
-            Missed or failed day — your program restarted at{" "}
-            <strong>day one</strong>. Complete every required activity each day
-            without fail.
+          <StatusCard data={data} />
+
+          <section aria-labelledby="toughness-programs-heading">
+            <h2
+              id="toughness-programs-heading"
+              className="text-base font-semibold text-[var(--color-label)]"
+            >
+              Programs
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
+              These programs develop Mental Toughness. Pick a length, enroll,
+              and complete every required activity every day — or start over at
+              day one.
+            </p>
+            <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+              <li>
+                <ProgramCard
+                  title="True 75 Hard"
+                  blurb="75 days. The original free program by Andy Frisella — offered as-is with full credit. Optional honor-system tracking so Mental Toughness can reflect your show-up."
+                  href="/app/toughness/true-75"
+                  credit="Credit: Andy Frisella · True 75 Hard"
+                />
+              </li>
+              <li>
+                <ProgramCard
+                  title="FatTail Hard"
+                  blurb="20 → 40 → 75. Finish 20 and you may stop or continue; many need 20 twice before 40 feels possible. At 40 most hit despair — get through it and the end is reachable. Fail a day → day one."
+                  href="/app/toughness/fattail-hard"
+                />
+              </li>
+            </ul>
+          </section>
+
+          <p className="text-center text-sm text-[var(--color-label-secondary)]">
+            <Link href="/app" className="hover:underline">
+              ← All Apps
+            </Link>
+            {" · "}
+            <Link href="/app/journey" className="hover:underline">
+              Journey
+            </Link>
+            {" · "}
+            <Link href="/app/practice" className="hover:underline">
+              Practice
+            </Link>
           </p>
-        ) : null}
-
-        <StatusCard data={data} />
-
-        <section aria-labelledby="toughness-programs-heading">
-          <h2
-            id="toughness-programs-heading"
-            className="text-base font-semibold text-[var(--color-label)]"
-          >
-            Programs
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-            These programs develop Mental Toughness. Pick a length, enroll, and
-            complete every required activity every day — or start over at day
-            one.
-          </p>
-          <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-            <li>
-              <ProgramCard
-                title="True 75 Hard"
-                blurb="75 days. The original free program by Andy Frisella — offered as-is with full credit. Optional honor-system tracking so Mental Toughness can reflect your show-up."
-                href="/app/toughness/true-75"
-                credit="Credit: Andy Frisella · True 75 Hard"
-              />
-            </li>
-            <li>
-              <ProgramCard
-                title="FatTail Hard"
-                blurb="20 → 40 → 75. Finish 20 and you may stop or continue; many need 20 twice before 40 feels possible. At 40 most hit despair — get through it and the end is reachable. Fail a day → day one."
-                href="/app/toughness/fattail-hard"
-              />
-            </li>
-          </ul>
-        </section>
-
-        <p className="text-center text-sm text-[var(--color-label-secondary)]">
-          <Link href="/app" className="hover:underline">
-            ← All Apps
-          </Link>
-          {" · "}
-          <Link href="/app/journey" className="hover:underline">
-            Journey
-          </Link>
-          {" · "}
-          <Link href="/app/practice" className="hover:underline">
-            Practice
-          </Link>
-        </p>
-      </div>
+        </div>
+      </SectionHubShell>
     </ToughnessShell>
   );
 }
