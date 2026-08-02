@@ -11,6 +11,7 @@ import Link from "next/link";
 import Button from "@/components/ui/Button";
 import ToughnessShell from "@/components/hard/ToughnessShell";
 import SectionHubShell from "@/components/section-hub/SectionHubShell";
+import { useSectionHubEdit } from "@/components/section-hub/SectionHubEditContext";
 import {
   enrollHard,
   exitHard,
@@ -20,6 +21,7 @@ import {
   type HardVariant,
   pauseHard,
 } from "@/lib/hardApi";
+import { parseYoutubeVideoId, youtubeEmbedUrl } from "@/lib/hub";
 import type { SitePage } from "@/lib/sitePage";
 
 const FALLBACK_PAGE: SitePage = {
@@ -136,6 +138,73 @@ function DailyRules({ tasks }: { tasks: HardTask[] }) {
   );
 }
 
+/**
+ * Intro video slot under the short blurb.
+ * CMS: site_pages.intro_video_id (Edit → YouTube URL/id on the hub).
+ */
+function HubVideo({
+  pageVideoId,
+  pageVideoTitle,
+  snapshotVideoId,
+}: {
+  pageVideoId: string | null;
+  pageVideoTitle: string | null;
+  snapshotVideoId?: string | null;
+}) {
+  const edit = useSectionHubEdit();
+  const raw =
+    edit?.value("intro_video_id", pageVideoId ?? "") ||
+    pageVideoId ||
+    snapshotVideoId ||
+    "";
+  const title =
+    edit?.value(
+      "intro_video_title",
+      pageVideoTitle ?? "About this program",
+    ) ||
+    pageVideoTitle ||
+    "About this program";
+  const videoId = parseYoutubeVideoId(raw);
+
+  if (videoId) {
+    return (
+      <div
+        className="overflow-hidden rounded-2xl border border-[var(--color-separator)] bg-black shadow-[var(--elevation-1)]"
+        data-testid="toughness-hub-video"
+      >
+        <iframe
+          title={title}
+          src={youtubeEmbedUrl(videoId)}
+          className="aspect-video w-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+
+  // Reserved slot so admins know where the video goes (and members see nothing noisy).
+  if (edit?.editMode || edit?.isAdmin) {
+    return (
+      <div
+        className="flex aspect-video flex-col items-center justify-center rounded-2xl border border-dashed border-emerald-400/50 bg-[var(--color-fill)]/40 px-6 text-center"
+        data-testid="toughness-hub-video-slot"
+      >
+        <p className="text-sm font-medium text-[var(--color-label)]">
+          Video slot
+        </p>
+        <p className="mt-1 max-w-sm text-xs text-[var(--color-label-secondary)]">
+          {edit?.editMode
+            ? "Paste a YouTube URL in the Intro video fields above the title area, then Save."
+            : "Click Edit, then set Intro video (YouTube URL or id)."}
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 export default function ToughnessHub() {
   const [data, setData] = useState<HardSnapshot | null | "anon" | "err">(null);
   const [page, setPage] = useState<SitePage>(FALLBACK_PAGE);
@@ -184,24 +253,30 @@ export default function ToughnessHub() {
     return (
       <ToughnessShell>
         <SectionHubShell page={page}>
-          <DailyRules tasks={[]} />
-          <p className="mt-6 text-sm text-[var(--color-label-secondary)]">
-            <Link
-              href="/login"
-              className="font-medium text-[var(--color-tint)] hover:underline"
-            >
-              Log in
-            </Link>{" "}
-            to enroll and log today.
-          </p>
-          <p className="mt-4 text-sm">
-            <Link
-              href="/app/toughness/about"
-              className="text-[var(--color-tint)] hover:underline"
-            >
-              About this program →
-            </Link>
-          </p>
+          <div className="space-y-6">
+            <HubVideo
+              pageVideoId={page.intro_video_id}
+              pageVideoTitle={page.intro_video_title}
+            />
+            <DailyRules tasks={[]} />
+            <p className="text-sm text-[var(--color-label-secondary)]">
+              <Link
+                href="/login"
+                className="font-medium text-[var(--color-tint)] hover:underline"
+              >
+                Log in
+              </Link>{" "}
+              to enroll and log today.
+            </p>
+            <p className="text-center text-sm">
+              <Link
+                href="/app/toughness/about"
+                className="font-medium text-[var(--color-tint)] hover:underline"
+              >
+                About this program →
+              </Link>
+            </p>
+          </div>
         </SectionHubShell>
       </ToughnessShell>
     );
@@ -222,10 +297,16 @@ export default function ToughnessHub() {
     <ToughnessShell>
       {/*
         Title + short admin-editable paragraph = SectionHubShell.
-        Body: daily rules only (+ compact actions, about link).
+        Then video slot → status → daily rules → about link.
       */}
       <SectionHubShell page={page}>
         <div className="space-y-6">
+          <HubVideo
+            pageVideoId={page.intro_video_id}
+            pageVideoTitle={page.intro_video_title}
+            snapshotVideoId={data.how_it_works?.intro_video_id}
+          />
+
           {data.restart?.restarted ? (
             <p
               className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-[var(--color-label)]"
