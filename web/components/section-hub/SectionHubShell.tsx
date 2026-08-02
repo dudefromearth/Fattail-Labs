@@ -36,7 +36,8 @@ function EditBar() {
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-3 px-6 py-3">
         <span className="text-sm font-semibold">Editing hub</span>
         <span className="text-xs text-zinc-500">
-          Title · short blurb · video fields · click Daily rules to edit list
+          Title · short blurb · video · daily rules textarea (always open in
+          Edit)
         </span>
         <span className="ml-auto flex items-center gap-2">
           <span className="text-xs text-zinc-500">

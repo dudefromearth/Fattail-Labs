@@ -6,7 +6,7 @@
  * Programs / enroll / long about → suite nav + About this program link.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import Markdown from "@/components/Markdown";
@@ -24,30 +24,18 @@ import {
 import { parseYoutubeVideoId, youtubeEmbedUrl } from "@/lib/hub";
 import type { SitePage } from "@/lib/sitePage";
 
-const DEFAULT_DAILY_RULES_MD = `- Movement / workout
-- Reading (10 pages non-fiction)
-- Diet integrity
-- Water (body-weight scaled)
-- Progress record
-- No alcohol
-
-Miss or fail any required activity → restart from day one.`;
-
+/** Empty until CMS loads / admin writes — never force product copy. */
 const FALLBACK_PAGE: SitePage = {
   slug: "toughness",
   title: "Toughness",
-  description_md:
-    "Complete every required activity every day. Miss one → restart day one.",
-  daily_rules_md: DEFAULT_DAILY_RULES_MD,
+  description_md: "",
+  daily_rules_md: "",
   intro_video_id: null,
   intro_video_title: "How Toughness programs work",
   faq_title: "Toughness FAQ",
   faq_description_md: null,
   faq_items: [],
 };
-
-const AFFORDANCE =
-  "cursor-pointer rounded outline-dashed outline-1 outline-offset-4 outline-emerald-400/70 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30";
 
 function CompactStatus({ data }: { data: HardSnapshot }) {
   const en = data.active_enrollment;
@@ -108,102 +96,68 @@ function CompactStatus({ data }: { data: HardSnapshot }) {
 }
 
 /**
- * Daily rules slot — CMS site_pages.daily_rules_md (markdown).
- * Edit mode: click to open textarea; Save on the bar.
+ * Daily rules — fully CMS-owned (site_pages.daily_rules_md).
+ * In Edit mode the textarea is always open so you can replace the list freely.
  */
 function DailyRulesSlot({ fallbackMd }: { fallbackMd: string }) {
   const edit = useSectionHubEdit();
   const display =
     edit?.value("daily_rules_md", fallbackMd) ?? fallbackMd;
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(display);
-  const areaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    if (editing) areaRef.current?.focus();
-  }, [editing]);
-
-  useEffect(() => {
-    if (!editing) setDraft(display);
-  }, [display, editing]);
-
-  const body = (
-    <>
-      <h2
-        id="daily-rules-heading"
-        className="text-base font-semibold text-[var(--color-label)]"
+  // --- Admin edit mode: always-open textarea (your rules, not hard-coded) ---
+  if (edit?.editMode) {
+    return (
+      <section
+        className="rounded-2xl border border-emerald-500/40 bg-[var(--color-surface)] p-5 shadow-[var(--elevation-1)] ring-1 ring-emerald-500/30"
+        aria-labelledby="daily-rules-heading"
+        data-testid="toughness-daily-rules"
       >
-        Daily rules
-      </h2>
-      {display.trim() ? (
-        <div className="prose prose-zinc dark:prose-invert mt-3 max-w-none text-[15px] leading-relaxed text-[var(--color-label)] [&_ul]:my-2 [&_li]:my-1">
-          <Markdown>{display}</Markdown>
-        </div>
-      ) : (
-        <p className="mt-3 text-sm italic text-[var(--color-label-secondary)]">
-          {edit?.editMode
-            ? "Click to add daily rules (markdown list)…"
-            : "Daily rules not set yet."}
+        <h2
+          id="daily-rules-heading"
+          className="text-base font-semibold text-[var(--color-label)]"
+        >
+          Daily rules
+        </h2>
+        <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
+          Edit freely (markdown). Replace every line if you want — then{" "}
+          <strong>Save</strong> on the bar below.
         </p>
-      )}
-    </>
-  );
-
-  if (!edit?.editMode) {
-    if (!display.trim() && !edit?.isAdmin) return null;
-    return (
-      <section
-        className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-5 shadow-[var(--elevation-1)]"
-        aria-labelledby="daily-rules-heading"
-        data-testid="toughness-daily-rules"
-      >
-        {body}
-        {edit?.isAdmin && !display.trim() ? (
-          <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">
-            Click Edit to fill this daily rules slot.
-          </p>
-        ) : null}
-      </section>
-    );
-  }
-
-  if (!editing) {
-    return (
-      <section
-        role="button"
-        tabIndex={0}
-        className={`${AFFORDANCE} rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-5 shadow-[var(--elevation-1)]`}
-        aria-labelledby="daily-rules-heading"
-        data-testid="toughness-daily-rules"
-        title="Click to edit daily rules"
-        onClick={() => {
-          setDraft(display);
-          setEditing(true);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setDraft(display);
-            setEditing(true);
+        <textarea
+          value={display}
+          onChange={(e) => edit.setField("daily_rules_md", e.target.value)}
+          rows={Math.max(10, display.split("\n").length + 3)}
+          placeholder={
+            "- First daily requirement\n- Second…\n\nAny notes you want members to see."
           }
-        }}
-      >
-        {body}
-        <p className="mt-3 text-[10px] font-medium uppercase tracking-wide text-emerald-600">
-          Click to edit daily rules (markdown)
-        </p>
+          className="mt-3 w-full resize-y rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]/40 p-3 font-mono text-sm leading-relaxed text-[var(--color-label)] outline-none focus:ring-2 focus:ring-emerald-500"
+          data-testid="toughness-daily-rules-editor"
+        />
       </section>
     );
   }
 
-  const commit = () => {
-    edit.setField("daily_rules_md", draft);
-    setEditing(false);
-  };
+  // --- Member / view mode ---
+  if (!display.trim()) {
+    if (!edit?.isAdmin) return null;
+    return (
+      <section
+        className="rounded-2xl border border-dashed border-emerald-400/50 bg-[var(--color-fill)]/30 p-5"
+        data-testid="toughness-daily-rules-slot"
+      >
+        <h2 className="text-base font-semibold text-[var(--color-label)]">
+          Daily rules
+        </h2>
+        <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
+          Empty slot. Click <strong>Edit</strong> and type the rules members
+          should follow each day.
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section
-      className="rounded-2xl border border-emerald-500/50 bg-[var(--color-surface)] p-5 shadow-[var(--elevation-1)] ring-2 ring-emerald-500"
+      className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-5 shadow-[var(--elevation-1)]"
       aria-labelledby="daily-rules-heading"
       data-testid="toughness-daily-rules"
     >
@@ -213,24 +167,9 @@ function DailyRulesSlot({ fallbackMd }: { fallbackMd: string }) {
       >
         Daily rules
       </h2>
-      <textarea
-        ref={areaRef}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            setDraft(display);
-            setEditing(false);
-          }
-        }}
-        rows={Math.max(8, draft.split("\n").length + 2)}
-        placeholder={"- Movement / workout\n- Reading\n- …"}
-        className="mt-3 w-full resize-y rounded-lg border-0 bg-transparent p-2 font-mono text-sm leading-relaxed text-[var(--color-label)] outline-none"
-      />
-      <p className="mt-2 text-xs text-[var(--color-label-secondary)]">
-        Markdown list. Blur to apply, then <strong>Save</strong> on the bar.
-      </p>
+      <div className="prose prose-zinc dark:prose-invert mt-3 max-w-none text-[15px] leading-relaxed text-[var(--color-label)] [&_ul]:my-2 [&_li]:my-1">
+        <Markdown>{display}</Markdown>
+      </div>
     </section>
   );
 }
@@ -332,8 +271,7 @@ export default function ToughnessHub() {
     load();
   }, [load]);
 
-  const rulesFallback =
-    page.daily_rules_md?.trim() || DEFAULT_DAILY_RULES_MD;
+  const rulesFallback = page.daily_rules_md ?? "";
 
   if (data === null) {
     return (

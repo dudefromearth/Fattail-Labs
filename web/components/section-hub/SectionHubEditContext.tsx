@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -32,6 +33,16 @@ export function useSectionHubEdit() {
   return useContext(SectionHubEditContext);
 }
 
+function snapshotFromPage(initial: SitePage) {
+  return {
+    title: initial.title,
+    description_md: initial.description_md ?? "",
+    daily_rules_md: initial.daily_rules_md ?? "",
+    intro_video_id: initial.intro_video_id ?? "",
+    intro_video_title: initial.intro_video_title ?? "",
+  };
+}
+
 export function SectionHubEditProvider({
   slug,
   initial,
@@ -44,14 +55,22 @@ export function SectionHubEditProvider({
   const isAdmin = useIsAdmin();
   const [editMode, setEditMode] = useState(false);
   const [dirty, setDirty] = useState<Record<string, string>>({});
-  const [saved, setSaved] = useState({
-    title: initial.title,
-    description_md: initial.description_md ?? "",
-    daily_rules_md: initial.daily_rules_md ?? "",
-    intro_video_id: initial.intro_video_id ?? "",
-    intro_video_title: initial.intro_video_title ?? "",
-  });
+  const [saved, setSaved] = useState(() => snapshotFromPage(initial));
   const [saving, setSaving] = useState(false);
+
+  // Parent often mounts with a FALLBACK page then hydrates from API — re-sync
+  // when CMS arrives, but never clobber in-progress edits.
+  useEffect(() => {
+    if (Object.keys(dirty).length > 0) return;
+    setSaved(snapshotFromPage(initial));
+  }, [
+    initial.title,
+    initial.description_md,
+    initial.daily_rules_md,
+    initial.intro_video_id,
+    initial.intro_video_title,
+    dirty,
+  ]);
 
   const setField = useCallback((k: string, v: string) => {
     setDirty((d) => ({ ...d, [k]: v }));
