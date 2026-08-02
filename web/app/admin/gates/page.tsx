@@ -12,6 +12,7 @@ type GateForm = {
   opens_at: string;
   headline: string;
   body_md: string;
+  video_url: string;
   cta_primary_label: string;
   cta_primary_href: string;
   cta_secondary_label: string;
@@ -45,6 +46,7 @@ function formFromGate(g: FeatureGateAdmin): GateForm {
     opens_at: toLocalInput(g.opens_at),
     headline: g.headline || "",
     body_md: g.body_md || "",
+    video_url: g.video_url || "",
     cta_primary_label: g.cta_primary_label || "",
     cta_primary_href: g.cta_primary_href || "",
     cta_secondary_label: g.cta_secondary_label || "",
@@ -111,6 +113,7 @@ export default function AdminGatesPage() {
       opens_at: fromLocalInput(form.opens_at),
       headline: form.headline,
       body_md: form.body_md,
+      video_url: form.video_url.trim() || null,
       cta_primary_label: form.cta_primary_label,
       cta_primary_href: form.cta_primary_href,
       cta_secondary_label: form.cta_secondary_label,
@@ -143,9 +146,21 @@ export default function AdminGatesPage() {
       <header>
         <h1 className="text-2xl font-semibold">Feature gates</h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-          Hide a public surface until it is ready, show a countdown for
-          anticipation, and collect emails for your mail system. Managed only
-          here — not on member pages.
+          Edit the public home landing (and other gated surfaces): headline,
+          markdown body, intro video, countdown, waitlist, and CTAs. Select{" "}
+          <strong className="font-medium text-zinc-700 dark:text-zinc-300">
+            Home (/)
+          </strong>{" "}
+          to change what visitors see at{" "}
+          <a
+            href="/"
+            className="font-medium text-emerald-700 underline dark:text-emerald-400"
+            target="_blank"
+            rel="noreferrer"
+          >
+            labs.fattail.ai
+          </a>
+          .
         </p>
       </header>
 
@@ -265,13 +280,38 @@ export default function AdminGatesPage() {
 
               <label className="block text-sm">
                 Body (markdown)
+                <span className="mt-0.5 block text-xs font-normal text-zinc-500">
+                  Supports **bold**, links, lists. Shown under the headline on
+                  the public page.
+                </span>
                 <textarea
-                  rows={5}
-                  className={field}
+                  rows={10}
+                  className={`${field} font-mono text-[13px] leading-relaxed`}
                   value={form.body_md}
                   onChange={(e) =>
                     setForm({ ...form, body_md: e.target.value })
                   }
+                  placeholder={
+                    "Membership education for convex options trading.\n\n" +
+                    "- Capital preservation first\n" +
+                    "- Courses, live sessions, practice apps"
+                  }
+                />
+              </label>
+
+              <label className="block text-sm">
+                Intro video URL
+                <span className="mt-0.5 block text-xs font-normal text-zinc-500">
+                  YouTube watch/share URL, bare 11-char video id, or any https
+                  embed URL. Leave empty for no video.
+                </span>
+                <input
+                  className={field}
+                  value={form.video_url}
+                  onChange={(e) =>
+                    setForm({ ...form, video_url: e.target.value })
+                  }
+                  placeholder="https://www.youtube.com/watch?v=…"
                 />
               </label>
 

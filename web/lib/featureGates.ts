@@ -7,6 +7,8 @@ export type FeatureGatePublic = {
   opens_at: string | null;
   headline: string;
   body_md: string;
+  /** YouTube URL/id or https embed URL for the landing intro video. */
+  video_url?: string | null;
   cta_primary_label: string;
   cta_primary_href: string;
   cta_secondary_label: string;

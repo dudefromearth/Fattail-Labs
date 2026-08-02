@@ -36,6 +36,7 @@ GATE_FIELDS = frozenset(
         "opens_at",
         "headline",
         "body_md",
+        "video_url",
         "cta_primary_label",
         "cta_primary_href",
         "cta_secondary_label",
@@ -45,6 +46,12 @@ GATE_FIELDS = frozenset(
         "reveal_path",
         "footer_note",
     }
+)
+
+# video_url: empty, bare YouTube id, or http(s) URL (admin-only surface).
+_VIDEO_URL_RE = re.compile(
+    r"^(?:https?://[^\s<>\"']{1,1000}|[\w-]{11})$",
+    re.IGNORECASE,
 )
 
 
@@ -85,6 +92,7 @@ def _row_public(r: dict, *, now: datetime) -> dict:
         "opens_at": opens_at.isoformat() + "Z" if opens_at else None,
         "headline": r["headline"] or "Coming soon",
         "body_md": r.get("body_md") or "",
+        "video_url": (r.get("video_url") or "").strip() or None,
         "cta_primary_label": r.get("cta_primary_label") or "",
         "cta_primary_href": r.get("cta_primary_href") or "",
         "cta_secondary_label": r.get("cta_secondary_label") or "",
@@ -105,6 +113,7 @@ def _row_admin(r: dict, email_count: int = 0) -> dict:
         "opens_at": opens_at.isoformat() + "Z" if opens_at else None,
         "headline": r["headline"] or "",
         "body_md": r.get("body_md") or "",
+        "video_url": (r.get("video_url") or "").strip() or "",
         "cta_primary_label": r.get("cta_primary_label") or "",
         "cta_primary_href": r.get("cta_primary_href") or "",
         "cta_secondary_label": r.get("cta_secondary_label") or "",
@@ -120,9 +129,27 @@ def _row_admin(r: dict, email_count: int = 0) -> dict:
     }
 
 
+def _normalize_video_url(raw) -> str | None:
+    """Empty → None. Bare YouTube id or http(s) URL; reject junk."""
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    if len(s) > 1024:
+        raise HTTPException(status_code=422, detail="video_url max 1024 characters")
+    if not _VIDEO_URL_RE.match(s):
+        raise HTTPException(
+            status_code=422,
+            detail="video_url must be a YouTube id or http(s) URL",
+        )
+    return s
+
+
 def _load(cur, surface_key: str) -> dict | None:
     cur.execute(
         """SELECT surface_key, label, enabled, opens_at, headline, body_md,
+                  video_url,
                   cta_primary_label, cta_primary_href,
                   cta_secondary_label, cta_secondary_href,
                   collect_email, email_prompt, reveal_path, footer_note,
@@ -151,6 +178,7 @@ def get_public_gate(surface_key: str) -> dict:
                     "opens_at": None,
                     "headline": "",
                     "body_md": "",
+                    "video_url": None,
                     "collect_email": False,
                     "reveal_path": "/",
                 }
@@ -308,6 +336,8 @@ async def admin_put_gate(surface_key: str, request: Request) -> dict:
                 elif k == "body_md":
                     v = body[k]
                     patch[k] = None if v is None else str(v)
+                elif k == "video_url":
+                    patch[k] = _normalize_video_url(body[k])
             if patch:
                 cols = ", ".join(f"{k} = %s" for k in patch)
                 cur.execute(

@@ -8,6 +8,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Markdown from "@/components/Markdown";
 import type { FeatureGatePublic } from "@/lib/featureGates";
+import GateVideo from "./GateVideo";
 import LaunchCountdown from "./LaunchCountdown";
 
 export default function LaunchLanding({ gate }: { gate: FeatureGatePublic }) {
@@ -128,9 +129,13 @@ export default function LaunchLanding({ gate }: { gate: FeatureGatePublic }) {
             {gate.headline || "Coming soon"}
           </h1>
           {gate.body_md ? (
-            <div className="mt-4 max-w-xl mx-auto text-base leading-relaxed text-zinc-300 sm:text-lg [&_a]:text-emerald-400 [&_p]:my-2 [&_strong]:text-emerald-300">
+            <div className="mt-4 max-w-xl mx-auto text-base leading-relaxed text-zinc-300 sm:text-lg [&_a]:text-emerald-400 [&_p]:my-2 [&_strong]:text-emerald-300 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 text-left sm:text-center">
               <Markdown>{gate.body_md}</Markdown>
             </div>
+          ) : null}
+
+          {gate.video_url ? (
+            <GateVideo url={gate.video_url} title={gate.headline || "Intro"} />
           ) : null}
 
           {targetMs != null && (
