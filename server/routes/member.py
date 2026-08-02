@@ -73,16 +73,16 @@ def _lesson_for_access(
         row = rows[0] if rows else None
         if row is None:
             raise HTTPException(status_code=404, detail="Lesson not found")
-        if not row["free_preview"] and not identity.role_meets(
-            cur, identity_id, role, "alumni"
+        if not row["free_preview"] and not identity.can_access_member_content(
+            cur, identity_id, role
         ):
             raise HTTPException(status_code=403, detail="Membership required")
         return row
     row = cur.fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Lesson not found")
-    if not row["free_preview"] and not identity.role_meets(
-        cur, identity_id, role, "alumni"
+    if not row["free_preview"] and not identity.can_access_member_content(
+        cur, identity_id, role
     ):
         raise HTTPException(status_code=403, detail="Membership required")
     return row

@@ -51,6 +51,39 @@ def test_observer_gets_free_but_not_gated(client, lesson_slugs):
     assert _get(client, gated, c).status_code == 403
 
 
+def test_observer_trial_membership_gets_gated(client, lesson_slugs):
+    """Paid Observer (plan row) unlocks gated lessons even if JWT role is observer."""
+    import db
+    import identity as identity_mod
+
+    _, gated = lesson_slugs
+    email = "zztest-lesson-observer-trial@labs.test"
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = identity_mod.get_or_create_identity(cur, email, "Obs Trial Lesson")
+            cur.execute(
+                "UPDATE identities SET role_override = NULL WHERE identity_id = %s",
+                (iid,),
+            )
+            cur.execute("DELETE FROM memberships WHERE identity_id = %s", (iid,))
+            cur.execute("SELECT id FROM plans WHERE slug = %s", ("observer-trial",))
+            plan = cur.fetchone()
+            assert plan is not None
+            identity_mod.upsert_membership(
+                cur, iid, int(plan["id"]), "active", "zztest"
+            )
+    try:
+        c = cookie_for("observer", iid)  # stale-looking free role cookie
+        assert _get(client, gated, c).status_code == 200, (
+            "Observer membership must unlock gated lessons"
+        )
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM memberships WHERE identity_id = %s", (iid,))
+                cur.execute("DELETE FROM identities WHERE identity_id = %s", (iid,))
+
+
 def test_alumni_and_above_get_gated(client, lesson_slugs):
     _, gated = lesson_slugs
     for role in ("alumni", "activator", "navigator", "administrator"):

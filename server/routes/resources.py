@@ -212,11 +212,10 @@ def download_version(version_id: int, request: Request):
                 raise HTTPException(status_code=404, detail="Resource not found")
 
             if not free and not is_admin:
-                if not identity.role_meets(
+                if not identity.can_access_member_content(
                     cur,
                     int(claims["identity_id"]),
                     str(claims.get("role") or "observer"),
-                    "alumni",
                 ):
                     raise HTTPException(
                         status_code=403,
@@ -244,11 +243,10 @@ def download_attachment(attachment_id: int, request: Request):
             if row is None:
                 raise HTTPException(status_code=404, detail="Resource not found")
             if not row["free_preview"] and claims.get("role") != "administrator":
-                if not identity.role_meets(
+                if not identity.can_access_member_content(
                     cur,
                     int(claims["identity_id"]),
                     str(claims.get("role") or "observer"),
-                    "alumni",
                 ):
                     raise HTTPException(
                         status_code=403,

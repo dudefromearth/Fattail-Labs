@@ -257,20 +257,29 @@ def has_active_plan_slug(cur, identity_id: int, slug: str) -> bool:
 def feature_role(cur, identity_id: int, session_role: str) -> str:
     """Role used for **feature gates** (DL-126 / DL-128).
 
-    Active paid Observer membership (``observer-trial``) elevates access to
-    **navigator** for the term — same as Navigator for Trade Log, Reports,
-    Journal, live coaching, courses, resources, etc.
+    Takes the **best** of:
+    - session JWT role (snapshotted at login)
+    - live ``derive_role`` from active memberships (Observer/Activator/Navigator/Coaching)
 
-    Free no-plan accounts stay at session role ``observer`` (previews only).
-    Session role is still stored on the JWT; this is live membership elevation.
+    Paid Observer (``observer-trial``) → navigator-tier access for the term.
+    Free no-plan accounts stay ``observer`` (previews only).
     """
     role = session_role if session_role in ROLE_ORDER else "observer"
-    if role == "administrator":
+    if role == "administrator" or session_role == "administrator":
         return "administrator"
+    try:
+        live = derive_role(cur, identity_id)
+    except IdentityError:
+        live = "observer"
+    if live not in ROLE_ORDER:
+        live = "observer"
+    if role not in ROLE_ORDER:
+        role = "observer"
+    # Explicit Observer plan elevation (same as grants_role=navigator on that plan)
     if has_active_plan_slug(cur, identity_id, OBSERVER_TRIAL_SLUG):
-        if ROLE_ORDER.index(role) < ROLE_ORDER.index("navigator"):
-            return "navigator"
-    return role
+        if ROLE_ORDER.index(live) < ROLE_ORDER.index("navigator"):
+            live = "navigator"
+    return live if ROLE_ORDER.index(live) >= ROLE_ORDER.index(role) else role
 
 
 def role_meets(cur, identity_id: int, session_role: str, minimum: str) -> bool:
@@ -280,6 +289,34 @@ def role_meets(cur, identity_id: int, session_role: str, minimum: str) -> bool:
     except Exception:
         # Unknown role comparison → deny (fail closed for gates)
         return False
+
+
+def has_active_membership(cur, identity_id: int) -> bool:
+    """Any unexpired active/grace membership (paid or alumni) — not free signup."""
+    if not identity_id:
+        return False
+    placeholders = ",".join(["%s"] * len(ACTIVE_STATUSES))
+    cur.execute(
+        f"""SELECT 1 FROM memberships m
+            WHERE m.identity_id = %s
+              AND m.status IN ({placeholders})
+              AND (m.current_period_end IS NULL OR m.current_period_end > NOW())
+            LIMIT 1""",
+        (identity_id, *ACTIVE_STATUSES),
+    )
+    return cur.fetchone() is not None
+
+
+def can_access_member_content(
+    cur, identity_id: int, session_role: str
+) -> bool:
+    """Courses / resources / gated lessons: alumni+ feature role OR any live membership.
+
+    Covers paid Observer with a stale JWT still saying role=observer.
+    """
+    if role_meets(cur, identity_id, session_role, "alumni"):
+        return True
+    return has_active_membership(cur, identity_id)
 
 
 # --- alumni rule (Membership Tiers spec §3) -----------------------------------

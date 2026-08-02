@@ -72,11 +72,10 @@ def lesson_detail(
             if (
                 not is_admin
                 and not row["free_preview"]
-                and not identity.role_meets(
+                and not identity.can_access_member_content(
                     cur,
                     int(claims["identity_id"]),
                     str(claims.get("role") or "observer"),
-                    "alumni",
                 )
             ):
                 raise HTTPException(status_code=403, detail="Membership required")

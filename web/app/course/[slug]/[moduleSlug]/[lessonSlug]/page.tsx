@@ -417,15 +417,22 @@ export default async function LessonPlayerPage({
         <div className="py-16 text-center">
           <h1 className="text-2xl font-semibold">This lesson is for members</h1>
           <p className="mt-3 text-zinc-600 dark:text-zinc-400">
-            Your free account unlocks the previews — membership unlocks every
-            lesson, live session, and resource.
+            Observer, Activator, Navigator, and Coaching memberships unlock
+            every lesson. If you just joined via FatTail, open Courses from My
+            Account again (SSO) so Labs refreshes your membership.
           </p>
-          <div className="mt-6 flex items-center justify-center gap-3">
-            <Link
-              href="/membership"
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="https://fattail.ai/fotw-sso?redirect=https%3A%2F%2Flabs.fattail.ai%2Fapi%2Fauth%2Fsso%2Fwordpress%3Afattail%3Fnext%3D%2Fcourse"
               className="rounded-full bg-emerald-500 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600"
             >
-              Become a Member
+              Refresh membership (SSO)
+            </a>
+            <Link
+              href="/membership"
+              className="chip font-medium px-6 py-2.5"
+            >
+              Membership
             </Link>
             <Link
               href={`/course/${slug}`}
