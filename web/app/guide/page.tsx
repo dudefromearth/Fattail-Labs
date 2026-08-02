@@ -14,8 +14,8 @@ export const dynamic = "force-static";
 export const metadata: Metadata = {
   title: "User's Guide",
   description:
-    "How FatTail Labs works: free accounts and previews, taking courses, " +
-    "progress tracking, quizzes, the live schedule, resources, and membership.",
+    "How FatTail Labs works: courses, Practice (Trade Log, Journal, Retrospective, Reports), " +
+    "Journey, Toughness, Wiki, live sessions, resources, and membership. Process over P&L theater.",
   alternates: { canonical: siteUrl("/guide") },
 };
 
@@ -40,8 +40,9 @@ export default function GuidePage() {
           User&apos;s Guide
         </h1>
         <p className="mt-2 text-[var(--color-label-secondary)]">
-          Everything the Lab does and how to use it. Five minutes here saves an
-          hour of poking around.
+          Courses, live sessions, Practice, Journey, Toughness, Wiki, and what is
+          coming next. Five minutes here saves an hour of poking around.
+          Process over P&amp;L theater — always.
         </p>
         <div className="mt-4">
           <GuideContentsMobile />
@@ -153,11 +154,12 @@ export default function GuidePage() {
                 <Link href="/app/journey" className={link}>
                   Journey
                 </Link>{" "}
-                — enrollments, quiz results, activity, and{" "}
-                <strong>My presence</strong> process scores (reputation, personal
-                growth, attendance streak, contribution). The{" "}
-                <strong>Community board</strong> shows peers who opt in so you can
-                compare participation — never profit.
+                — your path and process standing across the whole Lab (courses,
+                live, practice, and optional Toughness). See{" "}
+                <a href="#journey" className={link}>
+                  Journey
+                </a>{" "}
+                below.
               </li>
               <li>
                 <Link href="/me" className={link}>
@@ -166,6 +168,328 @@ export default function GuidePage() {
                 — display name, profile photo, and Journey board visibility.
               </li>
             </ul>
+
+            <H2 id="apps-overview">Apps at a glance</H2>
+            <p>
+              Open{" "}
+              <Link href="/app" className={link}>
+                Apps
+              </Link>{" "}
+              for the tools that sit beside courses and live sessions. They share
+              one job: help you keep an honest practice and see progress without
+              turning Labs into a P&amp;L scoreboard.
+            </p>
+            <ul>
+              <li>
+                <strong>Practice</strong> — Trade Log, Reports, Journal,
+                Retrospective (and Playbook when it ships).
+              </li>
+              <li>
+                <strong>Journey</strong> — path + process integrity across the
+                Lab.
+              </li>
+              <li>
+                <strong>Toughness</strong> — optional Hard programs; can feed
+                Journey when you enroll.
+              </li>
+              <li>
+                <strong>Wiki</strong> — the growing map of what we teach.
+              </li>
+              <li>
+                <strong>Strategy Lab</strong> — coming: build, test, and run
+                strategies with process gates.
+              </li>
+            </ul>
+
+            <H2 id="practice">Practice suite</H2>
+            <p>
+              <Link href="/app/practice" className={link}>
+                Practice
+              </Link>{" "}
+              is your day-to-day operating loop. The suite opens on{" "}
+              <strong>Reports</strong>; a shared nav moves you between Trade Log,
+              Reports, Journal, Retrospective, and Playbook without losing your
+              place.
+            </p>
+            <p>
+              <strong>Practice Context</strong> sits in the top chrome of every
+              Practice app:
+            </p>
+            <ul>
+              <li>
+                <strong>Account</strong> — which book you&apos;re looking at
+                (broker or sim). Trades and reports follow this account. Your
+                Journal conversation is still <em>you</em>, not a separate
+                journal per account.
+              </li>
+              <li>
+                <strong>Date</strong> — year / month / week / day. Journal uses
+                it as “which day,” Trade Log as a list filter, Reports as the
+                analysis window.
+              </li>
+            </ul>
+
+            <H2 id="trade-log">Trade Log</H2>
+            <p>
+              <Link href="/app/trade-log" className={link}>
+                Trade Log
+              </Link>{" "}
+              is your options-first blotter — multi-leg fills and structure,
+              recorded as process evidence.
+            </p>
+            <ul>
+              <li>
+                <strong>Table-first:</strong> a permanent log of trades; open any
+                row in a right-hand sheet to create, edit, or review.
+              </li>
+              <li>
+                <strong>Accounts:</strong> more than one book; the active account
+                comes from Practice Context.
+              </li>
+              <li>
+                <strong>Import &amp; export:</strong> bring fills in and take a
+                portable copy of your book when you need it.
+              </li>
+              <li>
+                <strong>Framing:</strong> process and structure first — not a
+                theater of profits.
+              </li>
+            </ul>
+
+            <H2 id="journal">Journal</H2>
+            <p>
+              <Link href="/app/journal" className={link}>
+                Journal
+              </Link>{" "}
+              is calendar-first process notes: preparation, selection, and review
+              as a conversation for each day.
+            </p>
+            <ul>
+              <li>
+                <strong>Calendar navigation</strong> aligned with Practice date
+                context.
+              </li>
+              <li>
+                <strong>Day session</strong> — one thread for that date, with
+                guided process prompts (capacity building, not stock tips).
+              </li>
+              <li>
+                <strong>Tags</strong> — label what happened so later
+                retrospectives and integrity meters stay honest.
+              </li>
+              <li>
+                <strong>Trades on this day</strong> — from the active account,
+                so the book and the notes stay connected.
+              </li>
+              <li>
+                <strong>Retrospective starts here</strong> when you mark material
+                for the formal review ceremony.
+              </li>
+            </ul>
+
+            <H2 id="retrospective">Retrospective</H2>
+            <p>
+              <Link href="/app/retrospective" className={link}>
+                Retrospective
+              </Link>{" "}
+              is the structured review: what held, what broke, what you commit
+              next. Process first; results are secondary, never the headline as a
+              brag.
+            </p>
+            <ul>
+              <li>
+                <strong>Library</strong> of past retrospectives.
+              </li>
+              <li>
+                <strong>Scope</strong> — from last review (or your maiden
+                journey) so you know what the ceremony will gather.
+              </li>
+              <li>
+                <strong>Ceremony</strong> — dual report with clear steps through
+                cause, what worked, and next commitments.
+              </li>
+              <li>
+                <strong>Cadence</strong> — gentle nudges when a review is due,
+                including from Journey.
+              </li>
+            </ul>
+
+            <H2 id="reports">Reports</H2>
+            <p>
+              <Link href="/app/reports" className={link}>
+                Reports
+              </Link>{" "}
+              is the Practice home view: how the selected account’s path evolved,
+              drawdown, and process-oriented tables built from Trade Log.
+            </p>
+            <ul>
+              <li>
+                Equity-style path from starting capital and{" "}
+                <strong>drawdown</strong> — capital path risk, not a trophy.
+              </li>
+              <li>
+                <strong>Same account context</strong> as Trade Log.
+              </li>
+              <li>
+                Drill into fills when you need the blotter behind a number.
+              </li>
+            </ul>
+
+            <H2 id="playbook">Playbook (coming)</H2>
+            <p>
+              <Link href="/app/playbook" className={link}>
+                Playbook
+              </Link>{" "}
+              will hold your personal defined-risk setups and rules — the book
+              you actually trade from — so capacity stays with you. Until it
+              ships, keep rules in Journal and structures in Trade Log.
+            </p>
+
+            <H2 id="journey">Journey</H2>
+            <p>
+              <Link href="/app/journey" className={link}>
+                Journey
+              </Link>{" "}
+              is where you keep close track of <strong>practice and progress</strong>{" "}
+              across the whole Lab — not a second login, not a separate product.
+            </p>
+            <p>
+              <strong>On the page you will find:</strong>
+            </p>
+            <ul>
+              <li>
+                <strong>Personal process</strong> — a Process Integrity meter for
+                long-term habits (learning rhythm, live presence, practice
+                persistence, adherence, and more). Grades respect how long
+                you&apos;ve been practicing; new members are not labeled “Poor”
+                for starting.
+              </li>
+              <li>
+                <strong>Community presence</strong> — an opt-in board of process
+                peers (participation pillars only — never profit ranking). You
+                choose visibility on Profile.
+              </li>
+              <li>
+                <strong>Learning path</strong> — enrollments, resume into the next
+                lesson, quiz results, and activity.
+              </li>
+              <li>
+                <strong>Pathway &amp; next live</strong> — what to do next in
+                curriculum and calendar.
+              </li>
+            </ul>
+            <p>
+              <strong>How Journey stays integral everywhere:</strong>
+            </p>
+            <ul>
+              <li>
+                <strong>Courses</strong> feed enrollments, watch progress, and
+                quizzes.
+              </li>
+              <li>
+                <strong>Live sessions</strong> feed attendance / presence when you
+                check in.
+              </li>
+              <li>
+                <strong>Practice</strong> (Trade Log, Journal, Retrospective)
+                feeds the process meter — consistency of practice, not who made
+                money this week.
+              </li>
+              <li>
+                <strong>Toughness</strong> adds a Mental Toughness reading only
+                when you have an active Hard challenge (see below).
+              </li>
+              <li>
+                <strong>Home</strong> after login surfaces continue-learning and a
+                compact standing read; <strong>Profile</strong> controls how you
+                appear on the community board.
+              </li>
+            </ul>
+            <p>
+              In short: Journey is the honest dashboard for “am I doing the work?”
+              — process over pace, capacity over dependency.
+            </p>
+
+            <H2 id="toughness">Toughness</H2>
+            <p>
+              <Link href="/app/toughness" className={link}>
+                Toughness
+              </Link>{" "}
+              is <strong>optional</strong> capacity training under voluntary load
+              — FatTail Hard and True 75 Hard. It is never a membership gate and
+              never required to use the rest of Labs.
+            </p>
+            <ul>
+              <li>
+                <strong>How it works:</strong> complete every required activity
+                every day for the full length of the program you chose. Miss or
+                fail any required task and you restart at day one. Life still
+                happens (travel, weddings); the rules do not pause.
+              </li>
+              <li>
+                <strong>True 75 Hard</strong> — Andy Frisella’s program as-is,
+                with full credit; optional honor-system tracking in Labs.
+              </li>
+              <li>
+                <strong>FatTail Hard</strong> — 20-, 40-, and 75-day programs
+                (breakthrough periods). Many people complete 20 twice before 40
+                feels possible; at 40 many hit a hard stretch of despair — getting
+                through it under the rules makes the end reachable.
+              </li>
+              <li>
+                <strong>Today’s log</strong> — daily checklist while enrolled;
+                pause or exit anytime.
+              </li>
+              <li>
+                <strong>Journey:</strong> when a challenge is <em>active</em>,
+                Mental Toughness enters your Process Integrity meter. When you
+                are not enrolled, that dimension stays empty — it does not score
+                as a zero or punish you for opting out.
+              </li>
+            </ul>
+
+            <H2 id="wiki">Wiki</H2>
+            <p>
+              The{" "}
+              <Link href="/app/wiki" className={link}>
+                Wiki
+              </Link>{" "}
+              is the compiled map of everything we teach — concepts, courses, and
+              live material, cross-linked and searchable. It is{" "}
+              <strong>always growing</strong> as new teaching lands.
+            </p>
+            <ul>
+              <li>
+                <strong>Search first</strong> — find pages in your own words.
+              </li>
+              <li>
+                <strong>Start here</strong> and <strong>new this week</strong> —
+                orientation and recently updated pages.
+              </li>
+              <li>
+                Use it when a lesson or live session points at a concept you want
+                to hold onto outside the video.
+              </li>
+            </ul>
+
+            <H2 id="strategy-lab">Strategy Lab (coming)</H2>
+            <p>
+              <Link href="/app/strategy-lab" className={link}>
+                Strategy Lab
+              </Link>{" "}
+              will be a large surface for developing edges with discipline:{" "}
+              <strong>Build, Test, Run bots — live and paper</strong>, with
+              process gates (most ideas die; survivors earn a campaign). Execution
+              is aimed at <strong>Tradier</strong>; market data stays separate
+              from the broker so you are not paying twice for the same tape.
+            </p>
+            <p>
+              Today the page is an orientation map and courseware backlog. The
+              full workspace (historical tests, live tests, bot runs, paper then
+              live) ships in later waves. Until then, validate edges with
+              Practice, courses, and honest journaling — not with silent
+              automation.
+            </p>
 
             <H2 id="live-sessions">Live sessions</H2>
             <p>

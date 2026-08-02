@@ -107,4 +107,28 @@ Missing KC on a “complete” package → **Red** `missing_stage` / shape incom
 
 ---
 
+## Load into Labs (partial course update)
+
+Author packages as markdown (`## Questions` / `## Answers`, `**N.**` / `- A.` / `**N — C.**`).
+
+**CLI (create or replace quiz lesson):**
+
+```bash
+cd server
+.venv/bin/python import_knowledge_check.py \
+  --course pure-options --module see-it \
+  --title "Knowledge Check — See It" --slug knowledge-check \
+  --file path/to/M1-knowledge-check.md
+```
+
+**Admin UI:** open the quiz lesson → Quiz builder → **Import knowledge package…**  
+→ paste markdown → **Import & replace all questions**.
+
+**API:** `PUT /api/admin/lessons/{lesson_id}/questions/import`  
+`{ "markdown": "…", "replace": true }` or `{ "questions": [ … ] }`.
+
+Parser/domain: `server/course_quiz_import.py`.  
+
+---
+
 **Handoff contract:** see [`Specs/FatTail-Labs-Handoff-Contract-v1.0.md`](../../../Specs/FatTail-Labs-Handoff-Contract-v1.0.md) — emit `handoff_v1` with empty `inputs_missing` before Green.

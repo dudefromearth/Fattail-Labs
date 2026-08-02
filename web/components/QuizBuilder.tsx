@@ -171,28 +171,52 @@ function QuestionForm({
 
 export default function QuizBuilder({
   courseSlug,
+  moduleSlug,
   lessonSlug,
+  lessonId: lessonIdProp,
 }: {
   courseSlug: string;
+  moduleSlug?: string;
   lessonSlug: string;
+  lessonId?: number | null;
 }) {
   const isAdmin = useIsAdmin();
-  const [lessonId, setLessonId] = useState<number | null>(null);
+  const [lessonId, setLessonId] = useState<number | null>(
+    lessonIdProp != null && Number.isFinite(lessonIdProp)
+      ? Number(lessonIdProp)
+      : null,
+  );
   const [questions, setQuestions] = useState<AdminQuestion[]>([]);
   const [editing, setEditing] = useState<number | "new" | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importMd, setImportMd] = useState("");
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
+    if (lessonIdProp != null && Number.isFinite(lessonIdProp)) {
+      setLessonId(Number(lessonIdProp));
+      return;
+    }
     if (!isAdmin) return;
     fetch(`/api/admin/courses/${courseSlug}`, { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!d) return;
-        for (const m of d.modules)
-          for (const l of m.lessons)
-            if (l.slug === lessonSlug) setLessonId(l.id);
+        for (const m of d.modules as {
+          slug: string;
+          lessons: { id: number; slug: string }[];
+        }[]) {
+          if (moduleSlug && m.slug !== moduleSlug) continue;
+          for (const l of m.lessons) {
+            if (l.slug === lessonSlug) {
+              setLessonId(l.id);
+              return;
+            }
+          }
+        }
       })
       .catch(() => {});
-  }, [isAdmin, courseSlug, lessonSlug]);
+  }, [isAdmin, courseSlug, moduleSlug, lessonSlug, lessonIdProp]);
 
   async function loadQuestions(id: number) {
     const r = await fetch(`/api/admin/lessons/${id}/questions`, {
@@ -242,11 +266,89 @@ export default function QuizBuilder({
     await loadQuestions(activeLessonId);
   }
 
+  async function importMarkdown() {
+    if (!importMd.trim()) {
+      await appAlert({
+        title: "Nothing to import",
+        message: "Paste a knowledge-check markdown package first.",
+      });
+      return;
+    }
+    if (
+      !(await appConfirm({
+        title: "Replace all questions?",
+        message:
+          "This replaces every question on this quiz with the imported package. Existing questions are deleted.",
+        confirmLabel: "Import & replace",
+        destructive: true,
+      }))
+    ) {
+      return;
+    }
+    setImporting(true);
+    const r = await fetch(
+      `/api/admin/lessons/${activeLessonId}/questions/import`,
+      {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markdown: importMd, replace: true }),
+      },
+    );
+    setImporting(false);
+    if (!r.ok) {
+      await appAlert({ title: "Import failed", message: await r.text() });
+      return;
+    }
+    const d = (await r.json()) as { imported?: number };
+    setImportOpen(false);
+    setImportMd("");
+    await loadQuestions(activeLessonId);
+    await appAlert({
+      title: "Imported",
+      message: `${d.imported ?? "?"} questions loaded into this knowledge check.`,
+    });
+  }
+
   return (
     <div className="mt-10 rounded-2xl border-2 border-dashed border-emerald-300 p-5 dark:border-emerald-800">
       <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
         Quiz builder (admin)
       </p>
+      <p className="mt-1 text-xs text-zinc-500">
+        Add questions one by one, or import a knowledge-check markdown package
+        (## Questions / ## Answers).
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setImportOpen((o) => !o)}
+          className="rounded-full border border-emerald-400 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
+        >
+          {importOpen ? "Hide import" : "Import knowledge package…"}
+        </button>
+      </div>
+      {importOpen && (
+        <div className="mt-3 space-y-2 rounded-xl bg-zinc-50 p-3 dark:bg-zinc-900">
+          <textarea
+            value={importMd}
+            onChange={(e) => setImportMd(e.target.value)}
+            rows={12}
+            placeholder={
+              "Paste full knowledge-check markdown:\n## Questions\n**1.** …\n- A. …\n## Answers\n**1 — C. …**\n…"
+            }
+            className="w-full rounded-lg border border-zinc-300 bg-white p-2 font-mono text-xs dark:border-zinc-700 dark:bg-zinc-950"
+          />
+          <button
+            type="button"
+            disabled={importing}
+            onClick={() => void importMarkdown()}
+            className="rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          >
+            {importing ? "Importing…" : "Import & replace all questions"}
+          </button>
+        </div>
+      )}
       <ul className="mt-3 space-y-3">
         {questions.map((q, i) => (
           <li key={q.id} className="text-sm">

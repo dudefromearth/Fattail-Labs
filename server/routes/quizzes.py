@@ -239,6 +239,91 @@ async def create_question(lesson_id: int, request: Request) -> dict:
             return {"id": cur.lastrowid}
 
 
+@router.put("/api/admin/lessons/{lesson_id}/questions/import")
+async def import_questions(lesson_id: int, request: Request) -> dict:
+    """Replace all quiz questions from knowledge-check markdown or JSON list.
+
+    Body (one of):
+      { "markdown": "# Knowledge Check\\n## Questions\\n..." }
+      { "questions": [ { kind, prompt_md, options, correct, explanation_md }, ... ] }
+
+    Optional: ``replace`` (default true) — if false, append after existing.
+    Lesson must be ``kind=quiz`` (set kind first if needed).
+    """
+    require_admin(request)
+    import course_quiz_import as cqi
+
+    body = await request.json()
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="JSON object required")
+    replace = body.get("replace", True)
+    if not isinstance(replace, bool):
+        raise HTTPException(status_code=422, detail="replace must be boolean")
+
+    try:
+        if body.get("markdown") is not None:
+            questions = cqi.parse_knowledge_check_md(str(body.get("markdown") or ""))
+        elif isinstance(body.get("questions"), list):
+            questions = body["questions"]
+            if not questions:
+                raise cqi.QuizImportError("questions list is empty")
+            for i, q in enumerate(questions):
+                if not isinstance(q, dict):
+                    raise cqi.QuizImportError(f"questions[{i}] must be an object")
+                # validate each via shared rules
+                _validate_question(q)
+        else:
+            raise HTTPException(
+                status_code=422,
+                detail="Provide markdown (knowledge-check package) or questions[]",
+            )
+    except cqi.QuizImportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, kind FROM lessons WHERE id = %s", (lesson_id,))
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="Lesson not found")
+            if row["kind"] != "quiz":
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Lesson kind is {row['kind']!r}; set kind to quiz before import",
+                )
+            if replace:
+                try:
+                    n = cqi.replace_lesson_questions(cur, lesson_id, questions)
+                except cqi.QuizImportError as exc:
+                    raise HTTPException(status_code=422, detail=str(exc)) from exc
+            else:
+                cur.execute(
+                    "SELECT COALESCE(MAX(sort_order), -1) + 1 AS nxt FROM quiz_questions WHERE lesson_id = %s",
+                    (lesson_id,),
+                )
+                nxt = int(cur.fetchone()["nxt"])
+                n = 0
+                for q in questions:
+                    fields = _validate_question(q)
+                    cur.execute(
+                        """INSERT INTO quiz_questions
+                             (lesson_id, sort_order, kind, prompt_md, options_json,
+                              correct_json, explanation_md)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                        (
+                            lesson_id,
+                            nxt + n,
+                            fields["kind"],
+                            fields["prompt_md"],
+                            fields["options_json"],
+                            fields["correct_json"],
+                            fields["explanation_md"],
+                        ),
+                    )
+                    n += 1
+    return {"ok": True, "imported": n, "replaced": replace}
+
+
 @router.put("/api/admin/questions/{question_id}")
 async def update_question(question_id: int, request: Request) -> dict:
     require_admin(request)

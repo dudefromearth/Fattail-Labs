@@ -1,14 +1,17 @@
 """Public read API — catalog + course detail (spec §8, P1b).
 
-Only published courses are visible. Public payloads never include gated
-content fields (video_id, body_md, external_url, attachment URLs for
-non-preview material).
+Catalog list: published only.
+Course detail: published for everyone; **draft/archived also for administrators**
+(session) so lesson prev/next nav and course chrome work while editing drafts.
+Public payloads never include gated content fields (video_id, body_md, …).
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
+import auth
 import db
 import video
+from config import get_config
 
 router = APIRouter(prefix="/api/courses", tags=["courses"])
 categories_router = APIRouter(tags=["courses"])
@@ -16,9 +19,9 @@ categories_router = APIRouter(tags=["courses"])
 VALID_SORTS = frozenset({"order", "newest", "enrolled", "title"})
 VALID_LEVELS = frozenset({"beginner", "intermediate", "advanced"})
 
-_LIST_SQL = """
+_COURSE_SELECT = """
 SELECT c.id, c.slug, c.title, c.subtitle, c.description_md, c.hero_image_url,
-       c.card_color, c.sort_order, c.catalog_section,
+       c.card_color, c.sort_order, c.catalog_section, c.status,
        c.level, c.certification_enabled, c.published_at,
        (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id) AS enrolled_count,
        (SELECT COUNT(*) FROM lessons l JOIN modules m ON l.module_id = m.id
@@ -32,8 +35,19 @@ SELECT c.id, c.slug, c.title, c.subtitle, c.description_md, c.hero_image_url,
          WHERE r.course_id = c.id AND r.status = 'visible'
         HAVING COUNT(*) >= 3) AS avg_rating
 FROM courses c
-WHERE c.status = 'published'
 """
+
+_LIST_SQL = _COURSE_SELECT + "WHERE c.status = 'published'\n"
+
+
+def _session_claims(request: Request) -> dict | None:
+    token = request.cookies.get(get_config().session_cookie)
+    if not token:
+        return None
+    try:
+        return auth.verify_session(token)
+    except auth.AuthError:
+        return None
 
 
 def _categories_for(cur, course_ids: list[int]) -> dict[int, list[dict]]:
@@ -143,13 +157,26 @@ def list_courses(
 
 
 @router.get("/{slug}")
-def course_detail(slug: str) -> dict:
+def course_detail(slug: str, request: Request) -> dict:
+    """Published courses for all. Draft/archived for administrators only.
+
+    Lesson pages use this payload for prev/next nav + sidebar. Without draft
+    access, admins editing an unpublished course get empty lesson nav.
+    """
+    claims = _session_claims(request)
+    is_admin = bool(claims and claims.get("role") == "administrator")
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                _LIST_SQL + " AND c.slug = %s",
-                (slug,),
-            )
+            if is_admin:
+                cur.execute(
+                    _COURSE_SELECT + "WHERE c.slug = %s",
+                    (slug,),
+                )
+            else:
+                cur.execute(
+                    _LIST_SQL + " AND c.slug = %s",
+                    (slug,),
+                )
             row = cur.fetchone()
             if row is None:
                 raise HTTPException(status_code=404, detail="Course not found")

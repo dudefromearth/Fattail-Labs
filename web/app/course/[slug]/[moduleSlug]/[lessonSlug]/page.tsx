@@ -476,7 +476,9 @@ export default async function LessonPlayerPage({
           )}
           <QuizBuilder
             courseSlug={lesson.course_slug}
+            moduleSlug={lesson.module_slug}
             lessonSlug={lesson.slug}
+            lessonId={lesson.id}
           />
         </div>
       )}

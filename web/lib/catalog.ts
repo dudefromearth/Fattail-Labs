@@ -18,8 +18,26 @@ export async function fetchCategories(): Promise<Category[]> {
   return data.categories;
 }
 
+/**
+ * Course detail for catalog / lesson chrome.
+ * Forwards session cookies on the server so administrators get **draft**
+ * courses (needed for lesson prev/next nav while Pure Options etc. are draft).
+ */
 export async function fetchCourse(slug: string): Promise<CourseDetail> {
-  return apiGet<CourseDetail>(`/api/courses/${encodeURIComponent(slug)}`);
+  const path = `/api/courses/${encodeURIComponent(slug)}`;
+  if (typeof window === "undefined") {
+    const { apiUrl, sessionCookieHeader } = await import("./api");
+    const cookieHeader = await sessionCookieHeader();
+    const res = await fetch(apiUrl(path), {
+      cache: "no-store",
+      headers: cookieHeader ? { cookie: cookieHeader } : {},
+    });
+    if (!res.ok) {
+      throw new Error(`API ${res.status} for ${path}`);
+    }
+    return res.json() as Promise<CourseDetail>;
+  }
+  return apiGet<CourseDetail>(path);
 }
 
 export function siteUrl(path: string): string {
