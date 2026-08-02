@@ -1,27 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+/**
+ * Toughness hub — intentionally sparse for returners.
+ * Text: short admin-editable blurb (site_pages) + today's daily rules list.
+ * Programs / enroll / long about → suite nav + About this program link.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import ToughnessShell from "@/components/hard/ToughnessShell";
 import SectionHubShell from "@/components/section-hub/SectionHubShell";
-import { useSectionHubEdit } from "@/components/section-hub/SectionHubEditContext";
 import {
   enrollHard,
   exitHard,
   fetchHard,
   type HardSnapshot,
+  type HardTask,
   type HardVariant,
   pauseHard,
 } from "@/lib/hardApi";
-import { parseYoutubeVideoId, youtubeEmbedUrl } from "@/lib/hub";
 import type { SitePage } from "@/lib/sitePage";
 
 const FALLBACK_PAGE: SitePage = {
   slug: "toughness",
   title: "Toughness",
   description_md:
-    "Voluntary capacity training under load. Process only — never required for membership.",
+    "Complete every required activity every day. Miss one → restart day one.",
   intro_video_id: null,
   intro_video_title: "How Toughness programs work",
   faq_title: "Toughness FAQ",
@@ -29,194 +34,104 @@ const FALLBACK_PAGE: SitePage = {
   faq_items: [],
 };
 
-function StatusCard({ data }: { data: HardSnapshot }) {
-  const mt = data.mental_toughness;
+/** Daily required activities for the active program (or FatTail default). */
+function dailyTasksFromSnapshot(data: HardSnapshot): HardTask[] {
+  if (data.variant?.tasks?.length) return data.variant.tasks;
   const en = data.active_enrollment;
-  return (
-    <section className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-5 shadow-[var(--elevation-1)]">
-      <h2 className="text-base font-semibold text-[var(--color-label)]">
-        Your status
-      </h2>
-      {!en ? (
-        <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-          Not enrolled. Mental Toughness is empty until you start a challenge —
-          it does not score zero.
-        </p>
-      ) : (
-        <div className="mt-3 space-y-2 text-sm text-[var(--color-label)]">
-          <p>
-            <span className="text-[var(--color-label-secondary)]">Program:</span>{" "}
-            {en.program_kind === "true_75" ? "True 75 Hard" : "FatTail Hard"} ·{" "}
-            {data.variant?.label ?? en.variant_id}
-          </p>
-          <p>
-            <span className="text-[var(--color-label-secondary)]">Status:</span>{" "}
-            {en.status}
-          </p>
-          {data.compliance ? (
-            <p>
-              <span className="text-[var(--color-label-secondary)]">
-                Streak:
-              </span>{" "}
-              {data.compliance.streak_days}d · completion{" "}
-              {Math.round(data.compliance.completion_rate * 100)}% (window) ·
-              today{" "}
-              {data.compliance.today_complete ? "complete" : "not complete"}
-            </p>
-          ) : null}
-          <p>
-            <span className="text-[var(--color-label-secondary)]">
-              Mental Toughness:
-            </span>{" "}
-            {mt.empty
-              ? "empty"
-              : `${mt.raw_percent ?? "—"}% process compliance`}
-          </p>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Link href="/app/toughness/today">
-              <Button type="button">Today&apos;s log</Button>
-            </Link>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={async () => {
-                await pauseHard();
-                window.location.reload();
-              }}
-            >
-              Pause
-            </Button>
-            <Button
-              type="button"
-              variant="plain"
-              onClick={async () => {
-                if (
-                  !window.confirm(
-                    "Exit this challenge? Mental Toughness returns to empty.",
-                  )
-                )
-                  return;
-                await exitHard();
-                window.location.reload();
-              }}
-            >
-              Exit
-            </Button>
-          </div>
-        </div>
-      )}
-    </section>
-  );
+  if (en) {
+    const match = data.variants.find((v) => v.variant_id === en.variant_id);
+    if (match?.tasks?.length) return match.tasks;
+  }
+  const fattail = data.variants.find((v) => v.program_kind === "fattail_hard");
+  if (fattail?.tasks?.length) return fattail.tasks;
+  return data.variants[0]?.tasks ?? [];
 }
 
-function ProgramCard({
-  title,
-  blurb,
-  href,
-  credit,
-  badge = "Live",
-}: {
-  title: string;
-  blurb: string;
-  href: string;
-  credit?: string | null;
-  badge?: string;
-}) {
-  return (
-    <div
-      className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-5"
-      data-testid="toughness-program-card"
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-lg font-semibold text-[var(--color-label)]">
-          {title}
-        </h3>
-        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-          {badge}
-        </span>
+function CompactStatus({ data }: { data: HardSnapshot }) {
+  const en = data.active_enrollment;
+  if (!en) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Link href="/app/toughness/fattail-hard">
+          <Button type="button">Start FatTail Hard</Button>
+        </Link>
+        <Link href="/app/toughness/true-75">
+          <Button type="button" variant="secondary">
+            True 75 Hard
+          </Button>
+        </Link>
       </div>
-      <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--color-label-secondary)]">
-        {blurb}
-      </p>
-      {credit ? (
-        <p className="mt-2 text-xs text-[var(--color-label-secondary)]">
-          {credit}
-        </p>
-      ) : null}
-      <Link
-        href={href}
-        className="mt-4 text-sm font-medium text-[var(--color-tint)] hover:underline"
-      >
-        Open →
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--color-label)]">
+      <span className="text-[var(--color-label-secondary)]">
+        {en.program_kind === "true_75" ? "True 75" : "FatTail Hard"}
+        {data.compliance
+          ? ` · ${data.compliance.streak_days}d streak`
+          : ""}
+        {data.compliance?.today_complete ? " · today done" : ""}
+      </span>
+      <Link href="/app/toughness/today">
+        <Button type="button">Today&apos;s log</Button>
       </Link>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={async () => {
+          await pauseHard();
+          window.location.reload();
+        }}
+      >
+        Pause
+      </Button>
+      <Button
+        type="button"
+        variant="plain"
+        onClick={async () => {
+          if (
+            !window.confirm(
+              "Exit this challenge? Mental Toughness returns to empty.",
+            )
+          )
+            return;
+          await exitHard();
+          window.location.reload();
+        }}
+      >
+        Exit
+      </Button>
     </div>
   );
 }
 
-/**
- * Compact hub explainer: video (if set) + link to the full guide.
- * Long rules / ladder / physiology live on /app/toughness/about.
- */
-function IntroStrip({
-  snapshotVideoId,
-  fallbackVideoId,
-  fallbackVideoTitle,
-}: {
-  snapshotVideoId: string | null;
-  fallbackVideoId: string | null;
-  fallbackVideoTitle: string | null;
-}) {
-  const edit = useSectionHubEdit();
-  const rawId =
-    edit?.value("intro_video_id", fallbackVideoId ?? "") ||
-    fallbackVideoId ||
-    snapshotVideoId ||
-    null;
-  const title =
-    edit?.value(
-      "intro_video_title",
-      fallbackVideoTitle ?? "How Toughness programs work",
-    ) ||
-    fallbackVideoTitle ||
-    "How Toughness programs work";
-  const videoId = parseYoutubeVideoId(rawId);
-
+function DailyRules({ tasks }: { tasks: HardTask[] }) {
   return (
     <section
-      className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-4 sm:p-5"
-      data-testid="toughness-intro-strip"
-      aria-labelledby="toughness-intro-heading"
+      className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-5 shadow-[var(--elevation-1)]"
+      aria-labelledby="daily-rules-heading"
+      data-testid="toughness-daily-rules"
     >
       <h2
-        id="toughness-intro-heading"
-        className="sr-only"
+        id="daily-rules-heading"
+        className="text-base font-semibold text-[var(--color-label)]"
       >
-        Program intro
+        Daily rules
       </h2>
-      {videoId ? (
-        <div className="aspect-video overflow-hidden rounded-xl border border-[var(--color-separator)] bg-black">
-          <iframe
-            title={title}
-            src={youtubeEmbedUrl(videoId)}
-            className="h-full w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      ) : null}
-      <p className="mt-3 text-center text-sm">
-        <Link
-          href="/app/toughness/about"
-          className="font-medium text-[var(--color-tint)] hover:underline"
-        >
-          About this program →
-        </Link>
-      </p>
-      {!videoId ? (
-        <p className="mt-1 text-center text-xs text-[var(--color-label-secondary)]">
-          Rules, ladder, and physiology on the about page.
+      {tasks.length === 0 ? (
+        <p className="mt-3 text-sm text-[var(--color-label-secondary)]">
+          Enroll in a program to see its daily checklist.
         </p>
-      ) : null}
+      ) : (
+        <ul className="mt-3 list-inside list-disc space-y-2 text-[15px] leading-relaxed text-[var(--color-label)]">
+          {tasks.map((t) => (
+            <li key={t.id}>{t.label}</li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-4 text-sm text-[var(--color-label-secondary)]">
+        Miss or fail any required activity → restart from day one.
+      </p>
     </section>
   );
 }
@@ -251,6 +166,11 @@ export default function ToughnessHub() {
     load();
   }, [load]);
 
+  const tasks = useMemo(
+    () => (data && typeof data === "object" ? dailyTasksFromSnapshot(data) : []),
+    [data],
+  );
+
   if (data === null) {
     return (
       <ToughnessShell>
@@ -264,15 +184,24 @@ export default function ToughnessHub() {
     return (
       <ToughnessShell>
         <SectionHubShell page={page}>
-          <p className="text-[var(--color-label-secondary)]">
-            Sign in to enroll in FatTail Hard or True 75 Hard.
+          <DailyRules tasks={[]} />
+          <p className="mt-6 text-sm text-[var(--color-label-secondary)]">
+            <Link
+              href="/login"
+              className="font-medium text-[var(--color-tint)] hover:underline"
+            >
+              Log in
+            </Link>{" "}
+            to enroll and log today.
           </p>
-          <Link
-            href="/login"
-            className="mt-4 inline-block text-[var(--color-tint)] hover:underline"
-          >
-            Log in
-          </Link>
+          <p className="mt-4 text-sm">
+            <Link
+              href="/app/toughness/about"
+              className="text-[var(--color-tint)] hover:underline"
+            >
+              About this program →
+            </Link>
+          </p>
         </SectionHubShell>
       </ToughnessShell>
     );
@@ -291,68 +220,31 @@ export default function ToughnessHub() {
 
   return (
     <ToughnessShell>
+      {/*
+        Title + short admin-editable paragraph = SectionHubShell.
+        Body: daily rules only (+ compact actions, about link).
+      */}
       <SectionHubShell page={page}>
-        {/*
-          Returner-first layout: status + programs first.
-          Long explanation is video + link to /about — not a wall of text.
-        */}
         <div className="space-y-6">
           {data.restart?.restarted ? (
             <p
               className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-[var(--color-label)]"
               role="status"
             >
-              Missed or failed day — your program restarted at{" "}
-              <strong>day one</strong>. Complete every required activity each
-              day without fail.
+              Restarted at <strong>day one</strong> after a missed or failed day.
             </p>
           ) : null}
 
-          <StatusCard data={data} />
+          <CompactStatus data={data} />
 
-          <section aria-labelledby="toughness-programs-heading">
-            <h2
-              id="toughness-programs-heading"
-              className="text-base font-semibold text-[var(--color-label)]"
+          <DailyRules tasks={tasks} />
+
+          <p className="text-center text-sm">
+            <Link
+              href="/app/toughness/about"
+              className="font-medium text-[var(--color-tint)] hover:underline"
             >
-              Programs
-            </h2>
-            <ul className="mt-3 grid gap-4 sm:grid-cols-2">
-              <li>
-                <ProgramCard
-                  title="True 75 Hard"
-                  blurb="75 days. Andy Frisella’s program, as-is with full credit. Optional honor tracking."
-                  href="/app/toughness/true-75"
-                  credit="Credit: Andy Frisella · True 75 Hard"
-                />
-              </li>
-              <li>
-                <ProgramCard
-                  title="FatTail Hard"
-                  blurb="20 → 40 → 75 ladder. Fail a day → restart day one."
-                  href="/app/toughness/fattail-hard"
-                />
-              </li>
-            </ul>
-          </section>
-
-          <IntroStrip
-            snapshotVideoId={data.how_it_works?.intro_video_id ?? null}
-            fallbackVideoId={page.intro_video_id}
-            fallbackVideoTitle={page.intro_video_title}
-          />
-
-          <p className="text-center text-sm text-[var(--color-label-secondary)]">
-            <Link href="/app" className="hover:underline">
-              ← All Apps
-            </Link>
-            {" · "}
-            <Link href="/app/journey" className="hover:underline">
-              Journey
-            </Link>
-            {" · "}
-            <Link href="/app/toughness/about" className="hover:underline">
-              About this program
+              About this program →
             </Link>
           </p>
         </div>
@@ -361,7 +253,7 @@ export default function ToughnessHub() {
   );
 }
 
-/** Enroll UI for FatTail variants */
+/** Enroll UI for FatTail variants (sub-page) */
 export function FatTailEnrollPanel() {
   const [data, setData] = useState<HardSnapshot | null | "err">(null);
   const [busy, setBusy] = useState(false);
@@ -405,53 +297,33 @@ export function FatTailEnrollPanel() {
 
   return (
     <div className="mt-6 space-y-4">
-      {data.active_enrollment ? (
-        <p className="text-sm text-[var(--color-label-secondary)]">
-          You already have an active challenge.{" "}
-          <Link href="/app/toughness/today" className="text-[var(--color-tint)]">
-            Go to today&apos;s log
-          </Link>{" "}
-          or exit from the hub first.
-        </p>
-      ) : (
-        fattail.map((v) => (
-          <div
-            key={v.variant_id}
-            className="rounded-2xl border border-[var(--color-separator)] p-5"
-          >
-            <h3 className="font-semibold text-[var(--color-label)]">{v.label}</h3>
-            <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-              {v.sprint_days}-day program · all required tasks every day · miss
-              → restart day one ·{" "}
-              {v.tasks.filter((t) => t.required).length} daily required tasks
-            </p>
-            {v.ladder_blurb ? (
-              <p className="mt-2 text-sm leading-relaxed text-[var(--color-label)]">
-                {v.ladder_blurb}
-              </p>
-            ) : null}
-            <ul className="mt-3 list-inside list-disc text-sm text-[var(--color-label-secondary)]">
-              {v.tasks.map((t) => (
-                <li key={t.id}>{t.label}</li>
-              ))}
-            </ul>
-            <div className="mt-4">
-              <Button
-                type="button"
-                disabled={busy}
-                onClick={() => onEnroll(v)}
-              >
-                Enroll voluntarily
-              </Button>
-            </div>
-          </div>
-        ))
-      )}
       {err ? (
-        <p className="text-sm text-[var(--color-destructive)]" role="alert">
-          {err}
-        </p>
+        <p className="text-sm text-[var(--color-destructive)]">{err}</p>
       ) : null}
+      <ul className="space-y-3">
+        {fattail.map((v) => (
+          <li
+            key={v.variant_id}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-separator)] p-4"
+          >
+            <div>
+              <p className="font-medium text-[var(--color-label)]">{v.label}</p>
+              {v.ladder_blurb ? (
+                <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
+                  {v.ladder_blurb}
+                </p>
+              ) : null}
+            </div>
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => void onEnroll(v)}
+            >
+              Enroll
+            </Button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
