@@ -21,6 +21,16 @@ def test_me_returns_role(client):
     assert body["role"] == "navigator"
     assert body["identity_id"] == 902
     assert body.get("access_role") == "navigator"
+    assert "memberships" in body
+    assert isinstance(body["memberships"], list)
+
+
+def test_entitlement_key_candidates_normalize():
+    from identity import _entitlement_key_candidates
+
+    c = _entitlement_key_candidates("Observer Access")
+    assert "observer-access" in c
+    assert "observer" in c
 
 
 def test_role_ladder_is_cumulative():

@@ -15,6 +15,7 @@ type Me = {
   role: string;
   /** Live membership elevation (Observer trial ≡ navigator). Prefer for gates. */
   access_role?: string;
+  memberships?: { slug: string; name: string; grants_role?: string }[];
   email: string;
   display_name: string;
   avatar_url?: string | null;
@@ -34,10 +35,37 @@ type EnrollmentSummary = {
 const ROLE_LABELS: Record<string, string> = {
   observer: "Free account",
   alumni: "Course alumni",
-  activator: "Member",
-  navigator: "Coaching member",
+  activator: "Activator",
+  navigator: "Navigator",
   administrator: "Admin",
 };
+
+/** Prefer membership product name when /me returns memberships. */
+function membershipLabel(me: Me): string {
+  const mems = me.memberships;
+  if (mems?.length) {
+    const order = [
+      "coaching",
+      "navigator",
+      "observer-trial",
+      "activator",
+      "labs-membership",
+    ];
+    const ranked = [...mems].sort((a, b) => {
+      const ia = order.indexOf(a.slug);
+      const ib = order.indexOf(b.slug);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+    const top = ranked[0];
+    if (top?.slug === "observer-trial") return "Observer";
+    if (top?.slug === "coaching") return "Coaching";
+    if (top?.slug === "activator" || top?.slug === "labs-membership")
+      return "Activator";
+    if (top?.slug === "navigator") return "Navigator";
+    if (top?.name) return top.name;
+  }
+  return ROLE_LABELS[gateRole(me)] ?? gateRole(me);
+}
 
 /** Prefer access_role (Observer membership ≡ navigator) for chrome + CTAs. */
 function gateRole(me: Me): string {
@@ -185,7 +213,7 @@ export default function SiteHeader() {
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                aria-label={`Account menu — ${ROLE_LABELS[gateRole(me)] ?? gateRole(me)}`}
+                aria-label={`Account menu — ${membershipLabel(me)}`}
                 className="flex items-center gap-2 rounded-full outline-offset-2"
               >
                 {me.avatar_url ? (
@@ -217,7 +245,7 @@ export default function SiteHeader() {
                       {me.display_name || me.email}
                     </p>
                     <p className="text-xs text-[var(--color-label-secondary)]">
-                      {ROLE_LABELS[gateRole(me)] ?? gateRole(me)}
+                      {membershipLabel(me)}
                     </p>
                   </div>
                   {learning !== null &&

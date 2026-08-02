@@ -94,13 +94,50 @@ def ensure_link(cur, identity_id: int, provider: str, external_id: str) -> None:
 
 # --- memberships & roles ------------------------------------------------------
 
+def _entitlement_key_candidates(external_key: str) -> list[str]:
+    """Lookup forms for a Woo plan key from the SSO JWT.
+
+    fotw-sso may send slug, name-ish strings, or mixed case. Try exact first,
+    then normalized slug candidates so Observer / Activator / Navigator /
+    Coaching resolve without a one-off map row for every spelling.
+    """
+    import re
+
+    k = (external_key or "").strip()
+    if not k:
+        return []
+    out: list[str] = []
+    for cand in (
+        k,
+        k.lower(),
+        k.lower().replace("_", "-").replace(" ", "-"),
+        re.sub(r"[^a-z0-9-]+", "", k.lower().replace("_", "-").replace(" ", "-")),
+    ):
+        c = cand.strip("-")
+        if c and c not in out:
+            out.append(c)
+    # Drop trailing -access / -membership for a secondary try
+    extra: list[str] = []
+    for c in out:
+        for suf in ("-access", "-membership", "-plan", "-tier"):
+            if c.endswith(suf):
+                base = c[: -len(suf)]
+                if base and base not in out and base not in extra:
+                    extra.append(base)
+    out.extend(extra)
+    return out
+
+
 def plan_id_for_provider_key(cur, provider: str, external_key: str) -> int | None:
-    cur.execute(
-        "SELECT plan_id FROM provider_plan_map WHERE provider = %s AND external_key = %s",
-        (provider, external_key),
-    )
-    row = cur.fetchone()
-    return row["plan_id"] if row else None
+    for key in _entitlement_key_candidates(external_key):
+        cur.execute(
+            "SELECT plan_id FROM provider_plan_map WHERE provider = %s AND external_key = %s",
+            (provider, key),
+        )
+        row = cur.fetchone()
+        if row:
+            return int(row["plan_id"])
+    return None
 
 
 def upsert_membership(cur, identity_id: int, plan_id: int, status: str,

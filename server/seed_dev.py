@@ -100,22 +100,45 @@ PLANS = [
     }),
     ("courses-alumni", "Course Alumni", "alumni", None),
 ]
+# JWT membership_plans external_key → Labs plan slug (mig 073/074).
+# Coaching plan grants_role=navigator. Observer-trial grants_role=navigator.
 PROVIDER_PLAN_MAP = [
-    ("wordpress:fattail", "labs-membership", "activator"),
-    # Woo Membership plan slugs from JWT membership_plans (fotw-sso)
+    # Observer
     ("wordpress:fattail", "observer-access", "observer-trial"),
     ("wordpress:fattail", "observer", "observer-trial"),
     ("wordpress:fattail", "observer-trial", "observer-trial"),
     ("wordpress:fattail", "labs-observer", "observer-trial"),
+    ("wordpress:fattail", "observer-membership", "observer-trial"),
+    ("wordpress:fattail", "fattail-observer", "observer-trial"),
+    # Activator
     ("wordpress:fattail", "activator-access", "activator"),
+    ("wordpress:fattail", "activator", "activator"),
+    ("wordpress:fattail", "labs-membership", "activator"),
+    ("wordpress:fattail", "labs-activator", "activator"),
+    ("wordpress:fattail", "activator-membership", "activator"),
+    # Navigator
     ("wordpress:fattail", "navigator-access", "navigator"),
     ("wordpress:fattail", "navigator", "navigator"),
-    ("wordpress:fattail", "coaching-access", "navigator"),
-    ("wordpress:0-dte", "coaching", "navigator"),
-    ("wordpress:0-dte", "labs-membership", "activator"),
+    ("wordpress:fattail", "labs-navigator", "navigator"),
+    ("wordpress:fattail", "navigator-membership", "navigator"),
+    # Coaching
+    ("wordpress:fattail", "coaching-access", "coaching"),
+    ("wordpress:fattail", "coaching", "coaching"),
+    ("wordpress:fattail", "coaching-membership", "coaching"),
+    ("wordpress:fattail", "labs-coaching", "coaching"),
+    # 0-dte
     ("wordpress:0-dte", "observer-access", "observer-trial"),
     ("wordpress:0-dte", "observer", "observer-trial"),
+    ("wordpress:0-dte", "observer-trial", "observer-trial"),
+    ("wordpress:0-dte", "labs-observer", "observer-trial"),
+    ("wordpress:0-dte", "activator-access", "activator"),
+    ("wordpress:0-dte", "activator", "activator"),
+    ("wordpress:0-dte", "labs-membership", "activator"),
     ("wordpress:0-dte", "navigator-access", "navigator"),
+    ("wordpress:0-dte", "navigator", "navigator"),
+    ("wordpress:0-dte", "coaching", "coaching"),
+    ("wordpress:0-dte", "coaching-access", "coaching"),
+    ("wordpress:0-dte", "coaching-membership", "coaching"),
 ]
 
 # The standing schedule (Live Sessions spec v1.3 §2). Times are America/New_York.

@@ -239,6 +239,7 @@ def me(request: Request):
     session_idle_minutes = 30
     # access_role: live membership elevation (Observer trial ≡ navigator, DL-128)
     access_role = str(claims.get("role") or "observer")
+    memberships: list[dict] = []
     if claims["identity_id"] != 0:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -260,10 +261,32 @@ def me(request: Request):
                 access_role = identity.feature_role(
                     cur, int(claims["identity_id"]), str(claims.get("role") or "observer")
                 )
+                cur.execute(
+                    """SELECT p.slug, p.name, p.grants_role, m.status, m.source
+                       FROM memberships m
+                       JOIN plans p ON p.id = m.plan_id
+                       WHERE m.identity_id = %s
+                         AND m.status IN ('active', 'grace')
+                         AND (m.current_period_end IS NULL
+                              OR m.current_period_end > NOW())
+                       ORDER BY p.slug""",
+                    (int(claims["identity_id"]),),
+                )
+                memberships = [
+                    {
+                        "slug": r["slug"],
+                        "name": r["name"],
+                        "grants_role": r["grants_role"],
+                        "status": r["status"],
+                        "source": r["source"],
+                    }
+                    for r in cur.fetchall()
+                ]
     return {
         "identity_id": claims["identity_id"],
         "role": claims["role"],
         "access_role": access_role,
+        "memberships": memberships,
         "provider": claims.get("sso_issuer", ""),
         "email": email,
         "display_name": display_name,
