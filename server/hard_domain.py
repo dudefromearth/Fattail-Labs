@@ -24,10 +24,11 @@ ENROLLMENT_STATUSES = frozenset({"active", "paused", "completed", "exited"})
 _FATTAIL_TASKS = [
     {"id": "movement", "label": "Movement / workout (menu)", "required": True},
     {"id": "reading", "label": "Reading (10 pages non-fiction)", "required": True},
-    {"id": "diet", "label": "Diet integrity (variant rules)", "required": True},
+    {"id": "diet", "label": "Diet integrity", "required": True},
     {"id": "water", "label": "Water (body-weight scaled guidance)", "required": True},
     {"id": "progress_record", "label": "Progress record", "required": True},
-    {"id": "no_alcohol", "label": "Alcohol rule (variant)", "required": True},
+    # No program-length variants on alcohol — same plain rule for all FatTail Hard.
+    {"id": "no_alcohol", "label": "No alcohol", "required": True},
 ]
 
 HARD_VARIANTS: dict[str, dict[str, Any]] = {
