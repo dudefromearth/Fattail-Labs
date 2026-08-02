@@ -5,8 +5,12 @@ export type SitePage = {
   slug: string;
   title: string;
   description_md: string | null;
-  /** Markdown daily rules checklist (Toughness hub, etc.). */
+  /** @deprecated Prefer true75 / fattail columns on Toughness hub. */
   daily_rules_md?: string | null;
+  /** True 75 Hard daily rules (markdown). */
+  daily_rules_true75_md?: string | null;
+  /** FatTail Hard daily rules (markdown). */
+  daily_rules_fattail_md?: string | null;
   intro_video_id: string | null;
   intro_video_title: string | null;
   faq_title: string;

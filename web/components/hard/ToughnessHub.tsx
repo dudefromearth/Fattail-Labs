@@ -30,6 +30,8 @@ const FALLBACK_PAGE: SitePage = {
   title: "Toughness",
   description_md: "",
   daily_rules_md: "",
+  daily_rules_true75_md: "",
+  daily_rules_fattail_md: "",
   intro_video_id: null,
   intro_video_title: "How Toughness programs work",
   faq_title: "Toughness FAQ",
@@ -95,69 +97,94 @@ function CompactStatus({ data }: { data: HardSnapshot }) {
   );
 }
 
-/**
- * Daily rules — fully CMS-owned (site_pages.daily_rules_md).
- * In Edit mode the textarea is always open so you can replace the list freely.
- */
-function DailyRulesSlot({ fallbackMd }: { fallbackMd: string }) {
+function RulesColumn({
+  title,
+  field,
+  fallbackMd,
+  testId,
+}: {
+  title: string;
+  field: "daily_rules_true75_md" | "daily_rules_fattail_md";
+  fallbackMd: string;
+  testId: string;
+}) {
   const edit = useSectionHubEdit();
-  const display =
-    edit?.value("daily_rules_md", fallbackMd) ?? fallbackMd;
+  const display = edit?.value(field, fallbackMd) ?? fallbackMd;
 
-  // --- Admin edit mode: always-open textarea (your rules, not hard-coded) ---
   if (edit?.editMode) {
     return (
-      <section
-        className="rounded-2xl border border-emerald-500/40 bg-[var(--color-surface)] p-5 shadow-[var(--elevation-1)] ring-1 ring-emerald-500/30"
-        aria-labelledby="daily-rules-heading"
-        data-testid="toughness-daily-rules"
+      <div
+        className="rounded-2xl border border-emerald-500/40 bg-[var(--color-surface)] p-4 shadow-[var(--elevation-1)] ring-1 ring-emerald-500/30 sm:p-5"
+        data-testid={testId}
       >
-        <h2
-          id="daily-rules-heading"
-          className="text-base font-semibold text-[var(--color-label)]"
-        >
-          Daily rules
-        </h2>
-        <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
-          Edit freely (markdown). Replace every line if you want — then{" "}
-          <strong>Save</strong> on the bar below.
+        <h3 className="text-sm font-semibold text-[var(--color-label)]">
+          {title}
+        </h3>
+        <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-400">
+          Markdown — edit freely, then Save
         </p>
         <textarea
           value={display}
-          onChange={(e) => edit.setField("daily_rules_md", e.target.value)}
-          rows={Math.max(10, display.split("\n").length + 3)}
-          placeholder={
-            "- First daily requirement\n- Second…\n\nAny notes you want members to see."
-          }
+          onChange={(e) => edit.setField(field, e.target.value)}
+          rows={Math.max(10, display.split("\n").length + 2)}
+          placeholder={"- Daily requirement\n- …"}
           className="mt-3 w-full resize-y rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]/40 p-3 font-mono text-sm leading-relaxed text-[var(--color-label)] outline-none focus:ring-2 focus:ring-emerald-500"
-          data-testid="toughness-daily-rules-editor"
         />
-      </section>
+      </div>
     );
   }
 
-  // --- Member / view mode ---
   if (!display.trim()) {
     if (!edit?.isAdmin) return null;
     return (
-      <section
-        className="rounded-2xl border border-dashed border-emerald-400/50 bg-[var(--color-fill)]/30 p-5"
-        data-testid="toughness-daily-rules-slot"
+      <div
+        className="rounded-2xl border border-dashed border-emerald-400/50 bg-[var(--color-fill)]/30 p-4 sm:p-5"
+        data-testid={testId}
       >
-        <h2 className="text-base font-semibold text-[var(--color-label)]">
-          Daily rules
-        </h2>
-        <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-          Empty slot. Click <strong>Edit</strong> and type the rules members
-          should follow each day.
+        <h3 className="text-sm font-semibold text-[var(--color-label)]">
+          {title}
+        </h3>
+        <p className="mt-2 text-xs text-[var(--color-label-secondary)]">
+          Empty. Click Edit to write these daily rules.
         </p>
-      </section>
+      </div>
     );
   }
 
   return (
+    <div
+      className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-4 shadow-[var(--elevation-1)] sm:p-5"
+      data-testid={testId}
+    >
+      <h3 className="text-sm font-semibold text-[var(--color-label)]">
+        {title}
+      </h3>
+      <div className="prose prose-zinc dark:prose-invert mt-3 max-w-none text-sm leading-relaxed text-[var(--color-label)] sm:text-[15px] [&_ul]:my-2 [&_li]:my-1">
+        <Markdown>{display}</Markdown>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Two-column daily rules: True 75 Hard | FatTail Hard (CMS, admin-editable).
+ */
+function DailyRulesTwoColumn({
+  true75Md,
+  fattailMd,
+}: {
+  true75Md: string;
+  fattailMd: string;
+}) {
+  const edit = useSectionHubEdit();
+  const t75 = edit?.value("daily_rules_true75_md", true75Md) ?? true75Md;
+  const ft = edit?.value("daily_rules_fattail_md", fattailMd) ?? fattailMd;
+  const bothEmpty = !t75.trim() && !ft.trim();
+
+  if (bothEmpty && !edit?.editMode && !edit?.isAdmin) return null;
+
+  return (
     <section
-      className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-5 shadow-[var(--elevation-1)]"
       aria-labelledby="daily-rules-heading"
       data-testid="toughness-daily-rules"
     >
@@ -167,8 +194,19 @@ function DailyRulesSlot({ fallbackMd }: { fallbackMd: string }) {
       >
         Daily rules
       </h2>
-      <div className="prose prose-zinc dark:prose-invert mt-3 max-w-none text-[15px] leading-relaxed text-[var(--color-label)] [&_ul]:my-2 [&_li]:my-1">
-        <Markdown>{display}</Markdown>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <RulesColumn
+          title="True 75 Hard"
+          field="daily_rules_true75_md"
+          fallbackMd={true75Md}
+          testId="toughness-rules-true75"
+        />
+        <RulesColumn
+          title="FatTail Hard"
+          field="daily_rules_fattail_md"
+          fallbackMd={fattailMd}
+          testId="toughness-rules-fattail"
+        />
       </div>
     </section>
   );
@@ -271,7 +309,14 @@ export default function ToughnessHub() {
     load();
   }, [load]);
 
-  const rulesFallback = page.daily_rules_md ?? "";
+  const true75Rules =
+    page.daily_rules_true75_md?.trim() ||
+    page.daily_rules_md?.trim() ||
+    "";
+  const fattailRules =
+    page.daily_rules_fattail_md?.trim() ||
+    page.daily_rules_md?.trim() ||
+    "";
 
   if (data === null) {
     return (
@@ -291,7 +336,10 @@ export default function ToughnessHub() {
               pageVideoId={page.intro_video_id}
               pageVideoTitle={page.intro_video_title}
             />
-            <DailyRulesSlot fallbackMd={rulesFallback} />
+            <DailyRulesTwoColumn
+              true75Md={true75Rules}
+              fattailMd={fattailRules}
+            />
             <p className="text-sm text-[var(--color-label-secondary)]">
               <Link
                 href="/login"
@@ -350,7 +398,10 @@ export default function ToughnessHub() {
 
           <CompactStatus data={data} />
 
-          <DailyRulesSlot fallbackMd={rulesFallback} />
+          <DailyRulesTwoColumn
+            true75Md={true75Rules}
+            fattailMd={fattailRules}
+          />
 
           <p className="text-center text-sm">
             <Link

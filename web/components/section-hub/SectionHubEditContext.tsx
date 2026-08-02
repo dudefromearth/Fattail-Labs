@@ -38,6 +38,8 @@ function snapshotFromPage(initial: SitePage) {
     title: initial.title,
     description_md: initial.description_md ?? "",
     daily_rules_md: initial.daily_rules_md ?? "",
+    daily_rules_true75_md: initial.daily_rules_true75_md ?? "",
+    daily_rules_fattail_md: initial.daily_rules_fattail_md ?? "",
     intro_video_id: initial.intro_video_id ?? "",
     intro_video_title: initial.intro_video_title ?? "",
   };
@@ -67,6 +69,8 @@ export function SectionHubEditProvider({
     initial.title,
     initial.description_md,
     initial.daily_rules_md,
+    initial.daily_rules_true75_md,
+    initial.daily_rules_fattail_md,
     initial.intro_video_id,
     initial.intro_video_title,
     dirty,
@@ -93,6 +97,13 @@ export function SectionHubEditProvider({
       if ("daily_rules_md" in dirty) {
         body.daily_rules_md = dirty.daily_rules_md.trim() || null;
       }
+      if ("daily_rules_true75_md" in dirty) {
+        body.daily_rules_true75_md = dirty.daily_rules_true75_md.trim() || null;
+      }
+      if ("daily_rules_fattail_md" in dirty) {
+        body.daily_rules_fattail_md =
+          dirty.daily_rules_fattail_md.trim() || null;
+      }
       if ("intro_video_id" in dirty) {
         body.intro_video_id = dirty.intro_video_id.trim() || null;
       }
@@ -109,13 +120,7 @@ export function SectionHubEditProvider({
         return;
       }
       const page = (await r.json()) as SitePage;
-      setSaved({
-        title: page.title,
-        description_md: page.description_md ?? "",
-        daily_rules_md: page.daily_rules_md ?? "",
-        intro_video_id: page.intro_video_id ?? "",
-        intro_video_title: page.intro_video_title ?? "",
-      });
+      setSaved(snapshotFromPage(page));
       setDirty({});
       setEditMode(false);
       const paths =

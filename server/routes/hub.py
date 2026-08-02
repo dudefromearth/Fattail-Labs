@@ -22,6 +22,8 @@ PAGE_FIELDS = frozenset(
         "title",
         "description_md",
         "daily_rules_md",
+        "daily_rules_true75_md",
+        "daily_rules_fattail_md",
         "intro_video_id",
         "intro_video_title",
         "faq_title",
@@ -33,6 +35,7 @@ PAGE_FIELDS = frozenset(
 def _load_page(cur, slug: str) -> dict | None:
     cur.execute(
         """SELECT slug, title, description_md, daily_rules_md,
+                  daily_rules_true75_md, daily_rules_fattail_md,
                   intro_video_id, intro_video_title,
                   faq_title, faq_description_md
            FROM site_pages WHERE slug = %s""",
@@ -95,12 +98,17 @@ def _put_page(cur, slug: str, body: dict) -> dict:
         patch["intro_video_id"] = _normalize_intro_video_id(
             (patch["intro_video_id"] or "").strip() or None
         )
-    if "daily_rules_md" in patch:
-        raw = patch["daily_rules_md"]
-        if raw is None or (isinstance(raw, str) and not raw.strip()):
-            patch["daily_rules_md"] = None
-        else:
-            patch["daily_rules_md"] = str(raw)
+    for rules_key in (
+        "daily_rules_md",
+        "daily_rules_true75_md",
+        "daily_rules_fattail_md",
+    ):
+        if rules_key in patch:
+            raw = patch[rules_key]
+            if raw is None or (isinstance(raw, str) and not raw.strip()):
+                patch[rules_key] = None
+            else:
+                patch[rules_key] = str(raw)
 
     faq_items = body.get("faq_items")
     if faq_items is not None and not isinstance(faq_items, list):
