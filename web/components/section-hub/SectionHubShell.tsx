@@ -36,7 +36,8 @@ function EditBar() {
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-3 px-6 py-3">
         <span className="text-sm font-semibold">Editing hub</span>
         <span className="text-xs text-zinc-500">
-          Click the title or description below the heading to edit
+          Click title or description · intro video fields appear below when
+          editing
         </span>
         <span className="ml-auto flex items-center gap-2">
           <span className="text-xs text-zinc-500">

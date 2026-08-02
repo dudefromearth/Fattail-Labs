@@ -94,17 +94,17 @@ export function SectionHubEditProvider({
       });
       setDirty({});
       setEditMode(false);
-      const path =
+      const paths =
         slug === "labs"
-          ? "/app"
+          ? ["/app"]
           : slug === "resources"
-            ? "/resource"
+            ? ["/resource"]
             : slug === "toughness"
-              ? "/app/toughness"
+              ? ["/app/toughness", "/app/toughness/about"]
               : slug === "hub"
-                ? "/hub"
-                : "/live";
-      await revalidate([path]);
+                ? ["/hub"]
+                : ["/live"];
+      await revalidate(paths);
     } finally {
       setSaving(false);
     }

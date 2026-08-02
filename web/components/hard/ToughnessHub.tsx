@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
-import HowItWorks from "@/components/hard/HowItWorks";
-import PhysiologyCite from "@/components/hard/PhysiologyCite";
 import ToughnessShell from "@/components/hard/ToughnessShell";
 import SectionHubShell from "@/components/section-hub/SectionHubShell";
 import { useSectionHubEdit } from "@/components/section-hub/SectionHubEditContext";
@@ -16,13 +14,14 @@ import {
   type HardVariant,
   pauseHard,
 } from "@/lib/hardApi";
+import { parseYoutubeVideoId, youtubeEmbedUrl } from "@/lib/hub";
 import type { SitePage } from "@/lib/sitePage";
 
 const FALLBACK_PAGE: SitePage = {
   slug: "toughness",
   title: "Toughness",
   description_md:
-    "Voluntary capacity training for persistence under load — part of Process Integrity's Mental Toughness story. Never a membership requirement; never P&L theater.",
+    "Voluntary capacity training under load. Process only — never required for membership.",
   intro_video_id: null,
   intro_video_title: "How Toughness programs work",
   faq_title: "Toughness FAQ",
@@ -154,34 +153,81 @@ function ProgramCard({
   );
 }
 
-/** Prefer CMS intro video (live edit value) over hard snapshot / env. */
-function HowItWorksWithCms({
-  block,
+/**
+ * Compact hub explainer: video (if set) + link to the full guide.
+ * Long rules / ladder / physiology live on /app/toughness/about.
+ */
+function IntroStrip({
+  snapshotVideoId,
   fallbackVideoId,
   fallbackVideoTitle,
 }: {
-  block?: HardSnapshot["how_it_works"] | null;
+  snapshotVideoId: string | null;
   fallbackVideoId: string | null;
   fallbackVideoTitle: string | null;
 }) {
   const edit = useSectionHubEdit();
-  const cmsId =
+  const rawId =
     edit?.value("intro_video_id", fallbackVideoId ?? "") ||
     fallbackVideoId ||
+    snapshotVideoId ||
     null;
-  const cmsTitle =
-    edit?.value("intro_video_title", fallbackVideoTitle ?? "") ||
+  const title =
+    edit?.value(
+      "intro_video_title",
+      fallbackVideoTitle ?? "How Toughness programs work",
+    ) ||
     fallbackVideoTitle ||
-    null;
-  const base = block ?? undefined;
-  const merged = {
-    ...(base || {}),
-    intro_video_id: (cmsId || base?.intro_video_id || null) as string | null,
-    intro_video_title: (cmsTitle ||
-      base?.intro_video_title ||
-      null) as string | null,
-  };
-  return <HowItWorks block={merged as HardSnapshot["how_it_works"]} />;
+    "How Toughness programs work";
+  const videoId = parseYoutubeVideoId(rawId);
+
+  return (
+    <section
+      className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-4 sm:p-5"
+      data-testid="toughness-intro-strip"
+      aria-labelledby="toughness-intro-heading"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h2
+          id="toughness-intro-heading"
+          className="text-sm font-semibold text-[var(--color-label)]"
+        >
+          New here?
+        </h2>
+        <Link
+          href="/app/toughness/about"
+          className="text-sm font-medium text-[var(--color-tint)] hover:underline"
+        >
+          Full guide: rules, ladder, physiology →
+        </Link>
+      </div>
+      <p className="mt-1 text-xs text-[var(--color-label-secondary)]">
+        The video covers the program. Written rules and the 20 → 40 → 75 path
+        are on the guide page — not every visit.
+      </p>
+      {videoId ? (
+        <div className="mt-4 aspect-video overflow-hidden rounded-xl border border-[var(--color-separator)] bg-black">
+          <iframe
+            title={title}
+            src={youtubeEmbedUrl(videoId)}
+            className="h-full w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-[var(--color-label-secondary)]">
+          Intro video not set yet.{" "}
+          <Link
+            href="/app/toughness/about"
+            className="font-medium text-[var(--color-tint)] hover:underline"
+          >
+            Read how the programs work →
+          </Link>
+        </p>
+      )}
+    </section>
+  );
 }
 
 export default function ToughnessHub() {
@@ -252,24 +298,14 @@ export default function ToughnessHub() {
     );
   }
 
-  const phys = data.physiology;
-
   return (
     <ToughnessShell>
       <SectionHubShell page={page}>
+        {/*
+          Returner-first layout: status + programs first.
+          Long explanation is video + link to /about — not a wall of text.
+        */}
         <div className="space-y-6">
-          <HowItWorksWithCms
-            block={data.how_it_works}
-            fallbackVideoId={page.intro_video_id}
-            fallbackVideoTitle={page.intro_video_title}
-          />
-
-          <PhysiologyCite
-            citation={phys.primary.citation}
-            doi={phys.primary.doi}
-            note={phys.note}
-          />
-
           {data.restart?.restarted ? (
             <p
               className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-[var(--color-label)]"
@@ -290,16 +326,11 @@ export default function ToughnessHub() {
             >
               Programs
             </h2>
-            <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-              These programs develop Mental Toughness. Pick a length, enroll,
-              and complete every required activity every day — or start over at
-              day one.
-            </p>
-            <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+            <ul className="mt-3 grid gap-4 sm:grid-cols-2">
               <li>
                 <ProgramCard
                   title="True 75 Hard"
-                  blurb="75 days. The original free program by Andy Frisella — offered as-is with full credit. Optional honor-system tracking so Mental Toughness can reflect your show-up."
+                  blurb="75 days. Andy Frisella’s program, as-is with full credit. Optional honor tracking."
                   href="/app/toughness/true-75"
                   credit="Credit: Andy Frisella · True 75 Hard"
                 />
@@ -307,12 +338,18 @@ export default function ToughnessHub() {
               <li>
                 <ProgramCard
                   title="FatTail Hard"
-                  blurb="20 → 40 → 75. Finish 20 and you may stop or continue; many need 20 twice before 40 feels possible. At 40 most hit despair — get through it and the end is reachable. Fail a day → day one."
+                  blurb="20 → 40 → 75 ladder. Fail a day → restart day one."
                   href="/app/toughness/fattail-hard"
                 />
               </li>
             </ul>
           </section>
+
+          <IntroStrip
+            snapshotVideoId={data.how_it_works?.intro_video_id ?? null}
+            fallbackVideoId={page.intro_video_id}
+            fallbackVideoTitle={page.intro_video_title}
+          />
 
           <p className="text-center text-sm text-[var(--color-label-secondary)]">
             <Link href="/app" className="hover:underline">
@@ -323,8 +360,8 @@ export default function ToughnessHub() {
               Journey
             </Link>
             {" · "}
-            <Link href="/app/practice" className="hover:underline">
-              Practice
+            <Link href="/app/toughness/about" className="hover:underline">
+              How it works
             </Link>
           </p>
         </div>
