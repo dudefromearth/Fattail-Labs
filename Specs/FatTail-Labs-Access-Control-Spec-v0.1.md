@@ -1,6 +1,6 @@
 # FatTail Labs — Access Control Spec v0.1
 
-**Status:** DRAFT (Coach intent captured 2026-08-02; not yet build authority)  
+**Status:** SUPERSEDED by `FatTail-Labs-Access-Control-Spec-v0.2.md`  
 **Product:** FatTail Labs (`labs.fattail.ai`)  
 **Author lane:** Coach intent → architecture proposal → this document  
 **Related:**

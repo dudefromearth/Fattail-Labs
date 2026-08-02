@@ -4,14 +4,27 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-02 — DL-196 Access Control Spec v0.2 (review fixes)
+
+**Coach:** External evaluation of Access Control v0.1 incorporated into **v0.2 DRAFT**.
+
+**Blocking fixes:** SSG/revalidation table; sitemap/JSON-LD from anonymous decision;
+`any_plans` **OR** `min_role` (UI auto-cumulative tiers); `close_behavior` in model +
+algorithm; decision API **admin-only**; ungateable remedy surfaces + CTA reachability.
+
+**Should-fix:** grandfather enrollments default; alumni = as-built ROLE_ORDER rung;
+`evaluate_many` P0; preview-as write suppress; `ROW_FORMAT=DYNAMIC`; audit **P0**.
+
+**Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.2.md` (supersedes v0.1).  
+Still **DRAFT** until Coach build authority.
+
 ## 2026-08-02 — DL-195 Access Control Spec v0.1 (DRAFT)
 
 **Coach intent:** Admin-controlled gating by role/plan for **pages (surfaces), apps,
 and course elements**, with campaign design control (time, CTAs, soft/hard lock)
 without deploys.
 
-**Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.1.md` (Status: **DRAFT** —
-not build authority until Coach Phase 5 / India–Mike–Tango gates).
+**Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.1.md` — **superseded by v0.2**.
 
 **Direction:** Unified Access Policy Engine + `/admin/access` cockpit; consumes
 Identity Access memberships; absorbs feature_gates and free_preview over phases P0–P2.
