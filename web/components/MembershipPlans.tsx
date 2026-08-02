@@ -256,7 +256,8 @@ export default function MembershipPlans() {
             <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
               Try <span className="font-semibold">everything</span> — coaching,
               the trading room, every course — for{" "}
-              <span className="font-semibold">6 weeks / $102</span>. Finish
+              <span className="font-semibold">6 weeks · $17/wk or $102</span>.
+              Finish
               the membership and the course library is yours for a year no matter
               what you decide.
             </p>

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description:
     "FatTail Labs membership: every course, the daily live trading room, " +
     "coach calls, resources, Discord, and the FatTail app. Observer: 6 weeks " +
-    "for $102 with full access.",
+    "at $17/wk or $102 with full access.",
   alternates: { canonical: siteUrl("/membership") },
 };
 
@@ -25,7 +25,7 @@ const FAQ: { id: string; q: string; a: string }[] = [
   {
     id: "trial",
     q: "How does the 6-week Observer membership work?",
-    a: "Observer runs 6 weeks for $102 total (~$17/week) with full Navigator access — coaching, live sessions, Discord, the app, and every course. Nothing is held back during the membership.",
+    a: "Observer runs 6 weeks at $17/wk or $102 total, with full Navigator access — coaching, live sessions, Discord, the app, and every course. Nothing is held back. Six weeks (not four) so process habits have room to form — experts often cite about 33–66 days for a habit to hold.",
   },
   {
     id: "trial-ends",

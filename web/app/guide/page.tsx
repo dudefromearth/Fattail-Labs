@@ -542,13 +542,16 @@ export default function GuidePage() {
             <H2 id="membership">Membership &amp; the trial</H2>
             <ul>
               <li>
-                <strong>Navigator</strong> — $250/month or $2,500/year.
+                <strong>Navigator</strong> — $267/month or $2,997/year.
                 Everything: all courses, the daily live room, coach calls,
                 resources, Discord, and the FatTail app.
               </li>
               <li>
-                <strong>Observer membership</strong> — 6 weeks for $102 total
-                (~$17/week), with full Navigator access. Nothing held back.
+                <strong>Observer membership</strong> — 6 weeks at{" "}
+                <strong>$17/wk or $102</strong> total, with full Navigator access.
+                Nothing held back. Six weeks (not four) so process habits have
+                room to form — experts often cite about 33–66 days for a habit to
+                hold.
               </li>
               <li>
                 <strong>The alumni year:</strong> complete the full six-week

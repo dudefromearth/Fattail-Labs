@@ -728,7 +728,7 @@ def _profile(
 
 
 # Coach: Observer is here for ~6 weeks — meter focused on that window.
-# (Billing trial is 4 weeks in Membership Spec; meter focus = 6 weeks of practice.)
+# (Observer membership is 6 weeks — Membership Spec; meter focus = 6 weeks of practice.)
 METER_PROFILE_OBSERVER_TRIAL = _profile(
     "observer_trial",
     "Observer trial",

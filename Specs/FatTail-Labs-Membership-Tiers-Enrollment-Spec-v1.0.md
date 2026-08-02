@@ -15,9 +15,9 @@ livestreams only.
 
 | Tier (plan slug) | Price | Includes | Labs role granted |
 |---|---|---|---|
-| **Navigator** (`navigator`) | **$250/mo · $2,500/yr** — the featured offer | Everything: live trading room + coaching, workshops/livestreams, all courses & certifications, resources, Discord, app | `navigator` |
+| **Navigator** (`navigator`) | **$267/mo · $2,997/yr** — the featured offer | Everything: live trading room + coaching, workshops/livestreams, all courses & certifications, resources, Discord, app | `navigator` |
 | **Activator** (`activator`) | **$100/mo — promotions only** (revealed by promo link/code, never on the open pricing page) | Discord, app, all courses, workshops | `activator` |
-| **Observer trial** (`observer-trial`) | **6 weeks for $102 total** (~$17/wk × 6) | **Full Navigator access during the membership** | `navigator` |
+| **Observer trial** (`observer-trial`) | **6 weeks at $17/wk or $102 total** — long enough for habits to form (~33–66 days is a common expert range) | **Full Navigator access during the membership** | `navigator` |
 | **Course Alumni** (`courses-alumni`) | Not sold — granted (§3) | Course library + resources for 1 year. No Discord, no livestreams, no app | `alumni` (new) |
 
 ## 2. Role ladder change
@@ -51,7 +51,7 @@ Navigator, and you keep the **course library for 1 year** (membership
   **Activator card renders only with a promo parameter** (`?promo=...`). "Continue
   with your free account" link → `/pathway` (the free path is never hidden).
 - **Exit intent** (step 2, once per session): leaving the page surfaces the retention
-  offer — ours pitches the **6-week Observer membership** ("try everything for 6 weeks / $102")
+  offer — ours pitches the **6-week Observer membership** ("$17/wk or $102 for 6 weeks")
   rather than a discount.
 - Alumni promise shown under the cards: stay a full month (or complete the trial)
   and the courses are yours for a year even if you leave.
@@ -62,11 +62,11 @@ Navigator, and you keep the **course library for 1 year** (membership
   badge, `featured`, `promo_only`, `interval_options` — so the pricing page renders
   fully before Stripe wiring; `/api/billing/plans` always returns the tier cards
   (checkout buttons appear only when billing is enabled and prices are mapped).
-- Stripe wiring (MiniTwo): prices — navigator monthly $250 + annual $2,500 →
+- Stripe wiring (MiniTwo): prices — navigator monthly **$267** + annual **$2,997** →
   `navigator`; activator $100 (promo codes via Stripe promotion codes) →
-  `activator`; observer weekly (~$17) → `observer-trial`, with the **6-week** cap applied
-  post-checkout (webhook sets `cancel_at = start + 42d` — requires live key; noted
-  as wiring work). Total package **$102**.
+  `activator`; observer weekly (**$17/wk or $102** for the term) → `observer-trial`,
+  with the **6-week** cap applied post-checkout (webhook sets `cancel_at = start + 42d`
+  — requires live key; noted as wiring work).
 
 ## 6. Invariants
 

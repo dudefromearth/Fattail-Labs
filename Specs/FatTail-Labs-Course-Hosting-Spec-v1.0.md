@@ -27,7 +27,7 @@ OAuth + email/password auth. Everything below was verified on the live product.
 
 ### 2.1 Commercial model
 
-- **$250/month or $2,500/year** (annual = "save $500", positioned as Most Popular). Cancel anytime.
+- **$267/month or $2,997/year** (annual = "save $207/year", positioned as Most Popular). Cancel anytime.
 - Two-step signup: **Step 1** create account (email/name/password or Google/Facebook) →
   **Step 2** Stripe subscription checkout + email verification.
 - Signup page is a conversion page: testimonial wall, "What happens next" checklist,

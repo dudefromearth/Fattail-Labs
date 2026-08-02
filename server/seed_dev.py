@@ -59,8 +59,12 @@ PLANS = [
         "featured": True,
         "tagline": "The complete FatTail operating system",
         "prices": [
-            {"label": "$250 / month", "interval": "month"},
-            {"label": "$2,500 / year", "interval": "year", "badge": "Save $500/year"},
+            {"label": "$267 / month", "interval": "month"},
+            {
+                "label": "$2,997 / year",
+                "interval": "year",
+                "badge": "Save $207/year",
+            },
         ],
         "features": [
             "Live trading room + coaching",
@@ -72,12 +76,15 @@ PLANS = [
         ],
     }),
     ("observer-trial", "Observer Trial", "navigator", {
-        "tagline": "Four weeks of full Navigator access",
-        "prices": [{"label": "$20 / week for 4 weeks", "interval": "week"}],
+        "tagline": "Six weeks of full Navigator access — time for habits to form",
+        "prices": [
+            {"label": "$17/wk or $102 · 6 weeks", "interval": "week"}
+        ],
         "features": [
             "Everything Navigator includes",
             "Coaching, Discord, app, and all courses",
-            "Complete the 4 weeks: keep the courses for a year",
+            "Six weeks so process habits can stick (experts: ~33–66 days)",
+            "Complete the 6 weeks: keep the courses for a year",
         ],
     }),
     ("activator", "Activator", "activator", {

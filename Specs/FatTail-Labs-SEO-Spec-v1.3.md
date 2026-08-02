@@ -8,7 +8,7 @@ can assert about the Lab, its founder, and its schedule.
 
 ## 1. Structured-data expansion (Layer 3)
 
-- **Course pages** gain: `offers` (Subscription, $250 USD → /membership) and
+- **Course pages** gain: `offers` (Subscription, $267 USD → /membership) and
   the trailer as a `VideoObject` (YouTube thumbnail via i.ytimg.com, embed URL,
   uploadDate = published_at) — tying the channel's authority to the site.
   Lesson pages stay VideoObject-free: watching is gated, and schema must not

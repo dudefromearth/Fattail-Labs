@@ -4,6 +4,34 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-01 — DL-189 Navigator pricing $267/mo · $2,997/yr
+
+**Decision (Coach):** Navigator list prices are **$267/month** and **$2,997/year**
+(was $250 / $2,500). Annual badge **Save $207/year** vs 12× monthly.
+
+**Updated:** `plans.display_json` (mig 066), seed_dev, Guide, Membership Tiers Spec,
+Course Hosting Spec, SEO offers note.
+
+---
+
+## 2026-08-01 — DL-188 Observer membership 6 weeks (habit formation)
+
+**Decision (Coach):** Observer membership duration is **6 weeks** (not 4).
+
+**Rationale:** Give process habits time to form. Habit research commonly cites
+on the order of **~33–66 days** for a habit to hold; six weeks sits in that band.
+Product/billing: **$17/wk or $102** for the six-week term. Full Navigator
+access during the term; complete the six weeks → alumni course year rule unchanged.
+
+**Materials updated:** `plans.display_json` (mig 064), `seed_dev.py`, membership
+FAQ + Guide, Start Here course copy (description + roadmap lessons), hub-intro
+script, Membership Tiers Spec already stated 6 weeks / $102.
+
+**Not changed:** Live Presence EWMA half-life (4 weeks) — different concept.
+`free_observer` tenure ramp (4 weeks) — not the paid Observer membership.
+
+---
+
 ## 2026-08-01 — DL-187 Chain archive: collect local, not on-demand history
 
 **Decision (Coach):** Option chain **history for Test is local**. Collect forward

@@ -83,7 +83,7 @@ function courseJsonLd(course: CourseDetail) {
     offers: {
       "@type": "Offer",
       category: "Subscription",
-      price: "250",
+      price: "267",
       priceCurrency: "USD",
       url: siteUrl("/membership"),
     },
