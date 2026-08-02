@@ -1,8 +1,9 @@
 """Journey gamification scoring + leaderboard (Spec v1.0)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+import db
 import journey_scores as js
 from tests.conftest import cookie_for
 
@@ -16,21 +17,30 @@ def test_contribution_formula():
 
 
 def test_process_grade_scale():
-    assert js.process_grade(0)["label"] == "Poor"
+    # Compass labels (ids stay poor→excellent for stability)
+    assert js.process_grade(0)["label"] == "Off course"
     assert js.process_grade(24)["id"] == "poor"
-    assert js.process_grade(25)["label"] == "Fair"
-    assert js.process_grade(50)["label"] == "Good"
-    assert js.process_grade(70)["label"] == "Great"
-    assert js.process_grade(85)["label"] == "Excellent"
+    assert js.process_grade(25)["label"] == "Drifting"
+    assert js.process_grade(50)["label"] == "On course"
+    assert js.process_grade(70)["label"] == "Steady"
+    assert js.process_grade(85)["label"] == "True north"
     assert js.process_grade(100)["id"] == "excellent"
     assert js.process_grade(0, establishing=True)["id"] == "establishing"
+    assert js.process_grade(0, establishing=True)["label"] == "Finding heading"
     scale = js.process_grade_scale()
     assert [b["label"] for b in scale] == [
-        "Poor",
-        "Fair",
-        "Good",
-        "Great",
-        "Excellent",
+        "Off course",
+        "Drifting",
+        "On course",
+        "Steady",
+        "True north",
+    ]
+    assert [b["id"] for b in scale] == [
+        "poor",
+        "fair",
+        "good",
+        "great",
+        "excellent",
     ]
 
 
@@ -50,14 +60,81 @@ def test_tenure_pulls_toward_center():
     assert js.apply_tenure_to_percent(100, 42, 42)[0] == 100
 
 
+def test_process_timeline_gated_until_few_retros(client, probe_identity):
+    """Time-path slider stays off until enough completed retrospectives."""
+    cookies = cookie_for("activator", probe_identity)
+    r = client.get(
+        "/api/me/journey/process-timeline?samples=8",
+        cookies=cookies,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["framing"] == "practice_compass_timeline"
+    assert body["slider_eligible"] is False
+    assert body["points"] == []
+    assert body["completed_retrospectives"] == 0
+    assert body["min_retrospectives"] == js.PROCESS_TIMELINE_MIN_RETROS
+
+
+def test_process_timeline_samples_after_retros(client, probe_identity):
+    """After ≥3 completed retros, timeline returns scrub points."""
+    cookies = cookie_for("activator", probe_identity)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            for i in range(js.PROCESS_TIMELINE_MIN_RETROS):
+                cur.execute(
+                    """INSERT INTO member_retrospectives
+                         (identity_id, status, is_maiden, scope_start, scope_end,
+                          title, body_md, completed_at)
+                       VALUES (
+                         %s, 'complete', 0,
+                         DATE_SUB(UTC_TIMESTAMP(), INTERVAL %s DAY),
+                         DATE_SUB(UTC_TIMESTAMP(), INTERVAL %s DAY),
+                         %s, '',
+                         DATE_SUB(UTC_TIMESTAMP(), INTERVAL %s DAY)
+                       )""",
+                    (
+                        probe_identity,
+                        40 + i,
+                        30 + i,
+                        f"Timeline retro {i}",
+                        i,
+                    ),
+                )
+    try:
+        r = client.get(
+            "/api/me/journey/process-timeline?samples=8",
+            cookies=cookies,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["slider_eligible"] is True
+        assert body["completed_retrospectives"] >= js.PROCESS_TIMELINE_MIN_RETROS
+        pts = body["points"]
+        assert len(pts) >= 1
+        assert pts[-1]["as_of"] == body["end_date"]
+        for p in pts:
+            assert "as_of" in p and "overall_percent" in p
+            assert "meters" in p and isinstance(p["meters"], list)
+            assert "grade" in p
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM member_retrospectives WHERE identity_id = %s",
+                    (probe_identity,),
+                )
+
+
 def test_scores_include_process_meters(client, probe_identity):
+
     cookies = cookie_for("activator", probe_identity)
     r = client.get("/api/me/journey/scores", cookies=cookies)
     assert r.status_code == 200
     body = r.json()
     assert "process" in body
     p = body["process"]
-    assert p["framing"] == "process_meter"
+    assert p["framing"] == "practice_compass"
     assert p.get("scoring_model_version") == js.SCORING_MODEL_VERSION
     assert "weights" in p and isinstance(p["weights"], dict)
     assert sum(p["weights"].values()) == 100
@@ -65,12 +142,12 @@ def test_scores_include_process_meters(client, probe_identity):
     assert 0 <= p["overall_raw_percent"] <= 100
     assert "overall_raw_equal_mean" in p
     assert "grade" in p and p["grade"]["label"] in (
-        "Establishing",
-        "Poor",
-        "Fair",
-        "Good",
-        "Great",
-        "Excellent",
+        "Finding heading",
+        "Off course",
+        "Drifting",
+        "On course",
+        "Steady",
+        "True north",
     )
     assert "tenure" in p
     assert "grade_scale" in p and len(p["grade_scale"]) == 5
@@ -155,7 +232,7 @@ def test_adherence_dual_empty():
 
 
 def test_practice_persistence_weeks():
-    # 8 of 12 weeks active → 100% at target of 8
+    # 8 consecutive recent weeks active → 100% on engaged span (end gaps ignored)
     now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
     weeks: set[tuple[int, int]] = set()
     d = now.astimezone(js.EASTERN).date()
@@ -167,6 +244,42 @@ def test_practice_persistence_weeks():
     )
     assert active == 8
     assert pct == 100
+
+
+def test_practice_persistence_calendar_gap_outside_span_ignored():
+    """Only 4 active weeks but consecutive → 100%; empty horizon weeks outside span ignored."""
+    now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
+    weeks: set[tuple[int, int]] = set()
+    d = now.astimezone(js.EASTERN).date()
+    for i in range(4):
+        w = (d - timedelta(days=7 * i)).isocalendar()
+        weeks.add((w[0], w[1]))
+    pct, active, _ = js.practice_persistence(
+        weeks, now=now, horizon_weeks=12, target_weeks=8
+    )
+    assert active == 4
+    assert pct == 100
+
+
+def test_active_span_flags_trims_ends():
+    assert js.active_span_flags([0, 0, 1, 1, 0, 1, 0]) == [1, 1, 0, 1]
+    assert js.active_span_flags([0, 0, 0]) == []
+    dens, a, span = js.density_in_active_span([0, 1, 0, 1, 0])
+    assert a == 2 and span == 3
+    assert abs(dens - 2 / 3) < 1e-9
+
+
+def test_day_density_active_span_ignores_end_gaps():
+    """Quiet days after last process day do not dilute density."""
+    end = date(2026, 7, 28)
+    start = end - timedelta(days=13)
+    # Active only on end-1 and end-3 — span is 3 days with 2 active → ~67%
+    active = {end - timedelta(days=1), end - timedelta(days=3)}
+    pct, n, span = js.day_density_active_span(
+        active, window_start=start, window_end=end
+    )
+    assert n == 2 and span == 3
+    assert pct == 67
 
 
 def test_observer_trial_profile_six_week_horizon():
@@ -535,10 +648,11 @@ def test_live_presence_full_window_scores_100():
     assert pct == 100
 
 
-def test_live_presence_streak_after_drought_below_perfect():
-    """10-week streak after older empty weeks scores below continuous presence.
+def test_live_presence_leading_calendar_gap_not_penalized():
+    """Trailing calendar silence after last check-in does not score as absence.
 
-    Near-term EWMA rewards the comeback, but residual drought still dings vs 100.
+    Active-span: 10 consecutive weeks of presence → 100%, even if the horizon
+    still has empty weeks before/after the engaged stretch.
     """
     now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
     times = _weekly_checkins(10, end=datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc))
@@ -547,43 +661,30 @@ def test_live_presence_streak_after_drought_below_perfect():
     )
     assert streak == 10
     assert active == 10 and horizon == 16
-    assert pct < 100
-    # Near-term heavy: comeback scores above flat coverage (10/16 ≈ 62)
-    assert pct > 62
+    assert pct == 100  # end gaps ignored
 
 
-def test_live_presence_recent_drought_dings_harder_than_old():
-    """Same density, different placement: recent gaps hurt more than old gaps."""
+def test_live_presence_trailing_gap_after_stop_not_penalized():
+    """Stopped showing up for 6 weeks after a solid block — not scored as failure.
+
+    Only the engaged span (the 10 present weeks) is evaluated.
+    """
     now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
-    # Recent consistency after old drought: last 10 weeks present
-    comeback = _weekly_checkins(
-        10, end=datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc)
-    )
-    # Recent drought after old consistency: first 10 of a 16w block present,
-    # then 6 empty — end the block 6 weeks before "now"
     faded = _weekly_checkins(
         10, end=datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc) - timedelta(days=7 * 6)
     )
-    pct_comeback, _, a1, _ = js.live_presence_percent(
-        comeback, now=now, streak_cap=12, horizon_weeks=16
-    )
-    pct_faded, _, a2, _ = js.live_presence_percent(
+    pct, _, active, _ = js.live_presence_percent(
         faded, now=now, streak_cap=12, horizon_weeks=16
     )
-    assert a1 == a2 == 10
-    assert pct_comeback > pct_faded, (
-        f"near-term weight: comeback={pct_comeback} faded={pct_faded}"
-    )
-    assert pct_faded < 50  # recent slack is punished hard
+    assert active == 10
+    assert pct == 100  # post-engagement silence ignored
 
 
-def test_live_presence_inconsistency_scores_below_consecutive():
-    """Alternating show-ups (inconsistent) score below a solid recent block."""
+def test_live_presence_internal_gaps_still_ding():
+    """Gaps *inside* the first→last check-in span still lower the score."""
     now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
     end = datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc)
-    # 8 consecutive recent weeks
     solid = _weekly_checkins(8, end=end)
-    # 8 alternating weeks over 16 (every other week, including most recent)
     alt: list[datetime] = []
     cursor = end
     for i in range(16):
@@ -597,11 +698,12 @@ def test_live_presence_inconsistency_scores_below_consecutive():
         alt, now=now, streak_cap=12, horizon_weeks=16
     )
     assert active_alt == 8
-    assert pct_solid > pct_alt
+    assert pct_solid == 100
+    assert pct_alt < pct_solid
 
 
-def test_live_presence_sparse_over_months_dings_hard():
-    """Scattered check-ins with no consistency score low under EWMA."""
+def test_live_presence_sparse_internal_still_dings():
+    """Scattered check-ins with long internal gaps score below solid blocks."""
     now = datetime(2026, 7, 29, 15, 0, tzinfo=timezone.utc)
     times = [
         datetime(2026, 7, 28, 14, 0, tzinfo=timezone.utc),
@@ -614,7 +716,7 @@ def test_live_presence_sparse_over_months_dings_hard():
     )
     assert streak == 1
     assert active == 4
-    assert pct < 45  # inconsistency / sparsity punished
+    assert pct < 55  # internal sparsity still dings
 
 
 def test_checkin_window():

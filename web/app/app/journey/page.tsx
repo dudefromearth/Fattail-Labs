@@ -70,7 +70,7 @@ export default function JourneyPage() {
   }, []);
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-10">
+    <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
       <nav className="text-sm text-[var(--color-label-secondary)]">
         <Link href="/app" className="hover:underline">
           Apps
@@ -83,17 +83,17 @@ export default function JourneyPage() {
           <h1 className="text-3xl font-semibold tracking-tight text-[var(--color-label)]">
             Journey
           </h1>
-          <p className="mt-2 max-w-xl text-[var(--color-label-secondary)]">
-            Your path through the library — and how you show up as someone who
-            contributes. Compare process participation with peers who opt in;
-            never profit rankings.
+          <p className="mt-2 max-w-2xl text-[var(--color-label-secondary)]">
+            Your path through the Lab. The radar below is Process Flow — a map
+            of practice pillars that keeps you directionally aligned. Not a
+            report card. Not a profit ranking.
           </p>
         </div>
         <Link
           href="/me"
           className="shrink-0 text-sm font-medium text-[var(--color-tint)] hover:underline"
         >
-          Profile &amp; visibility →
+          Profile →
         </Link>
       </div>
 

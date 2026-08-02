@@ -101,10 +101,42 @@ export async function previewRetroScope(): Promise<RetroScopePreview> {
   return parse(r);
 }
 
-export async function listRetrospectives(): Promise<Retrospective[]> {
-  const r = await fetch("/api/me/retrospectives", { credentials: "same-origin" });
-  const d = await parse<{ retrospectives: Retrospective[] }>(r);
-  return d.retrospectives || [];
+export type RetrospectiveListPage = {
+  retrospectives: Retrospective[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+/** Default page size for the retrospective library. */
+export const RETRO_LIST_PAGE_SIZE = 10;
+
+export async function listRetrospectives(opts?: {
+  limit?: number;
+  offset?: number;
+}): Promise<RetrospectiveListPage> {
+  const limit = opts?.limit ?? RETRO_LIST_PAGE_SIZE;
+  const offset = opts?.offset ?? 0;
+  const qs = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const r = await fetch(`/api/me/retrospectives?${qs}`, {
+    credentials: "same-origin",
+  });
+  const d = await parse<{
+    retrospectives: Retrospective[];
+    total?: number;
+    limit?: number;
+    offset?: number;
+  }>(r);
+  const list = d.retrospectives || [];
+  return {
+    retrospectives: list,
+    total: typeof d.total === "number" ? d.total : list.length,
+    limit: typeof d.limit === "number" ? d.limit : limit,
+    offset: typeof d.offset === "number" ? d.offset : offset,
+  };
 }
 
 export async function createRetrospective(opts?: {

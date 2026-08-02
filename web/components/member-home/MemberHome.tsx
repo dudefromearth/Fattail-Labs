@@ -514,18 +514,19 @@ export default function MemberHome() {
         <aside className="mt-10 space-y-5 lg:mt-0">
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-4">
             <h2 className="text-sm font-semibold text-[var(--color-label)]">
-              Personal standing
+              Practice compass
             </h2>
             <p className="mt-1 text-[11px] text-[var(--color-label-tertiary)]">
-              Private process meter — persistence with practice tools, daily
-              routine, learning, live presence, plan adherence. Not trophies.
+              Not a scorecard — a private compass for directional alignment with
+              practice (tools, routine, learning, live, adherence). Recent weeks
+              matter more. Never trophies or P&amp;L.
             </p>
             <div className="mt-3">
               {scores?.process ? (
                 <ProcessMeter process={scores.process} compact />
               ) : (
                 <p className="text-xs text-[var(--color-label-tertiary)]">
-                  Loading process meter…
+                  Loading compass…
                 </p>
               )}
             </div>
@@ -690,7 +691,7 @@ export default function MemberHome() {
                 Continue as Navigator
               </h2>
               <p className="mt-1 text-xs leading-snug text-emerald-900/80 dark:text-emerald-100/80">
-                Your process meter tracks the habits that make coaching stick.
+                Your practice compass tracks the habits that make coaching stick.
                 When you&apos;re ready, Navigator keeps the continuous improvement
                 path open — same practice, longer arc. No profit promises; fair
                 course access if you leave after a full trial.

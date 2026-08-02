@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-02 — DL-191 Continuous journaling + day-start routine
+
+**Decision (Coach):** Journaling is **not** an end-of-day task. It is capture **with every
+experience throughout the day** — including **pre-market analysis** and **post-market
+exhale**. Trade Log holds structure as the experience happens; Journal holds mind. The
+day is one conversation (Journal Session v0.6); timestamps and market phase already make
+continuous capture load-bearing.
+
+**Day-start routine:** A notification system should **invite the routine when the trader
+starts their day** (prep Journal / Practice Context) — gentle, process-only, idempotent,
+no shame language, no P&L. Recommended design: member prep time + first Labs open of day
+if pre-market note missing. P0 = in-app; browser/email later. Full build follows thin
+spec + `member_notify` kind — not a second journal product.
+
+**Education:** Labs OS course Practice module + Guide teach continuous journaling.
+
+**Artifact:** `Specs/FatTail-Labs-Continuous-Journaling-Direction-2026-08-02.md`
+
+**Does not reverse:** Journal Session v0.6 one-session-per-date model; Family B; empty≠zero.
+
+---
+
 ## 2026-08-02 — DL-190 Process Flow: state of being + recent-weighted scoring
 
 **Decision (Coach):** Reposition what was branded **Process Integrity (score)** as

@@ -827,6 +827,29 @@ def my_journey_scores(request: Request) -> dict:
     }
 
 
+@router.get("/api/me/journey/process-timeline")
+def my_process_timeline(request: Request, samples: int = 26) -> dict:
+    """Temporal Process Flow samples (practice start → today) for radar scrubber.
+
+    Each point reconstructs meters as-of that day. ``samples`` 2–52 (default 26).
+    """
+    import journey_scores as js
+
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    if iid == 0:
+        raise HTTPException(status_code=400, detail="No identity for this session")
+    n = max(2, min(int(samples or 26), 52))
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            return js.process_timeline(
+                cur,
+                iid,
+                role=str(claims.get("role") or "observer"),
+                samples=n,
+            )
+
+
 @router.get("/api/journey/leaderboard")
 def journey_leaderboard(request: Request) -> dict:
     """Community Leaderboard — opt-in process peers (Contribution Score rank)."""

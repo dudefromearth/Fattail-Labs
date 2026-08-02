@@ -27,6 +27,7 @@ import {
   type Retrospective,
 } from "@/lib/retrospectiveApi";
 import { usePracticeContextOptional } from "@/lib/practiceContext";
+import RetroPeriodWindow from "@/components/retrospective/RetroPeriodWindow";
 
 type Dict = Record<string, unknown>;
 
@@ -728,6 +729,36 @@ export default function RetrospectiveWorkspace({
           </p>
         </div>
       )}
+
+      {/* Period path — graphical window for scope; process detail is the map below */}
+      <RetroPeriodWindow
+        scopeStart={data.scope_start}
+        scopeEnd={data.scope_end}
+        accountId={(() => {
+          const scope = asDict(report?.account_scope);
+          const raw = scope?.account_id;
+          if (raw == null || raw === "") return null;
+          const n = Number(raw);
+          return Number.isFinite(n) && n > 0 ? n : null;
+        })()}
+        accountLabel={
+          str(asDict(report?.account_scope)?.label, "All accounts") ||
+          "All accounts"
+        }
+        readOnly={data.status === "complete"}
+      />
+
+      <p
+        className="text-xs text-[var(--color-label-tertiary)]"
+        data-testid="retro-detail-leadin"
+      >
+        <span className="font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
+          Detailed look
+        </span>
+        {" — "}
+        process ceremony for this window (habits, judgment, commitments). Numbers
+        above are context; they do not replace the steps below.
+      </p>
 
       {/* Spec §6.2 — persistent 3×3 ceremony map; only multi-column chrome */}
       <div

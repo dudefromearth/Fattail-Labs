@@ -1123,6 +1123,7 @@ def list_session_activity_ny_dates(
     *,
     is_maiden: bool = True,
     since: datetime | None = None,
+    until: datetime | None = None,
 ) -> set[date]:
     """Journal activity NY days for meters.
 
@@ -1130,7 +1131,9 @@ def list_session_activity_ny_dates(
     Falls back to session_started_at only when no message window is usable.
     """
     if since is not None:
-        return list_member_message_ny_dates(cur, identity_id, since=since)
+        return list_member_message_ny_dates(
+            cur, identity_id, since=since, until=until
+        )
     if scope_start is not None and scope_end is not None:
         # Scope uses message times when present; dual-read session start for empty
         msgs = list_member_message_ny_dates(

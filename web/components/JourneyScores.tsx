@@ -1,25 +1,22 @@
 "use client";
 
-// My presence — private process meter + community contribution snapshot.
-// Spec: Journey Gamification v1.0 · process over achievements
+// Journey Process Flow — hero radar + temporal scrub (practice start → today).
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import ProcessMeter, { type ProcessPayload } from "@/components/ProcessMeter";
+import ProcessMeter, {
+  type ProcessPayload,
+  type ProcessTimeline,
+} from "@/components/ProcessMeter";
 import RetroCadenceNudge from "@/components/RetroCadenceNudge";
 
 type Scores = {
-  reputation: number;
-  personal_growth: number;
-  attendance_streak: number;
-  contribution: number;
-  journey_visible: boolean;
-  rank: number | null;
   process?: ProcessPayload;
 };
 
 export default function JourneyScores() {
   const [data, setData] = useState<Scores | null | "err">(null);
+  const [timeline, setTimeline] = useState<ProcessTimeline | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,6 +32,21 @@ export default function JourneyScores() {
       .catch(() => {
         if (!cancelled) setData("err");
       });
+
+    fetch("/api/me/journey/process-timeline?samples=26", {
+      credentials: "same-origin",
+    })
+      .then(async (r) => {
+        if (!r.ok) return null;
+        return (await r.json()) as ProcessTimeline;
+      })
+      .then((t) => {
+        if (!cancelled && t?.points?.length) setTimeline(t);
+      })
+      .catch(() => {
+        /* non-fatal — radar still works without scrub */
+      });
+
     return () => {
       cancelled = true;
     };
@@ -43,29 +55,36 @@ export default function JourneyScores() {
   if (data === null) {
     return (
       <p className="mt-6 text-sm text-[var(--color-label-tertiary)]">
-        Loading your presence…
+        Loading your practice map…
       </p>
     );
   }
   if (data === "err") {
     return (
       <p className="mt-6 text-sm text-red-600">
-        Could not load scores. Restart the API if migrations are pending.
+        Could not load Process Flow. Restart the API if migrations are pending.
       </p>
     );
   }
 
   return (
-    <section className="mt-8 grid gap-4 lg:grid-cols-2">
-      <div className="surface-card border border-[var(--color-separator)] p-5">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--color-label)]">
-              Personal process
+    <section className="mt-8" data-testid="journey-practice-compass">
+      <div className="surface-card border border-[var(--color-separator)] p-5 sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="max-w-2xl">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-label-tertiary)]">
+              Process Flow
+            </p>
+            <h2 className="mt-0.5 text-2xl font-semibold tracking-tight text-[var(--color-label)]">
+              Practice compass
             </h2>
-            <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-              A meter for long-term success habits — including persistence with
-              Trade Log, Journal, lessons, and live — not a scoreboard of wins.
+            <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+              Not a scorecard. A radar of practice pillars, plus a{" "}
+              <strong className="font-medium text-[var(--color-label)]">
+                timeline of shape strength
+              </strong>{" "}
+              (sloping up or down) from your start to today. P&amp;L never draws
+              the path.
             </p>
           </div>
           <div className="flex flex-col items-end gap-1 text-xs font-medium">
@@ -83,72 +102,24 @@ export default function JourneyScores() {
             </Link>
           </div>
         </div>
-        <div className="mt-5">
+
+        <div className="mt-6 sm:mt-8">
           {data.process ? (
-            <ProcessMeter process={data.process} />
+            <ProcessMeter
+              process={data.process}
+              hero
+              timeline={timeline}
+            />
           ) : (
-            <p className="text-sm text-[var(--color-label-tertiary)]">
-              Process meter unavailable — restart API after latest deploy.
+            <p className="text-center text-sm text-[var(--color-label-tertiary)]">
+              Radar unavailable — restart API after latest deploy.
             </p>
           )}
         </div>
-        {data.process && (
-          <RetroCadenceNudge process={data.process} className="mt-4" />
-        )}
-      </div>
 
-      <div className="surface-card border border-[var(--color-separator)] p-5">
-        <h2 className="text-lg font-semibold text-[var(--color-label)]">
-          Community presence
-        </h2>
-        <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-          How you show up for peers when you opt in. Tailor pillars on Profile
-          (e.g. share reputation, keep growth private).
-        </p>
-        <dl className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-[var(--radius-md)] border border-[var(--color-separator)] p-3">
-            <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-              Reputation
-            </dt>
-            <dd className="mt-1 text-xl font-semibold tabular-nums">
-              {data.reputation}
-            </dd>
-          </div>
-          <div className="rounded-[var(--radius-md)] border border-[var(--color-separator)] p-3">
-            <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-              Contribution
-            </dt>
-            <dd className="mt-1 text-xl font-semibold tabular-nums text-[var(--color-tint)]">
-              {data.contribution}
-            </dd>
-          </div>
-          <div className="rounded-[var(--radius-md)] border border-[var(--color-separator)] p-3">
-            <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-              Attendance
-            </dt>
-            <dd className="mt-1 text-xl font-semibold tabular-nums">
-              {data.attendance_streak}w
-            </dd>
-          </div>
-          <div className="rounded-[var(--radius-md)] border border-[var(--color-separator)] p-3">
-            <dt className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-              Board
-            </dt>
-            <dd className="mt-1 text-sm font-medium">
-              {data.journey_visible
-                ? data.rank != null
-                  ? `Rank #${data.rank}`
-                  : "Visible"
-                : "Private"}
-            </dd>
-          </div>
-        </dl>
-        <Link
-          href="/me"
-          className="mt-4 inline-block text-xs font-medium text-[var(--color-tint)] hover:underline"
-        >
-          Visibility settings →
-        </Link>
+        {data.process && (
+          <RetroCadenceNudge process={data.process} className="mt-6" />
+        )}
       </div>
     </section>
   );

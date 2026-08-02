@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 import db
 import journal_session_domain as jsd
@@ -24,6 +24,10 @@ from routes.trade_log.common import (
 )
 
 router = APIRouter(tags=["retrospectives"])
+
+# Library list defaults (member retrospective main page pages 10 at a time).
+LIST_DEFAULT_LIMIT = 10
+LIST_MAX_LIMIT = 100
 
 
 def _now() -> datetime:
@@ -61,12 +65,35 @@ def preview_scope(request: Request) -> dict:
 
 
 @router.get("/api/me/retrospectives")
-def list_retrospectives(request: Request) -> dict:
-    """List own retros — any authenticated identity (isolation only)."""
+def list_retrospectives(
+    request: Request,
+    limit: int = Query(
+        default=LIST_DEFAULT_LIMIT,
+        ge=1,
+        le=LIST_MAX_LIMIT,
+        description="Page size (default 10, max 100)",
+    ),
+    offset: int = Query(
+        default=0,
+        ge=0,
+        description="Rows to skip (page_index * limit)",
+    ),
+) -> dict:
+    """List own retros — any authenticated identity (isolation only).
+
+    Paged: default ``limit=10``. Response includes ``total`` for library pager UI.
+    """
     claims = require_session(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
+            cur.execute(
+                """SELECT COUNT(*) AS n
+                   FROM member_retrospectives
+                   WHERE identity_id = %s AND status <> 'abandoned'""",
+                (iid,),
+            )
+            total = int((cur.fetchone() or {}).get("n") or 0)
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
                           title, body_md, report_json, comparison_json, agent_json,
@@ -75,11 +102,16 @@ def list_retrospectives(request: Request) -> dict:
                    FROM member_retrospectives
                    WHERE identity_id = %s AND status <> 'abandoned'
                    ORDER BY COALESCE(completed_at, created_at) DESC
-                   LIMIT 100""",
-                (iid,),
+                   LIMIT %s OFFSET %s""",
+                (iid, int(limit), int(offset)),
             )
             rows = cur.fetchall()
-    return {"retrospectives": [rd.serialize_row(r) for r in rows]}
+    return {
+        "retrospectives": [rd.serialize_row(r) for r in rows],
+        "total": total,
+        "limit": int(limit),
+        "offset": int(offset),
+    }
 
 
 @router.post("/api/me/retrospectives")

@@ -254,6 +254,11 @@ export default function GuidePage() {
                 <strong>Framing:</strong> process and structure first — not a
                 theater of profits.
               </li>
+              <li>
+                <strong>Living book:</strong> log when the experience happens
+                (or when fills land), not only as end-of-day bookkeeping. Pair
+                each meaningful trade day with Journal turns on the same date.
+              </li>
             </ul>
 
             <H2 id="journal">Journal</H2>
@@ -261,29 +266,45 @@ export default function GuidePage() {
               <Link href="/app/journal" className={link}>
                 Journal
               </Link>{" "}
-              is calendar-first process notes: preparation, selection, and review
-              as a conversation for each day.
+              is <strong>not</strong> an end-of-day chore. It is a calendar-first
+              conversation for each day: you write{" "}
+              <strong>with every experience</strong> — pre-market analysis,
+              mid-session decisions, trade moments, and a post-market exhale.
+              One thread per date; every message is timestamped so the record
+              stays honest when you review.
             </p>
             <ul>
               <li>
                 <strong>Calendar navigation</strong> aligned with Practice date
-                context.
+                context (keep <strong>today</strong> when the day is live).
               </li>
               <li>
-                <strong>Day session</strong> — one thread for that date, with
-                guided process prompts (capacity building, not stock tips).
+                <strong>Day session</strong> — one conversation for that date;
+                composer always ready (capacity building, not stock tips).
+              </li>
+              <li>
+                <strong>Pre-market &amp; post-market</strong> — plan and
+                invalidation before the open; process exhale after the close —
+                not a P&amp;L scorecard. Week view shows when you wrote across
+                the day.
               </li>
               <li>
                 <strong>Tags</strong> — label what happened so later
-                retrospectives and integrity meters stay honest.
+                retrospectives and Process Flow stay honest.
               </li>
               <li>
-                <strong>Trades on this day</strong> — from the active account,
-                so the book and the notes stay connected.
+                <strong>Trades on this day</strong> — from the active account
+                (Trade Log holds structure; Journal holds mind).
               </li>
               <li>
-                <strong>Retrospective starts here</strong> when you mark material
-                for the formal review ceremony.
+                <strong>Day-start routine</strong> — product direction: a gentle
+                notification when you start the day to open Journal for
+                pre-market (process language only; never shame). Until that
+                ships, set your own prep alarm.
+              </li>
+              <li>
+                <strong>Retrospective</strong> uses this living thread —
+                including pre-market intent vs what you actually did.
               </li>
             </ul>
 

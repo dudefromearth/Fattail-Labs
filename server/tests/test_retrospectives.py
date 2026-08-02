@@ -214,6 +214,7 @@ def test_free_no_plan_create_403(client):
         listed = client.get("/api/me/retrospectives", cookies=cookies)
         assert listed.status_code == 200
         assert listed.json()["retrospectives"] == []
+        assert listed.json().get("total") == 0
 
         r = client.post(
             "/api/me/retrospectives",
@@ -225,6 +226,57 @@ def test_free_no_plan_create_403(client):
 
         prev = client.get("/api/me/retrospectives/preview-scope", cookies=cookies)
         assert prev.status_code == 403
+    finally:
+        _cleanup(iid)
+
+
+def test_list_retrospectives_paged(client):
+    """Library list defaults to page size 10 with total/offset metadata."""
+    iid = _member("zztest-retro-page@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                for i in range(15):
+                    cur.execute(
+                        """INSERT INTO member_retrospectives
+                             (identity_id, status, is_maiden, scope_start, scope_end,
+                              title, body_md, completed_at)
+                           VALUES (
+                             %s, 'complete', 0,
+                             DATE_SUB(UTC_TIMESTAMP(), INTERVAL %s DAY),
+                             DATE_SUB(UTC_TIMESTAMP(), INTERVAL %s DAY),
+                             %s, '',
+                             DATE_SUB(UTC_TIMESTAMP(), INTERVAL %s DAY)
+                           )""",
+                        (iid, 30 + i, 20 + i, f"Retro page {i:02d}", i),
+                    )
+
+        page1 = client.get(
+            "/api/me/retrospectives",
+            cookies=cookies,
+        )
+        assert page1.status_code == 200, page1.text
+        body1 = page1.json()
+        assert body1["total"] == 15
+        assert body1["limit"] == 10
+        assert body1["offset"] == 0
+        assert len(body1["retrospectives"]) == 10
+
+        page2 = client.get(
+            "/api/me/retrospectives?limit=10&offset=10",
+            cookies=cookies,
+        )
+        assert page2.status_code == 200, page2.text
+        body2 = page2.json()
+        assert body2["total"] == 15
+        assert body2["offset"] == 10
+        assert len(body2["retrospectives"]) == 5
+
+        ids1 = {r["id"] for r in body1["retrospectives"]}
+        ids2 = {r["id"] for r in body2["retrospectives"]}
+        assert ids1.isdisjoint(ids2)
+        assert len(ids1 | ids2) == 15
     finally:
         _cleanup(iid)
 

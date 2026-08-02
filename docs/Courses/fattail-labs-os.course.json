@@ -1,20 +1,20 @@
 {
   "format": "fattail.labs.canonical_course",
   "model_version": "1.0",
-  "exported_at": "2026-08-02T00:00:00Z",
+  "exported_at": "2026-08-02T12:00:00Z",
   "source": {
     "kind": "authoring_spine",
-    "label": "Draft outline — fill video_id + body_md before publish"
+    "label": "FatTail Labs OS — full rewrite v1 spine; empty video_id; outline body_md"
   },
   "course": {
     "id": "course",
     "slug": "fattail-labs-os",
     "title": "FatTail Labs: The Operating System",
-    "subtitle": "Journey, Practice, Wiki, Strategy Lab, and Toughness — life routines, trained will, honest process",
-    "description_md": "FatTail Labs is not a content dump. It is an **operating system for trader development**: tools and programs that turn daily work into durable habits and skills.\n\nThis course is the map. Each lesson starts with a short **intro video**, then **step-by-step directions** for the feature or surface you just saw.\n\n**The through-line is Journey.** Journey is not “another Practice app.” Every part of Labs you actually use — courses, live sessions, Practice (Trade Log, Journal, Retrospective, Reports), Wiki study, Strategy Lab work, and Toughness — shapes **Process Flow** — the flow state of your trading process. Practice is where the day-to-day trading loop lives; Journey is where that state stays honest and current.\n\n**Toughness is bigger than the sprints.** The Hard 20 / 40 / 75 programs are **training exercises** — deliberate challenge to develop mental toughness, associated with the **anterior mid-cingulate cortex (aMCC)**. The real program is the **life routines and habits** you construct around that training so follow-through becomes natural. **Trading routines are not separate from life** — they are routines you enable the same way you enable sleep, training, and review.\n\n**What you will be able to do**\n\n- Explain what Labs is for (capacity over dependency; process over P&L theater)\n- Use Journey as your path + process integrity surface\n- Run the Practice suite with shared context (account + date)\n- Treat Toughness as life-system design, with sprints as brain training — not as a streak contest\n- Navigate Wiki and Strategy Lab without getting lost\n- See how each surface feeds your Journey score\n\n*Spine status: outline only. Replace empty `video_id` values and flesh out each `body_md` before publish.*",
-    "short_description": "Map of FatTail Labs: Journey, Practice, Wiki, Strategy Lab, and Toughness as life routines — intro video plus how-to for each surface.",
+    "subtitle": "How the Lab builds habits that stick — Journey, Practice, Wiki, Strategy Lab, and Toughness",
+    "description_md": "FatTail Labs is not a content dump. It is an **operating system for trader development** — tools and programs that turn daily work into durable habits and skills.\n\nThis course is the map. Every lesson starts with a short **intro video**, then **written directions** for the surface you just saw. Watch, then do.\n\n### Two through-lines\n\n**1. Process Flow.** Everything you use in Labs shapes **Process Flow** — the flow state of your trading process. It is a **state of being**, not a test score. Recent behavior matters more than old history. Journey is where that state stays honest and current.\n\n**2. One life.** Trading routines are not a separate identity from the rest of your life. **Toughness** is the life-routines system that makes durable success possible. Hard 20 / 40 / 75 sprints are **training exercises** for mental toughness (associated with the anterior mid-cingulate cortex, aMCC). The routines you build around those exercises become natural as that capacity develops — and your trading loop (log, journal, retrospective) is part of the same life.\n\n**Continuous journaling.** The Journal is not an end-of-day chore. You write with every experience — pre-market analysis, mid-session decisions, trade moments, and post-market exhale. Trade Log holds structure as it happens; Journal holds mind. A day-start routine invites that habit when the trading day begins.\n\n### What you will walk away with\n\n- A clear purpose for FatTail Labs: habits and skills that lead to durable success\n- Fluency in Journey and **Process Flow**\n- The Practice loop: Trade Log → Journal → Retrospective → Reports\n- How Wiki, Strategy Lab, and Toughness fit without drowning you\n- Process outcomes only — never profit theater\n\n*Spine draft — replace empty `video_id` values and expand each outline into final copy before publish.*",
+    "short_description": "The map of FatTail Labs: Process Flow, Practice apps, Wiki, Strategy Lab, and Toughness as life routines. Intro video + how-to for each surface.",
     "status": "draft",
-    "version": "0.3.0-spine",
+    "version": "1.1.0-spine",
     "level": "beginner",
     "category_slugs": [],
     "instructor_refs": [
@@ -33,23 +33,26 @@
     "certification_enabled": false,
     "estimated_duration_minutes": null,
     "learning_outcomes": [
-      "State the purpose of FatTail Labs in one sentence: build solid trading habits and skills that lead to durable success",
-      "Use Journey to see Process Flow (state of trading process) and learning path across the whole Lab",
+      "State the purpose of FatTail Labs: build solid trading habits and skills for durable success",
+      "Describe Process Flow as a state of being — the flow state of trading process — not a test score",
+      "Explain that recent behavior is weighted more heavily than older history in Process Flow",
       "Open Practice with the correct account and date context",
-      "Log trades, journal a session, run a Retrospective, and read Reports as one loop",
-      "Find doctrine and maps in the Wiki without treating it as a second course player",
-      "Describe Strategy Lab’s Build / Test / Run roles and process gates",
-      "Define Toughness as life routines and habits for durable success — not only Hard sprints",
-      "Explain Hard 20/40/75 as aMCC-oriented training exercises that make surrounding routines natural",
-      "Treat trading process (log, journal, retro) as life routines, not a separate box from the rest of life",
-      "Know how Toughness feeds Journey when you engage it",
-      "Never confuse process standing with profit claims or P&L ranking"
+      "Run Trade Log, Journal, Retrospective, and Reports as one loop",
+      "Use the Wiki as a map of doctrine, not a second course player",
+      "Describe Strategy Lab Build / Test / Run and process gates",
+      "Define Toughness as life routines; Hard sprints as aMCC training exercises",
+      "Treat trading process as life routines, not a hermetically sealed trader identity",
+      "Never confuse Process Flow with P&L, win rate, or peer profit ranking",
+      "Journal with experiences throughout the day — not only at the end of the day",
+      "Capture pre-market analysis and post-market exhale in the same Journal conversation",
+      "Use Trade Log for structure when the experience happens; Journal for mind",
+      "Describe day-start routine as an invitation to open Journal before the open"
     ],
     "modules": [
       {
         "id": "mod-1",
         "title": "Overview: Why FatTail Labs Exists",
-        "description_md": "One lesson. The thesis of the Lab: habits and skills first — stop the bleeding, capacity over dependency.",
+        "description_md": "One lesson. The thesis of the Lab before you touch any app.",
         "order": 1,
         "kind": "standard",
         "lessons": [
@@ -69,12 +72,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO intro video — Labs purpose: trader development OS; habits & skills; process outcomes not profit claims; map of Journey / Practice / Wiki / Strategy Lab / Toughness; Toughness = life routines (sprints are aMCC training, not the whole program); trading routines are life routines; Journey as the scoreboard of use."
+                "script_md": "Labs purpose: trader development OS; stop the bleeding; capacity over dependency; process outcomes never profit claims; map of Journey / Process Flow / Practice / Wiki / Strategy Lab / Toughness; one life — trading routines are life routines."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### What this lesson is for\n- One-sentence purpose of FatTail Labs\n- Who this course is for (members starting the apps, not strategy depth)\n\n### The thesis\n- Capital preservation / “stop the bleeding” as first step for many\n- Sell the dream, sequence the discipline\n- **Capacity over dependency** — tools build *your* judgment\n- Marketing and self-talk: **process outcomes**, never profit claims\n- **Life is one system** — trading routines are routines you enable in your life, not a hermetically sealed “trader identity”\n\n### The map of the Lab (preview of later modules)\n| Surface | Job |\n|---------|-----|\n| **Journey** | Path + **Process Flow** (flow state of trading process) across *everything* you use |\n| **Practice** | Day-to-day trading loop: Trade Log → Journal → Retrospective → Reports |\n| **Wiki** | Growing map of what we teach |\n| **Strategy Lab** | Build / Test / Run strategies with process gates |\n| **Toughness** | Life routines & mental toughness; Hard sprints as **brain training** (aMCC); trading process as one set of life routines among others |\n\n### How this course works\n1. Short intro video\n2. Written directions for the feature\n3. Do the thing in the app — don’t only watch\n\n### Do this now\n- [ ] Open **Apps** from the main nav\n- [ ] Skim Journey, Practice, and Toughness without changing data yet\n- [ ] Note one life habit and one trading habit you want to make non-negotiable this month\n\n### What is *not* this course\n- Strategy mechanics (0DTE Foundations, Pure Options, Campaigns, …)\n- Broker setup deep dives\n- Live-session schedule (see calendar / live)\n\n---\n*Replace this outline with full member-facing copy when video is ready.*"
+                "body_md": "## What this course is for\n\nFatTail Labs exists to help traders develop **solid habits and skills** that lead to durable success — not to hand you signals or a P&L scoreboard.\n\n### The thesis\n\n- **Stop the bleeding** — capital preservation is the first step for many, and for some the only step they need\n- Sell the dream, **sequence the discipline** — pathway routes through process first\n- **Capacity over dependency** — tools build *your* judgment\n- Speak in **process outcomes** (adherence, drawdown stopped, review cadence) — never profit claims\n- **One life** — trading routines are routines you enable in your life, not a costume you wear only during market hours\n\n### The map you will learn\n\n| Surface | Job |\n|---------|-----|\n| **Journey** | Path + **Process Flow** across everything you use |\n| **Practice** | Day-to-day loop: Trade Log → Journal → Retrospective → Reports |\n| **Wiki** | Growing map of what we teach |\n| **Strategy Lab** | Build / Test / Run with process gates |\n| **Toughness** | Life routines and mental toughness; Hard sprints as brain training |\n\n### How each lesson works\n\n1. Short intro video\n2. Written directions\n3. Do the thing in the app — do not only watch\n\n### Do this now\n\n- [ ] Open **Apps** from the main nav\n- [ ] Skim Journey, Practice, and Toughness without changing data yet\n- [ ] Write one life habit and one trading habit you want non-negotiable this month\n\n### Not this course\n\nStrategy mechanics live in other courses (0DTE Foundations, Pure Options, Campaigns, …). This course is the **operating system**, not the playbook for a specific structure."
               }
             ],
             "resource_ids": []
@@ -84,7 +87,7 @@
       {
         "id": "mod-2",
         "title": "The Journey",
-        "description_md": "Journey is the cross-Lab view of progress. Not a Practice app — the assessment surface that *everything you use* can contribute to.",
+        "description_md": "Journey is the cross-Lab view of progress. Process Flow is the state of your trading process — shaped by everything you use.",
         "order": 2,
         "kind": "standard",
         "lessons": [
@@ -104,12 +107,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — Journey as path + Process Flow (state of being); not P&L leaderboard; not separate product; every Lab surface feeds Process Flow."
+                "script_md": "Journey = path + Process Flow; not a second product; not P&L board; every Lab surface can shape Process Flow."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Open Journey\n- Path: **Apps → Journey** (or avatar menu)\n- URL: `/app/journey`\n\n### What you will see (high level)\n- **Process Flow** — the flow state of your trading process (a state of being, not a test score)\n- Learning path (courses, resume, quizzes)\n- Pathway & next live\n- Community board (opt-in)\n\n### Journey is not\n- A second login\n- A profit rank\n- A replacement for Trade Log or Journal\n\n### The core idea for this course\n**Every part of FatTail Labs you use shapes your Process Flow** — courses, live presence, Practice persistence, Wiki study, Strategy Lab work, and Toughness (life routines and, when you run them, Hard training blocks).\n\n### Do this now\n- [ ] Open Journey\n- [ ] Note which pillars look empty vs already active\n- [ ] Confirm you understand: empty is “not started,” not “failure” for new members\n\n---\n*Flesh out UI walkthrough screenshots after video. Product rename: Process Flow (DL-190); UI may still say Process Integrity until cutover.*"
+                "body_md": "## Open Journey\n\n- **Apps → Journey** (or avatar menu)\n- Path: `/app/journey`\n\n### What you will see\n\n- **Process Flow** — flow state of your trading process\n- Learning path (courses, resume, quizzes)\n- Pathway and next live\n- Community board (opt-in)\n\n### Journey is not\n\n- A second login or separate product\n- A profit rank or leaderboard of returns\n- A replacement for Trade Log, Journal, or Retrospective\n\n### The core idea\n\n**Every part of FatTail Labs you use shapes Process Flow** — courses, live sessions, Practice, Wiki study, Strategy Lab work, and Toughness (life routines and, when active, Hard training).\n\n### Do this now\n\n- [ ] Open Journey\n- [ ] Note which pillars look empty vs already active\n- [ ] Empty means “not started,” not “failure,” especially when you are new"
               }
             ],
             "resource_ids": []
@@ -130,12 +133,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — Process Flow = state of being / flow state of trading process (not a test score); pillars; recent behavior weighted more (EWMA); quality dimensions matter; tenure Establishing; never profit ranking. Legacy UI may still say Process Integrity until rename ships."
+                "script_md": "Process Flow = state of being, not a test score; pillars; key parts weighted; recent data weighted more (exponential average); Establishing for new members; never P&L. UI may still say Process Integrity until rename ships."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### What Process Flow is\n- A **state of being** — the **flow state of your trading process**\n- **Not** “the score you got after a test”\n- Private standing of whether process is coherent and **current**\n- New members: **Establishing** — empty ≠ failure; no day-one identity attack\n\n### Why the name matters\nIntegrity as a quiz number invites gaming and shame. **Flow** invites: am I in process right now, and is recent life holding the stack?\n\n### How it is measured (member-safe explanation)\n1. **Pillars** (dimensions) — each reflects a part of process life:\n   - Learning rhythm\n   - Live presence\n   - Practice persistence (Trade Log / Journal / tools)\n   - Daily routine\n   - Process adherence (plan-following on tagged trades)\n   - Retrospective cadence\n   - Mental toughness / Toughness when you engage it\n2. **Weights** — key quality pillars (adherence, retrospective, …) count for more than pure show-up\n3. **Exponential / recent emphasis** — more recent weeks weigh more than old history (EWMA-style). Drift shows up; ancient good weeks do not forever prop a broken present\n4. **Grades / labels** describe the **state of flow**, not an exam grade for your worth\n\n### What does *not* move Process Flow\n- P&L, win rate, profit claims, peer rank\n\n### Honest use\n- Notice drift early → reinstall routine (life + trading same capacity)\n- One process action beats chasing a prettier number\n\n### Do this now\n- [ ] Open Journey → Process Flow (or Process Integrity if UI not renamed yet)\n- [ ] Name your weakest pillar this week\n- [ ] One concrete Practice or life-stack action (not bigger size)\n\n---\n*Author: process outcomes only. Product: DL-190 + Process Flow repositioning note. As-built may still label Process Integrity until cutover.*"
+                "body_md": "## What Process Flow is\n\n**Process Flow** is a **state of being** — the **flow state of your trading process**.\n\nIt is **not** “the score you got after a test.” It is whether your process is coherent, honest, and **current**.\n\n- **High flow** — habits holding under load; process is present\n- **Drifting flow** — process is fragmented or stale; reinstall the routine (no identity attack)\n- **Establishing** — new members are not labeled “Poor” for starting; empty ≠ failure\n\n### Why this framing matters\n\nA “score” invites gaming and shame. **Flow** asks: am I in process right now, and is recent life holding the stack?\n\n### How it is measured (member-safe)\n\n1. **Pillars** — parts of process life:\n   - Learning rhythm\n   - Live presence\n   - Practice persistence\n   - Daily routine\n   - Process adherence (plan-following on tagged trades)\n   - Retrospective cadence\n   - Mental toughness when you engage Toughness / Hard\n2. **Weights** — key quality pillars count for more than pure show-up\n3. **Recent emphasis** — exponential average so **more recent weeks weigh more** than old history; drift surfaces; ancient good weeks do not forever prop a broken present\n4. **Labels** describe the **state of flow**, not your worth as a person\n\n### What never moves Process Flow\n\nP&L, win rate, profit claims, peer profit rank.\n\n### Do this now\n\n- [ ] Open Journey → Process Flow (or Process Integrity if the UI has not renamed yet)\n- [ ] Name your weakest pillar this week\n- [ ] One process action (not bigger trade size)"
               }
             ],
             "resource_ids": []
@@ -156,12 +159,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — enrollments, resume next lesson, quiz results on Journey, activity feed."
+                "script_md": "Enrollments, resume next lesson, quiz results on Journey, activity — understanding checks, not P&L gamification."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Learning path on Journey\n- Enrollments and resume into next unfinished lesson\n- How pathway position courses show up\n\n### Quizzes\n- Module quizzes score immediately\n- Results visible on Journey\n- Purpose: check understanding, not gamify P&L\n\n### Activity\n- What events surface (lesson complete, live, practice markers — align with product)\n\n### Do this now\n- [ ] From Journey, use **Continue Learning** or open a course\n- [ ] Complete one short lesson if you have an open enrollment\n\n---\n*Link to Guide #quizzes / #your-progress if helpful.*"
+                "body_md": "## Learning path on Journey\n\n- Enrollments and resume into the next unfinished lesson\n- Pathway courses and “what’s next”\n\n### Quizzes\n\n- Module quizzes score immediately with explanations when the author added them\n- Results live on Journey\n- Purpose: check understanding — not gamify P&L\n\n### Activity\n\nLesson complete, live presence, practice markers, and related events surface so you can see whether you are actually using the Lab.\n\n### Do this now\n\n- [ ] From Journey, continue learning or open a course\n- [ ] Complete one short lesson if you have an open enrollment"
               }
             ],
             "resource_ids": []
@@ -182,12 +185,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — opt-in process peers board; never profit ranking; Profile display name / photo / board visibility."
+                "script_md": "Opt-in process peers board; never profit ranking; Profile display name, photo, board visibility."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Community presence\n- Opt-in board of **process** peers\n- Participation pillars only — **never** profit ranking\n\n### Profile controls\n- Path: **Profile** (`/me`) from avatar menu\n- Display name, profile photo\n- Journey board visibility toggle\n\n### Do this now\n- [ ] Open Profile\n- [ ] Decide whether you want board visibility on or off\n- [ ] Set a clear display name if still default\n\n---\n*Respect privacy; no pressure to go public.*"
+                "body_md": "## Community presence\n\n- Opt-in board of **process** peers\n- Participation pillars only — **never** profit ranking\n\n### Profile controls\n\n- Path: **Profile** (`/me`) from the avatar menu\n- Display name, profile photo\n- Journey board visibility toggle\n\n### Do this now\n\n- [ ] Open Profile\n- [ ] Decide board visibility on or off — no pressure to go public\n- [ ] Set a clear display name if you are still on a default"
               }
             ],
             "resource_ids": []
@@ -197,7 +200,7 @@
       {
         "id": "mod-3",
         "title": "The Practice",
-        "description_md": "Day-to-day operating loop: Practice Context, Trade Log, Journal, Retrospective, Reports. Journey is downstream of honest practice — not a substitute for it.",
+        "description_md": "Day-to-day operating loop. Journaling is continuous — pre-market through post-market exhale — not an end-of-day chore. Trade Log and Journal move with every experience.",
         "order": 3,
         "kind": "standard",
         "lessons": [
@@ -217,19 +220,19 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — Apps → Practice; suite opens on Reports; shared nav; Account + Date chrome; Journal is you not per-account."
+                "script_md": "Apps → Practice; shared nav; Account + Date; today is the default working day; continuous journaling needs the right date set."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Open Practice\n- **Apps → Practice** (`/app/practice`)\n- Suite home is **Reports**; shared nav: Trade Log · Reports · Journal · Retrospective · Playbook (when live)\n\n### Practice Context (top chrome — every Practice app)\n| Control | Role |\n|---------|------|\n| **Account** | Which book (broker or sim). Trades & reports follow this account. |\n| **Date** | Year / month / week / day. Journal = which day; Trade Log = list filter; Reports = analysis window. |\n\n### Important distinction\n- Journal conversation is still **you**, not a separate journal per account\n- Always check Account + Date before logging or reviewing\n\n### How Practice feeds Journey\n- Persistence and cadence in Trade Log / Journal / Retrospective move **Process Flow**\n- Journey does not replace the blotter or the ceremony\n\n### Do this now\n- [ ] Open Practice\n- [ ] Set Account and Date deliberately\n- [ ] Click through each nav item once without editing\n\n---\n*Screenshot placeholders for chrome + nav.*"
+                "body_md": "## Open Practice\n\n- **Apps → Practice** — `/app/practice`\n- Suite home: **Reports**\n- Shared nav: Trade Log · Reports · Journal · Retrospective · Playbook (when live)\n\n### Practice Context (top chrome)\n\n| Control | Role |\n|---------|------|\n| **Account** | Which book (broker or sim). Trades and reports follow this account. |\n| **Date** | Year / month / week / day. Journal = which day; Trade Log = list filter; Reports = analysis window. |\n\n### Important\n\n- Journal conversation is still **you** — not a separate journal per account\n- For a live day, keep **Date = today** so continuous capture lands in the right session\n- Day-start routine (when enabled) should open Journal with **today** already set\n\n### Do this now\n\n- [ ] Open Practice\n- [ ] Set Account deliberately; set Date to **today**\n- [ ] Click through each nav item once without editing"
               }
             ],
             "resource_ids": []
           },
           {
             "id": "les-3-2",
-            "title": "Trade Log — Your Book of Record",
+            "title": "Trade Log — Capture the Experience When It Happens",
             "slug": "trade-log",
             "order": 2,
             "kind": "video",
@@ -243,20 +246,20 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — options-first blotter; table + sheet; multi-leg; import/export; process framing not P&L theater."
+                "script_md": "Trade Log is a living book of record — log structure as experiences happen, not only tonight's bookkeeping; process framing; bridge to Journal same day."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Open Trade Log\n- **Practice → Trade Log** (`/app/trade-log`)\n\n### What it is\n- Options-first blotter: multi-leg fills and structure as **process evidence**\n- Table-first permanent log; open a row in the right-hand sheet to create / edit / review\n\n### How to use it (step-by-step)\n1. Confirm **Account** and **Date** in Practice Context\n2. Create or import a trade\n3. Capture structure, legs, and notes that matter for review\n4. Close positions when done so Reports stay honest\n\n### Accounts\n- Multiple books supported; active account comes from Practice Context\n\n### Import & export\n- Bring fills in; take a portable copy of your book when needed\n\n### Framing\n- Process and structure first — not a theater of profits\n\n### Do this now\n- [ ] Add one real or practice trade under the correct account\n- [ ] Open the sheet and fill the fields you will actually review later\n\n---\n*Link to Strategy Lab / broker flows only if product-ready; otherwise keep manual path clear.*"
+                "body_md": "## Open Trade Log\n\n- **Practice → Trade Log** — `/app/trade-log`\n\n### What it is\n\nOptions-first blotter: multi-leg fills and structure as **process evidence**. Table-first; open a row in the right-hand sheet to create, edit, or review.\n\n### Continuous practice — not end-of-day only\n\nLog the experience **when it happens** (or as soon as fills land):\n\n1. Confirm **Account** and **Date** in Practice Context\n2. Create or import the trade\n3. Capture structure, legs, and short process notes on the sheet\n4. Open **Journal for the same date** for the thinking (plan, hesitation, rule follow/break) — Trade Log holds structure; Journal holds mind\n5. Close positions when done so Reports stay honest\n\n### Import\n\nImports may arrive after the fact. Still add a **same-day Journal turn** when you review imported fills so the day conversation stays complete.\n\n### Framing\n\nProcess and structure first — not a theater of profits.\n\n### Do this now\n\n- [ ] Add one real or practice trade under the correct account\n- [ ] Open Journal for that same date and write one line about *why* the trade existed"
               }
             ],
             "resource_ids": []
           },
           {
             "id": "les-3-3",
-            "title": "Journal — Session Notes That Build Capacity",
-            "slug": "journal",
+            "title": "Journaling Is Continuous — Not End of Day",
+            "slug": "journaling-is-continuous",
             "order": 3,
             "kind": "video",
             "free_preview": false,
@@ -269,24 +272,24 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — calendar-first day session; prompts; tags; trades on this day; mark for Retrospective."
+                "script_md": "Core thesis: journal with every experience through the day; one conversation per date; timestamps; week bands prove when you wrote; never EOD-only habit."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Open Journal\n- **Practice → Journal** (`/app/journal`)\n\n### What it is\n- Calendar-first process notes: preparation, selection, review as a **conversation for each day**\n- Capacity building — not stock tips\n\n### How to use it (step-by-step)\n1. Set **Date** (and Account for linked trades) in Practice Context\n2. Open the day session\n3. Answer guided process prompts honestly\n4. Apply **tags** so later retros and integrity stay honest\n5. Review **trades on this day** from the active account\n6. When material is ready, **mark for Retrospective**\n\n### Do this now\n- [ ] Journal today’s (or last trading day’s) session in plain language\n- [ ] Add at least one tag that you would want to see in a retro\n\n---\n*Tone: honest, short, process-first.*"
+                "body_md": "## The rule\n\n**Journaling is not something you do at the end of the day.**\n\nJournaling is something you do **with every experience you have throughout the day** — pre-market analysis, decisions mid-session, trade moments, and post-market exhale.\n\n### Open Journal\n\n- **Practice → Journal** — `/app/journal`\n- One **conversation per date** — the whole day is one thread\n- Every message is **timestamped** — the record shows *when* you wrote\n- Composer is always ready — no “start journaling” ceremony\n\n### Why continuous beats EOD-only\n\n| EOD-only | Continuous |\n|----------|------------|\n| Memory rewrites the day | Intent and emotion stay closer to truth |\n| Pre-market plan is lost | Pre-market is still in the thread for Retrospective |\n| Process Flow looks sparse | Multiple touches keep process **current** |\n\n### Week view (activity map)\n\nWeek view shows **when** you wrote across the day (before the open, morning, afternoon, after the close). Dots mean *you* wrote in that part of the day — not that the agent chatted. Use it to see whether you only dump at night.\n\n### What never belongs in the habit\n\n- Waiting for a perfect essay after the close\n- P&L theater as the body of the journal\n- Shame for a thin day — sparse is information; rebuild tomorrow\n\n### Do this now\n\n- [ ] Open **today’s** Journal\n- [ ] Write one short turn about something that already happened (or is about to — pre-market)\n- [ ] Glance at Week view if available — notice which bands have dots"
               }
             ],
             "resource_ids": []
           },
           {
             "id": "les-3-4",
-            "title": "Retrospective — The Review Ceremony",
-            "slug": "retrospective",
+            "title": "Pre-Market Analysis and Post-Market Exhale",
+            "slug": "pre-market-and-post-market",
             "order": 4,
             "kind": "video",
             "free_preview": false,
-            "estimated_duration_minutes": 12,
+            "estimated_duration_minutes": 10,
             "content_blocks": [
               {
                 "id": "blk-1",
@@ -295,47 +298,21 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — library; scope; ceremony steps; cadence / Journey nudges; process first results secondary."
+                "script_md": "Pre-market is journal not a separate notebook; capture plan/regime/bias/invalidation before open; post-market is exhale not scorecard; expected vs actual in retro uses pre-open intent."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Open Retrospective\n- **Practice → Retrospective** (`/app/retrospective`)\n\n### What it is\n- Structured review: what held, what broke, what you commit next\n- Process first; results secondary — never the headline as a brag\n\n### Surfaces\n- **Library** of past retrospectives\n- **Scope** — from last review (or maiden journey)\n- **Ceremony** — dual report / steps through cause, what worked, next commitments\n- **Cadence** — gentle nudges when a review is due (including from Journey)\n\n### How to run one (step-by-step)\n1. Confirm scope dates and what material is included\n2. Walk the ceremony steps without skipping the “what broke” section\n3. Write commitments you can keep next week (small, process-shaped)\n4. Save and return to the library\n\n### Link from Journal\n- Material marked in Journal should appear in the ceremony inputs (confirm product wording)\n\n### Do this now\n- [ ] If you have ≥1 week of notes/trades: start a Retrospective\n- [ ] If not: schedule the first retro date and keep journaling until then\n\n---\n*Weekly cadence is the default habit; adjust honestly to your calendar.*"
+                "body_md": "## Pre-market analysis — in the Journal\n\nBefore the open, open **today’s** Journal and capture process intent. This is not a second notebook. It is the same conversation.\n\nSuggested beats (plain language — not a form you must complete):\n\n- Regime / volatility read\n- Directional bias (if any)\n- Levels or invalidation you care about\n- What you will **not** do today\n- How you will size / risk under the plan\n\n**Why it matters later:** Retrospective can compare **what you intended before the open** with what you actually did. That comparison dies if pre-market only lived in your head.\n\n### During the day\n\nAdd short turns when something changes: plan break, hesitation, good follow-through, boredom, revenge urge. Link the Trade Log for structure; put the *why* here.\n\n### Post-market exhale\n\nAfter the close (or when you stop for the day), one honest turn:\n\n- What held\n- What broke\n- What you release (no revenge narrative)\n- One small commitment for tomorrow\n\nThis is an **exhale**, not a trophy room and not a self-attack.\n\n### Do this now\n\n- [ ] If before the open: write today’s pre-market turn now\n- [ ] If after the close: write a post-market exhale for the last session you traded or observed\n- [ ] If mid-day: write what just shifted in the plan"
               }
             ],
             "resource_ids": []
           },
           {
             "id": "les-3-5",
-            "title": "Reports — Path and Drawdown Without Trophy Culture",
-            "slug": "reports",
+            "title": "Day-Start Routine — Triggering the Habit",
+            "slug": "day-start-routine",
             "order": 5,
-            "kind": "video",
-            "free_preview": false,
-            "estimated_duration_minutes": 8,
-            "content_blocks": [
-              {
-                "id": "blk-1",
-                "type": "video_clip",
-                "provider": "youtube",
-                "video_id": "",
-                "params": {},
-                "duration_seconds": 0,
-                "script_md": "TODO — Practice home; equity-style path; drawdown as capital-path risk; same account as Trade Log; drill to fills."
-              },
-              {
-                "id": "blk-2",
-                "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Open Reports\n- **Practice → Reports** (`/app/reports`) — also the Practice suite landing view\n\n### What it is\n- How the selected account’s path evolved\n- Drawdown as **capital path risk**, not a trophy\n- Process-oriented tables from Trade Log\n\n### How to use it\n1. Match **Account** (and date window) to the book you care about\n2. Read path and drawdown before drilling into strategy tables\n3. Drill into fills when a number needs the blotter behind it\n\n### Framing\n- Numbers serve the process review — they do not replace Journal or Retrospective\n\n### Do this now\n- [ ] Open Reports for your primary practice account\n- [ ] Note one drawdown or path fact you will bring into the next retro\n\n---\n*No profit-claim language in final copy.*"
-              }
-            ],
-            "resource_ids": []
-          },
-          {
-            "id": "les-3-6",
-            "title": "Playbook (When It Ships) and Closing the Loop",
-            "slug": "playbook-and-closing-the-loop",
-            "order": 6,
             "kind": "video",
             "free_preview": false,
             "estimated_duration_minutes": 6,
@@ -347,12 +324,90 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — Playbook coming; until then rules live in Journal / structures in Trade Log; full loop Trade Log → Journal → Retro → Reports → Journey."
+                "script_md": "Day-start notification invites pre-market Journal; not shame; process only; until product ships use calendar/alarm; deep link Journal today."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Playbook (coming)\n- Personal defined-risk setups and rules — the book you actually trade from\n- Until it ships: keep rules in **Journal**, structures in **Trade Log**\n- Nav may show Playbook; treat as coming soon if empty\n\n### Close the loop (Practice → Journey)\n```\nTrade Log (evidence)\n    → Journal (day thinking)\n        → Retrospective (weekly judgment)\n            → Reports (path honesty)\n                → Journey (standing across the Lab)\n```\n\n### Do this now\n- [ ] Write one rule you already trade (even if only in Journal)\n- [ ] Confirm you can name the loop without looking at this page\n\n---\n*Update this lesson when Playbook ships.*"
+                "body_md": "## Why a trigger\n\nContinuous journaling fails when the day starts in the broker and the Journal never opens. A **day-start routine** invites process first.\n\n### What Labs will do (product direction)\n\nWhen you start your day, Labs can:\n\n1. Notify you (in-app first; browser later if you allow it)\n2. Open **Journal for today** with Practice Context already on today\n3. Soft-prompt pre-market (“what’s the plan?”) — never block, never shame\n4. Stay quiet if you already wrote before the open\n\nRules that will not change:\n\n- Process language only — no P&L, no “your score dropped”\n- At most one day-start nudge per day\n- You can turn it off\n- Empty days are not moral failure\n\n### Until notifications ship — build the habit yourself\n\n- [ ] Set a phone/calendar alarm for **prep time** (e.g. 45 minutes before the open)\n- [ ] Alarm action: open Labs → Journal → write pre-market\n- [ ] Optional second chime after the close for the exhale only\n\n### Do this now\n\n- [ ] Choose your prep time for the next trading day\n- [ ] Put it on the calendar with the link or path: Journal / today\n- [ ] Write one line: “When the day starts, I open ____ first.”"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-6",
+            "title": "Retrospective — The Review Ceremony",
+            "slug": "retrospective",
+            "order": 6,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": 12,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "",
+                "params": {},
+                "duration_seconds": 0,
+                "script_md": "Retro uses continuous journal + trades; expected vs actual needs pre-market; process first."
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "## Open Retrospective\n\n- **Practice → Retrospective** — `/app/retrospective`\n\n### What it is\n\nStructured review: what held, what broke, what you commit next. Process first; results secondary — never the headline as a brag.\n\n### Why continuous journaling feeds retro\n\n- Pre-market turns give **expected vs actual** something real to compare\n- Mid-day turns explain discretionary choices without hindsight fiction\n- Trade Log supplies structure; Journal supplies mind\n- Post-market exhale seeds the next week’s commitments\n\n### Surfaces\n\n- **Library** of past retrospectives\n- **Scope** — from last review (or maiden journey)\n- **Ceremony** — cause, what worked, next commitments\n- **Cadence** — gentle nudges when a review is due\n\n### Do this now\n\n- [ ] If you have about a week of continuous notes: start a Retrospective\n- [ ] If not: keep the day-thread habit until the first retro date"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-7",
+            "title": "Reports — Path and Drawdown Without Trophy Culture",
+            "slug": "reports",
+            "order": 7,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": 8,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "",
+                "params": {},
+                "duration_seconds": 0,
+                "script_md": "Reports as Practice home; drawdown as capital path risk; not a trophy; drill to fills."
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "## Open Reports\n\n- **Practice → Reports** — `/app/reports`\n\n### What it is\n\nHow the selected account’s path evolved. Drawdown as **capital path risk**, not a trophy. Tables from Trade Log.\n\n### How to use it\n\n1. Match **Account** to the book you care about\n2. Read path and drawdown before strategy tables\n3. Drill into fills when a number needs the blotter\n4. Take one fact into Journal or the next Retrospective — numbers serve process, they do not replace it\n\n### Do this now\n\n- [ ] Open Reports for your primary practice account\n- [ ] Note one path or drawdown fact for Journal or the next retro"
+              }
+            ],
+            "resource_ids": []
+          },
+          {
+            "id": "les-3-8",
+            "title": "Closing the Practice Loop",
+            "slug": "closing-the-practice-loop",
+            "order": 8,
+            "kind": "video",
+            "free_preview": false,
+            "estimated_duration_minutes": 6,
+            "content_blocks": [
+              {
+                "id": "blk-1",
+                "type": "video_clip",
+                "provider": "youtube",
+                "video_id": "",
+                "params": {},
+                "duration_seconds": 0,
+                "script_md": "Full loop continuous journal + trade log → retro → reports → Process Flow; Playbook coming."
+              },
+              {
+                "id": "blk-2",
+                "type": "notes",
+                "body_md": "## Playbook (when it ships)\n\nPersonal defined-risk setups and rules. Until then: rules in **Journal**, structures in **Trade Log**.\n\n### Close the loop\n\n```\nDay-start → Journal (pre-market)\n    → Trade Log + Journal turns through the session\n        → Journal (post-market exhale)\n            → Retrospective (weekly judgment)\n                → Reports (path honesty)\n                    → Process Flow on Journey (state of being)\n```\n\n### Do this now\n\n- [ ] Name the continuous loop out loud without looking at this page\n- [ ] Schedule tomorrow’s prep time"
               }
             ],
             "resource_ids": []
@@ -362,7 +417,7 @@
       {
         "id": "mod-4",
         "title": "The Wiki",
-        "description_md": "The growing map of what we teach — reference and orientation, not a substitute for Practice or courses.",
+        "description_md": "The growing map of what we teach — reference and orientation, not a substitute for Practice or full courses.",
         "order": 4,
         "kind": "standard",
         "lessons": [
@@ -382,12 +437,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — Wiki as map of doctrine/curriculum; how to browse/search; when to use Wiki vs full course; how study may show on Journey."
+                "script_md": "Wiki as map of doctrine and curriculum; browse/search; Wiki vs full course; study can shape Process Flow."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Open Wiki\n- **Apps → Wiki** (confirm current nav label/path)\n\n### What it is\n- Growing map of what we teach\n- Quick reference for concepts you already met in courses or live\n\n### How to use it\n1. Start from a question you have *today* (not binge-reading)\n2. Follow related entries; note open questions for Discord or live\n3. Return to Practice — Wiki does not replace logging or retros\n\n### Wiki vs courses\n| Use Wiki when… | Use a course when… |\n|----------------|--------------------|\n| You need a definition or map | You need sequenced skill building |\n| You’re mid-day and need a refresher | You’re building a new habit block |\n\n### Journey connection\n- Study and learning activity can contribute to Journey standing (align with product)\n\n### Do this now\n- [ ] Open one Wiki entry related to a concept you used this week\n- [ ] Add a one-line note in Journal if it changes how you’ll trade tomorrow\n\n---\n*Keep directions current to Wiki IA.*"
+                "body_md": "## Open Wiki\n\n- **Apps → Wiki**\n\n### What it is\n\nThe growing map of what we teach — concepts, courses, and live material, cross-linked and searchable.\n\n### How to use it\n\n1. Start from a question you have *today* (not binge-reading)\n2. Follow related entries; park open questions for Discord or live\n3. Return to Practice — Wiki does not replace logging or retros\n\n### Wiki vs courses\n\n| Use Wiki when… | Use a course when… |\n|----------------|--------------------|\n| You need a definition or map | You need sequenced skill building |\n| Mid-day refresher | Building a new habit block |\n\n### Do this now\n\n- [ ] Open one Wiki entry related to a concept you used this week\n- [ ] If it changes tomorrow’s plan, add one line in Journal"
               }
             ],
             "resource_ids": []
@@ -397,7 +452,7 @@
       {
         "id": "mod-5",
         "title": "Strategy Lab",
-        "description_md": "Build, Test, and Run strategies with process gates — strategy work that still respects the practice loop and Journey.",
+        "description_md": "Build, Test, and Run strategies with process gates — strategy work that still respects Practice and Process Flow.",
         "order": 5,
         "kind": "standard",
         "lessons": [
@@ -417,19 +472,19 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — Strategy Lab purpose; Build / Test / Run; process gates; not a signal service; paper/live honesty."
+                "script_md": "Strategy Lab purpose; Build / Test / Run; process gates; not a signal service; paper/live honesty."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Open Strategy Lab\n- **Apps → Strategy Lab** (path as shipped)\n\n### What it is\n- Place to **build**, **test**, and **run** strategies with **process gates**\n- Extends practice — does not replace Trade Log honesty or Journey integrity\n\n### Three modes (product language)\n| Mode | Job |\n|------|-----|\n| **Build** | Define structure, rules, and constraints |\n| **Test** | Historical / simulated evaluation before you trust it |\n| **Run** | Live or paper execution under gates you accept |\n\n### Honest boundaries\n- Strategy Lab is not “someone else’s picks”\n- Capacity stays with you: you own the rules and the review\n\n### Do this now\n- [ ] Open Strategy Lab and identify Build / Test / Run entry points\n- [ ] Note what is live vs coming on your environment\n\n---\n*Update when Tradier / market-data / bot surfaces land; avoid promising unshipped platforms.*"
+                "body_md": "## Open Strategy Lab\n\n- **Apps → Strategy Lab**\n\n### What it is\n\nThe place to **build**, **test**, and **run** strategies with **process gates**. It extends practice — it does not replace Trade Log honesty or Process Flow.\n\n### Three modes\n\n| Mode | Job |\n|------|-----|\n| **Build** | Define structure, rules, and constraints |\n| **Test** | Historical / simulated evaluation before you trust it |\n| **Run** | Live or paper execution under gates you accept |\n\n### Honest boundaries\n\n- Not “someone else’s picks”\n- Capacity stays with you: you own the rules and the review\n- What is live vs coming depends on your environment — do not invent features\n\n### Do this now\n\n- [ ] Open Strategy Lab and identify Build / Test / Run entry points\n- [ ] Note what is live vs coming where you are"
               }
             ],
             "resource_ids": []
           },
           {
             "id": "les-5-2",
-            "title": "Strategy Lab in the Loop (and Journey)",
+            "title": "Strategy Lab in the Loop",
             "slug": "strategy-lab-in-the-loop",
             "order": 2,
             "kind": "video",
@@ -443,12 +498,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — how Lab work shows in Practice (fills) and Journey (activity/integrity); when not to run live."
+                "script_md": "Lab fills → Trade Log; Journal promotion Test→Run; retro includes discretion; Process Flow; gate yourself."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Closing the loop\n- Tests and runs should still produce **Trade Log** evidence when they fill\n- Journal the *decision* to promote a strategy from Test → Run\n- Retrospective includes bot/manual discretion the same way: process first\n\n### Journey\n- Meaningful Lab use contributes to overall standing (confirm pillars)\n- Skipping Practice while “only running bots” is still process drift\n\n### Gate yourself\n- [ ] Written rules before Run\n- [ ] Test evidence before size\n- [ ] Retro after a defined sample, not after a lucky day\n\n### Do this now\n- [ ] Write one promotion criterion you refuse to skip (e.g. N test days)\n\n---\n*No profit claims; process outcomes only.*"
+                "body_md": "## Closing the loop\n\n- Tests and runs should still produce **Trade Log** evidence when they fill\n- Journal the decision to promote a strategy from Test → Run\n- Retrospective includes bot and manual discretion the same way: process first\n\n### Process Flow\n\nMeaningful Lab use shapes overall standing. Skipping Practice while “only running bots” is still process drift.\n\n### Gate yourself\n\n- [ ] Written rules before Run\n- [ ] Test evidence before size\n- [ ] Retro after a defined sample — not after a lucky day\n\n### Do this now\n\n- [ ] Write one promotion criterion you refuse to skip (for example: N test days)"
               }
             ],
             "resource_ids": []
@@ -458,7 +513,7 @@
       {
         "id": "mod-6",
         "title": "The Toughness Program",
-        "description_md": "Toughness is the life-routines system that makes durable success possible. Hard 20/40/75 sprints are training exercises for mental toughness (aMCC-associated capacity). Trading process is one family of life routines — not a separate life.",
+        "description_md": "Toughness is the life-routines system for durable success. Hard 20/40/75 are training exercises for mental toughness (aMCC). Trading process is one family of life routines — not a separate life.",
         "order": 6,
         "kind": "standard",
         "lessons": [
@@ -478,12 +533,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — Toughness = overall life routines & habits for ultimate success; sprints are one tool, not the whole program; mental toughness lexicon (not tenacity UI); not a profit program; not medical advice."
+                "script_md": "Toughness = overall life routines and habits for ultimate success; sprints are one tool; mental toughness lexicon; not a profit program; not medical advice."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Open Toughness\n- **Apps → Toughness** (hub)\n\n### The real program\nToughness is the **overall life routines and habits** you construct so follow-through becomes who you are — sleep, training, food, recovery, review, community, and the trading process you keep when nobody is watching.\n\nThat architecture is what supports **ultimate success**. The calendar sprints are not the destination.\n\n### What the sprints are (preview — next lessons go deep)\n- **Hard 20 / 40 / 75** = deliberate **training exercises**\n- They train **mental toughness** under voluntary difficulty\n- They sit *inside* the life-routine system; they do not replace it\n\n### What Toughness is not\n- Not “I finished 75 so I’m done”\n- Not a profit program or signal service\n- Not a substitute for medical care, therapy, or rest when those are what you need\n- Not a shame machine for missing a day\n\n### Product lexicon\n- Member UI: **mental toughness** / **Hard** — not “tenacity” branding\n\n### Do this now\n- [ ] Open the Toughness hub and skim the whole surface, not only enroll buttons\n- [ ] List 3–5 **life** routines you already depend on (or need)\n- [ ] Mark which ones are solid vs aspirational — before you touch a sprint\n\n---\n*Author: lead with life system; sprints enter as tools, never the headline identity of the module.*"
+                "body_md": "## Open Toughness\n\n- **Apps → Toughness**\n\n### The real program\n\nToughness is the **overall life routines and habits** you construct so follow-through becomes who you are — sleep, training, food, recovery, review, community, and the trading process you keep when nobody is watching.\n\nThat architecture supports durable success. The calendar sprints are **not** the destination.\n\n### What the sprints are (preview)\n\n- **Hard 20 / 40 / 75** = deliberate **training exercises**\n- They train **mental toughness** under voluntary difficulty\n- They sit *inside* the life-routine system; they do not replace it\n\n### What Toughness is not\n\n- Not “I finished 75 so I’m done”\n- Not a profit program or signal service\n- Not a substitute for medical care, therapy, or rest when those are what you need\n- Not a shame machine for missing a day\n\n### Product lexicon\n\nMember UI: **mental toughness** / **Hard** — not “tenacity” branding.\n\n### Do this now\n\n- [ ] Open the Toughness hub and skim the whole surface, not only enroll buttons\n- [ ] List 3–5 **life** routines you already depend on (or need)\n- [ ] Mark which are solid vs aspirational — before you touch a sprint"
               }
             ],
             "resource_ids": []
@@ -504,12 +559,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — aMCC / willpower-muscle framing (paraphrase + cite Touroutoglou et al. 2020 Cortex); mental toughness = persisting when effort is costly; Hard = repeated voluntary challenge; NO guaranteed aMCC growth; process outcomes only."
+                "script_md": "aMCC / willpower framing (paraphrase + cite Touroutoglou et al. 2020 Cortex); mental toughness = persisting when effort is costly; Hard = repeated voluntary challenge; no guaranteed aMCC growth."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Why the sprints exist (Coach thesis)\nHard and related deliberate-challenge protocols train **persistence and willpower** — **mental toughness** — by repeating voluntary difficulty.\n\nLiterature associates that capacity with the **anterior mid-cingulate cortex (aMCC)** (sometimes popularized as a “willpower muscle”). Product maps the paper’s “tenacity” language to **mental toughness** in member UI.\n\n### What you tell members (allowed shape)\n1. **What** is trained: mental toughness — persisting when effort is costly\n2. **Where** literature situates it: **aMCC**\n3. **How** Labs applies it: repeated voluntary challenge (Hard ladder)\n4. **What is not claimed:** we do **not** guarantee your aMCC will grow, thicken, or “level up”\n5. Cite / attribute (example framing): Touroutoglou et al., 2020, *Cortex* — paraphrase, don’t invent papers\n\n### Honest science posture\n- Education, not diagnosis\n- 75 Hard / selection culture = **practice analogues**, not peer-reviewed proof that Labs rewired anyone’s cortex\n- Physiology copy on the hub stays cite-backed (product requirement)\n\n### The developmental claim that *is* on-thesis\nAs you train under load, the **routines you build around the sprints** — timing, recovery, logging, showing up again after friction — become more **natural**. That is the point: capacity in life, not a badge.\n\n### Do this now\n- [ ] Read the hub’s physiology / how-it-works cite block once, slowly\n- [ ] Write one sentence: “I am training mental toughness so that ____ becomes easier without willpower theater.”\n\n---\n*Ship gates: Hotel/Tango on any expanded aMCC curriculum; never profit claims; never medical guarantees.*"
+                "body_md": "## Why the sprints exist\n\nHard and related deliberate-challenge protocols train **persistence and willpower** — **mental toughness** — by repeating voluntary difficulty.\n\nLiterature associates that capacity with the **anterior mid-cingulate cortex (aMCC)** (sometimes popularized as a “willpower muscle”). Product maps the paper’s “tenacity” language to **mental toughness** in member UI.\n\n### What we tell you (honest shape)\n\n1. **What** is trained: mental toughness — persisting when effort is costly\n2. **Where** literature situates it: **aMCC**\n3. **How** Labs applies it: repeated voluntary challenge (Hard ladder)\n4. **What is not claimed:** we do **not** guarantee your aMCC will grow, thicken, or “level up”\n5. Attribute, paraphrase — e.g. Touroutoglou et al., 2020, *Cortex*; do not invent papers\n\n### Honest science posture\n\n- Education, not diagnosis\n- 75 Hard / selection culture = practice analogues, not peer-reviewed proof that Labs rewired anyone’s cortex\n\n### The developmental claim that *is* on-thesis\n\nAs you train under load, the **routines you build around the sprints** become more **natural**. That is the point: capacity in life, not a badge.\n\n### Do this now\n\n- [ ] Read the hub’s physiology / how-it-works cite block once, slowly\n- [ ] Complete: “I am training mental toughness so that ____ becomes easier without willpower theater.”"
               }
             ],
             "resource_ids": []
@@ -530,12 +585,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — sprint is the stimulus; surrounding stack is the real win (sleep, move, food, review, social boundaries); naturalization of routines as brain capacity develops; design your day before you enroll."
+                "script_md": "Sprint is stimulus; surrounding stack is the real win; naturalization as capacity develops; design your day before you enroll."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Stimulus vs system\n| Piece | Role |\n|-------|------|\n| **Sprint days** | Training load — deliberate difficulty |\n| **Routines around the sprint** | Sleep window, movement, meals, shutdown, review, who you tell |\n| **What “sticks”** | The stack becomes default as capacity grows — not the selfie of day 75 |\n\n### Design the stack first\nBefore enrolling, answer:\n1. When do I sleep and wake on a hard day?\n2. What movement / challenge rules am I actually running?\n3. When do I review (Journal / retro) relative to market hours?\n4. What happens when life hits (travel, illness, family)?\n\n### Naturalization\n- Early days: high friction, high intention\n- Later: the same actions cost less internal argument — that is the training working in life, not magic\n- If the stack is fantasy, the sprint only produces burnout\n\n### Do this now\n- [ ] Write a one-page **life stack** for a Hard day (morning → market → evening)\n- [ ] Circle the one item most likely to break; redesign it before you enroll\n\n---\n*Connect to Practice: Journal can hold the stack notes; Retrospective reviews whether the stack held.*"
+                "body_md": "## Stimulus vs system\n\n| Piece | Role |\n|-------|------|\n| **Sprint days** | Training load — deliberate difficulty |\n| **Routines around the sprint** | Sleep window, movement, meals, shutdown, review, who you tell |\n| **What sticks** | The stack becomes default as capacity grows — not the selfie of day 75 |\n\n### Design the stack first\n\nBefore enrolling, answer:\n\n1. When do I sleep and wake on a hard day?\n2. What movement / challenge rules am I actually running?\n3. When do I review (Journal / retro) relative to market hours?\n4. What happens when life hits (travel, illness, family)?\n\n### Naturalization\n\n- Early days: high friction, high intention\n- Later: the same actions cost less internal argument — that is the training working in life\n- If the stack is fantasy, the sprint only produces burnout\n\n### Do this now\n\n- [ ] Write a one-page **life stack** for a Hard day (morning → market → evening)\n- [ ] Circle the item most likely to break; redesign it before you enroll"
               }
             ],
             "resource_ids": []
@@ -556,12 +611,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — no split life: morning analysis, log, journal, retro = same kind of routine as training/sleep; Practice apps are how trading routines live in software; Toughness trains the capacity that keeps those routines when markets are boring or painful."
+                "script_md": "No split life: log, journal, retro = same kind of routine as training/sleep; Practice apps are how trading routines live in software; Toughness trains capacity that keeps those routines when markets are boring or painful."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### One life, one capacity\nTrading routines are **not separate from your life**. They are routines you **enable** the same way you enable training days, sleep, and recovery.\n\n| Life routine | Trading twin in Labs |\n|--------------|----------------------|\n| Show up when it’s hard | Log the trade you don’t want to look at |\n| Honest review | Journal + Retrospective |\n| Track the path | Reports + Journey Process Flow |\n| Protect the body/mind | Position size, stop the bleeding, no revenge spiral |\n\n### What this ends\n- “I’m disciplined at the gym but chaotic in the book” as two identities\n- Treating Practice apps as homework for a persona that only exists 9:30–4:00\n\n### What this starts\n- Same mental toughness for boring process as for hard workouts\n- Journey as a read on **whole-life process**, not a trader cosplay scoreboard\n\n### Do this now\n- [ ] Name one non-trading routine that already works for you\n- [ ] Attach one trading twin to it (same time block, same “non-negotiable” rule)\n- [ ] Put the pair in Journal for this week\n\n---\n*This lesson is the bridge from Toughness back to Practice modules 3.x.*"
+                "body_md": "## One life, one capacity\n\nTrading routines are **not separate from your life**. They are routines you **enable** the same way you enable training days, sleep, and recovery.\n\n| Life routine | Trading twin in Labs |\n|--------------|----------------------|\n| Show up when it’s hard | Log the trade you don’t want to look at |\n| Honest review | Journal + Retrospective |\n| Track the path | Reports + Process Flow on Journey |\n| Protect body and mind | Position size, stop the bleeding, no revenge spiral |\n\n### What this ends\n\n- “I’m disciplined at the gym but chaotic in the book” as two identities\n- Treating Practice apps as homework for a persona that only exists 9:30–4:00\n\n### What this starts\n\n- Same mental toughness for boring process as for hard workouts\n- Journey as a read on **whole-life process**, not trader cosplay\n\n### Do this now\n\n- [ ] Name one non-trading routine that already works for you\n- [ ] Attach one trading twin (same time block or same non-negotiable rule)\n- [ ] Put the pair in Journal for this week"
               }
             ],
             "resource_ids": []
@@ -582,20 +637,20 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — how-it-works; ladder 20/40/75 as progressive training load; miss → day one; life events; start lower than ego; sprints serve the life stack from earlier lessons."
+                "script_md": "How-it-works; ladder 20/40/75 as progressive training load; miss → day one; life still happens; start lower than ego; sprints serve the life stack."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### Placement\nYou only enroll **after** you understand Toughness as life routines + aMCC-framed training. Sprints are the **gym set**, not the life.\n\n### The ladder (training load)\n| Program | Shape | Training intent |\n|---------|--------|-----------------|\n| **Hard 20** | Entry load | Prove you can start and finish a short block |\n| **Hard 40** | Stretch load | Consistency under more days |\n| **Hard 75** | Peak optional | Only after lower rungs hold in *life*, not just calendar |\n\n### How it works (member directions)\n1. Watch how-it-works on the hub\n2. Confirm your **life stack** (lesson 6.3) is realistic\n3. Choose the lowest rung that still challenges you\n4. Track daily honestly\n5. **Miss → day one** (product rule — explain without shame theater)\n6. Life events: pauses / restarts per shipped product behavior\n\n### Ladder psychology\n- Completing 20 with a real stack beats failing 75 for applause\n- The win is **capacity and natural routines**, not the number on the badge\n\n### Do this now\n- [ ] If not ready: stay in life-stack design + Practice loop; no forced enroll\n- [ ] If ready: enroll in the lowest honest rung; schedule the first week’s stack on the calendar\n\n---\n*Link hub how-it-works video when YouTube id is stable.*"
+                "body_md": "## Placement\n\nEnroll only after you understand Toughness as life routines + aMCC-framed training. Sprints are the **gym set**, not the life.\n\n### The ladder (training load)\n\n| Program | Shape | Training intent |\n|---------|--------|-----------------|\n| **Hard 20** | Entry load | Prove you can start and finish a short block |\n| **Hard 40** | Stretch load | Consistency under more days |\n| **Hard 75** | Peak optional | Only after lower rungs hold in *life*, not just on a calendar |\n\nTrue 75 Hard (Andy Frisella’s program) may also appear on the hub as-is with optional tracking — separate from FatTail Hard lengths.\n\n### How it works\n\n1. Watch how-it-works on the hub\n2. Confirm your **life stack** is realistic\n3. Choose the lowest rung that still challenges you\n4. Track daily honestly (Today’s log)\n5. **Miss or fail a required task → day one** (product rule — explain without shame theater)\n6. Life still happens; know the rules before you enroll\n\n### Ladder psychology\n\nCompleting 20 with a real stack beats failing 75 for applause. The win is **capacity and natural routines**, not the number on a badge.\n\n### Do this now\n\n- [ ] If not ready: stay in life-stack design + Practice loop — no forced enroll\n- [ ] If ready: enroll in the lowest honest rung; put the first week’s stack on the calendar"
               }
             ],
             "resource_ids": []
           },
           {
             "id": "les-6-6",
-            "title": "Toughness, Journey, and Closing the Map",
-            "slug": "toughness-journey-and-closing-the-map",
+            "title": "Toughness, Process Flow, and Closing the Map",
+            "slug": "toughness-process-flow-and-closing-the-map",
             "order": 6,
             "kind": "video",
             "free_preview": false,
@@ -608,12 +663,12 @@
                 "video_id": "",
                 "params": {},
                 "duration_seconds": 0,
-                "script_md": "TODO — Toughness feeds Journey when engaged; no penalty for not sprinting if life stack + Practice hold; full Lab map recap; one honest rep today."
+                "script_md": "Active Hard feeds Process Flow; empty when not enrolled is not zero; full Lab map recap; one honest rep today."
               },
               {
                 "id": "blk-2",
                 "type": "notes",
-                "body_md": "## Outline (author me)\n\n### How Toughness shows on Journey\n- When you engage Toughness (routines + optional Hard enrollment), progress can contribute to process standing\n- Journey still works from courses, live, and Practice if you are not in a sprint\n- Empty Toughness is “not using that surface,” not moral failure\n\n### Healthy use\n- Sprints train capacity; **Practice** still holds the trading evidence\n- Do not use Hard streaks to avoid Journal or Retrospective\n- Life stack first, badge second\n\n### Course close — full Lab map\n1. **Overview** — why Labs exists (habits & skills)\n2. **Journey** — cross-Lab assessment of what you use\n3. **Practice** — Trade Log, Journal, Retrospective, Reports\n4. **Wiki** — map of what we teach\n5. **Strategy Lab** — Build / Test / Run with process gates\n6. **Toughness** — life routines + aMCC training; trading routines as life routines\n\n**Next action:** one honest life or trading rep today — then check Journey tomorrow.\n\n### Do this now\n- [ ] Open Journey and name what should move this week (process, not P&L)\n- [ ] Do the matching action in Practice or in your life stack immediately\n\n---\n*End of spine — expand copy after videos land.*"
+                "body_md": "## Toughness and Process Flow\n\n- When a Hard challenge is **active**, Mental Toughness can enter Process Flow\n- When you are not enrolled, that dimension stays **empty** — not a zero, not a punishment for opting out\n- Process Flow still works fully from courses, live, and Practice\n\n### Healthy use\n\n- Sprints train capacity; **Practice** still holds trading evidence\n- Do not use Hard streaks to avoid Journal or Retrospective\n- Life stack first, badge second\n\n### Full Lab map\n\n1. **Overview** — why Labs exists (habits and skills)\n2. **Journey** — path + **Process Flow** (state of being)\n3. **Practice** — Trade Log, Journal, Retrospective, Reports\n4. **Wiki** — map of what we teach\n5. **Strategy Lab** — Build / Test / Run with process gates\n6. **Toughness** — life routines + aMCC training; trading routines as life routines\n\n**Next action:** one honest life or trading rep today — then check Journey tomorrow.\n\n### Do this now\n\n- [ ] Open Journey and name what should move this week (**process**, not P&L)\n- [ ] Do the matching action in Practice or in your life stack immediately"
               }
             ],
             "resource_ids": []
@@ -626,11 +681,11 @@
     "related_live_series_ids": [],
     "seo": {
       "title": "FatTail Labs: The Operating System",
-      "description": "Map of Journey, Practice, Wiki, Strategy Lab, and Toughness as life routines — intro videos and how-to directions for the FatTail Labs operating system.",
+      "description": "Map of Process Flow, Practice, Wiki, Strategy Lab, and Toughness — intro videos and how-to directions for the FatTail Labs operating system.",
       "canonical_path": "/courses/fattail-labs-os"
     },
     "production": {
-      "notes": "Spine v0.1 — outline only. Each lesson: record intro → set video_id → replace body_md outlines with final directions. Import as draft via course_packages / canonical import."
+      "notes": "Spine v1.0.0 rewrite. Each lesson: record intro → set video_id → expand body_md to final directions. Import as draft via canonical course import. Process Flow UI may still say Process Integrity until DL-190 cutover."
     }
   },
   "bundle": {

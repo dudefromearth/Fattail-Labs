@@ -92,9 +92,14 @@ def attendance_streak_weeks(
 
 
 # Live presence meter — EWMA of weekly show-up (1/0).
-# Rewards consistency, punishes gaps; near-term weeks weigh more than older ones.
+# Near-term weeks weigh more than older ones (within the active span).
 # half-life = weeks until an observation's weight is halved (α = 1 − 0.5^(1/H)).
 LIVE_HALF_LIFE_WEEKS = 4.0
+
+# Process Flow activity basis (Coach): calendar silence before/after engagement
+# does not score as failure. Only the span from first→last activity in the
+# window is evaluated — internal gaps still matter; end gaps do not.
+ACTIVITY_BASIS = "active_span"
 
 
 def live_ewma_alpha(half_life_weeks: float = LIVE_HALF_LIFE_WEEKS) -> float:
@@ -103,6 +108,33 @@ def live_ewma_alpha(half_life_weeks: float = LIVE_HALF_LIFE_WEEKS) -> float:
     if h <= 0:
         return 1.0
     return 1.0 - (0.5 ** (1.0 / h))
+
+
+def active_span_flags(flags: list[int]) -> list[int]:
+    """Trim leading/trailing zeros; keep the inclusive span of first→last activity.
+
+    Empty or all-zero → ``[]``. Used so calendar gaps *outside* an engagement
+    stretch do not enter process denominators (Coach: no penalty for not trading).
+    Internal zeros remain (inconsistent active stretch still dings).
+    """
+    if not flags:
+        return []
+    ones = [i for i, v in enumerate(flags) if v]
+    if not ones:
+        return []
+    return list(flags[ones[0] : ones[-1] + 1])
+
+
+def density_in_active_span(flags: list[int]) -> tuple[float, int, int]:
+    """Return ``(density 0–1, active_count, span_len)`` on the active span.
+
+    Density = sum(span) / len(span). No activity → (0.0, 0, 0).
+    """
+    span = active_span_flags(flags)
+    if not span:
+        return 0.0, 0, 0
+    active = sum(1 for v in span if v)
+    return active / float(len(span)), active, len(span)
 
 
 def live_week_presence_series(
@@ -114,9 +146,9 @@ def live_week_presence_series(
 ) -> list[int]:
     """Binary presence per Eastern ISO week, **oldest → newest**, length = horizon.
 
-    Grace (same spirit as streak): if the current week has no check-in yet, do not
-    treat mid-week as an absence — the series starts from last week. Empty weeks
-    inside the window still score 0 and pull the EWMA down.
+    Grace: if the current week has no check-in yet, do not treat mid-week as an
+    absence — the series starts from last week. Full calendar series may still
+    include trailing zeros; ``live_presence_percent`` trims to the active span.
     """
     now = now or datetime.now(timezone.utc)
     if now.tzinfo is None:
@@ -143,9 +175,7 @@ def live_coverage_weeks(
 ) -> tuple[int, int]:
     """Count weeks with a check-in in the last ``horizon_weeks`` Eastern ISO weeks.
 
-    Flat count for display only (EWMA drives the meter). Includes current week
-    even if empty so detail matches the calendar window. Returns
-    ``(active_count, horizon_weeks)``.
+    Flat count for display only. Returns ``(active_count, horizon_weeks)``.
     """
     now = now or datetime.now(timezone.utc)
     if now.tzinfo is None:
@@ -185,21 +215,14 @@ def live_presence_percent(
     horizon_weeks: int | None = None,
     half_life_weeks: float = LIVE_HALF_LIFE_WEEKS,
 ) -> tuple[int, int, int, int]:
-    """Live presence raw % for process meters.
+    """Live presence raw % for process meters — **active-span** basis.
 
     Returns ``(percent, streak, active_in_horizon, horizon)``.
 
-    Formula (Journey Experience Spec §4.1 live):
-      For each of the last ``horizon`` Eastern weeks (oldest → newest), x_t ∈ {0,1}
-      (1 = ≥1 check-in). Grace: incomplete current week with no check-in is skipped.
-      α = 1 − 0.5^(1/half_life)   # default half-life 4 weeks — near-term heavier
-      s_t = α·x_t + (1−α)·s_{t−1}
-      raw% = round(100 · s_final)
-
-    Consistency (runs of 1s) lifts the EWMA; gaps and on/off patterns suppress it.
-    Recent absences ding harder than equal-length absences further back.
-    Leaderboard contribution still uses streak alone (Spec §3.4).
-    ``streak_cap`` only sizes the default horizon when ``horizon_weeks`` is omitted.
+    Calendar weeks with no check-in **before the first or after the last**
+    check-in in the horizon are excluded (not trading / not showing up yet is
+    not a process failure). Within the first→last check-in span, missing weeks
+    score 0 and near-term EWMA still weights recent consistency more heavily.
     """
     cap = max(1, int(streak_cap))
     horizon = (
@@ -212,9 +235,12 @@ def live_presence_percent(
     active, horizon = live_coverage_weeks(
         keys, now=now, horizon_weeks=horizon
     )
-    series = live_week_presence_series(
+    series_full = live_week_presence_series(
         keys, now=now, horizon_weeks=horizon, grace_current_week=True
     )
+    series = active_span_flags(series_full)
+    if not series:
+        return 0, streak, active, horizon
     ewma = live_presence_ewma(series, half_life_weeks=half_life_weeks)
     return _clamp_pct(100.0 * ewma), streak, active, horizon
 
@@ -281,14 +307,27 @@ def compute_personal_growth(cur, identity_id: int) -> int:
     return pts
 
 
-def load_checkin_times(cur, identity_id: int) -> list[datetime]:
-    cur.execute(
-        """SELECT checked_in_at FROM live_session_checkins
-           WHERE identity_id = %s
-           ORDER BY checked_in_at DESC
-           LIMIT 500""",
-        (identity_id,),
-    )
+def load_checkin_times(
+    cur, identity_id: int, *, until: datetime | None = None
+) -> list[datetime]:
+    """Live check-in timestamps (newest first). Optional ``until`` clips history."""
+    if until is not None:
+        u = until.replace(tzinfo=None) if until.tzinfo else until
+        cur.execute(
+            """SELECT checked_in_at FROM live_session_checkins
+               WHERE identity_id = %s AND checked_in_at <= %s
+               ORDER BY checked_in_at DESC
+               LIMIT 500""",
+            (identity_id, u),
+        )
+    else:
+        cur.execute(
+            """SELECT checked_in_at FROM live_session_checkins
+               WHERE identity_id = %s
+               ORDER BY checked_in_at DESC
+               LIMIT 500""",
+            (identity_id,),
+        )
     out: list[datetime] = []
     for r in cur.fetchall():
         ts = r["checked_in_at"]
@@ -316,7 +355,7 @@ def _clamp_pct(n: float) -> int:
 
 # Process Integrity composite — Spec v0.4 Option 1 (Coach DL-171) + Hard Spec §8.3 MT.
 # Version bumps only with Journey Spec amend + characterization tests.
-SCORING_MODEL_VERSION = "pi-weights-v1-option1+mt"
+SCORING_MODEL_VERSION = "pi-weights-v1-option1+mt+active-span-v2"
 
 # Profile id → meter weights (integers sum to 100). Quality = adherence + retro.
 # Fail loud if a resolve_meter_profile id is missing here.
@@ -531,20 +570,20 @@ def weighted_overall_raw(
     return _clamp_pct(num / float(den)), applied
 
 
-# Process integrity grades — trading-psych norms (process, not P&L / identity).
-# Bands map to journal-style process scores: poor → excellent.
-# Labels describe the work, not the person (Tango: no shame framing in copy).
+# Process Flow / practice compass bands — directional alignment with practice,
+# not a report-card score and not P&L / identity (Tango: no shame framing).
+# ids stay poor→excellent for API stability; labels/blurbs are compass language.
 #
-# Tenure: fresh members do not start at Poor. Time-in-game pulls the graded %
-# toward center (50) until the profile ramp completes — extremes (Poor /
-# Excellent) must be earned. Weight uses a square ease-in so best/worst open slowly.
+# Tenure: fresh members do not start Off course. Time-in-game pulls the graded %
+# toward center (50) until the profile ramp completes — extremes must be earned.
+# Weight uses a square ease-in so best/worst open slowly.
 PROCESS_GRADE_BANDS: tuple[tuple[int, int, str, str, str, str], ...] = (
     # lo, hi, id, label, blurb, color_hex
-    (0, 24, "poor", "Poor", "Off process — reinstall the routine", "#b91c1c"),
-    (25, 49, "fair", "Fair", "Developing discipline — partial process", "#ea580c"),
-    (50, 69, "good", "Good", "Solid process integrity", "#ca8a04"),
-    (70, 84, "great", "Great", "Disciplined process — habits holding", "#16a34a"),
-    (85, 100, "excellent", "Excellent", "Locked-in process integrity", "#047857"),
+    (0, 24, "poor", "Off course", "Off bearing — reorient to the routine", "#b91c1c"),
+    (25, 49, "fair", "Drifting", "Partial alignment — bring practice back under the needle", "#ea580c"),
+    (50, 69, "good", "On course", "Directionally aligned — process is holding", "#ca8a04"),
+    (70, 84, "great", "Steady", "Steady bearing — habits keeping you true", "#16a34a"),
+    (85, 100, "excellent", "True north", "True north — practice is the default heading", "#047857"),
 )
 
 # Neutral band center for tenure pull (not a "score" — ungraded baseline).
@@ -568,8 +607,8 @@ def process_grade(
     if establishing:
         return {
             "id": "establishing",
-            "label": "Establishing",
-            "blurb": "Too early to grade — keep practicing to earn your process score",
+            "label": "Finding heading",
+            "blurb": "Finding your heading — too early to fix a bearing; keep practicing",
             "color": "#64748b",
             "percent": _clamp_pct(percent),
             "band_low": 0,
@@ -936,15 +975,34 @@ def resolve_meter_profile(
     return dict(METER_PROFILE_FREE_OBSERVER)
 
 
+def _as_of_end_utc(now: datetime) -> datetime:
+    """End of America/New_York calendar day containing ``now`` (UTC naive-safe)."""
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    ny = now.astimezone(EASTERN)
+    end_local = datetime(
+        ny.year, ny.month, ny.day, 23, 59, 59, tzinfo=EASTERN
+    )
+    return end_local.astimezone(timezone.utc)
+
+
 def _practice_week_keys(
-    cur, identity_id: int, since: datetime, *, now: datetime
+    cur,
+    identity_id: int,
+    since: datetime,
+    *,
+    now: datetime,
 ) -> set[tuple[int, int]]:
     """ISO (year, week) keys with any practice-advancing activity.
 
     Practice advances = Trade Log fills, journal notes, lesson completions,
     live check-ins. Not community posts (those are reputation).
+    Activity after ``now`` is excluded (as-of reconstruction).
     """
     weeks: set[tuple[int, int]] = set()
+    until = _as_of_end_utc(now)
+    until_naive = until.replace(tzinfo=None)
+    since_naive = since.replace(tzinfo=None) if since.tzinfo else since
 
     def _add_dates(rows: list, key: str = "d") -> None:
         for r in rows:
@@ -957,21 +1015,23 @@ def _practice_week_keys(
 
     cur.execute(
         """SELECT DISTINCT DATE(exec_at) AS d FROM member_trade_log_trades
-           WHERE identity_id = %s AND exec_at >= %s""",
-        (identity_id, since),
+           WHERE identity_id = %s AND exec_at >= %s AND exec_at <= %s""",
+        (identity_id, since_naive, until_naive),
     )
     _add_dates(cur.fetchall())
 
     cur.execute(
         """SELECT DISTINCT DATE(updated_at) AS d FROM member_tool_notes
            WHERE identity_id = %s AND surface IN ('journal', 'playbook', 'trade_log')
-             AND updated_at >= %s""",
-        (identity_id, since),
+             AND updated_at >= %s AND updated_at <= %s""",
+        (identity_id, since_naive, until_naive),
     )
     _add_dates(cur.fetchall())
 
-    # Dual-read: journal session_started_at NY weeks count toward persistence
-    for d in jsd.list_session_activity_ny_dates(cur, identity_id, since=since):
+    # Dual-read: journal message NY weeks count toward persistence
+    for d in jsd.list_session_activity_ny_dates(
+        cur, identity_id, since=since, until=until
+    ):
         if hasattr(d, "isocalendar"):
             iso = d.isocalendar()
             weeks.add((iso[0], iso[1]))
@@ -979,13 +1039,12 @@ def _practice_week_keys(
     cur.execute(
         """SELECT DISTINCT DATE(completed_at) AS d FROM lesson_progress
            WHERE identity_id = %s AND completed_at IS NOT NULL
-             AND completed_at >= %s""",
-        (identity_id, since),
+             AND completed_at >= %s AND completed_at <= %s""",
+        (identity_id, since_naive, until_naive),
     )
     _add_dates(cur.fetchall())
 
-    since_naive = since.replace(tzinfo=None) if since.tzinfo else since
-    for ts in load_checkin_times(cur, identity_id):
+    for ts in load_checkin_times(cur, identity_id, until=until):
         ts_naive = ts.replace(tzinfo=None) if getattr(ts, "tzinfo", None) else ts
         if ts_naive >= since_naive:
             d = ts_naive.date() if hasattr(ts_naive, "date") else ts_naive
@@ -1003,21 +1062,30 @@ def practice_persistence(
     horizon_weeks: int = 12,
     target_weeks: int = 8,
 ) -> tuple[int, int, int]:
-    """Return (percent, weeks_with_practice, consecutive_practice_streak)."""
+    """Return (percent, weeks_with_practice, consecutive_practice_streak).
+
+    **Active-span basis:** percent is density of practice weeks from the first
+    to last active week in the horizon (internal gaps ding; silence before the
+    first or after the last active week does not). ``target_weeks`` is retained
+    for profile display only — it no longer divides a calendar-filled window.
+    """
     now = now or datetime.now(timezone.utc)
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
     today = now.astimezone(EASTERN).date()
     horizon_weeks = max(1, int(horizon_weeks))
-    target_weeks = max(1, int(target_weeks))
+    _ = max(1, int(target_weeks))  # profile target — not a calendar denominator
 
-    window: list[tuple[int, int]] = []
+    # Newest → oldest flags, then reverse for oldest → newest span math
+    flags_newest: list[int] = []
     cursor = today
-    for _ in range(horizon_weeks):
-        window.append(iso_week_key(cursor))
+    for _i in range(horizon_weeks):
+        flags_newest.append(1 if iso_week_key(cursor) in week_keys else 0)
         cursor = cursor - timedelta(days=7)
-    active = sum(1 for w in window if w in week_keys)
-    pct = _clamp_pct(100.0 * active / float(target_weeks))
+    flags = list(reversed(flags_newest))
+    density, active, _span = density_in_active_span(flags)
+    pct = _clamp_pct(100.0 * density)
+
     streak_cursor = today
     if iso_week_key(streak_cursor) not in week_keys:
         streak_cursor = streak_cursor - timedelta(days=7)
@@ -1028,6 +1096,24 @@ def practice_persistence(
         if streak > 104:
             break
     return pct, active, streak
+
+
+def day_density_active_span(active_dates: set[date], *, window_start: date, window_end: date) -> tuple[int, int, int]:
+    """Density of active days within first→last active day in [window_start, window_end].
+
+    Returns ``(percent, active_count, span_days)``. No activity → (0, 0, 0).
+    Leading/trailing calendar silence outside the active span is ignored.
+    """
+    if window_end < window_start:
+        return 0, 0, 0
+    in_window = sorted(d for d in active_dates if window_start <= d <= window_end)
+    if not in_window:
+        return 0, 0, 0
+    first, last = in_window[0], in_window[-1]
+    span_days = (last - first).days + 1
+    active = len(in_window)
+    pct = _clamp_pct(100.0 * active / float(span_days))
+    return pct, active, span_days
 
 
 def _ny_date(dt: datetime) -> date:
@@ -1071,15 +1157,28 @@ def _can_create_retrospectives(cur, identity_id: int, role: str) -> bool:
     return cur.fetchone() is not None
 
 
-def _last_completed_retro_at(cur, identity_id: int) -> datetime | None:
-    cur.execute(
-        """SELECT completed_at FROM member_retrospectives
-           WHERE identity_id = %s AND status = 'complete'
-             AND completed_at IS NOT NULL
-           ORDER BY completed_at DESC
-           LIMIT 1""",
-        (identity_id,),
-    )
+def _last_completed_retro_at(
+    cur, identity_id: int, *, as_of: datetime | None = None
+) -> datetime | None:
+    if as_of is not None:
+        end = as_of.replace(tzinfo=None) if as_of.tzinfo else as_of
+        cur.execute(
+            """SELECT completed_at FROM member_retrospectives
+               WHERE identity_id = %s AND status = 'complete'
+                 AND completed_at IS NOT NULL AND completed_at <= %s
+               ORDER BY completed_at DESC
+               LIMIT 1""",
+            (identity_id, end),
+        )
+    else:
+        cur.execute(
+            """SELECT completed_at FROM member_retrospectives
+               WHERE identity_id = %s AND status = 'complete'
+                 AND completed_at IS NOT NULL
+               ORDER BY completed_at DESC
+               LIMIT 1""",
+            (identity_id,),
+        )
     row = cur.fetchone()
     if not row or not row.get("completed_at"):
         return None
@@ -1145,7 +1244,7 @@ def _retrospective_meter(
         )
 
     H = int(H)
-    last_complete = _last_completed_retro_at(cur, identity_id)
+    last_complete = _last_completed_retro_at(cur, identity_id, as_of=now)
     if last_complete is not None:
         anchor = last_complete
         clock = "last_complete"
@@ -1215,6 +1314,8 @@ def process_meters(
     now = now or datetime.now(timezone.utc)
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
+    # Clip all activity to end of NY day for as-of reconstruction
+    as_of = _as_of_end_utc(now)
     profile = resolve_meter_profile(cur, identity_id, role, now=now)
 
     p_weeks = int(profile["persistence_weeks"])
@@ -1227,20 +1328,11 @@ def process_meters(
     live_cap = max(1, int(profile["live_streak_cap"]))
     live_horizon = max(1, int(profile.get("live_horizon_weeks") or max(12, live_cap * 2)))
 
-    now_naive = now.astimezone(timezone.utc).replace(tzinfo=None)
+    now_naive = as_of.astimezone(timezone.utc).replace(tzinfo=None)
     routine_since = now_naive - timedelta(days=r_win)
     learn_since = now_naive - timedelta(days=l_win)
     adh_since = now_naive - timedelta(days=a_win)
     persistence_since = now_naive - timedelta(days=p_weeks * 7)
-
-    cur.execute(
-        """SELECT COUNT(DISTINCT DATE(completed_at)) AS n
-           FROM lesson_progress
-           WHERE identity_id = %s AND completed_at IS NOT NULL
-             AND completed_at >= %s""",
-        (identity_id, learn_since),
-    )
-    learn_days = int(cur.fetchone()["n"] or 0)
 
     cur.execute(
         """SELECT
@@ -1251,8 +1343,8 @@ def process_meters(
                        AND adherence NOT IN ('', 'unknown')
                       THEN 1 ELSE 0 END) AS tagged
            FROM member_trade_log_trades
-           WHERE identity_id = %s AND exec_at >= %s""",
-        (identity_id, adh_since),
+           WHERE identity_id = %s AND exec_at >= %s AND exec_at <= %s""",
+        (identity_id, adh_since, now_naive),
     )
     adh = cur.fetchone()
     n_trades = int(adh["n_trades"] or 0)
@@ -1262,7 +1354,7 @@ def process_meters(
         n_trades, tagged, good
     )
 
-    checkins = load_checkin_times(cur, identity_id)
+    checkins = load_checkin_times(cur, identity_id, until=as_of)
     live_pct, streak, live_active, live_h = live_presence_percent(
         checkins,
         now=now,
@@ -1270,32 +1362,71 @@ def process_meters(
         horizon_weeks=live_horizon,
     )
 
-    # Dual-read Spec §2.1 / D2: trades ∪ legacy journal notes ∪
-    # session_started_at NY days (so meters do not cliff when sessions ship)
+    # Dual-read Spec §2.1 / D2: trades and journal days tracked separately.
+    # Coach: calendar gaps outside engagement don't ding; stopping journals
+    # *while still trading* (or stopping retros while still practicing) does.
     cur.execute(
         """SELECT DATE(exec_at) AS d FROM member_trade_log_trades
-           WHERE identity_id = %s AND exec_at >= %s""",
-        (identity_id, routine_since),
+           WHERE identity_id = %s AND exec_at >= %s AND exec_at <= %s""",
+        (identity_id, routine_since, now_naive),
     )
-    routine_dates: set[date] = set()
+    trade_dates: set[date] = set()
     for row in cur.fetchall():
         if row["d"] is not None:
-            routine_dates.add(row["d"])
+            trade_dates.add(row["d"])
+    journal_dates: set[date] = set()
     cur.execute(
         """SELECT DATE(updated_at) AS d FROM member_tool_notes
            WHERE identity_id = %s AND surface = 'journal'
-             AND updated_at >= %s""",
-        (identity_id, routine_since),
+             AND updated_at >= %s AND updated_at <= %s""",
+        (identity_id, routine_since, now_naive),
     )
     for row in cur.fetchall():
         if row["d"] is not None:
-            routine_dates.add(row["d"])
-    routine_dates |= jsd.list_session_activity_ny_dates(
-        cur, identity_id, since=routine_since
+            journal_dates.add(row["d"])
+    journal_dates |= jsd.list_session_activity_ny_dates(
+        cur, identity_id, since=routine_since, until=as_of
     )
-    routine_days = len(routine_dates)
-    routine_pct = _clamp_pct(100.0 * routine_days / float(r_tgt))
-    learning_pct = _clamp_pct(100.0 * learn_days / float(l_tgt))
+    routine_dates = trade_dates | journal_dates
+    # Active-span densites: first→last activity day in window (gaps outside ignored)
+    today_ny = now.astimezone(EASTERN).date()
+    routine_end = today_ny
+    routine_start = today_ny - timedelta(days=max(0, r_win - 1))
+    span_pct, routine_days, routine_span = day_density_active_span(
+        routine_dates, window_start=routine_start, window_end=routine_end
+    )
+    # Journal coverage on trade days (while actively trading) — process quality
+    trade_in_win = {d for d in trade_dates if routine_start <= d <= routine_end}
+    if trade_in_win:
+        journaled_trade_days = sum(1 for d in trade_in_win if d in journal_dates)
+        journal_on_trade_pct = _clamp_pct(
+            100.0 * journaled_trade_days / float(len(trade_in_win))
+        )
+        # Blend: half general engagement density, half journal-with-trade habit
+        routine_pct = _clamp_pct(0.5 * span_pct + 0.5 * journal_on_trade_pct)
+        routine_detail_extra = (
+            f" · journal on {journaled_trade_days}/{len(trade_in_win)} trade days"
+        )
+    else:
+        # No trades — journal-only / observe mode: span density alone
+        routine_pct = span_pct
+        routine_detail_extra = ""
+
+    # Learning: collect lesson days then density on active span
+    cur.execute(
+        """SELECT DISTINCT DATE(completed_at) AS d FROM lesson_progress
+           WHERE identity_id = %s AND completed_at IS NOT NULL
+             AND completed_at >= %s AND completed_at <= %s""",
+        (identity_id, learn_since, now_naive),
+    )
+    learn_date_set: set[date] = set()
+    for row in cur.fetchall():
+        if row["d"] is not None:
+            learn_date_set.add(row["d"])
+    learn_start = today_ny - timedelta(days=max(0, l_win - 1))
+    learning_pct, learn_days, learn_span = day_density_active_span(
+        learn_date_set, window_start=learn_start, window_end=today_ny
+    )
 
     p_keys = _practice_week_keys(cur, identity_id, persistence_since, now=now)
     persist_pct, persist_active, practice_streak = practice_persistence(
@@ -1365,12 +1496,14 @@ def process_meters(
             "persistence",
             "Practice persistence",
             (
-                f"Weeks with Trade Log, Journal, lessons, or live check-in "
-                f"(last {p_weeks} weeks; target {p_target}) — profile: {profile['label']}"
+                f"Consistency of practice weeks while engaged (last {p_weeks}w lookback; "
+                f"profile {profile['label']}). Calendar silence before/after your active "
+                f"stretch does not lower the score — only gaps inside it."
             ),
             persist_pct,
             (
-                f"{persist_active} of last {p_weeks} weeks active"
+                f"{persist_active} active week{'s' if persist_active != 1 else ''}"
+                f" in engaged span"
                 + (f" · {practice_streak}w streak" if practice_streak else "")
             ),
             has_signal=persist_active > 0,
@@ -1379,36 +1512,49 @@ def process_meters(
             "routine",
             "Daily routine",
             (
-                f"Trade log or journal days in the last {r_win} days "
-                f"(target {r_tgt})"
+                f"While engaged (lookback {r_win}d): density of process days, and — "
+                f"when you trade — whether those days also have Journal. "
+                f"Calendar silence outside your stretch is ignored; stopping journals "
+                f"while still trading is not."
             ),
             routine_pct,
-            f"{routine_days} day{'s' if routine_days != 1 else ''} active",
+            (
+                f"{routine_days} process day{'s' if routine_days != 1 else ''}"
+                + (
+                    f" across {routine_span}d engaged span"
+                    if routine_span
+                    else ""
+                )
+                + routine_detail_extra
+            ),
             has_signal=routine_days > 0,
         ),
         _meter(
             "learning",
             "Learning rhythm",
             (
-                f"Days with a completed lesson in the last {l_win} days "
-                f"(target {l_tgt})"
+                f"Lesson-completion density from first→last study day "
+                f"(lookback {l_win}d). Quiet calendar outside that span is ignored."
             ),
             learning_pct,
-            f"{learn_days} day{'s' if learn_days != 1 else ''} with lessons",
+            (
+                f"{learn_days} lesson day{'s' if learn_days != 1 else ''}"
+                + (f" across {learn_span}d engaged span" if learn_span else "")
+            ),
             has_signal=learn_days > 0,
         ),
         _meter(
             "live",
             "Live presence",
             (
-                f"EWMA of weekly live check-ins over {live_h} weeks "
-                f"(half-life {LIVE_HALF_LIFE_WEEKS:g}w — near-term consistency "
-                f"weighs more; gaps and recent slack ding harder)"
+                f"EWMA of live check-ins on your engaged live span "
+                f"(half-life {LIVE_HALF_LIFE_WEEKS:g}w). Weeks before your first or after "
+                f"your last check-in in the window do not count as absences."
             ),
             live_pct,
             (
                 f"{live_pct}% EWMA · {streak}w streak · "
-                f"{live_active}/{live_h} weeks present"
+                f"{live_active} week{'s' if live_active != 1 else ''} with check-ins"
             ),
             has_signal=streak > 0 or live_active > 0,
         ),
@@ -1545,8 +1691,12 @@ def process_meters(
     # Needle follows graded (earned) percent; establishing sits mid-scale
     display_pct = GRADE_CENTER if establishing else overall_graded
 
+    as_of_ny = now.astimezone(EASTERN).date().isoformat()
+
     return {
-        "framing": "process_meter",
+        "framing": "practice_compass",
+        "activity_basis": ACTIVITY_BASIS,
+        "as_of": as_of_ny,
         "scoring_model_version": SCORING_MODEL_VERSION,
         "profile": {
             "id": profile["id"],
@@ -1564,7 +1714,7 @@ def process_meters(
         "weights": weights,
         "weights_applied": weights_applied,
         "overall_label": (
-            "Establishing your process — grades open as you practice"
+            "Finding your heading — bearing firms as you practice"
             if establishing
             else _overall_label(overall_graded, profile["id"])
         ),
@@ -1576,7 +1726,7 @@ def process_meters(
             "weight": round(tenure_w, 4),
             "establishing": establishing,
             "note": (
-                "Time in the game weights your grade: extremes (Poor / Excellent) "
+                "Time in the game weights your bearing: extremes (Off course / True north) "
                 "open gradually — you earn them, you don't start there."
             ),
         },
@@ -1596,30 +1746,165 @@ def process_meters(
     }
 
 
+# Minimum completed retrospectives before the temporal scrub UI is useful.
+# Early journey: radar alone; after a few retros, time path unlocks.
+PROCESS_TIMELINE_MIN_RETROS = 3
+
+
+def count_completed_retrospectives(cur, identity_id: int) -> int:
+    cur.execute(
+        """SELECT COUNT(*) AS n FROM member_retrospectives
+           WHERE identity_id = %s AND status = 'complete'""",
+        (identity_id,),
+    )
+    row = cur.fetchone() or {}
+    return int(row.get("n") or 0)
+
+
+def process_timeline(
+    cur,
+    identity_id: int,
+    *,
+    role: str = "observer",
+    now: datetime | None = None,
+    samples: int = 26,
+) -> dict[str, Any]:
+    """Sample Process Flow from practice start → today for temporal radar scrub.
+
+    Each point is ``process_meters`` reconstructed as-of that NY day (activity
+    after the day is excluded). Compact for spider UI + slider.
+
+    Slider is gated: ``slider_eligible`` requires ≥ ``PROCESS_TIMELINE_MIN_RETROS``
+    completed retrospectives (a few closed loops before time path is useful).
+    """
+    now = now or datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    samples = max(2, min(int(samples), 52))
+
+    retro_n = count_completed_retrospectives(cur, identity_id)
+    slider_eligible = retro_n >= PROCESS_TIMELINE_MIN_RETROS
+
+    epoch = _practice_epoch_for_cadence(cur, identity_id)
+    if epoch is None:
+        epoch = now - timedelta(days=7)
+    if epoch.tzinfo is None:
+        epoch = epoch.replace(tzinfo=timezone.utc)
+
+    start_d = epoch.astimezone(EASTERN).date()
+    end_d = now.astimezone(EASTERN).date()
+    if start_d > end_d:
+        start_d = end_d
+
+    # Not enough retros yet — return metadata only (no heavy sample walk).
+    if not slider_eligible:
+        return {
+            "start_date": start_d.isoformat(),
+            "end_date": end_d.isoformat(),
+            "sample_count": 0,
+            "points": [],
+            "framing": "practice_compass_timeline",
+            "slider_eligible": False,
+            "completed_retrospectives": retro_n,
+            "min_retrospectives": PROCESS_TIMELINE_MIN_RETROS,
+            "note": (
+                f"Time path unlocks after {PROCESS_TIMELINE_MIN_RETROS} completed "
+                f"retrospectives (you have {retro_n}). Close a few review loops first."
+            ),
+        }
+
+    span_days = max(0, (end_d - start_d).days)
+    if span_days == 0:
+        dates = [end_d]
+    else:
+        n = min(samples, span_days + 1)
+        dates = []
+        for i in range(n):
+            # Inclusive endpoints: start … end
+            t = i / float(n - 1) if n > 1 else 1.0
+            dates.append(start_d + timedelta(days=round(t * span_days)))
+        # de-dupe while preserving order
+        seen: set[date] = set()
+        uniq: list[date] = []
+        for d in dates:
+            if d not in seen:
+                seen.add(d)
+                uniq.append(d)
+        if uniq[-1] != end_d:
+            uniq.append(end_d)
+        dates = uniq
+
+    points: list[dict[str, Any]] = []
+    for d in dates:
+        # noon Eastern that day → stable as_of for process_meters
+        as_of_local = datetime(d.year, d.month, d.day, 12, 0, 0, tzinfo=EASTERN)
+        as_of_utc = as_of_local.astimezone(timezone.utc)
+        full = process_meters(cur, identity_id, role=role, now=as_of_utc)
+        meters_slim = [
+            {
+                "id": m.get("id"),
+                "label": m.get("label"),
+                "percent": m.get("percent"),
+                "empty": bool(m.get("empty")),
+                "soon": bool(m.get("soon")),
+                "grade": m.get("grade"),
+            }
+            for m in (full.get("meters") or [])
+        ]
+        points.append(
+            {
+                "as_of": d.isoformat(),
+                "overall_percent": full.get("overall_percent"),
+                "overall_label": full.get("overall_label"),
+                "grade": full.get("grade"),
+                "meters": meters_slim,
+                "establishing": bool(
+                    (full.get("grade") or {}).get("establishing")
+                    or (full.get("tenure") or {}).get("establishing")
+                ),
+            }
+        )
+
+    return {
+        "start_date": start_d.isoformat(),
+        "end_date": end_d.isoformat(),
+        "sample_count": len(points),
+        "points": points,
+        "framing": "practice_compass_timeline",
+        "slider_eligible": True,
+        "completed_retrospectives": retro_n,
+        "min_retrospectives": PROCESS_TIMELINE_MIN_RETROS,
+        "note": (
+            "Scrub from practice start to today. Each day reconstructs Process Flow "
+            "from activity up to that day — drift and improvement over time."
+        ),
+    }
+
+
 def _overall_label(pct: int, profile_id: str = "") -> str:
     if profile_id == "observer_trial":
         if pct >= 80:
-            return "Strong trial process — ready to continue as Navigator"
+            return "Strong trial heading — ready to continue as Navigator"
         if pct >= 50:
-            return "Habit forming — keep practicing; Navigator keeps the path open"
+            return "Habit forming — keep the needle on practice; Navigator keeps the path open"
         if pct >= 20:
-            return "Early trial signal — log, learn, and show up this week"
-        return "Trial window is short — start the routine now"
+            return "Early heading — log, learn, and show up this week"
+        return "Trial window is short — set the routine now"
     if profile_id == "navigator_annual":
         if pct >= 80:
-            return "Season-strong process — persistence compounding"
+            return "Season-true heading — persistence compounding"
         if pct >= 50:
             return "Annual path: steady weeks over the long arc"
         if pct >= 20:
             return "Year membership — rebuild the practice rhythm"
         return "Long horizon — reinstall daily process"
     if pct >= 80:
-        return "Strong process — habits and persistence compounding"
+        return "Strong alignment — habits and persistence compounding"
     if pct >= 50:
-        return "Building persistence in the practice"
+        return "On the practice heading — keep showing up"
     if pct >= 20:
-        return "Early process signal — keep showing up"
-    return "Room to install the routine"
+        return "Early heading signal — keep showing up"
+    return "Room to reorient the routine"
 
 
 def public_contribution(
