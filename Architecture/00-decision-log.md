@@ -4,6 +4,21 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-03 — DL-205 Auth rate limits (M1)
+
+**Alpha:** In-process sliding-window rate limits on auth routes (`server/rate_limit.py`):
+
+| Endpoint | Default |
+|----------|---------|
+| POST /login | 10/min per IP + per email |
+| POST /forgot-password | 5/hour per IP + per email |
+| POST /register | 5/min per IP |
+| POST /reset-password | 10/min per IP |
+| GET /auth/sso/* | 30/min per IP |
+
+429 + Retry-After. Env overrides: `LABS_RL_*`. Single-worker launchd assumed.
+Tests: `tests/test_rate_limit_m1.py`.
+
 ## 2026-08-02 — DL-204 Auth hardening H3 allowlist + H1 live role
 
 **Alpha · Mike posture:** High-impact auth fixes implemented in-repo.

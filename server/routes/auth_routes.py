@@ -139,6 +139,10 @@ async def native_login(request: Request):
     if not email or not password:
         raise HTTPException(status_code=422, detail="email and password required")
 
+    from rate_limit import rate_limit_login
+
+    rate_limit_login(request, email)
+
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -163,9 +167,11 @@ async def native_login(request: Request):
 async def forgot_password(request: Request):
     """Request a password-reset email (enumeration-safe). Spec: Password-Reset v1.0."""
     import password_reset as pr
+    from rate_limit import rate_limit_forgot
 
     body = await request.json()
     email = body.get("email") or ""
+    rate_limit_forgot(request, str(email).strip().lower())
     # Client IP for audit only (never trusted for auth)
     ip = request.client.host if request.client else None
     try:
@@ -184,7 +190,9 @@ async def forgot_password(request: Request):
 async def reset_password(request: Request):
     """Consume reset token and set a new password. Spec: Password-Reset v1.0."""
     import password_reset as pr
+    from rate_limit import rate_limit_reset
 
+    rate_limit_reset(request)
     body = await request.json()
     token = body.get("token") or ""
     password = body.get("password") or ""
@@ -200,6 +208,9 @@ async def reset_password(request: Request):
 @router.post("/register")
 async def register(request: Request):
     """Self-serve free account (observer tier). Enrollment & Access spec §2."""
+    from rate_limit import rate_limit_register
+
+    rate_limit_register(request)
     body = await request.json()
     name = (body.get("name") or "").strip()
     email = (body.get("email") or "").strip().lower()
@@ -252,6 +263,9 @@ def sso_callback(
         https://labs.fattail.ai/api/auth/sso/wordpress:fattail?next=/course>
     fotw-sso appends &sso=<JWT> (callback already has ?next=).
     """
+    from rate_limit import rate_limit_sso
+
+    rate_limit_sso(request)
     reg = providers.registry()
     if provider_name not in reg:
         raise HTTPException(status_code=404, detail="Unknown provider")
