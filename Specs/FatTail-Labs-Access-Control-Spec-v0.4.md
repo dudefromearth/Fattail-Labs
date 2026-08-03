@@ -1,9 +1,9 @@
 # FatTail Labs — Access Control Spec v0.4
 
-**Status:** DRAFT (third review 2026-08-02; not yet build authority)  
+**Status:** **BUILD AUTHORITY** (Coach 2026-08-02; W0-G PASS)  
 **Supersedes:** `FatTail-Labs-Access-Control-Spec-v0.3.md`  
 **Product:** FatTail Labs (`labs.fattail.ai`)  
-**Build authority:** This document is **self-contained** for implementation once Coach stamps BUILD AUTHORITY (no companion “same as v0.2” DDL).
+**Build authority:** **STAMPED 2026-08-02.** Self-contained for implementation (DDL §9). W0 reviews: India · Mike · Tango · Echo · Sierra APPROVED (`agents/p-access-control/gate-reports/AC0-*`). Ship target: MVP after AC5-G.
 
 **Related:** Identity Access · Membership Tiers · Enrollment Access · Campaign Workflow · SEO Spec v1.3 · Member Data Privacy · Application Framework
 
@@ -576,7 +576,8 @@ free_preview dual-write; feature_gates → surface policies; apps.status → def
 | v0.3 | 2026-08-02 | Second review (write-time expand, data floor, sitemap 200) |
 | v0.4 | 2026-08-02 | Third review: **expand at evaluate**; alumni non-commercial; 422-only floor; deny_plans vs floor; skeleton hydrate; complete DDL |
 
-**Next:** India on §4.3.1 / §4.2.2 / §5; Mike on §8/§12; Tango on §11; Coach **BUILD AUTHORITY**.
+**W0 complete:** India · Mike · Tango · Echo · Sierra APPROVED; Delta AC0-G **PASS**; Coach **BUILD AUTHORITY** 2026-08-02.  
+**Next:** AC1 engine (`agents/p-access-control/seeds/AC1-1-india-alpha-model.md`).
 
 ---
 

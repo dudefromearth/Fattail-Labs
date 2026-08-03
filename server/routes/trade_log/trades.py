@@ -30,7 +30,7 @@ router = APIRouter(tags=["trade-log"])
 @router.get("/api/me/trade-log/trades")
 def list_trades(request: Request, account_id: int | None = None) -> dict:
     claims = require_session(request)
-    _require_tool_member(claims)
+    _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)

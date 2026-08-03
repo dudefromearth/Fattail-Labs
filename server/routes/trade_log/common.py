@@ -22,17 +22,57 @@ _TOOL_DENY_DETAIL = (
 )
 
 
-def _require_tool_member(claims: dict) -> None:
-    """Practice suite entitlement — parity with retrospective_domain.can_create_or_gather.
+def _require_tool_member(claims: dict, *, capability: str = "write") -> None:
+    """Practice suite entitlement + Access Control app:trade-log policy.
 
-    Allows: administrator, role activator+, or active observer-trial plan
-    (even when the session role cookie is still ``observer``).
+    As-built: admin | activator+ | observer-trial.
+    When a policy exists: evaluate capabilities; data-bearing floor keeps read/export.
     """
     role = str(claims.get("role") or "observer")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
-            if rd.can_create_or_gather(cur, iid, role):
+            tool_ok = rd.can_create_or_gather(cur, iid, role)
+            try:
+                from access_control.evaluate import evaluate
+                from access_control.policy import load_policy
+                from access_control.types import TargetMeta
+                from access_control.viewer import viewer_from_claims
+
+                policy = load_policy(cur, "app:trade-log")
+                viewer = viewer_from_claims(cur, claims)
+                meta = TargetMeta(tool_write_ok=tool_ok, app_status="live")
+                decision = evaluate(
+                    "app:trade-log", viewer, policy=policy, meta=meta
+                )
+                if decision.allow and decision.has_capability(capability):
+                    return
+                if decision.allow and capability == "write":
+                    raise HTTPException(
+                        status_code=403,
+                        detail={
+                            "message": "Trade Log write not permitted for this access level",
+                            "access": decision.to_public_dict(),
+                        },
+                    )
+                if not decision.allow:
+                    raise HTTPException(
+                        status_code=403,
+                        detail={
+                            "message": _TOOL_DENY_DETAIL,
+                            "access": decision.to_public_dict(),
+                        },
+                    )
+            except HTTPException:
+                raise
+            except Exception:
+                # Fail to as-built if engine path errors
+                if tool_ok:
+                    return
+                raise HTTPException(status_code=403, detail=_TOOL_DENY_DETAIL)
+            if tool_ok and capability in ("read", "export"):
+                return
+            if tool_ok and capability == "write":
                 return
     raise HTTPException(status_code=403, detail=_TOOL_DENY_DETAIL)
 

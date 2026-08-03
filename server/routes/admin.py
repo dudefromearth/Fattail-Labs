@@ -560,7 +560,7 @@ def _unique_lesson_slug(
 
 @router.put("/lessons/{lesson_id}")
 async def update_lesson(lesson_id: int, request: Request) -> dict:
-    require_admin(request)
+    claims = require_admin(request)
     body = await request.json()
     unknown = set(body) - LESSON_FIELDS
     if unknown:
@@ -611,8 +611,10 @@ async def update_lesson(lesson_id: int, request: Request) -> dict:
             body["video_params"] = json.dumps(params) if params else None
         except video.VideoConfigError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+    free_preview_flip = None
     if "free_preview" in body:
         body["free_preview"] = 1 if body["free_preview"] else 0
+        free_preview_flip = bool(body["free_preview"])
     if "duration_seconds" in body:
         body["duration_seconds"] = int(body["duration_seconds"])
 
@@ -647,6 +649,13 @@ async def update_lesson(lesson_id: int, request: Request) -> dict:
                 f"UPDATE lessons SET {sets} WHERE id = %s",
                 [*body.values(), lesson_id],
             )
+            if free_preview_flip is not None:
+                from access_control.dual_write import dual_write_lesson_free_preview
+
+                actor_id = int(claims["identity_id"]) if claims.get("identity_id") else None
+                dual_write_lesson_free_preview(
+                    cur, lesson_id, free_preview_flip, actor_id=actor_id
+                )
             cur.execute(
                 """SELECT l.slug, l.title, m.slug AS module_slug, c.slug AS course_slug
                    FROM lessons l

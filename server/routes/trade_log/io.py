@@ -41,7 +41,7 @@ def export_trades(
     account_id: int | None = None,
     format: str = "canonical",
 ) -> Any:
-    """Export trades for download.
+    """Export trades for download (data-bearing export capability).
 
     ``format``:
       - ``canonical`` / ``json`` / ``fattail`` — FatTail ``.tradlog.json``
@@ -53,7 +53,7 @@ def export_trades(
     Prefer a single ``account_id`` for ``native`` so venue is unambiguous.
     """
     claims = require_session(request)
-    _require_tool_member(claims)
+    _require_tool_member(claims, capability="export")
     import trade_log_io as tio
     from fastapi.responses import JSONResponse, PlainTextResponse, Response
 

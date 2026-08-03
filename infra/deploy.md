@@ -185,3 +185,12 @@ must log loudly; the previous index keeps serving (stale beats broken).
 - Never claim "deployed" from commit hash — verify the running process (`lsof`, health curl).
 - No dev servers outside dev.
 - Never edit an applied migration; add a new `NNN_*.sql`.
+
+## Access Control (Spec v0.4 / p-access-control)
+
+1. Apply migrations including **`075_access_policies.sql`** before restart:
+   `cd server && .venv/bin/python migrate.py`
+2. Confirm tables: `access_policies`, `access_policy_audit`.
+3. Admin UI: `/admin/access` (production build only).
+4. No new env vars for P0 engine (code constants for ungateable + data-bearing apps).
+5. Characterization: `cd server && .venv/bin/python -m pytest tests/test_access_control_ -q`

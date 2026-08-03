@@ -3,7 +3,7 @@
 **Project callsign:** `p-access-control`  
 **Board:** [`agents/p-access-control/ORCHESTRATOR.md`](../agents/p-access-control/ORCHESTRATOR.md)  
 **Spec (canonical):** [`Specs/FatTail-Labs-Access-Control-Spec-v0.4.md`](../Specs/FatTail-Labs-Access-Control-Spec-v0.4.md)  
-**Status:** **Plan for review** — Spec is DRAFT; **no P0 code until** Coach stamps **BUILD AUTHORITY** after W0 gate.  
+**Status:** **ACTIVE** — Spec **BUILD AUTHORITY** 2026-08-02; W0-G **PASS**. Execute AC1+.  
 **Governance:** `agents/bench/doctrine.md` · `first-principles-doctrine.md` · Delta ternary gates only  
 
 ---
@@ -20,12 +20,12 @@ This plan is the **Juliet decomposition** of Spec v0.4 into reviewable phases, a
 
 | Gate | Requirement |
 |------|-------------|
-| Spec | v0.4 DRAFT complete (expand-at-eval, data-bearing floor, sitemap=200, etc.) |
-| W0 | India · Mike · Tango · Echo reviews; Lima as-built notes; Coach **BUILD AUTHORITY** |
+| Spec | v0.4 **BUILD AUTHORITY** (expand-at-eval, data-bearing floor, sitemap=200, etc.) |
+| W0 | **DONE** — India · Mike · Tango · Echo · Sierra APPROVED; Delta PASS; Coach stamp |
 | Identity | As-built SSO + `provider_plan_map` + `can_access_member_content` (lesson fix landed) |
 | Revalidation | Existing `/api/revalidate` / Next tags pipeline operational |
 
-**Do not start AC1 code seeds before W0-G PASS + Coach GO.**
+**AC1+ unblocked.** Start at `seeds/AC1-1-india-alpha-model.md`.
 
 ---
 
@@ -279,11 +279,22 @@ Located under `agents/p-access-control/seeds/`.
 | `AC5-4-tango-echo-copy.md` | Tango·Echo | AC5 |
 | `AC5-5-kilo-admin-smoke.md` | Kilo | AC5 |
 | `AC5-G-delta.md` | Delta | AC5 |
-| `AC6-*.md` | … | AC6 (after AC5) |
-| `AC7-*.md` | … | AC7 |
-| `AC8-*.md` | Lima·India·Delta | Close |
+| `AC6-1-charlie-alpha-catalog.md` | Charlie·Alpha | AC6 |
+| `AC6-2-sierra-charlie-sitemap.md` | Sierra·Charlie | AC6 |
+| `AC6-3-alpha-revalidate-map.md` | Alpha | AC6 |
+| `AC6-4-kilo-seo-hydrate.md` | Kilo | AC6 |
+| `AC6-G-delta.md` | Delta | AC6 |
+| `AC7-1-alpha-campaign-bulk.md` | Alpha | AC7 |
+| `AC7-2-charlie-campaign-ui.md` | Charlie | AC7 |
+| `AC7-3-alpha-charlie-feature-gates.md` | Alpha·Charlie | AC7 |
+| `AC7-4-foxtrot-deploy.md` | Foxtrot | AC7 |
+| `AC7-G-delta.md` | Delta | AC7 |
+| `AC8-1-lima-india-asbuilt.md` | Lima·India | AC8 |
+| `AC8-2-delta-program.md` | Delta | AC8 |
 
-Cold-start rule: each seed lists **read first**, **files in scope**, **out of scope**, **completion checkboxes**, **feeds gate**.
+All listed seed files exist under `agents/p-access-control/seeds/`.  
+Cold-start rule: each seed lists **read first**, **files in scope**, **out of scope**, **completion checkboxes**, **feeds gate**.  
+**Do not execute AC1+ seeds until W0-G + Coach BUILD AUTHORITY.**
 
 ---
 
@@ -343,4 +354,4 @@ Cold-start rule: each seed lists **read first**, **files in scope**, **out of sc
 
 ---
 
-*Juliet decomposition for review — not an execution order until Coach W0 GO.*
+*Juliet decomposition — W0 complete; execution order active from AC1.*

@@ -10,7 +10,7 @@ Implement **Access Control Spec v0.4**: admin-controlled access policies for sur
 - **Plan:** `docs/Access-Control-v0.4-Full-Agent-Bench-Plan.md`  
 - **Board:** `agents/p-access-control/ORCHESTRATOR.md`  
 
-**No implementation until W0-G PASS and Coach BUILD AUTHORITY.**
+**BUILD AUTHORITY stamped 2026-08-02** (W0-G PASS). Implementation proceeds from AC1.
 
 ## Success (MVP = through AC5-G)
 

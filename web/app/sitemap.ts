@@ -30,7 +30,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-  // Free-preview lessons are the long-tail landing pages (SEO spec v1.1).
+  // Access Control Spec v0.4 §6.2: include URL iff anonymous GET would be 200.
+  // Free-preview lessons remain the long-tail landings (SEO v1.1); dual-write
+  // keeps free_preview aligned with open lesson policies. hide/redirect policies
+  // should clear free_preview or omit via catalog status.
   const details = await Promise.all(
     data.courses.map((c) => fetchCourse(c.slug).catch(() => null)),
   );

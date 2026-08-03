@@ -1,11 +1,10 @@
-"""Lesson endpoint — access matrix per Enrollment & Access spec §3.
+"""Lesson endpoint — Enrollment & Access + Access Control Spec v0.4.
 
 Public URL shape: /course/{course}/{module}/{lesson}
 API: /api/courses/{course}/modules/{module}/lessons/{lesson}
 
-Anonymous: 401 always (even free previews — signup is the price of the preview).
-Free observer (no plan): previews only.
-Paid Observer / alumni+: full member playback (DL-128 Observer ≡ Navigator).
+Policy preferred when access_policies row exists for lesson:{id}; else as-built
+(free_preview OR can_access_member_content).
 """
 
 from fastapi import APIRouter, HTTPException, Request
@@ -14,6 +13,10 @@ import auth
 import db
 import identity
 import video
+from access_control.evaluate import evaluate
+from access_control.policy import load_policy
+from access_control.types import TargetMeta
+from access_control.viewer import parse_preview_cookie, viewer_from_claims
 from config import get_config
 from routes.quizzes import public_questions
 
@@ -52,6 +55,7 @@ def lesson_detail(
     course_slug: str, module_slug: str, lesson_slug: str, request: Request
 ) -> dict:
     claims = _session_claims(request)
+    preview = parse_preview_cookie(request.cookies.get("ft_access_preview"))
     with db.transaction() as conn:
         with conn.cursor() as cur:
             row = _load_lesson_row(cur, course_slug, module_slug, lesson_slug)
@@ -63,33 +67,60 @@ def lesson_detail(
     if row["course_status"] != "published" and not is_admin:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    if claims is None:
+    if claims is None and preview is None:
         raise HTTPException(status_code=401, detail="Sign in to watch")
+
+    target_key = f"lesson:{int(row['id'])}"
     progress = {"last_position": 0, "completed": False}
     questions = None
+    access_payload = None
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            if (
-                not is_admin
-                and not row["free_preview"]
-                and not identity.can_access_member_content(
+            viewer = viewer_from_claims(cur, claims, preview_as=preview)
+            policy = load_policy(cur, target_key)
+            member_ok = False
+            if claims:
+                member_ok = identity.can_access_member_content(
                     cur,
                     int(claims["identity_id"]),
                     str(claims.get("role") or "observer"),
                 )
-            ):
-                raise HTTPException(status_code=403, detail="Membership required")
-            cur.execute(
-                """SELECT last_position, completed_at FROM lesson_progress
-                   WHERE identity_id = %s AND lesson_id = %s""",
-                (claims["identity_id"], row["id"]),
+            meta = TargetMeta(
+                free_preview=bool(row["free_preview"]),
+                course_id=int(row["course_id"]),
+                member_content_ok=member_ok,
             )
-            prow = cur.fetchone()
-            if prow:
-                progress = {
-                    "last_position": prow["last_position"],
-                    "completed": prow["completed_at"] is not None,
-                }
+            decision = evaluate(target_key, viewer, policy=policy, meta=meta)
+            access_payload = decision.to_public_dict()
+
+            if not decision.allow or not decision.has_capability("read"):
+                if decision.code == "signin_required":
+                    raise HTTPException(
+                        status_code=401,
+                        detail={"message": "Sign in to watch", "access": access_payload},
+                    )
+                if decision.mode == "hide" or decision.code == "hidden":
+                    raise HTTPException(status_code=404, detail="Lesson not found")
+                raise HTTPException(
+                    status_code=403,
+                    detail={
+                        "message": "Membership required",
+                        "access": access_payload,
+                    },
+                )
+
+            if claims and not preview:
+                cur.execute(
+                    """SELECT last_position, completed_at FROM lesson_progress
+                       WHERE identity_id = %s AND lesson_id = %s""",
+                    (claims["identity_id"], row["id"]),
+                )
+                prow = cur.fetchone()
+                if prow:
+                    progress = {
+                        "last_position": prow["last_position"],
+                        "completed": prow["completed_at"] is not None,
+                    }
             if row["kind"] == "quiz":
                 questions = public_questions(cur, row["id"])
 
@@ -120,6 +151,7 @@ def lesson_detail(
         "course_title": row["course_title"],
         "body_md": row["body_md"],
         "video": video_payload,
+        "access": access_payload,
     }
 
 

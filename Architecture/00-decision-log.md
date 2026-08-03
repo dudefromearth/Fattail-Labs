@@ -4,6 +4,61 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-02 — DL-202 Access Control AC1–AC8 implementation (MVP)
+
+**Alpha · Charlie · Kilo · Delta · Lima:** Access Policy Engine shipped through MVP.
+
+| Phase | Delivered |
+|-------|-----------|
+| AC1 | constants, keys, DDL 075, evaluate, unit tests |
+| AC2 | admin CRUD/bulk/decision/audit, write validation 422 |
+| AC3 | lesson evaluate + dual-write free_preview + access JSON |
+| AC4 | trade-log read/export/write capabilities + floor |
+| AC5 | `/admin/access` cockpit |
+| AC6 | sitemap §6.2 notes + anonymous_http_status helper |
+| AC7 | bulk API; feature_gates merge deferred |
+| AC8 | program PASS with residuals |
+
+**Spec:** v0.4 BUILD AUTHORITY. **Board:** `agents/p-access-control/`.  
+**Tests:** `test_access_control_*.py` (41 passed).
+
+## 2026-08-02 — DL-201 Access Control AC1-3 evaluate engine
+
+**Alpha · India · Mike:** `server/access_control/` evaluate path:
+
+- `evaluate` / `evaluate_many` / `effective_plans` / `expand_plans` (eval-time only)
+- `require_access` resource hook — **no** public decision route
+- Viewer from claims + live plan slugs; PreviewAs empty enrollments
+- Data-bearing `read_only_floor`; grandfather course family; campaign fail-closed defaults
+
+**Next:** AC1-4 characterization unit suite → AC1-G.
+
+## 2026-08-02 — DL-200 Access Control AC1-2 schema (075)
+
+**Alpha · India:** Migration `075_access_policies.sql` applied.
+
+- Tables: `access_policies` (PK target_key), `access_policy_audit`
+- Intent columns: `selected_plans_json`, `exact_plans_only` — **no** expanded-plan cache
+- Spec: Access Control v0.4 §9 exact SoR
+- Evidence: migrate dry-run / apply / empty pending; SHOW CREATE verified
+
+**Next:** AC1-3 evaluate engine.
+
+## 2026-08-02 — DL-199 Access Control BUILD AUTHORITY + AC1-1 constants
+
+**Coach:** Spec v0.4 **BUILD AUTHORITY** (W0-G PASS). AC1-1 lands pure package:
+
+- `server/access_control/` — `constants.py`, `keys.py`, `defaults.py`
+- Target grammar: `surface:{name}`, `app:{slug}`, `course|module|lesson|resource:{id}`,
+  `campaign:{slug}:{part}`
+- Plan buckets commercial expand-at-eval; **alumni never auto-added**
+- `DATA_BEARING_APPS` = trade-log, journal, playbook
+- `ACCESS_UNGATEABLE_TARGETS` login/signup/membership/recovery/`me`
+- Type defaults table mirrors Spec §6.3 / as-built (lesson free_preview + membership, campaign fail-closed)
+- Tests: `server/tests/test_access_control_keys.py` (13 pure unit tests)
+
+**Board:** `agents/p-access-control/` · next AC1-2 DDL.
+
 ## 2026-08-02 — DL-198 Access Control Spec v0.4 (third review)
 
 **Coach:** Third external review of Access Control v0.3 → **v0.4 DRAFT**.
@@ -18,7 +73,7 @@ strip data-bearing read/export; SSG skeleton (no lock→open flash); complete se
 dead branches removed from algorithm.
 
 **Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.4.md` (supersedes v0.3).  
-Still **DRAFT** until Coach build authority.
+**Superseded status note:** BUILD AUTHORITY stamped same day — see **DL-199**.
 
 ## 2026-08-02 — DL-197 Access Control Spec v0.3 (second review)
 

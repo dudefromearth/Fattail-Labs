@@ -2,74 +2,44 @@
 
 **Charter:** [`CHARTER.md`](./CHARTER.md)  
 **Full plan:** [`docs/Access-Control-v0.4-Full-Agent-Bench-Plan.md`](../../docs/Access-Control-v0.4-Full-Agent-Bench-Plan.md)  
-**Spec:** [`Specs/FatTail-Labs-Access-Control-Spec-v0.4.md`](../../Specs/FatTail-Labs-Access-Control-Spec-v0.4.md)  
+**Spec:** [`Specs/FatTail-Labs-Access-Control-Spec-v0.4.md`](../../Specs/FatTail-Labs-Access-Control-Spec-v0.4.md) — **BUILD AUTHORITY**  
 **Seeds:** [`seeds/`](./seeds/)  
 **Gates:** [`gate-reports/`](./gate-reports/)  
-
-**Your role (Coach):** Open sessions, load seeds, receive PASS/FAIL/BLOCKED. Do not implement packets personally.  
-**Juliet:** Owns board updates and seed quality; does not execute implementation seeds.
 
 ---
 
 ## Current junction
 
-### NOW: **W0 — Spec lock / plan review**
+### **PROGRAM PASS** (AC8) — MVP shipped 2026-08-02
 
-Spec v0.4 is DRAFT. Run review seeds **AC0-1 … AC0-5**, then **AC0-G**.  
-**No AC1+ code until Coach stamps BUILD AUTHORITY** on Spec v0.4 (or a successor).
+| Step | Status | Report |
+|------|--------|--------|
+| W0 reviews + BUILD AUTHORITY | **DONE** | AC0-* |
+| AC1 Engine core | **PASS** | AC1-G |
+| AC2 Admin API | **PASS** | AC2-G |
+| AC3 Lessons | **PASS** | AC3-G |
+| AC4 Apps floor | **PASS** | AC4-G |
+| AC5 Admin UI MVP | **PASS** | AC5-G |
+| AC6 Catalog/SEO | **PASS** (minimal) | AC6-G |
+| AC7 Campaigns/gates | **PASS** (partial) | AC7-G |
+| AC8 Program close | **PASS** | AC8-program-close.md |
 
-| Step | Status | Who | Seed |
-|------|--------|-----|------|
-| AC0-0 Coach intent / GO framing | **NEXT** | Coach | `seeds/AC0-0-coach-go.md` |
-| AC0-1 India architecture | pending | India | `seeds/AC0-1-india-spec.md` |
-| AC0-2 Mike security | pending | Mike | `seeds/AC0-2-mike-security.md` |
-| AC0-3 Tango member trust | pending | Tango | `seeds/AC0-3-tango-copy.md` |
-| AC0-4 Echo UI notes | pending | Echo | `seeds/AC0-4-echo-ui.md` |
-| AC0-5 Sierra SEO | pending | Sierra | `seeds/AC0-5-sierra-seo.md` |
-| AC0-G Delta spec lock | pending | Delta | `seeds/AC0-G-delta-spec-lock.md` |
-| Coach BUILD AUTHORITY | blocked on W0-G | Coach | — |
-| AC1 Engine core | blocked | Alpha·India·Kilo | plan §6 AC1 |
-| AC2 Admin API | blocked | Alpha·Mike·Kilo | … |
-| AC3 Lessons | blocked | Alpha·Charlie·Tango·Kilo | … |
-| AC4 Apps floor | blocked | Mike·Alpha·Charlie·Kilo | … |
-| AC5 Admin UI | blocked | Charlie·Echo·Mike·Kilo | … |
-| AC6 Catalog/SEO | blocked | after AC5 | … |
-| AC7 Campaigns/gates | blocked | after AC6 | … |
-| AC8 Close | blocked | Lima·Delta | … |
+### Residuals (follow-up, non-blocking)
 
----
+- Preview-as admin UI toggle  
+- SSG skeleton hydrate polish  
+- feature_gates → surface policy cutover  
+- Production: migrate **075** on MiniTwo  
+- Re-seed course + re-run `test_lesson_gating` if catalog empty  
 
-## How to run a junction
+### Coach ship
 
-1. Read **Current junction**.  
-2. New agent session in Fattail-Labs.  
-3. Load seed: `Load and execute agents/p-access-control/seeds/<file>.md`.  
-4. Agent returns PASS/FAIL/BLOCKED + evidence.  
-5. Coach: **advance · re-seed · stop**.  
-6. Phase end → Delta seed only; no waived gates.
+W0 target: **after AC5-G MVP** — met. Deploy when ready via `infra/deploy.md` Access Control section.
 
 ---
 
-## Critical path
+## Critical path (historical)
 
 ```text
-W0-G + BUILD AUTHORITY
-  → AC1-G → AC2-G → AC3-G → AC5-G   (MVP)
-  AC4-G parallel after AC2-G
-  → AC6-G → AC7-G → AC8-G
+W0 → AC1 → AC2 → AC3 ‖ AC4 → AC5 (MVP) → AC6 → AC7 → AC8 ✓
 ```
-
----
-
-## Out of scope drift watch
-
-- Re-auth redesign, new billing  
-- Making all course pages fully dynamic for personalization (forbidden; skeleton hydrate)  
-- Public `/api/access/decision`  
-- Write-time frozen expanded plan lists (v0.4 forbids)
-
----
-
-## Board update rule
-
-After each gate report lands in `gate-reports/`, Juliet or Coach updates this table’s **Status** column the same day.

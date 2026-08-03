@@ -62,6 +62,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     testId: "admin-card-gates",
   },
   {
+    href: "/admin/access",
+    title: "Access Control",
+    body: "Gate lessons, apps, and surfaces by role/plan/time for campaigns — no deploy. Expand-at-evaluate; audit trail.",
+    testId: "admin-card-access",
+  },
+  {
     href: "/course",
     title: "In-place content editing",
     body: "Edit courses, hub, and live on production URLs — the learner page is the editor.",

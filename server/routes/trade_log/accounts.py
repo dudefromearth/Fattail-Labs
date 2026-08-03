@@ -21,7 +21,7 @@ router = APIRouter(tags=["trade-log"])
 @router.get("/api/me/trade-log/venues")
 def list_venues(request: Request) -> dict:
     claims = require_session(request)
-    _require_tool_member(claims)
+    _require_tool_member(claims, capability="read")
     # Hide provisional "unset" from pickers — only used server-side at provision
     venues = [v for v in cat.VENUES if v["code"] != cat.UNSET_VENUE]
     return {"venues": venues, "strategies": cat.STRATEGIES}
@@ -33,7 +33,7 @@ def list_venues(request: Request) -> dict:
 @router.get("/api/me/trade-log/accounts")
 def list_accounts(request: Request) -> dict:
     claims = require_session(request)
-    _require_tool_member(claims)
+    _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
