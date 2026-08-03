@@ -282,6 +282,18 @@ def sso_callback(
             )
             role = identity.derive_role(cur, identity_id)
 
+    # Diagnose account-switch issues (no token logged)
+    import logging
+
+    logging.getLogger("labs.auth.sso").info(
+        "sso ok provider=%s external_id=%s email=%s identity_id=%s role=%s",
+        pid.provider,
+        pid.external_id,
+        pid.email,
+        identity_id,
+        role,
+    )
+
     landing = safe_next_path(next)
     return _session_response(
         RedirectResponse(url=landing, status_code=302),

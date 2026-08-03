@@ -85,12 +85,10 @@ export default function LoginForm() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    // Always clear Labs cookie first so a leftover Observer session cannot win
-    // over the SSO Set-Cookie for the new account.
+    // Clear Labs first; server SSO URLs also wrap wp-login.php?reauth=1 so
+    // FatTail.ai / 0-DTE cannot silently reuse another WordPress user cookie
+    // (root cause of "always Alpha MSC on FatTail SSO" after Labs logout).
     await clearLabsSession();
-    // WP fotw-sso uses the *WordPress* browser session. If you were Alpha MSC
-    // on fattail.ai, you must sign out there too (or use a private window) or
-    // WP will mint Alpha MSC again. We still hand off to the configured URL.
     window.location.href = url;
   }
 
@@ -156,17 +154,9 @@ export default function LoginForm() {
             {switching ? "Clearing…" : "Force clear Labs session"}
           </button>
           <p className="mt-2 text-xs text-amber-800/80 dark:text-amber-200/70">
-            FatTail.ai SSO uses your <em>WordPress</em> login separately. After
-            clearing Labs, if SSO still opens the wrong person, sign out of{" "}
-            <a
-              className="underline"
-              href="https://fattail.ai/wp-login.php?action=logout"
-              target="_blank"
-              rel="noreferrer"
-            >
-              fattail.ai
-            </a>{" "}
-            (or use a private window), then Continue with FatTail.ai again.
+            FatTail.ai and 0-DTE.com each keep their own WordPress login. Labs
+            SSO now forces a WP credential prompt (reauth) so you can pick the
+            right site account — not the last test user cookie.
           </p>
         </div>
       )}
@@ -221,9 +211,14 @@ export default function LoginForm() {
         <>
           <div className="my-6 flex items-center gap-3 text-xs text-zinc-400">
             <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-            CONTINUE WITH
+            MEMBERSHIP SITE
             <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
           </div>
+          <p className="mb-3 text-center text-xs text-zinc-500">
+            Each button opens that site&apos;s WordPress login (you can choose a
+            different account than last time). FatTail.ai and 0-DTE are separate
+            logins.
+          </p>
           <div className="space-y-2">
             {Object.entries(sso).map(([name, url]) => (
               <a

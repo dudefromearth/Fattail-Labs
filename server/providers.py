@@ -155,6 +155,36 @@ def registry() -> dict[str, WordPressProvider]:
     }
 
 
+def force_wp_reauth_login_url(sso_entry_url: str) -> str:
+    """Send users through wp-login.php?reauth=1 before fotw-sso.
+
+    fotw-sso mints a JWT from the *current WordPress browser session*. If that
+    cookie is still "Alpha MSC", Labs will always become Alpha MSC — even after
+    Labs logout and even if the member thinks they typed Ernie's password
+    (seamless redirect never shows WP login).
+
+    reauth=1 forces WordPress to collect credentials again so a different WP
+    account can be chosen. 0-dte vs fattail are separate WP cookies — that is
+    why 0-dte can land as admin while fattail stays stuck on a test user.
+
+    Input:  https://fattail.ai/fotw-sso?redirect=<labs callback>
+    Output: https://fattail.ai/wp-login.php?reauth=1&redirect_to=<encoded input>
+    """
+    from urllib.parse import quote, urlparse
+
+    raw = (sso_entry_url or "").strip()
+    if not raw:
+        return raw
+    parsed = urlparse(raw)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return raw
+    path = parsed.path or ""
+    if "/fotw-sso" not in path:
+        return raw
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    return f"{origin}/wp-login.php?reauth=1&redirect_to={quote(raw, safe='')}"
+
+
 def login_urls() -> dict[str, str]:
     """Configured SSO login pages for the login screen. Unset -> button not shown.
 
@@ -163,9 +193,20 @@ def login_urls() -> dict[str, str]:
         https://fattail.ai/fotw-sso?redirect=<encoded Labs callback>
       LABS_SSO_LOGIN_URL_0DTE=
         https://0-dte.com/fotw-sso?redirect=<encoded Labs callback>
+
+    Returned URLs are wrapped with force_wp_reauth_login_url so account
+    switching works. Set LABS_SSO_FORCE_REAUTH=0 to restore seamless WP SSO
+    (not recommended for multi-account testing).
     """
     urls = {
         "wordpress:fattail": os.environ.get("LABS_SSO_LOGIN_URL_FATTAIL", "").strip(),
         "wordpress:0-dte": os.environ.get("LABS_SSO_LOGIN_URL_0DTE", "").strip(),
     }
-    return {k: v for k, v in urls.items() if v}
+    force = os.environ.get("LABS_SSO_FORCE_REAUTH", "1").strip().lower()
+    force_on = force not in ("0", "false", "no", "off")
+    out: dict[str, str] = {}
+    for k, v in urls.items():
+        if not v:
+            continue
+        out[k] = force_wp_reauth_login_url(v) if force_on else v
+    return out
