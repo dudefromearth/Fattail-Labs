@@ -197,6 +197,15 @@ must log loudly; the previous index keeps serving (stale beats broken).
 
 ## Auth hardening (H5 / H2)
 
+**One-shot on MiniTwo** (after `git pull`):
+
+```bash
+bash infra/scripts/deploy-minitwo-auth-hardening.sh
+```
+
+Full operator notes: `docs/ops/MiniTwo-Auth-Deploy-Runbook.md`  
+(If `ssh minitwo` fails from StudioTwo: authorize `~/.ssh/id_minitwo.pub` on MiniTwo first.)
+
 ### Deploy checklist (H5)
 
 After `git pull` on MiniTwo / DudeTwo:
@@ -209,28 +218,13 @@ After `git pull` on MiniTwo / DudeTwo:
    - Logout response `Set-Cookie` expires `ft_session` (`Max-Age=0`, `Path=/`, Domain if set).
    - `curl -sS https://labs.fattail.ai/api/auth/providers` — FatTail URL contains `reauth=1`.
 
-Commits: `fca01d7`, `7a588b4`, `f07a8ae` (+ later H3/H1).
+Commits: `fca01d7` … `889cc9b` (logout, reauth, allowlist, live role).
 
 ### SSO JWT log hygiene (H2)
 
-**Nginx access logs** on MiniThree (or any edge) should not retain full `sso` / `token` query values.
+**Nginx (MiniThree):** install snippet  
+`infra/nginx/labs-sso-access-log.conf` — log `$uri` without query for `/api/auth/sso/`.
 
-Example log_format snippet (adjust path to your map):
-
-```nginx
-# Redact sensitive query keys in access logs
-map $request_uri $labs_log_uri {
-    default                  $request_uri;
-    "~*^(?<p>[^?]*)\?(.*)$"  $p?REDACTED;
-}
-# Prefer: use a more precise redaction module, or log only $uri without args
-# for /api/auth/sso/ locations:
-location ~ ^/api/auth/sso/ {
-    access_log /var/log/nginx/labs-sso.access.log combined_no_qs;
-    # proxy_pass ...
-}
-```
-
-**WordPress fotw-sso:** keep SSO JWT lifetime **≤ 120 seconds** (ops confirm on fattail.ai / 0-dte.com). Longer tokens increase leak window from browser history / proxy logs.
+**WordPress fotw-sso TTL:** see `docs/ops/WP-SSO-JWT-TTL.md` — target **≤ 120s**.
 
 **Labs:** never log the raw `sso` query parameter or JWT body (H2).

@@ -20,11 +20,17 @@
 | H4 Account switch | **PASS** | H4-G — runbook |
 | CLOSE | **PASS** | CLOSE-G-program.md |
 
-### Ops still required (human)
+### Ops still required (human) — 2026-08-03 residual pack ready
 
-1. MiniTwo/DudeTwo: pull main, set `LABS_ADMIN_EMAILS`, migrate, restart  
-2. MiniThree nginx: redact SSO query strings  
-3. WP: confirm fotw-sso JWT TTL ≤ 120s  
+| Residual | Unblock | Artifact |
+|----------|---------|----------|
+| **H5** MiniTwo deploy | Authorize StudioTwo key on MiniTwo, then run script | `infra/scripts/deploy-minitwo-auth-hardening.sh` · `docs/ops/MiniTwo-Auth-Deploy-Runbook.md` |
+| **H2** nginx log redaction | Apply on MiniThree | `infra/nginx/labs-sso-access-log.conf` |
+| **H2** WP JWT TTL ≤120s | fotw-sso on fattail.ai / 0-dte.com | `docs/ops/WP-SSO-JWT-TTL.md` |
+
+**SSH note:** `id_minitwo` (`ernie@StudioTwo-minitwo-agent`) is **rejected** by MiniTwo until added to `authorized_keys`. DudeTwo has no Labs repo.
+
+Gate: `gate-reports/H5-H2-residuals-2026-08-03.md`
 
 ### Backlog (reevaluated)
 
