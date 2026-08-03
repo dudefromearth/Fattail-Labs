@@ -4,21 +4,26 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
-## 2026-08-02 — DL-197 Access Control Spec v0.3 (second review)
+## 2026-08-02 — DL-198 Access Control Spec v0.4 (third review)
 
-**Coach:** Second external review of Access Control v0.2 → **v0.3 DRAFT**.
+**Coach:** Third external review of Access Control v0.3 → **v0.4 DRAFT**.
 
 **Blocking fixes:**
-1. Cumulative plan expansion is **server-side on all writes** (UI + bulk); `exact_plans_only`.
-2. **Data-bearing apps** (trade-log, journal, …): read/export floor; cannot hard-lock own data.
-3. Sitemap rule = **include iff anonymous GET returns 200** (single testable rule).
+1. **Store plan intent; expand at evaluate** (not write-time freeze of slug vocabulary).
+2. **Alumni** outside commercial expansion; admitted via min_role ladder; UI copy.
+3. (Carried) data-bearing floor; sitemap = anonymous 200.
 
-**Should-fix:** SSG = anonymous shell + client hydrate; decisions on resource responses;
-PreviewAs empty enrollments; hide = 404 only; denylist as code constant + tests;
-algorithm cleanups (single require_signed_in; deny_plans beats grandfather).
+**Should-fix:** 422-only on illegal app locks (no silent coerce); deny_plans does **not**
+strip data-bearing read/export; SSG skeleton (no lock→open flash); complete self-contained DDL;
+dead branches removed from algorithm.
 
-**Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.3.md` (supersedes v0.2).  
+**Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.4.md` (supersedes v0.3).  
 Still **DRAFT** until Coach build authority.
+
+## 2026-08-02 — DL-197 Access Control Spec v0.3 (second review)
+
+**Superseded by DL-198 / v0.4.**  
+**Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.3.md` — SUPERSEDED.
 
 ## 2026-08-02 — DL-196 Access Control Spec v0.2 (review fixes)
 
