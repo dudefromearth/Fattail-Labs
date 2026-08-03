@@ -194,3 +194,43 @@ must log loudly; the previous index keeps serving (stale beats broken).
 3. Admin UI: `/admin/access` (production build only).
 4. No new env vars for P0 engine (code constants for ungateable + data-bearing apps).
 5. Characterization: `cd server && .venv/bin/python -m pytest tests/test_access_control_ -q`
+
+## Auth hardening (H5 / H2)
+
+### Deploy checklist (H5)
+
+After `git pull` on MiniTwo / DudeTwo:
+
+1. Ensure `.env` has `LABS_ADMIN_EMAILS=` (comma-separated; **required** outside dev).
+2. `cd server && .venv/bin/python migrate.py` (include `075_access_policies` if pending).
+3. Restart API launchd; rebuild + restart Next (production build only).
+4. Verify:
+   - `curl -sS https://labs.fattail.ai/api/health`
+   - Logout response `Set-Cookie` expires `ft_session` (`Max-Age=0`, `Path=/`, Domain if set).
+   - `curl -sS https://labs.fattail.ai/api/auth/providers` — FatTail URL contains `reauth=1`.
+
+Commits: `fca01d7`, `7a588b4`, `f07a8ae` (+ later H3/H1).
+
+### SSO JWT log hygiene (H2)
+
+**Nginx access logs** on MiniThree (or any edge) should not retain full `sso` / `token` query values.
+
+Example log_format snippet (adjust path to your map):
+
+```nginx
+# Redact sensitive query keys in access logs
+map $request_uri $labs_log_uri {
+    default                  $request_uri;
+    "~*^(?<p>[^?]*)\?(.*)$"  $p?REDACTED;
+}
+# Prefer: use a more precise redaction module, or log only $uri without args
+# for /api/auth/sso/ locations:
+location ~ ^/api/auth/sso/ {
+    access_log /var/log/nginx/labs-sso.access.log combined_no_qs;
+    # proxy_pass ...
+}
+```
+
+**WordPress fotw-sso:** keep SSO JWT lifetime **≤ 120 seconds** (ops confirm on fattail.ai / 0-dte.com). Longer tokens increase leak window from browser history / proxy logs.
+
+**Labs:** never log the raw `sso` query parameter or JWT body (H2).

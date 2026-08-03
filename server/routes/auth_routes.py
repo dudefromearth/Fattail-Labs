@@ -271,7 +271,12 @@ def sso_callback(
                     cur, pid.email, pid.display_name
                 )
                 identity.ensure_link(cur, identity_id, pid.provider, pid.external_id)
-            if pid.is_admin:
+            # H3: never promote from WP admin role alone — allowlist only
+            from admin_allowlist import may_sso_grant_administrator
+
+            if may_sso_grant_administrator(
+                email=pid.email, wp_claims_admin=bool(pid.is_admin)
+            ):
                 cur.execute(
                     "UPDATE identities SET role_override = 'administrator' "
                     "WHERE identity_id = %s AND role_override IS NULL",
@@ -282,14 +287,16 @@ def sso_callback(
             )
             role = identity.derive_role(cur, identity_id)
 
-    # Diagnose account-switch issues (no token logged)
+    # H2: never log SSO JWT / raw query. Email domain only for ops diagnosis.
     import logging
 
+    email = (pid.email or "").strip()
+    email_log = email.split("@")[-1] if "@" in email else "(none)"
     logging.getLogger("labs.auth.sso").info(
-        "sso ok provider=%s external_id=%s email=%s identity_id=%s role=%s",
+        "sso ok provider=%s external_id=%s email_domain=%s identity_id=%s role=%s",
         pid.provider,
         pid.external_id,
-        pid.email,
+        email_log,
         identity_id,
         role,
     )

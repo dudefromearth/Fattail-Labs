@@ -61,6 +61,19 @@ class Config:
         if self.env != "dev" and not self.cookie_domain:
             raise ConfigError("LABS_COOKIE_DOMAIN is required outside dev")
 
+        # Labs admin allowlist (H3) — emails that may receive role_override=administrator
+        # via WordPress SSO is_admin. Outside dev this list is required (fail loud).
+        # Empty in production is invalid; in dev empty means no SSO auto-admin.
+        raw_admins = os.environ.get("LABS_ADMIN_EMAILS", "").strip()
+        self.admin_emails: frozenset[str] = frozenset(
+            e.strip().lower() for e in raw_admins.split(",") if e.strip()
+        )
+        if self.env != "dev" and not self.admin_emails:
+            raise ConfigError(
+                "LABS_ADMIN_EMAILS is required outside dev "
+                "(comma-separated emails allowed as Labs administrators via SSO)"
+            )
+
         # Entitlement mapping lives in the database (plans + provider_plan_map),
         # per FatTail-Labs-Identity-Access-Spec-v1.0 §2 — no env mapping.
 
@@ -79,3 +92,9 @@ def get_config() -> Config:
     if _config is None:
         _config = Config()
     return _config
+
+
+def reset_config_for_tests() -> None:
+    """Drop cached Config so env changes apply (tests only)."""
+    global _config
+    _config = None

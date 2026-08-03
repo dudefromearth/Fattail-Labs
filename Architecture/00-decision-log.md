@@ -4,6 +4,37 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-02 — DL-204 Auth hardening H3 allowlist + H1 live role
+
+**Alpha · Mike posture:** High-impact auth fixes implemented in-repo.
+
+**H3:** `LABS_ADMIN_EMAILS` (required outside dev). SSO sets `role_override=administrator`
+only if WP is_admin **and** email allowlisted (`admin_allowlist.py`). Seed:
+ernie@dudefromearth.com, coach@fattail.ai, conor@fattail.ai.
+
+**H1:** `guards.require_admin` / `require_role(administrator)` use live
+`identity.derive_role` — demoted admin JWT → 403. `identity_id=0` forbidden outside dev.
+Member `require_role` still uses `feature_role` for Observer elevation.
+
+**H2/H4:** SSO log email domain only; deploy.md nginx/TTL notes; `docs/Auth-Account-Switch-Runbook.md`.
+
+**H5 residual:** agent could not SSH MiniTwo — human deploy still required.
+
+Tests: `test_admin_allowlist_h3.py`, `test_live_role_h1.py`. Board: `p-auth-hardening` CLOSE.
+
+## 2026-08-02 — DL-203 Auth hardening program GO (p-auth-hardening)
+
+**Coach W0 GO:** Multi-agent program to close high-impact auth findings.
+
+- Order: **H5 deploy → H3 admin allowlist → H1 live role → H2 SSO JWT hygiene → H4 account-switch ops**
+- Board: `agents/p-auth-hardening/ORCHESTRATOR.md`
+- Plan: `docs/Auth-Hardening-Full-Agent-Bench-Plan.md`
+- Audit: `docs/Auth-Hardening-Audit-2026-08-02.md`
+- H3 allowlist seed emails: ernie@dudefromearth.com, coach@fattail.ai, conor@fattail.ai
+- Assessment + reevaluation after each H*-G; M-backlog parked until promoted
+
+**Next:** H5-1 Foxtrot deploy (not localhost-only).
+
 ## 2026-08-02 — DL-202 Access Control AC1–AC8 implementation (MVP)
 
 **Alpha · Charlie · Kilo · Delta · Lima:** Access Policy Engine shipped through MVP.
