@@ -279,12 +279,17 @@ def sso_callback(
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            identity_id = identity.resolve_by_link(cur, pid.provider, pid.external_id)
-            if identity_id is None:
-                identity_id = identity.get_or_create_identity(
-                    cur, pid.email, pid.display_name
+            # M2: reconcile provider link + email (collision-safe)
+            try:
+                identity_id = identity.resolve_sso_identity(
+                    cur,
+                    pid.provider,
+                    pid.external_id,
+                    pid.email,
+                    pid.display_name or "",
                 )
-                identity.ensure_link(cur, identity_id, pid.provider, pid.external_id)
+            except identity.IdentityError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
             # H3: never promote from WP admin role alone — allowlist only
             from admin_allowlist import may_sso_grant_administrator
 
@@ -461,14 +466,16 @@ async def membership_webhook(provider_name: str, request: Request):
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            identity_id = identity.resolve_by_link(
-                cur, provider_name, body["external_id"]
-            )
-            if identity_id is None:
-                identity_id = identity.get_or_create_identity(cur, body["email"])
-                identity.ensure_link(
-                    cur, identity_id, provider_name, body["external_id"]
+            try:
+                identity_id = identity.resolve_sso_identity(
+                    cur,
+                    provider_name,
+                    body["external_id"],
+                    body["email"],
+                    "",
                 )
+            except identity.IdentityError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
             plan_id = identity.plan_id_for_provider_key(
                 cur, provider_name, body["plan_key"]
             )

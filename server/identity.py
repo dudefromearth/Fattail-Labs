@@ -92,6 +92,108 @@ def ensure_link(cur, identity_id: int, provider: str, external_id: str) -> None:
     )
 
 
+def _identity_id_for_email(cur, email: str) -> int | None:
+    email = (email or "").strip().lower()
+    if not email or "@" not in email:
+        return None
+    cur.execute("SELECT identity_id FROM identities WHERE email = %s", (email,))
+    row = cur.fetchone()
+    return int(row["identity_id"]) if row else None
+
+
+def _link_external_for_identity(
+    cur, identity_id: int, provider: str
+) -> str | None:
+    """Return external_id if this identity already has a link for provider."""
+    cur.execute(
+        """SELECT external_id FROM identity_links
+           WHERE identity_id = %s AND provider = %s""",
+        (identity_id, provider),
+    )
+    row = cur.fetchone()
+    return str(row["external_id"]) if row else None
+
+
+def resolve_sso_identity(
+    cur,
+    provider: str,
+    external_id: str,
+    email: str,
+    display_name: str = "",
+) -> int:
+    """Resolve Labs identity for SSO (auth hardening M2).
+
+    Rules:
+    1. Prefer stable ``(provider, external_id)`` link (WP user id).
+    2. If link exists and JWT email differs:
+       - If new email is free → update identity.email (WP is SoR for that user).
+       - If new email belongs to a *different* identity → refuse (collision).
+    3. If no link: attach to existing identity by email, or create.
+       - Refuse if that email identity is already linked to a *different*
+         external_id for the same provider (two WP users → one email).
+    4. Always ensure the link row exists after resolve.
+    """
+    email_n = (email or "").strip().lower()
+    if not email_n or "@" not in email_n:
+        raise IdentityError(f"Invalid SSO email: {email!r}")
+    ext = str(external_id).strip()
+    if not ext:
+        raise IdentityError("SSO external_id required")
+    name = (display_name or "").strip()
+
+    linked_id = resolve_by_link(cur, provider, ext)
+    email_owner = _identity_id_for_email(cur, email_n)
+
+    if linked_id is not None:
+        cur.execute(
+            "SELECT email, display_name FROM identities WHERE identity_id = %s",
+            (linked_id,),
+        )
+        row = cur.fetchone()
+        if row is None:
+            raise IdentityError(f"Broken identity_link for {provider}:{ext}")
+        current_email = (row["email"] or "").strip().lower()
+        if current_email != email_n:
+            if email_owner is not None and email_owner != linked_id:
+                raise IdentityError(
+                    "SSO email belongs to a different Labs account than this "
+                    f"provider link ({provider}:{ext}); contact support"
+                )
+            cur.execute(
+                "UPDATE identities SET email = %s WHERE identity_id = %s",
+                (email_n, linked_id),
+            )
+        if name and not (row.get("display_name") or "").strip():
+            cur.execute(
+                "UPDATE identities SET display_name = %s WHERE identity_id = %s",
+                (name, linked_id),
+            )
+        ensure_link(cur, linked_id, provider, ext)
+        return int(linked_id)
+
+    # No link yet — resolve by email or create
+    if email_owner is not None:
+        other_ext = _link_external_for_identity(cur, email_owner, provider)
+        if other_ext is not None and other_ext != ext:
+            raise IdentityError(
+                "Labs account for this email is already linked to a different "
+                f"{provider} user id; contact support"
+            )
+        if name:
+            cur.execute(
+                """UPDATE identities SET display_name = %s
+                   WHERE identity_id = %s
+                     AND (display_name IS NULL OR display_name = '')""",
+                (name, email_owner),
+            )
+        ensure_link(cur, email_owner, provider, ext)
+        return int(email_owner)
+
+    identity_id = get_or_create_identity(cur, email_n, name)
+    ensure_link(cur, identity_id, provider, ext)
+    return int(identity_id)
+
+
 # --- memberships & roles ------------------------------------------------------
 
 def _entitlement_key_candidates(external_key: str) -> list[str]:

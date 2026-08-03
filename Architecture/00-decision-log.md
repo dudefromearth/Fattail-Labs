@@ -4,6 +4,14 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-03 — DL-207 SSO email/link reconciliation (M2)
+
+**Alpha:** `identity.resolve_sso_identity` is the single SSO/webhook identity
+resolver. Prefer `(provider, external_id)` link; if JWT/webhook email changes and
+the new email is free, update Labs email; if email belongs to another identity or
+the same email is already linked to a different WP user id → **409**. Used by
+SSO callback and membership webhooks. Tests: `test_sso_m2_email_link.py`.
+
 ## 2026-08-03 — DL-206 Membership webhook anti-replay (M7)
 
 **Alpha:** `POST /api/integrations/{provider}/membership` requires `timestamp`
