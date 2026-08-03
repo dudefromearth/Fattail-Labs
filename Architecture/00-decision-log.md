@@ -4,6 +4,14 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-03 — DL-206 Membership webhook anti-replay (M7)
+
+**Alpha:** `POST /api/integrations/{provider}/membership` requires `timestamp`
+(or `sent_at`) inside the HMAC-signed JSON body. Reject if age >
+`LABS_WEBHOOK_MAX_AGE_SECONDS` (default 300) or too far future. Exact raw-body
+replay within the window → 409. Module: `server/webhook_security.py`.
+Tests: `tests/test_webhook_m7.py`. Docs: WooCommerce SSO guide §6 updated.
+
 ## 2026-08-03 — DL-205 Auth rate limits (M1)
 
 **Alpha:** In-process sliding-window rate limits on auth routes (`server/rate_limit.py`):

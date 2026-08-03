@@ -215,7 +215,8 @@ Body:
   "email": "member@example.com",
   "plan_key": "activator-access",
   "status": "active",
-  "external_ref": "wc_sub_9876"
+  "external_ref": "wc_sub_9876",
+  "timestamp": 1722660000
 }
 ```
 
@@ -224,6 +225,10 @@ Body:
 | `external_id` | Same WP user id as JWT `sub` |
 | `plan_key` | Must match `provider_plan_map.external_key` |
 | `status` | `active` \| `grace` \| `cancelled` \| `expired` |
+| `timestamp` | **Required (M7).** Unix seconds **or** ISO-8601 UTC. Must be inside the **HMAC-signed** body. Max age default **300s** (`LABS_WEBHOOK_MAX_AGE_SECONDS`). Alias: `sent_at`. |
+| `external_ref` | Optional subscription id |
+
+**Anti-replay:** identical raw body re-POSTed within the max-age window → **409**. Stale timestamp → **401**. Missing timestamp → **422**.
 
 Only `active` / `grace` count toward role. Role is snapshotted into the session at login — members may need re-SSO after a plan change.
 
@@ -262,7 +267,8 @@ Includes MSC-shaped JWT (`iss=fotw`, `sub`, `membership_plans`, `?sso=`).
 3. Webhook probe:
 
 ```bash
-BODY='{"external_id":"…","email":"…","plan_key":"…","status":"active"}'
+TS=$(date +%s)
+BODY=$(printf '{"external_id":"…","email":"…","plan_key":"…","status":"active","timestamp":%s}' "$TS")
 SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$LABS_SSO_SECRET_FATTAIL" | awk '{print $2}')
 curl -sS -X POST "https://labs-stage.fattail.ai/api/integrations/wordpress:fattail/membership" \
   -H "Content-Type: application/json" -H "X-Labs-Signature: $SIG" -d "$BODY"

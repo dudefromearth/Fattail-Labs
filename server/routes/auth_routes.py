@@ -424,6 +424,15 @@ integrations = APIRouter(prefix="/api/integrations", tags=["integrations"])
 
 @integrations.post("/{provider_name:path}/membership")
 async def membership_webhook(provider_name: str, request: Request):
+    """Woo/membership lifecycle. HMAC over raw body + anti-replay (M7).
+
+    Body must include ``timestamp`` (unix seconds or ISO-8601 UTC) inside the
+    signed JSON so age cannot be forged without the provider secret.
+    """
+    import json as _json
+
+    from webhook_security import reject_webhook_replay, validate_webhook_timestamp
+
     reg = providers.registry()
     if provider_name not in reg:
         raise HTTPException(status_code=404, detail="Unknown provider")
@@ -435,7 +444,17 @@ async def membership_webhook(provider_name: str, request: Request):
     if not hmac.compare_digest(signature, expected):
         raise HTTPException(status_code=401, detail="Bad signature")
 
-    body = await request.json()
+    try:
+        body = _json.loads(raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw)
+    except (UnicodeDecodeError, _json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=422, detail="Invalid JSON body") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="Body must be a JSON object")
+
+    # M7: freshness + exact-body replay (timestamp must be in signed payload)
+    validate_webhook_timestamp(body)
+    reject_webhook_replay(provider_name, raw)
+
     for field in ("external_id", "email", "plan_key", "status"):
         if not body.get(field):
             raise HTTPException(status_code=422, detail=f"Missing field: {field}")
