@@ -1,6 +1,6 @@
 # FatTail Labs — Access Control Spec v0.2
 
-**Status:** DRAFT (revised after external review 2026-08-02; not yet build authority)  
+**Status:** SUPERSEDED by `FatTail-Labs-Access-Control-Spec-v0.3.md`  
 **Supersedes:** `FatTail-Labs-Access-Control-Spec-v0.1.md`  
 **Product:** FatTail Labs (`labs.fattail.ai`)  
 

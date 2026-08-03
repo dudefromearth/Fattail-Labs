@@ -4,19 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-02 — DL-197 Access Control Spec v0.3 (second review)
+
+**Coach:** Second external review of Access Control v0.2 → **v0.3 DRAFT**.
+
+**Blocking fixes:**
+1. Cumulative plan expansion is **server-side on all writes** (UI + bulk); `exact_plans_only`.
+2. **Data-bearing apps** (trade-log, journal, …): read/export floor; cannot hard-lock own data.
+3. Sitemap rule = **include iff anonymous GET returns 200** (single testable rule).
+
+**Should-fix:** SSG = anonymous shell + client hydrate; decisions on resource responses;
+PreviewAs empty enrollments; hide = 404 only; denylist as code constant + tests;
+algorithm cleanups (single require_signed_in; deny_plans beats grandfather).
+
+**Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.3.md` (supersedes v0.2).  
+Still **DRAFT** until Coach build authority.
+
 ## 2026-08-02 — DL-196 Access Control Spec v0.2 (review fixes)
 
 **Coach:** External evaluation of Access Control v0.1 incorporated into **v0.2 DRAFT**.
+**Superseded by DL-197 / v0.3.**
 
-**Blocking fixes:** SSG/revalidation table; sitemap/JSON-LD from anonymous decision;
-`any_plans` **OR** `min_role` (UI auto-cumulative tiers); `close_behavior` in model +
-algorithm; decision API **admin-only**; ungateable remedy surfaces + CTA reachability.
-
-**Should-fix:** grandfather enrollments default; alumni = as-built ROLE_ORDER rung;
-`evaluate_many` P0; preview-as write suppress; `ROW_FORMAT=DYNAMIC`; audit **P0**.
-
-**Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.2.md` (supersedes v0.1).  
-Still **DRAFT** until Coach build authority.
+**Artifact:** `Specs/FatTail-Labs-Access-Control-Spec-v0.2.md` — SUPERSEDED.
 
 ## 2026-08-02 — DL-195 Access Control Spec v0.1 (DRAFT)
 
