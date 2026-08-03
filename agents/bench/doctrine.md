@@ -99,6 +99,15 @@ review, an agent rewrite, or a “safer architecture.” Reviewers **flag** risk
 **told the same day** if anything Coach put in is proposed out. Silent de-scope is
 a doctrine violation (see DL-173 FatTail Hard failure).
 
+### 10b. North star — enlightenment-as-practice (2026-08-03 · DL-209/210)
+
+Labs helps traders become **enlightened** in the secular sense: present, aware,
+integrated with methodology; habit-engineered cessation of destructive loops;
+toughness as enabler. Capital expression remains **stop the bleeding**. Spec:
+`Specs/FatTail-Labs-North-Star-Member-Ethos-Spec-v1.1.md`. Member-facing AI must
+compose `LABS_MEMBER_AI_ETHOS_V1_1` (`server/labs_member_ai_ethos.py`); surface
+guardrails and **distress stop-interview** still win over ethos.
+
 ### 11. Coach Content Law (hard rules — 2026-07-31)
 
 These are **non-negotiable** for every agent and every external review folded into the repo.

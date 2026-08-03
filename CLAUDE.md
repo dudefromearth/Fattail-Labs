@@ -55,9 +55,16 @@ Deploy playbook: `infra/deploy.md`.
 
 ## Positioning (informs all product copy)
 
-Core thesis: **"stop the bleeding"** — capital preservation is the first step to trading
-success and for many the only step they need. Strategy: sell the dream, sequence the
-discipline — the pathway routes everyone through the stop-the-bleeding flagship first.
+**North star:** help traders become **enlightened** (secular practice: present, aware,
+integrated; methodology + habit machine; toughness as enabler) inside a
+**right-skewed, fat-tailed** world. Spec:
+`Specs/FatTail-Labs-North-Star-Member-Ethos-Spec-v1.1.md` · DL-209/210.
+Member-facing AI prepends `LABS_MEMBER_AI_ETHOS_V1_1` (`server/labs_member_ai_ethos.py`);
+`LABS_MEMBER_AI_ETHOS_MODE=off` falls back to surface role only. Distress → stop interview.
+
+Core capital thesis: **"stop the bleeding"** — capital preservation is the first step to
+trading success and for many the only step they need. Strategy: sell the dream, sequence
+the discipline — the pathway routes everyone through the stop-the-bleeding flagship first.
 Testimonials/marketing use process outcomes (drawdown stopped, adherence streaks), NEVER
 profit claims. Certification tier 1: "Capital Preservation Operator."
 

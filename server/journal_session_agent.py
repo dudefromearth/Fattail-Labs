@@ -22,16 +22,26 @@ import journal_session_domain as jsd
 import journal_session_structured as jss
 import journal_session_validator as jsv
 import retrospective_domain as rd
+from labs_member_ai_ethos import (
+    DISTRESS_ACK_BODY,
+    ETHOS_ID,
+    compose_member_system_prompt,
+    ethos_stamp,
+    member_text_indicates_distress,
+)
 
 AGENT_MODE_OFF = "off"
 AGENT_MODE_LOCAL = "local"
 AGENT_MODE_LLM = "llm"
 AGENT_SERVICE = jsd.AGENT_SERVICE  # labs-journal-session
 
-# Spec §8.3 — ship as versioned constant; amend only via Spec bump (Tango · Hotel)
+# Spec §8.3 — surface role; composed with LABS_MEMBER_AI_ETHOS_V1_1 (North Star Spec v1.1)
 JOURNAL_SESSION_SYSTEM_PROMPT_V1 = """You are conducting a trading journal interview for a FatTail Labs member. Your job is to
 help the member produce a record that can be checked against what actually happened. You
 are an interviewer and a recorder. You are not a coach, an analyst, or a critic.
+
+Distress: if the member expresses crisis or self-harm, stop interviewing. Do not probe
+process, cause, or habits. Acknowledge briefly only — code may hard-stop the turn.
 
 What you do
 
@@ -302,6 +312,7 @@ def build_agent_status(
         "system_prompt_constant": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
         "plain_text_always": True,
         "form_fallback_available": True,  # legacy key; means plain-text degrade OK
+        **ethos_stamp(),
     }
 
 
@@ -350,6 +361,41 @@ def run_agent_turn(
 
     structured = _structured_from_row(row)
     raised = jsd.get_absence_keys_raised(row)
+
+    # Spec v1.1 §5.2 #9 — distress: stop interview (code gate, not ethos alone)
+    if member_wrote and member_text_indicates_distress(member_body):
+        body = DISTRESS_ACK_BODY
+        validated = _validate_with_retry(tag=tag, primary=body, kind="silent")
+        if validated.get("form_fallback"):
+            # Still do not probe — degrade without interview questions
+            return {
+                "message": None,
+                "kind": "distress_hold",
+                "phase": phase,
+                "depth": build_agent_status(cur, identity_id, session_id, role=role),
+                "form_fallback": True,
+                "detail": (
+                    "Interview paused. Continue in plain text. "
+                    "If you are in crisis, seek real-world support."
+                ),
+                "prompt_version": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
+                **ethos_stamp(),
+            }
+        msg = jsd.append_agent_message(
+            cur, identity_id, session_id,
+            body_md=validated["body"], phase=phase, now=at,
+        )
+        return {
+            "message": msg,
+            "kind": "distress_hold",
+            "phase": phase,
+            "depth": build_agent_status(cur, identity_id, session_id, role=role),
+            "form_fallback": False,
+            "detail": "Interview questions stopped.",
+            "prompt_version": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
+            "validator": {"ok": True, "attempts": validated.get("attempts", 1)},
+            **ethos_stamp(),
+        }
 
     # RTH: no unprompted questions — only ack if member wrote; else quiet
     if phase == "intraday" and not member_wrote:
@@ -530,7 +576,7 @@ def _llm_turn(
         else ""
     )
 
-    system = JOURNAL_SESSION_SYSTEM_PROMPT_V1
+    system = compose_member_system_prompt(JOURNAL_SESSION_SYSTEM_PROMPT_V1)
     user = (
         f"Phase={phase}. {tag_labels_ctx}{legacy_bit} "
         f"Structured confirmed fields={json.dumps(structured)}. "

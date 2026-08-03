@@ -4,6 +4,37 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-03 — DL-210 North star ethos v1.1 (completeness)
+
+**Coach + review holds addressed:** Spec **v1.1** supersedes v1.0.
+
+| Hold | Resolution |
+|------|------------|
+| Distress case | §5.2 #9 + code gate stop-interview (`distress_hold`) |
+| Unsourced % in AI world model | Qualitative ethos body; `WORLD_MODEL_PRIORS` sourced/dated §7 |
+| Behavioral ban eval | Tests: composed bans present; validator rejects advice/motive; distress no probe |
+| Family B → LLM | Spec §5.6 privacy terms |
+| Version any wording edit | `LABS_MEMBER_AI_ETHOS_V1_1`; MODE=off fallback |
+| Truth 1 quiet week | Explicit nothing-hard branch |
+
+**Alpha:** `labs_member_ai_ethos.py` V1_1; journal distress path; tests extended.
+
+## 2026-08-03 — DL-209 North star & member AI ethos (V1)
+
+**Coach:** True north star — **help traders become enlightened** (secular: present,
+aware, integrated; habit-engineered cessation; toughness as enabler). Brand roots:
+0DTE ensō + FatTail swoosh (right-skew / fat tails / Zen ink). Retrospective maps to
+Four Noble Truths shape; Truth 3 = habit-building machine.
+
+**Spec:** v1.0 GO → **superseded by v1.1** (DL-210).
+
+**Alpha:** `server/labs_member_ai_ethos.py` + Journal/Retro compose/stamp (amended DL-210).
+
+**Lima:** Guide “Why we practice”; CLAUDE.md pointer.
+
+**Follow-on:** Habit Catalog; insight plane; Hotel §7 series; Tango distress copy;
+Mike/counsel journal-agent privacy notice.
+
 ## 2026-08-03 — DL-208 CSRF Origin/Referer guard (M6)
 
 **Alpha:** Middleware `CsrfOriginMiddleware` rejects POST/PUT/PATCH/DELETE that carry

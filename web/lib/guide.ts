@@ -17,7 +17,10 @@ export type GuideGroup = {
 export const GUIDE_GROUPS: GuideGroup[] = [
   {
     title: "Start here",
-    sections: [{ id: "getting-started", label: "Getting started" }],
+    sections: [
+      { id: "getting-started", label: "Getting started" },
+      { id: "why-we-practice", label: "Why we practice" },
+    ],
   },
   {
     title: "Learning",

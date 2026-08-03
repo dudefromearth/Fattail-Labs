@@ -318,7 +318,13 @@ def journal_session_agent_status(request: Request, session_id: int) -> dict:
             except jsa.AgentTurnError as e:
                 payload = {"detail": e.detail, **e.extra} if e.extra else e.detail
                 raise HTTPException(status_code=e.code, detail=payload) from e
-    return {"agent": status, "prompt_constant": "JOURNAL_SESSION_SYSTEM_PROMPT_V1"}
+    from labs_member_ai_ethos import ETHOS_ID
+
+    return {
+        "agent": status,
+        "prompt_constant": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
+        "ethos_id": ETHOS_ID,
+    }
 
 
 @router.post("/api/me/journal-sessions/{session_id}/agent/turn")

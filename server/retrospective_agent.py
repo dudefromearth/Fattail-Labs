@@ -18,12 +18,22 @@ import re
 from typing import Any
 
 import retrospective_domain as rd
+from labs_member_ai_ethos import ETHOS_ID, ethos_stamp
 
 AGENT_MODE_OFF = "off"
 AGENT_MODE_LOCAL = "local"
 
 # Default stamped prompt id (seeded by mig 057)
 DEFAULT_PROMPT_VERSION_ID = "RETROSPECTIVE_SEQUENCE_PROMPT_V1"
+# Stance for sequence keeper (local mode); future LLM compose uses labs_member_ai_ethos
+RETROSPECTIVE_SEQUENCE_STANCE = (
+    "Sequence keeper under FatTail Labs member ethos "
+    f"({ETHOS_ID}): hold ceremony order; inventory not diagnosis; "
+    "quiet/steady periods are valid (nothing-here — do not invent struggle); "
+    "member names causes; one checkable replacement habit — never prescribe content; "
+    "toughness as capacity not shame; process over P&L theater; "
+    "distress → stop probing."
+)
 
 ANCHOR_TYPES = frozenset({"process_event", "adherence_tag", "journal_passage"})
 
@@ -608,6 +618,8 @@ def build_sequence_guide(
         "role": "sequence_keeper",
         "version": "0.7.1",
         "prompt_version_id": prompt_version_id,
+        "stance": RETROSPECTIVE_SEQUENCE_STANCE,
+        **ethos_stamp(),
         "focused_step": focus,
         "steps": steps_out,
         "turn": turn,

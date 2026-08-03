@@ -14,7 +14,7 @@
     "description_md": "FatTail Labs is not a content dump. It is an **operating system for trader development** — tools and programs that turn daily work into durable habits and skills.\n\nThis course is the map. Every lesson starts with a short **intro video**, then **written directions** for the surface you just saw. Watch, then do.\n\n### Two through-lines\n\n**1. Process Flow.** Everything you use in Labs shapes **Process Flow** — the flow state of your trading process. It is a **state of being**, not a test score. Recent behavior matters more than old history. Journey is where that state stays honest and current.\n\n**2. One life.** Trading routines are not a separate identity from the rest of your life. **Toughness** is the life-routines system that makes durable success possible. Hard 20 / 40 / 75 sprints are **training exercises** for mental toughness (associated with the anterior mid-cingulate cortex, aMCC). The routines you build around those exercises become natural as that capacity develops — and your trading loop (log, journal, retrospective) is part of the same life.\n\n**Continuous journaling.** The Journal is not an end-of-day chore. You write with every experience — pre-market analysis, mid-session decisions, trade moments, and post-market exhale. Trade Log holds structure as it happens; Journal holds mind. A day-start routine invites that habit when the trading day begins.\n\n### What you will walk away with\n\n- A clear purpose for FatTail Labs: habits and skills that lead to durable success\n- Fluency in Journey and **Process Flow**\n- The Practice loop: Trade Log → Journal → Retrospective → Reports\n- How Wiki, Strategy Lab, and Toughness fit without drowning you\n- Process outcomes only — never profit theater\n\n*Spine draft — replace empty `video_id` values and expand each outline into final copy before publish.*",
     "short_description": "The map of FatTail Labs: Process Flow, Practice apps, Wiki, Strategy Lab, and Toughness as life routines. Intro video + how-to for each surface.",
     "status": "draft",
-    "version": "1.1.0-spine",
+    "version": "1.2.0-spine",
     "level": "beginner",
     "category_slugs": [],
     "instructor_refs": [
@@ -145,26 +145,99 @@
           },
           {
             "id": "les-2-3",
-            "title": "Learning Path, Quizzes, and Activity",
-            "slug": "learning-path-quizzes-activity",
+            "title": "Knowledge Check — Journey & Process Flow",
+            "slug": "knowledge-check-journey-process-flow",
             "order": 3,
-            "kind": "video",
+            "kind": "quiz",
             "free_preview": false,
-            "estimated_duration_minutes": 6,
+            "estimated_duration_minutes": 8,
             "content_blocks": [
               {
                 "id": "blk-1",
-                "type": "video_clip",
-                "provider": "youtube",
-                "video_id": "",
-                "params": {},
-                "duration_seconds": 0,
-                "script_md": "Enrollments, resume next lesson, quiz results on Journey, activity — understanding checks, not P&L gamification."
+                "type": "notes",
+                "body_md": "## What to do here\n\nThis is a **knowledge check** for Module 2 (The Journey) — not an empty page and not a second course catalog.\n\n1. Read the short recap below (optional if you just finished the prior lessons).\n2. **Answer every question** in the quiz on this page.\n3. Submit — you get **immediate scoring** and explanations.\n4. Results feed your **Journey** learning activity (understanding check, not P&L).\n\n### Recap (what you should already know)\n\n| Idea | Takeaway |\n|------|----------|\n| **Journey** | Cross-Lab path + Process Flow — not a second product, not a profit leaderboard |\n| **Process Flow** | State of being / practice compass (radar) — **not** a test scorecard |\n| **Active span** | Calendar silence outside engagement is not failure; process quality **while engaged** matters |\n| **Learning path** | Enrollments, resume next lesson, quiz results live on Journey |\n| **What never counts** | P&L, win rate, peer profit rank |\n\nWhen you are ready, scroll to the quiz and begin.\n"
               },
               {
                 "id": "blk-2",
-                "type": "notes",
-                "body_md": "## Learning path on Journey\n\n- Enrollments and resume into the next unfinished lesson\n- Pathway courses and “what’s next”\n\n### Quizzes\n\n- Module quizzes score immediately with explanations when the author added them\n- Results live on Journey\n- Purpose: check understanding — not gamify P&L\n\n### Activity\n\nLesson complete, live presence, practice markers, and related events surface so you can see whether you are actually using the Lab.\n\n### Do this now\n\n- [ ] From Journey, continue learning or open a course\n- [ ] Complete one short lesson if you have an open enrollment"
+                "type": "quiz",
+                "questions": [
+                  {
+                    "kind": "multiple_choice",
+                    "prompt_md": "What is **Journey** primarily for?",
+                    "options": [
+                      "A second login for payments and broker links",
+                      "A cross-Lab view of your path and Process Flow across courses, live, and practice",
+                      "A public ranking of who made the most money this month",
+                      "A replacement for Trade Log and Journal"
+                    ],
+                    "correct": 1,
+                    "explanation_md": "Journey is the honest dashboard for path + Process Flow across the Lab. It is not a profit board and not a substitute for Practice tools.",
+                    "order": 1
+                  },
+                  {
+                    "kind": "multiple_choice",
+                    "prompt_md": "Process Flow is best described as:",
+                    "options": [
+                      "The grade you got after a one-time exam",
+                      "A state of being — whether your trading process is coherent and current (a practice compass)",
+                      "Your account equity curve",
+                      "A peer-visible profit score"
+                    ],
+                    "correct": 1,
+                    "explanation_md": "Process Flow is directional alignment with practice (compass / radar), not a report-card score or P&L.",
+                    "order": 2
+                  },
+                  {
+                    "kind": "binary",
+                    "prompt_md": "True or false: Process Flow should treat long calendar gaps (e.g. time away from the market) the same as failing process while you are actively trading.",
+                    "options": [
+                      "True — every quiet week should lower your standing equally",
+                      "False — silence outside an engaged stretch is not the same as dropping journals/retros while still operating"
+                    ],
+                    "correct": 1,
+                    "explanation_md": "Active-span logic: off-market quiet is not failure. Dropping journals, retros, or plan-following *while engaged* is what should show up.",
+                    "order": 3
+                  },
+                  {
+                    "kind": "multiple_choice",
+                    "prompt_md": "What should **never** move Process Flow?",
+                    "options": [
+                      "Retrospective cadence and plan adherence on tagged trades",
+                      "Learning rhythm and live presence while engaged",
+                      "P&L, win rate, and peer profit ranking",
+                      "Journal coverage on days you actually trade"
+                    ],
+                    "correct": 2,
+                    "explanation_md": "Process only. Money outcomes and profit ranks are banned from Process Flow.",
+                    "order": 4
+                  },
+                  {
+                    "kind": "multiple_choice",
+                    "prompt_md": "You open Journey and see quiz results and “continue learning.” What are those for?",
+                    "options": [
+                      "Gamifying P&L so winners climb a ladder",
+                      "Tracking understanding and course progress so you can resume the next unfinished lesson",
+                      "Replacing the need to journal after trades",
+                      "Publishing your answers to the community board"
+                    ],
+                    "correct": 1,
+                    "explanation_md": "Learning path + quizzes check understanding and help you resume — they are not a profit game.",
+                    "order": 5
+                  },
+                  {
+                    "kind": "multiple_choice",
+                    "prompt_md": "A new member’s Process Flow pillars look empty. The best reading is:",
+                    "options": [
+                      "They failed and should feel ranked “Poor” immediately",
+                      "Empty means not started / establishing — not moral failure",
+                      "The system is broken",
+                      "They must enroll in Toughness before Journey works"
+                    ],
+                    "correct": 1,
+                    "explanation_md": "Empty ≠ failure. New members establish over time; Toughness is optional.",
+                    "order": 6
+                  }
+                ]
               }
             ],
             "resource_ids": []

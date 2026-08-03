@@ -8,29 +8,29 @@
 
 ## Current junction
 
-### **PROGRAM CODE PASS** (2026-08-02) — ops residual on H5/H2
+### **PROGRAM PASS** — H5 fully closed 2026-08-03 (host + Coach smoke)
 
 | Step | Status | Report |
 |------|--------|--------|
 | W0 | **PASS** | W0-G-program-lock.md |
-| H5 Deploy | **PASS + residual** | H5-G — MiniTwo SSH denied; checklist in deploy.md |
+| H5 Deploy | **PASS** | H5-minitwo-deploy-2026-08-03.md + H5-2-coach-smoke.md |
 | H3 Admin allowlist | **PASS** | H3-G — `LABS_ADMIN_EMAILS` |
 | H1 Live role | **PASS** | H1-G — `require_admin` → derive_role |
 | H2 SSO hygiene | **PASS phase A** | H2-G — logs + deploy notes |
 | H4 Account switch | **PASS** | H4-G — runbook |
 | CLOSE | **PASS** | CLOSE-G-program.md |
 
-### Ops still required (human) — 2026-08-03 residual pack ready
+### Ops still required (human) — H2 edge only
 
 | Residual | Unblock | Artifact |
 |----------|---------|----------|
-| **H5** MiniTwo deploy | Authorize StudioTwo key on MiniTwo, then run script | `infra/scripts/deploy-minitwo-auth-hardening.sh` · `docs/ops/MiniTwo-Auth-Deploy-Runbook.md` |
 | **H2** nginx log redaction | Apply on MiniThree | `infra/nginx/labs-sso-access-log.conf` |
 | **H2** WP JWT TTL ≤120s | fotw-sso on fattail.ai / 0-dte.com | `docs/ops/WP-SSO-JWT-TTL.md` |
 
-**SSH note:** `id_minitwo` (`ernie@StudioTwo-minitwo-agent`) is **rejected** by MiniTwo until added to `authorized_keys`. DudeTwo has no Labs repo.
+**SSH:** Option A done — StudioTwo agent key on MiniTwo.  
+**H5-2:** Coach confirmed Alpha → logout → FatTail SSO as Ernie works on prod.
 
-Gate: `gate-reports/H5-H2-residuals-2026-08-03.md`
+Gate residual pack: `gate-reports/H5-H2-residuals-2026-08-03.md` (H5 closed; H2 edge still open).
 
 ### Backlog (reevaluated)
 
@@ -41,9 +41,8 @@ Gate: `gate-reports/H5-H2-residuals-2026-08-03.md`
 | **M2 SSO email/link** | **DONE** 2026-08-03 (`resolve_sso_identity`, DL-207) |
 | **M6 CSRF Origin/Referer** | **DONE** 2026-08-03 (`csrf.py`, DL-208) |
 | M3 iid=0 | Partially in H1 |
-| Host ops H5/H2 | MiniTwo key + nginx + WP TTL |
+| H2 host ops | MiniThree nginx + WP TTL |
 | H2 phase B | Deferred |
-| H5/H2 host ops | MiniTwo key + nginx + WP TTL (runbooks ready) |
 
 ---
 

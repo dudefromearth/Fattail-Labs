@@ -4,12 +4,13 @@
 
 | Check | Result |
 |-------|--------|
-| SSH minitwo | **FAIL** — Permission denied (id_minitwo not in authorized_keys) |
+| SSH minitwo (earlier) | FAIL — Permission denied (`id_minitwo` not in `authorized_keys`) |
+| SSH minitwo (after Option A) | **PASS** — StudioTwo agent key authorized |
+| Live deploy + health | **PASS** — `H5-minitwo-deploy-2026-08-03.md` (HEAD `a172c7d`, prod health + `reauth=1`) |
 | SSH dudetwo | OK but **no** Fattail-Labs checkout (not Labs host) |
-| MiniThree | Tailscale timeout |
 | Artifact | `infra/scripts/deploy-minitwo-auth-hardening.sh` + `docs/ops/MiniTwo-Auth-Deploy-Runbook.md` |
 
-**Unblock:** add StudioTwo public key to MiniTwo `~/.ssh/authorized_keys`, then run script.
+**H5 fully closed** (host deploy + Coach H5-2 smoke PASS 2026-08-03).
 
 ## H2 nginx redaction
 
@@ -27,4 +28,5 @@
 
 ## Status
 
-Code + runbooks complete. **Host access** still required for live H5/H2 edge apply.
+**H5:** closed (Option A + deploy + Coach smoke).  
+**H2 edge:** still open (MiniThree nginx + WP JWT TTL).

@@ -80,6 +80,43 @@ export default function GuidePage() {
               </li>
             </ul>
 
+            <H2 id="why-we-practice">Why we practice</H2>
+            <p>
+              Labs is here to help you become more{" "}
+              <strong>present, aware, and integrated</strong> with a real
+              methodology — not to walk through a trading career oblivious to the
+              habits that actually compound. Markets evolve with{" "}
+              <strong>right-skewed, fat-tailed</strong> distributions; we train
+              process, size, and review so you can stay in the game. Capital
+              doctrine remains{" "}
+              <strong>stop the bleeding</strong> — process outcomes, never profit
+              claims.
+            </p>
+            <ul>
+              <li>
+                <strong>Journal</strong> — daily evidence: analysis, execution,
+                reflection.
+              </li>
+              <li>
+                <strong>Retrospective</strong> — weekly honesty: what was hard,
+                what caused it, what replacement habit you install next.
+              </li>
+              <li>
+                <strong>Toughness</strong> — capacity in body, mind, and spirit
+                so the path holds under stress.
+              </li>
+            </ul>
+            <p>
+              Start where the pathway starts:{" "}
+              <Link
+                href="/course/first-stop-the-bleeding"
+                className={link}
+              >
+                First, Stop the Bleeding
+              </Link>
+              .
+            </p>
+
             <H2 id="finding-courses">Finding courses</H2>
             <p>
               The{" "}
@@ -313,9 +350,11 @@ export default function GuidePage() {
               <Link href="/app/retrospective" className={link}>
                 Retrospective
               </Link>{" "}
-              is the structured review: what held, what broke, what you commit
-              next. Process first; results are secondary, never the headline as a
-              brag.
+              is the structured review: what was hard, what got in the way, what
+              can change, and the{" "}
+              <strong>one checkable habit</strong> you install next — not a P&amp;L
+              scorecard. Process first; results are secondary, never the headline
+              as a brag.
             </p>
             <ul>
               <li>
@@ -326,8 +365,13 @@ export default function GuidePage() {
                 journey) so you know what the ceremony will gather.
               </li>
               <li>
-                <strong>Ceremony</strong> — dual report with clear steps through
-                cause, what worked, and next commitments.
+                <strong>Ceremony</strong> — fixed steps: commitments, practice,
+                obstacles, cause you name, what worked, one replacement habit.
+              </li>
+              <li>
+                <strong>Gaps</strong> — if a first-class habit never showed up in
+                the Journal, the retro is where that becomes visible — and where
+                you engineer the next habit.
               </li>
               <li>
                 <strong>Cadence</strong> — gentle nudges when a review is due,
