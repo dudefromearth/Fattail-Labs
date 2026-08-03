@@ -45,6 +45,19 @@ def safe_next_path(next_raw: str | None, default: str = _DEFAULT_SSO_LANDING) ->
     return n
 
 
+def _session_cookie_kwargs() -> dict:
+    """Attributes that must match on set and delete (browsers are strict)."""
+    cfg = get_config()
+    kwargs: dict = {
+        "path": "/",
+        "httponly": True,
+        "samesite": "lax",
+    }
+    if cfg.cookie_domain:
+        kwargs["domain"] = cfg.cookie_domain
+    return kwargs
+
+
 def _session_response(resp, identity_id: int, provider: str, role: str, request=None):
     cfg = get_config()
     token = auth.issue_session(identity_id=identity_id, issuer=provider, role=role)
@@ -52,13 +65,31 @@ def _session_response(resp, identity_id: int, provider: str, role: str, request=
         key=cfg.session_cookie,
         value=token,
         max_age=cfg.session_ttl_seconds,
-        httponly=True,
-        samesite="lax",
-        **({"domain": cfg.cookie_domain} if cfg.cookie_domain else {}),
+        **_session_cookie_kwargs(),
     )
     # Record the login for the admin Users analytics (best-effort, never raises).
     activity.record_login(identity_id, provider, role, request=request)
     return resp
+
+
+def _clear_session_cookie(resp) -> None:
+    """Expire ft_session with the same domain/path as set_cookie.
+
+    delete_cookie without domain fails when LABS_COOKIE_DOMAIN is set
+    (staging/production .fattail.ai) — the browser keeps the domain cookie
+    and Sign out appears to do nothing.
+    """
+    cfg = get_config()
+    # Primary: exact match to how the session was issued.
+    resp.delete_cookie(cfg.session_cookie, **_session_cookie_kwargs())
+    # Host-only fallback (dev or legacy cookies issued without Domain=).
+    if cfg.cookie_domain:
+        resp.delete_cookie(
+            cfg.session_cookie,
+            path="/",
+            httponly=True,
+            samesite="lax",
+        )
 
 
 @router.post("/login")
@@ -297,9 +328,9 @@ def me(request: Request):
 
 @router.get("/logout")
 def logout():
-    cfg = get_config()
-    resp = RedirectResponse(url="/course", status_code=302)  # public catalog
-    resp.delete_cookie(cfg.session_cookie)
+    # Land on login so operators can switch test accounts without a stuck session.
+    resp = RedirectResponse(url="/login", status_code=302)
+    _clear_session_cookie(resp)
     return resp
 
 

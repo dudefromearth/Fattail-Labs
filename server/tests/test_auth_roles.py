@@ -46,6 +46,39 @@ def test_garbage_session_cookie_is_anonymous(client):
     assert r.status_code == 401
 
 
+def test_logout_clears_session_cookie_attrs(client):
+    """Sign out must expire ft_session with path (and domain when configured).
+
+    Regression: delete_cookie without domain left .fattail.ai sessions intact.
+    """
+    from conftest import COOKIE
+    from config import get_config
+
+    r = client.get(
+        "/api/auth/logout",
+        cookies=cookie_for("observer", 901),
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    assert r.headers.get("location") in ("/login", "http://testserver/login")
+
+    # Set-Cookie must clear the session name
+    set_cookies = r.headers.get_list("set-cookie")
+    joined = " ".join(set_cookies).lower()
+    assert COOKIE.lower() in joined
+    # Max-Age=0 or expires in the past is how Starlette deletes
+    assert "max-age=0" in joined or "expires=" in joined
+    assert "path=/" in joined
+
+    cfg = get_config()
+    if cfg.cookie_domain:
+        assert cfg.cookie_domain.lower() in joined
+
+    # After client applies delete, /me is anonymous
+    r2 = client.get("/api/auth/me")
+    assert r2.status_code == 401
+
+
 def test_feature_role_observer_trial_elevates_to_navigator():
     """DL-128: paid Observer membership elevates feature gates to navigator."""
     email = "zztest-feature-role@labs.test"

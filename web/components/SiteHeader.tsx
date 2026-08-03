@@ -345,6 +345,10 @@ export default function SiteHeader() {
                     <a
                       href="/api/auth/logout"
                       className="block px-4 py-2 text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setMe(null);
+                      }}
                     >
                       Sign out
                     </a>
