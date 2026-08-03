@@ -5,22 +5,15 @@ DudeTwo is reachable but has **no** `~/Fattail-Labs` checkout (Labs prod is Mini
 
 ## One-time: authorize deploy key (on MiniTwo)
 
-From StudioTwo, show the public key:
+**Full options (A / B / C), public key, and troubleshooting:**
+
+→ **[`docs/ops/MiniTwo-SSH-Agent-Access.md`](./MiniTwo-SSH-Agent-Access.md)**
+
+Short form — on MiniTwo as `ernie`, append StudioTwo’s agent public key to `~/.ssh/authorized_keys`, then from StudioTwo:
 
 ```bash
-cat ~/.ssh/id_minitwo.pub
-# ernie@StudioTwo-minitwo-agent  (ED25519)
+ssh -o BatchMode=yes minitwo 'echo OK; hostname'
 ```
-
-On MiniTwo (as ernie, once you have console/another key):
-
-```bash
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
-echo 'ssh-ed25519 AAAA… ernie@StudioTwo-minitwo-agent' >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-```
-
-Then from StudioTwo: `ssh minitwo 'hostname'`.
 
 ## Deploy (on MiniTwo)
 

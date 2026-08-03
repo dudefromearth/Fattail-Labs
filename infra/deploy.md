@@ -204,7 +204,7 @@ bash infra/scripts/deploy-minitwo-auth-hardening.sh
 ```
 
 Full operator notes: `docs/ops/MiniTwo-Auth-Deploy-Runbook.md`  
-(If `ssh minitwo` fails from StudioTwo: authorize `~/.ssh/id_minitwo.pub` on MiniTwo first.)
+SSH key setup (authorize StudioTwo agent on MiniTwo): `docs/ops/MiniTwo-SSH-Agent-Access.md`
 
 ### Deploy checklist (H5)
 
