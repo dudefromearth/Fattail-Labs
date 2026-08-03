@@ -43,6 +43,12 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
+- `agents/p-access-control/` — **Access Control (admin role/plan gating)** for surfaces,
+  apps, and course elements (campaign-ready policies). Spec:
+  `Specs/FatTail-Labs-Access-Control-Spec-v0.4.md`.  
+  **Full multi-agent plan:** `docs/Access-Control-v0.4-Full-Agent-Bench-Plan.md`.  
+  Board: `agents/p-access-control/ORCHESTRATOR.md`.  
+  **Next: W0 reviews → Coach BUILD AUTHORITY** (no engine code before W0-G).
 - `agents/p-tag-manager/` — **Platform Tag Manager FIRST** (admin-only CRUD; members
   assign only; Resources hub Lexicon; no `/me` tags). **Completes before Journal Session.**
   Plan: `docs/Tag-Manager-Implementation-Plan.md`. Board:
