@@ -39,8 +39,9 @@ Gate: `gate-reports/H5-H2-residuals-2026-08-03.md`
 | **M1 Auth rate limits** | **DONE** 2026-08-03 (`rate_limit.py`, DL-205) |
 | **M7 Webhook anti-replay** | **DONE** 2026-08-03 (`webhook_security.py`, DL-206) |
 | **M2 SSO email/link** | **DONE** 2026-08-03 (`resolve_sso_identity`, DL-207) |
+| **M6 CSRF Origin/Referer** | **DONE** 2026-08-03 (`csrf.py`, DL-208) |
 | M3 iid=0 | Partially in H1 |
-| M6 CSRF | Next optional code |
+| Host ops H5/H2 | MiniTwo key + nginx + WP TTL |
 | H2 phase B | Deferred |
 | H5/H2 host ops | MiniTwo key + nginx + WP TTL (runbooks ready) |
 

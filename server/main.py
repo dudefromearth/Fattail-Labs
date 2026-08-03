@@ -16,9 +16,12 @@ from config import get_config
 def create_app() -> FastAPI:
     cfg = get_config()  # fail loud at boot if config is incomplete
     import wiki_store
+    from csrf import CsrfOriginMiddleware
 
     wiki_store.wiki_root()  # fail loud: LABS_WIKI_ROOT must be a lab-wiki checkout (WIK-D4)
     app = FastAPI(title="FatTail Labs API", docs_url=None, redoc_url=None)
+    # M6: Origin/Referer check for cookie-authenticated mutations
+    app.add_middleware(CsrfOriginMiddleware)
 
     @app.get("/api/health")
     def health() -> dict:

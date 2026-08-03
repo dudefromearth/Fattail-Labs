@@ -4,6 +4,14 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-03 — DL-208 CSRF Origin/Referer guard (M6)
+
+**Alpha:** Middleware `CsrfOriginMiddleware` rejects POST/PUT/PATCH/DELETE that carry
+`ft_session` unless Origin or Referer matches allowlist (`LABS_WEB_ORIGIN`,
+`LABS_CSRF_ORIGINS`, same request host, plus localhost/testserver in dev).
+Skips safe methods, cookieless requests (login/webhooks), and Bearer agent auth.
+Tests: `test_csrf_m6.py`. conftest sets Origin: http://testserver.
+
 ## 2026-08-03 — DL-207 SSO email/link reconciliation (M2)
 
 **Alpha:** `identity.resolve_sso_identity` is the single SSO/webhook identity

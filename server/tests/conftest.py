@@ -51,7 +51,9 @@ COOKIE = get_config().session_cookie
 
 @pytest.fixture(scope="session")
 def client():
+    # M6: cookie mutations require Origin/Referer; TestClient is same-site as app.
     with TestClient(app) as c:
+        c.headers.update({"Origin": "http://testserver"})
         yield c
 
 
