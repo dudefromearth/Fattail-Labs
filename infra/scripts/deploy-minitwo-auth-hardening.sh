@@ -10,6 +10,9 @@
 
 set -euo pipefail
 
+# launchd/SSH non-interactive shells often lack Homebrew on PATH
+export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH:-/usr/bin:/bin}"
+
 REPO="${LABS_REPO:-$HOME/Fattail-Labs}"
 cd "$REPO"
 
