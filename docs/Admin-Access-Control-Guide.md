@@ -273,15 +273,22 @@ See `infra/deploy.md` → **Access Control**. No special env vars for the engine
 
 ---
 
-## 13. Related docs
+## 13. Switching accounts (Alpha MSC ↔ Ernie, etc.)
+
+Labs logout does **not** sign you out of WordPress. See  
+**[`docs/Auth-Account-Switch-Runbook.md`](./Auth-Account-Switch-Runbook.md)**.
+
+## 14. Related docs
 
 | Doc | Role |
 |-----|------|
 | `Specs/FatTail-Labs-Access-Control-Spec-v0.4.md` | Full product/engine law |
 | `docs/Access-Control-v0.4-Full-Agent-Bench-Plan.md` | Implementation phases |
+| `docs/Auth-Hardening-Audit-2026-08-02.md` | Auth security audit |
+| `docs/Auth-Account-Switch-Runbook.md` | Dual-session account switch |
 | `Specs/FatTail-Labs-Identity-Access-Spec-v1.0.md` | Roles, SSO, plans |
 | `Specs/FatTail-Labs-Enrollment-Access-Spec-v1.0.md` | Lesson free_preview matrix |
-| `Architecture/00-decision-log.md` | DL-198 … DL-202 |
+| `Architecture/00-decision-log.md` | DL-198 … DL-204 |
 
 ---
 
