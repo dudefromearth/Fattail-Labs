@@ -79,6 +79,22 @@ def test_logout_clears_session_cookie_attrs(client):
     assert r2.status_code == 401
 
 
+def test_logout_json_emits_expire_headers(client):
+    """POST logout?json=1 returns signed_out and expires ft_session."""
+    from conftest import COOKIE
+
+    r = client.post(
+        "/api/auth/logout?json=1",
+        cookies=cookie_for("observer", 901),
+        headers={"Accept": "application/json"},
+    )
+    assert r.status_code == 200
+    assert r.json().get("signed_out") is True
+    joined = " ".join(r.headers.get_list("set-cookie")).lower()
+    assert COOKIE.lower() in joined
+    assert "max-age=0" in joined or "expires=" in joined
+
+
 def test_feature_role_observer_trial_elevates_to_navigator():
     """DL-128: paid Observer membership elevates feature gates to navigator."""
     email = "zztest-feature-role@labs.test"

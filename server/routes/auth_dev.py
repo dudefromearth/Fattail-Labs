@@ -19,15 +19,15 @@ def dev_login() -> RedirectResponse:
     token = auth.issue_session(identity_id=0, issuer="internal", role="administrator")
     # Member landing after login (login-landing mock).
     resp = RedirectResponse(url="/home", status_code=302)
-    # path/domain must match logout clear in auth_routes._clear_session_cookie
-    cookie_kw: dict = {"path": "/", "httponly": True, "samesite": "lax"}
-    if cfg.cookie_domain:
-        cookie_kw["domain"] = cfg.cookie_domain
+    # Match auth_routes._session_cookie_kwargs (path/domain/secure)
+    from routes.auth_routes import _clear_session_cookie, _session_cookie_kwargs
+
+    _clear_session_cookie(resp)
     resp.set_cookie(
         key=cfg.session_cookie,
         value=token,
         max_age=cfg.session_ttl_seconds,
-        **cookie_kw,
+        **_session_cookie_kwargs(),
     )
     return resp
 

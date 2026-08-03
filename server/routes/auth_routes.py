@@ -45,21 +45,80 @@ def safe_next_path(next_raw: str | None, default: str = _DEFAULT_SSO_LANDING) ->
     return n
 
 
+def _cookie_secure() -> bool:
+    """HTTPS-only cookies outside dev (must match on set and delete)."""
+    return get_config().env != "dev"
+
+
 def _session_cookie_kwargs() -> dict:
-    """Attributes that must match on set and delete (browsers are strict)."""
+    """Attributes used when minting a new session cookie."""
     cfg = get_config()
     kwargs: dict = {
         "path": "/",
         "httponly": True,
         "samesite": "lax",
+        "secure": _cookie_secure(),
     }
     if cfg.cookie_domain:
         kwargs["domain"] = cfg.cookie_domain
     return kwargs
 
 
-def _session_response(resp, identity_id: int, provider: str, role: str, request=None):
+def _clear_session_cookie(resp) -> None:
+    """Expire every plausible ft_session variant.
+
+    Browsers only clear a cookie when Domain/Path/Secure/SameSite match how it
+    was set. We may have issued host-only *or* Domain=.fattail.ai cookies, with
+    or without Secure, across deploys — so delete all combinations. Otherwise
+    Sign out shows the login form while /api/auth/me still authenticates the
+    old account (and a later SSO can appear to "do nothing").
+    """
     cfg = get_config()
+    name = cfg.session_cookie
+    domains: list[str | None] = [None]
+    if cfg.cookie_domain:
+        d = cfg.cookie_domain.strip()
+        domains.append(d)
+        if d.startswith("."):
+            domains.append(d[1:])
+        else:
+            domains.append(f".{d}")
+    # de-dupe preserve order
+    seen: list[str | None] = []
+    for d in domains:
+        if d not in seen:
+            seen.append(d)
+
+    for domain in seen:
+        for secure in (False, True):
+            for samesite in ("lax", "strict", "none"):
+                kw: dict = {
+                    "path": "/",
+                    "httponly": True,
+                    "samesite": samesite,
+                    "secure": secure,
+                }
+                if domain:
+                    kw["domain"] = domain
+                # samesite=none requires secure in browsers; still emit clear
+                try:
+                    resp.delete_cookie(name, **kw)
+                except Exception:
+                    pass
+        # Minimal delete (Starlette defaults)
+        try:
+            if domain:
+                resp.delete_cookie(name, path="/", domain=domain)
+            else:
+                resp.delete_cookie(name, path="/")
+        except Exception:
+            pass
+
+
+def _session_response(resp, identity_id: int, provider: str, role: str, request=None):
+    """Mint session JWT cookie — always clears prior variants first (no stacked cookies)."""
+    cfg = get_config()
+    _clear_session_cookie(resp)
     token = auth.issue_session(identity_id=identity_id, issuer=provider, role=role)
     resp.set_cookie(
         key=cfg.session_cookie,
@@ -70,26 +129,6 @@ def _session_response(resp, identity_id: int, provider: str, role: str, request=
     # Record the login for the admin Users analytics (best-effort, never raises).
     activity.record_login(identity_id, provider, role, request=request)
     return resp
-
-
-def _clear_session_cookie(resp) -> None:
-    """Expire ft_session with the same domain/path as set_cookie.
-
-    delete_cookie without domain fails when LABS_COOKIE_DOMAIN is set
-    (staging/production .fattail.ai) — the browser keeps the domain cookie
-    and Sign out appears to do nothing.
-    """
-    cfg = get_config()
-    # Primary: exact match to how the session was issued.
-    resp.delete_cookie(cfg.session_cookie, **_session_cookie_kwargs())
-    # Host-only fallback (dev or legacy cookies issued without Domain=).
-    if cfg.cookie_domain:
-        resp.delete_cookie(
-            cfg.session_cookie,
-            path="/",
-            httponly=True,
-            samesite="lax",
-        )
 
 
 @router.post("/login")
@@ -327,7 +366,18 @@ def me(request: Request):
 
 
 @router.get("/logout")
-def logout():
+@router.post("/logout")
+def logout(request: Request):
+    """Clear Labs session cookie(s). GET redirects to /login; ?json=1 or POST → JSON."""
+    want_json = (
+        request.method == "POST"
+        or (request.query_params.get("json") or "").strip() in ("1", "true", "yes")
+        or "application/json" in (request.headers.get("accept") or "")
+    )
+    if want_json:
+        resp = JSONResponse({"ok": True, "signed_out": True})
+        _clear_session_cookie(resp)
+        return resp
     # Land on login so operators can switch test accounts without a stuck session.
     resp = RedirectResponse(url="/login", status_code=302)
     _clear_session_cookie(resp)
