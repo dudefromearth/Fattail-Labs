@@ -25,8 +25,8 @@ type Plan = {
     featured?: boolean;
     promo_only?: boolean;
     tagline?: string;
-    prices: Price[];
-    features: string[];
+    prices?: Price[];
+    features?: string[];
   };
   prices: { price_id: string; amount?: number | null; currency?: string | null; interval?: string | null }[];
 };
@@ -206,14 +206,14 @@ export default function MembershipPlans() {
               <p className="mt-1 text-sm text-zinc-500">{plan.display.tagline}</p>
             )}
             <ul className="mt-4 space-y-1.5">
-              {plan.display.features.map((f) => (
+              {(plan.display.features ?? []).map((f) => (
                 <li key={f} className="flex gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                   <span className="text-emerald-500">✓</span> {f}
                 </li>
               ))}
             </ul>
             <div className="mt-5 space-y-2">
-              {plan.display.prices.map((dp, i) => priceButton(plan, dp, i))}
+              {(plan.display.prices ?? []).map((dp, i) => priceButton(plan, dp, i))}
             </div>
             {!state.enabled && (
               <p className="mt-2 text-center text-xs text-zinc-400">
