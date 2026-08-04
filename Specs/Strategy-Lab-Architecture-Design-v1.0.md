@@ -6,7 +6,7 @@
 **Prototype path:** `strategy-lab-proto/` (Streamlit)  
 **Intended home:** First-class Labs surface under `labs.fattail.ai` (later)  
 **Process source:** `/Users/ernie/LifeCycle.pdf` — *Strategy Life Cycle Big Picture* (1/19/25)  
-**Related:** `Strategy-Lab-Life-Cycle-Architecture-v1.0.md`, `v1.1.md` (foundation/plugin path)  
+**Related:** `Strategy-Lab-Life-Cycle-Architecture-v1.0.md`, `v1.1.md` (foundation/plugin path) · **`Strategy-Lab-Portability-Spec-v1.0.md`** (whole-lab import/export pack) · `schemas/strategy-lab-pack-v1.json`  
 **Doctrine:** Capital preservation · process over profit claims · no fantasy fills · fail loud · stop-the-bleeding first  
 
 ---
@@ -430,10 +430,12 @@ Instrument families later: `futures`, `pairs`, `arb` — same phases, new attrib
 
 | Piece | Port / path |
 |-------|-------------|
-| Strategy Lab UI | Streamlit · **http://localhost:8501** · `strategy-lab-proto/app.py` |
-| Risk graph UI | Vite · **http://127.0.0.1:5174** · `msc-risk-graph-ui/` |
-| FatTail Labs site | Next · **http://localhost:3000** · `web/` (separate product) |
-| Labs API | FastAPI · **http://localhost:4000** · `server/` (separate product) |
+| **Strategy Lab (integrated)** | Next · **`/app/strategy-lab`** · `web/components/strategy-lab/` + `GET/POST /api/me/strategy-lab/*` |
+| **Ownership** | Family B: `strategy_lab_strategies.identity_id` → session identity only |
+| Strategy Lab Streamlit proto | Optional local · **http://localhost:8501** · `strategy-lab-proto/` (lifecycle prototyping) |
+| Risk graph UI | Vite · **http://127.0.0.1:5174** · plugin path later |
+| FatTail Labs site | Next · **http://localhost:3000** · `web/` |
+| Labs API | FastAPI · **http://localhost:4000** · `server/` |
 
 Start Strategy Lab:
 
@@ -447,8 +449,14 @@ set -a && source .env && set +a   # Massive key if backtest used
 
 | Path | Role |
 |------|------|
-| `engine/lifecycle_states.py` | Phases, phase states, labels, defaults |
-| `engine/store.py` | Strategy CRUD, moves, rename, version, log |
+| `migrations/078_strategy_lab.sql` | `strategy_lab_strategies` table (identity_id FK) |
+| `server/strategy_lab_domain.py` | Phases, states, ownership CRUD |
+| `server/routes/strategy_lab.py` | `/api/me/strategy-lab/*` session-scoped API |
+| `web/app/app/strategy-lab/page.tsx` | Member route shell |
+| `web/components/strategy-lab/StrategyLabApp.tsx` | Bins + work area UI |
+| `web/lib/strategyLabApi.ts` | Client |
+| `strategy-lab-proto/engine/lifecycle_states.py` | Proto phases/states (local JSON) |
+| `strategy-lab-proto/engine/store.py` | Proto JSON store |
 | `engine/spec.py` | Options StrategySpec (plugin-bound) |
 | `engine/risk_engine/*` | Legs, payoff, curves, handles |
 | `engine/backtest.py` | Massive-backed sim (process plugin) |

@@ -1,0 +1,631 @@
+{
+  "format": "fattail.labs.strategy_lab",
+  "model_version": "1.0",
+  "foundation_version": 1,
+  "exported_at": "2026-08-04T20:12:44.011676Z",
+  "source": {
+    "system": "fattail-labs",
+    "env": "dev",
+    "app": "strategy-lab"
+  },
+  "identity": {
+    "export_subject": "self",
+    "email": "exercise@labs.test"
+  },
+  "lab": {
+    "schema_version": 1,
+    "label": "F1 exercise pack — full phase_state coverage",
+    "counts": {
+      "development": 5,
+      "curation": 4,
+      "deployment": 9,
+      "bin": 2,
+      "total": 20
+    }
+  },
+  "strategies": [
+    {
+      "id": "exdevhypoth01",
+      "export_key": "exdevhypoth01",
+      "product_key": "exdevhypoth01",
+      "name": "Dev · Hypothesis",
+      "description": "Exercise pack skeleton — Development / Hypothesis.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "development",
+      "phase_state": "hypothesis",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011376Z",
+          "event": "created",
+          "phase": "development",
+          "phase_state": "hypothesis",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011556Z",
+      "updated_at": "2026-08-04T20:12:44.011558Z"
+    },
+    {
+      "id": "exdevmodel02",
+      "export_key": "exdevmodel02",
+      "product_key": "exdevmodel02",
+      "name": "Dev · Model",
+      "description": "Exercise pack skeleton — Development / Model.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "development",
+      "phase_state": "model",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011568Z",
+          "event": "created",
+          "phase": "development",
+          "phase_state": "model",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011570Z",
+      "updated_at": "2026-08-04T20:12:44.011571Z"
+    },
+    {
+      "id": "exdevis_tes03",
+      "export_key": "exdevis_tes03",
+      "product_key": "exdevis_tes03",
+      "name": "Dev · In-sample test",
+      "description": "Exercise pack skeleton — Development / In-sample test.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "development",
+      "phase_state": "is_test",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011576Z",
+          "event": "created",
+          "phase": "development",
+          "phase_state": "is_test",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011577Z",
+      "updated_at": "2026-08-04T20:12:44.011578Z"
+    },
+    {
+      "id": "exdevoos_te04",
+      "export_key": "exdevoos_te04",
+      "product_key": "exdevoos_te04",
+      "name": "Dev · OOS test",
+      "description": "Exercise pack skeleton — Development / OOS test.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "development",
+      "phase_state": "oos_test",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011582Z",
+          "event": "created",
+          "phase": "development",
+          "phase_state": "oos_test",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011583Z",
+      "updated_at": "2026-08-04T20:12:44.011584Z"
+    },
+    {
+      "id": "exdevdeploy05",
+      "export_key": "exdevdeploy05",
+      "product_key": "exdevdeploy05",
+      "name": "Dev · Deployed",
+      "description": "Exercise pack skeleton — Development / Deployed.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "development",
+      "phase_state": "deployed",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011587Z",
+          "event": "created",
+          "phase": "development",
+          "phase_state": "deployed",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011589Z",
+      "updated_at": "2026-08-04T20:12:44.011590Z"
+    },
+    {
+      "id": "excurcatego06",
+      "export_key": "excurcatego06",
+      "product_key": "excurcatego06",
+      "name": "Cur · Categorized",
+      "description": "Exercise pack skeleton — Curation / Categorized.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "curation",
+      "phase_state": "categorized",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011593Z",
+          "event": "created",
+          "phase": "curation",
+          "phase_state": "categorized",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011594Z",
+      "updated_at": "2026-08-04T20:12:44.011595Z"
+    },
+    {
+      "id": "excurgroupe07",
+      "export_key": "excurgroupe07",
+      "product_key": "excurgroupe07",
+      "name": "Cur · Grouped",
+      "description": "Exercise pack skeleton — Curation / Grouped.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "curation",
+      "phase_state": "grouped",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011598Z",
+          "event": "created",
+          "phase": "curation",
+          "phase_state": "grouped",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011600Z",
+      "updated_at": "2026-08-04T20:12:44.011601Z"
+    },
+    {
+      "id": "excurpositi08",
+      "export_key": "excurpositi08",
+      "product_key": "excurpositi08",
+      "name": "Cur · Position sized",
+      "description": "Exercise pack skeleton — Curation / Position sized.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "curation",
+      "phase_state": "position_sized",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011604Z",
+          "event": "created",
+          "phase": "curation",
+          "phase_state": "position_sized",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011605Z",
+      "updated_at": "2026-08-04T20:12:44.011606Z"
+    },
+    {
+      "id": "excurmonito09",
+      "export_key": "excurmonito09",
+      "product_key": "excurmonito09",
+      "name": "Cur · Monitored",
+      "description": "Exercise pack skeleton — Curation / Monitored.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "curation",
+      "phase_state": "monitored",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011609Z",
+          "event": "created",
+          "phase": "curation",
+          "phase_state": "monitored",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011610Z",
+      "updated_at": "2026-08-04T20:12:44.011611Z"
+    },
+    {
+      "id": "exdepstrate10",
+      "export_key": "exdepstrate10",
+      "product_key": "exdepstrate10",
+      "name": "Dep · Strategy",
+      "description": "Exercise pack skeleton — Deployment / Strategy.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "deployment",
+      "phase_state": "strategy",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011614Z",
+          "event": "created",
+          "phase": "deployment",
+          "phase_state": "strategy",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011615Z",
+      "updated_at": "2026-08-04T20:12:44.011616Z"
+    },
+    {
+      "id": "exdepcapita11",
+      "export_key": "exdepcapita11",
+      "product_key": "exdepcapita11",
+      "name": "Dep · Capital allocation",
+      "description": "Exercise pack skeleton — Deployment / Capital allocation.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "deployment",
+      "phase_state": "capital_allocation",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011619Z",
+          "event": "created",
+          "phase": "deployment",
+          "phase_state": "capital_allocation",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011620Z",
+      "updated_at": "2026-08-04T20:12:44.011621Z"
+    },
+    {
+      "id": "exdepschedu12",
+      "export_key": "exdepschedu12",
+      "product_key": "exdepschedu12",
+      "name": "Dep · Scheduled",
+      "description": "Exercise pack skeleton — Deployment / Scheduled.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "deployment",
+      "phase_state": "scheduled",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011624Z",
+          "event": "created",
+          "phase": "deployment",
+          "phase_state": "scheduled",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011625Z",
+      "updated_at": "2026-08-04T20:12:44.011627Z"
+    },
+    {
+      "id": "exdepstarte13",
+      "export_key": "exdepstarte13",
+      "product_key": "exdepstarte13",
+      "name": "Dep · Started",
+      "description": "Exercise pack skeleton — Deployment / Started.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "deployment",
+      "phase_state": "started",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011629Z",
+          "event": "created",
+          "phase": "deployment",
+          "phase_state": "started",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011630Z",
+      "updated_at": "2026-08-04T20:12:44.011631Z"
+    },
+    {
+      "id": "exdeppaused14",
+      "export_key": "exdeppaused14",
+      "product_key": "exdeppaused14",
+      "name": "Dep · Paused",
+      "description": "Exercise pack skeleton — Deployment / Paused.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "deployment",
+      "phase_state": "paused",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011634Z",
+          "event": "created",
+          "phase": "deployment",
+          "phase_state": "paused",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011635Z",
+      "updated_at": "2026-08-04T20:12:44.011636Z"
+    },
+    {
+      "id": "exdepstoppe15",
+      "export_key": "exdepstoppe15",
+      "product_key": "exdepstoppe15",
+      "name": "Dep · Stopped",
+      "description": "Exercise pack skeleton — Deployment / Stopped.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "deployment",
+      "phase_state": "stopped",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011639Z",
+          "event": "created",
+          "phase": "deployment",
+          "phase_state": "stopped",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011640Z",
+      "updated_at": "2026-08-04T20:12:44.011641Z"
+    },
+    {
+      "id": "exdepended16",
+      "export_key": "exdepended16",
+      "product_key": "exdepended16",
+      "name": "Dep · Ended",
+      "description": "Exercise pack skeleton — Deployment / Ended.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "deployment",
+      "phase_state": "ended",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011644Z",
+          "event": "created",
+          "phase": "deployment",
+          "phase_state": "ended",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011645Z",
+      "updated_at": "2026-08-04T20:12:44.011646Z"
+    },
+    {
+      "id": "exdeppruned17",
+      "export_key": "exdeppruned17",
+      "product_key": "exdeppruned17",
+      "name": "Dep · Pruned",
+      "description": "Exercise pack skeleton — Deployment / Pruned.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "deployment",
+      "phase_state": "pruned",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011649Z",
+          "event": "created",
+          "phase": "deployment",
+          "phase_state": "pruned",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011650Z",
+      "updated_at": "2026-08-04T20:12:44.011651Z"
+    },
+    {
+      "id": "exdepretros18",
+      "export_key": "exdepretros18",
+      "product_key": "exdepretros18",
+      "name": "Dep · Retrospective",
+      "description": "Exercise pack skeleton — Deployment / Retrospective.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "deployment",
+      "phase_state": "retrospective",
+      "disposition": "active",
+      "bin_reason": null,
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011654Z",
+          "event": "created",
+          "phase": "deployment",
+          "phase_state": "retrospective",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011655Z",
+      "updated_at": "2026-08-04T20:12:44.011656Z"
+    },
+    {
+      "id": "exbinretire19",
+      "export_key": "exbinretire19",
+      "product_key": "exbinretire19",
+      "name": "Bin · Retired",
+      "description": "Exercise pack skeleton — Bin / Retired.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "bin",
+      "phase_state": "retired",
+      "disposition": "retired",
+      "bin_reason": "Exercise pack",
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011659Z",
+          "event": "created",
+          "phase": "bin",
+          "phase_state": "retired",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011660Z",
+      "updated_at": "2026-08-04T20:12:44.011661Z"
+    },
+    {
+      "id": "exbintrashe20",
+      "export_key": "exbintrashe20",
+      "product_key": "exbintrashe20",
+      "name": "Bin · Trashed",
+      "description": "Exercise pack skeleton — Bin / Trashed.",
+      "version": "1.0.0",
+      "version_major": 1,
+      "version_minor": 0,
+      "version_patch": 0,
+      "phase": "bin",
+      "phase_state": "trashed",
+      "disposition": "trashed",
+      "bin_reason": "Exercise pack",
+      "attributes": {},
+      "evidence": [],
+      "spec": null,
+      "lifecycle_log": [
+        {
+          "at": "2026-08-04T20:12:44.011664Z",
+          "event": "created",
+          "phase": "bin",
+          "phase_state": "trashed",
+          "version": "1.0.0",
+          "reason": "exercise pack"
+        }
+      ],
+      "created_at": "2026-08-04T20:12:44.011665Z",
+      "updated_at": "2026-08-04T20:12:44.011666Z"
+    }
+  ],
+  "campaigns": [],
+  "reports": [],
+  "lab_settings": {}
+}

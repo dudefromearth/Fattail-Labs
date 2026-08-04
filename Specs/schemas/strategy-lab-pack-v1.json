@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fattail.labs/schemas/strategy-lab-pack-v1.json",
+  "title": "FatTail Labs Strategy Lab Pack v1.0",
+  "description": "Portable whole-lab document for Strategy Lab (fattail.labs.strategy_lab). Skeleton-first: empty attributes/evidence are valid. Spec: Specs/Strategy-Lab-Portability-Spec-v1.0.md",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "format",
+    "model_version",
+    "foundation_version",
+    "exported_at",
+    "source",
+    "identity",
+    "lab",
+    "strategies",
+    "campaigns",
+    "reports",
+    "lab_settings"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "fattail.labs.strategy_lab"
+    },
+    "model_version": {
+      "type": "string",
+      "pattern": "^1\\.\\d+$",
+      "description": "Pack envelope version. v1.x minors are additive."
+    },
+    "foundation_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Life-cycle kernel version (phases/states enum)."
+    },
+    "exported_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ISO-8601 timestamp (UTC Z preferred)."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["system"],
+      "properties": {
+        "system": { "type": "string", "const": "fattail-labs" },
+        "env": {
+          "type": "string",
+          "enum": ["dev", "staging", "production"]
+        },
+        "app": { "type": "string", "const": "strategy-lab" }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["export_subject"],
+      "properties": {
+        "export_subject": { "type": "string", "const": "self" },
+        "email": { "type": "string" }
+      },
+      "description": "Label only. Never includes identity_id."
+    },
+    "lab": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schema_version"],
+      "properties": {
+        "schema_version": { "type": "integer", "const": 1 },
+        "label": { "type": "string" },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "development": { "type": "integer", "minimum": 0 },
+            "curation": { "type": "integer", "minimum": 0 },
+            "deployment": { "type": "integer", "minimum": 0 },
+            "bin": { "type": "integer", "minimum": 0 },
+            "total": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "strategies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/strategyCard" }
+    },
+    "campaigns": {
+      "type": "array",
+      "description": "Reserved. Empty in foundation F1.",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "reports": {
+      "type": "array",
+      "description": "Reserved for Archive reports.",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "lab_settings": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Reserved member UI prefs."
+    }
+  },
+  "$defs": {
+    "phase": {
+      "type": "string",
+      "enum": ["development", "curation", "deployment", "bin"]
+    },
+    "phaseState": {
+      "type": "string",
+      "enum": [
+        "hypothesis",
+        "model",
+        "is_test",
+        "oos_test",
+        "deployed",
+        "categorized",
+        "grouped",
+        "position_sized",
+        "monitored",
+        "strategy",
+        "capital_allocation",
+        "scheduled",
+        "started",
+        "paused",
+        "stopped",
+        "ended",
+        "pruned",
+        "retrospective",
+        "retired",
+        "trashed"
+      ]
+    },
+    "lifecycleEvent": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["at", "event"],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "event": { "type": "string", "minLength": 1 }
+      }
+    },
+    "evidenceRecord": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["kind", "schema_version"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "minLength": 1 },
+        "schema_version": { "type": "integer", "minimum": 1 },
+        "at": { "type": "string" },
+        "payload": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "strategyCard": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "product_key",
+        "name",
+        "version",
+        "version_major",
+        "version_minor",
+        "version_patch",
+        "phase",
+        "phase_state",
+        "attributes",
+        "evidence",
+        "lifecycle_log"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "export_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "product_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "version_major": { "type": "integer", "minimum": 0 },
+        "version_minor": { "type": "integer", "minimum": 0 },
+        "version_patch": { "type": "integer", "minimum": 0 },
+        "phase": { "$ref": "#/$defs/phase" },
+        "phase_state": { "$ref": "#/$defs/phaseState" },
+        "disposition": {
+          "type": "string",
+          "enum": ["active", "retired", "trashed"]
+        },
+        "bin_reason": {
+          "type": ["string", "null"],
+          "maxLength": 512
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Versioned bags name@version; empty object valid for F1."
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidenceRecord" },
+          "description": "Reserved; empty in F1. Non-empty may embed under attributes.__evidence@1 until first-class store."
+        },
+        "spec": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "description": "Legacy options shape; migrates toward attributes options_spec@1."
+        },
+        "lifecycle_log": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/lifecycleEvent" }
+        },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      }
+    }
+  }
+}
