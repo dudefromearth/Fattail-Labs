@@ -120,6 +120,22 @@ def create_app() -> FastAPI:
     app.include_router(hub_public_router)
     app.include_router(hub_admin_router)
 
+    # Help desk is a self-contained bolt-on: register it in isolation so any
+    # import/registration failure logs and is skipped — it can NEVER prevent the
+    # rest of Labs from booting. (Help just won't be available.)
+    try:
+        from routes.help import router as help_router
+        from routes.help_admin import router as help_admin_router
+
+        app.include_router(help_router)
+        app.include_router(help_admin_router)
+    except Exception:  # noqa: BLE001 — help must never block app boot
+        import logging
+
+        logging.getLogger("labs.help").exception(
+            "help system failed to register; continuing without it"
+        )
+
     uploads = Path(__file__).resolve().parent / "uploads"
     uploads.mkdir(exist_ok=True)
     app.mount("/api/media", StaticFiles(directory=uploads), name="media")

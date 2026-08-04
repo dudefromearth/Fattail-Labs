@@ -11,6 +11,8 @@ import { ConfirmProvider } from "@/components/ui";
 import AppearanceRoot from "@/components/appearance/AppearanceRoot";
 import PageViewTracker from "@/components/PageViewTracker";
 import IdleSessionGuard from "@/components/IdleSessionGuard";
+import HelpLauncher from "@/components/HelpLauncher";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
@@ -23,6 +25,11 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
       <AppearanceRoot />
       <IdleSessionGuard />
       {!isAdminApp && <PageViewTracker />}
+      {!isAdminApp && (
+        <ErrorBoundary>
+          <HelpLauncher />
+        </ErrorBoundary>
+      )}
       {isAdminApp || isLaunchHome ? (
         children
       ) : (

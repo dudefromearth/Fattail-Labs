@@ -4,6 +4,33 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-04 — DL-211 Member Help System (DB-backed help desk)
+
+**Decision:** New in-app help desk. Members ask questions (optional image upload),
+admins answer in a thread, all stored in the Labs DB. Migration `058`
+(`help_questions`, `help_messages`); `server/help.py` + `routes/help.py`
+(member) + `routes/help_admin.py` (admin); `web/components/HelpLauncher.tsx`
+(mounted in AppChrome, members only) + `web/app/admin/help/`. Optional attachment
+is a plain **image upload** (native file picker) — no auto-capture, no new
+frontend dependency.
+
+**Rationale:** Inspired by MarketSwarm-Canonical's in-app bug reporter (capture →
+submit → admin triage → reply) but **stored in MySQL, not GitHub Issues** — the
+requirement was DB-backed. Reuses notification infra: new question →
+`notify.notify_admins` (admin in-app + email); public admin answer →
+`member_notify.create_in_app` + SMTP email (sent after commit). All notifications
+best-effort, never block the write. Members see only their own questions and only
+public messages (internal notes are admin-only). Uploads validated by magic bytes,
+capped at 5 MB, stored under `uploads/help/`; 10 questions/hour/member rate limit.
+
+**Isolation (purely additive bolt-on, cannot block Labs):** help routers register
+in a guarded `try/except` in `main.py` (import/registration failure is logged and
+skipped — the app still boots); the member widget is wrapped in an `ErrorBoundary`;
+`package.json`/build graph untouched; migration 058 is additive-only. Worst case =
+"the Help button doesn't work," never a blocked login/page/API. Spec:
+`FatTail-Labs-Help-System-Spec-v1.0`. Tests: `test_help.py`. Status: draft,
+pending live verification on MiniTwo.
+
 ## 2026-08-03 — DL-212 Habit Catalog Spec v0.1 + multi-agent plan
 
 **Coach:** Design architecture locked (`Architecture/13-habit-catalog-design.md`).
