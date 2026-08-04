@@ -1,0 +1,8 @@
+.env
+data/lab_state.json
+__pycache__/
+*.pyc
+.streamlit/
+node_modules/
+.vite/
+dist/*.map

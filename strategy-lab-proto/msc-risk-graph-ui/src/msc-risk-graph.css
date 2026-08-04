@@ -1,0 +1,403 @@
+/* Labs host CSS for MSC Risk Graph Panel — layout + tokens (no missing imports). */
+
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --bg-canvas: #0b0d12;
+  --bg-content: #12151c;
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0a6;
+  --text-tertiary: #6b7280;
+  --danger: #d94a4a;
+  --space-1: 4px;
+  --space-1h: 6px;
+  --space-2: 8px;
+  --space-2h: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --text-11: 11px;
+  --text-12: 12px;
+  --text-14: 14px;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --duration-base: 150ms;
+  --z-raised: 2;
+  --glass-blur: 12px;
+  --glass-saturate: 160%;
+  --glass-base: rgba(18, 21, 28, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-edge-light: rgba(255, 255, 255, 0.12);
+  --glass-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+* { box-sizing: border-box; }
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  min-height: 100%;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  overflow: hidden;
+}
+
+/* Host shell fills iframe */
+.labs-rg-shell {
+  height: 100%;
+  min-height: 780px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-canvas);
+}
+
+.labs-rg-shell-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #1e2430;
+  background: #0f1218;
+  flex-shrink: 0;
+}
+
+.labs-rg-shell-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ── MSC panel layout (from App.css) ── */
+.echarts-risk-graph-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.echarts-risk-graph-panel .panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  flex-shrink: 0;
+}
+.echarts-risk-graph-panel .panel-header h3 {
+  font-size: 13px;
+  margin: 0;
+  color: var(--text-secondary);
+}
+.echarts-risk-graph-panel .panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.panel-content.risk-graph-consolidated {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) 1fr;
+  /* chart + stats only (time machine strip removed) */
+  grid-template-rows: 1fr auto;
+  gap: 0 8px;
+  overflow: hidden;
+  padding: 0 8px 8px 0;
+}
+
+.panel-content.risk-graph-consolidated > .risk-graph-sidebar {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  min-height: 0;
+}
+
+.panel-content.risk-graph-consolidated > .risk-graph-main {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 480px;
+}
+
+.panel-content.risk-graph-consolidated > .risk-graph-stats {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.panel-content.risk-graph-consolidated > .time-machine-panel {
+  display: none;
+}
+
+/*
+ * Labs chart-only (no positions/alerts). MUST come after the rules above so
+ * grid-column: 1 wins — otherwise main stays on column 2, grid invents an
+ * empty first track, and you get a huge black gap beside a squeezed chart.
+ */
+.panel-content.risk-graph-consolidated.risk-graph-consolidated--chart-only {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0;
+  padding: 0 4px 8px 4px;
+}
+
+.panel-content.risk-graph-consolidated.risk-graph-consolidated--chart-only > .risk-graph-main {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.panel-content.risk-graph-consolidated.risk-graph-consolidated--chart-only > .risk-graph-stats {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.panel-content.risk-graph-consolidated.risk-graph-consolidated--chart-only > .risk-graph-sidebar {
+  display: none !important;
+}
+
+.risk-graph-main {
+  display: flex;
+  gap: 8px;
+  overflow: hidden;
+  min-height: 0;
+  height: 100%;
+}
+
+.risk-graph-chart-area {
+  flex: 1;
+  min-width: 0;
+  min-height: 520px;
+  height: 100%;
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-content);
+}
+
+/* PnLChart container must fill chart area */
+.risk-graph-chart-area > div {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 520px;
+}
+
+.risk-graph-chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 280px;
+  color: var(--text-tertiary);
+}
+
+.risk-graph-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+  margin: 8px;
+  min-height: 0;
+  height: calc(100% - 16px);
+}
+
+.risk-graph-strategies {
+  flex: 6;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-content);
+  border-radius: var(--radius-xl);
+  padding: 12px 8px 8px 8px;
+}
+
+.risk-graph-strategies .strategies-list,
+.strategies-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.risk-graph-alerts {
+  flex: 4;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-content);
+  border-radius: var(--radius-xl);
+  padding: 8px;
+}
+
+.risk-graph-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 4px;
+  align-items: center;
+  border-top: 1px solid #1e2430;
+}
+
+.risk-graph-stats .stat-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-right: 4px;
+}
+.risk-graph-stats .stat-value {
+  font-size: 13px;
+  font-weight: 600;
+}
+.risk-graph-stats .stat-value.profit { color: #22c55e; }
+.risk-graph-stats .stat-value.loss { color: #ef4444; }
+
+.time-machine-panel {
+  padding: 6px 8px;
+  border-top: 1px solid #1e2430;
+  background: #0f1218;
+  flex-shrink: 0;
+}
+
+/* Labs: single TIME/SPOT/VIX card — no Regime/Model column */
+.time-machine-panel.active {
+  display: block;
+}
+.time-machine-panel .tm-card {
+  max-width: 100%;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.btn-auto-fit-header,
+.btn-monitor,
+.btn-backdrop-settings,
+.btn-create-position,
+.btn-add-alert,
+.pricing-toggle-btn,
+.weighting-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.btn-auto-fit-header:hover,
+.pricing-toggle-btn:hover,
+.weighting-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+.pricing-toggle-btn.active,
+.weighting-btn.active {
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.pricing-toggle,
+.weighting-selector,
+.backdrop-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rg-vol-source {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.rg-vol-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.rg-vol-dot.live { background: #22c55e; }
+.rg-vol-dot.stale { background: #f59e0b; }
+.rg-vol-dot.flat { background: #eab308; }
+
+/* Position cards (minimal) */
+.rg-pos-card,
+.strategy-card {
+  background: #1a1e28;
+  border-radius: 10px;
+  padding: 10px;
+  border: 1px solid #2a2f3a;
+}
+.rg-pos-card--credit { background: #3f1515; }
+.rg-pos-card--debit { background: #14351f; }
+
+/* Capsule / glass fallbacks */
+.capsule-button,
+.CapsuleButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #2a2f3a;
+  background: #1a1e28;
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+input[type="range"] {
+  accent-color: #3b82f6;
+}
+
+/* Narrow embed: stack sidebar above chart so nothing is clipped.
+   Skip chart-only Labs layout (already full-width single column). */
+@media (max-width: 900px) {
+  .panel-content.risk-graph-consolidated:not(.risk-graph-consolidated--chart-only) {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+  .panel-content.risk-graph-consolidated:not(.risk-graph-consolidated--chart-only) > .risk-graph-sidebar {
+    grid-column: 1;
+    grid-row: 1;
+    max-height: 200px;
+  }
+  .panel-content.risk-graph-consolidated:not(.risk-graph-consolidated--chart-only) > .risk-graph-main {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 420px;
+  }
+  .panel-content.risk-graph-consolidated:not(.risk-graph-consolidated--chart-only) > .risk-graph-stats {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .panel-content.risk-graph-consolidated:not(.risk-graph-consolidated--chart-only) > .time-machine-panel {
+    display: none;
+    grid-column: 1;
+    grid-row: 4;
+  }
+}

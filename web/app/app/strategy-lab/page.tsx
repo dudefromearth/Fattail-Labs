@@ -3,67 +3,126 @@ import Link from "next/link";
 import { siteUrl } from "@/lib/catalog";
 
 /**
- * Strategy Lab hub — map for the advanced-trader sub-process and courseware
- * backlog. Two-column cards under section headers throughout.
+ * Strategy Lab hub — three-step life cycle:
+ * Design → Curation → Deployment
+ * Modes: Basic | Pro (same spine; Pro = progressive power)
+ * (LifeCycle.pdf: Development / Curation / Live Campaign)
  * Workspace product ships later; this page orients members and curriculum.
- * Scope (Coach): Build · Test · Run bots · live and paper.
  */
 
 export const metadata: Metadata = {
   title: "Strategy Lab",
   description:
-    "Build, Test, Run bots — live and paper. FatTail Strategy Lab for validating strategies before capital. Process over profit claims.",
+    "Design, Curation, Deployment — Basic or Pro. FatTail Strategy Lab for disciplined strategy books. Process over profit claims.",
   alternates: { canonical: siteUrl("/app/strategy-lab") },
 };
 
 // --- Content ------------------------------------------------------------------
 
+/** Dual mode — same life cycle; different surface area. */
+const MODES = [
+  {
+    id: "basic",
+    name: "Basic",
+    badge: "Default",
+    oneLiner:
+      "Templates, few choices, one-button tests, one strategy in the book. Finish the cycle without drowning.",
+    design: [
+      "Start from a template (e.g. afternoon iron condor)",
+      "Few fields: structure, time, size, simple exit",
+      "One-click test — costs on, holdout automatic",
+      "Five numbers + plain-language verdict",
+    ],
+    curation: [
+      "Focus on one strategy at a time",
+      "Simple health: active or sick",
+      "Size: 1 contract or fixed dollars",
+    ],
+    deployment: [
+      "Guided paper-first campaign",
+      "Clear start and end dates",
+      "Log + short retrospective checklist",
+    ],
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    badge: "Opt-in",
+    oneLiner:
+      "Full Spec power, variations, multi-strategy book, denser metrics — still the same three gates.",
+    design: [
+      "Blank Spec or templates; full strike recipes",
+      "Stack filters, custom exits, slip stress",
+      "A/B variations and richer metric pack",
+      "Optional quant labels (train vs holdout, PF, …)",
+    ],
+    curation: [
+      "Book limit (e.g. up to 3) with health labels",
+      "Group / diversify notes",
+      "Size policies: fixed risk, % capital, per strategy",
+    ],
+    deployment: [
+      "Multi-strategy campaigns",
+      "Prune tools and fuller campaign log",
+      "Automation / bots later — frozen Spec only",
+    ],
+  },
+] as const;
+
+/** Primary spine — always three steps. */
 const STAGES = [
   {
-    id: "build",
+    id: "design",
     n: "1",
-    name: "Build",
-    oneLiner: "Turn an idea into written, tradable rules a bot or human can follow.",
+    name: "Design",
+    oneLiner:
+      "Turn a simple idea into written rules, then prove them honestly on history before they touch a book.",
+    inside: [
+      "Hypothesis — simple, style-fit, explainable in 30 seconds",
+      "Model — market, structure, entry, exit, risk shell",
+      "Test — costed backtest with a holdout the strategy never saw",
+      "Sim check — optional paper on live data before the book",
+    ],
     learn: [
-      "Write a Spec card a peer can understand",
-      "Attach a Risk Shell (max loss per trade and day)",
+      "Write a Spec a peer can follow",
       "Kill ideas that need discretionary fog",
+      "Costs on, freeze params, read holdout honestly",
     ],
   },
   {
-    id: "test",
+    id: "curation",
     n: "2",
-    name: "Test",
+    name: "Curation",
     oneLiner:
-      "Two gates: historical replay on a frozen window, and live tape — both required.",
+      "Choose which survivors join a small book — health, grouping, and size — not every design that “worked once.”",
+    inside: [
+      "Categorize — new, in-process, mature, or sick",
+      "Group — low correlation, balanced risk, diversified where it helps",
+      "Size — fixed dollar, fixed risk, or proportional to capital",
+      "Monitor — quiet book vs signals that need attention",
+    ],
     learn: [
-      "Historical: replay stored underliers + chain snapshots (build the archive forward)",
-      "Live: run on Massive stream — signal-only or paper — before real size",
-      "Freeze parameters; costs on; kill or continue with a written reason",
+      "Keep a hard book limit (few strategies, not dozens)",
+      "Mark sick strategies early — RIP is professional hygiene",
+      "Size from risk shell, not hope",
     ],
   },
   {
-    id: "run-bots",
+    id: "deployment",
     n: "3",
-    name: "Run bots",
+    name: "Deployment",
     oneLiner:
-      "Encode the Spec as an automated bot — still process-first, never a black box.",
-    learn: [
-      "Map every rule to something a bot can execute",
-      "Define brakes: max loss, kill switch, session windows",
-      "Log every bot decision for review — capacity over dependency",
+      "Run a time-boxed campaign: capital, dates, log, prune, retrospective — then feed lessons back into Design.",
+    inside: [
+      "Strategies in the campaign (frozen Specs only)",
+      "Capital allocation across the book",
+      "Start / end dates — campaigns end on purpose",
+      "Log, prune, retrospective → next Design cycle",
     ],
-  },
-  {
-    id: "live-paper",
-    n: "4",
-    name: "Live and paper",
-    oneLiner:
-      "Run the same bot in paper and/or live — fixed windows, then prune or retire.",
     learn: [
-      "Paper first (or tiny size) on live data with no mid-window retunes",
-      "Live only as a time-boxed campaign with size policy",
-      "Retrospective → one lesson back into Build",
+      "Paper or tiny size before full capital",
+      "No mid-campaign rule rewrites (new version = new Design)",
+      "One written lesson after every campaign",
     ],
   },
 ] as const;
@@ -72,21 +131,21 @@ const ENTRY_PATHS = [
   {
     title: "Validate what you already trade",
     overview:
-      "Import today’s rules into a Spec, Test honestly (costs on), then Run bots in paper before live size.",
+      "Capture today’s rules as a Design Spec, test honestly, then decide if it earns a Curation slot — or dies with a reason.",
     learn: [
-      "Separate “I trade this” from “this earned capital”",
-      "Find where the current edge fails OOS or on adherence",
-      "Write a kill-or-keep decision with reasons",
+      "Separate “I trade this” from “this earned a book slot”",
+      "Find the weak gate: Design test vs adherence vs sick performance",
+      "Write a keep / curate / kill decision",
     ],
   },
   {
     title: "Develop a new edge",
     overview:
-      "Hypothesis first, Risk Shell always, many candidates, few survivors. Throughput is a feature.",
+      "Hypothesis first, many Designs, few curated. Throughput of honest kills is a feature.",
     learn: [
       "Generate simple, style-fit ideas without shiny-object chase",
-      "Use the full Build → Test → bot filter",
-      "Keep a small live book under a hard limit",
+      "Use Design → Curation → Deployment as the only path to capital",
+      "Keep the live book under a hard limit",
     ],
   },
 ] as const;
@@ -96,21 +155,21 @@ const CONNECTIONS = [
     href: "/app/practice",
     title: "Practice Log",
     overview:
-      "Trade Log and Journal — evidence for paper and live (fills, adherence, daily routine).",
+      "Trade Log and Journal — evidence during Deployment (fills, adherence, daily routine).",
     status: "live" as const,
   },
   {
     href: "/app/journey",
     title: "Journey",
     overview:
-      "Curriculum progress. Strategy Lab courseware will deep-link into each stage.",
+      "Curriculum progress. Strategy Lab courseware deep-links into each of the three steps.",
     status: "live" as const,
   },
   {
     href: "/app",
     title: "Playbook",
     overview:
-      "The rule book of allowed setups. Lab strategies should match what you actually trade.",
+      "Allowed setups. Curated strategies should match what you actually trade.",
     status: "soon" as const,
   },
   {
@@ -122,75 +181,60 @@ const CONNECTIONS = [
   },
 ] as const;
 
-/**
- * Courseware backlog — not yet in the catalog. Cards define intent for
- * development; no public course links until published.
- */
 const COURSES = [
   {
     code: "SLC-01",
     title: "Strategy Lab Overview",
     overview:
-      "The whole map in one course: why most ideas die, how Build · Test · Run bots · live and paper fit together, and how this sits on FatTail doctrine (capital preservation first).",
+      "The whole map: Design → Curation → Deployment, plus Basic vs Pro. Why most ideas die, why the book stays small, and how this sits on FatTail doctrine.",
     learn: [
-      "Name and explain Build, Test, Run bots, and live and paper",
-      "Use the one rule: kill early, live capital only after paper",
+      "Name and explain the three steps and when to use Basic vs Pro",
+      "Use the one rule: kill early; capital only after Design gates",
       "Place the Lab next to Practice Log and Playbook",
     ],
   },
   {
     code: "SLC-02",
-    title: "Build — Spec & Risk Shell",
+    title: "Design — Spec, Risk Shell & Test",
     overview:
-      "From raw idea to a written, tradable specification. Emphasis on explainability, defined risk, and style fit.",
+      "Idea → model → costed history with holdout. Emphasis on explainability, defined risk, and honest kills.",
     learn: [
-      "Complete a Spec card a peer can follow",
-      "Attach a Risk Shell with hard loss bounds",
-      "Reject multi-timeframe / look-ahead structures",
+      "Complete a Spec and Risk Shell",
+      "Run a costed test and read train vs holdout",
+      "Freeze a version or kill with a written reason",
     ],
   },
   {
     code: "SLC-03",
-    title: "Test — Fair History",
+    title: "Curation — Book & Health",
     overview:
-      "Backtesting without fooling yourself: costs, freeze, out-of-sample checks, and metrics that matter (drawdown and expectancy over win rate).",
+      "Assemble a small team of strategies: health labels, grouping, and position sizing — not a pile of backtests.",
     learn: [
-      "Run a costed baseline before optimizing",
-      "Freeze params and document a version",
-      "Read IS vs OOS degradation and decide kill or continue",
+      "Categorize new / in-process / mature / sick",
+      "Apply a hard book limit",
+      "Choose a size policy aligned to risk tolerance",
     ],
   },
   {
     code: "SLC-04",
-    title: "Run bots — Automation",
+    title: "Deployment — Campaigns",
     overview:
-      "Turn a frozen Spec into a bot with brakes and logs. Automation is capacity support — not a black-box dependency.",
+      "Time-boxed live or paper campaigns: capital, log, prune, retrospective back into Design.",
     learn: [
-      "Encode rules a bot can execute without discretion",
-      "Define kill switch, max loss, and session windows",
-      "Review bot logs as process evidence",
+      "Open and close a campaign with dates",
+      "Log every session; prune sick strategies mid-campaign if needed",
+      "Extract one process lesson for the next Design cycle",
     ],
   },
   {
     code: "SLC-05",
-    title: "Live and paper — Campaigns",
-    overview:
-      "Run the same bot in paper and/or live as a time-boxed campaign: size policy, daily brakes, prune, and retrospective into the next Build cycle.",
-    learn: [
-      "Open and close a paper or live campaign with dates",
-      "Apply a written size policy and risk brakes",
-      "Retire sick strategies and extract one process lesson",
-    ],
-  },
-  {
-    code: "SLC-06",
     title: "Validate a Live Strategy",
     overview:
-      "For traders who already run an edge: import current rules, stress-test honesty, and decide keep, paper, or kill — without building from zero.",
+      "For traders who already run an edge: import rules, re-run Design honesty, then curate or kill.",
     learn: [
-      "Capture what you actually trade today as a Spec",
-      "Find the weakest gate (Test vs paper vs adherence)",
-      "Produce a written keep / paper / kill decision",
+      "Capture what you actually trade as a Spec",
+      "Find the weakest gate",
+      "Produce a written keep / curate / kill decision",
     ],
   },
 ] as const;
@@ -254,7 +298,6 @@ export default function StrategyLabLandingPage() {
         <span className="text-[var(--color-label)]">Strategy Lab</span>
       </nav>
 
-      {/* Hero — full width */}
       <header className="mt-4 max-w-2xl">
         <p className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
           Advanced trader · Apps
@@ -263,14 +306,21 @@ export default function StrategyLabLandingPage() {
           Strategy Lab
         </h1>
         <p className="mt-3 text-lg leading-relaxed text-[var(--color-label-secondary)]">
-          Develop and validate strategies before they earn capital.{" "}
+          The Strategy Life Cycle as software.{" "}
           <strong className="font-medium text-[var(--color-label)]">
-            Most ideas die. Survivors get a campaign.
-          </strong>
+            Design → Curation → Deployment.
+          </strong>{" "}
+          Two modes:{" "}
+          <strong className="font-medium text-[var(--color-label)]">
+            Basic
+          </strong>{" "}
+          and{" "}
+          <strong className="font-medium text-[var(--color-label)]">Pro</strong>.
         </p>
         <p className="mt-3 text-sm text-[var(--color-label-secondary)]">
-          Build, Test, Run bots — live and paper. Complete gates underneath.
-          Process outcomes only — never profit promises.
+          Same three steps for everyone. Basic keeps the path short. Pro opens
+          power tools without skipping gates. Most ideas die in Design. Process
+          outcomes only — never profit promises.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-[var(--color-label-secondary)]">
           <strong className="font-medium text-[var(--color-label)]">
@@ -289,52 +339,120 @@ export default function StrategyLabLandingPage() {
         </div>
       </header>
 
-      {/* —— Execution rails —— */}
-      <section className="mt-14" aria-labelledby="rails-heading">
-        <SectionHeader id="rails-heading" title="Execution rails">
-          One broker target in v1 so the path is dogfoodable end-to-end. Other
-          desks stay for human trading and later adapters.
+      {/* —— Modes —— */}
+      <section className="mt-14" aria-labelledby="modes-heading">
+        <SectionHeader id="modes-heading" title="Basic and Pro">
+          One product, two surfaces. Toggle anytime — Pro is progressive
+          disclosure, not a free pass past Design honesty.
         </SectionHeader>
         <ul className="grid gap-4 sm:grid-cols-2">
-          <li>
-            <article className="surface-card h-full border border-emerald-200 bg-emerald-50/50 p-5 dark:border-emerald-900 dark:bg-emerald-950/25">
-              <h3 className="font-semibold text-[var(--color-label)]">
-                Tradier (target)
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
-                Primary venue for Run bots and live/paper campaigns. API-first,
-                options multi-leg, paper before live. FatTail partnership and
-                hub path support distribution — not a black-box money machine.
-              </p>
-            </article>
-          </li>
-          <li>
-            <article className="surface-card h-full border border-[var(--color-separator)] p-5">
-              <h3 className="font-semibold text-[var(--color-label)]">
-                TradingView (reach + funnel)
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
-                Charts, ideas, and optional alerts into Labs. Broad reach — not
-                the risk system of record. Webhooks create candidates and paper
-                bots; they do not silently size live capital.
-              </p>
-            </article>
-          </li>
+          {MODES.map((m) => (
+            <li key={m.id} id={`mode-${m.id}`} className="scroll-mt-24">
+              <article
+                className={
+                  m.id === "basic"
+                    ? "surface-card flex h-full flex-col border border-emerald-200 bg-emerald-50/50 p-5 dark:border-emerald-900 dark:bg-emerald-950/25"
+                    : "surface-card flex h-full flex-col border border-[var(--color-separator)] p-5"
+                }
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold text-[var(--color-label)]">
+                    {m.name}
+                  </h3>
+                  <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
+                    {m.badge}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+                  {m.oneLiner}
+                </p>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                  Design
+                </p>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+                  {m.design.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                  Curation
+                </p>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+                  {m.curation.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                  Deployment
+                </p>
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+                  {m.deployment.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </article>
+            </li>
+          ))}
         </ul>
+        <p className="mt-4 text-sm text-[var(--color-label-secondary)]">
+          <strong className="font-medium text-[var(--color-label)]">
+            Rules both modes share:
+          </strong>{" "}
+          Risk Shell required · costs stay on for tests · no mid-campaign rule
+          rewrites · kill with a written reason is success of the filter.
+        </p>
       </section>
 
-      {/* —— The path —— */}
-      <section className="mt-14" aria-labelledby="path-heading">
-        <SectionHeader id="path-heading" title="The path">
-          Build · Test · Run bots · live and paper. Kill is normal at every
-          gate — professional hygiene, not a failure of nerve.
+      {/* —— Three-step spine (visual) —— */}
+      <section className="mt-14" aria-labelledby="spine-heading">
+        <SectionHeader id="spine-heading" title="The three steps">
+          One path in Basic and Pro. Kill is normal at every step — professional
+          hygiene, not a failure of nerve.
         </SectionHeader>
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ol className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-2">
+          {STAGES.map((s, i) => (
+            <li key={s.id} className="flex min-w-0 flex-1 items-stretch gap-2">
+              <a
+                href={`#stage-${s.id}`}
+                className="surface-card flex flex-1 flex-col border border-[var(--color-separator)] p-4 transition-colors hover:border-emerald-500/40"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                  Step {s.n}
+                </p>
+                <p className="mt-1 text-lg font-semibold text-[var(--color-label)]">
+                  {s.name}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--color-label-secondary)]">
+                  {s.id === "design" && "Idea · model · test · sim"}
+                  {s.id === "curation" && "Health · group · size · monitor"}
+                  {s.id === "deployment" && "Campaign · log · prune · retro"}
+                </p>
+              </a>
+              {i < STAGES.length - 1 ? (
+                <span
+                  className="hidden self-center text-[var(--color-label-tertiary)] sm:inline"
+                  aria-hidden
+                >
+                  →
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* —— Step detail —— */}
+      <section className="mt-14" aria-labelledby="path-heading">
+        <SectionHeader id="path-heading" title="Inside each step">
+          Design is where the builder and backtester live. Curation protects the
+          book. Deployment is a campaign with an end date.
+        </SectionHeader>
+        <ul className="grid gap-4 sm:grid-cols-1 lg:grid-cols-3">
           {STAGES.map((s) => (
             <li key={s.id} id={`stage-${s.id}`} className="scroll-mt-24">
               <article className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                  Stage {s.n}
+                  Step {s.n}
                 </p>
                 <h3 className="mt-1 text-lg font-semibold text-[var(--color-label)]">
                   {s.name}
@@ -342,6 +460,14 @@ export default function StrategyLabLandingPage() {
                 <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
                   {s.oneLiner}
                 </p>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                  Includes
+                </p>
+                <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+                  {s.inside.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
                 <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
                   You will practice
                 </p>
@@ -356,10 +482,45 @@ export default function StrategyLabLandingPage() {
         </ul>
       </section>
 
+      {/* —— Execution rails —— */}
+      <section className="mt-14" aria-labelledby="rails-heading">
+        <SectionHeader id="rails-heading" title="Execution rails">
+          Used mainly in Deployment (and optional Design sim). One broker target
+          in v1 so the path is dogfoodable end-to-end.
+        </SectionHeader>
+        <ul className="grid gap-4 sm:grid-cols-2">
+          <li>
+            <article className="surface-card h-full border border-emerald-200 bg-emerald-50/50 p-5 dark:border-emerald-900 dark:bg-emerald-950/25">
+              <h3 className="font-semibold text-[var(--color-label)]">
+                Tradier (target)
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+                Primary venue for paper and live campaigns. API-first, options
+                multi-leg. Partnership path for distribution — not a black-box
+                money machine.
+              </p>
+            </article>
+          </li>
+          <li>
+            <article className="surface-card h-full border border-[var(--color-separator)] p-5">
+              <h3 className="font-semibold text-[var(--color-label)]">
+                TradingView (reach + funnel)
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+                Charts, ideas, and optional alerts into Labs. Not the risk
+                system of record. Webhooks create candidates; they do not
+                silently size live capital.
+              </p>
+            </article>
+          </li>
+        </ul>
+      </section>
+
       {/* —— How you enter —— */}
       <section className="mt-14" aria-labelledby="enter-heading">
         <SectionHeader id="enter-heading" title="How you enter">
-          Same path either way — different front door when the workspace ships.
+          Same three steps either way — different front door when the workspace
+          ships.
         </SectionHeader>
         <ul className="grid gap-4 sm:grid-cols-2">
           {ENTRY_PATHS.map((p) => (
@@ -397,8 +558,9 @@ export default function StrategyLabLandingPage() {
                 Kill early
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
-                Most ideas die. A kill with a written reason is success of the
-                filter. Live capital only after paper.
+                Most ideas die in Design. A kill with a written reason is the
+                filter working. Capital only after Curation — never from a hot
+                backtest alone.
               </p>
             </article>
           </li>
@@ -408,8 +570,8 @@ export default function StrategyLabLandingPage() {
                 Metrics that matter
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-[var(--color-label-secondary)]">
-                Drawdown bounds, expectancy / profit factor, adherence, and
-                honest out-of-sample checks. Win rate is never the headline.
+                Drawdown bounds, expectancy, adherence, honest holdout checks,
+                book health. Win rate is never the headline.
               </p>
             </article>
           </li>
@@ -453,12 +615,11 @@ export default function StrategyLabLandingPage() {
         </ul>
       </section>
 
-      {/* —— Courseware hub (backlog) —— */}
+      {/* —— Courseware —— */}
       <section className="mt-14" aria-labelledby="courseware-heading">
         <SectionHeader id="courseware-heading" title="Courseware">
-          Courses for this app — defined for the development backlog. Each card
-          is an overview of what students will learn. Catalog links appear when
-          a course is published.
+          Courses for this app — backlog. Assessment stays process-only (gates,
+          kills, adherence) — never P&amp;L grades.
         </SectionHeader>
         <ul className="grid gap-4 sm:grid-cols-2">
           {COURSES.map((c) => (
@@ -489,8 +650,6 @@ export default function StrategyLabLandingPage() {
           ))}
         </ul>
         <p className="mt-4 text-sm text-[var(--color-label-secondary)]">
-          These titles are the backlog for course development. Assessment will
-          stay process-only (gates, kills, adherence) — never P&amp;L grades.
           Published courses will appear in the{" "}
           <Link
             href="/course"
