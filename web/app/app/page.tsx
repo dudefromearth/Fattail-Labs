@@ -78,7 +78,7 @@ const FALLBACK_APPS: AppRow[] = [
     slug: "strategy-lab",
     title: "Strategy Lab",
     blurb:
-      "Build, Test, Run bots — live and paper on Tradier. Validate edges before capital. Most ideas die; survivors get a campaign.",
+      "Design → Curation → Deployment. Basic or Pro mode. Validate edges before capital. Most ideas die; survivors earn a book slot.",
     status: "soon",
     href: "/app/strategy-lab",
   },
@@ -134,10 +134,12 @@ function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
     ? {
         ...strategyFromApi,
         title: "Strategy Lab",
-        // Prefer expanded-scope blurb if API still has legacy Prove/Paper/Run line.
+        // Prefer three-step life-cycle blurb if API still has legacy stage lines.
         blurb:
           strategyFromApi.blurb &&
-          !/Prove|Paper, Run|Build, Prove/i.test(strategyFromApi.blurb)
+          !/Prove|Paper, Run|Build, Prove|Build, Test|Run bots/i.test(
+            strategyFromApi.blurb,
+          )
             ? strategyFromApi.blurb
             : (FALLBACK_APPS.find((a) => a.slug === "strategy-lab") as AppRow)
                 .blurb,

@@ -33,25 +33,36 @@ function PracticeSuiteChromeInner({
 
   return (
     <>
-      {/* Breadcrumb — left aligned */}
-      <nav className="text-sm text-[var(--color-label-secondary)]">
-        <Link href="/app" className="hover:underline">
-          Apps
-        </Link>
-        <span className="mx-2">›</span>
-        <Link href="/app/practice" className="hover:underline">
-          Practice
-        </Link>
-        <span className="mx-2">›</span>
-        <span className="text-[var(--color-label)]">{item.label}</span>
-      </nav>
+      {/* Top chrome: breadcrumb + suite nav on one row (nav centered).
+          Account/date context bar stays below this line. */}
+      <div
+        className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-3"
+        data-testid="practice-chrome-top"
+      >
+        <nav
+          className="justify-self-start text-sm text-[var(--color-label-secondary)]"
+          aria-label="Breadcrumb"
+        >
+          <Link href="/app" className="hover:underline">
+            Apps
+          </Link>
+          <span className="mx-2">›</span>
+          <Link href="/app/practice" className="hover:underline">
+            Practice
+          </Link>
+          <span className="mx-2">›</span>
+          <span className="text-[var(--color-label)]">{item.label}</span>
+        </nav>
 
-      {/* Suite nav — centered on the page axis (Spec §0) */}
-      <div className="mt-4 flex justify-center">
-        <PracticeSuiteNav active={active} />
+        <div className="justify-self-center">
+          <PracticeSuiteNav active={active} />
+        </div>
+
+        {/* Balances the breadcrumb column so the suite nav stays page-centered */}
+        <div className="hidden sm:block" aria-hidden />
       </div>
 
-      {/* Account + Date — Practice-level only, always stated */}
+      {/* Account + Date — always below the breadcrumb/nav line */}
       <PracticeContextBar
         inertHint={contextInert}
         inertMessage={contextInertMessage}
