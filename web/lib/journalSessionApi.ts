@@ -379,6 +379,22 @@ export async function patchJournalAttachmentCaption(
   return d.attachment;
 }
 
+export async function deleteJournalAttachment(
+  sessionId: number,
+  attachmentId: number,
+): Promise<void> {
+  const r = await fetch(
+    `/api/me/journal-sessions/${sessionId}/attachments/${attachmentId}`,
+    { method: "DELETE", credentials: "same-origin" },
+  );
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    const detail =
+      typeof body.detail === "string" ? body.detail : `HTTP ${r.status}`;
+    throw new Error(detail);
+  }
+}
+
 export type WeekBandId = "gx" | "am" | "pm" | "cl";
 
 export type WeekDayActivity = {

@@ -32,6 +32,47 @@ SESSION_IDLE_MIN_DEFAULT = 30
 SESSION_IDLE_MIN_LO = 15
 SESSION_IDLE_MIN_HI = 60
 
+# Home quick nav — journal is always first; optional chips from profile.
+HOME_QUICK_NAV_DEFAULT = ("journal",)
+HOME_QUICK_NAV_OPTIONAL = (
+    "wiki",
+    "strategy_lab",
+    "fattail_hard",
+    "courses",
+)
+HOME_QUICK_NAV_ALLOWED = frozenset(HOME_QUICK_NAV_DEFAULT + HOME_QUICK_NAV_OPTIONAL)
+
+
+def _normalize_home_quick_nav(raw) -> list[str]:
+    """Return ordered unique keys; journal always first. Invalid keys dropped."""
+    if raw is None:
+        return list(HOME_QUICK_NAV_DEFAULT)
+    if isinstance(raw, str):
+        import json
+
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            return list(HOME_QUICK_NAV_DEFAULT)
+    if not isinstance(raw, (list, tuple)):
+        return list(HOME_QUICK_NAV_DEFAULT)
+    seen: set[str] = set()
+    out: list[str] = []
+    # Journal is always present first (default home entry).
+    out.append("journal")
+    seen.add("journal")
+    for item in raw:
+        key = str(item or "").strip().lower().replace("-", "_")
+        if key == "strategy-lab":
+            key = "strategy_lab"
+        if key == "fattail-hard":
+            key = "fattail_hard"
+        if key not in HOME_QUICK_NAV_ALLOWED or key in seen:
+            continue
+        out.append(key)
+        seen.add(key)
+    return out
+
 
 def _lesson_for_access(
     cur,
@@ -543,7 +584,8 @@ def _profile_row(cur, identity_id: int) -> dict | None:
         """SELECT identity_id, email, display_name, avatar_url, journey_visible,
                   journey_visible_at, share_reputation, share_personal_growth,
                   share_attendance, session_idle_minutes,
-                  retrospective_pnl_expanded, retro_cadence_days
+                  retrospective_pnl_expanded, retro_cadence_days,
+                  home_quick_nav_json
            FROM identities WHERE identity_id = %s""",
         (identity_id,),
     )
@@ -563,6 +605,7 @@ def _profile_payload(row: dict, role: str) -> dict:
         cadence_n = int(cadence) if cadence is not None else None
     except (TypeError, ValueError):
         cadence_n = None
+    quick_nav = _normalize_home_quick_nav(row.get("home_quick_nav_json"))
     return {
         "identity_id": int(row["identity_id"]),
         "email": row["email"] or "",
@@ -584,6 +627,14 @@ def _profile_payload(row: dict, role: str) -> dict:
         ),
         # Spec v0.7.1 — trader cadence; null = use meter-profile default
         "retro_cadence_days": cadence_n,
+        "home_quick_nav": quick_nav,
+        "home_quick_nav_options": [
+            {"id": "journal", "label": "Journal", "required": True},
+            {"id": "wiki", "label": "Wiki", "required": False},
+            {"id": "strategy_lab", "label": "Strategy Lab", "required": False},
+            {"id": "fattail_hard", "label": "FatTail Hard", "required": False},
+            {"id": "courses", "label": "Courses", "required": False},
+        ],
         "role": role,
     }
 
@@ -669,6 +720,13 @@ async def patch_profile(request: Request) -> dict:
             )
         updates.append("retrospective_pnl_expanded = %s")
         params.append(1 if exp else 0)
+
+    if "home_quick_nav" in body:
+        import json
+
+        nav = _normalize_home_quick_nav(body["home_quick_nav"])
+        updates.append("home_quick_nav_json = %s")
+        params.append(json.dumps(nav))
 
     # Spec v0.7.1 §12 — cadence change is forward-only (history row; never
     # rewrites past retrospectives' cadence_days_at_period).

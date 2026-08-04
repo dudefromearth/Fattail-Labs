@@ -286,6 +286,28 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
         /* ignore */
       }
 
+      // Home quick-nav / deep links: ?date=today|YYYY-MM-DD&view=day|week|…
+      // Override stored prefs when present so Journal always opens on today
+      // from the home chip without fighting last-used calendar state.
+      try {
+        const sp = new URLSearchParams(window.location.search);
+        const dRaw = sp.get("date");
+        const gRaw = sp.get("view") || sp.get("g") || sp.get("granularity");
+        if (dRaw) {
+          if (dRaw === "today") {
+            dateYmd = ymd(startOfDay(new Date()));
+          } else {
+            const parsed = parseYmd(dRaw);
+            if (parsed) dateYmd = ymd(parsed);
+          }
+        }
+        if (gRaw && GRANULARITIES.includes(gRaw as DateGranularity)) {
+          gran = gRaw as DateGranularity;
+        }
+      } catch {
+        /* ignore */
+      }
+
       setAccountIdState(account);
       setSelectedDateState(parseYmd(dateYmd) ?? startOfDay(new Date()));
       setGranularityState(gran);

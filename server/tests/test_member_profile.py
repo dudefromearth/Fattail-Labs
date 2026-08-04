@@ -92,6 +92,38 @@ def test_presence_requires_session(client):
     assert client.get("/api/journey/presence").status_code == 401
 
 
+def test_home_quick_nav_default_and_patch(client, member_cookies):
+    """Home quick nav defaults to journal; optional chips persist in order."""
+    cookies, _iid = member_cookies
+    g = client.get("/api/me/profile", cookies=cookies)
+    assert g.status_code == 200
+    body = g.json()
+    assert body["home_quick_nav"] == ["journal"]
+    assert any(o["id"] == "wiki" for o in body["home_quick_nav_options"])
+
+    r = client.patch(
+        "/api/me/profile",
+        cookies=cookies,
+        json={"home_quick_nav": ["wiki", "courses", "journal", "bogus"]},
+    )
+    assert r.status_code == 200, r.text
+    nav = r.json()["home_quick_nav"]
+    # journal always first; invalid dropped; order of optionals preserved
+    assert nav[0] == "journal"
+    assert "wiki" in nav
+    assert "courses" in nav
+    assert "bogus" not in nav
+    assert nav.index("wiki") < nav.index("courses")
+
+    r2 = client.patch(
+        "/api/me/profile",
+        cookies=cookies,
+        json={"home_quick_nav": []},
+    )
+    assert r2.status_code == 200
+    assert r2.json()["home_quick_nav"] == ["journal"]
+
+
 def test_profile_cleanup(probe_identity):
     """Reset columns so probe teardown is clean if prior test left state."""
     with db.transaction() as conn:

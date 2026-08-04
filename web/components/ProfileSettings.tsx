@@ -6,6 +6,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  HOME_QUICK_NAV_DEFAULT,
+  HOME_QUICK_NAV_OPTIONS,
+  normalizeHomeQuickNav,
+  type HomeQuickNavId,
+} from "@/lib/homeQuickNav";
 
 type Profile = {
   identity_id: number;
@@ -17,6 +23,7 @@ type Profile = {
   share_personal_growth: boolean;
   share_attendance: boolean;
   session_idle_minutes?: number;
+  home_quick_nav?: HomeQuickNavId[] | string[];
   role: string;
 };
 
@@ -36,6 +43,9 @@ export default function ProfileSettings() {
   const [shareGrowth, setShareGrowth] = useState(false);
   const [shareAtt, setShareAtt] = useState(true);
   const [idleMinutes, setIdleMinutes] = useState(30);
+  const [quickNav, setQuickNav] = useState<HomeQuickNavId[]>([
+    ...HOME_QUICK_NAV_DEFAULT,
+  ]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -93,6 +103,17 @@ export default function ProfileSettings() {
     setShareAtt(p.share_attendance !== false);
     const idle = p.session_idle_minutes ?? 30;
     setIdleMinutes(Math.min(60, Math.max(15, idle)));
+    setQuickNav(normalizeHomeQuickNav(p.home_quick_nav));
+  }
+
+  function toggleQuickNav(id: HomeQuickNavId, on: boolean) {
+    if (id === "journal") return; // always on
+    setQuickNav((prev) => {
+      const set = new Set(prev);
+      if (on) set.add(id);
+      else set.delete(id);
+      return normalizeHomeQuickNav([...set]);
+    });
   }
 
   const load = useCallback(() => {
@@ -130,6 +151,7 @@ export default function ProfileSettings() {
           share_personal_growth: shareGrowth,
           share_attendance: shareAtt,
           session_idle_minutes: idleMinutes,
+          home_quick_nav: quickNav,
         }),
       });
       if (!r.ok) {
@@ -644,6 +666,62 @@ export default function ProfileSettings() {
             </select>
           </label>
         )}
+
+        <div
+          className="space-y-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill)]/40 p-4"
+          data-testid="profile-home-quick-nav"
+        >
+          <div>
+            <p className="text-sm font-medium text-[var(--color-label)]">
+              Home quick nav
+            </p>
+            <p className="mt-0.5 text-xs text-[var(--color-label-secondary)]">
+              Shortcuts on your home page. Journal is always included and opens
+              today&apos;s day view. Add other destinations you use often.
+            </p>
+          </div>
+          <ul className="space-y-2">
+            {HOME_QUICK_NAV_OPTIONS.map((opt) => {
+              const checked = quickNav.includes(opt.id);
+              return (
+                <li key={opt.id}>
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={opt.required}
+                      onChange={(e) => toggleQuickNav(opt.id, e.target.checked)}
+                      className="mt-1 h-4 w-4 accent-[var(--color-tint)]"
+                      data-testid={`profile-quick-nav-${opt.id}`}
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium text-[var(--color-label)]">
+                        {opt.label}
+                        {opt.required ? (
+                          <span className="ml-1 text-xs font-normal text-[var(--color-label-tertiary)]">
+                            (always on)
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="mt-0.5 block text-[var(--color-label-secondary)]">
+                        {opt.description}
+                      </span>
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="text-xs text-[var(--color-label-tertiary)]">
+            Preview:{" "}
+            {quickNav
+              .map(
+                (id) =>
+                  HOME_QUICK_NAV_OPTIONS.find((o) => o.id === id)?.label ?? id,
+              )
+              .join(" · ")}
+          </p>
+        </div>
 
         <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill)]/40 p-4">
           <label className="flex cursor-pointer items-start gap-3">

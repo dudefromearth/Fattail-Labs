@@ -126,3 +126,27 @@ export function IconChevronUp(p: IconProps) {
     </svg>
   );
 }
+
+/** Expand / full-size (corners outward). */
+export function IconExpand(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M15 3h6v6" />
+      <path d="M9 21H3v-6" />
+      <path d="M21 3l-7 7" />
+      <path d="M3 21l7-7" />
+    </svg>
+  );
+}
+
+/** Collapse / exit expand (corners inward). */
+export function IconCollapse(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M4 14h6v6" />
+      <path d="M20 10h-6V4" />
+      <path d="M14 10l7-7" />
+      <path d="M3 21l7-7" />
+    </svg>
+  );
+}

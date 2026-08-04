@@ -11,6 +11,13 @@ import type { CourseCard } from "@/lib/types";
 import ProcessMeter, { type ProcessPayload } from "@/components/ProcessMeter";
 import RetroCadenceNudge from "@/components/RetroCadenceNudge";
 import RetroMaterialNotice from "@/components/RetroMaterialNotice";
+import {
+  HOME_QUICK_NAV_DEFAULT,
+  hrefForQuickNav,
+  labelForQuickNav,
+  normalizeHomeQuickNav,
+  type HomeQuickNavId,
+} from "@/lib/homeQuickNav";
 
 type Me = {
   display_name: string;
@@ -95,6 +102,9 @@ export default function MemberHome() {
   const [boardSort, setBoardSort] = useState<"contribution" | "reputation" | "streak">(
     "contribution"
   );
+  const [quickNav, setQuickNav] = useState<HomeQuickNavId[]>([
+    ...HOME_QUICK_NAV_DEFAULT,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,8 +115,9 @@ export default function MemberHome() {
       fetch("/api/courses", { credentials: "same-origin" }),
       fetch("/api/journey/leaderboard", { credentials: "same-origin" }),
       fetch("/api/me/pathway", { credentials: "same-origin" }),
+      fetch("/api/me/profile", { credentials: "same-origin" }),
     ])
-      .then(async ([mr, sr, er, cr, br, pr]) => {
+      .then(async ([mr, sr, er, cr, br, pr, profR]) => {
         if (cancelled) return;
         if (mr.status === 401) {
           setMe("anon");
@@ -130,6 +141,10 @@ export default function MemberHome() {
           const p = await pr.json();
           setPathway(p?.pathway?.steps ?? []);
         } else setPathway([]);
+        if (profR.ok) {
+          const prof = await profR.json();
+          setQuickNav(normalizeHomeQuickNav(prof.home_quick_nav));
+        }
       })
       .catch(() => {
         if (!cancelled) setMe("anon");
@@ -244,6 +259,36 @@ export default function MemberHome() {
               )}
             </p>
           </header>
+
+          {/* Configurable quick nav — Journal → today by default */}
+          <nav
+            className="flex flex-wrap items-center gap-2"
+            aria-label="Quick navigation"
+            data-testid="home-quick-nav"
+          >
+            {quickNav.map((id) => (
+              <Link
+                key={id}
+                href={hrefForQuickNav(id)}
+                className="inline-flex items-center rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-3.5 py-1.5 text-sm font-medium text-[var(--color-label)] shadow-[var(--elevation-1)] transition-colors hover:border-[var(--color-tint)] hover:text-[var(--color-tint)]"
+                data-testid={`home-quick-nav-${id}`}
+              >
+                {labelForQuickNav(id)}
+                {id === "journal" ? (
+                  <span className="ml-1.5 text-xs font-normal text-[var(--color-label-tertiary)]">
+                    · today
+                  </span>
+                ) : null}
+              </Link>
+            ))}
+            <Link
+              href="/me"
+              className="text-xs font-medium text-[var(--color-label-tertiary)] underline-offset-2 hover:text-[var(--color-tint)] hover:underline"
+              data-testid="home-quick-nav-customize"
+            >
+              Customize
+            </Link>
+          </nav>
 
           {/* Continue Learning hero */}
           <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-1)]">
