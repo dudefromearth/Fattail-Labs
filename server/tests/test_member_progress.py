@@ -59,6 +59,31 @@ def test_progress_requires_session(client, video_lesson):
     assert r.status_code == 401
 
 
+def test_mark_complete_toggle_on_and_off(client, member, video_lesson):
+    """Switch is two-way: complete and undo (accidental marks)."""
+    slug = video_lesson["slug"]
+    client.post(f"/api/courses/{COURSE}/enroll", cookies=member)
+    on = client.post(
+        "/api/progress/complete",
+        cookies=member,
+        json={"course_slug": COURSE, "lesson_slug": slug, "completed": True},
+    )
+    assert on.status_code == 200
+    assert on.json()["completed"] is True
+    prog = client.get(f"/api/me/progress?course={COURSE}", cookies=member).json()
+    assert prog["lessons"][slug]["completed"] is True
+
+    off = client.post(
+        "/api/progress/complete",
+        cookies=member,
+        json={"course_slug": COURSE, "lesson_slug": slug, "completed": False},
+    )
+    assert off.status_code == 200
+    assert off.json()["completed"] is False
+    prog2 = client.get(f"/api/me/progress?course={COURSE}", cookies=member).json()
+    assert prog2["lessons"][slug]["completed"] is False
+
+
 def test_journey_reuses_enrollments_no_second_store(client, member):
     """Journey is a derived view (Member-Data-Privacy DS-2)."""
     client.post(f"/api/courses/{COURSE}/enroll", cookies=member)

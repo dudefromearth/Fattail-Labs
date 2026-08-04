@@ -5,6 +5,7 @@
 // - bunny: signed embed iframe; wall-clock samples while tab is visible
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import LessonMarkComplete from "@/components/LessonMarkComplete";
 import { emitProgress } from "@/lib/progressEvents";
 
 declare global {
@@ -183,19 +184,6 @@ export default function LessonPlayer({
     };
   }, [send, initialPosition, provider]);
 
-  async function markComplete() {
-    const res = await fetch("/api/progress/complete", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ course_slug: courseSlug, lesson_slug: lessonSlug }),
-    });
-    if (res.ok) {
-      setCompleted(true);
-      emitProgress({ courseSlug, lessonSlug, completed: true });
-    }
-  }
-
   const expiringSoon =
     provider === "bunny" &&
     typeof expiresAt === "number" &&
@@ -224,29 +212,26 @@ export default function LessonPlayer({
           Secure playback link expires soon — refresh the page if video stops.
         </p>
       )}
-      <div className="mt-4 flex items-center gap-3">
-        {completed ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">
-            ✓ Completed
-          </span>
-        ) : (
-          <button
-            onClick={markComplete}
-            className="chip font-medium hover:border-[var(--color-tint)] hover:text-[var(--color-tint)]"
-          >
-            Mark complete
-          </button>
-        )}
-        {initialPosition > 10 && !completed && provider === "youtube" && (
-          <span className="text-xs text-zinc-500">
-            Resuming from {Math.floor(initialPosition / 60)}:
-            {String(Math.floor(initialPosition % 60)).padStart(2, "0")}
-          </span>
-        )}
-        {provider === "bunny" && (
-          <span className="text-xs text-zinc-500">Secure stream</span>
-        )}
-      </div>
+      {/* Completed toggle always sits directly below the video when a player is shown. */}
+      <LessonMarkComplete
+        courseSlug={courseSlug}
+        lessonSlug={lessonSlug}
+        initialCompleted={completed}
+        className="mt-4"
+        placement="top"
+      />
+      {(initialPosition > 10 && !completed && provider === "youtube") ||
+      provider === "bunny" ? (
+        <div className="mt-2 flex justify-center gap-3 text-xs text-zinc-500">
+          {initialPosition > 10 && !completed && provider === "youtube" && (
+            <span>
+              Resuming from {Math.floor(initialPosition / 60)}:
+              {String(Math.floor(initialPosition % 60)).padStart(2, "0")}
+            </span>
+          )}
+          {provider === "bunny" && <span>Secure stream</span>}
+        </div>
+      ) : null}
     </div>
   );
 }

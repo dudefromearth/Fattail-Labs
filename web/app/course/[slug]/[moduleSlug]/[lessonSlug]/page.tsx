@@ -6,6 +6,7 @@ import { fetchCourse, siteUrl } from "@/lib/catalog";
 import type { CourseDetail } from "@/lib/types";
 import LessonBody from "@/components/LessonBody";
 import LessonCourseNav from "@/components/LessonCourseNav";
+import LessonMarkComplete from "@/components/LessonMarkComplete";
 import LessonPlayer from "@/components/LessonPlayer";
 import Markdown from "@/components/Markdown";
 import QuizBuilder from "@/components/QuizBuilder";
@@ -447,6 +448,16 @@ export default async function LessonPlayerPage({
   }
 
   const progress = lesson.progress ?? { last_position: 0, completed: false };
+  // Placement rules for Completed toggle:
+  // 1) Below the video when a player is shown (handled inside LessonPlayer).
+  // 2) Below the text when body_md is non-empty.
+  // 3) If there is no text, the second toggle is not necessary.
+  // 4) Quiz / empty / non-video with no text still need one control after primary content.
+  const hasVideoPlayer =
+    lesson.kind !== "quiz" && Boolean(lesson.video?.embed_url);
+  const hasText = Boolean(lesson.body_md?.trim());
+  const showCompleteAfterText = hasText;
+  const showCompleteAfterPrimary = !hasVideoPlayer && !hasText;
 
   return (
     <LessonLayout course={course} currentLessonSlug={lesson.slug}>
@@ -516,7 +527,15 @@ export default async function LessonPlayerPage({
         </div>
       )}
 
-      <NavRow nav={nav} courseSlug={lesson.course_slug} />
+      {/* No video + no text: single control after primary (quiz / placeholder / empty). */}
+      {showCompleteAfterPrimary && (
+        <LessonMarkComplete
+          courseSlug={lesson.course_slug}
+          lessonSlug={lesson.slug}
+          initialCompleted={!!progress.completed}
+          placement="top"
+        />
+      )}
 
       <LessonBody
         courseSlug={lesson.course_slug}
@@ -525,6 +544,18 @@ export default async function LessonPlayerPage({
         lessonId={lesson.id}
         body={lesson.body_md}
       />
+
+      {/* Below text only when lesson notes exist. Video+text → dual (player + here). */}
+      {showCompleteAfterText && (
+        <LessonMarkComplete
+          courseSlug={lesson.course_slug}
+          lessonSlug={lesson.slug}
+          initialCompleted={!!progress.completed}
+          placement="bottom"
+        />
+      )}
+
+      <NavRow nav={nav} courseSlug={lesson.course_slug} />
 
       {/* Membership CTA only on free-preview lessons (not every video page). */}
       {lesson.free_preview && (

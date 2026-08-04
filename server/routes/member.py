@@ -143,6 +143,13 @@ def _refresh_course_completion(cur, identity_id: int, course_id: int) -> None:
                WHERE identity_id = %s AND course_id = %s""",
             (identity_id, course_id),
         )
+    else:
+        # Un-completing a lesson (or incomplete course) clears course completion.
+        cur.execute(
+            """UPDATE enrollments SET completed_at = NULL
+               WHERE identity_id = %s AND course_id = %s""",
+            (identity_id, course_id),
+        )
 
 
 @router.post("/api/courses/{course_slug}/enroll")
@@ -223,8 +230,21 @@ async def report_progress(request: Request) -> dict:
 
 @router.post("/api/progress/complete")
 async def mark_complete(request: Request) -> dict:
+    """Toggle lesson completion.
+
+    Body: { course_slug, lesson_slug, completed?: bool }
+    - completed omitted or true → mark complete
+    - completed false → clear completed_at (undo accidental mark)
+    """
     claims = require_session(request)
     body = await request.json()
+    # Default true preserves existing clients that only POST to complete.
+    want_complete = body.get("completed")
+    if want_complete is None:
+        want_complete = True
+    else:
+        want_complete = bool(want_complete)
+
     with db.transaction() as conn:
         with conn.cursor() as cur:
             lesson = _lesson_for_access(
@@ -235,16 +255,26 @@ async def mark_complete(request: Request) -> dict:
                 identity_id=int(claims["identity_id"]),
             )
             _ensure_enrollment(cur, claims["identity_id"], lesson["course_id"])
-            cur.execute(
-                """INSERT INTO lesson_progress
-                     (identity_id, lesson_id, watch_seconds, last_position, completed_at)
-                   VALUES (%s, %s, 0, 0, NOW())
-                   ON DUPLICATE KEY UPDATE
-                     completed_at = COALESCE(completed_at, NOW())""",
-                (claims["identity_id"], lesson["id"]),
-            )
+            if want_complete:
+                cur.execute(
+                    """INSERT INTO lesson_progress
+                         (identity_id, lesson_id, watch_seconds, last_position, completed_at)
+                       VALUES (%s, %s, 0, 0, NOW())
+                       ON DUPLICATE KEY UPDATE
+                         completed_at = COALESCE(completed_at, NOW())""",
+                    (claims["identity_id"], lesson["id"]),
+                )
+            else:
+                cur.execute(
+                    """INSERT INTO lesson_progress
+                         (identity_id, lesson_id, watch_seconds, last_position, completed_at)
+                       VALUES (%s, %s, 0, 0, NULL)
+                       ON DUPLICATE KEY UPDATE
+                         completed_at = NULL""",
+                    (claims["identity_id"], lesson["id"]),
+                )
             _refresh_course_completion(cur, claims["identity_id"], lesson["course_id"])
-    return {"completed": True}
+    return {"completed": want_complete}
 
 
 @router.get("/api/me/progress")
