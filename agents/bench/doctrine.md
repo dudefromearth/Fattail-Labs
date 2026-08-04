@@ -104,9 +104,9 @@ a doctrine violation (see DL-173 FatTail Hard failure).
 Labs helps traders become **enlightened** in the secular sense: present, aware,
 integrated with methodology; habit-engineered cessation of destructive loops;
 toughness as enabler. Capital expression remains **stop the bleeding**. Spec:
-`Specs/FatTail-Labs-North-Star-Member-Ethos-Spec-v1.1.md`. Member-facing AI must
-compose `LABS_MEMBER_AI_ETHOS_V1_1` (`server/labs_member_ai_ethos.py`); surface
-guardrails and **distress stop-interview** still win over ethos.
+`Specs/FatTail-Labs-North-Star-Member-Ethos-Spec-v1.2.md`. Member-facing AI must
+compose `LABS_MEMBER_AI_ETHOS_V1_2`; surface guardrails and **distress stop-interview**
+(self-target, not trading vernacular) still win over ethos; gate independent of MODE.
 
 ### 11. Coach Content Law (hard rules — 2026-07-31)
 

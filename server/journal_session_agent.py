@@ -362,12 +362,12 @@ def run_agent_turn(
     structured = _structured_from_row(row)
     raised = jsd.get_absence_keys_raised(row)
 
-    # Spec v1.1 §5.2 #9 — distress: stop interview (code gate, not ethos alone)
+    # Spec v1.2 §5.2 #9 / §5.4 — distress code gate: ALWAYS runs (even ETHOS_MODE=off).
+    # Session stays open; non-distress later turns resume probes. Gate re-checks each turn.
     if member_wrote and member_text_indicates_distress(member_body):
         body = DISTRESS_ACK_BODY
         validated = _validate_with_retry(tag=tag, primary=body, kind="silent")
         if validated.get("form_fallback"):
-            # Still do not probe — degrade without interview questions
             return {
                 "message": None,
                 "kind": "distress_hold",
@@ -375,10 +375,11 @@ def run_agent_turn(
                 "depth": build_agent_status(cur, identity_id, session_id, role=role),
                 "form_fallback": True,
                 "detail": (
-                    "Interview paused. Continue in plain text. "
-                    "If you are in crisis, seek real-world support."
+                    "Interview paused for this turn. Keep writing anytime. "
+                    "Crisis: US 988; https://www.iasp.info/suicidalthoughts/"
                 ),
                 "prompt_version": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
+                "session_open": True,
                 **ethos_stamp(),
             }
         msg = jsd.append_agent_message(
@@ -391,9 +392,13 @@ def run_agent_turn(
             "phase": phase,
             "depth": build_agent_status(cur, identity_id, session_id, role=role),
             "form_fallback": False,
-            "detail": "Interview questions stopped.",
+            "detail": (
+                "Interview questions stopped this turn; journal stays open. "
+                "Continue writing to resume normal agent turns when ready."
+            ),
             "prompt_version": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
             "validator": {"ok": True, "attempts": validated.get("attempts", 1)},
+            "session_open": True,
             **ethos_stamp(),
         }
 

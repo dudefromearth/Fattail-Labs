@@ -1,4 +1,4 @@
-"""FatTail Labs — shared member-facing AI ethos (Spec v1.1 · DL-209/210).
+"""FatTail Labs — shared member-facing AI ethos (Spec v1.2 · DL-209–211).
 
 Prepend to every member-facing agent system prompt via compose_member_system_prompt().
 Surface role prompts and code guardrails remain authoritative for bans.
@@ -7,6 +7,7 @@ Env:
   LABS_MEMBER_AI_ETHOS_MODE = on | off
     on  (default) — compose ethos + surface role
     off — surface role only (production regression fallback)
+    Distress gate is INDEPENDENT of this flag and always runs in code.
 """
 
 from __future__ import annotations
@@ -16,12 +17,18 @@ import re
 from typing import Any
 
 # Any wording edit MUST bump this id (Spec §5.5).
-ETHOS_ID = "LABS_MEMBER_AI_ETHOS_V1_1"
-ETHOS_SPEC = "FatTail-Labs-North-Star-Member-Ethos-Spec-v1.1"
+ETHOS_ID = "LABS_MEMBER_AI_ETHOS_V1_2"
+ETHOS_SPEC = "FatTail-Labs-North-Star-Member-Ethos-Spec-v1.2"
 
-# Product priors for docs/tooling — NOT injected into LLM body as bare facts
-# the model may recite. Spec §7: sourced, dated, review cadence.
-WORLD_MODEL_PRIORS: list[dict[str, Any]] = [
+# Agent output register (member preference — future profile field).
+# Governs how the AI speaks, NOT how the member must write.
+# mirror suspended entirely when distress gate fires.
+LANGUAGE_REGISTERS = frozenset({"plain", "vernacular", "mirror"})
+DEFAULT_LANGUAGE_REGISTER = "plain"
+
+# Coach priors for Hotel ratification — NOT exported for product consumption until
+# hotel_status == "ratified". Do not import into prompts or public APIs.
+_WORLD_MODEL_PRIORS_HOLD: list[dict[str, Any]] = [
     {
         "id": "day_close_bias",
         "summary": "Long-run day close near coin flip with slight upside bias",
@@ -51,7 +58,13 @@ WORLD_MODEL_PRIORS: list[dict[str, Any]] = [
     },
 ]
 
-LABS_MEMBER_AI_ETHOS_V1_1 = """# FatTail Labs — Member AI Ethos (V1.1)
+
+def world_model_priors_for_hotel() -> list[dict[str, Any]]:
+    """Internal review only — not for prompts or member APIs until ratified."""
+    return [dict(p) for p in _WORLD_MODEL_PRIORS_HOLD]
+
+
+LABS_MEMBER_AI_ETHOS_V1_2 = """# FatTail Labs — Member AI Ethos (V1.2)
 
 You operate inside **FatTail Labs** (`labs.fattail.ai`), the practice OS of the **0DTE**
 family (`0-dte.com`). Brand roots: Zen **ensō** (impermanence, continuous improvement,
@@ -80,6 +93,13 @@ dependency. Never promise profits or guaranteed edge.
 - Liquidity structure **strongly influences** path (nodes, wells, crevasses) — it does
   not control destiny. Play **what the market gives**; expect no more.
 
+## Language register (your output only)
+
+Member writing is never censored. Your replies follow the member's register preference
+when provided (plain | vernacular | mirror). Default **plain** — survival/process doctrine,
+not combat-guru marketing. **mirror** reflects their idiom for rapport but is **suspended**
+when the distress gate has fired. Never police or rewrite the member's journal for tone.
+
 ## Stance
 
 - You support **clear seeing** and a durable record. The **member** supplies judgment,
@@ -97,12 +117,17 @@ dependency. Never promise profits or guaranteed edge.
 
 ## Distress (hard stop — overrides inventory stance)
 
-If the member shows **genuine acute distress**, crisis, or self-harm language:
+Trading journals use violent metaphor about **positions** ("trade killed me", "blew up",
+"suicide spread") without meaning personal crisis. Stop the interview only for **genuine
+acute distress** aimed at the **self** (self-harm, suicide, no will to live) — not for
+ordinary trading vernacular about P&L or positions.
+
+When the **code distress gate** has fired (or the text clearly targets the self):
 - **Stop the interview.** Do not ask another process, absence, cause, or habit question.
 - Do not probe, diagnose character, give trading advice, or continue enlightenment framing.
-- Acknowledge briefly that you heard them; invite them to write freely in plain text or
-  seek real-world human support as appropriate. You are **not** a crisis counselor.
-- Code may hard-stop the agent path; obey that stop.
+- Acknowledge briefly; invite free writing. Point only to **named** support paths in product
+  copy (session stays open — they may keep journaling).
+- You are **not** a crisis counselor. Code enforces stop-interview independently of ethos mode.
 
 ## Hard rule
 
@@ -112,27 +137,35 @@ P&L commentary, proselytizing, filling empty fields, or continuing an interview 
 distress. When in doubt: one absence question, quiet, or stop.
 """
 
-# Back-compat alias for imports expecting V1 name during transition
-LABS_MEMBER_AI_ETHOS_V1 = LABS_MEMBER_AI_ETHOS_V1_1
+# Back-compat aliases
+LABS_MEMBER_AI_ETHOS_V1_1 = LABS_MEMBER_AI_ETHOS_V1_2
+LABS_MEMBER_AI_ETHOS_V1 = LABS_MEMBER_AI_ETHOS_V1_2
 
-# Fixed agent body when distress gate fires (must pass journal validator)
+# Fixed agent body when distress gate fires (must pass journal validator).
+# Named support paths only — no improvised founder routing (Spec §5.2 #9).
 DISTRESS_ACK_BODY = (
     "I hear you. I'm stopping the interview questions for now — "
-    "write freely here if you want. If you are in crisis, please reach out "
-    "to people who can support you in real life."
+    "you can keep writing freely in this journal anytime. "
+    "If you are in crisis or thinking about harming yourself, please get real-world "
+    "help now: in the US call or text 988 (Suicide & Crisis Lifeline); "
+    "internationally see https://www.iasp.info/suicidalthoughts/ for local resources. "
+    "Labs support is for membership and product questions, not crisis care."
 )
 
-# Conservative heuristics — prefer false positive (stop interview) over probing crisis
-_DISTRESS = re.compile(
+# Self-directed crisis patterns. Intentionally does NOT match trading vernacular
+# (killed me, blew up, slaughtered, dead in the water, suicide spread, bleeding).
+_SELF_HARM = re.compile(
     r"("
-    r"\b(kill\s+myself|killing\s+myself|end\s+my\s+life|suicide|suicidal)\b|"
+    r"\b(kill\s+myself|killing\s+myself|end\s+my\s+life|take\s+my\s+own\s+life)\b|"
     r"\b(want\s+to\s+die|wanna\s+die|better\s+off\s+dead)\b|"
-    r"\b(self[-\s]?harm|cut\s+myself|hurt\s+myself)\b|"
-    r"\b(can'?t\s+go\s+on|cannot\s+go\s+on)\b|"
-    r"\b(no\s+reason\s+to\s+live)\b"
+    r"\b(self[-\s]?harm|cut(?:ting)?\s+myself|hurt(?:ing)?\s+myself)\b|"
+    r"\b(no\s+reason\s+to\s+live|don'?t\s+want\s+to\s+live)\b|"
+    r"\b(can'?t|cannot)\s+go\s+on\s+(living|with\s+life)\b"
     r")",
     re.I,
 )
+_SUICIDE_WORD = re.compile(r"\b(suicide|suicidal)\b", re.I)
+_SUICIDE_SPREAD = re.compile(r"\bsuicide\s+spread\b", re.I)
 
 
 def ethos_mode() -> str:
@@ -143,17 +176,36 @@ def ethos_mode() -> str:
     return "on"
 
 
-def compose_member_system_prompt(surface_role_prompt: str) -> str:
-    """Ethos + surface role, or surface only if MODE=off."""
+def compose_member_system_prompt(
+    surface_role_prompt: str,
+    *,
+    language_register: str | None = None,
+    distress_active: bool = False,
+) -> str:
+    """Ethos + surface role, or surface only if MODE=off.
+
+    language_register: plain | vernacular | mirror (agent output only).
+    mirror is forced off when distress_active.
+    """
     role = (surface_role_prompt or "").strip()
-    if ethos_mode() == "off":
-        return role
-    if not role:
-        return LABS_MEMBER_AI_ETHOS_V1_1.strip()
-    return (
-        f"{LABS_MEMBER_AI_ETHOS_V1_1.rstrip()}\n\n---\n\n"
-        f"# Surface role\n\n{role}\n"
+    reg = (language_register or DEFAULT_LANGUAGE_REGISTER).strip().lower()
+    if reg not in LANGUAGE_REGISTERS:
+        reg = DEFAULT_LANGUAGE_REGISTER
+    if distress_active and reg == "mirror":
+        reg = "plain"
+
+    register_line = (
+        f"\n\n# Output register for this turn: **{reg}** "
+        f"(agent speech only; never censor member writing)."
     )
+
+    if ethos_mode() == "off":
+        return f"{role}{register_line}\n" if role else register_line.strip()
+
+    body = LABS_MEMBER_AI_ETHOS_V1_2.rstrip() + register_line
+    if not role:
+        return body
+    return f"{body}\n\n---\n\n# Surface role\n\n{role}\n"
 
 
 def ethos_stamp() -> dict[str, str]:
@@ -163,11 +215,23 @@ def ethos_stamp() -> dict[str, str]:
         "ethos_id": "off" if mode == "off" else ETHOS_ID,
         "ethos_mode": mode,
         "ethos_spec": ETHOS_SPEC,
+        "distress_gate": "code_independent",
     }
 
 
 def member_text_indicates_distress(text: str | None) -> bool:
-    """True when code should stop the interview (Spec §5.2 #9)."""
+    """Stop-interview when language targets the **self**, not the position.
+
+    Spec v1.2: distinguish compression/vernacular about trades from identification
+    / self-harm. Keyword intensity alone is insufficient; target matters.
+    Flat crisis without keywords may still be missed — documented limitation;
+    prefer false negative on vernacular over constant false positive.
+    """
     if not text or not str(text).strip():
         return False
-    return bool(_DISTRESS.search(str(text)))
+    raw = str(text)
+    if _SELF_HARM.search(raw):
+        return True
+    if _SUICIDE_WORD.search(raw) and not _SUICIDE_SPREAD.search(raw):
+        return True
+    return False

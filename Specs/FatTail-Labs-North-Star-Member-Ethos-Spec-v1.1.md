@@ -1,7 +1,7 @@
 # FatTail Labs — North Star & Member Ethos Spec v1.1
 
-**Status:** **BUILD AUTHORITY** (Coach 2026-08-03; **v1.1** review fixes same day)  
-**Supersedes:** `FatTail-Labs-North-Star-Member-Ethos-Spec-v1.0.md` (v1.0 remains historical)  
+**Status:** **SUPERSEDED** by `FatTail-Labs-North-Star-Member-Ethos-Spec-v1.2.md` (DL-211)  
+**Historical:** BUILD AUTHORITY 2026-08-03 · DL-210  
 **Product:** FatTail Labs (`labs.fattail.ai`) — subsidiary practice OS of **0DTE** (`0-dte.com`)  
 **Decision log:** DL-209 (GO) · **DL-210** (v1.1 completeness)  
 **Parents:** Journal Session Spec · Journal Retrospective Spec · Member Data Privacy · Hard Mental Toughness · Coach Content Law  
