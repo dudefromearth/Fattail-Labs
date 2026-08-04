@@ -20,6 +20,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [10-resources-design.md](./10-resources-design.md) | Resources: first-class versioned library |
 | [11-wiki-design.md](./11-wiki-design.md) | Member Wiki: lab-wiki checkout → derived index → /app/wiki |
 | [12-retrospective-report-dto.md](./12-retrospective-report-dto.md) | Retrospective workspace DTO (gather/report/comparison) — as-built v0.6 |
+| [13-habit-catalog-design.md](./13-habit-catalog-design.md) | Habit Catalog methodology layer — **design locked**, pre-Spec |
 
 **Practice / retrospectives (2026-07-29) — p-retrospective R1b–R7 PASS:**
 

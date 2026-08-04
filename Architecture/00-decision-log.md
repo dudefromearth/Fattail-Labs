@@ -4,6 +4,32 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-03 — DL-212 Habit Catalog Spec v0.1 + multi-agent plan
+
+**Coach:** Design architecture locked (`Architecture/13-habit-catalog-design.md`).
+**Spec** `FatTail-Labs-Habit-Catalog-Spec-v0.1.md` opened for W0 review (not BUILD
+until HC0-G). **Plan:** `docs/Habit-Catalog-Full-Agent-Bench-Plan.md` · board
+`agents/p-habit-catalog/`. Sequence HC0→HC6; vertical slice `size-reason`.
+Coverage law + Family B floor normative. Implementation blocked on Coach GO.
+
+## 2026-08-03 — DL-211 North star ethos v1.2 (distress vernacular + register)
+
+**Coach / review:** Address false positives on trading death/violence vernacular;
+language register on **agent output only**; distress gate independent of ethos MODE;
+named support paths; Family B LLM **opt-in** default; priors held until Hotel.
+
+| Topic | Decision |
+|-------|----------|
+| Distress classifier | **Target = self** (self-harm/suicide), not intensity; exclude suicide spread / trade killed me / blew up / etc. |
+| After stop | Session stays open; re-eval each turn; no day lockout |
+| Support paths | Free write; US 988; IASP local resources; not founder crisis routing |
+| Register | `plain` (default) \| `vernacular` \| `mirror`; mirror off under distress; never on member input |
+| ETHOS_MODE=off | Drops ethos preamble only; **distress code gate remains** |
+| WORLD_MODEL_PRIORS | Hotel hold; not product-exported until ratified |
+| Model-in-loop | Scheduled eval later; CI keeps unit/vernacular corpora |
+
+**Spec:** v1.2. **Code:** `labs_member_ai_ethos.py` V1_2 + tests.
+
 ## 2026-08-03 — DL-210 North star ethos v1.1 (completeness)
 
 **Coach + review holds addressed:** Spec **v1.1** supersedes v1.0.
