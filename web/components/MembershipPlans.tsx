@@ -13,6 +13,7 @@ type Price = {
   label?: string;
   interval?: string | null;
   badge?: string;
+  url?: string;
   amount?: number | null;
   currency?: string | null;
 };
@@ -118,6 +119,27 @@ export default function MembershipPlans() {
   const trial = state.plans.find((p) => p.slug === "observer-trial");
 
   function priceButton(plan: Plan, dp: Price, i: number) {
+    // External purchase link (fattail.ai WooCommerce) takes precedence over Stripe.
+    if (dp.url) {
+      return (
+        <a
+          key={i}
+          href={dp.url}
+          className={`relative block w-full rounded-full py-2.5 text-center font-medium transition-colors ${
+            plan.display.featured
+              ? "bg-emerald-500 text-white hover:bg-emerald-600"
+              : "border border-emerald-400 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+          }`}
+        >
+          {dp.label ?? "Choose"}
+          {dp.badge && (
+            <span className="absolute -top-2 right-3 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-950">
+              {dp.badge}
+            </span>
+          )}
+        </a>
+      );
+    }
     // Match a live Stripe price by interval when available.
     const live = plan.prices.find((x) => x.interval === dp.interval);
     const label = dp.label ?? liveLabel(live ?? {}) ?? "—";
@@ -215,7 +237,7 @@ export default function MembershipPlans() {
             <div className="mt-5 space-y-2">
               {(plan.display.prices ?? []).map((dp, i) => priceButton(plan, dp, i))}
             </div>
-            {!state.enabled && (
+            {!state.enabled && (plan.display.prices ?? []).every((pr) => !pr.url) && (
               <p className="mt-2 text-center text-xs text-zinc-400">
                 Checkout opens soon
               </p>
@@ -238,7 +260,7 @@ export default function MembershipPlans() {
         </Link>
       </p>
       <p className="mt-4 text-center text-xs text-zinc-400">
-        Secure checkout and billing management hosted by Stripe. Cancel anytime.
+        Secure checkout on fattail.ai. Cancel anytime.
       </p>
 
       {/* Exit-intent retention offer (spec §4) */}
