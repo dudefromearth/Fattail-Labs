@@ -21,6 +21,7 @@ import {
   type Retrospective,
   type RetroScopePreview,
 } from "@/lib/retrospectiveApi";
+import { confirmStartRetrospective } from "@/lib/retroCreateGuard";
 
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -121,8 +122,18 @@ export default function RetrospectivePage() {
   }, [loadShell, loadList]);
 
   async function startFromHere() {
-    setBusy(true);
     setErr(null);
+    // Scope dates + lock warning before any create (Journal uses the same guard).
+    try {
+      const { ok } = await confirmStartRetrospective();
+      if (!ok) return;
+    } catch (e) {
+      setErr(
+        e instanceof Error ? e.message : "Could not prepare retrospective",
+      );
+      return;
+    }
+    setBusy(true);
     try {
       const r = await createRetrospective({ gather: true });
       router.push(`/app/retrospective/${r.id}`);
@@ -170,21 +181,36 @@ export default function RetrospectivePage() {
               prior retros when they exist.
             </p>
             {scope && (
-              <p className="mt-3 text-sm text-[var(--color-label-secondary)]">
-                Next scope:{" "}
-                <span className="font-medium text-[var(--color-label)]">
-                  {scope.label}
-                </span>
-                {" · "}
-                {fmtDate(scope.scope_start)} → {fmtDate(scope.scope_end)}
-              </p>
+              <div
+                className="mt-4 rounded-[var(--radius-md)] border border-amber-300/80 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40"
+                data-testid="retro-scope-warning"
+                role="status"
+              >
+                <p className="text-sm font-medium text-[var(--color-label)]">
+                  Next scope: {scope.label}
+                </p>
+                <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
+                  <span className="font-medium text-[var(--color-label)]">
+                    {fmtDate(scope.scope_start)} → {fmtDate(scope.scope_end)}
+                  </span>
+                  {" — "}
+                  journal and trades in this window are included.
+                </p>
+                <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
+                  Once you complete the retrospective, those journal dates
+                  close — you will not be able to modify those journal entries
+                  or attachments. The trade sample for the review is fixed at
+                  gather.
+                </p>
+              </div>
             )}
             <div className="mt-5 flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="primary"
                 disabled={busy}
-                onClick={startFromHere}
+                onClick={() => void startFromHere()}
+                data-testid="retro-start-button"
               >
                 {busy ? "Starting…" : "Start retrospective"}
               </Button>

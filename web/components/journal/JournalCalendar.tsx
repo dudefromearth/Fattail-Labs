@@ -13,6 +13,7 @@ import {
   useState,
 } from "react";
 import { createRetrospective } from "@/lib/retrospectiveApi";
+import { confirmStartRetrospective } from "@/lib/retroCreateGuard";
 import {
   createJournalSession,
   fetchWeekActivity,
@@ -367,6 +368,7 @@ function DayView({
   onSessionUpdated,
   onSessionBusy,
   onSessionError,
+  onEnsureSession,
   scrollToMessageId = null,
 }: {
   selected: Date;
@@ -386,11 +388,15 @@ function DayView({
   onSessionUpdated?: (s: JournalSession) => void;
   onSessionBusy?: (v: boolean) => void;
   onSessionError?: (msg: string | null) => void;
+  /** Empty-day image drop creates a session without requiring chat first. */
+  onEnsureSession?: () => Promise<number>;
   scrollToMessageId?: number | null;
 }) {
   const mutable =
-    activeSession &&
-    (activeSession.status === "open" || activeSession.status === "partial");
+    !activeSession ||
+    activeSession.status === "open" ||
+    activeSession.status === "partial";
+  const mediaMutable = mutable && !selectedClosed;
   const [interviewOpen, setInterviewOpen] = useState(false);
   useEffect(() => {
     setInterviewOpen(false);
@@ -435,12 +441,130 @@ function DayView({
           </p>
         )}
 
-        {activeSession && (
+        {/* Media drop zone is always present (active or empty day) so members
+            can attach images without writing first. */}
+        {!selectedClosed && (
+          <div
+            className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-4"
+            data-testid={
+              activeSession ? "journal-session-active" : "journal-composer-empty"
+            }
+          >
+            <div
+              className="flex flex-col gap-2 sm:flex-row sm:items-start"
+              data-testid="journal-session-header"
+            >
+              {activeSession ? (
+                <div className="min-w-0 flex-1">
+                  <JournalTagsControl
+                    sessionId={activeSession.id}
+                    disabled={!mediaMutable || sessionBusy}
+                    onError={onSessionError}
+                  />
+                </div>
+              ) : null}
+              <div
+                className={
+                  activeSession ? "min-w-0 flex-[1.2]" : "min-w-0 w-full"
+                }
+              >
+                <SessionMediaHeader
+                  sessionId={activeSession?.id ?? null}
+                  disabled={!mediaMutable || sessionBusy}
+                  onError={onSessionError}
+                  ensureSession={onEnsureSession}
+                />
+              </div>
+            </div>
+
+            {activeSession ? (
+              <>
+                <SessionInterviewChat
+                  session={activeSession}
+                  busy={sessionBusy}
+                  onBusy={onSessionBusy}
+                  onError={onSessionError}
+                  onUpdated={(s) => {
+                    onSessionUpdated?.(s);
+                  }}
+                  scrollToMessageId={scrollToMessageId}
+                />
+
+                <div
+                  className="border-t border-[var(--color-separator)] pt-3"
+                  data-testid="journal-interview-bar"
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-2 text-left text-sm"
+                    onClick={() => setInterviewOpen((v) => !v)}
+                    aria-expanded={interviewOpen}
+                    data-testid="journal-interview-toggle"
+                  >
+                    <span className="font-semibold text-[var(--color-label)]">
+                      Structured interview
+                    </span>
+                    <span className="text-xs text-[var(--color-label-tertiary)]">
+                      {interviewOpen ? "Hide" : "Show"}
+                    </span>
+                  </button>
+                  {interviewOpen && (
+                    <div className="mt-3">
+                      <StructuredSessionForm
+                        session={activeSession}
+                        busy={sessionBusy}
+                        onBusy={onSessionBusy}
+                        onError={onSessionError}
+                        onUpdated={(s) => {
+                          onSessionUpdated?.(s);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="relative">
+                <textarea
+                  value={draft}
+                  onChange={(e) => onDraft(e.target.value)}
+                  rows={4}
+                  placeholder="Write in your words… (or drop an image above)"
+                  className="w-full resize-y rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-20 text-sm text-[var(--color-label)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
+                  aria-label="Journal message"
+                  data-testid="journal-composer-empty-draft"
+                  disabled={sessionBusy}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault();
+                      if (draft.trim() && !sessionBusy) onFirstSend();
+                    }
+                  }}
+                />
+                <div className="absolute bottom-3 right-3">
+                  <button
+                    type="button"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] disabled:opacity-40"
+                    title="Send"
+                    aria-label="Send"
+                    disabled={!draft.trim() || sessionBusy}
+                    onClick={onFirstSend}
+                    data-testid="journal-composer-empty-send"
+                  >
+                    <SendIcon />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Closed day: still show existing session media/read-only when present */}
+        {selectedClosed && activeSession && (
           <div
             className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-4"
             data-testid="journal-session-active"
           >
-            {/* §1.4 session header: tags + image thumbnails */}
             <div
               className="flex flex-col gap-2 sm:flex-row sm:items-start"
               data-testid="journal-session-header"
@@ -448,22 +572,21 @@ function DayView({
               <div className="min-w-0 flex-1">
                 <JournalTagsControl
                   sessionId={activeSession.id}
-                  disabled={!mutable || sessionBusy}
+                  disabled
                   onError={onSessionError}
                 />
               </div>
               <div className="min-w-0 flex-[1.2]">
                 <SessionMediaHeader
                   sessionId={activeSession.id}
-                  disabled={!mutable || sessionBusy}
+                  disabled
                   onError={onSessionError}
                 />
               </div>
             </div>
-
             <SessionInterviewChat
               session={activeSession}
-              busy={sessionBusy}
+              busy={false}
               onBusy={onSessionBusy}
               onError={onSessionError}
               onUpdated={(s) => {
@@ -471,78 +594,6 @@ function DayView({
               }}
               scrollToMessageId={scrollToMessageId}
             />
-
-            <div
-              className="border-t border-[var(--color-separator)] pt-3"
-              data-testid="journal-interview-bar"
-            >
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-2 text-left text-sm"
-                onClick={() => setInterviewOpen((v) => !v)}
-                aria-expanded={interviewOpen}
-                data-testid="journal-interview-toggle"
-              >
-                <span className="font-semibold text-[var(--color-label)]">
-                  Structured interview
-                </span>
-                <span className="text-xs text-[var(--color-label-tertiary)]">
-                  {interviewOpen ? "Hide" : "Show"}
-                </span>
-              </button>
-              {interviewOpen && (
-                <div className="mt-3">
-                  <StructuredSessionForm
-                    session={activeSession}
-                    busy={sessionBusy}
-                    onBusy={onSessionBusy}
-                    onError={onSessionError}
-                    onUpdated={(s) => {
-                      onSessionUpdated?.(s);
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {!activeSession && !selectedClosed && (
-          <div
-            className="rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-4"
-            data-testid="journal-composer-empty"
-          >
-            <div className="relative">
-              <textarea
-                value={draft}
-                onChange={(e) => onDraft(e.target.value)}
-                rows={4}
-                placeholder="Write in your words…"
-                className="w-full resize-y rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-20 text-sm text-[var(--color-label)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
-                aria-label="Journal message"
-                data-testid="journal-composer-empty-draft"
-                disabled={sessionBusy}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault();
-                    if (draft.trim() && !sessionBusy) onFirstSend();
-                  }
-                }}
-              />
-              <div className="absolute bottom-3 right-3">
-                <button
-                  type="button"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] disabled:opacity-40"
-                  title="Send"
-                  aria-label="Send"
-                  disabled={!draft.trim() || sessionBusy}
-                  onClick={onFirstSend}
-                  data-testid="journal-composer-empty-send"
-                >
-                  <SendIcon />
-                </button>
-              </div>
-            </div>
           </div>
         )}
       </div>
@@ -813,6 +864,16 @@ export default function JournalCalendar() {
   async function onOpenRetrospective() {
     setRetroErr(null);
     setSessionErr(null);
+    // Warn with scope dates + lock consequences before create.
+    try {
+      const { ok } = await confirmStartRetrospective();
+      if (!ok) return;
+    } catch (e) {
+      setRetroErr(
+        e instanceof Error ? e.message : "Could not prepare retrospective",
+      );
+      return;
+    }
     setRetroBusy(true);
     try {
       const r = await createRetrospective({
@@ -828,6 +889,39 @@ export default function JournalCalendar() {
     }
   }
 
+  /** Open a session for this day without requiring a first chat message
+   *  (image drop / paste on empty journal). Reuses an already-active open session. */
+  async function ensureSessionForMedia(): Promise<number> {
+    if (
+      activeSession &&
+      (activeSession.status === "open" || activeSession.status === "partial")
+    ) {
+      return activeSession.id;
+    }
+    if (selectedClosed) {
+      throw new Error("This date is closed — no new journal activity.");
+    }
+    setSessionErr(null);
+    setSessionBusy(true);
+    try {
+      const session = await createJournalSession({
+        journal_date: selectedYmd,
+      });
+      setActiveSessionId(session.id);
+      setActiveSession(session);
+      await loadSessions();
+      setGranularity("day");
+      return session.id;
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : "Could not start journal entry";
+      setSessionErr(msg);
+      throw e instanceof Error ? e : new Error(msg);
+    } finally {
+      setSessionBusy(false);
+    }
+  }
+
   /** Spec v0.5 §1.1 / J1 — empty composer first send creates open session + message. */
   async function onFirstSend() {
     if (!draft.trim() || selectedClosed) return;
@@ -835,20 +929,26 @@ export default function JournalCalendar() {
     setSessionErr(null);
     setSessionBusy(true);
     try {
-      const session = await createJournalSession({
-        journal_date: selectedYmd,
-      });
+      let sessionId = activeSessionId;
+      if (!sessionId) {
+        const session = await createJournalSession({
+          journal_date: selectedYmd,
+        });
+        sessionId = session.id;
+        setActiveSessionId(session.id);
+        setActiveSession(session);
+      }
       // Prefer agent turn (member message + reply); plain-text if agent unavailable.
       try {
-        const res = await postAgentTurn(session.id, { body_md: text });
+        const res = await postAgentTurn(sessionId, { body_md: text });
         setDraft("");
-        setActiveSessionId(session.id);
+        setActiveSessionId(sessionId);
         setActiveSession(res.session);
       } catch {
-        await postJournalMessage(session.id, text);
+        await postJournalMessage(sessionId, text);
         setDraft("");
-        setActiveSessionId(session.id);
-        const s = await getJournalSession(session.id);
+        setActiveSessionId(sessionId);
+        const s = await getJournalSession(sessionId);
         setActiveSession(s);
       }
       await loadSessions();
@@ -934,6 +1034,7 @@ export default function JournalCalendar() {
             onSessionUpdated={onSessionUpdated}
             onSessionBusy={setSessionBusy}
             onSessionError={setSessionErr}
+            onEnsureSession={ensureSessionForMedia}
             scrollToMessageId={scrollToMessageId}
           />
         )}
