@@ -1,9 +1,8 @@
 "use client";
 
-// Trade Log v1.1 P1 — table-first blotter, right sheet.
-// Account + date scope: Practice Context Spec v0.2 (chrome).
+// Trade Log v1.1 — table-first blotter, right sheet, manual management UX.
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import TradeLogTable from "@/components/trade-log/TradeLogTable";
@@ -13,13 +12,23 @@ import ImportSheet from "@/components/trade-log/ImportSheet";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import type { Account, Catalog, Trade } from "@/lib/tradeLog";
 import {
+  buildCloseDraftFromOpen,
+  listUnmatchedOpens,
+  shortStructureLabel,
+} from "@/lib/tradeLog";
+import {
   exportUrl,
   fetchCatalog,
   fetchTrades,
+  fetchUnmatchedOpens,
 } from "@/lib/tradeLogApi";
 import { usePracticeContext } from "@/lib/practiceContext";
+import { saveTradeLogLastUsed } from "@/lib/tradeLogPrefs";
 
 type LoadState = "loading" | "ok" | "anon" | "forbidden" | "err";
+type SheetMode = "create" | "edit" | "close";
+
+const PAGE_LIMIT = 80;
 
 function TradeLogBody() {
   const searchParams = useSearchParams();
@@ -36,30 +45,42 @@ function TradeLogBody() {
 
   const [state, setState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
+  /** Blotter pages (newest first, append on load-more). */
   const [trades, setTrades] = useState<Trade[]>([]);
+  /** Server-matched unmatched opens (full book on server; small payload). */
+  const [openTrades, setOpenTrades] = useState<Trade[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetMode, setSheetMode] = useState<"create" | "edit" | "close">(
-    "create",
-  );
+  const [sheetMode, setSheetMode] = useState<SheetMode>("create");
   const [selected, setSelected] = useState<Trade | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [deepLinked, setDeepLinked] = useState(false);
+  const [filterOpenOnly, setFilterOpenOnly] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [forceTrashConfirm, setForceTrashConfirm] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = useCallback(() => {
-    // Wait for Practice Context prefs — same flash loop as Reports otherwise.
     if (!prefsReady) {
       setState("loading");
       return;
     }
     setError(null);
-    Promise.all([fetchTrades(accountIdParam), fetchCatalog()])
-      .then(async ([tr, vn]) => {
+    setNextCursor(null);
+    setHasMore(false);
+    Promise.all([
+      fetchTrades(accountIdParam, { limit: PAGE_LIMIT }),
+      fetchUnmatchedOpens(accountIdParam),
+      fetchCatalog(),
+    ])
+      .then(async ([tr, opens, vn]) => {
         if (!tr.ok) {
           const msg =
             tr.error.kind === "err" ? tr.error.message : tr.error.kind;
-          // Stale / foreign account id (wrong member after SSO switch) → All.
           if (
             accountIdParam != null &&
             tr.error.kind === "err" &&
@@ -81,7 +102,19 @@ function TradeLogBody() {
           }
         }
         setTrades(tr.data.trades || []);
-        setAccounts(tr.data.accounts || []);
+        setHasMore(!!tr.data.has_more);
+        setNextCursor(tr.data.next_cursor ?? null);
+        if (opens.ok) {
+          setOpenTrades(opens.data.trades || []);
+          if (opens.data.accounts?.length) {
+            setAccounts(opens.data.accounts);
+          }
+        } else {
+          setOpenTrades([]);
+        }
+        if (tr.data.accounts?.length) {
+          setAccounts(tr.data.accounts);
+        }
         refreshAccounts();
         if (vn.ok) {
           setCatalog({
@@ -97,17 +130,55 @@ function TradeLogBody() {
       });
   }, [accountIdParam, prefsReady, refreshAccounts, setAccountId]);
 
+  const loadMore = useCallback(async () => {
+    if (!hasMore || !nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const tr = await fetchTrades(accountIdParam, {
+        limit: PAGE_LIMIT,
+        cursor: nextCursor,
+      });
+      if (!tr.ok) {
+        setLoadingMore(false);
+        return;
+      }
+      const incoming = tr.data.trades || [];
+      setTrades((prev) => {
+        const seen = new Set(prev.map((t) => t.id));
+        const add = incoming.filter((t) => !seen.has(t.id));
+        return [...prev, ...add];
+      });
+      setHasMore(!!tr.data.has_more);
+      setNextCursor(tr.data.next_cursor ?? null);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [accountIdParam, hasMore, nextCursor, loadingMore]);
+
   useEffect(() => {
     load();
   }, [load]);
 
-  // Audit fix: date chrome must NOT hide the blotter.
-  // Pre-change Trade Log showed the full identity/account book with no date
-  // filter. Practice Context date remains for Journal / Reports only.
   useEffect(() => {
     if (state !== "ok" || !deepLinkId || deepLinked) return;
-    const t = trades.find((x) => x.id === deepLinkId);
-    if (!t) return;
+    const t =
+      trades.find((x) => x.id === deepLinkId) ||
+      openTrades.find((x) => x.id === deepLinkId);
+    if (!t) {
+      // May be older than first page — fetch single trade
+      void fetch(`/api/me/trade-log/trades/${deepLinkId}`, {
+        credentials: "same-origin",
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((row: Trade | null) => {
+          if (!row?.id) return;
+          setSelected(row);
+          setSheetMode("edit");
+          setSheetOpen(true);
+          setDeepLinked(true);
+        });
+      return;
+    }
     setSelected(t);
     setSheetMode("edit");
     setSheetOpen(true);
@@ -116,7 +187,7 @@ function TradeLogBody() {
       const el = document.getElementById(`trade-row-${t.id}`);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
-  }, [state, trades, deepLinkId, deepLinked]);
+  }, [state, trades, openTrades, deepLinkId, deepLinked]);
 
   useEffect(() => {
     setDeepLinked(false);
@@ -137,6 +208,43 @@ function TradeLogBody() {
       ? exportAccount.broker
       : "FatTail if unset";
 
+  /** Prefer server opens for accuracy; fall back to client match on loaded pages. */
+  const unmatched = useMemo(() => {
+    if (openTrades.length > 0 || state === "ok") {
+      // openTrades is authoritative when loaded (may be empty book)
+      if (openTrades.length > 0) return openTrades;
+      // Still loading opens failed — derive from page
+      return listUnmatchedOpens(trades);
+    }
+    return listUnmatchedOpens(trades);
+  }, [openTrades, trades, state]);
+
+  /** Sheet matching: loaded pages + known opens (avoid missing open outside page). */
+  const sheetTrades = useMemo(() => {
+    const byId = new Map<number, Trade>();
+    for (const t of trades) byId.set(t.id, t);
+    for (const t of openTrades) byId.set(t.id, t);
+    if (selected) byId.set(selected.id, selected);
+    return [...byId.values()];
+  }, [trades, openTrades, selected]);
+
+  const tableTrades = filterOpenOnly ? unmatched : trades;
+
+  async function trashIds(ids: number[]) {
+    setBulkBusy(true);
+    for (const id of ids) {
+      await fetch(`/api/me/trade-log/trades/${id}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+    }
+    setBulkBusy(false);
+    setSelectedIds(new Set());
+    setSelected(null);
+    setSheetOpen(false);
+    load();
+  }
+
   return (
     <>
       <TradeLogToolbar
@@ -145,6 +253,7 @@ function TradeLogBody() {
         onNewTrade={() => {
           setSheetMode("create");
           setSelected(null);
+          setForceTrashConfirm(false);
           setSheetOpen(true);
         }}
         nativeVenueLabel={nativeVenueLabel}
@@ -156,6 +265,37 @@ function TradeLogBody() {
           window.location.href = exportUrl({ accountId: aid, format: fmt });
         }}
       />
+
+      {selectedIds.size > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm dark:border-red-900 dark:bg-red-950">
+          <span className="font-medium text-red-900 dark:text-red-100">
+            {selectedIds.size} open selected
+          </span>
+          <button
+            type="button"
+            disabled={bulkBusy}
+            className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
+            onClick={() => {
+              if (
+                !window.confirm(
+                  `Trash ${selectedIds.size} open position(s)? Cannot be undone.`,
+                )
+              )
+                return;
+              void trashIds([...selectedIds]);
+            }}
+          >
+            {bulkBusy ? "Trashing…" : "Bulk trash"}
+          </button>
+          <button
+            type="button"
+            className="text-xs underline text-red-800 dark:text-red-200"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear selection
+          </button>
+        </div>
+      )}
 
       {state === "loading" && (
         <p className="mt-8 text-sm text-[var(--color-label-tertiary)]">
@@ -198,16 +338,56 @@ function TradeLogBody() {
 
       {state === "ok" && (
         <TradeLogTable
-          trades={trades}
+          trades={tableTrades}
+          allTradesForIssues={sheetTrades}
+          openCount={unmatched.length}
           selectedId={selected?.id}
+          filterOpenOnly={filterOpenOnly}
+          onFilterOpenOnly={setFilterOpenOnly}
+          hasMore={!filterOpenOnly && hasMore}
+          loadingMore={loadingMore}
+          onLoadMore={() => void loadMore()}
+          selectedIds={selectedIds}
+          onToggleSelect={(id) => {
+            setSelectedIds((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
+            });
+          }}
+          onSelectAllOpens={() => {
+            setSelectedIds(new Set(unmatched.map((t) => t.id)));
+            setFilterOpenOnly(true);
+          }}
           onNewTrade={() => {
             setSheetMode("create");
             setSelected(null);
+            setForceTrashConfirm(false);
             setSheetOpen(true);
           }}
           onSelect={(t) => {
             setSelected(t);
             setSheetMode("edit");
+            setForceTrashConfirm(false);
+            setSheetOpen(true);
+          }}
+          onCloseOpen={(t) => {
+            setSelected(t);
+            setSheetMode("close");
+            setForceTrashConfirm(false);
+            setSheetOpen(true);
+          }}
+          onTrashOpen={(t) => {
+            setSelected(t);
+            setSheetMode("edit");
+            setForceTrashConfirm(true);
+            setSheetOpen(true);
+          }}
+          onTrashClose={(t) => {
+            setSelected(t);
+            setSheetMode("edit");
+            setForceTrashConfirm(true);
             setSheetOpen(true);
           }}
         />
@@ -219,15 +399,26 @@ function TradeLogBody() {
         trade={
           sheetMode === "edit" || sheetMode === "close" ? selected : null
         }
-        trades={trades}
+        trades={sheetTrades}
         accounts={mergedAccounts}
         catalog={catalog}
         defaultAccountId={defaultAcct}
-        onClose={() => setSheetOpen(false)}
+        forceTrashConfirm={forceTrashConfirm}
+        onClose={() => {
+          setSheetOpen(false);
+          setForceTrashConfirm(false);
+        }}
         onSaved={() => load()}
+        onOpenTrade={(t) => {
+          setSelected(t);
+          setSheetMode("edit");
+          setForceTrashConfirm(false);
+          setSheetOpen(true);
+        }}
         onRequestCloseFromOpen={(openTrade) => {
           setSelected(openTrade);
           setSheetMode("close");
+          setForceTrashConfirm(false);
           setSheetOpen(true);
         }}
         onRequestImport={() => {
@@ -237,7 +428,52 @@ function TradeLogBody() {
         onSelectOpenForClose={(openTrade) => {
           setSelected(openTrade);
           setSheetMode("close");
+          setForceTrashConfirm(false);
           setSheetOpen(true);
+        }}
+        onTrashed={() => {
+          setSelected(null);
+          setSheetOpen(false);
+          setForceTrashConfirm(false);
+          load();
+        }}
+        onDuplicateOpen={(openTrade) => {
+          const draft = buildCloseDraftFromOpen(openTrade);
+          // Re-open as create with structure from open (as TO_OPEN)
+          saveTradeLogLastUsed({
+            account_id: openTrade.account_id,
+            strategy: openTrade.strategy,
+            underlier:
+              openTrade.legs[0]?.underlier ||
+              openTrade.legs[0]?.symbol ||
+              "SPX",
+          });
+          setSelected(null);
+          setSheetMode("create");
+          setForceTrashConfirm(false);
+          setSheetOpen(true);
+          // Store template in sessionStorage for sheet to pick up
+          try {
+            sessionStorage.setItem(
+              "ft.tradeLog.duplicateTemplate",
+              JSON.stringify({
+                strategy: openTrade.strategy,
+                account_id: openTrade.account_id,
+                legs: openTrade.legs.map((l) => ({
+                  ...l,
+                  pos_effect: "TO_OPEN",
+                  fill_price: 0,
+                })),
+                asset_class: openTrade.asset_class,
+                net_side: openTrade.net_side,
+                label: shortStructureLabel(openTrade),
+                // invert draft sides back - use open legs as TO_OPEN
+                from: draft.source_open_id,
+              }),
+            );
+          } catch {
+            /* ignore */
+          }
         }}
       />
       <ImportSheet

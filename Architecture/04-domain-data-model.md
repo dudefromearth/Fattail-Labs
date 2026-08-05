@@ -37,8 +37,12 @@
 | `029_resources` | First-class `resources` + `resource_versions` + `course_resource_links` (Resource Spec v1.0) |
 | `046_retrospectives` | `member_retrospectives` (Journal Retrospective) |
 | `047_retrospective_r1b` | `member_habit_plans` + `identities.retrospective_pnl_expanded` |
+| `078`–`080` | Strategy Lab + help system (see Strategy Lab Specs) |
+| `081_trade_log_entry_source` | `member_trade_log_trades.entry_source` + `trash_reason` (manual management) |
 
 **Rule:** never edit applied migrations; always append.
+
+**Practice / Trade Log tables:** `member_trade_log_accounts`, `member_trade_log_trades` (incl. `entry_source`), `member_trade_log_legs`, import batches — see Trade Log Spec §4 and Architecture/15.
 
 ---
 

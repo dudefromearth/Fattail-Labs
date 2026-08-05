@@ -522,6 +522,7 @@ v1 may ship **inline graphs only** without full library UI; Spec reserves the mo
 
 | Surface | Integration |
 |---------|-------------|
+| **Trade Log** | When runtime (or future bots) write fills to Practice Trade Log, stamp **`entry_source=automated`** — never `import`, never silent `manual`. Import adapters remain **`import`**. See Trade Log Spec §4.4 / Arch 15. |
 | **Journal** | Optional: link decision_log day to practice date; never auto-paste P&L theater |
 | **Retrospective** | Period: runner stop reasons, envelope blocks, process adherence — not expectancy hero |
 | **Habit Catalog** | Operator habits (size reason, stand-down) evidenced when deploy actions occur |

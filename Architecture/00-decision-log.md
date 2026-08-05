@@ -4,6 +4,38 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-05 — DL-216b Trade Log `entry_source`: manual · import · automated
+
+**Decision:** Three **distinct** provenance values on `member_trade_log_trades.entry_source`:
+
+| Value | Meaning |
+|-------|---------|
+| **`manual`** | Member typed (structure form / legs) |
+| **`import`** | File or paste adapters (ToS, CSV, canonical) |
+| **`automated`** | Strategy Lab process runtime or other Labs automations |
+
+**Never** stamp Strategy Lab fills as `import`, or file imports as `automated`. Legacy
+`machine` → `automated` (migration **082**, normalizer synonym).
+
+**Rationale:** Coach: import and automation are different audit/policy channels.
+Automated fills will come from Strategy Lab (and future bots), not from ToS paste.
+
+## 2026-08-05 — DL-216 Trade Log manual management (structure entry · close · trash)
+
+**Decision:** Manual trade entry/close/trash is a first-class Practice surface. Spec
+**§16** of Trade Log v1.1 and design architecture **`Architecture/15-trade-log-manual-management.md`**
+are as-built authority. Structure-first create; open strip + row Close/Trash; close
+pairing gates (orphan, account, units, drift); universal trash for now; `entry_source`
+via migration **081** (refined in **DL-216b**). Client match helpers mirror
+`trade_log_domain` and must not fork structure-key rules.
+
+**Rationale:** Members re-enter multi-leg books by hand; leg-by-leg default was too
+heavy. Honest open→close pairing and trash prevent silent book corruption without
+profit theater. Provenance column enables later “manual-only trash” without guesswork.
+
+**Code:** `web/lib/tradeLog.ts` · `TradeSheet` · `TradeLogTable` · `tradeLogPrefs.ts` ·
+`migrations/081_trade_log_entry_source.sql` · create/import stamp `entry_source`.
+
 ## 2026-08-04 — DL-211 Member Help System (DB-backed help desk)
 
 **Decision:** New in-app help desk. Members ask questions (optional image upload),

@@ -271,8 +271,8 @@ async def import_commit(request: Request) -> dict:
                          (identity_id, account_id, exec_at, asset_class, strategy,
                           order_type, net_price, net_side, setup_md, plan_md, rules_md,
                           adherence, deviation_md, lesson_md, pnl_amount,
-                          external_adapter, external_order_id)
-                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                          external_adapter, external_order_id, entry_source)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                     (
                         iid,
                         account_id,
@@ -291,6 +291,7 @@ async def import_commit(request: Request) -> dict:
                         proc["pnl_amount"],
                         adapter_id,
                         ext,
+                        "import",
                     ),
                 )
                 tid = int(cur.lastrowid)

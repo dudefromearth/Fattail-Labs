@@ -3,17 +3,33 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Account, Catalog, Leg, Trade } from "@/lib/tradeLog";
 import {
+  TRASH_REASONS,
   buildCloseDraftFromOpen,
   buildStructureLegs,
   defaultNetSideForStrategy,
   describeOpenTrade,
+  entrySourceLabel,
+  canDeleteTrade,
+  findOpenForCloseDraft,
   findPairedClose,
+  findPairedOpen,
   formatStructurePreview,
+  isManualEntry,
   listUnmatchedOpens,
+  netDollarHint,
+  normalizeEntrySource,
+  shortStructureLabel,
   strategySupportsStructureSimple,
+  positionBadge,
+  structureDriftWarnings,
   templateLegs,
   tradeIsCloseFill,
+  tradeUnitQty,
 } from "@/lib/tradeLog";
+import {
+  loadTradeLogLastUsed,
+  saveTradeLogLastUsed,
+} from "@/lib/tradeLogPrefs";
 
 const field =
   "mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-1.5 text-sm text-[var(--color-label)]";
@@ -51,13 +67,39 @@ type FormState = {
   asset_price: string;
 };
 
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+/** Format for `<input type="datetime-local">` — past dates allowed (backdating). */
 function toLocalInput(iso: string | null | undefined): string {
   if (!iso) {
     const d = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   }
-  return iso.slice(0, 16);
+  // Naive wall-clock from API (space or T); do not force UTC shift for stored naive times
+  const normalized = String(iso).trim().replace(" ", "T").replace(/Z$/i, "");
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(normalized)) {
+    return normalized.slice(0, 16);
+  }
+  const d = new Date(iso);
+  if (!Number.isNaN(d.getTime())) {
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  }
+  return toLocalInput(null);
+}
+
+function formatExecDisplay(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const s = toLocalInput(iso);
+  return s.replace("T", " ");
+}
+
+/** Body value for API — always include seconds for parse reliability. */
+function execAtForApi(local: string): string {
+  if (!local) return local;
+  if (local.length === 16) return `${local}:00`; // YYYY-MM-DDTHH:mm
+  return local;
 }
 
 function todayYmd(): string {
@@ -102,10 +144,12 @@ function emptyForm(accountId: number | "", strategy = "BUTTERFLY"): FormState {
 }
 
 function fromTrade(t: Trade): FormState {
-  const first = t.legs[0];
-  const strikes = t.legs
+  const legs = Array.isArray(t.legs) ? t.legs : [];
+  const first = legs[0];
+  const strikes = legs
     .map((l) => l.strike)
-    .filter((s): s is number => s != null && !Number.isNaN(s));
+    .filter((s): s is number => s != null && !Number.isNaN(Number(s)))
+    .map((s) => Number(s));
   const center =
     strikes.length > 0
       ? String(
@@ -121,7 +165,7 @@ function fromTrade(t: Trade): FormState {
   return {
     account_id: t.account_id,
     exec_at: toLocalInput(t.exec_at),
-    strategy: t.strategy,
+    strategy: t.strategy || "CUSTOM",
     asset_class: t.asset_class || "equity_option",
     order_type: t.order_type || "LMT",
     net_price: t.net_price != null ? String(t.net_price) : "",
@@ -133,7 +177,7 @@ function fromTrade(t: Trade): FormState {
     deviation_md: t.deviation_md || "",
     lesson_md: t.lesson_md || "",
     pnl_amount: t.pnl_amount != null ? String(t.pnl_amount) : "",
-    legs: t.legs.length ? t.legs.map((l) => ({ ...l })) : [],
+    legs: legs.length ? legs.map((l) => ({ ...l })) : [],
     underlier: first?.underlier || first?.symbol || "SPX",
     expiry: first?.expiry?.slice(0, 10) || todayYmd(),
     center_strike: center,
@@ -227,6 +271,10 @@ export default function TradeSheet({
   onRequestCloseFromOpen,
   onRequestImport,
   onSelectOpenForClose,
+  onTrashed,
+  onDuplicateOpen,
+  onOpenTrade,
+  forceTrashConfirm,
 }: {
   open: boolean;
   mode: SheetMode;
@@ -240,28 +288,62 @@ export default function TradeSheet({
   onRequestCloseFromOpen: (openTrade: Trade) => void;
   onRequestImport: () => void;
   onSelectOpenForClose: (openTrade: Trade) => void;
+  /** After hard-delete of an open (or close) fill. */
+  onTrashed: () => void;
+  /** Prefill new open from this open's structure. */
+  onDuplicateOpen?: (openTrade: Trade) => void;
+  /** Jump to another fill (e.g. paired close that must be deleted first). */
+  onOpenTrade?: (t: Trade) => void;
+  /** When parent opens sheet solely to trash (row action). */
+  forceTrashConfirm?: boolean;
 }) {
   const [form, setForm] = useState<FormState>(() =>
     emptyForm(defaultAccountId ?? ""),
   );
   const [entryUi, setEntryUi] = useState<EntryUi>("structure");
+  /** Legs editor collapsed by default; Order/Net/Debit live above it. */
+  const [showLegsAdvanced, setShowLegsAdvanced] = useState(false);
+  /** Once expanded, save uses form.legs even if section is collapsed again. */
+  const [legsTouched, setLegsTouched] = useState(false);
   const [showProcess, setShowProcess] = useState(false);
   const [venue, setVenue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createContinueNew, setCreateContinueNew] = useState(false);
+  /** Confirm trash of unmatched open (universal for now; later gate by source). */
+  const [trashConfirm, setTrashConfirm] = useState(false);
+  const [trashReason, setTrashReason] = useState("");
+  const [allowOrphanClose, setAllowOrphanClose] = useState(false);
+  const [allowAccountMismatch, setAllowAccountMismatch] = useState(false);
+  const [allowPartialUnits, setAllowPartialUnits] = useState(false);
+  const [allowDrift, setAllowDrift] = useState(false);
 
   const unmatchedOpens = listUnmatchedOpens(trades);
   const pairedClose =
-    mode === "edit" && trade ? findPairedClose(trades, trade.id) : null;
+    mode === "edit" && trade && !tradeIsCloseFill(trade)
+      ? findPairedClose(trades, trade.id)
+      : null;
+  const pairedOpen =
+    mode === "edit" && trade && tradeIsCloseFill(trade)
+      ? findPairedOpen(trades, trade.id)
+      : null;
   const isUnmatchedOpen =
     mode === "edit" &&
     trade &&
     !tradeIsCloseFill(trade) &&
     !pairedClose &&
     (trade.legs || []).length > 0;
+  const deleteGate =
+    mode === "edit" && trade
+      ? canDeleteTrade(trade, trades)
+      : { ok: true as const };
   const showCreateOpenGate =
     mode === "create" && unmatchedOpens.length > 0 && !createContinueNew;
+  /** Manual fills: emphasize full date-time edit / backdate. */
+  const manualDatetimeEditable =
+    mode === "create" ||
+    mode === "close" ||
+    (mode === "edit" && trade && isManualEntry(trade));
 
   useEffect(() => {
     if (!open) return;
@@ -269,23 +351,79 @@ export default function TradeSheet({
     setVenue("");
     setCreateContinueNew(false);
     setShowProcess(false);
+    setShowLegsAdvanced(false);
+    setLegsTouched(false);
+    // Blotter "Delete" sets forceTrashConfirm — land on confirm step immediately
+    setTrashConfirm(!!forceTrashConfirm);
+    setTrashReason("");
+    setAllowOrphanClose(false);
+    setAllowAccountMismatch(false);
+    setAllowPartialUnits(false);
+    setAllowDrift(false);
+    const last = loadTradeLogLastUsed();
     if (mode === "edit" && trade) {
       setForm(fromTrade(trade));
-      setEntryUi("legs");
+      setEntryUi(
+        strategySupportsStructureSimple(trade.strategy)
+          ? "structure"
+          : "legs",
+      );
     } else if (mode === "close" && trade) {
       setForm(formFromCloseDraft(trade, defaultAccountId ?? ""));
-      // Close: simple net + time; structure already in legs
       setEntryUi(
         strategySupportsStructureSimple(trade.strategy)
           ? "structure"
           : "legs",
       );
     } else {
-      const f = emptyForm(defaultAccountId ?? accounts[0]?.id ?? "");
+      type DupT = {
+        strategy?: string;
+        account_id?: number;
+        legs?: Leg[];
+        asset_class?: string;
+        net_side?: string | null;
+      };
+      let dup: DupT | null = null;
+      try {
+        const raw = sessionStorage.getItem("ft.tradeLog.duplicateTemplate");
+        if (raw) {
+          dup = JSON.parse(raw) as DupT;
+          sessionStorage.removeItem("ft.tradeLog.duplicateTemplate");
+        }
+      } catch {
+        dup = null;
+      }
+      const f = emptyForm(
+        dup?.account_id ??
+          last.account_id ??
+          defaultAccountId ??
+          accounts[0]?.id ??
+          "",
+        dup?.strategy || last.strategy || "BUTTERFLY",
+      );
+      if (last.underlier) f.underlier = last.underlier;
+      if (last.right) f.right = last.right;
+      if (last.width) f.width = last.width;
+      if (last.units) f.units = last.units;
+      if (dup?.legs?.length) {
+        f.legs = dup.legs.map((l) => ({ ...l, pos_effect: "TO_OPEN" as const }));
+        f.asset_class = dup.asset_class || f.asset_class;
+        f.net_side = dup.net_side || f.net_side;
+        f.net_price = "";
+        const first = dup.legs[0];
+        if (first?.underlier) f.underlier = first.underlier;
+        if (first?.expiry) f.expiry = first.expiry.slice(0, 10);
+        if (first?.right === "PUT" || first?.right === "CALL")
+          f.right = first.right;
+        setEntryUi("legs");
+        setLegsTouched(true);
+        setShowLegsAdvanced(true);
+      } else {
+        setEntryUi(defaultEntryUi(f.strategy));
+      }
       setForm(f);
-      setEntryUi(defaultEntryUi(f.strategy));
     }
-  }, [open, mode, trade, defaultAccountId, accounts]);
+  }, [open, mode, trade, defaultAccountId, accounts, forceTrashConfirm]);
 
   const selectedAccount = accounts.find(
     (a) => a.id === (form.account_id === "" ? defaultAccountId : form.account_id),
@@ -321,10 +459,117 @@ export default function TradeSheet({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        if (!showCreateOpenGate) void save();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- save uses latest form via closure on each open session
+  }, [open, onClose, showCreateOpenGate]);
+
+  const closeMatchOpen = useMemo(() => {
+    if (mode !== "close" || !trade) return null;
+    const draftLegs =
+      showLegsAdvanced || legsTouched
+        ? form.legs
+        : form.legs.length
+          ? form.legs
+          : structurePreviewLegs;
+    return findOpenForCloseDraft(trades, {
+      account_id:
+        form.account_id === ""
+          ? trade.account_id
+          : Number(form.account_id),
+      strategy: form.strategy || trade.strategy,
+      legs: draftLegs,
+      exec_at: execAtForApi(form.exec_at),
+    });
+  }, [
+    mode,
+    trade,
+    trades,
+    form,
+    showLegsAdvanced,
+    legsTouched,
+    structurePreviewLegs,
+  ]);
+
+  const driftWarnings = useMemo(() => {
+    if (mode !== "close" || !trade) return [];
+    return structureDriftWarnings(trade, form.legs);
+  }, [mode, trade, form.legs]);
+
+  // Derived UI flags — must stay above any early return (Rules of Hooks).
+  const strategies = catalog?.strategies || [];
+  const title =
+    mode === "edit" && trade
+      ? tradeIsCloseFill(trade)
+        ? `Close · #${trade.id}`
+        : isUnmatchedOpen
+          ? `Open · ${shortStructureLabel(trade)}`
+          : `Edit · #${trade.id}`
+      : mode === "close" && trade
+        ? `Close · #${trade.id}`
+        : "New trade";
+  const dollarHint = netDollarHint(
+    form.net_price === "" ? null : Number(form.net_price),
+    form.asset_class,
+    Number(form.units) || 1,
+  );
+  const showStructureFields =
+    entryUi === "structure" &&
+    strategySupportsStructureSimple(form.strategy) &&
+    mode !== "close";
+  const showCloseSimple = mode === "close";
+  const showOrderNetFields =
+    entryUi !== "simple_asset" &&
+    (showStructureFields ||
+      showCloseSimple ||
+      entryUi === "legs" ||
+      (mode === "edit" && !!trade));
+
+  const checklist = useMemo(() => {
+    const items: { ok: boolean; label: string }[] = [];
+    const acct =
+      form.account_id === "" ? defaultAccountId : Number(form.account_id);
+    items.push({ ok: !!acct, label: "Account" });
+    items.push({
+      ok: !needsVenue || !!venue,
+      label: "Venue (first use)",
+    });
+    items.push({ ok: !!form.exec_at, label: "Exec time" });
+    if (showStructureFields) {
+      items.push({
+        ok:
+          form.center_strike !== "" &&
+          !Number.isNaN(Number(form.center_strike)),
+        label: "Center strike",
+      });
+      if (form.strategy !== "SINGLE" && form.strategy !== "STRADDLE") {
+        items.push({
+          ok: form.width !== "" && Number(form.width) > 0,
+          label: "Width",
+        });
+      }
+      items.push({ ok: !!form.expiry, label: "Expiration" });
+    }
+    if (entryUi !== "simple_asset") {
+      items.push({
+        ok: form.net_price !== "" && !Number.isNaN(Number(form.net_price)),
+        label: "Net debit/credit",
+      });
+    }
+    return items;
+  }, [
+    form,
+    defaultAccountId,
+    needsVenue,
+    venue,
+    showStructureFields,
+    entryUi,
+  ]);
 
   if (!open) return null;
 
@@ -360,9 +605,18 @@ export default function TradeSheet({
     if (entryUi === "simple_asset") {
       return buildAssetLegs(form);
     }
+    // Advanced legs were used → use explicit leg list
+    if (legsTouched || showLegsAdvanced) {
+      if (mode === "close") {
+        return form.legs.map((l) => ({
+          ...l,
+          pos_effect: "TO_CLOSE" as const,
+        }));
+      }
+      return form.legs;
+    }
     if (entryUi === "structure" && strategySupportsStructureSimple(form.strategy)) {
       if (mode === "close") {
-        // Keep reversed structure; only prices/time change at trade level
         return form.legs.map((l) => ({
           ...l,
           pos_effect: "TO_CLOSE",
@@ -407,6 +661,42 @@ export default function TradeSheet({
     return form.legs;
   }
 
+  function openLegsAdvanced() {
+    const legs =
+      structurePreviewLegs.length > 0 ? structurePreviewLegs : form.legs;
+    setForm((f) => ({
+      ...f,
+      legs: !legsTouched && legs.length ? legs : f.legs,
+    }));
+    setLegsTouched(true);
+    setShowLegsAdvanced(true);
+  }
+
+  async function trashOpen() {
+    if (!trade || mode !== "edit") return;
+    const gate = canDeleteTrade(trade, trades);
+    if (!gate.ok) {
+      setError(gate.reason || "Cannot delete this fill yet.");
+      setTrashConfirm(false);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const r = await fetch(`/api/me/trade-log/trades/${trade.id}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+    });
+    setBusy(false);
+    if (!r.ok) {
+      setError(await r.text().catch(() => "Could not trash trade"));
+      setTrashConfirm(false);
+      return;
+    }
+    setTrashConfirm(false);
+    onTrashed();
+    onClose();
+  }
+
   async function save() {
     setBusy(true);
     setError(null);
@@ -422,7 +712,7 @@ export default function TradeSheet({
       setBusy(false);
       return;
     }
-    if (form.net_price === "" && entryUi !== "legs") {
+    if (form.net_price === "" && entryUi !== "simple_asset") {
       setError(
         mode === "close"
           ? "Enter net credit (or debit) for the close."
@@ -442,9 +732,60 @@ export default function TradeSheet({
       return;
     }
 
+    if (mode === "close" && trade) {
+      if (Number(account_id) !== trade.account_id && !allowAccountMismatch) {
+        setError(
+          "Close account differs from open account. Confirm mismatch below or fix account.",
+        );
+        setBusy(false);
+        return;
+      }
+      const matched = findOpenForCloseDraft(trades, {
+        account_id: Number(account_id),
+        strategy: form.strategy || trade.strategy,
+        legs,
+        exec_at: execAtForApi(form.exec_at),
+      });
+      if (!matched && !allowOrphanClose) {
+        setError(
+          "No open match for this close structure. Confirm orphan close below, or fix structure.",
+        );
+        setBusy(false);
+        return;
+      }
+      if (matched && matched.id !== trade.id && !allowOrphanClose) {
+        setError(
+          `Would pair with open #${matched.id}, not #${trade.id}. Confirm or fix.`,
+        );
+        setBusy(false);
+        return;
+      }
+      const openUnits = tradeUnitQty(trade);
+      const closeUnits = tradeUnitQty({ ...trade, legs });
+      if (closeUnits !== openUnits && !allowPartialUnits) {
+        setError(
+          `Close units (${closeUnits}) ≠ open units (${openUnits}). Full close only unless you confirm partial/different size.`,
+        );
+        setBusy(false);
+        return;
+      }
+      const drifts = structureDriftWarnings(trade, legs);
+      if (drifts.length && !allowDrift) {
+        setError(drifts[0] + " Confirm drift below or restore structure.");
+        setBusy(false);
+        return;
+      }
+    }
+
+    if (!form.exec_at || form.exec_at.length < 16) {
+      setError("Enter execution date and time (backdating is allowed).");
+      setBusy(false);
+      return;
+    }
+
     const body: Record<string, unknown> = {
       account_id,
-      exec_at: form.exec_at.length === 16 ? `${form.exec_at}:00` : form.exec_at,
+      exec_at: execAtForApi(form.exec_at),
       strategy: form.strategy,
       asset_class: form.asset_class,
       order_type: form.order_type,
@@ -457,11 +798,15 @@ export default function TradeSheet({
       deviation_md: form.deviation_md,
       lesson_md: form.lesson_md,
       pnl_amount: form.pnl_amount === "" ? null : Number(form.pnl_amount),
+      entry_source: "manual",
       legs: legs.map((l, i) => ({
         leg_index: i,
         side: l.side,
         quantity: Number(l.quantity),
-        pos_effect: l.pos_effect || null,
+        pos_effect:
+          mode === "close"
+            ? "TO_CLOSE"
+            : l.pos_effect || (mode === "create" ? "TO_OPEN" : null),
         asset_class: l.asset_class || form.asset_class,
         underlier: l.underlier || null,
         symbol: l.symbol || null,
@@ -475,6 +820,14 @@ export default function TradeSheet({
       })),
     };
     if (needsVenue && venue) body.broker = venue;
+    saveTradeLogLastUsed({
+      account_id: Number(account_id),
+      underlier: form.underlier,
+      right: form.right,
+      width: form.width,
+      strategy: form.strategy,
+      units: form.units,
+    });
     const isEdit = mode === "edit" && trade;
     const url = isEdit
       ? `/api/me/trade-log/trades/${trade!.id}`
@@ -495,22 +848,6 @@ export default function TradeSheet({
     onClose();
   }
 
-  const strategies = catalog?.strategies || [];
-  const title =
-    mode === "edit"
-      ? "Edit trade"
-      : mode === "close"
-        ? "Enter closing order"
-        : "New trade";
-
-  const showStructureFields =
-    entryUi === "structure" &&
-    strategySupportsStructureSimple(form.strategy) &&
-    mode !== "close";
-
-  const showCloseSimple =
-    mode === "close" && entryUi !== "legs";
-
   return (
     <>
       <button
@@ -525,113 +862,361 @@ export default function TradeSheet({
         aria-label={title}
         className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-[var(--color-separator)] bg-[var(--color-surface)] shadow-2xl"
       >
-        <header className="flex items-center justify-between border-b border-[var(--color-separator)] px-4 py-3">
-          <h2 className="text-base font-semibold text-[var(--color-label)]">
-            {title}
-          </h2>
+        <header className="flex items-start justify-between gap-2 border-b border-[var(--color-separator)] px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-[var(--color-label)]">
+              {title}
+            </h2>
+            {trade && (mode === "edit" || mode === "close") && (
+              <p className="mt-0.5 text-[11px] text-[var(--color-label-tertiary)]">
+                <span className="font-semibold text-[var(--color-label-secondary)]">
+                  {entrySourceLabel(trade.entry_source)}
+                </span>
+                {normalizeEntrySource(trade.entry_source) === "import"
+                  ? " (file/paste)"
+                  : normalizeEntrySource(trade.entry_source) === "automated"
+                    ? " (Strategy Lab / automation)"
+                    : " (typed)"}
+                {trade.created_at
+                  ? ` · Created ${trade.created_at.slice(0, 16).replace("T", " ")}`
+                  : ""}
+                {trade.updated_at
+                  ? ` · Edited ${trade.updated_at.slice(0, 16).replace("T", " ")}`
+                  : ""}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full px-2 py-1 text-sm text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
+            className="shrink-0 rounded-full px-2 py-1 text-sm text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
           >
             ✕
           </button>
         </header>
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 text-sm">
-          {showCreateOpenGate && (
-            <div className="rounded-xl border-2 border-[var(--color-tint)] bg-[var(--color-fill)] p-4">
-              <p className="text-base font-bold leading-snug text-[var(--color-label)]">
-                You have {unmatchedOpens.length} open position
-                {unmatchedOpens.length === 1 ? "" : "s"}. Enter a closing order?
-              </p>
-              <p className="mt-2 text-xs text-[var(--color-label-secondary)]">
-                Closing keeps the structure matched for Reports and Journal.
-              </p>
-              <ul className="mt-3 max-h-40 space-y-1.5 overflow-y-auto">
-                {unmatchedOpens.map((o) => (
-                  <li key={o.id}>
+        <div className="flex-1 overflow-y-auto text-sm">
+          {/* —— ACTIONS (top) —— */}
+          {(showCreateOpenGate ||
+            isUnmatchedOpen ||
+            (mode === "close" && trade) ||
+            (mode === "edit" && trade && pairedClose) ||
+            (mode === "edit" && trade && tradeIsCloseFill(trade)) ||
+            (mode === "edit" && trade && trashConfirm)) && (
+            <section className="px-4 pt-3 pb-1" aria-labelledby="tl-sheet-actions-h">
+              <h3
+                id="tl-sheet-actions-h"
+                className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-label-secondary)]"
+              >
+                Actions
+              </h3>
+              <div className="mt-2 space-y-3">
+                {showCreateOpenGate && (
+                  <div className="rounded-xl border-2 border-[var(--color-tint)] bg-[var(--color-fill)] p-4">
+                    <p className="text-base font-bold leading-snug text-[var(--color-label)]">
+                      You have {unmatchedOpens.length} open position
+                      {unmatchedOpens.length === 1 ? "" : "s"}. Enter a closing
+                      order?
+                    </p>
+                    <p className="mt-2 text-xs text-[var(--color-label-secondary)]">
+                      Closing keeps the structure matched for Reports and
+                      Journal.
+                    </p>
+                    <ul className="mt-3 max-h-40 space-y-1.5 overflow-y-auto">
+                      {unmatchedOpens.map((o) => (
+                        <li key={o.id}>
+                          <button
+                            type="button"
+                            onClick={() => onSelectOpenForClose(o)}
+                            className="w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-left text-xs font-medium text-[var(--color-label)] hover:border-[var(--color-tint)]"
+                          >
+                            Close: {describeOpenTrade(o)}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-3 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onRequestImport();
+                        }}
+                        className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-xs font-medium text-[var(--color-label)] hover:bg-[var(--color-canvas)]"
+                      >
+                        Paste closing order from thinkorswim…
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCreateContinueNew(true)}
+                        className="text-xs text-[var(--color-label-secondary)] underline"
+                      >
+                        No — create a new opening trade
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {isUnmatchedOpen && trade && (
+                  <div className="rounded-xl border-2 border-[var(--color-tint)] bg-[var(--color-fill)] p-4">
+                    <p className="text-base font-bold leading-snug text-[var(--color-label)]">
+                      What do you want to do with this open?
+                    </p>
+                    <p className="mt-1.5 text-xs text-[var(--color-label-secondary)]">
+                      Close it, paste a ToS close, duplicate structure, or delete
+                      this TO OPEN (only when no close exists).
+                    </p>
+                    <div className="mt-3 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onRequestCloseFromOpen(trade)}
+                        className="rounded-full bg-[var(--color-tint)] px-4 py-2.5 text-sm font-semibold text-[var(--color-on-tint)]"
+                      >
+                        Enter closing order
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onRequestImport();
+                        }}
+                        className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-xs font-medium text-[var(--color-label)] hover:bg-[var(--color-canvas)]"
+                      >
+                        Paste closing order from thinkorswim…
+                      </button>
+                      {onDuplicateOpen && (
+                        <button
+                          type="button"
+                          onClick={() => onDuplicateOpen(trade)}
+                          className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-xs font-medium text-[var(--color-label)] hover:bg-[var(--color-canvas)]"
+                        >
+                          Duplicate as new open (template)
+                        </button>
+                      )}
+                      {/* Unmatched open: delete allowed (close-first rule already satisfied) */}
+                      {!trashConfirm ? (
+                        <button
+                          type="button"
+                          onClick={() => setTrashConfirm(true)}
+                          className="rounded-full border border-red-300 px-4 py-2 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950"
+                        >
+                          Delete this TO OPEN
+                        </button>
+                      ) : (
+                        <div className="rounded-lg border border-red-300 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
+                          <p className="text-xs font-semibold text-red-800 dark:text-red-200">
+                            Delete open #{trade.id} permanently?
+                          </p>
+                          <p className="mt-1 text-[11px] text-red-700 dark:text-red-300">
+                            No paired close — safe to remove this open. Cannot be
+                            undone.
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {TRASH_REASONS.map((r) => (
+                              <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => setTrashReason(r.id)}
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                  trashReason === r.id
+                                    ? "bg-red-700 text-white"
+                                    : "bg-white/80 text-red-900 dark:bg-black/30 dark:text-red-100"
+                                }`}
+                              >
+                                {r.label}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void trashOpen()}
+                              className="rounded-full bg-red-600 px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                            >
+                              {busy ? "Deleting…" : "Yes, delete open"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => {
+                                setTrashConfirm(false);
+                                setTrashReason("");
+                              }}
+                              className="rounded-full px-3 py-1.5 text-xs text-[var(--color-label-secondary)]"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Paired open: must delete TO CLOSE first */}
+                {mode === "edit" && trade && pairedClose && (
+                  <div className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4 text-xs dark:bg-amber-950">
+                    <p className="text-sm font-bold text-amber-950 dark:text-amber-100">
+                      TO OPEN paired with TO CLOSE #{pairedClose.id}
+                    </p>
+                    <p className="mt-1.5 text-amber-900 dark:text-amber-200">
+                      You must <strong>delete the TO CLOSE</strong> fill first.
+                      Only after that close is gone can you delete this TO OPEN.
+                    </p>
+                    <div className="mt-3 flex flex-col gap-2">
+                      {onOpenTrade && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenTrade(pairedClose)}
+                          className="rounded-full bg-amber-700 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+                        >
+                          Open TO CLOSE #{pairedClose.id} to delete it
+                        </button>
+                      )}
+                      <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90">
+                        Delete of this open is blocked until the close is removed.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {mode === "edit" && trade && tradeIsCloseFill(trade) && (
+                    <div className="rounded-lg border border-amber-400 bg-amber-50 p-3 text-xs dark:bg-amber-950">
+                      <p className="font-semibold text-amber-900 dark:text-amber-100">
+                        TO CLOSE fill
+                        {positionBadge(trade, trades) === "complete"
+                          ? " · paired with an open"
+                          : " · orphan"}
+                      </p>
+                      <p className="mt-1 text-amber-800 dark:text-amber-200">
+                        Delete this close first if you want to remove the whole
+                        position. After it is gone, the matching TO OPEN can be
+                        deleted.
+                      </p>
+                      {/* forceTrashConfirm from blotter Delete → land on confirm */}
+                      {!trashConfirm ? (
+                        <button
+                          type="button"
+                          className="mt-2 w-full rounded-full border border-red-400 bg-white px-4 py-2.5 text-sm font-semibold text-red-800 dark:bg-transparent dark:text-red-200"
+                          onClick={() => setTrashConfirm(true)}
+                        >
+                          Delete this TO CLOSE
+                        </button>
+                      ) : (
+                        <div className="mt-2 space-y-3 rounded-lg border-2 border-red-500 bg-red-50 p-3 dark:bg-red-950">
+                          <p className="text-sm font-bold text-red-900 dark:text-red-100">
+                            Confirm delete of TO CLOSE #{trade.id}?
+                          </p>
+                          <p className="text-[11px] text-red-800 dark:text-red-200">
+                            The paired open will show as open again. You can
+                            delete that open only after this close is gone.
+                          </p>
+                          <div className="flex flex-col gap-2">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              className="w-full rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                              onClick={() => void trashOpen()}
+                            >
+                              {busy ? "Deleting…" : "Yes, delete this TO CLOSE"}
+                            </button>
+                            <button
+                              type="button"
+                              className="text-xs text-[var(--color-label-secondary)] underline"
+                              onClick={() => setTrashConfirm(false)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                {mode === "close" && trade && (
+                  <div className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-xs text-[var(--color-label-secondary)]">
+                    <p className="font-semibold text-[var(--color-label)]">
+                      Closing open #{trade.id}
+                    </p>
+                    <p className="mt-0.5">{describeOpenTrade(trade)}</p>
+                    <p className="mt-1 font-mono text-[11px] text-[var(--color-label)]">
+                      {formatStructurePreview(form.legs)}
+                    </p>
+                    <p className="mt-2 font-medium text-[var(--color-label)]">
+                      {closeMatchOpen
+                        ? closeMatchOpen.id === trade.id
+                          ? `Will pair with open #${closeMatchOpen.id} ✓`
+                          : `Would pair with open #${closeMatchOpen.id} (not #${trade.id})`
+                        : "No open match — orphan close unless fixed"}
+                    </p>
+                    {driftWarnings.length > 0 && (
+                      <p className="mt-1 text-amber-700 dark:text-amber-300">
+                        {driftWarnings[0]}
+                      </p>
+                    )}
                     <button
                       type="button"
-                      onClick={() => onSelectOpenForClose(o)}
-                      className="w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-left text-xs font-medium text-[var(--color-label)] hover:border-[var(--color-tint)]"
+                      className="mt-2 text-xs text-[var(--color-tint)] underline"
+                      onClick={() => {
+                        onClose();
+                        onRequestImport();
+                      }}
                     >
-                      Close: {describeOpenTrade(o)}
+                      Prefer paste from thinkorswim
                     </button>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* —— RULE + TRADE DETAILS (bottom) —— */}
+          {!showCreateOpenGate && (
+            <>
+              {(isUnmatchedOpen ||
+                (mode === "close" && trade) ||
+                (mode === "edit" && trade && pairedClose) ||
+                (mode === "edit" && trade && tradeIsCloseFill(trade)) ||
+                (mode === "edit" && trade && trashConfirm)) && (
+                <hr
+                  className="mx-4 my-3 border-0 border-t-2 border-[var(--color-separator)]"
+                  aria-hidden
+                />
+              )}
+
+              <section
+                className="space-y-3 px-4 pb-3"
+                aria-labelledby="tl-sheet-details-h"
+              >
+                <h3
+                  id="tl-sheet-details-h"
+                  className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-label-secondary)]"
+                >
+                  Trade details
+                </h3>
+
+              {needsVenue && (
+                <div className="rounded-lg border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+                  <strong>Venue required</strong> — choose broker / sim / FatTail
+                  on first use of this account before saving.
+                </div>
+              )}
+
+              <ul className="flex flex-wrap gap-1.5">
+                {checklist.map((c) => (
+                  <li
+                    key={c.label}
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      c.ok
+                        ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100"
+                        : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
+                    }`}
+                  >
+                    {c.ok ? "✓" : "·"} {c.label}
                   </li>
                 ))}
               </ul>
-              <div className="mt-3 flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onRequestImport();
-                  }}
-                  className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-xs font-medium text-[var(--color-label)] hover:bg-[var(--color-canvas)]"
-                >
-                  Paste closing order from thinkorswim…
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCreateContinueNew(true)}
-                  className="text-xs text-[var(--color-label-secondary)] underline"
-                >
-                  No — create a new opening trade
-                </button>
-              </div>
-            </div>
-          )}
 
-          {isUnmatchedOpen && trade && (
-            <div className="rounded-xl border-2 border-[var(--color-tint)] bg-[var(--color-fill)] p-4">
-              <p className="text-lg font-bold leading-snug text-[var(--color-label)]">
-                Enter a closing order for this position?
-              </p>
-              <p className="mt-2 text-xs text-[var(--color-label-secondary)]">
-                Prefill reverse structure; enter net credit and time only.
-              </p>
-              <div className="mt-3 flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => onRequestCloseFromOpen(trade)}
-                  className="rounded-full bg-[var(--color-tint)] px-4 py-2.5 text-sm font-semibold text-[var(--color-on-tint)]"
-                >
-                  Yes — enter closing order
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onRequestImport();
-                  }}
-                  className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-xs font-medium text-[var(--color-label)] hover:bg-[var(--color-canvas)]"
-                >
-                  Paste closing order from thinkorswim…
-                </button>
-              </div>
-            </div>
-          )}
-
-          {mode === "edit" && trade && pairedClose && (
-            <p className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-xs text-[var(--color-label-secondary)]">
-              Paired with close #{pairedClose.id}.
-            </p>
-          )}
-
-          {mode === "close" && trade && (
-            <div className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-xs text-[var(--color-label-secondary)]">
-              <p className="font-semibold text-[var(--color-label)]">
-                Closing open #{trade.id}
-              </p>
-              <p className="mt-0.5">{describeOpenTrade(trade)}</p>
-              <p className="mt-1 font-mono text-[11px] text-[var(--color-label)]">
-                {formatStructurePreview(form.legs)}
-              </p>
-            </div>
-          )}
-
-          {!showCreateOpenGate && (
-            <>
               <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
                 Account
                 <select
@@ -693,17 +1278,85 @@ export default function TradeSheet({
                 </label>
               )}
 
-              <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                Exec time
-                <input
-                  type="datetime-local"
-                  className={field}
-                  value={form.exec_at}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, exec_at: e.target.value }))
-                  }
-                />
-              </label>
+              {/* Execution date/time — backdate allowed for errata fixes */}
+              <div className="space-y-2 rounded-xl border-2 border-[var(--color-tint)]/40 bg-[var(--color-fill)] p-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <label className="block min-w-[12rem] flex-1 text-xs font-bold text-[var(--color-label)]">
+                    {mode === "close" ||
+                    (mode === "edit" && trade && tradeIsCloseFill(trade))
+                      ? "TO CLOSE — filled at"
+                      : mode === "edit" && trade && !tradeIsCloseFill(trade)
+                        ? "TO OPEN — filled at"
+                        : "Filled at (date & time)"}
+                    <input
+                      type="datetime-local"
+                      className={`${field} font-mono text-sm`}
+                      value={form.exec_at}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, exec_at: e.target.value }))
+                      }
+                      // No max= — backdating past fills is intentional for manual books
+                    />
+                  </label>
+                </div>
+                <p className="text-[11px] leading-snug text-[var(--color-label-secondary)]">
+                  {manualDatetimeEditable
+                    ? "You can backdate or correct this time for manual entries. Use the real fill time so open→close matching and Reports stay honest."
+                    : "Edit date/time if this fill was logged wrong. Prefer real market fill time."}
+                </p>
+                {mode === "edit" && trade && pairedClose && (
+                  <p className="text-[11px] text-[var(--color-label-secondary)]">
+                    Paired{" "}
+                    <strong>TO CLOSE #{pairedClose.id}</strong> filled at{" "}
+                    <span className="font-mono">
+                      {formatExecDisplay(pairedClose.exec_at)}
+                    </span>
+                    {onOpenTrade && (
+                      <>
+                        {" · "}
+                        <button
+                          type="button"
+                          className="font-medium text-[var(--color-tint)] underline"
+                          onClick={() => onOpenTrade(pairedClose)}
+                        >
+                          Edit close date/time
+                        </button>
+                      </>
+                    )}
+                  </p>
+                )}
+                {mode === "edit" && trade && pairedOpen && (
+                  <p className="text-[11px] text-[var(--color-label-secondary)]">
+                    Paired{" "}
+                    <strong>TO OPEN #{pairedOpen.id}</strong> filled at{" "}
+                    <span className="font-mono">
+                      {formatExecDisplay(pairedOpen.exec_at)}
+                    </span>
+                    {onOpenTrade && (
+                      <>
+                        {" · "}
+                        <button
+                          type="button"
+                          className="font-medium text-[var(--color-tint)] underline"
+                          onClick={() => onOpenTrade(pairedOpen)}
+                        >
+                          Edit open date/time
+                        </button>
+                      </>
+                    )}
+                  </p>
+                )}
+                {mode === "close" && trade && (
+                  <p className="text-[11px] text-[var(--color-label-secondary)]">
+                    Opening fill #{trade.id} at{" "}
+                    <span className="font-mono">
+                      {formatExecDisplay(trade.exec_at)}
+                    </span>
+                    . Close time can be the same day or later (or corrected if you
+                    logged late).
+                  </p>
+                )}
+              </div>
 
               {/* —— Structure simple (default for multi-leg options) —— */}
               {showStructureFields && (
@@ -802,118 +1455,19 @@ export default function TradeSheet({
                         }
                       />
                     </label>
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Net {form.net_side === "CREDIT" ? "credit" : "debit"}
-                      <input
-                        type="number"
-                        step="any"
-                        className={field}
-                        value={form.net_price}
-                        placeholder="e.g. 1.15"
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            net_price: e.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Debit / Credit
-                      <select
-                        className={field}
-                        value={form.net_side}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            net_side: e.target.value,
-                          }))
-                        }
-                      >
-                        <option value="DEBIT">DEBIT</option>
-                        <option value="CREDIT">CREDIT</option>
-                      </select>
-                    </label>
                   </div>
                   <p className="rounded-lg bg-[var(--color-surface)] px-2 py-1.5 font-mono text-[11px] text-[var(--color-label)]">
                     {formatStructurePreview(structurePreviewLegs) ||
                       "Enter center strike to preview legs"}
                   </p>
-                  <button
-                    type="button"
-                    className="text-xs text-[var(--color-tint)] underline"
-                    onClick={() => {
-                      const legs =
-                        structurePreviewLegs.length > 0
-                          ? structurePreviewLegs
-                          : form.legs;
-                      setForm((f) => ({ ...f, legs }));
-                      setEntryUi("legs");
-                    }}
-                  >
-                    Advanced: edit legs one by one
-                  </button>
                 </div>
               )}
 
-              {/* —— Close simple: net + time only —— */}
               {showCloseSimple && (
-                <div className="space-y-3 rounded-xl border border-[var(--color-separator)] bg-[var(--color-canvas)] p-3">
-                  <p className="text-xs font-semibold text-[var(--color-label)]">
-                    Close fill — structure already set
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Net credit / debit
-                      <input
-                        type="number"
-                        step="any"
-                        className={field}
-                        value={form.net_price}
-                        placeholder="e.g. 0.40"
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            net_price: e.target.value,
-                          }))
-                        }
-                      />
-                    </label>
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Debit / Credit
-                      <select
-                        className={field}
-                        value={form.net_side}
-                        onChange={(e) =>
-                          setForm((f) => ({
-                            ...f,
-                            net_side: e.target.value,
-                          }))
-                        }
-                      >
-                        <option value="CREDIT">CREDIT</option>
-                        <option value="DEBIT">DEBIT</option>
-                      </select>
-                    </label>
-                  </div>
-                  <button
-                    type="button"
-                    className="text-xs text-[var(--color-tint)] underline"
-                    onClick={() => setEntryUi("legs")}
-                  >
-                    Advanced: edit close legs
-                  </button>
-                  <button
-                    type="button"
-                    className="ml-3 text-xs text-[var(--color-tint)] underline"
-                    onClick={() => {
-                      onClose();
-                      onRequestImport();
-                    }}
-                  >
-                    Paste from thinkorswim
-                  </button>
-                </div>
+                <p className="text-xs text-[var(--color-label-secondary)]">
+                  Structure is fixed from the open. Set order type and net
+                  below, then save. Expand Legs only if you need per-leg edits.
+                </p>
               )}
 
               {/* —— Stock / future / crypto simple —— */}
@@ -967,55 +1521,11 @@ export default function TradeSheet({
                 </div>
               )}
 
-              {/* —— Advanced legs —— */}
-              {entryUi === "legs" && (
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-[var(--color-label-secondary)]">
-                      Legs (advanced)
-                    </span>
-                    <div className="flex gap-2">
-                      {strategySupportsStructureSimple(form.strategy) &&
-                        mode === "create" && (
-                          <button
-                            type="button"
-                            className="text-xs text-[var(--color-tint)]"
-                            onClick={() => setEntryUi("structure")}
-                          >
-                            Back to structure
-                          </button>
-                        )}
-                      {mode !== "close" && (
-                        <button
-                          type="button"
-                          className="text-xs text-[var(--color-tint)]"
-                          onClick={() =>
-                            setForm((f) => ({
-                              ...f,
-                              legs: [
-                                ...f.legs,
-                                {
-                                  side: "BUY",
-                                  quantity: 1,
-                                  pos_effect: "TO_OPEN",
-                                  asset_class: f.asset_class,
-                                  underlier: f.underlier || "SPX",
-                                  expiry: f.expiry || todayYmd(),
-                                  strike: 100,
-                                  right: "PUT",
-                                  fill_price: 0,
-                                },
-                              ],
-                            }))
-                          }
-                        >
-                          + Leg
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+              {/* —— Order / Net / Debit (primary controls; above legs) —— */}
+              {showOrderNetFields && (
+                <div className="space-y-1 rounded-xl border border-[var(--color-separator)] bg-[var(--color-fill)] p-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    <label className="block text-xs font-semibold text-[var(--color-label)]">
                       Order
                       <input
                         className={field}
@@ -1028,11 +1538,16 @@ export default function TradeSheet({
                         }
                       />
                     </label>
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+                    <label className="block text-xs font-semibold text-[var(--color-label)]">
                       Net
                       <input
+                        type="number"
+                        step="any"
                         className={field}
                         value={form.net_price}
+                        placeholder={
+                          form.net_side === "CREDIT" ? "credit" : "debit"
+                        }
                         onChange={(e) =>
                           setForm((f) => ({
                             ...f,
@@ -1041,8 +1556,8 @@ export default function TradeSheet({
                         }
                       />
                     </label>
-                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Debit/Credit
+                    <label className="block text-xs font-semibold text-[var(--color-label)]">
+                      Debit / Credit
                       <select
                         className={field}
                         value={form.net_side}
@@ -1059,129 +1574,242 @@ export default function TradeSheet({
                       </select>
                     </label>
                   </div>
-                  <ul className="mt-2 space-y-2">
-                    {form.legs.map((leg, i) => (
-                      <li
-                        key={i}
-                        className="rounded-lg border border-[var(--color-separator)] p-2"
-                      >
-                        <div className="grid grid-cols-4 gap-1">
-                          <select
-                            className={field}
-                            value={leg.side}
-                            onChange={(e) =>
-                              updateLeg(i, {
-                                side: e.target.value as "BUY" | "SELL",
-                              })
-                            }
-                          >
-                            <option value="BUY">BUY</option>
-                            <option value="SELL">SELL</option>
-                          </select>
-                          <input
-                            type="number"
-                            className={field}
-                            value={leg.quantity}
-                            onChange={(e) =>
-                              updateLeg(i, {
-                                quantity: Number(e.target.value),
-                              })
-                            }
-                          />
-                          <select
-                            className={field}
-                            value={leg.pos_effect || ""}
-                            onChange={(e) =>
-                              updateLeg(i, {
-                                pos_effect: (e.target.value ||
-                                  null) as Leg["pos_effect"],
-                              })
-                            }
-                          >
-                            <option value="">—</option>
-                            <option value="TO_OPEN">TO OPEN</option>
-                            <option value="TO_CLOSE">TO CLOSE</option>
-                          </select>
-                          <input
-                            className={field}
-                            placeholder="underlier"
-                            value={leg.underlier || leg.symbol || ""}
-                            onChange={(e) =>
-                              updateLeg(i, {
-                                underlier: e.target.value,
-                                symbol: e.target.value,
-                              })
-                            }
-                          />
-                          <input
-                            type="date"
-                            className={field}
-                            value={leg.expiry || ""}
-                            onChange={(e) =>
-                              updateLeg(i, { expiry: e.target.value })
-                            }
-                          />
-                          <input
-                            type="number"
-                            step="any"
-                            className={field}
-                            placeholder="strike"
-                            value={leg.strike ?? ""}
-                            onChange={(e) =>
-                              updateLeg(i, {
-                                strike:
-                                  e.target.value === ""
-                                    ? null
-                                    : Number(e.target.value),
-                              })
-                            }
-                          />
-                          <select
-                            className={field}
-                            value={leg.right || ""}
-                            onChange={(e) =>
-                              updateLeg(i, {
-                                right: (e.target.value ||
-                                  null) as Leg["right"],
-                              })
-                            }
-                          >
-                            <option value="">—</option>
-                            <option value="PUT">PUT</option>
-                            <option value="CALL">CALL</option>
-                          </select>
-                          <input
-                            type="number"
-                            step="any"
-                            className={field}
-                            placeholder="fill"
-                            value={leg.fill_price}
-                            onChange={(e) =>
-                              updateLeg(i, {
-                                fill_price: Number(e.target.value),
-                              })
-                            }
-                          />
-                        </div>
-                        {mode !== "close" && (
-                          <button
-                            type="button"
-                            className="mt-1 text-[10px] text-red-600"
-                            onClick={() =>
-                              setForm((f) => ({
-                                ...f,
-                                legs: f.legs.filter((_, j) => j !== i),
-                              }))
-                            }
-                          >
-                            Remove leg
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                  {dollarHint && (
+                    <p className="text-[10px] text-[var(--color-label-tertiary)]">
+                      {dollarHint} · points not dollars
+                    </p>
+                  )}
                 </div>
               )}
+
+              {mode === "close" && (
+                <div className="space-y-1 rounded-lg border border-[var(--color-separator)] px-3 py-2 text-[11px]">
+                  <p className="font-semibold text-[var(--color-label-secondary)]">
+                    Confirm if needed
+                  </p>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={allowOrphanClose}
+                      onChange={(e) => setAllowOrphanClose(e.target.checked)}
+                    />
+                    Allow orphan / unexpected pair
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={allowAccountMismatch}
+                      onChange={(e) =>
+                        setAllowAccountMismatch(e.target.checked)
+                      }
+                    />
+                    Allow different account than open
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={allowPartialUnits}
+                      onChange={(e) => setAllowPartialUnits(e.target.checked)}
+                    />
+                    Allow unit size ≠ open (partial / scaled)
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={allowDrift}
+                      onChange={(e) => setAllowDrift(e.target.checked)}
+                    />
+                    Allow structure drift from open
+                  </label>
+                </div>
+              )}
+
+              {/* —— Legs advanced (collapsed by default) —— */}
+              {entryUi !== "simple_asset" &&
+                (showStructureFields ||
+                  showCloseSimple ||
+                  entryUi === "legs" ||
+                  (mode === "edit" && trade)) && (
+                  <div className="rounded-xl border-2 border-[var(--color-separator)] bg-[var(--color-canvas)]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (showLegsAdvanced) {
+                          setShowLegsAdvanced(false);
+                        } else {
+                          openLegsAdvanced();
+                        }
+                      }}
+                      className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left"
+                      aria-expanded={showLegsAdvanced}
+                    >
+                      <span className="text-sm font-bold text-[var(--color-label)]">
+                        Legs (advanced)
+                      </span>
+                      <span className="text-xs font-medium text-[var(--color-label-secondary)]">
+                        {showLegsAdvanced ? "Hide ▲" : "Show ▼"}
+                      </span>
+                    </button>
+                    {showLegsAdvanced && (
+                      <div className="space-y-2 border-t border-[var(--color-separator)] px-3 pb-3 pt-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] text-[var(--color-label-tertiary)]">
+                            Edit individual legs only when structure entry is
+                            not enough.
+                          </p>
+                          {mode !== "close" && (
+                            <button
+                              type="button"
+                              className="shrink-0 text-xs font-medium text-[var(--color-tint)]"
+                              onClick={() =>
+                                setForm((f) => ({
+                                  ...f,
+                                  legs: [
+                                    ...f.legs,
+                                    {
+                                      side: "BUY",
+                                      quantity: 1,
+                                      pos_effect: "TO_OPEN",
+                                      asset_class: f.asset_class,
+                                      underlier: f.underlier || "SPX",
+                                      expiry: f.expiry || todayYmd(),
+                                      strike: 100,
+                                      right: "PUT",
+                                      fill_price: 0,
+                                    },
+                                  ],
+                                }))
+                              }
+                            >
+                              + Leg
+                            </button>
+                          )}
+                        </div>
+                        <ul className="space-y-2">
+                          {form.legs.map((leg, i) => (
+                            <li
+                              key={i}
+                              className="rounded-lg border border-[var(--color-separator)] p-2"
+                            >
+                              <div className="grid grid-cols-4 gap-1">
+                                <select
+                                  className={field}
+                                  value={leg.side}
+                                  onChange={(e) =>
+                                    updateLeg(i, {
+                                      side: e.target.value as "BUY" | "SELL",
+                                    })
+                                  }
+                                >
+                                  <option value="BUY">BUY</option>
+                                  <option value="SELL">SELL</option>
+                                </select>
+                                <input
+                                  type="number"
+                                  className={field}
+                                  value={leg.quantity}
+                                  onChange={(e) =>
+                                    updateLeg(i, {
+                                      quantity: Number(e.target.value),
+                                    })
+                                  }
+                                />
+                                <select
+                                  className={field}
+                                  value={leg.pos_effect || ""}
+                                  onChange={(e) =>
+                                    updateLeg(i, {
+                                      pos_effect: (e.target.value ||
+                                        null) as Leg["pos_effect"],
+                                    })
+                                  }
+                                >
+                                  <option value="">—</option>
+                                  <option value="TO_OPEN">TO OPEN</option>
+                                  <option value="TO_CLOSE">TO CLOSE</option>
+                                </select>
+                                <input
+                                  className={field}
+                                  placeholder="underlier"
+                                  value={leg.underlier || leg.symbol || ""}
+                                  onChange={(e) =>
+                                    updateLeg(i, {
+                                      underlier: e.target.value,
+                                      symbol: e.target.value,
+                                    })
+                                  }
+                                />
+                                <input
+                                  type="date"
+                                  className={field}
+                                  value={leg.expiry || ""}
+                                  onChange={(e) =>
+                                    updateLeg(i, { expiry: e.target.value })
+                                  }
+                                />
+                                <input
+                                  type="number"
+                                  step="any"
+                                  className={field}
+                                  placeholder="strike"
+                                  value={leg.strike ?? ""}
+                                  onChange={(e) =>
+                                    updateLeg(i, {
+                                      strike:
+                                        e.target.value === ""
+                                          ? null
+                                          : Number(e.target.value),
+                                    })
+                                  }
+                                />
+                                <select
+                                  className={field}
+                                  value={leg.right || ""}
+                                  onChange={(e) =>
+                                    updateLeg(i, {
+                                      right: (e.target.value ||
+                                        null) as Leg["right"],
+                                    })
+                                  }
+                                >
+                                  <option value="">—</option>
+                                  <option value="PUT">PUT</option>
+                                  <option value="CALL">CALL</option>
+                                </select>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  className={field}
+                                  placeholder="fill"
+                                  value={leg.fill_price}
+                                  onChange={(e) =>
+                                    updateLeg(i, {
+                                      fill_price: Number(e.target.value),
+                                    })
+                                  }
+                                />
+                              </div>
+                              {mode !== "close" && (
+                                <button
+                                  type="button"
+                                  className="mt-1 text-[10px] text-red-600"
+                                  onClick={() =>
+                                    setForm((f) => ({
+                                      ...f,
+                                      legs: f.legs.filter((_, j) => j !== i),
+                                    }))
+                                  }
+                                >
+                                  Remove leg
+                                </button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
 
               <div>
                 <button
@@ -1189,7 +1817,8 @@ export default function TradeSheet({
                   className="text-xs font-medium text-[var(--color-label-secondary)] underline"
                   onClick={() => setShowProcess((v) => !v)}
                 >
-                  {showProcess ? "Hide" : "Process notes"} (optional)
+                  {showProcess ? "Hide" : "Process notes"}
+                  {mode === "close" ? " on close" : ""} (optional)
                 </button>
                 {showProcess && (
                   <div className="mt-2 space-y-2">
@@ -1277,6 +1906,7 @@ export default function TradeSheet({
                   {error}
                 </p>
               )}
+              </section>
             </>
           )}
         </div>
@@ -1301,6 +1931,9 @@ export default function TradeSheet({
                   ? "Save closing trade"
                   : "Save trade"}
             </button>
+            <span className="hidden text-[10px] text-[var(--color-label-tertiary)] sm:inline self-center">
+              ⌘/Ctrl+Enter
+            </span>
           </footer>
         )}
       </aside>

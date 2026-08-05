@@ -22,11 +22,17 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [12-retrospective-report-dto.md](./12-retrospective-report-dto.md) | Retrospective workspace DTO (gather/report/comparison) — as-built v0.6 |
 | [13-habit-catalog-design.md](./13-habit-catalog-design.md) | Habit Catalog methodology layer — **design locked**, pre-Spec |
 | [09-strategy-lab-tradier.md](./09-strategy-lab-tradier.md) | Strategy Lab data/exec split (Massive / Tradier) |
+| [14-strategy-lab-execution-responsibility.md](./14-strategy-lab-execution-responsibility.md) | User + broker run first; M0–M3 |
+| [15-trade-log-manual-management.md](./15-trade-log-manual-management.md) | Trade Log manual entry/close/trash design (as-built) |
 
 **Strategy Lab process runtime (2026-08-05):**  
 `Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md` — process runtime (**user+broker first**, Tradier, DL-215).  
 `Architecture/14-strategy-lab-execution-responsibility.md` — execution responsibility (DL-214).  
 `docs/Strategy-Lab-Execution-Architecture-Review-2026-08-05.md` — architecture review 2026-08-05.
+
+**Trade Log manual management (2026-08-05):**  
+`Architecture/15-trade-log-manual-management.md` — structure-first entry, close gates, trash, blotter open strip.  
+Spec authority: `Specs/FatTail-Labs-Trade-Log-Spec-v1.1.md` **§16**.
 
 **Practice / retrospectives (2026-07-29) — p-retrospective R1b–R7 PASS:**
 

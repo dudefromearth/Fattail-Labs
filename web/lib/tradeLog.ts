@@ -41,6 +41,14 @@ export type Leg = {
   fees?: number | null;
 };
 
+/**
+ * How the fill entered the book — three channels, never conflated:
+ * - manual: member structure form / legs sheet
+ * - import: ToS/CSV/canonical file or paste
+ * - automated: Strategy Lab process runtime or other Labs automations
+ */
+export type EntrySource = "manual" | "import" | "automated";
+
 export type Trade = {
   id: number;
   account_id: number;
@@ -58,7 +66,34 @@ export type Trade = {
   lesson_md: string;
   pnl_amount: number | null;
   legs: Leg[];
+  entry_source?: EntrySource | string | null;
+  trash_reason?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  external_adapter?: string | null;
 };
+
+/** Normalize API/legacy values for display and policy. */
+export function normalizeEntrySource(
+  raw: string | null | undefined,
+): EntrySource {
+  const s = (raw || "manual").toLowerCase();
+  if (s === "machine") return "automated";
+  if (s === "import" || s === "automated" || s === "manual") return s;
+  return "manual";
+}
+
+export function entrySourceLabel(raw: string | null | undefined): string {
+  switch (normalizeEntrySource(raw)) {
+    case "import":
+      return "Import";
+    case "automated":
+      return "Automated";
+    default:
+      return "Manual";
+  }
+}
+
 
 export type Catalog = {
   venues: Venue[];
@@ -437,6 +472,45 @@ export function findPairedClose(
   return m?.close ?? null;
 }
 
+/** Given a close fill id, the open it is paired with (if any). */
+export function findPairedOpen(
+  trades: Trade[],
+  closeId: number,
+): Trade | null {
+  const m = matchOpenClose(trades).find(
+    (x) => x.close != null && x.close.id === closeId,
+  );
+  return m?.open ?? null;
+}
+
+/**
+ * Delete order rule: a paired open cannot be deleted while its TO_CLOSE still exists.
+ * Delete the close first; then the open may be deleted.
+ */
+export function canDeleteTrade(
+  trade: Trade,
+  all: Trade[],
+): { ok: boolean; reason?: string; blockingClose?: Trade } {
+  if (tradeIsCloseFill(trade)) {
+    return { ok: true };
+  }
+  // Open (or non-close) fill
+  const close = findPairedClose(all, trade.id);
+  if (close) {
+    return {
+      ok: false,
+      reason: `Delete the TO CLOSE fill (#${close.id}) first. Only then can this TO OPEN be deleted.`,
+      blockingClose: close,
+    };
+  }
+  return { ok: true };
+}
+
+export function isManualEntry(trade: Trade | null | undefined): boolean {
+  if (!trade) return true;
+  return normalizeEntrySource(trade.entry_source) === "manual";
+}
+
 /**
  * Prefill a closing fill from an open: reverse BUY/SELL, TO_CLOSE,
  * flip debit/credit, clear fill prices for the member to enter.
@@ -489,3 +563,154 @@ export function describeOpenTrade(t: Trade): string {
   const day = ymdFromExec(t.exec_at) || "—";
   return `${t.strategy} · ${under} · exp ${exp} · opened ${day} · #${t.id}`;
 }
+
+export function tradeUnitQty(trade: Trade): number {
+  return unitQty(trade);
+}
+
+export function tradeExpiryYmd(trade: Trade): string | null {
+  return tradeExpiry(trade);
+}
+
+export function shortStructureLabel(t: Trade): string {
+  const under =
+    t.legs?.find((l) => l.underlier)?.underlier ||
+    t.legs?.find((l) => l.symbol)?.symbol ||
+    "—";
+  const strikes = (t.legs || [])
+    .map((l) => l.strike)
+    .filter((s): s is number => s != null)
+    .sort((a, b) => a - b);
+  const mid =
+    strikes.length > 0
+      ? strikes[Math.floor(strikes.length / 2)]
+      : null;
+  const exp = tradeExpiry(t)?.slice(5) || "—";
+  const midS = mid != null ? String(mid) : "—";
+  return `${t.strategy} · ${under} ${midS} · ${exp}`;
+}
+
+/** Find open that a close draft would pair with (FIFO structure match). */
+export function findOpenForCloseDraft(
+  trades: Trade[],
+  closeDraft: Pick<Trade, "account_id" | "strategy" | "legs" | "exec_at">,
+): Trade | null {
+  const key = structureKey(closeDraft as Trade);
+  const day = ymdFromExec(closeDraft.exec_at) || new Date().toISOString().slice(0, 10);
+  const matched = matchOpenClose(trades);
+  for (const m of matched) {
+    if (m.close != null) continue;
+    if (structureKey(m.open) !== key) continue;
+    if (!holdWithinLimit(m.open_day, day)) continue;
+    return m.open;
+  }
+  return null;
+}
+
+export function structureDriftWarnings(
+  open: Trade,
+  closeLegs: Leg[],
+): string[] {
+  const warnings: string[] = [];
+  const openKey = structureKey(open);
+  const draft: Trade = {
+    ...open,
+    id: -1,
+    legs: closeLegs,
+  };
+  // Rebuild key ignoring side by using structureKey (ignores side/pos_effect)
+  if (structureKey(draft) !== openKey) {
+    warnings.push(
+      "Structure no longer matches the open (strikes, expiry, underlier, or quantities changed).",
+    );
+  }
+  return warnings;
+}
+
+export type TradeRowIssue =
+  | "unmatched_open"
+  | "orphan_close"
+  | "missing_net"
+  | "missing_legs"
+  | "missing_exec";
+
+export function tradeRowIssues(
+  trade: Trade,
+  all: Trade[],
+): TradeRowIssue[] {
+  const issues: TradeRowIssue[] = [];
+  if (!(trade.legs || []).length && trade.strategy !== "NOTE") {
+    issues.push("missing_legs");
+  }
+  if (trade.net_price == null && trade.strategy !== "NOTE") {
+    issues.push("missing_net");
+  }
+  if (!trade.exec_at) issues.push("missing_exec");
+  const isClose = tradeIsCloseFill(trade);
+  if (!isClose && (trade.legs || []).length > 0) {
+    const m = matchOpenClose(all).find((x) => x.open.id === trade.id);
+    if (m && !m.close) issues.push("unmatched_open");
+  }
+  if (isClose) {
+    const paired = matchOpenClose(all).some(
+      (m) => m.close && m.close.id === trade.id,
+    );
+    if (!paired) issues.push("orphan_close");
+  }
+  return issues;
+}
+
+export function issueLabel(issue: TradeRowIssue): string {
+  switch (issue) {
+    case "unmatched_open":
+      return "Open";
+    case "orphan_close":
+      return "Orphan close";
+    case "missing_net":
+      return "No net";
+    case "missing_legs":
+      return "No legs";
+    case "missing_exec":
+      return "No time";
+  }
+}
+
+export type PositionBadge = "open" | "complete" | "orphan_close" | "neutral";
+
+export function positionBadge(
+  trade: Trade,
+  all: Trade[],
+): PositionBadge {
+  if (tradeIsCloseFill(trade)) {
+    const paired = matchOpenClose(all).some(
+      (m) => m.close && m.close.id === trade.id,
+    );
+    return paired ? "complete" : "orphan_close";
+  }
+  if ((trade.legs || []).length === 0) return "neutral";
+  const m = matchOpenClose(all).find((x) => x.open.id === trade.id);
+  if (m?.close) return "complete";
+  if (m) return "open";
+  return "neutral";
+}
+
+/** Equity options: points × 100 ≈ $ per unit (display hint only). */
+export function netDollarHint(
+  netPrice: number | null | undefined,
+  assetClass: string,
+  units = 1,
+): string | null {
+  if (netPrice == null || Number.isNaN(Number(netPrice))) return null;
+  if (assetClass && assetClass !== "equity_option") return null;
+  const dollars = Math.abs(Number(netPrice)) * 100 * Math.max(1, units);
+  return `≈ $${dollars.toFixed(0)} / unit (×100)`;
+}
+
+export const TRASH_REASONS = [
+  { id: "wrong_entry", label: "Wrong entry" },
+  { id: "wrong_account", label: "Wrong account" },
+  { id: "test", label: "Test / practice" },
+  { id: "duplicate", label: "Duplicate" },
+  { id: "other", label: "Other" },
+] as const;
+

@@ -196,6 +196,23 @@ def _leg_row(r: dict) -> dict:
     }
 
 
+# Provenance of a fill — three distinct channels (never collapse import into automated).
+# manual     = member typed / structure form / sheet
+# import     = file or paste adapter (ToS, CSV, canonical pack)
+# automated  = Strategy Lab process runtime or other Labs automations (not import)
+ENTRY_SOURCES = frozenset({"manual", "import", "automated"})
+
+
+def _normalize_entry_source(raw: object | None, *, default: str = "manual") -> str:
+    s = str(raw or default).strip().lower()
+    # Legacy synonym from early 081 wording
+    if s == "machine":
+        s = "automated"
+    if s not in ENTRY_SOURCES:
+        return default
+    return s
+
+
 def _trade_row(r: dict, legs: list[dict] | None = None) -> dict:
     return {
         "id": r["id"],
@@ -214,6 +231,9 @@ def _trade_row(r: dict, legs: list[dict] | None = None) -> dict:
         "lesson_md": r.get("lesson_md") or "",
         "pnl_amount": float(r["pnl_amount"]) if r.get("pnl_amount") is not None else None,
         "journal_entry_id": r.get("journal_entry_id"),
+        "external_adapter": r.get("external_adapter"),
+        "entry_source": _normalize_entry_source(r.get("entry_source")),
+        "trash_reason": r.get("trash_reason"),
         "legs": legs if legs is not None else [],
         "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
         "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
@@ -500,13 +520,37 @@ def _process_fields(body: dict) -> dict:
     }
 
 
-_TRADE_LIST_LIMIT = 10000
+# Analytics / export / open-book compute may need a large window (multi-year).
+_TRADE_BOOK_LIMIT = 10000
+# Blotter UI default page — keep client memory bounded (lazy “load more”).
+_TRADE_PAGE_DEFAULT = 80
+_TRADE_PAGE_MAX = 200
+
+
+def _load_accounts(cur, iid: int) -> list[dict]:
+    cur.execute(
+        """SELECT * FROM member_trade_log_accounts
+           WHERE identity_id = %s
+           ORDER BY status ASC, sort_order ASC, id ASC""",
+        (iid,),
+    )
+    return [_account_row(a) for a in cur.fetchall()]
+
+
+def _rows_to_trades(cur, rows: list, iid: int) -> list[dict]:
+    if not rows:
+        return []
+    legs_by_trade = _load_legs_for_trades(cur, [int(r["id"]) for r in rows], iid)
+    return [_trade_row(r, legs_by_trade.get(int(r["id"]), [])) for r in rows]
 
 
 def _load_member_book(
     cur, iid: int, account_id: int | None = None
 ) -> tuple[list[dict], list[dict]]:
-    """Batch-load trades+legs and accounts for analytics (identity-scoped)."""
+    """Batch-load trades+legs and accounts for analytics (identity-scoped).
+
+    Full-book style load (capped). Prefer :func:`_load_member_book_page` for UI lists.
+    """
     _ensure_default_account(cur, iid)
     if account_id is not None:
         _get_account(cur, iid, account_id)
@@ -514,24 +558,98 @@ def _load_member_book(
             """SELECT * FROM member_trade_log_trades
                WHERE identity_id = %s AND account_id = %s
                ORDER BY exec_at DESC, id DESC LIMIT %s""",
-            (iid, account_id, _TRADE_LIST_LIMIT),
+            (iid, account_id, _TRADE_BOOK_LIMIT),
         )
     else:
         cur.execute(
             """SELECT * FROM member_trade_log_trades
                WHERE identity_id = %s
                ORDER BY exec_at DESC, id DESC LIMIT %s""",
-            (iid, _TRADE_LIST_LIMIT),
+            (iid, _TRADE_BOOK_LIMIT),
         )
     rows = cur.fetchall()
-    legs_by_trade = _load_legs_for_trades(cur, [int(r["id"]) for r in rows], iid)
-    trades = [_trade_row(r, legs_by_trade.get(int(r["id"]), [])) for r in rows]
-    cur.execute(
-        """SELECT * FROM member_trade_log_accounts
-           WHERE identity_id = %s
-           ORDER BY status ASC, sort_order ASC, id ASC""",
-        (iid,),
-    )
-    accounts = [_account_row(a) for a in cur.fetchall()]
-    return trades, accounts
+    trades = _rows_to_trades(cur, rows, iid)
+    return trades, _load_accounts(cur, iid)
+
+
+def _parse_list_cursor(cursor: str | None) -> tuple[str | None, int | None]:
+    """Cursor format: ``{exec_at_iso}|{id}`` from previous page last row."""
+    if not cursor or not str(cursor).strip():
+        return None, None
+    parts = str(cursor).strip().split("|", 1)
+    if len(parts) != 2:
+        return None, None
+    try:
+        return parts[0], int(parts[1])
+    except ValueError:
+        return None, None
+
+
+def _encode_list_cursor(trade: dict) -> str | None:
+    exec_at = trade.get("exec_at")
+    tid = trade.get("id")
+    if not exec_at or tid is None:
+        return None
+    # MySQL DATETIME comparison prefers space separator, not ISO T
+    s = str(exec_at).replace("T", " ").replace("Z", "")
+    if len(s) > 19:
+        s = s[:19]
+    return f"{s}|{int(tid)}"
+
+
+def _load_member_book_page(
+    cur,
+    iid: int,
+    account_id: int | None = None,
+    *,
+    limit: int = _TRADE_PAGE_DEFAULT,
+    cursor: str | None = None,
+) -> tuple[list[dict], list[dict], bool, str | None]:
+    """Paginated trades for blotter. Newest first. Returns has_more, next_cursor."""
+    _ensure_default_account(cur, iid)
+    limit = max(1, min(int(limit or _TRADE_PAGE_DEFAULT), _TRADE_PAGE_MAX))
+    before_exec, before_id = _parse_list_cursor(cursor)
+    # Fetch limit+1 to detect has_more
+    fetch_n = limit + 1
+
+    if account_id is not None:
+        _get_account(cur, iid, account_id)
+        if before_exec is not None and before_id is not None:
+            cur.execute(
+                """SELECT * FROM member_trade_log_trades
+                   WHERE identity_id = %s AND account_id = %s
+                     AND (exec_at < %s OR (exec_at = %s AND id < %s))
+                   ORDER BY exec_at DESC, id DESC LIMIT %s""",
+                (iid, account_id, before_exec, before_exec, before_id, fetch_n),
+            )
+        else:
+            cur.execute(
+                """SELECT * FROM member_trade_log_trades
+                   WHERE identity_id = %s AND account_id = %s
+                   ORDER BY exec_at DESC, id DESC LIMIT %s""",
+                (iid, account_id, fetch_n),
+            )
+    else:
+        if before_exec is not None and before_id is not None:
+            cur.execute(
+                """SELECT * FROM member_trade_log_trades
+                   WHERE identity_id = %s
+                     AND (exec_at < %s OR (exec_at = %s AND id < %s))
+                   ORDER BY exec_at DESC, id DESC LIMIT %s""",
+                (iid, before_exec, before_exec, before_id, fetch_n),
+            )
+        else:
+            cur.execute(
+                """SELECT * FROM member_trade_log_trades
+                   WHERE identity_id = %s
+                   ORDER BY exec_at DESC, id DESC LIMIT %s""",
+                (iid, fetch_n),
+            )
+    rows = list(cur.fetchall())
+    has_more = len(rows) > limit
+    if has_more:
+        rows = rows[:limit]
+    trades = _rows_to_trades(cur, rows, iid)
+    next_cursor = _encode_list_cursor(trades[-1]) if has_more and trades else None
+    return trades, _load_accounts(cur, iid), has_more, next_cursor
 

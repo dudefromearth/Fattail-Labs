@@ -33,18 +33,47 @@ async function parseJson<T>(r: Response): Promise<AnalyticsResult<T>> {
   return { ok: true, data: (await r.json()) as T };
 }
 
-export async function fetchTrades(accountId?: number | null): Promise<
-  AnalyticsResult<{
-    trades: Trade[];
-    accounts: Account[];
-    default_account_id?: number;
-  }>
-> {
+export type TradesPage = {
+  trades: Trade[];
+  accounts: Account[];
+  default_account_id?: number;
+  has_more?: boolean;
+  next_cursor?: string | null;
+  page_limit?: number | null;
+};
+
+/** Paginated blotter list (default page size server-side ~80). */
+export async function fetchTrades(
+  accountId?: number | null,
+  opts?: { limit?: number; cursor?: string | null; full?: boolean },
+): Promise<AnalyticsResult<TradesPage>> {
+  const q = new URLSearchParams();
+  if (accountId != null && accountId > 0) {
+    q.set("account_id", String(accountId));
+  }
+  if (opts?.full) {
+    q.set("full", "1");
+  } else {
+    if (opts?.limit != null) q.set("limit", String(opts.limit));
+    if (opts?.cursor) q.set("cursor", opts.cursor);
+  }
+  const qs = q.toString();
+  const r = await fetch(
+    `/api/me/trade-log/trades${qs ? `?${qs}` : ""}`,
+    { credentials: "same-origin" },
+  );
+  return parseJson(r);
+}
+
+/** Server-matched unmatched opens only (full book on server, small client payload). */
+export async function fetchUnmatchedOpens(
+  accountId?: number | null,
+): Promise<AnalyticsResult<{ trades: Trade[]; accounts: Account[]; count: number }>> {
   const q =
     accountId != null && accountId > 0
       ? `?account_id=${accountId}`
       : "";
-  const r = await fetch(`/api/me/trade-log/trades${q}`, {
+  const r = await fetch(`/api/me/trade-log/opens${q}`, {
     credentials: "same-origin",
   });
   return parseJson(r);

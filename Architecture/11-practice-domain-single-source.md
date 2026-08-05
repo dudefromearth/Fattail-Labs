@@ -4,7 +4,8 @@
 **Date:** 2026-07-29  
 **Prerequisite:** H0 PASS  
 **Parents:** Trade Log Spec v1.1 §9–10 · Journal-Retrospective Spec v0.1 · CHARTER p-practice-harden  
-**Board:** `agents/p-practice-harden/` · Test bar: `TEST-STRATEGY.md`
+**Board:** `agents/p-practice-harden/` · Test bar: `TEST-STRATEGY.md`  
+**Related (manual UX, 2026-08-05):** Trade Log Spec **§16** · [`15-trade-log-manual-management.md`](./15-trade-log-manual-management.md) — client match helpers must stay aligned with this domain package.
 
 ---
 

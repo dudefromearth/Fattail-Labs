@@ -8,14 +8,17 @@ import db
 import trade_log_catalog as cat
 from guards import require_session
 from routes.trade_log.common import (
+    _TRADE_PAGE_DEFAULT,
     _dec,
     _ensure_default_account,
     _get_account,
     _insert_legs,
     _load_legs,
     _load_member_book,
+    _load_member_book_page,
     _load_trade,
     _maybe_set_account_venue,
+    _normalize_entry_source,
     _parse_exec_at,
     _process_fields,
     _require_tool_member,
@@ -28,16 +31,41 @@ router = APIRouter(tags=["trade-log"])
 
 @router.get("/api/me/trade-log")
 @router.get("/api/me/trade-log/trades")
-def list_trades(request: Request, account_id: int | None = None) -> dict:
+def list_trades(
+    request: Request,
+    account_id: int | None = None,
+    limit: int | None = None,
+    cursor: str | None = None,
+    full: bool = False,
+) -> dict:
+    """List trades for the blotter.
+
+    **Default (lazy):** newest-first page (`limit` default 80, max 200) with
+    ``has_more`` / ``next_cursor`` for load-more. Keeps browser memory bounded.
+
+    **full=1:** legacy full-book load (capped server-side) for tools that need it.
+    Reports/Journal analytics use dedicated analytics routes (server domain), not this.
+    """
     claims = require_session(request)
     _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
             default_acct = _ensure_default_account(cur, iid)
-            # Full multi-year books must not be silently truncated (Reports/analytics).
-            trades, accounts = _load_member_book(cur, iid, account_id)
             default_account_id = int(default_acct["id"])
+            if full:
+                trades, accounts = _load_member_book(cur, iid, account_id)
+                has_more = False
+                next_cursor = None
+            else:
+                page_limit = limit if limit is not None else _TRADE_PAGE_DEFAULT
+                trades, accounts, has_more, next_cursor = _load_member_book_page(
+                    cur,
+                    iid,
+                    account_id,
+                    limit=page_limit,
+                    cursor=cursor,
+                )
     # Legacy key for old clients/tests that expect entries (prose-shaped)
     entries = [
         {
@@ -60,6 +88,37 @@ def list_trades(request: Request, account_id: int | None = None) -> dict:
         "accounts": accounts,
         "default_account_id": default_account_id,
         "entries": entries,
+        "has_more": has_more,
+        "next_cursor": next_cursor,
+        "page_limit": None if full else (limit if limit is not None else _TRADE_PAGE_DEFAULT),
+    }
+
+
+@router.get("/api/me/trade-log/opens")
+def list_unmatched_opens(
+    request: Request,
+    account_id: int | None = None,
+) -> dict:
+    """Unmatched open fills only — server-side match (full book), small payload.
+
+    Used by Open:N filter without downloading the entire blotter to the client.
+    """
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    from trade_log_domain.matching import match_open_close
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            default_acct = _ensure_default_account(cur, iid)
+            trades, accounts = _load_member_book(cur, iid, account_id)
+            matched = match_open_close(trades)
+            opens = [m["open"] for m in matched if m.get("close") is None]
+    return {
+        "trades": opens,
+        "accounts": accounts,
+        "default_account_id": int(default_acct["id"]),
+        "count": len(opens),
     }
 
 
@@ -151,12 +210,15 @@ async def create_trade(request: Request) -> dict:
             elif chosen and chosen != cat.UNSET_VENUE:
                 # Optional: user may re-bind only if still unset (above); ignore re-pick
                 pass
+            entry_source = _normalize_entry_source(
+                body.get("entry_source"), default="manual"
+            )
             cur.execute(
                 """INSERT INTO member_trade_log_trades
                      (identity_id, account_id, exec_at, asset_class, strategy, order_type,
                       net_price, net_side, setup_md, plan_md, rules_md, adherence,
-                      deviation_md, lesson_md, pnl_amount)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                      deviation_md, lesson_md, pnl_amount, entry_source)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     iid,
                     account_id,
@@ -173,6 +235,7 @@ async def create_trade(request: Request) -> dict:
                     proc["deviation_md"],
                     proc["lesson_md"],
                     proc["pnl_amount"],
+                    entry_source,
                 ),
             )
             tid = int(cur.lastrowid)

@@ -1,11 +1,11 @@
 # FatTail Labs — Trade Log Spec v1.1
 
-**Status:** AS-BUILT (v1.1 + harden appendix) — product surface live; formal Coach “approved”
-label retained from p-trade-log delivery; **harden truth** in §15 (2026-07-29)  
-**Date:** 2026-07-28 · **As-built notes:** 2026-07-29  
+**Status:** AS-BUILT (v1.1 + harden appendix + **manual management**) — product surface live  
+**Date:** 2026-07-28 · **As-built notes:** 2026-07-29 · **Manual management:** 2026-08-05  
 **Route:** `/app/trade-log`  
-**Family:** B (member-private) · **Entitlement:** activator+ (administrators always)  
-**Execution:** [`agents/p-trade-log/`](../agents/p-trade-log/) · harden [`agents/p-practice-harden/`](../agents/p-practice-harden/)
+**Family:** B (member-private) · **Entitlement:** Observer trial / Navigator Practice gate (DL-193)  
+**Execution:** [`agents/p-trade-log/`](../agents/p-trade-log/) · harden [`agents/p-practice-harden/`](../agents/p-practice-harden/)  
+**Design architecture:** [`Architecture/15-trade-log-manual-management.md`](../Architecture/15-trade-log-manual-management.md)
 
 **Parents:**
 - [`FatTail-Labs-Application-Framework-Spec-v1.0.md`](./FatTail-Labs-Application-Framework-Spec-v1.0.md) — Trade Log template, T-D5 process-first, Family B
@@ -178,8 +178,26 @@ Template mismatch: keep label + warn (do not force CUSTOM).
 | `pnl_amount` | Optional neutral |
 | `journal_entry_id` | Optional link to Journal (nullable until Journal ships) |
 | `external_adapter`, `external_order_id` | Import idempotency |
+| `entry_source` | **Provenance — three channels (never conflated).** See table below. Migrations `081`–`082`. |
+| `trash_reason` | Optional chip code when product records a trash intent (column reserved; hard-delete still removes the row) |
+| `created_at`, `updated_at` | Audit line on sheet |
 
 **Adherence:** `followed` \| `partial` \| `broke` \| `unknown` (shared with Journal).
+
+#### `entry_source` catalog (locked)
+
+| Value | Label (UI) | Who writes it | Not the same as |
+|-------|------------|---------------|-----------------|
+| **`manual`** | Manual | Member structure form / legs sheet / duplicate template | — |
+| **`import`** | Import | ToS / CSV / canonical pack / paste import adapters | Not automation |
+| **`automated`** | Automated | **Strategy Lab process runtime** (deployment instance fills) and **other future Labs automations** | Not file import; not member typing |
+
+- Default on `POST /trades`: **`manual`**.  
+- Import commit: forces **`import`**.  
+- Strategy Lab / bots: must stamp **`automated`** (never `import`, never silent `manual`).  
+- Legacy synonym: `machine` → normalize to **`automated`** (migration `082`).
+
+**entry_source (MM-1):** v1 **trash is universal** (any open/close fill may be deleted by the owner). Later product may restrict trash/edit for **`automated`** fills; store source now so policy does not guess. **Import and automated remain distinct** for audit and future policy.
 
 ### 4.5 Leg
 
@@ -213,17 +231,24 @@ member_trade_log_import_batches
 
 | Column | Options multi-leg | Stock / future / crypto |
 |--------|-------------------|-------------------------|
+| Select | Checkbox on **unmatched opens** (bulk trash) | same |
 | Exec time | First row of block | same |
-| Strategy | Catalog | STOCK / FUTURE / CRYPTO |
+| Strategy | Catalog + source chip when not manual: **Import** (sky) · **Automated** (violet) | STOCK / FUTURE / CRYPTO |
+| Status | **Open** · **Complete** · **Orphan close** badge | same |
 | Side | per leg | per leg |
 | Qty · effect | `+1 TO OPEN` | qty + effect or BUY/SELL |
 | Symbol | underlier | ticker / root / pair |
 | Exp / Strike / Type | option fields | — / asset badge |
-| Price / Net / Order type | fill; net on first row | fill |
+| Price / Net | fill; net on first row | fill |
+| Actions | On unmatched open first row: **Close** · **Trash** | — |
 
-**Grouping:** one trade = one block; shared meta on first row; muted open-vs-close tint (**not** win/loss). Optional adherence chip on first row.
+**Grouping:** one trade = one block; shared meta on first row; open green / close red tint (**not** win/loss).
 
-**Positions:** single account; derived open book; click → trade sheet.
+**Open strip:** header chip **Open: N** filters to unmatched opens (`listUnmatchedOpens` / same FIFO structure match as domain). **Select opens** selects all unmatched for bulk trash.
+
+**Validation chips (row):** `No net` · `No legs` · `No time` · orphan close (fail loud, process honesty).
+
+**Positions (secondary):** single account; derived open book; click → trade sheet. Primary open management is blotter + sheet (not a separate Positions mode requirement for manual management).
 
 ---
 
@@ -231,8 +256,8 @@ member_trade_log_import_batches
 
 | Panel | Content |
 |-------|---------|
-| Trade | Account, strategy template, legs, fill meta, process, Journal link |
-| Import | Target account → adapter → file → preview → commit |
+| Trade | See **§16 Manual trade management** — Actions (top) · Trade details (bottom); structure-first entry; close path |
+| Import | Target account → adapter → file/paste → preview → commit (`entry_source=import`) |
 | Accounts | Create/rename/archive; broker or sim; cap messaging |
 
 ---
@@ -520,12 +545,14 @@ Live under `/api/me/trade-log/analytics/*` (session + activator+; Family B ident
   contract** for future totals/adherence metrics; **not yet** the primary path for
   the equity UI. Do not claim they are wired until a later seed lands aliases.
 
-### 15.3 List / isolation / performance (H0)
+### 15.3 List / isolation / performance (H0 + lazy blotter)
 
 | Rule | As-built |
 |------|----------|
 | Legs on list/export | Batch `IN (...)` via `_load_legs_for_trades` — not N+1 |
-| Trade list limit | 10000 (full multi-year books; no silent small truncate) |
+| **Blotter list (default)** | **Paginated** newest-first: `limit` default **80**, max 200; `cursor` + `has_more` / `next_cursor` — **lazy load** keeps browser memory bounded |
+| **Full book** | `?full=1` or analytics routes only (capped 10000 server-side) — **not** default for `/app/trade-log` |
+| **Unmatched opens** | `GET /api/me/trade-log/opens` — server match on full book, returns **opens only** (Open:N filter / create gate) |
 | Identity | Real sessions use claims `identity_id`; storage fallback for internal id `0` is **`LABS_ENV=dev` only** (401 outside dev) |
 | Route layout | Package `server/routes/trade_log/` (`common`, `accounts`, `trades`, `analytics`, `io`) |
 
@@ -550,16 +577,149 @@ Canonical slugs: `web/lib/practiceSuite.ts` → `PRACTICE_NESTED_SLUGS` (Apps gr
 | 10 `records/summary` (+ series) | **Deferred** as primary Reports path; use §15.2 analytics until records aliases ship |
 | Isolation / multi-leg / import | Covered by characterization suite (`server/tests/test_trade_log*.py`) |
 
-**Version note:** A formal Spec **v1.2** may later merge §15 into §9–§10. Until then,
-§15 is **normative for as-built** Practice harden.
+**Version note:** A formal Spec **v1.2** may later merge §15–§16 into the body. Until then,
+§15–§16 are **normative for as-built** Practice + manual management.
 
 ---
 
-## 15. Version history
+## 16. Manual trade management (as-built 2026-08-05)
+
+**Purpose:** Members who **enter and edit fills by hand** (and who import ToS/CSV) need a
+complete lifecycle: open → close or trash → honest pairing → less retyping. Machine-entered
+fills will share the same schema; **trash policy may later differ by `entry_source`**.
+
+**Design architecture:** [`Architecture/15-trade-log-manual-management.md`](../Architecture/15-trade-log-manual-management.md)
+
+### 16.1 Structure matching (shared with Reports/Journal)
+
+| Concept | Implementation |
+|---------|----------------|
+| Structure key | `server/trade_log_domain/structure.py` · client mirror `web/lib/tradeLog.ts` |
+| FIFO open→close | `match_open_close` · `matchOpenClose` |
+| Unmatched open | Open fill with no paired close within hold window |
+| Orphan close | Close fill with no paired open |
+
+Matching is **account-scoped** (key includes `account_id`). Process metrics and open book
+use this SoR — not place memory / session chrome.
+
+### 16.2 Structure-first entry (default create)
+
+Default for option strategies (`BUTTERFLY`, `VERTICAL`, `SINGLE`, iron/straddle family, etc.):
+
+| Field | Role |
+|-------|------|
+| Strategy | Catalog |
+| Underlier, expiration | Instrument |
+| Center strike, width | Structure (width N/A for SINGLE/STRADDLE) |
+| Put/Call, units | As applicable |
+| **Order, net, debit/credit** | Primary economic controls — **above** legs |
+| Exec time | Required |
+
+**Legs built automatically** via `buildStructureLegs` (client). Preview line shows
+`B1 5725P · S2 5750P · …`.  
+
+**Legs (advanced):** collapsed by default; expand only for custom structures. Once
+expanded, save uses the explicit leg list even if collapsed again.
+
+**Stock / future / crypto:** simple symbol · qty · fill (not structure).
+
+**Last-used defaults:** `localStorage` key `ft.tradeLog.lastUsed.v1` — account, underlier,
+right, width, strategy, units (browser only; not export SoR).
+
+### 16.3 Sheet layout (normative chrome)
+
+```text
+┌ Header: Open · STRATEGY · underlier center · exp   |  Close · #id
+│         entry_source · Created … · Edited …
+├ Actions (section)
+│  · Close / paste ToS / duplicate / trash (opens)
+│  · Match preview (closes) · trash close (reopen)
+├ ══ horizontal rule ══
+├ Trade details (section)
+│  · Venue banner if account.broker = unset
+│  · Checklist chips (account, venue, time, structure, net)
+│  · Account, strategy, exec time
+│  · Structure block OR asset simple
+│  · Order · Net · Debit/Credit  (+ $ / unit ×100 hint for equity options)
+│  · Close confirm checkboxes (orphan, account, units, drift)
+│  · Legs (advanced) collapsible
+│  · Process notes (optional; on close encouraged lightly)
+└ Footer: Cancel · Save  (⌘/Ctrl+Enter)
+```
+
+### 16.4 Open lifecycle actions
+
+| Action | Behavior |
+|--------|----------|
+| **Enter closing order** | Prefill reverse legs `TO_CLOSE`, flip debit/credit; member sets net + time |
+| **Paste ToS close** | Opens Import panel (adapter parse → commit `entry_source=import`) |
+| **Duplicate as new open** | session template → create with same structure, blank net, `TO_OPEN` |
+| **Delete TO CLOSE** | Allowed anytime on a close fill. After delete, paired TO OPEN becomes unmatched again |
+| **Delete TO OPEN** | **Only if no paired close** (unmatched open). If a TO CLOSE exists, UI blocks delete and requires deleting the close first |
+| **Delete order (locked)** | **Close first, then open** — never delete a paired open while its close remains |
+| **Bulk delete opens** | Blotter multi-select **unmatched** opens only → confirm → delete each |
+| **Edit / backdate `exec_at`** | Manual (and general) open **or** close fills: full **date + time** editable on the sheet. Backdating allowed — no “today only” max. Save via PATCH. Paired fill’s time shown with jump link to edit the other leg of the pair |
+
+### 16.5 Close save gates (fail loud)
+
+Before `POST` close fill:
+
+| Gate | Default | Override |
+|------|---------|----------|
+| Structure pairs intended open | Required | “Allow orphan / unexpected pair” |
+| Same `account_id` as open | Required | “Allow different account” |
+| Unit qty (GCD) equals open | Required | “Allow unit size ≠ open” |
+| No structure drift vs open | Required | “Allow structure drift” |
+
+UI shows **“Will pair with open #…”** from `findOpenForCloseDraft` before save.
+
+### 16.6 Partial close
+
+v1 default: **full structure close** (unit qty must match). Partial / scaled units only with
+explicit confirm. Domain FIFO still pairs one open to one close by structure key (GCD-normalized).
+
+### 16.7 API / schema deltas
+
+| Item | Detail |
+|------|--------|
+| Migration | `081` columns · `082` `machine`→`automated` |
+| Create | Accepts `entry_source` (default `manual`; allow `automated` only from trusted automation callers later) |
+| Import commit | Forces `entry_source=import` |
+| Strategy Lab / automation writers | **Must** set `entry_source=automated` |
+| Delete | `DELETE /api/me/trade-log/trades/{id}` — identity-scoped; legs CASCADE |
+
+### 16.8 Client modules (as-built)
+
+| Path | Role |
+|------|------|
+| `web/lib/tradeLog.ts` | Types, structure builders, match, issues, badges, dollar hint |
+| `web/lib/tradeLogPrefs.ts` | Last-used entry defaults |
+| `web/components/trade-log/TradeSheet.tsx` | Sheet layout + gates |
+| `web/components/trade-log/TradeLogTable.tsx` | Blotter filter, actions, chips |
+| `web/app/app/trade-log/page.tsx` | Wiring, bulk trash, duplicate template |
+
+### 16.9 Acceptance (manual management)
+
+1. Structure-first create saves multi-leg butterfly without editing legs.  
+2. Unmatched open shows **Close** / **Trash** on row and Actions in sheet.  
+3. Close without matching open fails loud unless orphan allowed.  
+4. Trash close restores open unmatched state in blotter.  
+5. Import trades show **Import** chip; manual create stores `manual`; automation must store `automated` (not import).  
+6. Open:N filter and bulk trash only act on unmatched opens.  
+7. Process notes optional; never required to save a fill.  
+8. No win-rate / expectancy chrome on management surfaces.  
+9. Blotter/sheet never label an import as Automated or an automation fill as Import.
+
+---
+
+## 17. Version history
 
 | Version | Notes |
 |---------|--------|
-| **v1.1** | Multi-leg ToS log, accounts (broker/sim, ≤10 active), canonical + adapters, Journal/**Reports** contracts (multi-account totals & charts), Agent Bench `p-trade-log` |
+| **v1.1 + §16.1** | `entry_source`: **manual · import · automated** (Strategy Lab ≠ import); UI chips (2026-08-05) |
+| **v1.1 + §16** | Manual management: structure entry, close/trash, match gates, entry_source, blotter open strip (2026-08-05) |
+| **v1.1 + §15** | Practice harden H0–H2 domain SoR / analytics honesty (2026-07-29) |
+| **v1.1** | Multi-leg ToS log, accounts (broker/sim, ≤10 active), canonical + adapters, Journal/**Reports** contracts, Agent Bench `p-trade-log` |
 | **v1.0 (MVP)** | Process-only `member_trade_log_entries`; form-first UI — superseded for product shape |
 
 ---
