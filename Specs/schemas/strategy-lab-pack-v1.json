@@ -57,9 +57,12 @@
       "required": ["export_subject"],
       "properties": {
         "export_subject": { "type": "string", "const": "self" },
-        "email": { "type": "string" }
+        "email": {
+          "type": "string",
+          "description": "Optional. Omit by default (SLP-6). Never used to rebind ownership."
+        }
       },
-      "description": "Label only. Never includes identity_id."
+      "description": "export_subject required. email optional and omitted by default. Never includes identity_id."
     },
     "lab": {
       "type": "object",

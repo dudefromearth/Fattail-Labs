@@ -6,7 +6,7 @@
 **Prototype path:** `strategy-lab-proto/` (Streamlit)  
 **Intended home:** First-class Labs surface under `labs.fattail.ai` (later)  
 **Process source:** `/Users/ernie/LifeCycle.pdf` — *Strategy Life Cycle Big Picture* (1/19/25)  
-**Related:** `Strategy-Lab-Life-Cycle-Architecture-v1.0.md`, `v1.1.md` (foundation/plugin path) · **`Strategy-Lab-Portability-Spec-v1.0.md`** (whole-lab import/export pack) · `schemas/strategy-lab-pack-v1.json`  
+**Related:** `Strategy-Lab-Life-Cycle-Architecture-v1.0.md`, `v1.1.md` (foundation/plugin path) · **`Strategy-Lab-Portability-Spec-v1.0.md`** (whole-lab import/export pack) · `schemas/strategy-lab-pack-v1.json` · **`Strategy-Lab-Strategy-Pack-Architecture-v1.0.md`** (modular packs · Butterfly Phase 1)  
 **Doctrine:** Capital preservation · process over profit claims · no fantasy fills · fail loud · stop-the-bleeding first  
 
 ---
@@ -75,7 +75,8 @@ It is **not** a charting toy first. Risk graph, backtest, sizing math, and broke
 │      Strategy card · phase · phase_state · version · gates · ramps · log │
 ├──────────────────────────────────────────────────────────────────────────┤
 │  L0  PERSISTENCE                                                         │
-│      lab_state.json (proto) → Labs MySQL later                           │
+│      Production: Labs MySQL strategy_lab_strategies (identity_id)        │
+│      Proto only: lab_state.json (Streamlit) — not multi-tenant SoR       │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -322,6 +323,10 @@ Plugin tools (risk graph, Spec editor, backtest) stay **off** until attributes e
 
 ## 7. Data model
 
+**Store of truth (locked):** Production Strategy Lab persists in **Labs MySQL** table `strategy_lab_strategies`, accessed only via session-scoped `/api/me/strategy-lab/*` (Family B, `identity_id`).  
+
+**Prototype:** `strategy-lab-proto/data/lab_state.json` is a **local Streamlit lab only** — useful for lifecycle/plugin experiments; it is **not** the multi-user production SoR and must not be treated as authoritative for Labs product behavior.
+
 ### 7.1 Strategy record (conceptual)
 
 ```json
@@ -348,7 +353,9 @@ Plugin tools (risk graph, Spec editor, backtest) stay **off** until attributes e
 }
 ```
 
-### 7.2 Lab state root (proto)
+### 7.2 Lab state root (prototype only)
+
+Streamlit proto shape (not production API):
 
 ```json
 {
@@ -360,6 +367,8 @@ Plugin tools (risk graph, Spec editor, backtest) stay **off** until attributes e
   "demo_pack_version": "f1-blank-strategy"
 }
 ```
+
+Portable production export uses `fattail.labs.strategy_lab` (Portability Spec v1.0), not this proto root.
 
 ### 7.3 Store API (foundation)
 
@@ -477,12 +486,21 @@ One blank strategy:
 
 Member can advance states, move bins, rename, retire — without plugins.
 
-### 9.4 Known prototype limits
+### 9.4 Known limits
 
-- Drag-and-drop: CCv2 component exists; primary UX is column bins + hop/work-area moves  
-- Paper / broker: interfaces reserved; not production-wired  
+**Production (Labs Next + API + MySQL) — as of F1 portability:**
+
+- Phase bins + Archive page; Practice-style suite chrome  
+- Identity-scoped strategies; whole-lab import/export  
+- Pack depth (Butterfly) not yet wired — see Strategy Pack Architecture Spec  
+- Paper / broker / Tradier: not production-wired  
 - Evidence slots for IS/OOS not hard-blocking all promotes yet  
-- Persistence is local JSON, not multi-user Labs DB  
+
+**Prototype (Streamlit) only:**
+
+- Local `lab_state.json` persistence  
+- Drag-and-drop / risk-graph experiments  
+- Not multi-tenant; not the product SoR  
 
 ---
 
@@ -490,13 +508,13 @@ Member can advance states, move bins, rename, retire — without plugins.
 
 | Phase | Deliverable |
 |-------|-------------|
-| **F1** (current focus) | Lifecycle foundation: bins, states, rename, log, blank strategy walkthrough |
-| **A1** | Attribute schemas (`options_spec@1`, sizing, …) |
+| **F1** | Lifecycle foundation on Labs: bins, states, rename, log, blank walkthrough, portability |
+| **A1** | Attribute schemas + Strategy Packs (Butterfly Phase 1) |
 | **P1** | Development plugins: Spec + risk graph + IS/OOS |
 | **P2** | Curation plugins: category, group, size, monitor, paper-on |
 | **P3** | Deployment plugins: capital, schedule, broker stub, retro |
 | **X** | Second instrument family spike without new phases |
-| **Labs integration** | Auth, multi-tenant store, course pathway deep-links |
+| **Execution** | Tradier (target mid-September 2026 intent) — separate spec |
 
 ---
 
@@ -516,10 +534,10 @@ Member can advance states, move bins, rename, retire — without plugins.
 
 ## 12. Open questions
 
-1. Soft vs hard block: must Development be Deployed before any Curation hop, or only on formal **Promote**?  
+1. **Promote gate (canonical — also Pack Spec §4.9):** Formal **Promote** requires Development `phase_state === deployed`. Direct phase hops may remain soft for demo. Pack evidence hard-requirements deferred until process plugins. Do not answer this twice with different defaults.  
 2. Paper self-run: hosted in Curation vs Deployment?  
 3. Multi-version lineage UI: one card per version vs version stack under `product_key`?  
-4. When Strategy Lab becomes a Labs route: Streamlit embed vs native Next rewrite of L3 only?  
+4. *(Resolved)* Labs route = native Next + API; Streamlit remains prototype lab only.  
 
 ---
 
@@ -528,6 +546,7 @@ Member can advance states, move bins, rename, retire — without plugins.
 | Version | Date | Notes |
 |---------|------|-------|
 | **1.0** | 2026-08-04 | Canonical architecture & design: lifecycle, foundation/plugins, bins, states, as-built proto |
+| **1.0.1** | 2026-08-04 | Clarify production MySQL SoR vs Streamlit proto; unify Promote open question with Pack Spec; Labs integration status |
 
 **Supersedes for planning:** narrative in `Strategy-Lab-Life-Cycle-Architecture-v1.0.md` and build path in `v1.1.md` (keep those files for history; **this document is the current map**).
 

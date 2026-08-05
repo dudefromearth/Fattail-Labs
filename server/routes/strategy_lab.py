@@ -321,8 +321,15 @@ async def _read_lab_document(request: Request) -> tuple[dict[str, Any], str, str
 
 
 @router.get("/api/me/strategy-lab/export")
-def export_lab(request: Request, include_bin: bool = True) -> Any:
-    """Download whole Strategy Lab pack (Portability Spec v1.0)."""
+def export_lab(
+    request: Request,
+    include_bin: bool = True,
+    include_email: bool = False,
+) -> Any:
+    """Download whole Strategy Lab pack (Portability Spec v1.0).
+
+    Email omitted by default (SLP-6); pass include_email=true to stamp label only.
+    """
     claims = require_session(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -330,7 +337,8 @@ def export_lab(request: Request, include_bin: bool = True) -> Any:
             pack = sld.build_export_pack(
                 cur,
                 iid,
-                email=_email_for(cur, claims),
+                email=_email_for(cur, claims) if include_email else None,
+                include_email=include_email,
                 env=_env_name(),
                 include_bin=include_bin,
             )

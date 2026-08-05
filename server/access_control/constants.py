@@ -52,11 +52,14 @@ ACCESS_UNGATEABLE_TARGETS: frozenset[str] = frozenset(
 
 # --- Data-bearing apps (Spec §4.2.2) — read/export floor for signed-in owner ---
 
+# Member-authored Family B apps: read/export floor always for signed-in owner.
+# Spec §4.2.2 — includes strategy-lab (strategies, whole-lab export).
 DATA_BEARING_APPS: frozenset[str] = frozenset(
     {
         "trade-log",
         "journal",
         "playbook",
+        "strategy-lab",
     }
 )
 

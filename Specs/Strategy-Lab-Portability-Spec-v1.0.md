@@ -55,15 +55,17 @@ They must be able to:
 | **SLP-3** | `model_version` string for pack envelope; `foundation_version` int for life-cycle kernel |
 | **SLP-4** | Portable strategy id = card `id` (as-built `public_id`); also stored as `export_key` for merge |
 | **SLP-5** | **No** raw `identity_id`, DB surrogate keys, or session tokens in documents |
-| **SLP-6** | Email in pack is **label only** (identity stamp); import never rebinds ownership by email |
+| **SLP-6** | `identity.email` is **optional** and **omitted by default** on export; when present, label only — import never rebinds ownership by email |
 | **SLP-7** | Default import policy = **`additive`** (insert missing keys; never UPDATE/DELETE) |
-| **SLP-8** | Optional **`replace_lab`** policy (purge Strategy Lab rows for identity, then insert) — requires explicit confirm; used for demos / full restore |
+| **SLP-8** | Optional **`replace_lab`** policy (purge Strategy Lab rows for identity, then insert) — requires explicit confirm **and** server-side recovery snapshot (§7.3.1) |
 | **SLP-9** | Phase capacity **100 per phase** enforced on import commit (fail loud with counts) |
 | **SLP-10** | Archive strategies export as `phase: "bin"` with `phase_state` ∈ {`retired`,`trashed`} |
 | **SLP-11** | `attributes` is a map of **versioned bags** (`"options_spec@1": {…}`); empty `{}` is valid |
 | **SLP-12** | `lifecycle_log` is portable audit; import may **truncate** to last 50 events (matches store) or preserve all if under cap |
 | **SLP-13** | Pack download = **JSON** default; optional **ZIP** (`strategy-lab.json` + `manifest.json`) later — same payload |
 | **SLP-14** | Detect/preview/commit shape mirrors Practice import where practical |
+| **SLP-15** | Before any `replace_lab` purge: auto-export current lab to a **recovery blob** (bounded retention); UI can restore |
+| **SLP-16** | Coach seed revision under additive: documented workflow only — no silent `merge_update` in v1.0 (§7.9) |
 
 ---
 
@@ -108,8 +110,7 @@ Every Strategy Lab pack:
     "app": "strategy-lab"
   },
   "identity": {
-    "export_subject": "self",
-    "email": "member@example.com"
+    "export_subject": "self"
   },
   "lab": {
     "schema_version": 1,
@@ -138,7 +139,7 @@ Every Strategy Lab pack:
 | `foundation_version` | integer | yes | Life-cycle kernel; bump when phases/states enum breaks |
 | `exported_at` | ISO-8601 | yes | UTC `Z` preferred |
 | `source` | object | yes | Provenance; never used for auth |
-| `identity` | object | yes | Label only; see SLP-5/6 |
+| `identity` | object | yes | `export_subject` required; `email` optional (omit by default; SLP-6) |
 | `lab` | object | yes | Lab-level meta + optional counts |
 | `strategies` | array | yes | May be empty `[]` |
 | `campaigns` | array | yes | Reserved; empty in v1 |
@@ -385,8 +386,9 @@ Query (optional):
 3. Map each row via portable projection (§4); **omit** `db_id`.  
 4. Set `export_key` = `public_id` (or stored `export_key` when column lands).  
 5. Build envelope + `lab.counts`.  
-6. Audit `export`.  
-7. Return `Content-Disposition: attachment; filename="strategy-lab-YYYYMMDD.json"`.
+6. **Omit** `identity.email` by default. Include only if query `include_email=true` (explicit opt-in for the member).  
+7. Audit `export`.  
+8. Return `Content-Disposition: attachment; filename="strategy-lab-YYYYMMDD.json"`.
 
 ### 6.3 Projection (as-built → portable)
 
@@ -430,10 +432,30 @@ Body: `{ "document": {…} }` or multipart file. Max **25 MB**. Fail loud if exc
 | Policy | Behavior |
 |--------|----------|
 | **`additive`** (default) | For each strategy: if `export_key` already owned by identity → **skip**; else **insert**. Never UPDATE/DELETE. |
-| **`replace_lab`** | Delete **all** `strategy_lab_strategies` for identity, then insert pack strategies. Requires `confirm: "REPLACE_LAB"`. |
+| **`replace_lab`** | **(1)** Snapshot current lab to recovery blob (§7.3.1) → **(2)** delete all `strategy_lab_strategies` for identity → **(3)** insert pack strategies. Requires `confirm: "REPLACE_LAB"`. |
 | `merge_update` | **Forbidden in v1.0** (no silent overwrite of member cards) |
 
-**Full restore path (member):** Download → `replace_lab` **or** purge Lab → additive load.
+**Full restore path (member):** Download → `replace_lab` **or** purge Lab → additive load.  
+**Undo replace:** Restore from recovery blob (§7.3.1) within retention window.
+
+### 7.3.1 Recovery snapshot (normative for `replace_lab`)
+
+`replace_lab` is irreversible without a prior copy of the member’s lab (lifecycle logs live on the rows that would be deleted). Confirm tokens alone are insufficient for coaches/members loading teaching packs.
+
+| Requirement | Rule |
+|-------------|------|
+| **When** | Immediately before purge on every successful `replace_lab` commit path |
+| **What** | Full portable pack of the **current** lab (`include_bin=true`), same as export projection |
+| **Where** | Server-side recovery store scoped to `identity_id` (table or object store — implementation choice) |
+| **Id** | Opaque `recovery_id` returned in commit response |
+| **Retention** | Bounded window: **≥ 7 days**, **≤ 30 days** (default **14 days**); then delete |
+| **Cap** | Keep last **N=5** recovery blobs per identity; older dropped FIFO |
+| **Restore API** | `POST /api/me/strategy-lab/import/restore-recovery` body `{ "recovery_id", "confirm": "RESTORE_RECOVERY" }` applies **replace_lab semantics** from the blob (and may create a new recovery of the pre-restore state) |
+| **UI** | After replace, surface “Undo replace (recovery available until …)”; Archive/Lab chrome may list recent recoveries |
+| **Audit** | `member_access_audit` actions: `export` (auto snapshot), `import` (replace), `import` (restore-recovery) |
+| **Failure** | If snapshot fails → **do not purge**; commit fails loud |
+
+Email is **omitted** from auto-snapshots (SLP-6 default).
 
 ### 7.4 Identity of rows
 
@@ -513,9 +535,27 @@ Soft (preview **warnings**, still importable):
   "created": 20,
   "skipped": 4,
   "public_ids_created": ["…"],
-  "export_key_map": { "pack-key": "new-public-id-if-remapped" }
+  "export_key_map": { "pack-key": "new-public-id-if-remapped" },
+  "recovery_id": null
 }
 ```
+
+When `policy` is `replace_lab`, `recovery_id` is the snapshot id from §7.3.1 (non-null on success).
+
+### 7.9 Coach seed / teaching pack workflow (additive limits)
+
+`merge_update` is forbidden: a revised teaching pack with the **same** `export_key`s will **skip** all cards on additive re-import. That is intentional for v1 (no silent overwrite of member edits).
+
+**Documented workflows for coach seed revision:**
+
+| Goal | Workflow |
+|------|----------|
+| Clean teach on empty/demo account | `replace_lab` with exercise/teaching pack (recovery blob keeps prior lab) |
+| Update seed keys for a new curriculum version | Ship pack with **new** `export_key`s (e.g. suffix `-v2`); additive inserts new cards; retire old seeds manually or via replace |
+| Member already customized a seed | Do **not** replace without warning; prefer additive new keys or member-driven trash + load |
+| Full lab swap | Member Download → confirm → `replace_lab` (or use recovery undo) |
+
+Product copy for Load UI MUST state that additive never overwrites existing strategies.
 
 ---
 
@@ -618,6 +658,9 @@ Copy guidance:
 | 7 | No `identity_id` or `db_id` in any exported JSON |
 | 8 | Audit rows written for export and import |
 | 9 | Exercise pack with ≥1 card per legal phase_state loads and renders on board + Archive |
+| 10 | Default export has no `identity.email` |
+| 11 | `replace_lab` fails if recovery snapshot cannot be written; success returns `recovery_id` |
+| 12 | Restore-recovery within retention recreates prior lab (portable field equality) |
 
 ---
 
@@ -630,7 +673,7 @@ Copy guidance:
   "foundation_version": 1,
   "exported_at": "2026-08-04T18:30:00Z",
   "source": { "system": "fattail-labs", "env": "dev", "app": "strategy-lab" },
-  "identity": { "export_subject": "self", "email": "coach@example.com" },
+  "identity": { "export_subject": "self" },
   "lab": {
     "schema_version": 1,
     "label": "Tiny demo",
@@ -736,6 +779,7 @@ Copy guidance:
 | Date | Note |
 |------|------|
 | 2026-08-04 | v1.0 — Initial portability contract: whole-lab pack, skeleton strategies, additive + replace_lab, phase/state enums, extension bags |
+| 2026-08-04 | v1.0.1 — Claude review: replace_lab recovery snapshot; email optional/omitted by default; coach seed additive workflow (§7.9) |
 
 ---
 

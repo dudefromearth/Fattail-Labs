@@ -122,7 +122,9 @@ def test_ungateable_and_data_bearing():
     assert is_data_bearing_app_key("app:journal")
     assert is_data_bearing_app_key("app:playbook")
     assert not is_data_bearing_app_key("app:reports")
-    assert DATA_BEARING_APPS == frozenset({"trade-log", "journal", "playbook"})
+    assert DATA_BEARING_APPS == frozenset(
+        {"trade-log", "journal", "playbook", "strategy-lab"}
+    )
 
 
 def test_course_family():

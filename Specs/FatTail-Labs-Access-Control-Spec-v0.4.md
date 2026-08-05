@@ -43,6 +43,13 @@ Server-side expansion (write-time); data-bearing app floor; sitemap = anonymous 
 
 **Kept:** review resolution log format; bulk/UI same write path for policy fields; data-bearing floor shape; sitemap one-liner; admin-only decision APIs.
 
+### v0.4 amendment — Strategy Lab floor (2026-08-04)
+
+| # | Class | Resolution |
+|---|--------|------------|
+| **SL-1** | Blocking gap — member-authored surface missing from floor | **`strategy-lab`** added to `DATA_BEARING_APPS` (§4.2.2) |
+| **SL-2** | Process | General rule: new member-authored Family B surfaces inherit read/export floor by default; must update constant + tests |
+
 ---
 
 ## 1. Problem
@@ -156,12 +163,24 @@ Characterization: `PUT` each → **422**. New recovery routes must extend consta
 
 ### 4.2.2 Data-bearing apps (member-authored data)
 
-**Code constant** P0: `DATA_BEARING_APPS = {trade-log, journal, playbook…}`.
+**Code constant** P0:
+
+```text
+DATA_BEARING_APPS = {
+  trade-log,
+  journal,
+  playbook,
+  strategy-lab,   # member-authored strategies (Family B); Portability export
+  …
+}
+```
+
+**General rule (normative):** Any app surface that stores **member-authored** content under Family B isolation **inherits the read/export floor by default**, without waiting for a one-off enumeration amendment. Adding a new member-authored surface requires: (1) add its slug to `DATA_BEARING_APPS`, (2) extend ungateable/floor tests, (3) document in this section. Failure to list a surface is a **spec/bug**, not license to hard-lock read of own data.
 
 | Capability | Floor (signed-in owner) |
 |------------|-------------------------|
 | Read own data | Always |
-| Export own data | Always (Member Practice Export) |
+| Export own data | Always (Member Practice Export; Strategy Lab whole-lab export) |
 | Create / update / delete | Policy may restrict |
 
 **Write validation (admin):**  
@@ -171,7 +190,7 @@ Attempt to set `mode: hide` or `mode: hard` on a data-bearing app such that read
 **Evaluate:** if plan/role fail but signed-in owner of data-bearing app → `allow=true`, `capabilities=["read","export"]`, `code=read_only_floor`, `mode=soft` for UX banner; write endpoints still DENY.
 
 **deny_plans vs data floor (explicit):**  
-`deny_plans` **does not** remove the read/export floor. Blocklisted members still **read/export** own Trade Log / Journal; **writes** remain denied. Rationale: data-subject access to own records outweighs tier blocklist for reads; abuse cases use account suspension (identity/admin), not access policy hide.
+`deny_plans` **does not** remove the read/export floor. Blocklisted members still **read/export** own Trade Log / Journal / **Strategy Lab**; **writes** remain denied. Rationale: data-subject access to own records outweighs tier blocklist for reads; abuse cases use account suspension (identity/admin), not access policy hide.
 
 ### 4.3 Access policy
 
@@ -547,7 +566,8 @@ free_preview dual-write; feature_gates → surface policies; apps.status → def
 3. Same with `exact_plans_only: true` → Navigator **DENY**.  
 4. After adding a new commercial slug to the expansion table, old Observer-selected policies admit holders of that slug without rewriting rows (mock expansion table / config).  
 5. `PUT app:trade-log` mode hard → **422** with floor message (not coerce).  
-6. deny_plans member can still GET trade-log list/export; POST denied.  
+5b. `PUT app:strategy-lab` mode hard → **422** with floor message (same data-bearing floor).  
+6. deny_plans member can still GET trade-log list/export **and** strategy-lab list/export; POST denied.  
 7. `PUT surface:login` → 422.  
 8. No public decision probe.  
 9. Preview-as empty enrollments; no progress write.  

@@ -621,6 +621,7 @@ def build_export_pack(
     identity_id: int,
     *,
     email: str | None = None,
+    include_email: bool = False,
     env: str = "dev",
     phases: set[str] | None = None,
     include_bin: bool = True,
@@ -636,6 +637,10 @@ def build_export_pack(
             continue
         portable.append(strategy_to_portable(s))
     counts = count_by_phase(portable)
+    identity: dict[str, Any] = {"export_subject": "self"}
+    # SLP-6: email omitted by default; only when explicitly requested
+    if include_email and email:
+        identity["email"] = email
     return {
         "format": FORMAT_ID,
         "model_version": MODEL_VERSION,
@@ -646,10 +651,7 @@ def build_export_pack(
             "env": env,
             "app": "strategy-lab",
         },
-        "identity": {
-            "export_subject": "self",
-            "email": email or "",
-        },
+        "identity": identity,
         "lab": {
             "schema_version": LAB_SCHEMA_VERSION,
             "label": label,
