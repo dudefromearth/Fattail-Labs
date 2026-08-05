@@ -113,6 +113,82 @@ export async function moveStrategy(
   return { strategy: j.strategy };
 }
 
+export type ValidationResultEntry = {
+  at?: string;
+  status?: string;
+  kind?: string;
+  metrics?: Record<string, unknown>;
+  data_provenance?: { source?: string; label?: string };
+};
+
+export type StrategyValidationStatus = {
+  validation: {
+    backtest?: ValidationResultEntry;
+    forward_walk?: ValidationResultEntry;
+  };
+  gaps: string[];
+  ready_for_curation: boolean;
+  phase_state?: string;
+  phase_state_label?: string;
+};
+
+export async function runBacktest(
+  id: string,
+): Promise<{
+  strategy?: StrategyLabStrategy;
+  result?: ValidationResultEntry;
+  error?: string;
+}> {
+  const r = await postJSON(`/api/me/strategy-lab/strategies/${id}/backtest`, {});
+  const j = (await r.json().catch(() => ({}))) as {
+    strategy?: StrategyLabStrategy;
+    result?: ValidationResultEntry;
+    detail?: string;
+  };
+  if (!r.ok) {
+    return {
+      error: typeof j.detail === "string" ? j.detail : "Back test failed",
+    };
+  }
+  return { strategy: j.strategy, result: j.result };
+}
+
+export async function runForwardWalk(
+  id: string,
+): Promise<{
+  strategy?: StrategyLabStrategy;
+  result?: ValidationResultEntry;
+  ready_for_curation?: boolean;
+  error?: string;
+}> {
+  const r = await postJSON(
+    `/api/me/strategy-lab/strategies/${id}/forward-walk`,
+    {},
+  );
+  const j = (await r.json().catch(() => ({}))) as {
+    strategy?: StrategyLabStrategy;
+    result?: ValidationResultEntry;
+    ready_for_curation?: boolean;
+    detail?: string;
+  };
+  if (!r.ok) {
+    return {
+      error: typeof j.detail === "string" ? j.detail : "Forward walk failed",
+    };
+  }
+  return {
+    strategy: j.strategy,
+    result: j.result,
+    ready_for_curation: j.ready_for_curation,
+  };
+}
+
+export async function fetchValidation(
+  id: string,
+): Promise<StrategyValidationStatus | null> {
+  return getJSON(`/api/me/strategy-lab/strategies/${id}/validation`);
+}
+
 export async function promoteStrategy(
   id: string,
 ): Promise<{ strategy?: StrategyLabStrategy; error?: string }> {
@@ -312,7 +388,7 @@ export const PHASE_ORDER: PhaseKey[] = [
 ];
 
 export const PHASE_HINTS: Record<BoardPhaseKey, string> = {
-  development: "Hypothesis · Model · IS · OOS · Deployed",
+  development: "Hypothesis · Model · Back test · Forward walk · Deployed",
   curation: "Categorized · Grouped · Sized · Monitored",
   deployment: "Strategy · Capital · Schedule · Run · Prune · Retro",
 };

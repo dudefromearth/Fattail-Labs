@@ -16,12 +16,42 @@ def test_only_butterfly_enabled():
 def test_schema_and_defaults():
     d = pack_detail("butterfly")
     assert d["schema"]["common"]
-    assert "symmetric" in d["schema"]["variants"]
+    assert "batman" in d["schema"]["variants"]
+    assert "single" in d["schema"]["variants"]
     assert "broken_wing" in d["schema"]["variants"]
-    assert len(d["defaults"]) == 6
-    # min_convexity_quality optional on schema
+    assert len(d["defaults"]) == 7
+    batman_fields = {f["name"]: f for f in d["schema"]["variants"]["batman"]}
+    assert "match_side_widths" in batman_fields
+    assert "call_width_points" in batman_fields
+    assert "put_width_points" in batman_fields
     bwb_fields = {f["name"]: f for f in d["schema"]["variants"]["broken_wing"]}
     assert bwb_fields["min_convexity_quality"]["required"] is False
+
+
+def test_batman_is_dual_fly_package():
+    cfg = next(c for c in bp.get_default_configs() if "Batman" in str(c.get("name")))
+    chain = build_stub_chain()
+    r = bp.rank_structures(cfg, chain)
+    assert r["ok"] and r["ranked"]
+    top = r["ranked"][0]["structure"]
+    assert top.get("structure_kind") == "batman" or top.get("family") == "batman"
+    assert len(top.get("legs") or []) == 6  # call 1/-2/1 + put 1/-2/1
+    comps = top.get("components") or {}
+    assert "call_fly" in comps and "put_fly" in comps
+
+
+def test_batman_uneven_side_widths():
+    cfg = next(
+        c
+        for c in bp.get_default_configs()
+        if c.get("match_side_widths") is False
+    )
+    r = bp.rank_structures(cfg, build_stub_chain())
+    assert r["ok"] and r["ranked"]
+    top = r["ranked"][0]["structure"]
+    assert top["call_width_points"] != top["put_width_points"]
+    assert float(top["call_width_points"]) == 50
+    assert float(top["put_width_points"]) == 30
 
 
 def test_defaults_validate():

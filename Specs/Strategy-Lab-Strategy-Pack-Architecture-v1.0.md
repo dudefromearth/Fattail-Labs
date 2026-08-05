@@ -27,14 +27,14 @@
 
 | This / coach language | FatTail Labs life-cycle term | Notes |
 |-----------------------|------------------------------|--------|
-| **Design Phase** | **Development** phase | Phase key `development`. UI label: Development. |
+| **Design Phase** | **Development** phase | Phase key `development`. UI label: Development. **No separate Design Phase doc** — see [`Strategy-Lab-Development-Phase-Spec-v1.0.md`](./Strategy-Lab-Development-Phase-Spec-v1.0.md). |
 | Strategy product / config | Strategy card | Versioned; owns `phase`, `phase_state`, `attributes` |
 | Strategy Pack (plugin) | L2 **attribute + process** pack | Pack-agnostic foundation; packs never invent new phases |
-| Curation | **Curation** phase | Portfolio readiness after Development handoff |
+| Curation | **Curation** phase | After back test + forward walk; paper / live prep |
 | Campaign / live book | **Deployment** phase | Out of Phase 1 execution scope for Tradier |
 | Archive / kill | **Bin** (`retired` \| `trashed`) | Off-board Archive page |
 
-Where coach materials say “Design,” implementations and UI use **Development**.
+Where coach materials say “Design,” implementations and UI use **Development**. Validation before Curation is owned by the Development Phase Spec, not this pack doc alone.
 
 ---
 
@@ -405,10 +405,13 @@ Phase 1: only `butterfly` is registered and enabled. Disabled packs MUST NOT app
 
 | Variant key | Label | Intent |
 |-------------|-------|--------|
-| `symmetric` | Symmetric / Batman | Balanced wings; debit-to-width edge |
-| `broken_wing` | Broken Wing Butterfly (BWB) | Asymmetric wings; debit-to-payoff + convexity quality |
+| `batman` | **Batman** | **Package of two wing-symmetric flies: call fly + put fly.** Usually matched widths; optional independent `call_width_points` / `put_width_points` when `match_side_widths=false`. Debit-to-width uses package debit / (call_width + put_width). |
+| `single` | Single fly | One call *or* put fly only (not a Batman) |
+| `broken_wing` | Broken Wing Butterfly (BWB) | Asymmetric single-side BWB; debit-to-payoff + convexity quality |
 
-Config field `butterfly_family` ∈ {`symmetric`, `broken_wing`} selects `variants` schema branch.
+**Product language (Coach lock):** A **Batman** is not a single symmetric fly. It is **both** a call butterfly and a put butterfly together. Alias: `symmetric` → `batman` for older configs.
+
+Config field `butterfly_family` ∈ {`batman`, `single`, `broken_wing`} selects `variants` schema branch.
 
 ### 4.3 Parameter schema
 

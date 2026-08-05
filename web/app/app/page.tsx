@@ -78,7 +78,7 @@ const FALLBACK_APPS: AppRow[] = [
     slug: "strategy-lab",
     title: "Strategy Lab",
     blurb:
-      "Development → Curation → Deployment. Strategies on your account. Validate edges before capital; process over profit claims.",
+      "Design → Curate → Deploy. Strategies on your account. Validate edges before capital; process over profit claims.",
     status: "soon",
     href: "/app/strategy-lab",
   },

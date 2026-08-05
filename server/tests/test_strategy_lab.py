@@ -38,6 +38,84 @@ def test_meta_payload():
     m = sld.meta_payload()
     assert len(m["phases"]) == 4
     assert m["max_per_phase"] == 100
+    dev = next(p for p in m["phases"] if p["key"] == "development")
+    keys = [s["key"] for s in dev["states"]]
+    assert keys == ["hypothesis", "model", "is_test", "oos_test", "deployed"]
+    labels = {s["key"]: s["label"] for s in dev["states"]}
+    assert labels["is_test"] == "Back test"
+    assert labels["oos_test"] == "Forward walk"
+
+
+def test_development_validation_gate(client):
+    """Back test → forward walk required before promote to Curation."""
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = identity_mod.get_or_create_identity(
+                cur, "zztest-strategy-lab-val@labs.test", "ZZ Strategy Lab Val"
+            )
+    from tests.conftest import cookie_for
+
+    cookies = cookie_for("navigator", identity_id=iid)
+    # create strategy
+    r = client.post(
+        "/api/me/strategy-lab/strategies",
+        json={"name": "Val gate"},
+        cookies=cookies,
+    )
+    assert r.status_code == 200, r.text
+    sid = r.json()["strategy"]["id"]
+
+    # promote without validation → 422
+    r = client.post(
+        f"/api/me/strategy-lab/strategies/{sid}/promote",
+        cookies=cookies,
+    )
+    assert r.status_code == 422
+
+    # forward walk before backtest → 422
+    r = client.post(
+        f"/api/me/strategy-lab/strategies/{sid}/forward-walk",
+        cookies=cookies,
+    )
+    assert r.status_code == 422
+
+    r = client.post(
+        f"/api/me/strategy-lab/strategies/{sid}/backtest",
+        cookies=cookies,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["strategy"]["phase_state"] == "is_test"
+    assert r.json()["result"]["status"] == "pass"
+
+    r = client.post(
+        f"/api/me/strategy-lab/strategies/{sid}/forward-walk",
+        cookies=cookies,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["strategy"]["phase_state"] == "deployed"
+    assert r.json().get("ready_for_curation") is True
+
+    r = client.get(
+        f"/api/me/strategy-lab/strategies/{sid}/validation",
+        cookies=cookies,
+    )
+    assert r.status_code == 200
+    assert r.json()["ready_for_curation"] is True
+    assert r.json()["gaps"] == []
+
+    r = client.post(
+        f"/api/me/strategy-lab/strategies/{sid}/promote",
+        cookies=cookies,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["strategy"]["phase"] == "curation"
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM strategy_lab_strategies WHERE identity_id = %s",
+                (iid,),
+            )
 
 
 def test_exercise_pack_covers_all_states():

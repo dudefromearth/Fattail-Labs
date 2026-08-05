@@ -1,4 +1,4 @@
-"""Butterfly default templates (Pack Spec §4.5)."""
+"""Butterfly default templates — Batman = dual fly package."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ _DEFAULT_EXIT = {
 }
 
 _DEFAULT_CAPITAL = {
-    "max_capital_at_risk": 500.0,
+    "max_capital_at_risk": 1000.0,
     "max_capital_unit": "dollars",
 }
 
@@ -38,51 +38,68 @@ def get_default_configs() -> list[dict[str, Any]]:
     return [
         _base(
             name="High VIX Wide 0DTE Batman",
-            butterfly_family="symmetric",
+            butterfly_family="batman",
             symmetric_regime="high_vix",
-            direction="balanced",
             dte_type="0dte",
             width_style="wide",
+            match_side_widths=True,
             debit_to_width_min=0.02,
             debit_to_width_max=0.05,
             primary_metric="sortino",
+            max_capital_at_risk=1500.0,
         ),
         _base(
-            name="Mid VIX Trend Morning Butterfly",
-            butterfly_family="symmetric",
-            symmetric_regime="mid_vix",
+            name="Mid VIX Trend Morning Single Call Fly",
+            butterfly_family="single",
             direction="call",
-            directional_bias="with_trend",
+            symmetric_regime="mid_vix",
             timing="morning",
             dte_type="0dte",
             width_style="variable",
             debit_to_width_min=0.05,
             debit_to_width_max=0.10,
             primary_metric="sortino",
+            max_capital_at_risk=500.0,
         ),
         _base(
             name="Low VIX 1DTE Overnight Batman",
-            butterfly_family="symmetric",
+            butterfly_family="batman",
             symmetric_regime="low_vix",
-            direction="balanced",
             dte_type="1dte",
             timing="before_close",
             width_style="wide",
+            match_side_widths=True,
             debit_to_width_min=0.02,
             debit_to_width_max=0.05,
             primary_metric="sortino",
+            max_capital_at_risk=1500.0,
         ),
         _base(
-            name="Short-Term Campaign 2-5 DTE",
-            butterfly_family="symmetric",
+            name="Batman Uneven Wings (call wider)",
+            butterfly_family="batman",
+            symmetric_regime="mid_vix",
+            dte_type="0dte",
+            width_style="variable",
+            match_side_widths=False,
+            call_width_points=50,
+            put_width_points=30,
+            debit_to_width_min=0.02,
+            debit_to_width_max=0.08,
+            primary_metric="sortino",
+            max_capital_at_risk=2000.0,
+        ),
+        _base(
+            name="Short-Term Campaign 2-5 DTE Batman",
+            butterfly_family="batman",
             symmetric_regime="campaign",
-            direction="balanced",
             dte_type="2_5_dte",
             width_style="fixed_30_50",
+            match_side_widths=True,
             debit_to_width_min=0.02,
             debit_to_width_max=0.05,
             frequency_per_week=2,
             primary_metric="calmar",
+            max_capital_at_risk=1500.0,
         ),
         _base(
             name="BWB Style A+ Near-Zero Scalp",

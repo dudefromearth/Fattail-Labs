@@ -5,7 +5,7 @@ import { siteUrl } from "@/lib/catalog";
 
 /**
  * Strategy Lab — member-owned strategies (identity_id isolation).
- * Phase board: Development → Curation → Deployment.
+ * Phase board: Design → Curate → Deploy.
  * Archive (retired strategies, reports, logs) is a separate page.
  * Spec: Specs/Strategy-Lab-Architecture-Design-v1.0.md
  */

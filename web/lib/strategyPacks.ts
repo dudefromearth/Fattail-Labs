@@ -164,15 +164,27 @@ export function fieldVisible(
   if (!deps || deps.length === 0) return true;
   return deps.every((d) => {
     const [k, v] = d.split("=");
-    return String(config[k] ?? "") === v;
+    // boolean dependsOn: match_side_widths=false
+    const raw = config[k];
+    if (v === "true" || v === "false") {
+      const b = raw === true || raw === "true";
+      return v === "true" ? b : !b;
+    }
+    return String(raw ?? "") === v;
   });
+}
+
+function normalizeFamily(raw: unknown): string {
+  const f = String(raw || "batman").toLowerCase();
+  if (f === "symmetric" || f === "dual") return "batman";
+  return f;
 }
 
 export function fieldsForConfig(
   detail: PackDetail,
   config: StrategyConfig,
 ): FieldDefinition[] {
-  const family = String(config.butterfly_family || "symmetric");
+  const family = normalizeFamily(config.butterfly_family);
   const variant = detail.schema.variants[family] || [];
   return [...detail.schema.common, ...variant];
 }

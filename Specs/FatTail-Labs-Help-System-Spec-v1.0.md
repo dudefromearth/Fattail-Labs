@@ -21,7 +21,7 @@ the queue. Everything persists in the Labs DB.
 - **Out (future):** public FAQ/knowledge base, categories taxonomy UI, SLA/assignment,
   attachments beyond one screenshot.
 
-## 2. Data model (migration 058)
+## 2. Data model (migration **080** — was drafted as 058; 058 was already tag-manager)
 
 ```
 help_questions(id, identity_id→identities, email, subject, body, category,
@@ -53,7 +53,7 @@ The feature is designed so it can fail without affecting anything else:
   error renders nothing, never white-screening a page.
 - **Build-safe:** no new frontend dependency (upload uses native browser APIs);
   `package.json` and the build graph are untouched.
-- **Schema-safe:** migration `058` is additive only (`CREATE TABLE IF NOT EXISTS`,
+- **Schema-safe:** migration `080_help_system.sql` is additive only (`CREATE TABLE IF NOT EXISTS`,
   two new tables, no `ALTER` of existing tables).
 - **Integration-safe:** notification calls are lazy-imported and wrapped.
 Worst-case failure of anything help-related = "the Help button doesn't work."
@@ -98,7 +98,7 @@ All notification calls are wrapped and never fail the underlying write.
 
 ## 7. Files
 
-- `migrations/058_help_system.sql`
+- `migrations/080_help_system.sql`
 - `server/help.py` (screenshot + notifications), `server/routes/help.py` (member),
   `server/routes/help_admin.py` (admin), `server/main.py` (register)
 - `web/components/HelpLauncher.tsx`, `web/components/ErrorBoundary.tsx`,
@@ -118,6 +118,9 @@ All notification calls are wrapped and never fail the underlying write.
 
 ## 9. Deployment
 
-Migration 058 → `pytest tests/test_help.py` → API `kickstart -k` → frontend
-`npm run build` + web `kickstart -k` → live smoke. On MiniTwo. **No `npm install`**
+Migration **080** → `pytest tests/test_help.py` → API reload → frontend
+`npm run build` + restart → live smoke. On MiniTwo. **No `npm install`**
 (no new dependency).
+
+**Note:** Spec v1.0 originally said migration 058; that number was already used by
+`058_tag_manager_personal_vocab.sql`, so the help DDL ships as **080**.

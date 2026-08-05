@@ -1,7 +1,8 @@
 /**
  * Strategy Lab suite — life-cycle nav (Practice suite chrome pattern).
- * Board: Development · Curation · Deployment
+ * Board: Design · Curate · Deploy
  * Archive: retired/trashed + reports/logs (off-ramp page)
+ * Phase keys stay development|curation|deployment (API/DB).
  */
 
 export type StrategyLabSuiteId =
@@ -21,19 +22,19 @@ export type StrategyLabSuiteItem = {
 export const STRATEGY_LAB_SUITE: StrategyLabSuiteItem[] = [
   {
     id: "development",
-    label: "Development",
+    label: "Design",
     href: "/app/strategy-lab?phase=development",
     phase: "development",
   },
   {
     id: "curation",
-    label: "Curation",
+    label: "Curate",
     href: "/app/strategy-lab?phase=curation",
     phase: "curation",
   },
   {
     id: "deployment",
-    label: "Deployment",
+    label: "Deploy",
     href: "/app/strategy-lab?phase=deployment",
     phase: "deployment",
   },

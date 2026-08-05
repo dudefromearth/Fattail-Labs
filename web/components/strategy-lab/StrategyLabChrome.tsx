@@ -18,12 +18,12 @@ function defaultSubtitle(active: StrategyLabSuiteId): string {
     return "Retired strategies, reports, and logs — on your account.";
   }
   if (active === "curation") {
-    return "Categorize, group, size, and monitor strategies ready for capital.";
+    return "Book readiness — group, size, and monitor after Design validation.";
   }
   if (active === "deployment") {
-    return "Allocate capital, schedule, run, and prune live strategies.";
+    return "Campaigns — capital, schedule, run, prune, and review.";
   }
-  return "Hypothesis through deploy — versionable strategies on your account.";
+  return "Design phase — configure, back test, forward walk, then Curate.";
 }
 
 export default function StrategyLabChrome({

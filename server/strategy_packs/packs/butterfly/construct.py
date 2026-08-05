@@ -1,15 +1,20 @@
-"""Construct defined-risk butterfly structures from config + chain."""
+"""Construct defined-risk butterfly structures from config + chain.
+
+Batman (coach language): a *package* of two wing-symmetric flies —
+one all-call + one all-put — usually same width, with optional per-side width.
+"""
 
 from __future__ import annotations
 
 from typing import Any
+
+from strategy_packs.packs.butterfly.family import normalize_family
 
 
 def _mid(chain: dict[str, Any], right: str, strike: float) -> float:
     book = chain["calls"] if right == "call" else chain["puts"]
     row = book.get(str(strike)) or book.get(str(float(strike)))
     if not row:
-        # nearest strike
         strikes = chain.get("strikes") or []
         if not strikes:
             return 1.0
@@ -39,32 +44,35 @@ def _width_candidates(config: dict[str, Any], step: float) -> list[float]:
         return [30.0, 40.0, 50.0]
     if style == "variable":
         return [step * 4, step * 6, step * 8, step * 10]
-    # wide
     return [step * 6, step * 8, step * 10, step * 12]
 
 
-def _body_strikes(
-    spot: float,
-    step: float,
-    direction: str,
-    *,
-    n: int = 5,
-) -> list[tuple[str, float]]:
-    """Return list of (right, body_strike)."""
+def _resolve_side_widths(
+    config: dict[str, Any],
+    base_width: float,
+) -> tuple[float, float]:
+    """Return (call_width, put_width). Usually equal; may differ."""
+    match = config.get("match_side_widths")
+    if match is None:
+        match = True
+    match = bool(match)
+    if match:
+        return base_width, base_width
+    try:
+        cw = float(config.get("call_width_points") or base_width)
+    except (TypeError, ValueError):
+        cw = base_width
+    try:
+        pw = float(config.get("put_width_points") or base_width)
+    except (TypeError, ValueError):
+        pw = base_width
+    return max(1.0, cw), max(1.0, pw)
+
+
+def _body_centers(spot: float, step: float, *, n: int = 5) -> list[float]:
     center = round(spot / step) * step
-    out: list[tuple[str, float]] = []
-    rights = (
-        ["call"]
-        if direction == "call"
-        else ["put"]
-        if direction == "put"
-        else ["call", "put"]
-    )
     offsets = [0, -step, step, -2 * step, 2 * step][:n]
-    for right in rights:
-        for off in offsets:
-            out.append((right, center + off))
-    return out
+    return [center + off for off in offsets]
 
 
 def _fly_legs(
@@ -77,14 +85,8 @@ def _fly_legs(
     debit_per_share: float,
     wing_price: float = 0.05,
 ) -> list[dict[str, Any]]:
-    """Build 1/-2/1 legs with synthetic mids so net debit matches target.
-
-    Long wings ≈ wing_price each; short body priced so:
-      wing + wing - 2*body_mid = debit  ⇒  body_mid = (2*wing - debit)/2
-    """
     debit = max(0.05, float(debit_per_share))
     body_mid = (2.0 * wing_price - debit) / 2.0
-    # If body would be non-positive, raise wing mids slightly
     if body_mid <= 0.05:
         wing_price = debit / 2.0 + 0.5
         body_mid = (2.0 * wing_price - debit) / 2.0
@@ -116,26 +118,100 @@ def _fly_legs(
     ]
 
 
+def _live_fly_legs(
+    chain: dict[str, Any],
+    right: str,
+    lo: float,
+    body: float,
+    hi: float,
+    dte: int,
+) -> tuple[list[dict[str, Any]], float] | None:
+    p_lo = _mid(chain, right, lo)
+    p_mid = _mid(chain, right, body)
+    p_hi = _mid(chain, right, hi)
+    debit = p_lo - 2.0 * p_mid + p_hi
+    if debit <= 0:
+        return None
+    legs = [
+        {
+            "right": right,
+            "side": "buy",
+            "strike": lo,
+            "qty": 1,
+            "dte": dte,
+            "entry_price": p_lo,
+        },
+        {
+            "right": right,
+            "side": "sell",
+            "strike": body,
+            "qty": 2,
+            "dte": dte,
+            "entry_price": p_mid,
+        },
+        {
+            "right": right,
+            "side": "buy",
+            "strike": hi,
+            "qty": 1,
+            "dte": dte,
+            "entry_price": p_hi,
+        },
+    ]
+    return legs, debit
+
+
 def _target_debit_ps(config: dict[str, Any], width: float, family: str, idx: int) -> float:
-    """Pick a debit/share inside coaching bands for stub construct."""
-    if family == "symmetric":
+    if family in ("batman", "single", "symmetric"):
         try:
             lo = float(config.get("debit_to_width_min") or 0.02)
             hi = float(config.get("debit_to_width_max") or 0.05)
         except (TypeError, ValueError):
             lo, hi = 0.02, 0.05
-        # vary across candidates inside band
         t = lo + (hi - lo) * ((idx % 5) / 4.0 if hi > lo else 0.0)
         return max(0.05, t * width)
-    # BWB: debit_to_payoff ≈ debit/maxProfit; maxProfit ~ width for flies
     try:
         lo = float(config.get("target_debit_to_payoff_min") or 0.05)
         hi = float(config.get("target_debit_to_payoff_max") or 0.25)
     except (TypeError, ValueError):
         lo, hi = 0.05, 0.25
     t = lo + (hi - lo) * ((idx % 5) / 4.0 if hi > lo else 0.0)
-    # approximate max profit ~ width points → debit ≈ t * width
     return max(0.05, t * width * 0.5)
+
+
+def _one_symmetric_fly(
+    chain: dict[str, Any],
+    *,
+    right: str,
+    body: float,
+    width: float,
+    dte: int,
+    is_stub: bool,
+    config: dict[str, Any],
+    family: str,
+    idx: int,
+) -> dict[str, Any] | None:
+    half = width / 2.0
+    lo, hi = body - half, body + half
+    if lo <= 0:
+        return None
+    if is_stub:
+        debit = _target_debit_ps(config, width, family, idx)
+        legs = _fly_legs(right, lo, body, hi, dte, debit_per_share=debit)
+    else:
+        built = _live_fly_legs(chain, right, lo, body, hi, dte)
+        if built is None:
+            return None
+        legs, debit = built
+    return {
+        "right": right,
+        "width_points": width,
+        "body": body,
+        "lo": lo,
+        "hi": hi,
+        "legs": legs,
+        "net_debit_per_share": debit,
+    }
 
 
 def construct_structures(
@@ -145,78 +221,139 @@ def construct_structures(
     spot = float(chain.get("spot") or 5000.0)
     step = float(chain.get("strike_step") or 5.0)
     dte = int(chain.get("dte") or 0)
-    direction = str(config.get("direction") or "balanced").lower()
-    family = str(config.get("butterfly_family") or "symmetric").lower()
+    direction = str(config.get("direction") or "call").lower()
+    family = normalize_family(config.get("butterfly_family"))
     structures: list[dict[str, Any]] = []
     n = 0
     is_stub = (chain.get("provenance") or {}).get("source") == "stub"
 
-    if family == "symmetric":
-        for width in _width_candidates(config, step):
-            half = width / 2.0
-            for right, body in _body_strikes(spot, step, direction):
-                lo, hi = body - half, body + half
-                if lo <= 0:
-                    continue
+    # ── Batman: call fly + put fly package ─────────────────────────────
+    if family == "batman":
+        for base_w in _width_candidates(config, step):
+            call_w, put_w = _resolve_side_widths(config, base_w)
+            for body in _body_centers(spot, step, n=5):
                 n += 1
-                if is_stub:
-                    debit = _target_debit_ps(config, width, family, n)
-                    legs = _fly_legs(right, lo, body, hi, dte, debit_per_share=debit)
-                else:
-                    # Live chain: use mids (may filter out of band later)
-                    p_lo = _mid(chain, right, lo)
-                    p_mid = _mid(chain, right, body)
-                    p_hi = _mid(chain, right, hi)
-                    debit = p_lo - 2.0 * p_mid + p_hi
-                    if debit <= 0:
-                        continue
-                    legs = [
-                        {
-                            "right": right,
-                            "side": "buy",
-                            "strike": lo,
-                            "qty": 1,
-                            "dte": dte,
-                            "entry_price": p_lo,
-                        },
-                        {
-                            "right": right,
-                            "side": "sell",
-                            "strike": body,
-                            "qty": 2,
-                            "dte": dte,
-                            "entry_price": p_mid,
-                        },
-                        {
-                            "right": right,
-                            "side": "buy",
-                            "strike": hi,
-                            "qty": 1,
-                            "dte": dte,
-                            "entry_price": p_hi,
-                        },
-                    ]
+                call_fly = _one_symmetric_fly(
+                    chain,
+                    right="call",
+                    body=body,
+                    width=call_w,
+                    dte=dte,
+                    is_stub=is_stub,
+                    config=config,
+                    family="batman",
+                    idx=n,
+                )
+                put_fly = _one_symmetric_fly(
+                    chain,
+                    right="put",
+                    body=body,
+                    width=put_w,
+                    dte=dte,
+                    is_stub=is_stub,
+                    config=config,
+                    family="batman",
+                    idx=n + 1,
+                )
+                if not call_fly or not put_fly:
+                    continue
+                legs = list(call_fly["legs"]) + list(put_fly["legs"])
+                total_debit = float(call_fly["net_debit_per_share"]) + float(
+                    put_fly["net_debit_per_share"]
+                )
+                total_width = call_w + put_w
                 structures.append(
                     {
-                        "id": f"sym-{right}-{int(lo)}-{int(body)}-{int(hi)}-{n}",
-                        "family": "symmetric",
-                        "right": right,
-                        "width_points": width,
-                        "legs": legs,
-                        "net_debit_per_share": debit if is_stub else (
-                            legs[0]["entry_price"]
-                            - 2 * legs[1]["entry_price"]
-                            + legs[2]["entry_price"]
+                        "id": (
+                            f"batman-c{int(call_w)}-p{int(put_w)}"
+                            f"-b{int(body)}-{n}"
                         ),
+                        "family": "batman",
+                        "structure_kind": "batman",
+                        "label": "Batman (call fly + put fly)",
+                        "call_width_points": call_w,
+                        "put_width_points": put_w,
+                        "width_points": total_width,
+                        "body": body,
+                        "legs": legs,
+                        "net_debit_per_share": total_debit,
+                        "components": {
+                            "call_fly": {
+                                "width_points": call_w,
+                                "lo": call_fly["lo"],
+                                "body": call_fly["body"],
+                                "hi": call_fly["hi"],
+                                "net_debit_per_share": call_fly[
+                                    "net_debit_per_share"
+                                ],
+                            },
+                            "put_fly": {
+                                "width_points": put_w,
+                                "lo": put_fly["lo"],
+                                "body": put_fly["body"],
+                                "hi": put_fly["hi"],
+                                "net_debit_per_share": put_fly[
+                                    "net_debit_per_share"
+                                ],
+                            },
+                        },
                     }
                 )
+        return structures
 
-    else:  # broken_wing
-        side = str(config.get("broken_wing_side") or "lower").lower()
-        for width in _width_candidates(config, step)[:3]:
-            short_w = width
-            long_w = width * 1.5
-            for right, body in _body_strikes(spot, step, direction, n=3):
+    # ── Single fly (one side) ──────────────────────────────────────────
+    if family == "single":
+        rights = (
+            ["call"]
+            if direction == "call"
+            else ["put"]
+            if direction == "put"
+            else ["call", "put"]
+        )
+        for width in _width_candidates(config, step):
+            for body in _body_centers(spot, step, n=5):
+                for right in rights:
+                    n += 1
+                    fly = _one_symmetric_fly(
+                        chain,
+                        right=right,
+                        body=body,
+                        width=width,
+                        dte=dte,
+                        is_stub=is_stub,
+                        config=config,
+                        family="single",
+                        idx=n,
+                    )
+                    if not fly:
+                        continue
+                    structures.append(
+                        {
+                            "id": f"single-{right}-{int(fly['lo'])}-{int(body)}-{int(fly['hi'])}-{n}",
+                            "family": "single",
+                            "structure_kind": "single_fly",
+                            "right": right,
+                            "width_points": width,
+                            "legs": fly["legs"],
+                            "net_debit_per_share": fly["net_debit_per_share"],
+                        }
+                    )
+        return structures
+
+    # ── Broken wing ────────────────────────────────────────────────────
+    side = str(config.get("broken_wing_side") or "lower").lower()
+    rights = (
+        ["call"]
+        if direction == "call"
+        else ["put"]
+        if direction == "put"
+        else ["call", "put"]
+    )
+    for width in _width_candidates(config, step)[:3]:
+        short_w = width
+        long_w = width * 1.5
+        for body in _body_centers(spot, step, n=3):
+            for right in rights:
                 if side == "lower":
                     lo, hi = body - long_w, body + short_w
                 else:
@@ -226,54 +363,25 @@ def construct_structures(
                 n += 1
                 w_eff = max(body - lo, hi - body)
                 if is_stub:
-                    debit = _target_debit_ps(config, w_eff, family, n)
-                    legs = _fly_legs(right, lo, body, hi, dte, debit_per_share=debit)
+                    debit = _target_debit_ps(config, w_eff, "broken_wing", n)
+                    legs = _fly_legs(
+                        right, lo, body, hi, dte, debit_per_share=debit
+                    )
                 else:
-                    p_lo = _mid(chain, right, lo)
-                    p_mid = _mid(chain, right, body)
-                    p_hi = _mid(chain, right, hi)
-                    debit = p_lo - 2.0 * p_mid + p_hi
-                    if debit <= 0:
+                    built = _live_fly_legs(chain, right, lo, body, hi, dte)
+                    if built is None:
                         continue
-                    legs = [
-                        {
-                            "right": right,
-                            "side": "buy",
-                            "strike": lo,
-                            "qty": 1,
-                            "dte": dte,
-                            "entry_price": p_lo,
-                        },
-                        {
-                            "right": right,
-                            "side": "sell",
-                            "strike": body,
-                            "qty": 2,
-                            "dte": dte,
-                            "entry_price": p_mid,
-                        },
-                        {
-                            "right": right,
-                            "side": "buy",
-                            "strike": hi,
-                            "qty": 1,
-                            "dte": dte,
-                            "entry_price": p_hi,
-                        },
-                    ]
+                    legs, debit = built
                 structures.append(
                     {
                         "id": f"bwb-{right}-{side}-{int(lo)}-{int(body)}-{int(hi)}-{n}",
                         "family": "broken_wing",
+                        "structure_kind": "broken_wing",
                         "right": right,
                         "width_points": w_eff,
                         "broken_wing_side": side,
                         "legs": legs,
-                        "net_debit_per_share": debit if is_stub else (
-                            legs[0]["entry_price"]
-                            - 2 * legs[1]["entry_price"]
-                            + legs[2]["entry_price"]
-                        ),
+                        "net_debit_per_share": debit,
                     }
                 )
 

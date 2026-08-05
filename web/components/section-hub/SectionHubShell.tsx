@@ -23,7 +23,7 @@ function EditBar() {
       <button
         type="button"
         onClick={() => edit.setEditMode(true)}
-        className="fixed bottom-6 right-6 z-50 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
+        className="fixed bottom-6 left-6 z-50 rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white shadow-lg transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
       >
         Edit
       </button>

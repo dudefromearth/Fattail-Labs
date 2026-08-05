@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS strategy_lab_strategies (
 UPDATE apps
 SET
   status = 'live',
-  blurb = 'Development → Curation → Deployment. Versionable strategies on your account. Process over profit claims.',
+  blurb = 'Design → Curate → Deploy. Versionable strategies on your account. Process over profit claims.',
   title = 'Strategy Lab'
 WHERE slug = 'strategy-lab'
 ;

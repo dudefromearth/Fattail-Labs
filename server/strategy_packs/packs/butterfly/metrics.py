@@ -98,7 +98,11 @@ def calculate_metrics(
     body_k = body
     wing_gap = abs((hi_k - body_k) - (body_k - lo_k))
     family = str(structure.get("family") or config.get("butterfly_family") or "")
-    if debit_or_credit >= 0:
+    # Batman packages two flies; residual gap on a single 1/-2/1 is not the model
+    if structure.get("structure_kind") == "batman" or family in ("batman", "symmetric"):
+        # Package max loss ≈ total debit (two long debit flies)
+        max_loss_ps = net_abs if debit_or_credit >= 0 else abs(min(samples or [0]))
+    elif debit_or_credit >= 0:
         if family == "broken_wing" or wing_gap > 1e-6:
             max_loss_ps = net_abs + wing_gap
         else:

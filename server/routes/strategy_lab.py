@@ -192,6 +192,61 @@ async def move_strategy(public_id: str, request: Request) -> dict:
     return {"strategy": strategy}
 
 
+@router.post("/api/me/strategy-lab/strategies/{public_id}/backtest")
+def run_backtest(public_id: str, request: Request) -> dict:
+    """Development in-sample back test of pack settings (stub until Massive)."""
+    claims = require_session(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            _get_owned(cur, iid, public_id)
+            try:
+                out = sld.run_backtest(cur, iid, public_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return out
+
+
+@router.post("/api/me/strategy-lab/strategies/{public_id}/forward-walk")
+def run_forward_walk(public_id: str, request: Request) -> dict:
+    """Development walk-forward validation before Curation."""
+    claims = require_session(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            _get_owned(cur, iid, public_id)
+            try:
+                out = sld.run_forward_walk(cur, iid, public_id)
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return out
+
+
+@router.get("/api/me/strategy-lab/strategies/{public_id}/validation")
+def get_validation(public_id: str, request: Request) -> dict:
+    """Checklist: back test + forward walk status for Development → Curation."""
+    claims = require_session(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            row = _get_owned(cur, iid, public_id)
+            strategy = sld.row_to_dict(row)
+    attrs = strategy.get("attributes") if isinstance(strategy.get("attributes"), dict) else {}
+    bag = attrs.get("validation@1") if isinstance(attrs.get("validation@1"), dict) else {}
+    gaps = sld.validation_gaps(strategy)
+    return {
+        "validation": bag,
+        "gaps": gaps,
+        "ready_for_curation": (
+            sld.normalize_phase(strategy.get("phase")) == "development"
+            and sld.ready_for_curation(str(strategy.get("phase_state") or ""))
+            and not gaps
+        ),
+        "phase_state": strategy.get("phase_state"),
+        "phase_state_label": strategy.get("phase_state_label"),
+    }
+
+
 @router.post("/api/me/strategy-lab/strategies/{public_id}/promote")
 def promote_strategy(public_id: str, request: Request) -> dict:
     claims = require_session(request)

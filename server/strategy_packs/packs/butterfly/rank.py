@@ -6,6 +6,7 @@ from typing import Any
 
 from strategy_packs.common.capital import resolve_max_capital_dollars
 from strategy_packs.packs.butterfly.construct import construct_structures
+from strategy_packs.packs.butterfly.family import normalize_family
 from strategy_packs.packs.butterfly.metrics import calculate_metrics
 from strategy_packs.packs.butterfly.validation import validate
 from strategy_packs.types import PRIMARY_METRICS
@@ -31,7 +32,8 @@ def _in_ratio_band(
     config: dict[str, Any],
     family: str,
 ) -> bool:
-    if family == "symmetric":
+    family = normalize_family(family)
+    if family in ("batman", "single", "symmetric"):
         r = metrics.get("debitToWidthRatio")
         if r is None:
             return False
@@ -75,7 +77,7 @@ def rank_structures(
     structures = construct_structures(config, chain)
     spot = float(chain.get("spot") or 5000.0)
     max_cap = resolve_max_capital_dollars(config, account_capital=account_capital)
-    family = str(config.get("butterfly_family") or "symmetric")
+    family = normalize_family(config.get("butterfly_family"))
     mcq = config.get("min_convexity_quality")
     min_score = _QUALITY.get(str(mcq or ""), 0.0)
 

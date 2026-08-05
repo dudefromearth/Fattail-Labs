@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import StrategyLabChrome from "@/components/strategy-lab/StrategyLabChrome";
+import DevelopmentValidation from "@/components/strategy-lab/DevelopmentValidation";
 import StrategyDesigner from "@/components/strategy-lab/StrategyDesigner";
 import StrategyLabPortability from "@/components/strategy-lab/StrategyLabPortability";
 import {
@@ -116,8 +117,6 @@ export default function StrategyLabApp() {
   const [error, setError] = useState<string | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [renameName, setRenameName] = useState("");
-  const [bumpVersion, setBumpVersion] = useState(false);
-  const [bumpPart, setBumpPart] = useState<"minor" | "patch" | "major">("minor");
   const [binReason, setBinReason] = useState("Lifecycle complete");
 
   const pushNotice = useCallback((level: Notice["level"], message: string) => {
@@ -310,7 +309,7 @@ export default function StrategyLabApp() {
               Phase bins
             </h2>
             <p className="text-xs text-[var(--color-label-secondary)]">
-              Development · Curation · Deployment. Archive is under the suite nav.
+              Design · Curate · Deploy. Archive is under the suite nav.
             </p>
           </div>
           <div className="flex w-full max-w-xl flex-col items-stretch gap-2 sm:items-end">
@@ -387,6 +386,7 @@ export default function StrategyLabApp() {
                       const desc =
                         (s.description || "No description yet.").slice(0, 72) +
                         ((s.description || "").length > 72 ? "…" : "");
+                      const ph = phaseOf(s);
                       return (
                         <div key={s.id} className="space-y-1">
                           <button
@@ -421,6 +421,72 @@ export default function StrategyLabApp() {
                               {s.phase_state_label}
                             </span>
                           </button>
+                          {active && (
+                            <div className="flex flex-wrap gap-1 px-0.5">
+                              {ph !== "development" && (
+                                <button
+                                  type="button"
+                                  className="rounded border border-[var(--color-separator)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.65rem] font-medium hover:bg-[var(--color-fill)]"
+                                  onClick={() =>
+                                    void onMove(s.id, "development")
+                                  }
+                                >
+                                  → Design
+                                </button>
+                              )}
+                              {ph !== "curation" && (
+                                <button
+                                  type="button"
+                                  className="rounded border border-[var(--color-separator)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.65rem] font-medium hover:bg-[var(--color-fill)]"
+                                  onClick={() => void onMove(s.id, "curation")}
+                                >
+                                  → Curate
+                                </button>
+                              )}
+                              {ph !== "deployment" && (
+                                <button
+                                  type="button"
+                                  className="rounded border border-[var(--color-separator)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.65rem] font-medium hover:bg-[var(--color-fill)]"
+                                  onClick={() =>
+                                    void onMove(s.id, "deployment")
+                                  }
+                                >
+                                  → Deploy
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="rounded border border-[var(--color-separator)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.65rem] font-medium hover:bg-[var(--color-fill)]"
+                                onClick={async () => {
+                                  const res = await promoteStrategy(s.id);
+                                  if (res.error) pushNotice("warning", res.error);
+                                  else {
+                                    pushNotice("success", "Promoted.");
+                                    await reload();
+                                  }
+                                }}
+                              >
+                                Promote
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded border border-[var(--color-separator)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[0.65rem] font-medium hover:bg-[var(--color-fill)]"
+                                onClick={async () => {
+                                  const res = await binStrategy(s.id, {
+                                    disposition: "retired",
+                                    reason: binReason || "Retired",
+                                  });
+                                  if (res.error) pushNotice("error", res.error);
+                                  else {
+                                    setSelectedId(null);
+                                    router.push("/app/strategy-lab/archive");
+                                  }
+                                }}
+                              >
+                                Archive
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     })
@@ -432,247 +498,181 @@ export default function StrategyLabApp() {
         </div>
       </section>
 
-      {/* Work area */}
+      {/* Work area — compact chrome (≤2 lines) + pack tools */}
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-[var(--color-label)]">Work area</h2>
-        <p className="text-xs text-[var(--color-label-secondary)]">
-          Selected strategy on your account — rename, phase state, move.
-        </p>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-[var(--color-label)]">
+            Work area
+          </h2>
+          <button
+            type="button"
+            className="rounded-lg border border-[var(--color-separator)] px-2.5 py-1 text-xs font-semibold hover:bg-[var(--color-fill)]"
+            onClick={async () => {
+              const s = await createStrategy({ name: "Untitled strategy" });
+              if (!s) pushNotice("error", "Could not create strategy");
+              else {
+                pushNotice("success", "Created blank strategy.");
+                setSelectedId(s.id);
+                await reload();
+              }
+            }}
+          >
+            + New
+          </button>
+        </div>
 
         {!selected ? (
-          <p className="mt-3 text-sm text-[var(--color-label-secondary)]">
-            Select a strategy from a phase bin.
+          <p className="text-sm text-[var(--color-label-secondary)]">
+            Select a strategy from a phase bin. Moves live on the card in the bin.
           </p>
         ) : (
-          <div className="mt-3 rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-4 shadow-sm">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="col-span-2">
-                <h3 className="text-xl font-semibold text-[var(--color-label)]">
-                  {selected.name}
-                </h3>
-                <p className="font-mono text-xs text-[var(--color-label-secondary)]">
-                  {selected.id} · yours
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--color-label-secondary)]">Version</p>
-                <p className="font-semibold tabular-nums">{selected.version}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--color-label-secondary)]">Phase</p>
-                <p className="font-semibold">
-                  {meta.find((m) => m.key === phaseOf(selected))?.label ||
-                    selected.phase}
-                </p>
-              </div>
-              <div className="col-span-2 sm:col-span-1">
-                <p className="text-xs text-[var(--color-label-secondary)]">Phase state</p>
-                <p className="font-semibold">{selected.phase_state_label}</p>
-              </div>
-            </div>
-
-            {/* Rename */}
-            <div className="mt-4 border-t border-[var(--color-separator)] pt-4">
-              <p className="mb-2 text-sm font-semibold">Rename strategy</p>
-              <div className="flex flex-wrap items-end gap-2">
-                <label className="min-w-[12rem] flex-1 text-xs">
-                  Title
-                  <input
-                    className="mt-0.5 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-3 py-1.5 text-sm"
-                    value={renameName}
-                    onChange={(e) => setRenameName(e.target.value)}
-                  />
-                </label>
-                <label className="flex items-center gap-1.5 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={bumpVersion}
-                    onChange={(e) => setBumpVersion(e.target.checked)}
-                  />
-                  Advance version?
-                </label>
-                <select
-                  className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1.5 text-xs"
-                  value={bumpPart}
-                  disabled={!bumpVersion}
-                  onChange={(e) =>
-                    setBumpPart(e.target.value as "minor" | "patch" | "major")
-                  }
-                >
-                  <option value="minor">minor</option>
-                  <option value="patch">patch</option>
-                  <option value="major">major</option>
-                </select>
+          <div className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-3 shadow-sm">
+            {/* Line 1: title (in-place) · version counter · phase */}
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                aria-label="Strategy title"
+                className="min-w-[10rem] flex-1 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-base font-semibold text-[var(--color-label)] outline-none hover:border-[var(--color-separator)] focus:border-blue-500 focus:bg-[var(--color-fill)]"
+                value={renameName}
+                onChange={(e) => setRenameName(e.target.value)}
+                onBlur={async () => {
+                  if (!renameName.trim() || renameName === selected.name) return;
+                  const res = await patchStrategy(selected.id, {
+                    name: renameName.trim(),
+                  });
+                  if (res.error) pushNotice("error", res.error);
+                  else await reload();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                }}
+              />
+              <div className="flex items-center gap-0.5 rounded-md border border-[var(--color-separator)] bg-[var(--color-fill)] px-1 py-0.5">
                 <button
                   type="button"
-                  className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
+                  title="Bump patch version"
+                  className="rounded px-1.5 text-sm font-bold text-[var(--color-label-secondary)] hover:bg-[var(--color-surface)]"
                   onClick={async () => {
                     const res = await patchStrategy(selected.id, {
-                      name: renameName,
-                      bump_version: bumpVersion,
-                      bump_part: bumpPart,
+                      name: renameName || selected.name,
+                      bump_version: true,
+                      bump_part: "patch",
                     });
                     if (res.error) pushNotice("error", res.error);
                     else {
                       pushNotice(
                         "success",
-                        bumpVersion
-                          ? `Renamed; version → ${res.strategy?.version}`
-                          : "Renamed (version unchanged).",
+                        `Version → ${res.strategy?.version}`,
                       );
-                      setBumpVersion(false);
                       await reload();
                     }
                   }}
                 >
-                  Save title
+                  −
                 </button>
-              </div>
-            </div>
-
-            {/* Phase state */}
-            <div className="mt-4 border-t border-[var(--color-separator)] pt-4">
-              <p className="mb-2 text-sm font-semibold">Phase state</p>
-              <div className="flex flex-wrap items-end gap-2">
-                <select
-                  className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-3 py-1.5 text-sm"
-                  value={selected.phase_state}
-                  onChange={async (e) => {
+                <span className="min-w-[3.25rem] text-center text-xs font-semibold tabular-nums text-[var(--color-label)]">
+                  v{selected.version}
+                </span>
+                <button
+                  type="button"
+                  title="Bump minor version"
+                  className="rounded px-1.5 text-sm font-bold text-[var(--color-label-secondary)] hover:bg-[var(--color-surface)]"
+                  onClick={async () => {
                     const res = await patchStrategy(selected.id, {
-                      phase_state: e.target.value,
+                      name: renameName || selected.name,
+                      bump_version: true,
+                      bump_part: "minor",
                     });
                     if (res.error) pushNotice("error", res.error);
                     else {
-                      pushNotice("success", `State → ${res.strategy?.phase_state_label}`);
-                      await reload();
-                    }
-                  }}
-                >
-                  {(
-                    meta.find((m) => m.key === phaseOf(selected))?.states || []
-                  ).map((st) => (
-                    <option key={st.key} value={st.key}>
-                      {st.label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="rounded-lg border border-[var(--color-separator)] px-3 py-1.5 text-sm font-semibold hover:bg-[var(--color-fill)]"
-                  onClick={async () => {
-                    const res = await advanceState(selected.id);
-                    if (res.error) pushNotice("warning", res.error);
-                    else {
                       pushNotice(
                         "success",
-                        `Advanced → ${res.strategy?.phase_state_label}`,
+                        `Version → ${res.strategy?.version}`,
                       );
                       await reload();
                     }
                   }}
                 >
-                  Advance →
-                </button>
-                {phaseOf(selected) === "development" &&
-                  selected.phase_state === "deployed" && (
-                    <span className="text-xs text-emerald-700">
-                      Deployed — ready for Curation
-                    </span>
-                  )}
-              </div>
-            </div>
-
-            {/* Move */}
-            <div className="mt-4 border-t border-[var(--color-separator)] pt-4">
-              <p className="mb-2 text-sm font-semibold">Move strategy</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-lg border border-[var(--color-separator)] px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
-                  disabled={phaseOf(selected) === "curation"}
-                  onClick={() => void onMove(selected.id, "curation")}
-                >
-                  → Curation
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-[var(--color-separator)] px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
-                  disabled={phaseOf(selected) === "deployment"}
-                  onClick={() => void onMove(selected.id, "deployment")}
-                >
-                  → Deployment
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-[var(--color-separator)] px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
-                  disabled={phaseOf(selected) === "development"}
-                  onClick={() => void onMove(selected.id, "development")}
-                >
-                  → Development
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-[var(--color-separator)] px-3 py-1.5 text-sm font-semibold"
-                  onClick={async () => {
-                    const res = await promoteStrategy(selected.id);
-                    if (res.error) pushNotice("warning", res.error);
-                    else {
-                      pushNotice("success", "Promoted to next phase.");
-                      await reload();
-                    }
-                  }}
-                >
-                  Promote
+                  +
                 </button>
               </div>
-              <div className="mt-3 flex flex-wrap items-end gap-2">
-                <label className="text-xs">
-                  Archive reason
-                  <input
-                    className="mt-0.5 block w-56 rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1.5 text-sm"
-                    value={binReason}
-                    onChange={(e) => setBinReason(e.target.value)}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="rounded-lg border border-[var(--color-separator)] px-3 py-1.5 text-sm font-semibold"
-                  onClick={async () => {
-                    const res = await binStrategy(selected.id, {
+              <select
+                aria-label="Phase"
+                className="rounded-md border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1 text-xs font-semibold"
+                value={phaseOf(selected) === "bin" ? "bin" : phaseOf(selected)}
+                onChange={(e) => {
+                  const p = e.target.value;
+                  if (p === phaseOf(selected)) return;
+                  if (p === "bin") {
+                    void binStrategy(selected.id, {
                       disposition: "retired",
                       reason: binReason || "Retired",
+                    }).then(async (res) => {
+                      if (res.error) pushNotice("error", res.error);
+                      else {
+                        setSelectedId(null);
+                        router.push("/app/strategy-lab/archive");
+                      }
                     });
-                    if (res.error) pushNotice("error", res.error);
-                    else {
-                      setSelectedId(null);
-                      router.push("/app/strategy-lab/archive");
-                    }
-                  }}
-                >
-                  Retire → Archive
-                </button>
-                <button
-                  type="button"
-                  className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700"
-                  onClick={async () => {
-                    const res = await binStrategy(selected.id, {
-                      disposition: "trashed",
-                      reason: binReason || "Trashed",
-                    });
-                    if (res.error) pushNotice("error", res.error);
-                    else {
-                      setSelectedId(null);
-                      router.push("/app/strategy-lab/archive");
-                    }
-                  }}
-                >
-                  Trash → Archive
-                </button>
-              </div>
+                    return;
+                  }
+                  void onMove(selected.id, p);
+                }}
+              >
+                {BOARD_PHASE_ORDER.map((p) => (
+                  <option key={p} value={p}>
+                    {meta.find((m) => m.key === p)?.label || p}
+                  </option>
+                ))}
+                <option value="bin">Archive</option>
+              </select>
+              <span className="hidden font-mono text-[0.65rem] text-[var(--color-label-secondary)] sm:inline">
+                {selected.id}
+              </span>
+            </div>
+
+            {/* Line 2: phase state · advance */}
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <select
+                aria-label="Phase state"
+                className="rounded-md border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1 text-xs"
+                value={selected.phase_state}
+                onChange={async (e) => {
+                  const res = await patchStrategy(selected.id, {
+                    phase_state: e.target.value,
+                  });
+                  if (res.error) pushNotice("error", res.error);
+                  else await reload();
+                }}
+              >
+                {(
+                  meta.find((m) => m.key === phaseOf(selected))?.states || []
+                ).map((st) => (
+                  <option key={st.key} value={st.key}>
+                    {st.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="rounded-md border border-[var(--color-separator)] px-2 py-1 text-xs font-semibold hover:bg-[var(--color-fill)]"
+                onClick={async () => {
+                  const res = await advanceState(selected.id);
+                  if (res.error) pushNotice("warning", res.error);
+                  else await reload();
+                }}
+              >
+                Advance →
+              </button>
+              {phaseOf(selected) === "development" &&
+                selected.phase_state === "deployed" && (
+                  <span className="text-[0.7rem] text-emerald-700">
+                    Ready for Curate (Promote in bin)
+                  </span>
+                )}
             </div>
 
             {phaseOf(selected) === "development" && (
-              <div className="mt-4 border-t border-[var(--color-separator)] pt-4">
+              <div className="mt-3 space-y-3 border-t border-[var(--color-separator)] pt-3">
                 <StrategyDesigner
                   strategyId={selected.id}
                   strategyName={selected.name}
@@ -683,47 +683,30 @@ export default function StrategyLabApp() {
                   }
                   onSaved={() => void reload()}
                 />
+                <DevelopmentValidation
+                  strategy={selected}
+                  onUpdated={() => void reload()}
+                />
               </div>
             )}
 
             {selected.lifecycle_log?.length > 0 && (
-              <details className="mt-4 border-t border-[var(--color-separator)] pt-3">
-                <summary className="cursor-pointer text-sm font-semibold">
+              <details className="mt-3 border-t border-[var(--color-separator)] pt-2">
+                <summary className="cursor-pointer text-xs font-semibold text-[var(--color-label-secondary)]">
                   Lifecycle log
                 </summary>
-                <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-xs text-[var(--color-label-secondary)]">
-                  {[...selected.lifecycle_log].reverse().slice(0, 20).map((e, i) => (
-                    <li key={i} className="font-mono">
-                      {String(e.at || "—")} · {String(e.event || "—")}
-                      {e.from_name != null &&
-                        ` · ${JSON.stringify(e.from_name)} → ${JSON.stringify(e.to_name)}`}
-                      {e.from_state != null &&
-                        ` · ${String(e.from_label || e.from_state)} → ${String(e.to_label || e.to_state)}`}
-                      {e.from_phase != null &&
-                        ` · ${String(e.from_phase)} → ${String(e.to_phase)}`}
-                    </li>
-                  ))}
+                <ul className="mt-1 max-h-32 space-y-1 overflow-y-auto text-[0.7rem] text-[var(--color-label-secondary)]">
+                  {[...selected.lifecycle_log]
+                    .reverse()
+                    .slice(0, 12)
+                    .map((e, i) => (
+                      <li key={i} className="font-mono">
+                        {String(e.at || "—")} · {String(e.event || "—")}
+                      </li>
+                    ))}
                 </ul>
               </details>
             )}
-
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--color-separator)] pt-3">
-              <button
-                type="button"
-                className="rounded-lg border border-[var(--color-separator)] px-3 py-1.5 text-sm font-semibold"
-                onClick={async () => {
-                  const s = await createStrategy({ name: "Untitled strategy" });
-                  if (!s) pushNotice("error", "Could not create strategy");
-                  else {
-                    pushNotice("success", "Created blank strategy on your account.");
-                    setSelectedId(s.id);
-                    await reload();
-                  }
-                }}
-              >
-                + New strategy
-              </button>
-            </div>
           </div>
         )}
       </section>

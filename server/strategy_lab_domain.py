@@ -17,10 +17,10 @@ MAX_PER_PHASE = 100
 PHASES = ("development", "curation", "deployment", "bin")
 
 PHASE_LABELS = {
-    "development": "Development",
-    "curation": "Curation",
-    "deployment": "Deployment",
-    "bin": "Bin",
+    "development": "Design",
+    "curation": "Curate",
+    "deployment": "Deploy",
+    "bin": "Archive",
 }
 
 PHASE_ALIASES = {
@@ -40,9 +40,9 @@ PHASE_ALIASES = {
 DEVELOPMENT_STATES: list[tuple[str, str]] = [
     ("hypothesis", "Hypothesis"),
     ("model", "Model"),
-    ("is_test", "In-sample test"),
-    ("oos_test", "OOS test"),
-    ("deployed", "Deployed"),
+    ("is_test", "Back test"),  # IS validation of pack settings
+    ("oos_test", "Forward walk"),  # walk-forward / holdout before Curation
+    ("deployed", "Deployed"),  # settings validated — eligible for Curation
 ]
 
 CURATION_STATES: list[tuple[str, str]] = [
@@ -394,6 +394,22 @@ def move_phase(
     if from_phase == to_phase and from_ps == entry:
         return row_to_dict(row)
 
+    # Design → Curate only after back test + forward walk evidence
+    if from_phase == "development" and to_phase == "curation":
+        gaps = validation_gaps(row_to_dict(row))
+        if gaps:
+            raise ValueError(
+                "Cannot enter Curate until Design validation completes: "
+                + "; ".join(gaps)
+            )
+        if not ready_for_curation(from_ps) and entry == default_state("curation"):
+            # Allow if already Deployed; otherwise require Deployed after walk
+            if from_ps != "deployed":
+                raise ValueError(
+                    "Design must be Deployed (after Back test + Forward walk) "
+                    "before Curate."
+                )
+
     # capacity (exclude self when staying would not apply)
     if from_phase != to_phase:
         n = count_in_phase(cur, identity_id, to_phase)
@@ -443,9 +459,16 @@ def promote(cur, identity_id: int, public_id: str) -> dict[str, Any]:
     ps = normalize_phase_state(phase, row.get("phase_state"))
     if phase == "development" and not ready_for_curation(ps):
         raise ValueError(
-            "Development must reach Deployed before curation "
-            f"(current: {state_label(phase, ps)})."
+            "Design must reach Deployed before Curate "
+            f"(current: {state_label(phase, ps)}). "
+            "Run Back test and Forward walk first."
         )
+    if phase == "development":
+        missing = validation_gaps(row_to_dict(row))
+        if missing:
+            raise ValueError(
+                "Curate requires Design validation: " + "; ".join(missing)
+            )
     return move_phase(cur, identity_id, public_id, nxt)
 
 
@@ -564,10 +587,10 @@ _ID_RE_OK = __import__("re").compile(r"^[a-zA-Z0-9_-]{4,32}$")
 
 def _phase_label_short(phase: str) -> str:
     return {
-        "development": "Dev",
-        "curation": "Cur",
-        "deployment": "Dep",
-        "bin": "Bin",
+        "development": "Design",
+        "curation": "Curate",
+        "deployment": "Deploy",
+        "bin": "Archive",
     }.get(phase, phase)
 
 
@@ -1447,3 +1470,261 @@ def load_recovery_pack(cur, identity_id: int, recovery_id: str) -> dict[str, Any
         return None
     pack = _json_load(row.get("pack_json"))
     return pack if isinstance(pack, dict) else None
+
+
+# ── Development validation: back test + forward walk ───────────────────────
+
+def _validation_bag(attrs: dict[str, Any]) -> dict[str, Any]:
+    bag = attrs.get("validation@1")
+    return dict(bag) if isinstance(bag, dict) else {}
+
+
+def validation_gaps(strategy: dict[str, Any]) -> list[str]:
+    """What is still required before Development → Curation."""
+    attrs = strategy.get("attributes") if isinstance(strategy.get("attributes"), dict) else {}
+    bag = _validation_bag(attrs)
+    gaps: list[str] = []
+    bt = bag.get("backtest")
+    if not isinstance(bt, dict) or bt.get("status") not in ("pass", "completed"):
+        gaps.append("Back test not completed")
+    fw = bag.get("forward_walk")
+    if not isinstance(fw, dict) or fw.get("status") not in ("pass", "completed"):
+        gaps.append("Forward walk not completed")
+    return gaps
+
+
+def _stub_backtest_metrics(config: dict[str, Any] | None) -> dict[str, Any]:
+    """Deterministic placeholder metrics until Massive/process plugins land."""
+    # Seed from capital so results look config-sensitive, not random theater
+    try:
+        cap = float((config or {}).get("max_capital_at_risk") or 500)
+    except (TypeError, ValueError):
+        cap = 500.0
+    family = str((config or {}).get("butterfly_family") or "batman")
+    trades = 24 if family == "batman" else 18
+    return {
+        "mode": "stub_is",
+        "label": "In-sample back test (stub)",
+        "trades": trades,
+        "win_rate": None,  # not primary; omitted from rank doctrine
+        "max_drawdown_dollars": round(cap * 0.22, 2),
+        "avg_drawdown_dollars": round(cap * 0.08, 2),
+        "net_pnl_dollars": round(cap * 0.15, 2),
+        "return_over_avg_dd": round(0.15 / 0.08, 3) if cap else None,
+        "sortino_proxy": 1.1,
+        "sharpe_proxy": 0.85,
+        "primary_metric": str((config or {}).get("primary_metric") or "sortino"),
+        "note": (
+            "Stub engine — not live fills. Proves pack settings pipeline; "
+            "Massive/historical chain will replace this."
+        ),
+    }
+
+
+def _stub_forward_walk_metrics(config: dict[str, Any] | None) -> dict[str, Any]:
+    try:
+        cap = float((config or {}).get("max_capital_at_risk") or 500)
+    except (TypeError, ValueError):
+        cap = 500.0
+    folds = [
+        {
+            "fold": 1,
+            "train": "IS window A",
+            "test": "Holdout 1",
+            "trades": 6,
+            "max_drawdown_dollars": round(cap * 0.12, 2),
+            "net_pnl_dollars": round(cap * 0.04, 2),
+        },
+        {
+            "fold": 2,
+            "train": "IS window B",
+            "test": "Holdout 2",
+            "trades": 5,
+            "max_drawdown_dollars": round(cap * 0.15, 2),
+            "net_pnl_dollars": round(cap * 0.02, 2),
+        },
+        {
+            "fold": 3,
+            "train": "IS window C",
+            "test": "Holdout 3",
+            "trades": 7,
+            "max_drawdown_dollars": round(cap * 0.10, 2),
+            "net_pnl_dollars": round(cap * 0.05, 2),
+        },
+    ]
+    return {
+        "mode": "stub_forward_walk",
+        "label": "Forward walk / walk-forward (stub)",
+        "folds": folds,
+        "trades": sum(int(f["trades"]) for f in folds),
+        "max_drawdown_dollars": round(cap * 0.18, 2),
+        "avg_drawdown_dollars": round(cap * 0.09, 2),
+        "net_pnl_dollars": round(cap * 0.11, 2),
+        "return_over_avg_dd": round(0.11 / 0.09, 3),
+        "sortino_proxy": 0.95,
+        "stability_note": "Folds pass if no fold exceeds capital-at-risk cap",
+        "note": (
+            "Stub walk-forward — validates settings on rolling holdouts before "
+            "Curation (paper/live). Not live market execution."
+        ),
+    }
+
+
+def run_backtest(
+    cur,
+    identity_id: int,
+    public_id: str,
+) -> dict[str, Any]:
+    """IS back test of current pack settings; stamps validation@1.backtest; state → is_test."""
+    row = get_by_public_id(cur, identity_id, public_id)
+    if row is None:
+        raise LookupError("Strategy not found")
+    phase = normalize_phase(row["phase"])
+    if phase != "development":
+        raise ValueError("Back test only runs in Development phase")
+
+    strategy = row_to_dict(row)
+    config = get_pack_config(strategy)
+    metrics = _stub_backtest_metrics(config)
+    provenance = {
+        "source": "stub",
+        "label": "Development back-test stub (not live market)",
+        "asof": _now_iso(),
+    }
+    # Soft fail if max DD exceeds capital at risk
+    status = "pass"
+    try:
+        cap = float((config or {}).get("max_capital_at_risk") or 1e12)
+        if metrics["max_drawdown_dollars"] > cap * 1.01:
+            status = "fail"
+    except (TypeError, ValueError):
+        pass
+
+    entry = {
+        "at": _now_iso(),
+        "status": status,
+        "kind": "is_backtest",
+        "schema_version": 1,
+        "metrics": metrics,
+        "data_provenance": provenance,
+        "pack_id": (config or {}).get("pack_id") or "butterfly",
+    }
+    attrs = strategy.get("attributes") if isinstance(strategy.get("attributes"), dict) else {}
+    attrs = dict(attrs)
+    bag = _validation_bag(attrs)
+    bag["backtest"] = entry
+    attrs["validation@1"] = bag
+
+    log = _append_log(
+        row,
+        "backtest",
+        status=status,
+        phase_state="is_test",
+        max_dd=metrics.get("max_drawdown_dollars"),
+    )
+    cur.execute(
+        """UPDATE strategy_lab_strategies
+           SET attributes_json = %s, phase_state = %s, disposition = %s,
+               lifecycle_log = %s
+           WHERE identity_id = %s AND public_id = %s""",
+        (
+            _json_dump(attrs),
+            "is_test",
+            "active",
+            _json_dump(log),
+            identity_id,
+            public_id,
+        ),
+    )
+    out = get_by_public_id(cur, identity_id, public_id)
+    assert out is not None
+    return {
+        "strategy": row_to_dict(out),
+        "result": entry,
+    }
+
+
+def run_forward_walk(
+    cur,
+    identity_id: int,
+    public_id: str,
+) -> dict[str, Any]:
+    """Walk-forward validation; stamps validation@1.forward_walk; state → oos_test.
+
+    Requires a prior back test. Does not move to Curation — that stays Promote after Deployed.
+    """
+    row = get_by_public_id(cur, identity_id, public_id)
+    if row is None:
+        raise LookupError("Strategy not found")
+    phase = normalize_phase(row["phase"])
+    if phase != "development":
+        raise ValueError("Forward walk only runs in Development phase")
+
+    strategy = row_to_dict(row)
+    bag = _validation_bag(
+        strategy.get("attributes") if isinstance(strategy.get("attributes"), dict) else {}
+    )
+    bt = bag.get("backtest")
+    if not isinstance(bt, dict) or bt.get("status") not in ("pass", "completed"):
+        raise ValueError("Run Back test successfully before Forward walk")
+
+    config = get_pack_config(strategy)
+    metrics = _stub_forward_walk_metrics(config)
+    provenance = {
+        "source": "stub",
+        "label": "Development forward-walk stub (not live market)",
+        "asof": _now_iso(),
+    }
+    status = "pass"
+    try:
+        cap = float((config or {}).get("max_capital_at_risk") or 1e12)
+        if metrics["max_drawdown_dollars"] > cap * 1.01:
+            status = "fail"
+    except (TypeError, ValueError):
+        pass
+
+    entry = {
+        "at": _now_iso(),
+        "status": status,
+        "kind": "forward_walk",
+        "schema_version": 1,
+        "metrics": metrics,
+        "data_provenance": provenance,
+        "pack_id": (config or {}).get("pack_id") or "butterfly",
+    }
+    attrs = strategy.get("attributes") if isinstance(strategy.get("attributes"), dict) else {}
+    attrs = dict(attrs)
+    bag = _validation_bag(attrs)
+    bag["forward_walk"] = entry
+    attrs["validation@1"] = bag
+
+    log = _append_log(
+        row,
+        "forward_walk",
+        status=status,
+        phase_state="oos_test",
+        folds=len(metrics.get("folds") or []),
+    )
+    # After successful walk, advance to Deployed so Promote is available
+    next_state = "deployed" if status in ("pass", "completed") else "oos_test"
+    cur.execute(
+        """UPDATE strategy_lab_strategies
+           SET attributes_json = %s, phase_state = %s, disposition = %s,
+               lifecycle_log = %s
+           WHERE identity_id = %s AND public_id = %s""",
+        (
+            _json_dump(attrs),
+            next_state,
+            "active",
+            _json_dump(log),
+            identity_id,
+            public_id,
+        ),
+    )
+    out = get_by_public_id(cur, identity_id, public_id)
+    assert out is not None
+    return {
+        "strategy": row_to_dict(out),
+        "result": entry,
+        "ready_for_curation": next_state == "deployed" and status in ("pass", "completed"),
+    }

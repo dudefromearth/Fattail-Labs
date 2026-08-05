@@ -1,5 +1,6 @@
--- 058_help_system.sql
+-- 080_help_system.sql
 -- Member help desk (FatTail-Labs-Help-System-Spec-v1.0).
+-- Note: originally drafted as 058; 058 was already tag_manager_personal_vocab.
 --
 -- Members ask questions; admins answer in a thread; everything is stored here in
 -- the Labs DB (unlike MSC's bug reporter which proxies to GitHub Issues).

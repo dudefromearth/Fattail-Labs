@@ -11,6 +11,7 @@ from strategy_packs.common.validation import (
     empty_result,
     merge_results,
 )
+from strategy_packs.packs.butterfly.family import normalize_family
 from strategy_packs.types import ValidationResult
 
 
@@ -32,6 +33,22 @@ def resolve_dte_window(config: dict[str, Any]) -> tuple[int, int] | None:
     return None
 
 
+def _check_debit_to_width(config: dict[str, Any], r: dict[str, Any]) -> None:
+    try:
+        dmin = float(config.get("debit_to_width_min"))
+        dmax = float(config.get("debit_to_width_max"))
+        if dmin > dmax:
+            r["errors"].append("debit_to_width_min must be ≤ debit_to_width_max")
+        if dmin < 0.01 or dmax > 0.15:
+            r["warnings"].append(
+                "debit-to-width outside typical 0.01–0.15 coaching band"
+            )
+    except (TypeError, ValueError):
+        r["errors"].append(
+            "debit_to_width_min and debit_to_width_max are required numbers"
+        )
+
+
 def validate(config: dict[str, Any]) -> ValidationResult:
     if not isinstance(config, dict):
         return {
@@ -47,13 +64,20 @@ def validate(config: dict[str, Any]) -> ValidationResult:
     ]
     r = empty_result()
 
-    direction = str(config.get("direction") or "").lower()
-    if direction not in ("call", "put", "balanced"):
-        r["errors"].append("direction must be call, put, or balanced")
+    family = normalize_family(config.get("butterfly_family"))
+    if family not in ("batman", "single", "broken_wing"):
+        r["errors"].append(
+            "butterfly_family must be batman, single, or broken_wing "
+            "(symmetric is accepted as alias for batman)"
+        )
 
-    family = str(config.get("butterfly_family") or "").lower()
-    if family not in ("symmetric", "broken_wing"):
-        r["errors"].append("butterfly_family must be symmetric or broken_wing")
+    direction = str(config.get("direction") or "").lower()
+    if family in ("single", "broken_wing"):
+        if direction not in ("call", "put"):
+            r["errors"].append(
+                "direction must be call or put for single-fly / broken_wing"
+            )
+    # Batman ignores direction for construction (always both sides)
 
     window = resolve_dte_window(config)
     if window is None:
@@ -65,26 +89,15 @@ def validate(config: dict[str, Any]) -> ValidationResult:
         if lo < 0 or hi < 0 or lo > hi:
             r["errors"].append("dte window must satisfy 0 ≤ dte_min ≤ dte_max")
 
-    if family == "symmetric":
-        regime = str(config.get("symmetric_regime") or "")
-        if regime not in ("high_vix", "mid_vix", "low_vix", "campaign"):
-            r["errors"].append("symmetric_regime is required for symmetric family")
+    if family in ("batman", "single"):
+        if family == "batman":
+            regime = str(config.get("symmetric_regime") or "")
+            if regime not in ("high_vix", "mid_vix", "low_vix", "campaign"):
+                r["errors"].append("symmetric_regime is required for Batman")
         width_style = str(config.get("width_style") or "")
         if width_style not in ("wide", "variable", "narrow", "fixed_30_50"):
-            r["errors"].append("width_style is required for symmetric family")
-        try:
-            dmin = float(config.get("debit_to_width_min"))
-            dmax = float(config.get("debit_to_width_max"))
-            if dmin > dmax:
-                r["errors"].append("debit_to_width_min must be ≤ debit_to_width_max")
-            if dmin < 0.01 or dmax > 0.15:
-                r["warnings"].append(
-                    "debit-to-width outside typical 0.01–0.15 coaching band"
-                )
-        except (TypeError, ValueError):
-            r["errors"].append(
-                "debit_to_width_min and debit_to_width_max are required numbers"
-            )
+            r["errors"].append("width_style is required")
+        _check_debit_to_width(config, r)
         wmin = config.get("width_points_min")
         wmax = config.get("width_points_max")
         if wmin is not None and wmax is not None:
@@ -93,6 +106,31 @@ def validate(config: dict[str, Any]) -> ValidationResult:
                     r["errors"].append("width_points_min must be ≤ width_points_max")
             except (TypeError, ValueError):
                 r["errors"].append("width_points_min/max must be numbers")
+
+        if family == "batman":
+            match = config.get("match_side_widths")
+            if match is None:
+                match = True
+            if not bool(match):
+                try:
+                    cw = float(config.get("call_width_points"))
+                    pw = float(config.get("put_width_points"))
+                    if cw <= 0 or pw <= 0:
+                        r["errors"].append(
+                            "call_width_points and put_width_points must be > 0 "
+                            "when match_side_widths is false"
+                        )
+                except (TypeError, ValueError):
+                    r["errors"].append(
+                        "call_width_points and put_width_points required when "
+                        "match_side_widths is false"
+                    )
+            else:
+                # optional note if user set unequal widths while matched
+                if config.get("call_width_points") or config.get("put_width_points"):
+                    r["warnings"].append(
+                        "match_side_widths is true — per-side widths are ignored"
+                    )
 
     if family == "broken_wing":
         if str(config.get("bwb_style") or "") not in (

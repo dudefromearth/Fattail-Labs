@@ -6,7 +6,7 @@
 **Prototype path:** `strategy-lab-proto/` (Streamlit)  
 **Intended home:** First-class Labs surface under `labs.fattail.ai` (later)  
 **Process source:** `/Users/ernie/LifeCycle.pdf` — *Strategy Life Cycle Big Picture* (1/19/25)  
-**Related:** `Strategy-Lab-Life-Cycle-Architecture-v1.0.md`, `v1.1.md` (foundation/plugin path) · **`Strategy-Lab-Portability-Spec-v1.0.md`** (whole-lab import/export pack) · `schemas/strategy-lab-pack-v1.json` · **`Strategy-Lab-Strategy-Pack-Architecture-v1.0.md`** (modular packs · Butterfly Phase 1)  
+**Related:** `Strategy-Lab-Life-Cycle-Architecture-v1.0.md`, `v1.1.md` (foundation/plugin path) · **`Strategy-Lab-Portability-Spec-v1.0.md`** (whole-lab import/export pack) · `schemas/strategy-lab-pack-v1.json` · **`Strategy-Lab-Strategy-Pack-Architecture-v1.0.md`** (modular packs · Butterfly Phase 1) · **`Strategy-Lab-Development-Phase-Spec-v1.0.md`** (Design/Development: back test · forward walk · gate to Curation)  
 **Doctrine:** Capital preservation · process over profit claims · no fantasy fills · fail loud · stop-the-bleeding first  
 
 ---
@@ -159,12 +159,14 @@ Each strategy has **`phase`** + **`phase_state`**. States are ordered within a p
 | # | Key | Label | Notes |
 |---|-----|-------|-------|
 | 1 | `hypothesis` | Hypothesis | Starting point for blank strategies |
-| 2 | `model` | Model | Structure / rules modeled |
-| 3 | `is_test` | In-sample test | IS evidence (plugin later) |
-| 4 | `oos_test` | OOS test | Holdout evidence (plugin later) |
-| 5 | `deployed` | **Deployed** | **Ready for Curation**; sim or live capable |
+| 2 | `model` | Model | Structure / pack rules modeled |
+| 3 | `is_test` | **Back test** | In-sample validation of pack settings |
+| 4 | `oos_test` | **Forward walk** | Walk-forward / holdout validation |
+| 5 | `deployed` | **Deployed** | Validation complete — **ready for Curation** |
 
-**Deployed (Development)** ≠ Deployment phase. It means “finished development path; eligible to curate.”
+**Deployed (Development)** ≠ Deployment phase. It means “finished development path; eligible to curate.”  
+
+**Coach “Design Phase”** = this Development phase. There is **no separate Design Phase spec** — full contract: [`Strategy-Lab-Development-Phase-Spec-v1.0.md`](./Strategy-Lab-Development-Phase-Spec-v1.0.md) (back test · forward walk · `validation@1` · hard gate to Curation).
 
 #### Curation
 
@@ -547,6 +549,7 @@ Member can advance states, move bins, rename, retire — without plugins.
 |---------|------|-------|
 | **1.0** | 2026-08-04 | Canonical architecture & design: lifecycle, foundation/plugins, bins, states, as-built proto |
 | **1.0.1** | 2026-08-04 | Clarify production MySQL SoR vs Streamlit proto; unify Promote open question with Pack Spec; Labs integration status |
+| **1.0.2** | 2026-08-05 | Development states: Back test / Forward walk labels; link Development Phase Spec |
 
 **Supersedes for planning:** narrative in `Strategy-Lab-Life-Cycle-Architecture-v1.0.md` and build path in `v1.1.md` (keep those files for history; **this document is the current map**).
 

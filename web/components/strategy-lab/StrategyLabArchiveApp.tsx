@@ -115,7 +115,7 @@ export default function StrategyLabArchiveApp() {
           {notices.length === 0 ? (
             <p className="text-sm text-[var(--color-label-secondary)]">
               Archive holds retired and trashed strategies. Restore sends a strategy
-              back to Development.{" "}
+              back to Design.{" "}
               <Link href="/app/strategy-lab" className="underline">
                 ← Phase board
               </Link>
@@ -264,14 +264,14 @@ export default function StrategyLabArchiveApp() {
                         else {
                           pushNotice(
                             "success",
-                            `Restored “${selected.name}” → Development.`,
+                            `Restored “${selected.name}” → Design.`,
                           );
                           setSelectedId(null);
                           await reload();
                         }
                       }}
                     >
-                      Restore → Development
+                      Restore → Design
                     </button>
                     <Link
                       href="/app/strategy-lab?phase=development"
