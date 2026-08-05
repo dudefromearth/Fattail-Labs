@@ -240,7 +240,7 @@ member_trade_log_import_batches
 | Symbol | underlier | ticker / root / pair |
 | Exp / Strike / Type | option fields | — / asset badge |
 | Price / Net | fill; net on first row | fill |
-| Actions | On unmatched open first row: **Close** · **Trash** | — |
+| Actions | Row click opens drawer; **delete only in drawer** (not on row) | — |
 
 **Grouping:** one trade = one block; shared meta on first row; open green / close red tint (**not** win/loss).
 

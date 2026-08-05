@@ -8,7 +8,6 @@ import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import type { Trade } from "@/lib/tradeLog";
 import {
-  canDeleteTrade,
   entrySourceLabel,
   formatQtyEffect,
   issueLabel,
@@ -32,7 +31,6 @@ const COLUMNS = [
   { key: "type", label: "Type", align: "left" as const },
   { key: "price", label: "Price", align: "right" as const },
   { key: "net", label: "Net", align: "right" as const },
-  { key: "actions", label: "", align: "right" as const },
 ] as const;
 
 type BlockKind = "open" | "close" | "neutral";
@@ -132,8 +130,6 @@ export default function TradeLogTable({
   selectedId,
   onNewTrade,
   onCloseOpen,
-  onTrashOpen,
-  onTrashClose,
   selectedIds,
   onToggleSelect,
   onSelectAllOpens,
@@ -153,10 +149,6 @@ export default function TradeLogTable({
   selectedId?: number | null;
   onNewTrade?: () => void;
   onCloseOpen?: (t: Trade) => void;
-  /** Unmatched open only (delete open when no close). */
-  onTrashOpen?: (t: Trade) => void;
-  /** TO CLOSE fill — must delete before its TO OPEN. */
-  onTrashClose?: (t: Trade) => void;
   selectedIds?: Set<number>;
   onToggleSelect?: (id: number) => void;
   onSelectAllOpens?: () => void;
@@ -464,55 +456,13 @@ export default function TradeLogTable({
                           : i === 0
                             ? "—"
                             : ""}
-                      </td>
-                      <td
-                        className="px-2 py-2 text-right"
-                        style={{ backgroundColor: bg, ...rule }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {i === 0 && isUnmatched && (
-                          <span className="inline-flex gap-1">
-                            {onCloseOpen && (
-                              <button
-                                type="button"
-                                className="rounded bg-white/95 px-2 py-0.5 text-[11px] font-bold text-emerald-900 hover:bg-white"
-                                onClick={() => onCloseOpen(trade)}
-                              >
-                                Close
-                              </button>
-                            )}
-                            {onTrashOpen &&
-                              canDeleteTrade(trade, issueBook).ok && (
-                              <button
-                                type="button"
-                                className="rounded bg-black/30 px-2 py-0.5 text-[11px] font-bold text-white hover:bg-black/45"
-                                onClick={() => onTrashOpen(trade)}
-                                title="Delete TO OPEN (no close on book)"
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </span>
-                        )}
-                        {i === 0 && tradeIsCloseFill(trade) && (
-                          <span className="inline-flex items-center gap-1">
-                            {badge === "complete" && (
-                              <span className="text-[10px] text-white/70">
-                                closed
-                              </span>
-                            )}
-                            {onTrashClose && (
-                              <button
-                                type="button"
-                                className="rounded bg-black/30 px-2 py-0.5 text-[11px] font-bold text-white hover:bg-black/45"
-                                onClick={() => onTrashClose(trade)}
-                                title="Delete TO CLOSE first, then you can delete the open"
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </span>
-                        )}
+                        {i === 0 &&
+                          tradeIsCloseFill(trade) &&
+                          badge === "complete" && (
+                            <span className="ml-1 text-[10px] font-normal opacity-80">
+                              · closed
+                            </span>
+                          )}
                       </td>
                     </tr>
                   );

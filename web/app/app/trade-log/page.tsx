@@ -61,7 +61,6 @@ function TradeLogBody() {
   const [deepLinked, setDeepLinked] = useState(false);
   const [filterOpenOnly, setFilterOpenOnly] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [forceTrashConfirm, setForceTrashConfirm] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -253,7 +252,6 @@ function TradeLogBody() {
         onNewTrade={() => {
           setSheetMode("create");
           setSelected(null);
-          setForceTrashConfirm(false);
           setSheetOpen(true);
         }}
         nativeVenueLabel={nativeVenueLabel}
@@ -363,31 +361,16 @@ function TradeLogBody() {
           onNewTrade={() => {
             setSheetMode("create");
             setSelected(null);
-            setForceTrashConfirm(false);
             setSheetOpen(true);
           }}
           onSelect={(t) => {
             setSelected(t);
             setSheetMode("edit");
-            setForceTrashConfirm(false);
             setSheetOpen(true);
           }}
           onCloseOpen={(t) => {
             setSelected(t);
             setSheetMode("close");
-            setForceTrashConfirm(false);
-            setSheetOpen(true);
-          }}
-          onTrashOpen={(t) => {
-            setSelected(t);
-            setSheetMode("edit");
-            setForceTrashConfirm(true);
-            setSheetOpen(true);
-          }}
-          onTrashClose={(t) => {
-            setSelected(t);
-            setSheetMode("edit");
-            setForceTrashConfirm(true);
             setSheetOpen(true);
           }}
         />
@@ -403,22 +386,18 @@ function TradeLogBody() {
         accounts={mergedAccounts}
         catalog={catalog}
         defaultAccountId={defaultAcct}
-        forceTrashConfirm={forceTrashConfirm}
         onClose={() => {
           setSheetOpen(false);
-          setForceTrashConfirm(false);
         }}
         onSaved={() => load()}
         onOpenTrade={(t) => {
           setSelected(t);
           setSheetMode("edit");
-          setForceTrashConfirm(false);
           setSheetOpen(true);
         }}
         onRequestCloseFromOpen={(openTrade) => {
           setSelected(openTrade);
           setSheetMode("close");
-          setForceTrashConfirm(false);
           setSheetOpen(true);
         }}
         onRequestImport={() => {
@@ -428,13 +407,11 @@ function TradeLogBody() {
         onSelectOpenForClose={(openTrade) => {
           setSelected(openTrade);
           setSheetMode("close");
-          setForceTrashConfirm(false);
           setSheetOpen(true);
         }}
         onTrashed={() => {
           setSelected(null);
           setSheetOpen(false);
-          setForceTrashConfirm(false);
           load();
         }}
         onDuplicateOpen={(openTrade) => {
@@ -450,7 +427,6 @@ function TradeLogBody() {
           });
           setSelected(null);
           setSheetMode("create");
-          setForceTrashConfirm(false);
           setSheetOpen(true);
           // Store template in sessionStorage for sheet to pick up
           try {

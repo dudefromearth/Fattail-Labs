@@ -274,7 +274,6 @@ export default function TradeSheet({
   onTrashed,
   onDuplicateOpen,
   onOpenTrade,
-  forceTrashConfirm,
 }: {
   open: boolean;
   mode: SheetMode;
@@ -294,8 +293,6 @@ export default function TradeSheet({
   onDuplicateOpen?: (openTrade: Trade) => void;
   /** Jump to another fill (e.g. paired close that must be deleted first). */
   onOpenTrade?: (t: Trade) => void;
-  /** When parent opens sheet solely to trash (row action). */
-  forceTrashConfirm?: boolean;
 }) {
   const [form, setForm] = useState<FormState>(() =>
     emptyForm(defaultAccountId ?? ""),
@@ -310,7 +307,7 @@ export default function TradeSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createContinueNew, setCreateContinueNew] = useState(false);
-  /** Confirm trash of unmatched open (universal for now; later gate by source). */
+  /** Delete confirm lives only in this drawer (not on the blotter row). */
   const [trashConfirm, setTrashConfirm] = useState(false);
   const [trashReason, setTrashReason] = useState("");
   const [allowOrphanClose, setAllowOrphanClose] = useState(false);
@@ -353,8 +350,7 @@ export default function TradeSheet({
     setShowProcess(false);
     setShowLegsAdvanced(false);
     setLegsTouched(false);
-    // Blotter "Delete" sets forceTrashConfirm — land on confirm step immediately
-    setTrashConfirm(!!forceTrashConfirm);
+    setTrashConfirm(false);
     setTrashReason("");
     setAllowOrphanClose(false);
     setAllowAccountMismatch(false);
@@ -423,7 +419,7 @@ export default function TradeSheet({
       }
       setForm(f);
     }
-  }, [open, mode, trade, defaultAccountId, accounts, forceTrashConfirm]);
+  }, [open, mode, trade, defaultAccountId, accounts]);
 
   const selectedAccount = accounts.find(
     (a) => a.id === (form.account_id === "" ? defaultAccountId : form.account_id),
@@ -900,8 +896,7 @@ export default function TradeSheet({
             isUnmatchedOpen ||
             (mode === "close" && trade) ||
             (mode === "edit" && trade && pairedClose) ||
-            (mode === "edit" && trade && tradeIsCloseFill(trade)) ||
-            (mode === "edit" && trade && trashConfirm)) && (
+            (mode === "edit" && trade && tradeIsCloseFill(trade))) && (
             <section className="px-4 pt-3 pb-1" aria-labelledby="tl-sheet-actions-h">
               <h3
                 id="tl-sheet-actions-h"
@@ -1093,7 +1088,6 @@ export default function TradeSheet({
                         position. After it is gone, the matching TO OPEN can be
                         deleted.
                       </p>
-                      {/* forceTrashConfirm from blotter Delete → land on confirm */}
                       {!trashConfirm ? (
                         <button
                           type="button"
@@ -1176,8 +1170,7 @@ export default function TradeSheet({
               {(isUnmatchedOpen ||
                 (mode === "close" && trade) ||
                 (mode === "edit" && trade && pairedClose) ||
-                (mode === "edit" && trade && tradeIsCloseFill(trade)) ||
-                (mode === "edit" && trade && trashConfirm)) && (
+                (mode === "edit" && trade && tradeIsCloseFill(trade))) && (
                 <hr
                   className="mx-4 my-3 border-0 border-t-2 border-[var(--color-separator)]"
                   aria-hidden
