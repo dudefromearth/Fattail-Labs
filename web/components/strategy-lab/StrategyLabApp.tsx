@@ -24,6 +24,12 @@ import {
   fetchStrategyLabMeta,
 } from "@/lib/strategyLabApi";
 import type { StrategyLabSuiteId } from "@/lib/strategyLabSuite";
+import {
+  loadLabDeskPlace,
+  rememberStrategyInPhase,
+  setActivePhase as persistActivePhase,
+  type LabDeskPlace,
+} from "@/lib/strategyLabPlace";
 
 type Notice = { level: "info" | "success" | "warning" | "error"; message: string };
 
@@ -111,6 +117,9 @@ export default function StrategyLabApp() {
   const [maxPer, setMaxPer] = useState(100);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [navPhase, setNavPhase] = useState<BoardPhaseKey>("development");
+  const [deskPlace, setDeskPlace] = useState<LabDeskPlace>(() =>
+    loadLabDeskPlace(),
+  );
   const [search, setSearch] = useState("");
   const [sortByPhase, setSortByPhase] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -123,16 +132,29 @@ export default function StrategyLabApp() {
     setNotices((n) => [...n.slice(-6), { level, message }]);
   }, []);
 
-  // Sync nav highlight from ?phase=
-  useEffect(() => {
-    if (
-      phaseParam === "development" ||
-      phaseParam === "curation" ||
-      phaseParam === "deployment"
-    ) {
-      setNavPhase(phaseParam);
-    }
-  }, [phaseParam]);
+  /** Restore selection for phase P from place memory (or clear work area). */
+  const restorePlaceForPhase = useCallback(
+    (
+      phase: BoardPhaseKey,
+      list: StrategyLabStrategy[],
+      place: LabDeskPlace,
+    ): { selectedId: string | null; place: LabDeskPlace } => {
+      const remembered = place.places[phase]?.strategy_id ?? null;
+      const stillThere =
+        !!remembered &&
+        list.some((s) => s.id === remembered && phaseOf(s) === phase);
+      if (stillThere) {
+        return {
+          selectedId: remembered,
+          place: persistActivePhase(place, phase),
+        };
+      }
+      // Continuity break: no memory or card left this phase → empty work area
+      const cleared = rememberStrategyInPhase(place, phase, null);
+      return { selectedId: null, place: cleared };
+    },
+    [],
+  );
 
   const reload = useCallback(async () => {
     setError(null);
@@ -148,34 +170,60 @@ export default function StrategyLabApp() {
     setStrategies(list.strategies);
     setMaxPer(list.max_per_phase || 100);
     if (m?.phases) setMeta(m.phases);
-    // Prefer a strategy in an active board phase (not archive/bin)
-    const board = list.strategies.filter((s) => isBoardPhase(phaseOf(s)));
-    if (!selectedId && board.length) {
-      const prefer =
-        board.find((s) => phaseOf(s) === (phaseParam as BoardPhaseKey)) ||
-        board[0];
-      setSelectedId(prefer.id);
-      const ph = phaseOf(prefer);
-      if (isBoardPhase(ph)) setNavPhase(ph);
-    } else if (
-      selectedId &&
-      !list.strategies.some((s) => s.id === selectedId)
-    ) {
-      if (board.length) setSelectedId(board[0].id);
-      else setSelectedId(null);
-    }
+
+    const place = loadLabDeskPlace();
+    const phaseFromUrl =
+      phaseParam === "development" ||
+      phaseParam === "curation" ||
+      phaseParam === "deployment"
+        ? phaseParam
+        : place.active_phase;
+
+    setNavPhase(phaseFromUrl);
+    const restored = restorePlaceForPhase(
+      phaseFromUrl,
+      list.strategies,
+      place,
+    );
+    setDeskPlace(restored.place);
+    setSelectedId(restored.selectedId);
     setLoading(false);
-  }, [selectedId, phaseParam]);
+  }, [phaseParam, restorePlaceForPhase]);
 
   useEffect(() => {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount load
   }, []);
 
-  const selected = useMemo(
-    () => strategies.find((s) => s.id === selectedId) || null,
-    [strategies, selectedId],
-  );
+  // Top suite nav uses ?phase= links — restore place when URL phase changes
+  useEffect(() => {
+    if (
+      phaseParam !== "development" &&
+      phaseParam !== "curation" &&
+      phaseParam !== "deployment"
+    ) {
+      return;
+    }
+    if (phaseParam === navPhase && selectedId !== undefined) {
+      // Still re-run restore when strategies just loaded into same phase
+    }
+    setNavPhase(phaseParam);
+    setDeskPlace((prev) => {
+      const restored = restorePlaceForPhase(phaseParam, strategies, prev);
+      setSelectedId(restored.selectedId);
+      return restored.place;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional URL-driven restore
+  }, [phaseParam]);
+
+  const selected = useMemo(() => {
+    const s = strategies.find((x) => x.id === selectedId) || null;
+    if (!s) return null;
+    // Work area only for the active phase — never show another bin's card
+    const ph = phaseOf(s);
+    if (isBoardPhase(ph) && ph !== navPhase) return null;
+    return s;
+  }, [strategies, selectedId, navPhase]);
 
   /** Active board strategies only (exclude archive/bin from work-area default). */
   const boardStrategies = useMemo(
@@ -186,8 +234,8 @@ export default function StrategyLabApp() {
   useEffect(() => {
     if (selected) {
       setRenameName(selected.name);
-      const ph = phaseOf(selected);
-      if (isBoardPhase(ph)) setNavPhase(ph);
+    } else {
+      setRenameName("");
     }
   }, [selected]);
 
@@ -202,7 +250,25 @@ export default function StrategyLabApp() {
   async function selectStrategy(s: StrategyLabStrategy) {
     setSelectedId(s.id);
     const ph = phaseOf(s);
-    if (isBoardPhase(ph)) setNavPhase(ph);
+    if (isBoardPhase(ph)) {
+      setNavPhase(ph);
+      setDeskPlace((prev) => rememberStrategyInPhase(prev, ph, s.id));
+      router.replace(`/app/strategy-lab?phase=${ph}`, { scroll: false });
+    }
+  }
+
+  /**
+   * Focus a phase bin (title bar, empty body, or chrome).
+   * Restores last strategy in that phase, or clears work area if none remembered.
+   */
+  function focusPhase(phase: BoardPhaseKey) {
+    setNavPhase(phase);
+    router.replace(`/app/strategy-lab?phase=${phase}`, { scroll: false });
+    setDeskPlace((prev) => {
+      const restored = restorePlaceForPhase(phase, strategies, prev);
+      setSelectedId(restored.selectedId);
+      return restored.place;
+    });
   }
 
   async function onMove(
@@ -217,13 +283,38 @@ export default function StrategyLabApp() {
     }
     if (phase === "bin") {
       pushNotice("success", "Sent to Archive (Bin).");
+      setDeskPlace((prev) => {
+        // Clear this id from all board places
+        let next = prev;
+        for (const p of BOARD_PHASE_ORDER) {
+          if (next.places[p]?.strategy_id === id) {
+            next = rememberStrategyInPhase(next, p, null);
+          }
+        }
+        return next;
+      });
       await reload();
       router.push("/app/strategy-lab/archive");
       return;
     }
     pushNotice("success", `Moved to ${phase}.`);
+    const toPhase = phase as BoardPhaseKey;
+    if (isBoardPhase(toPhase) && res.strategy) {
+      // Follow the card into the destination phase (continuity spec default)
+      setDeskPlace((prev) => {
+        let next = prev;
+        for (const p of BOARD_PHASE_ORDER) {
+          if (p !== toPhase && next.places[p]?.strategy_id === id) {
+            next = rememberStrategyInPhase(next, p, null);
+          }
+        }
+        return rememberStrategyInPhase(next, toPhase, res.strategy!.id);
+      });
+      setNavPhase(toPhase);
+      setSelectedId(res.strategy.id);
+      router.replace(`/app/strategy-lab?phase=${toPhase}`, { scroll: false });
+    }
     await reload();
-    if (res.strategy) setSelectedId(res.strategy.id);
   }
 
   if (loading) {
@@ -344,11 +435,33 @@ export default function StrategyLabApp() {
             return (
               <div
                 key={phase}
+                role="button"
+                tabIndex={0}
+                aria-pressed={here}
+                aria-label={`${label} phase bin${here ? " (active)" : ""}`}
+                onClick={() => focusPhase(phase)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    focusPhase(phase);
+                  }
+                }}
                 className={
-                  "flex max-h-[380px] min-h-[280px] flex-col rounded-2xl border bg-[var(--color-surface)] p-4 shadow-sm " +
+                  "relative flex max-h-[380px] min-h-[280px] cursor-pointer flex-col rounded-2xl border bg-[var(--color-surface)] p-4 transition-[box-shadow,opacity,filter] duration-200 " +
                   (here
-                    ? "border-blue-500 shadow-[0_0_0_2px_rgba(0,113,227,0.25)]"
-                    : "border-[var(--color-separator)]")
+                    ? [
+                        "z-10 border-blue-600",
+                        "shadow-[0_12px_40px_rgba(0,0,0,0.22),0_4px_12px_rgba(0,0,0,0.12),0_0_0_3px_rgba(0,113,227,0.45)]",
+                        "ring-2 ring-blue-500/50",
+                        "dark:border-blue-400 dark:shadow-[0_12px_40px_rgba(0,0,0,0.55),0_0_0_3px_rgba(96,165,250,0.45)]",
+                      ].join(" ")
+                    : [
+                        "border-[var(--color-separator)] shadow-sm opacity-[0.72]",
+                        "brightness-[0.97] dark:brightness-90",
+                        // Soft “not here” wash — keeps content readable, clicks work
+                        "after:pointer-events-none after:absolute after:inset-0 after:rounded-2xl",
+                        "after:bg-zinc-500/[0.08] dark:after:bg-black/35",
+                      ].join(" "))
                 }
               >
                 <div className="mb-1 flex items-baseline justify-between gap-2">
@@ -364,11 +477,16 @@ export default function StrategyLabApp() {
                   {PHASE_HINTS[phase]}
                 </p>
                 <select
-                  className="mb-2 rounded-md border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1 text-xs"
+                  className="mb-2 cursor-pointer rounded-md border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1 text-xs"
                   value={sort}
-                  onChange={(e) =>
-                    setSortByPhase((prev) => ({ ...prev, [phase]: e.target.value }))
-                  }
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setSortByPhase((prev) => ({
+                      ...prev,
+                      [phase]: e.target.value,
+                    }));
+                  }}
                 >
                   <option value="newest">Newest first</option>
                   <option value="oldest">Oldest first</option>
@@ -523,7 +641,12 @@ export default function StrategyLabApp() {
 
         {!selected ? (
           <p className="text-sm text-[var(--color-label-secondary)]">
-            Select a strategy from a phase bin. Moves live on the card in the bin.
+            {navPhase === "development" && "Design"}
+            {navPhase === "curation" && "Curate"}
+            {navPhase === "deployment" && "Deploy"}
+            {" — "}
+            no strategy selected. Click a card in this bin, or create one with +
+            New. Moves live on the card.
           </p>
         ) : (
           <div className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-3 shadow-sm">

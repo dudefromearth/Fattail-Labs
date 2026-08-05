@@ -1,18 +1,23 @@
 # Strategy Lab — market data, tests, Tradier deploy
 
-**Status:** Locked Coach direction (DL-185, DL-186, 2026-08-01)  
-**App:** Strategy Lab · `/app/strategy-lab` · slug `strategy-lab`
+**Status:** Locked Coach direction (DL-185, DL-186, 2026-08-01; **DL-214** execution offload 2026-08-05)  
+**App:** Strategy Lab · `/app/strategy-lab` · slug `strategy-lab`  
+**First broker target:** **Tradier** (only near-term execution venue)
+
+**Execution responsibility:** User + broker own **running**; Labs owns **design/proof/handoff**.  
+See `Architecture/14-strategy-lab-execution-responsibility.md`. Prefer broker-held exits (OCO/OTO/OTOCO where supported) over Labs-hosted manage loops.
 
 ## Provider split (cost-aware)
 
 | Layer | Provider | Notes |
 |-------|----------|--------|
 | **Market data** (Build signals, Test, live marks) | **Massive** | Coach already pays; WebSocket + history REST/flat files |
-| **Execution** (paper → live orders, fills) | **Tradier** | Deploy only — **do not** buy Tradier ~$400/mo streaming |
+| **Execution** (paper → live orders, fills) | **Tradier** | **First target**; Deploy / handoff — **do not** buy Tradier ~$400/mo streaming |
 | **SPX option surface** | **Chain snapshots we collect** | No deep historical archive today; **build forward** |
 
 ```
-Build Spec → Test (historical | live) → Run bots (Massive in) → Deploy (Tradier out)
+Build Spec → Test (historical | live) → Handoff / user-or-broker run
+  Massive (+ chain archive) in · Tradier orders out
 ```
 
 ## Test modes (both required)

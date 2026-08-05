@@ -40,7 +40,9 @@ function TradeLogBody() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetMode, setSheetMode] = useState<"create" | "edit">("create");
+  const [sheetMode, setSheetMode] = useState<"create" | "edit" | "close">(
+    "create",
+  );
   const [selected, setSelected] = useState<Trade | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [deepLinked, setDeepLinked] = useState(false);
@@ -214,12 +216,29 @@ function TradeLogBody() {
       <TradeSheet
         open={sheetOpen && state === "ok"}
         mode={sheetMode}
-        trade={sheetMode === "edit" ? selected : null}
+        trade={
+          sheetMode === "edit" || sheetMode === "close" ? selected : null
+        }
+        trades={trades}
         accounts={mergedAccounts}
         catalog={catalog}
         defaultAccountId={defaultAcct}
         onClose={() => setSheetOpen(false)}
         onSaved={() => load()}
+        onRequestCloseFromOpen={(openTrade) => {
+          setSelected(openTrade);
+          setSheetMode("close");
+          setSheetOpen(true);
+        }}
+        onRequestImport={() => {
+          setSheetOpen(false);
+          setImportOpen(true);
+        }}
+        onSelectOpenForClose={(openTrade) => {
+          setSelected(openTrade);
+          setSheetMode("close");
+          setSheetOpen(true);
+        }}
       />
       <ImportSheet
         open={importOpen && state === "ok"}

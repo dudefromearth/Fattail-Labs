@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { clearMeCache } from "@/lib/useIsAdmin";
+import { clearLabDeskPlace } from "@/lib/strategyLabPlace";
 
 const PROVIDER_LABELS: Record<string, string> = {
   "wordpress:fattail": "Continue with FatTail.ai",
@@ -26,6 +27,7 @@ type ExistingMe = {
 /** Clear Labs session via API (nuclear cookie expire). */
 async function clearLabsSession(): Promise<void> {
   clearMeCache();
+  clearLabDeskPlace();
   try {
     await fetch("/api/auth/logout?json=1", {
       method: "POST",

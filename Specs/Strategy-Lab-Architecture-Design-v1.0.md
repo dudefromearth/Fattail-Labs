@@ -6,7 +6,7 @@
 **Prototype path:** `strategy-lab-proto/` (Streamlit)  
 **Intended home:** First-class Labs surface under `labs.fattail.ai` (later)  
 **Process source:** `/Users/ernie/LifeCycle.pdf` — *Strategy Life Cycle Big Picture* (1/19/25)  
-**Related:** `Strategy-Lab-Life-Cycle-Architecture-v1.0.md`, `v1.1.md` (foundation/plugin path) · **`Strategy-Lab-Portability-Spec-v1.0.md`** (whole-lab import/export pack) · `schemas/strategy-lab-pack-v1.json` · **`Strategy-Lab-Strategy-Pack-Architecture-v1.0.md`** (modular packs · Butterfly Phase 1) · **`Strategy-Lab-Development-Phase-Spec-v1.0.md`** (Design/Development: back test · forward walk · gate to Curation)  
+**Related:** `Strategy-Lab-Life-Cycle-Architecture-v1.0.md`, `v1.1.md` (foundation/plugin path) · **`Strategy-Lab-Portability-Spec-v1.0.md`** (whole-lab import/export pack) · `schemas/strategy-lab-pack-v1.json` · **`Strategy-Lab-Strategy-Pack-Architecture-v1.0.md`** (modular packs · Butterfly Phase 1) · **`Strategy-Lab-Development-Phase-Spec-v1.0.md`** (Design: back test · forward walk · gate to Curate) · **`Strategy-Lab-Navigation-Continuity-Spec-v1.0.md`** (place memory · complexity · path to replay & version restore)  
 **Doctrine:** Capital preservation · process over profit claims · no fantasy fills · fail loud · stop-the-bleeding first  
 
 ---

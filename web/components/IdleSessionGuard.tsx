@@ -7,6 +7,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { clearMeCache, fetchMe } from "@/lib/useIsAdmin";
+import { clearLabDeskPlace } from "@/lib/strategyLabPlace";
 
 const DEFAULT_MINUTES = 30;
 const MIN_MINUTES = 15;
@@ -79,6 +80,7 @@ export default function IdleSessionGuard() {
         }).catch(() => {});
       } finally {
         clearMeCache();
+        clearLabDeskPlace();
         // Force login with reason for optional UI copy
         window.location.href = "/login?idle=1";
       }

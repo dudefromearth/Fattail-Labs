@@ -21,6 +21,12 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [11-wiki-design.md](./11-wiki-design.md) | Member Wiki: lab-wiki checkout → derived index → /app/wiki |
 | [12-retrospective-report-dto.md](./12-retrospective-report-dto.md) | Retrospective workspace DTO (gather/report/comparison) — as-built v0.6 |
 | [13-habit-catalog-design.md](./13-habit-catalog-design.md) | Habit Catalog methodology layer — **design locked**, pre-Spec |
+| [09-strategy-lab-tradier.md](./09-strategy-lab-tradier.md) | Strategy Lab data/exec split (Massive / Tradier) |
+
+**Strategy Lab process runtime (2026-08-05):**  
+`Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md` — process runtime (**user+broker first**, Tradier, DL-215).  
+`Architecture/14-strategy-lab-execution-responsibility.md` — execution responsibility (DL-214).  
+`docs/Strategy-Lab-Execution-Architecture-Review-2026-08-05.md` — architecture review 2026-08-05.
 
 **Practice / retrospectives (2026-07-29) — p-retrospective R1b–R7 PASS:**
 

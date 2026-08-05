@@ -58,6 +58,17 @@
 - **DS-2** Journey **extends the existing enrollment/progress surface** (P1) — it aggregates and presents it; it does **not** create a second progress store. **Sources of truth:** `enrollments`, `lesson_progress`, and existing member progress APIs per `FatTail-Labs-Progress-Tracking-Spec-v1.0` and enrollment specs — not a `journey_*` copy table.  
 - **DS-3** Playbook is on-thesis (the member building *their own* process = capacity over dependency); it is personal, not a re-hosting of course content.
 
+### 2.1 Named consumers (other specs — do not inherit silent defaults)
+
+Specs that store Family B–scoped data must be **named here** so retention, purge, export, and admin access are deliberate — not accidental inheritance of Trade Log defaults.
+
+| Consumer | Source spec | Class | Retention / purge note |
+|---|---|---|---|
+| **`AttestationRecord`** (live arming ceremony) | [`Strategy-Lab-Process-Runtime-Spec-v1.1.md`](./Strategy-Lab-Process-Runtime-Spec-v1.1.md) §18 | **Legal-evidence** (system-recorded, member-confirmed) | **Does not** follow ordinary authored-content purge by default. Retention may be **longer** than Journal/Trade Log (proof of informed live arming). **Counsel decides** before first production store (**D-7**). Member **export** required; admin read under §4.2 or legal hold only. |
+| Strategy Lab decision log / order-intent tags | Process Runtime Spec | Process audit trail | Family B isolation; retention per Process Runtime L-S3 + export path; not a surprise share surface |
+| Read-only coach share of strategy card (future) | Versioning recommendations | Consent-gated share | Must use §4.2 individual examination / dedicated consent — never silent Family B leak |
+
+**DS-4** New Family B artifacts (especially legal-evidence) **must** be added to this table before production write.
 ### Framework mapping
 
 | Surface | Application Framework template (Family B) | Notes |
@@ -144,6 +155,7 @@ This is **personal data**, and trade/behavioral records are arguably **sensitive
 | **D-4** | Retention for content, aggregates, and audit logs | Mike + India |
 | **D-5** | Encryption-at-rest posture for member content | Mike + Foxtrot |
 | **D-6** | Whether Journey exposes any member-visible gamified streaks (wellbeing check) | Tango |
+| **D-7** | **AttestationRecord** retention vs member purge / account deletion (legal-evidence of live arming) — may exceed ordinary content retention | **Counsel** + Mike + India (before first live attestation stored) |
 
 ---
 

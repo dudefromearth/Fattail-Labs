@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { clearLabDeskPlace } from "@/lib/strategyLabPlace";
 
 // Account menu: Continue Learning + Profile + Journey (My Learning / Dashboard retired).
 
@@ -348,6 +349,7 @@ export default function SiteHeader() {
                       onClick={() => {
                         setMenuOpen(false);
                         setMe(null);
+                        clearLabDeskPlace();
                       }}
                     >
                       Sign out

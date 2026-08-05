@@ -43,6 +43,13 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
+- `agents/p-strategy-runtime/` — **Strategy Lab Process Runtime** (deployment instances,
+  decision log, arming, Deployment Pack, Tradier paper→live, M0–M2 first; M3 optional).  
+  Spec: `Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md`.  
+  **Scope:** `docs/Strategy-Lab-Process-Runtime-Implementation-Scope-v1.0.md`.  
+  **Full multi-agent plan:** `docs/Strategy-Lab-Process-Runtime-Full-Agent-Bench-Plan-v1.0.md`.  
+  Board: `agents/p-strategy-runtime/ORCHESTRATOR.md`.  
+  **Next: Coach SR0-0 ACK · LEGAL-* external · no SR1+ code before SR0-G.**
 - `agents/p-access-control/` — **Access Control (admin role/plan gating)** for surfaces,
   apps, and course elements (campaign-ready policies). Spec:
   `Specs/FatTail-Labs-Access-Control-Spec-v0.4.md`.  

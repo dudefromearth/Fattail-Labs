@@ -31,6 +31,56 @@ skipped — the app still boots); the member widget is wrapped in an `ErrorBound
 `FatTail-Labs-Help-System-Spec-v1.0`. Tests: `test_help.py`. Status: draft,
 pending live verification on MiniTwo.
 
+## 2026-08-05 — DL-215 Process Runtime Spec v1.1
+
+**Coach:** Runtime Spec amended for execution offload. **v1.1** is SPEC AUTHORITY;
+v1.0 superseded for responsibility/priority. M0–M2 primary; M3 optional; Tradier-first;
+arming ceremony; Deployment Pack export; broker-held exits; admin console for residual
+fleet; §17 workers only for M3/assist.
+
+**Spec:** `Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md`
+
+## 2026-08-05 — DL-214 Execution responsibility: user + broker first
+
+**Coach direction:** Primary goal is to **offload running automations** to the
+**user (creator)** and the **broker**, not to make Labs the always-on multi-tenant
+bot host. Labs = design, validate, version, document, export/handoff, optional
+assisted connectivity. Broker = account, orders, custody, broker-held exits when
+possible. User = strategy ownership, arming, monitoring, contingency.
+
+**First broker target: Tradier** (paper → live). Market data remains Massive /
+Coach chain pipe — do not buy Tradier streaming. Maximize multi-leg open +
+OCO/OTO/OTOCO **broker-held** exits; scan graphs stay user-local or manual.
+
+**Architecture:** `Architecture/14-strategy-lab-execution-responsibility.md` §13  
+**Implication:** Process Runtime Spec §17 (Labs workers at scale) becomes
+**optional M3**, not the product north star. Prefer M0 export/manual, M1
+broker-native exits, M2 user-local runtime.
+
+## 2026-08-05 — DL-213b Process Runtime multi-tenant scale (§17)
+
+**Coach:** Plan for **dozens → hundreds** of members with armed automations.
+Normative: **control plane (API) ≠ data plane (workers)**; **job queue + leased
+workers**; fair multi-tenant claim; manage-before-scan under load; shared market
+data fan-out (not per-user sockets); broker throttle gateway; per-identity caps;
+decision_log volume/retention. Separate **worker role** required for scheduled/live;
+separate microservice repo **not** required. Defaults: soft 5 / hard 10 armed
+instances; min scan 60s; MySQL jobs table v1.
+
+**Spec:** `Strategy-Lab-Process-Runtime-Spec-v1.0.md` §17.
+
+## 2026-08-05 — DL-213 Strategy Lab Process Runtime Spec v1.0
+
+**Coach:** Spec for deployment process runtime (FatTail shape of “bots as
+processes”): **deployment instance** + **risk envelope** + **scan/manage runners**
++ **typed decisions** + **decision log** + **dry/paper/live ladder**. Explicitly
+inherits Continuity (place ≠ SoR; empty-on-unknown), Versioning P1–P8 (explore ≠
+rebind; restore does not silent-mutate runners; freeze on live; drift fail loud),
+Development Phase gates (no live without BT/FW path), Massive/Tradier split.
+
+**Spec:** `Specs/Strategy-Lab-Process-Runtime-Spec-v1.0.md` (SPEC AUTHORITY).  
+**Not:** OptionAlpha clone; free-floating bots before life cycle.
+
 ## 2026-08-03 — DL-212 Habit Catalog Spec v0.1 + multi-agent plan
 
 **Coach:** Design architecture locked (`Architecture/13-habit-catalog-design.md`).
