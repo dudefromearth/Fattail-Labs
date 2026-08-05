@@ -99,10 +99,15 @@ export default function StrategyLabPortability({
       setErr(error);
       return;
     }
+    const recovery =
+      result && "recovery_id" in result && result.recovery_id
+        ? ` Recovery id: ${String(result.recovery_id)} (undo via API if needed).`
+        : "";
     setMsg(
       `Import complete — created ${result?.created ?? 0}, skipped ${result?.skipped ?? 0}` +
         (result?.purged ? `, purged ${result.purged}` : "") +
-        ".",
+        "." +
+        recovery,
     );
     setPreview(null);
     setPack(null);

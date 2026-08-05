@@ -204,6 +204,7 @@ export type StrategyLabImportResult = {
   purged?: number;
   public_ids_created?: string[];
   export_key_map?: Record<string, string>;
+  recovery_id?: string | null;
 };
 
 export async function exportLabPack(opts?: {

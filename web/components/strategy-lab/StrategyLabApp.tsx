@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import StrategyLabChrome from "@/components/strategy-lab/StrategyLabChrome";
+import StrategyDesigner from "@/components/strategy-lab/StrategyDesigner";
 import StrategyLabPortability from "@/components/strategy-lab/StrategyLabPortability";
 import {
   BOARD_PHASE_ORDER,
@@ -669,6 +670,21 @@ export default function StrategyLabApp() {
                 </button>
               </div>
             </div>
+
+            {phaseOf(selected) === "development" && (
+              <div className="mt-4 border-t border-[var(--color-separator)] pt-4">
+                <StrategyDesigner
+                  strategyId={selected.id}
+                  strategyName={selected.name}
+                  initialConfig={
+                    (selected.attributes?.["butterfly_config@1"] as
+                      | Record<string, unknown>
+                      | undefined) ?? null
+                  }
+                  onSaved={() => void reload()}
+                />
+              </div>
+            )}
 
             {selected.lifecycle_log?.length > 0 && (
               <details className="mt-4 border-t border-[var(--color-separator)] pt-3">

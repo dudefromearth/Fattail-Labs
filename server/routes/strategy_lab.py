@@ -198,7 +198,20 @@ def promote_strategy(public_id: str, request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _iid(cur, claims)
-            _get_owned(cur, iid, public_id)
+            row = _get_owned(cur, iid, public_id)
+            strategy_dict = sld.row_to_dict(row)
+            pack_cfg = sld.get_pack_config(strategy_dict)
+            if pack_cfg:
+                from strategy_packs.registry import get_pack
+
+                pack_id = str(pack_cfg.get("pack_id") or "butterfly")
+                mod = get_pack(pack_id)
+                if mod is not None and hasattr(mod, "before_promote_to_curation"):
+                    if not mod.before_promote_to_curation(pack_cfg):
+                        raise HTTPException(
+                            status_code=422,
+                            detail="Pack config invalid for promote to Curation",
+                        )
             try:
                 strategy = sld.promote(cur, iid, public_id)
             except ValueError as exc:
@@ -411,6 +424,10 @@ async def import_commit(request: Request) -> dict:
                 )
             except PermissionError as exc:
                 raise HTTPException(status_code=422, detail=str(exc)) from exc
+            except RuntimeError as exc:
+                raise HTTPException(
+                    status_code=500, detail=str(exc)
+                ) from exc
             except ValueError as exc:
                 code = str(exc)
                 status = 409 if code == "phase_capacity" else 422
@@ -423,8 +440,193 @@ async def import_commit(request: Request) -> dict:
                 surfaces=["strategy_lab"],
                 detail=(
                     f"policy={result.get('policy')} created={result.get('created')} "
-                    f"skipped={result.get('skipped')}"
+                    f"skipped={result.get('skipped')} recovery={result.get('recovery_id')}"
                 ),
+            )
+    return result
+
+
+# ── Strategy Packs (Architecture Spec + Implementation Plan PR-1/2/3) ──────
+
+
+@router.get("/api/me/strategy-lab/packs")
+def list_packs(request: Request) -> dict:
+    require_session(request)
+    from strategy_packs.registry import list_packs as _list
+
+    return {"packs": _list(enabled_only=True)}
+
+
+@router.get("/api/me/strategy-lab/packs/{pack_id}")
+def get_pack_detail(pack_id: str, request: Request) -> dict:
+    require_session(request)
+    from strategy_packs.registry import pack_detail
+
+    try:
+        return pack_detail(pack_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/api/me/strategy-lab/packs/{pack_id}/validate")
+async def validate_pack_config(pack_id: str, request: Request) -> dict:
+    require_session(request)
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="JSON body required") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="JSON object required")
+    config = body.get("config") if "config" in body else body
+    if not isinstance(config, dict):
+        raise HTTPException(status_code=422, detail="config object required")
+    from strategy_packs.registry import get_pack_or_raise
+
+    try:
+        mod = get_pack_or_raise(pack_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return mod.validate(config)
+
+
+@router.post("/api/me/strategy-lab/packs/{pack_id}/rank")
+async def rank_pack_structures(pack_id: str, request: Request) -> dict:
+    require_session(request)
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="JSON body required") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="JSON object required")
+    config = body.get("config")
+    if not isinstance(config, dict):
+        raise HTTPException(status_code=422, detail="config object required")
+    strict = bool(body.get("strict_primary"))
+    from strategy_packs.chain_stub import build_stub_chain
+    from strategy_packs.packs.butterfly.validation import resolve_dte_window
+    from strategy_packs.registry import get_pack_or_raise
+
+    try:
+        mod = get_pack_or_raise(pack_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    chain = body.get("chain")
+    if not isinstance(chain, dict):
+        window = resolve_dte_window(config) or (0, 0)
+        dte = window[0]
+        chain = build_stub_chain(
+            underlying=str(config.get("underlying") or "SPX"),
+            dte=dte,
+        )
+
+    if not hasattr(mod, "rank_structures"):
+        raise HTTPException(status_code=501, detail="Pack does not support rank")
+    result = mod.rank_structures(config, chain, strict_primary=strict)
+    if not result.get("ok"):
+        code = result.get("error") or "rank_failed"
+        status = 422
+        raise HTTPException(
+            status_code=status,
+            detail={"error": code, "message": result.get("detail"), "result": result},
+        )
+    return result
+
+
+@router.put("/api/me/strategy-lab/strategies/{public_id}/pack-config")
+async def put_pack_config(public_id: str, request: Request) -> dict:
+    """Save pack config onto strategy attributes (version bump default)."""
+    claims = require_session(request)
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="JSON body required") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="JSON object required")
+    pack_id = str(body.get("pack_id") or "butterfly")
+    config = body.get("config")
+    if not isinstance(config, dict):
+        raise HTTPException(status_code=422, detail="config object required")
+    bump = body.get("bump_version")
+    if bump is None:
+        bump = True
+    from strategy_packs.registry import get_pack_or_raise
+
+    try:
+        mod = get_pack_or_raise(pack_id)
+        pack_version = str(mod.meta().get("version") or "1.0.0")
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            _get_owned(cur, iid, public_id)
+            try:
+                strategy = sld.set_pack_config(
+                    cur,
+                    iid,
+                    public_id,
+                    pack_id=pack_id,
+                    pack_version=pack_version,
+                    config=config,
+                    bump_version=bool(bump),
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"strategy": strategy}
+
+
+@router.get("/api/me/strategy-lab/recoveries")
+def list_lab_recoveries(request: Request) -> dict:
+    claims = require_session(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            items = sld.list_recoveries(cur, iid)
+    return {"recoveries": items}
+
+
+@router.post("/api/me/strategy-lab/import/restore-recovery")
+async def restore_recovery(request: Request) -> dict:
+    claims = require_session(request)
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="JSON body required") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="JSON object required")
+    recovery_id = str(body.get("recovery_id") or "").strip()
+    confirm = str(body.get("confirm") or "").strip()
+    if not recovery_id:
+        raise HTTPException(status_code=422, detail="recovery_id required")
+    if confirm != "RESTORE_RECOVERY":
+        raise HTTPException(
+            status_code=422, detail="confirm must be RESTORE_RECOVERY"
+        )
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            pack = sld.load_recovery_pack(cur, iid, recovery_id)
+            if pack is None:
+                raise HTTPException(status_code=404, detail="recovery not found or expired")
+            try:
+                result = sld.commit_import(
+                    cur,
+                    iid,
+                    pack,
+                    policy="replace_lab",
+                    confirm="REPLACE_LAB",
+                )
+            except Exception as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            privacy.audit(
+                cur,
+                actor_identity_id=iid,
+                subject_identity_id=iid,
+                action="import",
+                surfaces=["strategy_lab"],
+                detail=f"restore-recovery {recovery_id}",
             )
     return result
 

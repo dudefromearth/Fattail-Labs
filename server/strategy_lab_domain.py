@@ -1123,7 +1123,19 @@ def commit_import(
         raise ValueError(err if isinstance(err, str) else "import_failed")
 
     purged = 0
+    recovery_id: str | None = None
     if policy == "replace_lab":
+        # SLP-15: snapshot before purge; fail loud if snapshot fails
+        try:
+            prior = build_export_pack(
+                cur,
+                identity_id,
+                include_email=False,
+                label="auto-recovery before replace_lab",
+            )
+            recovery_id = save_recovery_snapshot(cur, identity_id, prior)
+        except Exception as exc:
+            raise RuntimeError(f"recovery_snapshot_failed: {exc}") from exc
         purged = purge_lab(cur, identity_id)
 
     created: list[str] = []
@@ -1160,6 +1172,7 @@ def commit_import(
         "purged": purged,
         "public_ids_created": created,
         "export_key_map": export_key_map,
+        "recovery_id": recovery_id,
     }
 
 
@@ -1238,3 +1251,199 @@ def build_exercise_pack(*, email: str = "exercise@labs.test") -> dict[str, Any]:
         "reports": [],
         "lab_settings": {},
     }
+
+
+# ── Strategy pack config on cards (Pack Spec §3.3) ─────────────────────────
+
+def set_pack_config(
+    cur,
+    identity_id: int,
+    public_id: str,
+    *,
+    pack_id: str,
+    pack_version: str,
+    config: dict[str, Any],
+    bump_version: bool = True,
+) -> dict[str, Any]:
+    """Validate via pack, persist attributes, optional minor version bump."""
+    from strategy_packs.registry import get_pack_or_raise
+
+    mod = get_pack_or_raise(pack_id)
+    result = mod.validate(config)
+    if not result.get("valid"):
+        raise ValueError(
+            "invalid_pack_config: " + "; ".join(result.get("errors") or ["invalid"])
+        )
+
+    row = get_by_public_id(cur, identity_id, public_id)
+    if row is None:
+        raise LookupError("Strategy not found")
+
+    attrs = _json_load(row.get("attributes_json")) or {}
+    if not isinstance(attrs, dict):
+        attrs = {}
+    cfg = dict(config)
+    cfg["pack_id"] = pack_id
+    cfg["pack_version"] = pack_version
+    attrs["strategy_pack@1"] = {"pack_id": pack_id, "pack_version": pack_version}
+    bag_key = f"{pack_id}_config@1"
+    attrs[bag_key] = cfg
+    # alias for butterfly
+    if pack_id == "butterfly":
+        attrs["butterfly_config@1"] = cfg
+
+    log = _append_log(
+        row,
+        "pack_config_save",
+        pack_id=pack_id,
+        pack_version=pack_version,
+        config_name=str(cfg.get("name") or ""),
+    )
+    name = str(cfg.get("name") or row.get("name") or "Untitled strategy")[:255]
+    description = str(cfg.get("description") or row.get("description") or "")[:512]
+
+    cur.execute(
+        """UPDATE strategy_lab_strategies
+           SET attributes_json = %s, lifecycle_log = %s, name = %s, description = %s
+           WHERE identity_id = %s AND public_id = %s""",
+        (
+            _json_dump(attrs),
+            _json_dump(log),
+            name,
+            description,
+            identity_id,
+            public_id,
+        ),
+    )
+    if bump_version:
+        return bump_version_fn(
+            cur,
+            identity_id,
+            public_id,
+            part="minor",
+            reason=f"pack_config_save:{pack_id}",
+        )
+    out = get_by_public_id(cur, identity_id, public_id)
+    assert out is not None
+    return row_to_dict(out)
+
+
+def get_pack_config(strategy: dict[str, Any]) -> dict[str, Any] | None:
+    attrs = strategy.get("attributes") or {}
+    if not isinstance(attrs, dict):
+        return None
+    pack_meta = attrs.get("strategy_pack@1") or {}
+    pack_id = str(pack_meta.get("pack_id") or "butterfly")
+    bag = attrs.get(f"{pack_id}_config@1") or attrs.get("butterfly_config@1")
+    return bag if isinstance(bag, dict) else None
+
+
+# ── replace_lab recovery (Portability SLP-15) ──────────────────────────────
+
+RECOVERY_RETENTION_DAYS = 14
+RECOVERY_MAX_PER_IDENTITY = 5
+
+
+def ensure_recovery_table(cur) -> None:
+    """Idempotent DDL for recovery blobs (also in migration 079)."""
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS strategy_lab_recoveries (
+          id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+          identity_id   BIGINT UNSIGNED NOT NULL,
+          recovery_id   VARCHAR(32) NOT NULL,
+          pack_json     JSON NOT NULL,
+          created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          expires_at    TIMESTAMP NOT NULL,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_slr_recovery (recovery_id),
+          KEY ix_slr_owner_created (identity_id, created_at),
+          CONSTRAINT fk_slr_identity FOREIGN KEY (identity_id)
+            REFERENCES identities (identity_id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """
+    )
+
+
+def save_recovery_snapshot(
+    cur,
+    identity_id: int,
+    pack: dict[str, Any],
+) -> str:
+    ensure_recovery_table(cur)
+    rid = secrets.token_hex(8)
+    cur.execute(
+        """INSERT INTO strategy_lab_recoveries
+           (identity_id, recovery_id, pack_json, expires_at)
+           VALUES (%s, %s, %s, DATE_ADD(UTC_TIMESTAMP(), INTERVAL %s DAY))""",
+        (
+            identity_id,
+            rid,
+            _json_dump(pack),
+            RECOVERY_RETENTION_DAYS,
+        ),
+    )
+    # FIFO cap
+    cur.execute(
+        """SELECT recovery_id FROM strategy_lab_recoveries
+           WHERE identity_id = %s
+           ORDER BY created_at DESC, id DESC""",
+        (identity_id,),
+    )
+    rows = cur.fetchall() or []
+    if len(rows) > RECOVERY_MAX_PER_IDENTITY:
+        drop = [r["recovery_id"] for r in rows[RECOVERY_MAX_PER_IDENTITY:]]
+        for d in drop:
+            cur.execute(
+                "DELETE FROM strategy_lab_recoveries WHERE identity_id = %s AND recovery_id = %s",
+                (identity_id, d),
+            )
+    return rid
+
+
+def list_recoveries(cur, identity_id: int) -> list[dict[str, Any]]:
+    ensure_recovery_table(cur)
+    cur.execute(
+        """SELECT recovery_id, created_at, expires_at, pack_json
+           FROM strategy_lab_recoveries
+           WHERE identity_id = %s AND expires_at > UTC_TIMESTAMP()
+           ORDER BY created_at DESC, id DESC
+           LIMIT %s""",
+        (identity_id, RECOVERY_MAX_PER_IDENTITY),
+    )
+    out = []
+    for r in cur.fetchall() or []:
+        pack = _json_load(r.get("pack_json")) or {}
+        counts = (pack.get("lab") or {}).get("counts") if isinstance(pack, dict) else {}
+        out.append(
+            {
+                "recovery_id": r["recovery_id"],
+                "created_at": r["created_at"].isoformat() + "Z"
+                if hasattr(r["created_at"], "isoformat")
+                else str(r.get("created_at") or ""),
+                "expires_at": r["expires_at"].isoformat() + "Z"
+                if hasattr(r["expires_at"], "isoformat")
+                else str(r.get("expires_at") or ""),
+                "counts": counts,
+                "label": (pack.get("lab") or {}).get("label")
+                if isinstance(pack, dict)
+                else None,
+            }
+        )
+    return out
+
+
+def load_recovery_pack(cur, identity_id: int, recovery_id: str) -> dict[str, Any] | None:
+    ensure_recovery_table(cur)
+    cur.execute(
+        """SELECT pack_json FROM strategy_lab_recoveries
+           WHERE identity_id = %s AND recovery_id = %s
+             AND expires_at > UTC_TIMESTAMP()
+           LIMIT 1""",
+        (identity_id, recovery_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    pack = _json_load(row.get("pack_json"))
+    return pack if isinstance(pack, dict) else None

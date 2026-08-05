@@ -120,6 +120,84 @@ def test_import_export_round_trip_replace(client):
             )
 
 
+def test_replace_returns_recovery_id(client):
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = identity_mod.get_or_create_identity(
+                cur, "zztest-strategy-lab-rec@labs.test", "ZZ Strategy Lab Rec"
+            )
+    from tests.conftest import cookie_for
+
+    cookies = cookie_for("navigator", identity_id=iid)
+    pack = sld.build_exercise_pack()
+    r = client.post(
+        "/api/me/strategy-lab/import/commit",
+        json={
+            "document": pack,
+            "policy": "replace_lab",
+            "confirm": "REPLACE_LAB",
+        },
+        cookies=cookies,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("recovery_id")
+    # list recoveries
+    r2 = client.get("/api/me/strategy-lab/recoveries", cookies=cookies)
+    assert r2.status_code == 200
+    assert any(x["recovery_id"] == body["recovery_id"] for x in r2.json()["recoveries"])
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM strategy_lab_strategies WHERE identity_id = %s",
+                (iid,),
+            )
+            cur.execute(
+                "DELETE FROM strategy_lab_recoveries WHERE identity_id = %s",
+                (iid,),
+            )
+
+
+def test_packs_api(client):
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = identity_mod.get_or_create_identity(
+                cur, "zztest-strategy-lab-packs@labs.test", "ZZ Strategy Lab Packs"
+            )
+    from tests.conftest import cookie_for
+
+    cookies = cookie_for("navigator", identity_id=iid)
+    r = client.get("/api/me/strategy-lab/packs", cookies=cookies)
+    assert r.status_code == 200
+    assert r.json()["packs"][0]["id"] == "butterfly"
+    r = client.get("/api/me/strategy-lab/packs/butterfly", cookies=cookies)
+    assert r.status_code == 200
+    assert "schema" in r.json()
+    cfg = r.json()["defaults"][0]
+    r = client.post(
+        "/api/me/strategy-lab/packs/butterfly/validate",
+        json={"config": cfg},
+        cookies=cookies,
+    )
+    assert r.status_code == 200
+    assert r.json()["valid"] is True
+    r = client.post(
+        "/api/me/strategy-lab/packs/butterfly/rank",
+        json={"config": cfg},
+        cookies=cookies,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["summary"]["primary_metric_substituted"] is True
+    assert len(body["ranked"]) > 0
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM strategy_lab_strategies WHERE identity_id = %s",
+                (iid,),
+            )
+
+
 def test_import_requires_replace_confirm(client):
     with db.transaction() as conn:
         with conn.cursor() as cur:
