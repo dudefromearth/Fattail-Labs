@@ -28,12 +28,14 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [17-strategy-lab-growth-playbook.md](./17-strategy-lab-growth-playbook.md) | Design+Curate all → Deploy Coach → provision |
 | [18-shared-live-marks-stream.md](./18-shared-live-marks-stream.md) | Shared symbol universe + live stream + correlation |
 | [19-strategy-lab-as-built-map.md](./19-strategy-lab-as-built-map.md) | Code/spec/route map for Curate/Deploy as-built |
+| [20-strategy-lab-curate-board-performance.md](./20-strategy-lab-curate-board-performance.md) | Multi-bot Curate board performance/stability (DL-231) |
 
 **Strategy Lab process runtime (2026-08-05 → 2026-08-06):**  
 `Specs/Strategy-Lab-Process-Runtime-Spec-v1.2.md` — multi-member Curate primary; amends v1.1.  
-`Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` — **as-built Curate/Deploy surface authority**.  
+`Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` — **as-built Curate/Deploy surface authority** (v1.0.2 board + nav).  
 `Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md` — base instance/envelope/decision-log (still read with v1.2).  
 `Architecture/14-strategy-lab-execution-responsibility.md` — execution responsibility (DL-214/216).  
+`Architecture/20-strategy-lab-curate-board-performance.md` — comparison hot path + browser mount budget.  
 `docs/Strategy-Lab-Curate-Runtime-User-Guide.md` — member operator guide.  
 `docs/Strategy-Lab-MSC-Broker-Adapter-Assessment-2026-08-06.md` — two-layer brokerage concept (no MSC code).
 

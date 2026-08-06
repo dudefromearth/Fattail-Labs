@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Select Curate scan underlier — organized by Indexes / ETFs / Stocks.
+ * Symbol picker for Design (underlying attribute) and Curate (sim scan).
+ * Catalog lives under Design → Symbols — not a top-level suite tab.
  */
 
 import Link from "next/link";
@@ -87,11 +88,14 @@ export default function CurateSymbolPicker({
         )}
       </select>
       <p className="text-[10px] text-[var(--color-label-secondary)]">
-        Organized by type. Reference-only (VIX / VIX1D) stay on the{" "}
-        <Link href="/app/strategy-lab/symbols" className="text-blue-600 hover:underline">
-          Symbols
-        </Link>{" "}
-        page for decisions — not scan opens.
+        Organized by type. Full catalog under{" "}
+        <Link
+          href="/app/strategy-lab/symbols"
+          className="text-blue-600 hover:underline"
+        >
+          Design → Symbols
+        </Link>
+        . Reference-only (VIX / VIX1D) are not scan opens.
       </p>
     </div>
   );

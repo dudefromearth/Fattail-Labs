@@ -152,6 +152,6 @@ Config-driven allowlist; fail loud if required symbol missing from plan.
 
 ## Related
 
-- Decision log: DL-185 (Tradier deploy), DL-186 (Massive data + dual Test + chain collect-forward), **DL-222–224** (shared marks / universe / VIX), **DL-227** (correlation)  
+- Decision log: DL-185 (Tradier deploy), DL-186 (Massive data + dual Test + chain collect-forward), **DL-222–224** (shared marks / universe / VIX), **DL-227** (correlation on-demand), **DL-231** (comparison hot path never blocks on Massive corr), **DL-232** (suite nav)  
 - Landing: `web/app/app/strategy-lab/page.tsx`  
 - As-built map: [`Architecture/19-strategy-lab-as-built-map.md`](./19-strategy-lab-as-built-map.md)  

@@ -97,8 +97,12 @@ def run_tick(
 
     # Promote armed → running on first tick
     if status == "armed":
+        # Ensure run clock is set (arm should have set it; backfill if missing)
         cur.execute(
-            "UPDATE strategy_lab_curate_instances SET status = 'running' WHERE id = %s",
+            """UPDATE strategy_lab_curate_instances
+               SET status = 'running',
+                   run_started_at = COALESCE(run_started_at, UTC_TIMESTAMP())
+               WHERE id = %s""",
             (instance_id,),
         )
         cd.append_decision(

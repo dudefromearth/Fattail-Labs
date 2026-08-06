@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Shared symbol universe catalog — info for Curate / strategy decisions.
+ * Shared symbol universe catalog — Design sub-nav (Board | Symbols).
+ * Assign symbols to bots in the designer; re-select in Curate for sim runs.
  */
 
 import Link from "next/link";
@@ -106,15 +107,17 @@ export default function StrategyLabSymbolsApp() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-6">
       <StrategyLabChrome
-        active="symbols"
-        subtitle="Shared universe for all members — pick tradeable symbols in Curate; VIX / Daily VIX for decisions."
+        active="development"
+        designSub="symbols"
+        subtitle="Shared universe — assign a symbol to each bot in Design (back test / forward walk); re-select in Curate for sim. Deploy only runs curated bots."
       >
         <div className="mt-4 space-y-6">
           <CorrelationCalculator />
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-[var(--color-label-secondary)]">
-              One stream feeds every collection. Click a symbol for detail.
+              One stream feeds every collection. Click a symbol for detail. Use
+              the designer to attach a symbol to a bot.
             </p>
             <button
               type="button"
@@ -153,10 +156,17 @@ export default function StrategyLabSymbolsApp() {
           <p className="text-[11px] text-[var(--color-label-secondary)]">
             ~ = proxy mark (index feed not entitled).{" "}
             <Link
+              href="/app/strategy-lab?phase=development"
+              className="text-blue-600 hover:underline"
+            >
+              ← Back to Design board
+            </Link>
+            {" · "}
+            <Link
               href="/app/strategy-lab?phase=curation"
               className="text-blue-600 hover:underline"
             >
-              ← Back to Curate
+              Curate
             </Link>
           </p>
         </div>

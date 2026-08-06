@@ -145,6 +145,7 @@ export default function CurateComparisonPanel({
               <tr className="border-b border-[var(--color-separator)] text-[10px] uppercase tracking-wide text-[var(--color-label-secondary)]">
                 <th className="py-1 pr-2 font-semibold">Strategy</th>
                 <th className="py-1 pr-2 font-semibold">Status</th>
+                <th className="py-1 pr-2 font-semibold">Runtime</th>
                 <th className="py-1 pr-2 font-semibold">Equity≈</th>
                 <th className="py-1 pr-2 font-semibold">vs alloc</th>
                 <th className="py-1 pr-2 font-semibold">Open</th>
@@ -182,6 +183,12 @@ export default function CurateComparisonPanel({
                     >
                       {r.instance_status}
                     </span>
+                  </td>
+                  <td
+                    className="py-1.5 pr-2 font-mono tabular-nums text-[var(--color-label)]"
+                    title="Runtime since last start/restart"
+                  >
+                    {r.runtime_label || "—"}
                   </td>
                   <td className="py-1.5 pr-2 tabular-nums font-semibold text-[var(--color-label)]">
                     {money(r.equity_approx_usd)}

@@ -2,7 +2,7 @@
 
 /**
  * Strategy Lab suite segmented control — same HIG pattern as PracticeSuiteNav.
- * Design · Curate · Deploy · Archive
+ * Design · Curate · Deploy · Archive (Symbols is under Design sub-nav only).
  */
 
 import Link from "next/link";

@@ -269,13 +269,16 @@ def test_curate_comparison_and_tick_all(client):
     assert c["identity_scoped"] is True
     assert c["summary"]["strategies"] >= 2
     assert c["summary"]["armed_or_running"] >= 1
-    names = {row["strategy_name"] for row in c["strategies"]}
+    # Hot path uses bots only (strategies legacy key is empty — no dual payload)
+    bot_rows = c.get("bots") or c.get("strategies") or []
+    names = {row["strategy_name"] for row in bot_rows}
     assert "Compare A" in names and "Compare B" in names
-    for row in c["strategies"]:
+    for row in bot_rows:
         assert "equity_approx_usd" in row
         assert "equity_series" in row
         assert isinstance(row["equity_series"], list)
         assert row["broker"] == "sim"
+    assert isinstance(c.get("bots"), list) and len(c["bots"]) >= 2
 
 
 def test_curate_positions_report(client):

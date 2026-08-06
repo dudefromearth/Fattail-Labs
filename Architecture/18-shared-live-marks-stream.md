@@ -1,8 +1,10 @@
 # Shared live marks stream (multi-member Curate)
 
-**Status:** **AS-BUILT** (DL-222–224, DL-227)  
+**Status:** **AS-BUILT** (DL-222–224, DL-227, DL-231–232)  
 **Spec authority:** [`Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md`](../Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md) §2–4  
-**Rule:** One symbol universe · one live stream · every member collection reads the same marks.
+**Rule:** One symbol universe · one live stream · every member collection reads the same marks.  
+**Correlation:** On-demand only — **never** block `GET .../comparison` on Massive daily bars (DL-231).  
+**UI catalog:** Design → **Symbols** sub-nav (not a top suite tab — DL-232).
 
 ## Why
 
@@ -97,20 +99,24 @@ Stream process picks up enabled symbols on next poll.
 
 | API | Purpose |
 |-----|---------|
-| `GET /api/me/strategy-lab/curate/correlation?a=&b=&days=` | Pair Pearson ρ |
-| `GET .../correlation/relative` | Each symbol vs SPY (+ pairwise) |
-| Comparison `corr_vs_spy` | Grid/table relative correlation |
+| `GET /api/me/strategy-lab/curate/correlation?a=&b=&days=` | Pair Pearson ρ (**on-demand**) |
+| `GET .../correlation/relative` | Each symbol vs SPY (+ pairwise) (**on-demand**) |
+| Comparison `corr_vs_spy` | **Not** filled by live Massive on poll (DL-231); use calculator |
 
-Method: daily simple returns from Massive aggregates; proxy series for indexes when needed.
+Method: daily simple returns from Massive aggregates; proxy series for indexes when needed.  
+**Do not** call relative correlation from `comparison_report` — that path must stay sub-100ms for board load.
 
 ## UI
 
-- Curate strip + Symbols pages · correlation calculator  
-- Symbol picker by type (tradeable only for scan open)
+- Live marks strip on **Curate** dashboard  
+- **Design → Symbols** catalog + correlation calculator  
+- Symbol picker in **Design** designer (underlying) and **Curate** run panel (scan)  
+- UI polls `live-marks` ~15s when tab visible (pause when hidden)
 
 ## Non-goals (v1)
 
 - Per-member custom symbol lists (later: union into shared universe)  
 - Tradier streaming  
 - Full option chain stream (chain_collector remains separate)  
-- WebSocket fan-out to browsers (UI polls `live-marks` every 10s)
+- WebSocket fan-out to browsers  
+- Live correlation on every comparison poll

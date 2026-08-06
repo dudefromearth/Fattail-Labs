@@ -3,7 +3,7 @@
 
 **Status:** **SPEC AUTHORITY** (as-built + intended; 2026-08-06)  
 **Product:** FatTail Strategy Lab (`/app/strategy-lab`)  
-**Decisions:** DL-214–DL-227 · growth DL-218 · positioning DL-217  
+**Decisions:** DL-214–DL-233 · growth DL-218 · positioning DL-217  
 **Parents:**  
 - [`Strategy-Lab-Process-Runtime-Spec-v1.2.md`](./Strategy-Lab-Process-Runtime-Spec-v1.2.md) (runtime entities)  
 - [`Architecture/14-strategy-lab-execution-responsibility.md`](../Architecture/14-strategy-lab-execution-responsibility.md)  
@@ -123,15 +123,28 @@ v1 opens a **synthetic defined-risk package** (not pack-native multi-leg OCC yet
 | POST | `.../arm` · `.../pause` · `.../tick` | Lifecycle / one tick |
 | POST | `/api/me/strategy-lab/curate/tick-all` | All armed/running for member |
 | POST | `/api/me/strategy-lab/curate/platform-tick` | **Admin** multi-member worker tick |
-| GET | `/api/me/strategy-lab/curate/comparison` | Multi-strategy compare + equity series + corr |
+| GET | `/api/me/strategy-lab/curate/comparison` | Multi-bot compare + **compact** equity series (**no** live corr — see §1.5.1) |
 | GET | `/api/me/strategy-lab/curate/positions-report` | All positions + progress |
 | GET | `/api/me/strategy-lab/curate/reports-book` | Practice-style stats book |
 | GET | `/api/me/strategy-lab/curate/live-marks` | Shared stream snapshot |
 | GET | `/api/me/strategy-lab/curate/vol-reference` | VIX + VIX1D |
 | GET | `/api/me/strategy-lab/curate/symbols` | Catalog by type |
 | GET | `/api/me/strategy-lab/curate/symbols/{sym}` | Symbol detail |
-| GET | `/api/me/strategy-lab/curate/correlation` | Pair ρ calculator |
-| GET | `/api/me/strategy-lab/curate/correlation/relative` | vs benchmark + pairwise |
+| GET | `/api/me/strategy-lab/curate/correlation` | Pair ρ calculator (**on-demand**) |
+| GET | `/api/me/strategy-lab/curate/correlation/relative` | vs benchmark + pairwise (**on-demand**) |
+
+### 1.5.1 Comparison hot path (performance law — DL-231)
+
+`GET .../comparison` is polled by the Curate board. It **must remain fast and lean**:
+
+| Law | Requirement |
+|-----|-------------|
+| **No live Massive on comparison** | Do **not** call correlation/HTTP inside comparison. Response may set `correlation.deferred=true`. |
+| **Batched SQL** | Position aggregates and equity samples are **O(1) batches**, not 3N per-instance queries. |
+| **Last-N equity** | Sparkline points = **last** N `tick_complete` samples (default 24), compact `{equity}` only. |
+| **Primary array `bots`** | Full run rows under `bots`. Do **not** dual-serialize the same rows as `strategies` (legacy key may be empty). |
+| **Runtime fields** | `run_started_at`, `runtime_seconds`, `runtime_label` (arm resets clock — DL-230). |
+| **ρ vs SPY** | On-demand via correlation endpoints / calculator; grid may show `corr_vs_spy` only when cheaply attached later (cache). Default comparison may leave `corr_vs_spy: null`. |
 
 ### 1.6 Package layout (server)
 
@@ -152,7 +165,9 @@ server/market_data/
   massive_client.py
 ```
 
-Migrations: `083` Curate runtime · `084–087` marks/universe/VIX · (see Architecture/04 when mapped).
+Migrations: `083` Curate runtime · `084–087` marks/universe/VIX · **`088` `run_started_at`** · (see Architecture/04 when mapped).
+
+Instance column **`run_started_at`**: wall clock of last **Arm** (start/restart). Used for dashboard Runtime.
 
 ---
 
@@ -200,21 +215,35 @@ export MASSIVE_API_KEY="${MASSIVE_API_KEY:-$POLYGON_API_KEY}"
 
 ## 3. Symbols UI & selection
 
+### 3.0 Suite placement (normative — DL-232)
+
+**Top suite nav:** Design · Curate · Deploy · Archive only.  
+**Symbols is not a suite tab.** It is a **Design sub-nav** item (Board | Symbols).
+
+| Phase | Symbol role |
+|-------|-------------|
+| **Design** | Assign **underlying** (bot attribute) for back test / forward walk — designer picker + Design → Symbols catalog |
+| **Curate** | Select **scan_symbol** when creating a sim run (may match Design underlying) |
+| **Deploy** | **No** symbol step — only bots that completed Curate |
+
 ### 3.1 Curate picker
 
 - Member selects **scan_symbol** when creating a Curate instance.  
 - Organized by type: **Indexes · ETFs · Stocks**.  
 - Only **tradeable** symbols allowed for scan open (API 422 otherwise).  
-- Reference symbols (VIX, VIX1D) appear on Symbols pages for decisions, not as default scan underliers.
+- Reference symbols (VIX, VIX1D) appear on Design → Symbols for decisions, not as default scan underliers.
 
-### 3.2 Pages
+### 3.2 Design designer
 
-| Route | Content |
-|-------|---------|
-| `/app/strategy-lab/symbols` | Catalog by type + correlation calculator |
-| `/app/strategy-lab/symbols/{symbol}` | Detail: mark, prev, feed/proxy, usage, related |
+- Pack field **`underlying`** uses the shared symbol picker (`CurateSymbolPicker`).  
+- Catalog links: **Design → Symbols** (`/app/strategy-lab/symbols`).
 
-Suite nav includes **Symbols**.
+### 3.3 Pages
+
+| Route | Content | Chrome |
+|-------|---------|--------|
+| `/app/strategy-lab/symbols` | Catalog by type + correlation calculator | Suite **Design** + sub-nav **Symbols** |
+| `/app/strategy-lab/symbols/{symbol}` | Detail: mark, prev, feed/proxy, usage, related | Same |
 
 ---
 
@@ -226,21 +255,16 @@ Suite nav includes **Symbols**.
 - Source: Massive daily aggregates (`fetch_daily_closes`).  
 - Index product symbols resolve to **proxy series tickers** when needed (documented in API response).
 
-### 4.2 Grid relative correlation
+### 4.2 On-demand only for board load (DL-231)
 
-Comparison / dashboard attaches per run:
-
-| Field | Meaning |
-|-------|---------|
-| `corr_vs_spy` | ρ of scan_symbol daily returns vs **SPY** (default 60d) |
-| `corr_interpretation` | Strength + direction label |
-
-Displayed on **grid cards and table** as **ρ vs SPY**.
+**Do not** block `GET .../comparison` on Massive correlation.  
+Grid may show **ρ vs SPY** when a future cheap cache attaches values; default comparison leaves ρ empty.  
+Members use the **correlation calculator** (or correlation APIs) for interactive ρ.
 
 ### 4.3 Calculator
 
 Any two universe symbols → ρ, n returns, date window, series tickers, interpretation.  
-UI: Symbols page + Curate dashboard footer.
+UI: **Design → Symbols** + optional Curate dashboard footer (not required for load).
 
 ---
 
@@ -253,19 +277,25 @@ UI: Symbols page + Curate dashboard footer.
 | Control | |
 |---------|--|
 | View toggle | **Grid** \| **Table** |
-| Per run | Status, symbol, equity≈, vs alloc, open/risk/uPnL, mini equity chart, **ρ vs SPY** |
-| Toolbar | Tick-all (Curate), Symbols link, Refresh |
+| Per run | Status, symbol, **Runtime** (since arm), equity≈, vs alloc, open/risk/uPnL, mini equity chart, ρ vs SPY (if present) |
+| Filter / sort | Search, status chips, symbol, outcome (win/lose/flat), opens; multi-key sort; **shown/total** (e.g. `4/22`) + amber **Filter on** |
+| Pagination | **Max 12 mounted** runs per page (`PHASE_RUN_PAGE_SIZE`) — browser stability |
+| Toolbar | Tick-all (Curate), Refresh |
+| Poll | Silent ~30s, pause when tab hidden; no loading flash on silent refresh |
+
+**Performance law:** Runtime live updates must **not** re-render the entire board at 1 Hz (per-cell clocks only). Charts are memoized. See Architecture/20.
 
 ### 5.2 Curate dashboard
 
 - Live marks strip + VIX / VIX1D cards  
-- Multi-strategy comparison rows from `GET .../comparison` (includes `equity_series`)  
+- Multi-bot rows from `GET .../comparison` (compact `equity_series`)  
 - Positions report (expandable)  
-- Work area: instance create (symbol picker), arm, tick  
+- Work area: instance create (**symbol picker**), arm, tick  
 
 ### 5.3 Deploy dashboard
 
 - Same run-card shell (Tradier instances when provisioned).  
+- **No symbol sub-nav** — curated bots only.  
 - **Deploy reports panel** — Practice Reports parity:
 
 | Block | Practice component reused |
@@ -281,7 +311,6 @@ UI: Symbols page + Curate dashboard footer.
 `GET /api/me/strategy-lab/deploy/reports-book` (and curate twin) returns the **same shape** as Trade Log `reports-book` so `reportsBookFromServer` works.
 
 **Until Tradier Deploy outcomes exist:** book is built from **closed Curate sim packages** with honest `source_note`.
-
 ---
 
 ## 6. Multi-member & multi-strategy
@@ -314,9 +343,13 @@ UI: Symbols page + Curate dashboard footer.
 3. Symbol picker groups by Indexes/ETFs/Stocks; VIX not selectable for scan open.  
 4. Live stream updates `market_live_marks`; ticks use shared marks when present.  
 5. Correlation API returns ρ ∈ [−1,1] for SPY/QQQ (with Massive).  
-6. Grid shows ρ vs SPY when correlation available.  
+6. Correlation calculator returns ρ ∈ [−1,1] for SPY/QQQ (with Massive); comparison load does **not** require Massive.  
 7. Deploy reports page renders Practice-style equity/stats without console error.  
-8. Tests: `test_strategy_lab_curate.py`, `test_live_marks_stream.py`, `test_correlation.py`.
+8. Tests: `test_strategy_lab_curate.py`, `test_live_marks_stream.py`, `test_correlation.py`.  
+9. Comparison @ multi-bot: batched SQL; no dual full `strategies` payload; runtime fields present.  
+10. Board: filter shows **N/M**; at most **12** run cards/rows mounted per page.  
+11. Suite nav is Design · Curate · Deploy · Archive; Symbols under Design only.  
+12. **Perf guards green:** `tests/test_strategy_lab_curate_perf_guards.py` (no live corr on comparison, SQL ≤12, payload lean, wall &lt; 2s for N=8).
 
 ---
 
@@ -326,3 +359,4 @@ UI: Symbols page + Curate dashboard footer.
 |-----|------|------|
 | **1.0** | **2026-08-06** | As-built Curate runtime, shared stream, symbols, correlation, phase dashboards, Deploy reports |
 | 1.0.1 | 2026-08-06 | Terminology: **Bot** primary unit; **Strategy** = attribute; **Position** = instance of bot |
+| **1.0.2** | **2026-08-06** | Comparison hot path (no live corr); board pagination/filter/runtime; suite nav Design/Curate/Deploy/Archive; Symbols under Design (DL-230–233) |

@@ -112,7 +112,7 @@ export default function CurateRuntimePanel({ strategy, pushNotice }: Props) {
       }
       pushNotice(
         "success",
-        `Bot runtime created on ${scanSymbol} (sim / fake money)`,
+        `Curate run started on ${scanSymbol} (sim capital)`,
       );
       setActiveId(res.instance.id);
       await reloadList();
@@ -128,7 +128,7 @@ export default function CurateRuntimePanel({ strategy, pushNotice }: Props) {
       const res = await armCurateInstance(activeId);
       if (res.error) pushNotice("error", res.error);
       else {
-        pushNotice("success", "Armed — ready to tick");
+        pushNotice("success", "Armed — bot is ready in Curate (sim)");
         await reloadActive();
         await reloadList();
       }
@@ -181,11 +181,13 @@ export default function CurateRuntimePanel({ strategy, pushNotice }: Props) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-[var(--color-label)]">
-            Bot run environment (Curate)
+            Run this bot in Curate
           </h3>
           <p className="mt-0.5 max-w-xl text-xs text-[var(--color-label-secondary)]">
-            Shared live marks · simulated broker · fake money. Positions = instances
-            of this bot. Strategy = pack attribute. Not Tradier until Deploy.
+            Select the symbol for this Curate run (may match Design underlying).
+            Shared live marks, simulated broker, sim capital. Positions are
+            instances of the bot. Deploy only after Curate — no separate Deploy
+            symbol step.
           </p>
           {metaLabel ? (
             <p className="mt-1 text-[10px] leading-snug text-[var(--color-label-secondary)]">
@@ -222,7 +224,7 @@ export default function CurateRuntimePanel({ strategy, pushNotice }: Props) {
               onClick={() => void onCreate()}
               className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              New instance
+              Run in Curate
             </button>
           </div>
         </div>
@@ -262,6 +264,12 @@ export default function CurateRuntimePanel({ strategy, pushNotice }: Props) {
               {money(instance.realized_pnl_usd)} · Alloc{" "}
               {money(instance.allocation_usd)}
             </span>
+            <span
+              className="text-xs font-mono tabular-nums text-[var(--color-label-secondary)]"
+              title="Runtime since last start/restart"
+            >
+              Run {instance.runtime_label || "—"}
+            </span>
             <span className="text-[10px] text-[var(--color-label-secondary)]">
               broker={instance.broker} · {instance.fill_model}
             </span>
@@ -288,7 +296,7 @@ export default function CurateRuntimePanel({ strategy, pushNotice }: Props) {
                   onClick={() => void onTick()}
                   className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  Run tick
+                  Advance (one tick)
                 </button>
                 <button
                   type="button"

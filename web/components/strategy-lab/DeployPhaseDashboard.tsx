@@ -15,10 +15,10 @@ export default function DeployPhaseDashboard() {
       <PhaseRunDashboard
         phaseLabel="Deploy"
         phaseKey="deploy"
-        accountModeLabel="paper / live"
+        accountModeLabel="curated bots · paper / live"
         summary={{ runs: 0, active: 0, strategies: 0 }}
         rows={[]}
-        emptyHint="Deploy bot cards (grid/table + mini equity) will list Tradier-connected bots when provisioned. Equity & stats reporting below is live now — same structure as Practice Reports."
+        emptyHint="Only bots that finished Curate can Deploy. Cards appear when Tradier is provisioned. Equity & stats reporting below is live — same structure as Practice Reports."
         toolbarExtra={
           <Link
             href="/app/strategy-lab?phase=curation"
@@ -29,9 +29,9 @@ export default function DeployPhaseDashboard() {
         }
         headerSlot={
           <p className="rounded-lg border border-dashed border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-3 py-2 text-xs text-[var(--color-label-secondary)]">
-            Bot cards mirror Curate (bot = unit; strategy = pack attribute; position =
-            bot instance). Equity curve, drawdown, stats, and distributions match
-            Practice Reports.
+            Deploy is post-Curate only (no separate symbol step). Bot = unit;
+            strategy = pack attribute; position = bot instance. Reports match
+            Practice.
           </p>
         }
       />

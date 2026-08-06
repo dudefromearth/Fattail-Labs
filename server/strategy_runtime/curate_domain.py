@@ -42,6 +42,79 @@ def _now_iso() -> str:
     return _now().isoformat().replace("+00:00", "Z")
 
 
+def _ts_iso(val: Any) -> str | None:
+    if val is None:
+        return None
+    if hasattr(val, "isoformat"):
+        s = val.isoformat()
+        if not s.endswith("Z") and "+" not in s[10:]:
+            s = s + "Z"
+        return s.replace("+00:00", "Z")
+    return str(val)
+
+
+def format_runtime_seconds(seconds: float | int | None) -> str | None:
+    """Adaptive runtime label: seconds → m:ss → h m → d h.
+
+    - < 60s:        ``42s``
+    - < 60m:        ``3:45`` (min:sec)
+    - < 24h:        ``2h 15m``
+    - ≥ 24h:        ``3d 4h``
+    """
+    if seconds is None:
+        return None
+    try:
+        s = int(max(0, float(seconds)))
+    except (TypeError, ValueError):
+        return None
+    if s < 60:
+        return f"{s}s"
+    if s < 3600:
+        m, sec = divmod(s, 60)
+        return f"{m}:{sec:02d}"
+    if s < 86400:
+        h, rem = divmod(s, 3600)
+        m = rem // 60
+        return f"{h}h {m}m"
+    d, rem = divmod(s, 86400)
+    h = rem // 3600
+    return f"{d}d {h}h"
+
+
+def runtime_since_start(
+    run_started_at: Any, *, now: datetime | None = None
+) -> dict[str, Any]:
+    """Wall-clock runtime since last start/restart (run_started_at)."""
+    if run_started_at is None:
+        return {
+            "run_started_at": None,
+            "runtime_seconds": None,
+            "runtime_label": None,
+        }
+    start = run_started_at
+    if isinstance(start, str):
+        raw = start.replace("Z", "+00:00")
+        try:
+            start = datetime.fromisoformat(raw)
+        except ValueError:
+            return {
+                "run_started_at": str(run_started_at),
+                "runtime_seconds": None,
+                "runtime_label": None,
+            }
+    if getattr(start, "tzinfo", None) is None:
+        start = start.replace(tzinfo=timezone.utc)
+    n = now or _now()
+    if n.tzinfo is None:
+        n = n.replace(tzinfo=timezone.utc)
+    secs = max(0, int((n - start).total_seconds()))
+    return {
+        "run_started_at": _ts_iso(run_started_at),
+        "runtime_seconds": secs,
+        "runtime_label": format_runtime_seconds(secs),
+    }
+
+
 def _public_id() -> str:
     return secrets.token_hex(4)
 
@@ -105,6 +178,7 @@ def append_decision(
 
 
 def instance_to_dict(r: dict) -> dict[str, Any]:
+    rt = runtime_since_start(r.get("run_started_at"))
     return {
         "id": r["public_id"],
         "db_id": int(r["id"]),
@@ -124,6 +198,9 @@ def instance_to_dict(r: dict) -> dict[str, Any]:
         else (str(r["last_tick_at"]) if r.get("last_tick_at") else None),
         "last_tick_status": r.get("last_tick_status"),
         "last_error": r.get("last_error"),
+        "run_started_at": rt["run_started_at"],
+        "runtime_seconds": rt["runtime_seconds"],
+        "runtime_label": rt["runtime_label"],
         "created_at": r["created_at"].isoformat() + "Z"
         if hasattr(r["created_at"], "isoformat")
         else str(r.get("created_at") or ""),
@@ -263,11 +340,28 @@ def set_status(
 ) -> dict[str, Any]:
     if status not in STATUSES:
         raise ValueError(f"invalid status {status!r}")
-    cur.execute(
-        """UPDATE strategy_lab_curate_instances
-           SET status = %s, last_error = NULL WHERE id = %s""",
-        (status, int(row["id"])),
-    )
+    prev = (row.get("status") or "").lower()
+    # Arm / re-arm resets the run clock (start or restart).
+    if status == "armed":
+        cur.execute(
+            """UPDATE strategy_lab_curate_instances
+               SET status = %s, last_error = NULL,
+                   run_started_at = UTC_TIMESTAMP()
+               WHERE id = %s""",
+            (status, int(row["id"])),
+        )
+        payload: dict[str, Any] = {
+            "status": status,
+            "run_started_at": "reset",
+            "prev_status": prev,
+        }
+    else:
+        cur.execute(
+            """UPDATE strategy_lab_curate_instances
+               SET status = %s, last_error = NULL WHERE id = %s""",
+            (status, int(row["id"])),
+        )
+        payload = {"status": status, "prev_status": prev}
     append_decision(
         cur,
         identity_id=int(row["identity_id"]),
@@ -276,7 +370,7 @@ def set_status(
         runner_type="system",
         event_type="status_change",
         message=message or f"status → {status}",
-        payload={"status": status},
+        payload=payload,
     )
     cur.execute(
         "SELECT * FROM strategy_lab_curate_instances WHERE id = %s",
@@ -471,51 +565,107 @@ def positions_report(
     }
 
 
-def equity_series_for_instance(
-    cur, instance_id: int, allocation: float, *, limit: int = 48
+# Mini-chart budget: last N tick samples, compact {equity} only (no timestamps/cash).
+EQUITY_SERIES_LIMIT = 24
+
+
+def _equity_points_from_log_rows(
+    log_rows: list[dict], allocation: float
 ) -> list[dict[str, Any]]:
-    """Mini equity chart points from decision_log tick_complete events."""
-    lim = max(2, min(200, int(limit)))
-    cur.execute(
-        """SELECT payload_json, created_at FROM strategy_lab_decision_log
-           WHERE instance_id = %s AND event_type = 'tick_complete'
-           ORDER BY id ASC
-           LIMIT %s""",
-        (instance_id, lim),
-    )
-    points: list[dict[str, Any]] = [
-        {
-            "t": None,
-            "equity": float(allocation),
-            "cash": float(allocation),
-        }
-    ]
-    for r in cur.fetchall():
+    """Build compact sparkline points from tick_complete log rows (oldest→newest)."""
+    points: list[dict[str, Any]] = [{"equity": float(allocation)}]
+    for r in log_rows:
         payload = _json_load(r.get("payload_json")) or {}
         eq = payload.get("equity_approx_usd")
-        cash = payload.get("cash_usd")
-        if eq is None and cash is not None:
-            # Older ticks: approximate equity ≈ cash (no open book)
-            eq = float(cash)
+        if eq is None and payload.get("cash_usd") is not None:
+            eq = float(payload["cash_usd"])
         if eq is None:
             continue
-        created = r.get("created_at")
-        points.append(
-            {
-                "t": created.isoformat().replace("+00:00", "Z")
-                if created and hasattr(created, "isoformat")
-                else str(created or ""),
-                "equity": float(eq),
-                "cash": float(cash) if cash is not None else None,
-            }
-        )
+        points.append({"equity": round(float(eq), 2)})
     return points
 
 
-def comparison_report(cur, identity_id: int) -> dict[str, Any]:
-    """Multi-strategy Curate comparison for portfolio / promote decisions.
+def equity_series_for_instance(
+    cur, instance_id: int, allocation: float, *, limit: int = EQUITY_SERIES_LIMIT
+) -> list[dict[str, Any]]:
+    """Mini equity chart points — *last* N tick_complete events (newest path)."""
+    lim = max(2, min(48, int(limit)))
+    cur.execute(
+        """SELECT payload_json, created_at FROM strategy_lab_decision_log
+           WHERE instance_id = %s AND event_type = 'tick_complete'
+           ORDER BY id DESC
+           LIMIT %s""",
+        (instance_id, lim),
+    )
+    rows = list(cur.fetchall())
+    rows.reverse()
+    return _equity_points_from_log_rows(rows, allocation)
 
-    One row per Curate instance (strategy run), with process metrics — not profit theater.
+
+def _batch_position_aggs(cur, instance_ids: list[int]) -> dict[int, dict]:
+    if not instance_ids:
+        return {}
+    placeholders = ",".join(["%s"] * len(instance_ids))
+    cur.execute(
+        f"""SELECT
+              instance_id,
+              SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS open_n,
+              SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) AS closed_n,
+              SUM(CASE WHEN status = 'open' THEN max_loss_usd ELSE 0 END) AS open_risk,
+              SUM(CASE WHEN status = 'open' THEN unrealized_pnl_usd ELSE 0 END) AS open_upnl,
+              SUM(CASE WHEN status = 'closed' THEN COALESCE(realized_pnl_usd, 0) ELSE 0 END) AS closed_rpnl,
+              SUM(CASE WHEN status = 'closed' AND close_reason = 'take_profit' THEN 1 ELSE 0 END) AS tp_n,
+              SUM(CASE WHEN status = 'closed' AND close_reason IN ('stop', 'max_loss') THEN 1 ELSE 0 END) AS stop_n
+            FROM strategy_lab_curate_positions
+            WHERE instance_id IN ({placeholders})
+            GROUP BY instance_id""",
+        tuple(instance_ids),
+    )
+    return {int(r["instance_id"]): r for r in cur.fetchall()}
+
+
+def _batch_equity_series(
+    cur, instance_ids: list[int], alloc_by_id: dict[int, float], *, limit: int
+) -> dict[int, list[dict[str, Any]]]:
+    """Last `limit` tick_complete samples per instance in one query (window)."""
+    if not instance_ids:
+        return {}
+    lim = max(2, min(48, int(limit)))
+    placeholders = ",".join(["%s"] * len(instance_ids))
+    # MySQL 8 window — take last N per instance, then reassemble oldest→newest
+    cur.execute(
+        f"""SELECT instance_id, payload_json, created_at, rn FROM (
+              SELECT instance_id, payload_json, created_at,
+                     ROW_NUMBER() OVER (
+                       PARTITION BY instance_id ORDER BY id DESC
+                     ) AS rn
+              FROM strategy_lab_decision_log
+              WHERE instance_id IN ({placeholders})
+                AND event_type = 'tick_complete'
+            ) x
+            WHERE rn <= %s
+            ORDER BY instance_id ASC, rn DESC""",
+        (*instance_ids, lim),
+    )
+    by_id: dict[int, list[dict]] = {iid: [] for iid in instance_ids}
+    for r in cur.fetchall():
+        by_id.setdefault(int(r["instance_id"]), []).append(r)
+    out: dict[int, list[dict[str, Any]]] = {}
+    for iid, log_rows in by_id.items():
+        out[iid] = _equity_points_from_log_rows(
+            log_rows, float(alloc_by_id.get(iid, 0))
+        )
+    return out
+
+
+def comparison_report(cur, identity_id: int) -> dict[str, Any]:
+    """Multi-bot Sim market comparison — process metrics for promote / portfolio.
+
+    Performance contract (browser stability):
+    - O(1) SQL batches (not 3N queries)
+    - No live Massive correlation on this hot path (use correlation calculator)
+    - Compact equity sparklines (last N equities only)
+    - Single `bots` array on the wire (no dual bots+strategies payload)
     Multi-member: always scoped to identity_id (Family B).
     """
     cur.execute(
@@ -539,24 +689,19 @@ def comparison_report(cur, identity_id: int) -> dict[str, Any]:
         (identity_id,),
     )
     instances = list(cur.fetchall())
-    rows: list[dict[str, Any]] = []
+    instance_ids = [int(r["id"]) for r in instances]
+    pos_by = _batch_position_aggs(cur, instance_ids)
+    alloc_by = {
+        int(r["id"]): float(r["allocation_usd"]) for r in instances
+    }
+    series_by = _batch_equity_series(
+        cur, instance_ids, alloc_by, limit=EQUITY_SERIES_LIMIT
+    )
 
+    rows: list[dict[str, Any]] = []
     for irow in instances:
         iid = int(irow["id"])
-        cur.execute(
-            """SELECT
-                 SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS open_n,
-                 SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) AS closed_n,
-                 SUM(CASE WHEN status = 'open' THEN max_loss_usd ELSE 0 END) AS open_risk,
-                 SUM(CASE WHEN status = 'open' THEN unrealized_pnl_usd ELSE 0 END) AS open_upnl,
-                 SUM(CASE WHEN status = 'closed' THEN COALESCE(realized_pnl_usd, 0) ELSE 0 END) AS closed_rpnl,
-                 SUM(CASE WHEN status = 'closed' AND close_reason = 'take_profit' THEN 1 ELSE 0 END) AS tp_n,
-                 SUM(CASE WHEN status = 'closed' AND close_reason IN ('stop', 'max_loss') THEN 1 ELSE 0 END) AS stop_n
-               FROM strategy_lab_curate_positions
-               WHERE instance_id = %s""",
-            (iid,),
-        )
-        agg = cur.fetchone() or {}
+        agg = pos_by.get(iid) or {}
         open_n = int(agg.get("open_n") or 0)
         closed_n = int(agg.get("closed_n") or 0)
         open_risk = float(agg.get("open_risk") or 0)
@@ -564,37 +709,23 @@ def comparison_report(cur, identity_id: int) -> dict[str, Any]:
         closed_rpnl = float(agg.get("closed_rpnl") or 0)
         tp_n = int(agg.get("tp_n") or 0)
         stop_n = int(agg.get("stop_n") or 0)
-        total_closed = closed_n
         process_exit_rate = (
-            round(tp_n / total_closed, 4) if total_closed > 0 else None
+            round(tp_n / closed_n, 4) if closed_n > 0 else None
         )
-        # Equity-like: cash + open reserved risk is complex; use cash + open_upnl + note
         cash = float(irow["cash_usd"])
         realized = float(irow["realized_pnl_usd"])
         allocation = float(irow["allocation_usd"])
-        # Mark-to-sim book: cash still holds unreleased max_loss on opens;
-        # equity_approx = cash + open_risk + open_upnl (= capital still in book + uPnL)
         equity_approx = cash + open_risk + open_upnl
         vs_allocation = equity_approx - allocation
 
-        cur.execute(
-            """SELECT COUNT(*) AS n FROM strategy_lab_decision_log
-               WHERE instance_id = %s""",
-            (iid,),
-        )
-        decision_n = int(cur.fetchone()["n"])
-
         env = _json_load(irow.get("envelope_json")) or {}
         scan_symbol = str(env.get("scan_symbol") or "")
-
-        # Equity path for mini charts (from tick_complete payloads)
-        equity_series = equity_series_for_instance(cur, iid, allocation)
+        rt = runtime_since_start(irow.get("run_started_at"))
 
         rows.append(
             {
                 "instance_id": irow["public_id"],
                 "instance_status": irow["status"],
-                # Member language: bot (legacy keys kept for clients)
                 "bot_id": irow["strategy_public_id"],
                 "bot_name": irow["strategy_name"],
                 "strategy_id": irow["strategy_public_id"],
@@ -619,8 +750,9 @@ def comparison_report(cur, identity_id: int) -> dict[str, Any]:
                 "take_profit_exits": tp_n,
                 "stop_or_max_loss_exits": stop_n,
                 "process_tp_share_of_closes": process_exit_rate,
-                "decision_log_events": decision_n,
-                "equity_series": equity_series,
+                # Compact sparkline only (no t/cash) — browser memory budget
+                "equity_series": series_by.get(iid)
+                or [{"equity": allocation}],
                 "last_tick_at": irow["last_tick_at"].isoformat() + "Z"
                 if irow.get("last_tick_at")
                 and hasattr(irow["last_tick_at"], "isoformat")
@@ -629,10 +761,14 @@ def comparison_report(cur, identity_id: int) -> dict[str, Any]:
                 "fill_model": irow["fill_model"],
                 "broker": "sim",
                 "account_mode": "curate_sim",
+                # corr is on-demand via calculator — never block comparison
+                "corr_vs_spy": None,
+                "run_started_at": rt["run_started_at"],
+                "runtime_seconds": rt["runtime_seconds"],
+                "runtime_label": rt["runtime_label"],
             }
         )
 
-    # Sort for comparison: running first, then by equity_approx desc (process capital path)
     rows.sort(
         key=lambda r: (
             0 if r["instance_status"] == "running" else 1,
@@ -643,38 +779,6 @@ def comparison_report(cur, identity_id: int) -> dict[str, Any]:
 
     running = sum(1 for r in rows if r["instance_status"] in ("running", "armed"))
 
-    # Relative correlation vs SPY for each scan_symbol (grid display)
-    symbols_for_corr = [
-        r["scan_symbol"] for r in rows if r.get("scan_symbol")
-    ]
-    corr_block: dict[str, Any] = {
-        "benchmark": "SPY",
-        "vs_benchmark": {},
-        "pairwise": [],
-        "error": None,
-    }
-    try:
-        from market_data.correlation import relative_correlations
-
-        if symbols_for_corr:
-            corr_block = relative_correlations(
-                cur, symbols_for_corr, benchmark="SPY", days=60
-            )
-            # Attach per-row corr_vs_spy
-            vs = corr_block.get("vs_benchmark") or {}
-            for r in rows:
-                sym = r.get("scan_symbol") or ""
-                entry = vs.get(sym) if sym else None
-                if entry and entry.get("coefficient") is not None:
-                    r["corr_vs_spy"] = entry["coefficient"]
-                    r["corr_vs_spy_n"] = entry.get("n_returns")
-                    r["corr_interpretation"] = entry.get("interpretation")
-                else:
-                    r["corr_vs_spy"] = None
-                    r["corr_error"] = (entry or {}).get("error")
-    except Exception as exc:  # noqa: BLE001 — marks/API optional at read time
-        corr_block["error"] = str(exc)[:300]
-
     return {
         "asof": _now_iso(),
         "account_mode": "curate_sim",
@@ -682,9 +786,9 @@ def comparison_report(cur, identity_id: int) -> dict[str, Any]:
         "multi_member": True,
         "identity_scoped": True,
         "purpose": (
-            "Compare many Curate strategy runs for promote / portfolio inclusion. "
+            "Compare many Curate bot runs for promote / portfolio inclusion. "
             "Process metrics first; equity_approx is sim book only — not live P&L claims. "
-            "corr_vs_spy = Pearson of daily returns vs SPY (relative correlation)."
+            "Correlation is on-demand (calculator), not on this hot path."
         ),
         "summary": {
             "instances": len(rows),
@@ -692,9 +796,18 @@ def comparison_report(cur, identity_id: int) -> dict[str, Any]:
             "strategies": len({r["strategy_id"] for r in rows}),
             "bots": len({r["bot_id"] for r in rows}),
         },
-        "correlation": corr_block,
+        # Empty stub keeps old clients from calling Massive on poll
+        "correlation": {
+            "benchmark": "SPY",
+            "vs_benchmark": {},
+            "pairwise": [],
+            "error": None,
+            "deferred": True,
+            "note": "Use /curate/correlation or calculator — not loaded with comparison",
+        },
         "bots": rows,
-        "strategies": rows,  # legacy alias of bots
+        # Legacy key: empty list (do not duplicate full payload)
+        "strategies": [],
     }
 
 

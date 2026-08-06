@@ -38,6 +38,7 @@
 | `046_retrospectives` | `member_retrospectives` (Journal Retrospective) |
 | `047_retrospective_r1b` | `member_habit_plans` + `identities.retrospective_pnl_expanded` |
 | `078`–`080` | Strategy Lab + help system (see Strategy Lab Specs) |
+| `083`–`088` | Curate runtime, shared live marks/universe/VIX, `run_started_at` (see Arch 19) |
 | `081_trade_log_entry_source` | `member_trade_log_trades.entry_source` + `trash_reason` (manual management) |
 
 **Rule:** never edit applied migrations; always append.

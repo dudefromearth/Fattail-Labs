@@ -353,7 +353,10 @@ export default function StrategyLabApp() {
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-4 py-6 pb-24 sm:px-6">
-      <StrategyLabChrome active={suiteActive}>
+      <StrategyLabChrome
+        active={suiteActive}
+        designSub={navPhase === "development" ? "board" : undefined}
+      >
       {/* Notices */}
       <div className="mt-4 min-h-[2.5rem] rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 shadow-sm">
         {notices.length === 0 ? (

@@ -44,8 +44,9 @@ export default function StrategyLabSymbolDetailApp({
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
       <StrategyLabChrome
-        active="symbols"
-        subtitle={`${symbol.toUpperCase()} — shared stream info for Curate and decisions.`}
+        active="development"
+        designSub="symbols"
+        subtitle={`${symbol.toUpperCase()} — shared stream info for Design (back test / forward walk) and Curate sim.`}
       >
         <div className="mt-4 space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -54,6 +55,13 @@ export default function StrategyLabSymbolDetailApp({
               className="text-blue-600 hover:underline"
             >
               ← All symbols
+            </Link>
+            <span className="text-[var(--color-label-secondary)]">·</span>
+            <Link
+              href="/app/strategy-lab?phase=development"
+              className="text-blue-600 hover:underline"
+            >
+              Design board
             </Link>
             <span className="text-[var(--color-label-secondary)]">·</span>
             <Link

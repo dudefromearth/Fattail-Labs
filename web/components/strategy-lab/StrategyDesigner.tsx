@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   fetchPack,
   fieldVisible,
@@ -16,6 +17,7 @@ import {
   type RankedStructure,
   type StrategyConfig,
 } from "@/lib/strategyPacks";
+import CurateSymbolPicker from "@/components/strategy-lab/CurateSymbolPicker";
 
 type Props = {
   strategyId: string;
@@ -345,7 +347,38 @@ on each mark / bar while position open:
 
   // discretionary_notes: human process notes only (not auto)`}</pre>
                   )}
-                  {f.type === "boolean" ? (
+                  {f.name === "underlying" ? (
+                    <div className="mt-1 sm:col-span-2">
+                      <CurateSymbolPicker
+                        id={`design-underlying-${strategyId}`}
+                        value={String(config.underlying ?? config.symbol ?? "SPY")}
+                        onChange={(sym) => {
+                          setField("underlying", sym);
+                          // Keep scan-oriented alias for packs that read symbol
+                          setField("symbol", sym);
+                        }}
+                        tradeableOnly={false}
+                      />
+                      <p className="mt-1 text-[10px] text-[var(--color-label-secondary)]">
+                        Assigned for Design back test / forward walk. Re-select
+                        when you run the bot in{" "}
+                        <Link
+                          href="/app/strategy-lab?phase=curation"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Curate
+                        </Link>
+                        . Catalog:{" "}
+                        <Link
+                          href="/app/strategy-lab/symbols"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Design → Symbols
+                        </Link>
+                        .
+                      </p>
+                    </div>
+                  ) : f.type === "boolean" ? (
                     <select
                       className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1.5 text-sm"
                       value={

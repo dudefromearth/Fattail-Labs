@@ -17,6 +17,12 @@ export type CurateInstance = {
   last_tick_at: string | null;
   last_tick_status: string | null;
   last_error: string | null;
+  /** ISO timestamp of last start/restart (arm). */
+  run_started_at?: string | null;
+  /** Wall-clock seconds since run_started_at (server snapshot). */
+  runtime_seconds?: number | null;
+  /** Adaptive label: 42s · 3:45 · 2h 15m · 3d 4h */
+  runtime_label?: string | null;
   account_mode: string;
   broker: string;
   created_at: string;
@@ -200,6 +206,9 @@ export type CurateComparisonRow = {
   corr_interpretation?: string | null;
   last_tick_at: string | null;
   last_tick_status: string | null;
+  run_started_at?: string | null;
+  runtime_seconds?: number | null;
+  runtime_label?: string | null;
 };
 
 export type CorrelationResult = {

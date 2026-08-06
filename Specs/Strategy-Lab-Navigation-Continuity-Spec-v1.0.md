@@ -20,7 +20,11 @@
 **Doctrine:** Continuity is part of trust. In a high-complexity desk, losing place is not a minor UX glitch — it **breaks cognition**. Switching phase must restore the last place in that bin, or show an honest empty work area. Never invent a different strategy as if it were the same. Fail loud when restore is impossible.
 
 **UI phase labels:** Design · Curate · Deploy · Archive  
-**Phase keys (API/DB):** `development` · `curation` · `deployment` · `bin`
+**Phase keys (API/DB):** `development` · `curation` · `deployment` · `bin`  
+
+**Design sub-nav (not suite tabs):** Board | **Symbols** — symbol catalog and designer assignment  
+live under Design. Symbols are **not** a top-level suite item (DL-232). Curate re-selects  
+scan symbol for sim runs; Deploy has no symbol step.
 
 ---
 

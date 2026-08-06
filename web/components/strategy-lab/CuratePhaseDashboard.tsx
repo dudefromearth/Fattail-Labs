@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * Curate phase primary surface — high visibility grid/table + equity charts.
- * Member language: bots (not "strategies"); strategy = pack attribute; position = bot instance.
+ * Curate phase primary surface (sim capital / multi-bot compare).
+ * Stable poll: silent, visibility-aware, aborts in-flight, no loading flash.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CorrelationCalculator from "@/components/strategy-lab/CorrelationCalculator";
 import CurateLiveMarksStrip from "@/components/strategy-lab/CurateLiveMarksStrip";
 import CuratePositionsReportPanel from "@/components/strategy-lab/CuratePositionsReport";
@@ -17,6 +16,7 @@ import {
   fetchCurateComparison,
   tickAllCurateInstances,
   type CurateComparisonReport,
+  type CurateComparisonRow,
 } from "@/lib/strategyLabCurateApi";
 
 type Props = {
@@ -26,27 +26,85 @@ type Props = {
   ) => void;
 };
 
+/** Poll while tab visible only — never stack requests. */
+const POLL_MS = 30_000;
+
+function mapRow(s: CurateComparisonRow): PhaseRunRow {
+  const series = (s.equity_series || []).map((p) => ({
+    equity: p.equity,
+  }));
+  return {
+    id: s.instance_id,
+    title: s.bot_name || s.strategy_name,
+    subtitle: `v${s.bound_version} · ${s.instance_id}`,
+    status: s.instance_status,
+    symbol: s.scan_symbol || undefined,
+    equity: s.equity_approx_usd,
+    vsBaseline: s.vs_allocation_usd,
+    baseline: s.allocation_usd,
+    openPositions: s.open_positions,
+    openRisk: s.open_risk_usd,
+    openUpnl: s.open_unrealized_pnl_usd,
+    closedPositions: s.closed_positions,
+    metaRight: s.last_tick_at
+      ? s.last_tick_at.slice(0, 19).replace("T", " ")
+      : undefined,
+    runStartedAt: s.run_started_at ?? null,
+    runtimeLabel: s.runtime_label ?? null,
+    equitySeries: series,
+    corrVsSpy: s.corr_vs_spy ?? null,
+    corrInterpretation: s.corr_interpretation ?? null,
+  };
+}
+
 export default function CuratePhaseDashboard({ pushNotice }: Props) {
   const [report, setReport] = useState<CurateComparisonReport | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [ticking, setTicking] = useState(false);
   const [showPositions, setShowPositions] = useState(false);
   const [showCorrCalc, setShowCorrCalc] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const inFlightRef = useRef(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (inFlightRef.current) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+    inFlightRef.current = true;
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    if (!opts?.silent) setLoading(true);
     try {
       const r = await fetchCurateComparison();
+      if (ac.signal.aborted) return;
       setReport(r);
     } finally {
-      setLoading(false);
+      inFlightRef.current = false;
+      if (!opts?.silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void load();
-    const t = setInterval(() => void load(), 20000);
-    return () => clearInterval(t);
+    void load({ silent: false });
+
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        void load({ silent: true });
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    const t = window.setInterval(() => {
+      void load({ silent: true });
+    }, POLL_MS);
+
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+      abortRef.current?.abort();
+    };
   }, [load]);
 
   async function onTickAll() {
@@ -61,38 +119,19 @@ export default function CuratePhaseDashboard({ pushNotice }: Props) {
         "success",
         `Tick-all: ${r.ok} ok · ${r.errors} err · ${r.ticked} runs`,
       );
-      await load();
+      await load({ silent: true });
     } finally {
       setTicking(false);
     }
   }
 
   const rows: PhaseRunRow[] = useMemo(() => {
-    const list = report?.bots ?? report?.strategies ?? [];
-    return list.map((s) => ({
-      id: s.instance_id,
-      title: s.bot_name || s.strategy_name,
-      subtitle: `v${s.bound_version} · ${s.instance_id}`,
-      status: s.instance_status,
-      symbol: s.scan_symbol || undefined,
-      equity: s.equity_approx_usd,
-      vsBaseline: s.vs_allocation_usd,
-      baseline: s.allocation_usd,
-      openPositions: s.open_positions,
-      openRisk: s.open_risk_usd,
-      openUpnl: s.open_unrealized_pnl_usd,
-      closedPositions: s.closed_positions,
-      metaRight: s.last_tick_at
-        ? s.last_tick_at.slice(0, 19).replace("T", " ")
-        : undefined,
-      equitySeries: (s.equity_series || []).map((p) => ({
-        t: p.t,
-        equity: p.equity,
-      })),
-      corrVsSpy: (s as { corr_vs_spy?: number | null }).corr_vs_spy,
-      corrInterpretation: (s as { corr_interpretation?: string | null })
-        .corr_interpretation,
-    }));
+    const list = report?.bots?.length
+      ? report.bots
+      : report?.strategies?.length
+        ? report.strategies
+        : [];
+    return list.map(mapRow);
   }, [report]);
 
   return (
@@ -100,7 +139,7 @@ export default function CuratePhaseDashboard({ pushNotice }: Props) {
       <PhaseRunDashboard
         phaseLabel="Curate"
         phaseKey="curate"
-        accountModeLabel="sim · fake money"
+        accountModeLabel="sim capital · multi-bot"
         summary={
           report
             ? {
@@ -113,8 +152,8 @@ export default function CuratePhaseDashboard({ pushNotice }: Props) {
         }
         rows={rows}
         loading={loading}
-        emptyHint="Promote bots to Curate, open the work area below, create a runtime, arm, and tick — bots appear here with equity paths and positions."
-        onRefresh={() => void load()}
+        emptyHint="Select a bot below, pick a symbol, then run in Curate — armed bots appear here with equity paths and positions."
+        onRefresh={() => void load({ silent: false })}
         toolbarExtra={
           <>
             <button
@@ -123,14 +162,8 @@ export default function CuratePhaseDashboard({ pushNotice }: Props) {
               onClick={() => void onTickAll()}
               className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
             >
-              {ticking ? "Ticking…" : "Tick all armed bots"}
+              {ticking ? "Ticking…" : "Advance all Curate bots"}
             </button>
-            <Link
-              href="/app/strategy-lab/symbols"
-              className="rounded-lg border border-[var(--color-separator)] px-2.5 py-1.5 text-xs font-semibold hover:bg-[var(--color-fill)]"
-            >
-              Symbols
-            </Link>
           </>
         }
         headerSlot={<CurateLiveMarksStrip />}

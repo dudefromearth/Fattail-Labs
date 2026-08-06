@@ -126,8 +126,31 @@ export default function CurateLiveMarksStrip() {
 
   useEffect(() => {
     void load();
-    const t = setInterval(() => void load(), 10000);
-    return () => clearInterval(t);
+    let t: number | null = null;
+    const start = () => {
+      if (t != null) return;
+      t = window.setInterval(() => {
+        if (document.visibilityState === "visible") void load();
+      }, 15000);
+    };
+    const stop = () => {
+      if (t != null) {
+        window.clearInterval(t);
+        t = null;
+      }
+    };
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        void load();
+        start();
+      } else stop();
+    };
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [load]);
 
   if (!data) {

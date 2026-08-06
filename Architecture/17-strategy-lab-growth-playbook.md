@@ -8,7 +8,7 @@
 
 ### Locked product sequence (Coach 2026-08-06; multi-member lock 2026-08-06)
 
-> **Multi-member is absolute.** The point of Curate is **many strategies running**
+> **Multi-member is absolute.** The point of Curate is **many bots running**
 > so members (and the platform) can **compare** them for **promote** and
 > **portfolio inclusion** — not single-bot dogfood forever.
 

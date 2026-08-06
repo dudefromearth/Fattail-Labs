@@ -4,6 +4,76 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-06 — DL-234 Curate comparison performance guard tests
+
+**Coach:** Automated tests must fail early if the multi-bot comparison hot path
+regresses (live Massive corr, 3N SQL, dual payload, fat series, multi-second wall).
+
+**Landed:** `server/tests/test_strategy_lab_curate_perf_guards.py`  
+**Budgets:** ≤12 SQL executes · ≤2s wall @ N=8 · `correlation.deferred` · bots-only  
+**Arch:** `Architecture/20` §4 · Spec Surface acceptance #12
+
+## 2026-08-06 — DL-233 Documentation parity: Curate board performance + suite nav
+
+**Coach:** Update specs, architecture, and user guide for (1) multi-bot board
+performance/stability contract and (2) suite nav restoration (Design · Curate ·
+Deploy · Archive; Symbols under Design).
+
+**Landed:**
+- Spec Surface **v1.0.2** (§1.5 comparison hot path, §3 symbols under Design, §5 board stability)
+- `Architecture/20-strategy-lab-curate-board-performance.md` (audit conclusions + as-built)
+- Updates: Arch **19**, **18**, **README**; Curate user guide; Navigation Continuity note
+- Decision log **DL-230–DL-232**
+
+## 2026-08-06 — DL-232 Suite nav: Design · Curate · Deploy · Archive; Symbols under Design
+
+**Coach:** Top suite must remain **Design · Curate · Deploy · Archive**. Do **not**
+rename to Sim market / Live market. **Symbols is not a top-level suite tab.**
+
+**As-built:**
+- `web/lib/strategyLabSuite.ts` — suite = four items only
+- Design **sub-nav**: Board | Symbols (`StrategyLabDesignSubNav`)
+- Symbols pages chrome with `active=development`, `designSub=symbols`
+- **Design:** assign symbol (underlying) via designer `CurateSymbolPicker` for BT/FW
+- **Curate:** re-select scan symbol when creating a sim run
+- **Deploy:** no symbol step — only curated bots
+
+**Rationale:** Symbol is an attribute of the bot’s design and Curate run, not a
+life-cycle phase. Deploy consumes already-curated bots.
+
+## 2026-08-06 — DL-231 Curate multi-bot board: performance & browser stability
+
+**Coach:** Browser must stay stable with many Curate instances (customer confidence).
+Performance/architecture audit → redesign of comparison + PhaseRunDashboard.
+
+**Root causes found:**
+1. Live **Massive correlation** inside `GET .../comparison` (~20–22s @ 17 bots)
+2. **1 Hz** parent `nowMs` re-rendering all cards + SVG charts
+3. Unbounded mount of N mini equity charts
+4. O(N) SQL + dual `bots`+`strategies` full payload
+
+**As-built contract:**
+- Comparison = **book metrics only**; corr **deferred** (calculator / `/correlation*`)
+- Batched SQL (position aggs + last-N equity series window); compact `{equity}` points
+- Primary array: **`bots`**; `strategies` empty (no dual full list)
+- UI: **page size 12**; memo cards/charts; runtime clock **per-cell** only; tab-hidden pause
+- Silent poll **30s**, no stacked fetches, loading only on initial/manual refresh
+- Measured @ 17 bots: comparison **~6 ms**, payload **~19 KB** (was ~20s / ~60 KB)
+
+**Code:** `curate_domain.comparison_report` · `PhaseRunDashboard` · `MiniEquityChart` ·
+`CuratePhaseDashboard` · migration **088** `run_started_at` (runtime stat)
+
+**Arch:** `Architecture/20-strategy-lab-curate-board-performance.md`
+
+## 2026-08-06 — DL-230 Runtime since last start/restart
+
+**Coach:** Dashboard must show **current runtime since last start/restart**, adaptive:
+seconds → min:sec → hours/min → days/hours.
+
+**As-built:** Column `run_started_at` on `strategy_lab_curate_instances` (migration
+**088**). Set/reset on **Arm**. API: `run_started_at`, `runtime_seconds`,
+`runtime_label`. UI: live Runtime on grid/table (per-cell timer after DL-231).
+
 ## 2026-08-05 — DL-216b Trade Log `entry_source`: manual · import · automated
 
 **Decision:** Three **distinct** provenance values on `member_trade_log_trades.entry_source`:
