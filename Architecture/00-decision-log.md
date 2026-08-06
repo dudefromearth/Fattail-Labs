@@ -63,12 +63,199 @@ skipped — the app still boots); the member widget is wrapped in an `ErrorBound
 `FatTail-Labs-Help-System-Spec-v1.0`. Tests: `test_help.py`. Status: draft,
 pending live verification on MiniTwo.
 
+## 2026-08-06 — DL-229 Terminology: Bot · Strategy attribute · Position
+
+**Coach:** Correct terminology for Curate/Deploy units:
+
+| Term | Meaning |
+|------|---------|
+| **Bot** | Primary unit (what we wrongly called “strategy” on the grid) |
+| **Strategy** | **Attribute of the bot** (pack / methodology) |
+| **Position** | **Instance of the bot** (open/closed package) |
+
+**Spec:** Curate-and-Deploy-Surface-Spec v1.0 §0 terminology; Process Runtime v1.2 glossary.  
+**API:** emit `bot_id` / `bot_name` (+ legacy `strategy_*` aliases).  
+**UI:** dashboards/reports use Bot / Position language.
+
+## 2026-08-06 — DL-228 Spec & architecture documentation parity
+
+**Coach:** Update specs and architecture docs for as-built Strategy Lab
+Curate/Deploy surfaces.
+
+**Landed:**
+- `Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` (authority for Curate/Deploy UI, marks, symbols, correlation, reports)
+- `Specs/Strategy-Lab-Process-Runtime-Spec-v1.2.md` (amends multi-member Curate / host priority)
+- `Architecture/19-strategy-lab-as-built-map.md`
+- Updates: Arch README, 09, 17, 18; Implementation Scope overlay; Curate user guide cross-links
+
+## 2026-08-06 — DL-227 Relative correlation on grid + calculator
+
+**Coach:** Grid view shows **relative correlation**; calculator for **any two
+symbols** → Pearson coefficient.
+
+**Shipped:** `market_data.correlation` (daily simple returns, Massive aggs);
+indexes use proxy series when needed; `GET .../correlation?a=&b=&days=`;
+`GET .../correlation/relative`; comparison attaches `corr_vs_spy` per run;
+grid/table show **ρ vs SPY**; `CorrelationCalculator` on Symbols + Curate footer.
+
+## 2026-08-06 — DL-226 Deploy equity & stats like Practice Reports
+
+**Coach:** Deploy phase needs **detailed equity and stats reporting** similar to
+Practice **Reports** (equity curve, drawdown, stats table, featured cards,
+outcome distribution).
+
+**Shipped:** `build_run_reports_book` (same DTO as trade-log reports-book);
+`GET .../deploy/reports-book` + `.../curate/reports-book`; `DeployReportsPanel`
+reuses Practice `EquityChart`, `DrawdownChart`, `StatsTable`, featured cards,
+`BarDist`. Until Tradier Deploy outcomes exist, book is built from closed
+**Curate sim** packages with honest source_note.
+
+## 2026-08-06 — DL-225 Curate/Deploy high-visibility phase dashboards
+
+**Coach:** Curate and Deploy must be highly visible with **similar interfaces**:
+grid or table reporting plus **mini equity charts**. Shared `PhaseRunDashboard`
+primitive; Curate live with sim equity series; Deploy shell mirrors layout until
+Tradier provisioned.
+
+## 2026-08-06 — DL-224 VIX + Daily VIX (VIX1D) for strategy decisions
+
+**Coach:** VIX and **Daily VIX** for reference and strategy decisions.
+
+| Symbol | Meaning |
+|--------|---------|
+| **VIX** | 30-day IV regime |
+| **VIX1D** | Cboe Daily / 1-day VIX — 0DTE and daily decision context |
+
+Both are **shared reference** marks (role=reference), not default scan underliers.
+Each poll stores **mid + prev_close + day_change_pct** for daily reference.
+API: `GET /api/me/strategy-lab/curate/vol-reference`. UI vol cards on Curate stream strip.
+Until Massive index entitlement: proxies labeled (VIX/VIX1D → VIXY).
+
+## 2026-08-06 — DL-223 Curate symbol universe (indexes + ETFs + stocks)
+
+**Coach universe (enabled shared stream):**
+
+| Kind | Symbols |
+|------|---------|
+| Indexes | **SPX, XSP, VIX** |
+| ETFs | **SPY, QQQ, IWM, GLD, TLT, SLV, USO, XLF, UNG** |
+| Stocks | **AAPL, AMZN, NVDA, TSLA, GOOGL, META, MSFT** |
+
+Options cadence: 3–5 expirations/week class. Migration `085` + `086` (VIX→VIXY proxy).
+Index feeds `I:*` may 403; SPX/XSP proxy **SPY**, VIX proxy **VIXY**, always labeled.
+
+## 2026-08-06 — DL-222 Shared live marks stream for all members
+
+**Coach:** Support a **set of symbols** and a **live stream** that **every member's
+collection** uses — one shared stream, not per-member sockets.
+
+**Design:** `market_symbol_universe` + `market_live_marks` + heartbeat;
+`python -m market_data.live_stream` polls Massive into DB; Curate
+`get_mark(cur=…)` reads shared table first. Default universe: SPY, QQQ, IWM + Mag7.
+Stale policy `LABS_MARK_STALE_SECONDS` (default 60); optional
+`LABS_LIVE_MARKS_REQUIRED=1` fail-loud (no stub).
+
+**API:** `GET /api/me/strategy-lab/curate/live-marks`. UI strip on Curate phase.
+**Not Tradier streaming** (Arch/09).
+
+## 2026-08-06 — DL-221 Multi-member Curate comparison is core
+
+**Coach:** Multi-member is an **absolute** requirement. Curate exists so **many
+strategies run** and can be **compared** for promote / portfolio inclusion — not
+single-strategy hobby mode.
+
+**Shipped:** `GET .../curate/comparison` (per-member multi-strategy metrics);
+`POST .../curate/tick-all` (tick all armed/running for member);
+`POST .../curate/platform-tick` (admin multi-member worker tick);
+UI **Strategy comparison** + tick-all on Curate phase. Family B identity isolation.
+
+**Still true:** Deploy Tradier multi-member after Coach validate; Curate sim is
+the multi-strategy comparison plane first.
+
+## 2026-08-06 — DL-220 Curate runtime user guide
+
+**Coach:** User guide for Curate run environment: UI path, under-the-covers
+position/cash/mark/envelope, decision log, chart feasibility (data-ready; UI charts
+not shipped in v1).
+
+**Doc:** `docs/Strategy-Lab-Curate-Runtime-User-Guide.md`
+
+## 2026-08-06 — DL-219 Curate run environment v1 (sim)
+
+**Coach:** Start Curate run environment for everyone (Stage A). Real-market marks
+(stub v1) + simulated broker + fake money; never Tradier. Member-triggered tick
+(manage-before-scan); cloud scheduled workers later.
+
+**Shipped:** migration `083_strategy_lab_curate_runtime.sql`; package
+`server/strategy_runtime/`; routes `/api/me/strategy-lab/curate/*`; UI
+`CurateRuntimePanel`; tests `test_strategy_lab_curate.py`. Fill model
+`mark_mid_v1` labeled. Deploy still Coach-only / not in this slice.
+
+## 2026-08-06 — DL-218 Strategy Lab growth playbook (dogfood → platform)
+
+**Coach:** Fund Tradier, hook API, scale through FatTail Labs so others can create
+and deploy **FatTail-style** process-bots. Best path is **vertical slice first**,
+growth stages with hard exit criteria—not multi-tenant or multi-pack before dogfood.
+
+**Stages (v1.1 refine):**  
+- **A — Design + Curate for everyone** (shared studio; sim only; no member Deploy)  
+- **B — Deploy for Coach only** (validate Tradier paper/live + runtime)  
+- **C — Provision members** for Deploy (their Tradier; paper then gated live)  
+- **D — Solid platform** (hundreds, caps, HA, doctrine)
+
+**Build order:** Design/Curate multi-tenant + Coach Tradier spike in parallel →
+Coach-only Deploy gate → member OAuth + `strategy_lab_deploy` provision.
+
+**Architecture:** `Architecture/17-strategy-lab-growth-playbook.md` **v1.1**
+
+## 2026-08-06 — DL-217 Same service type as OA, opposite strategic direction
+
+**Coach:** Offer the **same type of service** as Option Alpha (no-code process
+automation, cloud continuous run, paper engine, broker-connected live) with a
+**completely opposite strategic direction for traders**.
+
+| Same | Opposite |
+|------|----------|
+| Hosted bots / process runtime, paper, Tradier | Capacity over dependency (not set-and-forget) |
+| OA-class reliability & performance (DL-216) | Stop the bleeding; process outcomes never profit claims |
+| Encode → prove → run → inspect | Proof gates, version pin, arming; Habit Catalog + retro |
+| Member broker custody | Defined-risk pathway; creator owns plan; no profit theater |
+
+**Architecture:** `Architecture/16-strategy-lab-vs-option-alpha-positioning.md`  
+**Bar:** OA-class **service**; FatTail **doctrine**. Features that increase dependency
+or profit theater without increasing capacity or proof do not ship.
+
+## 2026-08-06 — DL-216 Competitive bar: Option Alpha–class host reliability
+
+**Coach:** Strategy Lab will **compete with Option Alpha**. Therefore the service must
+be **at least equal in reliability and performance** for continuous automations
+(paper/Curate and live).
+
+**Implication:** Cloud-hosted Process Runtime (**M3-class workers**) is **competitive
+primary**, not an optional residual. MiniTwo-only multi-tenant bot hosting is
+insufficient. OA-class means: always-on cloud host, auto-restart, queue/workers,
+monitoring/kill switches, in-house paper (Curate: real market + sim broker + fake
+money), live via member broker API (Tradier first).
+
+**Still locked from DL-214:** User owns strategy + arming; broker owns custody and
+fills; prefer **broker-held exits**; no P&L or perfect-exit guarantees; M0 export and
+M2 user-local remain **secondary** (capacity/portability).
+
+**Architecture:** `Architecture/14-strategy-lab-execution-responsibility.md` **v1.1**  
+**Follow-on:** Process Runtime Spec amend to **v1.2** (M3 primary for continuous
+paths; §17 normative). Broker stack: two-layer adapter + ExecutionService
+(`docs/Strategy-Lab-MSC-Broker-Adapter-Assessment-2026-08-06.md`).
+
 ## 2026-08-05 — DL-215 Process Runtime Spec v1.1
 
 **Coach:** Runtime Spec amended for execution offload. **v1.1** is SPEC AUTHORITY;
 v1.0 superseded for responsibility/priority. M0–M2 primary; M3 optional; Tradier-first;
 arming ceremony; Deployment Pack export; broker-held exits; admin console for residual
 fleet; §17 workers only for M3/assist.
+
+**Note (2026-08-06):** Competitive mandate **DL-216** elevates M3-class cloud hosting
+to primary for continuous bots; v1.2 Spec amend required. v1.1 remains authority until
+v1.2 lands.
 
 **Spec:** `Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md`
 

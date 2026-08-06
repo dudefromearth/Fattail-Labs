@@ -6,14 +6,14 @@ API can boot without MASSIVE_API_KEY.
 
 from __future__ import annotations
 
+import json
 import os
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from typing import Any
-
-import json
 
 
 class MassiveClientError(RuntimeError):
@@ -37,7 +37,15 @@ class MassiveClient:
         base_url: str | None = None,
         timeout_s: float = 60.0,
     ) -> None:
-        self.api_key = (api_key or "").strip() or _require_env("MASSIVE_API_KEY")
+        self.api_key = (api_key or "").strip()
+        if not self.api_key:
+            self.api_key = (
+                os.environ.get("MASSIVE_API_KEY") or os.environ.get("POLYGON_API_KEY") or ""
+            ).strip()
+        if not self.api_key:
+            raise MassiveClientError(
+                "Missing MASSIVE_API_KEY (or POLYGON_API_KEY fallback)"
+            )
         raw_base = (base_url or os.environ.get("MASSIVE_API_BASE") or "").strip()
         self.base_url = (raw_base or "https://api.massive.com").rstrip("/")
         self.timeout_s = float(timeout_s)
@@ -140,3 +148,159 @@ class MassiveClient:
             else:
                 url = None
         return results
+
+    def fetch_last_trade(self, symbol: str) -> dict[str, Any]:
+        """GET /v2/last/trade/{symbol} — last print for equities/ETFs."""
+        symbol = (symbol or "").strip().upper()
+        if not symbol:
+            raise MassiveClientError("symbol required")
+        path = f"/v2/last/trade/{urllib.parse.quote(symbol, safe='')}"
+        return self._get_json(f"{self.base_url}{path}")
+
+    def fetch_stock_snapshot(self, symbol: str) -> dict[str, Any]:
+        """GET /v2/snapshot/locale/us/markets/stocks/tickers/{symbol}."""
+        symbol = (symbol or "").strip().upper()
+        if not symbol:
+            raise MassiveClientError("symbol required")
+        path = (
+            "/v2/snapshot/locale/us/markets/stocks/tickers/"
+            f"{urllib.parse.quote(symbol, safe='')}"
+        )
+        return self._get_json(f"{self.base_url}{path}")
+
+    def fetch_daily_closes(
+        self,
+        symbol: str,
+        *,
+        days: int = 60,
+    ) -> list[dict[str, Any]]:
+        """Daily adjusted closes for correlation — range agg 1 day.
+
+        Returns list of {t: YYYY-MM-DD, close: float} oldest→newest.
+        """
+        from datetime import date, timedelta
+
+        symbol = (symbol or "").strip().upper()
+        if not symbol:
+            raise MassiveClientError("symbol required")
+        days = max(5, min(500, int(days)))
+        end = date.today()
+        start = end - timedelta(days=days + 14)  # calendar buffer for weekends
+        path = (
+            f"/v2/aggs/ticker/{urllib.parse.quote(symbol, safe='')}"
+            f"/range/1/day/{start.isoformat()}/{end.isoformat()}"
+        )
+        url = f"{self.base_url}{path}?{urllib.parse.urlencode({'adjusted': 'true', 'sort': 'asc', 'limit': '50000'})}"
+        data = self._get_json(url)
+        results = data.get("results") if isinstance(data, dict) else None
+        if not isinstance(results, list):
+            return []
+        out: list[dict[str, Any]] = []
+        for row in results:
+            if not isinstance(row, dict) or row.get("c") is None:
+                continue
+            ts = row.get("t")
+            day = ""
+            if isinstance(ts, (int, float)):
+                # ms epoch
+                day = datetime.fromtimestamp(
+                    float(ts) / 1000.0, tz=timezone.utc
+                ).date().isoformat()
+            try:
+                out.append({"t": day, "close": float(row["c"])})
+            except (TypeError, ValueError):
+                continue
+        # trim to last `days` trading points
+        if len(out) > days:
+            out = out[-days:]
+        return out
+
+    def fetch_prev_day(self, symbol: str) -> dict[str, Any] | None:
+        """GET /v2/aggs/ticker/{symbol}/prev — prior session OHLC for daily reference."""
+        symbol = (symbol or "").strip().upper()
+        if not symbol:
+            raise MassiveClientError("symbol required")
+        path = f"/v2/aggs/ticker/{urllib.parse.quote(symbol, safe='')}/prev"
+        url = f"{self.base_url}{path}?{urllib.parse.urlencode({'adjusted': 'true'})}"
+        try:
+            data = self._get_json(url)
+        except MassiveClientError:
+            return None
+        results = data.get("results") if isinstance(data, dict) else None
+        if not isinstance(results, list) or not results:
+            return None
+        row = results[0]
+        if not isinstance(row, dict):
+            return None
+        try:
+            return {
+                "open": float(row["o"]) if row.get("o") is not None else None,
+                "high": float(row["h"]) if row.get("h") is not None else None,
+                "low": float(row["l"]) if row.get("l") is not None else None,
+                "close": float(row["c"]) if row.get("c") is not None else None,
+                "volume": float(row["v"]) if row.get("v") is not None else None,
+                "vwap": float(row["vw"]) if row.get("vw") is not None else None,
+                "ts": row.get("t"),
+            }
+        except (TypeError, ValueError, KeyError):
+            return None
+
+    def fetch_underlier_mark(self, symbol: str) -> dict[str, Any]:
+        """Best-effort mid/last for a shared-stream symbol.
+
+        Prefers snapshot lastQuote mid, else last trade price.
+        Returns {symbol, mid, bid, ask, last_trade, asof_ns, raw}.
+        """
+        symbol = (symbol or "").strip().upper()
+        bid = ask = last = mid = None
+        asof_ns = None
+        raw: dict[str, Any] = {}
+
+        try:
+            snap = self.fetch_stock_snapshot(symbol)
+            raw["snapshot"] = snap
+            t = snap.get("ticker") if isinstance(snap, dict) else None
+            if isinstance(t, dict):
+                lq = t.get("lastQuote") or {}
+                lt = t.get("lastTrade") or {}
+                if isinstance(lq, dict):
+                    # Polygon: P=ask, p=bid often; Massive may mirror
+                    ask = lq.get("P") or lq.get("ask") or lq.get("a")
+                    bid = lq.get("p") or lq.get("bid") or lq.get("b")
+                    asof_ns = lq.get("t") or asof_ns
+                if isinstance(lt, dict):
+                    last = lt.get("p") or lt.get("price") or last
+                    asof_ns = lt.get("t") or asof_ns
+                day = t.get("day") or {}
+                if isinstance(day, dict) and day.get("c"):
+                    last = last or day.get("c")
+        except MassiveClientError:
+            pass
+
+        if last is None and mid is None:
+            trade = self.fetch_last_trade(symbol)
+            raw["last_trade"] = trade
+            res = trade.get("results") if isinstance(trade, dict) else None
+            if isinstance(res, dict):
+                last = res.get("p")
+                asof_ns = res.get("t") or asof_ns
+
+        if bid is not None and ask is not None:
+            try:
+                mid = (float(bid) + float(ask)) / 2.0
+            except (TypeError, ValueError):
+                mid = None
+        if mid is None and last is not None:
+            mid = float(last)
+        if mid is None:
+            raise MassiveClientError(f"no mid/last for {symbol}")
+
+        return {
+            "symbol": symbol,
+            "mid": float(mid),
+            "bid": float(bid) if bid is not None else None,
+            "ask": float(ask) if ask is not None else None,
+            "last_trade": float(last) if last is not None else float(mid),
+            "asof_ns": asof_ns,
+            "raw": raw,
+        }

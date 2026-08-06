@@ -17,6 +17,9 @@ function defaultSubtitle(active: StrategyLabSuiteId): string {
   if (active === "archive") {
     return "Retired strategies, reports, and logs — on your account.";
   }
+  if (active === "symbols") {
+    return "Shared symbol universe — indexes, ETFs, stocks for all members.";
+  }
   if (active === "curation") {
     return "Book readiness — group, size, and monitor after Design validation.";
   }

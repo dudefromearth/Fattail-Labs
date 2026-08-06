@@ -1,9 +1,10 @@
 # Strategy Lab — Process Runtime Spec v1.1  
 ### Deployment plans · scan/manage · decision log · Tradier handoff · user + broker run first
 
-**Status:** **SPEC AUTHORITY** (normative; supersedes v1.0 default hosting narrative)  
+**Status:** **PARTIALLY SUPERSEDED** by [`Strategy-Lab-Process-Runtime-Spec-v1.2.md`](./Strategy-Lab-Process-Runtime-Spec-v1.2.md) (2026-08-06) for multi-member Curate host priority and delivery sequence. Unamended sections remain in force.  
 **Date:** 2026-08-05 (amended same day: ExitPolicy structure-agnostic · order dedupe · pause/archive working-order banner · attestation Privacy consumer)  
 **Supersedes:** [`Strategy-Lab-Process-Runtime-Spec-v1.0.md`](./Strategy-Lab-Process-Runtime-Spec-v1.0.md) for **execution responsibility** and **delivery priority**  
+**Curate/Deploy surface (as-built):** [`Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md`](./Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md)  
 **Product:** FatTail Strategy Lab (`/app/strategy-lab`)  
 **Decisions:** DL-213 · DL-213b · **DL-214** · review `docs/Strategy-Lab-Execution-Architecture-Review-2026-08-05.md`  
 **Implementation scope:** [`docs/Strategy-Lab-Process-Runtime-Implementation-Scope-v1.0.md`](../docs/Strategy-Lab-Process-Runtime-Implementation-Scope-v1.0.md)  

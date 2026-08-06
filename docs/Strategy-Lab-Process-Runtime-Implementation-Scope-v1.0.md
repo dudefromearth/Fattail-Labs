@@ -156,6 +156,26 @@ Must all land for **v1 slice complete** (before M3):
 | Live path | PR8 |
 | M3 workers + admin fleet | PR10 |
 
+### As-built overlay (2026-08-06 — not a substitute for PR1–PR10)
+
+Multi-member **Curate sim** surface shipped ahead of full Deploy Tradier path. Authority:
+
+| Spec / arch | Content |
+|-------------|---------|
+| `Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` | Curate runtime, marks, symbols, correlation, dashboards, Deploy reports |
+| `Specs/Strategy-Lab-Process-Runtime-Spec-v1.2.md` | Mode priority amended for multi-member Curate |
+| `Architecture/19-strategy-lab-as-built-map.md` | Code + migration map |
+
+| Landed outside original PR table | Path |
+|----------------------------------|------|
+| Curate instances/positions/decision_log | migration 083 · `strategy_runtime/` |
+| Shared live marks + universe + VIX/VIX1D | 084–087 · `market_data/live_*` |
+| Comparison, tick-all, platform-tick | routes `strategy_lab_curate.py` |
+| Phase dashboards + Deploy reports UI | `PhaseRunDashboard`, `DeployReportsPanel` |
+| Correlation calculator + ρ on grid | `market_data/correlation.py` |
+
+**Still pending for full Process Runtime program:** Tradier member OAuth/paper/live, Deployment Pack export, arming attestation production store, scheduled workers, pack-native multi-leg open.
+
 ---
 
 ## 7. Likely file neighborhood (implementation)

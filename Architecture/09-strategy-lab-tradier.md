@@ -112,6 +112,21 @@ After ~2–4 weeks of **local** archive, historical option structure tests are r
 
 Config-driven allowlist; fail loud if required symbol missing from plan.
 
+### Shared underlier stream for Curate (as-built 2026-08-06)
+
+**Normative detail:** [`Architecture/18-shared-live-marks-stream.md`](./18-shared-live-marks-stream.md) · Spec: [`Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md`](../Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md).
+
+| Item | Implementation |
+|------|----------------|
+| **SoR for latest mids** | MySQL `market_live_marks` (all members read) |
+| **Poller** | `python -m market_data.live_stream` (Massive REST; not Tradier) |
+| **Universe** | Indexes SPX/XSP/VIX/VIX1D · ETFs SPY,QQQ,IWM,GLD,TLT,SLV,USO,XLF,UNG · Stocks AAPL,AMZN,NVDA,TSLA,GOOGL,META,MSFT |
+| **Index honesty** | Proxy series labeled when `I:*` not entitled (SPX/XSP→SPY, VIX/VIX1D→VIXY) |
+| **Vol reference** | VIX + VIX1D (+ prev_close) for strategy decisions |
+| **Correlation** | Pearson daily returns; grid shows ρ vs SPY |
+
+**Still true:** Do **not** buy Tradier streaming for market data.
+
 ## Stages (member language)
 
 **Build → Test (historical + live) → Run bots → live and paper (Tradier deploy)**
@@ -137,5 +152,6 @@ Config-driven allowlist; fail loud if required symbol missing from plan.
 
 ## Related
 
-- Decision log: DL-185 (Tradier deploy), DL-186 (Massive data + dual Test + chain collect-forward)  
+- Decision log: DL-185 (Tradier deploy), DL-186 (Massive data + dual Test + chain collect-forward), **DL-222–224** (shared marks / universe / VIX), **DL-227** (correlation)  
 - Landing: `web/app/app/strategy-lab/page.tsx`  
+- As-built map: [`Architecture/19-strategy-lab-as-built-map.md`](./19-strategy-lab-as-built-map.md)  

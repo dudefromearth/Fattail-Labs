@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import StrategyLabChrome from "@/components/strategy-lab/StrategyLabChrome";
 import DevelopmentValidation from "@/components/strategy-lab/DevelopmentValidation";
+import CurateRuntimePanel from "@/components/strategy-lab/CurateRuntimePanel";
+import CuratePhaseDashboard from "@/components/strategy-lab/CuratePhaseDashboard";
+import DeployPhaseDashboard from "@/components/strategy-lab/DeployPhaseDashboard";
 import StrategyDesigner from "@/components/strategy-lab/StrategyDesigner";
 import StrategyLabPortability from "@/components/strategy-lab/StrategyLabPortability";
 import {
@@ -392,15 +395,31 @@ export default function StrategyLabApp() {
         )}
       </div>
 
-      {/* Phase bins — three wide columns (Archive is a separate page) */}
+      {/* Curate / Deploy: high-visibility run dashboards (shared layout) */}
+      {navPhase === "curation" && (
+        <section className="mt-6">
+          <CuratePhaseDashboard pushNotice={pushNotice} />
+        </section>
+      )}
+      {navPhase === "deployment" && (
+        <section className="mt-6">
+          <DeployPhaseDashboard />
+        </section>
+      )}
+
+      {/* Phase bins — strategy cards (Design primary; Curate/Deploy secondary to dashboard) */}
       <section className="mt-6">
         <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold text-[var(--color-label)]">
-              Phase bins
+              {navPhase === "curation" || navPhase === "deployment"
+                ? "Bot cards"
+                : "Phase bins"}
             </h2>
             <p className="text-xs text-[var(--color-label-secondary)]">
-              Design · Curate · Deploy. Archive is under the suite nav.
+              {navPhase === "curation" || navPhase === "deployment"
+                ? "Select a bot for the work area below. Running bots are on the dashboard above."
+                : "Design · Curate · Deploy. Archive is under the suite nav."}
             </p>
           </div>
           <div className="flex w-full max-w-xl flex-col items-stretch gap-2 sm:items-end">
@@ -616,7 +635,7 @@ export default function StrategyLabApp() {
         </div>
       </section>
 
-      {/* Work area — compact chrome (≤2 lines) + pack tools */}
+      {/* Work area — Design tools or Curate instance controls */}
       <section className="mt-8">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold text-[var(--color-label)]">
@@ -627,9 +646,9 @@ export default function StrategyLabApp() {
             className="rounded-lg border border-[var(--color-separator)] px-2.5 py-1 text-xs font-semibold hover:bg-[var(--color-fill)]"
             onClick={async () => {
               const s = await createStrategy({ name: "Untitled strategy" });
-              if (!s) pushNotice("error", "Could not create strategy");
+              if (!s) pushNotice("error", "Could not create bot");
               else {
-                pushNotice("success", "Created blank strategy.");
+                pushNotice("success", "Created blank bot.");
                 setSelectedId(s.id);
                 await reload();
               }
@@ -645,8 +664,8 @@ export default function StrategyLabApp() {
             {navPhase === "curation" && "Curate"}
             {navPhase === "deployment" && "Deploy"}
             {" — "}
-            no strategy selected. Click a card in this bin, or create one with +
-            New. Moves live on the card.
+            no bot selected. Click a card in this bin, or create one with + New.
+            Moves live on the card.
           </p>
         ) : (
           <div className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-3 shadow-sm">
@@ -809,6 +828,15 @@ export default function StrategyLabApp() {
                 <DevelopmentValidation
                   strategy={selected}
                   onUpdated={() => void reload()}
+                />
+              </div>
+            )}
+
+            {phaseOf(selected) === "curation" && (
+              <div className="mt-3 border-t border-[var(--color-separator)] pt-3">
+                <CurateRuntimePanel
+                  strategy={selected}
+                  pushNotice={pushNotice}
                 />
               </div>
             )}

@@ -9,6 +9,7 @@ export type StrategyLabSuiteId =
   | "development"
   | "curation"
   | "deployment"
+  | "symbols"
   | "archive";
 
 export type StrategyLabSuiteItem = {
@@ -37,6 +38,11 @@ export const STRATEGY_LAB_SUITE: StrategyLabSuiteItem[] = [
     label: "Deploy",
     href: "/app/strategy-lab?phase=deployment",
     phase: "deployment",
+  },
+  {
+    id: "symbols",
+    label: "Symbols",
+    href: "/app/strategy-lab/symbols",
   },
   {
     id: "archive",

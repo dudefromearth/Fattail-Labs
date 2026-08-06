@@ -21,14 +21,21 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [11-wiki-design.md](./11-wiki-design.md) | Member Wiki: lab-wiki checkout → derived index → /app/wiki |
 | [12-retrospective-report-dto.md](./12-retrospective-report-dto.md) | Retrospective workspace DTO (gather/report/comparison) — as-built v0.6 |
 | [13-habit-catalog-design.md](./13-habit-catalog-design.md) | Habit Catalog methodology layer — **design locked**, pre-Spec |
-| [09-strategy-lab-tradier.md](./09-strategy-lab-tradier.md) | Strategy Lab data/exec split (Massive / Tradier) |
-| [14-strategy-lab-execution-responsibility.md](./14-strategy-lab-execution-responsibility.md) | User + broker run first; M0–M3 |
+| [09-strategy-lab-tradier.md](./09-strategy-lab-tradier.md) | Strategy Lab data/exec split (Massive / Tradier) + shared Curate marks |
+| [14-strategy-lab-execution-responsibility.md](./14-strategy-lab-execution-responsibility.md) | OA-class host + user/broker custody (v1.1) |
 | [15-trade-log-manual-management.md](./15-trade-log-manual-management.md) | Trade Log manual entry/close/trash design (as-built) |
+| [16-strategy-lab-vs-option-alpha-positioning.md](./16-strategy-lab-vs-option-alpha-positioning.md) | Same service type, opposite doctrine (DL-217) |
+| [17-strategy-lab-growth-playbook.md](./17-strategy-lab-growth-playbook.md) | Design+Curate all → Deploy Coach → provision |
+| [18-shared-live-marks-stream.md](./18-shared-live-marks-stream.md) | Shared symbol universe + live stream + correlation |
+| [19-strategy-lab-as-built-map.md](./19-strategy-lab-as-built-map.md) | Code/spec/route map for Curate/Deploy as-built |
 
-**Strategy Lab process runtime (2026-08-05):**  
-`Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md` — process runtime (**user+broker first**, Tradier, DL-215).  
-`Architecture/14-strategy-lab-execution-responsibility.md` — execution responsibility (DL-214).  
-`docs/Strategy-Lab-Execution-Architecture-Review-2026-08-05.md` — architecture review 2026-08-05.
+**Strategy Lab process runtime (2026-08-05 → 2026-08-06):**  
+`Specs/Strategy-Lab-Process-Runtime-Spec-v1.2.md` — multi-member Curate primary; amends v1.1.  
+`Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` — **as-built Curate/Deploy surface authority**.  
+`Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md` — base instance/envelope/decision-log (still read with v1.2).  
+`Architecture/14-strategy-lab-execution-responsibility.md` — execution responsibility (DL-214/216).  
+`docs/Strategy-Lab-Curate-Runtime-User-Guide.md` — member operator guide.  
+`docs/Strategy-Lab-MSC-Broker-Adapter-Assessment-2026-08-06.md` — two-layer brokerage concept (no MSC code).
 
 **Trade Log manual management (2026-08-05):**  
 `Architecture/15-trade-log-manual-management.md` — structure-first entry, close gates, trash, blotter open strip.  
