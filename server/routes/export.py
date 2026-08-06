@@ -63,7 +63,14 @@ def export_pack(request: Request, format: str = "zip") -> Any:
                 actor_identity_id=iid,
                 subject_identity_id=iid,
                 action="export",
-                surfaces=["trade_log", "journal", "retrospective", "journey"],
+                surfaces=[
+                    "trade_log",
+                    "journal",
+                    "journal_session",
+                    "retrospective",
+                    "journey",
+                    "playbook",
+                ],
                 detail=f"pack format={fmt}",
             )
 
@@ -251,9 +258,19 @@ async def import_commit(request: Request) -> dict:
         with db.transaction() as conn:
             with conn.cursor() as cur:
                 out = im.commit_all(cur, iid, docs, policy, claims=claims)
-                surfaces = [s for s in docs if s in (
-                    "trade_log", "journal", "retrospective", "journey"
-                )]
+                surfaces = [
+                    s
+                    for s in docs
+                    if s
+                    in (
+                        "trade_log",
+                        "journal",
+                        "journal_session",
+                        "retrospective",
+                        "journey",
+                        "playbook",
+                    )
+                ]
                 privacy.audit(
                     cur,
                     actor_identity_id=iid,

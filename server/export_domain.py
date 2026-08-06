@@ -24,6 +24,9 @@ FMT_JOURNAL = "fattail.labs.journal"
 FMT_JOURNAL_SESSION = "fattail.labs.journal_session"
 FMT_RETRO = "fattail.labs.retrospective"
 FMT_JOURNEY = "fattail.labs.journey"
+# Playbook surface is product-incomplete; stub schema for pack completeness.
+FMT_PLAYBOOK = "fattail.labs.playbook"
+PLAYBOOK_MODEL_VERSION = "0.1-stub"
 FMT_PACK = "fattail.labs.member_export"
 
 
@@ -445,6 +448,50 @@ def build_journey_document(cur, identity_id: int, *, role: str = "observer") -> 
     return doc
 
 
+def build_playbook_document(cur, identity_id: int) -> dict[str, Any]:
+    """Stub Playbook export — tool notes on surface ``playbook`` only.
+
+    Full Playbook product is not finished; this keeps pack schema stable so
+    export/import round-trips never drop the surface. Shape::
+
+        format: fattail.labs.playbook
+        model_version: 0.1-stub
+        entries: [{ id, body_md, created_at, updated_at }]
+        rules: []   # reserved for future structured playbook rules
+    """
+    email = _member_email(cur, identity_id)
+    doc = envelope(FMT_PLAYBOOK, email=email)
+    doc["model_version"] = PLAYBOOK_MODEL_VERSION
+    doc["stub"] = True
+    doc["note"] = (
+        "Playbook product is incomplete. This document carries free-form "
+        "playbook notes only; structured rules are reserved empty."
+    )
+    entries: list[dict[str, Any]] = []
+    try:
+        cur.execute(
+            """SELECT id, body_md, export_key, created_at, updated_at
+               FROM member_tool_notes
+               WHERE identity_id = %s AND surface = 'playbook'
+               ORDER BY created_at ASC, id ASC""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            entries.append(
+                {
+                    "id": (r.get("export_key") or f"pb-{int(r['id'])}").strip(),
+                    "body_md": r.get("body_md") or "",
+                    "created_at": _iso(r.get("created_at")),
+                    "updated_at": _iso(r.get("updated_at")),
+                }
+            )
+    except Exception:
+        entries = []
+    doc["entries"] = entries
+    doc["rules"] = []  # reserved
+    return doc
+
+
 def build_trade_log_document(cur, identity_id: int) -> dict[str, Any]:
     """Reuse trade_log_io.export_canonical; add pack envelope identity if missing."""
     import trade_log_io as tio
@@ -509,12 +556,14 @@ def build_member_pack(cur, identity_id: int, *, role: str = "observer") -> dict[
     journal_session = build_journal_session_document(cur, identity_id)
     retrospective = build_retrospective_document(cur, identity_id)
     journey = build_journey_document(cur, identity_id, role=role)
+    playbook = build_playbook_document(cur, identity_id)
     pack["surfaces"] = [
         "trade_log",
         "journal",
         "journal_session",
         "retrospective",
         "journey",
+        "playbook",
     ]
     pack["documents"] = {
         "trade_log": trade_log,
@@ -522,6 +571,7 @@ def build_member_pack(cur, identity_id: int, *, role: str = "observer") -> dict[
         "journal_session": journal_session,
         "retrospective": retrospective,
         "journey": journey,
+        "playbook": playbook,
     }
     return pack
 
@@ -542,6 +592,7 @@ def pack_to_zip_bytes(pack: dict[str, Any]) -> bytes:
                 "journal_session": "journal_session.json",
                 "retrospective": "retrospective.json",
                 "journey": "journey.json",
+                "playbook": "playbook.json",
             },
         }
         zf.writestr("manifest.json", json.dumps(manifest, indent=2, default=str))
@@ -564,5 +615,9 @@ def pack_to_zip_bytes(pack: dict[str, Any]) -> bytes:
         zf.writestr(
             "journey.json",
             json.dumps(docs.get("journey") or {}, indent=2, default=str),
+        )
+        zf.writestr(
+            "playbook.json",
+            json.dumps(docs.get("playbook") or {}, indent=2, default=str),
         )
     return buf.getvalue()

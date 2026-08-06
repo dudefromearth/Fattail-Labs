@@ -69,7 +69,15 @@ STRATEGIES: list[dict] = [
 STRATEGY_CODES = frozenset(s["code"] for s in STRATEGIES)
 
 ASSET_CLASSES = frozenset(
-    {"equity_option", "equity", "future", "crypto", "crypto_option", "cash"}
+    {
+        "equity_option",
+        "equity",
+        "future",
+        "future_option",  # ES/NQ options etc. (present in live books)
+        "crypto",
+        "crypto_option",
+        "cash",
+    }
 )
 SIDES = frozenset({"BUY", "SELL"})
 POS_EFFECTS = frozenset({"TO_OPEN", "TO_CLOSE"})

@@ -38,6 +38,22 @@ def _cleanup(iid: int) -> None:
                 ("DELETE FROM member_trade_log_legs WHERE identity_id = %s", (iid,)),
                 ("DELETE FROM member_trade_log_trades WHERE identity_id = %s", (iid,)),
                 ("DELETE FROM member_trade_log_accounts WHERE identity_id = %s", (iid,)),
+                (
+                    "DELETE FROM member_journal_messages WHERE identity_id = %s",
+                    (iid,),
+                ),
+                (
+                    "DELETE FROM member_journal_attachments WHERE identity_id = %s",
+                    (iid,),
+                ),
+                (
+                    "DELETE FROM member_journal_sessions WHERE identity_id = %s",
+                    (iid,),
+                ),
+                (
+                    "DELETE FROM member_journal_date_closures WHERE identity_id = %s",
+                    (iid,),
+                ),
                 ("DELETE FROM identities WHERE identity_id = %s", (iid,)),
             ):
                 try:
@@ -189,12 +205,15 @@ def test_export_pack_json_and_zip(client):
             "journal_session",
             "retrospective",
             "journey",
+            "playbook",
         }
         assert pack["documents"]["journal"]["format"] == "fattail.labs.journal"
         assert pack["documents"]["journal_session"]["format"] == "fattail.labs.journal_session"
         assert pack["documents"]["trade_log"]["format"] == "fattail.labs.trade_log"
         assert pack["documents"]["retrospective"]["format"] == "fattail.labs.retrospective"
         assert pack["documents"]["journey"]["format"] == "fattail.labs.journey"
+        assert pack["documents"]["playbook"]["format"] == "fattail.labs.playbook"
+        assert pack["documents"]["playbook"].get("stub") is True
 
         rz = client.get("/api/me/export?format=zip", cookies=cookies)
         assert rz.status_code == 200
@@ -207,10 +226,13 @@ def test_export_pack_json_and_zip(client):
         assert "trade_log.tradlog.json" in names
         assert "retrospective.json" in names
         assert "journey.json" in names
+        assert "playbook.json" in names
         j = json.loads(zf.read("journal.json"))
         assert j["format"] == "fattail.labs.journal"
         js = json.loads(zf.read("journal_session.json"))
         assert js["format"] == "fattail.labs.journal_session"
+        pb = json.loads(zf.read("playbook.json"))
+        assert pb["format"] == "fattail.labs.playbook"
     finally:
         _cleanup(iid)
 
@@ -479,3 +501,264 @@ def test_import_isolation_uses_session_identity(client):
     finally:
         _cleanup(a)
         _cleanup(b)
+
+
+def test_round_trip_trade_log_future_option_and_rights(client):
+    """future_option + option_right survive export → wipe → import."""
+    iid = _make_member("zztest-export-tl-fo@labs.test")
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO member_trade_log_accounts
+                         (identity_id, label, broker, currency, status, sort_order)
+                       VALUES (%s, 'Main', 'fattail', 'USD', 'active', 0)""",
+                    (iid,),
+                )
+                aid = int(cur.lastrowid)
+                cur.execute(
+                    """INSERT INTO member_trade_log_trades
+                         (identity_id, account_id, exec_at, asset_class, strategy,
+                          order_type, net_price, net_side, setup_md, plan_md,
+                          rules_md, adherence, deviation_md, lesson_md,
+                          external_adapter, external_order_id, entry_source)
+                       VALUES (%s, %s, NOW(), 'future_option', 'BUTTERFLY',
+                               'LMT', 0.50, 'DEBIT', '', '', '', 'followed', '', '',
+                               'native', 'fo-ext-1', 'manual')""",
+                    (iid, aid),
+                )
+                tid = int(cur.lastrowid)
+                cur.execute(
+                    """INSERT INTO member_trade_log_legs
+                         (trade_id, identity_id, account_id, leg_index, side, quantity,
+                          pos_effect, asset_class, underlier, symbol, expiry, strike,
+                          option_right, fill_price)
+                       VALUES
+                         (%s, %s, %s, 0, 'BUY', 1, 'TO_OPEN', 'future_option',
+                          'ES', 'ES', '2026-09-18', 5500, 'PUT', 1.20),
+                         (%s, %s, %s, 1, 'SELL', 2, 'TO_OPEN', 'future_option',
+                          'ES', 'ES', '2026-09-18', 5525, 'PUT', 0.80),
+                         (%s, %s, %s, 2, 'BUY', 1, 'TO_OPEN', 'future_option',
+                          'ES', 'ES', '2026-09-18', 5550, 'PUT', 0.40)""",
+                    (tid, iid, aid, tid, iid, aid, tid, iid, aid),
+                )
+        cookies = cookie_for("activator", iid)
+        pack = client.get("/api/me/export?format=json", cookies=cookies).json()
+        tl = pack["documents"]["trade_log"]
+        trades = tl["accounts"][0]["trades"]
+        assert len(trades) == 1
+        assert trades[0]["asset_class"] == "future_option"
+        assert all(leg.get("right") == "PUT" for leg in trades[0]["legs"])
+
+        # Wipe practice trades
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM member_trade_log_legs WHERE identity_id = %s", (iid,)
+                )
+                cur.execute(
+                    "DELETE FROM member_trade_log_trades WHERE identity_id = %s", (iid,)
+                )
+                cur.execute(
+                    "DELETE FROM member_trade_log_accounts WHERE identity_id = %s",
+                    (iid,),
+                )
+
+        commit = client.post(
+            "/api/me/import/commit",
+            cookies=cookies,
+            json={"text": json.dumps(pack), "policy": "additive"},
+        )
+        assert commit.status_code == 200, commit.text
+        body = commit.json()
+        assert body["results"]["trade_log"]["counts"]["new"] == 1
+        assert body["results"]["trade_log"]["counts"]["error"] == 0
+
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT asset_class FROM member_trade_log_trades
+                       WHERE identity_id = %s""",
+                    (iid,),
+                )
+                row = cur.fetchone()
+                assert row["asset_class"] == "future_option"
+                cur.execute(
+                    """SELECT option_right, asset_class FROM member_trade_log_legs
+                       WHERE identity_id = %s ORDER BY leg_index""",
+                    (iid,),
+                )
+                legs = cur.fetchall()
+                assert len(legs) == 3
+                assert all(l["option_right"] == "PUT" for l in legs)
+                assert all(l["asset_class"] == "future_option" for l in legs)
+    finally:
+        _cleanup(iid)
+
+
+def test_round_trip_journal_session_import(client):
+    """Journal sessions (messages) export and re-import by export_key / date."""
+    iid = _make_member("zztest-export-js-rt@labs.test")
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO member_journal_sessions
+                         (identity_id, tag, journal_date, session_started_at, status,
+                          structured_json, export_key)
+                       VALUES (%s, 'reflection', '2026-06-15', NOW(6), 'closed',
+                               %s, 'js-rt-1')""",
+                    (iid, json.dumps({"mood": "steady"})),
+                )
+                sid = int(cur.lastrowid)
+                cur.execute(
+                    """INSERT INTO member_journal_messages
+                         (session_id, identity_id, author, body_md, phase, created_at)
+                       VALUES
+                         (%s, %s, 'member', 'Pre-open plan held.', 'pre_open', NOW(6)),
+                         (%s, %s, 'agent', 'Noted.', 'pre_open', NOW(6))""",
+                    (sid, iid, sid, iid),
+                )
+        cookies = cookie_for("activator", iid)
+        pack = client.get("/api/me/export?format=json", cookies=cookies).json()
+        assert len(pack["documents"]["journal_session"]["entries"]) == 1
+        assert pack["documents"]["journal_session"]["entries"][0]["id"] == "js-rt-1"
+
+        ok = client.post(
+            "/api/me/practice-data/purge",
+            cookies=cookies,
+            json={"confirm": "DELETE_PRACTICE_DATA"},
+        )
+        assert ok.status_code == 200, ok.text
+
+        commit = client.post(
+            "/api/me/import/commit",
+            cookies=cookies,
+            json={"text": json.dumps(pack), "policy": "additive"},
+        )
+        assert commit.status_code == 200, commit.text
+        js = commit.json()["results"]["journal_session"]
+        assert js["counts"]["new"] == 1
+        assert js["messages"]["new"] == 2
+
+        pack2 = client.get("/api/me/export?format=json", cookies=cookies).json()
+        entries = pack2["documents"]["journal_session"]["entries"]
+        assert len(entries) == 1
+        bodies = [m["body_md"] for m in entries[0]["messages"]]
+        assert "Pre-open plan held." in bodies
+
+        # Second load skips
+        c2 = client.post(
+            "/api/me/import/commit",
+            cookies=cookies,
+            json={"text": json.dumps(pack), "policy": "additive"},
+        )
+        assert c2.status_code == 200
+        assert c2.json()["results"]["journal_session"]["counts"]["skip"] >= 1
+        assert c2.json()["results"]["journal_session"]["counts"]["new"] == 0
+    finally:
+        _cleanup(iid)
+
+
+def test_import_open_retro_demoted_when_target_has_open(client):
+    """Dev→prod portability: open retro in pack demotes instead of 409."""
+    iid = _make_member("zztest-export-open-demote@labs.test")
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO member_retrospectives
+                         (identity_id, status, is_maiden, scope_start, scope_end,
+                          title, body_md)
+                       VALUES (%s, 'draft', 0, NOW(), NOW(), 'Already open', '')""",
+                    (iid,),
+                )
+        cookies = cookie_for("activator", iid)
+        pack = {
+            "format": "fattail.labs.member_export",
+            "model_version": "1.0",
+            "documents": {
+                "retrospective": {
+                    "format": "fattail.labs.retrospective",
+                    "retrospectives": [
+                        {
+                            "id": "retro-imported-open",
+                            "status": "draft",
+                            "is_maiden": False,
+                            "scope_start": "2026-01-01T00:00:00Z",
+                            "scope_end": "2026-01-07T00:00:00Z",
+                            "title": "From other env",
+                            "body_md": "should land as interrupted",
+                        }
+                    ],
+                    "habit_plans": [],
+                }
+            },
+        }
+        prev = client.post(
+            "/api/me/import/preview",
+            cookies=cookies,
+            json={"text": json.dumps(pack), "policy": "additive"},
+        )
+        assert prev.status_code == 200
+        assert prev.json()["ok"] is True
+        assert any("demoted" in w for w in (prev.json().get("warnings") or []))
+
+        commit = client.post(
+            "/api/me/import/commit",
+            cookies=cookies,
+            json={"text": json.dumps(pack), "policy": "additive"},
+        )
+        assert commit.status_code == 200, commit.text
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT status FROM member_retrospectives
+                       WHERE identity_id = %s AND export_key = 'retro-imported-open'""",
+                    (iid,),
+                )
+                row = cur.fetchone()
+                assert row is not None
+                assert row["status"] == "interrupted"
+    finally:
+        _cleanup(iid)
+
+
+def test_playbook_stub_round_trip(client):
+    """Playbook stub notes export and re-import."""
+    iid = _make_member("zztest-export-playbook@labs.test")
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO member_tool_notes
+                         (identity_id, surface, body_md, export_key)
+                       VALUES (%s, 'playbook', 'Always size first', 'pb-1')""",
+                    (iid,),
+                )
+        cookies = cookie_for("activator", iid)
+        pack = client.get("/api/me/export?format=json", cookies=cookies).json()
+        assert pack["documents"]["playbook"]["format"] == "fattail.labs.playbook"
+        assert any(
+            e["body_md"] == "Always size first"
+            for e in pack["documents"]["playbook"]["entries"]
+        )
+
+        client.post(
+            "/api/me/practice-data/purge",
+            cookies=cookies,
+            json={"confirm": "DELETE_PRACTICE_DATA"},
+        )
+        commit = client.post(
+            "/api/me/import/commit",
+            cookies=cookies,
+            json={"text": json.dumps(pack), "policy": "additive"},
+        )
+        assert commit.status_code == 200, commit.text
+        assert commit.json()["results"]["playbook"]["counts"]["new"] >= 1
+
+        pack2 = client.get("/api/me/export?format=json", cookies=cookies).json()
+        bodies = [e["body_md"] for e in pack2["documents"]["playbook"]["entries"]]
+        assert "Always size first" in bodies
+    finally:
+        _cleanup(iid)

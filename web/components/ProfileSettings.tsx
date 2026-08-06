@@ -281,8 +281,8 @@ export default function ProfileSettings() {
       <section className="surface-card border border-[var(--color-separator)] p-6">
         <h2 className="text-lg font-semibold">Your data</h2>
         <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-          Download a copy of your Practice data (Trade Log, Journal,
-          Retrospectives, Journey), or load a backup. Load is{" "}
+          Download a copy of your Practice data (Trade Log, Journal sessions,
+          Retrospectives, Journey, Playbook stub), or load a backup. Load is{" "}
           <strong>additive only</strong> — existing entries are never overwritten
           by load. To fully replace from a backup: download first, delete Practice
           data (membership stays), then load. Journey grades recalculate from

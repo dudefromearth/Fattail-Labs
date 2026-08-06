@@ -296,19 +296,33 @@ def _leg_from_mapped(m: dict[str, str], index: int) -> dict:
     # OCC-style symbol often is underlier for index options in ToS export
     if underlier and len(underlier) > 8 and not m.get("underlier"):
         underlier = underlier[:6]
+    ac = (m.get("asset_class") or "equity_option").strip().lower()
+    # Normalize aliases seen in broker books / older exports
+    ac_aliases = {
+        "futures": "future",
+        "futures_option": "future_option",
+        "fut_opt": "future_option",
+        "option": "equity_option",
+        "options": "equity_option",
+        "stock": "equity",
+        "etf": "equity",
+    }
+    ac = ac_aliases.get(ac, ac)
+    if ac not in cat.ASSET_CLASSES:
+        ac = "equity_option"
     return {
         "leg_index": index,
         "side": side,
         "quantity": max(1, qty),
         "pos_effect": pe,
-        "asset_class": m.get("asset_class") or "equity_option",
+        "asset_class": ac,
         "underlier": underlier[:64] if underlier else None,
         "symbol": m.get("symbol"),
         "expiry": _parse_expiry(m.get("expiry") or ""),
         "strike": _dec(m.get("strike")),
         "right": right,
         "fill_price": _dec(m.get("fill_price")) or 0.0,
-        "fees": None,
+        "fees": _dec(m.get("fees")) if m.get("fees") not in (None, "") else None,
     }
 
 
@@ -743,18 +757,39 @@ def _normalize_trade(t: dict, warnings: list[str]) -> dict | None:
             "pos_effect": leg.get("pos_effect"),
             "underlier": leg.get("underlier"),
             "symbol": leg.get("symbol"),
-            "expiry": leg.get("expiry"),
+            "expiry": str(leg.get("expiry") or ""),
             "strike": str(leg.get("strike") or ""),
             "right": leg.get("right") or leg.get("option_right"),
-            "fill_price": str(leg.get("fill_price") or 0),
+            "fill_price": str(leg.get("fill_price") if leg.get("fill_price") is not None else 0),
+            "fees": str(leg.get("fees")) if leg.get("fees") not in (None, "") else "",
             "asset_class": leg.get("asset_class") or "equity_option",
         }
         legs.append(_leg_from_mapped(m, i))
     proc = t.get("process") if isinstance(t.get("process"), dict) else {}
+    tac = (t.get("asset_class") or "equity_option").strip().lower()
+    tac_aliases = {
+        "futures": "future",
+        "futures_option": "future_option",
+        "fut_opt": "future_option",
+        "option": "equity_option",
+        "options": "equity_option",
+        "stock": "equity",
+        "etf": "equity",
+    }
+    tac = tac_aliases.get(tac, tac)
+    if tac not in cat.ASSET_CLASSES:
+        # Prefer majority leg class when trade-level class is unknown
+        from collections import Counter
+
+        leg_acs = [lg.get("asset_class") for lg in legs if lg.get("asset_class")]
+        if leg_acs:
+            tac = Counter(leg_acs).most_common(1)[0][0]
+        else:
+            tac = "equity_option"
     out = {
         "exec_at": exec_at,
         "strategy": strategy,
-        "asset_class": (t.get("asset_class") or "equity_option").lower(),
+        "asset_class": tac,
         "order_type": (t.get("order_type") or "LMT").upper()[:32],
         "net_price": _dec(t.get("net_price")),
         "net_side": (str(t["net_side"]).upper() if t.get("net_side") else None),
@@ -772,7 +807,9 @@ def _normalize_trade(t: dict, warnings: list[str]) -> dict | None:
             else None
         )
         or t.get("external_order_id")
+        or t.get("id")
         or _trade_hash(exec_at, strategy, legs),
+        "entry_source": t.get("entry_source") or "import",
         "_account_label": t.get("_account_label"),
     }
     if out["net_side"] and out["net_side"] not in cat.NET_SIDES:
@@ -802,6 +839,23 @@ def parse(adapter: str, text: str) -> dict:
     return parse(det[0]["id"], text)
 
 
+def _json_scalar(v: Any) -> Any:
+    """Coerce DB values (datetime, Decimal, date) to JSON-safe scalars."""
+    if v is None:
+        return None
+    if isinstance(v, datetime):
+        if v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+        return v.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    if isinstance(v, Decimal):
+        # Prefer string for money fidelity; parse_native/_dec accept both
+        return format(v, "f")
+    if hasattr(v, "isoformat") and not isinstance(v, str):
+        # date / time
+        return v.isoformat()
+    return v
+
+
 def export_canonical(
     accounts: list[dict],
     trades_by_account: dict[int, list[dict]],
@@ -815,11 +869,11 @@ def export_canonical(
             tlist.append(
                 {
                     "id": str(t["id"]),
-                    "exec_at": t.get("exec_at"),
+                    "exec_at": _json_scalar(t.get("exec_at")),
                     "asset_class": t.get("asset_class"),
                     "strategy": t.get("strategy"),
                     "order_type": t.get("order_type"),
-                    "net_price": t.get("net_price"),
+                    "net_price": _json_scalar(t.get("net_price")),
                     "net_side": t.get("net_side"),
                     "process": {
                         "setup_md": t.get("setup_md") or "",
@@ -828,28 +882,32 @@ def export_canonical(
                         "adherence": t.get("adherence") or "unknown",
                         "deviation_md": t.get("deviation_md") or "",
                         "lesson_md": t.get("lesson_md") or "",
-                        "pnl_amount": t.get("pnl_amount"),
+                        "pnl_amount": _json_scalar(t.get("pnl_amount")),
                     },
                     "legs": [
                         {
                             "leg_index": leg.get("leg_index", i),
                             "side": leg.get("side"),
-                            "quantity": leg.get("quantity"),
+                            "quantity": int(leg["quantity"])
+                            if leg.get("quantity") is not None
+                            else 1,
                             "pos_effect": leg.get("pos_effect"),
                             "asset_class": leg.get("asset_class"),
                             "underlier": leg.get("underlier"),
                             "symbol": leg.get("symbol"),
-                            "expiry": leg.get("expiry"),
-                            "strike": leg.get("strike"),
-                            "right": leg.get("right"),
-                            "fill_price": leg.get("fill_price"),
-                            "fees": leg.get("fees"),
+                            "expiry": _json_scalar(leg.get("expiry")),
+                            "strike": _json_scalar(leg.get("strike")),
+                            # DB column is option_right; accept either shape on re-export
+                            "right": leg.get("right") or leg.get("option_right"),
+                            "fill_price": _json_scalar(leg.get("fill_price")),
+                            "fees": _json_scalar(leg.get("fees")),
                         }
                         for i, leg in enumerate(t.get("legs") or [])
                     ],
                     "external_refs": {
                         "broker_order_id": t.get("external_order_id"),
                     },
+                    "entry_source": t.get("entry_source") or "import",
                 }
             )
         out_accounts.append(
