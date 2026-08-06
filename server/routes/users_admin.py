@@ -1,11 +1,21 @@
-"""Admin Users — roster + per-user login/engagement analytics.
+"""Admin Users — roster + per-user login/engagement analytics + billing class.
 
 Email-keyed identities with: how/how-often they logged in (login_events),
 membership pulled from fattail.ai / 0-dte SSO (memberships + identity_links),
 pages navigated + estimated time on platform (page_views), and course
 engagement proxies (lesson_progress, enrollments, quiz_attempts).
 
-Read-only. Admin session required. Spec: FatTail-Labs-User-Activity-Analytics-Spec-v1.0.
+Billing visibility (free vs paid): every identity is classified into one of
+paid / free / alumni / staff so operators can see who is a paying member at a
+glance. "Paid" = an active membership on a paid plan (Observer — which includes
+the Observer Trial, one $17/wk tier — Activator, or Navigator). "Free" = an
+account with no active paid membership (self-serve /register or provisioned,
+never purchased). "Alumni" = the churned-but-retained free grant. "Staff" =
+admin accounts, kept out of the member counts. Waitlist leads
+(feature_gate_emails / AC "Labs Lead") are NOT identities and never appear here.
+
+Read-only. Admin session required. Spec: FatTail-Labs-User-Billing-Visibility-Spec-v1.0
+(supersedes the roster half of FatTail-Labs-User-Activity-Analytics-Spec-v1.0).
 """
 
 from __future__ import annotations
@@ -20,6 +30,13 @@ from auth import ROLE_ORDER
 from guards import require_admin
 
 router = APIRouter(prefix="/api/admin/users", tags=["admin-users"])
+
+# Billing classification for the free/paid view.
+# Per Coach: Observer and Observer Trial are the SAME $17/wk paid tier — no split.
+PAID_PLAN_SLUGS = frozenset({"observer", "observer-trial", "activator", "navigator"})
+FREE_RETENTION_SLUGS = frozenset({"alumni"})  # churned-but-retained; not paying
+BILLING_CLASSES = ("paid", "free", "alumni", "staff")
+ROSTER_CAP = 5000  # admin screen; classify/sort/filter happen in Python
 
 
 def _iso(dt) -> str | None:
@@ -40,6 +57,27 @@ def _max_dt(*dts):
 
 def _role_rank(role: str | None) -> int:
     return ROLE_ORDER.index(role) if role in ROLE_ORDER else -1
+
+
+def _classify_billing(is_admin: bool, mships: list[dict]) -> tuple[str, str]:
+    """Return (billing_status, plan_label) from active/grace memberships.
+
+    Precedence: staff > paid > alumni > free. `mships` rows carry slug, name,
+    grants_role (from _active_memberships_for). Observer / Observer Trial collapse
+    to a single "Observer" label — they are one paid tier.
+    """
+    if is_admin:
+        return ("staff", "Staff")
+    paid = [m for m in mships if m.get("slug") in PAID_PLAN_SLUGS]
+    if paid:
+        best = max(paid, key=lambda r: _role_rank(r.get("grants_role")))
+        label = best["name"]
+        if best.get("slug") in ("observer", "observer-trial"):
+            label = "Observer"
+        return ("paid", label)
+    if any(m.get("slug") in FREE_RETENTION_SLUGS for m in mships):
+        return ("alumni", "Alumni")
+    return ("free", "Free")
 
 
 def _providers_for(cur, ids: list[int]) -> dict[int, list[str]]:
@@ -83,19 +121,22 @@ def _membership_label(rows: list[dict]) -> str:
     return f"{best['name']} ({best['status']})"
 
 
-def _roster(cur, like: str | None, limit: int, offset: int) -> tuple[list[dict], int]:
-    """Shared query for the list + CSV. Returns (users, total)."""
+def _roster(cur, like: str | None) -> list[dict]:
+    """All matching identities (capped), each with engagement + billing class.
+
+    Sorting, pagination, and among-class filtering are done by the caller in
+    Python so the billing filter and the last-active sort stay consistent with
+    what the table actually shows. Each row carries a private `_sort_active`
+    epoch (stripped before serialization).
+    """
     where = ""
     params: list = []
     if like:
         where = "WHERE (i.email LIKE %s OR i.display_name LIKE %s)"
         params += [like, like]
 
-    cur.execute(f"SELECT COUNT(*) AS n FROM identities i {where}", tuple(params))
-    total = int(cur.fetchone()["n"])
-
     cur.execute(
-        f"""SELECT i.identity_id, i.email, i.display_name, i.created_at,
+        f"""SELECT i.identity_id, i.email, i.display_name, i.role_override, i.created_at,
             (SELECT COUNT(*) FROM login_events le
                 WHERE le.identity_id = i.identity_id) AS login_count,
             (SELECT MAX(le.created_at) FROM login_events le
@@ -112,9 +153,9 @@ def _roster(cur, like: str | None, limit: int, offset: int) -> tuple[list[dict],
                 WHERE e.identity_id = i.identity_id) AS courses_enrolled
             FROM identities i
             {where}
-            ORDER BY last_login IS NULL, last_login DESC, i.created_at DESC
-            LIMIT %s OFFSET %s""",
-        tuple(params) + (limit, offset),
+            ORDER BY i.created_at DESC
+            LIMIT %s""",
+        tuple(params) + (ROSTER_CAP,),
     )
     rows = cur.fetchall()
     ids = [int(r["identity_id"]) for r in rows]
@@ -124,6 +165,9 @@ def _roster(cur, like: str | None, limit: int, offset: int) -> tuple[list[dict],
     users = []
     for r in rows:
         iid = int(r["identity_id"])
+        mships = memberships.get(iid, [])
+        is_admin = (r.get("role_override") or "") == "administrator"
+        billing_status, plan_tier = _classify_billing(is_admin, mships)
         last_active = _max_dt(
             r.get("last_login"), r.get("last_pageview"), r.get("last_lesson_at")
         )
@@ -133,7 +177,9 @@ def _roster(cur, like: str | None, limit: int, offset: int) -> tuple[list[dict],
             "display_name": r["display_name"],
             "role": identity.derive_role(cur, iid),
             "providers": providers.get(iid, []),
-            "membership": _membership_label(memberships.get(iid, [])),
+            "membership": _membership_label(mships),
+            "billing_status": billing_status,
+            "plan_tier": plan_tier,
             "created_at": _iso(r["created_at"]),
             "login_count": int(r["login_count"] or 0),
             "last_login": _iso(r["last_login"]),
@@ -142,40 +188,68 @@ def _roster(cur, like: str | None, limit: int, offset: int) -> tuple[list[dict],
             "last_active": _iso(last_active),
             "watch_seconds": int(r["watch_seconds"] or 0),
             "courses_enrolled": int(r["courses_enrolled"] or 0),
+            "_sort_active": _epoch(last_active) or 0,
         })
-    return users, total
+    users.sort(key=lambda u: u["_sort_active"], reverse=True)
+    return users
+
+
+def _billing_counts(users: list[dict]) -> dict[str, int]:
+    counts = {c: 0 for c in BILLING_CLASSES}
+    for u in users:
+        counts[u["billing_status"]] = counts.get(u["billing_status"], 0) + 1
+    counts["total"] = len(users)
+    return counts
 
 
 @router.get("")
 def list_users(
-    request: Request, search: str = "", limit: int = 50, offset: int = 0
+    request: Request, search: str = "", limit: int = 50, offset: int = 0,
+    billing: str = "",
 ) -> dict:
     require_admin(request)
     limit = max(1, min(int(limit), 200))
     offset = max(0, int(offset))
     like = f"%{search.strip()}%" if search.strip() else None
+    bf = billing.strip().lower()
+    bf = bf if bf in BILLING_CLASSES else ""
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            users, total = _roster(cur, like, limit, offset)
-    return {"users": users, "total": total, "limit": limit, "offset": offset,
-            "search": search}
+            allu = _roster(cur, like)
+
+    counts = _billing_counts(allu)  # always the full picture, ignoring the filter
+    view = [u for u in allu if u["billing_status"] == bf] if bf else allu
+    total = len(view)
+    page = view[offset:offset + limit]
+    for u in page:
+        u.pop("_sort_active", None)
+    return {
+        "users": page, "total": total, "counts": counts,
+        "limit": limit, "offset": offset, "search": search, "billing": bf,
+    }
 
 
 @router.get("/export.csv")
-def export_csv(request: Request, search: str = "") -> PlainTextResponse:
+def export_csv(request: Request, search: str = "", billing: str = "") -> PlainTextResponse:
     """Roster CSV export (all matching users, capped)."""
     require_admin(request)
     like = f"%{search.strip()}%" if search.strip() else None
+    bf = billing.strip().lower()
+    bf = bf if bf in BILLING_CLASSES else ""
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            users, _ = _roster(cur, like, 5000, 0)
-    cols = ["email", "display_name", "role", "providers", "membership",
-            "login_count", "last_login", "pageview_count", "last_active",
-            "watch_seconds", "courses_enrolled", "created_at"]
+            users = _roster(cur, like)
+    if bf:
+        users = [u for u in users if u["billing_status"] == bf]
+    cols = ["email", "display_name", "role", "billing_status", "plan_tier",
+            "providers", "membership", "login_count", "last_login",
+            "pageview_count", "last_active", "watch_seconds", "courses_enrolled",
+            "created_at"]
     lines = [",".join(cols)]
     for u in users:
         vals = [
             u["email"], u["display_name"], u["role"],
+            u["billing_status"], u["plan_tier"],
             " ".join(u["providers"]), u["membership"],
             str(u["login_count"]), u["last_login"] or "",
             str(u["pageview_count"]), u["last_active"] or "",
@@ -234,6 +308,12 @@ def user_detail(identity_id: int, request: Request) -> dict:
                  "current_period_end": _iso(r["current_period_end"])}
                 for r in cur.fetchall()
             ]
+            # Billing class from the active/grace memberships only.
+            active_mships = _active_memberships_for(cur, [identity_id]).get(
+                int(identity_id), []
+            )
+            is_admin = (who.get("role_override") or "") == "administrator"
+            billing_status, plan_tier = _classify_billing(is_admin, active_mships)
 
             cur.execute(
                 """SELECT COUNT(*) AS n, MIN(created_at) AS first_at,
@@ -319,6 +399,8 @@ def user_detail(identity_id: int, request: Request) -> dict:
         "display_name": who["display_name"],
         "role": role,
         "role_override": who["role_override"],
+        "billing_status": billing_status,
+        "plan_tier": plan_tier,
         "created_at": _iso(who["created_at"]),
         "providers": links,
         "memberships": memberships,

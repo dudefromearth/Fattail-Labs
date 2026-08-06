@@ -2,9 +2,16 @@
 
 // Admin Users — roster + per-user login / membership / engagement analytics.
 // Read-only. Data: /api/admin/users (list) and /api/admin/users/{id} (detail).
-// Spec: FatTail-Labs-User-Activity-Analytics-Spec-v1.0.
+// Billing class (paid / free / alumni / staff) is a first-class column + filter so
+// operators can see who is a paying member at a glance. "Via" and login "method"
+// are relabeled (Password / SSO) so login method never reads as a membership tier.
+// Spec: FatTail-Labs-User-Billing-Visibility-Spec-v1.0.
 
 import { useCallback, useEffect, useState } from "react";
+
+type Counts = {
+  paid: number; free: number; alumni: number; staff: number; total: number;
+};
 
 type UserRow = {
   identity_id: number;
@@ -13,6 +20,8 @@ type UserRow = {
   role: string;
   providers: string[];
   membership: string;
+  billing_status: string; // paid | free | alumni | staff
+  plan_tier: string;
   created_at: string | null;
   login_count: number;
   last_login: string | null;
@@ -27,6 +36,8 @@ type UserDetail = {
   email: string;
   display_name: string;
   role: string;
+  billing_status: string;
+  plan_tier: string;
   created_at: string | null;
   providers: { provider: string; external_id: string; linked_at: string | null }[];
   memberships: {
@@ -64,20 +75,65 @@ function fmtDuration(seconds: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+// Login method / linked provider → human label. "native" is a Labs email+password
+// login, not a membership; the SSO providers say which WordPress site they came via.
+function providerLabel(p: string): string {
+  switch (p) {
+    case "native": return "Password";
+    case "wordpress:fattail": return "FatTail SSO";
+    case "wordpress:0-dte": return "0-DTE SSO";
+    case "stripe": return "Stripe";
+    default: return p;
+  }
+}
+
+const BILLING_STYLE: Record<string, string> = {
+  paid: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300",
+  free: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+  alumni: "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300",
+  staff: "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300",
+};
+
+function BillingBadge({ status, tier }: { status: string; tier: string }) {
+  const cls = BILLING_STYLE[status] || "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
+  // Paid shows the tier (Observer / Activator / Navigator); others show the class label.
+  const label =
+    status === "paid" ? `Paid · ${tier}` :
+    status === "free" ? "Free" :
+    status === "alumni" ? "Alumni" :
+    status === "staff" ? "Staff" : tier || status;
+  return (
+    <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
+const FILTERS: { key: string; label: string }[] = [
+  { key: "", label: "All" },
+  { key: "paid", label: "Paid" },
+  { key: "free", label: "Free" },
+  { key: "alumni", label: "Alumni" },
+  { key: "staff", label: "Staff" },
+];
+
 export default function AdminUsersPage() {
   const [rows, setRows] = useState<UserRow[] | null>(null);
   const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState<Counts | null>(null);
   const [search, setSearch] = useState("");
+  const [billing, setBilling] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [detail, setDetail] = useState<UserDetail | null>(null);
 
-  const load = useCallback(async (q: string) => {
+  const load = useCallback(async (q: string, bf: string) => {
     setError(null);
-    const r = await fetch(
-      `/api/admin/users?search=${encodeURIComponent(q)}&limit=100`,
-      { credentials: "same-origin" },
-    );
+    const params = new URLSearchParams({ search: q, limit: "100" });
+    if (bf) params.set("billing", bf);
+    const r = await fetch(`/api/admin/users?${params.toString()}`, {
+      credentials: "same-origin",
+    });
     if (!r.ok) {
       setError(r.status === 403 ? "Administrator sign-in required." : await r.text());
       setRows([]);
@@ -86,11 +142,17 @@ export default function AdminUsersPage() {
     const d = await r.json();
     setRows(d.users || []);
     setTotal(d.total || 0);
+    if (d.counts) setCounts(d.counts);
   }, []);
 
   useEffect(() => {
-    load("");
+    load("", "");
   }, [load]);
+
+  const applyFilter = useCallback((bf: string) => {
+    setBilling(bf);
+    load(search, bf);
+  }, [load, search]);
 
   const openUser = useCallback(async (id: number) => {
     setSelected(id);
@@ -105,32 +167,62 @@ export default function AdminUsersPage() {
         <div>
           <h1 className="text-2xl font-semibold">Users</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Every identity by email — how they signed in, membership, and platform
-            engagement. {total} total.
+            Every identity by email — plan (free vs paid), how they signed in, and
+            engagement.{" "}
+            {counts && (
+              <span className="text-zinc-600 dark:text-zinc-300">
+                {counts.paid} paid · {counts.free} free
+                {counts.alumni ? ` · ${counts.alumni} alumni` : ""} · {counts.staff} staff
+                {" "}({counts.total} total)
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load(search)}
+            onKeyDown={(e) => e.key === "Enter" && load(search, billing)}
             placeholder="Search email or name…"
             className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
           <button
-            onClick={() => load(search)}
+            onClick={() => load(search, billing)}
             className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
           >
             Search
           </button>
           <a
-            href={`/api/admin/users/export.csv?search=${encodeURIComponent(search)}`}
+            href={`/api/admin/users/export.csv?search=${encodeURIComponent(search)}${billing ? `&billing=${billing}` : ""}`}
             className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300"
           >
             CSV
           </a>
         </div>
       </header>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {FILTERS.map((f) => {
+          const n = counts
+            ? (f.key === "" ? counts.total : (counts as unknown as Record<string, number>)[f.key] ?? 0)
+            : null;
+          if (f.key === "alumni" && counts && !counts.alumni) return null;
+          const active = billing === f.key;
+          return (
+            <button
+              key={f.key || "all"}
+              onClick={() => applyFilter(f.key)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                active
+                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                  : "border-zinc-300 text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-300"
+              }`}
+            >
+              {f.label}{n !== null ? ` (${n})` : ""}
+            </button>
+          );
+        })}
+      </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -140,9 +232,9 @@ export default function AdminUsersPage() {
             <thead className="bg-zinc-100 text-xs uppercase text-zinc-500 dark:bg-zinc-800">
               <tr>
                 <th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">Plan</th>
                 <th className="px-3 py-2">Role</th>
-                <th className="px-3 py-2">Via</th>
-                <th className="px-3 py-2">Membership</th>
+                <th className="px-3 py-2">Signed in via</th>
                 <th className="px-3 py-2 text-right">Logins</th>
                 <th className="px-3 py-2 text-right">Watch</th>
                 <th className="px-3 py-2">Last active</th>
@@ -163,11 +255,15 @@ export default function AdminUsersPage() {
                       <div className="text-xs text-zinc-500">{u.display_name}</div>
                     )}
                   </td>
+                  <td className="px-3 py-2">
+                    <BillingBadge status={u.billing_status} tier={u.plan_tier} />
+                  </td>
                   <td className="px-3 py-2">{u.role}</td>
                   <td className="px-3 py-2 text-xs text-zinc-500">
-                    {u.providers.length ? u.providers.join(", ") : "native"}
+                    {u.providers.length
+                      ? u.providers.map(providerLabel).join(", ")
+                      : "Password"}
                   </td>
-                  <td className="px-3 py-2 text-xs">{u.membership}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{u.login_count}</td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {fmtDuration(u.watch_seconds)}
@@ -186,6 +282,11 @@ export default function AdminUsersPage() {
               )}
             </tbody>
           </table>
+          <p className="border-t border-zinc-100 px-3 py-2 text-xs text-zinc-400 dark:border-zinc-800">
+            Showing {rows?.length ?? 0} of {total}. “Signed in via” is the login method
+            (Password = a Labs password; SSO = via the WordPress site) — separate from the
+            plan, which always comes from a purchase.
+          </p>
         </div>
 
         <aside className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
@@ -194,7 +295,10 @@ export default function AdminUsersPage() {
           {detail && (
             <div className="space-y-5 text-sm">
               <div>
-                <h2 className="text-lg font-semibold">{detail.email}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">{detail.email}</h2>
+                  <BillingBadge status={detail.billing_status} tier={detail.plan_tier} />
+                </div>
                 <p className="text-xs text-zinc-500">
                   {detail.display_name || "—"} · role <b>{detail.role}</b> · joined{" "}
                   {fmtDate(detail.created_at)}
@@ -206,7 +310,7 @@ export default function AdminUsersPage() {
               <div className="text-xs text-zinc-500">
                 By method:{" "}
                 {Object.entries(detail.logins.by_method)
-                  .map(([m, n]) => `${m} ×${n}`).join(" · ") || "—"}
+                  .map(([m, n]) => `${providerLabel(m)} ×${n}`).join(" · ") || "—"}
               </div>
 
               <div className="grid grid-cols-3 gap-2">
@@ -219,7 +323,7 @@ export default function AdminUsersPage() {
               <div>
                 <h3 className="mb-1 font-medium">Membership</h3>
                 {detail.memberships.length === 0 && (
-                  <p className="text-xs text-zinc-500">No memberships (observer).</p>
+                  <p className="text-xs text-zinc-500">No memberships — free account (observer).</p>
                 )}
                 <ul className="space-y-1">
                   {detail.memberships.map((m, i) => (
@@ -234,9 +338,9 @@ export default function AdminUsersPage() {
               <div>
                 <h3 className="mb-1 font-medium">Linked accounts</h3>
                 <ul className="space-y-1 text-xs text-zinc-500">
-                  {detail.providers.length === 0 && <li>native only</li>}
+                  {detail.providers.length === 0 && <li>Password only (no SSO link)</li>}
                   {detail.providers.map((p, i) => (
-                    <li key={i}>{p.provider} (id {p.external_id})</li>
+                    <li key={i}>{providerLabel(p.provider)} (id {p.external_id})</li>
                   ))}
                 </ul>
               </div>
@@ -261,7 +365,7 @@ export default function AdminUsersPage() {
                 <ul className="space-y-1 text-xs text-zinc-500">
                   {detail.logins.recent.slice(0, 8).map((l, i) => (
                     <li key={i}>
-                      {fmtDate(l.at)} · {l.provider}
+                      {fmtDate(l.at)} · {providerLabel(l.provider)}
                       {l.ip ? ` · ${l.ip}` : ""}
                     </li>
                   ))}

@@ -4,107 +4,49 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
-## 2026-08-06 — DL-234 Curate comparison performance guard tests
+## 2026-08-05 — DL-212 Users admin free/paid visibility
 
-**Coach:** Automated tests must fail early if the multi-bot comparison hot path
-regresses (live Massive corr, 3N SQL, dual payload, fat series, multi-second wall).
+**Decision:** The admin Users section now classifies every identity into a
+**billing status** — `paid` / `free` / `alumni` / `staff` — surfaced as a badge
+column, header counts, and filter buttons, so operators can see who is a paying
+member at a glance. Read-side only: `server/routes/users_admin.py` +
+`web/app/admin/users/page.tsx`. No migration (data already exists).
 
-**Landed:** `server/tests/test_strategy_lab_curate_perf_guards.py`  
-**Budgets:** ≤12 SQL executes · ≤2s wall @ N=8 · `correlation.deferred` · bots-only  
-**Arch:** `Architecture/20` §4 · Spec Surface acceptance #12
+**Definitions (Coach-locked):**
+- **paid** = an active/grace membership on a paid plan. Paid plans =
+  `{observer, observer-trial, activator, navigator}`. **Observer and Observer
+  Trial are the SAME $17/wk tier — no split**; both display as "Observer".
+- **free** = an account with no active paid membership (self-serve `/register`
+  observer-tier account, or a provisioned identity that never purchased). Free is
+  the *absence* of a paid membership, not a tag. Waitlist leads
+  (`feature_gate_emails` / AC "Labs Lead") are not identities and never appear here.
+- **alumni** = active `alumni`-plan membership (churned-but-retained free grant);
+  ranks below paid, shown as its own class.
+- **staff** = `role_override = administrator`; excluded from member counts.
+- Precedence when several apply: **staff > paid > alumni > free**.
 
-## 2026-08-06 — DL-233 Documentation parity: Curate board performance + suite nav
+**Also fixed in the same change (were making the data "look wrong"):**
+1. Roster now **sorts by last-active** (max of login/pageview/lesson), matching
+   the "Last active" column — previously it sorted by `last_login`, so order
+   disagreed with the displayed times.
+2. Login **method is relabeled** in the UI (`native`→"Password",
+   `wordpress:fattail`→"FatTail SSO", `wordpress:0-dte`→"0-DTE SSO",
+   `stripe`→"Stripe") and the column renamed "Signed in via", with a note that
+   login method ≠ membership. This resolves the "native but Observer" confusion:
+   "native" was a password login, never a plan.
 
-**Coach:** Update specs, architecture, and user guide for (1) multi-bot board
-performance/stability contract and (2) suite nav restoration (Design · Curate ·
-Deploy · Archive; Symbols under Design).
+**Implementation notes:** classify/sort/among-class-filter happen in Python over
+the matched set (capped `ROSTER_CAP=5000`) so the filter and last-active sort stay
+consistent with the table; header `counts` are always the full unfiltered picture.
+`list_users`/`export.csv` accept `?billing=`; `user_detail` also returns
+`billing_status`/`plan_tier`. Spec: `FatTail-Labs-User-Billing-Visibility-Spec-v1.0`.
+Tests: `test_user_activity.py` (classifier truth table + counts sum + free-filter).
+Status: implemented; pending live verification on MiniTwo.
 
-**Landed:**
-- Spec Surface **v1.0.2** (§1.5 comparison hot path, §3 symbols under Design, §5 board stability)
-- `Architecture/20-strategy-lab-curate-board-performance.md` (audit conclusions + as-built)
-- Updates: Arch **19**, **18**, **README**; Curate user guide; Navigation Continuity note
-- Decision log **DL-230–DL-232**
+*(Note: production MySQL session tz is America/New_York, so `_iso()`'s "Z" suffix
+is nominal — Ernie's server and ops are ET, accepted as-is, not changed here.)*
 
-## 2026-08-06 — DL-232 Suite nav: Design · Curate · Deploy · Archive; Symbols under Design
-
-**Coach:** Top suite must remain **Design · Curate · Deploy · Archive**. Do **not**
-rename to Sim market / Live market. **Symbols is not a top-level suite tab.**
-
-**As-built:**
-- `web/lib/strategyLabSuite.ts` — suite = four items only
-- Design **sub-nav**: Board | Symbols (`StrategyLabDesignSubNav`)
-- Symbols pages chrome with `active=development`, `designSub=symbols`
-- **Design:** assign symbol (underlying) via designer `CurateSymbolPicker` for BT/FW
-- **Curate:** re-select scan symbol when creating a sim run
-- **Deploy:** no symbol step — only curated bots
-
-**Rationale:** Symbol is an attribute of the bot’s design and Curate run, not a
-life-cycle phase. Deploy consumes already-curated bots.
-
-## 2026-08-06 — DL-231 Curate multi-bot board: performance & browser stability
-
-**Coach:** Browser must stay stable with many Curate instances (customer confidence).
-Performance/architecture audit → redesign of comparison + PhaseRunDashboard.
-
-**Root causes found:**
-1. Live **Massive correlation** inside `GET .../comparison` (~20–22s @ 17 bots)
-2. **1 Hz** parent `nowMs` re-rendering all cards + SVG charts
-3. Unbounded mount of N mini equity charts
-4. O(N) SQL + dual `bots`+`strategies` full payload
-
-**As-built contract:**
-- Comparison = **book metrics only**; corr **deferred** (calculator / `/correlation*`)
-- Batched SQL (position aggs + last-N equity series window); compact `{equity}` points
-- Primary array: **`bots`**; `strategies` empty (no dual full list)
-- UI: **page size 12**; memo cards/charts; runtime clock **per-cell** only; tab-hidden pause
-- Silent poll **30s**, no stacked fetches, loading only on initial/manual refresh
-- Measured @ 17 bots: comparison **~6 ms**, payload **~19 KB** (was ~20s / ~60 KB)
-
-**Code:** `curate_domain.comparison_report` · `PhaseRunDashboard` · `MiniEquityChart` ·
-`CuratePhaseDashboard` · migration **088** `run_started_at` (runtime stat)
-
-**Arch:** `Architecture/20-strategy-lab-curate-board-performance.md`
-
-## 2026-08-06 — DL-230 Runtime since last start/restart
-
-**Coach:** Dashboard must show **current runtime since last start/restart**, adaptive:
-seconds → min:sec → hours/min → days/hours.
-
-**As-built:** Column `run_started_at` on `strategy_lab_curate_instances` (migration
-**088**). Set/reset on **Arm**. API: `run_started_at`, `runtime_seconds`,
-`runtime_label`. UI: live Runtime on grid/table (per-cell timer after DL-231).
-
-## 2026-08-05 — DL-216b Trade Log `entry_source`: manual · import · automated
-
-**Decision:** Three **distinct** provenance values on `member_trade_log_trades.entry_source`:
-
-| Value | Meaning |
-|-------|---------|
-| **`manual`** | Member typed (structure form / legs) |
-| **`import`** | File or paste adapters (ToS, CSV, canonical) |
-| **`automated`** | Strategy Lab process runtime or other Labs automations |
-
-**Never** stamp Strategy Lab fills as `import`, or file imports as `automated`. Legacy
-`machine` → `automated` (migration **082**, normalizer synonym).
-
-**Rationale:** Coach: import and automation are different audit/policy channels.
-Automated fills will come from Strategy Lab (and future bots), not from ToS paste.
-
-## 2026-08-05 — DL-216 Trade Log manual management (structure entry · close · trash)
-
-**Decision:** Manual trade entry/close/trash is a first-class Practice surface. Spec
-**§16** of Trade Log v1.1 and design architecture **`Architecture/15-trade-log-manual-management.md`**
-are as-built authority. Structure-first create; open strip + row Close/Trash; close
-pairing gates (orphan, account, units, drift); universal trash for now; `entry_source`
-via migration **081** (refined in **DL-216b**). Client match helpers mirror
-`trade_log_domain` and must not fork structure-key rules.
-
-**Rationale:** Members re-enter multi-leg books by hand; leg-by-leg default was too
-heavy. Honest open→close pairing and trash prevent silent book corruption without
-profit theater. Provenance column enables later “manual-only trash” without guesswork.
-
-**Code:** `web/lib/tradeLog.ts` · `TradeSheet` · `TradeLogTable` · `tradeLogPrefs.ts` ·
-`migrations/081_trade_log_entry_source.sql` · create/import stamp `entry_source`.
+---
 
 ## 2026-08-04 — DL-211 Member Help System (DB-backed help desk)
 
@@ -132,243 +74,6 @@ skipped — the app still boots); the member widget is wrapped in an `ErrorBound
 "the Help button doesn't work," never a blocked login/page/API. Spec:
 `FatTail-Labs-Help-System-Spec-v1.0`. Tests: `test_help.py`. Status: draft,
 pending live verification on MiniTwo.
-
-## 2026-08-06 — DL-229 Terminology: Bot · Strategy attribute · Position
-
-**Coach:** Correct terminology for Curate/Deploy units:
-
-| Term | Meaning |
-|------|---------|
-| **Bot** | Primary unit (what we wrongly called “strategy” on the grid) |
-| **Strategy** | **Attribute of the bot** (pack / methodology) |
-| **Position** | **Instance of the bot** (open/closed package) |
-
-**Spec:** Curate-and-Deploy-Surface-Spec v1.0 §0 terminology; Process Runtime v1.2 glossary.  
-**API:** emit `bot_id` / `bot_name` (+ legacy `strategy_*` aliases).  
-**UI:** dashboards/reports use Bot / Position language.
-
-## 2026-08-06 — DL-228 Spec & architecture documentation parity
-
-**Coach:** Update specs and architecture docs for as-built Strategy Lab
-Curate/Deploy surfaces.
-
-**Landed:**
-- `Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` (authority for Curate/Deploy UI, marks, symbols, correlation, reports)
-- `Specs/Strategy-Lab-Process-Runtime-Spec-v1.2.md` (amends multi-member Curate / host priority)
-- `Architecture/19-strategy-lab-as-built-map.md`
-- Updates: Arch README, 09, 17, 18; Implementation Scope overlay; Curate user guide cross-links
-
-## 2026-08-06 — DL-227 Relative correlation on grid + calculator
-
-**Coach:** Grid view shows **relative correlation**; calculator for **any two
-symbols** → Pearson coefficient.
-
-**Shipped:** `market_data.correlation` (daily simple returns, Massive aggs);
-indexes use proxy series when needed; `GET .../correlation?a=&b=&days=`;
-`GET .../correlation/relative`; comparison attaches `corr_vs_spy` per run;
-grid/table show **ρ vs SPY**; `CorrelationCalculator` on Symbols + Curate footer.
-
-## 2026-08-06 — DL-226 Deploy equity & stats like Practice Reports
-
-**Coach:** Deploy phase needs **detailed equity and stats reporting** similar to
-Practice **Reports** (equity curve, drawdown, stats table, featured cards,
-outcome distribution).
-
-**Shipped:** `build_run_reports_book` (same DTO as trade-log reports-book);
-`GET .../deploy/reports-book` + `.../curate/reports-book`; `DeployReportsPanel`
-reuses Practice `EquityChart`, `DrawdownChart`, `StatsTable`, featured cards,
-`BarDist`. Until Tradier Deploy outcomes exist, book is built from closed
-**Curate sim** packages with honest source_note.
-
-## 2026-08-06 — DL-225 Curate/Deploy high-visibility phase dashboards
-
-**Coach:** Curate and Deploy must be highly visible with **similar interfaces**:
-grid or table reporting plus **mini equity charts**. Shared `PhaseRunDashboard`
-primitive; Curate live with sim equity series; Deploy shell mirrors layout until
-Tradier provisioned.
-
-## 2026-08-06 — DL-224 VIX + Daily VIX (VIX1D) for strategy decisions
-
-**Coach:** VIX and **Daily VIX** for reference and strategy decisions.
-
-| Symbol | Meaning |
-|--------|---------|
-| **VIX** | 30-day IV regime |
-| **VIX1D** | Cboe Daily / 1-day VIX — 0DTE and daily decision context |
-
-Both are **shared reference** marks (role=reference), not default scan underliers.
-Each poll stores **mid + prev_close + day_change_pct** for daily reference.
-API: `GET /api/me/strategy-lab/curate/vol-reference`. UI vol cards on Curate stream strip.
-Until Massive index entitlement: proxies labeled (VIX/VIX1D → VIXY).
-
-## 2026-08-06 — DL-223 Curate symbol universe (indexes + ETFs + stocks)
-
-**Coach universe (enabled shared stream):**
-
-| Kind | Symbols |
-|------|---------|
-| Indexes | **SPX, XSP, VIX** |
-| ETFs | **SPY, QQQ, IWM, GLD, TLT, SLV, USO, XLF, UNG** |
-| Stocks | **AAPL, AMZN, NVDA, TSLA, GOOGL, META, MSFT** |
-
-Options cadence: 3–5 expirations/week class. Migration `085` + `086` (VIX→VIXY proxy).
-Index feeds `I:*` may 403; SPX/XSP proxy **SPY**, VIX proxy **VIXY**, always labeled.
-
-## 2026-08-06 — DL-222 Shared live marks stream for all members
-
-**Coach:** Support a **set of symbols** and a **live stream** that **every member's
-collection** uses — one shared stream, not per-member sockets.
-
-**Design:** `market_symbol_universe` + `market_live_marks` + heartbeat;
-`python -m market_data.live_stream` polls Massive into DB; Curate
-`get_mark(cur=…)` reads shared table first. Default universe: SPY, QQQ, IWM + Mag7.
-Stale policy `LABS_MARK_STALE_SECONDS` (default 60); optional
-`LABS_LIVE_MARKS_REQUIRED=1` fail-loud (no stub).
-
-**API:** `GET /api/me/strategy-lab/curate/live-marks`. UI strip on Curate phase.
-**Not Tradier streaming** (Arch/09).
-
-## 2026-08-06 — DL-221 Multi-member Curate comparison is core
-
-**Coach:** Multi-member is an **absolute** requirement. Curate exists so **many
-strategies run** and can be **compared** for promote / portfolio inclusion — not
-single-strategy hobby mode.
-
-**Shipped:** `GET .../curate/comparison` (per-member multi-strategy metrics);
-`POST .../curate/tick-all` (tick all armed/running for member);
-`POST .../curate/platform-tick` (admin multi-member worker tick);
-UI **Strategy comparison** + tick-all on Curate phase. Family B identity isolation.
-
-**Still true:** Deploy Tradier multi-member after Coach validate; Curate sim is
-the multi-strategy comparison plane first.
-
-## 2026-08-06 — DL-220 Curate runtime user guide
-
-**Coach:** User guide for Curate run environment: UI path, under-the-covers
-position/cash/mark/envelope, decision log, chart feasibility (data-ready; UI charts
-not shipped in v1).
-
-**Doc:** `docs/Strategy-Lab-Curate-Runtime-User-Guide.md`
-
-## 2026-08-06 — DL-219 Curate run environment v1 (sim)
-
-**Coach:** Start Curate run environment for everyone (Stage A). Real-market marks
-(stub v1) + simulated broker + fake money; never Tradier. Member-triggered tick
-(manage-before-scan); cloud scheduled workers later.
-
-**Shipped:** migration `083_strategy_lab_curate_runtime.sql`; package
-`server/strategy_runtime/`; routes `/api/me/strategy-lab/curate/*`; UI
-`CurateRuntimePanel`; tests `test_strategy_lab_curate.py`. Fill model
-`mark_mid_v1` labeled. Deploy still Coach-only / not in this slice.
-
-## 2026-08-06 — DL-218 Strategy Lab growth playbook (dogfood → platform)
-
-**Coach:** Fund Tradier, hook API, scale through FatTail Labs so others can create
-and deploy **FatTail-style** process-bots. Best path is **vertical slice first**,
-growth stages with hard exit criteria—not multi-tenant or multi-pack before dogfood.
-
-**Stages (v1.1 refine):**  
-- **A — Design + Curate for everyone** (shared studio; sim only; no member Deploy)  
-- **B — Deploy for Coach only** (validate Tradier paper/live + runtime)  
-- **C — Provision members** for Deploy (their Tradier; paper then gated live)  
-- **D — Solid platform** (hundreds, caps, HA, doctrine)
-
-**Build order:** Design/Curate multi-tenant + Coach Tradier spike in parallel →
-Coach-only Deploy gate → member OAuth + `strategy_lab_deploy` provision.
-
-**Architecture:** `Architecture/17-strategy-lab-growth-playbook.md` **v1.1**
-
-## 2026-08-06 — DL-217 Same service type as OA, opposite strategic direction
-
-**Coach:** Offer the **same type of service** as Option Alpha (no-code process
-automation, cloud continuous run, paper engine, broker-connected live) with a
-**completely opposite strategic direction for traders**.
-
-| Same | Opposite |
-|------|----------|
-| Hosted bots / process runtime, paper, Tradier | Capacity over dependency (not set-and-forget) |
-| OA-class reliability & performance (DL-216) | Stop the bleeding; process outcomes never profit claims |
-| Encode → prove → run → inspect | Proof gates, version pin, arming; Habit Catalog + retro |
-| Member broker custody | Defined-risk pathway; creator owns plan; no profit theater |
-
-**Architecture:** `Architecture/16-strategy-lab-vs-option-alpha-positioning.md`  
-**Bar:** OA-class **service**; FatTail **doctrine**. Features that increase dependency
-or profit theater without increasing capacity or proof do not ship.
-
-## 2026-08-06 — DL-216 Competitive bar: Option Alpha–class host reliability
-
-**Coach:** Strategy Lab will **compete with Option Alpha**. Therefore the service must
-be **at least equal in reliability and performance** for continuous automations
-(paper/Curate and live).
-
-**Implication:** Cloud-hosted Process Runtime (**M3-class workers**) is **competitive
-primary**, not an optional residual. MiniTwo-only multi-tenant bot hosting is
-insufficient. OA-class means: always-on cloud host, auto-restart, queue/workers,
-monitoring/kill switches, in-house paper (Curate: real market + sim broker + fake
-money), live via member broker API (Tradier first).
-
-**Still locked from DL-214:** User owns strategy + arming; broker owns custody and
-fills; prefer **broker-held exits**; no P&L or perfect-exit guarantees; M0 export and
-M2 user-local remain **secondary** (capacity/portability).
-
-**Architecture:** `Architecture/14-strategy-lab-execution-responsibility.md` **v1.1**  
-**Follow-on:** Process Runtime Spec amend to **v1.2** (M3 primary for continuous
-paths; §17 normative). Broker stack: two-layer adapter + ExecutionService
-(`docs/Strategy-Lab-MSC-Broker-Adapter-Assessment-2026-08-06.md`).
-
-## 2026-08-05 — DL-215 Process Runtime Spec v1.1
-
-**Coach:** Runtime Spec amended for execution offload. **v1.1** is SPEC AUTHORITY;
-v1.0 superseded for responsibility/priority. M0–M2 primary; M3 optional; Tradier-first;
-arming ceremony; Deployment Pack export; broker-held exits; admin console for residual
-fleet; §17 workers only for M3/assist.
-
-**Note (2026-08-06):** Competitive mandate **DL-216** elevates M3-class cloud hosting
-to primary for continuous bots; v1.2 Spec amend required. v1.1 remains authority until
-v1.2 lands.
-
-**Spec:** `Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md`
-
-## 2026-08-05 — DL-214 Execution responsibility: user + broker first
-
-**Coach direction:** Primary goal is to **offload running automations** to the
-**user (creator)** and the **broker**, not to make Labs the always-on multi-tenant
-bot host. Labs = design, validate, version, document, export/handoff, optional
-assisted connectivity. Broker = account, orders, custody, broker-held exits when
-possible. User = strategy ownership, arming, monitoring, contingency.
-
-**First broker target: Tradier** (paper → live). Market data remains Massive /
-Coach chain pipe — do not buy Tradier streaming. Maximize multi-leg open +
-OCO/OTO/OTOCO **broker-held** exits; scan graphs stay user-local or manual.
-
-**Architecture:** `Architecture/14-strategy-lab-execution-responsibility.md` §13  
-**Implication:** Process Runtime Spec §17 (Labs workers at scale) becomes
-**optional M3**, not the product north star. Prefer M0 export/manual, M1
-broker-native exits, M2 user-local runtime.
-
-## 2026-08-05 — DL-213b Process Runtime multi-tenant scale (§17)
-
-**Coach:** Plan for **dozens → hundreds** of members with armed automations.
-Normative: **control plane (API) ≠ data plane (workers)**; **job queue + leased
-workers**; fair multi-tenant claim; manage-before-scan under load; shared market
-data fan-out (not per-user sockets); broker throttle gateway; per-identity caps;
-decision_log volume/retention. Separate **worker role** required for scheduled/live;
-separate microservice repo **not** required. Defaults: soft 5 / hard 10 armed
-instances; min scan 60s; MySQL jobs table v1.
-
-**Spec:** `Strategy-Lab-Process-Runtime-Spec-v1.0.md` §17.
-
-## 2026-08-05 — DL-213 Strategy Lab Process Runtime Spec v1.0
-
-**Coach:** Spec for deployment process runtime (FatTail shape of “bots as
-processes”): **deployment instance** + **risk envelope** + **scan/manage runners**
-+ **typed decisions** + **decision log** + **dry/paper/live ladder**. Explicitly
-inherits Continuity (place ≠ SoR; empty-on-unknown), Versioning P1–P8 (explore ≠
-rebind; restore does not silent-mutate runners; freeze on live; drift fail loud),
-Development Phase gates (no live without BT/FW path), Massive/Tradier split.
-
-**Spec:** `Specs/Strategy-Lab-Process-Runtime-Spec-v1.0.md` (SPEC AUTHORITY).  
-**Not:** OptionAlpha clone; free-floating bots before life cycle.
 
 ## 2026-08-03 — DL-212 Habit Catalog Spec v0.1 + multi-agent plan
 
