@@ -282,11 +282,13 @@ export default function ProfileSettings() {
         <h2 className="text-lg font-semibold">Your data</h2>
         <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
           Download a copy of your Practice data (Trade Log, Journal sessions,
-          Retrospectives, Journey, Playbook stub), or load a backup. Load is{" "}
-          <strong>additive only</strong> — existing entries are never overwritten
-          by load. To fully replace from a backup: download first, delete Practice
-          data (membership stays), then load. Journey grades recalculate from
-          activity.
+          Retrospectives, live check-ins, Playbook stub), or load a backup. Load
+          is <strong>additive only</strong> — existing entries are never
+          overwritten by load. To fully replace from a backup: download first,
+          delete Practice data (membership stays), then load.{" "}
+          <strong>Journey grades are recalculated</strong> from that activity
+          (not restored as a screenshot of scores). Course progress stays with
+          this membership and is not in the Practice file.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button

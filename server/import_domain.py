@@ -1004,7 +1004,13 @@ def commit_retrospective(cur, identity_id: int, doc: dict) -> dict[str, Any]:
 
 
 def preview_journey(cur, identity_id: int, doc: dict) -> dict[str, Any]:
-    """Additive: new check-ins only. Privacy prefs never changed by import."""
+    """Additive: new check-ins only. Privacy prefs never changed by import.
+
+    Process meters / grades are **recalculated** from Practice activity after
+    trade_log + journal_session + retrospectives land — they are not restored
+    from the journey snapshot in the file. Learning / reputation still depend
+    on course progress on this membership (not in the Practice pack).
+    """
     counts = _count_bucket()
     checkins = (doc.get("raw_signals") or {}).get("live_checkins") or []
     for c in checkins:
@@ -1020,13 +1026,21 @@ def preview_journey(cur, identity_id: int, doc: dict) -> dict[str, Any]:
             counts["skip"] += 1
         else:
             counts["new"] += 1
+    snap = doc.get("process") if isinstance(doc.get("process"), dict) else {}
     return {
         "surface": "journey",
         "counts": counts,
         "mode": "additive",
         "note": (
-            "check-ins only (new keys); privacy prefs and process meters are never "
-            "overwritten by import"
+            "check-ins only (new keys). Grades recalculate from imported Practice "
+            "(trades, journals, retros, check-ins); snapshot meters in the file "
+            "are not written. Learning/reputation use course progress on this "
+            "account (not in Practice pack)."
+            + (
+                f" Export snapshot overall was {snap.get('overall_percent')}%."
+                if snap.get("overall_percent") is not None
+                else ""
+            )
         ),
     }
 
@@ -1060,7 +1074,10 @@ def commit_journey(cur, identity_id: int, doc: dict) -> dict[str, Any]:
         "surface": "journey",
         "counts": counts,
         "mode": "additive",
-        "note": "privacy prefs and process meters not written",
+        "note": (
+            "check-ins written; process meters recalculate from Practice activity "
+            "(not from snapshot percentages in the file)"
+        ),
     }
 
 

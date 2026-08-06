@@ -681,7 +681,20 @@ def apply_tenure_to_percent(
 def member_tenure_days(
     cur, identity_id: int, *, now: datetime | None = None
 ) -> float:
-    """Days since identity (or earliest membership) — time in the game."""
+    """Days of "time in the game" for grade ramp weighting.
+
+    Earliest of:
+
+    - identity ``created_at``
+    - earliest membership ``started_at``
+    - earliest **practice** activity (trade / journal session / completed retro /
+      live check-in)
+
+    Practice activity is included so a portable Practice pack (multi-year trade
+    log, sessions, retros) is not graded as day-zero Establishing when loaded
+    onto a newer Labs identity. Scores stay **derived** — we never import
+    snapshot meter percentages as source of truth.
+    """
     now = now or datetime.now(timezone.utc)
     if now.tzinfo is None:
         now = now.replace(tzinfo=timezone.utc)
@@ -701,11 +714,41 @@ def member_tenure_days(
     m = cur.fetchone()
     if m and m.get("s"):
         starts.append(m["s"])
+
+    # Practice book — portable signals that prove real history
+    for sql in (
+        """SELECT MIN(exec_at) AS s FROM member_trade_log_trades
+           WHERE identity_id = %s AND exec_at IS NOT NULL""",
+        """SELECT MIN(session_started_at) AS s FROM member_journal_sessions
+           WHERE identity_id = %s AND session_started_at IS NOT NULL""",
+        """SELECT MIN(completed_at) AS s FROM member_retrospectives
+           WHERE identity_id = %s AND status = 'complete'
+             AND completed_at IS NOT NULL""",
+        """SELECT MIN(checked_in_at) AS s FROM live_session_checkins
+           WHERE identity_id = %s AND checked_in_at IS NOT NULL""",
+    ):
+        try:
+            cur.execute(sql, (identity_id,))
+            pr = cur.fetchone()
+            if pr and pr.get("s"):
+                starts.append(pr["s"])
+        except Exception:
+            # Table missing in partial envs — fail soft; identity still anchors
+            pass
+
     if not starts:
         return 0.0
     earliest = min(starts)
     if getattr(earliest, "tzinfo", None) is None:
         earliest = earliest.replace(tzinfo=timezone.utc)
+    # date-only values from MIN(DATE(...)) shouldn't appear; normalize
+    if not isinstance(earliest, datetime):
+        try:
+            earliest = datetime.combine(earliest, datetime.min.time()).replace(
+                tzinfo=timezone.utc
+            )
+        except Exception:
+            return 0.0
     delta = now - earliest
     return max(0.0, delta.total_seconds() / 86400.0)
 
