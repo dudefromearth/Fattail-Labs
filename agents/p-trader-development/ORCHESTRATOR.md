@@ -24,14 +24,14 @@
 
 ## Status board
 
-**Program status:** **TD0 IN PROGRESS** — **BUILD AUTHORITY** (DL-254) · implementing Phase 0 glue  
+**Program status:** **TD0+TD1 IN PROGRESS** — Phase 0 glue landed · Phase 1 Playbook+Campaign MVP  
 
 **OD authority:** [`Specs/FatTail-Labs-Trader-Development-Decision-Addendum-v1_1.md`](../../Specs/FatTail-Labs-Trader-Development-Decision-Addendum-v1_1.md) 
 
 | Phase | Intent | Status |
 |-------|--------|--------|
-| **TD0** | Spec GO + foundation glue | **IN PROGRESS** |
-| **TD1** | Playbook + Campaign + adherence | blocked on TD0-G |
+| **TD0** | Spec GO + foundation glue | **LANDING** (impl + tests; formal TD0-G walk pending) |
+| **TD1** | Playbook + Campaign + adherence | **LANDING** (MVP: schema, API, UI, trade links) |
 | **TD2** | Charts · sync · process reports | blocked on TD1-G (default) |
 | **TD3** | Season retro · nudges · R/MFE · PWA | blocked on TD1-G (+ TD2 charts for MFE) |
 | **TD4** | Optional expansions | blocked on TD3-G + TD4-0 |

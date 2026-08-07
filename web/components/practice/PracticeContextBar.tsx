@@ -12,6 +12,7 @@ import {
   PRACTICE_GRANULARITIES,
   usePracticeContext,
 } from "@/lib/practiceContext";
+import CampaignContextBadge from "./CampaignContextBadge";
 
 const selectClass =
   "min-h-[var(--hit-min)] cursor-pointer appearance-none rounded-[var(--radius-full)] border-0 bg-[var(--color-fill)] py-2 pl-4 pr-9 text-sm font-medium text-[var(--color-label)] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]";
@@ -163,6 +164,10 @@ export default function PracticeContextBar({
             All time
           </p>
         )}
+      </div>
+
+      <div className="flex justify-center">
+        <CampaignContextBadge />
       </div>
 
       <p

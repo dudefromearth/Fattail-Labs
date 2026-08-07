@@ -23,7 +23,8 @@ type Props = {
 };
 
 export default function PracticeStoryStrip({
-  variant = "progressive",
+  /** Full spine once Playbook + Campaign are live (Phase 1). */
+  variant = "full",
   className = "",
   showLexiconLink = false,
 }: Props) {

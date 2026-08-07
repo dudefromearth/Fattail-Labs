@@ -234,6 +234,14 @@ def _trade_row(r: dict, legs: list[dict] | None = None) -> dict:
         "external_adapter": r.get("external_adapter"),
         "entry_source": _normalize_entry_source(r.get("entry_source")),
         "trash_reason": r.get("trash_reason"),
+        "playbook_entry_id": (
+            int(r["playbook_entry_id"]) if r.get("playbook_entry_id") is not None else None
+        ),
+        "practice_campaign_id": (
+            int(r["practice_campaign_id"])
+            if r.get("practice_campaign_id") is not None
+            else None
+        ),
         "legs": legs if legs is not None else [],
         "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
         "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,

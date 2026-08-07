@@ -31,6 +31,12 @@ import {
   saveTradeLogLastUsed,
 } from "@/lib/tradeLogPrefs";
 import TagPicker from "@/components/tags/TagPicker";
+import {
+  fetchCampaigns,
+  fetchPlaybookEntries,
+  type PlaybookEntry,
+  type PracticeCampaign,
+} from "@/lib/practiceSpineApi";
 
 const field =
   "mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-1.5 text-sm text-[var(--color-label)]";
@@ -308,6 +314,13 @@ export default function TradeSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createContinueNew, setCreateContinueNew] = useState(false);
+  const [playbooks, setPlaybooks] = useState<PlaybookEntry[]>([]);
+  const [activeCampaign, setActiveCampaign] =
+    useState<PracticeCampaign | null>(null);
+  const [playbookEntryId, setPlaybookEntryId] = useState<number | "">("");
+  const [practiceCampaignId, setPracticeCampaignId] = useState<
+    number | ""
+  >("");
   /** Delete confirm lives only in this drawer (not on the blotter row). */
   const [trashConfirm, setTrashConfirm] = useState(false);
   const [trashReason, setTrashReason] = useState("");
@@ -357,6 +370,33 @@ export default function TradeSheet({
     setAllowAccountMismatch(false);
     setAllowPartialUnits(false);
     setAllowDrift(false);
+    void (async () => {
+      try {
+        const [pb, camps] = await Promise.all([
+          fetchPlaybookEntries(false),
+          fetchCampaigns(),
+        ]);
+        setPlaybooks(pb.entries || []);
+        setActiveCampaign(camps.active);
+        if (mode === "edit" && trade) {
+          const t = trade as Trade & {
+            playbook_entry_id?: number | null;
+            practice_campaign_id?: number | null;
+          };
+          setPlaybookEntryId(t.playbook_entry_id ?? "");
+          setPracticeCampaignId(t.practice_campaign_id ?? "");
+        } else if (mode === "create") {
+          setPlaybookEntryId("");
+          setPracticeCampaignId(camps.active?.id ?? "");
+        } else {
+          setPlaybookEntryId("");
+          setPracticeCampaignId("");
+        }
+      } catch {
+        setPlaybooks([]);
+        setActiveCampaign(null);
+      }
+    })();
     const last = loadTradeLogLastUsed();
     if (mode === "edit" && trade) {
       setForm(fromTrade(trade));
@@ -794,6 +834,9 @@ export default function TradeSheet({
       adherence: form.adherence,
       deviation_md: form.deviation_md,
       lesson_md: form.lesson_md,
+      playbook_entry_id: playbookEntryId === "" ? null : playbookEntryId,
+      practice_campaign_id:
+        practiceCampaignId === "" ? null : practiceCampaignId,
       pnl_amount: form.pnl_amount === "" ? null : Number(form.pnl_amount),
       entry_source: "manual",
       legs: legs.map((l, i) => ({
@@ -1845,7 +1888,59 @@ export default function TradeSheet({
                       />
                     </label>
                     <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Adherence
+                      Practice season
+                      <select
+                        className={field}
+                        value={
+                          practiceCampaignId === ""
+                            ? ""
+                            : String(practiceCampaignId)
+                        }
+                        onChange={(e) =>
+                          setPracticeCampaignId(
+                            e.target.value === ""
+                              ? ""
+                              : Number(e.target.value),
+                          )
+                        }
+                        data-testid="trade-campaign-select"
+                      >
+                        <option value="">None</option>
+                        {activeCampaign && (
+                          <option value={String(activeCampaign.id)}>
+                            {activeCampaign.title} (active)
+                          </option>
+                        )}
+                      </select>
+                    </label>
+                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+                      Playbook entry
+                      <select
+                        className={field}
+                        value={
+                          playbookEntryId === "" ? "" : String(playbookEntryId)
+                        }
+                        onChange={(e) =>
+                          setPlaybookEntryId(
+                            e.target.value === ""
+                              ? ""
+                              : Number(e.target.value),
+                          )
+                        }
+                        data-testid="trade-playbook-select"
+                      >
+                        <option value="">None</option>
+                        {playbooks.map((p) => (
+                          <option key={p.id} value={String(p.id)}>
+                            {p.title}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+                      {playbookEntryId !== ""
+                        ? "Against your playbook"
+                        : "Adherence"}
                       <select
                         className={field}
                         value={form.adherence}

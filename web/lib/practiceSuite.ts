@@ -64,8 +64,8 @@ export const PRACTICE_SUITE: PracticeSuiteItem[] = [
     href: "/app/playbook",
     slugs: ["playbook"],
     blurb:
-      "Your defined-risk setups and rules — the book you actually trade from.",
-    status: "soon",
+      "Who you are under risk — the rules you will not break.",
+    status: "live",
   },
 ];
 

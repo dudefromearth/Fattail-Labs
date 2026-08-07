@@ -213,12 +213,42 @@ async def create_trade(request: Request) -> dict:
             entry_source = _normalize_entry_source(
                 body.get("entry_source"), default="manual"
             )
+            playbook_entry_id = body.get("playbook_entry_id")
+            practice_campaign_id = body.get("practice_campaign_id")
+            try:
+                import practice_spine_domain as psd
+
+                pb_id = (
+                    int(playbook_entry_id)
+                    if playbook_entry_id not in (None, "")
+                    else None
+                )
+                camp_id = (
+                    int(practice_campaign_id)
+                    if practice_campaign_id not in (None, "")
+                    else None
+                )
+                psd.assert_playbook_owned(cur, iid, pb_id)
+                psd.assert_campaign_owned(cur, iid, camp_id)
+            except Exception as exc:
+                from practice_spine_domain import PracticeSpineError
+
+                if isinstance(exc, PracticeSpineError):
+                    raise HTTPException(status_code=exc.code, detail=exc.detail) from exc
+                if playbook_entry_id not in (None, "") or practice_campaign_id not in (
+                    None,
+                    "",
+                ):
+                    # missing tables pre-migration — fail loud
+                    raise
+                pb_id, camp_id = None, None
             cur.execute(
                 """INSERT INTO member_trade_log_trades
                      (identity_id, account_id, exec_at, asset_class, strategy, order_type,
                       net_price, net_side, setup_md, plan_md, rules_md, adherence,
-                      deviation_md, lesson_md, pnl_amount, entry_source)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                      deviation_md, lesson_md, pnl_amount, entry_source,
+                      playbook_entry_id, practice_campaign_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     iid,
                     account_id,
@@ -236,6 +266,8 @@ async def create_trade(request: Request) -> dict:
                     proc["lesson_md"],
                     proc["pnl_amount"],
                     entry_source,
+                    pb_id,
+                    camp_id,
                 ),
             )
             tid = int(cur.lastrowid)
@@ -296,12 +328,41 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
                 "pnl_amount": body.get("pnl_amount", row.get("pnl_amount")),
             }
             proc = _process_fields(merged)
+            pb_id = row.get("playbook_entry_id")
+            camp_id = row.get("practice_campaign_id")
+            if "playbook_entry_id" in body:
+                pb_id = (
+                    int(body["playbook_entry_id"])
+                    if body.get("playbook_entry_id") not in (None, "")
+                    else None
+                )
+            if "practice_campaign_id" in body:
+                camp_id = (
+                    int(body["practice_campaign_id"])
+                    if body.get("practice_campaign_id") not in (None, "")
+                    else None
+                )
+            try:
+                import practice_spine_domain as psd
+
+                psd.assert_playbook_owned(
+                    cur, iid, int(pb_id) if pb_id is not None else None
+                )
+                psd.assert_campaign_owned(
+                    cur, iid, int(camp_id) if camp_id is not None else None
+                )
+            except Exception as exc:
+                from practice_spine_domain import PracticeSpineError
+
+                if isinstance(exc, PracticeSpineError):
+                    raise HTTPException(status_code=exc.code, detail=exc.detail) from exc
             cur.execute(
                 """UPDATE member_trade_log_trades
                    SET account_id=%s, exec_at=%s, asset_class=%s, strategy=%s,
                        order_type=%s, net_price=%s, net_side=%s,
                        setup_md=%s, plan_md=%s, rules_md=%s, adherence=%s,
-                       deviation_md=%s, lesson_md=%s, pnl_amount=%s
+                       deviation_md=%s, lesson_md=%s, pnl_amount=%s,
+                       playbook_entry_id=%s, practice_campaign_id=%s
                    WHERE id=%s AND identity_id=%s""",
                 (
                     account_id,
@@ -318,6 +379,8 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
                     proc["deviation_md"],
                     proc["lesson_md"],
                     proc["pnl_amount"],
+                    pb_id,
+                    camp_id,
                     trade_id,
                     iid,
                 ),
