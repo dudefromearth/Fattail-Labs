@@ -1,20 +1,40 @@
-"""Member help desk — ask questions, view own threads, post follow-ups.
+"""Member help desk — ask questions, get instant AI answers, escalate to humans.
 
 Member session required; a member can only see/act on their OWN questions.
-Spec: FatTail-Labs-Help-System-Spec-v1.0.
+
+Flow: a member picks a topic (bug | struggling | general) and writes one message.
+The AI concierge (help_ai) answers instantly from a member-facing knowledge base
+with hard guardrails. If it can't answer — or the member asks for a person — the
+thread escalates to the human help desk (admins notified). Bot-resolved threads do
+NOT notify admins, so the human queue only holds what the bot couldn't handle.
+
+AI answers are stored as help_messages with author_role='assistant'. Statuses:
+  ai_pending  -> question created, awaiting first AI answer
+  ai_resolved -> the bot is handling it (no human needed yet)
+  open        -> escalated to / re-opened for the human team
+  answered    -> a human has replied
+  closed      -> resolved/closed by an admin
+
+Spec: FatTail-Labs-Help-System-Spec-v1.0 + FatTail-Labs-Help-Concierge-Spec-v1.0.
 """
 
 from __future__ import annotations
+
+import logging
 
 from fastapi import APIRouter, HTTPException, Request
 
 import db
 import help as help_domain
+import help_ai
 from guards import require_session
+
+log = logging.getLogger("labs.help")
 
 router = APIRouter(tags=["help"])
 
 RATE_PER_HOUR = 10
+VALID_CATEGORIES = ("bug", "struggling", "general")
 
 
 def _iso(dt) -> str | None:
@@ -45,6 +65,47 @@ def _msg_public(r: dict) -> dict:
     }
 
 
+def _load_ai_thread(cur, qid: int, opening_body: str) -> list[dict]:
+    """Conversation for the concierge, oldest-first: the opening member post plus
+    public member/assistant messages (admin turns are excluded — once a human is in,
+    the bot steps back)."""
+    thread = [{"author_role": "member", "body": opening_body}]
+    cur.execute(
+        """SELECT author_role, body FROM help_messages
+           WHERE question_id = %s AND visibility = 'public'
+             AND author_role IN ('member','assistant')
+           ORDER BY created_at ASC, id ASC""",
+        (qid,),
+    )
+    for m in cur.fetchall():
+        thread.append({"author_role": m["author_role"], "body": m["body"]})
+    return thread
+
+
+def _store_ai_reply(qid: int, reply: str, resolved: bool) -> None:
+    """Insert the assistant message and move the question to its new status."""
+    status = "ai_resolved" if resolved else "open"
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO help_messages
+                     (question_id, author_identity_id, author_role, body, visibility)
+                   VALUES (%s, NULL, 'assistant', %s, 'public')""",
+                (qid, reply),
+            )
+            if resolved:
+                cur.execute(
+                    "UPDATE help_questions SET status = 'ai_resolved' WHERE id = %s",
+                    (qid,),
+                )
+            else:
+                cur.execute(
+                    "UPDATE help_questions SET status = 'open' WHERE id = %s",
+                    (qid,),
+                )
+    return status
+
+
 @router.post("/api/help/questions")
 async def create_question(request: Request) -> dict:
     claims = require_session(request)
@@ -52,19 +113,23 @@ async def create_question(request: Request) -> dict:
     body = await request.json()
     if not isinstance(body, dict):
         raise HTTPException(status_code=422, detail="JSON object required")
-    subject = (body.get("subject") or "").strip()[:255]
     qbody = (body.get("body") or "").strip()
-    category = (body.get("category") or "general").strip()[:64] or "general"
+    category = (body.get("category") or "general").strip().lower()
+    if category not in VALID_CATEGORIES:
+        category = "general"
     page = (body.get("page_context") or "").strip()[:512] or None
-    if not subject:
-        raise HTTPException(status_code=422, detail="Subject is required")
     if not qbody:
-        raise HTTPException(status_code=422, detail="Please describe your question")
+        raise HTTPException(status_code=422, detail="Please type your question")
+    # No separate subject box any more — derive a short subject for admin triage.
+    subject = (body.get("subject") or "").strip()[:255] or qbody[:80]
 
     try:
         screenshot_path = help_domain.save_screenshot(body.get("screenshot_base64"))
     except help_domain.HelpError as exc:
         raise HTTPException(status_code=exc.status, detail=exc.detail) from exc
+
+    ai_on = help_ai.is_enabled()
+    initial_status = "ai_pending" if ai_on else "open"
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -83,14 +148,28 @@ async def create_question(request: Request) -> dict:
             email = (row["email"] if row else "") or ""
             cur.execute(
                 """INSERT INTO help_questions
-                     (identity_id, email, subject, body, category, page_context, screenshot_path)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                (iid, email, subject, qbody, category, page, screenshot_path),
+                     (identity_id, email, subject, body, category, page_context,
+                      screenshot_path, status)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (iid, email, subject, qbody, category, page, screenshot_path, initial_status),
             )
             qid = int(cur.lastrowid)
 
-    help_domain.notify_admins_new_question(qid, subject, email or f"member {iid}")
-    return {"ok": True, "id": qid}
+    # AI answer happens OUTSIDE the DB transaction (network call).
+    ai_payload = None
+    resolved = False
+    if ai_on:
+        res = help_ai.answer(category, [{"author_role": "member", "body": qbody}])
+        resolved = bool(res.get("resolved"))
+        _store_ai_reply(qid, res["reply"], resolved)
+        ai_payload = {"reply": res["reply"], "resolved": resolved}
+
+    # Notify the human team only when a human is actually needed.
+    if not ai_on or not resolved:
+        help_domain.notify_admins_new_question(qid, subject, email or f"member {iid}")
+
+    return {"ok": True, "id": qid, "status": ("ai_resolved" if resolved else "open"),
+            "ai": ai_payload}
 
 
 @router.get("/api/help/questions")
@@ -143,6 +222,56 @@ async def add_my_message(question_id: int, request: Request) -> dict:
     text = (body.get("body") or "").strip() if isinstance(body, dict) else ""
     if not text:
         raise HTTPException(status_code=422, detail="Message is required")
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, identity_id, subject, body, category, status FROM help_questions WHERE id = %s",
+                (question_id,),
+            )
+            q = cur.fetchone()
+            if not q or int(q["identity_id"]) != iid:
+                raise HTTPException(status_code=404, detail="Question not found")
+            cur.execute(
+                """INSERT INTO help_messages
+                     (question_id, author_identity_id, author_role, body, visibility)
+                   VALUES (%s, %s, 'member', %s, 'public')""",
+                (question_id, iid, text),
+            )
+            status = q["status"]
+            category = q["category"]
+            opening = q["body"]
+
+    # Bot is still handling this thread → let the concierge reply.
+    if status in ("ai_resolved", "ai_pending") and help_ai.is_enabled():
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                thread = _load_ai_thread(cur, question_id, opening)
+        res = help_ai.answer(category, thread)
+        resolved = bool(res.get("resolved"))
+        _store_ai_reply(question_id, res["reply"], resolved)
+        if not resolved:
+            help_domain.notify_admins_new_question(
+                question_id, f"(escalated) {q['subject']}", f"member {iid}"
+            )
+        return {"ok": True, "ai": {"reply": res["reply"], "resolved": resolved}}
+
+    # Human is in the loop (or AI off): a member follow-up re-opens for the team.
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE help_questions SET status = 'open' WHERE id = %s AND status = 'answered'",
+                (question_id,),
+            )
+    help_domain.notify_admins_new_question(question_id, f"(reply) {q['subject']}", f"member {iid}")
+    return {"ok": True, "ai": None}
+
+
+@router.post("/api/help/questions/{question_id}/escalate")
+async def escalate_to_human(question_id: int, request: Request) -> dict:
+    """Member asks to talk to a person. Flags the thread for the team."""
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -155,13 +284,16 @@ async def add_my_message(question_id: int, request: Request) -> dict:
             cur.execute(
                 """INSERT INTO help_messages
                      (question_id, author_identity_id, author_role, body, visibility)
-                   VALUES (%s, %s, 'member', %s, 'public')""",
-                (question_id, iid, text),
+                   VALUES (%s, NULL, 'assistant', %s, 'public')""",
+                (question_id,
+                 "No problem — I've passed this to our support team and they'll be in "
+                 "touch shortly."),
             )
-            # A member follow-up re-opens the question for the team.
             cur.execute(
-                "UPDATE help_questions SET status = 'open' WHERE id = %s AND status = 'answered'",
+                "UPDATE help_questions SET status = 'open' WHERE id = %s",
                 (question_id,),
             )
-    help_domain.notify_admins_new_question(question_id, f"(reply) {q['subject']}", f"member {iid}")
+    help_domain.notify_admins_new_question(
+        question_id, f"(human requested) {q['subject']}", f"member {iid}"
+    )
     return {"ok": True}

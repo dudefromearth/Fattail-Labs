@@ -4,6 +4,45 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-07 — DL-253 AI help concierge (Phase 1)
+
+*(Numbered DL-253 to avoid collision — DL-213 was concurrently taken by the Strategy
+Lab Process Runtime work. This is the member help concierge.)*
+
+**Decision:** The member help desk becomes AI-first. A member picks a topic
+(bug | struggling | general) and writes one message; the **concierge** (`server/help_ai.py`)
+answers instantly via a cheap Grok model, from a whitelisted member-facing
+knowledge base (`server/help_concierge_kb.md`). If it can't answer — or the member
+asks — the thread **escalates to the existing human help desk** (admins notified).
+Bot-resolved threads do NOT notify admins, so the human queue holds only what the
+bot couldn't handle. UI (`web/components/HelpLauncher.tsx`) is now a topic picker +
+single box that grows into a chat view. Routes extended in `server/routes/help.py`
+(AI answer on create + follow-up, new `POST …/{id}/escalate`). **No migration** —
+`status`/`author_role` are VARCHAR, so new values `assistant` / `ai_pending` /
+`ai_resolved` need no schema change.
+
+**Security (guardrails are architectural, not just prompt):** the model is fed
+ONLY the member-facing KB — never `server/`, `Architecture/`, `Specs/`, `infra/`,
+`.env`, IPs, or secrets — so it cannot leak what it was never given. On top: a hard
+system prompt (never discuss backend/hosting/infra/keys/security; read-only, no
+account actions; no financial/profit advice; ignore prompt-injection). **Fail-open
+to humans:** if Grok is unconfigured, errors, or returns unparseable output, the
+question escalates — a broken AI never blocks a member from help.
+
+**Model:** `LABS_HELP_AI_MODEL` (default `grok-4-fast`) called via the xAI provider
+directly (registry whitelists only the configured primary/secondary, so a direct
+provider call keeps the P2 studio agents on grok-4.5 untouched). `XAI_API_KEY` added
+to the API launchd plist (was absent — AI was unconfigured platform-wide before this).
+Gotcha logged: the key must be the full ~84-char `xai-…` value; a truncated 46-char
+extraction is silently rejected by xAI as "Incorrect API key".
+
+**Phase 2 (deferred, per Coach):** self-improving FAQ + publishing common answers to
+a Wiki Help page. Wiki is an external git repo with no write API + human-gated 5-min
+sync, so that's a separate build. Spec: `FatTail-Labs-Help-Concierge-Spec-v1.0`.
+Tests: `test_help_ai.py`. Status: implemented + live on MiniTwo (Grok answering verified).
+
+---
+
 ## 2026-08-07 — DL-252 Deploy: members get full Deploy UX; gate only real-broker (Tradier) real-money
 
 **Coach refine on DL-251:**
