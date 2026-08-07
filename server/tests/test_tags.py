@@ -394,3 +394,81 @@ def test_closed_journal_session_refuses_tag_changes(client, admin_cookies):
         assert r2.status_code == 409, r2.text
     finally:
         _cleanup(iid)
+
+
+def test_process_tag_usage_counts_and_isolation(client):
+    """Phase 0: process/behavior counts only; Family B; no P&L keys."""
+    a = _member("zztest-tags-usage-a@labs.test")
+    b = _member("zztest-tags-usage-b@labs.test")
+    ca = cookie_for("activator", a)
+    cb = cookie_for("activator", b)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                # behavior category tag (chased-entry id often 8)
+                cur.execute(
+                    """SELECT t.id FROM tags t
+                       JOIN tag_categories c ON c.id = t.category_id
+                      WHERE c.system_key = 'behavior' AND t.status = 'active'
+                      LIMIT 1"""
+                )
+                row = cur.fetchone()
+                assert row, "need behavior tag"
+                tid = int(row["id"])
+                # trade for A
+                cur.execute(
+                    """INSERT INTO member_trade_log_accounts
+                         (identity_id, label, broker, currency, status, sort_order)
+                       VALUES (%s, 'U', 'fattail', 'USD', 'active', 0)""",
+                    (a,),
+                )
+                aid = int(cur.lastrowid)
+                cur.execute(
+                    """INSERT INTO member_trade_log_trades
+                         (identity_id, account_id, exec_at, asset_class, strategy,
+                          order_type, setup_md, plan_md, rules_md, adherence,
+                          deviation_md, lesson_md, entry_source)
+                       VALUES (%s, %s, NOW(), 'equity_option', 'CUSTOM',
+                               'LMT', '', '', '', 'unknown', '', '', 'manual')""",
+                    (a, aid),
+                )
+                trade_id = int(cur.lastrowid)
+                cur.execute(
+                    """INSERT INTO tag_assignments
+                         (tag_id, object_type, object_id, identity_id, export_key)
+                       VALUES (%s, 'trade', %s, %s, %s)""",
+                    (tid, trade_id, a, f"zz-usage-{trade_id}"),
+                )
+        ra = client.get("/api/me/tags/usage", cookies=ca)
+        assert ra.status_code == 200, ra.text
+        body = ra.json()
+        assert "tags" in body
+        assert "pnl" not in body and "win_rate" not in str(body).lower()
+        assert body["labeled_trade_assignments"] >= 1
+        assert any(t["tag_id"] == tid for t in body["tags"])
+        # B sees none of A's labels
+        rb = client.get("/api/me/tags/usage", cookies=cb)
+        assert rb.status_code == 200, rb.text
+        assert rb.json()["labeled_trade_assignments"] == 0
+        assert not any(t["tag_id"] == tid and t["trade_count"] > 0 for t in rb.json()["tags"])
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                for iid in (a, b):
+                    cur.execute(
+                        "DELETE FROM tag_assignments WHERE identity_id = %s", (iid,)
+                    )
+                    cur.execute(
+                        "DELETE FROM member_trade_log_legs WHERE identity_id = %s",
+                        (iid,),
+                    )
+                    cur.execute(
+                        "DELETE FROM member_trade_log_trades WHERE identity_id = %s",
+                        (iid,),
+                    )
+                    cur.execute(
+                        "DELETE FROM member_trade_log_accounts WHERE identity_id = %s",
+                        (iid,),
+                    )
+        _cleanup(a)
+        _cleanup(b)

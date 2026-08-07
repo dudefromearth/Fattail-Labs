@@ -60,6 +60,34 @@ def list_active_tags(request: Request, include_retired: bool = False) -> dict:
     return {"categories": categories, "tags": tags}
 
 
+@router.get("/api/me/tags/usage")
+def process_tag_usage(
+    request: Request,
+    from_day: str | None = Query(None, description="YYYY-MM-DD inclusive"),
+    to_day: str | None = Query(None, description="YYYY-MM-DD inclusive"),
+    categories: str = Query(
+        "process,behavior",
+        description="Comma-separated category system_keys (default process,behavior)",
+    ),
+) -> dict:
+    """Process/behavior tag frequency for Reports (Trader Development Phase 0).
+
+    Counts only — never P&L or win-rate. Family B scoped to session identity.
+    """
+    claims = require_session(request)
+    keys = [k.strip() for k in (categories or "").split(",") if k.strip()]
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            return td.process_tag_usage(
+                cur,
+                iid,
+                from_day=from_day,
+                to_day=to_day,
+                category_keys=keys or None,
+            )
+
+
 @router.get("/api/me/tags")
 def list_my_tags(
     request: Request,

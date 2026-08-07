@@ -43,6 +43,25 @@ Tests: `test_help_ai.py`. Status: implemented + live on MiniTwo (Grok answering 
 
 ---
 
+
+## 2026-08-07 — DL-254 Trader Development program BUILD AUTHORITY (OD locks)
+
+**Coach GO** (direction: implement Decision Addendum; stop only for new decisions):
+
+| Artifact | Status |
+|----------|--------|
+| Roadmap v1.1 + Decision Addendum v1.1 | **BUILD AUTHORITY** for implementation planning + TD0 |
+| Phase 0 Foundation Glue v1.1b | **BUILD AUTHORITY** — implement now |
+| Phase 1 Own Spine v1.1a | **BUILD AUTHORITY** — after TD0-G |
+| Phases 2–3 | **BUILD AUTHORITY for design/seeds**; implement per Agent Bench gates |
+| Phase 4 | Trigger-gated catalog only |
+
+**OD locks (Addendum):** Practice owns “Campaign”; single active campaign; `entry_source=sync` (+ Trade Log Spec catalog amend in same body of work as sync migration); progressive story copy; server tag filter; journal campaign stamp in Phase 1; export green before Phase 2 exit; Schwab/ToS-class first venue; error grace ≤7d; cadence retro + campaign context; two process nudges; no co-occurrence v1.
+
+**Board:** `agents/p-trader-development/` · Full plan: `Docs/Trader-Development-Full-Agent-Bench-Plan-v1.0.md`
+
+**Sequencing:** TD0 implement → TD0-G → TD1 → …
+
 ## 2026-08-07 — DL-252 Deploy: members get full Deploy UX; gate only real-broker (Tradier) real-money
 
 **Coach refine on DL-251:**

@@ -102,6 +102,42 @@ export async function adoptLexiconKey(lexiconKey: string): Promise<Tag> {
   return d.tag;
 }
 
+/** Process/behavior tag frequency for Reports (Phase 0 — no P&L). */
+export type TagUsageRow = {
+  tag_id: number;
+  slug: string;
+  label: string;
+  category_key: string;
+  trade_count: number;
+  journal_session_count: number;
+};
+
+export type TagUsageResponse = {
+  from_day: string | null;
+  to_day: string | null;
+  category_keys: string[];
+  labeled_trade_assignments: number;
+  labeled_journal_session_assignments: number;
+  tags: TagUsageRow[];
+  note?: string;
+};
+
+export async function fetchTagUsage(opts?: {
+  fromDay?: string;
+  toDay?: string;
+  categories?: string;
+}): Promise<TagUsageResponse> {
+  const q = new URLSearchParams();
+  if (opts?.fromDay) q.set("from_day", opts.fromDay);
+  if (opts?.toDay) q.set("to_day", opts.toDay);
+  if (opts?.categories) q.set("categories", opts.categories);
+  const qs = q.toString();
+  const r = await fetch(`/api/me/tags/usage${qs ? `?${qs}` : ""}`, {
+    credentials: "same-origin",
+  });
+  return parse(r);
+}
+
 export async function fetchObjectAssignments(
   objectType: string,
   objectId: number,

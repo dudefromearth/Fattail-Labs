@@ -21,6 +21,7 @@ import DrawdownChart from "./DrawdownChart";
 import StatsTable from "./StatsTable";
 import { AvgWinLossCard, SharpeCard, DrawdownCard } from "./FeaturedCards";
 import BarDist from "./BarDist";
+import ProcessTagUsage from "./ProcessTagUsage";
 
 type LoadState = "loading" | "ok" | "anon" | "forbidden" | "err";
 
@@ -285,6 +286,12 @@ return (
       <section className="surface-card border border-[var(--color-separator)] p-4 sm:p-5">
         <BarDist bins={book.strategyDist} title="Trades by strategy" />
       </section>
+
+      <ProcessTagUsage
+        fromDay={rangeFromYmd}
+        toDay={rangeToYmd}
+        dateFilterActive={dateFilterActive}
+      />
 
       <p
         className="text-[var(--color-label-tertiary)]"

@@ -24,8 +24,8 @@ export default function PlaybookPage() {
             className="mx-auto mt-2 max-w-md text-[var(--color-label-secondary)]"
             style={{ fontSize: "var(--text-subheadline)", lineHeight: 1.45 }}
           >
-            Capture personal structure rules and defined-risk setups so capacity
-            stays with you — not in a spreadsheet.
+            Your playbook is who you are under risk — the rules you will not
+            break. Phase 1 of Trader Development lands CRUD here next.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
             <Link href="/app/journal">

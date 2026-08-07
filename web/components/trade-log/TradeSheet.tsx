@@ -30,6 +30,7 @@ import {
   loadTradeLogLastUsed,
   saveTradeLogLastUsed,
 } from "@/lib/tradeLogPrefs";
+import TagPicker from "@/components/tags/TagPicker";
 
 const field =
   "mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-1.5 text-sm text-[var(--color-label)]";
@@ -1861,6 +1862,31 @@ export default function TradeSheet({
                         <option value="unknown">Not sure</option>
                       </select>
                     </label>
+                    {mode === "edit" && trade?.id ? (
+                      <div
+                        className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] p-2"
+                        data-testid="trade-sheet-tags"
+                      >
+                        <p className="text-xs font-medium text-[var(--color-label-secondary)]">
+                          Process tags
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-[var(--color-label-tertiary)]">
+                          Label behavior in the trader&apos;s language — optional.
+                          Lexicon only; never required to save.
+                        </p>
+                        <div className="mt-2">
+                          <TagPicker
+                            objectType="trade"
+                            objectId={trade.id}
+                            onError={(msg) => setError(msg)}
+                          />
+                        </div>
+                      </div>
+                    ) : mode === "create" ? (
+                      <p className="text-[10px] text-[var(--color-label-tertiary)]">
+                        Save the fill first, then open it to add process tags.
+                      </p>
+                    ) : null}
                     <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
                       Lesson
                       <textarea

@@ -11,6 +11,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import PracticeSuiteNav from "./PracticeSuiteNav";
 import PracticeContextBar from "./PracticeContextBar";
+import PracticeStoryStrip from "./PracticeStoryStrip";
 import { PracticeContextProvider } from "@/lib/practiceContext";
 import { suiteItem, type PracticeSuiteId } from "@/lib/practiceSuite";
 
@@ -67,6 +68,8 @@ function PracticeSuiteChromeInner({
         inertHint={contextInert}
         inertMessage={contextInertMessage}
       />
+
+      <PracticeStoryStrip className="mt-3" />
 
       {!hideTitle && (
         <header className="mt-4 max-w-2xl">

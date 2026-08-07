@@ -43,6 +43,13 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
 
 ## Projects
 
+- `agents/p-trader-development/` — **Trader Development** (Practice formation OS:
+  Playbook · Campaign · Tags productization · Match hygiene sync/charts · season retro).  
+  Specs: `Specs/FatTail-Labs-Trader-Development-*.md`.  
+  **Full multi-agent plan:** `Docs/Trader-Development-Full-Agent-Bench-Plan-v1.0.md`.  
+  Phase plans: `Docs/Trader-Development-Phase-*-Agent-Bench-Plan.md`.  
+  Board: `agents/p-trader-development/ORCHESTRATOR.md`.  
+  **Next: Spec finish pass → TD0-0 Coach GO · no TD1+ code before TD0-G.**
 - `agents/p-strategy-runtime/` — **Strategy Lab Process Runtime** (deployment instances,
   decision log, arming, Deployment Pack, Tradier paper→live, M0–M2 first; M3 optional).  
   Spec: `Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md`.  

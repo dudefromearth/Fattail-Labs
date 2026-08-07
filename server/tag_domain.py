@@ -1023,6 +1023,143 @@ def set_member_assignments_for_object(
     )
 
 
+def process_tag_usage(
+    cur,
+    identity_id: int,
+    *,
+    from_day: str | None = None,
+    to_day: str | None = None,
+    category_keys: list[str] | None = None,
+) -> dict[str, Any]:
+    """Process/behavior tag frequency for Practice Reports (Phase 0).
+
+    Counts Family B assignments on trades and journal sessions in an optional
+    date window. Resolves both platform ``tag_id`` and ``member_tag_id`` (via
+    lexicon_key) to platform tag labels. **No P&L fields.**
+    """
+    keys = category_keys or ["process", "behavior"]
+    keys = [str(k).strip().lower() for k in keys if str(k).strip()]
+    if not keys:
+        keys = ["process", "behavior"]
+    placeholders = ",".join(["%s"] * len(keys))
+
+    # Trade assignments in window
+    trade_sql = f"""
+        SELECT c.system_key AS category_key,
+               COALESCE(pt.id, pt2.id) AS tag_id,
+               COALESCE(pt.slug, pt2.slug) AS slug,
+               COALESCE(pt.label, pt2.label) AS label,
+               COUNT(*) AS n
+          FROM tag_assignments a
+          JOIN member_trade_log_trades t
+            ON t.id = a.object_id AND t.identity_id = a.identity_id
+          LEFT JOIN tags pt ON pt.id = a.tag_id AND a.tag_id IS NOT NULL
+          LEFT JOIN member_tags mt
+            ON mt.id = a.member_tag_id AND mt.identity_id = a.identity_id
+          LEFT JOIN tags pt2
+            ON pt2.lexicon_key = mt.lexicon_key AND mt.lexicon_key IS NOT NULL
+          LEFT JOIN tag_categories c
+            ON c.id = COALESCE(pt.category_id, pt2.category_id)
+         WHERE a.identity_id = %s
+           AND a.object_type = 'trade'
+           AND c.system_key IN ({placeholders})
+           AND COALESCE(pt.id, pt2.id) IS NOT NULL
+    """
+    trade_args: list[Any] = [int(identity_id), *keys]
+    if from_day:
+        trade_sql += " AND DATE(t.exec_at) >= %s"
+        trade_args.append(from_day[:10])
+    if to_day:
+        trade_sql += " AND DATE(t.exec_at) <= %s"
+        trade_args.append(to_day[:10])
+    trade_sql += " GROUP BY c.system_key, COALESCE(pt.id, pt2.id), COALESCE(pt.slug, pt2.slug), COALESCE(pt.label, pt2.label)"
+
+    # Journal session assignments in window
+    js_sql = f"""
+        SELECT c.system_key AS category_key,
+               COALESCE(pt.id, pt2.id) AS tag_id,
+               COALESCE(pt.slug, pt2.slug) AS slug,
+               COALESCE(pt.label, pt2.label) AS label,
+               COUNT(*) AS n
+          FROM tag_assignments a
+          JOIN member_journal_sessions s
+            ON s.id = a.object_id AND s.identity_id = a.identity_id
+          LEFT JOIN tags pt ON pt.id = a.tag_id AND a.tag_id IS NOT NULL
+          LEFT JOIN member_tags mt
+            ON mt.id = a.member_tag_id AND mt.identity_id = a.identity_id
+          LEFT JOIN tags pt2
+            ON pt2.lexicon_key = mt.lexicon_key AND mt.lexicon_key IS NOT NULL
+          LEFT JOIN tag_categories c
+            ON c.id = COALESCE(pt.category_id, pt2.category_id)
+         WHERE a.identity_id = %s
+           AND a.object_type = 'journal_session'
+           AND c.system_key IN ({placeholders})
+           AND COALESCE(pt.id, pt2.id) IS NOT NULL
+    """
+    js_args: list[Any] = [int(identity_id), *keys]
+    if from_day:
+        js_sql += " AND s.journal_date >= %s"
+        js_args.append(from_day[:10])
+    if to_day:
+        js_sql += " AND s.journal_date <= %s"
+        js_args.append(to_day[:10])
+    js_sql += " GROUP BY c.system_key, COALESCE(pt.id, pt2.id), COALESCE(pt.slug, pt2.slug), COALESCE(pt.label, pt2.label)"
+
+    by_tag: dict[int, dict[str, Any]] = {}
+    trade_labeled = 0
+    journal_labeled = 0
+
+    cur.execute(trade_sql, trade_args)
+    for r in cur.fetchall() or []:
+        tid = int(r["tag_id"])
+        n = int(r["n"] or 0)
+        trade_labeled += n
+        slot = by_tag.setdefault(
+            tid,
+            {
+                "tag_id": tid,
+                "slug": r["slug"],
+                "label": r["label"],
+                "category_key": r["category_key"],
+                "trade_count": 0,
+                "journal_session_count": 0,
+            },
+        )
+        slot["trade_count"] += n
+
+    cur.execute(js_sql, js_args)
+    for r in cur.fetchall() or []:
+        tid = int(r["tag_id"])
+        n = int(r["n"] or 0)
+        journal_labeled += n
+        slot = by_tag.setdefault(
+            tid,
+            {
+                "tag_id": tid,
+                "slug": r["slug"],
+                "label": r["label"],
+                "category_key": r["category_key"],
+                "trade_count": 0,
+                "journal_session_count": 0,
+            },
+        )
+        slot["journal_session_count"] += n
+
+    tags_out = sorted(
+        by_tag.values(),
+        key=lambda x: -(x["trade_count"] + x["journal_session_count"]),
+    )
+    return {
+        "from_day": from_day,
+        "to_day": to_day,
+        "category_keys": keys,
+        "labeled_trade_assignments": trade_labeled,
+        "labeled_journal_session_assignments": journal_labeled,
+        "tags": tags_out,
+        "note": "Process counts only — no P&L or win-rate by tag",
+    }
+
+
 def member_usage_counts(cur, identity_id: int) -> dict[int, int]:
     """Personal usage counts by member_tag_id (Family B — own only)."""
     ensure_member_vocabulary(cur, identity_id)

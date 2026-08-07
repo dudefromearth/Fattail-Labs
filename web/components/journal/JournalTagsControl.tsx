@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui";
 import {
   fetchMyTags,
@@ -204,8 +205,15 @@ export default function JournalTagsControl({
                 Tags
               </h3>
               <p className="mt-0.5 text-xs text-[var(--color-label-tertiary)]">
-                Your vocabulary — pick a seed term or type a new one. Optional;
-                does not change the interview.
+                Label the day in the trader&apos;s language — optional; does not
+                change the interview.{" "}
+                <Link
+                  href="/resource"
+                  className="font-medium text-[var(--color-tint)] hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Browse Lexicon
+                </Link>
               </p>
               <div className="mt-2 flex gap-2">
                 <input
@@ -287,7 +295,7 @@ export default function JournalTagsControl({
                 <li className="px-2 py-4 text-center text-sm text-[var(--color-label-tertiary)]">
                   {q.trim()
                     ? "No match — press Add to create this tag."
-                    : "No tags yet."}
+                    : "No tags yet — browse the Lexicon or type a label."}
                 </li>
               )}
             </ul>

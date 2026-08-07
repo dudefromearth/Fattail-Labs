@@ -9,6 +9,7 @@ import DashboardExtras from "@/components/DashboardExtras";
 import JourneyHistory from "@/components/JourneyHistory";
 import JourneyLeaderboard from "@/components/JourneyLeaderboard";
 import JourneyScores from "@/components/JourneyScores";
+import PracticeStoryStrip from "@/components/practice/PracticeStoryStrip";
 
 type JourneyCourse = {
   slug: string;
@@ -96,6 +97,8 @@ export default function JourneyPage() {
           Profile →
         </Link>
       </div>
+
+      <PracticeStoryStrip className="mt-4" />
 
       {data === null && (
         <p className="mt-8 text-sm text-[var(--color-label-tertiary)]">Loading…</p>
