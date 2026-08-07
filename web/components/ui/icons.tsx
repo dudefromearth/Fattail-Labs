@@ -150,3 +150,28 @@ export function IconCollapse(p: IconProps) {
     </svg>
   );
 }
+
+/**
+ * Robot / bot — square head + antenna + eyes (not platform emoji).
+ * Used on Strategy Lab bin cards so “bot” reads clearly on every OS.
+ */
+export function IconBot(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      {/* antenna */}
+      <path d="M12 3v3" />
+      <circle cx="12" cy="2.5" r="1" fill="currentColor" stroke="none" />
+      {/* head */}
+      <rect x="5" y="6" width="14" height="11" rx="2.5" />
+      {/* eyes */}
+      <circle cx="9.25" cy="11" r="1.15" fill="currentColor" stroke="none" />
+      <circle cx="14.75" cy="11" r="1.15" fill="currentColor" stroke="none" />
+      {/* mouth slot */}
+      <path d="M9 14.5h6" />
+      {/* base / legs */}
+      <path d="M8 17v3M16 17v3" />
+      {/* arms */}
+      <path d="M5 10H3.5v5H5M19 10h1.5v5H19" />
+    </svg>
+  );
+}

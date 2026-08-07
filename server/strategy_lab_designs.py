@@ -110,6 +110,182 @@ def bind_house_on_attrs(
     return out
 
 
+def create_member_bot(
+    cur,
+    identity_id: int,
+    *,
+    origin: str = "blank",
+    house_key: str | None = None,
+    house_version: str | None = None,
+    name: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Mint a Design-bin bot: blank newborn or house-prefilled (ready for Risk & Capital).
+
+    origin:
+      - blank — completely undefined; Design phase_state = hypothesis
+      - house — FatTail house design applied; identity+structure prefilled;
+                phase_state = model; designer next step = Risk & Capital
+      - template — reserved (raises until templates ship)
+    """
+    origin = (origin or "blank").strip().lower()
+    if origin == "template":
+        raise ValueError(
+            "Templates are not available yet — choose blank or a FatTail house strategy."
+        )
+    if origin not in ("blank", "house"):
+        raise ValueError("origin must be blank or house")
+
+    if origin == "blank":
+        birth = {
+            "kind": "blank",
+            "at": _now_iso(),
+            "label": "Newborn — nothing designed yet",
+        }
+        progress = {
+            "completed_sections": [],
+            "next_section": "identity",
+            "ready_for_risk": False,
+        }
+        bot_name = (name or "New bot").strip()[:255] or "New bot"
+        bot_desc = (
+            (description if description is not None else "")
+            or "Newborn — completely undefined. Start at Strategy Identity & Direction."
+        )[:512]
+        bot = sld.create_strategy(
+            cur,
+            identity_id,
+            name=bot_name,
+            description=bot_desc,
+            phase="development",
+            phase_state="hypothesis",
+            blank=True,
+            attributes={
+                "birth@1": birth,
+                "design_progress@1": progress,
+            },
+            lifecycle_detail={
+                "origin": "blank",
+                "message": "Newborn bot created in Design — completely undefined",
+                "detail": (
+                    "Minted blank. No pack config, no house binding. "
+                    "First work: Strategy Identity & Direction."
+                ),
+            },
+        )
+        return bot
+
+    # ── house-prefilled ──────────────────────────────────────────────────
+    hk = (house_key or "").strip()
+    if not hk:
+        raise ValueError("house_key is required when origin is house")
+    house = get_house(hk, house_version)
+    if house is None:
+        raise LookupError(
+            f"House design not found: {hk!r}"
+            + (f"@{house_version}" if house_version else "")
+        )
+
+    birth = {
+        "kind": "house",
+        "at": _now_iso(),
+        "label": f"House start — {house['name']}",
+        "house_key": house["key"],
+        "house_version": house["version"],
+        "house_name": house["name"],
+    }
+    progress = {
+        "completed_sections": ["identity", "structure"],
+        "next_section": "risk",
+        "ready_for_risk": True,
+        "note": (
+            "Identity & Structure prefilled from house design. "
+            "Continue at Risk & Capital."
+        ),
+    }
+    bot_name = (name or house["name"]).strip()[:255] or house["name"]
+    bot_desc = (
+        (description if description is not None else "")
+        or str(house.get("summary") or house.get("name") or "")
+    )[:512]
+
+    bot = sld.create_strategy(
+        cur,
+        identity_id,
+        name=bot_name,
+        description=bot_desc,
+        phase="development",
+        # First two Design form states (Identity + Structure) complete via house;
+        # phase_state model = hypothesis+model done; ready for Risk & Capital work.
+        phase_state="model",
+        blank=False,
+        attributes={
+            "birth@1": birth,
+            "design_progress@1": progress,
+        },
+        lifecycle_detail={
+            "origin": "house",
+            "house_key": house["key"],
+            "house_version": house["version"],
+            "house_name": house["name"],
+            "message": (
+                f"Bot created from house “{house['name']}” "
+                f"v{house['version']} — ready for Risk & Capital"
+            ),
+            "detail": (
+                "Identity & Structure prefilled from FatTail house design. "
+                "Next design step: Risk & Capital. Lifecycle state: Model."
+            ),
+        },
+    )
+
+    bot = apply_house_to_bot(
+        cur,
+        identity_id,
+        bot["id"],
+        house_key=house["key"],
+        house_version=house["version"],
+        mode="apply",
+        bump_version=False,
+    )
+    # apply_house does not change phase_state; reaffirm model + progress stamp
+    row = sld.get_by_public_id(cur, identity_id, bot["id"])
+    assert row is not None
+    attrs = _json_load(row.get("attributes_json")) or {}
+    if not isinstance(attrs, dict):
+        attrs = {}
+    attrs["birth@1"] = birth
+    attrs["design_progress@1"] = progress
+    log = sld._append_log(  # noqa: SLF001
+        row,
+        "ready_for_risk",
+        message=(
+            f"House “{house['name']}” applied. "
+            "Identity + Structure complete — open Risk & Capital next."
+        ),
+        next_section="risk",
+        house_key=house["key"],
+        house_version=house["version"],
+    )
+    cur.execute(
+        """UPDATE strategy_lab_strategies
+           SET attributes_json = %s, lifecycle_log = %s, phase_state = %s
+           WHERE identity_id = %s AND public_id = %s""",
+        (
+            _json_dump(attrs),
+            _json_dump(log),
+            "model",
+            identity_id,
+            bot["id"],
+        ),
+    )
+    out = sld.get_by_public_id(cur, identity_id, bot["id"])
+    assert out is not None
+    d = sld.row_to_dict(out)
+    d["house_design"] = extract_house_binding(d.get("attributes"))
+    return d
+
+
 def apply_house_to_bot(
     cur,
     identity_id: int,

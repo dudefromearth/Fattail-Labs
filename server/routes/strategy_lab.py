@@ -64,6 +64,13 @@ def list_strategies(request: Request) -> dict:
 
 @router.post("/api/me/strategy-lab/strategies")
 async def create_strategy(request: Request) -> dict:
+    """Create a Design-bin bot.
+
+    Body:
+      origin: blank | house | template (template reserved)
+      house_key / house_version: required when origin=house
+      name / description: optional
+    """
     claims = require_session(request)
     try:
         body = await request.json()
@@ -71,25 +78,55 @@ async def create_strategy(request: Request) -> dict:
         raise HTTPException(status_code=422, detail="JSON body required") from exc
     if not isinstance(body, dict):
         raise HTTPException(status_code=422, detail="JSON object required")
-    name = str(body.get("name") or "Untitled strategy")
-    description = str(body.get("description") or "")
-    phase = str(body.get("phase") or "development")
-    phase_state = body.get("phase_state")
+
+    origin = str(body.get("origin") or body.get("kind") or "blank").strip().lower()
+    name = body.get("name")
+    description = body.get("description")
+    house_key = body.get("house_key")
+    house_version = body.get("house_version")
+
+    # Prefer create_member_bot (blank newborn / house-prefilled).
+    # Legacy callers that only pass name still get a blank newborn.
+    import strategy_lab_designs as sldes
+
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
                 iid = _iid(cur, claims)
-                strategy = sld.create_strategy(
-                    cur,
-                    iid,
-                    name=name,
-                    description=description,
-                    phase=phase,
-                    phase_state=str(phase_state) if phase_state else None,
-                    blank=True,
-                )
+                if origin in ("blank", "house", "template") or house_key:
+                    strategy = sldes.create_member_bot(
+                        cur,
+                        iid,
+                        origin="house" if house_key and origin == "blank" else origin,
+                        house_key=str(house_key).strip() if house_key else None,
+                        house_version=str(house_version) if house_version else None,
+                        name=str(name).strip() if name else None,
+                        description=(
+                            str(description) if description is not None else None
+                        ),
+                    )
+                else:
+                    # Explicit phase override path (tests / power tools)
+                    strategy = sld.create_strategy(
+                        cur,
+                        iid,
+                        name=str(name or "Untitled strategy"),
+                        description=str(description or ""),
+                        phase=str(body.get("phase") or "development"),
+                        phase_state=(
+                            str(body["phase_state"])
+                            if body.get("phase_state")
+                            else None
+                        ),
+                        blank=True,
+                    )
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        # Capacity full → 409; validation → 422
+        msg = str(exc)
+        code = 409 if "full" in msg.lower() else 422
+        raise HTTPException(status_code=code, detail=msg) from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"strategy": strategy}
 
 

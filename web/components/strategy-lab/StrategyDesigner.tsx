@@ -24,14 +24,22 @@ type Props = {
   strategyId: string;
   strategyName: string;
   initialConfig?: StrategyConfig | null;
+  /** Designer section id to open first (e.g. "risk" for house-started bots). */
+  initialSectionId?: string | null;
   onSaved?: () => void;
+  pushNotice?: (
+    level: "info" | "success" | "warning" | "error",
+    msg: string,
+  ) => void;
 };
 
 export default function StrategyDesigner({
   strategyId,
   strategyName,
   initialConfig,
+  initialSectionId,
   onSaved,
+  pushNotice,
 }: Props) {
   const [pack, setPack] = useState<PackDetail | null>(null);
   const [config, setConfig] = useState<StrategyConfig>({});
@@ -48,14 +56,31 @@ export default function StrategyDesigner({
       const d = await fetchPack("butterfly");
       if (!d) return;
       setPack(d);
-      const base =
-        initialConfig && Object.keys(initialConfig).length
-          ? { ...initialConfig }
-          : { ...(d.defaults[0] || {}) };
+      // House / saved bots: use persisted config.
+      // Newborns (identity next, no pack bag): start empty except name — not house defaults.
+      const hasSaved =
+        initialConfig && Object.keys(initialConfig).length > 0;
+      const newbornEmpty =
+        initialSectionId === "identity" && !hasSaved;
+      const base: StrategyConfig = hasSaved
+        ? { ...initialConfig }
+        : newbornEmpty
+          ? { name: strategyName }
+          : { ...(d.defaults[0] || {}), name: strategyName };
       if (!base.name) base.name = strategyName;
       setConfig(base);
+      // House-started bots open at Risk & Capital; newborns at identity (0).
+      const sections = d.ui?.sections || [];
+      if (initialSectionId) {
+        const idx = sections.findIndex(
+          (s) => s.id === initialSectionId || s.title === initialSectionId,
+        );
+        setStep(idx >= 0 ? idx : 0);
+      } else {
+        setStep(0);
+      }
     })();
-  }, [initialConfig, strategyName]);
+  }, [initialConfig, strategyName, initialSectionId, strategyId]);
 
   const sections = pack?.ui.sections || [];
   const section = sections[step];
@@ -259,8 +284,16 @@ export default function StrategyDesigner({
 
       <DesignHouseLibrary
         strategyId={strategyId}
-        onApplied={(cfg) => {
+        pushNotice={pushNotice}
+        onApplied={(cfg, mode) => {
           applyTemplate(cfg);
+          setMsg(
+            mode === "apply"
+              ? `House design applied to “${strategyName}” — form fields updated below.`
+              : `Copy-rebuild loaded onto “${strategyName}” — form fields updated; configure freely.`,
+          );
+          // Refresh board so version / attributes match server (not only local form).
+          onSaved?.();
         }}
       />
 

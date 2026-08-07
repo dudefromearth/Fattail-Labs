@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StrategyLabChrome from "@/components/strategy-lab/StrategyLabChrome";
 import DevelopmentValidation from "@/components/strategy-lab/DevelopmentValidation";
 import CurateRuntimePanel from "@/components/strategy-lab/CurateRuntimePanel";
@@ -20,6 +20,8 @@ import {
   moveStrategy,
   patchStrategy,
   promoteStrategy,
+  strategyBirth,
+  strategyDesignProgress,
   type BoardPhaseKey,
   type PhaseKey,
   type PhaseMeta,
@@ -33,6 +35,11 @@ import {
   setActivePhase as persistActivePhase,
   type LabDeskPlace,
 } from "@/lib/strategyLabPlace";
+import CreateBotDialog from "@/components/strategy-lab/CreateBotDialog";
+import BotPhaseMeter, {
+  phaseMeterTitle,
+  phaseProgressPercent,
+} from "@/components/strategy-lab/BotPhaseMeter";
 
 type Notice = { level: "info" | "success" | "warning" | "error"; message: string };
 
@@ -110,6 +117,28 @@ function badgeClass(state: string): string {
   return map[state] || "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200";
 }
 
+/** True when bot is a freshly minted blank with no design work. */
+function isNewbornBot(s: StrategyLabStrategy): boolean {
+  const birth = strategyBirth(s);
+  if (birth?.kind === "blank") return true;
+  if (birth?.kind === "house") return false;
+  // Fallback: hypothesis + empty pack bags ≈ undefined baby
+  const hasPack =
+    !!s.attributes?.["butterfly_config@1"] ||
+    !!s.attributes?.["strategy_pack@1"];
+  return (
+    phaseOf(s) === "development" &&
+    s.phase_state === "hypothesis" &&
+    !hasPack &&
+    !s.house_design
+  );
+}
+
+function isHouseStartedBot(s: StrategyLabStrategy): boolean {
+  const birth = strategyBirth(s);
+  return birth?.kind === "house" || !!s.house_design?.key;
+}
+
 export default function StrategyLabApp() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -130,10 +159,33 @@ export default function StrategyLabApp() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [renameName, setRenameName] = useState("");
   const [binReason, setBinReason] = useState("Lifecycle complete");
+  const [createOpen, setCreateOpen] = useState(false);
+  /** Between bins and work area — always scroll into view on new feedback. */
+  const noticeRailRef = useRef<HTMLDivElement | null>(null);
 
-  const pushNotice = useCallback((level: Notice["level"], message: string) => {
-    setNotices((n) => [...n.slice(-6), { level, message }]);
+  const scrollNoticeRailIntoView = useCallback(() => {
+    // rAF so layout has the new notice height before scroll
+    requestAnimationFrame(() => {
+      noticeRailRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    });
   }, []);
+
+  const pushNotice = useCallback(
+    (level: Notice["level"], message: string) => {
+      setNotices((n) => [...n.slice(-6), { level, message }]);
+      scrollNoticeRailIntoView();
+    },
+    [scrollNoticeRailIntoView],
+  );
+
+  useEffect(() => {
+    if (notices.length === 0) return;
+    scrollNoticeRailIntoView();
+  }, [notices, scrollNoticeRailIntoView]);
 
   /** Restore selection for phase P from place memory (or clear work area). */
   const restorePlaceForPhase = useCallback(
@@ -357,61 +409,20 @@ export default function StrategyLabApp() {
         active={suiteActive}
         designSub={navPhase === "development" ? "board" : undefined}
       >
-      {/* Notices */}
-      <div className="mt-4 min-h-[2.5rem] rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 shadow-sm">
-        {notices.length === 0 ? (
-          <p className="text-sm text-[var(--color-label-secondary)]">
-            Notifications — moves, renames, and blocks appear here. Strategies are
-            stored on your account. Retired strategies live in{" "}
-            <Link href="/app/strategy-lab/archive" className="underline">
-              Archive
-            </Link>
-            .
-          </p>
-        ) : (
-          <div className="space-y-1">
-            {notices.slice(-4).map((n, i) => (
-              <p
-                key={`${n.message}-${i}`}
-                className={
-                  "text-sm " +
-                  (n.level === "error"
-                    ? "text-red-600"
-                    : n.level === "warning"
-                      ? "text-amber-700"
-                      : n.level === "success"
-                        ? "text-emerald-700"
-                        : "text-[var(--color-label)]")
-                }
-              >
-                {n.message}
-              </p>
-            ))}
-            <button
-              type="button"
-              className="text-xs text-[var(--color-label-secondary)] underline"
-              onClick={() => setNotices([])}
-            >
-              Clear
-            </button>
-          </div>
-        )}
-      </div>
-
       {/* Curate / Deploy: high-visibility run dashboards (shared layout) */}
       {navPhase === "curation" && (
-        <section className="mt-6">
+        <section className="mt-4">
           <CuratePhaseDashboard pushNotice={pushNotice} />
         </section>
       )}
       {navPhase === "deployment" && (
-        <section className="mt-6">
+        <section className="mt-4">
           <DeployPhaseDashboard />
         </section>
       )}
 
       {/* Phase bins — strategy cards (Design primary; Curate/Deploy secondary to dashboard) */}
-      <section className="mt-6">
+      <section className="mt-4">
         <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 className="text-lg font-semibold text-[var(--color-label)]">
@@ -491,9 +502,24 @@ export default function StrategyLabApp() {
                     {label}
                     {here ? " · here" : ""}
                   </h3>
-                  <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[0.7rem] font-semibold tabular-nums text-[var(--color-label-secondary)]">
-                    {allInPhase.length}/{maxPer}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {phase === "development" && (
+                      <button
+                        type="button"
+                        data-testid="create-bot-design-bin"
+                        className="rounded-full bg-blue-600 px-2.5 py-0.5 text-[0.68rem] font-semibold text-white shadow-sm hover:bg-blue-700"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCreateOpen(true);
+                        }}
+                      >
+                        + Create bot
+                      </button>
+                    )}
+                    <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[0.7rem] font-semibold tabular-nums text-[var(--color-label-secondary)]">
+                      {allInPhase.length}/{maxPer}
+                    </span>
+                  </div>
                 </div>
                 <p className="mb-2 text-[0.7rem] text-[var(--color-label-secondary)]">
                   {PHASE_HINTS[phase]}
@@ -518,27 +544,72 @@ export default function StrategyLabApp() {
                 <div className="flex-1 space-y-1.5 overflow-y-auto">
                   {items.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-6 text-center text-xs text-[var(--color-label-secondary)]">
-                      Empty — no strategies.
+                      {phase === "development" ? (
+                        <>
+                          Empty Design bin.{" "}
+                          <button
+                            type="button"
+                            className="font-semibold text-blue-600 underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCreateOpen(true);
+                            }}
+                          >
+                            Create bot
+                          </button>
+                        </>
+                      ) : (
+                        "Empty — no strategies."
+                      )}
                     </div>
                   ) : (
                     items.map((s) => {
                       const active = s.id === selectedId;
-                      const desc =
-                        (s.description || "No description yet.").slice(0, 72) +
-                        ((s.description || "").length > 72 ? "…" : "");
+                      const newborn = isNewbornBot(s);
+                      const houseStart = isHouseStartedBot(s);
+                      const birth = strategyBirth(s);
+                      const progress = strategyDesignProgress(s);
+                      const pct = phaseProgressPercent(
+                        s.phase_state,
+                        phaseMeta?.states,
+                      );
+                      const botTitle = phaseMeterTitle({
+                        percent: pct,
+                        phase,
+                        phaseLabel: phaseMeta?.label || label,
+                        stateLabel: s.phase_state_label,
+                      });
+                      const desc = newborn
+                        ? "Newborn — nothing designed yet"
+                        : houseStart && progress?.ready_for_risk
+                          ? `House start · ready for Risk & Capital`
+                          : (s.description || "No description yet.").slice(0, 72) +
+                            ((s.description || "").length > 72 ? "…" : "");
                       const ph = phaseOf(s);
                       return (
                         <div key={s.id} className="space-y-1">
                           <button
                             type="button"
                             onClick={() => void selectStrategy(s)}
+                            title={botTitle}
                             className={
                               "flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition " +
                               (active
                                 ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
-                                : "border-[var(--color-separator)] bg-[var(--color-fill)] hover:border-blue-300")
+                                : newborn
+                                  ? "border-dashed border-blue-400 bg-blue-50/40 dark:border-blue-700 dark:bg-blue-950/30 hover:border-blue-500"
+                                  : houseStart
+                                    ? "border-emerald-300 bg-emerald-50/30 dark:border-emerald-800 dark:bg-emerald-950/20 hover:border-emerald-400"
+                                    : "border-[var(--color-separator)] bg-[var(--color-fill)] hover:border-blue-300")
                             }
                           >
+                            <BotPhaseMeter
+                              phase={phase}
+                              percent={pct}
+                              title={botTitle}
+                              newborn={newborn}
+                              size={36}
+                            />
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-baseline gap-1.5">
                                 <span className="truncate text-[0.82rem] font-semibold text-[var(--color-label)]">
@@ -547,10 +618,28 @@ export default function StrategyLabApp() {
                                 <span className="text-[0.68rem] font-semibold tabular-nums text-[var(--color-label-secondary)]">
                                   v{s.version}
                                 </span>
+                                {newborn && (
+                                  <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-white">
+                                    Newborn
+                                  </span>
+                                )}
+                                {!newborn && houseStart && (
+                                  <span className="rounded-full bg-emerald-700 px-1.5 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide text-white">
+                                    House
+                                  </span>
+                                )}
                               </div>
                               <p className="truncate text-[0.7rem] text-[var(--color-label-secondary)]">
                                 {desc}
                               </p>
+                              {houseStart && birth?.house_name && (
+                                <p className="truncate text-[0.62rem] text-emerald-800 dark:text-emerald-300">
+                                  from {birth.house_name}
+                                  {birth.house_version
+                                    ? ` v${birth.house_version}`
+                                    : ""}
+                                </p>
+                              )}
                             </div>
                             <span
                               className={
@@ -638,27 +727,111 @@ export default function StrategyLabApp() {
         </div>
       </section>
 
+      {/*
+        Notice rail — BETWEEN bins and work area (Coach):
+        action feedback must be visible where the eye moves from selection → detail.
+        Scroll into view when a notice arrives (including if user scrolled away).
+      */}
+      <div
+        ref={noticeRailRef}
+        id="strategy-lab-notice-rail"
+        data-testid="strategy-lab-notice-rail"
+        className={
+          "mt-4 scroll-mt-20 rounded-xl border px-3 py-2 shadow-sm " +
+          (notices.length === 0
+            ? "border-[var(--color-separator)] bg-[var(--color-surface)]"
+            : notices[notices.length - 1]?.level === "error"
+              ? "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/40"
+              : notices[notices.length - 1]?.level === "warning"
+                ? "border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40"
+                : notices[notices.length - 1]?.level === "success"
+                  ? "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40"
+                  : "border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40")
+        }
+        role="status"
+        aria-live="polite"
+        aria-relevant="additions text"
+      >
+        {notices.length === 0 ? (
+          <p className="text-sm text-[var(--color-label-secondary)]">
+            <span className="font-semibold text-[var(--color-label)]">
+              Notifications
+            </span>
+            {" — "}
+            between bins and work area. Create bot, moves, house Apply, renames,
+            blocks, and errors appear here so you always see what a button did.
+            Archive:{" "}
+            <Link href="/app/strategy-lab/archive" className="underline">
+              Archive
+            </Link>
+            .
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {notices.slice(-4).map((n, i) => (
+              <p
+                key={`${n.message}-${i}`}
+                className={
+                  "text-sm font-medium " +
+                  (n.level === "error"
+                    ? "text-red-700 dark:text-red-300"
+                    : n.level === "warning"
+                      ? "text-amber-800 dark:text-amber-200"
+                      : n.level === "success"
+                        ? "text-emerald-800 dark:text-emerald-200"
+                        : "text-[var(--color-label)]")
+                }
+              >
+                {n.message}
+              </p>
+            ))}
+            <button
+              type="button"
+              className="text-xs text-[var(--color-label-secondary)] underline"
+              onClick={() => setNotices([])}
+            >
+              Clear
+            </button>
+          </div>
+        )}
+      </div>
+
+      <CreateBotDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        pushNotice={pushNotice}
+        onCreated={async (s, notice) => {
+          pushNotice("success", notice);
+          setSelectedId(s.id);
+          setNavPhase("development");
+          setDeskPlace((prev) =>
+            rememberStrategyInPhase(prev, "development", s.id),
+          );
+          router.replace("/app/strategy-lab?phase=development", {
+            scroll: false,
+          });
+          await reload();
+          // re-select after reload (list may reorder)
+          setSelectedId(s.id);
+        }}
+      />
+
       {/* Work area — Design tools or Curate instance controls */}
-      <section className="mt-8">
+      <section className="mt-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold text-[var(--color-label)]">
             Work area
           </h2>
-          <button
-            type="button"
-            className="rounded-lg border border-[var(--color-separator)] px-2.5 py-1 text-xs font-semibold hover:bg-[var(--color-fill)]"
-            onClick={async () => {
-              const s = await createStrategy({ name: "Untitled strategy" });
-              if (!s) pushNotice("error", "Could not create bot");
-              else {
-                pushNotice("success", "Created blank bot.");
-                setSelectedId(s.id);
-                await reload();
-              }
-            }}
-          >
-            + New
-          </button>
+          {navPhase === "development" && (
+            <button
+              type="button"
+              className="rounded-lg border border-blue-600 bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+              onClick={() => setCreateOpen(true)}
+              data-testid="create-bot-work-area"
+            >
+              + Create bot
+            </button>
+          )}
         </div>
 
         {!selected ? (
@@ -667,7 +840,10 @@ export default function StrategyLabApp() {
             {navPhase === "curation" && "Curate"}
             {navPhase === "deployment" && "Deploy"}
             {" — "}
-            no bot selected. Click a card in this bin, or create one with + New.
+            no bot selected. Click a card in this bin
+            {navPhase === "development"
+              ? ", or Create bot (blank newborn or house strategy)."
+              : "."}{" "}
             Moves live on the card.
           </p>
         ) : (
@@ -818,6 +994,32 @@ export default function StrategyLabApp() {
 
             {phaseOf(selected) === "development" && (
               <div className="mt-3 space-y-3 border-t border-[var(--color-separator)] pt-3">
+                {isNewbornBot(selected) && (
+                  <div
+                    className="rounded-lg border border-dashed border-blue-400 bg-blue-50 px-3 py-2 text-sm text-blue-950 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-100"
+                    data-testid="newborn-banner"
+                  >
+                    <strong>Newborn bot</strong> — completely undefined. Nothing
+                    has been designed yet. Work through the designer from
+                    Strategy Identity & Direction. Every save and state change
+                    is logged.
+                  </div>
+                )}
+                {isHouseStartedBot(selected) &&
+                  strategyDesignProgress(selected)?.ready_for_risk && (
+                    <div
+                      className="rounded-lg border border-emerald-400 bg-emerald-50 px-3 py-2 text-sm text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100"
+                      data-testid="house-ready-risk-banner"
+                    >
+                      <strong>House start</strong>
+                      {strategyBirth(selected)?.house_name
+                        ? ` · ${strategyBirth(selected)?.house_name}`
+                        : ""}
+                      {" — "}
+                      Identity & Structure are prefilled. Continue at{" "}
+                      <strong>Risk & Capital</strong> (designer opens there).
+                    </div>
+                  )}
                 <StrategyDesigner
                   strategyId={selected.id}
                   strategyName={selected.name}
@@ -826,6 +1028,11 @@ export default function StrategyLabApp() {
                       | Record<string, unknown>
                       | undefined) ?? null
                   }
+                  initialSectionId={
+                    strategyDesignProgress(selected)?.next_section ||
+                    (isNewbornBot(selected) ? "identity" : undefined)
+                  }
+                  pushNotice={pushNotice}
                   onSaved={() => void reload()}
                 />
                 <DevelopmentValidation
@@ -845,17 +1052,47 @@ export default function StrategyLabApp() {
             )}
 
             {selected.lifecycle_log?.length > 0 && (
-              <details className="mt-3 border-t border-[var(--color-separator)] pt-2">
+              <details
+                className="mt-3 border-t border-[var(--color-separator)] pt-2"
+                open={isNewbornBot(selected) || !!strategyBirth(selected)}
+              >
                 <summary className="cursor-pointer text-xs font-semibold text-[var(--color-label-secondary)]">
-                  Lifecycle log
+                  Lifecycle log ({selected.lifecycle_log.length})
                 </summary>
-                <ul className="mt-1 max-h-32 space-y-1 overflow-y-auto text-[0.7rem] text-[var(--color-label-secondary)]">
+                <ul className="mt-1 max-h-40 space-y-1.5 overflow-y-auto text-[0.7rem] text-[var(--color-label-secondary)]">
                   {[...selected.lifecycle_log]
                     .reverse()
-                    .slice(0, 12)
+                    .slice(0, 16)
                     .map((e, i) => (
-                      <li key={i} className="font-mono">
-                        {String(e.at || "—")} · {String(e.event || "—")}
+                      <li
+                        key={i}
+                        className="rounded border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1"
+                      >
+                        <span className="font-mono text-[0.65rem] opacity-80">
+                          {String(e.at || "—")}
+                        </span>
+                        {" · "}
+                        <span className="font-semibold text-[var(--color-label)]">
+                          {String(e.event || "—")}
+                        </span>
+                        {e.message != null && (
+                          <span className="mt-0.5 block text-[var(--color-label)]">
+                            {String(e.message)}
+                          </span>
+                        )}
+                        {e.detail != null && !e.message && (
+                          <span className="mt-0.5 block">
+                            {String(e.detail)}
+                          </span>
+                        )}
+                        {e.origin != null && (
+                          <span className="mt-0.5 block opacity-80">
+                            origin={String(e.origin)}
+                            {e.house_key != null
+                              ? ` · house=${String(e.house_key)}`
+                              : ""}
+                          </span>
+                        )}
                       </li>
                     ))}
                 </ul>

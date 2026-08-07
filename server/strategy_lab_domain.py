@@ -308,6 +308,7 @@ def create_strategy(
     blank: bool = True,
     spec: dict | None = None,
     attributes: dict | None = None,
+    lifecycle_detail: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     phase = normalize_phase(phase)
     if count_in_phase(cur, identity_id, phase) >= MAX_PER_PHASE:
@@ -315,15 +316,18 @@ def create_strategy(
     ps = normalize_phase_state(phase, phase_state)
     disposition = ps if phase == "bin" else "active"
     pid = _public_id()
-    log = [
-        {
-            "at": _now_iso(),
-            "event": "created",
-            "phase": phase,
-            "phase_state": ps,
-            "version": "1.0.0",
-        }
-    ]
+    created_evt: dict[str, Any] = {
+        "at": _now_iso(),
+        "event": "created",
+        "phase": phase,
+        "phase_state": ps,
+        "version": "1.0.0",
+    }
+    if lifecycle_detail:
+        for k, v in lifecycle_detail.items():
+            if k not in ("at", "event") and v is not None:
+                created_evt[k] = v
+    log = [created_evt]
     name = (name or "Untitled strategy").strip()[:255] or "Untitled strategy"
     description = (description or "")[:512]
     cur.execute(

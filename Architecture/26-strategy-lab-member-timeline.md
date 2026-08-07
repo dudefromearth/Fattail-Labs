@@ -169,6 +169,16 @@ Architect Marketplace and membership **in anticipation** of Labs membership; **s
 
 ---
 
+## 7b. Feedback UX (Coach · house Apply lesson)
+
+| Rule | Detail |
+|------|--------|
+| **Notice rail** | Sits **between phase bins and work area** so feedback is where the eye moves after a click |
+| **Always acknowledge** | Success, no-op/blocked, or error — never a silent button |
+| **Scroll into view** | If the rail is off-screen, scroll it into view when a notice is pushed |
+
+---
+
 ## 8. Work focus checklist (near term)
 
 | Priority | Work |

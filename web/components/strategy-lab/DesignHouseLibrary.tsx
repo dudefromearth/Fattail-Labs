@@ -30,6 +30,7 @@ export default function DesignHouseLibrary({
   const [note, setNote] = useState<string>("");
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [localOk, setLocalOk] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const lib = await fetchDesignLibrary("butterfly");
@@ -47,7 +48,16 @@ export default function DesignHouseLibrary({
   }, [load]);
 
   async function onAction(d: HouseDesign, mode: "apply" | "copy_rebuild") {
+    if (!strategyId?.trim()) {
+      const m =
+        "Select a bot in the Design board first — Apply / Copy & rebuild loads a house design onto that bot (it does not create a new board card).";
+      setErr(m);
+      pushNotice?.("warning", m);
+      return;
+    }
     setBusy(`${d.key}:${mode}`);
+    setErr(null);
+    setLocalOk(null);
     try {
       const res = await applyHouseDesign({
         strategyId,
@@ -56,6 +66,7 @@ export default function DesignHouseLibrary({
         mode,
       });
       if (res.error) {
+        setErr(res.error);
         pushNotice?.("error", res.error);
         return;
       }
@@ -64,12 +75,18 @@ export default function DesignHouseLibrary({
         cfg.name = `${d.name} (rebuild)`;
       }
       onApplied(cfg, mode);
-      pushNotice?.(
-        "success",
+      const ok =
         mode === "apply"
-          ? `Applied house ${d.name} v${d.version}`
-          : `Copy-rebuild of ${d.name} v${d.version} — configure freely`,
-      );
+          ? `Applied house “${d.name}” v${d.version} to this bot (config + house binding saved; version bumped). Open the form steps or Choices panel to see fields.`
+          : `Copy-rebuild of “${d.name}” v${d.version} loaded onto this bot — you may diverge; house list is unchanged.`;
+      pushNotice?.("success", ok);
+      setErr(null);
+      setLocalOk(ok);
+    } catch (e) {
+      const m =
+        e instanceof Error ? e.message : "House design action failed (network or server).";
+      setErr(m);
+      pushNotice?.("error", m);
     } finally {
       setBusy(null);
     }
@@ -80,6 +97,13 @@ export default function DesignHouseLibrary({
       className="rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-3"
       data-testid="design-house-library"
     >
+      <p className="mb-2 rounded-lg border border-dashed border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1.5 text-[0.7rem] text-[var(--color-label-secondary)]">
+        To <strong>mint a new bot</strong> from a house strategy, use{" "}
+        <strong>+ Create bot</strong> on the Design bin (prefill Identity &amp;
+        Structure, open at Risk &amp; Capital). Apply / Copy &amp; rebuild below
+        load a house design onto the <em>selected</em> bot — they do not create
+        a new card.
+      </p>
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-[var(--color-label)]">
@@ -95,7 +119,22 @@ export default function DesignHouseLibrary({
         </span>
       </div>
 
-      {err ? <p className="text-xs text-rose-600">{err}</p> : null}
+      <p className="mb-2 text-[11px] text-[var(--color-label-secondary)]">
+        <strong className="text-[var(--color-label)]">How this works:</strong>{" "}
+        Apply / Copy &amp; rebuild write onto the <em>selected</em> Design bot — they
+        do not add a new card to the left bin. Select a bot first, then use a button.
+      </p>
+
+      {err ? (
+        <p className="mb-2 text-xs font-medium text-rose-600" role="alert">
+          {err}
+        </p>
+      ) : null}
+      {localOk && !err ? (
+        <p className="mb-2 text-xs font-medium text-emerald-700" role="status">
+          {localOk}
+        </p>
+      ) : null}
 
       <ul className="space-y-2">
         {house.map((d) => (

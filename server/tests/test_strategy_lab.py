@@ -46,6 +46,97 @@ def test_meta_payload():
     assert labels["oos_test"] == "Forward walk"
 
 
+def test_create_blank_newborn(client):
+    """Blank origin mints Design newborn at hypothesis with birth@1."""
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = identity_mod.get_or_create_identity(
+                cur, "zztest-strategy-lab-birth@labs.test", "ZZ Strategy Lab Birth"
+            )
+            cur.execute(
+                "DELETE FROM strategy_lab_strategies WHERE identity_id = %s",
+                (iid,),
+            )
+    from tests.conftest import cookie_for
+
+    cookies = cookie_for("navigator", identity_id=iid)
+    r = client.post(
+        "/api/me/strategy-lab/strategies",
+        json={"origin": "blank", "name": "Baby bot"},
+        cookies=cookies,
+    )
+    assert r.status_code == 200, r.text
+    s = r.json()["strategy"]
+    assert s["name"] == "Baby bot"
+    assert s["phase"] == "development"
+    assert s["phase_state"] == "hypothesis"
+    birth = (s.get("attributes") or {}).get("birth@1") or {}
+    assert birth.get("kind") == "blank"
+    progress = (s.get("attributes") or {}).get("design_progress@1") or {}
+    assert progress.get("next_section") == "identity"
+    assert progress.get("ready_for_risk") is False
+    log = s.get("lifecycle_log") or []
+    assert any(e.get("event") == "created" and e.get("origin") == "blank" for e in log)
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM strategy_lab_strategies WHERE identity_id = %s",
+                (iid,),
+            )
+
+
+def test_create_from_house_ready_for_risk(client):
+    """House origin applies design, phase_state=model, next_section=risk."""
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = identity_mod.get_or_create_identity(
+                cur, "zztest-strategy-lab-house-create@labs.test", "ZZ House Create"
+            )
+            cur.execute(
+                "DELETE FROM strategy_lab_strategies WHERE identity_id = %s",
+                (iid,),
+            )
+    from tests.conftest import cookie_for
+
+    cookies = cookie_for("navigator", identity_id=iid)
+    r = client.post(
+        "/api/me/strategy-lab/strategies",
+        json={
+            "origin": "house",
+            "house_key": "0dte_otm_classic_butterfly",
+        },
+        cookies=cookies,
+    )
+    assert r.status_code == 200, r.text
+    s = r.json()["strategy"]
+    assert s["phase"] == "development"
+    assert s["phase_state"] == "model"
+    birth = (s.get("attributes") or {}).get("birth@1") or {}
+    assert birth.get("kind") == "house"
+    assert birth.get("house_key") == "0dte_otm_classic_butterfly"
+    progress = (s.get("attributes") or {}).get("design_progress@1") or {}
+    assert progress.get("ready_for_risk") is True
+    assert progress.get("next_section") == "risk"
+    assert "identity" in (progress.get("completed_sections") or [])
+    assert "structure" in (progress.get("completed_sections") or [])
+    house = s.get("house_design") or (s.get("attributes") or {}).get("house_design@1")
+    assert house and (house.get("key") == "0dte_otm_classic_butterfly")
+    cfg = (s.get("attributes") or {}).get("butterfly_config@1") or {}
+    assert cfg.get("dte_type") or cfg.get("butterfly_family")
+    log = s.get("lifecycle_log") or []
+    assert any(e.get("event") == "created" for e in log)
+    assert any(e.get("event") == "house_design_apply" for e in log)
+    assert any(e.get("event") == "ready_for_risk" for e in log)
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM strategy_lab_strategies WHERE identity_id = %s",
+                (iid,),
+            )
+
+
 def test_development_validation_gate(client):
     """Back test → forward walk required before promote to Curation."""
     with db.transaction() as conn:

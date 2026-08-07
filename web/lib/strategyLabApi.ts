@@ -7,6 +7,22 @@ export type PhaseKey = "development" | "curation" | "deployment" | "bin";
 /** Board phases only (Archive page holds bin). */
 export type BoardPhaseKey = "development" | "curation" | "deployment";
 
+export type StrategyLabBirth = {
+  kind?: "blank" | "house" | string;
+  at?: string;
+  label?: string;
+  house_key?: string;
+  house_version?: string;
+  house_name?: string;
+};
+
+export type StrategyLabDesignProgress = {
+  completed_sections?: string[];
+  next_section?: string;
+  ready_for_risk?: boolean;
+  note?: string;
+};
+
 export type StrategyLabStrategy = {
   id: string;
   db_id?: number;
@@ -22,12 +38,39 @@ export type StrategyLabStrategy = {
   phase_state_label: string;
   disposition: string;
   attributes: Record<string, unknown>;
+  house_design?: {
+    key?: string;
+    version?: string;
+    name?: string;
+    mode?: string;
+    source?: string;
+    dte_label?: string;
+    family_label?: string;
+  } | null;
   spec: Record<string, unknown> | null;
   lifecycle_log: Array<Record<string, unknown>>;
   bin_reason: string | null;
   created_at: string;
   updated_at: string;
 };
+
+/** birth@1 on attributes — newborn vs house-started. */
+export function strategyBirth(
+  s: StrategyLabStrategy | null | undefined,
+): StrategyLabBirth | null {
+  const raw = s?.attributes?.["birth@1"];
+  if (!raw || typeof raw !== "object") return null;
+  return raw as StrategyLabBirth;
+}
+
+/** design_progress@1 — which designer sections are done. */
+export function strategyDesignProgress(
+  s: StrategyLabStrategy | null | undefined,
+): StrategyLabDesignProgress | null {
+  const raw = s?.attributes?.["design_progress@1"];
+  if (!raw || typeof raw !== "object") return null;
+  return raw as StrategyLabDesignProgress;
+}
 
 export type PhaseMeta = {
   key: string;
@@ -50,14 +93,33 @@ export async function listStrategies(): Promise<{
   return getJSON("/api/me/strategy-lab/strategies");
 }
 
-export async function createStrategy(body?: {
+export type CreateStrategyBody = {
+  /** blank = newborn; house = FatTail house prefill; template reserved */
+  origin?: "blank" | "house" | "template";
   name?: string;
   description?: string;
-}): Promise<StrategyLabStrategy | null> {
+  house_key?: string;
+  house_version?: string;
+};
+
+export async function createStrategy(
+  body?: CreateStrategyBody,
+): Promise<{ strategy?: StrategyLabStrategy; error?: string }> {
   const r = await postJSON("/api/me/strategy-lab/strategies", body || {});
-  if (!r.ok) return null;
-  const j = (await r.json()) as { strategy: StrategyLabStrategy };
-  return j.strategy;
+  const j = (await r.json().catch(() => ({}))) as {
+    strategy?: StrategyLabStrategy;
+    detail?: string;
+  };
+  if (!r.ok) {
+    return {
+      error:
+        typeof j.detail === "string" ? j.detail : "Could not create bot",
+    };
+  }
+  if (!j.strategy) {
+    return { error: "Could not create bot" };
+  }
+  return { strategy: j.strategy };
 }
 
 export async function patchStrategy(
