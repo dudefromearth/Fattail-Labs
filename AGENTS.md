@@ -8,9 +8,57 @@ organization — each agent with deep domain mastery, strict invariants, and cle
 coordination protocols. Same callsigns and governance as the Fly-on-the-Wall / FatTail
 bench; domains remapped to this product.
 
-**Product context:** FatTail Labs (`labs.fattail.ai`) — standalone course hosting platform
-for FatTail.ai. See `CLAUDE.md`, `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`, and
-as-built architecture under `Architecture/` (index: `Architecture/README.md`).
+**Product context:** FatTail Labs (`labs.fattail.ai` today) — standalone membership platform
+for FatTail.ai: **courses + practice apps** plus **Strategy Lab** (process bots). Replaces
+LearnDash. No shared code with MarketSwarm-Canonical (HTTP only).
+
+**Entry points for product truth:**
+- Root [`README.md`](./README.md) — **current state + product direction** (start here)
+- [`Architecture/README.md`](./Architecture/README.md) — as-built index + decision log
+- [`Architecture/00-decision-log.md`](./Architecture/00-decision-log.md) — binding DLs
+- Specs under `Specs/`; human explainers under `docs/`
+
+### Current state & focus (as-built · single host)
+
+| Priority | Guidance for agents |
+|----------|---------------------|
+| **Strategy Lab NOW** | Lock **Design + Curate** for entitled members. Multi-member Curate is absolute. |
+| **Deploy** | Members get **Deploy UX** except **real-broker (Tradier) real-money**. Admin dogfoods Tradier, then provision. **DL-251 / DL-252**. |
+| **Do not** | Open multi-member live Tradier before admin proof. Do not block Design/Curate on Deploy. |
+| **Shipped** | Courses, practice stack (trade log, journal, retros, reports), toughness, admin board/cast/HeyGen, shared marks / house designs path |
+| **Spec’d, not shipped** | Community Discord second window · Visualize AI · Bot Marketplace |
+
+Timeline: [`docs/Strategy-Lab-Member-Timeline.md`](./docs/Strategy-Lab-Member-Timeline.md) ·
+[`Architecture/26-strategy-lab-member-timeline.md`](./Architecture/26-strategy-lab-member-timeline.md) ·
+growth playbook [`Architecture/17-strategy-lab-growth-playbook.md`](./Architecture/17-strategy-lab-growth-playbook.md).
+
+### Future direction (intent only — **do not implement the split now**)
+
+| Future host | Membership (target) | Job |
+|-------------|---------------------|-----|
+| **`practice.fattail.ai`** | **Navigator** (trader default) | Coaching + education suite; **Visualize AI** exclusive here later |
+| **`labs.fattail.ai`** | **Labs** membership (**separate product**) | Build/deploy bots, marketplace; OA-class wedge (Arch 16 doctrine) |
+
+- **Current Navigators** at future cutover: **grandfathered** via **granted Labs membership**.  
+- **Future Navigators:** Practice only unless they **purchase Labs**.  
+- **Community:** both products; channels scoped `practice` \| `labs` \| `shared`.  
+- Architect new features with **seams** (product entitlement keys, Spec “home” tags) — **do not** strip as-built Navigator Strategy Lab access today.
+
+→ [`docs/Dual-Subdomain-Practice-vs-Labs.md`](./docs/Dual-Subdomain-Practice-vs-Labs.md) ·
+[`Architecture/25-dual-subdomain-practice-labs.md`](./Architecture/25-dual-subdomain-practice-labs.md) · **DL-248–250**.
+
+### Key product Specs / explainers (selected)
+
+| Topic | Spec / doc |
+|-------|------------|
+| Course hosting | `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md` |
+| Strategy Lab Curate/Deploy surface | `Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` |
+| Community | `Specs/FatTail-Labs-Community-App-Spec-v1.0.md` · `docs/Community-Chat-Discord-Second-Window.md` |
+| Visualize AI | `Specs/FatTail-Labs-Visualize-AI-Spec-v0.1.md` · `docs/Visualize-AI-How-It-Works.md` |
+| Bot Marketplace | `Specs/FatTail-Labs-Bot-Marketplace-Framework-Spec-v0.1.md` · `docs/Bot-Marketplace-How-It-Works.md` |
+| OA-class positioning | `Architecture/16-strategy-lab-vs-option-alpha-positioning.md` |
+
+Also: `CLAUDE.md` for ops/commands invariants.
 
 ---
 
@@ -302,19 +350,20 @@ positioning, commercial journal) lives in the shared vault:
 
 **Brand:** **FatTail / Fat Tail / fattail.ai** is current. FlyOnTheWall is **retired** (trademark vs flyonthewall.com). No new FOTW copy. See vault decision `wiki/decisions/2026-07-27-retire-flyonthewall-for-fattail.md`.
 
-**Priority (Coach):** **All current focus.** **Brand new; launch this week** (`labs.fattail.ai`).  
+**Priority (Coach):** Strategy Lab **Design + Curate lock** for current membership; Deploy UX without live Tradier capital; admin proves Tradier then provisions. Spec/architect Visualize AI, Marketplace, Community with **future Practice vs Labs** seams — **no dual-host cutover until Coach opens that program**.  
 
-**Strategic bets:** Labs + course/campaign creation; **agent interaction with the service** (huge growth potential). This **Agent Bench** exists because agents already drive Labs development — keep that leverage.
+**Strategic bets:** Strategy Lab (process bots) + education/practice suite; **agent interaction with the service**; later **Labs membership product** (monetize FatTail Lab Bots) distinct from Navigator Practice. This **Agent Bench** exists because agents already drive Labs development — keep that leverage.
 
-**Product:** All clients’ **primary tool for managing their journey**.  
-- Member: **course content** + **apps** (Journey Tracker, Trade Log, Journal, …)  
-- Admin: **content distribution**; **agentic team produces courses and campaigns**; **monitor and interact with client journeys**  
+**Product (today):** Members’ journey tool on one host.  
+- Member: **courses** + **apps** (Journey, Practice stack, Toughness, Strategy Lab Design/Curate, Community as built)  
+- Admin: **content distribution**; **agentic team** produces courses/campaigns; Strategy Lab / marketplace ops  
 
-**Primary live service** (outside Labs): daily Discord coaching + daily livestreams + Sunday Retrospective.  
-Navigators also get more individual attention, periodic reviews, personal Coach guidance.  
+**Primary live service** (outside the web app): daily Discord coaching + daily livestreams + Sunday Retrospective.  
+Navigators get more individual attention, periodic reviews, personal Coach guidance.  
 
 **Three big goals:** Observer acquisition · engagement · upgrade → Navigator Annual.  
-Vault: `/Users/ernie/knowledge/wiki/projects/fattail-labs.md`, `concepts/labs-value-thesis.md`.
+(Future: Labs membership as add-on / separate purchase for bot product — vault + Membership Spec when cutover is real.)  
+Vault: `/Users/ernie/knowledge/wiki/projects/fattail-labs.md`, `concepts/labs-value-thesis.md`.  
 **Public FOTW alert:** Member-facing **UI/marketing copy** with FlyOnTheWall / **FOTW** → report to Coach. **OK for now:** technical `/fotw-sso` login path (not treated as public brand debt).
 ### Bridge rules
 
