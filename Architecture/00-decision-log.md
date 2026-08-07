@@ -4,6 +4,435 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-07 — DL-252 Deploy: members get full Deploy UX; gate only real-broker (Tradier) real-money
+
+**Coach refine on DL-251:**
+- Members may use **all of Deploy** except **connectivity to real brokers** (**Tradier**).
+- The gated piece is what Deploy is **ultimately** for: trading the bot in a **real-money** environment.
+- Admin continues to prove Tradier (paper → live); then **provision** real-broker / real-money to designated members.
+
+**Member messaging:** Deploy is available for process/promote/monitor (non–real-money); live Tradier is next when the rail is ready — not “everyone live on capital today.”
+
+**Arch:** `Architecture/26-strategy-lab-member-timeline.md` §4 · Arch 17 · `docs/Strategy-Lab-Member-Timeline.md`
+
+## 2026-08-07 — DL-251 Strategy Lab timeline: Design+Curate for members; Deploy path
+
+**Coach product focus (current system — not dual-host cutover):**
+
+| Track | Scope |
+|-------|--------|
+| **Member (now)** | Continue **Design + Curate**, **lock** them, give **current membership complete access** |
+| **Deploy UX** | Members use Deploy **except real-broker real-money** (see **DL-252**) |
+| **Parallel** | Admin develops/proves **Tradier** connectivity |
+| **Later** | **Provision real-broker Deploy** for designated members on the same rails |
+
+**Aligns with** Arch 17 (Design+Curate multi-tenant first; real-broker admin validate; then provision).  
+**Does not** open multi-member **live Tradier** early.  
+**Does not** wait on dual-subdomain split (DL-248–250) to ship Design+Curate.
+
+**Arch:** `Architecture/26-strategy-lab-member-timeline.md` · Arch 17 header reaffirm  
+**Docs:** `docs/Strategy-Lab-Member-Timeline.md`
+
+## 2026-08-07 — DL-250 FatTail Labs = separate product membership + Navigator grandfather
+
+**Scope:** **Future product direction** — not a present-day cutover or mandatory near-term
+build. Intent is locked so features can be **architected in anticipation**.
+
+**Coach:**
+1. **FatTail Labs** becomes a **separate product** with its **own membership type**
+   (not an automatic side-effect of Navigator).
+2. **Current Navigators** are **grandfathered** into Labs by **granting a new
+   membership** (Labs entitlement) — they keep bot/Labs access without a new purchase.
+3. **Future Navigators** receive **Practice only** (coaching + trader education suite).
+   They get **Labs only if they purchase** the Labs membership.
+4. Aligns with dual subdomain (DL-248/249): Practice home for Navigators; Labs product
+   at `labs.fattail.ai` for bot build/deploy / marketplace.
+
+**Until Coach opens a cutover program:** production stays single-host unified suite;
+Navigators retain as-built access including Strategy Lab.
+
+**Later Spec / ops (when scheduled):**
+- New plan key e.g. `labs` / `labs-annual` (Membership Spec amend).
+- Grandfather batch: active Navigator as-of cutover → add Labs membership.
+- Product entitlement matrix: Practice vs Labs independently combinable.
+- WooCommerce Labs SKU; Navigator product no longer implies Labs.
+
+**Open (for that future program):** Activator; Observer + Labs add-on; grandfather
+term policy; cutover date/runbook.
+
+**Arch:** `Architecture/25-dual-subdomain-practice-labs.md`  
+**Docs:** `docs/Dual-Subdomain-Practice-vs-Labs.md`
+
+## 2026-08-07 — DL-249 Dual subdomain access: Navigator→Practice, Community segments, Visualize
+
+**Scope:** Future direction (with DL-248/250) — design constraints for later; not present cutover.
+
+**Coach refinements on DL-248:**
+
+1. **Community** — Both Practice and Labs use Community, but with **segmented
+   channel access** (`practice` | `labs` | `shared`). Members only see/post
+   channels allowed for their product entitlement(s).
+2. **Visualize AI** — **Exclusive to `practice.fattail.ai`** (trader structure
+   literacy), not the Labs bot product.
+3. **Navigators** — Default home is **Practice** (full coaching/education suite).
+   Labs access is **not** automatic for future Navigators (see **DL-250**).
+4. **Labs** — Separate product for bot build/deploy / FatTail Lab Bots monetization
+   (DL-247).
+
+**Arch:** `Architecture/25-dual-subdomain-practice-labs.md`  
+**Docs:** `docs/Dual-Subdomain-Practice-vs-Labs.md` · Community + Visualize how-it-works notes
+
+**Superseded in part by DL-250** on how Navigators obtain Labs (grandfather vs purchase).
+
+## 2026-08-07 — DL-248 Dual subdomain future: practice.fattail.ai vs labs.fattail.ai
+
+**Scope:** **Future direction** for architecture foresight — **not** as-built and
+**not** a scheduled split. Current system remains one host until a later program.
+
+**Coach:** Forward-looking product structure. Today is a **single** host
+(`labs.fattail.ai`) mixing education/practice and bot automation. The **target**
+is a **split into two subdomains**:
+
+| Host | Audience | Job |
+|------|----------|-----|
+| **`practice.fattail.ai`** | Traders (**Navigators’ home**) | Become **better traders** (practice, courses, process stack) |
+| **`labs.fattail.ai`** | Bot builders / operators | **Build and deploy bots** — compete with **Option Alpha–class** products (Arch 16 doctrine: same service type, opposite soul) |
+
+**Implications:**
+- Marketplace monetization of FatTail Lab Bots (DL-247) is **Labs-subdomain–primary**.  
+- Practice stack / education remain **Practice-subdomain–primary**; Navigators live here (DL-249).  
+- Shared: brand ethos, identity/membership commerce (WooCommerce), Community with **segmented channels** (DL-249).  
+- **Not as-built** — no DNS/app split yet; ship on current monolith until cutover Spec + Foxtrot edge plan.
+
+**Arch:** `Architecture/25-dual-subdomain-practice-labs.md`  
+**Docs:** `docs/Dual-Subdomain-Practice-vs-Labs.md`
+
+## 2026-08-07 — DL-247 Bot Marketplace purpose: monetize FatTail Lab Bots
+
+**Coach:** The purpose of the Marketplace is to **monetize FatTail Lab Bots**.
+
+| Priority | Meaning |
+|----------|---------|
+| **Primary** | **Admins** offer **FatTail Lab Bots** to customers who **purchase FatTail Labs subscriptions** (WooCommerce sells; Labs entitles + provisions into Strategy Lab Curate). |
+| **Secondary** | **Navigator** members may have **limited sharing** with other **Navigators** (peer process packages — not the commercial center). |
+
+**Not primary:** free peer-publish marketplace as the product spine.  
+**Not:** in-app payments; P&L leaderboards; one-click live Deploy.
+
+**Spec:** Bot Marketplace Framework **v0.1.2** · Arch 23/24 updated.  
+**Builds on:** DL-235 house catalog · DL-243/244 package substrate/trust · DL-128 Observer≡Navigator for who may receive subscription bots.
+
+## 2026-08-07 — DL-246 Visualize AI: vertical layout + Observer access
+
+**Coach:**
+1. **Layout** — conversation and chart canvas are **vertical** (stacked), not
+   side-by-side as the primary orientation. Default: **canvas above**, conversation
+   below (chart is the live preview). Conversation above canvas allowed as alternate.
+2. **Access** — Visualize AI is available to **Observer** as a **paid trial** with
+   **exactly the same privileges as Navigator**. Sole product difference for Observer:
+   **weekly** subscription that **terminates after 6 weeks** (DL-128 / DL-194
+   `feature_role`). **There is no free Observer plan.** Free no-plan accounts remain
+   denied. Also open to Activator / Navigator / admin via normal entitlement.
+
+**Correction:** Earlier draft language that treated “free Observer” / role=observer
+cookie as full access was **wrong** and is superseded here.
+
+**Spec:** R6 (Observer ≡ Navigator parity), R10 (vertical); §3.2 · §10.1 · acceptance #7/#10.  
+**Docs:** Spec · Arch 21/22 · `docs/Visualize-AI-How-It-Works.md`
+
+## 2026-08-07 — DL-245 Visualize AI: local Save + Copy chart (v1.0)
+
+**Coach:** Member must be able to (1) **save the chart** to an OS directory of
+choice (browser download / save-as PNG) and/or (2) **copy the chart image** to
+the system clipboard for paste elsewhere.
+
+**Spec:** Visualize AI Spec v0.1 — requirements **R8/R9**, canvas actions, acceptance
+#8–9; client-side only (no server round-trip). Server chart **library** remains v1.1.
+
+**Docs:** Spec · Arch 22 · `docs/Visualize-AI-How-It-Works.md`
+
+## 2026-08-06 — DL-244 Bot Marketplace gate close (B1–B2, R1–R4)
+
+**Source:** Architecture evaluation of Spec v0.1 (CONDITIONAL GO).  
+**Spec:** v0.1.1 folds findings.
+
+| ID | Binding decision |
+|----|------------------|
+| **B1** | **`fattail.bot_package` is the sole portable substrate** for member→member bot transfer. Single-bot share = `bot_count=1`. One verb: **Import**. `community_bot_shares` may only thin-index packages (`bot_package_id`); no parallel snapshot payload. House shelf stays code-catalog Apply/Copy. |
+| **B2** | House-derived redistribution **allowed** with **mandatory provenance** on card/manifest; import **re-derives/verifies** house binding against house catalog (no free-form self-claim trust). Official house listing remains admin catalog. |
+| **R1** | Packages are untrusted: every pack config validated against pack schema/bounds on import; imported bots inherit Curate performance guards. |
+| **R2** | All package free-text sanitized/output-encoded on Labs card, import preview, Discord text. |
+| **R3** | Discord representation = link-back + Labs import deep-link; **minimum parity ships in F3** with Labs share. |
+| **R4** | Downloads only via authenticated endpoint or short-lived signed URL scoped to share; **never** bare public blob URL. |
+
+**Advisory tracked:** A1 Hotel on correlation notes · A2 version informational + re-import notice · A3 adversarial tests T10–T12 · D1 migration number at build.
+
+**Coach residual:** may override M-HOUSE-1 to forbid house redistribute entirely.
+
+## 2026-08-06 — DL-243 Bot Marketplace Framework (package · chat · import)
+
+**Coach outline:** Minimal viable **Bot Marketplace Framework** — not a public
+storefront. Strategy Lab users **package** bots (or multi-bot packages), **share**
+via **Community chat** attachment, peers **import** into their own **Curate**.
+
+**Locked principles:**
+- Stay in Design → Curate → Deploy; import never arms live Deploy  
+- No rankings, leaderboards, public scores, or performance theater  
+- Reuse Strategy Lab portable export (`fattail.labs.strategy_lab`) inside
+  wrapper format `fattail.bot_package`  
+- Monetization hooks (`is_premium`, `price_cents`, `license_type`, purchases
+  table) **schema only** — unused in MVF  
+- Commerce later = WooCommerce only if activated  
+
+**Docs landed (F0, pre-implementation):**
+- Spec v0.1 → **v0.1.1** — `Specs/FatTail-Labs-Bot-Marketplace-Framework-Spec-v0.1.md`  
+- Arch — `Architecture/23-bots-marketplace.md`  
+- Design — `Architecture/24-bots-marketplace-design.md`  
+
+**Gate:** DL-244 closes architecture CONDITIONAL GO items.
+
+**Not shipped:** migrations/APIs/UI (F1+ after Coach Spec → **v1.0**).
+
+## 2026-08-07 — DL-242 Community second-window message bridge (C1c path)
+
+**Coach north star:** FatTail members already connected to Discord at enrollment;
+Labs Community is an extension of that server; messages sync both ways.
+
+**Shipped path:**
+- `community_messages` mirror table · REST backfill on channel open · Labs send via
+  bot with honest “Name (via Labs)” attribution.
+- Entitled roles (observer/activator/navigator/admin) read/post when channel mapped
+  and `LABS_DISCORD_BRIDGE=1` + bot token.
+- Identity: Discord name from SSO claims when present (DL-241); else Labs display name.
+- Admin map: `/admin/community` (channel snowflakes).
+
+**Not yet:** Gateway long-poll worker (Foxtrot launchd); fotw-sso claim patch on WP
+(still required for automatic Discord name); dedicated FatTail AI bot token separate
+from 0-DTE (dev may fall back to `LABS_DISCORD_0DTE_BOT_TOKEN`).
+
+**Related:** DL-238–241 · Spec §6.
+
+## 2026-08-06 — DL-241 Discord identity to Labs via SSO claims (not OAuth tokens)
+
+**Coach intent:** Seamless recognition on labs.fattail.ai when the member already
+connected Discord on fattail.ai; two-way Community chat.
+
+**Locked design (Mike + plugin inventory):**
+1. **Do not** pass Discord OAuth access/refresh tokens to Labs or the browser.  
+2. **Do** extend **fotw-sso** JWT with `discord_user_id` + `discord_username` (+ optional
+   avatar) from Woo Subscription Discord user meta.  
+3. Labs SSO callback upserts `identity_links` provider `discord` +
+   `identity_discord_profiles`.  
+4. **Two-way chat** remains Labs **bridge bot** + channel map (C1c) — not member
+   Discord tokens speaking as the user from Labs.  
+5. Primary connect UI stays **fattail.ai** My Account (DL-240).
+
+**Ops:** `docs/ops/WP-Discord-SSO-Claims-for-Labs.md`  
+**Related:** DL-238 · DL-239 · DL-240 · Community Spec §8.
+
+## 2026-08-06 — DL-240 Community Discord connect = fattail.ai WP plugin (binding)
+
+**Coach:** The connector to the Discord server is a **WordPress plugin on fattail.ai**.
+It connects the member to guild **FatTail AI**. The member’s **Discord name is
+maintained on fattail.ai**.
+
+**Locks:**
+1. **Primary connect path** = existing WP Discord connector on fattail.ai — **not** a
+   Labs-first Discord OAuth product that competes with it.  
+2. **Display name in Labs Community** for linked members = Discord name as stored on
+   fattail.ai (ingested via SSO claims and/or WP→Labs sync).  
+3. Labs still stores Discord snowflake on the identity for post gate + message
+   attribution (`identity_links` or equivalent sourced from WP).  
+4. Labs **bridge bot** (Message Content Intent, channel webhooks, mirror/send) remains
+   Labs-owned for the second window — distinct from member-connect plugin.  
+5. **DL-238** date-aware role reconcile remains binding; Mike designs executor so WP
+   plugin and Labs bot do not fight (single coherent grant/revoke story).
+
+**Spec:** Community App Spec **v1.0.2** §8.0–8.6.  
+**Related:** DL-237 · DL-238 · DL-239 · Identity Access (wordpress:fattail SSO).
+
+## 2026-08-06 — DL-239 Community App Spec v1.0.1 — Coach Phase 5 APPROVED (BUILD AUTHORITY)
+
+**Coach:** Approves Community App Spec **v1.0.1** as **build authority**.
+
+**Locks (from Spec + DL-237/238):**
+- Surface: Apps hub card → `/app/community`
+- Chat = **Discord second window** (Discord SoR for guild chat; Labs SoR for bots/shares/map)
+- Seed channels: General, Practice, Strategy Lab, Toughness; admin may create more; no Journey/Wiki channels
+- **Date-aware Discord role reconciliation** mandatory (DL-238) — not webhooks alone
+- Message mirror: idempotent upsert + **gap-heal backfill**; event matrix §6.7
+- Platform: Message Content Intent + GUILD_MEMBERS; per-channel webhook id+token
+- House bots default shared; member publish/apply; hold ≠ Discord delete
+
+**Execution:** `agents/p-community/` (Juliet plan + seeds). India CONDITIONAL GO closed.
+Specialist C0 reviews (Tango/Mike/Echo/Foxtrot) before Discord-heavy P1b/c; P1a shell after C0-G.
+
+**Spec:** `Specs/FatTail-Labs-Community-App-Spec-v1.0.md` (v1.0.1 approval; **v1.0.2** adds DL-240 WP connector).  
+**Related:** DL-237 · DL-238 · **DL-240** · Membership Tiers Discord annotation
+
+## 2026-08-06 — DL-236 Visualize AI member app (spec + arch + design)
+
+**Coach:** New top-level Apps product **Visualize AI** (`/app/visualize-ai`): text
+(voice later) interface with the resident AI to create **custom visualizations**
+and **correlations** from **options-related Massive data**.
+
+**Locked product choices (amended DL-245/246):**
+- Hub: top-level Apps card (sibling of Strategy Lab, not nested)
+- V1: text → structured chart plan → **deterministic tools** → render
+- Access: **Observer trial ≡ Navigator features** (6-week paid weekly); free no-plan denied (DL-246 / DL-128)
+- Layout: **vertical** canvas + conversation (DL-246); Save/Copy PNG (DL-245)
+- Data plane: **options Greeks**, **VIX ~1–30 day** (VIX1D + VIX; VIX9D if entitled),
+  **SPX**, and **any entitled Massive** surface via a **closed tool catalog**
+  (never raw browser passthrough; never model-invented numbers)
+
+**Docs landed (pre-implementation):**
+- Spec **v0.1** — `Specs/FatTail-Labs-Visualize-AI-Spec-v0.1.md` (Coach intent;
+  India/Echo/Tango/Mike/Hotel → Coach v1.0 before code)
+- Arch — `Architecture/21-visualize-ai.md`
+- Design — `Architecture/22-visualize-ai-design.md`
+
+**Invariants:** proxy honesty (DL-223/224); correlation/on-demand isolation from
+Curate comparison (DL-231); member ethos + distress (DL-209–211); ChainStore
+prefer for chain/Greeks cost control (DL-186).
+
+**Not shipped:** routes, migration, UI — Spec review gates first.
+
+## 2026-08-06 — DL-238 Discord role sync: date-aware reconciliation (binding)
+
+**Coach / India gate (Community Spec review):** Discord paid roles must not outlive
+Labs entitlement. Webhooks alone miss **date-based** expiry:
+
+- Observer trial term end (`current_period_end`)
+- Alumni-year end (`courses-alumni` period end)
+
+**Invariant:** Discord guild roles for Discord-included tiers are derived from the
+**same date-aware membership derivation** Labs uses for roles (memberships with
+`current_period_end` in the past are not entitled — Identity/Tiers Spec §3).
+
+**Required worker:** scheduled **reconciliation sweep** that:
+
+1. For each Discord-linked Labs identity, compute Labs Discord-entitlement (date-aware).  
+2. Diff vs actual guild roles.  
+3. Corrective grant/revoke.  
+4. **Fail-loud** alert on persistent divergence.
+
+Webhook-driven sync is complementary (faster path), not sufficient alone.
+
+**Spec:** Community App Spec §8.5 · §6.6.  
+**Related:** DL-128 Observer = 6-week term · Membership Tiers date-expiry · DL-237.
+
+## 2026-08-06 — DL-237 Community App Spec v1.0 (product intent) — was misnumbered DL-236
+
+**Coach:** New Community app at `/app/community` (Apps hub card). Chat is a
+**second window on FatTail Discord** (sync users + messages; Discord display names).
+Seed channels: **General**, **Practice**, **Strategy Lab**, **Toughness**. Admin may
+create more. Journey/Wiki: no channels. FatTail bots shared by default; member bot
+shares opt-in. Labs SoR for bots; Discord SoR for guild chat. Discord-included
+subscribers connect Discord identity + roles.
+
+**Spec:** `Specs/FatTail-Labs-Community-App-Spec-v1.0.md`  
+**Status:** Superseded for *build* status by **DL-239** (Coach Phase 5 APPROVED / v1.0.1).
+
+**Note:** Earlier log line that reused **DL-236** for Community was a numbering
+collision with Visualize AI (DL-236). Community is **DL-237**. India review D2 closed.
+
+**India architecture gate (2026-08-06):** CONDITIONAL GO → B1 closed as DL-238;
+R1–R4 folded into Spec v1.0.1.
+
+## 2026-08-06 — DL-235 FatTail house strategies + mint provision
+
+**Coach:** House strategies are FatTail-designed, taught in courses, **versioned**,
+and **admin-only** to modify/version. Members apply, configure bots, or
+copy-and-rebuild — cannot remove house entries from the managed list.
+
+**Catalog (v1.0.0 each):** 0DTE OTM Classic Butterfly · 1–2 DTE Timewarp Batman ·
+1–2 DTE Timewarp Trend Single · 0DTE High Vol Batman · Convex Stack (2–4 DTE) ·
+Sigma Drift (5–10 DTE). Each includes **entry + management** process and
+**course_refs** to Labs curriculum.
+
+**Mint:** On first identity create (SSO join / register), provision **3 starter
+bots** in **Curate** (`monitored`), house-bound, **armed** sim instances ready
+to tick and later promote to Deploy:
+`0dte_otm_classic_butterfly`, `0dte_high_vol_batman`, `1_2dte_timewarp_batman`.
+
+**Tracking:** `attributes.house_design@1` `{key, version, name, …}` on the bot;
+comparison rows expose `house_design_key` / `house_design_version` for Curate/Deploy.
+
+**Code:** `house_designs.py` · `strategy_lab_designs.py` · mint hook in
+`identity.get_or_create_identity` · `GET /api/me/strategy-lab/designs` ·
+`POST .../designs/house/apply` · migration **089** member copies · UI
+`DesignHouseLibrary`.
+
+## 2026-08-06 — DL-234 Curate comparison performance guard tests
+
+**Coach:** Automated tests must fail early if the multi-bot comparison hot path
+regresses (live Massive corr, 3N SQL, dual payload, fat series, multi-second wall).
+
+**Landed:** `server/tests/test_strategy_lab_curate_perf_guards.py`  
+**Budgets:** ≤12 SQL executes · ≤2s wall @ N=8 · `correlation.deferred` · bots-only  
+**Arch:** `Architecture/20` §4 · Spec Surface acceptance #12
+
+## 2026-08-06 — DL-233 Documentation parity: Curate board performance + suite nav
+
+**Coach:** Update specs, architecture, and user guide for (1) multi-bot board
+performance/stability contract and (2) suite nav restoration (Design · Curate ·
+Deploy · Archive; Symbols under Design).
+
+**Landed:**
+- Spec Surface **v1.0.2** (§1.5 comparison hot path, §3 symbols under Design, §5 board stability)
+- `Architecture/20-strategy-lab-curate-board-performance.md` (audit conclusions + as-built)
+- Updates: Arch **19**, **18**, **README**; Curate user guide; Navigation Continuity note
+- Decision log **DL-230–DL-232**
+
+## 2026-08-06 — DL-232 Suite nav: Design · Curate · Deploy · Archive; Symbols under Design
+
+**Coach:** Top suite must remain **Design · Curate · Deploy · Archive**. Do **not**
+rename to Sim market / Live market. **Symbols is not a top-level suite tab.**
+
+**As-built:**
+- `web/lib/strategyLabSuite.ts` — suite = four items only
+- Design **sub-nav**: Board | Symbols (`StrategyLabDesignSubNav`)
+- Symbols pages chrome with `active=development`, `designSub=symbols`
+- **Design:** assign symbol (underlying) via designer `CurateSymbolPicker` for BT/FW
+- **Curate:** re-select scan symbol when creating a sim run
+- **Deploy:** no symbol step — only curated bots
+
+**Rationale:** Symbol is an attribute of the bot’s design and Curate run, not a
+life-cycle phase. Deploy consumes already-curated bots.
+
+## 2026-08-06 — DL-231 Curate multi-bot board: performance & browser stability
+
+**Coach:** Browser must stay stable with many Curate instances (customer confidence).
+Performance/architecture audit → redesign of comparison + PhaseRunDashboard.
+
+**Root causes found:**
+1. Live **Massive correlation** inside `GET .../comparison` (~20–22s @ 17 bots)
+2. **1 Hz** parent `nowMs` re-rendering all cards + SVG charts
+3. Unbounded mount of N mini equity charts
+4. O(N) SQL + dual `bots`+`strategies` full payload
+
+**As-built contract:**
+- Comparison = **book metrics only**; corr **deferred** (calculator / `/correlation*`)
+- Batched SQL (position aggs + last-N equity series window); compact `{equity}` points
+- Primary array: **`bots`**; `strategies` empty (no dual full list)
+- UI: **page size 12**; memo cards/charts; runtime clock **per-cell** only; tab-hidden pause
+- Silent poll **30s**, no stacked fetches, loading only on initial/manual refresh
+- Measured @ 17 bots: comparison **~6 ms**, payload **~19 KB** (was ~20s / ~60 KB)
+
+**Code:** `curate_domain.comparison_report` · `PhaseRunDashboard` · `MiniEquityChart` ·
+`CuratePhaseDashboard` · migration **088** `run_started_at` (runtime stat)
+
+**Arch:** `Architecture/20-strategy-lab-curate-board-performance.md`
+
+## 2026-08-06 — DL-230 Runtime since last start/restart
+
+**Coach:** Dashboard must show **current runtime since last start/restart**, adaptive:
+seconds → min:sec → hours/min → days/hours.
+
+**As-built:** Column `run_started_at` on `strategy_lab_curate_instances` (migration
+**088**). Set/reset on **Arm**. API: `run_started_at`, `runtime_seconds`,
+`runtime_label`. UI: live Runtime on grid/table (per-cell timer after DL-231).
+
 ## 2026-08-05 — DL-212 Users admin free/paid visibility
 
 **Decision:** The admin Users section now classifies every identity into a
@@ -48,6 +477,38 @@ is nominal — Ernie's server and ops are ET, accepted as-is, not changed here.)
 
 ---
 
+## 2026-08-05 — DL-216b Trade Log `entry_source`: manual · import · automated
+
+**Decision:** Three **distinct** provenance values on `member_trade_log_trades.entry_source`:
+
+| Value | Meaning |
+|-------|---------|
+| **`manual`** | Member typed (structure form / legs) |
+| **`import`** | File or paste adapters (ToS, CSV, canonical) |
+| **`automated`** | Strategy Lab process runtime or other Labs automations |
+
+**Never** stamp Strategy Lab fills as `import`, or file imports as `automated`. Legacy
+`machine` → `automated` (migration **082**, normalizer synonym).
+
+**Rationale:** Coach: import and automation are different audit/policy channels.
+Automated fills will come from Strategy Lab (and future bots), not from ToS paste.
+
+## 2026-08-05 — DL-216 Trade Log manual management (structure entry · close · trash)
+
+**Decision:** Manual trade entry/close/trash is a first-class Practice surface. Spec
+**§16** of Trade Log v1.1 and design architecture **`Architecture/15-trade-log-manual-management.md`**
+are as-built authority. Structure-first create; open strip + row Close/Trash; close
+pairing gates (orphan, account, units, drift); universal trash for now; `entry_source`
+via migration **081** (refined in **DL-216b**). Client match helpers mirror
+`trade_log_domain` and must not fork structure-key rules.
+
+**Rationale:** Members re-enter multi-leg books by hand; leg-by-leg default was too
+heavy. Honest open→close pairing and trash prevent silent book corruption without
+profit theater. Provenance column enables later “manual-only trash” without guesswork.
+
+**Code:** `web/lib/tradeLog.ts` · `TradeSheet` · `TradeLogTable` · `tradeLogPrefs.ts` ·
+`migrations/081_trade_log_entry_source.sql` · create/import stamp `entry_source`.
+
 ## 2026-08-04 — DL-211 Member Help System (DB-backed help desk)
 
 **Decision:** New in-app help desk. Members ask questions (optional image upload),
@@ -74,6 +535,243 @@ skipped — the app still boots); the member widget is wrapped in an `ErrorBound
 "the Help button doesn't work," never a blocked login/page/API. Spec:
 `FatTail-Labs-Help-System-Spec-v1.0`. Tests: `test_help.py`. Status: draft,
 pending live verification on MiniTwo.
+
+## 2026-08-06 — DL-229 Terminology: Bot · Strategy attribute · Position
+
+**Coach:** Correct terminology for Curate/Deploy units:
+
+| Term | Meaning |
+|------|---------|
+| **Bot** | Primary unit (what we wrongly called “strategy” on the grid) |
+| **Strategy** | **Attribute of the bot** (pack / methodology) |
+| **Position** | **Instance of the bot** (open/closed package) |
+
+**Spec:** Curate-and-Deploy-Surface-Spec v1.0 §0 terminology; Process Runtime v1.2 glossary.  
+**API:** emit `bot_id` / `bot_name` (+ legacy `strategy_*` aliases).  
+**UI:** dashboards/reports use Bot / Position language.
+
+## 2026-08-06 — DL-228 Spec & architecture documentation parity
+
+**Coach:** Update specs and architecture docs for as-built Strategy Lab
+Curate/Deploy surfaces.
+
+**Landed:**
+- `Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` (authority for Curate/Deploy UI, marks, symbols, correlation, reports)
+- `Specs/Strategy-Lab-Process-Runtime-Spec-v1.2.md` (amends multi-member Curate / host priority)
+- `Architecture/19-strategy-lab-as-built-map.md`
+- Updates: Arch README, 09, 17, 18; Implementation Scope overlay; Curate user guide cross-links
+
+## 2026-08-06 — DL-227 Relative correlation on grid + calculator
+
+**Coach:** Grid view shows **relative correlation**; calculator for **any two
+symbols** → Pearson coefficient.
+
+**Shipped:** `market_data.correlation` (daily simple returns, Massive aggs);
+indexes use proxy series when needed; `GET .../correlation?a=&b=&days=`;
+`GET .../correlation/relative`; comparison attaches `corr_vs_spy` per run;
+grid/table show **ρ vs SPY**; `CorrelationCalculator` on Symbols + Curate footer.
+
+## 2026-08-06 — DL-226 Deploy equity & stats like Practice Reports
+
+**Coach:** Deploy phase needs **detailed equity and stats reporting** similar to
+Practice **Reports** (equity curve, drawdown, stats table, featured cards,
+outcome distribution).
+
+**Shipped:** `build_run_reports_book` (same DTO as trade-log reports-book);
+`GET .../deploy/reports-book` + `.../curate/reports-book`; `DeployReportsPanel`
+reuses Practice `EquityChart`, `DrawdownChart`, `StatsTable`, featured cards,
+`BarDist`. Until Tradier Deploy outcomes exist, book is built from closed
+**Curate sim** packages with honest source_note.
+
+## 2026-08-06 — DL-225 Curate/Deploy high-visibility phase dashboards
+
+**Coach:** Curate and Deploy must be highly visible with **similar interfaces**:
+grid or table reporting plus **mini equity charts**. Shared `PhaseRunDashboard`
+primitive; Curate live with sim equity series; Deploy shell mirrors layout until
+Tradier provisioned.
+
+## 2026-08-06 — DL-224 VIX + Daily VIX (VIX1D) for strategy decisions
+
+**Coach:** VIX and **Daily VIX** for reference and strategy decisions.
+
+| Symbol | Meaning |
+|--------|---------|
+| **VIX** | 30-day IV regime |
+| **VIX1D** | Cboe Daily / 1-day VIX — 0DTE and daily decision context |
+
+Both are **shared reference** marks (role=reference), not default scan underliers.
+Each poll stores **mid + prev_close + day_change_pct** for daily reference.
+API: `GET /api/me/strategy-lab/curate/vol-reference`. UI vol cards on Curate stream strip.
+Until Massive index entitlement: proxies labeled (VIX/VIX1D → VIXY).
+
+## 2026-08-06 — DL-223 Curate symbol universe (indexes + ETFs + stocks)
+
+**Coach universe (enabled shared stream):**
+
+| Kind | Symbols |
+|------|---------|
+| Indexes | **SPX, XSP, VIX** |
+| ETFs | **SPY, QQQ, IWM, GLD, TLT, SLV, USO, XLF, UNG** |
+| Stocks | **AAPL, AMZN, NVDA, TSLA, GOOGL, META, MSFT** |
+
+Options cadence: 3–5 expirations/week class. Migration `085` + `086` (VIX→VIXY proxy).
+Index feeds `I:*` may 403; SPX/XSP proxy **SPY**, VIX proxy **VIXY**, always labeled.
+
+## 2026-08-06 — DL-222 Shared live marks stream for all members
+
+**Coach:** Support a **set of symbols** and a **live stream** that **every member's
+collection** uses — one shared stream, not per-member sockets.
+
+**Design:** `market_symbol_universe` + `market_live_marks` + heartbeat;
+`python -m market_data.live_stream` polls Massive into DB; Curate
+`get_mark(cur=…)` reads shared table first. Default universe: SPY, QQQ, IWM + Mag7.
+Stale policy `LABS_MARK_STALE_SECONDS` (default 60); optional
+`LABS_LIVE_MARKS_REQUIRED=1` fail-loud (no stub).
+
+**API:** `GET /api/me/strategy-lab/curate/live-marks`. UI strip on Curate phase.
+**Not Tradier streaming** (Arch/09).
+
+## 2026-08-06 — DL-221 Multi-member Curate comparison is core
+
+**Coach:** Multi-member is an **absolute** requirement. Curate exists so **many
+strategies run** and can be **compared** for promote / portfolio inclusion — not
+single-strategy hobby mode.
+
+**Shipped:** `GET .../curate/comparison` (per-member multi-strategy metrics);
+`POST .../curate/tick-all` (tick all armed/running for member);
+`POST .../curate/platform-tick` (admin multi-member worker tick);
+UI **Strategy comparison** + tick-all on Curate phase. Family B identity isolation.
+
+**Still true:** Deploy Tradier multi-member after Coach validate; Curate sim is
+the multi-strategy comparison plane first.
+
+## 2026-08-06 — DL-220 Curate runtime user guide
+
+**Coach:** User guide for Curate run environment: UI path, under-the-covers
+position/cash/mark/envelope, decision log, chart feasibility (data-ready; UI charts
+not shipped in v1).
+
+**Doc:** `docs/Strategy-Lab-Curate-Runtime-User-Guide.md`
+
+## 2026-08-06 — DL-219 Curate run environment v1 (sim)
+
+**Coach:** Start Curate run environment for everyone (Stage A). Real-market marks
+(stub v1) + simulated broker + fake money; never Tradier. Member-triggered tick
+(manage-before-scan); cloud scheduled workers later.
+
+**Shipped:** migration `083_strategy_lab_curate_runtime.sql`; package
+`server/strategy_runtime/`; routes `/api/me/strategy-lab/curate/*`; UI
+`CurateRuntimePanel`; tests `test_strategy_lab_curate.py`. Fill model
+`mark_mid_v1` labeled. Deploy still Coach-only / not in this slice.
+
+## 2026-08-06 — DL-218 Strategy Lab growth playbook (dogfood → platform)
+
+**Coach:** Fund Tradier, hook API, scale through FatTail Labs so others can create
+and deploy **FatTail-style** process-bots. Best path is **vertical slice first**,
+growth stages with hard exit criteria—not multi-tenant or multi-pack before dogfood.
+
+**Stages (v1.1 refine):**  
+- **A — Design + Curate for everyone** (shared studio; sim only; no member Deploy)  
+- **B — Deploy for Coach only** (validate Tradier paper/live + runtime)  
+- **C — Provision members** for Deploy (their Tradier; paper then gated live)  
+- **D — Solid platform** (hundreds, caps, HA, doctrine)
+
+**Build order:** Design/Curate multi-tenant + Coach Tradier spike in parallel →
+Coach-only Deploy gate → member OAuth + `strategy_lab_deploy` provision.
+
+**Architecture:** `Architecture/17-strategy-lab-growth-playbook.md` **v1.1**
+
+## 2026-08-06 — DL-217 Same service type as OA, opposite strategic direction
+
+**Coach:** Offer the **same type of service** as Option Alpha (no-code process
+automation, cloud continuous run, paper engine, broker-connected live) with a
+**completely opposite strategic direction for traders**.
+
+| Same | Opposite |
+|------|----------|
+| Hosted bots / process runtime, paper, Tradier | Capacity over dependency (not set-and-forget) |
+| OA-class reliability & performance (DL-216) | Stop the bleeding; process outcomes never profit claims |
+| Encode → prove → run → inspect | Proof gates, version pin, arming; Habit Catalog + retro |
+| Member broker custody | Defined-risk pathway; creator owns plan; no profit theater |
+
+**Architecture:** `Architecture/16-strategy-lab-vs-option-alpha-positioning.md`  
+**Bar:** OA-class **service**; FatTail **doctrine**. Features that increase dependency
+or profit theater without increasing capacity or proof do not ship.
+
+## 2026-08-06 — DL-216 Competitive bar: Option Alpha–class host reliability
+
+**Coach:** Strategy Lab will **compete with Option Alpha**. Therefore the service must
+be **at least equal in reliability and performance** for continuous automations
+(paper/Curate and live).
+
+**Implication:** Cloud-hosted Process Runtime (**M3-class workers**) is **competitive
+primary**, not an optional residual. MiniTwo-only multi-tenant bot hosting is
+insufficient. OA-class means: always-on cloud host, auto-restart, queue/workers,
+monitoring/kill switches, in-house paper (Curate: real market + sim broker + fake
+money), live via member broker API (Tradier first).
+
+**Still locked from DL-214:** User owns strategy + arming; broker owns custody and
+fills; prefer **broker-held exits**; no P&L or perfect-exit guarantees; M0 export and
+M2 user-local remain **secondary** (capacity/portability).
+
+**Architecture:** `Architecture/14-strategy-lab-execution-responsibility.md` **v1.1**  
+**Follow-on:** Process Runtime Spec amend to **v1.2** (M3 primary for continuous
+paths; §17 normative). Broker stack: two-layer adapter + ExecutionService
+(`docs/Strategy-Lab-MSC-Broker-Adapter-Assessment-2026-08-06.md`).
+
+## 2026-08-05 — DL-215 Process Runtime Spec v1.1
+
+**Coach:** Runtime Spec amended for execution offload. **v1.1** is SPEC AUTHORITY;
+v1.0 superseded for responsibility/priority. M0–M2 primary; M3 optional; Tradier-first;
+arming ceremony; Deployment Pack export; broker-held exits; admin console for residual
+fleet; §17 workers only for M3/assist.
+
+**Note (2026-08-06):** Competitive mandate **DL-216** elevates M3-class cloud hosting
+to primary for continuous bots; v1.2 Spec amend required. v1.1 remains authority until
+v1.2 lands.
+
+**Spec:** `Specs/Strategy-Lab-Process-Runtime-Spec-v1.1.md`
+
+## 2026-08-05 — DL-214 Execution responsibility: user + broker first
+
+**Coach direction:** Primary goal is to **offload running automations** to the
+**user (creator)** and the **broker**, not to make Labs the always-on multi-tenant
+bot host. Labs = design, validate, version, document, export/handoff, optional
+assisted connectivity. Broker = account, orders, custody, broker-held exits when
+possible. User = strategy ownership, arming, monitoring, contingency.
+
+**First broker target: Tradier** (paper → live). Market data remains Massive /
+Coach chain pipe — do not buy Tradier streaming. Maximize multi-leg open +
+OCO/OTO/OTOCO **broker-held** exits; scan graphs stay user-local or manual.
+
+**Architecture:** `Architecture/14-strategy-lab-execution-responsibility.md` §13  
+**Implication:** Process Runtime Spec §17 (Labs workers at scale) becomes
+**optional M3**, not the product north star. Prefer M0 export/manual, M1
+broker-native exits, M2 user-local runtime.
+
+## 2026-08-05 — DL-213b Process Runtime multi-tenant scale (§17)
+
+**Coach:** Plan for **dozens → hundreds** of members with armed automations.
+Normative: **control plane (API) ≠ data plane (workers)**; **job queue + leased
+workers**; fair multi-tenant claim; manage-before-scan under load; shared market
+data fan-out (not per-user sockets); broker throttle gateway; per-identity caps;
+decision_log volume/retention. Separate **worker role** required for scheduled/live;
+separate microservice repo **not** required. Defaults: soft 5 / hard 10 armed
+instances; min scan 60s; MySQL jobs table v1.
+
+**Spec:** `Strategy-Lab-Process-Runtime-Spec-v1.0.md` §17.
+
+## 2026-08-05 — DL-213 Strategy Lab Process Runtime Spec v1.0
+
+**Coach:** Spec for deployment process runtime (FatTail shape of “bots as
+processes”): **deployment instance** + **risk envelope** + **scan/manage runners**
++ **typed decisions** + **decision log** + **dry/paper/live ladder**. Explicitly
+inherits Continuity (place ≠ SoR; empty-on-unknown), Versioning P1–P8 (explore ≠
+rebind; restore does not silent-mutate runners; freeze on live; drift fail loud),
+Development Phase gates (no live without BT/FW path), Massive/Tradier split.
+
+**Spec:** `Specs/Strategy-Lab-Process-Runtime-Spec-v1.0.md` (SPEC AUTHORITY).  
+**Not:** OptionAlpha clone; free-floating bots before life cycle.
 
 ## 2026-08-03 — DL-212 Habit Catalog Spec v0.1 + multi-agent plan
 

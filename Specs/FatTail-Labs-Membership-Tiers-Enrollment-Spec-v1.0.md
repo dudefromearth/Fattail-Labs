@@ -9,9 +9,21 @@ reference screens)
 
 ## 1. Tiers (the products)
 
-Courses are included with **every** membership tier. Discord and the FatTail App are
-delivered outside Labs (Discord roles / MSC entitlements) — Labs enforces courses and
-livestreams only.
+Courses are included with **every** membership tier.
+
+**Discord / FatTail App (amended 2026-08-06 — DL-237 / DL-239 / DL-240):**  
+Historically: “Discord and the FatTail App are delivered outside Labs (Discord roles /
+MSC entitlements) — Labs enforces courses and livestreams only.”  
+
+**Now:** Member **connect** to Discord guild **FatTail AI** is via the **WordPress
+Discord connector plugin on fattail.ai**; Discord **name is maintained on fattail.ai**
+(DL-240). Labs **owns entitlement** (date-aware memberships), **ingests** Discord id +
+name, and runs Community as a **second window** on that guild
+(`Specs/FatTail-Labs-Community-App-Spec-v1.0.md` v1.0.2). Discord remains the
+conversational home for guild chat; **Labs membership is SoR for who may have paid
+roles**. Role revocation must run on a **schedule against date-aware derivation**
+(Observer term end, alumni year end), not webhooks alone (DL-238). Execution:
+`agents/p-community/`.
 
 | Tier (plan slug) | Price | Includes | Labs role granted |
 |---|---|---|---|

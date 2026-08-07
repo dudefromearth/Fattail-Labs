@@ -29,6 +29,47 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [18-shared-live-marks-stream.md](./18-shared-live-marks-stream.md) | Shared symbol universe + live stream + correlation |
 | [19-strategy-lab-as-built-map.md](./19-strategy-lab-as-built-map.md) | Code/spec/route map for Curate/Deploy as-built |
 | [20-strategy-lab-curate-board-performance.md](./20-strategy-lab-curate-board-performance.md) | Multi-bot Curate board performance/stability (DL-231) |
+| [21-visualize-ai.md](./21-visualize-ai.md) | Visualize AI system architecture (pre-impl · DL-236) |
+| [22-visualize-ai-design.md](./22-visualize-ai-design.md) | Visualize AI UX / interaction design (pre-impl · DL-236) |
+| [23-bots-marketplace.md](./23-bots-marketplace.md) | Bot Marketplace Framework architecture (pre-impl · DL-243) |
+| [24-bots-marketplace-design.md](./24-bots-marketplace-design.md) | Bot Marketplace Framework UX (pre-impl · DL-243) |
+| [25-dual-subdomain-practice-labs.md](./25-dual-subdomain-practice-labs.md) | **Future:** practice.fattail.ai vs labs.fattail.ai (DL-248) |
+| [26-strategy-lab-member-timeline.md](./26-strategy-lab-member-timeline.md) | **NOW:** Design+Curate lock; Deploy UX for members; Tradier real-money gated (DL-252) |
+
+**Strategy Lab member timeline (2026-08-07) — current product focus:**
+
+| Doc | Role |
+|---|---|
+| Arch **26** | Design+Curate lock; full Deploy except real-broker $; admin Tradier dogfood |
+| Arch **17** | Growth playbook (aligned) |
+| Docs | `docs/Strategy-Lab-Member-Timeline.md` |
+| Decisions | **DL-251** · **DL-252** |
+
+**Dual subdomain future (2026-08-07) — INTENT ONLY (architect in anticipation; do not implement split now):**
+
+| Doc | Role |
+|---|---|
+| Arch **25** | Practice vs Labs products · Community segments · Visualize Practice-only · Labs membership + grandfather |
+| Docs | `docs/Dual-Subdomain-Practice-vs-Labs.md` |
+| Decisions | **DL-248** · **DL-249** · **DL-250** |
+
+**Bot Marketplace Framework (2026-08-06) — design locked, pre-implementation:**
+
+| Doc | Role |
+|---|---|
+| Spec **v0.1.2** | `Specs/FatTail-Labs-Bot-Marketplace-Framework-Spec-v0.1.md` — **monetize FatTail Lab Bots** + limited Navigator share (DL-247) |
+| Arch **23** | Lane A commercial · Lane B peer · trust/download |
+| Design **24** | Catalog provision UX + Navigator peer share |
+| Decisions | **DL-243** · **DL-244** · **DL-247** |
+
+**Visualize AI (2026-08-06) — design locked, pre-implementation:**
+
+| Doc | Role |
+|---|---|
+| Spec **v0.1** | `Specs/FatTail-Labs-Visualize-AI-Spec-v0.1.md` — Coach intent; review → v1.0 |
+| Arch **21** | Topology, tools, Massive/ChainStore, access, isolation from Curate |
+| Design **22** | Hub card, workspace HIG, chart honesty, starter prompts |
+| Decision | **DL-236** |
 
 **Strategy Lab process runtime (2026-08-05 → 2026-08-06):**  
 `Specs/Strategy-Lab-Process-Runtime-Spec-v1.2.md` — multi-member Curate primary; amends v1.1.  
@@ -38,6 +79,13 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 `Architecture/20-strategy-lab-curate-board-performance.md` — comparison hot path + browser mount budget.  
 `docs/Strategy-Lab-Curate-Runtime-User-Guide.md` — member operator guide.  
 `docs/Strategy-Lab-MSC-Broker-Adapter-Assessment-2026-08-06.md` — two-layer brokerage concept (no MSC code).
+
+**Community app (2026-08-06) — BUILD AUTHORITY (Coach Phase 5 / DL-239 · WP connector DL-240):**  
+`Specs/FatTail-Labs-Community-App-Spec-v1.0.md` **v1.0.2** — `/app/community`;
+Discord second-window on guild **FatTail AI**; member connect + Discord name via
+**fattail.ai WP plugin** (Labs consumes; no parallel Labs OAuth); date-aware role
+reconcile (DL-237–**240**); channels General + Practice + Strategy Lab + Toughness;
+FatTail/member bot shares. Execution: `agents/p-community/` — **C1a PASS** (shell + shelves; bridge off until C1b).
 
 **Trade Log manual management (2026-08-05):**  
 `Architecture/15-trade-log-manual-management.md` — structure-first entry, close gates, trash, blotter open strip.  

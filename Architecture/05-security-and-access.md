@@ -1,7 +1,8 @@
 # Security & Access Design
 
-**Status:** As-built (retroactive, 2026-07-23)  
-**Primary specs:** Identity-Access, Enrollment-Access, Native Billing Stripe, Lesson Video
+**Status:** As-built (retroactive, 2026-07-23) · amended 2026-08-06 for Discord entitlement  
+**Primary specs:** Identity-Access, Enrollment-Access, Native Billing Stripe, Lesson Video,  
+Community App Spec v1.0.2 (BUILD AUTHORITY · DL-239/240)
 
 ---
 
@@ -103,6 +104,27 @@ WooCommerce (WP)                   ──provider──► memberships
 - Plans displayed via `display_json` + billing routes  
 - Webhooks authenticate (Stripe signature / shared secret patterns per spec)  
 - Downgrade loses access, **preserves progress data**  
+- Memberships **expire by `current_period_end`** (date-aware role derivation)
+
+### 4.1 Discord guild roles (Community — BUILD AUTHORITY Spec v1.0.2 / DL-237–240)
+
+When Community Discord sync ships (p-community P1b+):
+
+| Rule | |
+|------|--|
+| Guild | **FatTail AI** |
+| **Member connect** | **Woo Subscription Discord** plugin on fattail.ai (`woo-subscriptions-discord` · ExpressTech) — DL-240; not Labs-primary OAuth |
+| Display name | WP user meta `_ets_woo_subscriptions_discord_username` (+ snowflake `_…_user_id`); Labs ingests |
+| Entitlement | Same date-aware memberships as Labs roles (Observer **6-week** term, alumni year, etc.) |
+| Link | `identity_links` provider `discord` from SSO claims `discord_user_id` (Mike C0-3) |
+| Fast path | **WP plugin** primary role writer on Woo subscription status |
+| **Safety net** | **Labs scheduled reconcile** (DL-238) — revoke orphan paid roles; alert missing roles |
+| SoR | Labs membership for *who is paid*; Discord for guild chat; WP for connect + name + commerce roles |
+
+Do **not** rely on billing webhooks alone for revocation (trial/alumni date ends).  
+Do **not** add a competing Labs Discord OAuth product without Coach amend.  
+Do **not** store WP Discord OAuth access/refresh tokens in Labs.  
+**Mike gate:** `agents/p-community/gate-reports/C0-3-mike.md`.
 
 ---
 

@@ -1,29 +1,35 @@
 # Strategy Lab — Growth Playbook (no bullshit)
 
-**Status:** **COACH OPERATING PLAN** (2026-08-06)  
+**Status:** **COACH OPERATING PLAN** (2026-08-06) · **timeline reaffirm 2026-08-07 · DL-251**  
 **Audience:** Coach + Juliet sequencing  
 **Depends on:** Arch/14 (OA-class host), Arch/16 (opposite doctrine), Arch/09 (Massive data / Tradier orders), brokerage two-layer assessment, Process Runtime Spec  
+**Member timeline (normative short form):** [`26-strategy-lab-member-timeline.md`](./26-strategy-lab-member-timeline.md)
 
 **Goal:** You fund Tradier, hook the API, dogfood the **FatTail style of process-bots**, then scale so **others can create and deploy the same class of system**—without becoming API trash or profit-theater OA.
 
-### Locked product sequence (Coach 2026-08-06; multi-member lock 2026-08-06)
+### Locked product sequence (Coach 2026-08-06; multi-member lock 2026-08-06; **focus lock 2026-08-07**)
+
+> **NOW:** Continue **Design + Curate**, **lock them**, give **current membership complete access**.  
+> **Deploy for members:** full Deploy **product surface** is available; the **only** member-unavailable piece is **connectivity to real brokers (Tradier)** for the **real-money** environment Deploy was ultimately designed for (DL-252).  
+> **PARALLEL:** Admin proves **Tradier / real-money** rail, then **provisions** that connectivity to designated members.  
+> Curate comparison does **not** wait for live Tradier.
 
 > **Multi-member is absolute.** The point of Curate is **many bots running**
 > so members (and the platform) can **compare** them for **promote** and
 > **portfolio inclusion** — not single-bot dogfood forever.
 
 > **Design + Curate for everyone (multi-tenant from day one).**  
-> **Deploy for Coach first** (validate Tradier rail), then **provision members**.  
-> Curate comparison does **not** wait for Deploy.
+> **Real-broker Deploy for Coach/admin first**, then **provision** members.  
 
 | Phase | Who | What |
 |-------|-----|------|
-| **A — Shared studio** | All members (plan-gated) | **Design** (packs, BT/FW, version) + **Curate** (real market, sim broker, fake money) |
-| **B — Deploy validate** | **Coach only** (`deploy_principal` / admin flag) | Tradier paper → live; cloud Process Runtime; prove the rail |
-| **C — Deploy provision** | Members who pass product gates | Connect Tradier; arm paper; later gated live — **same** stack Coach used |
+| **A — Shared studio (NOW · lock)** | Current entitled membership | **Design** + **Curate** complete access; lock quality bar |
+| **A′ — Deploy UX (members)** | Entitled membership | **All of Deploy except real-broker / real-money Tradier** |
+| **B — Real-broker validate (PARALLEL)** | **Admin** (Coach / `deploy_principal`) | Tradier paper → live; prove the rail |
+| **C — Real-broker provision (LATER)** | Designated members | Same Tradier stack as B; caps + arming |
 
-**Do not** open multi-member Deploy before Coach has completed at least one full paper (and preferably live) cycle on Labs rails.  
-**Do** open Design + Curate early — that’s where “everyone creates our style of bots” starts, without Tradier multi-tenant risk.
+**Do not** open multi-member **real-money Tradier** before Coach has completed at least one full paper (and preferably live) cycle on Labs rails.  
+**Do** open and **finish** Design + Curate for members — that’s where “everyone creates our style of bots” starts, without live-broker multi-tenant risk.
 
 ---
 

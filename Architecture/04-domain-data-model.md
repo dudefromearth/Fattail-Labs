@@ -40,6 +40,10 @@
 | `078`–`080` | Strategy Lab + help system (see Strategy Lab Specs) |
 | `083`–`088` | Curate runtime, shared live marks/universe/VIX, `run_started_at` (see Arch 19) |
 | `081_trade_log_entry_source` | `member_trade_log_trades.entry_source` + `trash_reason` (manual management) |
+| `089` | Strategy Lab member designs / house mint (DL-235) |
+| **planned ~090** | Visualize AI sessions/messages/artifacts + `apps` seed `visualize-ai` (Spec v0.1 · Arch 21 · DL-236) — **not applied until Spec v1.0** |
+| `090`–`092` | Community app, Discord profiles, community messages (DL-237–242) |
+| **planned ~093** | Bot Marketplace: `bot_packages`, `bot_package_shares`, optional `bot_package_purchases` hooks (Spec v0.1 · Arch 23 · DL-243) — **not applied until Spec v1.0** |
 
 **Rule:** never edit applied migrations; always append.
 

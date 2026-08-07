@@ -1,9 +1,15 @@
 # System Overview — FatTail Labs
 
-**Status:** As-built (retroactive, 2026-07-23)  
-**Product:** FatTail Labs — membership education platform at `labs.fattail.ai`  
+**Status:** As-built (retroactive, 2026-07-23) · dual-subdomain **target** in Arch 25 / DL-248  
+**Product:** FatTail Labs — today a unified membership platform at `labs.fattail.ai`  
 **Thesis:** “Stop the bleeding” — capital preservation first; process outcomes only;
 capacity over dependency.
+
+**Forward-looking intent (DL-248–250 — not a current project):** later split into
+**`practice.fattail.ai`** (traders / Navigator coaching suite) and **`labs.fattail.ai`**
+(separate Labs membership — build/deploy bots). Use as a design constraint when
+authoring Specs; do not implement the split until Coach opens cutover. See
+`Architecture/25-dual-subdomain-practice-labs.md`.
 
 ---
 
