@@ -21,8 +21,14 @@ def resolve_dte_window(config: dict[str, Any]) -> tuple[int, int] | None:
         return 0, 0
     if dte_type == "1dte":
         return 1, 1
+    if dte_type == "1_2_dte":
+        return 1, 2
+    if dte_type == "2_4_dte":
+        return 2, 4
     if dte_type == "2_5_dte":
         return 2, 5
+    if dte_type == "5_10_dte":
+        return 5, 10
     if dte_type == "custom":
         try:
             lo = int(config.get("dte_min"))

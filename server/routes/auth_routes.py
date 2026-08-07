@@ -304,6 +304,19 @@ def sso_callback(
             identity.sync_provider_memberships(
                 cur, identity_id, pid.provider, pid.entitlement_keys
             )
+            # Discord snowflake + name from WP connector (via SSO claims only)
+            if getattr(pid, "discord_user_id", None):
+                try:
+                    identity.link_discord_from_sso(
+                        cur,
+                        identity_id,
+                        pid.discord_user_id,
+                        username=getattr(pid, "discord_username", "") or "",
+                        avatar_hash=getattr(pid, "discord_avatar", "") or "",
+                        source="sso",
+                    )
+                except identity.IdentityError as exc:
+                    raise HTTPException(status_code=409, detail=str(exc)) from exc
             role = identity.derive_role(cur, identity_id)
 
     # H2: never log SSO JWT / raw query. Email domain only for ops diagnosis.

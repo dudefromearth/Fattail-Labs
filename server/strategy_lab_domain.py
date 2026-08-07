@@ -188,6 +188,21 @@ def row_to_dict(r: dict) -> dict[str, Any]:
     spec = _json_load(r.get("spec_json"))
     phase = normalize_phase(r.get("phase"))
     phase_state = normalize_phase_state(phase, r.get("phase_state"))
+    house = None
+    if isinstance(attrs, dict):
+        raw_h = attrs.get("house_design@1")
+        if isinstance(raw_h, dict) and raw_h.get("key"):
+            house = {
+                "key": raw_h.get("key"),
+                "version": raw_h.get("version"),
+                "name": raw_h.get("name"),
+                "mode": raw_h.get("mode"),
+                "source": raw_h.get("source"),
+                "dte_label": raw_h.get("dte_label"),
+                "family_label": raw_h.get("family_label"),
+                "course_refs": raw_h.get("course_refs") or [],
+                "applied_at": raw_h.get("applied_at"),
+            }
     return {
         "id": r["public_id"],
         "db_id": int(r["id"]),
@@ -203,6 +218,7 @@ def row_to_dict(r: dict) -> dict[str, Any]:
         "phase_state_label": state_label(phase, phase_state),
         "disposition": r.get("disposition") or "active",
         "attributes": attrs if isinstance(attrs, dict) else {},
+        "house_design": house,
         "spec": spec if isinstance(spec, dict) else None,
         "lifecycle_log": log if isinstance(log, list) else [],
         "bin_reason": r.get("bin_reason"),
@@ -246,7 +262,11 @@ def get_by_public_id(cur, identity_id: int, public_id: str) -> dict | None:
 
 
 def ensure_seed(cur, identity_id: int) -> dict[str, Any]:
-    """If member has zero strategies, create one blank Untitled strategy."""
+    """If member has zero strategies, provision house starter Curate bots.
+
+    Preferred path: first mint (SSO/register) already provisioned via identity.
+    This is a safety net for identities created before mint-provision existed.
+    """
     cur.execute(
         "SELECT COUNT(*) AS n FROM strategy_lab_strategies WHERE identity_id = %s",
         (identity_id,),
@@ -254,6 +274,20 @@ def ensure_seed(cur, identity_id: int) -> dict[str, Any]:
     if int(cur.fetchone()["n"]) > 0:
         rows = list_strategies(cur, identity_id)
         return rows[0]
+    try:
+        from strategy_lab_designs import provision_starter_curate_bots
+
+        created = provision_starter_curate_bots(cur, identity_id)
+        if created:
+            rows = list_strategies(cur, identity_id)
+            return rows[0]
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "ensure_seed starter provision failed identity_id=%s", identity_id
+        )
+    # Last resort: blank Design bot so the lab is never empty
     return create_strategy(
         cur,
         identity_id,

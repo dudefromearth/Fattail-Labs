@@ -18,6 +18,7 @@ import {
   type StrategyConfig,
 } from "@/lib/strategyPacks";
 import CurateSymbolPicker from "@/components/strategy-lab/CurateSymbolPicker";
+import DesignHouseLibrary from "@/components/strategy-lab/DesignHouseLibrary";
 
 type Props = {
   strategyId: string;
@@ -254,22 +255,14 @@ export default function StrategyDesigner({
         <h3 className="text-base font-semibold text-[var(--color-label)]">
           Butterfly designer
         </h3>
-        <select
-          className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1 text-xs"
-          defaultValue=""
-          onChange={(e) => {
-            const t = pack.defaults.find((d) => d.name === e.target.value);
-            if (t) applyTemplate(t);
-          }}
-        >
-          <option value="">Load template…</option>
-          {pack.defaults.map((d) => (
-            <option key={String(d.name)} value={String(d.name)}>
-              {String(d.name)}
-            </option>
-          ))}
-        </select>
       </div>
+
+      <DesignHouseLibrary
+        strategyId={strategyId}
+        onApplied={(cfg) => {
+          applyTemplate(cfg);
+        }}
+      />
 
       {/* Stepper */}
       <div className="flex flex-wrap gap-1">

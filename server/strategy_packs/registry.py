@@ -36,9 +36,13 @@ def get_pack_or_raise(pack_id: str) -> Any:
 
 def pack_detail(pack_id: str) -> dict[str, Any]:
     mod = get_pack_or_raise(pack_id)
-    return {
+    out: dict[str, Any] = {
         **mod.meta(),
         "schema": mod.get_schema(),
         "ui": mod.get_ui_definition(),
         "defaults": mod.get_default_configs(),
     }
+    # FatTail house strategies (versioned, course-linked) when pack provides them
+    if hasattr(mod, "get_house_designs"):
+        out["house_designs"] = mod.get_house_designs()
+    return out

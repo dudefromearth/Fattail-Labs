@@ -677,7 +677,8 @@ def comparison_report(cur, identity_id: int) -> dict[str, Any]:
           s.phase AS strategy_phase,
           s.phase_state AS strategy_phase_state,
           s.version AS strategy_version,
-          s.public_id AS strategy_public_id
+          s.public_id AS strategy_public_id,
+          s.attributes_json AS strategy_attributes_json
         FROM strategy_lab_curate_instances i
         JOIN strategy_lab_strategies s ON s.id = i.strategy_id
         WHERE i.identity_id = %s
@@ -721,6 +722,14 @@ def comparison_report(cur, identity_id: int) -> dict[str, Any]:
         env = _json_load(irow.get("envelope_json")) or {}
         scan_symbol = str(env.get("scan_symbol") or "")
         rt = runtime_since_start(irow.get("run_started_at"))
+        sattrs = _json_load(irow.get("strategy_attributes_json")) or {}
+        house_bind = (
+            sattrs.get("house_design@1")
+            if isinstance(sattrs, dict)
+            else None
+        )
+        if not isinstance(house_bind, dict):
+            house_bind = None
 
         rows.append(
             {
@@ -736,6 +745,11 @@ def comparison_report(cur, identity_id: int) -> dict[str, Any]:
                 "strategy_phase_state": irow["strategy_phase_state"],
                 "bound_version": irow["bound_version"],
                 "strategy_version": irow["strategy_version"],
+                # House design provenance for Curate/Deploy tracking
+                "house_design_key": (house_bind or {}).get("key"),
+                "house_design_version": (house_bind or {}).get("version"),
+                "house_design_name": (house_bind or {}).get("name"),
+                "house_design": house_bind,
                 "scan_symbol": scan_symbol,
                 "allocation_usd": allocation,
                 "cash_usd": cash,

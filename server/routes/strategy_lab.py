@@ -504,6 +504,123 @@ async def import_commit(request: Request) -> dict:
 # ── Strategy Packs (Architecture Spec + Implementation Plan PR-1/2/3) ──────
 
 
+@router.get("/api/me/strategy-lab/designs")
+def list_design_library(request: Request) -> dict:
+    """FatTail house strategies (versioned, admin-maintained) + member copies."""
+    claims = require_session(request)
+    pack_id = (request.query_params.get("pack_id") or "butterfly").strip()
+    import strategy_lab_designs as sldes
+
+    lib = sldes.list_library(pack_id=pack_id)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            try:
+                member = sldes.list_member_designs(cur, iid)
+            except Exception:
+                # Table may not be migrated yet
+                member = []
+    lib["member"] = member
+    return lib
+
+
+@router.post("/api/me/strategy-lab/designs/house/apply")
+async def apply_house_design(request: Request) -> dict:
+    """Apply a house design to a bot (or copy-rebuild). Members cannot edit house."""
+    claims = require_session(request)
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="JSON body required") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="JSON object required")
+    strategy_id = str(body.get("strategy_id") or "").strip()
+    house_key = str(body.get("house_key") or "").strip()
+    house_version = body.get("house_version")
+    mode = str(body.get("mode") or "apply").strip()
+    if not strategy_id or not house_key:
+        raise HTTPException(
+            status_code=422, detail="strategy_id and house_key are required"
+        )
+    import strategy_lab_designs as sldes
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            _get_owned(cur, iid, strategy_id)
+            try:
+                strategy = sldes.apply_house_to_bot(
+                    cur,
+                    iid,
+                    strategy_id,
+                    house_key=house_key,
+                    house_version=str(house_version) if house_version else None,
+                    mode=mode,
+                    config_overrides=body.get("config_overrides")
+                    if isinstance(body.get("config_overrides"), dict)
+                    else None,
+                    bump_version=bool(body.get("bump_version", True)),
+                )
+            except LookupError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            except PermissionError as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
+    return {"strategy": strategy}
+
+
+@router.post("/api/me/strategy-lab/designs/member")
+async def save_member_design(request: Request) -> dict:
+    """Save a personal design (e.g. copy-rebuild of a house strategy)."""
+    claims = require_session(request)
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="JSON body required") from exc
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=422, detail="JSON object required")
+    config = body.get("config")
+    if not isinstance(config, dict):
+        raise HTTPException(status_code=422, detail="config object required")
+    import strategy_lab_designs as sldes
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            try:
+                design = sldes.save_member_design(
+                    cur,
+                    iid,
+                    name=str(body.get("name") or "My design"),
+                    description=str(body.get("description") or ""),
+                    pack_id=str(body.get("pack_id") or "butterfly"),
+                    config=config,
+                    house_key=str(body["house_key"]) if body.get("house_key") else None,
+                    house_version=str(body["house_version"])
+                    if body.get("house_version")
+                    else None,
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"design": design}
+
+
+@router.delete("/api/me/strategy-lab/designs/member/{public_id}")
+def delete_member_design(public_id: str, request: Request) -> dict:
+    claims = require_session(request)
+    import strategy_lab_designs as sldes
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            try:
+                sldes.delete_member_design(cur, iid, public_id)
+            except LookupError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"ok": True}
+
+
 @router.get("/api/me/strategy-lab/packs")
 def list_packs(request: Request) -> dict:
     require_session(request)

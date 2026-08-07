@@ -52,6 +52,11 @@ def verify_password(password: str, stored: str) -> bool:
 # --- identity resolution ------------------------------------------------------
 
 def get_or_create_identity(cur, email: str, display_name: str = "") -> int:
+    """Resolve identity by email; create on first mint (SSO join / register).
+
+    On **first create only**, provision FatTail house starter bots in Curate
+    (armed sim instances). Existing members are unchanged.
+    """
     email = email.strip().lower()
     if not email or "@" not in email:
         raise IdentityError(f"Invalid email: {email!r}")
@@ -63,7 +68,20 @@ def get_or_create_identity(cur, email: str, display_name: str = "") -> int:
         "INSERT INTO identities (email, display_name) VALUES (%s, %s)",
         (email, display_name),
     )
-    return cur.lastrowid
+    identity_id = int(cur.lastrowid)
+    # First-time mint: Curate-ready house bots (sim), promote path later.
+    # Best-effort — identity always lands even if Strategy Lab tables lag.
+    try:
+        from strategy_lab_designs import try_provision_starter_curate_bots
+
+        try_provision_starter_curate_bots(cur, identity_id)
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "mint provision hook failed identity_id=%s", identity_id
+        )
+    return identity_id
 
 
 def resolve_by_link(cur, provider: str, external_id: str) -> int | None:
@@ -90,6 +108,95 @@ def ensure_link(cur, identity_id: int, provider: str, external_id: str) -> None:
         "VALUES (%s, %s, %s)",
         (identity_id, provider, str(external_id)),
     )
+
+
+def link_discord_from_sso(
+    cur,
+    identity_id: int,
+    discord_user_id: str,
+    *,
+    username: str = "",
+    avatar_hash: str = "",
+    source: str = "sso",
+) -> None:
+    """Attach Discord snowflake from WP SSO claims (DL-240 / Mike C0-3).
+
+    Never stores OAuth access/refresh tokens. Collision on snowflake → refuse.
+    """
+    snow = (discord_user_id or "").strip()
+    if not snow:
+        return
+    if not snow.isdigit() or len(snow) < 5:
+        raise IdentityError(f"Invalid discord_user_id: {snow!r}")
+
+    other = resolve_by_link(cur, "discord", snow)
+    if other is not None and int(other) != int(identity_id):
+        raise IdentityError(
+            "This Discord account is already linked to a different Labs identity"
+        )
+
+    # Identity already linked to a different Discord user — replace link
+    existing = _link_external_for_identity(cur, identity_id, "discord")
+    if existing is not None and existing != snow:
+        cur.execute(
+            """DELETE FROM identity_links
+               WHERE identity_id = %s AND provider = 'discord'""",
+            (identity_id,),
+        )
+        cur.execute(
+            "DELETE FROM identity_discord_profiles WHERE identity_id = %s",
+            (identity_id,),
+        )
+
+    ensure_link(cur, identity_id, "discord", snow)
+    cur.execute(
+        """INSERT INTO identity_discord_profiles
+           (identity_id, discord_user_id, username, avatar_hash, source)
+           VALUES (%s, %s, %s, %s, %s)
+           ON DUPLICATE KEY UPDATE
+             discord_user_id = VALUES(discord_user_id),
+             username = VALUES(username),
+             avatar_hash = VALUES(avatar_hash),
+             source = VALUES(source),
+             updated_at = CURRENT_TIMESTAMP""",
+        (
+            identity_id,
+            snow,
+            (username or "")[:255],
+            (avatar_hash or None),
+            (source or "sso")[:32],
+        ),
+    )
+
+
+def get_discord_profile(cur, identity_id: int) -> dict | None:
+    cur.execute(
+        """SELECT discord_user_id, username, avatar_hash, source, updated_at
+           FROM identity_discord_profiles WHERE identity_id = %s""",
+        (identity_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        # Fallback: link only
+        ext = _link_external_for_identity(cur, identity_id, "discord")
+        if not ext:
+            return None
+        return {
+            "discord_user_id": ext,
+            "username": "",
+            "avatar_hash": None,
+            "source": "link",
+            "updated_at": None,
+        }
+    return {
+        "discord_user_id": row["discord_user_id"],
+        "username": row["username"] or "",
+        "avatar_hash": row["avatar_hash"],
+        "source": row["source"],
+        "updated_at": row["updated_at"].isoformat()
+        if hasattr(row["updated_at"], "isoformat")
+        else row["updated_at"],
+    }
 
 
 def _identity_id_for_email(cur, email: str) -> int | None:

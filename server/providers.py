@@ -34,6 +34,10 @@ class ProviderIdentity:
     display_name: str = ""
     is_admin: bool = False
     entitlement_keys: list[str] = field(default_factory=list)
+    # Discord link from fattail.ai WP connector (SSO claims — not OAuth tokens)
+    discord_user_id: str = ""
+    discord_username: str = ""
+    discord_avatar: str = ""
 
 
 def _normalize_list(raw) -> list[str]:
@@ -60,6 +64,8 @@ class WordPressProvider:
     Claim shape is compatible with MarketSwarm-Canonical / fotw-sso:
       iss, sub|id|wp_id|wp_user_id, email, name|display_name,
       roles, membership_plans|plans, subscription_tier
+    Optional Discord (from WP user meta via fotw-sso — never Discord OAuth tokens):
+      discord_user_id|discord_id, discord_username|discord_name, discord_avatar
     """
 
     def __init__(self, name: str, secret: str, *, allowed_issuers: frozenset[str]):
@@ -129,6 +135,21 @@ class WordPressProvider:
             r.lower() for r in roles
         ]
 
+        # Discord snowflake + name from WP connector meta (fotw-sso extension).
+        # Do NOT accept access_token / refresh_token claims — drop if present.
+        discord_uid = str(
+            claims.get("discord_user_id")
+            or claims.get("discord_id")
+            or ""
+        ).strip()
+        discord_name = (
+            claims.get("discord_username")
+            or claims.get("discord_name")
+            or ""
+        )
+        discord_name = str(discord_name).strip()
+        discord_avatar = str(claims.get("discord_avatar") or "").strip()
+
         return ProviderIdentity(
             provider=self.name,
             external_id=str(wp_user_id),
@@ -136,6 +157,9 @@ class WordPressProvider:
             display_name=display,
             is_admin=is_admin,
             entitlement_keys=plans,
+            discord_user_id=discord_uid,
+            discord_username=discord_name,
+            discord_avatar=discord_avatar,
         )
 
 

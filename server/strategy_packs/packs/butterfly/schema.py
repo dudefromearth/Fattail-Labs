@@ -21,7 +21,19 @@ def get_schema() -> dict[str, Any]:
                 "type": "enum",
                 "label": "DTE Type",
                 "required": True,
-                "options": ["0dte", "1dte", "2_5_dte", "custom"],
+                "options": [
+                    "0dte",
+                    "1dte",
+                    "1_2_dte",
+                    "2_4_dte",
+                    "2_5_dte",
+                    "5_10_dte",
+                    "custom",
+                ],
+                "description": (
+                    "House bands: 0dte · 1dte · 1–2 (Timewarp) · 2–4 (Convex Stack) · "
+                    "2–5 legacy · 5–10 (Sigma Drift) · custom"
+                ),
             },
             {
                 "name": "dte_min",
@@ -29,7 +41,7 @@ def get_schema() -> dict[str, Any]:
                 "label": "Min DTE",
                 "required": False,
                 "min": 0,
-                "max": 10,
+                "max": 45,
                 "dependsOn": ["dte_type=custom"],
             },
             {
@@ -38,7 +50,7 @@ def get_schema() -> dict[str, Any]:
                 "label": "Max DTE",
                 "required": False,
                 "min": 0,
-                "max": 10,
+                "max": 45,
                 "dependsOn": ["dte_type=custom"],
             },
             {

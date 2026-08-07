@@ -179,6 +179,39 @@ dedicated agent key at `/admin/agents` for the tick; never reuse a human session
 Logs: `~/Library/Logs/fattail-labs/labwiki-sync.log`. A failed pull or reindex
 must log loudly; the previous index keeps serving (stale beats broken).
 
+## Community Discord workers (p-community — design lock C0-5)
+
+**Status:** Ops design approved (`agents/p-community/gate-reports/C0-5-foxtrot.md`).  
+**Not installed until C1b/c** code + secrets. C1a shell uses `LABS_DISCORD_BRIDGE=0`.
+
+| Process | launchd label (prod) | Type |
+|---------|----------------------|------|
+| Gateway bridge (mirror) | `ai.fattail.labs.discord-bridge` | KeepAlive |
+| Role reconcile (DL-238) | `ai.fattail.labs.discord-reconcile` | StartInterval **900s** |
+| Message backfill | `ai.fattail.labs.discord-backfill` | StartInterval **600s** |
+
+**Host:** MiniTwo only for production guild **FatTail AI**. Do **not** run staging + prod
+Gateway on the **same** bot token. Staging: separate Discord guild + bot, or bridge off.
+
+**Env when `LABS_DISCORD_BRIDGE=1` (fail loud if missing outside dev):**
+
+```bash
+LABS_DISCORD_BRIDGE=1
+LABS_DISCORD_GUILD_ID=
+LABS_DISCORD_BOT_TOKEN=
+LABS_DISCORD_CONNECT_URL=https://fattail.ai/...
+LABS_DISCORD_PAID_ROLE_IDS=
+LABS_DISCORD_INTERNAL_KEY=   # ≥32 chars; launchd → internal API
+```
+
+Channel map SoR = DB `community_channels` (not dual env SoR). Webhook tokens per channel:
+host/DB secrets only — never git.
+
+**Logs:** `~/Library/Logs/fattail-labs/discord-{bridge,reconcile,backfill}.log`  
+**Verify:** kickstart bridge; tail READY; POST reconcile with internal key; no token in logs.  
+**Rollback:** `LABS_DISCORD_BRIDGE=0` + unload three plists.  
+**Member connect** remains fattail.ai WP plugin (DL-240) — not this bot’s OAuth.
+
 ## Hard rules (inherited doctrine)
 
 - Migrations run BEFORE service restart, every deploy.

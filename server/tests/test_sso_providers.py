@@ -25,6 +25,8 @@ def _mint_wp_token(
     plans: list[str] | None = None,
     roles: list[str] | None = None,
     msc_shape: bool = False,
+    discord_user_id: str | None = None,
+    discord_username: str | None = None,
 ) -> str:
     """Mint a Labs or MSC/fotw-sso shaped JWT for tests."""
     now = int(time.time())
@@ -51,6 +53,9 @@ def _mint_wp_token(
             "iat": now,
             "exp": now + 600,
         }
+    if discord_user_id:
+        payload["discord_user_id"] = discord_user_id
+        payload["discord_username"] = discord_username or "ZZDiscord#0001"
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
@@ -64,6 +69,10 @@ def sso_email():
             row = cur.fetchone()
             if row:
                 iid = row["identity_id"]
+                cur.execute(
+                    "DELETE FROM identity_discord_profiles WHERE identity_id = %s",
+                    (iid,),
+                )
                 cur.execute("DELETE FROM identity_links WHERE identity_id = %s", (iid,))
                 cur.execute("DELETE FROM memberships WHERE identity_id = %s", (iid,))
                 cur.execute("DELETE FROM identities WHERE identity_id = %s", (iid,))
@@ -121,6 +130,67 @@ def test_sso_fattail_happy_path_sets_session(client, sso_email):
                 (row["identity_id"],),
             )
             assert cur.fetchone()
+    client.cookies.clear()
+
+
+def test_sso_ingests_discord_claims(client, sso_email):
+    """fotw-sso Discord claims → identity_links + profile (no OAuth tokens)."""
+    cfg = get_config()
+    snow = "555666777888999000"
+    token = _mint_wp_token(
+        issuer="fattail",
+        secret=cfg.sso_secrets["fattail"],
+        email=sso_email,
+        wp_user_id=910088,
+        discord_user_id=snow,
+        discord_username="TraderZZ#1234",
+    )
+    r = client.get(
+        "/api/auth/sso/wordpress:fattail",
+        params={"token": token, "next": "/app/community"},
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 307)
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT identity_id FROM identities WHERE email = %s", (sso_email,)
+            )
+            iid = cur.fetchone()["identity_id"]
+            cur.execute(
+                """SELECT external_id FROM identity_links
+                   WHERE identity_id = %s AND provider = 'discord'""",
+                (iid,),
+            )
+            link = cur.fetchone()
+            assert link and link["external_id"] == snow
+            cur.execute(
+                """SELECT username FROM identity_discord_profiles
+                   WHERE identity_id = %s""",
+                (iid,),
+            )
+            prof = cur.fetchone()
+            assert prof and prof["username"] == "TraderZZ#1234"
+
+    # status API
+    cookie = {cfg.session_cookie: r.cookies.get(cfg.session_cookie) or client.cookies.get(cfg.session_cookie)}
+    # session may be on response cookies only
+    if not cookie.get(cfg.session_cookie):
+        # re-mint session via identity id for status check
+        import auth
+
+        cookie = {
+            cfg.session_cookie: auth.issue_session(
+                identity_id=iid, issuer="wordpress:fattail", role="observer"
+            )
+        }
+    st = client.get("/api/me/community/discord/status", cookies=cookie)
+    assert st.status_code == 200
+    body = st.json()
+    assert body["linked"] is True
+    assert body["discord_user_id"] == snow
+    assert body["display_name"] == "TraderZZ#1234"
     client.cookies.clear()
 
 

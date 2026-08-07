@@ -42,6 +42,7 @@ const TOP_LEVEL_ORDER = [
   "practice-log",
   "toughness",
   "strategy-lab",
+  "community",
   "wiki",
 ] as const;
 
@@ -84,6 +85,15 @@ const FALLBACK_APPS: AppRow[] = [
   },
   {
     id: 0,
+    slug: "community",
+    title: "Community",
+    blurb:
+      "Process peers and FatTail bots — same conversation as Discord, plus shared designs. No P&L theater.",
+    status: "live",
+    href: "/app/community",
+  },
+  {
+    id: 0,
     slug: "wiki",
     title: "Wiki",
     blurb:
@@ -104,7 +114,7 @@ async function fetchApps(): Promise<AppRow[]> {
 
 /**
  * Build the top-level catalog: drop nested trade-log/journal, inject Practice,
- * Toughness, Strategy Lab cards — even when API has not seeded them yet.
+ * Toughness, Strategy Lab, Community cards — even when API has not seeded them yet.
  */
 function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
   const bySlug = new Map(apiApps.map((a) => [a.slug, a]));
@@ -147,16 +157,31 @@ function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
       }
     : (FALLBACK_APPS.find((a) => a.slug === "strategy-lab") as AppRow);
 
+  const communityFromApi = bySlug.get("community");
+  const community: AppRow = communityFromApi
+    ? {
+        ...communityFromApi,
+        title: communityFromApi.title || "Community",
+        blurb:
+          communityFromApi.blurb ||
+          (FALLBACK_APPS.find((a) => a.slug === "community") as AppRow).blurb,
+        href: communityFromApi.href || "/app/community",
+        status: "live",
+      }
+    : (FALLBACK_APPS.find((a) => a.slug === "community") as AppRow);
+
   const composed = new Map<string, AppRow>();
   for (const a of apiApps) {
     if (NESTED_UNDER_PRACTICE.has(a.slug)) continue;
     if (a.slug === "strategy-lab") continue; // use composed title below
     if (a.slug === "toughness") continue; // use composed row below
+    if (a.slug === "community") continue; // use composed row below
     composed.set(a.slug, a);
   }
   composed.set("practice-log", practice);
   composed.set("toughness", toughness);
   composed.set("strategy-lab", strategy);
+  composed.set("community", community);
 
   const ordered: AppRow[] = [];
   for (const slug of TOP_LEVEL_ORDER) {
@@ -231,9 +256,12 @@ function AppCard({ t }: { t: AppRow }) {
     t.slug === "wiki" ||
     t.slug === "practice-log" ||
     t.slug === "toughness" ||
-    t.slug === "strategy-lab";
+    t.slug === "strategy-lab" ||
+    t.slug === "community";
   const badgeStatus =
-    t.slug === "practice-log" || t.slug === "toughness"
+    t.slug === "practice-log" ||
+    t.slug === "toughness" ||
+    t.slug === "community"
       ? "live"
       : t.slug === "strategy-lab"
         ? "soon"
@@ -308,7 +336,7 @@ export default async function AppsPage() {
       <SectionHubShell page={page}>
         <ul className="grid gap-4 sm:grid-cols-2">
           {apps.map((t) => (
-            <li key={t.id || t.slug}>
+            <li key={t.slug}>
               <AppCard t={t} />
             </li>
           ))}

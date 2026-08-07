@@ -68,6 +68,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     testId: "admin-card-access",
   },
   {
+    href: "/admin/community",
+    title: "Community · Discord map",
+    body: "Map Labs Community channels to FatTail AI Discord channel IDs. Member connect stays on fattail.ai.",
+    testId: "admin-card-community",
+  },
+  {
     href: "/course",
     title: "In-place content editing",
     body: "Edit courses, hub, and live on production URLs — the learner page is the editor.",

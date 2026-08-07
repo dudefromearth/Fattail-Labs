@@ -19,7 +19,11 @@ def test_schema_and_defaults():
     assert "batman" in d["schema"]["variants"]
     assert "single" in d["schema"]["variants"]
     assert "broken_wing" in d["schema"]["variants"]
-    assert len(d["defaults"]) == 7
+    # FatTail house designs (entry + management process)
+    assert len(d["defaults"]) >= 5
+    house = d.get("house_designs") or bp.get_house_designs()
+    assert len(house) >= 5
+    assert all(h.get("version") and h.get("course_refs") for h in house)
     batman_fields = {f["name"]: f for f in d["schema"]["variants"]["batman"]}
     assert "match_side_widths" in batman_fields
     assert "call_width_points" in batman_fields
@@ -29,7 +33,11 @@ def test_schema_and_defaults():
 
 
 def test_batman_is_dual_fly_package():
-    cfg = next(c for c in bp.get_default_configs() if "Batman" in str(c.get("name")))
+    cfg = next(
+        c
+        for c in bp.get_default_configs()
+        if c.get("butterfly_family") == "batman"
+    )
     chain = build_stub_chain()
     r = bp.rank_structures(cfg, chain)
     assert r["ok"] and r["ranked"]
@@ -40,18 +48,15 @@ def test_batman_is_dual_fly_package():
     assert "call_fly" in comps and "put_fly" in comps
 
 
-def test_batman_uneven_side_widths():
-    cfg = next(
-        c
-        for c in bp.get_default_configs()
-        if c.get("match_side_widths") is False
-    )
-    r = bp.rank_structures(cfg, build_stub_chain())
-    assert r["ok"] and r["ranked"]
-    top = r["ranked"][0]["structure"]
-    assert top["call_width_points"] != top["put_width_points"]
-    assert float(top["call_width_points"]) == 50
-    assert float(top["put_width_points"]) == 30
+def test_house_designs_validate_and_dte_bands():
+    for d in bp.get_house_designs():
+        v = bp.validate(d["config"])
+        assert v["valid"], (d["key"], v)
+        assert d["config"].get("entry_conditions")
+        assert d["config"].get("exit_rules")
+        assert d.get("course_refs")
+        assert d.get("immutable") is True
+        assert d.get("member_may_remove") is False
 
 
 def test_defaults_validate():

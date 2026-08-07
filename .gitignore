@@ -32,3 +32,4 @@ data/market/
 # Local HeyGen hub intro masters (large binaries)
 Labs-Intro/**/*.mp4
 Labs-Intro/**/*.m4a
+scripts/output/
