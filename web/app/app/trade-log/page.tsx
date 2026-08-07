@@ -22,6 +22,10 @@ import {
   fetchTrades,
   fetchUnmatchedOpens,
 } from "@/lib/tradeLogApi";
+import {
+  fetchCampaigns,
+  fetchPlaybookEntries,
+} from "@/lib/practiceSpineApi";
 import { usePracticeContext } from "@/lib/practiceContext";
 import { saveTradeLogLastUsed } from "@/lib/tradeLogPrefs";
 
@@ -60,8 +64,34 @@ function TradeLogBody() {
   const [importOpen, setImportOpen] = useState(false);
   const [deepLinked, setDeepLinked] = useState(false);
   const [filterOpenOnly, setFilterOpenOnly] = useState(false);
+  const [campaignFilter, setCampaignFilter] = useState<number | "">("");
+  const [playbookFilter, setPlaybookFilter] = useState<number | "">("");
+  const [campaignOptions, setCampaignOptions] = useState<
+    { id: number; title: string }[]
+  >([]);
+  const [playbookOptions, setPlaybookOptions] = useState<
+    { id: number; title: string }[]
+  >([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+
+  useEffect(() => {
+    void Promise.all([
+      fetchCampaigns().catch(() => null),
+      fetchPlaybookEntries(true).catch(() => null),
+    ]).then(([camps, pbs]) => {
+      if (camps?.campaigns) {
+        setCampaignOptions(
+          camps.campaigns.map((c) => ({ id: c.id, title: c.title })),
+        );
+      }
+      if (pbs?.entries) {
+        setPlaybookOptions(
+          pbs.entries.map((e) => ({ id: e.id, title: e.title })),
+        );
+      }
+    });
+  }, []);
 
   const load = useCallback(() => {
     if (!prefsReady) {
@@ -72,7 +102,12 @@ function TradeLogBody() {
     setNextCursor(null);
     setHasMore(false);
     Promise.all([
-      fetchTrades(accountIdParam, { limit: PAGE_LIMIT }),
+      fetchTrades(accountIdParam, {
+        limit: PAGE_LIMIT,
+        practice_campaign_id:
+          campaignFilter === "" ? null : campaignFilter,
+        playbook_entry_id: playbookFilter === "" ? null : playbookFilter,
+      }),
       fetchUnmatchedOpens(accountIdParam),
       fetchCatalog(),
     ])
@@ -127,7 +162,14 @@ function TradeLogBody() {
         setState("err");
         setError(e instanceof Error ? e.message : String(e));
       });
-  }, [accountIdParam, prefsReady, refreshAccounts, setAccountId]);
+  }, [
+    accountIdParam,
+    prefsReady,
+    refreshAccounts,
+    setAccountId,
+    campaignFilter,
+    playbookFilter,
+  ]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || !nextCursor || loadingMore) return;
@@ -136,6 +178,9 @@ function TradeLogBody() {
       const tr = await fetchTrades(accountIdParam, {
         limit: PAGE_LIMIT,
         cursor: nextCursor,
+        practice_campaign_id:
+          campaignFilter === "" ? null : campaignFilter,
+        playbook_entry_id: playbookFilter === "" ? null : playbookFilter,
       });
       if (!tr.ok) {
         setLoadingMore(false);
@@ -152,7 +197,14 @@ function TradeLogBody() {
     } finally {
       setLoadingMore(false);
     }
-  }, [accountIdParam, hasMore, nextCursor, loadingMore]);
+  }, [
+    accountIdParam,
+    hasMore,
+    nextCursor,
+    loadingMore,
+    campaignFilter,
+    playbookFilter,
+  ]);
 
   useEffect(() => {
     load();
@@ -342,6 +394,12 @@ function TradeLogBody() {
           selectedId={selected?.id}
           filterOpenOnly={filterOpenOnly}
           onFilterOpenOnly={setFilterOpenOnly}
+          campaignFilter={campaignFilter}
+          onCampaignFilter={setCampaignFilter}
+          campaignOptions={campaignOptions}
+          playbookFilter={playbookFilter}
+          onPlaybookFilter={setPlaybookFilter}
+          playbookOptions={playbookOptions}
           hasMore={!filterOpenOnly && hasMore}
           loadingMore={loadingMore}
           onLoadMore={() => void loadMore()}

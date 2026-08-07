@@ -115,6 +115,7 @@ def unpack_payload(data: bytes, kind: str) -> dict[str, dict]:
             "retrospective.json": "retrospective",
             "journey.json": "journey",
             "playbook.json": "playbook",
+            "practice_campaign.json": "practice_campaign",
             "pack.json": "pack",
         }
         for name in zf.namelist():
@@ -156,6 +157,11 @@ def unpack_payload(data: bytes, kind: str) -> dict[str, dict]:
         return {"journey": obj}
     if fmt == ex.FMT_PLAYBOOK or fmt == "fattail.labs.playbook":
         return {"playbook": obj}
+    if (
+        fmt == getattr(ex, "FMT_PRACTICE_CAMPAIGN", None)
+        or fmt == "fattail.labs.practice_campaign"
+    ):
+        return {"practice_campaign": obj}
     if fmt == "fattail.labs.trade_log" or (
         isinstance(obj.get("accounts"), list)
         and str(obj.get("format", "")).startswith("fattail")
@@ -173,12 +179,13 @@ def detect_payload(data: bytes, kind: str) -> dict[str, Any]:
     surfaces = [
         s
         for s in (
+            "playbook",
+            "practice_campaign",
             "trade_log",
             "journal",
             "journal_session",
             "retrospective",
             "journey",
-            "playbook",
         )
         if s in docs
     ]
@@ -260,21 +267,34 @@ def commit_journal(cur, identity_id: int, doc: dict) -> dict[str, Any]:
     return {"surface": "journal", "counts": counts, "mode": "additive"}
 
 
+def _playbook_entry_is_real(e: dict) -> bool:
+    """v1.0 entries have title; 0.1-stub notes only have body_md."""
+    title = (e.get("title") or "").strip()
+    if title:
+        return True
+    # Explicit real-entry markers
+    if e.get("status") in ("active", "archived") and "structured" in e:
+        return True
+    return False
+
+
 def preview_playbook(cur, identity_id: int, doc: dict) -> dict[str, Any]:
-    """Stub playbook notes — same additive key policy as journal notes."""
+    """Real playbook entries + legacy tool-note notes. Additive by export_key."""
     counts = _count_bucket()
+    note_counts = _count_bucket()
     warnings: list[str] = []
-    for e in doc.get("entries") or []:
-        if not isinstance(e, dict):
-            counts["error"] += 1
-            continue
+    model = str(doc.get("model_version") or "")
+    is_stub = bool(doc.get("stub")) or model.startswith("0.1")
+
+    def _count_real(e: dict) -> None:
+        title = (e.get("title") or "").strip()
         body = (e.get("body_md") or "").strip()
-        if not body:
+        if not title and not body:
             counts["skip"] += 1
-            continue
-        key = _portable_key(e.get("id"), "playbook", body)
+            return
+        key = _portable_key(e.get("id"), "playbook", title or body)
         cur.execute(
-            """SELECT id FROM member_tool_notes
+            """SELECT id FROM member_playbook_entries
                WHERE identity_id = %s AND export_key = %s""",
             (identity_id, key),
         )
@@ -282,52 +302,266 @@ def preview_playbook(cur, identity_id: int, doc: dict) -> dict[str, Any]:
             counts["skip"] += 1
         else:
             counts["new"] += 1
-    rules = doc.get("rules") or []
-    if rules:
-        warnings.append(
-            f"playbook.rules has {len(rules)} item(s); stub importer ignores structured rules"
-        )
-    return {
-        "surface": "playbook",
-        "counts": counts,
-        "warnings": warnings,
-        "mode": "additive",
-        "note": "stub surface — free-form notes only",
-    }
 
-
-def commit_playbook(cur, identity_id: int, doc: dict) -> dict[str, Any]:
-    counts = _count_bucket()
-    for e in doc.get("entries") or []:
-        if not isinstance(e, dict):
-            counts["error"] += 1
-            continue
+    def _count_note(e: dict) -> None:
         body = (e.get("body_md") or "").strip()
         if not body:
-            counts["skip"] += 1
-            continue
-        key = _portable_key(e.get("id"), "playbook", body)
+            note_counts["skip"] += 1
+            return
+        key = _portable_key(e.get("id"), "playbook-note", body)
         cur.execute(
             """SELECT id FROM member_tool_notes
                WHERE identity_id = %s AND export_key = %s""",
             (identity_id, key),
         )
         if cur.fetchone():
-            counts["skip"] += 1
+            note_counts["skip"] += 1
+        else:
+            note_counts["new"] += 1
+
+    for e in doc.get("entries") or []:
+        if not isinstance(e, dict):
+            counts["error"] += 1
             continue
+        if is_stub or not _playbook_entry_is_real(e):
+            _count_note(e)
+        else:
+            _count_real(e)
+    for e in doc.get("notes") or []:
+        if not isinstance(e, dict):
+            note_counts["error"] += 1
+            continue
+        _count_note(e)
+    if is_stub:
+        warnings.append("playbook pack is 0.1-stub notes; importing as tool notes")
+    return {
+        "surface": "playbook",
+        "counts": counts,
+        "notes": note_counts,
+        "warnings": warnings,
+        "mode": "additive",
+    }
+
+
+def commit_playbook(cur, identity_id: int, doc: dict) -> dict[str, Any]:
+    counts = _count_bucket()
+    note_counts = _count_bucket()
+    model = str(doc.get("model_version") or "")
+    is_stub = bool(doc.get("stub")) or model.startswith("0.1")
+
+    def _insert_real(e: dict) -> None:
+        title = (e.get("title") or "").strip()
+        body = (e.get("body_md") or "").strip()
+        if not title:
+            # Real schema requires title; synthesize from body if needed
+            title = (body[:80] or "Imported playbook").strip()
+        key = _portable_key(e.get("id"), "playbook", title)
+        cur.execute(
+            """SELECT id FROM member_playbook_entries
+               WHERE identity_id = %s AND export_key = %s""",
+            (identity_id, key),
+        )
+        if cur.fetchone():
+            counts["skip"] += 1
+            return
+        status = (e.get("status") or "active").strip().lower()
+        if status not in ("active", "archived"):
+            status = "active"
+        structured = e.get("structured") if isinstance(e.get("structured"), dict) else None
+        sj = json.dumps(structured) if structured else None
+        cur.execute(
+            """INSERT INTO member_playbook_entries
+                 (identity_id, title, body_md, structured_json, status, export_key)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (identity_id, title[:255], body, sj, status, key),
+        )
+        counts["new"] += 1
+
+    def _insert_note(e: dict) -> None:
+        body = (e.get("body_md") or "").strip()
+        if not body:
+            note_counts["skip"] += 1
+            return
+        key = _portable_key(e.get("id"), "playbook-note", body)
+        cur.execute(
+            """SELECT id FROM member_tool_notes
+               WHERE identity_id = %s AND export_key = %s""",
+            (identity_id, key),
+        )
+        if cur.fetchone():
+            note_counts["skip"] += 1
+            return
         cur.execute(
             """INSERT INTO member_tool_notes
                  (identity_id, surface, body_md, export_key)
                VALUES (%s, 'playbook', %s, %s)""",
             (identity_id, body, key),
         )
-        counts["new"] += 1
+        note_counts["new"] += 1
+
+    for e in doc.get("entries") or []:
+        if not isinstance(e, dict):
+            counts["error"] += 1
+            continue
+        if is_stub or not _playbook_entry_is_real(e):
+            _insert_note(e)
+        else:
+            _insert_real(e)
+    for e in doc.get("notes") or []:
+        if not isinstance(e, dict):
+            note_counts["error"] += 1
+            continue
+        _insert_note(e)
     return {
         "surface": "playbook",
         "counts": counts,
+        "notes": note_counts,
         "mode": "additive",
-        "note": "stub surface — free-form notes only",
     }
+
+
+def preview_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]:
+    counts = _count_bucket()
+    warnings: list[str] = []
+    for e in doc.get("entries") or []:
+        if not isinstance(e, dict):
+            counts["error"] += 1
+            continue
+        title = (e.get("title") or "").strip()
+        if not title:
+            counts["skip"] += 1
+            continue
+        key = _portable_key(e.get("id"), "campaign", title)
+        cur.execute(
+            """SELECT id FROM member_practice_campaigns
+               WHERE identity_id = %s AND export_key = %s""",
+            (identity_id, key),
+        )
+        if cur.fetchone():
+            counts["skip"] += 1
+        else:
+            counts["new"] += 1
+        status = (e.get("status") or "").strip().lower()
+        if status == "active":
+            warnings.append(
+                f"campaign {key}: active status may be demoted if another active season exists"
+            )
+    return {
+        "surface": "practice_campaign",
+        "counts": counts,
+        "warnings": warnings,
+        "mode": "additive",
+    }
+
+
+def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]:
+    counts = _count_bucket()
+    warnings: list[str] = []
+    # Map playbook export_key → row id for scope links
+    pb_by_key: dict[str, int] = {}
+    cur.execute(
+        """SELECT id, export_key FROM member_playbook_entries
+           WHERE identity_id = %s AND export_key IS NOT NULL""",
+        (identity_id,),
+    )
+    for r in cur.fetchall() or []:
+        ek = (r.get("export_key") or "").strip()
+        if ek:
+            pb_by_key[ek] = int(r["id"])
+
+    # Existing active campaign (single-active invariant)
+    cur.execute(
+        """SELECT id FROM member_practice_campaigns
+           WHERE identity_id = %s AND status = 'active' LIMIT 1""",
+        (identity_id,),
+    )
+    existing_active = cur.fetchone()
+    active_claimed = existing_active is not None
+
+    for e in doc.get("entries") or []:
+        if not isinstance(e, dict):
+            counts["error"] += 1
+            continue
+        title = (e.get("title") or "").strip()
+        if not title:
+            counts["skip"] += 1
+            continue
+        key = _portable_key(e.get("id"), "campaign", title)
+        cur.execute(
+            """SELECT id FROM member_practice_campaigns
+               WHERE identity_id = %s AND export_key = %s""",
+            (identity_id, key),
+        )
+        if cur.fetchone():
+            counts["skip"] += 1
+            continue
+        status = (e.get("status") or "planned").strip().lower()
+        if status not in ("planned", "active", "completed", "abandoned"):
+            status = "planned"
+        if status == "active" and active_claimed:
+            status = "completed"
+            warnings.append(
+                f"campaign {key}: demoted active → completed (single active season)"
+            )
+        elif status == "active":
+            active_claimed = True
+        starts = _parse_dt(e.get("starts_at"))
+        ends = _parse_dt(e.get("ends_at"))
+        cur.execute(
+            """INSERT INTO member_practice_campaigns
+                 (identity_id, title, status, starts_at, ends_at, export_key)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (identity_id, title[:255], status, starts, ends, key),
+        )
+        cid = int(cur.lastrowid)
+        counts["new"] += 1
+        for pb_key in e.get("playbook_export_keys") or []:
+            pk = str(pb_key or "").strip()
+            pid = pb_by_key.get(pk)
+            if pid is None:
+                warnings.append(f"campaign {key}: unknown playbook key {pk!r}")
+                continue
+            cur.execute(
+                """INSERT IGNORE INTO member_practice_campaign_playbooks
+                     (campaign_id, playbook_entry_id) VALUES (%s, %s)""",
+                (cid, pid),
+            )
+    return {
+        "surface": "practice_campaign",
+        "counts": counts,
+        "warnings": warnings,
+        "mode": "additive",
+    }
+
+
+def _resolve_spine_ids(
+    cur, identity_id: int
+) -> tuple[dict[str, int], dict[str, int]]:
+    """export_key → row id maps for playbook and practice campaign."""
+    pb: dict[str, int] = {}
+    camp: dict[str, int] = {}
+    try:
+        cur.execute(
+            """SELECT id, export_key FROM member_playbook_entries
+               WHERE identity_id = %s AND export_key IS NOT NULL""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            ek = (r.get("export_key") or "").strip()
+            if ek:
+                pb[ek] = int(r["id"])
+        cur.execute(
+            """SELECT id, export_key FROM member_practice_campaigns
+               WHERE identity_id = %s AND export_key IS NOT NULL""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            ek = (r.get("export_key") or "").strip()
+            if ek:
+                camp[ek] = int(r["id"])
+    except Exception:
+        pass
+    return pb, camp
 
 
 def _parse_date_only(raw: Any) -> str | None:
@@ -453,11 +687,20 @@ def commit_journal_session(cur, identity_id: int, doc: dict) -> dict[str, Any]:
         if prompt_vid is not None:
             prompt_vid = str(prompt_vid)[:64]
 
+        camp_id = None
+        camp_key = (e.get("practice_campaign_export_key") or "").strip()
+        if camp_key:
+            _, camp_map = _resolve_spine_ids(cur, identity_id)
+            camp_id = camp_map.get(camp_key)
+            if camp_id is None:
+                warnings.append(
+                    f"session {key}: unknown practice_campaign_export_key {camp_key!r}"
+                )
         cur.execute(
             """INSERT INTO member_journal_sessions
                  (identity_id, tag, journal_date, session_started_at, status,
-                  structured_json, export_key, prompt_version_id)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                  structured_json, export_key, practice_campaign_id, prompt_version_id)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (
                 identity_id,
                 tag,
@@ -466,6 +709,7 @@ def commit_journal_session(cur, identity_id: int, doc: dict) -> dict[str, Any]:
                 status,
                 structured_json,
                 key,
+                camp_id,
                 prompt_vid,
             ),
         )
@@ -1168,6 +1412,15 @@ def commit_trade_log(cur, identity_id: int, doc: dict, claims: dict) -> dict[str
         entry_source = _normalize_entry_source(
             t.get("entry_source") or "import", default="import"
         )
+        pb_map, camp_map = _resolve_spine_ids(cur, identity_id)
+        pb_id = None
+        camp_id = None
+        pb_key = (t.get("playbook_export_key") or "").strip()
+        camp_key = (t.get("practice_campaign_export_key") or "").strip()
+        if pb_key:
+            pb_id = pb_map.get(pb_key)
+        if camp_key:
+            camp_id = camp_map.get(camp_key)
         tid: int | None = None
         try:
             cur.execute(
@@ -1175,8 +1428,9 @@ def commit_trade_log(cur, identity_id: int, doc: dict, claims: dict) -> dict[str
                      (identity_id, account_id, exec_at, asset_class, strategy, order_type,
                       net_price, net_side, setup_md, plan_md, rules_md, adherence,
                       deviation_md, lesson_md, pnl_amount, external_adapter,
-                      external_order_id, entry_source)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                      external_order_id, entry_source,
+                      playbook_entry_id, practice_campaign_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     identity_id,
                     account_id,
@@ -1196,6 +1450,8 @@ def commit_trade_log(cur, identity_id: int, doc: dict, claims: dict) -> dict[str
                     adapter_id,
                     ext,
                     entry_source,
+                    pb_id,
+                    camp_id,
                 ),
             )
             tid = int(cur.lastrowid)
@@ -1270,6 +1526,11 @@ def preview_all(cur, identity_id: int, docs: dict[str, dict], policy: str) -> di
     if "playbook" in docs:
         surfaces["playbook"] = preview_playbook(cur, identity_id, docs["playbook"])
         warnings.extend(surfaces["playbook"].get("warnings") or [])
+    if "practice_campaign" in docs:
+        surfaces["practice_campaign"] = preview_practice_campaign(
+            cur, identity_id, docs["practice_campaign"]
+        )
+        warnings.extend(surfaces["practice_campaign"].get("warnings") or [])
     return {
         "policy": "additive",
         "mode": "additive",
@@ -1381,6 +1642,15 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
         )
     except Exception:
         counts["trade_log_entries_legacy"] = 0
+    # Practice spine (campaign→playbook links CASCADE on campaign delete)
+    _del(
+        "practice_campaigns",
+        "DELETE FROM member_practice_campaigns WHERE identity_id = %s",
+    )
+    _del(
+        "playbook_entries",
+        "DELETE FROM member_playbook_entries WHERE identity_id = %s",
+    )
     _del(
         "tool_notes",
         "DELETE FROM member_tool_notes WHERE identity_id = %s",
@@ -1409,6 +1679,13 @@ def commit_all(
             extra={"preview": prev},
         )
     results: dict[str, Any] = {}
+    # Spine first so trade/journal links resolve export keys
+    if "playbook" in docs:
+        results["playbook"] = commit_playbook(cur, identity_id, docs["playbook"])
+    if "practice_campaign" in docs:
+        results["practice_campaign"] = commit_practice_campaign(
+            cur, identity_id, docs["practice_campaign"]
+        )
     if "trade_log" in docs:
         results["trade_log"] = commit_trade_log(cur, identity_id, docs["trade_log"], claims)
     if "journal" in docs:
@@ -1423,6 +1700,4 @@ def commit_all(
         )
     if "journey" in docs:
         results["journey"] = commit_journey(cur, identity_id, docs["journey"])
-    if "playbook" in docs:
-        results["playbook"] = commit_playbook(cur, identity_id, docs["playbook"])
     return {"policy": "additive", "mode": "additive", "results": results}

@@ -64,12 +64,13 @@ def export_pack(request: Request, format: str = "zip") -> Any:
                 subject_identity_id=iid,
                 action="export",
                 surfaces=[
+                    "playbook",
+                    "practice_campaign",
                     "trade_log",
                     "journal",
                     "journal_session",
                     "retrospective",
                     "journey",
-                    "playbook",
                 ],
                 detail=f"pack format={fmt}",
             )
@@ -263,12 +264,13 @@ async def import_commit(request: Request) -> dict:
                     for s in docs
                     if s
                     in (
+                        "playbook",
+                        "practice_campaign",
                         "trade_log",
                         "journal",
                         "journal_session",
                         "retrospective",
                         "journey",
-                        "playbook",
                     )
                 ]
                 privacy.audit(

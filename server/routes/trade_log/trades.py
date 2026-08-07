@@ -37,6 +37,8 @@ def list_trades(
     limit: int | None = None,
     cursor: str | None = None,
     full: bool = False,
+    practice_campaign_id: int | None = None,
+    playbook_entry_id: int | None = None,
 ) -> dict:
     """List trades for the blotter.
 
@@ -45,6 +47,8 @@ def list_trades(
 
     **full=1:** legacy full-book load (capped server-side) for tools that need it.
     Reports/Journal analytics use dedicated analytics routes (server domain), not this.
+
+    Spine filters (Phase 1): ``practice_campaign_id``, ``playbook_entry_id``.
     """
     claims = require_session(request)
     _require_tool_member(claims, capability="read")
@@ -54,7 +58,13 @@ def list_trades(
             default_acct = _ensure_default_account(cur, iid)
             default_account_id = int(default_acct["id"])
             if full:
-                trades, accounts = _load_member_book(cur, iid, account_id)
+                trades, accounts = _load_member_book(
+                    cur,
+                    iid,
+                    account_id,
+                    practice_campaign_id=practice_campaign_id,
+                    playbook_entry_id=playbook_entry_id,
+                )
                 has_more = False
                 next_cursor = None
             else:
@@ -65,6 +75,8 @@ def list_trades(
                     account_id,
                     limit=page_limit,
                     cursor=cursor,
+                    practice_campaign_id=practice_campaign_id,
+                    playbook_entry_id=playbook_entry_id,
                 )
     # Legacy key for old clients/tests that expect entries (prose-shaped)
     entries = [

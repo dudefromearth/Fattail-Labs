@@ -565,6 +565,11 @@ def serialize_session(
             primary, sj if isinstance(sj, dict) else None
         ),
         "export_key": row.get("export_key"),
+        "practice_campaign_id": (
+            int(row["practice_campaign_id"])
+            if row.get("practice_campaign_id") is not None
+            else None
+        ),
         "spawned_retrospective_id": (
             int(row["spawned_retrospective_id"])
             if row.get("spawned_retrospective_id") is not None
@@ -608,8 +613,13 @@ def create_session(
     structured: dict | None = None,
     prefill: bool = False,
     now: datetime | None = None,
+    practice_campaign_id: int | None | object = ...,
 ) -> dict:
-    """Create open conversation. Tags optional (v0.4a). tag= for legacy single-tag create."""
+    """Create open conversation. Tags optional (v0.4a). tag= for legacy single-tag create.
+
+    practice_campaign_id (OD-1.4): omit → default-suggest active campaign;
+    pass None to create without a season stamp; pass int for explicit season.
+    """
     tag_list: list[str] = []
     if tags:
         for t in tags:
@@ -688,18 +698,51 @@ def create_session(
     sj = json.dumps(merged) if merged else None
     legacy_tag = primary if primary else None
     prompt_vid = active_prompt_version_id(cur)
+    # OD-1.4 — optional campaign stamp (default-suggest active season)
+    camp_id: int | None
+    if practice_campaign_id is ...:
+        camp_id = _active_campaign_id(cur, identity_id)
+    elif practice_campaign_id is None or practice_campaign_id == "":
+        camp_id = None
+    else:
+        camp_id = int(practice_campaign_id)  # type: ignore[arg-type]
+        _assert_campaign_owned(cur, identity_id, camp_id)
     cur.execute(
         """INSERT INTO member_journal_sessions
              (identity_id, tag, journal_date, session_started_at, status,
-              structured_json, export_key, spawned_retrospective_id,
-              prompt_version_id)
-           VALUES (%s, %s, %s, %s, 'open', %s, NULL, NULL, %s)""",
-        (identity_id, legacy_tag, jd, started, sj, prompt_vid),
+              structured_json, export_key, practice_campaign_id,
+              spawned_retrospective_id, prompt_version_id)
+           VALUES (%s, %s, %s, %s, 'open', %s, NULL, %s, NULL, %s)""",
+        (identity_id, legacy_tag, jd, started, sj, camp_id, prompt_vid),
     )
     sid = int(cur.lastrowid)
     if tag_list:
         _set_session_tags(cur, sid, tag_list)
     return get_session(cur, identity_id, sid, include_messages=True)
+
+
+def _active_campaign_id(cur, identity_id: int) -> int | None:
+    try:
+        cur.execute(
+            """SELECT id FROM member_practice_campaigns
+               WHERE identity_id = %s AND status = 'active'
+               ORDER BY id DESC LIMIT 1""",
+            (identity_id,),
+        )
+        row = cur.fetchone()
+        return int(row["id"]) if row else None
+    except Exception:
+        return None
+
+
+def _assert_campaign_owned(cur, identity_id: int, campaign_id: int) -> None:
+    cur.execute(
+        """SELECT id FROM member_practice_campaigns
+           WHERE id = %s AND identity_id = %s""",
+        (campaign_id, identity_id),
+    )
+    if not cur.fetchone():
+        raise JournalSessionError(404, "Practice campaign not found")
 
 
 def active_prompt_version_id(cur) -> str | None:
@@ -718,8 +761,8 @@ def active_prompt_version_id(cur) -> str | None:
 
 
 _SESSION_COLS = """id, identity_id, tag, journal_date, session_started_at, status,
-                  structured_json, export_key, spawned_retrospective_id,
-                  closed_by_retrospective_id, closed_at,
+                  structured_json, export_key, practice_campaign_id,
+                  spawned_retrospective_id, closed_by_retrospective_id, closed_at,
                   absence_keys_raised_json, prompt_version_id,
                   created_at, updated_at"""
 
@@ -892,11 +935,14 @@ def patch_session(
     structured: Any = None,
     structured_set: bool = False,
     merge: bool = True,
+    practice_campaign_id: Any = ...,
+    practice_campaign_set: bool = False,
 ) -> dict:
     """Update structured_json before seal. identity_id in body is never used.
 
     merge=True (default): overlay onto existing structured (form field saves).
     merge=False: replace with normalized payload only.
+    practice_campaign_id may be set/cleared (OD-1.4 removable stamp).
     """
     row = _load_mutable_row(cur, identity_id, session_id)
     if structured_set:
@@ -926,6 +972,20 @@ def patch_session(
                SET structured_json = %s
                WHERE id = %s AND identity_id = %s AND status IN ('open', 'partial')""",
             (sj, session_id, identity_id),
+        )
+        if cur.rowcount == 0:
+            raise JournalSessionError(409, CLOSED_SESSION_DETAIL)
+    if practice_campaign_set:
+        if practice_campaign_id in (None, ""):
+            camp_id = None
+        else:
+            camp_id = int(practice_campaign_id)
+            _assert_campaign_owned(cur, identity_id, camp_id)
+        cur.execute(
+            """UPDATE member_journal_sessions
+               SET practice_campaign_id = %s
+               WHERE id = %s AND identity_id = %s AND status IN ('open', 'partial')""",
+            (camp_id, session_id, identity_id),
         )
         if cur.rowcount == 0:
             raise JournalSessionError(409, CLOSED_SESSION_DETAIL)

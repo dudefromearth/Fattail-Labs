@@ -175,6 +175,19 @@ async def create_journal_session(request: Request) -> dict:
     if structured is not None and not isinstance(structured, dict):
         raise HTTPException(status_code=422, detail="structured must be an object")
     prefill = bool(body.get("prefill", False))
+    # OD-1.4: omit key → default-suggest active campaign; null → no stamp
+    camp_kw: dict = {}
+    if "practice_campaign_id" in body:
+        raw_camp = body.get("practice_campaign_id")
+        if raw_camp in (None, ""):
+            camp_kw["practice_campaign_id"] = None
+        else:
+            try:
+                camp_kw["practice_campaign_id"] = int(raw_camp)
+            except (TypeError, ValueError) as e:
+                raise HTTPException(
+                    status_code=422, detail="practice_campaign_id must be an integer"
+                ) from e
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -189,6 +202,7 @@ async def create_journal_session(request: Request) -> dict:
                     journal_date=str(journal_date),
                     structured=structured,
                     prefill=prefill,
+                    **camp_kw,
                 )
             except jsd.JournalSessionError as e:
                 _raise_domain(e)
@@ -222,6 +236,8 @@ async def patch_journal_session(request: Request, session_id: int) -> dict:
 
     structured_set = "structured" in body
     structured = body.get("structured") if structured_set else None
+    camp_set = "practice_campaign_id" in body
+    camp_raw = body.get("practice_campaign_id") if camp_set else None
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -233,6 +249,8 @@ async def patch_journal_session(request: Request, session_id: int) -> dict:
                     session_id,
                     structured=structured,
                     structured_set=structured_set,
+                    practice_campaign_id=camp_raw,
+                    practice_campaign_set=camp_set,
                 )
             except jsd.JournalSessionError as e:
                 _raise_domain(e)

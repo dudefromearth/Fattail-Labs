@@ -553,28 +553,39 @@ def _rows_to_trades(cur, rows: list, iid: int) -> list[dict]:
 
 
 def _load_member_book(
-    cur, iid: int, account_id: int | None = None
+    cur,
+    iid: int,
+    account_id: int | None = None,
+    *,
+    practice_campaign_id: int | None = None,
+    playbook_entry_id: int | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Batch-load trades+legs and accounts for analytics (identity-scoped).
 
     Full-book style load (capped). Prefer :func:`_load_member_book_page` for UI lists.
+    Optional spine filters (Phase 1): campaign and/or playbook entry.
     """
     _ensure_default_account(cur, iid)
+    clauses = ["identity_id = %s"]
+    args: list[Any] = [iid]
     if account_id is not None:
         _get_account(cur, iid, account_id)
-        cur.execute(
-            """SELECT * FROM member_trade_log_trades
-               WHERE identity_id = %s AND account_id = %s
-               ORDER BY exec_at DESC, id DESC LIMIT %s""",
-            (iid, account_id, _TRADE_BOOK_LIMIT),
-        )
-    else:
-        cur.execute(
-            """SELECT * FROM member_trade_log_trades
-               WHERE identity_id = %s
-               ORDER BY exec_at DESC, id DESC LIMIT %s""",
-            (iid, _TRADE_BOOK_LIMIT),
-        )
+        clauses.append("account_id = %s")
+        args.append(account_id)
+    if practice_campaign_id is not None:
+        clauses.append("practice_campaign_id = %s")
+        args.append(int(practice_campaign_id))
+    if playbook_entry_id is not None:
+        clauses.append("playbook_entry_id = %s")
+        args.append(int(playbook_entry_id))
+    where = " AND ".join(clauses)
+    args.append(_TRADE_BOOK_LIMIT)
+    cur.execute(
+        f"""SELECT * FROM member_trade_log_trades
+            WHERE {where}
+            ORDER BY exec_at DESC, id DESC LIMIT %s""",
+        tuple(args),
+    )
     rows = cur.fetchall()
     trades = _rows_to_trades(cur, rows, iid)
     return trades, _load_accounts(cur, iid)
@@ -612,6 +623,8 @@ def _load_member_book_page(
     *,
     limit: int = _TRADE_PAGE_DEFAULT,
     cursor: str | None = None,
+    practice_campaign_id: int | None = None,
+    playbook_entry_id: int | None = None,
 ) -> tuple[list[dict], list[dict], bool, str | None]:
     """Paginated trades for blotter. Newest first. Returns has_more, next_cursor."""
     _ensure_default_account(cur, iid)
@@ -620,39 +633,35 @@ def _load_member_book_page(
     # Fetch limit+1 to detect has_more
     fetch_n = limit + 1
 
+    clauses = ["identity_id = %s"]
+    args: list[Any] = [iid]
     if account_id is not None:
         _get_account(cur, iid, account_id)
-        if before_exec is not None and before_id is not None:
-            cur.execute(
-                """SELECT * FROM member_trade_log_trades
-                   WHERE identity_id = %s AND account_id = %s
-                     AND (exec_at < %s OR (exec_at = %s AND id < %s))
-                   ORDER BY exec_at DESC, id DESC LIMIT %s""",
-                (iid, account_id, before_exec, before_exec, before_id, fetch_n),
-            )
-        else:
-            cur.execute(
-                """SELECT * FROM member_trade_log_trades
-                   WHERE identity_id = %s AND account_id = %s
-                   ORDER BY exec_at DESC, id DESC LIMIT %s""",
-                (iid, account_id, fetch_n),
-            )
+        clauses.append("account_id = %s")
+        args.append(account_id)
+    if practice_campaign_id is not None:
+        clauses.append("practice_campaign_id = %s")
+        args.append(int(practice_campaign_id))
+    if playbook_entry_id is not None:
+        clauses.append("playbook_entry_id = %s")
+        args.append(int(playbook_entry_id))
+    where = " AND ".join(clauses)
+
+    if before_exec is not None and before_id is not None:
+        cur.execute(
+            f"""SELECT * FROM member_trade_log_trades
+                WHERE {where}
+                  AND (exec_at < %s OR (exec_at = %s AND id < %s))
+                ORDER BY exec_at DESC, id DESC LIMIT %s""",
+            tuple(args + [before_exec, before_exec, before_id, fetch_n]),
+        )
     else:
-        if before_exec is not None and before_id is not None:
-            cur.execute(
-                """SELECT * FROM member_trade_log_trades
-                   WHERE identity_id = %s
-                     AND (exec_at < %s OR (exec_at = %s AND id < %s))
-                   ORDER BY exec_at DESC, id DESC LIMIT %s""",
-                (iid, before_exec, before_exec, before_id, fetch_n),
-            )
-        else:
-            cur.execute(
-                """SELECT * FROM member_trade_log_trades
-                   WHERE identity_id = %s
-                   ORDER BY exec_at DESC, id DESC LIMIT %s""",
-                (iid, fetch_n),
-            )
+        cur.execute(
+            f"""SELECT * FROM member_trade_log_trades
+                WHERE {where}
+                ORDER BY exec_at DESC, id DESC LIMIT %s""",
+            tuple(args + [fetch_n]),
+        )
     rows = list(cur.fetchall())
     has_more = len(rows) > limit
     if has_more:

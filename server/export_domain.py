@@ -24,9 +24,11 @@ FMT_JOURNAL = "fattail.labs.journal"
 FMT_JOURNAL_SESSION = "fattail.labs.journal_session"
 FMT_RETRO = "fattail.labs.retrospective"
 FMT_JOURNEY = "fattail.labs.journey"
-# Playbook surface is product-incomplete; stub schema for pack completeness.
+# Playbook + Practice Campaign (Trader Development Phase 1 · OD-1.5)
 FMT_PLAYBOOK = "fattail.labs.playbook"
-PLAYBOOK_MODEL_VERSION = "0.1-stub"
+PLAYBOOK_MODEL_VERSION = "1.0"
+FMT_PRACTICE_CAMPAIGN = "fattail.labs.practice_campaign"
+CAMPAIGN_MODEL_VERSION = "1.0"
 FMT_PACK = "fattail.labs.member_export"
 
 
@@ -150,7 +152,7 @@ def build_journal_session_document(cur, identity_id: int) -> dict[str, Any]:
     try:
         cur.execute(
             """SELECT id, tag, journal_date, session_started_at, status,
-                      structured_json, export_key, created_at
+                      structured_json, export_key, practice_campaign_id, created_at
                FROM member_journal_sessions
                WHERE identity_id = %s
                ORDER BY session_started_at ASC, id ASC""",
@@ -160,6 +162,20 @@ def build_journal_session_document(cur, identity_id: int) -> dict[str, Any]:
     except Exception:
         doc["entries"] = []
         return doc
+    # Resolve campaign export keys once
+    camp_keys: dict[int, str] = {}
+    try:
+        cur.execute(
+            """SELECT id, export_key FROM member_practice_campaigns
+               WHERE identity_id = %s""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            ek = (r.get("export_key") or "").strip()
+            if ek:
+                camp_keys[int(r["id"])] = ek
+    except Exception:
+        camp_keys = {}
     entries = []
     for s in sessions:
         sid = int(s["id"])
@@ -223,6 +239,10 @@ def build_journal_session_document(cur, identity_id: int) -> dict[str, Any]:
                 )
         except Exception:
             attachments = []
+        camp_id = s.get("practice_campaign_id")
+        camp_key = None
+        if camp_id is not None:
+            camp_key = camp_keys.get(int(camp_id))
         entries.append(
             {
                 "id": (s.get("export_key") or f"js-{sid}").strip(),
@@ -234,6 +254,7 @@ def build_journal_session_document(cur, identity_id: int) -> dict[str, Any]:
                 "structured": structured if isinstance(structured, dict) else {},
                 "messages": messages,
                 "attachments": attachments,
+                "practice_campaign_export_key": camp_key,
             }
         )
     doc["entries"] = entries
@@ -449,25 +470,51 @@ def build_journey_document(cur, identity_id: int, *, role: str = "observer") -> 
 
 
 def build_playbook_document(cur, identity_id: int) -> dict[str, Any]:
-    """Stub Playbook export — tool notes on surface ``playbook`` only.
+    """Real Playbook export (v1.0) + legacy tool-note notes for pack stability.
 
-    Full Playbook product is not finished; this keeps pack schema stable so
-    export/import round-trips never drop the surface. Shape::
-
+    Shape::
         format: fattail.labs.playbook
-        model_version: 0.1-stub
-        entries: [{ id, body_md, created_at, updated_at }]
-        rules: []   # reserved for future structured playbook rules
+        model_version: 1.0
+        entries: [{ id, title, body_md, structured, status, created_at, updated_at }]
+        notes: [{ id, body_md, ... }]  # legacy surface=playbook tool notes
     """
     email = _member_email(cur, identity_id)
     doc = envelope(FMT_PLAYBOOK, email=email)
     doc["model_version"] = PLAYBOOK_MODEL_VERSION
-    doc["stub"] = True
-    doc["note"] = (
-        "Playbook product is incomplete. This document carries free-form "
-        "playbook notes only; structured rules are reserved empty."
-    )
+    doc["stub"] = False
     entries: list[dict[str, Any]] = []
+    try:
+        cur.execute(
+            """SELECT id, title, body_md, structured_json, status, export_key,
+                      created_at, updated_at
+               FROM member_playbook_entries
+               WHERE identity_id = %s
+               ORDER BY created_at ASC, id ASC""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            structured = r.get("structured_json")
+            if isinstance(structured, str):
+                try:
+                    structured = json.loads(structured)
+                except Exception:
+                    structured = {}
+            if not isinstance(structured, dict):
+                structured = {}
+            entries.append(
+                {
+                    "id": (r.get("export_key") or f"pb-{int(r['id'])}").strip(),
+                    "title": r.get("title") or "",
+                    "body_md": r.get("body_md") or "",
+                    "structured": structured,
+                    "status": r.get("status") or "active",
+                    "created_at": _iso(r.get("created_at")),
+                    "updated_at": _iso(r.get("updated_at")),
+                }
+            )
+    except Exception:
+        entries = []
+    notes: list[dict[str, Any]] = []
     try:
         cur.execute(
             """SELECT id, body_md, export_key, created_at, updated_at
@@ -477,18 +524,84 @@ def build_playbook_document(cur, identity_id: int) -> dict[str, Any]:
             (identity_id,),
         )
         for r in cur.fetchall() or []:
-            entries.append(
+            notes.append(
                 {
-                    "id": (r.get("export_key") or f"pb-{int(r['id'])}").strip(),
+                    "id": (r.get("export_key") or f"pbn-{int(r['id'])}").strip(),
                     "body_md": r.get("body_md") or "",
                     "created_at": _iso(r.get("created_at")),
                     "updated_at": _iso(r.get("updated_at")),
                 }
             )
     except Exception:
+        notes = []
+    doc["entries"] = entries
+    doc["notes"] = notes
+    # Backward-compat: 0.1-stub packs only had free-form notes in entries
+    if not entries and notes:
+        doc["entries"] = [
+            {**n, "title": "", "status": "active", "structured": {}} for n in notes
+        ]
+    return doc
+
+
+def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
+    """Practice Campaign export — seasons + playbook scope by export_key."""
+    email = _member_email(cur, identity_id)
+    doc = envelope(FMT_PRACTICE_CAMPAIGN, email=email)
+    doc["format"] = FMT_PRACTICE_CAMPAIGN
+    doc["model_version"] = CAMPAIGN_MODEL_VERSION
+    # playbook id → export_key
+    pb_keys: dict[int, str] = {}
+    try:
+        cur.execute(
+            """SELECT id, export_key FROM member_playbook_entries
+               WHERE identity_id = %s""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            ek = (r.get("export_key") or "").strip()
+            if ek:
+                pb_keys[int(r["id"])] = ek
+    except Exception:
+        pb_keys = {}
+    entries: list[dict[str, Any]] = []
+    try:
+        cur.execute(
+            """SELECT id, title, status, starts_at, ends_at, export_key,
+                      created_at, updated_at
+               FROM member_practice_campaigns
+               WHERE identity_id = %s
+               ORDER BY created_at ASC, id ASC""",
+            (identity_id,),
+        )
+        camps = cur.fetchall() or []
+        for c in camps:
+            cid = int(c["id"])
+            cur.execute(
+                """SELECT playbook_entry_id FROM member_practice_campaign_playbooks
+                   WHERE campaign_id = %s ORDER BY playbook_entry_id""",
+                (cid,),
+            )
+            pb_export_keys = []
+            for link in cur.fetchall() or []:
+                pk = pb_keys.get(int(link["playbook_entry_id"]))
+                if pk:
+                    pb_export_keys.append(pk)
+            entries.append(
+                {
+                    "id": (c.get("export_key") or f"camp-{cid}").strip(),
+                    "title": c.get("title") or "",
+                    "status": c.get("status") or "planned",
+                    "starts_at": _iso(c.get("starts_at")),
+                    "ends_at": _iso(c.get("ends_at")),
+                    "playbook_export_keys": pb_export_keys,
+                    "created_at": _iso(c.get("created_at")),
+                    "updated_at": _iso(c.get("updated_at")),
+                }
+            )
+    except Exception:
         entries = []
     doc["entries"] = entries
-    doc["rules"] = []  # reserved
     return doc
 
 
@@ -497,6 +610,31 @@ def build_trade_log_document(cur, identity_id: int) -> dict[str, Any]:
     import trade_log_io as tio
 
     email = _member_email(cur, identity_id)
+    # Resolve playbook / campaign export keys for portable links
+    pb_keys: dict[int, str] = {}
+    camp_keys: dict[int, str] = {}
+    try:
+        cur.execute(
+            """SELECT id, export_key FROM member_playbook_entries
+               WHERE identity_id = %s""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            ek = (r.get("export_key") or "").strip()
+            if ek:
+                pb_keys[int(r["id"])] = ek
+        cur.execute(
+            """SELECT id, export_key FROM member_practice_campaigns
+               WHERE identity_id = %s""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            ek = (r.get("export_key") or "").strip()
+            if ek:
+                camp_keys[int(r["id"])] = ek
+    except Exception:
+        pass
+
     cur.execute(
         """SELECT * FROM member_trade_log_accounts
            WHERE identity_id = %s ORDER BY sort_order, id""",
@@ -531,6 +669,12 @@ def build_trade_log_document(cur, identity_id: int) -> dict[str, Any]:
         for r in rows:
             t = dict(r)
             t["legs"] = legs_by.get(int(r["id"]), [])
+            pb_id = t.get("playbook_entry_id")
+            camp_id = t.get("practice_campaign_id")
+            if pb_id is not None:
+                t["playbook_export_key"] = pb_keys.get(int(pb_id))
+            if camp_id is not None:
+                t["practice_campaign_export_key"] = camp_keys.get(int(camp_id))
             trades.append(t)
         by_acct[aid] = trades
         accounts_out.append(dict(a))
@@ -551,27 +695,31 @@ def build_trade_log_document(cur, identity_id: int) -> dict[str, Any]:
 def build_member_pack(cur, identity_id: int, *, role: str = "observer") -> dict[str, Any]:
     email = _member_email(cur, identity_id)
     pack = envelope(FMT_PACK, email=email)
+    # Playbook before campaigns (import order matches)
+    playbook = build_playbook_document(cur, identity_id)
+    practice_campaign = build_practice_campaign_document(cur, identity_id)
     trade_log = build_trade_log_document(cur, identity_id)
     journal = build_journal_document(cur, identity_id)
     journal_session = build_journal_session_document(cur, identity_id)
     retrospective = build_retrospective_document(cur, identity_id)
     journey = build_journey_document(cur, identity_id, role=role)
-    playbook = build_playbook_document(cur, identity_id)
     pack["surfaces"] = [
+        "playbook",
+        "practice_campaign",
         "trade_log",
         "journal",
         "journal_session",
         "retrospective",
         "journey",
-        "playbook",
     ]
     pack["documents"] = {
+        "playbook": playbook,
+        "practice_campaign": practice_campaign,
         "trade_log": trade_log,
         "journal": journal,
         "journal_session": journal_session,
         "retrospective": retrospective,
         "journey": journey,
-        "playbook": playbook,
     }
     return pack
 
@@ -587,15 +735,24 @@ def pack_to_zip_bytes(pack: dict[str, Any]) -> bytes:
             "identity": pack.get("identity"),
             "surfaces": pack.get("surfaces"),
             "files": {
+                "playbook": "playbook.json",
+                "practice_campaign": "practice_campaign.json",
                 "trade_log": "trade_log.tradlog.json",
                 "journal": "journal.json",
                 "journal_session": "journal_session.json",
                 "retrospective": "retrospective.json",
                 "journey": "journey.json",
-                "playbook": "playbook.json",
             },
         }
         zf.writestr("manifest.json", json.dumps(manifest, indent=2, default=str))
+        zf.writestr(
+            "playbook.json",
+            json.dumps(docs.get("playbook") or {}, indent=2, default=str),
+        )
+        zf.writestr(
+            "practice_campaign.json",
+            json.dumps(docs.get("practice_campaign") or {}, indent=2, default=str),
+        )
         zf.writestr(
             "trade_log.tradlog.json",
             json.dumps(docs.get("trade_log") or {}, indent=2, default=str),
@@ -615,9 +772,5 @@ def pack_to_zip_bytes(pack: dict[str, Any]) -> bytes:
         zf.writestr(
             "journey.json",
             json.dumps(docs.get("journey") or {}, indent=2, default=str),
-        )
-        zf.writestr(
-            "playbook.json",
-            json.dumps(docs.get("playbook") or {}, indent=2, default=str),
         )
     return buf.getvalue()

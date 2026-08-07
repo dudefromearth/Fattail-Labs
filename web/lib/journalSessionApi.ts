@@ -63,6 +63,8 @@ export type JournalSession = {
   structured: Record<string, unknown> | null;
   checklist?: ChecklistStatus;
   export_key: string | null;
+  /** OD-1.4 — optional practice season stamp (default-suggested on create). */
+  practice_campaign_id?: number | null;
   spawned_retrospective_id: number | null;
   closed_by_retrospective_id?: number | null;
   closed_at?: string | null;
@@ -131,6 +133,8 @@ export async function createJournalSession(body: {
   journal_date: string;
   structured?: Record<string, unknown>;
   prefill?: boolean;
+  /** Omit to default-suggest active campaign; null clears stamp. */
+  practice_campaign_id?: number | null;
 }): Promise<JournalSession> {
   const r = await fetch("/api/me/journal-sessions", {
     method: "POST",
@@ -152,7 +156,10 @@ export async function getJournalSession(id: number): Promise<JournalSession> {
 
 export async function patchJournalSession(
   id: number,
-  body: { structured?: Record<string, unknown> | null },
+  body: {
+    structured?: Record<string, unknown> | null;
+    practice_campaign_id?: number | null;
+  },
 ): Promise<JournalSession> {
   const r = await fetch(`/api/me/journal-sessions/${id}`, {
     method: "PATCH",

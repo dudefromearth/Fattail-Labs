@@ -13,12 +13,14 @@ import {
   formatMessageTimestamp,
   getJournalSession,
   JOURNAL_AGENT_DISPLAY_NAME,
+  patchJournalSession,
   postAgentTurn,
   postJournalMessage,
   type AgentDepth,
   type JournalMessage,
   type JournalSession,
 } from "@/lib/journalSessionApi";
+import { fetchCampaigns, type PracticeCampaign } from "@/lib/practiceSpineApi";
 
 type Props = {
   session: JournalSession;
@@ -49,6 +51,8 @@ export default function SessionInterviewChat({
   const [statusNote, setStatusNote] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const [campaigns, setCampaigns] = useState<PracticeCampaign[]>([]);
+  const [campBusy, setCampBusy] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
   const stickBottom = useRef(true);
   const scrolledToTarget = useRef<number | null>(null);
@@ -85,6 +89,34 @@ export default function SessionInterviewChat({
     scrolledToTarget.current = null;
     void refreshStatus();
   }, [session.id, refreshStatus]);
+
+  useEffect(() => {
+    void fetchCampaigns()
+      .then((d) => setCampaigns(d.campaigns || []))
+      .catch(() => setCampaigns([]));
+  }, []);
+
+  const campTitle =
+    session.practice_campaign_id != null
+      ? campaigns.find((c) => c.id === session.practice_campaign_id)?.title
+      : null;
+
+  async function setCampaignStamp(raw: string) {
+    if (!mutable || campBusy) return;
+    setCampBusy(true);
+    onError?.(null);
+    try {
+      const value = raw === "" ? null : Number(raw);
+      const s = await patchJournalSession(session.id, {
+        practice_campaign_id: value,
+      });
+      onUpdated(s);
+    } catch (e) {
+      onError?.(e instanceof Error ? e.message : "Could not update season");
+    } finally {
+      setCampBusy(false);
+    }
+  }
 
   // Scroll: bottom on new msgs unless user scrolled up; reopen → latest
   useEffect(() => {
@@ -182,6 +214,40 @@ export default function SessionInterviewChat({
       data-testid="journal-interview-chat"
       style={{ minHeight: "18rem", height: "min(28rem, 50vh)" }}
     >
+      {/* OD-1.4 — optional season stamp (default-suggested on create; removable) */}
+      <div
+        className="mb-2 flex flex-wrap items-center gap-2 text-xs"
+        data-testid="journal-campaign-stamp"
+      >
+        <span className="text-[var(--color-label-tertiary)]">Season</span>
+        {mutable ? (
+          <select
+            value={
+              session.practice_campaign_id != null
+                ? String(session.practice_campaign_id)
+                : ""
+            }
+            disabled={campBusy || blocked}
+            onChange={(e) => void setCampaignStamp(e.target.value)}
+            className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
+            aria-label="Practice season for this journal"
+          >
+            <option value="">No season</option>
+            {campaigns.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+                {c.status === "active" ? " (active)" : ""}
+              </option>
+            ))}
+          </select>
+        ) : campTitle ? (
+          <span className="rounded-full bg-[var(--color-tint-soft)] px-2 py-0.5 font-medium text-[var(--color-label)]">
+            {campTitle}
+          </span>
+        ) : (
+          <span className="text-[var(--color-label-tertiary)]">—</span>
+        )}
+      </div>
       {/* Fixed-height thread — page does not grow (Spec §1.4) */}
       <div
         ref={threadRef}

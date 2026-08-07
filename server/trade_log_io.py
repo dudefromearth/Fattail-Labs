@@ -812,6 +812,13 @@ def _normalize_trade(t: dict, warnings: list[str]) -> dict | None:
         "entry_source": t.get("entry_source") or "import",
         "_account_label": t.get("_account_label"),
     }
+    # Portable spine links (export_key strings; row ids never leave the member)
+    pb_key = t.get("playbook_export_key")
+    if pb_key:
+        out["playbook_export_key"] = str(pb_key).strip()[:64]
+    camp_key = t.get("practice_campaign_export_key")
+    if camp_key:
+        out["practice_campaign_export_key"] = str(camp_key).strip()[:64]
     if out["net_side"] and out["net_side"] not in cat.NET_SIDES:
         out["net_side"] = None
     if out["adherence"] not in cat.ADHERENCE:
@@ -908,6 +915,20 @@ def export_canonical(
                         "broker_order_id": t.get("external_order_id"),
                     },
                     "entry_source": t.get("entry_source") or "import",
+                    **(
+                        {"playbook_export_key": t["playbook_export_key"]}
+                        if t.get("playbook_export_key")
+                        else {}
+                    ),
+                    **(
+                        {
+                            "practice_campaign_export_key": t[
+                                "practice_campaign_export_key"
+                            ]
+                        }
+                        if t.get("practice_campaign_export_key")
+                        else {}
+                    ),
                 }
             )
         out_accounts.append(

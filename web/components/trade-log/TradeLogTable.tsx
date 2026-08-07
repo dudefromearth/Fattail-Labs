@@ -135,6 +135,12 @@ export default function TradeLogTable({
   onSelectAllOpens,
   filterOpenOnly,
   onFilterOpenOnly,
+  campaignFilter,
+  onCampaignFilter,
+  campaignOptions,
+  playbookFilter,
+  onPlaybookFilter,
+  playbookOptions,
   hasMore,
   loadingMore,
   onLoadMore,
@@ -154,6 +160,12 @@ export default function TradeLogTable({
   onSelectAllOpens?: () => void;
   filterOpenOnly?: boolean;
   onFilterOpenOnly?: (v: boolean) => void;
+  campaignFilter?: number | "";
+  onCampaignFilter?: (v: number | "") => void;
+  campaignOptions?: { id: number; title: string }[];
+  playbookFilter?: number | "";
+  onPlaybookFilter?: (v: number | "") => void;
+  playbookOptions?: { id: number; title: string }[];
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
@@ -222,6 +234,48 @@ export default function TradeLogTable({
             >
               Select opens
             </button>
+          )}
+          {onCampaignFilter && (campaignOptions?.length ?? 0) > 0 && (
+            <label className="flex items-center gap-1.5 text-xs text-[var(--color-label-secondary)]">
+              <span className="sr-only">Filter by season</span>
+              <select
+                value={campaignFilter === "" || campaignFilter == null ? "" : String(campaignFilter)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  onCampaignFilter(v ? Number(v) : "");
+                }}
+                className="max-w-[10rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
+                data-testid="blotter-campaign-filter"
+              >
+                <option value="">All seasons</option>
+                {campaignOptions!.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {onPlaybookFilter && (playbookOptions?.length ?? 0) > 0 && (
+            <label className="flex items-center gap-1.5 text-xs text-[var(--color-label-secondary)]">
+              <span className="sr-only">Filter by playbook</span>
+              <select
+                value={playbookFilter === "" || playbookFilter == null ? "" : String(playbookFilter)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  onPlaybookFilter(v ? Number(v) : "");
+                }}
+                className="max-w-[10rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
+                data-testid="blotter-playbook-filter"
+              >
+                <option value="">All playbooks</option>
+                {playbookOptions!.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
         </div>
         <span className="text-[12px] text-[var(--color-label-secondary)]">

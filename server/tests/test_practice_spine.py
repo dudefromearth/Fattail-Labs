@@ -16,27 +16,24 @@ def _member(email: str) -> int:
 def _cleanup(iid: int) -> None:
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM member_trade_log_trades WHERE identity_id = %s",
-                (iid,),
-            )
-            cur.execute(
-                "DELETE FROM member_trade_log_accounts WHERE identity_id = %s",
-                (iid,),
-            )
-            cur.execute(
-                "DELETE FROM member_practice_campaign_playbooks WHERE campaign_id IN "
-                "(SELECT id FROM member_practice_campaigns WHERE identity_id = %s)",
-                (iid,),
-            )
-            cur.execute(
-                "DELETE FROM member_practice_campaigns WHERE identity_id = %s",
-                (iid,),
-            )
-            cur.execute(
-                "DELETE FROM member_playbook_entries WHERE identity_id = %s",
-                (iid,),
-            )
+            for sql, args in (
+                ("DELETE FROM member_trade_log_trades WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_trade_log_accounts WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_journal_messages WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_journal_attachments WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_journal_sessions WHERE identity_id = %s", (iid,)),
+                (
+                    "DELETE FROM member_practice_campaign_playbooks WHERE campaign_id IN "
+                    "(SELECT id FROM member_practice_campaigns WHERE identity_id = %s)",
+                    (iid,),
+                ),
+                ("DELETE FROM member_practice_campaigns WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_playbook_entries WHERE identity_id = %s", (iid,)),
+            ):
+                try:
+                    cur.execute(sql, args)
+                except Exception:
+                    pass
 
 
 def test_playbook_and_campaign_lifecycle(client):
@@ -141,5 +138,57 @@ def test_trade_links_playbook_campaign(client):
         body = tr.json()
         assert body.get("playbook_entry_id") == pb["id"]
         assert body.get("practice_campaign_id") == camp["id"]
+
+        # Blotter filters by campaign / playbook
+        by_camp = client.get(
+            f"/api/me/trade-log/trades?practice_campaign_id={camp['id']}&full=1",
+            cookies=cookies,
+        )
+        assert by_camp.status_code == 200, by_camp.text
+        assert len(by_camp.json()["trades"]) == 1
+        by_pb = client.get(
+            f"/api/me/trade-log/trades?playbook_entry_id={pb['id']}&full=1",
+            cookies=cookies,
+        )
+        assert by_pb.status_code == 200
+        assert len(by_pb.json()["trades"]) == 1
+        none = client.get(
+            "/api/me/trade-log/trades?practice_campaign_id=999999999&full=1",
+            cookies=cookies,
+        )
+        assert none.status_code == 200
+        assert none.json()["trades"] == []
+    finally:
+        _cleanup(iid)
+
+
+def test_journal_campaign_stamp_default_and_clear(client):
+    """OD-1.4 — new sessions default-suggest active campaign; stamp removable."""
+    iid = _member("zztest-spine-journal-camp@labs.test")
+    cookies = cookie_for("activator", iid)
+    _cleanup(iid)  # prior runs may leave a one-session-per-date row
+    try:
+        camp = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={"title": "Journal season", "activate": True},
+        ).json()["campaign"]
+        # Default stamp on fresh create
+        r = client.post(
+            "/api/me/journal-sessions",
+            cookies=cookies,
+            json={"journal_date": "2026-08-07", "tag": "reflection"},
+        )
+        assert r.status_code == 200, r.text
+        sess = r.json()["session"]
+        assert sess.get("practice_campaign_id") == camp["id"], sess
+        # Clear stamp
+        p = client.patch(
+            f"/api/me/journal-sessions/{sess['id']}",
+            cookies=cookies,
+            json={"practice_campaign_id": None},
+        )
+        assert p.status_code == 200, p.text
+        assert p.json()["session"].get("practice_campaign_id") is None
     finally:
         _cleanup(iid)

@@ -71,6 +71,8 @@ export type Trade = {
   created_at?: string | null;
   updated_at?: string | null;
   external_adapter?: string | null;
+  playbook_entry_id?: number | null;
+  practice_campaign_id?: number | null;
 };
 
 /** Normalize API/legacy values for display and policy. */

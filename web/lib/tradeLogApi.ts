@@ -45,11 +45,23 @@ export type TradesPage = {
 /** Paginated blotter list (default page size server-side ~80). */
 export async function fetchTrades(
   accountId?: number | null,
-  opts?: { limit?: number; cursor?: string | null; full?: boolean },
+  opts?: {
+    limit?: number;
+    cursor?: string | null;
+    full?: boolean;
+    practice_campaign_id?: number | null;
+    playbook_entry_id?: number | null;
+  },
 ): Promise<AnalyticsResult<TradesPage>> {
   const q = new URLSearchParams();
   if (accountId != null && accountId > 0) {
     q.set("account_id", String(accountId));
+  }
+  if (opts?.practice_campaign_id != null && opts.practice_campaign_id > 0) {
+    q.set("practice_campaign_id", String(opts.practice_campaign_id));
+  }
+  if (opts?.playbook_entry_id != null && opts.playbook_entry_id > 0) {
+    q.set("playbook_entry_id", String(opts.playbook_entry_id));
   }
   if (opts?.full) {
     q.set("full", "1");

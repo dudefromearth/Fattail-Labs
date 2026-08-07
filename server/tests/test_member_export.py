@@ -54,6 +54,21 @@ def _cleanup(iid: int) -> None:
                     "DELETE FROM member_journal_date_closures WHERE identity_id = %s",
                     (iid,),
                 ),
+                (
+                    """DELETE FROM member_practice_campaign_playbooks
+                       WHERE campaign_id IN (
+                         SELECT id FROM member_practice_campaigns WHERE identity_id = %s
+                       )""",
+                    (iid,),
+                ),
+                (
+                    "DELETE FROM member_practice_campaigns WHERE identity_id = %s",
+                    (iid,),
+                ),
+                (
+                    "DELETE FROM member_playbook_entries WHERE identity_id = %s",
+                    (iid,),
+                ),
                 ("DELETE FROM identities WHERE identity_id = %s", (iid,)),
             ):
                 try:
@@ -200,12 +215,13 @@ def test_export_pack_json_and_zip(client):
         pack = rj.json()
         assert pack["format"] == "fattail.labs.member_export"
         assert set(pack["surfaces"]) == {
+            "playbook",
+            "practice_campaign",
             "trade_log",
             "journal",
             "journal_session",
             "retrospective",
             "journey",
-            "playbook",
         }
         assert pack["documents"]["journal"]["format"] == "fattail.labs.journal"
         assert pack["documents"]["journal_session"]["format"] == "fattail.labs.journal_session"
@@ -213,7 +229,8 @@ def test_export_pack_json_and_zip(client):
         assert pack["documents"]["retrospective"]["format"] == "fattail.labs.retrospective"
         assert pack["documents"]["journey"]["format"] == "fattail.labs.journey"
         assert pack["documents"]["playbook"]["format"] == "fattail.labs.playbook"
-        assert pack["documents"]["playbook"].get("stub") is True
+        assert pack["documents"]["playbook"].get("stub") is False
+        assert pack["documents"]["practice_campaign"]["format"] == "fattail.labs.practice_campaign"
 
         rz = client.get("/api/me/export?format=zip", cookies=cookies)
         assert rz.status_code == 200
@@ -227,6 +244,7 @@ def test_export_pack_json_and_zip(client):
         assert "retrospective.json" in names
         assert "journey.json" in names
         assert "playbook.json" in names
+        assert "practice_campaign.json" in names
         j = json.loads(zf.read("journal.json"))
         assert j["format"] == "fattail.labs.journal"
         js = json.loads(zf.read("journal_session.json"))
@@ -725,7 +743,7 @@ def test_import_open_retro_demoted_when_target_has_open(client):
 
 
 def test_playbook_stub_round_trip(client):
-    """Playbook stub notes export and re-import."""
+    """Legacy playbook tool notes still export/import (notes surface)."""
     iid = _make_member("zztest-export-playbook@labs.test")
     try:
         with db.transaction() as conn:
@@ -739,10 +757,11 @@ def test_playbook_stub_round_trip(client):
         cookies = cookie_for("activator", iid)
         pack = client.get("/api/me/export?format=json", cookies=cookies).json()
         assert pack["documents"]["playbook"]["format"] == "fattail.labs.playbook"
+        notes = pack["documents"]["playbook"].get("notes") or []
+        entries = pack["documents"]["playbook"].get("entries") or []
         assert any(
-            e["body_md"] == "Always size first"
-            for e in pack["documents"]["playbook"]["entries"]
-        )
+            e["body_md"] == "Always size first" for e in notes
+        ) or any(e["body_md"] == "Always size first" for e in entries)
 
         client.post(
             "/api/me/practice-data/purge",
@@ -755,10 +774,95 @@ def test_playbook_stub_round_trip(client):
             json={"text": json.dumps(pack), "policy": "additive"},
         )
         assert commit.status_code == 200, commit.text
-        assert commit.json()["results"]["playbook"]["counts"]["new"] >= 1
+        pb_res = commit.json()["results"]["playbook"]
+        assert (
+            pb_res["counts"]["new"] + (pb_res.get("notes") or {}).get("new", 0)
+            >= 1
+        )
 
         pack2 = client.get("/api/me/export?format=json", cookies=cookies).json()
-        bodies = [e["body_md"] for e in pack2["documents"]["playbook"]["entries"]]
+        notes2 = pack2["documents"]["playbook"].get("notes") or []
+        entries2 = pack2["documents"]["playbook"].get("entries") or []
+        bodies = [e["body_md"] for e in notes2] + [e["body_md"] for e in entries2]
         assert "Always size first" in bodies
+    finally:
+        _cleanup(iid)
+
+
+def test_playbook_campaign_spine_export_round_trip(client):
+    """Real playbook + campaign export → purge → import (OD-1.5)."""
+    iid = _make_member("zztest-export-spine@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        pb = client.post(
+            "/api/me/playbook/entries",
+            cookies=cookies,
+            json={"title": "Size first", "body_md": "No chase."},
+        )
+        assert pb.status_code == 200, pb.text
+        entry = pb.json()["entry"]
+        camp = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "August season",
+                "playbook_entry_ids": [entry["id"]],
+                "activate": True,
+            },
+        )
+        assert camp.status_code == 200, camp.text
+        campaign = camp.json()["campaign"]
+
+        pack = client.get("/api/me/export?format=json", cookies=cookies).json()
+        pb_doc = pack["documents"]["playbook"]
+        assert pb_doc["model_version"] == "1.0"
+        assert any(e.get("title") == "Size first" for e in pb_doc["entries"])
+        camp_doc = pack["documents"]["practice_campaign"]
+        assert camp_doc["format"] == "fattail.labs.practice_campaign"
+        assert any(e.get("title") == "August season" for e in camp_doc["entries"])
+        camp_entry = next(
+            e for e in camp_doc["entries"] if e.get("title") == "August season"
+        )
+        assert entry["export_key"] in (camp_entry.get("playbook_export_keys") or [])
+
+        client.post(
+            "/api/me/practice-data/purge",
+            cookies=cookies,
+            json={"confirm": "DELETE_PRACTICE_DATA"},
+        )
+        # After purge, no spine rows
+        empty = client.get("/api/me/playbook/entries", cookies=cookies).json()
+        assert empty.get("entries") == []
+
+        commit = client.post(
+            "/api/me/import/commit",
+            cookies=cookies,
+            json={"text": json.dumps(pack), "policy": "additive"},
+        )
+        assert commit.status_code == 200, commit.text
+        assert commit.json()["results"]["playbook"]["counts"]["new"] >= 1
+        assert commit.json()["results"]["practice_campaign"]["counts"]["new"] >= 1
+
+        # Idempotent second import
+        commit2 = client.post(
+            "/api/me/import/commit",
+            cookies=cookies,
+            json={"text": json.dumps(pack), "policy": "additive"},
+        )
+        assert commit2.status_code == 200, commit2.text
+        assert commit2.json()["results"]["playbook"]["counts"]["skip"] >= 1
+        assert commit2.json()["results"]["practice_campaign"]["counts"]["skip"] >= 1
+
+        pack2 = client.get("/api/me/export?format=json", cookies=cookies).json()
+        titles = [e["title"] for e in pack2["documents"]["playbook"]["entries"]]
+        assert "Size first" in titles
+        c_titles = [
+            e["title"] for e in pack2["documents"]["practice_campaign"]["entries"]
+        ]
+        assert "August season" in c_titles
+        # campaign id may change but export_key preserved
+        assert campaign["export_key"] in {
+            e["id"] for e in pack2["documents"]["practice_campaign"]["entries"]
+        }
     finally:
         _cleanup(iid)
