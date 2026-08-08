@@ -31,6 +31,21 @@ import BarDist from "./BarDist";
 
 type LoadState = "loading" | "ok" | "anon" | "forbidden" | "err";
 
+/** Compact money for equity context chip (e.g. $0.00 · $112.1K). */
+function formatEquityContextMoney(n: number): string {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? "-" : "";
+  if (abs >= 1000) {
+    const k = abs / 1000;
+    const body =
+      k >= 100
+        ? k.toFixed(0)
+        : k.toFixed(1).replace(/\.0$/, "");
+    return `${sign}$${body}K`;
+  }
+  return `${sign}$${abs.toFixed(2)}`;
+}
+
 export default function ReportsDashboard() {
   const searchParams = useSearchParams();
   const highlightTradeId = (() => {
@@ -42,20 +57,35 @@ export default function ReportsDashboard() {
 
   const {
     accountId,
+    accountLabel,
+    accounts,
     rangeFromYmd,
     rangeToYmd,
     dateFilterActive,
+    periodLabel,
     prefsReady,
+    setGranularity,
   } = usePracticeContext();
 
   const [state, setState] = useState<LoadState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [book, setBook] = useState<ReportsBook | null>(null);
+  /** Full-book end balance for period-vs-all context on the equity chip. */
+  const [fullBookEndBalance, setFullBookEndBalance] = useState<number | null>(
+    null,
+  );
   const [capital, setCapital] = useState(50000);
+  /** Avoid looping if all-time is also empty. */
+  const [emptyPeriodRecovered, setEmptyPeriodRecovered] = useState(false);
 
   useEffect(() => {
     setCapital(loadStartingCapital(50000));
   }, []);
+
+  // New account scope → allow empty-period recover again
+  useEffect(() => {
+    setEmptyPeriodRecovered(false);
+  }, [accountId]);
 
   const loadBook = useCallback(async () => {
     // Do not fetch until Practice Context prefs are final — prevents equity flash
@@ -77,16 +107,69 @@ export default function ReportsDashboard() {
         setState(res.error.kind === "err" ? "err" : res.error.kind);
         if (res.error.kind === "err") setError(res.error.message);
         setBook(null);
+        setFullBookEndBalance(null);
         return;
       }
-      setBook(reportsBookFromServer(res.data));
+      const next = reportsBookFromServer(res.data);
+      setBook(next);
       setState("ok");
+
+      // When a date window is active, also load the unscoped book so the equity
+      // header can show period $ vs full-book $ (empty months no longer look empty).
+      if (dateFilterActive) {
+        try {
+          const fullRes = await fetchReportsBook({
+            accountId,
+            startingCapital: capital,
+          });
+          if (fullRes.ok) {
+            setFullBookEndBalance(fullRes.data.end_balance);
+          } else {
+            setFullBookEndBalance(null);
+          }
+        } catch {
+          setFullBookEndBalance(null);
+        }
+      } else {
+        setFullBookEndBalance(next.endBalance);
+      }
+
+      // Stale month/week/day prefs often land on a window with zero fills while
+      // the selected account has a full book (e.g. May 2026 empty, Jul 2026 full).
+      const acct =
+        accountId === "all"
+          ? null
+          : accounts.find((a) => a.id === accountId);
+      const bookHasFills =
+        accountId === "all"
+          ? accounts.some((a) => (a.trade_count ?? 0) > 0)
+          : (acct?.trade_count ?? 0) > 0;
+      if (
+        dateFilterActive &&
+        !emptyPeriodRecovered &&
+        next.tradeCount === 0 &&
+        bookHasFills
+      ) {
+        setEmptyPeriodRecovered(true);
+        setGranularity("all");
+      }
     } catch (e) {
       setState("err");
       setError(e instanceof Error ? e.message : String(e));
       setBook(null);
+      setFullBookEndBalance(null);
     }
-  }, [accountId, capital, rangeFromYmd, rangeToYmd, dateFilterActive, prefsReady]);
+  }, [
+    accountId,
+    accounts,
+    capital,
+    rangeFromYmd,
+    rangeToYmd,
+    dateFilterActive,
+    prefsReady,
+    emptyPeriodRecovered,
+    setGranularity,
+  ]);
 
   useEffect(() => {
     void loadBook();
@@ -149,8 +232,38 @@ export default function ReportsDashboard() {
     );
   }
 
-return (
+  return (
     <div className="mt-4 space-y-6" data-testid="reports-dashboard">
+      {dateFilterActive && book.tradeCount === 0 && (
+        <div
+          className="rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-fill)]/50 px-3 py-2 text-xs text-[var(--color-label-secondary)]"
+          role="status"
+          data-testid="reports-empty-period"
+        >
+          No closed outcomes in{" "}
+          <span className="font-medium text-[var(--color-label)]">
+            {periodLabel}
+          </span>
+          {accountId !== "all" ? (
+            <>
+              {" "}
+              for{" "}
+              <span className="font-medium text-[var(--color-label)]">
+                {accountLabel}
+              </span>
+            </>
+          ) : null}
+          . The account may still have trades outside this window — choose{" "}
+          <button
+            type="button"
+            className="font-medium text-[var(--color-tint)] hover:underline"
+            onClick={() => setGranularity("all")}
+          >
+            All
+          </button>{" "}
+          (full book) or another month.
+        </div>
+      )}
       {/* Main: stats | charts — scope is only the context controls above */}
       <div className="grid gap-5 lg:grid-cols-[minmax(17rem,22rem)_1fr] lg:items-stretch">
         <StatsTable
@@ -168,8 +281,29 @@ return (
               >
                 Equity curve
               </h2>
-              <span className="rounded-full bg-[var(--color-fill)] px-3 py-1 text-xs font-semibold tabular-nums text-[var(--color-label)]">
-                {book.stats.find((s) => s.key === "balance")?.value}
+              <span
+                className="rounded-full bg-[var(--color-fill)] px-3 py-1 text-xs font-semibold tabular-nums text-[var(--color-label)]"
+                data-testid="reports-equity-context"
+                title={
+                  dateFilterActive && fullBookEndBalance != null
+                    ? `${periodLabel} window balance vs full book`
+                    : "Ending balance (starting capital + closed outcomes)"
+                }
+              >
+                {dateFilterActive && fullBookEndBalance != null ? (
+                  <>
+                    <span className="font-medium text-[var(--color-label-secondary)]">
+                      {periodLabel}
+                    </span>{" "}
+                    <span>{formatEquityContextMoney(book.endBalance)}</span>
+                    <span className="mx-1 text-[var(--color-label-tertiary)]">
+                      :
+                    </span>
+                    <span>{formatEquityContextMoney(fullBookEndBalance)}</span>
+                  </>
+                ) : (
+                  book.stats.find((s) => s.key === "balance")?.value
+                )}
               </span>
             </div>
             <div className="min-h-[280px] flex-1">
@@ -177,6 +311,7 @@ return (
                 series={book.series}
                 height={480}
                 highlightTradeId={highlightTradeId}
+                periodLabel={periodLabel}
               />
             </div>
             {highlightTradeId != null && (

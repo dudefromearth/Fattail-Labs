@@ -15,8 +15,13 @@ import {
   patchCampaign,
   type PracticeCampaign,
 } from "@/lib/practiceSpineApi";
+import {
+  rememberPracticeAccountId,
+  usePracticeContextOptional,
+} from "@/lib/practiceContext";
 
 export default function TradeAccountsSettings() {
+  const practice = usePracticeContextOptional();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [campaigns, setCampaigns] = useState<PracticeCampaign[]>([]);
@@ -154,10 +159,38 @@ export default function TradeAccountsSettings() {
         setError(await r.text());
         return;
       }
+      // Practice chrome only lists active accounts. After un-retire, select
+      // this book so Trade Log shows its fills (not empty Default).
+      if (status === "active") {
+        rememberPracticeAccountId(id);
+        if (practice) {
+          practice.setAccountId(id);
+          practice.refreshAccounts();
+        }
+      } else if (status === "archived") {
+        if (practice) {
+          practice.refreshAccounts();
+          if (practice.accountId === id) {
+            const others = accounts.filter(
+              (a) => a.id !== id && a.status === "active",
+            );
+            const next =
+              others
+                .slice()
+                .sort(
+                  (a, b) => (b.trade_count ?? 0) - (a.trade_count ?? 0),
+                )[0] || others[0];
+            if (next) {
+              practice.setAccountId(next.id);
+              rememberPracticeAccountId(next.id);
+            }
+          }
+        }
+      }
       setMsg(
         status === "archived"
           ? "Account retired (archived). History stays readable; you can un-retire later."
-          : "Account restored to active.",
+          : "Account restored. Open Trade Log — it should scope to this account so you see its trades.",
       );
       setRetireTarget(null);
       await reload();

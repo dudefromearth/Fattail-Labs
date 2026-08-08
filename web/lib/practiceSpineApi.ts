@@ -86,6 +86,8 @@ export type PracticeCampaign = {
   goals_md?: string;
   /** Account default (import + stamp prefill). */
   is_default?: boolean;
+  /** Ledger furniture for an account (not a signed charter). */
+  is_ledger?: boolean;
   has_cover?: boolean;
   cover_url?: string | null;
   /** Set when status enters active; used for §4.7 prefill ordering. */

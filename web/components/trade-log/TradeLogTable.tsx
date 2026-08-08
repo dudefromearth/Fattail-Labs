@@ -162,8 +162,13 @@ export default function TradeLogTable({
   onFilterOpenOnly?: (v: boolean) => void;
   campaignFilter?: number | "";
   onCampaignFilter?: (v: number | "") => void;
-  campaignOptions?: { id: number; title: string; is_default?: boolean }[];
-  /** "" = All; "unaffiliated" = no playbook; number = linked playbook */
+  campaignOptions?: {
+    id: number;
+    title: string;
+    is_default?: boolean;
+    is_ledger?: boolean;
+  }[];
+  /** "" = All campaigns; "unaffiliated" = no playbook; number = linked playbook */
   playbookFilter?: number | "" | "unaffiliated";
   onPlaybookFilter?: (v: number | "" | "unaffiliated") => void;
   playbookOptions?: { id: number; title: string }[];
@@ -247,15 +252,15 @@ export default function TradeLogTable({
                 }}
                 className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
                 data-testid="blotter-campaign-filter"
-                title="All = every trade. Account default includes that account’s unstamped fills. Other campaigns are exact stamps only."
+                title="Named campaign = stamps for that campaign. All campaigns = every trade on this account filter."
               >
-                <option value="">All</option>
                 {campaignOptions!.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.title}
-                    {c.is_default ? " · default" : ""}
+                    {c.is_ledger || c.is_default ? " · default" : ""}
                   </option>
                 ))}
+                <option value="">All campaigns</option>
               </select>
             </label>
           )}
@@ -276,15 +281,15 @@ export default function TradeLogTable({
                 }}
                 className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
                 data-testid="blotter-playbook-filter"
-                title="All = every trade. Unaffiliated = no playbook link. Named playbooks are exact links only."
+                title="Named playbook = exact link. Unaffiliated = no playbook. All playbooks = no playbook filter."
               >
-                <option value="">All</option>
-                <option value="unaffiliated">Unaffiliated</option>
                 {(playbookOptions || []).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.title}
                   </option>
                 ))}
+                <option value="unaffiliated">Unaffiliated</option>
+                <option value="">All playbooks</option>
               </select>
             </label>
           )}

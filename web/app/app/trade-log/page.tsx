@@ -53,6 +53,9 @@ function TradeLogBody() {
     accounts: ctxAccounts,
     refreshAccounts,
     prefsReady,
+    dateFilterActive,
+    periodLabel,
+    setGranularity,
   } = usePracticeContext();
 
   const [state, setState] = useState<LoadState>("loading");
@@ -126,12 +129,16 @@ function TradeLogBody() {
     }
   }, [deepLinkCampaign]);
 
-  // Default campaign filter: ledger (or default) for the active account — not "All".
+  // When account changes, reset campaign filter to that account's ledger/default
+  // (or clear if none). Never leave a campaign id from another account selected.
   useEffect(() => {
     if (deepLinkCampaign > 0) return;
-    if (!campaignOptions.length) return;
     if (accountId === "all") {
-      // Across books: leave All campaigns unless user already picked one
+      setCampaignFilter("");
+      return;
+    }
+    if (!campaignOptions.length) {
+      setCampaignFilter("");
       return;
     }
     const forAccount = campaignOptions.filter(
@@ -142,17 +149,9 @@ function TradeLogBody() {
       pool.find((c) => c.is_ledger) ||
       pool.find((c) => c.is_default) ||
       pool[0];
-    if (!preferred) return;
-    // Reset when account changes or filter empty / points at other account's campaign
-    const current = campaignOptions.find((c) => c.id === campaignFilter);
-    const currentOk =
-      campaignFilter !== "" &&
-      current &&
-      (current.account_id == null || current.account_id === accountId);
-    if (!currentOk) {
-      setCampaignFilter(preferred.id);
-    }
-  }, [accountId, campaignOptions, campaignFilter, deepLinkCampaign]);
+    if (preferred) setCampaignFilter(preferred.id);
+    else setCampaignFilter("");
+  }, [accountId, campaignOptions, deepLinkCampaign]);
 
   // Journey Adhere deep-link only (F2) — no standing process filter on the blotter
   useEffect(() => {
@@ -518,6 +517,56 @@ function TradeLogBody() {
           </button>
         </div>
       )}
+
+      {state === "ok" &&
+        accountId !== "all" &&
+        tableTrades.length === 0 &&
+        dateFilterActive &&
+        (mergedAccounts.find((a) => a.id === accountId)?.trade_count ?? 0) >
+          0 && (
+          <div
+            className="mt-4 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-fill)]/50 px-3 py-2 text-xs text-[var(--color-label-secondary)]"
+            role="status"
+            data-testid="trade-log-empty-period"
+          >
+            No trades in{" "}
+            <span className="font-medium text-[var(--color-label)]">
+              {periodLabel}
+            </span>{" "}
+            for this account ({accountLabel} has fills outside this window).{" "}
+            <button
+              type="button"
+              className="font-medium text-[var(--color-tint)] hover:underline"
+              onClick={() => setGranularity("all")}
+            >
+              Show all time
+            </button>
+          </div>
+        )}
+
+      {state === "ok" &&
+        accountId !== "all" &&
+        tableTrades.length === 0 &&
+        !dateFilterActive &&
+        mergedAccounts.some(
+          (a) =>
+            a.status === "active" &&
+            a.id !== accountId &&
+            (a.trade_count ?? 0) > 0,
+        ) && (
+          <div
+            className="mt-4 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-fill)]/50 px-3 py-2 text-xs text-[var(--color-label-secondary)]"
+            role="status"
+            data-testid="trade-log-empty-other-books"
+          >
+            No trades on{" "}
+            <span className="font-medium text-[var(--color-label)]">
+              {accountLabel}
+            </span>
+            . Other active accounts have fills — switch account in Practice
+            chrome above.
+          </div>
+        )}
 
       {state === "ok" && adherenceMode === "drift" && (
         <div

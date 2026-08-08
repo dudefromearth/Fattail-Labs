@@ -34,7 +34,7 @@ export default function PracticeContextBar({
   const {
     accountId,
     setAccountId,
-    activeAccounts,
+    selectableAccounts,
     granularity,
     setGranularity,
     periodLabel,
@@ -85,10 +85,11 @@ export default function PracticeContextBar({
             aria-label="Active account"
             data-testid="practice-account-select"
           >
-            {activeAccounts.map((a) => (
+            {selectableAccounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.label}
                 {isStandingDefaultAccountLabel(a.label) ? " · default" : ""}
+                {a.status === "archived" ? " · retired" : ""}
                 {a.broker && a.broker !== "unset" ? ` · ${a.broker}` : ""}
                 {typeof a.trade_count === "number" ? ` (${a.trade_count})` : ""}
               </option>

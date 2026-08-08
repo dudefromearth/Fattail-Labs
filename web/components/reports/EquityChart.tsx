@@ -13,12 +13,15 @@ export default function EquityChart({
   series,
   height = 420,
   highlightTradeId,
+  periodLabel,
 }: {
   series: SeriesPoint[];
   /** Plot height — taller to fill the column next to the stats table. */
   height?: number;
   /** Deep-link from Journal: mark this fill on the path. */
   highlightTradeId?: number | null;
+  /** Practice Context period (e.g. "August 2026") for empty-state copy. */
+  periodLabel?: string;
 }) {
   const w = 720;
   const h = height;
@@ -30,12 +33,17 @@ export default function EquityChart({
   const plotH = h - padT - padB;
 
   if (series.length < 2) {
+    const period =
+      periodLabel && periodLabel.trim() && periodLabel !== "All time"
+        ? periodLabel.trim()
+        : null;
     return (
       <div
-        className="flex items-center justify-center text-sm text-[var(--color-label-tertiary)]"
+        className="flex items-center justify-center px-4 text-center text-sm font-medium text-[var(--color-label-secondary)]"
         style={{ minHeight: h }}
+        data-testid="reports-equity-empty"
       >
-        Equity path appears as closed outcomes land in Trade Log.
+        {period ? `No Trades Yet in ${period}` : "No Trades Yet"}
       </div>
     );
   }

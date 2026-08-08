@@ -622,16 +622,17 @@ def _campaign_stamp_filter_clauses(
 ) -> tuple[list[str], list[Any]]:
     """Campaign stamp filter.
 
-    Named campaigns: exact stamp match.
-    **Default book** (``is_default=1``): stamp match **or** unstamped trades on
-    that campaign's account — unaffiliated fills live in the book (not a phantom
-    "nothing" set).
+    Named charters: exact stamp match.
+    **Ledger / account default** (``is_ledger`` or ``is_default``): no extra
+    campaign clause — the account filter already scopes the book. Selecting the
+    default campaign means "this account's full blotter," not only rows stamped
+    to the ledger id (avoids empty view when fills sit on sibling campaigns).
     """
     if practice_campaign_id is None:
         return [], []
     camp_id = int(practice_campaign_id)
     cur.execute(
-        """SELECT id, is_default, account_id FROM member_practice_campaigns
+        """SELECT id, is_default, is_ledger, account_id FROM member_practice_campaigns
            WHERE id = %s AND identity_id = %s""",
         (camp_id, iid),
     )
@@ -639,16 +640,12 @@ def _campaign_stamp_filter_clauses(
     if not row:
         # Unknown / other identity — match nothing
         return ["1 = 0"], []
-    if int(row.get("is_default") or 0) == 1:
-        acct = row.get("account_id")
-        if acct is not None:
-            return [
-                "(practice_campaign_id = %s OR "
-                "(practice_campaign_id IS NULL AND account_id = %s))"
-            ], [camp_id, int(acct)]
-        return [
-            "(practice_campaign_id = %s OR practice_campaign_id IS NULL)"
-        ], [camp_id]
+    is_book_home = bool(int(row.get("is_ledger") or 0)) or bool(
+        int(row.get("is_default") or 0)
+    )
+    if is_book_home:
+        # Account scope (if any) already applied by caller — show whole book
+        return [], []
     return ["practice_campaign_id = %s"], [camp_id]
 
 

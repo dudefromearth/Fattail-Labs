@@ -21,14 +21,24 @@ import {
 import type { Account } from "@/lib/tradeLog";
 import { fetchAccounts } from "@/lib/tradeLogApi";
 
-/** Prefer provisioned default account (label Default or legacy Primary), else busiest active. */
+/**
+ * Standing home for Practice: prefer the active account with the most trades,
+ * then provisioned Default/Primary label, then first active.
+ * Avoids empty "Default" hiding a book full of fills after retire/un-retire.
+ */
 function pickDefaultAccountId(accounts: Account[]): AccountScope {
   const active = accounts.filter((a) => a.status === "active");
   if (!active.length) return "all";
+  const byTrades = active
+    .slice()
+    .sort((a, b) => (b.trade_count ?? 0) - (a.trade_count ?? 0));
+  if ((byTrades[0]?.trade_count ?? 0) > 0) {
+    return byTrades[0].id;
+  }
   const standing =
     active.find((a) => a.label === "Default") ||
     active.find((a) => a.label === "Primary") ||
-    active.slice().sort((a, b) => (b.trade_count ?? 0) - (a.trade_count ?? 0))[0];
+    byTrades[0];
   return standing?.id ?? "all";
 }
 
@@ -36,16 +46,19 @@ export function isStandingDefaultAccountLabel(label: string | undefined): boolea
   return label === "Default" || label === "Primary";
 }
 
-/** Resolve saved scope: keep valid account; map missing/"all" prefs to default account. */
+/** Resolve saved scope: keep valid account (active or retired for viewing). */
 function resolveAccountPref(
   saved: AccountScope,
   accounts: Account[],
 ): AccountScope {
   const fallback = pickDefaultAccountId(accounts);
   if (saved === "all") return fallback;
-  const acct = accounts.find((a) => a.id === saved && a.status === "active");
+  const acct = accounts.find((a) => a.id === saved);
   if (!acct) return fallback;
-  return saved;
+  // Prefer active; retired still selectable if it was last used and has fills
+  if (acct.status === "active") return saved;
+  if ((acct.trade_count ?? 0) > 0) return saved;
+  return fallback;
 }
 import {
   addDays,
@@ -155,6 +168,19 @@ function savePrefs(identityId: number | null, prefs: StoredPrefs): void {
   }
 }
 
+/** Persist Practice account scope from outside chrome (e.g. Profile un-retire). */
+export function rememberPracticeAccountId(accountId: number): void {
+  if (typeof window === "undefined" || !accountId) return;
+  void fetchSessionIdentityId().then((iid) => {
+    if (iid == null) return;
+    const prev = loadPrefs(iid);
+    savePrefs(iid, {
+      ...prev,
+      accountId,
+    });
+  });
+}
+
 /** Inclusive range for the active date + granularity. */
 export function rangeFor(
   selected: Date,
@@ -218,6 +244,8 @@ export type PracticeContextValue = {
   dateFilterActive: boolean;
   accounts: Account[];
   activeAccounts: Account[];
+  /** Active first, then retired — for picker reachability after retire. */
+  selectableAccounts: Account[];
   accountsReady: boolean;
   refreshAccounts: () => void;
   accountLabel: string;
@@ -367,13 +395,32 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  // Invalid saved account id → default account (Primary). Explicit "All" stays available.
+  // Missing account id only → busiest active book.
   useEffect(() => {
     if (!hydrated || !accountsReady || accountId === "all") return;
-    const ok = accounts.some(
-      (a) => a.id === accountId && a.status === "active",
-    );
+    const ok = accounts.some((a) => a.id === accountId);
     if (!ok) setAccountIdState(pickDefaultAccountId(accounts));
+  }, [accounts, accountsReady, accountId, hydrated]);
+
+  // Empty book while another has fills → hop to the fuller book (active preferred).
+  useEffect(() => {
+    if (!hydrated || !accountsReady || accountId === "all") return;
+    const cur = accounts.find((a) => a.id === accountId);
+    if (!cur) return;
+    const countsKnown = accounts.some((a) => typeof a.trade_count === "number");
+    if (!countsKnown) return;
+    if ((cur.trade_count ?? 0) > 0) return;
+    const richer = accounts
+      .filter((a) => (a.trade_count ?? 0) > 0)
+      .sort((a, b) => {
+        // Active first, then by fill count
+        if (a.status === "active" && b.status !== "active") return -1;
+        if (b.status === "active" && a.status !== "active") return 1;
+        return (b.trade_count ?? 0) - (a.trade_count ?? 0);
+      })[0];
+    if (richer && richer.id !== accountId) {
+      setAccountIdState(richer.id);
+    }
   }, [accounts, accountsReady, accountId, hydrated]);
 
   const setAccountId = useCallback((id: AccountScope) => {
@@ -403,13 +450,27 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
     [accounts],
   );
 
+  const selectableAccounts = useMemo(() => {
+    const active = accounts.filter((a) => a.status === "active");
+    const retired = accounts.filter((a) => a.status === "archived");
+    // Active first (busiest), then retired (busiest) so data is always pickable
+    const byTrades = (xs: Account[]) =>
+      xs
+        .slice()
+        .sort((a, b) => (b.trade_count ?? 0) - (a.trade_count ?? 0));
+    return [...byTrades(active), ...byTrades(retired)];
+  }, [accounts]);
+
   const accountLabel = useMemo(() => {
     if (accountId === "all") return "All accounts";
     const a = accounts.find((x) => x.id === accountId);
     if (!a) return "All accounts";
-    return a.broker && a.broker !== "unset"
-      ? `${a.label} · ${a.broker}`
-      : a.label;
+    const base =
+      a.broker && a.broker !== "unset"
+        ? `${a.label} · ${a.broker}`
+        : a.label;
+    if (a.status === "archived") return `${base} · retired`;
+    return base;
   }, [accountId, accounts]);
 
   const accountIdParam = accountId === "all" ? null : accountId;
@@ -463,6 +524,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       dateFilterActive,
       accounts,
       activeAccounts,
+      selectableAccounts,
       accountsReady,
       refreshAccounts,
       accountLabel,
@@ -487,6 +549,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       dateFilterActive,
       accounts,
       activeAccounts,
+      selectableAccounts,
       accountsReady,
       refreshAccounts,
       accountLabel,
