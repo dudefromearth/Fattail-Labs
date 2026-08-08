@@ -28,6 +28,18 @@ def _cleanup(iid: int) -> None:
                     (iid,),
                 ),
                 ("DELETE FROM member_practice_campaigns WHERE identity_id = %s", (iid,)),
+                # Playbook scrapbook (094/095) — cover FK first, then children
+                (
+                    "UPDATE member_playbook_entries SET cover_attachment_id = NULL "
+                    "WHERE identity_id = %s",
+                    (iid,),
+                ),
+                ("DELETE FROM member_playbook_versions WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_playbook_evidence WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_playbook_stickies WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_playbook_pages WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_playbook_chapters WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_playbook_attachments WHERE identity_id = %s", (iid,)),
                 ("DELETE FROM member_playbook_entries WHERE identity_id = %s", (iid,)),
             ):
                 try:
@@ -158,6 +170,77 @@ def test_trade_links_playbook_campaign(client):
         )
         assert none.status_code == 200
         assert none.json()["trades"] == []
+    finally:
+        _cleanup(iid)
+
+
+def test_playbook_scrapbook_chapters_save_and_evidence(client):
+    """Scrapbook: full tree, Save versions, journal evidence staple (094/095)."""
+    iid = _member("zztest-spine-scrapbook@labs.test")
+    cookies = cookie_for("activator", iid)
+    _cleanup(iid)
+    try:
+        r = client.post(
+            "/api/me/playbook/entries",
+            cookies=cookies,
+            json={"title": "Classic Fly", "body_md": "Size first."},
+        )
+        assert r.status_code == 200, r.text
+        book = r.json()["entry"]
+        assert book["title"] == "Classic Fly"
+        assert "chapters" in book
+        assert len(book["chapters"]) >= 1
+        assert book["is_draft"] is True  # new book, no Save yet unless body seeded
+        # body_md on create is draft page content — no version until Save
+        bid = book["id"]
+        ch_id = book["chapters"][0]["id"]
+        page_id = book["chapters"][0]["pages"][0]["id"]
+
+        # patch page
+        p = client.patch(
+            f"/api/me/playbook/pages/{page_id}",
+            cookies=cookies,
+            json={"body_md": "## Rules\nNo chase."},
+        )
+        assert p.status_code == 200, p.text
+
+        # new chapter
+        c = client.post(
+            f"/api/me/playbook/entries/{bid}/chapters",
+            cookies=cookies,
+            json={"title": "Regime", "blurb": "VIX map"},
+        )
+        assert c.status_code == 200, c.text
+        assert any(ch["title"] == "Regime" for ch in c.json()["entry"]["chapters"])
+
+        # explicit Save → version
+        s = client.post(f"/api/me/playbook/entries/{bid}/save", cookies=cookies)
+        assert s.status_code == 200, s.text
+        assert s.json()["version_n"] >= 1
+        assert s.json()["book"]["is_draft"] is False
+
+        # journal evidence
+        js = client.post(
+            "/api/me/journal-sessions",
+            cookies=cookies,
+            json={"journal_date": "2026-08-10", "tag": "reflection"},
+        )
+        assert js.status_code == 200, js.text
+        sid = js.json()["session"]["id"]
+        ev = client.post(
+            f"/api/me/playbook/entries/{bid}/evidence",
+            cookies=cookies,
+            json={"object_type": "journal_session", "object_id": sid},
+        )
+        assert ev.status_code == 200, ev.text
+        assert len(ev.json()["evidence"]) == 1
+        assert ev.json()["evidence"][0]["target"]["status"] != "missing"
+
+        full = client.get(
+            f"/api/me/playbook/entries/{bid}?full=1", cookies=cookies
+        )
+        assert full.status_code == 200
+        assert full.json()["entry"]["version_count"] >= 1
     finally:
         _cleanup(iid)
 

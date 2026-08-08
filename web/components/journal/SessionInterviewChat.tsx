@@ -20,7 +20,16 @@ import {
   type JournalMessage,
   type JournalSession,
 } from "@/lib/journalSessionApi";
-import { fetchCampaigns, type PracticeCampaign } from "@/lib/practiceSpineApi";
+import {
+  fetchCampaigns,
+  fetchJournalSessionPlaybooks,
+  linkJournalToPlaybook,
+  unlinkJournalFromPlaybook,
+  type JournalPlaybookBookOption,
+  type JournalPlaybookLink,
+  type PracticeCampaign,
+} from "@/lib/practiceSpineApi";
+import Link from "next/link";
 
 type Props = {
   session: JournalSession;
@@ -53,6 +62,9 @@ export default function SessionInterviewChat({
   const [chatBusy, setChatBusy] = useState(false);
   const [campaigns, setCampaigns] = useState<PracticeCampaign[]>([]);
   const [campBusy, setCampBusy] = useState(false);
+  const [pbBooks, setPbBooks] = useState<JournalPlaybookBookOption[]>([]);
+  const [pbLinked, setPbLinked] = useState<JournalPlaybookLink[]>([]);
+  const [pbBusy, setPbBusy] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
   const stickBottom = useRef(true);
   const scrolledToTarget = useRef<number | null>(null);
@@ -96,10 +108,43 @@ export default function SessionInterviewChat({
       .catch(() => setCampaigns([]));
   }, []);
 
+  const loadPlaybookLinks = useCallback(async () => {
+    try {
+      const d = await fetchJournalSessionPlaybooks(session.id);
+      setPbBooks(d.books || []);
+      setPbLinked(d.linked || []);
+    } catch {
+      setPbBooks([]);
+      setPbLinked([]);
+    }
+  }, [session.id]);
+
+  useEffect(() => {
+    void loadPlaybookLinks();
+  }, [loadPlaybookLinks]);
+
   const campTitle =
     session.practice_campaign_id != null
       ? campaigns.find((c) => c.id === session.practice_campaign_id)?.title
       : null;
+
+  const linkedIds = new Set(pbLinked.map((l) => l.playbook_entry_id));
+
+  async function togglePlaybook(bookId: number, next: boolean) {
+    if (pbBusy || !mutable) return;
+    setPbBusy(true);
+    onError?.(null);
+    try {
+      const linked = next
+        ? await linkJournalToPlaybook(session.id, bookId)
+        : await unlinkJournalFromPlaybook(session.id, bookId);
+      setPbLinked(linked);
+    } catch (e) {
+      onError?.(e instanceof Error ? e.message : "Could not update playbook link");
+    } finally {
+      setPbBusy(false);
+    }
+  }
 
   async function setCampaignStamp(raw: string) {
     if (!mutable || campBusy) return;
@@ -214,39 +259,87 @@ export default function SessionInterviewChat({
       data-testid="journal-interview-chat"
       style={{ minHeight: "18rem", height: "min(28rem, 50vh)" }}
     >
-      {/* OD-1.4 — optional season stamp (default-suggested on create; removable) */}
-      <div
-        className="mb-2 flex flex-wrap items-center gap-2 text-xs"
-        data-testid="journal-campaign-stamp"
-      >
-        <span className="text-[var(--color-label-tertiary)]">Season</span>
-        {mutable ? (
-          <select
-            value={
-              session.practice_campaign_id != null
-                ? String(session.practice_campaign_id)
-                : ""
-            }
-            disabled={campBusy || blocked}
-            onChange={(e) => void setCampaignStamp(e.target.value)}
-            className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
-            aria-label="Practice season for this journal"
-          >
-            <option value="">No season</option>
-            {campaigns.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-                {c.status === "active" ? " (active)" : ""}
-              </option>
-            ))}
-          </select>
-        ) : campTitle ? (
-          <span className="rounded-full bg-[var(--color-tint-soft)] px-2 py-0.5 font-medium text-[var(--color-label)]">
-            {campTitle}
-          </span>
-        ) : (
-          <span className="text-[var(--color-label-tertiary)]">—</span>
-        )}
+      {/* Season stamp + playbook links (journal-primary association) */}
+      <div className="mb-2 space-y-2 text-xs" data-testid="journal-practice-links">
+        <div
+          className="flex flex-wrap items-center gap-2"
+          data-testid="journal-campaign-stamp"
+        >
+          <span className="text-[var(--color-label-tertiary)]">Season</span>
+          {mutable ? (
+            <select
+              value={
+                session.practice_campaign_id != null
+                  ? String(session.practice_campaign_id)
+                  : ""
+              }
+              disabled={campBusy || blocked}
+              onChange={(e) => void setCampaignStamp(e.target.value)}
+              className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
+              aria-label="Practice season for this journal"
+            >
+              <option value="">No season</option>
+              {campaigns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                  {c.status === "active" ? " (active)" : ""}
+                </option>
+              ))}
+            </select>
+          ) : campTitle ? (
+            <span className="rounded-full bg-[var(--color-tint-soft)] px-2 py-0.5 font-medium text-[var(--color-label)]">
+              {campTitle}
+            </span>
+          ) : (
+            <span className="text-[var(--color-label-tertiary)]">—</span>
+          )}
+        </div>
+        <div data-testid="journal-playbook-links">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+            Playbooks
+          </p>
+          {pbBooks.length === 0 ? (
+            <p className="text-[11px] text-[var(--color-label-tertiary)]">
+              No playbooks yet.{" "}
+              <Link href="/app/playbook" className="text-[var(--color-tint)] hover:underline">
+                Create one
+              </Link>
+            </p>
+          ) : (
+            <ul className="flex flex-wrap gap-1.5">
+              {pbBooks.map((b) => {
+                const on = linkedIds.has(b.id);
+                return (
+                  <li key={b.id}>
+                    <label
+                      className={[
+                        "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+                        on
+                          ? "border-[var(--color-tint)] bg-[var(--color-tint-soft)] text-[var(--color-label)]"
+                          : "border-[var(--color-separator)] bg-[var(--color-surface)] text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]",
+                        (!mutable || pbBusy || blocked) && "opacity-60",
+                      ].join(" ")}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={on}
+                        disabled={!mutable || pbBusy || blocked}
+                        onChange={(e) =>
+                          void togglePlaybook(b.id, e.target.checked)
+                        }
+                      />
+                      {b.title}
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <p className="mt-1 text-[10px] text-[var(--color-label-tertiary)]">
+            Link this session to the books you practiced — easier here than on the book.
+          </p>
+        </div>
       </div>
       {/* Fixed-height thread — page does not grow (Spec §1.4) */}
       <div

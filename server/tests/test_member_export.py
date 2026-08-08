@@ -66,6 +66,20 @@ def _cleanup(iid: int) -> None:
                     (iid,),
                 ),
                 (
+                    "UPDATE member_playbook_entries SET cover_attachment_id = NULL "
+                    "WHERE identity_id = %s",
+                    (iid,),
+                ),
+                ("DELETE FROM member_playbook_versions WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_playbook_evidence WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_playbook_stickies WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_playbook_pages WHERE identity_id = %s", (iid,)),
+                ("DELETE FROM member_playbook_chapters WHERE identity_id = %s", (iid,)),
+                (
+                    "DELETE FROM member_playbook_attachments WHERE identity_id = %s",
+                    (iid,),
+                ),
+                (
                     "DELETE FROM member_playbook_entries WHERE identity_id = %s",
                     (iid,),
                 ),

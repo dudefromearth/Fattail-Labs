@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-07 — DL-255 Playbook Scrapbook Presentation (v1.1a) BUILD AUTHORITY
+
+**Coach GO:** implement Spec
+`Specs/FatTail-Labs-Playbook-Scrapbook-Presentation-v1_1a.md`.
+
+**Locks:**
+
+| ID | Decision |
+|----|----------|
+| OD-PB-1 | One book per strategy; chapters/pages |
+| OD-PB-2 | Export-only share v1 (no public URL) |
+| OD-PB-3 | Explicit journal evidence + optional tags (tags alone ≠ evidence) |
+| OD-PB-4 | Scrapbook metaphor × 16:9 present |
+| OD-PB-5 | Family B on book/pages/archive/evidence/versions |
+| OD-PB-6 | Character under risk — no P&L theater |
+| OD-PB-7 | Permanence: draft discardable until first version; then archive-only. Book-level snapshots on explicit Save; autosave = working copy. **Migration seeds version 1** for contentful books. Retention purge may drop oldest history only with **≥1 version floor** (never latest alone). |
+| OD-PB-8 | Playbook pack 2.0 is PB3; does not silently move OD-1.5 TD2 gate |
+
+**Schema:** evolve `member_playbook_entries` as Book root; chapters/pages/stickies/attachments/evidence/versions. Cover = book-level properties. `status` sole archived-ness. `body_md` derived snippet only after pages land.
+
+**Phasing:** PB1 canvas+versions → PB2 archive+evidence → PB3 export 2.0.
+
 ## 2026-08-07 — DL-253 AI help concierge (Phase 1)
 
 *(Numbered DL-253 to avoid collision — DL-213 was concurrently taken by the Strategy

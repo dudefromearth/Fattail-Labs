@@ -1642,7 +1642,44 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
         )
     except Exception:
         counts["trade_log_entries_legacy"] = 0
-    # Practice spine (campaign→playbook links CASCADE on campaign delete)
+    # Practice spine — scrapbook children + campaigns + books (DL-255)
+    # Explicit deletes keep Family B purge inventory accurate; CASCADE would also work.
+    try:
+        import playbook_scrapbook_domain as pbs
+
+        counts["playbook_media_files"] = pbs.purge_media_for_identity(cur, identity_id)
+    except Exception:
+        counts["playbook_media_files"] = 0
+    cur.execute(
+        """UPDATE member_playbook_entries SET cover_attachment_id = NULL
+           WHERE identity_id = %s""",
+        (identity_id,),
+    )
+    _del(
+        "playbook_versions",
+        "DELETE FROM member_playbook_versions WHERE identity_id = %s",
+    )
+    _del(
+        "playbook_evidence",
+        "DELETE FROM member_playbook_evidence WHERE identity_id = %s",
+    )
+    _del(
+        "playbook_stickies",
+        "DELETE FROM member_playbook_stickies WHERE identity_id = %s",
+    )
+    _del(
+        "playbook_pages",
+        "DELETE FROM member_playbook_pages WHERE identity_id = %s",
+    )
+    _del(
+        "playbook_chapters",
+        "DELETE FROM member_playbook_chapters WHERE identity_id = %s",
+    )
+    _del(
+        "playbook_attachments",
+        "DELETE FROM member_playbook_attachments WHERE identity_id = %s",
+    )
+    # campaign↔playbook links CASCADE when campaigns deleted
     _del(
         "practice_campaigns",
         "DELETE FROM member_practice_campaigns WHERE identity_id = %s",

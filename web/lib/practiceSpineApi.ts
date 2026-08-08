@@ -1,14 +1,77 @@
-/** Playbook + Practice Campaign client (Trader Development Phase 1). */
+/** Playbook scrapbook + Practice Campaign client (TD Phase 1 + DL-255). */
+
+export type PlaybookSticky = {
+  id: number;
+  page_id: number;
+  body_md: string;
+  sort_order: number;
+  export_key?: string | null;
+};
+
+export type PlaybookPage = {
+  id: number;
+  chapter_id: number;
+  title?: string | null;
+  body_md: string;
+  sort_order: number;
+  export_key?: string | null;
+  stickies?: PlaybookSticky[];
+  updated_at?: string | null;
+};
+
+export type PlaybookChapter = {
+  id: number;
+  title: string;
+  blurb?: string | null;
+  sort_order: number;
+  chapter_type?: string;
+  export_key?: string | null;
+  pages: PlaybookPage[];
+};
 
 export type PlaybookEntry = {
   id: number;
   title: string;
+  subtitle?: string | null;
+  /** List snippet / derived — not a parallel write path */
   body_md: string;
   structured: Record<string, unknown>;
   status: "active" | "archived" | string;
+  cover_attachment_id?: number | null;
   export_key?: string | null;
+  version_count?: number;
+  is_draft?: boolean;
+  latest_version_n?: number | null;
+  chapters?: PlaybookChapter[];
   created_at?: string | null;
   updated_at?: string | null;
+};
+
+export type PlaybookEvidence = {
+  id: number;
+  object_type: string;
+  object_id: number;
+  note_md?: string | null;
+  export_key?: string | null;
+  created_at?: string | null;
+  target?: {
+    status?: string;
+    journal_date?: string;
+    tag?: string | null;
+    export_key?: string | null;
+  };
+};
+
+export type PlaybookAttachment = {
+  id: number;
+  content_type?: string;
+  byte_size: number;
+  original_name?: string | null;
+  caption_md?: string;
+  export_key?: string | null;
+  purged?: boolean;
+  download_path: string;
+  created_at?: string | null;
 };
 
 export type PracticeCampaign = {
@@ -47,8 +110,21 @@ export async function fetchPlaybookEntries(includeArchived = false): Promise<{
   return parse(r);
 }
 
+export async function fetchPlaybookBook(
+  id: number,
+  full = true,
+): Promise<PlaybookEntry> {
+  const q = full ? "?full=1" : "";
+  const r = await fetch(`/api/me/playbook/entries/${id}${q}`, {
+    credentials: "same-origin",
+  });
+  const d = await parse<{ entry: PlaybookEntry }>(r);
+  return d.entry;
+}
+
 export async function createPlaybookEntry(body: {
   title: string;
+  subtitle?: string;
   body_md?: string;
   structured?: Record<string, unknown>;
 }): Promise<PlaybookEntry> {
@@ -66,9 +142,10 @@ export async function patchPlaybookEntry(
   id: number,
   body: Partial<{
     title: string;
-    body_md: string;
+    subtitle: string | null;
     status: string;
     structured: Record<string, unknown>;
+    cover_attachment_id: number | null;
   }>,
 ): Promise<PlaybookEntry> {
   const r = await fetch(`/api/me/playbook/entries/${id}`, {
@@ -79,6 +156,230 @@ export async function patchPlaybookEntry(
   });
   const d = await parse<{ entry: PlaybookEntry }>(r);
   return d.entry;
+}
+
+export async function savePlaybookBook(id: number): Promise<{
+  version_n: number;
+  book: PlaybookEntry;
+}> {
+  const r = await fetch(`/api/me/playbook/entries/${id}/save`, {
+    method: "POST",
+    credentials: "same-origin",
+  });
+  return parse(r);
+}
+
+export async function discardPlaybookBook(id: number): Promise<{
+  deleted?: boolean;
+  book?: PlaybookEntry;
+  book_id?: number;
+}> {
+  const r = await fetch(`/api/me/playbook/entries/${id}/discard`, {
+    method: "POST",
+    credentials: "same-origin",
+  });
+  return parse(r);
+}
+
+export async function createPlaybookChapter(
+  bookId: number,
+  body: { title: string; blurb?: string },
+): Promise<PlaybookEntry> {
+  const r = await fetch(`/api/me/playbook/entries/${bookId}/chapters`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await parse<{ entry: PlaybookEntry }>(r);
+  return d.entry;
+}
+
+export async function patchPlaybookChapter(
+  chapterId: number,
+  body: Partial<{ title: string; blurb: string | null; sort_order: number }>,
+): Promise<PlaybookEntry> {
+  const r = await fetch(`/api/me/playbook/chapters/${chapterId}`, {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await parse<{ entry: PlaybookEntry }>(r);
+  return d.entry;
+}
+
+export async function deletePlaybookChapter(
+  chapterId: number,
+): Promise<PlaybookEntry> {
+  const r = await fetch(`/api/me/playbook/chapters/${chapterId}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  });
+  const d = await parse<{ entry: PlaybookEntry }>(r);
+  return d.entry;
+}
+
+export async function createPlaybookPage(
+  chapterId: number,
+  body: { title?: string; body_md?: string },
+): Promise<PlaybookEntry> {
+  const r = await fetch(`/api/me/playbook/chapters/${chapterId}/pages`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await parse<{ entry: PlaybookEntry }>(r);
+  return d.entry;
+}
+
+export async function patchPlaybookPage(
+  pageId: number,
+  body: Partial<{ title: string | null; body_md: string; sort_order: number }>,
+): Promise<PlaybookEntry> {
+  const r = await fetch(`/api/me/playbook/pages/${pageId}`, {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await parse<{ entry: PlaybookEntry }>(r);
+  return d.entry;
+}
+
+export async function deletePlaybookPage(pageId: number): Promise<PlaybookEntry> {
+  const r = await fetch(`/api/me/playbook/pages/${pageId}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  });
+  const d = await parse<{ entry: PlaybookEntry }>(r);
+  return d.entry;
+}
+
+export async function fetchPlaybookEvidence(
+  bookId: number,
+): Promise<PlaybookEvidence[]> {
+  const r = await fetch(`/api/me/playbook/entries/${bookId}/evidence`, {
+    credentials: "same-origin",
+  });
+  const d = await parse<{ evidence: PlaybookEvidence[] }>(r);
+  return d.evidence || [];
+}
+
+export async function addPlaybookEvidence(
+  bookId: number,
+  body: {
+    object_type: "journal_session" | "trade";
+    object_id: number;
+    note_md?: string;
+  },
+): Promise<PlaybookEvidence[]> {
+  const r = await fetch(`/api/me/playbook/entries/${bookId}/evidence`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const d = await parse<{ evidence: PlaybookEvidence[] }>(r);
+  return d.evidence || [];
+}
+
+export async function removePlaybookEvidence(
+  bookId: number,
+  evidenceId: number,
+): Promise<PlaybookEvidence[]> {
+  const r = await fetch(
+    `/api/me/playbook/entries/${bookId}/evidence/${evidenceId}`,
+    { method: "DELETE", credentials: "same-origin" },
+  );
+  const d = await parse<{ evidence: PlaybookEvidence[] }>(r);
+  return d.evidence || [];
+}
+
+export type JournalPlaybookLink = {
+  evidence_id: number;
+  playbook_entry_id: number;
+  title: string;
+  status: string;
+};
+
+export type JournalPlaybookBookOption = {
+  id: number;
+  title: string;
+  status: string;
+};
+
+/** Journal-side: which playbooks this session is linked to + catalog. */
+export async function fetchJournalSessionPlaybooks(sessionId: number): Promise<{
+  linked: JournalPlaybookLink[];
+  books: JournalPlaybookBookOption[];
+}> {
+  const r = await fetch(`/api/me/journal-sessions/${sessionId}/playbooks`, {
+    credentials: "same-origin",
+  });
+  return parse(r);
+}
+
+export async function linkJournalToPlaybook(
+  sessionId: number,
+  bookId: number,
+): Promise<JournalPlaybookLink[]> {
+  const r = await fetch(
+    `/api/me/journal-sessions/${sessionId}/playbooks/${bookId}`,
+    { method: "PUT", credentials: "same-origin" },
+  );
+  const d = await parse<{ linked: JournalPlaybookLink[] }>(r);
+  return d.linked || [];
+}
+
+export async function unlinkJournalFromPlaybook(
+  sessionId: number,
+  bookId: number,
+): Promise<JournalPlaybookLink[]> {
+  const r = await fetch(
+    `/api/me/journal-sessions/${sessionId}/playbooks/${bookId}`,
+    { method: "DELETE", credentials: "same-origin" },
+  );
+  const d = await parse<{ linked: JournalPlaybookLink[] }>(r);
+  return d.linked || [];
+}
+
+export async function fetchPlaybookArchive(
+  bookId: number,
+): Promise<PlaybookAttachment[]> {
+  const r = await fetch(`/api/me/playbook/entries/${bookId}/archive`, {
+    credentials: "same-origin",
+  });
+  const d = await parse<{ archive: PlaybookAttachment[] }>(r);
+  return d.archive || [];
+}
+
+export async function uploadPlaybookArchive(
+  bookId: number,
+  file: File,
+): Promise<PlaybookAttachment> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const r = await fetch(`/api/me/playbook/entries/${bookId}/archive`, {
+    method: "POST",
+    credentials: "same-origin",
+    body: fd,
+  });
+  const d = await parse<{ attachment: PlaybookAttachment }>(r);
+  return d.attachment;
+}
+
+export async function removePlaybookArchive(
+  bookId: number,
+  attId: number,
+): Promise<PlaybookAttachment[]> {
+  const r = await fetch(
+    `/api/me/playbook/entries/${bookId}/archive/${attId}`,
+    { method: "DELETE", credentials: "same-origin" },
+  );
+  const d = await parse<{ archive: PlaybookAttachment[] }>(r);
+  return d.archive || [];
 }
 
 export async function fetchCampaigns(): Promise<{

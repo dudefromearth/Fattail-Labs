@@ -83,6 +83,30 @@ class Config:
         self.stripe_webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip() or None
         self.web_origin = os.environ.get("LABS_WEB_ORIGIN", "").strip() or None
 
+        # Playbook scrapbook archive + version retention (Spec v1.1a · OD fail-loud)
+        self.playbook_archive_mime_allowlist = _require(
+            "LABS_PLAYBOOK_ARCHIVE_MIME_ALLOWLIST"
+        )
+        self.playbook_archive_max_files = _require_int("LABS_PLAYBOOK_ARCHIVE_MAX_FILES")
+        self.playbook_archive_max_bytes_per_file = _require_int(
+            "LABS_PLAYBOOK_ARCHIVE_MAX_BYTES_PER_FILE"
+        )
+        self.playbook_archive_max_bytes_per_book = _require_int(
+            "LABS_PLAYBOOK_ARCHIVE_MAX_BYTES_PER_BOOK"
+        )
+        self.playbook_export_max_zip_bytes = _require_int(
+            "LABS_PLAYBOOK_EXPORT_MAX_ZIP_BYTES"
+        )
+        self.playbook_version_retention_count = _require_int(
+            "LABS_PLAYBOOK_VERSION_RETENTION_COUNT"
+        )
+        if self.playbook_version_retention_count < 1:
+            raise ConfigError(
+                "LABS_PLAYBOOK_VERSION_RETENTION_COUNT must be >= 1 (permanence floor)"
+            )
+        # Media dir optional path; empty → server/var/playbook_media
+        self.playbook_media_dir = os.environ.get("LABS_PLAYBOOK_MEDIA_DIR", "").strip()
+
 
 _config: Config | None = None
 
