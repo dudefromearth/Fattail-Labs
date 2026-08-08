@@ -829,8 +829,12 @@ def test_playbook_campaign_spine_export_round_trip(client):
 
         pack = client.get("/api/me/export?format=json", cookies=cookies).json()
         pb_doc = pack["documents"]["playbook"]
-        assert pb_doc["model_version"] == "1.0"
+        assert pb_doc["model_version"] == "2.0"
         assert any(e.get("title") == "Size first" for e in pb_doc["entries"])
+        sized = next(e for e in pb_doc["entries"] if e.get("title") == "Size first")
+        # PB3 scrapbook tree present (Main chapter seeded on create)
+        assert isinstance(sized.get("chapters"), list)
+        assert len(sized["chapters"]) >= 1
         camp_doc = pack["documents"]["practice_campaign"]
         assert camp_doc["format"] == "fattail.labs.practice_campaign"
         assert any(e.get("title") == "August season" for e in camp_doc["entries"])

@@ -21,6 +21,7 @@ import {
   patchPlaybookPage,
   removePlaybookArchive,
   savePlaybookBook,
+  downloadPlaybookBook,
   uploadPlaybookArchive,
   type PlaybookAttachment,
   type PlaybookChapter,
@@ -288,6 +289,26 @@ export default function PlaybookBookPage() {
                 <h1 className="text-lg font-semibold text-[var(--color-label)] sm:text-xl">
                   {book.title}
                 </h1>
+                <button
+                  type="button"
+                  disabled={busy}
+                  data-testid="playbook-export-book"
+                  className="rounded-full border border-[var(--color-separator)] px-3 py-1 text-xs font-medium text-[var(--color-label)] hover:bg-[var(--color-fill)] disabled:opacity-50"
+                  title="Download this book (chapters, pages, archive files)"
+                  onClick={() => {
+                    setBusy(true);
+                    setError(null);
+                    void downloadPlaybookBook(book.id, "zip")
+                      .catch((e) =>
+                        setError(
+                          e instanceof Error ? e.message : "Export failed",
+                        ),
+                      )
+                      .finally(() => setBusy(false));
+                  }}
+                >
+                  Export book
+                </button>
                 {book.is_draft && (
                   <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-900 dark:bg-amber-950 dark:text-amber-200">
                     Draft

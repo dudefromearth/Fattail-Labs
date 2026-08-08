@@ -26,7 +26,8 @@ FMT_RETRO = "fattail.labs.retrospective"
 FMT_JOURNEY = "fattail.labs.journey"
 # Playbook + Practice Campaign (Trader Development Phase 1 · OD-1.5)
 FMT_PLAYBOOK = "fattail.labs.playbook"
-PLAYBOOK_MODEL_VERSION = "1.0"
+# 2.0 = scrapbook tree (chapters/pages/stickies/evidence/archive refs) · PB3
+PLAYBOOK_MODEL_VERSION = "2.0"
 FMT_PRACTICE_CAMPAIGN = "fattail.labs.practice_campaign"
 CAMPAIGN_MODEL_VERSION = "1.0"
 FMT_PACK = "fattail.labs.member_export"
@@ -469,13 +470,116 @@ def build_journey_document(cur, identity_id: int, *, role: str = "observer") -> 
     return doc
 
 
+def _export_playbook_book(cur, identity_id: int, book_id: int) -> dict[str, Any]:
+    """One scrapbook book as portable dict (model 2.0 tree)."""
+    import playbook_scrapbook_domain as pbs
+
+    tree = pbs.load_tree(cur, identity_id, book_id)
+    # Attachment id → export_key for cover + archive metadata
+    att_by_id: dict[int, dict[str, Any]] = {}
+    try:
+        for a in pbs.list_archive(cur, identity_id, book_id, include_purged=False):
+            att_by_id[int(a["id"])] = a
+    except Exception:
+        att_by_id = {}
+
+    cover_id = tree.get("cover_attachment_id")
+    cover_key = None
+    if cover_id is not None and int(cover_id) in att_by_id:
+        cover_key = (
+            att_by_id[int(cover_id)].get("export_key")
+            or f"pba-{int(cover_id)}"
+        )
+
+    chapters_out: list[dict[str, Any]] = []
+    for ch in tree.get("chapters") or []:
+        pages_out: list[dict[str, Any]] = []
+        for p in ch.get("pages") or []:
+            stickies_out = [
+                {
+                    "id": (s.get("export_key") or f"pbs-{s['id']}").strip(),
+                    "body_md": s.get("body_md") or "",
+                    "sort_order": int(s.get("sort_order") or 0),
+                }
+                for s in (p.get("stickies") or [])
+            ]
+            pages_out.append(
+                {
+                    "id": (p.get("export_key") or f"pbp-{p['id']}").strip(),
+                    "title": p.get("title"),
+                    "body_md": p.get("body_md") or "",
+                    "sort_order": int(p.get("sort_order") or 0),
+                    "stickies": stickies_out,
+                }
+            )
+        chapters_out.append(
+            {
+                "id": (ch.get("export_key") or f"pbc-{ch['id']}").strip(),
+                "title": ch.get("title") or "",
+                "blurb": ch.get("blurb"),
+                "sort_order": int(ch.get("sort_order") or 0),
+                "chapter_type": ch.get("chapter_type") or "chapter",
+                "pages": pages_out,
+            }
+        )
+
+    evidence_out: list[dict[str, Any]] = []
+    try:
+        for ev in pbs.list_evidence(cur, identity_id, book_id):
+            target = ev.get("target") or {}
+            evidence_out.append(
+                {
+                    "id": (ev.get("export_key") or f"pbe-{ev['id']}").strip(),
+                    "object_type": ev.get("object_type"),
+                    "object_export_key": target.get("export_key"),
+                    "object_id": ev.get("object_id"),  # fallback if key missing
+                    "note_md": ev.get("note_md"),
+                    "target_status": target.get("status"),
+                    "journal_date": target.get("journal_date"),
+                }
+            )
+    except Exception:
+        evidence_out = []
+
+    archive_out: list[dict[str, Any]] = []
+    for a in att_by_id.values():
+        archive_out.append(
+            {
+                "id": (a.get("export_key") or f"pba-{a['id']}").strip(),
+                "content_type": a.get("content_type"),
+                "byte_size": a.get("byte_size"),
+                "original_name": a.get("original_name"),
+                "caption_md": a.get("caption_md") or "",
+                # Path only meaningful inside single-book ZIP media/
+                "media_path": f"media/{(a.get('export_key') or f'pba-{a['id']}').strip()}",
+            }
+        )
+
+    return {
+        "id": (tree.get("export_key") or f"pb-{book_id}").strip(),
+        "title": tree.get("title") or "",
+        "subtitle": tree.get("subtitle") or "",
+        "body_md": tree.get("body_md") or "",  # derived snippet
+        "structured": tree.get("structured")
+        if isinstance(tree.get("structured"), dict)
+        else {},
+        "status": tree.get("status") or "active",
+        "cover_export_key": cover_key,
+        "chapters": chapters_out,
+        "evidence": evidence_out,
+        "archive": archive_out,
+        "created_at": tree.get("created_at"),
+        "updated_at": tree.get("updated_at"),
+    }
+
+
 def build_playbook_document(cur, identity_id: int) -> dict[str, Any]:
-    """Real Playbook export (v1.0) + legacy tool-note notes for pack stability.
+    """Playbook export v2.0 scrapbook tree + legacy tool-note notes.
 
     Shape::
         format: fattail.labs.playbook
-        model_version: 1.0
-        entries: [{ id, title, body_md, structured, status, created_at, updated_at }]
+        model_version: 2.0
+        entries: [{ id, title, subtitle, chapters[], evidence[], archive[], … }]
         notes: [{ id, body_md, ... }]  # legacy surface=playbook tool notes
     """
     email = _member_email(cur, identity_id)
@@ -485,33 +589,16 @@ def build_playbook_document(cur, identity_id: int) -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     try:
         cur.execute(
-            """SELECT id, title, body_md, structured_json, status, export_key,
-                      created_at, updated_at
-               FROM member_playbook_entries
+            """SELECT id FROM member_playbook_entries
                WHERE identity_id = %s
                ORDER BY created_at ASC, id ASC""",
             (identity_id,),
         )
         for r in cur.fetchall() or []:
-            structured = r.get("structured_json")
-            if isinstance(structured, str):
-                try:
-                    structured = json.loads(structured)
-                except Exception:
-                    structured = {}
-            if not isinstance(structured, dict):
-                structured = {}
-            entries.append(
-                {
-                    "id": (r.get("export_key") or f"pb-{int(r['id'])}").strip(),
-                    "title": r.get("title") or "",
-                    "body_md": r.get("body_md") or "",
-                    "structured": structured,
-                    "status": r.get("status") or "active",
-                    "created_at": _iso(r.get("created_at")),
-                    "updated_at": _iso(r.get("updated_at")),
-                }
-            )
+            try:
+                entries.append(_export_playbook_book(cur, identity_id, int(r["id"])))
+            except Exception:
+                continue
     except Exception:
         entries = []
     notes: list[dict[str, Any]] = []
@@ -542,6 +629,59 @@ def build_playbook_document(cur, identity_id: int) -> dict[str, Any]:
             {**n, "title": "", "status": "active", "structured": {}} for n in notes
         ]
     return doc
+
+
+def build_single_playbook_document(
+    cur, identity_id: int, book_id: int
+) -> dict[str, Any]:
+    """One-book scrapbook export (same format as pack surface, single entry)."""
+    email = _member_email(cur, identity_id)
+    doc = envelope(FMT_PLAYBOOK, email=email)
+    doc["model_version"] = PLAYBOOK_MODEL_VERSION
+    doc["stub"] = False
+    doc["entries"] = [_export_playbook_book(cur, identity_id, book_id)]
+    doc["notes"] = []
+    return doc
+
+
+def single_playbook_to_zip_bytes(
+    cur, identity_id: int, book_id: int
+) -> bytes:
+    """ZIP: playbook.json + media/* for archive files (PB3 single-book pack)."""
+    import playbook_scrapbook_domain as pbs
+
+    doc = build_single_playbook_document(cur, identity_id, book_id)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(
+            "playbook.json",
+            json.dumps(doc, indent=2, default=str),
+        )
+        zf.writestr(
+            "manifest.json",
+            json.dumps(
+                {
+                    "format": FMT_PLAYBOOK,
+                    "model_version": PLAYBOOK_MODEL_VERSION,
+                    "kind": "single_book",
+                    "files": {"playbook": "playbook.json", "media": "media/"},
+                },
+                indent=2,
+            ),
+        )
+        try:
+            for a in pbs.list_archive(cur, identity_id, book_id):
+                ek = (a.get("export_key") or f"pba-{a['id']}").strip()
+                try:
+                    data, _ct = pbs.read_attachment_bytes(
+                        cur, identity_id, book_id, int(a["id"])
+                    )
+                except Exception:
+                    continue
+                zf.writestr(f"media/{ek}", data)
+        except Exception:
+            pass
+    return buf.getvalue()
 
 
 def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:

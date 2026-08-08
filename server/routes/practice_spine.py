@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 
 import db
+import export_domain as ex
+import member_privacy as privacy
 import playbook_scrapbook_domain as pbs
 import practice_spine_domain as psd
 from guards import require_session
@@ -480,6 +484,61 @@ async def post_archive(
     except psd.PracticeSpineError as e:
         _raise(e)
     return out
+
+
+@router.get("/api/me/playbook/entries/{entry_id}/export")
+def export_one_playbook(entry_id: int, request: Request, format: str = "zip") -> Any:
+    """PB3 single-book export: ZIP (JSON + media) or playbook.json only."""
+    claims = require_session(request)
+    fmt = (format or "zip").strip().lower()
+    if fmt not in ("zip", "json"):
+        raise HTTPException(status_code=422, detail="format must be zip or json")
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                # Ensure book exists / Family B (raises PracticeSpineError)
+                pbs.load_tree(cur, iid, entry_id)
+                if fmt == "json":
+                    doc = ex.build_single_playbook_document(cur, iid, entry_id)
+                    privacy.audit(
+                        cur,
+                        actor_identity_id=iid,
+                        subject_identity_id=iid,
+                        action="export",
+                        surfaces=["playbook"],
+                        detail=f"single book {entry_id} json",
+                    )
+                    return JSONResponse(
+                        doc,
+                        headers={
+                            "Content-Disposition": (
+                                f'attachment; filename="playbook-{entry_id}.json"'
+                            )
+                        },
+                    )
+                body = ex.single_playbook_to_zip_bytes(cur, iid, entry_id)
+                privacy.audit(
+                    cur,
+                    actor_identity_id=iid,
+                    subject_identity_id=iid,
+                    action="export",
+                    surfaces=["playbook"],
+                    detail=f"single book {entry_id} zip",
+                )
+                return Response(
+                    content=body,
+                    media_type="application/zip",
+                    headers={
+                        "Content-Disposition": (
+                            f'attachment; filename="playbook-{entry_id}.zip"'
+                        )
+                    },
+                )
+    except pbs.PracticeSpineError as e:
+        _raise(e)
+    except psd.PracticeSpineError as e:
+        _raise(e)
 
 
 @router.post("/api/me/playbook/entries/{entry_id}/cover")

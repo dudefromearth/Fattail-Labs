@@ -346,36 +346,11 @@ def preview_playbook(cur, identity_id: int, doc: dict) -> dict[str, Any]:
 def commit_playbook(cur, identity_id: int, doc: dict) -> dict[str, Any]:
     counts = _count_bucket()
     note_counts = _count_bucket()
+    tree_counts = _count_bucket()  # chapters/pages created under new books
+    pending_evidence = 0
+    warnings: list[str] = []
     model = str(doc.get("model_version") or "")
     is_stub = bool(doc.get("stub")) or model.startswith("0.1")
-
-    def _insert_real(e: dict) -> None:
-        title = (e.get("title") or "").strip()
-        body = (e.get("body_md") or "").strip()
-        if not title:
-            # Real schema requires title; synthesize from body if needed
-            title = (body[:80] or "Imported playbook").strip()
-        key = _portable_key(e.get("id"), "playbook", title)
-        cur.execute(
-            """SELECT id FROM member_playbook_entries
-               WHERE identity_id = %s AND export_key = %s""",
-            (identity_id, key),
-        )
-        if cur.fetchone():
-            counts["skip"] += 1
-            return
-        status = (e.get("status") or "active").strip().lower()
-        if status not in ("active", "archived"):
-            status = "active"
-        structured = e.get("structured") if isinstance(e.get("structured"), dict) else None
-        sj = json.dumps(structured) if structured else None
-        cur.execute(
-            """INSERT INTO member_playbook_entries
-                 (identity_id, title, body_md, structured_json, status, export_key)
-               VALUES (%s, %s, %s, %s, %s, %s)""",
-            (identity_id, title[:255], body, sj, status, key),
-        )
-        counts["new"] += 1
 
     def _insert_note(e: dict) -> None:
         body = (e.get("body_md") or "").strip()
@@ -399,6 +374,168 @@ def commit_playbook(cur, identity_id: int, doc: dict) -> dict[str, Any]:
         )
         note_counts["new"] += 1
 
+    def _insert_real(e: dict) -> None:
+        nonlocal pending_evidence
+        title = (e.get("title") or "").strip()
+        body = (e.get("body_md") or "").strip()
+        if not title:
+            title = (body[:80] or "Imported playbook").strip()
+        key = _portable_key(e.get("id"), "playbook", title)
+        cur.execute(
+            """SELECT id FROM member_playbook_entries
+               WHERE identity_id = %s AND export_key = %s""",
+            (identity_id, key),
+        )
+        if cur.fetchone():
+            counts["skip"] += 1
+            return
+        status = (e.get("status") or "active").strip().lower()
+        if status not in ("active", "archived"):
+            status = "active"
+        structured = e.get("structured") if isinstance(e.get("structured"), dict) else None
+        sj = json.dumps(structured) if structured else None
+        subtitle = (e.get("subtitle") or "").strip()[:500] or None
+        cur.execute(
+            """INSERT INTO member_playbook_entries
+                 (identity_id, title, subtitle, body_md, structured_json, status, export_key)
+               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+            (identity_id, title[:255], subtitle, body or "", sj, status, key),
+        )
+        book_id = int(cur.lastrowid)
+        counts["new"] += 1
+
+        chapters = e.get("chapters") if isinstance(e.get("chapters"), list) else []
+        if chapters:
+            for ch_i, ch in enumerate(chapters):
+                if not isinstance(ch, dict):
+                    tree_counts["error"] += 1
+                    continue
+                ch_title = (ch.get("title") or "Chapter").strip()[:255] or "Chapter"
+                ch_key = _portable_key(ch.get("id"), "pbc", f"{key}-{ch_i}-{ch_title}")
+                cur.execute(
+                    """INSERT INTO member_playbook_chapters
+                         (playbook_entry_id, identity_id, title, blurb, sort_order,
+                          chapter_type, export_key)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                    (
+                        book_id,
+                        identity_id,
+                        ch_title,
+                        (ch.get("blurb") or None),
+                        int(ch.get("sort_order") if ch.get("sort_order") is not None else ch_i),
+                        (ch.get("chapter_type") or "chapter")[:16],
+                        ch_key,
+                    ),
+                )
+                cid = int(cur.lastrowid)
+                tree_counts["new"] += 1
+                pages = ch.get("pages") if isinstance(ch.get("pages"), list) else []
+                for p_i, p in enumerate(pages):
+                    if not isinstance(p, dict):
+                        tree_counts["error"] += 1
+                        continue
+                    p_key = _portable_key(
+                        p.get("id"), "pbp", f"{ch_key}-{p_i}"
+                    )
+                    cur.execute(
+                        """INSERT INTO member_playbook_pages
+                             (chapter_id, playbook_entry_id, identity_id, title,
+                              body_md, sort_order, export_key)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                        (
+                            cid,
+                            book_id,
+                            identity_id,
+                            (p.get("title") or None),
+                            p.get("body_md") or "",
+                            int(
+                                p.get("sort_order")
+                                if p.get("sort_order") is not None
+                                else p_i
+                            ),
+                            p_key,
+                        ),
+                    )
+                    pid = int(cur.lastrowid)
+                    tree_counts["new"] += 1
+                    for s_i, s in enumerate(p.get("stickies") or []):
+                        if not isinstance(s, dict):
+                            continue
+                        s_body = (s.get("body_md") or "").strip()
+                        if not s_body:
+                            continue
+                        s_key = _portable_key(s.get("id"), "pbs", f"{p_key}-{s_i}")
+                        cur.execute(
+                            """INSERT INTO member_playbook_stickies
+                                 (page_id, playbook_entry_id, identity_id, body_md,
+                                  sort_order, export_key)
+                               VALUES (%s, %s, %s, %s, %s, %s)""",
+                            (
+                                pid,
+                                book_id,
+                                identity_id,
+                                s_body[:500],
+                                int(
+                                    s.get("sort_order")
+                                    if s.get("sort_order") is not None
+                                    else s_i
+                                ),
+                                s_key,
+                            ),
+                        )
+        else:
+            # v1.0 flat entry → Main chapter + page (same as ensure_book_pages_migrated)
+            import playbook_scrapbook_domain as pbs
+
+            pbs.ensure_book_pages_migrated(cur, identity_id, book_id)
+
+        # Evidence: re-link by journal export_key when present; else pending
+        for ev in e.get("evidence") or []:
+            if not isinstance(ev, dict):
+                continue
+            otype = (ev.get("object_type") or "").strip()
+            if otype != "journal_session":
+                pending_evidence += 1
+                continue
+            jkey = (ev.get("object_export_key") or "").strip()
+            jid = None
+            if jkey:
+                cur.execute(
+                    """SELECT id FROM member_journal_sessions
+                       WHERE identity_id = %s AND export_key = %s""",
+                    (identity_id, jkey),
+                )
+                row = cur.fetchone()
+                if row:
+                    jid = int(row["id"])
+            if jid is None:
+                pending_evidence += 1
+                continue
+            ev_key = _portable_key(ev.get("id"), "pbe", f"{key}-{jid}")
+            try:
+                cur.execute(
+                    """INSERT IGNORE INTO member_playbook_evidence
+                         (playbook_entry_id, identity_id, object_type, object_id,
+                          note_md, export_key)
+                       VALUES (%s, %s, 'journal_session', %s, %s, %s)""",
+                    (
+                        book_id,
+                        identity_id,
+                        jid,
+                        (ev.get("note_md") or None),
+                        ev_key,
+                    ),
+                )
+            except Exception:
+                pending_evidence += 1
+
+        # Cover / archive binaries: not restored from pack JSON alone (use single-book ZIP later)
+        if e.get("cover_export_key") or e.get("archive"):
+            warnings.append(
+                f"book {key!r}: cover/archive media not imported from JSON pack "
+                "(re-upload cover, or import single-book ZIP with media/)"
+            )
+
     for e in doc.get("entries") or []:
         if not isinstance(e, dict):
             counts["error"] += 1
@@ -412,10 +549,18 @@ def commit_playbook(cur, identity_id: int, doc: dict) -> dict[str, Any]:
             note_counts["error"] += 1
             continue
         _insert_note(e)
+    if pending_evidence:
+        warnings.append(
+            f"{pending_evidence} evidence link(s) pending "
+            "(journal session missing or non-journal type)"
+        )
     return {
         "surface": "playbook",
         "counts": counts,
         "notes": note_counts,
+        "tree": tree_counts,
+        "pending_evidence": pending_evidence,
+        "warnings": warnings,
         "mode": "additive",
     }
 

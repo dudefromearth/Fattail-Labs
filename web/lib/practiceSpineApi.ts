@@ -409,6 +409,34 @@ export async function clearPlaybookCover(
   return d.entry;
 }
 
+/** PB3 single-book pack (ZIP with media, or JSON tree). */
+export async function downloadPlaybookBook(
+  bookId: number,
+  format: "zip" | "json" = "zip",
+): Promise<void> {
+  const r = await fetch(
+    `/api/me/playbook/entries/${bookId}/export?format=${format}`,
+    { credentials: "same-origin" },
+  );
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    const d = (body as { detail?: unknown }).detail;
+    throw new Error(
+      typeof d === "string" ? d : `Export failed (HTTP ${r.status})`,
+    );
+  }
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download =
+    format === "json" ? `playbook-${bookId}.json` : `playbook-${bookId}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function removePlaybookArchive(
   bookId: number,
   attId: number,

@@ -3,8 +3,8 @@
 **Purpose:** Keep Trade Log, Journal, Retrospective, Playbook (scrapbook), Campaign,
 Reports, Journey, and Toughness **schema-synced** as product objects evolve.  
 **Authority:** Specs + migrations are source of truth; this is an index, not a second store.  
-**Last sync:** 2026-08-08 · migrations **093–095** · DL-254 / DL-255  
-**UI:** scrapbook library + book stage + present; page add/delete with confirm (§3.3.1 Spec v1.1a)
+**Last sync:** 2026-08-08 · migrations **093–095** · DL-254 / DL-255 · **PB3 export v2.0 started**  
+**UI:** scrapbook library + book stage + present; cover upload; page add/delete; single-book Export; page confirm (§3.3.1 Spec v1.1a)
 
 ---
 
@@ -84,7 +84,7 @@ Never hard-delete journal/trade rows when only unstapling **evidence**.
 | `practice_spine_domain.py` | Campaign lifecycle; legacy book serialize helpers |
 | `playbook_scrapbook_domain.py` | Tree, Save/discard/restore, archive, evidence, migration seed |
 | `routes/practice_spine.py` | HTTP for books + campaigns |
-| `export_domain` / `import_domain` | Pack surfaces (playbook v2.0 still PB3) |
+| `export_domain` / `import_domain` | Pack surfaces — **playbook model 2.0** (chapters/pages/stickies/evidence/archive refs); single-book ZIP `GET …/playbook/entries/{id}/export` |
 
 ---
 
