@@ -482,6 +482,46 @@ async def post_archive(
     return out
 
 
+@router.post("/api/me/playbook/entries/{entry_id}/cover")
+async def post_cover(
+    entry_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+) -> dict:
+    """Direct cover upload — one file sets the book cover (image only)."""
+    claims = require_session(request)
+    data = await file.read()
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                out = pbs.set_cover_from_upload(
+                    cur,
+                    iid,
+                    entry_id,
+                    content_type=file.content_type or "application/octet-stream",
+                    data=data,
+                    original_name=file.filename,
+                )
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return out
+
+
+@router.delete("/api/me/playbook/entries/{entry_id}/cover")
+def delete_cover(entry_id: int, request: Request) -> dict:
+    """Clear cover image (archive file kept)."""
+    claims = require_session(request)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                out = pbs.clear_cover(cur, iid, entry_id)
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return out
+
+
 @router.get("/api/me/playbook/entries/{entry_id}/archive/{att_id}/bytes")
 def get_archive_bytes(entry_id: int, att_id: int, request: Request) -> Response:
     claims = require_session(request)

@@ -1008,6 +1008,58 @@ def purge_attachment(cur, identity_id: int, book_id: int, att_id: int) -> dict:
     return {"archive": list_archive(cur, identity_id, book_id)}
 
 
+def set_cover_from_upload(
+    cur,
+    identity_id: int,
+    book_id: int,
+    *,
+    content_type: str,
+    data: bytes,
+    original_name: str | None = None,
+) -> dict:
+    """Direct cover path: store image attachment + point book cover at it.
+
+    Images only (image/*). Replaces previous cover pointer; old file stays in
+    archive until purged. One-step for the member — not “upload then pick.”
+    """
+    ct = (content_type or "").split(";")[0].strip().lower()
+    if not ct.startswith("image/"):
+        raise PracticeSpineError(
+            422, "Cover must be an image (JPEG, PNG, WebP, GIF, …)"
+        )
+    out = save_attachment(
+        cur,
+        identity_id,
+        book_id,
+        content_type=ct,
+        data=data,
+        original_name=original_name,
+    )
+    att = out["attachment"]
+    aid = int(att["id"])
+    cur.execute(
+        """UPDATE member_playbook_entries
+           SET cover_attachment_id = %s
+           WHERE id = %s AND identity_id = %s""",
+        (aid, book_id, identity_id),
+    )
+    book = serialize_book_meta(cur, _assert_book(cur, identity_id, book_id))
+    return {"entry": book, "attachment": att, "cover_url": att["download_path"]}
+
+
+def clear_cover(cur, identity_id: int, book_id: int) -> dict:
+    """Clear cover pointer only — does not delete archive files."""
+    _assert_book(cur, identity_id, book_id)
+    cur.execute(
+        """UPDATE member_playbook_entries
+           SET cover_attachment_id = NULL
+           WHERE id = %s AND identity_id = %s""",
+        (book_id, identity_id),
+    )
+    book = serialize_book_meta(cur, _assert_book(cur, identity_id, book_id))
+    return {"entry": book}
+
+
 def purge_media_for_identity(cur, identity_id: int) -> int:
     """Hard-delete playbook media files for practice data purge (Family B wipe)."""
     cur.execute(

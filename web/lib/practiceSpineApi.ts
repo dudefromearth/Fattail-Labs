@@ -370,6 +370,45 @@ export async function uploadPlaybookArchive(
   return d.attachment;
 }
 
+/** Public URL for a book’s cover bytes (session cookie required). */
+export function playbookCoverUrl(
+  bookId: number,
+  coverAttachmentId: number | null | undefined,
+): string | null {
+  if (!coverAttachmentId) return null;
+  return `/api/me/playbook/entries/${bookId}/archive/${coverAttachmentId}/bytes`;
+}
+
+/** One-step cover set: upload image → becomes cover. */
+export async function uploadPlaybookCover(
+  bookId: number,
+  file: File,
+): Promise<{
+  entry: PlaybookEntry;
+  attachment: PlaybookAttachment;
+  cover_url: string;
+}> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const r = await fetch(`/api/me/playbook/entries/${bookId}/cover`, {
+    method: "POST",
+    credentials: "same-origin",
+    body: fd,
+  });
+  return parse(r);
+}
+
+export async function clearPlaybookCover(
+  bookId: number,
+): Promise<PlaybookEntry> {
+  const r = await fetch(`/api/me/playbook/entries/${bookId}/cover`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  });
+  const d = await parse<{ entry: PlaybookEntry }>(r);
+  return d.entry;
+}
+
 export async function removePlaybookArchive(
   bookId: number,
   attId: number,

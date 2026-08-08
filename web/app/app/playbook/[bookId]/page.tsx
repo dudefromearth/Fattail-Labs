@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import PlaybookStage from "@/components/playbook/PlaybookStage";
+import PlaybookCover from "@/components/playbook/PlaybookCover";
 import { Button } from "@/components/ui";
 import TagPicker from "@/components/tags/TagPicker";
 import {
@@ -263,6 +264,18 @@ export default function PlaybookBookPage() {
         breadcrumbUnderTitle
       >
         <div className="mt-4 space-y-3" data-testid="playbook-book">
+          {book && (
+            <PlaybookCover
+              bookId={book.id}
+              coverAttachmentId={book.cover_attachment_id}
+              size="banner"
+              disabled={busy}
+              onChange={(updated) => {
+                setBook((b) => (b ? { ...b, ...updated } : updated));
+                void fetchPlaybookArchive(book.id).then(setArchive);
+              }}
+            />
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/app/playbook"

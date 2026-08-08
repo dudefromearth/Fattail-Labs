@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import { Button } from "@/components/ui";
+import PlaybookCover from "@/components/playbook/PlaybookCover";
 import {
   createPlaybookEntry,
   fetchPlaybookEntries,
@@ -200,18 +201,30 @@ export default function PlaybookLibraryPage() {
                   className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-4 transition hover:border-[var(--color-tint)]"
                   data-testid={`playbook-entry-${e.id}`}
                 >
+                  <div
+                    className="mb-3"
+                    onClick={(ev) => ev.stopPropagation()}
+                    onKeyDown={(ev) => ev.stopPropagation()}
+                  >
+                    <PlaybookCover
+                      bookId={e.id}
+                      coverAttachmentId={e.cover_attachment_id}
+                      disabled={busy}
+                      onChange={(updated) => {
+                        setEntries((prev) =>
+                          prev.map((row) =>
+                            row.id === updated.id
+                              ? { ...row, ...updated }
+                              : row,
+                          ),
+                        );
+                      }}
+                    />
+                  </div>
                   <Link
                     href={`/app/playbook/${e.id}`}
                     className="flex flex-1 flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
                   >
-                    <div
-                      className="mb-3 aspect-video w-full rounded-[var(--radius-md)] bg-[var(--color-fill)] flex items-center justify-center px-3 text-center"
-                      aria-hidden
-                    >
-                      <span className="text-xs font-medium text-[var(--color-label-tertiary)]">
-                        16:9 cover
-                      </span>
-                    </div>
                     <h3 className="font-semibold text-[var(--color-label)]">
                       {e.title}
                     </h3>
