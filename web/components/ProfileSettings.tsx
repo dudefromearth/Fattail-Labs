@@ -12,6 +12,8 @@ import {
   normalizeHomeQuickNav,
   type HomeQuickNavId,
 } from "@/lib/homeQuickNav";
+import PracticePortabilityPanel from "@/components/practice/PracticePortabilityPanel";
+import { downloadPracticeExport } from "@/lib/practicePortability";
 
 type Profile = {
   identity_id: number;
@@ -50,40 +52,20 @@ export default function ProfileSettings() {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [purging, setPurging] = useState(false);
   const [purgeOpen, setPurgeOpen] = useState(false);
   const [purgeExported, setPurgeExported] = useState(false);
   const [purgeAck, setPurgeAck] = useState(false);
-  const [importPreview, setImportPreview] = useState<{
-    ok: boolean;
-    surfaces: Record<string, { counts?: Record<string, number>; note?: string }>;
-    errors?: string[];
-  } | null>(null);
-  const [importPayload, setImportPayload] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const importFileRef = useRef<HTMLInputElement>(null);
 
   async function downloadPracticeData(): Promise<boolean> {
     setExporting(true);
     setErr(null);
     try {
-      const r = await fetch("/api/me/export?format=zip", {
-        credentials: "same-origin",
-      });
-      if (!r.ok) {
-        setErr("Could not prepare your download. Try again.");
-        return false;
-      }
-      const blob = await r.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "fattail-member-export.zip";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      await downloadPracticeExport(
+        "/api/me/export?format=zip",
+        "fattail-member-export.zip",
+      );
       setMsg("Download started — keep that file if you may want your data later.");
       return true;
     } catch {
@@ -278,85 +260,16 @@ export default function ProfileSettings() {
       )}
 
       {/* Data portability — Spec Member Practice Export/Import v1.1 */}
+      <PracticePortabilityPanel variant="profile" />
+
       <section className="surface-card border border-[var(--color-separator)] p-6">
-        <h2 className="text-lg font-semibold">Your data</h2>
+        <h2 className="text-lg font-semibold">Delete Practice data</h2>
         <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-          Download a copy of your Practice data (Trade Log, Journal sessions,
-          Retrospectives, live check-ins, Playbook stub), or load a backup. Load
-          is <strong>additive only</strong> — existing entries are never
-          overwritten by load. To fully replace from a backup: download first,
-          delete Practice data (membership stays), then load.{" "}
-          <strong>Journey grades are recalculated</strong> from that activity
-          (not restored as a screenshot of scores). Course progress stays with
-          this membership and is not in the Practice file.
+          Permanently remove Practice activity from this account. Membership and
+          course progress stay. Download a backup first if you may want the data
+          later.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={exporting}
-            data-testid="download-my-data"
-            className="rounded-full bg-[var(--color-tint)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
-            onClick={async () => {
-              setMsg(null);
-              await downloadPracticeData();
-            }}
-          >
-            {exporting ? "Preparing…" : "Download my data"}
-          </button>
-          <input
-            ref={importFileRef}
-            type="file"
-            accept=".json,.zip,application/json,application/zip"
-            className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (!file) return;
-              setImporting(true);
-              setErr(null);
-              setMsg(null);
-              setImportPreview(null);
-              setImportPayload(null);
-              try {
-                const buf = await file.arrayBuffer();
-                const bytes = new Uint8Array(buf);
-                let binary = "";
-                for (let i = 0; i < bytes.length; i++) {
-                  binary += String.fromCharCode(bytes[i]!);
-                }
-                const b64 = btoa(binary);
-                const r = await fetch("/api/me/import/preview", {
-                  method: "POST",
-                  credentials: "same-origin",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ base64: b64, policy: "additive" }),
-                });
-                const data = await r.json().catch(() => ({}));
-                if (!r.ok) {
-                  setErr(
-                    (data as { detail?: { message?: string } })?.detail?.message ||
-                      "Could not read that file.",
-                  );
-                  return;
-                }
-                setImportPayload(b64);
-                setImportPreview(data as typeof importPreview);
-              } catch {
-                setErr("Could not read that file.");
-              } finally {
-                setImporting(false);
-              }
-            }}
-          />
-          <button
-            type="button"
-            disabled={importing}
-            data-testid="load-practice-data"
-            className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-fill)] disabled:opacity-60"
-            onClick={() => importFileRef.current?.click()}
-          >
-            {importing ? "Reading…" : "Load Practice data"}
-          </button>
+        <div className="mt-4">
           <button
             type="button"
             disabled={purging}
@@ -386,8 +299,8 @@ export default function ProfileSettings() {
             </p>
             <p className="mt-2 text-red-900/90">
               This permanently removes Trade Log, Journal notes, Retrospectives,
-              habit plans, and live check-ins from this account. It cannot be
-              undone unless you have a backup file.{" "}
+              habit plans, Playbook, and live check-ins from this account. It
+              cannot be undone unless you have a backup file.{" "}
               <strong>Membership, courses, and progress are not removed.</strong>
             </p>
             <p className="mt-2 font-medium text-red-900">
@@ -465,8 +378,6 @@ export default function ProfileSettings() {
                     setPurgeOpen(false);
                     setPurgeExported(false);
                     setPurgeAck(false);
-                    setImportPreview(null);
-                    setImportPayload(null);
                   } catch {
                     setErr("Could not delete Practice data.");
                   } finally {
@@ -483,87 +394,6 @@ export default function ProfileSettings() {
                   setPurgeOpen(false);
                   setPurgeExported(false);
                   setPurgeAck(false);
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {importPreview && (
-          <div
-            className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill)] p-4 text-sm"
-            data-testid="import-preview"
-          >
-            <p className="font-medium text-[var(--color-label)]">
-              Preview — nothing has been written yet
-            </p>
-            <ul className="mt-2 space-y-1 text-[var(--color-label-secondary)]">
-              {Object.entries(importPreview.surfaces || {}).map(([name, info]) => {
-                const c = info.counts || {};
-                return (
-                  <li key={name}>
-                    <span className="font-medium text-[var(--color-label)]">
-                      {name}
-                    </span>
-                    : {c.new ?? 0} new, {c.skip ?? 0} already present (skipped)
-                    {info.note ? ` — ${info.note}` : ""}
-                  </li>
-                );
-              })}
-            </ul>
-            {importPreview.errors && importPreview.errors.length > 0 && (
-              <p className="mt-2 text-red-600">
-                {importPreview.errors.join(" · ")}
-              </p>
-            )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={!importPreview.ok || !importPayload || importing}
-                className="rounded-full bg-[var(--color-tint)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
-                data-testid="import-confirm"
-                onClick={async () => {
-                  if (!importPayload) return;
-                  setImporting(true);
-                  setErr(null);
-                  try {
-                    const r = await fetch("/api/me/import/commit", {
-                      method: "POST",
-                      credentials: "same-origin",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        base64: importPayload,
-                        policy: "additive",
-                      }),
-                    });
-                    const data = await r.json().catch(() => ({}));
-                    if (!r.ok) {
-                      setErr(
-                        (data as { detail?: { message?: string } })?.detail
-                          ?.message || "Load failed.",
-                      );
-                      return;
-                    }
-                    setMsg("Practice data loaded.");
-                    setImportPreview(null);
-                    setImportPayload(null);
-                  } catch {
-                    setErr("Load failed.");
-                  } finally {
-                    setImporting(false);
-                  }
-                }}
-              >
-                Confirm load
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-sm"
-                onClick={() => {
-                  setImportPreview(null);
-                  setImportPayload(null);
                 }}
               >
                 Cancel

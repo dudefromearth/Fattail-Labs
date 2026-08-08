@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import PracticeSuiteNav from "./PracticeSuiteNav";
 import PracticeContextBar from "./PracticeContextBar";
 import PracticeStoryStrip from "./PracticeStoryStrip";
+import PracticePortabilityPanel from "./PracticePortabilityPanel";
 import { PracticeContextProvider } from "@/lib/practiceContext";
 import { suiteItem, type PracticeSuiteId } from "@/lib/practiceSuite";
 
@@ -86,6 +87,8 @@ function PracticeSuiteChromeInner({
       />
 
       {!hideStoryStrip && <PracticeStoryStrip className="mt-3" />}
+
+      <PracticePortabilityPanel suiteId={active} variant="chrome" />
 
       {!hideTitle ? (
         <header className="mt-4 max-w-2xl">

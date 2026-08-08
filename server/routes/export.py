@@ -93,67 +93,116 @@ def export_pack(request: Request, format: str = "zip") -> Any:
     )
 
 
-@router.get("/api/me/export/journal")
-def export_journal(request: Request) -> Any:
+def _export_json(
+    request: Request,
+    *,
+    surface: str,
+    filename: str,
+    build,
+    detail: str,
+    need_role: bool = False,
+) -> Any:
+    """Shared single-surface JSON export + audit."""
     claims = require_session(request)
     iid = _iid(claims)
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            doc = ex.build_journal_document(cur, iid)
+            if need_role:
+                role = str(claims.get("role") or "observer")
+                doc = build(cur, iid, role=role)
+            else:
+                doc = build(cur, iid)
             privacy.audit(
                 cur,
                 actor_identity_id=iid,
                 subject_identity_id=iid,
                 action="export",
-                surfaces=["journal"],
-                detail="journal only",
+                surfaces=[surface],
+                detail=detail,
             )
     return JSONResponse(
         doc,
-        headers={"Content-Disposition": 'attachment; filename="journal.json"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/api/me/export/journal")
+def export_journal(request: Request) -> Any:
+    return _export_json(
+        request,
+        surface="journal",
+        filename="journal.json",
+        build=ex.build_journal_document,
+        detail="journal only",
+    )
+
+
+@router.get("/api/me/export/journal-session")
+def export_journal_session(request: Request) -> Any:
+    """Journal sessions (v0.x session spine) as individual JSON."""
+    return _export_json(
+        request,
+        surface="journal_session",
+        filename="journal_session.json",
+        build=ex.build_journal_session_document,
+        detail="journal_session only",
     )
 
 
 @router.get("/api/me/export/retrospectives")
 def export_retrospectives(request: Request) -> Any:
-    claims = require_session(request)
-    iid = _iid(claims)
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            doc = ex.build_retrospective_document(cur, iid)
-            privacy.audit(
-                cur,
-                actor_identity_id=iid,
-                subject_identity_id=iid,
-                action="export",
-                surfaces=["retrospective"],
-                detail="retrospective only",
-            )
-    return JSONResponse(
-        doc,
-        headers={"Content-Disposition": 'attachment; filename="retrospective.json"'},
+    return _export_json(
+        request,
+        surface="retrospective",
+        filename="retrospective.json",
+        build=ex.build_retrospective_document,
+        detail="retrospective only",
     )
 
 
 @router.get("/api/me/export/journey")
 def export_journey(request: Request) -> Any:
-    claims = require_session(request)
-    iid = _iid(claims)
-    role = str(claims.get("role") or "observer")
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            doc = ex.build_journey_document(cur, iid, role=role)
-            privacy.audit(
-                cur,
-                actor_identity_id=iid,
-                subject_identity_id=iid,
-                action="export",
-                surfaces=["journey"],
-                detail="journey only",
-            )
-    return JSONResponse(
-        doc,
-        headers={"Content-Disposition": 'attachment; filename="journey.json"'},
+    return _export_json(
+        request,
+        surface="journey",
+        filename="journey.json",
+        build=ex.build_journey_document,
+        detail="journey only",
+        need_role=True,
+    )
+
+
+@router.get("/api/me/export/playbook")
+def export_playbook(request: Request) -> Any:
+    return _export_json(
+        request,
+        surface="playbook",
+        filename="playbook.json",
+        build=ex.build_playbook_document,
+        detail="playbook only",
+    )
+
+
+@router.get("/api/me/export/practice-campaign")
+def export_practice_campaign(request: Request) -> Any:
+    return _export_json(
+        request,
+        surface="practice_campaign",
+        filename="practice_campaign.json",
+        build=ex.build_practice_campaign_document,
+        detail="practice_campaign only",
+    )
+
+
+@router.get("/api/me/export/trade-log")
+def export_trade_log_pack(request: Request) -> Any:
+    """Canonical Practice pack trade-log JSON (not broker CSV — use /trade-log/export for that)."""
+    return _export_json(
+        request,
+        surface="trade_log",
+        filename="trade_log.tradlog.json",
+        build=ex.build_trade_log_document,
+        detail="trade_log only (pack format)",
     )
 
 
