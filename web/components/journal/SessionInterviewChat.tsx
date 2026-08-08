@@ -157,7 +157,7 @@ export default function SessionInterviewChat({
       });
       onUpdated(s);
     } catch (e) {
-      onError?.(e instanceof Error ? e.message : "Could not update season");
+      onError?.(e instanceof Error ? e.message : "Could not update campaign");
     } finally {
       setCampBusy(false);
     }
@@ -259,13 +259,13 @@ export default function SessionInterviewChat({
       data-testid="journal-interview-chat"
       style={{ minHeight: "18rem", height: "min(28rem, 50vh)" }}
     >
-      {/* Season stamp + playbook links (journal-primary association) */}
+      {/* Campaign stamp + playbook links (journal-primary association) */}
       <div className="mb-2 space-y-2 text-xs" data-testid="journal-practice-links">
         <div
           className="flex flex-wrap items-center gap-2"
           data-testid="journal-campaign-stamp"
         >
-          <span className="text-[var(--color-label-tertiary)]">Season</span>
+          <span className="text-[var(--color-label-tertiary)]">Campaign</span>
           {mutable ? (
             <select
               value={
@@ -276,9 +276,9 @@ export default function SessionInterviewChat({
               disabled={campBusy || blocked}
               onChange={(e) => void setCampaignStamp(e.target.value)}
               className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
-              aria-label="Practice season for this journal"
+              aria-label="Practice campaign for this journal"
             >
-              <option value="">No season</option>
+              <option value="">No campaign</option>
               {campaigns.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.title}

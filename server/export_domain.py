@@ -30,7 +30,8 @@ FMT_PLAYBOOK = "fattail.labs.playbook"
 PLAYBOOK_MODEL_VERSION = "2.0"
 FMT_PRACTICE_CAMPAIGN = "fattail.labs.practice_campaign"
 # 1.1 = first-class pack: account scope, capital, goals, activated_at (Campaign Spec §4.10)
-CAMPAIGN_MODEL_VERSION = "1.1"
+# 1.2 = signature · amendments · predecessor_export_key (Campaign Spec §4.5 / lifecycle)
+CAMPAIGN_MODEL_VERSION = "1.2"
 FMT_PACK = "fattail.labs.member_export"
 
 
@@ -685,11 +686,28 @@ def single_playbook_to_zip_bytes(
     return buf.getvalue()
 
 
+def _parse_signed_terms_export(raw: Any) -> dict | None:
+    if raw is None:
+        return None
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8")
+    if isinstance(raw, str):
+        try:
+            out = json.loads(raw)
+            return out if isinstance(out, dict) else None
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
 def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
     """Practice Campaign export — first-class surface (schema practice-campaign-v1).
 
     model_version 1.1: account_export_key, starting_capital, goals_md, activated_at,
-    playbook M2M. Empty entries[] is valid (campaigns optional).
+    playbook M2M. 1.2: signed_at/signed_terms, amendments[], predecessor_export_key.
+    Empty entries[] is valid (campaigns optional).
     """
     email = _member_email(cur, identity_id)
     doc = envelope(FMT_PRACTICE_CAMPAIGN, email=email)
@@ -722,12 +740,28 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
             acct_meta[aid] = (f"acct-{aid}", (r.get("label") or "").strip())
     except Exception:
         acct_meta = {}
+    # campaign id → export_key (for predecessor_export_key)
+    camp_keys: dict[int, str] = {}
+    try:
+        cur.execute(
+            """SELECT id, export_key FROM member_practice_campaigns
+               WHERE identity_id = %s""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            ek = (r.get("export_key") or "").strip()
+            if ek:
+                camp_keys[int(r["id"])] = ek
+    except Exception:
+        camp_keys = {}
     entries: list[dict[str, Any]] = []
     try:
         cur.execute(
             """SELECT id, title, status, account_id, starts_at, ends_at,
-                      activated_at, starting_capital, goals_md, export_key,
-                      created_at, updated_at
+                      activated_at, starting_capital, goals_md, is_default,
+                      signed_at, signed_terms, signed_terms_backfilled,
+                      predecessor_campaign_id,
+                      export_key, created_at, updated_at
                FROM member_practice_campaigns
                WHERE identity_id = %s
                ORDER BY created_at ASC, id ASC""",
@@ -759,6 +793,36 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                 starting_capital = float(cap) if cap is not None else None
             except (TypeError, ValueError):
                 starting_capital = None
+            pred_id = c.get("predecessor_campaign_id")
+            predecessor_export_key = None
+            if pred_id is not None:
+                predecessor_export_key = camp_keys.get(int(pred_id))
+                if not predecessor_export_key:
+                    predecessor_export_key = f"camp-{int(pred_id)}"
+            # Amendments (append-only history)
+            amendments: list[dict[str, Any]] = []
+            try:
+                cur.execute(
+                    """SELECT export_key, amended_at, field, old_value, new_value,
+                              note_md
+                       FROM member_practice_campaign_amendments
+                       WHERE identity_id = %s AND campaign_id = %s
+                       ORDER BY amended_at ASC, id ASC""",
+                    (identity_id, cid),
+                )
+                for ar in cur.fetchall() or []:
+                    amendments.append(
+                        {
+                            "id": (ar.get("export_key") or "").strip() or None,
+                            "amended_at": _iso(ar.get("amended_at")),
+                            "field": ar.get("field") or "",
+                            "old_value": ar.get("old_value"),
+                            "new_value": ar.get("new_value"),
+                            "note_md": (ar.get("note_md") or None) or None,
+                        }
+                    )
+            except Exception:
+                amendments = []
             entries.append(
                 {
                     "id": (c.get("export_key") or f"camp-{cid}").strip(),
@@ -771,6 +835,14 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                     "account_label": account_label or None,
                     "starting_capital": starting_capital,
                     "goals_md": (c.get("goals_md") or None) or None,
+                    "is_default": bool(int(c.get("is_default") or 0)),
+                    "signed_at": _iso(c.get("signed_at")),
+                    "signed_terms": _parse_signed_terms_export(c.get("signed_terms")),
+                    "signed_terms_backfilled": bool(
+                        int(c.get("signed_terms_backfilled") or 0)
+                    ),
+                    "predecessor_export_key": predecessor_export_key,
+                    "amendments": amendments,
                     "playbook_export_keys": pb_export_keys,
                     "created_at": _iso(c.get("created_at")),
                     "updated_at": _iso(c.get("updated_at")),

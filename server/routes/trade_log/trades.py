@@ -39,6 +39,10 @@ def list_trades(
     full: bool = False,
     practice_campaign_id: int | None = None,
     playbook_entry_id: int | None = None,
+    playbook_mode: str | None = None,
+    adherence_mode: str | None = None,
+    from_day: str | None = None,
+    to_day: str | None = None,
 ) -> dict:
     """List trades for the blotter.
 
@@ -48,10 +52,31 @@ def list_trades(
     **full=1:** legacy full-book load (capped server-side) for tools that need it.
     Reports/Journal analytics use dedicated analytics routes (server domain), not this.
 
-    Spine filters (Phase 1): ``practice_campaign_id``, ``playbook_entry_id``.
+    Spine filters:
+    - ``practice_campaign_id`` — named campaign exact stamp; **default book**
+      also includes unstamped trades on that account (book is their home).
+    - ``playbook_entry_id`` — exact playbook link.
+    - ``playbook_mode=unaffiliated`` — no playbook link (named default; not All).
+
+    Journey F2: ``adherence_mode=drift`` = meter complement (not followed, not
+    partial). Optional ``from_day`` / ``to_day`` (YYYY-MM-DD) bound the window.
     """
     claims = require_session(request)
     _require_tool_member(claims, capability="read")
+    mode = (adherence_mode or "").strip().lower() or None
+    if mode is not None and mode not in ("drift",):
+        raise HTTPException(
+            status_code=422,
+            detail="adherence_mode must be 'drift' or omitted",
+        )
+    pb_mode = (playbook_mode or "").strip().lower() or None
+    if pb_mode is not None and pb_mode not in ("unaffiliated",):
+        raise HTTPException(
+            status_code=422,
+            detail="playbook_mode must be 'unaffiliated' or omitted",
+        )
+    if pb_mode == "unaffiliated":
+        playbook_entry_id = None  # mode wins over id
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
@@ -64,6 +89,10 @@ def list_trades(
                     account_id,
                     practice_campaign_id=practice_campaign_id,
                     playbook_entry_id=playbook_entry_id,
+                    playbook_mode=pb_mode,
+                    adherence_mode=mode,
+                    from_day=from_day,
+                    to_day=to_day,
                 )
                 has_more = False
                 next_cursor = None
@@ -77,6 +106,10 @@ def list_trades(
                     cursor=cursor,
                     practice_campaign_id=practice_campaign_id,
                     playbook_entry_id=playbook_entry_id,
+                    playbook_mode=pb_mode,
+                    adherence_mode=mode,
+                    from_day=from_day,
+                    to_day=to_day,
                 )
     # Legacy key for old clients/tests that expect entries (prose-shaped)
     entries = [
@@ -253,6 +286,7 @@ async def create_trade(request: Request) -> dict:
             )
             playbook_entry_id = body.get("playbook_entry_id")
             practice_campaign_id = body.get("practice_campaign_id")
+            stamped_by = None
             try:
                 import practice_spine_domain as psd
 
@@ -261,13 +295,20 @@ async def create_trade(request: Request) -> dict:
                     if playbook_entry_id not in (None, "")
                     else None
                 )
-                camp_id = (
+                camp_raw = (
                     int(practice_campaign_id)
                     if practice_campaign_id not in (None, "")
                     else None
                 )
+                # Law 2/3 — every trade stamps; memory pre-answers
+                camp_id, stamped_by = psd.resolve_trade_campaign_id(
+                    cur,
+                    iid,
+                    int(account_id),
+                    practice_campaign_id=camp_raw,
+                    update_memory=True,
+                )
                 psd.assert_playbook_owned(cur, iid, pb_id)
-                psd.assert_campaign_owned(cur, iid, camp_id)
             except Exception as exc:
                 from practice_spine_domain import PracticeSpineError
 
@@ -277,16 +318,19 @@ async def create_trade(request: Request) -> dict:
                     None,
                     "",
                 ):
-                    # missing tables pre-migration — fail loud
                     raise
-                pb_id, camp_id = None, None
+                # Fail loud: trades require campaign resolution
+                raise HTTPException(
+                    status_code=500,
+                    detail="Could not resolve practice campaign for trade",
+                ) from exc
             cur.execute(
                 """INSERT INTO member_trade_log_trades
                      (identity_id, account_id, exec_at, asset_class, strategy, order_type,
                       net_price, net_side, setup_md, plan_md, rules_md, adherence,
                       deviation_md, lesson_md, pnl_amount, entry_source,
-                      playbook_entry_id, practice_campaign_id)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                      playbook_entry_id, practice_campaign_id, stamped_by)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     iid,
                     account_id,
@@ -306,6 +350,7 @@ async def create_trade(request: Request) -> dict:
                     entry_source,
                     pb_id,
                     camp_id,
+                    stamped_by,
                 ),
             )
             tid = int(cur.lastrowid)

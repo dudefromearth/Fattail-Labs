@@ -33,6 +33,10 @@ import {
   type DayBook,
 } from "@/lib/journalDayBook";
 import { fetchDayBook, fetchDaysInterest } from "@/lib/tradeLogApi";
+import {
+  JOURNAL_HYPOTHESIS_BEATS,
+  JOURNAL_REFLECTION_BEATS,
+} from "@/lib/journalBeats";
 import DayTradesPanel from "./DayTradesPanel";
 import SessionInterviewChat from "./SessionInterviewChat";
 import SessionMediaHeader from "./SessionMediaHeader";
@@ -524,35 +528,70 @@ function DayView({
                 </div>
               </>
             ) : (
-              <div className="relative">
-                <textarea
-                  value={draft}
-                  onChange={(e) => onDraft(e.target.value)}
-                  rows={4}
-                  placeholder="Write in your words… (or drop an image above)"
-                  className="w-full resize-y rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-20 text-sm text-[var(--color-label)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
-                  aria-label="Journal message"
-                  data-testid="journal-composer-empty-draft"
-                  disabled={sessionBusy}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                      e.preventDefault();
-                      if (draft.trim() && !sessionBusy) onFirstSend();
-                    }
-                  }}
-                />
-                <div className="absolute bottom-3 right-3">
-                  <button
-                    type="button"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] disabled:opacity-40"
-                    title="Send"
-                    aria-label="Send"
-                    disabled={!draft.trim() || sessionBusy}
-                    onClick={onFirstSend}
-                    data-testid="journal-composer-empty-send"
-                  >
-                    <SendIcon />
-                  </button>
+              <div className="space-y-2">
+                <div
+                  className="flex flex-wrap gap-1.5"
+                  data-testid="journal-soft-beats"
+                >
+                  <span className="mr-1 self-center text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                    Soft beats
+                  </span>
+                  {[
+                    ...JOURNAL_HYPOTHESIS_BEATS,
+                    ...JOURNAL_REFLECTION_BEATS,
+                  ].map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      disabled={sessionBusy}
+                      data-testid={`journal-beat-${b.id}`}
+                      className="rounded-full border border-[var(--color-separator)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)] disabled:opacity-40"
+                      title={
+                        b.phase === "reflection"
+                          ? "Records variance — never adjusts today's plan (weekly pivot does that)"
+                          : "Optional hypothesis scaffold — freeform always works"
+                      }
+                      onClick={() => {
+                        const next = draft.trim()
+                          ? `${draft.trim()}\n\n${b.seed}`
+                          : b.seed;
+                        onDraft(next);
+                      }}
+                    >
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative">
+                  <textarea
+                    value={draft}
+                    onChange={(e) => onDraft(e.target.value)}
+                    rows={4}
+                    placeholder="Write in your words… (or drop an image above)"
+                    className="w-full resize-y rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-20 text-sm text-[var(--color-label)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
+                    aria-label="Journal message"
+                    data-testid="journal-composer-empty-draft"
+                    disabled={sessionBusy}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        if (draft.trim() && !sessionBusy) onFirstSend();
+                      }
+                    }}
+                  />
+                  <div className="absolute bottom-3 right-3">
+                    <button
+                      type="button"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] disabled:opacity-40"
+                      title="Send"
+                      aria-label="Send"
+                      disabled={!draft.trim() || sessionBusy}
+                      onClick={onFirstSend}
+                      data-testid="journal-composer-empty-send"
+                    >
+                      <SendIcon />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

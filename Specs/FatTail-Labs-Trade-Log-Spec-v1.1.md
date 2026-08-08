@@ -134,17 +134,21 @@ Identity
 | `broker` | **yes** | Venue catalog (live **or** sim) |
 | `broker_label` | if other* | When `other` / `other_sim` |
 | `currency` | default USD | |
-| `status` | yes | `active` \| `archived` |
+| `status` | yes | `active` \| `archived` (**retire** in member chrome — same storage value until a rename migration, if ever) |
 | `badge_color`, `sort_order`, `notes_md` | no | |
+| `retired_at` | no | Optional clock when status enters `archived` (add when UI ships Retire; nullable additive) |
 
 | ID | Rule |
 |----|------|
 | A-1 | Max **10** `active` accounts per identity; 11th → 422 |
-| A-2 | Archive frees a slot; hard-delete only if zero trades or cascade confirm |
-| A-3 | **Default account auto-provisioned** on first Trade Log access: label `Primary`, venue provisional (`unset`). **Venue is chosen on first import** (adapter maps: thinkorswim → `thinkorswim`, native → `fattail`, …) **or first trade create** (user picks broker/sim/FatTail). No assumed broker. Catalog includes `fattail` (canonical book) and real venues. |
+| A-2 | **Retire = archive, never delete history.** Archive frees an active slot. Hard-delete only if zero trades (or explicit cascade confirm) — permanence doctrine third application (Playbook → Campaign → Accounts). Retired account: off active chrome by default; **readable** in history/reports; **exportable**; **can be un-retired** (`archived` → `active`). Trades, campaigns, journal stamps **untouched**. |
+| A-2a | **Open campaigns soft gate (not hard block).** On retire, surface `planned`/`active` Practice campaigns scoped to this account (and optionally unbound actives the member used here). Offer clean path (complete/abandon first) or **retire anyway** (campaigns stay open — name the difference). Never block solely for open contracts. Concept authority: [Member Campaign Concept Spec §4.9](./FatTail-Labs-Member-Campaign-Concept-Spec-v1.0.md). |
+| A-2b | **Unstamped trades are not a gate.** Retirement never requires retroactive `practice_campaign_id`. |
+| A-3 | **Default account auto-provisioned** on first Trade Log access: label `Primary`, venue provisional (`unset`). **Venue is chosen on first import** (adapter maps: thinkorswim → `thinkorswim`, native → `fattail`, …) **or first trade create** (user picks broker/sim/FatTail). No assumed broker. Catalog includes `fattail` (canonical book) and real venues. **Does not** auto-create a Practice campaign (Campaign Spec §4.3 / §1 — platform never signs the contract). |
 | A-4 | Positions never net across accounts |
 | A-5 | Import commit requires `account_id` with venue set |
 | A-6 | Optional “All active” log view; account + venue columns |
+| A-7 | Optional “Show retired” in account chrome; default hides `archived` from pickers and suite filters |
 
 #### Venue catalog (API field: `broker`)
 
@@ -716,6 +720,7 @@ explicit confirm. Domain FIFO still pairs one open to one close by structure key
 
 | Version | Notes |
 |---------|--------|
+| **v1.1 + A-2 retire** | Account **retire = archive** permanence; soft open-campaign gate (A-2a); unstamped not a gate (A-2b); show-retired (A-7); no auto-campaign on Primary (A-3). Concept: Member Campaign Spec §4.9 (2026-08-08) |
 | **v1.1 + §16.1** | `entry_source`: **manual · import · automated** (Strategy Lab ≠ import); UI chips (2026-08-05) |
 | **v1.1 + §16** | Manual management: structure entry, close/trash, match gates, entry_source, blotter open strip (2026-08-05) |
 | **v1.1 + §15** | Practice harden H0–H2 domain SoR / analytics honesty (2026-07-29) |

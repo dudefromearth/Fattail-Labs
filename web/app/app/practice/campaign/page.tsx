@@ -1,37 +1,56 @@
 "use client";
 
 /**
- * Practice → Campaign (human mode).
- * Path: /app/practice/campaign
- *
- * Campaign = context of work (capital, goals, group of trades) — same concept
- * as Strategy Lab campaign, separate product (manual vs automated).
- * Multiple active campaigns; optional account scope (DL-259).
+ * Practice → Campaigns library (card grid + covers).
+ * Edit opens dedicated page /app/practice/campaign/[id] — same pattern as Playbook.
  */
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
+import CampaignCover from "@/components/practice/CampaignCover";
 import { Button } from "@/components/ui";
+import { CAMPAIGN_FRAMES } from "@/lib/campaignFrames";
 import {
   createCampaign,
   fetchCampaigns,
-  patchCampaign,
+  renewCampaign,
   type PracticeCampaign,
 } from "@/lib/practiceSpineApi";
 import { fetchAccounts } from "@/lib/tradeLogAnalytics";
 import type { Account } from "@/lib/tradeLog";
 
+function statusLabel(c: PracticeCampaign): string {
+  switch (c.status) {
+    case "active":
+      return "Active";
+    case "planned":
+      return c.activated_at ? "Paused" : "Not started";
+    case "completed":
+      return "Completed";
+    case "abandoned":
+      return "Ended early";
+    default:
+      return c.status;
+  }
+}
+
 export default function PracticeCampaignPage() {
+  const router = useRouter();
   const [campaigns, setCampaigns] = useState<PracticeCampaign[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
   const [accountId, setAccountId] = useState<number | "">("");
-  const [capital, setCapital] = useState("");
+  const [asDefault, setAsDefault] = useState(false);
+  const [frameId, setFrameId] = useState<string | null>(null);
   const [goals, setGoals] = useState("");
   const [busy, setBusy] = useState(false);
-  const [creating, setCreating] = useState(false);
+  /** Open = planned|active; Archive = completed|abandoned (status sole authority). */
+  const [libraryView, setLibraryView] = useState<"open" | "archive">("open");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,7 +62,9 @@ export default function PracticeCampaignPage() {
       ]);
       setCampaigns(d.campaigns || []);
       if (acctRes.ok) {
-        setAccounts((acctRes.data.accounts || []).filter((a) => a.status === "active"));
+        setAccounts(
+          (acctRes.data.accounts || []).filter((a) => a.status === "active"),
+        );
       } else {
         setAccounts([]);
       }
@@ -65,56 +86,58 @@ export default function PracticeCampaignPage() {
     return a?.label || `Account ${id}`;
   }
 
-  async function startCampaign() {
+  function applyFrame(id: string) {
+    const f = CAMPAIGN_FRAMES.find((x) => x.id === id);
+    if (!f) return;
+    setFrameId(id);
+    setGoals(f.goalsScaffold);
+    if (!title.trim()) setTitle(f.label);
+  }
+
+  async function createAndOpen() {
     if (!title.trim() || busy) return;
     setBusy(true);
     setError(null);
     try {
-      let cap: number | null = null;
-      if (capital.trim()) {
-        cap = Number(capital);
-        if (!Number.isFinite(cap) || cap < 0) {
-          throw new Error("Starting capital must be a non-negative number");
-        }
+      if (asDefault && accountId === "") {
+        throw new Error("Default requires a trade account");
       }
-      await createCampaign({
+      const camp = await createCampaign({
         title: title.trim(),
         activate: true,
         account_id: accountId === "" ? null : accountId,
-        starting_capital: cap,
         goals_md: goals.trim() || null,
+        is_default: asDefault,
       });
-      setTitle("");
-      setAccountId("");
-      setCapital("");
-      setGoals("");
-      setCreating(false);
-      await load();
+      router.push(`/app/practice/campaign/${camp.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not start campaign");
-    } finally {
+      setError(e instanceof Error ? e.message : "Could not create campaign");
       setBusy(false);
     }
   }
 
-  async function setStatus(c: PracticeCampaign, status: string) {
+  async function renewFromArchive(c: PracticeCampaign) {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      await patchCampaign(c.id, { status });
-      await load();
+      const next = await renewCampaign(c.id);
+      router.push(`/app/practice/campaign/${next.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Update failed");
-    } finally {
+      setError(e instanceof Error ? e.message : "Could not renew campaign");
       setBusy(false);
     }
   }
 
   return (
     <main className="mx-auto w-full max-w-[1100px] px-4 py-6 pb-24 sm:px-6">
-      <PracticeSuiteChrome active="campaign">
-        <div className="mt-4 space-y-4" data-testid="practice-campaign-page">
+      <PracticeSuiteChrome
+        active="campaign"
+        hideStoryStrip
+        hideToughness
+        breadcrumbUnderTitle
+      >
+        <div className="mt-6 space-y-4" data-testid="practice-campaign-page">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -126,82 +149,98 @@ export default function PracticeCampaignPage() {
             </Button>
           </div>
 
+          {error && (
+            <p className="text-sm text-red-600" role="alert">
+              {error}
+            </p>
+          )}
+
           {creating && (
-            <div className="space-y-3 rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-4">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Campaign name"
-                className="w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
-                data-testid="campaign-title-input"
-                autoFocus
-              />
-              <div className="flex flex-wrap gap-3">
-                <label className="block min-w-[10rem] flex-1 text-xs font-medium text-[var(--color-label-secondary)]">
-                  Account
-                  <select
-                    className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm text-[var(--color-label)]"
-                    value={accountId === "" ? "" : String(accountId)}
-                    onChange={(e) =>
-                      setAccountId(
-                        e.target.value ? Number(e.target.value) : "",
-                      )
-                    }
-                    data-testid="campaign-account"
-                  >
-                    <option value="">Any account</option>
-                    {accounts.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block min-w-[8rem] text-xs font-medium text-[var(--color-label-secondary)]">
-                  Starting capital
-                  <input
-                    type="number"
-                    min={0}
-                    step={1000}
-                    value={capital}
-                    onChange={(e) => setCapital(e.target.value)}
-                    placeholder="Optional"
-                    className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm tabular-nums"
-                    data-testid="campaign-capital"
-                  />
-                </label>
+            <div
+              className="surface-card border border-[var(--color-separator)] p-4 sm:p-5"
+              data-testid="campaign-create"
+            >
+              <div className="mb-3 flex flex-wrap gap-2">
+                {CAMPAIGN_FRAMES.map((f) => {
+                  const on = frameId === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() =>
+                        on ? setFrameId(null) : applyFrame(f.id)
+                      }
+                      className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                        on
+                          ? "border-[var(--color-tint)] bg-[var(--color-tint)]/15 text-[var(--color-tint)]"
+                          : "border-[var(--color-separator)] text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  );
+                })}
               </div>
               <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                Goals
-                <textarea
-                  value={goals}
-                  onChange={(e) => setGoals(e.target.value)}
-                  rows={2}
-                  placeholder="Optional — what this campaign is for"
+                Title
+                <input
                   className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
-                  data-testid="campaign-goals"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Campaign name"
+                  data-testid="campaign-title-input"
+                  autoFocus
                 />
               </label>
-              <div className="flex flex-wrap gap-2">
+              <label className="mt-3 block text-xs font-medium text-[var(--color-label-secondary)]">
+                Trade account
+                <select
+                  className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm"
+                  value={accountId === "" ? "" : String(accountId)}
+                  onChange={(e) =>
+                    setAccountId(e.target.value ? Number(e.target.value) : "")
+                  }
+                  data-testid="campaign-account"
+                >
+                  <option value="">Any account</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="mt-3 flex items-center gap-2 text-xs text-[var(--color-label-secondary)]">
+                <input
+                  type="checkbox"
+                  checked={asDefault}
+                  disabled={accountId === ""}
+                  onChange={(e) => setAsDefault(e.target.checked)}
+                  data-testid="campaign-as-default"
+                />
+                Use as default for this account
+              </label>
+              <div className="mt-4 flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="primary"
                   disabled={busy || !title.trim()}
-                  onClick={() => void startCampaign()}
+                  onClick={() => void createAndOpen()}
                   data-testid="campaign-start"
                 >
-                  Activate
+                  {busy ? "Creating…" : "Open campaign"}
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
+                  disabled={busy}
                   onClick={() => {
                     setCreating(false);
                     setTitle("");
-                    setAccountId("");
-                    setCapital("");
                     setGoals("");
+                    setFrameId(null);
+                    setAsDefault(false);
+                    setAccountId("");
                   }}
                 >
                   Cancel
@@ -210,87 +249,182 @@ export default function PracticeCampaignPage() {
             </div>
           )}
 
-          {error && (
-            <p className="text-sm text-red-600" role="alert">
-              {error}
-            </p>
-          )}
-
           {loading && (
             <p className="text-sm text-[var(--color-label-tertiary)]">
               Loading…
             </p>
           )}
 
-          {!loading && campaigns.length === 0 && (
-            <p className="text-sm text-[var(--color-label-tertiary)]">
-              No campaigns yet.
-            </p>
-          )}
-
+          {/* Open / Archive — status is sole authority (spec §4.5.5) */}
           {!loading && campaigns.length > 0 && (
-            <ul className="divide-y divide-[var(--color-separator)] rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)]">
-              {campaigns.map((c) => {
-                const isActive = c.status === "active";
+            <div
+              className="inline-flex rounded-full bg-[var(--color-fill)] p-0.5"
+              role="group"
+              aria-label="Campaign library view"
+              data-testid="campaign-open-archive"
+            >
+              {(
+                [
+                  { id: "open" as const, label: "Open" },
+                  { id: "archive" as const, label: "Archive" },
+                ] as const
+              ).map((v) => {
+                const on = libraryView === v.id;
                 return (
-                  <li
-                    key={c.id}
-                    className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
-                    data-testid={`campaign-row-${c.id}`}
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => setLibraryView(v.id)}
+                    className={
+                      on
+                        ? "rounded-full bg-[var(--color-surface)] px-3.5 py-1.5 text-sm font-medium text-[var(--color-label)] shadow-sm"
+                        : "rounded-full px-3.5 py-1.5 text-sm font-medium text-[var(--color-label-secondary)] hover:text-[var(--color-label)]"
+                    }
+                    aria-pressed={on}
                   >
-                    <div className="min-w-0">
-                      <p className="font-medium text-[var(--color-label)]">
-                        {c.title}
-                        {isActive ? (
-                          <span className="ml-2 rounded-full bg-[var(--color-tint)] px-2 py-0.5 text-[10px] font-semibold uppercase text-[var(--color-on-tint)]">
-                            active
-                          </span>
-                        ) : (
-                          <span className="ml-2 text-[10px] font-semibold uppercase text-[var(--color-label-tertiary)]">
-                            {c.status}
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-0.5 text-xs text-[var(--color-label-tertiary)]">
-                        {accountLabel(c.account_id)}
-                        {c.starting_capital != null
-                          ? ` · capital $${Number(c.starting_capital).toLocaleString()}`
-                          : ""}
-                      </p>
-                      {c.goals_md ? (
-                        <p className="mt-1 max-w-xl text-xs text-[var(--color-label-secondary)]">
-                          {c.goals_md}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {!isActive && (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className="text-xs font-medium text-[var(--color-tint)] hover:underline disabled:opacity-50"
-                          onClick={() => void setStatus(c, "active")}
-                        >
-                          Activate
-                        </button>
-                      )}
-                      {isActive && (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className="text-xs font-medium text-[var(--color-tint)] hover:underline disabled:opacity-50"
-                          onClick={() => void setStatus(c, "completed")}
-                          data-testid="campaign-complete"
-                        >
-                          Complete
-                        </button>
-                      )}
-                    </div>
-                  </li>
+                    {v.label}
+                  </button>
                 );
               })}
-            </ul>
+            </div>
           )}
+
+          {!loading &&
+            !creating &&
+            campaigns.length === 0 && (
+              <div
+                className="surface-card border border-[var(--color-separator)] px-5 py-8 text-center"
+                data-testid="campaign-empty-offer"
+              >
+                <p className="font-semibold text-[var(--color-label)]">
+                  No campaigns yet
+                </p>
+                <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-label-secondary)]">
+                  Optional charter for a season of practice. One deliberate tap —
+                  you sign when you activate.
+                </p>
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => setCreating(true)}
+                    data-testid="campaign-empty-start"
+                  >
+                    Start your default
+                  </Button>
+                </div>
+              </div>
+            )}
+
+          <ul
+            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            data-testid="campaign-library"
+          >
+            {campaigns
+              .filter((c) =>
+                libraryView === "open"
+                  ? c.status === "active" || c.status === "planned"
+                  : c.status === "completed" || c.status === "abandoned",
+              )
+              .map((c) => (
+              <li key={c.id}>
+                <article
+                  className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-4 transition hover:border-[var(--color-tint)]"
+                  data-testid={`campaign-row-${c.id}`}
+                >
+                  <div
+                    className="mb-3"
+                    onClick={(ev) => ev.stopPropagation()}
+                    onKeyDown={(ev) => ev.stopPropagation()}
+                  >
+                    <CampaignCover
+                      campaignId={c.id}
+                      hasCover={!!c.has_cover}
+                      coverUrl={c.cover_url}
+                      disabled={busy}
+                      onChange={(updated) => {
+                        setCampaigns((prev) =>
+                          prev.map((row) =>
+                            row.id === updated.id
+                              ? { ...row, ...updated }
+                              : row,
+                          ),
+                        );
+                      }}
+                    />
+                  </div>
+                  <Link
+                    href={`/app/practice/campaign/${c.id}`}
+                    className="flex flex-1 flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
+                  >
+                    <h3 className="font-semibold text-[var(--color-label)]">
+                      {c.title}
+                    </h3>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-[var(--color-tint-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label)]">
+                        {statusLabel(c)}
+                      </span>
+                      {c.cycle_number != null && c.cycle_number > 1 && (
+                        <span
+                          className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]"
+                          data-testid="campaign-cycle-chip"
+                        >
+                          Cycle {c.cycle_number}
+                        </span>
+                      )}
+                      {c.is_default && (
+                        <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
+                          Default · {accountLabel(c.account_id)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--color-label-tertiary)]">
+                      {accountLabel(c.account_id)}
+                    </p>
+                    {c.goals_md ? (
+                      <p className="mt-2 line-clamp-3 text-xs text-[var(--color-label-tertiary)]">
+                        {c.goals_md}
+                      </p>
+                    ) : null}
+                  </Link>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[var(--color-separator)] pt-3">
+                    <Link
+                      href={`/app/practice/campaign/${c.id}`}
+                      className="text-xs font-medium text-[var(--color-tint)] hover:underline"
+                      data-testid="campaign-edit"
+                    >
+                      {libraryView === "archive" ? "View" : "Open"}
+                    </Link>
+                    {libraryView === "archive" && (
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-[var(--color-label-secondary)] hover:underline disabled:opacity-50"
+                        disabled={busy}
+                        onClick={() => void renewFromArchive(c)}
+                        data-testid="campaign-library-renew"
+                      >
+                        Renew
+                      </button>
+                    )}
+                  </div>
+                </article>
+              </li>
+            ))}
+          </ul>
+
+          {!loading &&
+            campaigns.length > 0 &&
+            libraryView === "archive" &&
+            campaigns.every(
+              (c) => c.status !== "completed" && c.status !== "abandoned",
+            ) && (
+              <p
+                className="text-center text-sm text-[var(--color-label-tertiary)]"
+                data-testid="campaign-archive-empty"
+              >
+                No archived campaigns yet.
+              </p>
+            )}
         </div>
       </PracticeSuiteChrome>
     </main>

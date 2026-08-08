@@ -316,8 +316,10 @@ export default function TradeSheet({
   const [error, setError] = useState<string | null>(null);
   const [createContinueNew, setCreateContinueNew] = useState(false);
   const [playbooks, setPlaybooks] = useState<PlaybookEntry[]>([]);
-  const [activeCampaign, setActiveCampaign] =
-    useState<PracticeCampaign | null>(null);
+  /** Active (and current-stamp) campaigns for the sheet account — multi-active §4.7. */
+  const [campaignChoices, setCampaignChoices] = useState<PracticeCampaign[]>(
+    [],
+  );
   const [playbookEntryId, setPlaybookEntryId] = useState<number | "">("");
   const [practiceCampaignId, setPracticeCampaignId] = useState<
     number | ""
@@ -357,6 +359,44 @@ export default function TradeSheet({
     mode === "close" ||
     (mode === "edit" && trade && isManualEntry(trade));
 
+  /** Load campaign picker options for account scope (Member Campaign Spec §4.7). */
+  async function loadCampaignChoices(
+    accountId: number | null | undefined,
+    opts: {
+      prefillCreate: boolean;
+      keepCampaignId?: number | null;
+    },
+  ) {
+    try {
+      const camps = await fetchCampaigns(
+        accountId != null && accountId > 0 ? { accountId } : undefined,
+      );
+      const actives =
+        camps.actives && camps.actives.length > 0
+          ? camps.actives
+          : camps.active
+            ? [camps.active]
+            : [];
+      let choices = [...actives];
+      const keep = opts.keepCampaignId;
+      if (keep != null && keep > 0 && !choices.some((c) => c.id === keep)) {
+        const found = (camps.campaigns || []).find((c) => c.id === keep);
+        if (found) choices = [...choices, found];
+      }
+      setCampaignChoices(choices);
+      if (opts.prefillCreate) {
+        // Prefer account default campaign — unstamped fills live there.
+        const book =
+          actives.find((c) => c.is_default) ||
+          (camps.campaigns || []).find((c) => c.is_default);
+        setPracticeCampaignId(book?.id ?? camps.active?.id ?? "");
+      }
+    } catch {
+      setCampaignChoices([]);
+      if (opts.prefillCreate) setPracticeCampaignId("");
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
     setError(null);
@@ -371,34 +411,9 @@ export default function TradeSheet({
     setAllowAccountMismatch(false);
     setAllowPartialUnits(false);
     setAllowDrift(false);
-    void (async () => {
-      try {
-        const [pb, camps] = await Promise.all([
-          fetchPlaybookEntries(false),
-          fetchCampaigns(),
-        ]);
-        setPlaybooks(pb.entries || []);
-        setActiveCampaign(camps.active);
-        if (mode === "edit" && trade) {
-          const t = trade as Trade & {
-            playbook_entry_id?: number | null;
-            practice_campaign_id?: number | null;
-          };
-          setPlaybookEntryId(t.playbook_entry_id ?? "");
-          setPracticeCampaignId(t.practice_campaign_id ?? "");
-        } else if (mode === "create") {
-          setPlaybookEntryId("");
-          setPracticeCampaignId(camps.active?.id ?? "");
-        } else {
-          setPlaybookEntryId("");
-          setPracticeCampaignId("");
-        }
-      } catch {
-        setPlaybooks([]);
-        setActiveCampaign(null);
-      }
-    })();
     const last = loadTradeLogLastUsed();
+    let scopeAccountId: number | null | undefined = defaultAccountId ?? null;
+
     if (mode === "edit" && trade) {
       setForm(fromTrade(trade));
       setEntryUi(
@@ -406,6 +421,7 @@ export default function TradeSheet({
           ? "structure"
           : "legs",
       );
+      scopeAccountId = trade.account_id;
     } else if (mode === "close" && trade) {
       setForm(formFromCloseDraft(trade, defaultAccountId ?? ""));
       setEntryUi(
@@ -413,6 +429,7 @@ export default function TradeSheet({
           ? "structure"
           : "legs",
       );
+      scopeAccountId = trade.account_id ?? defaultAccountId ?? null;
     } else {
       type DupT = {
         strategy?: string;
@@ -460,7 +477,42 @@ export default function TradeSheet({
         setEntryUi(defaultEntryUi(f.strategy));
       }
       setForm(f);
+      scopeAccountId =
+        typeof f.account_id === "number" ? f.account_id : defaultAccountId ?? null;
     }
+
+    void (async () => {
+      try {
+        const pb = await fetchPlaybookEntries(false);
+        setPlaybooks(pb.entries || []);
+      } catch {
+        setPlaybooks([]);
+      }
+      if (mode === "edit" && trade) {
+        const t = trade as Trade & {
+          playbook_entry_id?: number | null;
+          practice_campaign_id?: number | null;
+        };
+        setPlaybookEntryId(t.playbook_entry_id ?? "");
+        setPracticeCampaignId(t.practice_campaign_id ?? "");
+        await loadCampaignChoices(scopeAccountId, {
+          prefillCreate: false,
+          keepCampaignId: t.practice_campaign_id,
+        });
+      } else if (mode === "create") {
+        setPlaybookEntryId("");
+        await loadCampaignChoices(scopeAccountId, { prefillCreate: true });
+      } else {
+        // close mode — stamp not edited here, but show context if present
+        setPlaybookEntryId("");
+        setPracticeCampaignId("");
+        await loadCampaignChoices(scopeAccountId, {
+          prefillCreate: false,
+          keepCampaignId: (trade as Trade & { practice_campaign_id?: number | null })
+            ?.practice_campaign_id,
+        });
+      }
+    })();
   }, [open, mode, trade, defaultAccountId, accounts]);
 
   const selectedAccount = accounts.find(
@@ -1267,12 +1319,22 @@ export default function TradeSheet({
                 <select
                   className={field}
                   value={form.account_id}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const next = e.target.value
+                      ? Number(e.target.value)
+                      : ("" as const);
                     setForm((f) => ({
                       ...f,
-                      account_id: e.target.value ? Number(e.target.value) : "",
-                    }))
-                  }
+                      account_id: next,
+                    }));
+                    // Re-scope campaign list + prefill when book account changes (create)
+                    if (mode === "create") {
+                      void loadCampaignChoices(
+                        next === "" ? null : next,
+                        { prefillCreate: true },
+                      );
+                    }
+                  }}
                 >
                   <option value="">Select…</option>
                   {accounts
@@ -1896,7 +1958,7 @@ export default function TradeSheet({
                       />
                     </label>
                     <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Practice season
+                      Campaign
                       <select
                         className={field}
                         value={
@@ -1913,16 +1975,22 @@ export default function TradeSheet({
                         }
                         data-testid="trade-campaign-select"
                       >
-                        <option value="">None</option>
-                        {activeCampaign && (
-                          <option value={String(activeCampaign.id)}>
-                            {activeCampaign.title} (active)
+                        {/* Empty = server lands in account default campaign */}
+                        <option value="">Account default</option>
+                        {campaignChoices.map((c) => (
+                          <option key={c.id} value={String(c.id)}>
+                            {c.title}
+                            {c.is_default ? " · default" : ""}
+                            {c.status === "active" && !c.is_default
+                              ? " (active)"
+                              : ""}
+                            {c.account_id == null ? " · any account" : ""}
                           </option>
-                        )}
+                        ))}
                       </select>
                     </label>
                     <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                      Playbook entry
+                      Playbook
                       <select
                         className={field}
                         value={
@@ -1937,7 +2005,7 @@ export default function TradeSheet({
                         }
                         data-testid="trade-playbook-select"
                       >
-                        <option value="">None</option>
+                        <option value="">Unaffiliated</option>
                         {playbooks.map((p) => (
                           <option key={p.id} value={String(p.id)}>
                             {p.title}

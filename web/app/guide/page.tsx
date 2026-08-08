@@ -6,7 +6,8 @@ import {
 } from "@/components/guide/GuideOutline";
 import { siteUrl } from "@/lib/catalog";
 
-// The member-facing User's Guide: every claim here mirrors shipped behavior.
+// The member-facing User's Guide: process doctrine + product model.
+// Keep aligned with Practice-Charter-Day-Implementation-Plan and as-built after each PR.
 // Static, indexable — help content doubles as answer-engine content.
 // Layout: HIG help pattern — sticky hierarchical outline + article column.
 export const dynamic = "force-static";
@@ -14,8 +15,8 @@ export const dynamic = "force-static";
 export const metadata: Metadata = {
   title: "User's Guide",
   description:
-    "How FatTail Labs works: courses, Practice (Trade Log, Journal, Retrospective, Reports), " +
-    "Journey, Toughness, Wiki, live sessions, resources, and membership. Process over P&L theater.",
+    "How FatTail Labs works: courses, Practice (daily protocol, Trade Log, Journal, Campaign), " +
+    "Journey Process Flow, Toughness, Wiki, live sessions, resources, and membership. Process over P&L theater.",
   alternates: { canonical: siteUrl("/guide") },
 };
 
@@ -98,8 +99,16 @@ export default function GuidePage() {
                 reflection.
               </li>
               <li>
+                <strong>Trade Log</strong> — fills as process evidence, not a
+                P&amp;L scoreboard.
+              </li>
+              <li>
                 <strong>Retrospective</strong> — weekly honesty: what was hard,
                 what caused it, what replacement habit you install next.
+              </li>
+              <li>
+                <strong>Journey</strong> — Process Flow map of practice pillars
+                (process standing, not profit ranking).
               </li>
               <li>
                 <strong>Toughness</strong> — capacity in body, mind, and spirit
@@ -218,12 +227,12 @@ export default function GuidePage() {
             </p>
             <ul>
               <li>
-                <strong>Practice</strong> — Trade Log, Reports, Journal,
-                Retrospective (and Playbook when it ships).
+                <strong>Practice</strong> — Trade Log, Journal, Reports,
+                Retrospective, Playbook, optional Campaign.
               </li>
               <li>
-                <strong>Journey</strong> — path + Process Flow (the flow state of
-                your trading process) across the Lab.
+                <strong>Journey</strong> — Process Flow compass + learning path
+                (process standing, not profit ranking).
               </li>
               <li>
                 <strong>Toughness</strong> — optional Hard programs; can feed
@@ -233,8 +242,8 @@ export default function GuidePage() {
                 <strong>Wiki</strong> — the growing map of what we teach.
               </li>
               <li>
-                <strong>Strategy Lab</strong> — coming: build, test, and run
-                strategies with process gates.
+                <strong>Strategy Lab</strong> — build, curate, Deploy strategies
+                (automated); separate from Practice Campaigns.
               </li>
             </ul>
 
@@ -243,21 +252,16 @@ export default function GuidePage() {
               <Link href="/app/practice" className={link}>
                 Practice
               </Link>{" "}
-              is your day-to-day operating loop. The suite opens on{" "}
-              <strong>Reports</strong>; a shared nav moves you between Trade Log,
-              Reports, Journal, Retrospective, and Playbook without losing your
-              place.
-            </p>
-            <p>
-              <strong>Practice Context</strong> sits in the top chrome of every
-              Practice app:
+              is the human trading desk: Trade Log, Reports, Journal,
+              Retrospective, Playbook, and optional Campaign. Shared nav keeps
+              your place; <strong>Practice Context</strong> (account + date)
+              sits in the chrome of every Practice app.
             </p>
             <ul>
               <li>
                 <strong>Account</strong> — which book you&apos;re looking at
-                (broker or sim). Trades and reports follow this account. Your
-                Journal conversation is still <em>you</em>, not a separate
-                journal per account.
+                (broker or sim). Trades and reports follow this account. Journal
+                is still <em>you</em>, not a separate journal per account.
               </li>
               <li>
                 <strong>Date</strong> — year / month / week / day. Journal uses
@@ -265,36 +269,55 @@ export default function GuidePage() {
                 analysis window.
               </li>
             </ul>
+            <p>
+              Use Journal and Trade Log together for plan, execute, and review —
+              process-first: clean execution matters even when a stop is hit;
+              P&amp;L is not self-worth. Campaign is an optional charter wrapper,
+              never required.
+            </p>
 
             <H2 id="trade-log">Trade Log</H2>
             <p>
               <Link href="/app/trade-log" className={link}>
                 Trade Log
               </Link>{" "}
-              is your options-first blotter — multi-leg fills and structure,
-              recorded as process evidence.
+              is your options-first blotter — multi-leg fills and structure as
+              process evidence.
             </p>
             <ul>
               <li>
-                <strong>Table-first:</strong> a permanent log of trades; open any
-                row in a right-hand sheet to create, edit, or review.
+                <strong>Table-first:</strong> permanent log; right sheet to
+                create, edit, or review.
               </li>
               <li>
-                <strong>Accounts:</strong> more than one book; the active account
-                comes from Practice Context.
+                <strong>Accounts:</strong> more than one book; active account
+                from Practice Context.
               </li>
               <li>
-                <strong>Import &amp; export:</strong> bring fills in and take a
-                portable copy of your book when you need it.
+                <strong>Import &amp; export:</strong> bring fills in (optional
+                default book campaign or another campaign) and export a portable
+                copy.
+              </li>
+              <li>
+                <strong>Optional campaign stamp:</strong> link a fill to a
+                Campaign when you want; unstamped is always valid.
               </li>
               <li>
                 <strong>Framing:</strong> process and structure first — not a
-                theater of profits.
+                theater of profits. Adherence tags feed Journey’s process map —
+                not a grade for money made.
               </li>
               <li>
-                <strong>Living book:</strong> log when the experience happens
-                (or when fills land), not only as end-of-day bookkeeping. Pair
-                each meaningful trade day with Journal turns on the same date.
+                <strong>Campaign / playbook filters:</strong>{" "}
+                <em>All</em> means every trade. Each trade account has at most
+                one <em>default</em> campaign (import + new-fill home); pick that
+                default to see its stamps plus unstamped fills on that account.
+                Playbook filter default is <em>Unaffiliated</em> (no playbook
+                link). Named campaigns/playbooks narrow to exact stamps.
+              </li>
+              <li>
+                <strong>Living book:</strong> log when experience happens; pair
+                meaningful days with Journal on the same date.
               </li>
             </ul>
 
@@ -303,12 +326,11 @@ export default function GuidePage() {
               <Link href="/app/journal" className={link}>
                 Journal
               </Link>{" "}
-              is <strong>not</strong> an end-of-day chore. It is a calendar-first
-              conversation for each day: you write{" "}
+              is <strong>not</strong> an end-of-day chore. Calendar-first
+              conversation for each day: write{" "}
               <strong>with every experience</strong> — pre-market analysis,
               mid-session decisions, trade moments, and a post-market exhale.
-              One thread per date; every message is timestamped so the record
-              stays honest when you review.
+              One thread per date; every message is timestamped.
             </p>
             <ul>
               <li>
@@ -326,18 +348,18 @@ export default function GuidePage() {
                 the day.
               </li>
               <li>
+                <strong>Soft beats</strong> — optional Hypothesis and Reflection
+                scaffolds on an empty day (IF/THEN, variance capture). They never
+                block freeform writing. End-of-day records variance; it does not
+                rewrite today&apos;s plan (weekly pivot is for structural change).
+              </li>
+              <li>
                 <strong>Tags</strong> — label what happened so later
                 retrospectives and Process Flow stay honest.
               </li>
               <li>
                 <strong>Trades on this day</strong> — from the active account
                 (Trade Log holds structure; Journal holds mind).
-              </li>
-              <li>
-                <strong>Day-start routine</strong> — product direction: a gentle
-                notification when you start the day to open Journal for
-                pre-market (process language only; never shame). Until that
-                ships, set your own prep alarm.
               </li>
               <li>
                 <strong>Retrospective</strong> uses this living thread —
@@ -350,11 +372,10 @@ export default function GuidePage() {
               <Link href="/app/retrospective" className={link}>
                 Retrospective
               </Link>{" "}
-              is the structured review: what was hard, what got in the way, what
-              can change, and the{" "}
-              <strong>one checkable habit</strong> you install next — not a P&amp;L
-              scorecard. Process first; results are secondary, never the headline
-              as a brag.
+              is the structured weekly review: what was hard, what got in the
+              way, what can change, and the{" "}
+              <strong>one checkable habit</strong> you install next — not a
+              P&amp;L scorecard.
             </p>
             <ul>
               <li>
@@ -362,16 +383,15 @@ export default function GuidePage() {
               </li>
               <li>
                 <strong>Scope</strong> — from last review (or your maiden
-                journey) so you know what the ceremony will gather.
+                journey).
               </li>
               <li>
-                <strong>Ceremony</strong> — fixed steps: commitments, practice,
-                obstacles, cause you name, what worked, one replacement habit.
+                <strong>Ceremony</strong> — commitments, practice, obstacles,
+                cause you name, what worked, one replacement habit.
               </li>
               <li>
-                <strong>Gaps</strong> — if a first-class habit never showed up in
-                the Journal, the retro is where that becomes visible — and where
-                you engineer the next habit.
+                <strong>Gaps</strong> — habits that never showed up in Journal
+                become visible here.
               </li>
               <li>
                 <strong>Cadence</strong> — gentle nudges when a review is due,
@@ -384,96 +404,124 @@ export default function GuidePage() {
               <Link href="/app/reports" className={link}>
                 Reports
               </Link>{" "}
-              is the Practice home view: how the selected account’s path evolved,
-              drawdown, and process-oriented tables built from Trade Log.
+              is objective book aggregate from Trade Log: path, drawdown, and
+              tables for the selected account — capital path risk, not a trophy.
+              Process repair lives in Trade Log, Journal, and Playbook, not as a
+              scoreboard on Reports.
             </p>
             <ul>
               <li>
-                Equity-style path from starting capital and{" "}
-                <strong>drawdown</strong> — capital path risk, not a trophy.
-              </li>
-              <li>
-                <strong>Same account context</strong> as Trade Log.
+                Equity-style path and <strong>drawdown</strong> for the active
+                account.
               </li>
               <li>
                 Drill into fills when you need the blotter behind a number.
               </li>
             </ul>
 
-            <H2 id="playbook">Playbook (coming)</H2>
+            <H2 id="playbook">Playbook</H2>
             <p>
               <Link href="/app/playbook" className={link}>
                 Playbook
               </Link>{" "}
-              will hold your personal defined-risk setups and rules — the book
-              you actually trade from — so capacity stays with you. Until it
-              ships, keep rules in Journal and structures in Trade Log.
+              is who you are under risk — the rules and setups you will not
+              break. Keep capacity with you; pair with Journal and Trade Log.
             </p>
+
+            <H2 id="campaign">Campaigns</H2>
+            <p>
+              <Link href="/app/practice/campaign" className={link}>
+                Campaigns
+              </Link>{" "}
+              is an <strong>optional charter</strong> for practice context —
+              capital, goals, multi-active campaigns, optional account default
+              for import. It is <strong>never required</strong> to log trades,
+              journal, or show Process Flow standing. The day stays the atom:
+              Hypothesis → Experiment → Reflection.
+            </p>
+            <ul>
+              <li>
+                Library has <strong>Open</strong> and <strong>Archive</strong>{" "}
+                views (completed and ended-early seasons). The Lab archives
+                strategies; Practice archives seasons.
+              </li>
+              <li>
+                Lifecycle: <strong>Active</strong> (in force),{" "}
+                <strong>Pause</strong> / <strong>Resume</strong> (reversible),{" "}
+                <strong>Complete</strong> (finished on terms),{" "}
+                <strong>End campaign</strong> (early close, incomplete — not
+                Pause). First activate <strong>signs</strong> the charter;
+                mid-season edits are dated amendments (no judgment chrome).
+                Closed seasons can <strong>Renew</strong> into a new draft cycle
+                with lineage.
+              </li>
+              <li>
+                Optional <strong>starting frames</strong> pre-draft goals only —
+                skip anytime; title + activate is enough.
+              </li>
+              <li>
+                Optional account scope, starting capital, start/end dates, and
+                charter text; open a campaign for full edit; stamp trades when
+                you choose.
+              </li>
+              <li>
+                Import can target an account default campaign or another
+                campaign — unstamped fills stay valid.
+              </li>
+              <li>
+                Not a daily checklist and not a profit plan. Creating a campaign
+                does not boost Journey standing. Cycle count and amendments
+                never feed Journey meters.
+              </li>
+            </ul>
 
             <H2 id="journey">Journey</H2>
             <p>
               <Link href="/app/journey" className={link}>
                 Journey
               </Link>{" "}
-              is where you keep close track of <strong>practice and progress</strong>{" "}
-              across the whole Lab — not a second login, not a separate product.
+              is where you keep close track of{" "}
+              <strong>practice and progress</strong> across the Lab — process
+              standing, not a second login.
             </p>
             <p>
-              <strong>On the page you will find:</strong>
+              <strong>Process Flow (the compass)</strong> is a map of practice
+              pillars (routine, learning, live presence, persistence, adherence,
+              retrospectives, and toughness when enrolled). Alignment, not a test
+              score and never a profit ranking. Grades respect tenure; new
+              members are not labeled “Poor” for starting.{" "}
+              <strong>P&amp;L never draws the path.</strong> A time-path scrub
+              lets you look back across practice start → today as the shape of
+              the map updates; click the path or drag the slider (bidirectional).
             </p>
-            <ul>
-              <li>
-                <strong>Process Flow</strong> — the flow state of your trading
-                process: a state of being, not a test score. Long-term habits
-                (learning rhythm, live presence, practice persistence, adherence,
-                and more), with recent weeks weighted more heavily. Grades
-                respect how long you&apos;ve been practicing; new members are not
-                labeled “Poor” for starting.
-              </li>
-              <li>
-                <strong>Community presence</strong> — an opt-in board of process
-                peers (participation pillars only — never profit ranking). You
-                choose visibility on Profile.
-              </li>
-              <li>
-                <strong>Learning path</strong> — enrollments, resume into the next
-                lesson, quiz results, and activity.
-              </li>
-              <li>
-                <strong>Pathway &amp; next live</strong> — what to do next in
-                curriculum and calendar.
-              </li>
-            </ul>
             <p>
-              <strong>How Journey stays integral everywhere:</strong>
+              <strong>Review your own evidence:</strong> each metered pillar
+              links to the place that evidence lives (Trade Log, Journal,
+              Retrospective, live schedule, Toughness when enrolled).{" "}
+              <strong>Adhere</strong> deep-links into Trade Log with a temporary
+              locate view (trades that are <em>not</em> followed and <em>not</em>{" "}
+              partial in the adherence window). Clear returns to the full blotter
+              — there is no standing process filter on Trade Log. Partial credit
+              stays in the meter good set.
             </p>
-            <ul>
-              <li>
-                <strong>Courses</strong> feed enrollments, watch progress, and
-                quizzes.
-              </li>
-              <li>
-                <strong>Live sessions</strong> feed attendance / presence when you
-                check in.
-              </li>
-              <li>
-                <strong>Practice</strong> (Trade Log, Journal, Retrospective)
-                feeds Process Flow — consistency of practice, not who made money
-                this week.
-              </li>
-              <li>
-                <strong>Toughness</strong> adds a Mental Toughness reading only
-                when you have an active Hard challenge (see below).
-              </li>
-              <li>
-                <strong>Home</strong> after login surfaces continue-learning and a
-                compact standing read; <strong>Profile</strong> controls how you
-                appear on the community board.
-              </li>
-            </ul>
             <p>
-              In short: Journey is the honest dashboard for “am I doing the work?”
-              — process over pace, capacity over dependency.
+              When the time path shows a recovery toward a healthy heading, a
+              quiet line may invite plan-accessible next steps (Journal,
+              Retrospective, Trade Log). You can dismiss that invite; the
+              preference is stored on your profile (not only this browser). No
+              unlocks, badges, or score-gated content.
+            </p>
+            <p>
+              <strong>Also on Journey:</strong> community presence (opt-in,
+              never profit ranking), learning path, pathway and next live.
+              Courses, live check-in, Practice (Trade Log, Journal,
+              Retrospective), and Toughness (when enrolled) feed Process Flow.
+              Creating a Campaign is <strong>not</strong> required for standing.
+            </p>
+            <p>
+              In short: Journey answers “am I doing the work?” — process over
+              pace, capacity over dependency — not a fix prescription and not
+              unlocks for scores.
             </p>
 
             <H2 id="toughness">Toughness</H2>

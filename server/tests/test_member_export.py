@@ -55,10 +55,19 @@ def _cleanup(iid: int) -> None:
                     (iid,),
                 ),
                 (
+                    "DELETE FROM member_practice_campaign_amendments WHERE identity_id = %s",
+                    (iid,),
+                ),
+                (
                     """DELETE FROM member_practice_campaign_playbooks
                        WHERE campaign_id IN (
                          SELECT id FROM member_practice_campaigns WHERE identity_id = %s
                        )""",
+                    (iid,),
+                ),
+                (
+                    "UPDATE member_practice_campaigns SET predecessor_campaign_id = NULL "
+                    "WHERE identity_id = %s",
                     (iid,),
                 ),
                 (
@@ -882,5 +891,88 @@ def test_playbook_campaign_spine_export_round_trip(client):
         assert campaign["export_key"] in {
             e["id"] for e in pack2["documents"]["practice_campaign"]["entries"]
         }
+    finally:
+        _cleanup(iid)
+
+
+def test_campaign_lifecycle_pack_round_trip(client):
+    """X1: export signed_terms + amendments + predecessor → purge → import (model 1.2)."""
+    iid = _make_member("zztest-export-lifecycle@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        root = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "Cycle Root",
+                "activate": True,
+                "starting_capital": 8000,
+                "goals_md": "Preserve",
+            },
+        ).json()["campaign"]
+        # amend charter
+        client.patch(
+            f"/api/me/practice/campaigns/{root['id']}",
+            cookies=cookies,
+            json={"starting_capital": 9000, "goals_md": "Preserve carefully"},
+        )
+        client.patch(
+            f"/api/me/practice/campaigns/{root['id']}",
+            cookies=cookies,
+            json={"status": "completed"},
+        )
+        successor = client.post(
+            f"/api/me/practice/campaigns/{root['id']}/renew",
+            cookies=cookies,
+        ).json()["campaign"]
+        assert successor.get("predecessor_campaign_id") == root["id"]
+
+        pack = client.get("/api/me/export?format=json", cookies=cookies).json()
+        camp_doc = pack["documents"]["practice_campaign"]
+        assert camp_doc["model_version"] == "1.2"
+        by_key = {e["id"]: e for e in camp_doc["entries"]}
+        root_e = by_key[root["export_key"]]
+        succ_e = by_key[successor["export_key"]]
+        assert root_e.get("signed_at")
+        assert isinstance(root_e.get("signed_terms"), dict)
+        assert float(root_e["signed_terms"].get("starting_capital")) == 8000.0
+        amends = root_e.get("amendments") or []
+        assert any(a.get("field") == "starting_capital" for a in amends)
+        assert succ_e.get("predecessor_export_key") == root_e["id"]
+        # Draft successor is unsigned
+        assert succ_e.get("signed_at") is None
+
+        client.post(
+            "/api/me/practice-data/purge",
+            cookies=cookies,
+            json={"confirm": "DELETE_PRACTICE_DATA"},
+        )
+        commit = client.post(
+            "/api/me/import/commit",
+            cookies=cookies,
+            json={"text": json.dumps(pack), "policy": "additive"},
+        )
+        assert commit.status_code == 200, commit.text
+        assert commit.json()["results"]["practice_campaign"]["counts"]["new"] >= 2
+
+        pack2 = client.get("/api/me/export?format=json", cookies=cookies).json()
+        camp2 = pack2["documents"]["practice_campaign"]
+        by2 = {e["id"]: e for e in camp2["entries"]}
+        r2 = by2[root["export_key"]]
+        s2 = by2[successor["export_key"]]
+        assert r2.get("signed_at")
+        assert float(r2["signed_terms"]["starting_capital"]) == 8000.0
+        assert any(
+            a.get("field") == "starting_capital" for a in (r2.get("amendments") or [])
+        )
+        assert s2.get("predecessor_export_key") == r2["id"]
+
+        # API lineage restored
+        listed = client.get("/api/me/practice/campaigns", cookies=cookies).json()
+        by_export = {c["export_key"]: c for c in listed["campaigns"]}
+        root_row = by_export[root["export_key"]]
+        succ_row = by_export[successor["export_key"]]
+        assert succ_row.get("predecessor_campaign_id") == root_row["id"]
+        assert succ_row.get("cycle_number") == 2
     finally:
         _cleanup(iid)

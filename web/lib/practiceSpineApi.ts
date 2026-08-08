@@ -84,10 +84,41 @@ export type PracticeCampaign = {
   ends_at?: string | null;
   starting_capital?: number | null;
   goals_md?: string;
+  /** Account default (import + stamp prefill). */
+  is_default?: boolean;
+  has_cover?: boolean;
+  cover_url?: string | null;
+  /** Set when status enters active; used for §4.7 prefill ordering. */
+  activated_at?: string | null;
+  /** First real activation — immutable terms clock (§4.5). */
+  signed_at?: string | null;
+  /** Immutable charter snapshot at signature (or backfilled terms). */
+  signed_terms?: Record<string, unknown> | null;
+  /** True when signed_terms came from migration, not a live sign. */
+  signed_terms_backfilled?: boolean;
+  predecessor_campaign_id?: number | null;
+  /** Derived cycle depth (1 = root). */
+  cycle_number?: number | null;
+  predecessor?: {
+    id: number;
+    title: string;
+    status: string;
+  } | null;
   playbook_entry_ids: number[];
   export_key?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+};
+
+export type CampaignAmendment = {
+  id: number;
+  campaign_id: number;
+  amended_at?: string | null;
+  field: string;
+  old_value?: string | null;
+  new_value?: string | null;
+  note_md?: string;
+  export_key?: string | null;
 };
 
 async function parse<T>(r: Response): Promise<T> {
@@ -472,6 +503,14 @@ export async function fetchCampaigns(opts?: {
   return parse(r);
 }
 
+export async function fetchCampaign(id: number): Promise<PracticeCampaign> {
+  const r = await fetch(`/api/me/practice/campaigns/${id}`, {
+    credentials: "same-origin",
+  });
+  const d = await parse<{ campaign: PracticeCampaign }>(r);
+  return d.campaign;
+}
+
 export async function createCampaign(body: {
   title: string;
   starts_at?: string | null;
@@ -481,6 +520,8 @@ export async function createCampaign(body: {
   account_id?: number | null;
   starting_capital?: number | null;
   goals_md?: string | null;
+  /** Silent book home for account (requires account_id). */
+  is_default?: boolean;
 }): Promise<PracticeCampaign> {
   const r = await fetch("/api/me/practice/campaigns", {
     method: "POST",
@@ -503,6 +544,7 @@ export async function patchCampaign(
     account_id: number | null;
     starting_capital: number | null;
     goals_md: string | null;
+    is_default: boolean;
   }>,
 ): Promise<PracticeCampaign> {
   const r = await fetch(`/api/me/practice/campaigns/${id}`, {
@@ -510,6 +552,56 @@ export async function patchCampaign(
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+  const d = await parse<{ campaign: PracticeCampaign }>(r);
+  return d.campaign;
+}
+
+export function campaignCoverUrl(campaignId: number): string {
+  return `/api/me/practice/campaigns/${campaignId}/cover/bytes`;
+}
+
+export async function uploadCampaignCover(
+  campaignId: number,
+  file: File,
+): Promise<{ campaign: PracticeCampaign; cover_url?: string | null }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const r = await fetch(`/api/me/practice/campaigns/${campaignId}/cover`, {
+    method: "POST",
+    credentials: "same-origin",
+    body: fd,
+  });
+  return parse(r);
+}
+
+export async function clearCampaignCover(
+  campaignId: number,
+): Promise<{ campaign: PracticeCampaign }> {
+  const r = await fetch(`/api/me/practice/campaigns/${campaignId}/cover`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  });
+  return parse(r);
+}
+
+export async function fetchCampaignAmendments(
+  campaignId: number,
+): Promise<CampaignAmendment[]> {
+  const r = await fetch(
+    `/api/me/practice/campaigns/${campaignId}/amendments`,
+    { credentials: "same-origin" },
+  );
+  const d = await parse<{ amendments: CampaignAmendment[] }>(r);
+  return d.amendments || [];
+}
+
+export async function renewCampaign(
+  campaignId: number,
+): Promise<PracticeCampaign> {
+  const r = await fetch(`/api/me/practice/campaigns/${campaignId}/renew`, {
+    method: "POST",
+    credentials: "same-origin",
   });
   const d = await parse<{ campaign: PracticeCampaign }>(r);
   return d.campaign;

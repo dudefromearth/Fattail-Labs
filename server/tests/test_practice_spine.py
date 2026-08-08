@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import db
 import identity as identity_mod
+import practice_spine_domain as psd
 from tests.conftest import cookie_for
 
 
@@ -23,8 +24,26 @@ def _cleanup(iid: int) -> None:
                 ("DELETE FROM member_journal_attachments WHERE identity_id = %s", (iid,)),
                 ("DELETE FROM member_journal_sessions WHERE identity_id = %s", (iid,)),
                 (
+                    "DELETE FROM member_practice_campaign_amendments WHERE identity_id = %s",
+                    (iid,),
+                ),
+                (
+                    "DELETE FROM member_practice_campaign_bounds WHERE identity_id = %s",
+                    (iid,),
+                ),
+                (
+                    "DELETE FROM member_practice_campaign_memory WHERE identity_id = %s",
+                    (iid,),
+                ),
+                (
                     "DELETE FROM member_practice_campaign_playbooks WHERE campaign_id IN "
                     "(SELECT id FROM member_practice_campaigns WHERE identity_id = %s)",
+                    (iid,),
+                ),
+                # Clear self-FK before delete (predecessor_campaign_id)
+                (
+                    "UPDATE member_practice_campaigns SET predecessor_campaign_id = NULL "
+                    "WHERE identity_id = %s",
                     (iid,),
                 ),
                 ("DELETE FROM member_practice_campaigns WHERE identity_id = %s", (iid,)),
@@ -76,13 +95,20 @@ def test_playbook_and_campaign_lifecycle(client):
         assert camp["status"] == "active"
         assert pb["id"] in camp["playbook_entry_ids"]
 
-        # single active
+        # multi-active allowed (DL-259) — second active does not 409
         c2 = client.post(
             "/api/me/practice/campaigns",
             cookies=cookies,
             json={"title": "October", "activate": True},
         )
-        assert c2.status_code == 409, c2.text
+        assert c2.status_code == 200, c2.text
+        camp2 = c2.json()["campaign"]
+        assert camp2["status"] == "active"
+
+        listed = client.get("/api/me/practice/campaigns", cookies=cookies)
+        assert listed.status_code == 200
+        actives = listed.json().get("actives") or []
+        assert len(actives) >= 2
 
         done = client.patch(
             f"/api/me/practice/campaigns/{camp['id']}",
@@ -92,11 +118,109 @@ def test_playbook_and_campaign_lifecycle(client):
         assert done.status_code == 200, done.text
         assert done.json()["campaign"]["status"] == "completed"
 
+        # October still active (ledger may also be active — multi-active OK)
         active = client.get(
             "/api/me/practice/campaigns/active", cookies=cookies
         )
         assert active.status_code == 200
-        assert active.json()["active"] is None
+        assert active.json()["active"] is not None
+        assert active.json()["active"]["status"] == "active"
+        assert active.json()["active"]["id"] != camp["id"]  # not the completed one
+    finally:
+        _cleanup(iid)
+
+
+def test_default_book_campaign_and_import_stamp(client):
+    """Silent book default + brokerage import stamps practice_campaign_id."""
+    iid = _member("zztest-spine-default-book@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        # Primary account
+        accts = client.get("/api/me/trade-log/accounts", cookies=cookies)
+        assert accts.status_code == 200, accts.text
+        primary = next(
+            (
+                a
+                for a in (accts.json().get("accounts") or [])
+                if a.get("label") == "Primary" or a.get("status") == "active"
+            ),
+            None,
+        )
+        assert primary is not None
+        aid = int(primary["id"])
+
+        # Ledger is genesis furniture for Primary (GET accounts ensures it)
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                ledger = psd.ensure_ledger_campaign(cur, iid, aid)
+                ledger_id = int(ledger["id"])
+
+        focus = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "Focus season",
+                "activate": True,
+                "account_id": aid,
+            },
+        )
+        assert focus.status_code == 200, focus.text
+
+        # Prefill prefers ledger for this account when memory empty
+        pref = client.get(
+            f"/api/me/practice/campaigns/active?account_id={aid}",
+            cookies=cookies,
+        )
+        assert pref.status_code == 200
+        assert pref.json()["active"]["id"] == ledger_id
+
+        # Minimal native import body — use generic CSV adapter if available
+        # Empty legs still create a CUSTOM trade via thinkorswim-like? Use native JSON.
+        native = {
+            "format": "fattail.labs.trade_log",
+            "model_version": "1.0",
+            "trades": [
+                {
+                    "exec_at": "2026-06-01T14:30:00",
+                    "strategy": "CUSTOM",
+                    "asset_class": "equity",
+                    "order_type": "MKT",
+                    "external_order_id": "zz-default-book-1",
+                    "legs": [
+                        {
+                            "side": "BUY",
+                            "quantity": 1,
+                            "underlier": "SPY",
+                            "instrument_type": "equity",
+                        }
+                    ],
+                }
+            ],
+        }
+        import json as _json
+
+        commit = client.post(
+            "/api/me/trade-log/import/commit",
+            cookies=cookies,
+            json={
+                "text": _json.dumps(native),
+                "adapter": "native",
+                "account_id": aid,
+                "use_default_campaign": True,
+            },
+        )
+        assert commit.status_code == 200, commit.text
+        body = commit.json()
+        assert body["created"] >= 1
+        assert body.get("practice_campaign_id") == ledger_id
+
+        trades = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}&practice_campaign_id={ledger_id}&full=1",
+            cookies=cookies,
+        )
+        assert trades.status_code == 200, trades.text
+        rows = trades.json().get("trades") or []
+        assert any(t.get("practice_campaign_id") == ledger_id for t in rows)
     finally:
         _cleanup(iid)
 
@@ -110,11 +234,6 @@ def test_trade_links_playbook_campaign(client):
             cookies=cookies,
             json={"title": "Rules", "body_md": "x"},
         ).json()["entry"]
-        camp = client.post(
-            "/api/me/practice/campaigns",
-            cookies=cookies,
-            json={"title": "Season", "activate": True},
-        ).json()["campaign"]
         acct = client.post(
             "/api/me/trade-log/accounts",
             cookies=cookies,
@@ -122,6 +241,11 @@ def test_trade_links_playbook_campaign(client):
         )
         assert acct.status_code == 200, acct.text
         aid = acct.json()["id"]
+        camp = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={"title": "Season", "activate": True, "account_id": aid},
+        ).json()["campaign"]
         tr = client.post(
             "/api/me/trade-log/trades",
             cookies=cookies,
@@ -273,5 +397,400 @@ def test_journal_campaign_stamp_default_and_clear(client):
         )
         assert p.status_code == 200, p.text
         assert p.json()["session"].get("practice_campaign_id") is None
+    finally:
+        _cleanup(iid)
+
+
+def test_campaign_abandon_and_edit(client):
+    """B2-2: abandon from active; edit goals on open campaign."""
+    iid = _member("zztest-spine-abandon@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        c = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "To abandon",
+                "activate": True,
+                "goals_md": "North Star draft",
+                "starting_capital": 10000,
+            },
+        )
+        assert c.status_code == 200, c.text
+        camp = c.json()["campaign"]
+        assert camp["status"] == "active"
+
+        edited = client.patch(
+            f"/api/me/practice/campaigns/{camp['id']}",
+            cookies=cookies,
+            json={"goals_md": "Edited charter", "starting_capital": 12000},
+        )
+        assert edited.status_code == 200, edited.text
+        assert edited.json()["campaign"]["goals_md"] == "Edited charter"
+        assert float(edited.json()["campaign"]["starting_capital"]) == 12000
+
+        ab = client.patch(
+            f"/api/me/practice/campaigns/{camp['id']}",
+            cookies=cookies,
+            json={"status": "abandoned"},
+        )
+        assert ab.status_code == 200, ab.text
+        assert ab.json()["campaign"]["status"] == "abandoned"
+    finally:
+        _cleanup(iid)
+
+
+def test_campaign_pause_and_resume(client):
+    """active → planned (pause) → active (resume)."""
+    iid = _member("zztest-spine-pause@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        c = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={"title": "Pause me", "activate": True},
+        )
+        assert c.status_code == 200, c.text
+        camp = c.json()["campaign"]
+        assert camp["status"] == "active"
+
+        paused = client.patch(
+            f"/api/me/practice/campaigns/{camp['id']}",
+            cookies=cookies,
+            json={"status": "planned"},
+        )
+        assert paused.status_code == 200, paused.text
+        assert paused.json()["campaign"]["status"] == "planned"
+
+        resumed = client.patch(
+            f"/api/me/practice/campaigns/{camp['id']}",
+            cookies=cookies,
+            json={"status": "active"},
+        )
+        assert resumed.status_code == 200, resumed.text
+        assert resumed.json()["campaign"]["status"] == "active"
+    finally:
+        _cleanup(iid)
+
+
+def test_campaign_list_get_never_auto_creates(client):
+    """GET list is read-only — empty stays empty (umpire §4.5.5b)."""
+    iid = _member("zztest-spine-coldstart@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM member_practice_campaign_amendments WHERE identity_id = %s",
+                    (iid,),
+                )
+                cur.execute(
+                    "UPDATE member_practice_campaigns SET predecessor_campaign_id = NULL "
+                    "WHERE identity_id = %s",
+                    (iid,),
+                )
+                cur.execute(
+                    "DELETE FROM member_practice_campaigns WHERE identity_id = %s",
+                    (iid,),
+                )
+        r = client.get("/api/me/practice/campaigns", cookies=cookies)
+        assert r.status_code == 200, r.text
+        assert r.json()["campaigns"] == []
+        # Second GET still empty — no side-effect provisioning
+        r2 = client.get("/api/me/practice/campaigns", cookies=cookies)
+        assert r2.status_code == 200
+        assert r2.json()["campaigns"] == []
+    finally:
+        _cleanup(iid)
+
+
+def test_campaign_sign_amend_terminal_delete(client):
+    """L2-1: first activate signs; multi-field PATCH → N amendments; terminal 422; DELETE signed 409."""
+    iid = _member("zztest-spine-lifecycle@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        # Draft — never signed
+        draft = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "Lifecycle Season",
+                "activate": False,
+                "starting_capital": 5000,
+                "goals_md": "Preserve capital",
+            },
+        )
+        assert draft.status_code == 200, draft.text
+        camp = draft.json()["campaign"]
+        assert camp.get("signed_at") is None
+        assert camp["status"] == "planned"
+        cid = camp["id"]
+
+        # Unsigned draft can hard-delete
+        # First create another draft to delete; keep this one for sign path
+        to_del = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={"title": "Disposable draft", "activate": False},
+        ).json()["campaign"]
+        d = client.delete(
+            f"/api/me/practice/campaigns/{to_del['id']}", cookies=cookies
+        )
+        assert d.status_code == 200, d.text
+
+        # Activate → sign
+        act = client.patch(
+            f"/api/me/practice/campaigns/{cid}",
+            cookies=cookies,
+            json={"status": "active"},
+        )
+        assert act.status_code == 200, act.text
+        signed = act.json()["campaign"]
+        assert signed.get("signed_at") is not None
+        terms = signed.get("signed_terms")
+        assert isinstance(terms, dict)
+        assert terms.get("title") == "Lifecycle Season"
+        assert float(terms.get("starting_capital")) == 5000.0
+        assert signed.get("signed_terms_backfilled") is False
+
+        # Create-as-active also signs
+        live = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={"title": "Live-born", "activate": True, "goals_md": "Go"},
+        )
+        assert live.status_code == 200, live.text
+        assert live.json()["campaign"].get("signed_at") is not None
+
+        # Multi-field charter PATCH → N amendment rows (same amended_at batch ok)
+        edited = client.patch(
+            f"/api/me/practice/campaigns/{cid}",
+            cookies=cookies,
+            json={
+                "title": "Lifecycle Season v2",
+                "starting_capital": 7500,
+                "goals_md": "Preserve + size carefully",
+            },
+        )
+        assert edited.status_code == 200, edited.text
+        am = client.get(
+            f"/api/me/practice/campaigns/{cid}/amendments", cookies=cookies
+        )
+        assert am.status_code == 200, am.text
+        rows = am.json()["amendments"]
+        fields = {r["field"] for r in rows}
+        assert "title" in fields
+        assert "starting_capital" in fields
+        assert "goals_md" in fields
+        # Immutable signed_terms
+        assert edited.json()["campaign"]["signed_terms"]["title"] == "Lifecycle Season"
+        assert float(edited.json()["campaign"]["signed_terms"]["starting_capital"]) == 5000.0
+
+        # Pause → status amendment preferred
+        paused = client.patch(
+            f"/api/me/practice/campaigns/{cid}",
+            cookies=cookies,
+            json={"status": "planned"},
+        )
+        assert paused.status_code == 200
+        am2 = client.get(
+            f"/api/me/practice/campaigns/{cid}/amendments", cookies=cookies
+        ).json()["amendments"]
+        assert any(r["field"] == "status" and r["new_value"] == "planned" for r in am2)
+
+        # Resume does not re-sign
+        resumed = client.patch(
+            f"/api/me/practice/campaigns/{cid}",
+            cookies=cookies,
+            json={"status": "active"},
+        )
+        assert resumed.status_code == 200
+        assert resumed.json()["campaign"]["signed_at"] == signed["signed_at"]
+
+        # Complete → terminal
+        done = client.patch(
+            f"/api/me/practice/campaigns/{cid}",
+            cookies=cookies,
+            json={"status": "completed"},
+        )
+        assert done.status_code == 200
+        assert done.json()["campaign"]["status"] == "completed"
+
+        # Terminal charter PATCH → 422
+        bad = client.patch(
+            f"/api/me/practice/campaigns/{cid}",
+            cookies=cookies,
+            json={"title": "Should not stick"},
+        )
+        assert bad.status_code == 422, bad.text
+
+        # DELETE signed → 409 (signature is permanence)
+        kill = client.delete(
+            f"/api/me/practice/campaigns/{cid}", cookies=cookies
+        )
+        assert kill.status_code == 409, kill.text
+    finally:
+        _cleanup(iid)
+
+
+def test_campaign_renew_chain_and_multi_successor(client):
+    """L2-2: renew terminal only; 3-chain cycle; two successors from one predecessor."""
+    iid = _member("zztest-spine-renew@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        root = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "Q1 Season",
+                "activate": True,
+                "starting_capital": 10000,
+                "goals_md": "Stop the bleeding",
+            },
+        ).json()["campaign"]
+        rid = root["id"]
+
+        # Active cannot renew
+        no = client.post(
+            f"/api/me/practice/campaigns/{rid}/renew", cookies=cookies
+        )
+        assert no.status_code == 422, no.text
+
+        client.patch(
+            f"/api/me/practice/campaigns/{rid}",
+            cookies=cookies,
+            json={"status": "completed"},
+        )
+
+        c2 = client.post(
+            f"/api/me/practice/campaigns/{rid}/renew", cookies=cookies
+        )
+        assert c2.status_code == 200, c2.text
+        s2 = c2.json()["campaign"]
+        assert s2["status"] == "planned"
+        assert s2["predecessor_campaign_id"] == rid
+        assert s2.get("cycle_number") == 2
+        assert s2.get("signed_at") is None
+        assert float(s2.get("starting_capital") or 0) == 10000.0
+        assert s2.get("goals_md") == "Stop the bleeding"
+        # Law 6 — renew may suffix when root still holds the base title
+        assert s2["title"] == "Q1 Season" or s2["title"].startswith("Q1 Season")
+
+        # Activate + complete second → renew to third
+        client.patch(
+            f"/api/me/practice/campaigns/{s2['id']}",
+            cookies=cookies,
+            json={"status": "active"},
+        )
+        client.patch(
+            f"/api/me/practice/campaigns/{s2['id']}",
+            cookies=cookies,
+            json={"status": "completed"},
+        )
+        c3 = client.post(
+            f"/api/me/practice/campaigns/{s2['id']}/renew", cookies=cookies
+        )
+        assert c3.status_code == 200, c3.text
+        s3 = c3.json()["campaign"]
+        assert s3["predecessor_campaign_id"] == s2["id"]
+        assert s3.get("cycle_number") == 3
+        assert s3.get("predecessor", {}).get("id") == s2["id"]
+
+        # Second successor from same root (multi-successor)
+        s2b = client.post(
+            f"/api/me/practice/campaigns/{rid}/renew", cookies=cookies
+        ).json()["campaign"]
+        assert s2b["predecessor_campaign_id"] == rid
+        assert s2b["id"] != s2["id"]
+        assert s2b.get("cycle_number") == 2
+
+        # GET detail lineage
+        detail = client.get(
+            f"/api/me/practice/campaigns/{s3['id']}", cookies=cookies
+        )
+        assert detail.status_code == 200
+        dcamp = detail.json()["campaign"]
+        assert dcamp.get("cycle_number") == 3
+        assert dcamp.get("predecessor_campaign_id") == s2["id"]
+    finally:
+        _cleanup(iid)
+
+
+def test_structured_practice_ledger_stamp_memory(client):
+    """Law 1–3: Primary + ledger at first touch; trade stamps without campaign pick."""
+    iid = _member("zztest-spine-structured@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        accts = client.get("/api/me/trade-log/accounts", cookies=cookies)
+        assert accts.status_code == 200
+        primary = next(
+            a for a in accts.json()["accounts"] if a.get("label") == "Primary"
+        )
+        aid = int(primary["id"])
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                led = psd.ensure_ledger_campaign(cur, iid, aid)
+                assert led["is_ledger"] is True
+                assert led.get("signed_at") is None
+                lid = int(led["id"])
+                # Ledger cannot complete
+                try:
+                    psd.patch_campaign(cur, iid, lid, status="completed")
+                    assert False, "expected ledger status block"
+                except psd.PracticeSpineError as e:
+                    assert e.code == 422
+
+        tr = client.post(
+            "/api/me/trade-log/trades",
+            cookies=cookies,
+            json={
+                "account_id": aid,
+                "broker": "fattail",
+                "exec_at": "2026-08-01T15:00:00",
+                "strategy": "CUSTOM",
+                "asset_class": "equity",
+                "legs": [
+                    {
+                        "side": "BUY",
+                        "quantity": 1,
+                        "underlier": "SPY",
+                        "instrument_type": "equity",
+                        "fill_price": 1.0,
+                    }
+                ],
+            },
+        )
+        assert tr.status_code == 200, tr.text
+        body = tr.json()
+        assert body.get("practice_campaign_id") == lid
+    finally:
+        _cleanup(iid)
+
+
+def test_campaign_amendments_get_family_b(client):
+    """L2-3: GET amendments; 404 for foreign/missing campaign."""
+    iid = _member("zztest-spine-amends@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        camp = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={"title": "Amend me", "activate": True, "starting_capital": 1},
+        ).json()["campaign"]
+        client.patch(
+            f"/api/me/practice/campaigns/{camp['id']}",
+            cookies=cookies,
+            json={"starting_capital": 2},
+        )
+        r = client.get(
+            f"/api/me/practice/campaigns/{camp['id']}/amendments",
+            cookies=cookies,
+        )
+        assert r.status_code == 200
+        assert len(r.json()["amendments"]) >= 1
+        miss = client.get(
+            "/api/me/practice/campaigns/999999999/amendments", cookies=cookies
+        )
+        assert miss.status_code == 404
     finally:
         _cleanup(iid)

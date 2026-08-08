@@ -615,7 +615,11 @@ def list_campaigns(
     request: Request,
     account_id: int | None = None,
 ) -> dict:
-    """List Practice campaigns (human mode). Multiple actives allowed (DL-259)."""
+    """List Practice campaigns (human mode). Multiple actives allowed (DL-259).
+
+    Read-only list — never auto-creates campaigns (umpire §4.5.5b).
+    Empty library offers one-tap create in the UI, not a side-effecting GET.
+    """
     claims = require_session(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -687,7 +691,49 @@ async def create_campaign(request: Request) -> dict:
                     account_id=account_id,
                     starting_capital=body.get("starting_capital"),
                     goals_md=body.get("goals_md"),
+                    is_default=bool(body.get("is_default")),
                 )
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return {"campaign": camp}
+
+
+@router.get("/api/me/practice/campaigns/{campaign_id}")
+def get_campaign(campaign_id: int, request: Request) -> dict:
+    """Single campaign for dedicated editor (Family B) + lineage chrome."""
+    claims = require_session(request)
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _iid(cur, claims)
+            camp = psd.get_campaign(cur, iid, campaign_id, with_lineage=True)
+    if camp is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    return {"campaign": camp}
+
+
+@router.get("/api/me/practice/campaigns/{campaign_id}/amendments")
+def list_campaign_amendments(campaign_id: int, request: Request) -> dict:
+    """Append-only amendment history (Family B). No UPDATE/DELETE routes."""
+    claims = require_session(request)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                amendments = psd.list_amendments(cur, iid, campaign_id)
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return {"amendments": amendments}
+
+
+@router.post("/api/me/practice/campaigns/{campaign_id}/renew")
+def renew_campaign(campaign_id: int, request: Request) -> dict:
+    """Draft successor from terminal campaign (Concept Spec §4.5.4)."""
+    claims = require_session(request)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                camp = psd.renew_campaign(cur, iid, campaign_id)
     except psd.PracticeSpineError as e:
         _raise(e)
     return {"campaign": camp}
@@ -714,6 +760,8 @@ async def patch_campaign(campaign_id: int, request: Request) -> dict:
         kwargs["starting_capital"] = body.get("starting_capital")
     if "goals_md" in body:
         kwargs["goals_md"] = body.get("goals_md")
+    if "is_default" in body:
+        kwargs["is_default"] = bool(body.get("is_default"))
     if "playbook_entry_ids" in body:
         pids = body.get("playbook_entry_ids")
         if pids is not None and not isinstance(pids, list):
@@ -726,6 +774,7 @@ async def patch_campaign(campaign_id: int, request: Request) -> dict:
             with conn.cursor() as cur:
                 iid = _iid(cur, claims)
                 camp = psd.patch_campaign(cur, iid, campaign_id, **kwargs)
+                camp = psd.attach_lineage(cur, iid, camp)
     except psd.PracticeSpineError as e:
         _raise(e)
     return {"campaign": camp}
@@ -733,7 +782,7 @@ async def patch_campaign(campaign_id: int, request: Request) -> dict:
 
 @router.delete("/api/me/practice/campaigns/{campaign_id}")
 def delete_campaign(campaign_id: int, request: Request) -> dict:
-    """Hard-delete only if unreferenced (permanence — Campaign Spec §4.5 / OD-PB-7)."""
+    """Hard-delete only if never signed and unreferenced (§4.5.6 / OD-PB-7)."""
     claims = require_session(request)
     try:
         with db.transaction() as conn:
@@ -743,3 +792,59 @@ def delete_campaign(campaign_id: int, request: Request) -> dict:
     except psd.PracticeSpineError as e:
         _raise(e)
     return {"ok": True, "deleted_id": campaign_id}
+
+
+@router.post("/api/me/practice/campaigns/{campaign_id}/cover")
+async def post_campaign_cover(
+    campaign_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+) -> dict:
+    """Direct cover upload for campaign library card (image only)."""
+    claims = require_session(request)
+    data = await file.read()
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                out = psd.set_campaign_cover_from_upload(
+                    cur,
+                    iid,
+                    campaign_id,
+                    content_type=file.content_type or "application/octet-stream",
+                    data=data,
+                    original_name=file.filename,
+                )
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return out
+
+
+@router.delete("/api/me/practice/campaigns/{campaign_id}/cover")
+def delete_campaign_cover(campaign_id: int, request: Request) -> dict:
+    claims = require_session(request)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                out = psd.clear_campaign_cover(cur, iid, campaign_id)
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return out
+
+
+@router.get("/api/me/practice/campaigns/{campaign_id}/cover/bytes")
+def get_campaign_cover_bytes(campaign_id: int, request: Request) -> Response:
+    claims = require_session(request)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                data, ct = psd.read_campaign_cover_bytes(cur, iid, campaign_id)
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return Response(
+        content=data,
+        media_type=ct,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )

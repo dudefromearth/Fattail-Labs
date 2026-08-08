@@ -188,10 +188,19 @@ async def import_preview(request: Request) -> dict:
 
 @router.post("/api/me/trade-log/import/commit")
 async def import_commit(request: Request) -> dict:
-    """Parse and write trades into account_id (required). Idempotent on external_order_id."""
+    """Parse and write trades into account_id (required). Idempotent on external_order_id.
+
+    Campaign stamp (Structured Practice Law 2 — always stamped):
+      - practice_campaign_id: int → stamp that campaign
+      - use_default_campaign: true (default) / omitted / false-without-id →
+        stamp account **ledger** (former \"none\" is ledger, not unstamped)
+      Memory is not consulted or updated by bulk import.
+    """
     claims = require_session(request)
     _require_tool_member(claims)
     import trade_log_io as tio
+    import practice_spine_domain as psd
+    from practice_spine_domain import PracticeSpineError
 
     body = await request.json()
     account_id = body.get("account_id")
@@ -211,8 +220,17 @@ async def import_commit(request: Request) -> dict:
         )
     trades = result.get("trades") or []
     adapter_id = result.get("adapter") or adapter or "import"
+    # Campaign target: explicit id wins; else default book unless opted out
+    raw_camp = body.get("practice_campaign_id")
+    use_default = body.get("use_default_campaign")
+    if use_default is None:
+        # No-fuss path: stamp into account book unless client opts out
+        use_default = raw_camp in (None, "")
+    else:
+        use_default = bool(use_default)
     created = 0
     skipped = 0
+    camp_id: int | None = None
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
@@ -222,6 +240,21 @@ async def import_commit(request: Request) -> dict:
             else:
                 acct = _get_account(cur, iid, int(account_id))
                 account_id = int(account_id)
+            # Resolve campaign stamp — never leave unstamped (Law 2 / #15)
+            try:
+                if raw_camp not in (None, ""):
+                    camp_id = int(raw_camp)
+                    psd.assert_campaign_owned(cur, iid, camp_id)
+                else:
+                    # Ledger absorbs unconsidered import volume (not memory)
+                    book = psd.ensure_ledger_campaign(cur, iid, account_id)
+                    camp_id = int(book["id"])
+            except PracticeSpineError as e:
+                raise HTTPException(status_code=e.code, detail=e.detail) from e
+            except (TypeError, ValueError) as e:
+                raise HTTPException(
+                    status_code=422, detail="practice_campaign_id must be an integer"
+                ) from e
             # First import sets venue from adapter when still unset
             venue = cat.ADAPTER_DEFAULT_VENUE.get(adapter_id)
             if body.get("broker"):
@@ -271,8 +304,9 @@ async def import_commit(request: Request) -> dict:
                          (identity_id, account_id, exec_at, asset_class, strategy,
                           order_type, net_price, net_side, setup_md, plan_md, rules_md,
                           adherence, deviation_md, lesson_md, pnl_amount,
-                          external_adapter, external_order_id, entry_source)
-                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                          external_adapter, external_order_id, entry_source,
+                          practice_campaign_id)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                     (
                         iid,
                         account_id,
@@ -292,6 +326,7 @@ async def import_commit(request: Request) -> dict:
                         adapter_id,
                         ext,
                         "import",
+                        camp_id,
                     ),
                 )
                 tid = int(cur.lastrowid)
@@ -301,6 +336,7 @@ async def import_commit(request: Request) -> dict:
         "ok": True,
         "adapter": adapter_id,
         "account_id": account_id,
+        "practice_campaign_id": camp_id,
         "created": created,
         "skipped": skipped,
         "warnings": result.get("warnings") or [],

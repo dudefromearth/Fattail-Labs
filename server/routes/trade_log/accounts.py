@@ -102,6 +102,12 @@ async def create_account(request: Request) -> dict:
                 (cur.lastrowid,),
             )
             row = cur.fetchone()
+            try:
+                import practice_spine_domain as psd
+
+                psd.on_account_created(cur, iid, int(row["id"]))
+            except Exception:
+                pass
     return _account_row(row)
 
 

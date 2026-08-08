@@ -4,7 +4,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import TradeLogTable from "@/components/trade-log/TradeLogTable";
 import TradeLogToolbar from "@/components/trade-log/TradeLogToolbar";
 import TradeSheet from "@/components/trade-log/TradeSheet";
@@ -36,7 +36,15 @@ const PAGE_LIMIT = 80;
 
 function TradeLogBody() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const deepLinkId = Number(searchParams.get("id") || "");
+  /** Campaign page → blotter deep-link (`?campaign=N`). */
+  const deepLinkCampaign = Number(searchParams.get("campaign") || "");
+  /** Journey Adhere pillar → meter complement (F2). Not standing chrome. */
+  const deepLinkAdherenceMode = searchParams.get("adherence_mode") || "";
+  const deepLinkFromDay = searchParams.get("from_day") || "";
+  const deepLinkToDay = searchParams.get("to_day") || "";
   const {
     accountId,
     accountIdParam,
@@ -65,9 +73,15 @@ function TradeLogBody() {
   const [deepLinked, setDeepLinked] = useState(false);
   const [filterOpenOnly, setFilterOpenOnly] = useState(false);
   const [campaignFilter, setCampaignFilter] = useState<number | "">("");
-  const [playbookFilter, setPlaybookFilter] = useState<number | "">("");
+  const [playbookFilter, setPlaybookFilter] = useState<
+    number | "" | "unaffiliated"
+  >("");
+  /** F2: drift = not followed and not partial (broke + unknown). */
+  const [adherenceMode, setAdherenceMode] = useState<"drift" | "">("");
+  const [filterFromDay, setFilterFromDay] = useState<string>("");
+  const [filterToDay, setFilterToDay] = useState<string>("");
   const [campaignOptions, setCampaignOptions] = useState<
-    { id: number; title: string }[]
+    { id: number; title: string; is_default?: boolean }[]
   >([]);
   const [playbookOptions, setPlaybookOptions] = useState<
     { id: number; title: string }[]
@@ -82,7 +96,11 @@ function TradeLogBody() {
     ]).then(([camps, pbs]) => {
       if (camps?.campaigns) {
         setCampaignOptions(
-          camps.campaigns.map((c) => ({ id: c.id, title: c.title })),
+          camps.campaigns.map((c) => ({
+            id: c.id,
+            title: c.title,
+            is_default: !!c.is_default,
+          })),
         );
       }
       if (pbs?.entries) {
@@ -92,6 +110,38 @@ function TradeLogBody() {
       }
     });
   }, []);
+
+  // Apply ?campaign= from Practice Campaign → Trade Log deep-link
+  useEffect(() => {
+    if (deepLinkCampaign > 0) {
+      setCampaignFilter(deepLinkCampaign);
+    }
+  }, [deepLinkCampaign]);
+
+  // Journey Adhere deep-link only (F2) — no standing process filter on the blotter
+  useEffect(() => {
+    if (deepLinkAdherenceMode === "drift") {
+      setAdherenceMode("drift");
+      if (deepLinkFromDay) setFilterFromDay(deepLinkFromDay.slice(0, 10));
+      if (deepLinkToDay) setFilterToDay(deepLinkToDay.slice(0, 10));
+    } else {
+      setAdherenceMode("");
+      setFilterFromDay("");
+      setFilterToDay("");
+    }
+  }, [deepLinkAdherenceMode, deepLinkFromDay, deepLinkToDay]);
+
+  function clearJourneyAdherenceFilter() {
+    setAdherenceMode("");
+    setFilterFromDay("");
+    setFilterToDay("");
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("adherence_mode");
+    next.delete("from_day");
+    next.delete("to_day");
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  }
 
   const load = useCallback(() => {
     if (!prefsReady) {
@@ -106,7 +156,13 @@ function TradeLogBody() {
         limit: PAGE_LIMIT,
         practice_campaign_id:
           campaignFilter === "" ? null : campaignFilter,
-        playbook_entry_id: playbookFilter === "" ? null : playbookFilter,
+        playbook_entry_id:
+          typeof playbookFilter === "number" ? playbookFilter : null,
+        playbook_mode:
+          playbookFilter === "unaffiliated" ? "unaffiliated" : null,
+        adherence_mode: adherenceMode === "drift" ? "drift" : null,
+        from_day: filterFromDay || null,
+        to_day: filterToDay || null,
       }),
       fetchUnmatchedOpens(accountIdParam),
       fetchCatalog(),
@@ -169,6 +225,9 @@ function TradeLogBody() {
     setAccountId,
     campaignFilter,
     playbookFilter,
+    adherenceMode,
+    filterFromDay,
+    filterToDay,
   ]);
 
   const loadMore = useCallback(async () => {
@@ -180,7 +239,13 @@ function TradeLogBody() {
         cursor: nextCursor,
         practice_campaign_id:
           campaignFilter === "" ? null : campaignFilter,
-        playbook_entry_id: playbookFilter === "" ? null : playbookFilter,
+        playbook_entry_id:
+          typeof playbookFilter === "number" ? playbookFilter : null,
+        playbook_mode:
+          playbookFilter === "unaffiliated" ? "unaffiliated" : null,
+        adherence_mode: adherenceMode === "drift" ? "drift" : null,
+        from_day: filterFromDay || null,
+        to_day: filterToDay || null,
       });
       if (!tr.ok) {
         setLoadingMore(false);
@@ -382,6 +447,37 @@ function TradeLogBody() {
           {error && <p className="mt-1 font-mono text-xs opacity-80">{error}</p>}
           <button type="button" onClick={() => load()} className="mt-3 underline">
             Try again
+          </button>
+        </div>
+      )}
+
+      {state === "ok" && adherenceMode === "drift" && (
+        <div
+          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-3 py-2 text-xs text-[var(--color-label-secondary)]"
+          data-testid="journey-adhere-locate-banner"
+          role="status"
+        >
+          <p>
+            From Journey · showing trades that are not{" "}
+            <span className="font-medium text-[var(--color-label)]">
+              followed
+            </span>{" "}
+            or{" "}
+            <span className="font-medium text-[var(--color-label)]">
+              partial
+            </span>
+            {filterFromDay || filterToDay
+              ? ` · ${[filterFromDay, filterToDay].filter(Boolean).join(" → ")}`
+              : ""}
+            . This is a locate view, not a standing Trade Log filter.
+          </p>
+          <button
+            type="button"
+            onClick={clearJourneyAdherenceFilter}
+            className="shrink-0 font-medium text-[var(--color-tint)] hover:underline"
+            data-testid="journey-adhere-locate-clear"
+          >
+            Clear
           </button>
         </div>
       )}

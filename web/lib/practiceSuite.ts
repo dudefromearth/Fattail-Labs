@@ -1,11 +1,13 @@
 /**
- * Practice suite — human trading mode (manual fills, process suite).
- * Nav: Trade Log · Reports · Journal · Retrospective · Playbook · Campaign
+ * Practice suite — human trading mode.
+ * Designed around the daily Scientific Trading Protocol:
+ *   Hypothesis → Experiment → Reflection
+ * (pre-market IF/THEN · execute the trial · variance log — not PnL-as-worth).
  *
- * Campaign lives under Practice: `/app/practice/campaign` (not `/app/campaigns`).
- * Strategy Lab has its own Campaign under `/app/strategy-lab/campaign`.
- * Same *concept* (capital book / goals / group of work); two separate products —
- * human vs automated. No shared app, tables, or chrome.
+ * Nav: Trade Log · Reports · Journal · Retrospective · Playbook · Campaign
+ * Campaign = optional North Star charter wrapping the day; never required.
+ * Path: `/app/practice/campaign` (not `/app/campaigns`).
+ * Strategy Lab Campaign is a separate product (automated). No shared chrome.
  */
 
 export type PracticeSuiteId =
@@ -33,7 +35,7 @@ export const PRACTICE_SUITE: PracticeSuiteItem[] = [
     href: "/app/trade-log",
     slugs: ["trade-log"],
     blurb:
-      "Record fills and structure outcomes — process first, not P&L theater.",
+      "Experiment: execute the pre-registered plan — fills and structure, process first.",
     status: "live",
   },
   {
@@ -41,7 +43,7 @@ export const PRACTICE_SUITE: PracticeSuiteItem[] = [
     label: "Reports",
     href: "/app/reports",
     slugs: ["reports", "statistics", "records"],
-    blurb: "Book aggregates from Trade Log: path, drawdown, distributions.",
+    blurb: "Book aggregates from experiments: path, drawdown, distributions.",
     status: "live",
   },
   {
@@ -50,7 +52,7 @@ export const PRACTICE_SUITE: PracticeSuiteItem[] = [
     href: "/app/journal",
     slugs: ["journal"],
     blurb:
-      "Calendar-structured process notes: preparation, selection, and review.",
+      "Hypothesis and reflection: pre-market IF/THEN, EOD variance — not PnL as self-worth.",
     status: "live",
   },
   {
@@ -59,7 +61,7 @@ export const PRACTICE_SUITE: PracticeSuiteItem[] = [
     href: "/app/retrospective",
     slugs: ["retrospective", "retrospectives"],
     blurb:
-      "Start from Journal type Retrospective — gather since last (or maiden journey), dual report, integrity.",
+      "Weekly pivot: variance across days, systemic adaptation — not mid-session rewrite.",
     status: "live",
   },
   {
@@ -68,16 +70,16 @@ export const PRACTICE_SUITE: PracticeSuiteItem[] = [
     href: "/app/playbook",
     slugs: ["playbook"],
     blurb:
-      "Who you are under risk — the rules you will not break.",
+      "Standing rules under risk — constrain daily IF/THEN; the rules you will not break.",
     status: "live",
   },
   {
     id: "campaign",
-    label: "Campaign",
+    label: "Campaigns",
     href: "/app/practice/campaign",
-    slugs: ["campaign", "campaigns", "seasons"],
+    slugs: ["campaign", "campaigns"],
     blurb:
-      "Optional work context (capital, goals, multi per account). Never required.",
+      "Optional North Star charter — wraps the daily lab. Never required.",
     status: "live",
   },
 ];

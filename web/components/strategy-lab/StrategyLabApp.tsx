@@ -758,8 +758,8 @@ export default function StrategyLabApp() {
               Notifications
             </span>
             {" — "}
-            between bins and work area. Create bot, moves, house Apply, renames,
-            blocks, and errors appear here so you always see what a button did.
+            between bins and work area. Create bot, moves, renames, blocks, and
+            errors appear here so you always see what a button did.
             Archive:{" "}
             <Link href="/app/strategy-lab/archive" className="underline">
               Archive
@@ -1032,7 +1032,6 @@ export default function StrategyLabApp() {
                     strategyDesignProgress(selected)?.next_section ||
                     (isNewbornBot(selected) ? "identity" : undefined)
                   }
-                  pushNotice={pushNotice}
                   onSaved={() => void reload()}
                 />
                 <DevelopmentValidation

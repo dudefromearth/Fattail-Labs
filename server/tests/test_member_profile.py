@@ -135,3 +135,25 @@ def test_profile_cleanup(probe_identity):
                    WHERE identity_id = %s""",
                 (probe_identity,),
             )
+
+
+def test_journey_ui_prefs_dismiss(client, member_cookies):
+    """J3 / F3: recovery invite dismiss persists server-side on profile."""
+    cookies, _iid = member_cookies
+    r = client.get("/api/me/profile", cookies=cookies)
+    assert r.status_code == 200
+    prefs = r.json().get("journey_ui_prefs") or {}
+    assert prefs.get("recovery_invite_dismissed") is False
+
+    r2 = client.patch(
+        "/api/me/profile",
+        cookies=cookies,
+        json={"journey_ui_prefs": {"recovery_invite_dismissed": True}},
+    )
+    assert r2.status_code == 200, r2.text
+    p2 = r2.json()["journey_ui_prefs"]
+    assert p2["recovery_invite_dismissed"] is True
+    assert p2.get("recovery_invite_dismissed_at")
+
+    r3 = client.get("/api/me/profile", cookies=cookies)
+    assert r3.json()["journey_ui_prefs"]["recovery_invite_dismissed"] is True

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Phase 2 process pack — adherence mix + campaign season summary.
+ * Phase 2 process pack — adherence mix + campaign summary.
  * Host: Retrospective / Journey only (DL-257). Never on Reports/Records.
  * Tag frequency: ProcessTagUsage. No P&L / win-rate by label.
  */
@@ -220,17 +220,17 @@ export default function ProcessReportPack({
                 className="font-semibold text-[var(--color-label)]"
                 style={{ fontSize: "var(--text-headline)" }}
               >
-                Campaign seasons
+                Campaigns
               </h2>
               <p className="mt-0.5 text-xs text-[var(--color-label-tertiary)]">
-                Trades linked to a season + process adherence — not outcomes.
+                Trades linked to a campaign + process adherence — not outcomes.
               </p>
             </div>
             <Link
               href="/app/playbook"
               className="text-xs font-medium text-[var(--color-tint)] hover:underline"
             >
-              Playbook / seasons
+              Playbook
             </Link>
           </div>
 

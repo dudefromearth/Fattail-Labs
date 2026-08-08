@@ -7,6 +7,7 @@ never a gate.
 """
 
 import hashlib
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
@@ -41,6 +42,38 @@ HOME_QUICK_NAV_OPTIONAL = (
     "courses",
 )
 HOME_QUICK_NAV_ALLOWED = frozenset(HOME_QUICK_NAV_DEFAULT + HOME_QUICK_NAV_OPTIONAL)
+
+# Journey UI prefs (J3 / F3) — server-side only; never localStorage.
+JOURNEY_UI_PREFS_KEYS = frozenset(
+    {
+        "recovery_invite_dismissed",
+        "recovery_invite_dismissed_at",
+    }
+)
+
+
+def _normalize_journey_ui_prefs(raw) -> dict:
+    """Sanitize journey_ui_prefs_json → public dict (unknown keys dropped)."""
+    if raw is None:
+        return {
+            "recovery_invite_dismissed": False,
+            "recovery_invite_dismissed_at": None,
+        }
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except (TypeError, ValueError):
+            raw = {}
+    if not isinstance(raw, dict):
+        raw = {}
+    dismissed = bool(raw.get("recovery_invite_dismissed"))
+    at = raw.get("recovery_invite_dismissed_at")
+    if at is not None:
+        at = str(at).strip() or None
+    return {
+        "recovery_invite_dismissed": dismissed,
+        "recovery_invite_dismissed_at": at,
+    }
 
 
 def _normalize_home_quick_nav(raw) -> list[str]:
@@ -585,7 +618,7 @@ def _profile_row(cur, identity_id: int) -> dict | None:
                   journey_visible_at, share_reputation, share_personal_growth,
                   share_attendance, session_idle_minutes,
                   retrospective_pnl_expanded, retro_cadence_days,
-                  home_quick_nav_json
+                  home_quick_nav_json, journey_ui_prefs_json
            FROM identities WHERE identity_id = %s""",
         (identity_id,),
     )
@@ -606,6 +639,7 @@ def _profile_payload(row: dict, role: str) -> dict:
     except (TypeError, ValueError):
         cadence_n = None
     quick_nav = _normalize_home_quick_nav(row.get("home_quick_nav_json"))
+    journey_ui = _normalize_journey_ui_prefs(row.get("journey_ui_prefs_json"))
     return {
         "identity_id": int(row["identity_id"]),
         "email": row["email"] or "",
@@ -635,6 +669,7 @@ def _profile_payload(row: dict, role: str) -> dict:
             {"id": "fattail_hard", "label": "FatTail Hard", "required": False},
             {"id": "courses", "label": "Courses", "required": False},
         ],
+        "journey_ui_prefs": journey_ui,
         "role": role,
     }
 
@@ -722,11 +757,16 @@ async def patch_profile(request: Request) -> dict:
         params.append(1 if exp else 0)
 
     if "home_quick_nav" in body:
-        import json
-
         nav = _normalize_home_quick_nav(body["home_quick_nav"])
         updates.append("home_quick_nav_json = %s")
         params.append(json.dumps(nav))
+
+    # J3 / F3 — merge journey UI prefs (server-side dismiss, not localStorage)
+    journey_prefs_patch = body.get("journey_ui_prefs")
+    if journey_prefs_patch is not None and not isinstance(journey_prefs_patch, dict):
+        raise HTTPException(
+            status_code=422, detail="journey_ui_prefs must be an object"
+        )
 
     # Spec v0.7.1 §12 — cadence change is forward-only (history row; never
     # rewrites past retrospectives' cadence_days_at_period).
@@ -744,12 +784,48 @@ async def patch_profile(request: Request) -> dict:
                     status_code=422, detail="retro_cadence_days must be an integer"
                 ) from exc
 
-    if not updates and cadence_change is None and "retro_cadence_days" not in body:
+    if (
+        not updates
+        and cadence_change is None
+        and "retro_cadence_days" not in body
+        and journey_prefs_patch is None
+    ):
         raise HTTPException(status_code=422, detail="No recognized fields")
 
     params.append(iid)
     with db.transaction() as conn:
         with conn.cursor() as cur:
+            if journey_prefs_patch is not None:
+                # Merge onto existing prefs (Family B: own identity only)
+                cur.execute(
+                    "SELECT journey_ui_prefs_json FROM identities WHERE identity_id = %s",
+                    (iid,),
+                )
+                existing_row = cur.fetchone() or {}
+                merged = _normalize_journey_ui_prefs(
+                    existing_row.get("journey_ui_prefs_json")
+                )
+                if "recovery_invite_dismissed" in journey_prefs_patch:
+                    dismissed = bool(journey_prefs_patch["recovery_invite_dismissed"])
+                    merged["recovery_invite_dismissed"] = dismissed
+                    if dismissed:
+                        from datetime import datetime, timezone
+
+                        merged["recovery_invite_dismissed_at"] = (
+                            datetime.now(timezone.utc)
+                            .replace(microsecond=0)
+                            .isoformat()
+                            .replace("+00:00", "Z")
+                        )
+                    else:
+                        merged["recovery_invite_dismissed_at"] = None
+                # Drop unknown keys from client patch (allowlisted only)
+                for k in list(journey_prefs_patch.keys()):
+                    if k not in JOURNEY_UI_PREFS_KEYS:
+                        continue
+                updates.append("journey_ui_prefs_json = %s")
+                # Insert before trailing identity_id
+                params.insert(-1, json.dumps(merged))
             if updates:
                 cur.execute(
                     f"UPDATE identities SET {', '.join(updates)} WHERE identity_id = %s",

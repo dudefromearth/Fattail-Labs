@@ -4,6 +4,7 @@
 // not a report-card score. Each axis is a practice pillar; the shape shows
 // directional balance. Optional temporal scrub (start → today). Not P&L.
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export type ProcessGrade = {
@@ -674,6 +675,17 @@ function ProcessPathTimelineChart({
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
 
+  /** Map click X in viewBox coords → continuous scrub index (J2 bidirectional). */
+  function scrubFromClientX(
+    svg: SVGSVGElement,
+    clientX: number,
+  ): number {
+    const rect = svg.getBoundingClientRect();
+    const xSvg = ((clientX - rect.left) / Math.max(1, rect.width)) * w;
+    const t = (xSvg - padL) / Math.max(1, plotW);
+    return Math.max(0, Math.min(n - 1, t * (n - 1)));
+  }
+
   const raw = points.map((p) =>
     Math.min(100, Math.max(0, Number(p.overall_percent) || 0)),
   );
@@ -771,10 +783,37 @@ function ProcessPathTimelineChart({
       )}
       <svg
         viewBox={`0 0 ${w} ${h}`}
-        className="w-full overflow-visible"
+        className={`w-full overflow-visible ${onSelectScrub ? "cursor-crosshair" : ""}`}
         role="img"
-        aria-label={`Process Flow shape from ${points[0].as_of} to ${points[n - 1].as_of}`}
+        aria-label={`Process Flow shape from ${points[0].as_of} to ${points[n - 1].as_of}. Click the path to move the scrub.`}
+        data-testid="process-path-chart"
+        onClick={(e) => {
+          if (!onSelectScrub) return;
+          const svg = e.currentTarget;
+          onSelectScrub(scrubFromClientX(svg, e.clientX));
+        }}
+        onPointerDown={(e) => {
+          if (!onSelectScrub || e.button !== 0) return;
+          const svg = e.currentTarget;
+          svg.setPointerCapture?.(e.pointerId);
+          onSelectScrub(scrubFromClientX(svg, e.clientX));
+        }}
+        onPointerMove={(e) => {
+          if (!onSelectScrub || (e.buttons & 1) === 0) return;
+          onSelectScrub(scrubFromClientX(e.currentTarget, e.clientX));
+        }}
       >
+        {/* Hit target for path scrub (full plot area) */}
+        {onSelectScrub && (
+          <rect
+            x={padL}
+            y={padT}
+            width={plotW}
+            height={plotH}
+            fill="transparent"
+            data-testid="process-path-scrub-hit"
+          />
+        )}
         {[25, 50, 75].map((g) => (
           <g key={g}>
             <line
@@ -875,12 +914,49 @@ function ProcessPathTimelineChart({
   );
 }
 
+/** Journey compass deep-links (J1) — review own evidence; no Reports; no unlocks. */
+function pillarHref(
+  meterId: string,
+  process: ProcessPayload | null | undefined,
+): string | null {
+  switch (meterId) {
+    case "adherence": {
+      const days = Number(process?.window?.adherence_days) || 30;
+      const end = (process?.as_of || new Date().toISOString()).slice(0, 10);
+      const start = new Date(`${end}T12:00:00`);
+      start.setDate(start.getDate() - Math.max(1, days) + 1);
+      const from = start.toISOString().slice(0, 10);
+      const q = new URLSearchParams({
+        adherence_mode: "drift",
+        from_day: from,
+        to_day: end,
+      });
+      return `/app/trade-log?${q.toString()}`;
+    }
+    case "retrospective":
+      return "/app/retrospective";
+    case "routine":
+    case "persistence":
+      return "/app/journal";
+    case "learning":
+      return "/app/journey";
+    case "live":
+      return "/live";
+    case "mental_toughness":
+      return "/app/toughness";
+    default:
+      return null;
+  }
+}
+
 function PillarList({
   meters,
   compact,
+  process,
 }: {
   meters: ProcessMeterItem[];
   compact: boolean;
+  process?: ProcessPayload | null;
 }) {
   return (
     <ul className={compact ? "space-y-2.5" : "space-y-3"}>
@@ -889,6 +965,33 @@ function PillarList({
           m.soon || m.empty ? null : m.grade ?? gradeFromPercent(m.percent);
         const color = g?.color ?? "var(--color-label-tertiary)";
         const isCadence = m.id === "retrospective";
+        const href = m.soon ? null : pillarHref(m.id, process);
+        const labelNode = href ? (
+          <Link
+            href={href}
+            className="font-medium text-[var(--color-tint)] hover:underline"
+            title={m.hint}
+            data-testid={`pillar-link-${m.id}`}
+          >
+            {m.label}
+            <span className="ml-1 text-[10px] font-normal text-[var(--color-label-tertiary)]">
+              review
+            </span>
+          </Link>
+        ) : (
+          <span
+            className="font-medium text-[var(--color-label)]"
+            title={m.hint}
+            data-testid={m.soon ? `pillar-soon-${m.id}` : undefined}
+          >
+            {m.label}
+            {m.soon ? (
+              <span className="ml-1 text-[10px] font-normal text-[var(--color-label-tertiary)]">
+                soon
+              </span>
+            ) : null}
+          </span>
+        );
         return (
           <li
             key={m.id}
@@ -897,12 +1000,7 @@ function PillarList({
             data-cadence-nudge={isCadence && m.nudge ? "1" : undefined}
           >
             <div className="flex items-baseline justify-between gap-2 text-sm">
-              <span
-                className="font-medium text-[var(--color-label)]"
-                title={m.hint}
-              >
-                {m.label}
-              </span>
+              {labelNode}
               <span className="flex items-center gap-1.5 text-xs">
                 {g && (
                   <span
@@ -1177,7 +1275,11 @@ export default function ProcessMeter({
             Pillars on the map
           </p>
           <div className="mx-auto max-w-2xl">
-            <PillarList meters={process.meters} compact={false} />
+            <PillarList
+              meters={process.meters}
+              compact={false}
+              process={liveProcess}
+            />
           </div>
         </div>
       </div>
@@ -1238,7 +1340,11 @@ export default function ProcessMeter({
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
           Pillars on the map
         </p>
-        <PillarList meters={process.meters} compact={compact} />
+        <PillarList
+          meters={process.meters}
+          compact={compact}
+          process={liveProcess}
+        />
       </div>
     </div>
   );

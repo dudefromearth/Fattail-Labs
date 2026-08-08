@@ -162,9 +162,10 @@ export default function TradeLogTable({
   onFilterOpenOnly?: (v: boolean) => void;
   campaignFilter?: number | "";
   onCampaignFilter?: (v: number | "") => void;
-  campaignOptions?: { id: number; title: string }[];
-  playbookFilter?: number | "";
-  onPlaybookFilter?: (v: number | "") => void;
+  campaignOptions?: { id: number; title: string; is_default?: boolean }[];
+  /** "" = All; "unaffiliated" = no playbook; number = linked playbook */
+  playbookFilter?: number | "" | "unaffiliated";
+  onPlaybookFilter?: (v: number | "" | "unaffiliated") => void;
   playbookOptions?: { id: number; title: string }[];
   hasMore?: boolean;
   loadingMore?: boolean;
@@ -237,39 +238,49 @@ export default function TradeLogTable({
           )}
           {onCampaignFilter && (campaignOptions?.length ?? 0) > 0 && (
             <label className="flex items-center gap-1.5 text-xs text-[var(--color-label-secondary)]">
-              <span className="sr-only">Filter by season</span>
+              <span className="sr-only">Filter by campaign</span>
               <select
                 value={campaignFilter === "" || campaignFilter == null ? "" : String(campaignFilter)}
                 onChange={(e) => {
                   const v = e.target.value;
                   onCampaignFilter(v ? Number(v) : "");
                 }}
-                className="max-w-[10rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
+                className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
                 data-testid="blotter-campaign-filter"
+                title="All = every trade. Account default includes that account’s unstamped fills. Other campaigns are exact stamps only."
               >
-                <option value="">All seasons</option>
+                <option value="">All</option>
                 {campaignOptions!.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.title}
+                    {c.is_default ? " · default" : ""}
                   </option>
                 ))}
               </select>
             </label>
           )}
-          {onPlaybookFilter && (playbookOptions?.length ?? 0) > 0 && (
+          {onPlaybookFilter && (
             <label className="flex items-center gap-1.5 text-xs text-[var(--color-label-secondary)]">
               <span className="sr-only">Filter by playbook</span>
               <select
-                value={playbookFilter === "" || playbookFilter == null ? "" : String(playbookFilter)}
+                value={
+                  playbookFilter === "" || playbookFilter == null
+                    ? ""
+                    : String(playbookFilter)
+                }
                 onChange={(e) => {
                   const v = e.target.value;
-                  onPlaybookFilter(v ? Number(v) : "");
+                  if (!v) onPlaybookFilter("");
+                  else if (v === "unaffiliated") onPlaybookFilter("unaffiliated");
+                  else onPlaybookFilter(Number(v));
                 }}
-                className="max-w-[10rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
+                className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
                 data-testid="blotter-playbook-filter"
+                title="All = every trade. Unaffiliated = no playbook link. Named playbooks are exact links only."
               >
-                <option value="">All playbooks</option>
-                {playbookOptions!.map((p) => (
+                <option value="">All</option>
+                <option value="unaffiliated">Unaffiliated</option>
+                {(playbookOptions || []).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.title}
                   </option>

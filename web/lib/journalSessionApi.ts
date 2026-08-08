@@ -63,7 +63,7 @@ export type JournalSession = {
   structured: Record<string, unknown> | null;
   checklist?: ChecklistStatus;
   export_key: string | null;
-  /** OD-1.4 — optional practice season stamp (default-suggested on create). */
+  /** OD-1.4 — optional practice campaign stamp (default-suggested on create). */
   practice_campaign_id?: number | null;
   spawned_retrospective_id: number | null;
   closed_by_retrospective_id?: number | null;

@@ -2,9 +2,10 @@
 
 /**
  * Active practice campaign badge + quick activate/complete (Phase 1).
- * Campaign is trader-level (not account-scoped).
+ * Multi-active: shows prefill campaign (§4.7) + count; manage on Campaign page.
  */
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   createCampaign,
@@ -15,6 +16,7 @@ import {
 
 export default function CampaignContextBadge() {
   const [active, setActive] = useState<PracticeCampaign | null>(null);
+  const [activeCount, setActiveCount] = useState(0);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
@@ -24,8 +26,13 @@ export default function CampaignContextBadge() {
     try {
       const d = await fetchCampaigns();
       setActive(d.active);
+      const n =
+        d.actives?.length ??
+        (d.active ? 1 : 0);
+      setActiveCount(n);
     } catch {
       setActive(null);
+      setActiveCount(0);
     }
   }, []);
 
@@ -33,7 +40,7 @@ export default function CampaignContextBadge() {
     void load();
   }, [load]);
 
-  async function startSeason() {
+  async function startCampaign() {
     if (!title.trim() || busy) return;
     setBusy(true);
     setErr(null);
@@ -49,7 +56,7 @@ export default function CampaignContextBadge() {
     }
   }
 
-  async function completeSeason() {
+  async function completeCampaign() {
     if (!active || busy) return;
     setBusy(true);
     setErr(null);
@@ -70,17 +77,33 @@ export default function CampaignContextBadge() {
     >
       {active ? (
         <>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-tint-soft)] px-3 py-1 text-xs font-medium text-[var(--color-label)]">
-            Season: {active.title}
-          </span>
+          <Link
+            href="/app/practice/campaign"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-tint-soft)] px-3 py-1 text-xs font-medium text-[var(--color-label)] hover:opacity-90"
+            title="Manage campaigns"
+          >
+            Campaign: {active.title}
+            {activeCount > 1 ? (
+              <span className="text-[var(--color-label-tertiary)]">
+                +{activeCount - 1}
+              </span>
+            ) : null}
+          </Link>
+          <Link
+            href={`/app/trade-log?campaign=${active.id}`}
+            className="text-xs font-medium text-[var(--color-tint)] hover:underline"
+            data-testid="campaign-badge-trade-log"
+          >
+            Trade Log
+          </Link>
           <button
             type="button"
             disabled={busy}
-            onClick={() => void completeSeason()}
+            onClick={() => void completeCampaign()}
             className="text-xs font-medium text-[var(--color-tint)] hover:underline disabled:opacity-50"
             data-testid="campaign-complete"
           >
-            Complete season
+            Complete campaign
           </button>
         </>
       ) : (
@@ -90,7 +113,7 @@ export default function CampaignContextBadge() {
           className="text-xs font-medium text-[var(--color-tint)] hover:underline"
           data-testid="campaign-start-toggle"
         >
-          Start a practice season
+          Start a practice campaign
         </button>
       )}
       {open && !active && (
@@ -99,14 +122,14 @@ export default function CampaignContextBadge() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Season name"
+            placeholder="Campaign name"
             className="min-w-[10rem] flex-1 rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-1 text-xs sm:flex-none"
             data-testid="campaign-title-input"
           />
           <button
             type="button"
             disabled={busy || !title.trim()}
-            onClick={() => void startSeason()}
+            onClick={() => void startCampaign()}
             className="rounded-full bg-[var(--color-tint)] px-3 py-1 text-xs font-medium text-[var(--color-on-tint)] disabled:opacity-50"
             data-testid="campaign-start"
           >

@@ -332,7 +332,15 @@ def _ensure_default_account(cur, iid: int) -> dict:
         "SELECT * FROM member_trade_log_accounts WHERE id = %s",
         (cur.lastrowid,),
     )
-    return cur.fetchone()
+    row = cur.fetchone()
+    # Structured practice Law 1 — ledger genesis with the book
+    try:
+        import practice_spine_domain as psd
+
+        psd.on_account_created(cur, iid, int(row["id"]))
+    except Exception:
+        pass
+    return row
 
 
 def _maybe_set_account_venue(
@@ -552,6 +560,90 @@ def _rows_to_trades(cur, rows: list, iid: int) -> list[dict]:
     return [_trade_row(r, legs_by_trade.get(int(r["id"]), [])) for r in rows]
 
 
+def _adherence_filter_clauses(
+    adherence_mode: str | None,
+    from_day: str | None = None,
+    to_day: str | None = None,
+) -> tuple[list[str], list[Any]]:
+    """Optional blotter filters for Journey F2 (meter complement).
+
+    ``adherence_mode=drift`` → adherence NOT IN (followed, partial)
+    i.e. broke + unknown (and any non-good value). Window optional via from/to day
+    on DATE(exec_at).
+    """
+    clauses: list[str] = []
+    args: list[Any] = []
+    mode = (adherence_mode or "").strip().lower()
+    if mode == "drift":
+        # Meter good = followed + partial among tagged; complement = not those.
+        clauses.append(
+            "(adherence IS NULL OR adherence NOT IN ('followed', 'partial'))"
+        )
+    if from_day:
+        clauses.append("DATE(exec_at) >= %s")
+        args.append(str(from_day)[:10])
+    if to_day:
+        clauses.append("DATE(exec_at) <= %s")
+        args.append(str(to_day)[:10])
+    return clauses, args
+
+
+def _campaign_stamp_filter_clauses(
+    cur,
+    iid: int,
+    practice_campaign_id: int | None,
+) -> tuple[list[str], list[Any]]:
+    """Campaign stamp filter.
+
+    Named campaigns: exact stamp match.
+    **Default book** (``is_default=1``): stamp match **or** unstamped trades on
+    that campaign's account — unaffiliated fills live in the book (not a phantom
+    "nothing" set).
+    """
+    if practice_campaign_id is None:
+        return [], []
+    camp_id = int(practice_campaign_id)
+    cur.execute(
+        """SELECT id, is_default, account_id FROM member_practice_campaigns
+           WHERE id = %s AND identity_id = %s""",
+        (camp_id, iid),
+    )
+    row = cur.fetchone()
+    if not row:
+        # Unknown / other identity — match nothing
+        return ["1 = 0"], []
+    if int(row.get("is_default") or 0) == 1:
+        acct = row.get("account_id")
+        if acct is not None:
+            return [
+                "(practice_campaign_id = %s OR "
+                "(practice_campaign_id IS NULL AND account_id = %s))"
+            ], [camp_id, int(acct)]
+        return [
+            "(practice_campaign_id = %s OR practice_campaign_id IS NULL)"
+        ], [camp_id]
+    return ["practice_campaign_id = %s"], [camp_id]
+
+
+def _playbook_stamp_filter_clauses(
+    playbook_entry_id: int | None,
+    *,
+    playbook_mode: str | None = None,
+) -> tuple[list[str], list[Any]]:
+    """Playbook stamp filter.
+
+    - omit / all: no clause
+    - ``playbook_mode=unaffiliated``: playbook_entry_id IS NULL (named default)
+    - positive id: exact link
+    """
+    mode = (playbook_mode or "").strip().lower()
+    if mode == "unaffiliated":
+        return ["playbook_entry_id IS NULL"], []
+    if playbook_entry_id is not None:
+        return ["playbook_entry_id = %s"], [int(playbook_entry_id)]
+    return [], []
+
+
 def _load_member_book(
     cur,
     iid: int,
@@ -559,11 +651,16 @@ def _load_member_book(
     *,
     practice_campaign_id: int | None = None,
     playbook_entry_id: int | None = None,
+    playbook_mode: str | None = None,
+    adherence_mode: str | None = None,
+    from_day: str | None = None,
+    to_day: str | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Batch-load trades+legs and accounts for analytics (identity-scoped).
 
     Full-book style load (capped). Prefer :func:`_load_member_book_page` for UI lists.
     Optional spine filters (Phase 1): campaign and/or playbook entry.
+    Optional F2 adherence_mode=drift (+ day window).
     """
     _ensure_default_account(cur, iid)
     clauses = ["identity_id = %s"]
@@ -572,12 +669,21 @@ def _load_member_book(
         _get_account(cur, iid, account_id)
         clauses.append("account_id = %s")
         args.append(account_id)
-    if practice_campaign_id is not None:
-        clauses.append("practice_campaign_id = %s")
-        args.append(int(practice_campaign_id))
-    if playbook_entry_id is not None:
-        clauses.append("playbook_entry_id = %s")
-        args.append(int(playbook_entry_id))
+    camp_c, camp_a = _campaign_stamp_filter_clauses(
+        cur, iid, practice_campaign_id
+    )
+    clauses.extend(camp_c)
+    args.extend(camp_a)
+    pb_c, pb_a = _playbook_stamp_filter_clauses(
+        playbook_entry_id, playbook_mode=playbook_mode
+    )
+    clauses.extend(pb_c)
+    args.extend(pb_a)
+    extra, extra_args = _adherence_filter_clauses(
+        adherence_mode, from_day=from_day, to_day=to_day
+    )
+    clauses.extend(extra)
+    args.extend(extra_args)
     where = " AND ".join(clauses)
     args.append(_TRADE_BOOK_LIMIT)
     cur.execute(
@@ -625,6 +731,10 @@ def _load_member_book_page(
     cursor: str | None = None,
     practice_campaign_id: int | None = None,
     playbook_entry_id: int | None = None,
+    playbook_mode: str | None = None,
+    adherence_mode: str | None = None,
+    from_day: str | None = None,
+    to_day: str | None = None,
 ) -> tuple[list[dict], list[dict], bool, str | None]:
     """Paginated trades for blotter. Newest first. Returns has_more, next_cursor."""
     _ensure_default_account(cur, iid)
@@ -639,12 +749,21 @@ def _load_member_book_page(
         _get_account(cur, iid, account_id)
         clauses.append("account_id = %s")
         args.append(account_id)
-    if practice_campaign_id is not None:
-        clauses.append("practice_campaign_id = %s")
-        args.append(int(practice_campaign_id))
-    if playbook_entry_id is not None:
-        clauses.append("playbook_entry_id = %s")
-        args.append(int(playbook_entry_id))
+    camp_c, camp_a = _campaign_stamp_filter_clauses(
+        cur, iid, practice_campaign_id
+    )
+    clauses.extend(camp_c)
+    args.extend(camp_a)
+    pb_c, pb_a = _playbook_stamp_filter_clauses(
+        playbook_entry_id, playbook_mode=playbook_mode
+    )
+    clauses.extend(pb_c)
+    args.extend(pb_a)
+    extra, extra_args = _adherence_filter_clauses(
+        adherence_mode, from_day=from_day, to_day=to_day
+    )
+    clauses.extend(extra)
+    args.extend(extra_args)
     where = " AND ".join(clauses)
 
     if before_exec is not None and before_id is not None:

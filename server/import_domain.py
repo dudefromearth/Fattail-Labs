@@ -569,10 +569,11 @@ def preview_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any
     counts = _count_bucket()
     warnings: list[str] = []
     mv = str(doc.get("model_version") or "1.0")
-    if mv.startswith("1.") and mv not in ("1.0", "1.1"):
+    if mv.startswith("1.") and mv not in ("1.0", "1.1", "1.2"):
         warnings.append(
-            f"practice_campaign model_version {mv!r} not in 1.0|1.1 — import best-effort"
+            f"practice_campaign model_version {mv!r} not in 1.0|1.1|1.2 — import best-effort"
         )
+    pack_keys = set()
     for e in doc.get("entries") or []:
         if not isinstance(e, dict):
             counts["error"] += 1
@@ -582,6 +583,7 @@ def preview_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any
             counts["skip"] += 1
             continue
         key = _portable_key(e.get("id"), "campaign", title)
+        pack_keys.add(key)
         cur.execute(
             """SELECT id FROM member_practice_campaigns
                WHERE identity_id = %s AND export_key = %s""",
@@ -596,6 +598,12 @@ def preview_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any
             warnings.append(
                 f"campaign {key}: account_export_key without account_label "
                 "may not rebind if trade_log accounts import separately"
+            )
+        pred = (e.get("predecessor_export_key") or "").strip()
+        if pred and pred not in pack_keys:
+            # May still resolve on host after other entries; soft note
+            warnings.append(
+                f"campaign {key}: predecessor_export_key {pred!r} — will bind if present on host or pack"
             )
     return {
         "surface": "practice_campaign",
@@ -644,9 +652,10 @@ def _resolve_campaign_account_id(
 
 
 def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]:
-    """Insert-only Practice campaigns (schema practice-campaign-v1 / model 1.1).
+    """Insert-only Practice campaigns (schema practice-campaign-v1 / model 1.2).
 
-    Multi-active allowed. Full field set: account scope, capital, goals, activated_at.
+    Multi-active allowed. Full field set: account scope, capital, goals, activated_at,
+    signature, amendments, predecessor lineage (second pass).
     """
     counts = _count_bucket()
     warnings: list[str] = []
@@ -661,6 +670,8 @@ def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]
         if ek:
             pb_by_key[ek] = int(r["id"])
 
+    # Pass 1: insert campaigns (no predecessor yet)
+    pending_preds: list[tuple[int, str, str]] = []  # (cid, camp_key, pred_export_key)
     for e in doc.get("entries") or []:
         if not isinstance(e, dict):
             counts["error"] += 1
@@ -703,11 +714,33 @@ def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]
         goals = (e.get("goals_md") or None)
         if goals is not None:
             goals = str(goals).strip() or None
+        is_default = bool(e.get("is_default")) and account_id is not None
+        if is_default and status != "active":
+            is_default = False
+        if is_default and account_id is not None:
+            cur.execute(
+                """UPDATE member_practice_campaigns
+                   SET is_default = 0
+                   WHERE identity_id = %s AND account_id = %s AND is_default = 1""",
+                (identity_id, account_id),
+            )
+        signed_at = _parse_dt(e.get("signed_at"))
+        signed_terms = e.get("signed_terms")
+        if signed_terms is not None and not isinstance(signed_terms, dict):
+            signed_terms = None
+            warnings.append(f"campaign {key}: signed_terms not an object — ignored")
+        signed_backfilled = 1 if e.get("signed_terms_backfilled") else 0
+        # If pack has no signature but status was active, leave unsigned (honest)
+        signed_terms_json = (
+            json.dumps(signed_terms) if signed_terms is not None else None
+        )
         cur.execute(
             """INSERT INTO member_practice_campaigns
                  (identity_id, account_id, title, status, activated_at,
-                  starts_at, ends_at, starting_capital, goals_md, export_key)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                  starts_at, ends_at, starting_capital, goals_md, is_default,
+                  signed_at, signed_terms, signed_terms_backfilled,
+                  export_key)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
             (
                 identity_id,
                 account_id,
@@ -718,6 +751,10 @@ def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]
                 ends,
                 starting_capital,
                 goals,
+                1 if is_default else 0,
+                signed_at,
+                signed_terms_json,
+                signed_backfilled if signed_at is not None else 0,
                 key,
             ),
         )
@@ -734,13 +771,89 @@ def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]
                      (campaign_id, playbook_entry_id) VALUES (%s, %s)""",
                 (cid, pid),
             )
+        # Amendments (by export_key idempotent)
+        for am in e.get("amendments") or []:
+            if not isinstance(am, dict):
+                continue
+            field = (am.get("field") or "").strip()
+            if not field:
+                continue
+            am_key = (am.get("id") or "").strip()
+            if not am_key:
+                am_key = f"camd-import-{cid}-{field}-{counts['new']}"
+            cur.execute(
+                """SELECT id FROM member_practice_campaign_amendments
+                   WHERE identity_id = %s AND export_key = %s""",
+                (identity_id, am_key[:64]),
+            )
+            if cur.fetchone():
+                continue
+            am_at = _parse_dt(am.get("amended_at")) or datetime.now(timezone.utc).replace(
+                tzinfo=None
+            )
+            note = (am.get("note_md") or None)
+            if note is not None:
+                note = str(note).strip() or None
+            ov = am.get("old_value")
+            nv = am.get("new_value")
+            if ov is not None and not isinstance(ov, str):
+                ov = json.dumps(ov, default=str)
+            if nv is not None and not isinstance(nv, str):
+                nv = json.dumps(nv, default=str)
+            cur.execute(
+                """INSERT INTO member_practice_campaign_amendments
+                     (identity_id, campaign_id, amended_at, field, old_value,
+                      new_value, note_md, export_key)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (
+                    identity_id,
+                    cid,
+                    am_at,
+                    field[:64],
+                    ov,
+                    nv,
+                    note,
+                    am_key[:64],
+                ),
+            )
+        pred_key = (e.get("predecessor_export_key") or "").strip()
+        if pred_key:
+            pending_preds.append((cid, key, pred_key))
+
+    # Pass 2: bind predecessor_campaign_id by export_key
+    for cid, camp_key, pred_key in pending_preds:
+        cur.execute(
+            """SELECT id FROM member_practice_campaigns
+               WHERE identity_id = %s AND export_key = %s""",
+            (identity_id, pred_key),
+        )
+        prow = cur.fetchone()
+        if not prow:
+            warnings.append(
+                f"campaign {camp_key}: predecessor_export_key {pred_key!r} not found "
+                "on host — lineage pending (left unbound)"
+            )
+            continue
+        pred_id = int(prow["id"])
+        if pred_id == cid:
+            warnings.append(
+                f"campaign {camp_key}: predecessor self-reference ignored"
+            )
+            continue
+        cur.execute(
+            """UPDATE member_practice_campaigns
+               SET predecessor_campaign_id = %s
+               WHERE id = %s AND identity_id = %s""",
+            (pred_id, cid, identity_id),
+        )
+
     return {
         "surface": "practice_campaign",
         "counts": counts,
         "warnings": warnings,
         "mode": "additive",
         "schema": "practice-campaign-v1",
-        "model_version": str(doc.get("model_version") or "1.1"),
+        "model_version": str(doc.get("model_version") or "1.2"),
     }
 
 
@@ -1925,6 +2038,16 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
     _del(
         "playbook_attachments",
         "DELETE FROM member_playbook_attachments WHERE identity_id = %s",
+    )
+    # Lifecycle amendments + self-FK predecessor before campaign rows
+    _del(
+        "practice_campaign_amendments",
+        "DELETE FROM member_practice_campaign_amendments WHERE identity_id = %s",
+    )
+    cur.execute(
+        """UPDATE member_practice_campaigns SET predecessor_campaign_id = NULL
+           WHERE identity_id = %s""",
+        (identity_id,),
     )
     # campaign↔playbook links CASCADE when campaigns deleted
     _del(

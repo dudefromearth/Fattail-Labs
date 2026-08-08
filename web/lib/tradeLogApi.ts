@@ -168,6 +168,12 @@ export async function fetchTrades(
     full?: boolean;
     practice_campaign_id?: number | null;
     playbook_entry_id?: number | null;
+    /** Named default: no playbook link (not All). */
+    playbook_mode?: "unaffiliated" | null;
+    /** Journey F2: meter complement (broke + unknown). */
+    adherence_mode?: "drift" | null;
+    from_day?: string | null;
+    to_day?: string | null;
   },
 ): Promise<AnalyticsResult<TradesPage>> {
   const q = new URLSearchParams();
@@ -177,9 +183,16 @@ export async function fetchTrades(
   if (opts?.practice_campaign_id != null && opts.practice_campaign_id > 0) {
     q.set("practice_campaign_id", String(opts.practice_campaign_id));
   }
-  if (opts?.playbook_entry_id != null && opts.playbook_entry_id > 0) {
+  if (opts?.playbook_mode === "unaffiliated") {
+    q.set("playbook_mode", "unaffiliated");
+  } else if (opts?.playbook_entry_id != null && opts.playbook_entry_id > 0) {
     q.set("playbook_entry_id", String(opts.playbook_entry_id));
   }
+  if (opts?.adherence_mode === "drift") {
+    q.set("adherence_mode", "drift");
+  }
+  if (opts?.from_day) q.set("from_day", opts.from_day);
+  if (opts?.to_day) q.set("to_day", opts.to_day);
   if (opts?.full) {
     q.set("full", "1");
   } else {

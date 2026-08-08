@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fattail.labs/schemas/practice-campaign-v1.json",
-  "title": "FatTail Labs Practice Campaign document v1.1",
-  "description": "First-class Practice Campaign surface (fattail.labs.practice_campaign). Not an afterthought: required fields and campaign stamps are normative for pack green gates. Spec: Specs/FatTail-Labs-Member-Campaign-Concept-Spec-v1.0.md §4.10. Marketing campaigns are out of scope.",
+  "title": "FatTail Labs Practice Campaign document v1.2",
+  "description": "First-class Practice Campaign surface (fattail.labs.practice_campaign). Not an afterthought: required fields and campaign stamps are normative for pack green gates. Spec: Specs/FatTail-Labs-Member-Campaign-Concept-Spec-v1.0.md §4.10 / §4.5. Marketing campaigns are out of scope. model 1.2 adds signature, amendments, predecessor_export_key.",
   "type": "object",
   "additionalProperties": true,
   "required": [
@@ -21,7 +21,7 @@
     "model_version": {
       "type": "string",
       "pattern": "^1\\.\\d+$",
-      "description": "1.0 = Phase 1 MVP. 1.1 = account_export_key, starting_capital, goals_md, activated_at, multi-active (DL-259/096/097)."
+      "description": "1.0 = Phase 1 MVP. 1.1 = account_export_key, starting_capital, goals_md, activated_at, multi-active (DL-259/096/097). 1.2 = signed_at, signed_terms, amendments[], predecessor_export_key (§4.5)."
     },
     "exported_at": {
       "type": "string",
@@ -98,6 +98,31 @@
           "type": ["string", "null"],
           "description": "Member-authored goals. Platform prompts use process language; member text is free."
         },
+        "is_default": {
+          "type": "boolean",
+          "description": "Silent book home for the bound account (import no-fuss path). At most one per account."
+        },
+        "signed_at": {
+          "type": ["string", "null"],
+          "description": "Signature clock (ISO). Immutable after first real sign. Null = never signed."
+        },
+        "signed_terms": {
+          "type": ["object", "null"],
+          "description": "Immutable charter snapshot at signature (or backfilled terms)."
+        },
+        "signed_terms_backfilled": {
+          "type": "boolean",
+          "description": "True when signed_terms came from migration honesty, not a live sign."
+        },
+        "predecessor_export_key": {
+          "type": ["string", "null"],
+          "description": "Portable id of predecessor campaign (entries[].id). Null for root cycles."
+        },
+        "amendments": {
+          "type": "array",
+          "description": "Append-only charter/status amendments (model 1.2).",
+          "items": { "$ref": "#/$defs/campaignAmendment" }
+        },
         "playbook_export_keys": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
@@ -105,6 +130,22 @@
         },
         "created_at": { "type": ["string", "null"] },
         "updated_at": { "type": ["string", "null"] }
+      }
+    },
+    "campaignAmendment": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["field"],
+      "properties": {
+        "id": {
+          "type": ["string", "null"],
+          "description": "Portable amendment export_key."
+        },
+        "amended_at": { "type": ["string", "null"] },
+        "field": { "type": "string", "minLength": 1 },
+        "old_value": { "type": ["string", "null"] },
+        "new_value": { "type": ["string", "null"] },
+        "note_md": { "type": ["string", "null"] }
       }
     },
     "tradeCampaignStamp": {

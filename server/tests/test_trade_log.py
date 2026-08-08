@@ -401,3 +401,170 @@ def test_list_trades_batch_loads_multi_leg_legs(client, monkeypatch):
         assert len(detail.json()["legs"]) == 2
     finally:
         _purge(a)
+
+
+def test_adherence_mode_drift_filter(client):
+    """J1-1 / F2: adherence_mode=drift excludes followed+partial."""
+    a = _id("zztest-tl-drift@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "Drift book", "broker": "thinkorswim"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = acct.json()["id"]
+
+        def _leg(underlier="SPY"):
+            return {
+                "side": "BUY",
+                "quantity": 1,
+                "pos_effect": "TO_OPEN",
+                "underlier": underlier,
+                "expiry": "2026-05-15",
+                "strike": 500,
+                "right": "CALL",
+                "fill_price": 1.0,
+            }
+
+        for i, adh in enumerate(["followed", "partial", "broke", "unknown"]):
+            r = client.post(
+                "/api/me/trade-log/trades",
+                cookies=ca,
+                json={
+                    "account_id": aid,
+                    "exec_at": f"2026-05-0{i+1}T14:00:00",
+                    "strategy": "VERTICAL",
+                    "asset_class": "equity_option",
+                    "order_type": "LMT",
+                    "net_price": 1.0,
+                    "net_side": "DEBIT",
+                    "adherence": adh,
+                    "legs": [_leg()],
+                },
+            )
+            assert r.status_code == 200, r.text
+
+        all_t = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}&full=1", cookies=ca
+        )
+        assert all_t.status_code == 200
+        assert len(all_t.json()["trades"]) >= 4
+
+        drift = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}&full=1&adherence_mode=drift",
+            cookies=ca,
+        )
+        assert drift.status_code == 200, drift.text
+        adhs = {t.get("adherence") for t in drift.json()["trades"]}
+        assert "followed" not in adhs
+        assert "partial" not in adhs
+        assert adhs <= {"broke", "unknown"} or adhs & {"broke", "unknown"}
+        assert len(drift.json()["trades"]) >= 2
+    finally:
+        _purge(a)
+
+
+def test_default_book_filter_includes_unstamped_and_playbook_unaffiliated(client):
+    """Book (is_default) includes unstamped; playbook_mode=unaffiliated is named."""
+    a = _id("zztest-tl-book-filter@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "BookFilt", "broker": "thinkorswim"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = acct.json()["id"]
+
+        book = client.post(
+            "/api/me/practice/campaigns",
+            cookies=ca,
+            json={
+                "title": "BookFilt book",
+                "activate": True,
+                "account_id": aid,
+                "is_default": True,
+            },
+        )
+        assert book.status_code == 200, book.text
+        book_id = book.json()["campaign"]["id"]
+
+        other = client.post(
+            "/api/me/practice/campaigns",
+            cookies=ca,
+            json={
+                "title": "Named season no",
+                "activate": True,
+                "account_id": aid,
+            },
+        )
+        assert other.status_code == 200, other.text
+        other_id = other.json()["campaign"]["id"]
+
+        def _post(exec_at, camp, pb=None):
+            body = {
+                "account_id": aid,
+                "exec_at": exec_at,
+                "strategy": "VERTICAL",
+                "asset_class": "equity_option",
+                "order_type": "LMT",
+                "net_price": 1.0,
+                "net_side": "DEBIT",
+                "adherence": "unknown",
+                "legs": [
+                    {
+                        "side": "BUY",
+                        "quantity": 1,
+                        "pos_effect": "TO_OPEN",
+                        "underlier": "SPY",
+                        "expiry": "2026-06-01",
+                        "strike": 500,
+                        "right": "CALL",
+                        "fill_price": 1.0,
+                    }
+                ],
+            }
+            if camp is not None:
+                body["practice_campaign_id"] = camp
+            if pb is not None:
+                body["playbook_entry_id"] = pb
+            r = client.post("/api/me/trade-log/trades", cookies=ca, json=body)
+            assert r.status_code == 200, r.text
+            return r.json()
+
+        # Explicitly stamp one to book; one to other; one force-null after create
+        t_book = _post("2026-06-01T14:00:00", book_id)
+        t_other = _post("2026-06-02T14:00:00", other_id)
+        t_null = _post("2026-06-03T14:00:00", book_id)
+        # Simulate legacy unstamped: clear campaign on one trade via SQL
+        import db as dbmod
+        with dbmod.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE member_trade_log_trades SET practice_campaign_id = NULL "
+                    "WHERE id = %s AND identity_id = %s",
+                    (t_null["id"], a),
+                )
+
+        filt = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}&full=1&practice_campaign_id={book_id}",
+            cookies=ca,
+        )
+        assert filt.status_code == 200, filt.text
+        ids = {t["id"] for t in filt.json()["trades"]}
+        assert t_book["id"] in ids
+        assert t_null["id"] in ids  # unstamped lives in book
+        assert t_other["id"] not in ids
+
+        unaff = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}&full=1&playbook_mode=unaffiliated",
+            cookies=ca,
+        )
+        assert unaff.status_code == 200, unaff.text
+        for t in unaff.json()["trades"]:
+            assert t.get("playbook_entry_id") in (None, 0)
+    finally:
+        _purge(a)
