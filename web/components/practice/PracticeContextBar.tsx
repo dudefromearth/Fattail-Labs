@@ -86,12 +86,21 @@ export default function PracticeContextBar({
             data-testid="practice-account-select"
           >
             {selectableAccounts.map((a) => (
-              <option key={a.id} value={a.id}>
+              <option
+                key={a.id}
+                value={a.id}
+                title={
+                  a.broker && a.broker !== "unset"
+                    ? `${a.label} · import venue ${a.broker}`
+                    : a.label
+                }
+              >
                 {a.label}
                 {isStandingDefaultAccountLabel(a.label) ? " · default" : ""}
                 {a.status === "archived" ? " · retired" : ""}
-                {a.broker && a.broker !== "unset" ? ` · ${a.broker}` : ""}
-                {typeof a.trade_count === "number" ? ` (${a.trade_count})` : ""}
+                {typeof a.trade_count === "number"
+                  ? ` (${a.trade_count} trades)`
+                  : ""}
               </option>
             ))}
             <option value="all">All accounts</option>

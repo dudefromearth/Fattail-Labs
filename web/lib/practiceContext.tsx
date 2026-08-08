@@ -467,7 +467,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
     if (!a) return "All accounts";
     const base =
       a.broker && a.broker !== "unset"
-        ? `${a.label} · ${a.broker}`
+        ? a.label
         : a.label;
     if (a.status === "archived") return `${base} · retired`;
     return base;

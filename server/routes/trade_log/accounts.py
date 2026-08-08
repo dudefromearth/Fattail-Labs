@@ -38,10 +38,29 @@ def list_accounts(request: Request) -> dict:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
             _ensure_default_account(cur, iid)
+            # trade_count = structure opens (and notes), not raw fills.
+            # ToS import stores open + close as separate trade rows; counting
+            # every row double-counts ~round-trips (e.g. 1474 fills → ~737 books).
+            # Align with structure matching: close fills have more TO_CLOSE legs
+            # than TO_OPEN (see trade_log_domain.structure.trade_is_close_fill).
             cur.execute(
                 """SELECT a.*,
                           (SELECT COUNT(*) FROM member_trade_log_trades t
                            WHERE t.account_id = a.id AND t.identity_id = a.identity_id
+                             AND (
+                               SELECT COALESCE(SUM(
+                                 CASE WHEN l.pos_effect = 'TO_CLOSE' THEN 1 ELSE 0 END
+                               ), 0)
+                               FROM member_trade_log_legs l
+                               WHERE l.trade_id = t.id AND l.identity_id = t.identity_id
+                             ) <= (
+                               SELECT COALESCE(SUM(
+                                 CASE WHEN l.pos_effect = 'TO_OPEN' THEN 1 ELSE 0 END
+                               ), 0)
+                               FROM member_trade_log_legs l
+                               WHERE l.trade_id = t.id AND l.identity_id = t.identity_id
+                             )
+                           )
                           ) AS trade_count
                    FROM member_trade_log_accounts a
                    WHERE a.identity_id = %s
