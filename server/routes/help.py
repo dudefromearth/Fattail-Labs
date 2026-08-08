@@ -48,6 +48,7 @@ def _q_public(r: dict) -> dict:
         "body": r["body"],
         "category": r["category"],
         "status": r["status"],
+        "closed_reason": r.get("closed_reason"),
         "page_context": r.get("page_context"),
         "screenshot_url": f"/api/media/{r['screenshot_path']}" if r.get("screenshot_path") else None,
         "created_at": _iso(r.get("created_at")),
@@ -61,6 +62,7 @@ def _msg_public(r: dict) -> dict:
         "id": int(r["id"]),
         "author_role": r["author_role"],
         "body": r["body"],
+        "rating": r.get("rating"),
         "created_at": _iso(r.get("created_at")),
     }
 
@@ -179,7 +181,7 @@ def list_my_questions(request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT id, subject, body, category, status, page_context,
+                """SELECT id, subject, body, category, status, closed_reason, page_context,
                           screenshot_path, created_at, updated_at, answered_at
                    FROM help_questions WHERE identity_id = %s
                    ORDER BY updated_at DESC, id DESC LIMIT 100""",
@@ -196,7 +198,7 @@ def get_my_question(question_id: int, request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT id, identity_id, subject, body, category, status,
+                """SELECT id, identity_id, subject, body, category, status, closed_reason,
                           page_context, screenshot_path, created_at, updated_at, answered_at
                    FROM help_questions WHERE id = %s""",
                 (question_id,),
@@ -205,7 +207,7 @@ def get_my_question(question_id: int, request: Request) -> dict:
             if not q or int(q["identity_id"]) != iid:
                 raise HTTPException(status_code=404, detail="Question not found")
             cur.execute(
-                """SELECT id, author_role, body, created_at FROM help_messages
+                """SELECT id, author_role, body, rating, created_at FROM help_messages
                    WHERE question_id = %s AND visibility = 'public'
                    ORDER BY created_at ASC, id ASC""",
                 (question_id,),
@@ -297,3 +299,65 @@ async def escalate_to_human(question_id: int, request: Request) -> dict:
         question_id, f"(human requested) {q['subject']}", f"member {iid}"
     )
     return {"ok": True}
+
+
+CLOSE_REASONS = ("inactivity", "member", "resolved")
+
+
+@router.post("/api/help/questions/{question_id}/close")
+async def close_my_question(question_id: int, request: Request) -> dict:
+    """Member (or the idle-timer) closes a bot-handled thread. Never closes a thread a
+    human is actively on (open/answered) — the team still owes a reply there."""
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001 — tolerate empty/invalid body
+        body = {}
+    reason = (body.get("reason") or "member").strip() if isinstance(body, dict) else "member"
+    if reason not in CLOSE_REASONS:
+        reason = "member"
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, identity_id, status FROM help_questions WHERE id = %s",
+                (question_id,),
+            )
+            q = cur.fetchone()
+            if not q or int(q["identity_id"]) != iid:
+                raise HTTPException(status_code=404, detail="Question not found")
+            # Only close bot-handled threads; leave human/team threads untouched.
+            if q["status"] not in ("ai_pending", "ai_resolved", "closed"):
+                return {"ok": True, "status": q["status"], "skipped": "human in loop"}
+            cur.execute(
+                "UPDATE help_questions SET status = 'closed', closed_reason = %s WHERE id = %s",
+                (reason, question_id),
+            )
+    return {"ok": True, "status": "closed", "reason": reason}
+
+
+@router.post("/api/help/messages/{message_id}/rating")
+async def rate_message(message_id: int, request: Request) -> dict:
+    """Member rates one assistant answer 👍/👎. Feeds the self-improving loop."""
+    claims = require_session(request)
+    iid = int(claims["identity_id"])
+    body = await request.json()
+    rating = (body.get("rating") or "").strip().lower() if isinstance(body, dict) else ""
+    if rating not in ("up", "down"):
+        raise HTTPException(status_code=422, detail="rating must be 'up' or 'down'")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            # The message must be an assistant answer on a question this member owns.
+            cur.execute(
+                """SELECT m.id FROM help_messages m
+                   JOIN help_questions q ON q.id = m.question_id
+                   WHERE m.id = %s AND m.author_role = 'assistant' AND q.identity_id = %s""",
+                (message_id, iid),
+            )
+            if cur.fetchone() is None:
+                raise HTTPException(status_code=404, detail="Message not found")
+            cur.execute(
+                "UPDATE help_messages SET rating = %s WHERE id = %s",
+                (rating, message_id),
+            )
+    return {"ok": True, "rating": rating}

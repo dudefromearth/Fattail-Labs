@@ -13,9 +13,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type Q = {
   id: number; subject: string; body: string; category: string; status: string;
+  closed_reason?: string | null;
   screenshot_url: string | null; created_at: string | null;
 };
-type Msg = { id: number; author_role: string; body: string; created_at: string | null };
+type Msg = { id: number; author_role: string; body: string; rating?: string | null; created_at: string | null };
+
+const IDLE_WARN_MS = 4 * 60 * 1000;   // banner appears
+const IDLE_CLOSE_MS = 5 * 60 * 1000;  // chat auto-closes
 
 const TOPICS: { value: string; label: string }[] = [
   { value: "bug", label: "Report a bug" },
@@ -163,11 +167,13 @@ function Compose({ onStarted }: { onStarted: (id: number) => void }) {
   );
 }
 
-function Bubble({ m }: { m: { author_role: string; body: string; created_at?: string | null } }) {
+function Bubble({ m, onRate }: { m: Msg; onRate?: (id: number, r: "up" | "down") => void }) {
   const mine = m.author_role === "member";
   const who = mine ? "You" : m.author_role === "admin" ? "Support team" : "Assistant";
+  // Rate real, persisted assistant answers only (positive ids).
+  const canRate = m.author_role === "assistant" && m.id > 0 && !!onRate;
   return (
-    <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+    <div className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
       <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${
         mine ? "bg-emerald-600 text-white"
         : m.author_role === "admin" ? "bg-amber-100 text-zinc-800 dark:bg-amber-950/50 dark:text-amber-100"
@@ -175,6 +181,19 @@ function Bubble({ m }: { m: { author_role: string; body: string; created_at?: st
         {!mine && <div className="mb-0.5 text-[11px] font-medium opacity-70">{who}</div>}
         <div className="whitespace-pre-wrap text-sm">{m.body}</div>
       </div>
+      {canRate && (
+        <div className="mt-0.5 flex items-center gap-2 pl-1 text-xs text-zinc-400">
+          {m.rating ? (
+            <span>{m.rating === "up" ? "Thanks for the feedback 👍" : "Thanks — noted 👎"}</span>
+          ) : (
+            <>
+              <span>Helpful?</span>
+              <button onClick={() => onRate!(m.id, "up")} className="hover:text-emerald-600" aria-label="Helpful">👍</button>
+              <button onClick={() => onRate!(m.id, "down")} className="hover:text-red-500" aria-label="Not helpful">👎</button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -185,6 +204,9 @@ function Chat({ id, onBack }: { id: number; onBack: () => void }) {
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [thinking, setThinking] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const lastActivity = useRef<number>(Date.now());
+  const closedRef = useRef(false);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
@@ -193,13 +215,32 @@ function Chat({ id, onBack }: { id: number; onBack: () => void }) {
   }, [id]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, thinking]);
+  // Any new message (yours or the bot's) resets the inactivity clock.
+  useEffect(() => { lastActivity.current = Date.now(); }, [msgs.length]);
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 10000); return () => clearInterval(t); }, []);
 
-  const humanInLoop = q ? ["open", "answered", "closed"].includes(q.status) : false;
+  const humanInLoop = q ? ["open", "answered"].includes(q.status) : false;
+  const isClosed = q?.status === "closed";
+  const botHandled = q ? ["ai_pending", "ai_resolved"].includes(q.status) : false;
+  const idleMs = now - lastActivity.current;
+  const showWarn = botHandled && !isClosed && idleMs >= IDLE_WARN_MS;
+  const secsToClose = Math.max(0, Math.ceil((IDLE_CLOSE_MS - idleMs) / 1000));
+
+  // Auto-close a bot-handled chat after inactivity (never a thread the team is on).
+  useEffect(() => {
+    if (botHandled && !isClosed && !closedRef.current && idleMs >= IDLE_CLOSE_MS) {
+      closedRef.current = true;
+      fetch(`/api/help/questions/${id}/close`, {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: "inactivity" }),
+      }).then(() => load()).catch(() => {});
+    }
+  }, [now, botHandled, isClosed, idleMs, id, load]);
 
   const send = useCallback(async () => {
-    if (!reply.trim() || busy) return;
+    if (!reply.trim() || busy || isClosed) return;
     const mine = reply.trim();
-    setBusy(true); setReply("");
+    setBusy(true); setReply(""); lastActivity.current = Date.now();
     setMsgs((m) => [...m, { id: -Date.now(), author_role: "member", body: mine, created_at: null }]);
     setThinking(true);
     try {
@@ -208,15 +249,23 @@ function Chat({ id, onBack }: { id: number; onBack: () => void }) {
         headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: mine }),
       });
       await r.json().catch(() => ({}));
-    } finally {
-      setThinking(false); setBusy(false);
-      await load();
-    }
-  }, [reply, busy, id, load]);
+    } finally { setThinking(false); setBusy(false); await load(); }
+  }, [reply, busy, isClosed, id, load]);
+
+  const rate = useCallback(async (msgId: number, r: "up" | "down") => {
+    lastActivity.current = Date.now();
+    setMsgs((prev) => prev.map((m) => (m.id === msgId ? { ...m, rating: r } : m)));
+    try {
+      await fetch(`/api/help/messages/${msgId}/rating`, {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rating: r }),
+      });
+    } catch { /* optimistic */ }
+  }, []);
 
   const talkToHuman = useCallback(async () => {
     if (busy) return;
-    setBusy(true);
+    setBusy(true); lastActivity.current = Date.now();
     try {
       await fetch(`/api/help/questions/${id}/escalate`, { method: "POST", credentials: "same-origin" });
       await load();
@@ -229,9 +278,17 @@ function Chat({ id, onBack }: { id: number; onBack: () => void }) {
         <button onClick={onBack} className="text-zinc-500 hover:text-zinc-700">← My questions</button>
         {humanInLoop && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">Support team notified</span>}
       </div>
+
+      {showWarn && (
+        <div className="flex items-center justify-between gap-2 border-b border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300">
+          <span>Still there? This chat closes in ~{secsToClose}s.</span>
+          <button onClick={() => { lastActivity.current = Date.now(); setNow(Date.now()); }} className="font-medium underline">Keep open</button>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-        {q && <Bubble m={{ author_role: "member", body: q.body }} />}
-        {msgs.map((m) => <Bubble key={m.id} m={m} />)}
+        {q && <Bubble m={{ id: 0, author_role: "member", body: q.body, created_at: null }} />}
+        {msgs.map((m) => <Bubble key={m.id} m={m} onRate={humanInLoop || isClosed ? undefined : rate} />)}
         {thinking && (
           <div className="flex justify-start">
             <div className="rounded-2xl bg-zinc-100 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800">Assistant is typing…</div>
@@ -239,21 +296,29 @@ function Chat({ id, onBack }: { id: number; onBack: () => void }) {
         )}
         <div ref={endRef} />
       </div>
-      <div className="border-t border-zinc-100 p-2 dark:border-zinc-800">
-        <div className="flex gap-2">
-          <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type your reply…"
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send())}
-            className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
-          <button onClick={send} disabled={busy || !reply.trim()}
-            className="rounded-md bg-emerald-600 px-3 text-sm text-white disabled:opacity-50">Send</button>
+
+      {isClosed ? (
+        <div className="border-t border-zinc-100 p-3 text-center text-xs text-zinc-500 dark:border-zinc-800">
+          This chat is closed{q?.closed_reason === "inactivity" ? " (inactivity)" : ""} — it's saved in your questions.{" "}
+          <button onClick={onBack} className="font-medium text-emerald-600 underline">Start a new one</button>
         </div>
-        {!humanInLoop && (
-          <button onClick={talkToHuman} disabled={busy}
-            className="mt-1.5 text-xs text-zinc-400 underline hover:text-zinc-600">
-            Talk to a human instead
-          </button>
-        )}
-      </div>
+      ) : (
+        <div className="border-t border-zinc-100 p-2 dark:border-zinc-800">
+          <div className="flex gap-2">
+            <input value={reply} onChange={(e) => { setReply(e.target.value); lastActivity.current = Date.now(); }} placeholder="Type your reply…"
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), send())}
+              className="flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+            <button onClick={send} disabled={busy || !reply.trim()}
+              className="rounded-md bg-emerald-600 px-3 text-sm text-white disabled:opacity-50">Send</button>
+          </div>
+          {!humanInLoop && (
+            <button onClick={talkToHuman} disabled={busy}
+              className="mt-1.5 text-xs text-zinc-400 underline hover:text-zinc-600">
+              Talk to a human instead
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -274,6 +339,7 @@ function MyQuestions({ onOpen }: { onOpen: (id: number) => void }) {
     : s === "answered" ? "Team replied"
     : s === "open" ? "With the team"
     : s === "ai_pending" ? "In progress"
+    : s === "closed" ? "Closed"
     : s;
 
   return (

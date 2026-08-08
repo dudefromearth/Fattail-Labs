@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-09 — DL-270 Help concierge v1.1 — inactivity close, proactive human, feedback
+
+*(Renumbered from DL-254 on rebase — origin concurrently took DL-254 for the Trader
+Development program. This is the member help concierge v1.1.)*
+
+**Decision:** Member chat improvements on top of the concierge (DL-253); core
+answer/guardrail/escalation unchanged. (1) **Inactivity auto-close** — bot-handled
+chats warn at 4 min idle and close at 5 min via `POST /api/help/questions/{id}/close`
+(`closed_reason='inactivity'`); **never** closes a thread the team is on (returns
+`skipped`). (2) **Proactive human hand-off** — prompt now makes the bot *offer* a human
+when it isn't resolving it or the member says it didn't help; accepting escalates
+(existing ticket + notify). (3) **Answer feedback** — 👍/👎 per assistant answer via
+`POST /api/help/messages/{message_id}/rating` → `help_messages.rating`. Migration `093`
+(`093_help_concierge_v2.sql`; coexists with origin's `093_practice_playbook_campaign.sql`)
+adds `help_messages.rating` + `help_questions.closed_reason` (additive, no enum change).
+Spec: `FatTail-Labs-Help-Concierge-Spec-v1.1`. Tests: `test_help_v2.py`. **14/14 help
+tests pass locally.**
+
+**Deferred to v1.2 (next):** self-improving engine (admin Questions dashboard —
+most-asked/unanswered/escalation-rate/👎'd — + curated FAQ fed back into the KB, optional
+Help-wiki publish), streaming replies, image-aware bug reports. Status: implemented +
+locally verified; pending live deploy to MiniTwo.
+
 ## 2026-08-09 — DL-269 Accounts & Capital program BUILD AUTHORITY
 
 **Coach:** Full Spec set **APPROVED**. Execution law:
