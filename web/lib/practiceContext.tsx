@@ -465,12 +465,9 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
     if (accountId === "all") return "All accounts";
     const a = accounts.find((x) => x.id === accountId);
     if (!a) return "All accounts";
-    const base =
-      a.broker && a.broker !== "unset"
-        ? a.label
-        : a.label;
-    if (a.status === "archived") return `${base} · retired`;
-    return base;
+    // Name only — venue (thinkorswim, etc.) is in Profile → Trade accounts
+    if (a.status === "archived") return `${a.label} · retired`;
+    return a.label;
   }, [accountId, accounts]);
 
   const accountIdParam = accountId === "all" ? null : accountId;
