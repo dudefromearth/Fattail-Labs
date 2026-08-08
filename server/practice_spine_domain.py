@@ -794,7 +794,7 @@ def ensure_ledger_campaign(
         (account_id, identity_id),
     )
     row = cur.fetchone() or {}
-    label = (row.get("label") or "Primary").strip() or "Primary"
+    label = (row.get("label") or "Default").strip() or "Default"
     book_title = _unique_campaign_title(
         cur, identity_id, (title or f"Default — {label}").strip()[:255]
     )
@@ -832,12 +832,16 @@ def on_account_created(cur, identity_id: int, account_id: int) -> dict:
 
 
 def _ensure_primary_trade_account(cur, identity_id: int) -> int:
-    """Return an active trade account id; create Primary if the member has none."""
+    """Return an active trade account id; create Default if the member has none."""
     cur.execute(
         """SELECT id FROM member_trade_log_accounts
            WHERE identity_id = %s AND status = 'active'
            ORDER BY
-             CASE label WHEN 'Primary' THEN 0 ELSE 1 END,
+             CASE label
+               WHEN 'Default' THEN 0
+               WHEN 'Primary' THEN 1
+               ELSE 2
+             END,
              sort_order ASC, id ASC
            LIMIT 1""",
         (identity_id,),
@@ -848,7 +852,7 @@ def _ensure_primary_trade_account(cur, identity_id: int) -> int:
     cur.execute(
         """INSERT INTO member_trade_log_accounts
              (identity_id, label, broker, status, sort_order, notes_md)
-           VALUES (%s, 'Primary', 'unset', 'active', 10, %s)""",
+           VALUES (%s, 'Default', 'unset', 'active', 10, %s)""",
         (
             identity_id,
             "Auto-created with first campaign visit.",
@@ -860,11 +864,9 @@ def _ensure_primary_trade_account(cur, identity_id: int) -> int:
 
 
 def ensure_starter_default_campaign(cur, identity_id: int) -> dict | None:
-    """Campaign nav cold-start: new members see a modifiable default campaign.
+    """Campaign nav cold-start: ensure Default account + ledger furniture.
 
     If the identity already has any campaign, no-op (return None).
-    Otherwise ensure Primary trade account + active default campaign they can
-    edit (title, goals, pause, etc.). Without this, many never create one.
     """
     cur.execute(
         """SELECT COUNT(*) AS n FROM member_practice_campaigns
@@ -874,7 +876,7 @@ def ensure_starter_default_campaign(cur, identity_id: int) -> dict | None:
     n = int((cur.fetchone() or {}).get("n") or 0)
     if n > 0:
         return None
-    # Spec §2.1 — Primary + ledger furniture (not a member charter draft)
+    # Spec §2.1 — Default account + ledger furniture
     account_id = _ensure_primary_trade_account(cur, identity_id)
     return ensure_ledger_campaign(cur, identity_id, account_id)
 

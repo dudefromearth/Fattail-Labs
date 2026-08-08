@@ -21,20 +21,30 @@ import {
 import type { Account } from "@/lib/tradeLog";
 import { fetchAccounts } from "@/lib/tradeLogApi";
 
-/** If saved account has 0 fills but another book has fills, use All (one-time on hydrate). */
+/** Prefer provisioned default account (label Default or legacy Primary), else busiest active. */
+function pickDefaultAccountId(accounts: Account[]): AccountScope {
+  const active = accounts.filter((a) => a.status === "active");
+  if (!active.length) return "all";
+  const standing =
+    active.find((a) => a.label === "Default") ||
+    active.find((a) => a.label === "Primary") ||
+    active.slice().sort((a, b) => (b.trade_count ?? 0) - (a.trade_count ?? 0))[0];
+  return standing?.id ?? "all";
+}
+
+export function isStandingDefaultAccountLabel(label: string | undefined): boolean {
+  return label === "Default" || label === "Primary";
+}
+
+/** Resolve saved scope: keep valid account; map missing/"all" prefs to default account. */
 function resolveAccountPref(
   saved: AccountScope,
   accounts: Account[],
 ): AccountScope {
-  if (saved === "all") return "all";
+  const fallback = pickDefaultAccountId(accounts);
+  if (saved === "all") return fallback;
   const acct = accounts.find((a) => a.id === saved && a.status === "active");
-  if (!acct) return "all";
-  const countsKnown = accounts.some((a) => typeof a.trade_count === "number");
-  if (!countsKnown) return saved;
-  if ((acct.trade_count ?? 0) > 0) return saved;
-  if (accounts.some((a) => a.status === "active" && (a.trade_count ?? 0) > 0)) {
-    return "all";
-  }
+  if (!acct) return fallback;
   return saved;
 }
 import {
@@ -59,6 +69,8 @@ const LEGACY_GRANULARITY = "ft_labs_practice_granularity";
 const LEGACY_CLEARED = "ft_labs_practice_v2_cleared_legacy";
 /** One-time: recover from empty Primary / day-filter prefs that blanked Reports. */
 const FULLBOOK_MIGRATE = "ft_labs_practice_v2_fullbook_2026_07_31";
+/** One-time: stop defaulting account scope to "All" — home is default account (Primary). */
+const DEFAULT_ACCOUNT_HOME = "ft_labs_practice_v2_default_account_home_2026_08_08";
 
 const STORAGE_PREFIX = "ft_labs_practice_v2";
 
@@ -102,6 +114,7 @@ function clearLegacyKeys(): void {
 
 function loadPrefs(identityId: number | null): StoredPrefs {
   const fallback: StoredPrefs = {
+    // Concrete account is applied after accounts load (pickDefaultAccountId).
     accountId: "all",
     dateYmd: ymd(startOfDay(new Date())),
     // Full book by default — multi-year imports must not hide behind "this month".
@@ -115,7 +128,7 @@ function loadPrefs(identityId: number | null): StoredPrefs {
     const parsed = JSON.parse(raw) as Partial<StoredPrefs>;
     let accountId: AccountScope = "all";
     if (parsed.accountId === "all" || parsed.accountId == null) {
-      accountId = "all";
+      accountId = "all"; // resolveAccountPref maps to default account
     } else {
       const n = Number(parsed.accountId);
       accountId = Number.isFinite(n) && n > 0 ? n : "all";
@@ -241,8 +254,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
   const [accountsReady, setAccountsReady] = useState(false);
 
   // Resolve session + accounts, then apply prefs **once** before consumers fetch.
-  // Order matters: initial React state is All/all-time → first paint must NOT fetch
-  // until this finishes, or equity/trades flash full book then collapse under prefs.
+  // Order matters: first paint must NOT fetch until this finishes.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -267,10 +279,21 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       let gran = prefs.granularity;
       let dateYmd = prefs.dateYmd;
 
-      // One-time recovery from the empty-Primary / day-scope loop (2026-07-31).
+      // One-time: leave forced "All accounts" home — default is named account (Primary).
       try {
+        if (localStorage.getItem(DEFAULT_ACCOUNT_HOME) !== "1") {
+          account = pickDefaultAccountId(accts);
+          localStorage.setItem(DEFAULT_ACCOUNT_HOME, "1");
+          if (iid != null) {
+            savePrefs(iid, {
+              accountId: account,
+              dateYmd,
+              granularity: gran,
+            });
+          }
+        }
+        // Prior fullbook migrate may have set all — still remapped by resolveAccountPref
         if (localStorage.getItem(FULLBOOK_MIGRATE) !== "1") {
-          account = "all";
           gran = "all";
           dateYmd = ymd(startOfDay(new Date()));
           localStorage.setItem(FULLBOOK_MIGRATE, "1");
@@ -344,13 +367,13 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  // Drop account ids that are not this member's (wrong id after SSO switch / cleanup).
+  // Invalid saved account id → default account (Primary). Explicit "All" stays available.
   useEffect(() => {
     if (!hydrated || !accountsReady || accountId === "all") return;
     const ok = accounts.some(
       (a) => a.id === accountId && a.status === "active",
     );
-    if (!ok) setAccountIdState("all");
+    if (!ok) setAccountIdState(pickDefaultAccountId(accounts));
   }, [accounts, accountsReady, accountId, hydrated]);
 
   const setAccountId = useCallback((id: AccountScope) => {

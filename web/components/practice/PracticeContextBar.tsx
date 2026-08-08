@@ -10,6 +10,7 @@ import { Button } from "@/components/ui";
 import { IconChevronDown } from "@/components/ui/icons";
 import {
   PRACTICE_GRANULARITIES,
+  isStandingDefaultAccountLabel,
   usePracticeContext,
 } from "@/lib/practiceContext";
 
@@ -84,14 +85,15 @@ export default function PracticeContextBar({
             aria-label="Active account"
             data-testid="practice-account-select"
           >
-            <option value="all">All accounts</option>
             {activeAccounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.label}
+                {isStandingDefaultAccountLabel(a.label) ? " · default" : ""}
                 {a.broker && a.broker !== "unset" ? ` · ${a.broker}` : ""}
                 {typeof a.trade_count === "number" ? ` (${a.trade_count})` : ""}
               </option>
             ))}
+            <option value="all">All accounts</option>
             <option value={MANAGE_ACCOUNTS}>Manage accounts…</option>
           </select>
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-label-secondary)]">

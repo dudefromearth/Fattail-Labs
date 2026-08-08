@@ -269,18 +269,21 @@ def _get_account(cur, iid: int, account_id: int) -> dict:
     return row
 
 
-DEFAULT_ACCOUNT_LABEL = "Primary"
+# Member-facing default account label (provisioned furniture; renamable).
+DEFAULT_ACCOUNT_LABEL = "Default"
+# Legacy provisioned label — still recognized as the standing home.
+LEGACY_DEFAULT_ACCOUNT_LABEL = "Primary"
 # Venue left unset until first import (adapter maps it) or first trade (user picks).
 DEFAULT_ACCOUNT_VENUE = cat.UNSET_VENUE
 
 
 def _ensure_default_account(cur, iid: int) -> dict:
-    """Every entitled member gets one active Primary account on first access.
+    """Every entitled member gets one active default account on first access.
 
     Venue is **not** assumed (thinkorswim, FatTail, sim, …). It stays `unset`
     until the first import (detected adapter → venue) or first trade create
     (user-chosen broker/sim). Prefer the active account with the **most trades**
-    so default_account_id is not an empty "Primary" when the book lives elsewhere.
+    so the standing home is not an empty book when fills live elsewhere.
     """
     cur.execute(
         """SELECT a.*
@@ -290,10 +293,14 @@ def _ensure_default_account(cur, iid: int) -> dict:
            WHERE a.identity_id = %s AND a.status = 'active'
            GROUP BY a.id
            ORDER BY COUNT(t.id) DESC,
-             CASE a.label WHEN %s THEN 0 ELSE 1 END,
+             CASE a.label
+               WHEN %s THEN 0
+               WHEN %s THEN 1
+               ELSE 2
+             END,
              a.sort_order ASC, a.id ASC
            LIMIT 1""",
-        (iid, DEFAULT_ACCOUNT_LABEL),
+        (iid, DEFAULT_ACCOUNT_LABEL, LEGACY_DEFAULT_ACCOUNT_LABEL),
     )
     def _with_ledger(acct_row: dict) -> dict:
         # Structured practice §2.1 — ledger for every book, not only new inserts
@@ -310,21 +317,39 @@ def _ensure_default_account(cur, iid: int) -> dict:
         return _with_ledger(row)
     cur.execute(
         """SELECT * FROM member_trade_log_accounts
-           WHERE identity_id = %s AND label = %s
-           ORDER BY id ASC LIMIT 1""",
-        (iid, DEFAULT_ACCOUNT_LABEL),
+           WHERE identity_id = %s AND label IN (%s, %s)
+           ORDER BY CASE label WHEN %s THEN 0 ELSE 1 END, id ASC LIMIT 1""",
+        (
+            iid,
+            DEFAULT_ACCOUNT_LABEL,
+            LEGACY_DEFAULT_ACCOUNT_LABEL,
+            DEFAULT_ACCOUNT_LABEL,
+        ),
     )
-    primary = cur.fetchone()
-    if primary:
+    standing = cur.fetchone()
+    if standing:
         cur.execute(
             """UPDATE member_trade_log_accounts
                SET status = 'active'
                WHERE id = %s AND identity_id = %s""",
-            (primary["id"], iid),
+            (standing["id"], iid),
         )
+        # Soft-migrate legacy "Primary" label → "Default" when still the stock name
+        if standing.get("label") == LEGACY_DEFAULT_ACCOUNT_LABEL:
+            cur.execute(
+                """UPDATE member_trade_log_accounts
+                   SET label = %s
+                   WHERE id = %s AND identity_id = %s AND label = %s""",
+                (
+                    DEFAULT_ACCOUNT_LABEL,
+                    standing["id"],
+                    iid,
+                    LEGACY_DEFAULT_ACCOUNT_LABEL,
+                ),
+            )
         cur.execute(
             "SELECT * FROM member_trade_log_accounts WHERE id = %s",
-            (primary["id"],),
+            (standing["id"],),
         )
         return _with_ledger(cur.fetchone())
     cur.execute(

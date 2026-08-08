@@ -28,6 +28,8 @@ export default function TradeAccountsSettings() {
   const [msg, setMsg] = useState<string | null>(null);
   /** Account id pending retire confirmation */
   const [retireTarget, setRetireTarget] = useState<Account | null>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
 
   const reload = useCallback(async () => {
     setError(null);
@@ -90,6 +92,45 @@ export default function TradeAccountsSettings() {
       }
       setNewLabel("");
       setMsg("Account created. Select it from Practice chrome when trading.");
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function renameAccount(id: number, label: string) {
+    const next = label.trim();
+    if (!next) {
+      setError("Account name is required");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMsg(null);
+    try {
+      const r = await fetch(`/api/me/trade-log/accounts/${id}`, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: next }),
+      });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        const d = (body as { detail?: unknown }).detail;
+        setError(
+          typeof d === "string"
+            ? d
+            : d && typeof d === "object" && "message" in d
+              ? String((d as { message?: unknown }).message)
+              : await r.text(),
+        );
+        return;
+      }
+      setRenamingId(null);
+      setRenameDraft("");
+      setMsg("Account renamed.");
       await reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -185,10 +226,11 @@ export default function TradeAccountsSettings() {
         Trade accounts
       </h2>
       <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-        Broker or sim · max 10 active. Default{" "}
-        <strong className="font-medium">Primary</strong> is provisioned
-        automatically. Selection for day-to-day work lives in Practice chrome;
-        this is where you add and retire accounts (archive, never delete).
+        Broker or sim · max 10 active. A{" "}
+        <strong className="font-medium">Default</strong> account is provisioned
+        automatically (you can rename it). Selection for day-to-day work lives
+        in Practice chrome; this is where you add, rename, and retire accounts
+        (archive, never delete).
       </p>
 
       {error && (
@@ -206,43 +248,109 @@ export default function TradeAccountsSettings() {
         {accounts.map((a) => (
           <li
             key={a.id}
-            className="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2.5 text-sm"
+            className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
             data-testid={`trade-account-row-${a.id}`}
           >
-            <span className="font-medium text-[var(--color-label)]">
-              {a.label}
-            </span>
-            <span className="flex flex-wrap items-center gap-3 text-[var(--color-label-secondary)]">
-              <span>
-                {a.broker && a.broker !== "unset" ? a.broker : "Venue not set"}
-                <span className="text-[var(--color-label-tertiary)]">
-                  {" "}
-                  · {a.status}
-                  {a.broker && a.broker !== "unset" ? ` · ${a.venue_kind}` : ""}
+            {renamingId === a.id ? (
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                <input
+                  className="min-h-[var(--hit-min)] min-w-[8rem] flex-1 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 text-sm text-[var(--color-label)]"
+                  value={renameDraft}
+                  onChange={(e) => setRenameDraft(e.target.value)}
+                  aria-label="Account name"
+                  data-testid={`account-rename-input-${a.id}`}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void renameAccount(a.id, renameDraft);
+                    }
+                    if (e.key === "Escape") {
+                      setRenamingId(null);
+                      setRenameDraft("");
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={busy || !renameDraft.trim()}
+                  onClick={() => void renameAccount(a.id, renameDraft)}
+                  data-testid={`account-rename-save-${a.id}`}
+                >
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setRenamingId(null);
+                    setRenameDraft("");
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <>
+                <span className="font-medium text-[var(--color-label)]">
+                  {a.label}
+                  {(a.label === "Default" || a.label === "Primary") && (
+                    <span className="ml-1.5 text-xs font-normal text-[var(--color-label-tertiary)]">
+                      · default
+                    </span>
+                  )}
                 </span>
-              </span>
-              {a.status === "active" ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="text-xs font-medium text-[var(--color-tint)] hover:underline disabled:opacity-50"
-                  onClick={() => setRetireTarget(a)}
-                  data-testid={`account-retire-${a.id}`}
-                >
-                  Retire
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="text-xs font-medium text-[var(--color-tint)] hover:underline disabled:opacity-50"
-                  onClick={() => void setAccountStatus(a.id, "active")}
-                  data-testid={`account-unretire-${a.id}`}
-                >
-                  Un-retire
-                </button>
-              )}
-            </span>
+                <span className="flex flex-wrap items-center gap-3 text-[var(--color-label-secondary)]">
+                  <span>
+                    {a.broker && a.broker !== "unset"
+                      ? a.broker
+                      : "Venue not set"}
+                    <span className="text-[var(--color-label-tertiary)]">
+                      {" "}
+                      · {a.status}
+                      {a.broker && a.broker !== "unset"
+                        ? ` · ${a.venue_kind}`
+                        : ""}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="text-xs font-medium text-[var(--color-tint)] hover:underline disabled:opacity-50"
+                    onClick={() => {
+                      setRenamingId(a.id);
+                      setRenameDraft(a.label);
+                    }}
+                    data-testid={`account-rename-${a.id}`}
+                  >
+                    Rename
+                  </button>
+                  {a.status === "active" ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      className="text-xs font-medium text-[var(--color-tint)] hover:underline disabled:opacity-50"
+                      onClick={() => setRetireTarget(a)}
+                      data-testid={`account-retire-${a.id}`}
+                    >
+                      Retire
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      className="text-xs font-medium text-[var(--color-tint)] hover:underline disabled:opacity-50"
+                      onClick={() => void setAccountStatus(a.id, "active")}
+                      data-testid={`account-unretire-${a.id}`}
+                    >
+                      Un-retire
+                    </button>
+                  )}
+                </span>
+              </>
+            )}
           </li>
         ))}
         {accounts.length === 0 && (

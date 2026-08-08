@@ -81,7 +81,13 @@ function TradeLogBody() {
   const [filterFromDay, setFilterFromDay] = useState<string>("");
   const [filterToDay, setFilterToDay] = useState<string>("");
   const [campaignOptions, setCampaignOptions] = useState<
-    { id: number; title: string; is_default?: boolean }[]
+    {
+      id: number;
+      title: string;
+      is_default?: boolean;
+      is_ledger?: boolean;
+      account_id?: number | null;
+    }[]
   >([]);
   const [playbookOptions, setPlaybookOptions] = useState<
     { id: number; title: string }[]
@@ -100,6 +106,8 @@ function TradeLogBody() {
             id: c.id,
             title: c.title,
             is_default: !!c.is_default,
+            is_ledger: !!c.is_ledger,
+            account_id: c.account_id ?? null,
           })),
         );
       }
@@ -117,6 +125,34 @@ function TradeLogBody() {
       setCampaignFilter(deepLinkCampaign);
     }
   }, [deepLinkCampaign]);
+
+  // Default campaign filter: ledger (or default) for the active account — not "All".
+  useEffect(() => {
+    if (deepLinkCampaign > 0) return;
+    if (!campaignOptions.length) return;
+    if (accountId === "all") {
+      // Across books: leave All campaigns unless user already picked one
+      return;
+    }
+    const forAccount = campaignOptions.filter(
+      (c) => c.account_id == null || c.account_id === accountId,
+    );
+    const pool = forAccount.length ? forAccount : campaignOptions;
+    const preferred =
+      pool.find((c) => c.is_ledger) ||
+      pool.find((c) => c.is_default) ||
+      pool[0];
+    if (!preferred) return;
+    // Reset when account changes or filter empty / points at other account's campaign
+    const current = campaignOptions.find((c) => c.id === campaignFilter);
+    const currentOk =
+      campaignFilter !== "" &&
+      current &&
+      (current.account_id == null || current.account_id === accountId);
+    if (!currentOk) {
+      setCampaignFilter(preferred.id);
+    }
+  }, [accountId, campaignOptions, campaignFilter, deepLinkCampaign]);
 
   // Journey Adhere deep-link only (F2) — no standing process filter on the blotter
   useEffect(() => {
@@ -176,7 +212,16 @@ function TradeLogBody() {
             tr.error.kind === "err" &&
             /account not found/i.test(tr.error.message || "")
           ) {
-            setAccountId("all");
+            // Fall back to Primary (default account), not "All accounts"
+            const active = (ctxAccounts || []).filter(
+              (a) => a.status === "active",
+            );
+            const home =
+              active.find((a) => a.label === "Default") ||
+              active.find((a) => a.label === "Primary") ||
+              active[0];
+            if (home) setAccountId(home.id);
+            else setAccountId("all");
             setError(null);
             setState("loading");
             return;
@@ -228,6 +273,7 @@ function TradeLogBody() {
     adherenceMode,
     filterFromDay,
     filterToDay,
+    ctxAccounts,
   ]);
 
   const loadMore = useCallback(async () => {
@@ -311,18 +357,40 @@ function TradeLogBody() {
 
   const mergedAccounts = accounts.length ? accounts : ctxAccounts;
   const activeAccounts = mergedAccounts.filter((a) => a.status === "active");
-  const primary =
-    activeAccounts.find((a) => a.label === "Primary") || activeAccounts[0];
+  const standingHome =
+    activeAccounts.find((a) => a.label === "Default") ||
+    activeAccounts.find((a) => a.label === "Primary") ||
+    activeAccounts[0];
   const defaultAcct =
-    accountId !== "all" ? accountId : primary?.id ?? null;
+    accountId !== "all" ? accountId : standingHome?.id ?? null;
   const exportAccount =
     accountId !== "all"
       ? mergedAccounts.find((a) => a.id === accountId)
-      : primary;
+      : standingHome;
   const nativeVenueLabel =
     exportAccount?.broker && exportAccount.broker !== "unset"
       ? exportAccount.broker
       : "FatTail if unset";
+
+  const campaignOptionsForAccount = useMemo(() => {
+    if (accountId === "all") return campaignOptions;
+    const scoped = campaignOptions.filter(
+      (c) => c.account_id == null || c.account_id === accountId,
+    );
+    return scoped.length ? scoped : campaignOptions;
+  }, [accountId, campaignOptions]);
+
+  const campaignFilterLabel = useMemo(() => {
+    if (campaignFilter === "" || campaignFilter == null) return "All campaigns";
+    const c = campaignOptions.find((x) => x.id === campaignFilter);
+    if (!c) return "Campaign";
+    const tag = c.is_ledger || c.is_default ? " · default" : "";
+    return `${c.title}${tag}`;
+  }, [campaignFilter, campaignOptions]);
+
+  const contextScopeLabel = useMemo(() => {
+    return `${accountLabel} · ${campaignFilterLabel}`;
+  }, [accountLabel, campaignFilterLabel]);
 
   /** Prefer server opens for accuracy; fall back to client match on loaded pages. */
   const unmatched = useMemo(() => {
@@ -364,7 +432,7 @@ function TradeLogBody() {
   return (
     <>
       <TradeLogToolbar
-        accountLabel={accountLabel}
+        accountLabel={contextScopeLabel}
         onImport={() => setImportOpen(true)}
         onNewTrade={() => {
           setSheetMode("create");
@@ -374,8 +442,8 @@ function TradeLogBody() {
         nativeVenueLabel={nativeVenueLabel}
         onExport={(fmt) => {
           let aid: number | null = accountIdParam;
-          if (fmt === "native" && accountId === "all" && primary?.id) {
-            aid = primary.id;
+          if (fmt === "native" && accountId === "all" && standingHome?.id) {
+            aid = standingHome.id;
           }
           window.location.href = exportUrl({ accountId: aid, format: fmt });
         }}
@@ -492,7 +560,7 @@ function TradeLogBody() {
           onFilterOpenOnly={setFilterOpenOnly}
           campaignFilter={campaignFilter}
           onCampaignFilter={setCampaignFilter}
-          campaignOptions={campaignOptions}
+          campaignOptions={campaignOptionsForAccount}
           playbookFilter={playbookFilter}
           onPlaybookFilter={setPlaybookFilter}
           playbookOptions={playbookOptions}

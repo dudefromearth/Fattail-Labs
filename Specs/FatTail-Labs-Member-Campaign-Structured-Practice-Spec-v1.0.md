@@ -54,7 +54,7 @@ Law 1’s “at practice provision” is **load-bearing**. Defined here:
 |------|--------|
 | **When** | At **first Practice-suite touch** — any authenticated entry that needs a trade book to be coherent: first open of Trade Log, Campaign library, Journal (if it needs account context), or import. **Not** bare marketing landing / course catalog. Idempotent: if a default account already exists, no second genesis. |
 | **What** | Platform ensures one standing **default account** (Trade Log account row) for the identity if none exists. Same furniture logic as the ledger: **creating the book is not a signature**; the member did not “enter a contract” by opening Practice. |
-| **Label** | Default title **`Primary`** (Tango may refine chrome; storage-friendly house word). Member may rename. Member-facing phrase: **default account** (Concept Spec vocabulary). |
+| **Label** | Provisioned title **`Default`**. Member may **rename** freely (Profile → Trade accounts). Member-facing phrase: **default account**. Legacy **`Primary`** is treated as the same standing home until renamed. |
 | **Then** | In the **same act**, create that account’s **ledger** campaign (Law 1 item 1). Order: account → ledger. |
 | **Not** | List-GET of campaigns alone must not invent accounts (D3 still: browsing empty campaign list does not provision). First *Practice tool* that requires a book triggers ensure. |
 | **Later accounts** | Member-created accounts (second book, IRA, Sim, …) also get a ledger at **account create** — same as today, plus ledger. |
