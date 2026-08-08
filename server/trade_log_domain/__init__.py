@@ -23,19 +23,33 @@ from trade_log_domain.structure import (
     unit_qty,
     ymd_from_exec,
 )
+from trade_log_domain.trade_chart import (
+    build_markers,
+    chart_window,
+    normalize_tf,
+    product_underlier,
+    resolve_series_ticker,
+    structure_strike_band,
+)
 
 __all__ = [
     "build_day_book",
+    "build_markers",
     "build_reports_book",
+    "chart_window",
     "days_with_book_interest",
     "enrich_trades_with_synthetic_pnl",
     "fills_on_day",
     "match_open_close",
     "multiplier",
     "net_cash_points",
+    "normalize_tf",
     "opens_on_day",
+    "product_underlier",
     "realized_pnl",
+    "resolve_series_ticker",
     "structure_key",
+    "structure_strike_band",
     "trade_expiry",
     "trade_is_close_fill",
     "union_day_book_items",

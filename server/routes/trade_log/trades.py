@@ -144,6 +144,32 @@ def get_trade(trade_id: int, request: Request) -> dict:
             return _load_trade(cur, trade_id, iid)
 
 
+@router.get("/api/me/trade-log/trades/{trade_id}/chart")
+def get_trade_chart(
+    trade_id: int,
+    request: Request,
+    tf: str = "15m",
+) -> dict:
+    """Static underlier OHLC for trade review (Phase 2 charts).
+
+    Query: ``tf=5m|15m|1d`` (default 15m).
+    Fail loud: missing/stale bars → ``ok: false`` with empty bars (never a fake path).
+    SPX/XSP/VIX use labeled proxy series per Massive doctrine.
+    """
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    from market_data.trade_chart_service import build_trade_chart
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            trade = _load_trade(cur, trade_id, iid)
+            # Pair open/close from same-account book for hold window + markers.
+            account_id = int(trade["account_id"]) if trade.get("account_id") else None
+            book, _accounts = _load_member_book(cur, iid, account_id)
+            return build_trade_chart(cur, trade, book=book, tf=tf)
+
+
 @router.post("/api/me/trade-log")
 @router.post("/api/me/trade-log/trades")
 async def create_trade(request: Request) -> dict:

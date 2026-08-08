@@ -42,6 +42,54 @@ export type TradesPage = {
   page_limit?: number | null;
 };
 
+/** Phase 2 trade chart — underlier OHLC for hold window. */
+export type TradeChartBar = {
+  t: number;
+  o: number | null;
+  h: number | null;
+  l: number | null;
+  c: number;
+  v: number | null;
+};
+
+export type TradeChartMarker = {
+  kind: "entry" | "exit" | string;
+  t: string;
+  t_ms: number;
+  label: string;
+  trade_id?: number | null;
+};
+
+export type TradeChartPayload = {
+  ok: boolean;
+  status: string;
+  error?: string | null;
+  message?: string | null;
+  trade_id?: number;
+  tf: string;
+  product_symbol?: string;
+  series_ticker?: string;
+  proxy_label?: string | null;
+  source?: string;
+  window?: { from: string; to: string };
+  bars: TradeChartBar[];
+  markers: TradeChartMarker[];
+  structure_band?: { low: number; high: number } | null;
+  cache?: { hit: boolean; ttl_s: number };
+};
+
+export async function fetchTradeChart(
+  tradeId: number,
+  tf: "5m" | "15m" | "1d" = "15m",
+): Promise<AnalyticsResult<TradeChartPayload>> {
+  const q = new URLSearchParams({ tf });
+  const r = await fetch(
+    `/api/me/trade-log/trades/${tradeId}/chart?${q.toString()}`,
+    { credentials: "same-origin" },
+  );
+  return parseJson(r);
+}
+
 /** Paginated blotter list (default page size server-side ~80). */
 export async function fetchTrades(
   accountId?: number | null,

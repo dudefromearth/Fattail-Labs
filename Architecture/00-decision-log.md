@@ -4,6 +4,26 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-08 — DL-256 Phase 2 charts track (Match Hygiene) — Massive underlier review
+
+**Decision:** Start TD2 **charts** workstream without waiting on TD2-0 broker vendor.
+Sync remains blocked on Coach vendor GO. Process reports may follow in parallel.
+
+**Contract:**
+
+| Surface | Detail |
+|---------|--------|
+| API | `GET /api/me/trade-log/trades/{id}/chart?tf=5m\|15m\|1d` |
+| Data | Massive stock/index aggs via existing `MassiveClient` (`fetch_aggs`); short-TTL in-process cache |
+| Proxy | SPX/XSP/VIX → labeled proxy (universe `proxy_symbol` or default SPY/VIXY); never silent |
+| Fail loud | Missing/stale/incomplete bars → `ok: false`, **empty bars** — never a partial path as complete |
+| UI | Trade sheet Chart section; entry/exit markers from fill `exec_at`; structure band when axis matches |
+| Out of scope | Tick replay, L2, broker sync, `entry_source=sync`, Journal day embed (OD-2.3 defer) |
+
+**Config:** `MASSIVE_API_KEY` (existing); optional `LABS_TRADE_CHART_CACHE_TTL_S` (default 120).
+
+**Spec:** Phase 2 Match Hygiene v1.1 · gate `TD2-PROGRESS.md`.
+
 ## 2026-08-07 — DL-255 Playbook Scrapbook Presentation (v1.1a) BUILD AUTHORITY
 
 **Coach GO:** implement Spec

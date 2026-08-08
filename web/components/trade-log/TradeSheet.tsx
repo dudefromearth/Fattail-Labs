@@ -31,6 +31,7 @@ import {
   saveTradeLogLastUsed,
 } from "@/lib/tradeLogPrefs";
 import TagPicker from "@/components/tags/TagPicker";
+import TradeChart from "@/components/trade-log/TradeChart";
 import {
   fetchCampaigns,
   fetchPlaybookEntries,
@@ -1219,6 +1220,13 @@ export default function TradeSheet({
                   className="mx-4 my-3 border-0 border-t-2 border-[var(--color-separator)]"
                   aria-hidden
                 />
+              )}
+
+              {/* Phase 2 charts — underlier context for saved fills only */}
+              {mode === "edit" && trade?.id != null && (
+                <div className="px-4 pb-2">
+                  <TradeChart tradeId={trade.id} />
+                </div>
               )}
 
               <section

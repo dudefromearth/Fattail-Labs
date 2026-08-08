@@ -168,6 +168,78 @@ class MassiveClient:
         )
         return self._get_json(f"{self.base_url}{path}")
 
+    def fetch_aggs(
+        self,
+        symbol: str,
+        *,
+        multiplier: int,
+        timespan: str,
+        start: datetime | str,
+        end: datetime | str,
+        adjusted: bool = True,
+        limit: int = 50000,
+    ) -> list[dict[str, Any]]:
+        """GET /v2/aggs/ticker/{symbol}/range/{mult}/{span}/{from}/{to}.
+
+        Returns list of OHLC bars oldest→newest:
+        ``{t: ms_epoch, o, h, l, c, v}``.
+        Empty list when the provider has no results (caller fail-loud).
+        """
+        symbol = (symbol or "").strip().upper()
+        if not symbol:
+            raise MassiveClientError("symbol required")
+        timespan = (timespan or "").strip().lower()
+        if timespan not in ("minute", "hour", "day", "week", "month"):
+            raise MassiveClientError(
+                f"timespan must be minute|hour|day|week|month, got {timespan!r}"
+            )
+        mult = int(multiplier)
+        if mult < 1 or mult > 1000:
+            raise MassiveClientError("multiplier must be 1..1000")
+
+        def _ymd(v: datetime | str) -> str:
+            if isinstance(v, datetime):
+                return v.astimezone(timezone.utc).date().isoformat()
+            s = str(v).strip()
+            if len(s) >= 10 and s[4] == "-":
+                return s[:10]
+            raise MassiveClientError(f"invalid date for aggs range: {v!r}")
+
+        from_s, to_s = _ymd(start), _ymd(end)
+        path = (
+            f"/v2/aggs/ticker/{urllib.parse.quote(symbol, safe='')}"
+            f"/range/{mult}/{timespan}/{from_s}/{to_s}"
+        )
+        qs = urllib.parse.urlencode(
+            {
+                "adjusted": "true" if adjusted else "false",
+                "sort": "asc",
+                "limit": str(max(1, min(50000, int(limit)))),
+            }
+        )
+        data = self._get_json(f"{self.base_url}{path}?{qs}")
+        results = data.get("results") if isinstance(data, dict) else None
+        if not isinstance(results, list):
+            return []
+        out: list[dict[str, Any]] = []
+        for row in results:
+            if not isinstance(row, dict) or row.get("c") is None:
+                continue
+            try:
+                out.append(
+                    {
+                        "t": int(row["t"]) if row.get("t") is not None else None,
+                        "o": float(row["o"]) if row.get("o") is not None else None,
+                        "h": float(row["h"]) if row.get("h") is not None else None,
+                        "l": float(row["l"]) if row.get("l") is not None else None,
+                        "c": float(row["c"]),
+                        "v": float(row["v"]) if row.get("v") is not None else None,
+                    }
+                )
+            except (TypeError, ValueError, KeyError):
+                continue
+        return [b for b in out if b.get("t") is not None]
+
     def fetch_daily_closes(
         self,
         symbol: str,
@@ -186,23 +258,18 @@ class MassiveClient:
         days = max(5, min(500, int(days)))
         end = date.today()
         start = end - timedelta(days=days + 14)  # calendar buffer for weekends
-        path = (
-            f"/v2/aggs/ticker/{urllib.parse.quote(symbol, safe='')}"
-            f"/range/1/day/{start.isoformat()}/{end.isoformat()}"
+        bars = self.fetch_aggs(
+            symbol,
+            multiplier=1,
+            timespan="day",
+            start=start.isoformat(),
+            end=end.isoformat(),
         )
-        url = f"{self.base_url}{path}?{urllib.parse.urlencode({'adjusted': 'true', 'sort': 'asc', 'limit': '50000'})}"
-        data = self._get_json(url)
-        results = data.get("results") if isinstance(data, dict) else None
-        if not isinstance(results, list):
-            return []
         out: list[dict[str, Any]] = []
-        for row in results:
-            if not isinstance(row, dict) or row.get("c") is None:
-                continue
+        for row in bars:
             ts = row.get("t")
             day = ""
             if isinstance(ts, (int, float)):
-                # ms epoch
                 day = datetime.fromtimestamp(
                     float(ts) / 1000.0, tz=timezone.utc
                 ).date().isoformat()
@@ -210,7 +277,6 @@ class MassiveClient:
                 out.append({"t": day, "close": float(row["c"])})
             except (TypeError, ValueError):
                 continue
-        # trim to last `days` trading points
         if len(out) > days:
             out = out[-days:]
         return out
