@@ -1,10 +1,9 @@
 -- 094 — Playbook Scrapbook Presentation (Spec v1.1a · DL-255)
 -- Book root remains member_playbook_entries; chapters/pages/versions/archive/evidence.
--- Note: subtitle / cover_attachment_id may already exist if a partial run added them.
-
--- Book-level cover fields (ignore error if already present — apply via migrate runner once)
--- Handled in companion 094b only if needed; use procedure-free ALTER with check in app.
--- For clean installs:
+--
+-- Book-level subtitle + cover_attachment_id are NOT in this file — see companion
+-- 094_playbook_scrapbook_cover_columns.sql (sorts before 095; required on clean DBs
+-- before 095 can add FK fk_mpe_cover_attachment).
 
 -- Chapters (FK names unique vs practice_campaigns mpc_*)
 CREATE TABLE IF NOT EXISTS member_playbook_chapters (
