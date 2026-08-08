@@ -247,7 +247,7 @@ export function reportsBookFromServer(raw: ServerReportsBook): ReportsBook {
     },
     {
       key: "trades",
-      label: "Total Trade",
+      label: "Total Trades",
       value: String(raw.trade_count),
       tone: "plain",
     },

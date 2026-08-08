@@ -8,7 +8,7 @@ from typing import Any
 
 from trade_log_domain.matching import match_open_close
 from trade_log_domain.pnl import enrich_trades_with_synthetic_pnl, realized_pnl
-from trade_log_domain.structure import average_entry_r2r
+from trade_log_domain.structure import average_entry_r2r, trade_is_close_fill
 
 
 def build_reports_book(
@@ -150,11 +150,17 @@ def build_reports_book(
     # Entry-time R2R (structure cost vs max potential) — never outcome-based
     avg_r2r, r2r_n = average_entry_r2r(filtered)
 
+    # Structure books (opens + notes), not raw fills. ToS import stores open +
+    # close as separate rows; counting every row double-counts round-trips
+    # (e.g. 1474 fills → ~737 books). Align with accounts list trade_count
+    # and structure.trade_is_close_fill.
+    trade_count = sum(1 for t in filtered if not trade_is_close_fill(t))
+
     return {
         "account_label": account_label,
         "starting_capital": float(starting_capital),
         "series": series,
-        "trade_count": len(filtered),
+        "trade_count": trade_count,
         "has_pnl_data": has_pnl_data,
         "end_balance": end_balance,
         "max_drawdown_pct": max_dd_pct,

@@ -380,24 +380,68 @@ def test_seed_row_adapters_feed_domain_enrich():
     assert next(t for t in enriched if t["id"] == 2)["pnl_amount"] == 150.0
 
 
+def test_reports_trade_count_counts_opens_not_close_fills():
+    """Total Trades = structure books, not open+close fill rows (accounts parity)."""
+    open_t = _trade(
+        1,
+        1,
+        "2026-03-10T09:30:00",
+        "VERTICAL",
+        [
+            _leg("BUY", 1, "TO_OPEN", 5),
+            _leg("SELL", 1, "TO_OPEN", 3),
+        ],
+        net_price=2.0,
+        net_side="DEBIT",
+        pnl_amount=None,
+    )
+    close_t = _trade(
+        2,
+        1,
+        "2026-03-10T15:00:00",
+        "VERTICAL",
+        [
+            _leg("SELL", 1, "TO_CLOSE", 4),
+            _leg("BUY", 1, "TO_CLOSE", 0.5),
+        ],
+        net_price=3.5,
+        net_side="CREDIT",
+        pnl_amount=150.0,
+    )
+    note = _trade(
+        3,
+        1,
+        "2026-03-11T10:00:00",
+        "NOTE",
+        [],
+        pnl_amount=None,
+    )
+    book = build_reports_book(
+        [open_t, close_t, note],
+        [{"id": 1, "label": "Primary"}],
+        "all",
+        10000.0,
+    )
+    # open + note = 2 structure books; close fill must not double-count
+    assert book["trade_count"] == 2
+    assert book["winners"] == 1
+
+
 def test_account_filter_scopes_reports():
     a = _trade(
         1,
         1,
         "2026-01-01T10:00:00",
-        "NOTE",
-        [],
+        "VERTICAL",
+        [_leg("SELL", 1, "TO_OPEN", 50)],
         pnl_amount=10.0,
     )
-    # NOTE with no legs skipped from match but still in filtered list with pnl
-    a["strategy"] = "VERTICAL"
-    a["legs"] = [_leg("SELL", 1, "TO_CLOSE", 50)]
     b = _trade(
         2,
         2,
         "2026-01-01T11:00:00",
         "VERTICAL",
-        [_leg("SELL", 1, "TO_CLOSE", 50)],
+        [_leg("SELL", 1, "TO_OPEN", 50)],
         pnl_amount=999.0,
     )
     book = build_reports_book(
