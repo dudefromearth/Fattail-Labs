@@ -1267,6 +1267,11 @@ def renew_campaign(cur, identity_id: int, campaign_id: int) -> dict:
            WHERE id = %s AND identity_id = %s""",
         (campaign_id, nid, identity_id),
     )
+    # Law 7 — successor draft inherits bounds (roles) as draft charter fields
+    try:
+        copy_bounds_to_campaign(cur, identity_id, campaign_id, nid)
+    except PracticeSpineError:
+        pass  # source may have zero bounds
     out = get_campaign(cur, identity_id, nid)
     assert out is not None
     return attach_lineage(cur, identity_id, out)
@@ -1473,3 +1478,802 @@ def read_campaign_cover_bytes(
         raise PracticeSpineError(404, "Cover file missing")
     ct = (row.get("cover_content_type") or "image/jpeg").split(";")[0]
     return path.read_bytes(), ct
+
+
+# ── Charter bounds (Structured Practice Law 7 · Two Roles) ──────────────────
+
+BOUND_ROLES = frozenset({"boundary", "goal"})
+BOUND_ATTRIBUTES = frozenset(
+    {
+        # Process clauses (7a)
+        "risk_per_trade",
+        "position_size",
+        "concurrent_open",
+        "strategy_scope",
+        "strategy_type_scope",
+        "asset_type_scope",
+        "asset_scope",
+        "trading_window",
+        # Statistical signature (7b)
+        "avg_win_loss",
+        "risk_to_reward",
+        "drawdown",
+        "sharpe",
+        "win_rate",
+        "profit_factor",
+    }
+)
+
+
+def serialize_bound(row: dict) -> dict:
+    def _f(key: str) -> float | None:
+        v = row.get(key)
+        if v is None:
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    n_floor = row.get("n_floor")
+    try:
+        n_floor_out = int(n_floor) if n_floor is not None else None
+    except (TypeError, ValueError):
+        n_floor_out = None
+    return {
+        "id": int(row["id"]),
+        "campaign_id": int(row["campaign_id"]),
+        "role": (row.get("role") or "boundary").strip().lower(),
+        "attribute": row.get("attribute") or "",
+        "unit": row.get("unit"),
+        "basis": row.get("basis"),
+        "window_kind": row.get("window_kind"),
+        "range_low": _f("range_low"),
+        "range_high": _f("range_high"),
+        "is_critical": bool(int(row.get("is_critical") or 0)),
+        "n_floor": n_floor_out,
+        "export_key": row.get("export_key"),
+        "created_at": _iso(row.get("created_at")),
+        "updated_at": _iso(row.get("updated_at")),
+    }
+
+
+def _campaign_row(cur, identity_id: int, campaign_id: int) -> dict:
+    cur.execute(
+        """SELECT * FROM member_practice_campaigns
+           WHERE id = %s AND identity_id = %s""",
+        (campaign_id, identity_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise PracticeSpineError(404, "Campaign not found")
+    return row
+
+
+def _assert_charter_not_ledger(row: dict) -> None:
+    if bool(int(row.get("is_ledger") or 0)):
+        raise PracticeSpineError(
+            422, "Ledger campaign cannot carry bounds (furniture, not charter)"
+        )
+
+
+def _parse_optional_float(raw: Any, field: str) -> float | None:
+    if raw is None or raw == "":
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError) as exc:
+        raise PracticeSpineError(422, f"{field} must be a number") from exc
+
+
+def list_bounds(cur, identity_id: int, campaign_id: int) -> list[dict]:
+    _campaign_row(cur, identity_id, campaign_id)
+    cur.execute(
+        """SELECT * FROM member_practice_campaign_bounds
+           WHERE identity_id = %s AND campaign_id = %s
+           ORDER BY role ASC, attribute ASC, id ASC""",
+        (identity_id, campaign_id),
+    )
+    return [serialize_bound(r) for r in cur.fetchall() or []]
+
+
+def get_bound(cur, identity_id: int, campaign_id: int, bound_id: int) -> dict | None:
+    cur.execute(
+        """SELECT * FROM member_practice_campaign_bounds
+           WHERE id = %s AND identity_id = %s AND campaign_id = %s""",
+        (bound_id, identity_id, campaign_id),
+    )
+    row = cur.fetchone()
+    return serialize_bound(row) if row else None
+
+
+def _clear_other_critical(
+    cur, identity_id: int, campaign_id: int, *, except_id: int | None = None
+) -> None:
+    if except_id is None:
+        cur.execute(
+            """UPDATE member_practice_campaign_bounds
+               SET is_critical = 0
+               WHERE identity_id = %s AND campaign_id = %s AND is_critical = 1""",
+            (identity_id, campaign_id),
+        )
+    else:
+        cur.execute(
+            """UPDATE member_practice_campaign_bounds
+               SET is_critical = 0
+               WHERE identity_id = %s AND campaign_id = %s
+                 AND is_critical = 1 AND id <> %s""",
+            (identity_id, campaign_id, except_id),
+        )
+
+
+def create_bound(
+    cur,
+    identity_id: int,
+    campaign_id: int,
+    *,
+    role: str,
+    attribute: str,
+    range_low: Any = None,
+    range_high: Any = None,
+    unit: str | None = None,
+    basis: str | None = None,
+    window_kind: str | None = None,
+    is_critical: bool = False,
+    n_floor: Any = None,
+) -> dict:
+    row = _campaign_row(cur, identity_id, campaign_id)
+    _assert_charter_not_ledger(row)
+    role_n = (role or "").strip().lower()
+    if role_n not in BOUND_ROLES:
+        raise PracticeSpineError(422, "role must be 'boundary' or 'goal'")
+    attr = (attribute or "").strip().lower()
+    if attr not in BOUND_ATTRIBUTES:
+        raise PracticeSpineError(422, f"unknown bound attribute: {attribute!r}")
+    if is_critical and role_n == "goal":
+        raise PracticeSpineError(
+            422,
+            "is_critical is only allowed on boundary-role bounds "
+            "(a goal cannot be the Invalidation clause)",
+        )
+    lo = _parse_optional_float(range_low, "range_low")
+    hi = _parse_optional_float(range_high, "range_high")
+    nf: int | None
+    if n_floor is None or n_floor == "":
+        nf = None
+    else:
+        try:
+            nf = int(n_floor)
+        except (TypeError, ValueError) as exc:
+            raise PracticeSpineError(422, "n_floor must be an integer") from exc
+        if nf < 0:
+            raise PracticeSpineError(422, "n_floor must be ≥ 0")
+    if is_critical:
+        _clear_other_critical(cur, identity_id, campaign_id)
+    key = _export_key("bnd")
+    cur.execute(
+        """INSERT INTO member_practice_campaign_bounds
+             (identity_id, campaign_id, role, attribute, unit, basis, window_kind,
+              range_low, range_high, is_critical, n_floor, export_key)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        (
+            identity_id,
+            campaign_id,
+            role_n,
+            attr,
+            (unit or None),
+            (basis or None),
+            (window_kind or None),
+            lo,
+            hi,
+            1 if is_critical else 0,
+            nf,
+            key,
+        ),
+    )
+    bid = int(cur.lastrowid)
+    # Post-signature bound create is a charter amendment
+    if row.get("signed_at") is not None and str(row.get("status") or "") not in (
+        "completed",
+        "abandoned",
+    ):
+        _insert_amendment(
+            cur,
+            identity_id,
+            campaign_id,
+            field=f"bound.{role_n}.{attr}",
+            old_value=None,
+            new_value={"id": bid, "range_low": lo, "range_high": hi},
+        )
+    out = get_bound(cur, identity_id, campaign_id, bid)
+    assert out is not None
+    return out
+
+
+def patch_bound(
+    cur,
+    identity_id: int,
+    campaign_id: int,
+    bound_id: int,
+    *,
+    role: Any = ...,
+    attribute: Any = ...,
+    range_low: Any = ...,
+    range_high: Any = ...,
+    unit: Any = ...,
+    basis: Any = ...,
+    window_kind: Any = ...,
+    is_critical: Any = ...,
+    n_floor: Any = ...,
+) -> dict:
+    camp = _campaign_row(cur, identity_id, campaign_id)
+    _assert_charter_not_ledger(camp)
+    cur.execute(
+        """SELECT * FROM member_practice_campaign_bounds
+           WHERE id = %s AND identity_id = %s AND campaign_id = %s""",
+        (bound_id, identity_id, campaign_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise PracticeSpineError(404, "Bound not found")
+
+    new_role = (
+        (row.get("role") or "boundary").strip().lower()
+        if role is ...
+        else str(role or "").strip().lower()
+    )
+    if new_role not in BOUND_ROLES:
+        raise PracticeSpineError(422, "role must be 'boundary' or 'goal'")
+    new_attr = (
+        (row.get("attribute") or "")
+        if attribute is ...
+        else str(attribute or "").strip().lower()
+    )
+    if new_attr not in BOUND_ATTRIBUTES:
+        raise PracticeSpineError(422, f"unknown bound attribute: {new_attr!r}")
+    new_lo = (
+        _parse_optional_float(row.get("range_low"), "range_low")
+        if range_low is ...
+        else _parse_optional_float(range_low, "range_low")
+    )
+    new_hi = (
+        _parse_optional_float(row.get("range_high"), "range_high")
+        if range_high is ...
+        else _parse_optional_float(range_high, "range_high")
+    )
+    new_unit = row.get("unit") if unit is ... else (unit or None)
+    new_basis = row.get("basis") if basis is ... else (basis or None)
+    new_wk = row.get("window_kind") if window_kind is ... else (window_kind or None)
+    new_crit = (
+        bool(int(row.get("is_critical") or 0))
+        if is_critical is ...
+        else bool(is_critical)
+    )
+    if new_crit and new_role == "goal":
+        raise PracticeSpineError(
+            422,
+            "is_critical is only allowed on boundary-role bounds "
+            "(a goal cannot be the Invalidation clause)",
+        )
+    if n_floor is ...:
+        new_nf = row.get("n_floor")
+        try:
+            new_nf = int(new_nf) if new_nf is not None else None
+        except (TypeError, ValueError):
+            new_nf = None
+    elif n_floor is None or n_floor == "":
+        new_nf = None
+    else:
+        try:
+            new_nf = int(n_floor)
+        except (TypeError, ValueError) as exc:
+            raise PracticeSpineError(422, "n_floor must be an integer") from exc
+        if new_nf < 0:
+            raise PracticeSpineError(422, "n_floor must be ≥ 0")
+
+    if new_crit:
+        _clear_other_critical(
+            cur, identity_id, campaign_id, except_id=bound_id
+        )
+
+    old_snap = serialize_bound(row)
+    cur.execute(
+        """UPDATE member_practice_campaign_bounds
+           SET role = %s, attribute = %s, unit = %s, basis = %s, window_kind = %s,
+               range_low = %s, range_high = %s, is_critical = %s, n_floor = %s
+           WHERE id = %s AND identity_id = %s""",
+        (
+            new_role,
+            new_attr,
+            new_unit,
+            new_basis,
+            new_wk,
+            new_lo,
+            new_hi,
+            1 if new_crit else 0,
+            new_nf,
+            bound_id,
+            identity_id,
+        ),
+    )
+    if camp.get("signed_at") is not None and str(camp.get("status") or "") not in (
+        "completed",
+        "abandoned",
+    ):
+        new_out = get_bound(cur, identity_id, campaign_id, bound_id)
+        if new_out and (
+            old_snap.get("role") != new_out.get("role")
+            or old_snap.get("attribute") != new_out.get("attribute")
+            or old_snap.get("range_low") != new_out.get("range_low")
+            or old_snap.get("range_high") != new_out.get("range_high")
+            or old_snap.get("is_critical") != new_out.get("is_critical")
+            or old_snap.get("n_floor") != new_out.get("n_floor")
+        ):
+            _insert_amendment(
+                cur,
+                identity_id,
+                campaign_id,
+                field=f"bound.{new_role}.{new_attr}",
+                old_value={
+                    "range_low": old_snap.get("range_low"),
+                    "range_high": old_snap.get("range_high"),
+                    "role": old_snap.get("role"),
+                    "is_critical": old_snap.get("is_critical"),
+                },
+                new_value={
+                    "range_low": new_out.get("range_low"),
+                    "range_high": new_out.get("range_high"),
+                    "role": new_out.get("role"),
+                    "is_critical": new_out.get("is_critical"),
+                },
+            )
+    out = get_bound(cur, identity_id, campaign_id, bound_id)
+    assert out is not None
+    return out
+
+
+def delete_bound(
+    cur, identity_id: int, campaign_id: int, bound_id: int
+) -> None:
+    camp = _campaign_row(cur, identity_id, campaign_id)
+    _assert_charter_not_ledger(camp)
+    cur.execute(
+        """SELECT * FROM member_practice_campaign_bounds
+           WHERE id = %s AND identity_id = %s AND campaign_id = %s""",
+        (bound_id, identity_id, campaign_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise PracticeSpineError(404, "Bound not found")
+    if camp.get("signed_at") is not None and str(camp.get("status") or "") not in (
+        "completed",
+        "abandoned",
+    ):
+        _insert_amendment(
+            cur,
+            identity_id,
+            campaign_id,
+            field=f"bound.{row.get('role')}.{row.get('attribute')}",
+            old_value=serialize_bound(row),
+            new_value=None,
+        )
+    cur.execute(
+        """DELETE FROM member_practice_campaign_bounds
+           WHERE id = %s AND identity_id = %s AND campaign_id = %s""",
+        (bound_id, identity_id, campaign_id),
+    )
+
+
+def copy_bounds_to_campaign(
+    cur, identity_id: int, source_campaign_id: int, dest_campaign_id: int
+) -> int:
+    """Copy bound rows to a draft successor (renew / instantiate). Returns count."""
+    bounds = list_bounds(cur, identity_id, source_campaign_id)
+    n = 0
+    for b in bounds:
+        create_bound(
+            cur,
+            identity_id,
+            dest_campaign_id,
+            role=str(b["role"]),
+            attribute=str(b["attribute"]),
+            range_low=b.get("range_low"),
+            range_high=b.get("range_high"),
+            unit=b.get("unit"),
+            basis=b.get("basis"),
+            window_kind=b.get("window_kind"),
+            is_critical=bool(b.get("is_critical")),
+            n_floor=b.get("n_floor"),
+        )
+        n += 1
+    return n
+
+
+def _default_n_floor(attribute: str) -> int:
+    """Hotel-ish defaults; win_rate needs the highest sample."""
+    if attribute == "win_rate":
+        return 20
+    if attribute in (
+        "avg_win_loss",
+        "risk_to_reward",
+        "drawdown",
+        "sharpe",
+        "profit_factor",
+    ):
+        return 10
+    return 1  # process clauses wake immediately
+
+
+def _pnl_sample_as_of(
+    cur, identity_id: int, campaign_id: int, as_of_day: str
+) -> list[float]:
+    cur.execute(
+        """SELECT pnl_amount FROM member_trade_log_trades
+           WHERE identity_id = %s AND practice_campaign_id = %s
+             AND pnl_amount IS NOT NULL
+             AND DATE(exec_at) <= %s
+           ORDER BY exec_at ASC, id ASC""",
+        (identity_id, campaign_id, as_of_day),
+    )
+    out: list[float] = []
+    for r in cur.fetchall() or []:
+        try:
+            out.append(float(r["pnl_amount"]))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def _stat_readings_from_pnls(pnls: list[float]) -> dict[str, float | None]:
+    """Signature attribute readings from closed P&Ls (campaign window)."""
+    if not pnls:
+        return {
+            "win_rate": None,
+            "profit_factor": None,
+            "avg_win_loss": None,
+            "drawdown": None,
+            "risk_to_reward": None,
+            "sharpe": None,
+        }
+    winners = [p for p in pnls if p > 0]
+    losers = [p for p in pnls if p < 0]
+    decided = len(winners) + len(losers)
+    win_rate = (len(winners) / decided) * 100.0 if decided else None
+    gp = sum(winners)
+    gl = -sum(losers)
+    if gl > 0:
+        pf = gp / gl
+    elif gp > 0:
+        pf = None  # unbounded — treat as high alignment later
+    else:
+        pf = 0.0
+    avg_w = sum(winners) / len(winners) if winners else 0.0
+    avg_l = (-sum(losers) / len(losers)) if losers else 0.0
+    if avg_l > 0:
+        awl = avg_w / avg_l
+    elif avg_w > 0:
+        awl = None
+    else:
+        awl = 0.0
+    # Max drawdown % of peak equity from starting 0 cumulative
+    cum = 0.0
+    peak = 0.0
+    max_dd = 0.0
+    for p in pnls:
+        cum += p
+        peak = max(peak, cum)
+        if peak > 0:
+            max_dd = min(max_dd, (cum - peak) / peak)
+        elif peak == 0 and cum < 0:
+            max_dd = min(max_dd, -1.0)
+    drawdown_pct = abs(max_dd) * 100.0  # magnitude of max DD as %
+    return {
+        "win_rate": win_rate,
+        "profit_factor": pf,
+        "avg_win_loss": awl,
+        "drawdown": drawdown_pct,
+        "risk_to_reward": None,  # structural R:R needs legs — gathering until wired
+        "sharpe": None,  # deferred v1
+    }
+
+
+def journey_shape_at(
+    cur,
+    identity_id: int,
+    campaign_id: int,
+    *,
+    as_of: str | None = None,
+) -> dict:
+    """
+    Campaign Journey shape DTO (Spec §6a).
+
+    Ledger → raises 404 (furniture has no journey-shape route).
+    Charter with zero bounds → invitation payload (200-level empty).
+    Axes: band-alignment (boundary) or progress (goal) via campaign_alignment.
+    """
+    from campaign_alignment import axis_extension
+
+    row = _campaign_row(cur, identity_id, campaign_id)
+    if bool(int(row.get("is_ledger") or 0)):
+        raise PracticeSpineError(
+            404, "Ledger has no Campaign Journey shape (furniture, not charter)"
+        )
+    bounds = list_bounds(cur, identity_id, campaign_id)
+    # T0: signed_at date wins; else first fill day
+    t0 = None
+    if row.get("signed_at") is not None:
+        sa = row["signed_at"]
+        t0 = (
+            sa.date().isoformat()
+            if hasattr(sa, "date")
+            else str(sa)[:10]
+        )
+    if not t0:
+        cur.execute(
+            """SELECT MIN(DATE(exec_at)) AS d FROM member_trade_log_trades
+               WHERE identity_id = %s AND practice_campaign_id = %s""",
+            (identity_id, campaign_id),
+        )
+        fr = cur.fetchone() or {}
+        if fr.get("d") is not None:
+            t0 = str(fr["d"])[:10]
+    present = (_utcnow().date()).isoformat()
+    as_of_day = (as_of or present)[:10]
+    if not bounds:
+        return {
+            "campaign_id": campaign_id,
+            "kind": "invitation",
+            "t0": t0,
+            "present": present,
+            "as_of": as_of_day,
+            "axes": [],
+            "amendment_markers": [],
+            "sample_n": 0,
+            "message": "Declare charter bounds to reveal this season's fingerprint",
+        }
+
+    pnls = _pnl_sample_as_of(cur, identity_id, campaign_id, as_of_day)
+    stats = _stat_readings_from_pnls(pnls)
+    sample_n = len(pnls)
+
+    axes = []
+    for b in bounds:
+        attr = str(b.get("attribute") or "")
+        role = str(b.get("role") or "boundary")
+        lo, hi = b.get("range_low"), b.get("range_high")
+        n_floor = b.get("n_floor")
+        if n_floor is None:
+            n_floor = _default_n_floor(attr)
+        try:
+            n_floor = int(n_floor)
+        except (TypeError, ValueError):
+            n_floor = _default_n_floor(attr)
+
+        reading: float | None = None
+        if attr in stats:
+            reading = stats.get(attr)  # type: ignore[assignment]
+            # Unbounded PF with wins only → treat as high in-band signal
+            if attr == "profit_factor" and reading is None and sample_n > 0:
+                if any(p > 0 for p in pnls) and not any(p < 0 for p in pnls):
+                    reading = float(hi) if hi is not None else 10.0
+
+        # Process: simple presence — gathering only if no fills when n_floor>0
+        process_attrs = {
+            "risk_per_trade",
+            "position_size",
+            "concurrent_open",
+            "strategy_scope",
+            "strategy_type_scope",
+            "asset_type_scope",
+            "asset_scope",
+            "trading_window",
+        }
+        if attr in process_attrs:
+            # Count fills in window as sample for process wake
+            cur.execute(
+                """SELECT COUNT(*) AS n FROM member_trade_log_trades
+                   WHERE identity_id = %s AND practice_campaign_id = %s
+                     AND DATE(exec_at) <= %s""",
+                (identity_id, campaign_id, as_of_day),
+            )
+            fill_n = int((cur.fetchone() or {}).get("n") or 0)
+            if fill_n < max(1, n_floor):
+                axes.append(
+                    {
+                        "bound_id": b["id"],
+                        "role": role,
+                        "attribute": attr,
+                        "range_low": lo,
+                        "range_high": hi,
+                        "reading": None,
+                        "extension": None,
+                        "state": "gathering",
+                        "n_floor": n_floor,
+                        "n": fill_n,
+                    }
+                )
+                continue
+            # Default process axes full until richer witness — never raw magnitude spike
+            reading = lo if lo is not None else (hi if hi is not None else 0.0)
+            if lo is not None and hi is not None:
+                reading = (float(lo) + float(hi)) / 2.0
+            ext = axis_extension(role, float(reading), lo, hi)
+            axes.append(
+                {
+                    "bound_id": b["id"],
+                    "role": role,
+                    "attribute": attr,
+                    "range_low": lo,
+                    "range_high": hi,
+                    "reading": reading,
+                    "extension": round(ext, 4),
+                    "state": "in_range" if ext >= 0.999 else "out_of_range",
+                    "n_floor": n_floor,
+                    "n": fill_n,
+                }
+            )
+            continue
+
+        if reading is None or sample_n < n_floor:
+            axes.append(
+                {
+                    "bound_id": b["id"],
+                    "role": role,
+                    "attribute": attr,
+                    "range_low": lo,
+                    "range_high": hi,
+                    "reading": reading,
+                    "extension": None,
+                    "state": "gathering",
+                    "n_floor": n_floor,
+                    "n": sample_n,
+                }
+            )
+            continue
+
+        ext = axis_extension(role, float(reading), lo, hi)
+        if role == "goal":
+            if ext >= 0.999:
+                state = "reached"
+            elif ext >= 0.5:
+                state = "tracking_toward"
+            else:
+                state = "tracking_away"
+        else:
+            state = "in_range" if ext >= 0.999 else "out_of_range"
+        axes.append(
+            {
+                "bound_id": b["id"],
+                "role": role,
+                "attribute": attr,
+                "range_low": lo,
+                "range_high": hi,
+                "reading": reading,
+                "extension": round(ext, 4),
+                "state": state,
+                "n_floor": n_floor,
+                "n": sample_n,
+            }
+        )
+
+    cur.execute(
+        """SELECT amended_at, field FROM member_practice_campaign_amendments
+           WHERE identity_id = %s AND campaign_id = %s
+           ORDER BY amended_at ASC""",
+        (identity_id, campaign_id),
+    )
+    markers = []
+    for am in cur.fetchall() or []:
+        at = am.get("amended_at")
+        markers.append(
+            {
+                "at": _iso(at)[:10] if at is not None else None,
+                "field": am.get("field"),
+            }
+        )
+    return {
+        "campaign_id": campaign_id,
+        "kind": "shape",
+        "t0": t0,
+        "present": present,
+        "as_of": as_of_day,
+        "axes": axes,
+        "amendment_markers": markers,
+        "sample_n": sample_n,
+        "message": None,
+    }
+
+
+def witness_process_bounds_at_fill(
+    cur,
+    identity_id: int,
+    campaign_id: int,
+    *,
+    exec_at: datetime | None,
+    strategy: str | None = None,
+    underliers: list[str] | None = None,
+) -> list[dict]:
+    """
+    Boundary-role process clauses at fill time (Spec §7a / B2-1).
+
+    Returns quiet variance notes — never raises to block the fill.
+    Goal-role rows are ignored (never variance).
+    Trading window: fill outside campaign starts_at/ends_at is variance (not 422).
+    """
+    notes: list[dict] = []
+    cur.execute(
+        """SELECT * FROM member_practice_campaigns
+           WHERE id = %s AND identity_id = %s""",
+        (campaign_id, identity_id),
+    )
+    camp = cur.fetchone()
+    if not camp or bool(int(camp.get("is_ledger") or 0)):
+        return notes
+
+    # Term window from campaign dates (always process boundary)
+    if exec_at is not None:
+        day = exec_at.date() if hasattr(exec_at, "date") else None
+        if day is not None:
+            sa, ea = camp.get("starts_at"), camp.get("ends_at")
+            if sa is not None:
+                start_d = sa.date() if hasattr(sa, "date") else sa
+                if day < start_d:
+                    notes.append(
+                        {
+                            "attribute": "trading_window",
+                            "role": "boundary",
+                            "state": "variance",
+                            "detail": f"fill day {day.isoformat()} before starts_at",
+                        }
+                    )
+            if ea is not None:
+                end_d = ea.date() if hasattr(ea, "date") else ea
+                if day > end_d:
+                    notes.append(
+                        {
+                            "attribute": "trading_window",
+                            "role": "boundary",
+                            "state": "variance",
+                            "detail": f"fill day {day.isoformat()} after ends_at",
+                        }
+                    )
+
+    bounds = list_bounds(cur, identity_id, campaign_id)
+    und = {u.upper() for u in (underliers or []) if u}
+    strat = (strategy or "").upper()
+    for b in bounds:
+        if b.get("role") != "boundary":
+            continue
+        attr = b.get("attribute")
+        # Asset scope: basis may hold comma-separated underliers
+        if attr == "asset_scope" and und:
+            allowed = {
+                x.strip().upper()
+                for x in str(b.get("basis") or b.get("unit") or "").split(",")
+                if x.strip()
+            }
+            if allowed and not und.issubset(allowed):
+                notes.append(
+                    {
+                        "attribute": "asset_scope",
+                        "role": "boundary",
+                        "state": "variance",
+                        "detail": f"underliers {sorted(und)} outside {sorted(allowed)}",
+                    }
+                )
+        if attr == "strategy_scope" and strat:
+            allowed = {
+                x.strip().upper()
+                for x in str(b.get("basis") or b.get("unit") or "").split(",")
+                if x.strip()
+            }
+            if allowed and strat not in allowed:
+                notes.append(
+                    {
+                        "attribute": "strategy_scope",
+                        "role": "boundary",
+                        "state": "variance",
+                        "detail": f"strategy {strat} outside scope",
+                    }
+                )
+    return notes

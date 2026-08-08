@@ -346,6 +346,26 @@ async def create_trade(request: Request) -> dict:
             tid = int(cur.lastrowid)
             _insert_legs(cur, tid, iid, account_id, legs)
             out = _load_trade(cur, tid, iid)
+            # B2-1: quiet boundary variance notes (never block fill)
+            try:
+                import practice_spine_domain as psd
+
+                underliers = []
+                for lg in legs or []:
+                    if isinstance(lg, dict) and lg.get("underlier"):
+                        underliers.append(str(lg["underlier"]))
+                notes = psd.witness_process_bounds_at_fill(
+                    cur,
+                    iid,
+                    int(camp_id),
+                    exec_at=exec_at,
+                    strategy=strategy,
+                    underliers=underliers,
+                )
+                if notes:
+                    out = {**out, "charter_variance": notes}
+            except Exception:
+                pass
     return out
 
 

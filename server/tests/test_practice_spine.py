@@ -734,7 +734,9 @@ def test_structured_practice_ledger_stamp_memory(client):
         accts = client.get("/api/me/trade-log/accounts", cookies=cookies)
         assert accts.status_code == 200
         primary = next(
-            a for a in accts.json()["accounts"] if a.get("label") == "Primary"
+            a
+            for a in accts.json()["accounts"]
+            if a.get("label") in ("Default", "Primary")
         )
         aid = int(primary["id"])
         with db.transaction() as conn:

@@ -11,6 +11,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
+import CampaignBoundsPanel from "@/components/practice/CampaignBoundsPanel";
+import CampaignJourneyRadar from "@/components/practice/CampaignJourneyRadar";
 import { Button } from "@/components/ui";
 import {
   fetchCampaign,
@@ -339,7 +341,15 @@ export default function CampaignEditorPage() {
                 <span className="rounded-full bg-[var(--color-tint-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label)]">
                   {statusLabel(campaign)}
                 </span>
-                {campaign.is_default && (
+                {campaign.is_ledger && (
+                  <span
+                    className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]"
+                    data-testid="campaign-ledger-badge"
+                  >
+                    Ledger
+                  </span>
+                )}
+                {campaign.is_default && !campaign.is_ledger && (
                   <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
                     Default
                   </span>
@@ -441,6 +451,29 @@ export default function CampaignEditorPage() {
                 )}
               </div>
 
+              {campaign.is_ledger ? (
+                <p
+                  className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-3 py-2 text-sm text-[var(--color-label-secondary)]"
+                  data-testid="campaign-ledger-notice"
+                >
+                  This is the account <strong>ledger</strong> — furniture, not a
+                  signed charter. No bounds panel and no Campaign Journey radar.
+                  Open a member campaign for deliberate seasons.
+                </p>
+              ) : (
+                <>
+                  <CampaignJourneyRadar
+                    campaignId={campaign.id}
+                    isLedger={false}
+                  />
+                  <CampaignBoundsPanel
+                    campaignId={campaign.id}
+                    isLedger={false}
+                    readOnly={!isOpen}
+                  />
+                </>
+              )}
+
               <div className="surface-card space-y-4 border border-[var(--color-separator)] p-4 sm:p-6">
                 <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
                   Title
@@ -453,7 +486,7 @@ export default function CampaignEditorPage() {
                     }}
                     className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
                     data-testid="campaign-editor-title"
-                    disabled={!isOpen}
+                    disabled={!isOpen || !!campaign.is_ledger}
                   />
                 </label>
 

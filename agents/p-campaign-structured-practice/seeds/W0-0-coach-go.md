@@ -6,7 +6,7 @@
 
 ## Intent
 
-Explicit **GO** to execute [`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.0.md`](../../../docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.0.md).
+Explicit **GO** to execute [`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md`](../../../docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md).
 
 ## Required at GO
 

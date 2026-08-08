@@ -1,10 +1,10 @@
 # p-campaign-structured-practice — Implementation Plan (board summary)
 
 **Canonical full plan:**  
-[`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.0.md)
+[`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.2.md`](../../docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.2.md)
 
 **Product law:**  
-[`Specs/FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.0.md`](../../Specs/FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.0.md)
+[`Specs/FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.2.md`](../../Specs/FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.2.md)
 
 ## Mission
 

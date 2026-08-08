@@ -1,21 +1,22 @@
-# Campaign Structured Practice — Full Agent Bench Plan v1.0
+# Campaign Structured Practice — Full Agent Bench Plan v1.1
 
-**Status:** **SUPERSEDED** by [`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md`](./Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md)  
-(v1.1 adds **Two Roles** / goal restoration and Spec v1.1 authority.)
+**Status:** **SUPERSEDED** as execution law by [`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.2.md`](./Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.2.md) (Spec v1.2 Campaign Journey). Historical plan for Spec v1.1 Two Roles freight.
 
 **Date:** 2026-08-08  
 **Owner (orchestration):** Juliet  
 **Authority:** Coach (GO / ship)  
 **Board:** [`agents/p-campaign-structured-practice/`](../agents/p-campaign-structured-practice/)  
-**Product law (model inversion):** [`Specs/FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.1.md`](../Specs/FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.1.md) (was v1.0)  
+**Product law (model inversion):** [`Specs/FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.2.md`](../Specs/FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.2.md) (was v1.1)  
 **Source narrative:** [`docs/Campaign-Model-Change-Structured-Practice-Instances-Bounds.md`](./Campaign-Model-Change-Structured-Practice-Instances-Bounds.md)  
+**Delta folded:** [`docs/Delta-Handoff-Goal-Role-Restoration-and-Bench-Findings.md`](./Delta-Handoff-Goal-Role-Restoration-and-Bench-Findings.md) — D1 Two Roles · D2–D4 (A–C)  
 **Substrate (amended):** [`Specs/FatTail-Labs-Member-Campaign-Concept-Spec-v1.0.md`](../Specs/FatTail-Labs-Member-Campaign-Concept-Spec-v1.0.md) — §4.5 lifecycle **reaffirmed for charters**; optional/unstamped/unbound + interim §4.7a **superseded** where they conflict  
 **Prior board (do not re-open unless regression):** [`agents/p-campaign-lifecycle/`](../agents/p-campaign-lifecycle/) — signature/amend/renew **landed** for member charters  
 **Trade Log:** [`Specs/FatTail-Labs-Trade-Log-Spec-v1.1.md`](../Specs/FatTail-Labs-Trade-Log-Spec-v1.1.md) — stamp path, accounts, import  
 **Guide:** `/guide` · **as-built only** (F1)  
 **Governance:** [`agents/bench/doctrine.md`](../agents/bench/doctrine.md) · first-principles · AGENTS.md  
+**Supersedes plan:** [`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.0.md`](./Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.0.md)
 
-**Spec review (stamp-ready):** F1 fill-time variance · F2 import→ledger · F3 expectancy cross-check · End-campaign Tango gate — **folded into Spec**. This plan is **execution law** after Coach **W0-0 GO** (including §13 dispositions or explicit deferrals).
+**Spec review (stamp-ready):** F1–F3 · End-campaign Tango gate · **Two Roles (boundary/goal)** — **folded into Spec v1.1**. This plan is **execution law** after Coach **W0-0 GO** (including §13 dispositions or explicit deferrals).
 
 Specialists execute **only** via seeds. Coordination only through **Coach** or **Juliet**.  
 Delta gates are **PASS / FAIL / BLOCKED** with evidence — **never waived**.
@@ -32,7 +33,7 @@ Ship the **model inversion**: practice is **born structured**.
 | **Stamp** | Every trade has a campaign; choice pre-answered by **last-pair memory** |
 | **Instance** | One campaign ↔ one account; instantiate = **copy**; names unique forever |
 | **Restamp** | Trades move between same-account campaigns; never across accounts |
-| **Bounds** | Structured ranges (process + statistical panel); **witnessed, never enforced** |
+| **Bounds** | Structured ranges (process + statistical panel) with **Two Roles** — **boundary** (corridor / variance) and **goal** (mark / progress); **witnessed, never enforced or graded** |
 | **Ledger ≠ charter** | Ledger absorbs the unconsidered; charters keep full §4.5 lifecycle |
 
 **Doctrine:** Umpire (mandatory but frictionless) · day atom · Sacred #8 · Goodhart wall (no Journey from bounds/variance) · Family B · evidence over assertion · Guide as-built · no waived gates · declare files before touch · standalone repo (no MSC).
@@ -189,8 +190,8 @@ Golf · content studio · prop/coach counterparty · Journey meters · Marketing
 |------|-------|--------|
 | **W0-0** | Coach | **GO** on this plan + seating S1–S8 + **§13 dispositions locked or deferred in writing** |
 | **W0-1** | India | Keep/kill write-up: ledger column (`is_ledger` vs `kind`); bounds table; variance (a) vs (b) under §5.4; memory storage; panel derive-only; strategy-type phasing |
-| **W0-2** | Hotel | Frame grid v1 cell list (sparse); n-floor defaults table; R:R basis confirm; win definition; Sharpe defer/ship; expectancy note for authors |
-| **W0-3** | Tango | Vocabulary map: **default account** label (`Primary` / member chrome); ledger title pattern (`Default — {account}`); End campaign doctrine proposal; ban list for bounds chrome; import path labels (ledger / pick / new — no none) |
+| **W0-2** | Hotel | Frame grid v1 cell list (sparse); n-floor defaults table; R:R basis confirm; win definition; Sharpe defer/ship; expectancy note for authors; **goal defaults alongside boundary defaults** per style × horizon (e.g. classic fly · short: boundary win-rate 40–60 **and** optional goal avg R:R ≥ 12) |
+| **W0-3** | Tango | Vocabulary map: **default account** label (`Default` / member chrome); ledger title pattern (`Default — {account}`); End campaign doctrine proposal; ban list for bounds chrome; **goal progress register** (tracking toward / reached / short of — never pass/fail); import path labels (ledger / pick / new — no none) |
 | **W0-4** | Lima | DL slot for model inversion; Concept Spec surgery checklist pointer; Export Spec bump plan note |
 | **W0-5** | Juliet | **Materialize all phase seeds** as cold-start files (S4) |
 | **W0-6** | Charlie | Guide strip: no member-visible “every trade stamps / panel / ledger furniture” until feature PRs |
@@ -208,7 +209,7 @@ Golf · content studio · prop/coach counterparty · Journey meters · Marketing
 
 | Seed | Agent | Intent |
 |------|-------|--------|
-| **M2-0** | Alpha · Mike · **Kilo** | **Default-account genesis (§2.1):** ensure default account (`Primary`) at first Practice-suite touch (Trade Log / Campaign / import entry points — idempotent Family B); **not** campaign list-GET alone. **Kilo** #1 account half |
+| **M2-0** | Alpha · Mike · **Kilo** | **Default-account genesis (§2.1):** ensure default account (`Default`) at first Practice-suite touch (Trade Log / Campaign / import entry points — idempotent Family B); **not** campaign list-GET alone. **Kilo** #1 account half |
 | **M2-1** | Alpha · Mike · **Kilo** | Genesis ledger: on **every** account create (incl. default-account ensure) → ledger in same act; ledger lifecycle guards (no complete/end/pause/renew/delete); never sign ledger; title per Tango; **Kilo** #1–2, #7 |
 | **M2-2** | Alpha · Mike · **Kilo** | Stamp required on **trade** create/update only; last-pair memory read/write; same-account validation; **Kilo** #3–4. **Do not** require journal `practice_campaign_id` |
 | **M2-3** | Alpha · **Kilo** | Name law on create/rename/renew/instantiate; suffix algorithm; archive reserves names; **Kilo** #6 |
@@ -228,9 +229,9 @@ Golf · content studio · prop/coach counterparty · Journey meters · Marketing
 
 | Seed | Agent | Intent |
 |------|-------|--------|
-| **B1-0** | India · Hotel | Attribute enum + dimensions; critical one-per-campaign rule; n_floor storage |
-| **B1-1** | Alpha · Mike · **Kilo** | CRUD bounds on **charters only**; post-sign bound change → amendments; ledger rejects bounds; Family B |
-| **B1-2** | Alpha · India · **Kilo** | **Variance mechanism implement** (a or b per W0-1) with §5.4 history stability; **Kilo** #16 |
+| **B1-0** | India · Hotel | Attribute enum + dimensions; **`role ENUM('boundary','goal')`**; critical one-per-campaign rule (**boundary only**); n_floor storage |
+| **B1-1** | Alpha · Mike · **Kilo** | CRUD bounds on **charters only**; **role** required; post-sign bound change → amendments; ledger rejects bounds; **`is_critical` on goal → 4xx** (**Kilo #18**); Family B |
+| **B1-2** | Alpha · India · **Kilo** | **Variance mechanism implement** (a or b per W0-1) with §5.4 history stability — **boundary-role only**; goals never variance; **Kilo** #16 · **#17** |
 | **B1-G** | Delta · Kilo · Mike · India | Bounds + variance history tests |
 
 ### Phase B2 — Process witness at fill
@@ -245,7 +246,7 @@ Golf · content studio · prop/coach counterparty · Journey meters · Marketing
 
 | Seed | Agent | Intent |
 |------|-------|--------|
-| **B3-1** | Alpha · Hotel · **Kilo** | Derive panel readings (never store); n-floor “gathering”; structural R:R at entry; win rate def; critical surface flag (no auto-status) |
+| **B3-1** | Alpha · Hotel · **Kilo** | Derive panel readings (never store) **split by role**: corridor state vs progress+trend; n-floor “gathering” both roles; structural R:R at entry; win rate def; critical surface flag (boundary only, no auto-status); **Kilo #17** |
 | **B3-2** | Alpha · **Kilo** | Optional expectancy cross-check diagnostic (not Journey); Sharpe omit if deferred |
 | **B3-G** | Delta · Kilo · Hotel | #8–9 statistical side |
 
@@ -267,8 +268,8 @@ Golf · content studio · prop/coach counterparty · Journey meters · Marketing
 
 | Seed | Agent | Intent |
 |------|-------|--------|
-| **U2-1** | Charlie · Echo · Tango · Hotel · **Kilo** | Charter bounds editor (ranges); panel range bars; gathering states; critical surface once; clinical copy |
-| **U2-G-Tango** | Tango | Ban greps: violation, max/target/threshold primary, unlock |
+| **U2-1** | Charlie · Echo · Tango · Hotel · **Kilo** | Charter bounds editor (ranges + **role selector**); **North Star Desired Outcomes** (goal-role bounds beside `goals_md`); dual panel (corridors + progress/trend); gathering states; critical surface once; clinical + progress copy |
+| **U2-G-Tango** | Tango | Ban greps: violation, max/target/threshold primary, unlock, goal **pass/fail** grade language |
 | **U2-G-Echo** | Echo | Density + panel readability |
 | **U2-G-Hotel** | Hotel | Band semantics match doctrine |
 | **U2-G-Kilo** | Kilo | UI + API parity |
@@ -288,7 +289,7 @@ Golf · content studio · prop/coach counterparty · Journey meters · Marketing
 | Seed | Agent | Intent |
 |------|-------|--------|
 | **X1-0** | India · Lima | practice-campaign schema **≥ 1.3**; bounds; ledger flag; trade stamped_by |
-| **X1-1** | Alpha · Mike · **Kilo** | Export/import round-trip; name collision suffix + report; **Kilo** #12 |
+| **X1-1** | Alpha · Mike · **Kilo** | Export/import round-trip **including bound `role`**; name collision suffix + report; **Kilo** #12 · **#19** |
 | **X1-G** | Delta · Kilo · Mike | Pack green |
 
 ### Phase Z — Close
@@ -365,15 +366,18 @@ W0-G
 | #5 Instantiate | M2-4 · U3-2 |
 | #6 Name law | M2-3 · X1-1 |
 | #7 Ledger guards | M2-1 · U1-1 |
-| #8 Bounds witness | B1 · B2 · B3 · U2 |
-| #9 Critical surface | B3-1 · U2-1 |
+| #8 Bounds witness (boundaries) | B1 · B2 · B3 · U2 |
+| #9 Critical surface (boundary only) | B3-1 · U2-1 · B1-1 |
 | #10 Goodhart | All Kilo greps · Z-G |
 | #11 Migration | M1-1 · M1-G |
-| #12 Pack | X1-1 |
+| #12 Pack (incl. role) | X1-1 |
 | #13 Multi-active charters | M2 (regression) |
 | #14 D3 GET | M2-1 (ensure not on list GET) · Kilo |
 | #15 Import → ledger | M3-1 · U3-3 |
 | #16 Variance history | B1-2 · B2-G |
+| #17 Goal never variance | B3-1 · U2-1 · B1-2 |
+| #18 Critical rejects goal | B1-1 |
+| #19 Pack role round-trip | X1-1 |
 
 ---
 
@@ -447,9 +451,10 @@ W0-G
 
 | Date | Note |
 |------|------|
+| 2026-08-08 | **v1.1** — Goal role restoration (D1): W0-2/W0-3 goal defaults + progress register; B1 `role` + #18; B3/U2 dual panel; X1 #19; acceptance map #17–#19. Spec authority → Structured Practice Spec **v1.1**. |
 | 2026-08-08 | **Review A–C:** default-account genesis §2.1 + M2-0; journal optional pin M3-2; hard-gate audit M2-5/B2-1; acceptance map #1 split |
-| 2026-08-08 | Structured Practice Spec v1.0 stamp-ready (F1–F3) |
-| 2026-08-08 | **Full Agent Bench Plan v1.0** — Seven Laws · ledger · stamp/memory · bounds/panel · import · pack; board `p-campaign-structured-practice` |
+| 2026-08-08 | Structured Practice Spec v1.0 stamp-ready (F1–F3) — **superseded by Spec v1.1** |
+| 2026-08-08 | **Full Agent Bench Plan v1.0** — Seven Laws · ledger · stamp/memory · bounds/panel · import · pack; board `p-campaign-structured-practice` — **superseded by this plan** |
 
 ---
 

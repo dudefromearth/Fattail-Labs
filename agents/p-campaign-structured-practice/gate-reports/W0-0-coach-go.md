@@ -6,7 +6,7 @@
 
 ## GO
 
-**GO** on [`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.0.md`](../../../docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.0.md) as execution law.
+**GO** on [`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md`](../../../docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md) as execution law (v1.0 plan superseded; Spec v1.1 Two Roles).
 
 - Seating S1–S8 accepted  
 - Spec F1–F3 review fixes acknowledged as law  

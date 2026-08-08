@@ -31,7 +31,7 @@ PLAYBOOK_MODEL_VERSION = "2.0"
 FMT_PRACTICE_CAMPAIGN = "fattail.labs.practice_campaign"
 # 1.1 = first-class pack: account scope, capital, goals, activated_at (Campaign Spec §4.10)
 # 1.2 = signature · amendments · predecessor_export_key (Campaign Spec §4.5 / lifecycle)
-CAMPAIGN_MODEL_VERSION = "1.2"
+CAMPAIGN_MODEL_VERSION = "1.3"
 FMT_PACK = "fattail.labs.member_export"
 
 
@@ -759,6 +759,7 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
         cur.execute(
             """SELECT id, title, status, account_id, starts_at, ends_at,
                       activated_at, starting_capital, goals_md, is_default,
+                      is_ledger,
                       signed_at, signed_terms, signed_terms_backfilled,
                       predecessor_campaign_id,
                       export_key, created_at, updated_at
@@ -823,6 +824,46 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                     )
             except Exception:
                 amendments = []
+            # Bounds (Two Roles) — Spec pack ≥ 1.3
+            bounds_out: list[dict[str, Any]] = []
+            try:
+                cur.execute(
+                    """SELECT export_key, role, attribute, unit, basis, window_kind,
+                              range_low, range_high, is_critical, n_floor
+                       FROM member_practice_campaign_bounds
+                       WHERE identity_id = %s AND campaign_id = %s
+                       ORDER BY role ASC, attribute ASC, id ASC""",
+                    (identity_id, cid),
+                )
+                for br in cur.fetchall() or []:
+                    def _bf(v: Any) -> float | None:
+                        if v is None:
+                            return None
+                        try:
+                            return float(v)
+                        except (TypeError, ValueError):
+                            return None
+
+                    bounds_out.append(
+                        {
+                            "id": (br.get("export_key") or "").strip() or None,
+                            "role": (br.get("role") or "boundary"),
+                            "attribute": br.get("attribute") or "",
+                            "unit": br.get("unit"),
+                            "basis": br.get("basis"),
+                            "window_kind": br.get("window_kind"),
+                            "range_low": _bf(br.get("range_low")),
+                            "range_high": _bf(br.get("range_high")),
+                            "is_critical": bool(int(br.get("is_critical") or 0)),
+                            "n_floor": (
+                                int(br["n_floor"])
+                                if br.get("n_floor") is not None
+                                else None
+                            ),
+                        }
+                    )
+            except Exception:
+                bounds_out = []
             entries.append(
                 {
                     "id": (c.get("export_key") or f"camp-{cid}").strip(),
@@ -836,6 +877,7 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                     "starting_capital": starting_capital,
                     "goals_md": (c.get("goals_md") or None) or None,
                     "is_default": bool(int(c.get("is_default") or 0)),
+                    "is_ledger": bool(int(c.get("is_ledger") or 0)),
                     "signed_at": _iso(c.get("signed_at")),
                     "signed_terms": _parse_signed_terms_export(c.get("signed_terms")),
                     "signed_terms_backfilled": bool(
@@ -843,6 +885,7 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                     ),
                     "predecessor_export_key": predecessor_export_key,
                     "amendments": amendments,
+                    "bounds": bounds_out,
                     "playbook_export_keys": pb_export_keys,
                     "created_at": _iso(c.get("created_at")),
                     "updated_at": _iso(c.get("updated_at")),

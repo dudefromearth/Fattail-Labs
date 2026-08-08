@@ -608,3 +608,97 @@ export async function renewCampaign(
   const d = await parse<{ campaign: PracticeCampaign }>(r);
   return d.campaign;
 }
+
+/** Charter bound (Two Roles) — Spec Structured Practice §5.2 */
+export type CampaignBound = {
+  id: number;
+  campaign_id: number;
+  role: "boundary" | "goal" | string;
+  attribute: string;
+  unit?: string | null;
+  basis?: string | null;
+  window_kind?: string | null;
+  range_low?: number | null;
+  range_high?: number | null;
+  is_critical?: boolean;
+  n_floor?: number | null;
+  export_key?: string | null;
+};
+
+export async function fetchCampaignBounds(
+  campaignId: number,
+): Promise<CampaignBound[]> {
+  const r = await fetch(
+    `/api/me/practice/campaigns/${campaignId}/bounds`,
+    { credentials: "same-origin" },
+  );
+  const d = await parse<{ bounds: CampaignBound[] }>(r);
+  return d.bounds || [];
+}
+
+export async function createCampaignBound(
+  campaignId: number,
+  body: Partial<CampaignBound> & { role: string; attribute: string },
+): Promise<CampaignBound> {
+  const r = await fetch(
+    `/api/me/practice/campaigns/${campaignId}/bounds`,
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  const d = await parse<{ bound: CampaignBound }>(r);
+  return d.bound;
+}
+
+export async function deleteCampaignBound(
+  campaignId: number,
+  boundId: number,
+): Promise<void> {
+  const r = await fetch(
+    `/api/me/practice/campaigns/${campaignId}/bounds/${boundId}`,
+    { method: "DELETE", credentials: "same-origin" },
+  );
+  await parse(r);
+}
+
+/** Campaign Journey shape-at-T (Spec §6a) — not Journey process scores */
+export type JourneyShapeAxis = {
+  bound_id: number;
+  role: string;
+  attribute: string;
+  range_low?: number | null;
+  range_high?: number | null;
+  reading?: number | null;
+  extension?: number | null;
+  state: string;
+  n_floor?: number | null;
+  n?: number;
+};
+
+export type JourneyShape = {
+  campaign_id: number;
+  kind: "invitation" | "shape" | string;
+  t0?: string | null;
+  present?: string | null;
+  as_of?: string | null;
+  axes: JourneyShapeAxis[];
+  amendment_markers?: { at?: string | null; field?: string | null }[];
+  sample_n?: number;
+  message?: string | null;
+};
+
+export async function fetchCampaignJourneyShape(
+  campaignId: number,
+  asOf?: string | null,
+): Promise<JourneyShape> {
+  const qs = asOf ? `?as_of=${encodeURIComponent(asOf.slice(0, 10))}` : "";
+  const r = await fetch(
+    `/api/me/practice/campaigns/${campaignId}/journey-shape${qs}`,
+    { credentials: "same-origin" },
+  );
+  const d = await parse<{ shape: JourneyShape }>(r);
+  return d.shape;
+}

@@ -1,7 +1,7 @@
 # FatTail Labs — Member Campaign Concept Spec v1.0
 
 **Status:** **Product authority (v1.0 body)** — Coach 2026-08-08; B1–B3 + A1–A3; umpire; §4.5 lifecycle.  
-**Model inversion (vNext):** **[`FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.0.md`](./FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.0.md)** supersedes optional/unstamped/unbound framing and interim §4.7a continuous signed-default where they conflict (Seven Laws · ledger doctrine · bounds). Source narrative: [`docs/Campaign-Model-Change-Structured-Practice-Instances-Bounds.md`](../docs/Campaign-Model-Change-Structured-Practice-Instances-Bounds.md). Fold into Concept Spec **v2.0** per that Spec’s surgery map.  
+**Model inversion (vNext):** **[`FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.2.md`](./FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.2.md)** supersedes optional/unstamped/unbound framing and interim §4.7a continuous signed-default where they conflict (Seven Laws · ledger doctrine · bounds · **Two Roles** · **Campaign Journey** radar + time scrub). Source narrative: [`docs/Campaign-Model-Change-Structured-Practice-Instances-Bounds.md`](../docs/Campaign-Model-Change-Structured-Practice-Instances-Bounds.md). Bench: [`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.2.md`](../docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.2.md). Fold into Concept Spec **v2.0** per that Spec’s surgery map.  
 **Type:** Product concept + architecture (Practice + Strategy Lab)  
 **Authority:** DL-258 · DL-259 · DL-260 · DL-261 · DL-262 · permanence doctrine **OD-PB-7** (platform-wide; third application = account retire)  
 **Source of life-cycle language:** Strategy Life Cycle PDF (`LifeCycle.pdf`) — Development → Curation → **Live Campaign**  
@@ -1153,7 +1153,8 @@ Nothing from prior v1.0 product scope removed. §4.5 runtime landed. **§4.7a De
 
 | Date | Note |
 |------|------|
-| 2026-08-08 | **Structured Practice model** formalized: [`FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.0.md`](./FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.0.md) from `docs/Campaign-Model-Change-Structured-Practice-Instances-Bounds.md`. Supersedes interim §4.7a continuous signed-default where conflicting; Concept Spec v2.0 fold pending. |
+| 2026-08-08 | **Structured Practice Spec v1.1** — Two Roles (boundary/goal) restored; pointer moved from v1.0. Bench plan: `docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md`. |
+| 2026-08-08 | **Structured Practice model** formalized: [`FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.0.md`](./FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.0.md) (now **superseded** by v1.1) from `docs/Campaign-Model-Change-Structured-Practice-Instances-Bounds.md`. Supersedes interim §4.7a continuous signed-default where conflicting; Concept Spec v2.0 fold pending. |
 | 2026-08-08 | **§4.7a Default Campaign** (Coach evening): interim continuous charter framing — **partially superseded** by Structured Practice Spec ledger doctrine (see that Spec §4 supersessions). |
 | 2026-08-08 | v1.0 — Coach product authority: professional concept, retail simple; dual mode; Deploy vs container; optional multi-campaign (DL-258–262) |
 | 2026-08-08 | v1.0 review close — B1 permanence (OD-PB-7 platform-wide); B2 prefill rule + `activated_at`; B3 pack yaml (trades + journal + 096 + M2M); S1–S5 wording; §11 parity checklist |

@@ -725,6 +725,117 @@ def list_campaign_amendments(campaign_id: int, request: Request) -> dict:
     return {"amendments": amendments}
 
 
+@router.get("/api/me/practice/campaigns/{campaign_id}/journey-shape")
+def get_campaign_journey_shape(
+    campaign_id: int,
+    request: Request,
+    as_of: str | None = Query(None, description="YYYY-MM-DD scrub day"),
+) -> dict:
+    """Campaign Journey shape-at-T (Spec §6a). Ledger → 404. Not Journey scores."""
+    claims = require_session(request)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                shape = psd.journey_shape_at(
+                    cur, iid, campaign_id, as_of=as_of
+                )
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return {"shape": shape}
+
+
+@router.get("/api/me/practice/campaigns/{campaign_id}/bounds")
+def list_campaign_bounds(campaign_id: int, request: Request) -> dict:
+    """Charter bounds (Two Roles). Ledger returns empty list if queried."""
+    claims = require_session(request)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                bounds = psd.list_bounds(cur, iid, campaign_id)
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return {"bounds": bounds}
+
+
+@router.post("/api/me/practice/campaigns/{campaign_id}/bounds")
+async def create_campaign_bound(campaign_id: int, request: Request) -> dict:
+    """Create a bound on a charter. Goals cannot be is_critical (422)."""
+    claims = require_session(request)
+    body = await request.json()
+    if not isinstance(body, dict):
+        body = {}
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                bound = psd.create_bound(
+                    cur,
+                    iid,
+                    campaign_id,
+                    role=str(body.get("role") or "boundary"),
+                    attribute=str(body.get("attribute") or ""),
+                    range_low=body.get("range_low"),
+                    range_high=body.get("range_high"),
+                    unit=body.get("unit"),
+                    basis=body.get("basis"),
+                    window_kind=body.get("window_kind"),
+                    is_critical=bool(body.get("is_critical")),
+                    n_floor=body.get("n_floor"),
+                )
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return {"bound": bound}
+
+
+@router.patch("/api/me/practice/campaigns/{campaign_id}/bounds/{bound_id}")
+async def patch_campaign_bound(
+    campaign_id: int, bound_id: int, request: Request
+) -> dict:
+    claims = require_session(request)
+    body = await request.json()
+    if not isinstance(body, dict):
+        body = {}
+    kwargs: dict = {}
+    for key in (
+        "role",
+        "attribute",
+        "range_low",
+        "range_high",
+        "unit",
+        "basis",
+        "window_kind",
+        "is_critical",
+        "n_floor",
+    ):
+        if key in body:
+            kwargs[key] = body.get(key)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                bound = psd.patch_bound(cur, iid, campaign_id, bound_id, **kwargs)
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return {"bound": bound}
+
+
+@router.delete("/api/me/practice/campaigns/{campaign_id}/bounds/{bound_id}")
+def delete_campaign_bound(
+    campaign_id: int, bound_id: int, request: Request
+) -> dict:
+    claims = require_session(request)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                psd.delete_bound(cur, iid, campaign_id, bound_id)
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return {"ok": True, "deleted_id": bound_id}
+
+
 @router.post("/api/me/practice/campaigns/{campaign_id}/renew")
 def renew_campaign(campaign_id: int, request: Request) -> dict:
     """Draft successor from terminal campaign (Concept Spec §4.5.4)."""

@@ -330,16 +330,34 @@ export default function PracticeCampaignPage() {
             data-testid="campaign-library"
           >
             {campaigns
-              .filter((c) =>
-                libraryView === "open"
-                  ? c.status === "active" || c.status === "planned"
-                  : c.status === "completed" || c.status === "abandoned",
-              )
+              .filter((c) => {
+                // Ledger never appears in Archive (furniture, not a completed contract)
+                if (libraryView === "archive") {
+                  if (c.is_ledger) return false;
+                  return (
+                    c.status === "completed" || c.status === "abandoned"
+                  );
+                }
+                return c.status === "active" || c.status === "planned";
+              })
+              .slice()
+              .sort((a, b) => {
+                // Ledgers first (pinned furniture)
+                const la = a.is_ledger ? 0 : 1;
+                const lb = b.is_ledger ? 0 : 1;
+                if (la !== lb) return la - lb;
+                return (a.title || "").localeCompare(b.title || "");
+              })
               .map((c) => (
               <li key={c.id}>
                 <article
-                  className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-4 transition hover:border-[var(--color-tint)]"
+                  className={`surface-card flex h-full flex-col border p-4 transition hover:border-[var(--color-tint)] ${
+                    c.is_ledger
+                      ? "border-[var(--color-tint)]/40 bg-[var(--color-fill)]/30"
+                      : "border-[var(--color-separator)]"
+                  }`}
                   data-testid={`campaign-row-${c.id}`}
+                  data-ledger={c.is_ledger ? "1" : "0"}
                 >
                   <div
                     className="mb-3"
@@ -381,7 +399,12 @@ export default function PracticeCampaignPage() {
                           Cycle {c.cycle_number}
                         </span>
                       )}
-                      {c.is_default && (
+                      {c.is_ledger && (
+                        <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
+                          Ledger · {accountLabel(c.account_id)}
+                        </span>
+                      )}
+                      {c.is_default && !c.is_ledger && (
                         <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
                           Default · {accountLabel(c.account_id)}
                         </span>
