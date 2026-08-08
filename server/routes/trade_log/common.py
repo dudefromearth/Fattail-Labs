@@ -273,17 +273,17 @@ def _get_account(cur, iid: int, account_id: int) -> dict:
 DEFAULT_ACCOUNT_LABEL = "Default"
 # Legacy provisioned label — still recognized as the standing home.
 LEGACY_DEFAULT_ACCOUNT_LABEL = "Primary"
-# Venue left unset until first import (adapter maps it) or first trade (user picks).
-DEFAULT_ACCOUNT_VENUE = cat.UNSET_VENUE
+# New books are FatTail-canonical (multi-source import OK). Not a connected broker.
+DEFAULT_ACCOUNT_VENUE = cat.CANONICAL_BOOK_VENUE
 
 
 def _ensure_default_account(cur, iid: int) -> dict:
     """Every entitled member gets one active default account on first access.
 
-    Venue is **not** assumed (thinkorswim, FatTail, sim, …). It stays `unset`
-    until the first import (detected adapter → venue) or first trade create
-    (user-chosen broker/sim). Prefer the active account with the **most trades**
-    so the standing home is not an empty book when fills live elsewhere.
+    Accounts are **FatTail books**, not broker connections. CSV/import source
+    is recorded per trade (`external_adapter`); it does **not** brand the
+    account. Prefer the active account with the **most trades** so the standing
+    home is not an empty book when fills live elsewhere.
     """
     cur.execute(
         """SELECT a.*
@@ -360,7 +360,7 @@ def _ensure_default_account(cur, iid: int) -> dict:
             iid,
             DEFAULT_ACCOUNT_LABEL,
             DEFAULT_ACCOUNT_VENUE,
-            "Default account — venue set on first import or first trade.",
+            "FatTail book — stores canonical trades; multi-source CSV import OK.",
         ),
     )
     cur.execute(

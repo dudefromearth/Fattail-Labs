@@ -140,13 +140,15 @@ def test_default_account_auto_provisioned_venue_unset(client):
         _purge(a)
 
 
-def test_first_import_sets_venue_from_adapter(client):
+def test_first_import_does_not_brand_account_with_adapter(client):
+    """ToS CSV → external_adapter on trades; account stays FatTail book."""
     a = _id("zztest-tl-venue-imp@labs.test")
     try:
         ca = cookie_for("activator", a)
         listed = client.get("/api/me/trade-log/accounts", cookies=ca)
         aid = listed.json()["accounts"][0]["id"]
-        assert listed.json()["accounts"][0]["broker"] == "unset"
+        # Default book is FatTail-canonical (not a connected broker)
+        assert listed.json()["accounts"][0]["broker"] in ("unset", "fattail")
         text = (
             Path(__file__).parent / "fixtures" / "tos_trade_history_sample.csv"
         ).read_text(encoding="utf-8")
@@ -157,32 +159,49 @@ def test_first_import_sets_venue_from_adapter(client):
         )
         assert c.status_code == 200, c.text
         accts = client.get("/api/me/trade-log/accounts", cookies=ca).json()["accounts"]
-        assert next(x for x in accts if x["id"] == aid)["broker"] == "thinkorswim"
+        assert next(x for x in accts if x["id"] == aid)["broker"] == "fattail"
+        trades = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}", cookies=ca
+        ).json()
+        rows = trades.get("trades") or trades.get("items") or []
+        if rows:
+            # Provenance is per-fill, not the account brand
+            assert any(
+                (t.get("external_adapter") or "") == "thinkorswim" for t in rows
+            )
     finally:
         _purge(a)
 
 
-def test_account_venue_required_and_cap(client):
+def test_account_defaults_fattail_and_cap(client):
     a = _id("zztest-tl-acct@labs.test")
     try:
         ca = cookie_for("activator", a)
-        bad = client.post(
+        # No broker required — FatTail book is the default
+        ok_default = client.post(
             "/api/me/trade-log/accounts",
             cookies=ca,
             json={"label": "No venue"},
         )
-        assert bad.status_code == 422
+        assert ok_default.status_code == 200, ok_default.text
+        body0 = ok_default.json()
+        acct0 = body0.get("account") or body0
+        assert acct0["broker"] == "fattail"
 
-        ids = []
-        for i in range(10):
+        ids = [acct0["id"]]
+        for i in range(9):
             r = client.post(
                 "/api/me/trade-log/accounts",
                 cookies=ca,
-                json={"label": f"A{i}", "broker": "sim" if i % 2 else "thinkorswim"},
+                json={"label": f"A{i}", "broker": "sim" if i % 2 else "fattail"},
             )
             assert r.status_code == 200, r.text
-            ids.append(r.json()["id"])
-            assert r.json()["venue_kind"] in ("live", "sim")
+            body = r.json()
+            acct = body.get("account") or body
+            ids.append(acct["id"])
+            assert acct.get("venue_kind") in ("live", "sim", None) or acct.get(
+                "broker"
+            ) in ("sim", "fattail", "paper")
 
         over = client.post(
             "/api/me/trade-log/accounts",

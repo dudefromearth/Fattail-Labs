@@ -1731,9 +1731,13 @@ def commit_trade_log(cur, identity_id: int, doc: dict, claims: dict) -> dict[str
     adapter_id = "native"
     acct = _ensure_default_account(cur, identity_id)
     account_id = int(acct["id"])
-    venue = cat.ADAPTER_DEFAULT_VENUE.get(adapter_id) or "fattail"
+    # Practice pack import → FatTail book (adapter id is only on trade rows)
     _maybe_set_account_venue(
-        cur, identity_id, account_id, broker=venue, only_if_unset=True
+        cur,
+        identity_id,
+        account_id,
+        broker=cat.CANONICAL_BOOK_VENUE,
+        only_if_unset=True,
     )
     created = 0
     skipped = 0

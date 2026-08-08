@@ -28,7 +28,7 @@ export default function TradeAccountsSettings() {
   const [load, setLoad] = useState<"loading" | "ok" | "anon" | "err">("loading");
   const [error, setError] = useState<string | null>(null);
   const [newLabel, setNewLabel] = useState("");
-  const [newBroker, setNewBroker] = useState("thinkorswim");
+  const [newBroker, setNewBroker] = useState("fattail");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   /** Account id pending retire confirmation */
@@ -259,11 +259,13 @@ export default function TradeAccountsSettings() {
         Trade accounts
       </h2>
       <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-        Broker or sim · max 10 active. A{" "}
-        <strong className="font-medium">Default</strong> account is provisioned
-        automatically (you can rename it). Selection for day-to-day work lives
-        in Practice chrome; this is where you add, rename, and retire accounts
-        (archive, never delete).
+        FatTail trade books · max 10 active. A{" "}
+        <strong className="font-medium">Default</strong> book is provisioned
+        automatically (rename it anytime). CSV imports from any broker land as{" "}
+        <strong className="font-medium">canonical FatTail trades</strong> in the
+        book you choose — import source is not the account name. Selection for
+        day-to-day work lives in Practice chrome; here you add, rename, and
+        retire books (archive, never delete).
       </p>
 
       {error && (
@@ -337,14 +339,16 @@ export default function TradeAccountsSettings() {
                 </span>
                 <span className="flex flex-wrap items-center gap-3 text-[var(--color-label-secondary)]">
                   <span>
-                    {a.broker && a.broker !== "unset"
-                      ? a.broker
-                      : "Venue not set"}
+                    {a.broker === "sim" || a.broker === "paper" ||
+                    (a.broker || "").includes("sim") ||
+                    (a.broker || "").includes("paper")
+                      ? "Sim book"
+                      : "FatTail book"}
                     <span className="text-[var(--color-label-tertiary)]">
                       {" "}
                       · {a.status}
-                      {a.broker && a.broker !== "unset"
-                        ? ` · ${a.venue_kind}`
+                      {typeof a.trade_count === "number"
+                        ? ` · ${a.trade_count} trades`
                         : ""}
                     </span>
                   </span>
@@ -477,13 +481,24 @@ export default function TradeAccountsSettings() {
           className="min-h-[var(--hit-min)] rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 text-sm text-[var(--color-label)]"
           value={newBroker}
           onChange={(e) => setNewBroker(e.target.value)}
-          aria-label="Venue"
+          aria-label="Book type"
         >
-          {(catalog?.venues || []).map((v) => (
-            <option key={v.code} value={v.code}>
-              {v.kind === "sim" ? "Sim" : "Live"}: {v.label}
-            </option>
-          ))}
+          <option value="fattail">FatTail book (canonical)</option>
+          <option value="sim">Sim book</option>
+          <option value="paper">Paper book</option>
+          {(catalog?.venues || [])
+            .filter(
+              (v) =>
+                v.kind === "sim" &&
+                v.code !== "sim" &&
+                v.code !== "paper" &&
+                v.code !== "unset",
+            )
+            .map((v) => (
+              <option key={v.code} value={v.code}>
+                Sim: {v.label}
+              </option>
+            ))}
         </select>
         <Button
           type="button"

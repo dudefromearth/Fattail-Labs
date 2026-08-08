@@ -311,7 +311,6 @@ export default function TradeSheet({
   /** Once expanded, save uses form.legs even if section is collapsed again. */
   const [legsTouched, setLegsTouched] = useState(false);
   const [showProcess, setShowProcess] = useState(false);
-  const [venue, setVenue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createContinueNew, setCreateContinueNew] = useState(false);
@@ -400,7 +399,6 @@ export default function TradeSheet({
   useEffect(() => {
     if (!open) return;
     setError(null);
-    setVenue("");
     setCreateContinueNew(false);
     setShowProcess(false);
     setShowLegsAdvanced(false);
@@ -518,8 +516,9 @@ export default function TradeSheet({
   const selectedAccount = accounts.find(
     (a) => a.id === (form.account_id === "" ? defaultAccountId : form.account_id),
   );
-  const needsVenue =
-    !selectedAccount?.broker || selectedAccount.broker === "unset";
+  // Accounts are FatTail books; server auto-sets fattail if provisional.
+  // No connected-broker step on first trade.
+
 
   const structurePreviewLegs = useMemo(() => {
     if (mode === "close") return form.legs;
@@ -625,10 +624,6 @@ export default function TradeSheet({
     const acct =
       form.account_id === "" ? defaultAccountId : Number(form.account_id);
     items.push({ ok: !!acct, label: "Account" });
-    items.push({
-      ok: !needsVenue || !!venue,
-      label: "Venue (first use)",
-    });
     items.push({ ok: !!form.exec_at, label: "Exec time" });
     if (showStructureFields) {
       items.push({
@@ -652,14 +647,7 @@ export default function TradeSheet({
       });
     }
     return items;
-  }, [
-    form,
-    defaultAccountId,
-    needsVenue,
-    venue,
-    showStructureFields,
-    entryUi,
-  ]);
+  }, [form, defaultAccountId, showStructureFields, entryUi]);
 
   if (!open) return null;
 
@@ -793,12 +781,7 @@ export default function TradeSheet({
     const account_id =
       form.account_id === "" ? defaultAccountId : Number(form.account_id);
     if (!account_id) {
-      setError("Select an account (broker or sim required on accounts).");
-      setBusy(false);
-      return;
-    }
-    if (needsVenue && !venue) {
-      setError("Choose a venue for this account (broker, sim, or FatTail canonical).");
+      setError("Select a trade book (account).");
       setBusy(false);
       return;
     }
@@ -912,7 +895,6 @@ export default function TradeSheet({
         fill_price: Number(l.fill_price) || 0,
       })),
     };
-    if (needsVenue && venue) body.broker = venue;
     saveTradeLogLastUsed({
       account_id: Number(account_id),
       underlier: form.underlier,
@@ -1292,13 +1274,6 @@ export default function TradeSheet({
                   Trade details
                 </h3>
 
-              {needsVenue && (
-                <div className="rounded-lg border border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:bg-amber-950 dark:text-amber-100">
-                  <strong>Venue required</strong> — choose broker / sim / FatTail
-                  on first use of this account before saving.
-                </div>
-              )}
-
               <ul className="flex flex-wrap gap-1.5">
                 {checklist.map((c) => (
                   <li
@@ -1342,31 +1317,10 @@ export default function TradeSheet({
                     .map((a) => (
                       <option key={a.id} value={a.id}>
                         {a.label}
-                        {a.broker && a.broker !== "unset"
-                          ? ` · ${a.broker}`
-                          : " · venue on first use"}
                       </option>
                     ))}
                 </select>
               </label>
-              {needsVenue && (
-                <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                  Account venue (first trade)
-                  <select
-                    className={field}
-                    value={venue}
-                    onChange={(e) => setVenue(e.target.value)}
-                    required
-                  >
-                    <option value="">Choose broker, sim, or FatTail…</option>
-                    {(catalog?.venues || []).map((v) => (
-                      <option key={v.code} value={v.code}>
-                        {v.kind === "sim" ? "Sim" : "Live"}: {v.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
 
               {mode !== "close" && (
                 <label className="block text-xs font-medium text-[var(--color-label-secondary)]">

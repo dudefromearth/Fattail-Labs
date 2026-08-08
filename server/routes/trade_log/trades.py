@@ -254,22 +254,12 @@ async def create_trade(request: Request) -> dict:
             else:
                 acct = _ensure_default_account(cur, iid)
             account_id = int(acct["id"])
-            # First trade may assign venue if still provisional
+            # First trade: provisional books become FatTail-canonical (not a broker).
+            # Optional body.broker/venue may choose sim/paper; never required.
             chosen = (body.get("broker") or body.get("venue") or "").strip()
             if acct.get("broker") == cat.UNSET_VENUE:
                 if not chosen or chosen == cat.UNSET_VENUE:
-                    # Legacy prose NOTE without venue → FatTail canonical book
-                    if strategy == "NOTE" and not chosen:
-                        chosen = "fattail"
-                    else:
-                        raise HTTPException(
-                            status_code=422,
-                            detail={
-                                "message": "Choose a venue for this account "
-                                "(broker, sim, or FatTail canonical) on first trade",
-                                "code": "VENUE_REQUIRED",
-                            },
-                        )
+                    chosen = cat.CANONICAL_BOOK_VENUE
                 _maybe_set_account_venue(
                     cur,
                     iid,

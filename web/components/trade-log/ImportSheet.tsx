@@ -297,8 +297,10 @@ export default function ImportSheet({
               )}
               {active.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.label} · {a.broker}
-                  {a.label === "Primary" ? " (default)" : ""}
+                  {a.label}
+                  {a.label === "Default" || a.label === "Primary"
+                    ? " (default)"
+                    : ""}
                 </option>
               ))}
             </select>

@@ -41,26 +41,23 @@ def list_accounts(request: Request) -> dict:
             # trade_count = structure opens (and notes), not raw fills.
             # ToS import stores open + close as separate trade rows; counting
             # every row double-counts ~round-trips (e.g. 1474 fills → ~737 books).
-            # Align with structure matching: close fills have more TO_CLOSE legs
-            # than TO_OPEN (see trade_log_domain.structure.trade_is_close_fill).
+            # Align with structure.trade_is_close_fill: close when TO_CLOSE > TO_OPEN.
             cur.execute(
                 """SELECT a.*,
-                          (SELECT COUNT(*) FROM member_trade_log_trades t
-                           WHERE t.account_id = a.id AND t.identity_id = a.identity_id
-                             AND (
-                               SELECT COALESCE(SUM(
-                                 CASE WHEN l.pos_effect = 'TO_CLOSE' THEN 1 ELSE 0 END
-                               ), 0)
-                               FROM member_trade_log_legs l
-                               WHERE l.trade_id = t.id AND l.identity_id = t.identity_id
-                             ) <= (
-                               SELECT COALESCE(SUM(
-                                 CASE WHEN l.pos_effect = 'TO_OPEN' THEN 1 ELSE 0 END
-                               ), 0)
-                               FROM member_trade_log_legs l
-                               WHERE l.trade_id = t.id AND l.identity_id = t.identity_id
-                             )
-                           )
+                          (SELECT COUNT(*)
+                           FROM member_trade_log_trades t
+                           LEFT JOIN (
+                             SELECT trade_id,
+                                    SUM(CASE WHEN pos_effect = 'TO_CLOSE' THEN 1 ELSE 0 END)
+                                      AS n_close,
+                                    SUM(CASE WHEN pos_effect = 'TO_OPEN' THEN 1 ELSE 0 END)
+                                      AS n_open
+                             FROM member_trade_log_legs
+                             GROUP BY trade_id
+                           ) leg ON leg.trade_id = t.id
+                           WHERE t.account_id = a.id
+                             AND t.identity_id = a.identity_id
+                             AND COALESCE(leg.n_close, 0) <= COALESCE(leg.n_open, 0)
                           ) AS trade_count
                    FROM member_trade_log_accounts a
                    WHERE a.identity_id = %s
@@ -79,12 +76,10 @@ async def create_account(request: Request) -> dict:
     label = (body.get("label") or "").strip()
     if not label:
         raise HTTPException(status_code=422, detail="label is required")
-    broker = (body.get("broker") or "").strip()
+    # Default: FatTail book (canonical storage). Not a connected broker.
+    broker = (body.get("broker") or cat.CANONICAL_BOOK_VENUE).strip()
     if broker not in cat.VENUE_CODES or broker == cat.UNSET_VENUE:
-        raise HTTPException(
-            status_code=422,
-            detail="broker (venue) is required — choose a broker, sim, or FatTail canonical",
-        )
+        broker = cat.CANONICAL_BOOK_VENUE
     broker_label = (body.get("broker_label") or "").strip() or None
     if broker in cat.OTHER_VENUES and not broker_label:
         raise HTTPException(status_code=422, detail="broker_label required when venue is other/other_sim")

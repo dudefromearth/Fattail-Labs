@@ -255,19 +255,20 @@ async def import_commit(request: Request) -> dict:
                 raise HTTPException(
                     status_code=422, detail="practice_campaign_id must be an integer"
                 ) from e
-            # First import sets venue from adapter when still unset
-            venue = cat.ADAPTER_DEFAULT_VENUE.get(adapter_id)
+            # Books stay FatTail-canonical. Import adapter is per-trade provenance
+            # (external_adapter), never the account brand. Optional body.broker only
+            # for explicit member choice (e.g. sim book); defaults to fattail.
+            venue = cat.CANONICAL_BOOK_VENUE
             if body.get("broker"):
                 venue = str(body["broker"]).strip()
-            if venue:
-                _maybe_set_account_venue(
-                    cur,
-                    iid,
-                    account_id,
-                    broker=venue,
-                    broker_label=body.get("broker_label"),
-                    only_if_unset=True,
-                )
+            _maybe_set_account_venue(
+                cur,
+                iid,
+                account_id,
+                broker=venue,
+                broker_label=body.get("broker_label"),
+                only_if_unset=True,
+            )
             for t in trades:
                 ext = t.get("external_order_id") or None
                 if ext:

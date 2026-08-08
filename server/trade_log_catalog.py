@@ -3,28 +3,28 @@
 from __future__ import annotations
 
 VENUES: list[dict] = [
-    # provisional — auto-provision only; replaced on first import or first trade
+    # provisional — auto-provision only; upgraded to FatTail book on first use
     {"code": "unset", "label": "Not set yet", "kind": "live"},
-    # FatTail native book (canonical import / manual without a broker)
-    {"code": "fattail", "label": "FatTail Labs (canonical)", "kind": "live"},
-    # live brokers / platforms
-    {"code": "thinkorswim", "label": "thinkorswim / Schwab", "kind": "live"},
-    {"code": "schwab", "label": "Schwab", "kind": "live"},
-    {"code": "tastytrade", "label": "tastytrade", "kind": "live"},
-    {"code": "ibkr", "label": "Interactive Brokers", "kind": "live"},
-    {"code": "tradestation", "label": "TradeStation", "kind": "live"},
-    {"code": "tradier", "label": "Tradier", "kind": "live"},
-    {"code": "robinhood", "label": "Robinhood", "kind": "live"},
-    {"code": "etrade", "label": "E*TRADE", "kind": "live"},
-    {"code": "fidelity", "label": "Fidelity", "kind": "live"},
-    {"code": "td", "label": "TD Ameritrade (legacy)", "kind": "live"},
-    {"code": "coinbase", "label": "Coinbase", "kind": "live"},
-    {"code": "binance", "label": "Binance", "kind": "live"},
-    {"code": "kraken", "label": "Kraken", "kind": "live"},
-    {"code": "other_crypto", "label": "Other crypto venue", "kind": "live"},
-    {"code": "prop_firm", "label": "Prop firm", "kind": "live"},
-    {"code": "other", "label": "Other broker", "kind": "live"},
-    # sim
+    # Default book type: FatTail-canonical storage (multi-source CSV OK)
+    {"code": "fattail", "label": "FatTail book (canonical)", "kind": "live"},
+    # Optional book labels (not "connected brokers" — no live link). Prefer fattail.
+    {"code": "thinkorswim", "label": "thinkorswim / Schwab (label only)", "kind": "live"},
+    {"code": "schwab", "label": "Schwab (label only)", "kind": "live"},
+    {"code": "tastytrade", "label": "tastytrade (label only)", "kind": "live"},
+    {"code": "ibkr", "label": "Interactive Brokers (label only)", "kind": "live"},
+    {"code": "tradestation", "label": "TradeStation (label only)", "kind": "live"},
+    {"code": "tradier", "label": "Tradier (label only)", "kind": "live"},
+    {"code": "robinhood", "label": "Robinhood (label only)", "kind": "live"},
+    {"code": "etrade", "label": "E*TRADE (label only)", "kind": "live"},
+    {"code": "fidelity", "label": "Fidelity (label only)", "kind": "live"},
+    {"code": "td", "label": "TD Ameritrade (legacy label)", "kind": "live"},
+    {"code": "coinbase", "label": "Coinbase (label only)", "kind": "live"},
+    {"code": "binance", "label": "Binance (label only)", "kind": "live"},
+    {"code": "kraken", "label": "Kraken (label only)", "kind": "live"},
+    {"code": "other_crypto", "label": "Other crypto (label only)", "kind": "live"},
+    {"code": "prop_firm", "label": "Prop firm (label only)", "kind": "live"},
+    {"code": "other", "label": "Other (label only)", "kind": "live"},
+    # sim books
     {"code": "sim", "label": "Sim (generic)", "kind": "sim"},
     {"code": "paper", "label": "Paper / sim (generic)", "kind": "sim"},
     {"code": "thinkorswim_paper", "label": "thinkorswim paper", "kind": "sim"},
@@ -35,18 +35,42 @@ VENUES: list[dict] = [
 
 VENUE_CODES = frozenset(v["code"] for v in VENUES)
 OTHER_VENUES = frozenset({"other", "other_sim"})
-# Provisional venue on auto-provisioned Primary — not a permanent choice
+# Provisional on auto-provision — first use sets FatTail book (not a broker brand)
 UNSET_VENUE = "unset"
-# Map import adapter id → venue code when account is still unset
+# Canonical in-app book type (storage format is always FatTail tradlog)
+CANONICAL_BOOK_VENUE = "fattail"
+# Import adapters never brand the account. Provenance lives on each trade
+# (external_adapter). Multi-source CSV → one FatTail book is intentional.
 ADAPTER_DEFAULT_VENUE = {
-    "thinkorswim": "thinkorswim",
-    "native": "fattail",
-    "csv_generic": "fattail",
-    "tastytrade": "tastytrade",
-    "ibkr": "ibkr",
-    "tradestation": "tradestation",
-    "schwab": "schwab",
+    "thinkorswim": CANONICAL_BOOK_VENUE,
+    "native": CANONICAL_BOOK_VENUE,
+    "csv_generic": CANONICAL_BOOK_VENUE,
+    "tastytrade": CANONICAL_BOOK_VENUE,
+    "ibkr": CANONICAL_BOOK_VENUE,
+    "tradestation": CANONICAL_BOOK_VENUE,
+    "schwab": CANONICAL_BOOK_VENUE,
 }
+# Live broker-name codes that were historically set by CSV import mapping only
+IMPORT_BRANDED_VENUES = frozenset(
+    {
+        "thinkorswim",
+        "schwab",
+        "tastytrade",
+        "ibkr",
+        "tradestation",
+        "tradier",
+        "robinhood",
+        "etrade",
+        "fidelity",
+        "td",
+        "coinbase",
+        "binance",
+        "kraken",
+        "other_crypto",
+        "prop_firm",
+        "other",
+    }
+)
 
 STRATEGIES: list[dict] = [
     {"code": "SINGLE", "label": "Single", "group": "Basic"},
