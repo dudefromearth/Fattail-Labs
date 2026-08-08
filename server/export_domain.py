@@ -29,7 +29,8 @@ FMT_PLAYBOOK = "fattail.labs.playbook"
 # 2.0 = scrapbook tree (chapters/pages/stickies/evidence/archive refs) · PB3
 PLAYBOOK_MODEL_VERSION = "2.0"
 FMT_PRACTICE_CAMPAIGN = "fattail.labs.practice_campaign"
-CAMPAIGN_MODEL_VERSION = "1.0"
+# 1.1 = first-class pack: account scope, capital, goals, activated_at (Campaign Spec §4.10)
+CAMPAIGN_MODEL_VERSION = "1.1"
 FMT_PACK = "fattail.labs.member_export"
 
 
@@ -685,7 +686,11 @@ def single_playbook_to_zip_bytes(
 
 
 def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
-    """Practice Campaign export — seasons + playbook scope by export_key."""
+    """Practice Campaign export — first-class surface (schema practice-campaign-v1).
+
+    model_version 1.1: account_export_key, starting_capital, goals_md, activated_at,
+    playbook M2M. Empty entries[] is valid (campaigns optional).
+    """
     email = _member_email(cur, identity_id)
     doc = envelope(FMT_PRACTICE_CAMPAIGN, email=email)
     doc["format"] = FMT_PRACTICE_CAMPAIGN
@@ -704,10 +709,24 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                 pb_keys[int(r["id"])] = ek
     except Exception:
         pb_keys = {}
+    # account id → portable id + label (same id shape as trade_log.accounts[].id)
+    acct_meta: dict[int, tuple[str, str]] = {}
+    try:
+        cur.execute(
+            """SELECT id, label FROM member_trade_log_accounts
+               WHERE identity_id = %s""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            aid = int(r["id"])
+            acct_meta[aid] = (f"acct-{aid}", (r.get("label") or "").strip())
+    except Exception:
+        acct_meta = {}
     entries: list[dict[str, Any]] = []
     try:
         cur.execute(
-            """SELECT id, title, status, starts_at, ends_at, export_key,
+            """SELECT id, title, status, account_id, starts_at, ends_at,
+                      activated_at, starting_capital, goals_md, export_key,
                       created_at, updated_at
                FROM member_practice_campaigns
                WHERE identity_id = %s
@@ -727,6 +746,19 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                 pk = pb_keys.get(int(link["playbook_entry_id"]))
                 if pk:
                     pb_export_keys.append(pk)
+            account_export_key = None
+            account_label = None
+            if c.get("account_id") is not None:
+                meta = acct_meta.get(int(c["account_id"]))
+                if meta:
+                    account_export_key, account_label = meta
+                else:
+                    account_export_key = f"acct-{int(c['account_id'])}"
+            cap = c.get("starting_capital")
+            try:
+                starting_capital = float(cap) if cap is not None else None
+            except (TypeError, ValueError):
+                starting_capital = None
             entries.append(
                 {
                     "id": (c.get("export_key") or f"camp-{cid}").strip(),
@@ -734,6 +766,11 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                     "status": c.get("status") or "planned",
                     "starts_at": _iso(c.get("starts_at")),
                     "ends_at": _iso(c.get("ends_at")),
+                    "activated_at": _iso(c.get("activated_at")),
+                    "account_export_key": account_export_key,
+                    "account_label": account_label or None,
+                    "starting_capital": starting_capital,
+                    "goals_md": (c.get("goals_md") or None) or None,
                     "playbook_export_keys": pb_export_keys,
                     "created_at": _iso(c.get("created_at")),
                     "updated_at": _iso(c.get("updated_at")),
@@ -742,6 +779,7 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
     except Exception:
         entries = []
     doc["entries"] = entries
+    doc["$schema"] = "https://fattail.labs/schemas/practice-campaign-v1.json"
     return doc
 
 

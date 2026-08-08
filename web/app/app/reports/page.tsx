@@ -9,10 +9,7 @@ import ReportsDashboard from "@/components/reports/ReportsDashboard";
 export default function ReportsPage() {
   return (
     <main className="mx-auto w-full max-w-[1100px] px-4 py-6 pb-24 sm:px-6">
-      <PracticeSuiteChrome
-        active="reports"
-        subtitle="Balance path from starting capital, % drawdown, and the full performance table — from Trade Log."
-      >
+      <PracticeSuiteChrome active="reports">
         <Suspense
           fallback={
             <p className="mt-8 text-sm text-[var(--color-label-tertiary)]">

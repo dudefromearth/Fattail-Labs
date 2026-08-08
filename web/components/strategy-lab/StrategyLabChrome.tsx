@@ -30,7 +30,7 @@ function defaultSubtitle(
     return "Curate phase — compare bots on shared live marks with sim capital before Deploy.";
   }
   if (active === "deployment") {
-    return "Deploy phase — run curated bots on your broker (paper then live).";
+    return "Deploy — put curated strategies into live campaigns (capital, log, prune).";
   }
   return "Design phase — configure pack, assign symbol, back test, forward walk, then Curate.";
 }

@@ -1,7 +1,11 @@
 /**
- * Practice suite — tightly coupled Family B tools.
- * Nav: Trade Log · Reports · Journal · Retrospective · Playbook
- * (Coach 2026-07-28: Reports; 2026-07-29: Retrospective first-class.)
+ * Practice suite — human trading mode (manual fills, process suite).
+ * Nav: Trade Log · Reports · Journal · Retrospective · Playbook · Campaign
+ *
+ * Campaign lives under Practice: `/app/practice/campaign` (not `/app/campaigns`).
+ * Strategy Lab has its own Campaign under `/app/strategy-lab/campaign`.
+ * Same *concept* (capital book / goals / group of work); two separate products —
+ * human vs automated. No shared app, tables, or chrome.
  */
 
 export type PracticeSuiteId =
@@ -9,7 +13,8 @@ export type PracticeSuiteId =
   | "reports"
   | "journal"
   | "retrospective"
-  | "playbook";
+  | "playbook"
+  | "campaign";
 
 export type PracticeSuiteItem = {
   id: PracticeSuiteId;
@@ -36,8 +41,7 @@ export const PRACTICE_SUITE: PracticeSuiteItem[] = [
     label: "Reports",
     href: "/app/reports",
     slugs: ["reports", "statistics", "records"],
-    blurb:
-      "Equity path, drawdown, and process snapshot — from Trade Log across accounts.",
+    blurb: "Book aggregates from Trade Log: path, drawdown, distributions.",
     status: "live",
   },
   {
@@ -65,6 +69,15 @@ export const PRACTICE_SUITE: PracticeSuiteItem[] = [
     slugs: ["playbook"],
     blurb:
       "Who you are under risk — the rules you will not break.",
+    status: "live",
+  },
+  {
+    id: "campaign",
+    label: "Campaign",
+    href: "/app/practice/campaign",
+    slugs: ["campaign", "campaigns", "seasons"],
+    blurb:
+      "Optional work context (capital, goals, multi per account). Never required.",
     status: "live",
   },
 ];

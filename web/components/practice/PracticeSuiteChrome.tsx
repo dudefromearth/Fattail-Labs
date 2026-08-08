@@ -42,8 +42,11 @@ function PracticeSuiteChromeInner({
   subtitle,
   contextInert = false,
   contextInertMessage,
-  hideStoryStrip = false,
-  hideToughness = false,
+  /** Default off — pages are tools, not a wiki (DL-257 chrome quiet). */
+  hideStoryStrip = true,
+  hideToughness = true,
+  hidePortability = true,
+  showBlurb = false,
   breadcrumbUnderTitle = false,
 }: {
   active: PracticeSuiteId;
@@ -54,6 +57,9 @@ function PracticeSuiteChromeInner({
   contextInertMessage?: string;
   hideStoryStrip?: boolean;
   hideToughness?: boolean;
+  hidePortability?: boolean;
+  /** Show suite blurb / subtitle under the title. Off by default. */
+  showBlurb?: boolean;
   /** When true, breadcrumb sits under the page title (quieter header). */
   breadcrumbUnderTitle?: boolean;
 }) {
@@ -88,7 +94,9 @@ function PracticeSuiteChromeInner({
 
       {!hideStoryStrip && <PracticeStoryStrip className="mt-3" />}
 
-      <PracticePortabilityPanel suiteId={active} variant="chrome" />
+      {!hidePortability && (
+        <PracticePortabilityPanel suiteId={active} variant="chrome" />
+      )}
 
       {!hideTitle ? (
         <header className="mt-4 max-w-2xl">
@@ -103,7 +111,7 @@ function PracticeSuiteChromeInner({
               <Breadcrumb label={item.label} />
             </div>
           )}
-          {(subtitle || item.blurb) && (
+          {showBlurb && (subtitle || item.blurb) && (
             <p
               className="mt-1 text-[var(--color-label-secondary)]"
               style={{ fontSize: "var(--text-subheadline)", lineHeight: 1.4 }}
@@ -142,8 +150,10 @@ export default function PracticeSuiteChrome({
   subtitle,
   contextInert = false,
   contextInertMessage,
-  hideStoryStrip = false,
-  hideToughness = false,
+  hideStoryStrip = true,
+  hideToughness = true,
+  hidePortability = true,
+  showBlurb = false,
   breadcrumbUnderTitle = false,
 }: {
   active: PracticeSuiteId;
@@ -155,6 +165,8 @@ export default function PracticeSuiteChrome({
   contextInertMessage?: string;
   hideStoryStrip?: boolean;
   hideToughness?: boolean;
+  hidePortability?: boolean;
+  showBlurb?: boolean;
   breadcrumbUnderTitle?: boolean;
 }) {
   return (
@@ -167,6 +179,8 @@ export default function PracticeSuiteChrome({
         contextInertMessage={contextInertMessage}
         hideStoryStrip={hideStoryStrip}
         hideToughness={hideToughness}
+        hidePortability={hidePortability}
+        showBlurb={showBlurb}
         breadcrumbUnderTitle={breadcrumbUnderTitle}
       >
         {children}

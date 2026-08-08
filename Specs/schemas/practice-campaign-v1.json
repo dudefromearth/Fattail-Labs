@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fattail.labs/schemas/practice-campaign-v1.json",
+  "title": "FatTail Labs Practice Campaign document v1.1",
+  "description": "First-class Practice Campaign surface (fattail.labs.practice_campaign). Not an afterthought: required fields and campaign stamps are normative for pack green gates. Spec: Specs/FatTail-Labs-Member-Campaign-Concept-Spec-v1.0.md §4.10. Marketing campaigns are out of scope.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "format",
+    "model_version",
+    "exported_at",
+    "source",
+    "identity",
+    "entries"
+  ],
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "fattail.labs.practice_campaign"
+    },
+    "model_version": {
+      "type": "string",
+      "pattern": "^1\\.\\d+$",
+      "description": "1.0 = Phase 1 MVP. 1.1 = account_export_key, starting_capital, goals_md, activated_at, multi-active (DL-259/096/097)."
+    },
+    "exported_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ISO-8601 UTC Z preferred."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["system"],
+      "properties": {
+        "system": { "type": "string", "const": "fattail-labs" },
+        "env": {
+          "type": "string",
+          "enum": ["dev", "staging", "production"]
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["export_subject"],
+      "properties": {
+        "export_subject": { "type": "string", "const": "self" },
+        "email": {
+          "type": "string",
+          "description": "Optional. Never used to rebind ownership."
+        }
+      },
+      "description": "Never includes identity_id."
+    },
+    "entries": {
+      "type": "array",
+      "description": "Zero or more Practice Campaign rows. Empty array is valid (member never used campaigns).",
+      "items": { "$ref": "#/$defs/campaignEntry" }
+    }
+  },
+  "$defs": {
+    "campaignEntry": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "title", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Portable export_key (idempotent import identity)."
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "active", "completed", "abandoned"]
+        },
+        "starts_at": { "type": ["string", "null"] },
+        "ends_at": { "type": ["string", "null"] },
+        "activated_at": {
+          "type": ["string", "null"],
+          "description": "When status last entered active (prefill ordering)."
+        },
+        "account_export_key": {
+          "type": ["string", "null"],
+          "description": "Portable Trade Log account id matching trade_log.accounts[].id (e.g. acct-12). null = unbound (any/all accounts)."
+        },
+        "account_label": {
+          "type": ["string", "null"],
+          "description": "Human label for rebinding when account_export_key is missing on import host."
+        },
+        "starting_capital": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Optional campaign book capital (096)."
+        },
+        "goals_md": {
+          "type": ["string", "null"],
+          "description": "Member-authored goals. Platform prompts use process language; member text is free."
+        },
+        "playbook_export_keys": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "M2M playbook entry export_keys (season of practicing identity)."
+        },
+        "created_at": { "type": ["string", "null"] },
+        "updated_at": { "type": ["string", "null"] }
+      }
+    },
+    "tradeCampaignStamp": {
+      "type": "object",
+      "description": "Required stamp field on trade objects in fattail.labs.trade_log when a campaign link exists. Omit or null when unstamped (valid).",
+      "properties": {
+        "practice_campaign_export_key": {
+          "type": ["string", "null"],
+          "description": "Must match an entries[].id in practice_campaign surface when non-null."
+        }
+      }
+    },
+    "journalSessionCampaignStamp": {
+      "type": "object",
+      "description": "Required stamp field on journal_session entries when a campaign link exists (OD-1.4).",
+      "properties": {
+        "practice_campaign_export_key": {
+          "type": ["string", "null"],
+          "description": "Must match an entries[].id in practice_campaign surface when non-null."
+        }
+      }
+    },
+    "memberPackCampaignSurface": {
+      "type": "object",
+      "description": "How practice_campaign sits in fattail.labs.member_export pack.",
+      "required": ["surfaces", "documents"],
+      "properties": {
+        "surfaces": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Must include practice_campaign when documents.practice_campaign is present. Pack green for campaigns requires this surface + complete entries per campaignEntry."
+        },
+        "documents": {
+          "type": "object",
+          "properties": {
+            "practice_campaign": {
+              "$ref": "#"
+            },
+            "trade_log": {
+              "type": "object",
+              "description": "Trades may carry practice_campaign_export_key."
+            },
+            "journal_session": {
+              "type": "object",
+              "description": "Sessions may carry practice_campaign_export_key."
+            },
+            "playbook": {
+              "type": "object",
+              "description": "Import before campaigns so playbook_export_keys resolve."
+            }
+          }
+        }
+      }
+    }
+  }
+}

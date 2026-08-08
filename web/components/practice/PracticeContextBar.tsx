@@ -2,17 +2,18 @@
 
 /**
  * Practice Context Spec v0.2 — Account + Date in Practice chrome.
- * Always visible on Practice surfaces; never on Courses / Live.
+ * Controls only — no duplicate labels, no campaign CTAs, no wiki chrome.
  */
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
 import { IconChevronDown } from "@/components/ui/icons";
 import {
   PRACTICE_GRANULARITIES,
   usePracticeContext,
 } from "@/lib/practiceContext";
-import CampaignContextBadge from "./CampaignContextBadge";
+
+const MANAGE_ACCOUNTS = "__manage_accounts__";
 
 const selectClass =
   "min-h-[var(--hit-min)] cursor-pointer appearance-none rounded-[var(--radius-full)] border-0 bg-[var(--color-fill)] py-2 pl-4 pr-9 text-sm font-medium text-[var(--color-label)] transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]";
@@ -28,11 +29,11 @@ export default function PracticeContextBar({
   inertHint?: boolean;
   inertMessage?: string;
 }) {
+  const router = useRouter();
   const {
     accountId,
     setAccountId,
     activeAccounts,
-    accountLabel,
     granularity,
     setGranularity,
     periodLabel,
@@ -67,7 +68,6 @@ export default function PracticeContextBar({
       data-inert={inertHint ? "true" : "false"}
     >
       <div className="flex flex-wrap items-center justify-center gap-3">
-        {/* Account — selection only; manage in Profile */}
         <label className="relative inline-flex min-h-[var(--hit-min)] items-center">
           <span className="sr-only">Account</span>
           <select
@@ -75,6 +75,10 @@ export default function PracticeContextBar({
             value={accountId === "all" ? "all" : String(accountId)}
             onChange={(e) => {
               const v = e.target.value;
+              if (v === MANAGE_ACCOUNTS) {
+                router.push("/me#trade-accounts");
+                return;
+              }
               setAccountId(v === "all" ? "all" : Number(v));
             }}
             aria-label="Active account"
@@ -88,13 +92,13 @@ export default function PracticeContextBar({
                 {typeof a.trade_count === "number" ? ` (${a.trade_count})` : ""}
               </option>
             ))}
+            <option value={MANAGE_ACCOUNTS}>Manage accounts…</option>
           </select>
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-label-secondary)]">
             <IconChevronDown size={16} />
           </span>
         </label>
 
-        {/* Granularity */}
         <div
           className="inline-flex rounded-full bg-[var(--color-fill)] p-0.5"
           role="group"
@@ -122,7 +126,6 @@ export default function PracticeContextBar({
           })}
         </div>
 
-        {/* Period nav — hidden when All (no date window) */}
         {dateFilterActive ? (
           <div className="flex flex-wrap items-center justify-center gap-2">
             <button
@@ -165,27 +168,6 @@ export default function PracticeContextBar({
           </p>
         )}
       </div>
-
-      <div className="flex justify-center">
-        <CampaignContextBadge />
-      </div>
-
-      <p
-        className="text-center text-xs text-[var(--color-label-tertiary)]"
-        data-testid="practice-account-stated"
-      >
-        Account:{" "}
-        <span className="font-medium text-[var(--color-label-secondary)]">
-          {accountLabel}
-        </span>
-        {" · "}
-        <Link
-          href="/me#trade-accounts"
-          className="text-[var(--color-tint)] hover:underline"
-        >
-          Manage accounts
-        </Link>
-      </p>
 
       {inertHint && (
         <p

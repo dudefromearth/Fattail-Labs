@@ -6,9 +6,9 @@
 
 ## Board NEXT
 
-**Charts (TD2-3 / TD2-4)** — in progress · parallel with process reports later  
+**Charts (TD2-3 / TD2-4)** — landed (candles)  
+**Process reports (TD2-7)** — landed (adherence + campaign + tags)  
 **Sync (TD2-5 / TD2-6)** — blocked until TD2-0 names vendor + COGS  
-**Process reports (TD2-7)** — not started  
 
 ## Landed (charts slice v1)
 
@@ -18,21 +18,30 @@
 | Massive range OHLC aggs | `MassiveClient.fetch_aggs` |
 | Short-TTL cache + service | `server/market_data/trade_chart_service.py` (`LABS_TRADE_CHART_CACHE_TTL_S`, default 120) |
 | API | `GET /api/me/trade-log/trades/{id}/chart?tf=5m\|15m\|1d` |
-| Trade sheet Chart section (tf toggle, proxy badge, error state) | `web/components/trade-log/TradeChart.tsx` |
+| Trade sheet Chart section (candles, entry/exit, proxy badge) | `web/components/trade-log/TradeChart.tsx` + lightweight-charts |
 
-## Still open for TD2-G (charts)
+## Landed (process pack v1) — **placement corrected DL-257**
 
-- [ ] Dogfood equity_option butterfly + all three tfs with real Massive key  
-- [ ] SPX proxy label UI walk  
-- [ ] Missing-bars fixture → no partial path (API already strips bars on incomplete)  
-- [ ] Cache-hit log/metric on re-open (payload `cache.hit` — ops metric later)  
-- [ ] Structure-band shading on non-proxy underliers (e.g. SPY butterfly)  
+| Item | Evidence |
+|------|----------|
+| Domain: adherence mix · rate series · campaign summary · records/summary adapter | `trade_log_domain/process_pack.py` · `tests/test_process_pack_domain.py` |
+| API (derivation backend only) | `GET .../analytics/process-pack` · `GET .../records/summary` |
+| **Reports UI** | **Removed** — Reports stays objective trade aggregate (Coach) |
+| Next host | Retrospective ceremony and/or Journey aggregate — not Reports |
 
-## Sync / reports (not this slice)
+## Still open for TD2-G
 
+### Charts
+- [ ] Formal UI walk: SPX proxy label · missing-bars · cache hit dogfood  
+- [ ] Structure-band on same-axis underliers  
+
+### Process
+- [ ] UI walk: adherence + tags + campaign hide when none  
+- [ ] Confirm no tag/process×P&L surfaces  
+
+### Sync (blocked)
 - TD2-0 vendor GO  
 - `entry_source=sync` migration + Trade Log Spec catalog amend + chip  
-- Process pack widgets  
 
 ## Invariants honored
 

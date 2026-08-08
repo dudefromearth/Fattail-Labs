@@ -2,7 +2,8 @@
 
 /**
  * Strategy Lab suite segmented control — same HIG pattern as PracticeSuiteNav.
- * Design · Curate · Deploy · Archive (Symbols is under Design sub-nav only).
+ * Design · Curate · Deploy · Archive (Symbols under Design sub-nav only).
+ * Deploy = process step (PDF Campaign Phase); strategies deploy into campaigns.
  */
 
 import Link from "next/link";

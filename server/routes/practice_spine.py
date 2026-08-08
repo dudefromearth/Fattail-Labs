@@ -611,24 +611,46 @@ def delete_archive(entry_id: int, att_id: int, request: Request) -> dict:
 
 
 @router.get("/api/me/practice/campaigns")
-def list_campaigns(request: Request) -> dict:
+def list_campaigns(
+    request: Request,
+    account_id: int | None = None,
+) -> dict:
+    """List Practice campaigns (human mode). Multiple actives allowed (DL-259)."""
     claims = require_session(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _iid(cur, claims)
             campaigns = psd.list_campaigns(cur, iid)
-            active = psd.get_active_campaign(cur, iid)
-    return {"campaigns": campaigns, "active": active}
+            actives = psd.list_active_campaigns(
+                cur, iid, account_id=account_id
+            )
+            # `active` kept for stamp convenience (newest / account-preferring)
+            active = psd.get_active_campaign(
+                cur, iid, account_id=account_id
+            )
+    return {
+        "campaigns": campaigns,
+        "active": active,
+        "actives": actives,
+    }
 
 
 @router.get("/api/me/practice/campaigns/active")
-def get_active_campaign(request: Request) -> dict:
+def get_active_campaign(
+    request: Request,
+    account_id: int | None = None,
+) -> dict:
     claims = require_session(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _iid(cur, claims)
-            active = psd.get_active_campaign(cur, iid)
-    return {"active": active}
+            active = psd.get_active_campaign(
+                cur, iid, account_id=account_id
+            )
+            actives = psd.list_active_campaigns(
+                cur, iid, account_id=account_id
+            )
+    return {"active": active, "actives": actives}
 
 
 @router.post("/api/me/practice/campaigns")
@@ -640,6 +662,16 @@ async def create_campaign(request: Request) -> dict:
     pids = body.get("playbook_entry_ids")
     if pids is not None and not isinstance(pids, list):
         raise HTTPException(status_code=422, detail="playbook_entry_ids must be a list")
+    account_id = body.get("account_id")
+    if account_id is not None and account_id != "":
+        try:
+            account_id = int(account_id)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=422, detail="account_id must be an integer"
+            ) from exc
+    else:
+        account_id = None
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -652,6 +684,9 @@ async def create_campaign(request: Request) -> dict:
                     ends_at=body.get("ends_at"),
                     playbook_entry_ids=pids,
                     activate=bool(body.get("activate")),
+                    account_id=account_id,
+                    starting_capital=body.get("starting_capital"),
+                    goals_md=body.get("goals_md"),
                 )
     except psd.PracticeSpineError as e:
         _raise(e)
@@ -673,6 +708,12 @@ async def patch_campaign(campaign_id: int, request: Request) -> dict:
         kwargs["starts_at"] = body.get("starts_at")
     if "ends_at" in body:
         kwargs["ends_at"] = body.get("ends_at")
+    if "account_id" in body:
+        kwargs["account_id"] = body.get("account_id")
+    if "starting_capital" in body:
+        kwargs["starting_capital"] = body.get("starting_capital")
+    if "goals_md" in body:
+        kwargs["goals_md"] = body.get("goals_md")
     if "playbook_entry_ids" in body:
         pids = body.get("playbook_entry_ids")
         if pids is not None and not isinstance(pids, list):
@@ -688,3 +729,17 @@ async def patch_campaign(campaign_id: int, request: Request) -> dict:
     except psd.PracticeSpineError as e:
         _raise(e)
     return {"campaign": camp}
+
+
+@router.delete("/api/me/practice/campaigns/{campaign_id}")
+def delete_campaign(campaign_id: int, request: Request) -> dict:
+    """Hard-delete only if unreferenced (permanence — Campaign Spec §4.5 / OD-PB-7)."""
+    claims = require_session(request)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                psd.delete_campaign(cur, iid, campaign_id)
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return {"ok": True, "deleted_id": campaign_id}

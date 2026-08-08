@@ -42,6 +42,75 @@ export type TradesPage = {
   page_limit?: number | null;
 };
 
+/** Phase 2 process report pack — adherence + campaigns (no P&L). */
+export type ProcessPackAdherence = {
+  counts: {
+    followed: number;
+    partial: number;
+    broke: number;
+    unknown: number;
+  };
+  trade_count: number;
+  decided_count: number;
+  adherence_rate: number | null;
+  adherence_rate_with_partial_credit?: number | null;
+  labels?: Record<string, string>;
+};
+
+export type ProcessPackCampaign = {
+  campaign_id: number;
+  title: string;
+  status?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  trade_count: number;
+  by_adherence: Record<string, number>;
+  adherence_rate: number | null;
+  decided_count: number;
+};
+
+export type ProcessPackPayload = {
+  from: string | null;
+  to: string | null;
+  account_id?: number | null;
+  trade_count: number;
+  adherence: ProcessPackAdherence;
+  adherence_rate_series: Array<{
+    t: string;
+    v: number | null;
+    followed: number;
+    partial: number;
+    broke: number;
+    unknown: number;
+    decided: number;
+    trade_count: number;
+  }>;
+  campaigns: ProcessPackCampaign[];
+  has_campaigns: boolean;
+  process_only: boolean;
+};
+
+export async function fetchProcessPack(opts?: {
+  accountId?: number | null;
+  fromDay?: string | null;
+  toDay?: string | null;
+  seriesBucket?: "day" | "week";
+}): Promise<AnalyticsResult<ProcessPackPayload>> {
+  const q = new URLSearchParams();
+  if (opts?.accountId != null && opts.accountId > 0) {
+    q.set("account_id", String(opts.accountId));
+  }
+  if (opts?.fromDay) q.set("from_day", opts.fromDay);
+  if (opts?.toDay) q.set("to_day", opts.toDay);
+  if (opts?.seriesBucket) q.set("series_bucket", opts.seriesBucket);
+  const qs = q.toString();
+  const r = await fetch(
+    `/api/me/trade-log/analytics/process-pack${qs ? `?${qs}` : ""}`,
+    { credentials: "same-origin" },
+  );
+  return parseJson(r);
+}
+
 /** Phase 2 trade chart — underlier OHLC for hold window. */
 export type TradeChartBar = {
   t: number;

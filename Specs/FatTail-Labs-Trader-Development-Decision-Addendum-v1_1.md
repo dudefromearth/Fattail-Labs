@@ -14,7 +14,7 @@ This addendum **resolves open decisions (ODs)** so Agent Bench seeds can proceed
 | OD | Resolution | Rationale |
 |----|------------|-----------|
 | **OD-1.1** Practice Campaign vs Strategy Lab Deploy | **Option A** — separate SoRs; member-facing word **“Campaign” owned by Practice only**; Strategy Lab keeps **Design · Curate · Deploy · Archive** | Clean stores; as-built Lab labels already avoid “Campaign” column; Option B link can be added later as nullable FK |
-| **OD-1.3** Active campaigns | **Single active campaign** per identity at a time | Simpler chrome, clearer season story, simpler Phase 3/nudge triggers |
+| **OD-1.3** Active campaigns | **Superseded 2026-08-08 by DL-259** — multiple `active` campaigns allowed (per account / unbound). Convenience prefill = most recently activated (Member Campaign Concept Spec §4.7). Normative: [Member Campaign Concept Spec v1.0](./FatTail-Labs-Member-Campaign-Concept-Spec-v1.0.md). Bump this addendum to v1.2 when reprinting the OD table. | Multi-campaign retail flexibility |
 | **OD-2.2** `entry_source` for broker sync | **Add fourth value `sync`** — **same body of work:** (1) migration, (2) UI chip, (3) **Trade Log Spec version bump** (v1.2 **or** normative §17 amendment to the locked catalog table), (4) decision-log entry | Preserves locked Trade Log provenance law; do not conflate with Strategy Lab `automated`. Documentation parity is Invariant #6 — catalog amend is not “later.” |
 
 ---

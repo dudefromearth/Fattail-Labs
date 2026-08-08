@@ -1,12 +1,18 @@
 /**
- * Strategy Lab suite — life-cycle nav (Practice suite chrome pattern).
- * Board: Design · Curate · Deploy
- * Archive: retired/trashed + reports/logs (off-ramp page)
- * Phase keys stay development|curation|deployment (API/DB).
+ * Strategy Lab suite — automated trading mode (life-cycle nav).
+ * Board: Design · Curate · Deploy · Archive
  *
- * Symbols are not a top-level suite item — they hang under Design
- * (catalog + assign to bot for back test / forward walk) and are
- * selected again in Curate for sim runs. Deploy only receives curated bots.
+ * LifeCycle.pdf third major stage is **Live Campaign / Campaign Phase**.
+ * Strategy Lab labels that **process step** as **Deploy** so members hear a verb
+ * (put curated bots to work). Deploy means: deploy strategies **into** one or more
+ * **campaigns** (containers with capital allocation, start/end, log, prune, retro —
+ * PDF Campaign Phase).
+ *
+ * Phase keys stay development|curation|deployment (API/DB).
+ * Practice has its own Campaign concept (human mode) under `/app/practice/campaign`.
+ * No shared tables/chrome with Practice.
+ *
+ * Symbols hang under Design only.
  */
 
 export type StrategyLabSuiteId =

@@ -8,6 +8,7 @@ from typing import Any
 
 from trade_log_domain.matching import match_open_close
 from trade_log_domain.pnl import enrich_trades_with_synthetic_pnl, realized_pnl
+from trade_log_domain.structure import average_entry_r2r
 
 
 def build_reports_book(
@@ -146,6 +147,9 @@ def build_reports_book(
         s = str(t.get("strategy") or "UNKNOWN")
         strategy_counts[s] = strategy_counts.get(s, 0) + 1
 
+    # Entry-time R2R (structure cost vs max potential) — never outcome-based
+    avg_r2r, r2r_n = average_entry_r2r(filtered)
+
     return {
         "account_label": account_label,
         "starting_capital": float(starting_capital),
@@ -160,6 +164,8 @@ def build_reports_book(
         "avg_win": avg_win,
         "avg_loss": avg_loss,
         "win_loss_ratio": win_loss_ratio,
+        "avg_entry_r2r": avg_r2r,
+        "entry_r2r_sample_size": r2r_n,
         "sharpe": sharpe,
         "sharpe_sample_size": len(pnls),
         "stats": {
@@ -172,6 +178,8 @@ def build_reports_book(
             "profit_factor": profit_factor,
             "largest_win": largest_win,
             "largest_loss": largest_loss,
+            "avg_entry_r2r": avg_r2r,
+            "entry_r2r_sample_size": r2r_n,
         },
         "outcome_pnls": pnls,
         "strategy_counts": strategy_counts,

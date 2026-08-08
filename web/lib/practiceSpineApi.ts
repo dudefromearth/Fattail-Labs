@@ -78,8 +78,12 @@ export type PracticeCampaign = {
   id: number;
   title: string;
   status: "planned" | "active" | "completed" | "abandoned" | string;
+  /** Optional Trade Log account scope; null = any/all accounts. */
+  account_id?: number | null;
   starts_at?: string | null;
   ends_at?: string | null;
+  starting_capital?: number | null;
+  goals_md?: string;
   playbook_entry_ids: number[];
   export_key?: string | null;
   created_at?: string | null;
@@ -449,13 +453,22 @@ export async function removePlaybookArchive(
   return d.archive || [];
 }
 
-export async function fetchCampaigns(): Promise<{
+export async function fetchCampaigns(opts?: {
+  accountId?: number | null;
+}): Promise<{
   campaigns: PracticeCampaign[];
   active: PracticeCampaign | null;
+  actives?: PracticeCampaign[];
 }> {
-  const r = await fetch("/api/me/practice/campaigns", {
-    credentials: "same-origin",
-  });
+  const q = new URLSearchParams();
+  if (opts?.accountId != null && opts.accountId > 0) {
+    q.set("account_id", String(opts.accountId));
+  }
+  const qs = q.toString();
+  const r = await fetch(
+    `/api/me/practice/campaigns${qs ? `?${qs}` : ""}`,
+    { credentials: "same-origin" },
+  );
   return parse(r);
 }
 
@@ -465,6 +478,9 @@ export async function createCampaign(body: {
   ends_at?: string | null;
   playbook_entry_ids?: number[];
   activate?: boolean;
+  account_id?: number | null;
+  starting_capital?: number | null;
+  goals_md?: string | null;
 }): Promise<PracticeCampaign> {
   const r = await fetch("/api/me/practice/campaigns", {
     method: "POST",
@@ -484,6 +500,9 @@ export async function patchCampaign(
     starts_at: string | null;
     ends_at: string | null;
     playbook_entry_ids: number[];
+    account_id: number | null;
+    starting_capital: number | null;
+    goals_md: string | null;
   }>,
 ): Promise<PracticeCampaign> {
   const r = await fetch(`/api/me/practice/campaigns/${id}`, {

@@ -1,7 +1,8 @@
 "use client";
 
 /**
- * Process/behavior tag counts for Reports — Phase 0.
+ * Process/behavior tag counts — Phase 0 derivation UI.
+ * Host: Retrospective / Journey only (DL-257). Never on Reports/Records.
  * Never shows P&L or win-rate by tag (Spec §6.2 adjacency ban).
  */
 

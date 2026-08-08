@@ -19,9 +19,15 @@ import { usePracticeContext } from "@/lib/practiceContext";
 import EquityChart from "./EquityChart";
 import DrawdownChart from "./DrawdownChart";
 import StatsTable from "./StatsTable";
-import { AvgWinLossCard, SharpeCard, DrawdownCard } from "./FeaturedCards";
+import {
+  AvgWinLossCard,
+  AvgR2rCard,
+  DrawdownCard,
+  SharpeCard,
+  WinRateCard,
+  ProfitFactorCard,
+} from "./FeaturedCards";
 import BarDist from "./BarDist";
-import ProcessTagUsage from "./ProcessTagUsage";
 
 type LoadState = "loading" | "ok" | "anon" | "forbidden" | "err";
 
@@ -36,10 +42,8 @@ export default function ReportsDashboard() {
 
   const {
     accountId,
-    accountLabel,
     rangeFromYmd,
     rangeToYmd,
-    periodLabel,
     dateFilterActive,
     prefsReady,
   } = usePracticeContext();
@@ -146,36 +150,8 @@ export default function ReportsDashboard() {
   }
 
 return (
-    <div className="mt-6 space-y-6" data-testid="reports-dashboard">
-      {/* Scope stated — Practice Context Spec v0.2 (no local pager) */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p
-            className="font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]"
-            style={{ fontSize: "var(--text-caption)" }}
-          >
-            Account · window
-          </p>
-          <p
-            className="font-semibold text-[var(--color-label)]"
-            style={{ fontSize: "var(--text-headline)" }}
-            data-testid="reports-account-label"
-          >
-            {book.accountLabel || accountLabel}
-          </p>
-          <p
-            className="mt-0.5 text-xs text-[var(--color-label-tertiary)]"
-            data-testid="reports-period-label"
-          >
-            Analysis window:{" "}
-            {dateFilterActive
-              ? `${periodLabel} (${rangeFromYmd} → ${rangeToYmd})`
-              : "All time"}
-          </p>
-        </div>
-      </div>
-
-      {/* Main: stats | charts — equity fills remaining height; no dead gap */}
+    <div className="mt-4 space-y-6" data-testid="reports-dashboard">
+      {/* Main: stats | charts — scope is only the context controls above */}
       <div className="grid gap-5 lg:grid-cols-[minmax(17rem,22rem)_1fr] lg:items-stretch">
         <StatsTable
           stats={book.stats}
@@ -186,21 +162,12 @@ return (
         <div className="flex min-h-0 min-w-0 flex-col gap-4">
           <section className="surface-card flex min-h-0 flex-1 flex-col border border-[var(--color-separator)] p-4 sm:p-5">
             <div className="mb-3 flex shrink-0 flex-wrap items-baseline justify-between gap-2">
-              <div>
-                <h2
-                  className="font-semibold text-[var(--color-label)]"
-                  style={{ fontSize: "var(--text-headline)" }}
-                >
-                  Equity curve
-                </h2>
-                <p className="mt-0.5 text-xs text-[var(--color-label-tertiary)]">
-                  Path from starting capital · closed outcomes may use{" "}
-                  <span className="text-[var(--color-label-secondary)]">
-                    estimated PnL
-                  </span>{" "}
-                  when a fill has none stored
-                </p>
-              </div>
+              <h2
+                className="font-semibold text-[var(--color-label)]"
+                style={{ fontSize: "var(--text-headline)" }}
+              >
+                Equity curve
+              </h2>
               <span className="rounded-full bg-[var(--color-fill)] px-3 py-1 text-xs font-semibold tabular-nums text-[var(--color-label)]">
                 {book.stats.find((s) => s.key === "balance")?.value}
               </span>
@@ -230,17 +197,12 @@ return (
 
           <section className="surface-card shrink-0 border border-[var(--color-separator)] p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                <h2
-                  className="font-semibold text-[var(--color-label)]"
-                  style={{ fontSize: "var(--text-headline)" }}
-                >
-                  Drawdown
-                </h2>
-                <p className="mt-0.5 text-xs text-[var(--color-label-tertiary)]">
-                  Peak-to-trough on the path
-                </p>
-              </div>
+              <h2
+                className="font-semibold text-[var(--color-label)]"
+                style={{ fontSize: "var(--text-headline)" }}
+              >
+                Drawdown
+              </h2>
               <span className="rounded-full bg-[var(--color-destructive-soft)] px-3 py-1 text-xs font-semibold tabular-nums text-[var(--color-destructive)]">
                 Max{" "}
                 {book.hasPnlData
@@ -253,7 +215,13 @@ return (
         </div>
       </div>
 
-      {/* Featured: win/loss asymmetry · Sharpe · max drawdown */}
+      <section className="surface-card border border-[var(--color-separator)] p-4 sm:p-5">
+        <BarDist bins={book.distribution} title="Outcome distribution" dense />
+      </section>
+
+      {/* Ratio magnifiers only (not aggregates like Total Return / Balance).
+          Row 1: outcome asymmetry · entry R2R · drawdown
+          Row 2: Sharpe · win rate · profit factor */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <AvgWinLossCard
           avgWin={book.avgWin}
@@ -262,50 +230,33 @@ return (
           winners={book.winners}
           losers={book.losers}
         />
-        <SharpeCard
-          sharpe={book.sharpe}
-          sampleSize={book.sharpeSampleSize}
+        <AvgR2rCard
+          avgEntryR2r={book.avgEntryR2r}
+          sampleSize={book.entryR2rSampleSize}
         />
         <DrawdownCard
           maxDrawdownPct={book.maxDrawdownPct}
           hasPnlData={book.hasPnlData}
           series={book.series}
         />
-      </div>
-
-      {/* Outcome histogram — full width, granular bins for skew */}
-      <section className="surface-card border border-[var(--color-separator)] p-4 sm:p-5">
-        <BarDist
-          bins={book.distribution}
-          title="Outcome distribution"
-          subtitle="Realized $ per closed trade · 125 equal-width bins (1st–99th pct range) — same density as the spreadsheet."
-          dense
+        <SharpeCard
+          sharpe={book.sharpe}
+          sampleSize={book.sharpeSampleSize}
         />
-      </section>
+        <WinRateCard
+          winRatePct={book.winRatePct}
+          winners={book.winners}
+          losers={book.losers}
+        />
+        <ProfitFactorCard
+          profitFactor={book.profitFactor}
+          hasPnlData={book.hasPnlData}
+        />
+      </div>
 
       <section className="surface-card border border-[var(--color-separator)] p-4 sm:p-5">
         <BarDist bins={book.strategyDist} title="Trades by strategy" />
       </section>
-
-      <ProcessTagUsage
-        fromDay={rangeFromYmd}
-        toDay={rangeToYmd}
-        dateFilterActive={dateFilterActive}
-      />
-
-      <p
-        className="text-[var(--color-label-tertiary)]"
-        style={{ fontSize: "var(--text-footnote)" }}
-      >
-        Path from starting capital + realized outcomes in{" "}
-        <Link
-          href="/app/trade-log"
-          className="font-medium text-[var(--color-tint)]"
-        >
-          Trade Log
-        </Link>
-        . Starting capital is stored in this browser.
-      </p>
     </div>
   );
 }

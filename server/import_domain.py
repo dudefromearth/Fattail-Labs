@@ -568,6 +568,11 @@ def commit_playbook(cur, identity_id: int, doc: dict) -> dict[str, Any]:
 def preview_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]:
     counts = _count_bucket()
     warnings: list[str] = []
+    mv = str(doc.get("model_version") or "1.0")
+    if mv.startswith("1.") and mv not in ("1.0", "1.1"):
+        warnings.append(
+            f"practice_campaign model_version {mv!r} not in 1.0|1.1 — import best-effort"
+        )
     for e in doc.get("entries") or []:
         if not isinstance(e, dict):
             counts["error"] += 1
@@ -586,23 +591,65 @@ def preview_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any
             counts["skip"] += 1
         else:
             counts["new"] += 1
-        status = (e.get("status") or "").strip().lower()
-        if status == "active":
+        # Multi-active allowed (DL-259) — no demotion warning
+        if e.get("account_export_key") and not e.get("account_label"):
             warnings.append(
-                f"campaign {key}: active status may be demoted if another active season exists"
+                f"campaign {key}: account_export_key without account_label "
+                "may not rebind if trade_log accounts import separately"
             )
     return {
         "surface": "practice_campaign",
         "counts": counts,
         "warnings": warnings,
         "mode": "additive",
+        "schema": "practice-campaign-v1",
     }
 
 
+def _resolve_campaign_account_id(
+    cur, identity_id: int, e: dict, *, warnings: list[str], key: str
+) -> int | None:
+    """Map account_export_key / account_label → Trade Log account id (or None unbound)."""
+    label = (e.get("account_label") or "").strip()
+    if label:
+        cur.execute(
+            """SELECT id FROM member_trade_log_accounts
+               WHERE identity_id = %s AND label = %s
+               ORDER BY id ASC LIMIT 1""",
+            (identity_id, label[:128]),
+        )
+        row = cur.fetchone()
+        if row:
+            return int(row["id"])
+    aek = (e.get("account_export_key") or "").strip()
+    if aek.startswith("acct-"):
+        try:
+            aid = int(aek.split("-", 1)[1])
+        except (IndexError, ValueError):
+            aid = None
+        if aid is not None:
+            cur.execute(
+                """SELECT id FROM member_trade_log_accounts
+                   WHERE identity_id = %s AND id = %s""",
+                (identity_id, aid),
+            )
+            if cur.fetchone():
+                return aid
+    if aek or label:
+        warnings.append(
+            f"campaign {key}: account not found on host — left unbound "
+            f"(key={aek!r} label={label!r})"
+        )
+    return None
+
+
 def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]:
+    """Insert-only Practice campaigns (schema practice-campaign-v1 / model 1.1).
+
+    Multi-active allowed. Full field set: account scope, capital, goals, activated_at.
+    """
     counts = _count_bucket()
     warnings: list[str] = []
-    # Map playbook export_key → row id for scope links
     pb_by_key: dict[str, int] = {}
     cur.execute(
         """SELECT id, export_key FROM member_playbook_entries
@@ -613,15 +660,6 @@ def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]
         ek = (r.get("export_key") or "").strip()
         if ek:
             pb_by_key[ek] = int(r["id"])
-
-    # Existing active campaign (single-active invariant)
-    cur.execute(
-        """SELECT id FROM member_practice_campaigns
-           WHERE identity_id = %s AND status = 'active' LIMIT 1""",
-        (identity_id,),
-    )
-    existing_active = cur.fetchone()
-    active_claimed = existing_active is not None
 
     for e in doc.get("entries") or []:
         if not isinstance(e, dict):
@@ -643,20 +681,45 @@ def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]
         status = (e.get("status") or "planned").strip().lower()
         if status not in ("planned", "active", "completed", "abandoned"):
             status = "planned"
-        if status == "active" and active_claimed:
-            status = "completed"
-            warnings.append(
-                f"campaign {key}: demoted active → completed (single active season)"
-            )
-        elif status == "active":
-            active_claimed = True
         starts = _parse_dt(e.get("starts_at"))
         ends = _parse_dt(e.get("ends_at"))
+        activated = _parse_dt(e.get("activated_at"))
+        if status == "active" and activated is None:
+            activated = datetime.now(timezone.utc).replace(tzinfo=None)
+        if status != "active":
+            activated = None
+        account_id = _resolve_campaign_account_id(
+            cur, identity_id, e, warnings=warnings, key=key
+        )
+        cap = e.get("starting_capital")
+        try:
+            starting_capital = float(cap) if cap is not None and cap != "" else None
+        except (TypeError, ValueError):
+            starting_capital = None
+            warnings.append(f"campaign {key}: invalid starting_capital ignored")
+        if starting_capital is not None and starting_capital < 0:
+            starting_capital = None
+            warnings.append(f"campaign {key}: negative starting_capital ignored")
+        goals = (e.get("goals_md") or None)
+        if goals is not None:
+            goals = str(goals).strip() or None
         cur.execute(
             """INSERT INTO member_practice_campaigns
-                 (identity_id, title, status, starts_at, ends_at, export_key)
-               VALUES (%s, %s, %s, %s, %s, %s)""",
-            (identity_id, title[:255], status, starts, ends, key),
+                 (identity_id, account_id, title, status, activated_at,
+                  starts_at, ends_at, starting_capital, goals_md, export_key)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                identity_id,
+                account_id,
+                title[:255],
+                status,
+                activated,
+                starts,
+                ends,
+                starting_capital,
+                goals,
+                key,
+            ),
         )
         cid = int(cur.lastrowid)
         counts["new"] += 1
@@ -676,7 +739,46 @@ def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]
         "counts": counts,
         "warnings": warnings,
         "mode": "additive",
+        "schema": "practice-campaign-v1",
+        "model_version": str(doc.get("model_version") or "1.1"),
     }
+
+
+def rebind_practice_campaign_accounts(
+    cur, identity_id: int, doc: dict
+) -> dict[str, Any]:
+    """Second pass: set account_id on campaigns left unbound when accounts now exist."""
+    rebound = 0
+    warnings: list[str] = []
+    for e in doc.get("entries") or []:
+        if not isinstance(e, dict):
+            continue
+        title = (e.get("title") or "").strip()
+        if not title:
+            continue
+        key = _portable_key(e.get("id"), "campaign", title)
+        cur.execute(
+            """SELECT id, account_id FROM member_practice_campaigns
+               WHERE identity_id = %s AND export_key = %s""",
+            (identity_id, key),
+        )
+        row = cur.fetchone()
+        if not row or row.get("account_id") is not None:
+            continue
+        aid = _resolve_campaign_account_id(
+            cur, identity_id, e, warnings=warnings, key=key
+        )
+        if aid is None:
+            continue
+        cur.execute(
+            """UPDATE member_practice_campaigns
+               SET account_id = %s
+               WHERE id = %s AND identity_id = %s AND account_id IS NULL""",
+            (aid, int(row["id"]), identity_id),
+        )
+        if cur.rowcount:
+            rebound += 1
+    return {"rebound": rebound, "warnings": warnings}
 
 
 def _resolve_spine_ids(
@@ -1870,6 +1972,12 @@ def commit_all(
         )
     if "trade_log" in docs:
         results["trade_log"] = commit_trade_log(cur, identity_id, docs["trade_log"], claims)
+        # Rebind campaign account scope after accounts exist (pack order: campaign before trade_log)
+        if "practice_campaign" in docs:
+            rebind = rebind_practice_campaign_accounts(
+                cur, identity_id, docs["practice_campaign"]
+            )
+            results["practice_campaign_account_rebind"] = rebind
     if "journal" in docs:
         results["journal"] = commit_journal(cur, identity_id, docs["journal"])
     if "journal_session" in docs:

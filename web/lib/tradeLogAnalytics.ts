@@ -28,6 +28,9 @@ export type ServerReportsBook = {
   avg_win: number;
   avg_loss: number;
   win_loss_ratio: number | null;
+  /** Mean entry-time R2R (potential ÷ risk at open); null if none defined. */
+  avg_entry_r2r?: number | null;
+  entry_r2r_sample_size?: number;
   sharpe: number;
   sharpe_sample_size: number;
   stats: {
@@ -40,6 +43,8 @@ export type ServerReportsBook = {
     profit_factor: number | null;
     largest_win: number;
     largest_loss: number;
+    avg_entry_r2r?: number | null;
+    entry_r2r_sample_size?: number;
   };
   outcome_pnls: number[];
   strategy_counts: Record<string, number>;

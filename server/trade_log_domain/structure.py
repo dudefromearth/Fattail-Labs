@@ -130,3 +130,92 @@ def multiplier(trade: dict[str, Any]) -> int:
     if ac in ("equity", "stock"):
         return 1
     return 100
+
+
+def option_strikes(trade: dict[str, Any]) -> list[float]:
+    """Unique option strikes ascending (equity/stock legs ignored)."""
+    out: list[float] = []
+    for leg in trade.get("legs") or []:
+        ac = (leg.get("asset_class") or trade.get("asset_class") or "").lower()
+        if ac in ("equity", "stock", "crypto", "future") and not leg.get("expiry"):
+            continue
+        s = leg.get("strike")
+        if s is None:
+            continue
+        try:
+            f = float(s)
+        except (TypeError, ValueError):
+            continue
+        if f not in out:
+            out.append(f)
+    out.sort()
+    return out
+
+
+def structure_wing_width(trade: dict[str, Any]) -> float | None:
+    """Defined-risk wing width in points from strikes.
+
+    Vertical / fly / iron: minimum adjacent strike gap (body width for a fly).
+    Condor / IC: short-wing width = min gap. None if <2 strikes.
+    """
+    strikes = option_strikes(trade)
+    if len(strikes) < 2:
+        return None
+    gaps = [strikes[i + 1] - strikes[i] for i in range(len(strikes) - 1)]
+    width = min(g for g in gaps if g > 0) if any(g > 0 for g in gaps) else None
+    return width
+
+
+def entry_r2r(trade: dict[str, Any]) -> float | None:
+    """Entry-time R2R — not from how the trade ended.
+
+    Coach definition:
+      R2R = potential_profit / risk
+    where risk = maximum you must put up (debit paid, or width−credit on
+    a credit structure), and potential_profit = max theoretical profit at
+    open (wing_width − debit on debit structures; credit on credit structures).
+
+    Example debit fly: width 10, debit 0.91 → potential 9.09 → R2R ≈ 10.0.
+
+    Close fills return None. Undefined without net price or strike width.
+    """
+    if trade_is_close_fill(trade):
+        return None
+    cash = net_cash_points(trade)
+    if cash is None:
+        return None
+    width = structure_wing_width(trade)
+    if width is None or width <= 0:
+        return None
+
+    # Debit: risk = debit; potential = width − debit
+    if cash < 0:
+        risk = abs(cash)
+        if risk <= 1e-12:
+            return None
+        potential = width - risk
+        if potential <= 1e-12:
+            return None
+        return potential / risk
+
+    # Credit: risk = width − credit; potential = credit
+    if cash > 0:
+        credit = cash
+        risk = width - credit
+        if risk <= 1e-12 or credit <= 1e-12:
+            return None
+        return credit / risk
+
+    return None
+
+
+def average_entry_r2r(trades: list[dict[str, Any]]) -> tuple[float | None, int]:
+    """Mean entry R2R over open fills that have a defined structure R2R."""
+    vals: list[float] = []
+    for t in trades:
+        r = entry_r2r(t)
+        if r is not None and r > 0 and r == r:  # finite
+            vals.append(r)
+    if not vals:
+        return None, 0
+    return sum(vals) / len(vals), len(vals)

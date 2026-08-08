@@ -4,6 +4,142 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-08 — DL-264 Campaign upgrade must not break existing books
+
+**Coach:** Enacting campaign structure (096/097, pack 1.1, multi-active) is **additive**.
+
+- Do not auto-create campaigns or rewrite trades/accounts.  
+- New columns nullable; existing stamps and unstamped trades remain valid.  
+- Import accepts model 1.0; export 1.1 is backward-compatible for readers that ignore unknown fields.  
+- Migrate before deploy on each host. Spec: Member Campaign Concept §8a · Export Spec v1.4 §4.
+
+## 2026-08-08 — DL-263 Campaign permanence + active prefill (Spec B1/B2)
+
+**Permanence (OD-PB-7 platform-wide):** Practice campaign hard-delete only when
+zero stamps (no trade / journal `practice_campaign_id`, no playbook M2M). Else
+only `completed` / `abandoned`. Same doctrine as Playbook scrapbook permanence.
+
+**Prefill:** `GET …/campaigns/active` and stamp default = most recently
+**activated** (`activated_at`), prefer account-bound over unbound when
+`account_id` filter set. Migration **097**. Spec: Member Campaign Concept v1.0 §4.5–4.7.
+
+## 2026-08-08 — DL-262 Campaign: professional concept, retail-simple surface
+
+**Coach positioning:** Campaign is how **professionals** structure live work
+(capital context, goals, group of strategies or fills, start/end, log, prune,
+retro — LifeCycle Campaign Phase). FatTail brings that idea to **retail** without
+the institutional ceremony.
+
+| Professional core (kept) | Retail simple (how we ship) |
+|--------------------------|-----------------------------|
+| Work happens *in a campaign* | One default-style campaign if they want — or none |
+| Capital / goals / multi-book | Optional fields; hide complexity until used |
+| Deploy strategies *into* campaigns (Lab) | Suite step stays **Deploy** (verb); campaigns are the container |
+| Multi-campaign per account | Available, not required |
+| Import into a campaign | Available when chosen; broker files need no campaign column |
+
+**UX rule:** Never look like a wiki or a prop-firm ops console. Defaults are quiet;
+power is there when the member grows into it. Optional structure, not enforcement
+(DL-261). Practice and Strategy Lab each own the concept in their mode (DL-258/260).
+
+## 2026-08-08 — DL-261 Campaigns are structural & optional — never enforced
+
+**Coach:** FatTail **offers** campaigns as structure (capital context, multi-campaign
+per account, stamp on trades/journal, import *into* a campaign when the member
+chooses). We **do not enforce** them.
+
+| Do | Don't |
+|----|--------|
+| Make campaign create/list/stamp available | Require a campaign to open an account |
+| Allow one default-style campaign if the member wants it | Auto-create a campaign on every account |
+| Import into a chosen campaign when the UI/API says so | Force every ToS/CSV import onto a campaign |
+| Multiple campaigns per account (optional) | Block trading without an active campaign |
+
+Broker exports usually have no campaign notion — FatTail owns the concept, but
+**absence of campaign is valid**. Trades with `practice_campaign_id` NULL remain
+first-class. Strategy Lab Deploy → campaigns same spirit: available structure,
+not a gate.
+
+## 2026-08-08 — DL-260 Strategy Lab: Deploy step vs Campaign container (LifeCycle.pdf)
+
+**Source:** `/Users/ernie/LifeCycle.pdf` — Strategy Life Cycle.
+
+**Big picture:** Development → Curation → **Live Campaign**.
+
+**Campaign Phase** (PDF): strategies · capital allocation · start date · log · prune ·
+retrospective · end date. That is the *container* / live context of work.
+
+**Strategy Lab naming:**
+| Term | Meaning |
+|------|---------|
+| **Deploy** (suite process step) | Board phase UI label for the PDF Campaign/live stage — a **verb** most people understand. API key may stay `deployment`. |
+| **Campaign** (entity) | Capital context strategies are **deployed into** (one or many campaigns; capital, goals, dates, log, prune, retro). |
+| **Deploy to Sim** (Dev) | Inside Development only — not the Live Campaign board. |
+| **Deploy** (Curate step 5) | Final review before live — not the same as multi-campaign container mgmt. |
+
+**Rule:** You **deploy into** campaigns. You do not rename the process step to “Campaign”
+in the suite nav (that confuses step with container). Practice has the same *concept*
+of campaign as work context under `/app/practice/campaign` (human mode).
+
+## 2026-08-08 — DL-259 Practice Campaign = work context (multi per account)
+
+**Coach product model:** When you trade (Practice) or **deploy into a campaign**
+(Strategy Lab), work happens **in the context of a campaign** — capital focus, goals,
+a group of strategies or fills.
+
+| | Practice (human) | Strategy Lab (automated) |
+|--|------------------|---------------------------|
+| Campaign path | `/app/practice/campaign` | Campaign entities under Lab (Deploy board deploys *into* them) |
+| Mode | Manual fills / process suite | Bots deploy into campaigns |
+| Share tables? | **No** | **No** |
+
+**Practice flexibility:**
+
+- One person may run **everything** in a **single** campaign.  
+- Another may run **several distinct campaigns on one Trade Log account**.  
+- Another may run **different campaigns on different accounts**.  
+
+**As-built:** Multiple `active` campaigns allowed. Optional `account_id`,
+`starting_capital`, `goals_md`. Migration `096_practice_campaign_account_scope.sql`.
+
+## 2026-08-08 — DL-258 Practice ≠ Strategy Lab; Campaign at the right level
+
+**Coach correction:** Practice and Strategy Lab are **separate products** (human vs
+automated). They share **no** tables or chrome. The **concept of Campaign** exists
+in **both** — same idea (capital focus, goals, group of work), different mode.
+
+| | Practice (human) | Strategy Lab (automated) |
+|--|------------------|---------------------------|
+| Product | Manual Trade Log / process suite | Bots · Design → Curate → **Deploy** (into campaigns) |
+| Campaign home | **`/app/practice/campaign`** | Campaign containers + Deploy process step |
+| Wrong | `/app/campaigns` (top-level cross-product app) | Suite label “Campaign” for the process step (use **Deploy**) |
+| Data | Practice campaign domain only | Lab campaign / deployment domain only |
+
+**Do not** merge them. **Do not** put Campaign at `/app/campaigns`.
+
+## 2026-08-08 — DL-257 Reports = objective trade aggregate only (process off Reports)
+
+**Coach correction:** A **process scorecard** (adherence mix, process/behavior tag
+frequency, campaign-season process rates) does **not** belong on **Reports**.
+
+| Surface | Owns |
+|---------|------|
+| **Reports** (`/app/reports`) | Aggregate of **trades** — objective collected book: equity path, drawdown, strategy/outcome distributions, multi-account totals. Not character/process grading. |
+| **Trade Log** | Capture fills + optional process fields on the fill (source of truth for *data*). |
+| **Retrospective** | Derived process ceremony over a window (adherence, integrity, habits) — preferred home for adherence mix / process look-back. |
+| **Journey** | Optional **aggregate** process pulse for the path (later), not a second Reports. |
+
+**Rationale:** Reports answers “what happened in the book.” Process answers “was I true to the covenant.” Mixing them turns Records into coaching theater and was not an intentional Coach lock.
+
+**Disposition of TD2-7 process pack UI:** removed from `ReportsDashboard`. Domain/API
+(`process-pack`, `records/summary` by_adherence, tag usage) may remain as **derivation
+backends** for Retro/Journey — not as Reports widgets. Phase 2 Spec §3.4 process pack
+placement amended by this DL (Reports no longer the default host).
+
+**Also out of Reports:** Process labels (`ProcessTagUsage`) — same rule as adherence
+mix. Components live under `web/components/practice/` (not `reports/`) so they are not
+re-mounted on Records by accident. Featured card copy on Reports must not say “process.”
+
 ## 2026-08-08 — DL-256 Phase 2 charts track (Match Hygiene) — Massive underlier review
 
 **Decision:** Start TD2 **charts** workstream without waiting on TD2-0 broker vendor.

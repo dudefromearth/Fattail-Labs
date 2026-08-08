@@ -39,6 +39,14 @@ export type ReportsBook = {
   hasPnlData: boolean;
   endBalance: number;
   maxDrawdownPct: number;
+  /** Total return % of starting capital — path aggregate, not a ratio magnifier. */
+  totalReturnPct: number;
+  /** Gross wins / gross losses; null = unbounded (∞). */
+  profitFactor: number | null;
+  winRatePct: number;
+  /** Entry R2R: potential ÷ risk at open (not outcome-based). */
+  avgEntryR2r: number | null;
+  entryR2rSampleSize: number;
   avgWin: number;
   avgLoss: number;
   winLossRatio: number;
@@ -154,7 +162,15 @@ export function reportsBookFromServer(raw: ServerReportsBook): ReportsBook {
   const avgLoss = raw.avg_loss;
   const avgNet = pnls.length > 0 ? s.net_profit / pnls.length : 0;
   const avgRisk = losers > 0 ? avgLoss : pnls.length > 0 ? Math.abs(avgNet) : 0;
-  const avgR2R = avgRisk > 0 ? avgWin / avgRisk : 0;
+  // Entry-time R2R from server (potential ÷ risk at open). Never avg-win/avg-loss.
+  const avgEntryR2r =
+    raw.avg_entry_r2r != null && Number.isFinite(raw.avg_entry_r2r)
+      ? raw.avg_entry_r2r
+      : s.avg_entry_r2r != null && Number.isFinite(s.avg_entry_r2r)
+        ? s.avg_entry_r2r
+        : null;
+  const entryR2rSampleSize =
+    raw.entry_r2r_sample_size ?? s.entry_r2r_sample_size ?? 0;
   const ratioWinLoss =
     raw.win_loss_ratio == null
       ? avgWin > 0
@@ -197,8 +213,9 @@ export function reportsBookFromServer(raw: ServerReportsBook): ReportsBook {
     {
       key: "return",
       label: "Total Return",
+      // Aggregate path result (like Balance/Net) — not a ratio; do not tone as "key"
       value: hasPnlData ? pct(s.total_return_pct) : "—",
-      tone: "key",
+      tone: "balance",
     },
     {
       key: "gprofit",
@@ -220,7 +237,7 @@ export function reportsBookFromServer(raw: ServerReportsBook): ReportsBook {
     },
     {
       key: "pf",
-      label: "Win/loss factor",
+      label: "Profit Factor",
       value: hasPnlData
         ? profitFactor == null
           ? "∞"
@@ -319,9 +336,12 @@ export function reportsBookFromServer(raw: ServerReportsBook): ReportsBook {
     },
     {
       key: "r2r",
-      label: "Average R2R",
-      value: avgR2R > 0 ? avgR2R.toFixed(2) : "—",
-      tone: "plain",
+      label: "Risk to Reward",
+      value:
+        avgEntryR2r != null && avgEntryR2r > 0
+          ? avgEntryR2r.toFixed(2)
+          : "—",
+      tone: "key",
     },
     {
       key: "sharpe",
@@ -357,6 +377,11 @@ export function reportsBookFromServer(raw: ServerReportsBook): ReportsBook {
     hasPnlData,
     endBalance: raw.end_balance,
     maxDrawdownPct: maxDdPct,
+    totalReturnPct: s.total_return_pct,
+    profitFactor,
+    winRatePct: s.win_rate,
+    avgEntryR2r,
+    entryR2rSampleSize,
     avgWin,
     avgLoss,
     winLossRatio:

@@ -57,7 +57,7 @@ and filters that answer: *"What did I do in this season, against this book?"*
 | Trade links to a playbook entry the caller doesn't own | 404/403 by identity scope — FK + query constraint, fail loud |
 | Campaign dates invalid (`ends_at < starts_at`) | 422 with reason |
 | Deleting/archiving a playbook entry with linked trades | **Archive only** (status flip); links remain readable — never orphan or cascade-delete member evidence |
-| Two campaigns `active` | **Blocked** — single active only (OD-1.3 locked); activating another completes/abandons or 422 |
+| Two campaigns `active` | **Allowed** (DL-259 supersedes OD-1.3) — multi-active first-class; prefill = most recently activated — [Member Campaign Concept Spec v1.0](./FatTail-Labs-Member-Campaign-Concept-Spec-v1.0.md) §4.7 |
 | Import replays a pack containing campaign/playbook keys | Additive, idempotent by `export_key`; never duplicated |
 
 ---
