@@ -302,7 +302,7 @@ export default function PracticeCampaignPage() {
                 <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-label-secondary)]">
                   Your default account ledger should appear automatically. If this
                   stays empty, open Trade Log once, then return here — or create a
-                  deliberate season campaign.
+                  new campaign.
                 </p>
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                   <Button
