@@ -295,9 +295,19 @@ def _ensure_default_account(cur, iid: int) -> dict:
            LIMIT 1""",
         (iid, DEFAULT_ACCOUNT_LABEL),
     )
+    def _with_ledger(acct_row: dict) -> dict:
+        # Structured practice §2.1 — ledger for every book, not only new inserts
+        try:
+            import practice_spine_domain as psd
+
+            psd.ensure_ledger_campaign(cur, iid, int(acct_row["id"]))
+        except Exception:
+            pass
+        return acct_row
+
     row = cur.fetchone()
     if row:
-        return row
+        return _with_ledger(row)
     cur.execute(
         """SELECT * FROM member_trade_log_accounts
            WHERE identity_id = %s AND label = %s
@@ -316,7 +326,7 @@ def _ensure_default_account(cur, iid: int) -> dict:
             "SELECT * FROM member_trade_log_accounts WHERE id = %s",
             (primary["id"],),
         )
-        return cur.fetchone()
+        return _with_ledger(cur.fetchone())
     cur.execute(
         """INSERT INTO member_trade_log_accounts
              (identity_id, label, broker, status, sort_order, notes_md)
@@ -332,15 +342,7 @@ def _ensure_default_account(cur, iid: int) -> dict:
         "SELECT * FROM member_trade_log_accounts WHERE id = %s",
         (cur.lastrowid,),
     )
-    row = cur.fetchone()
-    # Structured practice Law 1 — ledger genesis with the book
-    try:
-        import practice_spine_domain as psd
-
-        psd.on_account_created(cur, iid, int(row["id"]))
-    except Exception:
-        pass
-    return row
+    return _with_ledger(cur.fetchone())
 
 
 def _maybe_set_account_venue(

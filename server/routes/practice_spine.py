@@ -617,8 +617,8 @@ def list_campaigns(
 ) -> dict:
     """List Practice campaigns (human mode). Multiple actives allowed (DL-259).
 
-    Read-only list — never auto-creates campaigns (umpire §4.5.5b).
-    Empty library offers one-tap create in the UI, not a side-effecting GET.
+    Ensures **ledger furniture** per active account (Structured Practice §2.1) —
+    not member charters. Does not invent seasonal campaigns on browse.
     """
     claims = require_session(request)
     with db.transaction() as conn:

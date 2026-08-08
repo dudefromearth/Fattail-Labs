@@ -297,20 +297,29 @@ export default function PracticeCampaignPage() {
                 data-testid="campaign-empty-offer"
               >
                 <p className="font-semibold text-[var(--color-label)]">
-                  No campaigns yet
+                  Setting up your book…
                 </p>
                 <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-label-secondary)]">
-                  Optional charter for a season of practice. One deliberate tap —
-                  you sign when you activate.
+                  Your default account ledger should appear automatically. If this
+                  stays empty, open Trade Log once, then return here — or create a
+                  deliberate season campaign.
                 </p>
-                <div className="mt-4">
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
                   <Button
                     type="button"
                     variant="primary"
+                    onClick={() => void load()}
+                    data-testid="campaign-empty-reload"
+                  >
+                    Refresh
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
                     onClick={() => setCreating(true)}
                     data-testid="campaign-empty-start"
                   >
-                    Start your default
+                    New campaign
                   </Button>
                 </div>
               </div>

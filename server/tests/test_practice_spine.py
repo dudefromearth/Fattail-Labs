@@ -473,8 +473,8 @@ def test_campaign_pause_and_resume(client):
         _cleanup(iid)
 
 
-def test_campaign_list_get_never_auto_creates(client):
-    """GET list is read-only — empty stays empty (umpire §4.5.5b)."""
+def test_campaign_list_ensures_ledger_furniture(client):
+    """GET list ensures ledger furniture (§2.1) — not member charters."""
     iid = _member("zztest-spine-coldstart@labs.test")
     cookies = cookie_for("activator", iid)
     try:
@@ -482,6 +482,10 @@ def test_campaign_list_get_never_auto_creates(client):
             with conn.cursor() as cur:
                 cur.execute(
                     "DELETE FROM member_practice_campaign_amendments WHERE identity_id = %s",
+                    (iid,),
+                )
+                cur.execute(
+                    "DELETE FROM member_practice_campaign_memory WHERE identity_id = %s",
                     (iid,),
                 )
                 cur.execute(
@@ -495,11 +499,17 @@ def test_campaign_list_get_never_auto_creates(client):
                 )
         r = client.get("/api/me/practice/campaigns", cookies=cookies)
         assert r.status_code == 200, r.text
-        assert r.json()["campaigns"] == []
-        # Second GET still empty — no side-effect provisioning
+        camps = r.json()["campaigns"]
+        assert len(camps) >= 1
+        assert any(c.get("is_ledger") for c in camps)
+        # Second GET does not invent extra charters — still one ledger furniture row
         r2 = client.get("/api/me/practice/campaigns", cookies=cookies)
         assert r2.status_code == 200
-        assert r2.json()["campaigns"] == []
+        camps2 = r2.json()["campaigns"]
+        assert len(camps2) == len(camps)
+        assert sum(1 for c in camps2 if c.get("is_ledger")) == sum(
+            1 for c in camps if c.get("is_ledger")
+        )
     finally:
         _cleanup(iid)
 

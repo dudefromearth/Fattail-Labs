@@ -434,11 +434,36 @@ def list_amendments(cur, identity_id: int, campaign_id: int) -> list[dict]:
     return out
 
 
+def ensure_ledgers_for_identity(cur, identity_id: int) -> list[dict]:
+    """§2.1 Practice provision — ledger for every active trade account.
+
+    Idempotent. Lawful on campaign library load (Practice-suite touch), not a
+    silent invent of member *charters* — only furniture ledgers.
+    """
+    cur.execute(
+        """SELECT id FROM member_trade_log_accounts
+           WHERE identity_id = %s AND status = 'active'
+           ORDER BY id ASC""",
+        (identity_id,),
+    )
+    out = []
+    for r in cur.fetchall() or []:
+        out.append(ensure_ledger_campaign(cur, identity_id, int(r["id"])))
+    if not out:
+        # No active book — ensure Primary + ledger
+        aid = _ensure_primary_trade_account(cur, identity_id)
+        out.append(ensure_ledger_campaign(cur, identity_id, aid))
+    return out
+
+
 def list_campaigns(cur, identity_id: int) -> list[dict]:
+    # Practice-suite touch: ensure furniture so library is never hollow after migrate
+    ensure_ledgers_for_identity(cur, identity_id)
     cur.execute(
         """SELECT * FROM member_practice_campaigns
            WHERE identity_id = %s
            ORDER BY
+             CASE WHEN is_ledger = 1 THEN 0 ELSE 1 END,
              CASE status
                WHEN 'active' THEN 0
                WHEN 'planned' THEN 1
