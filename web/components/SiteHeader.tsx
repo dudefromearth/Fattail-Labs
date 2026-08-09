@@ -305,6 +305,14 @@ export default function SiteHeader() {
                       Profile
                     </Link>
                     <Link
+                      href="/accounts-capital"
+                      className="block px-4 py-2 hover:bg-[var(--color-fill)]"
+                      onClick={() => setMenuOpen(false)}
+                      data-testid="nav-accounts-capital"
+                    >
+                      Accounts &amp; Capital
+                    </Link>
+                    <Link
                       href="/app/journey"
                       className="block px-4 py-2 hover:bg-[var(--color-fill)]"
                       onClick={() => setMenuOpen(false)}

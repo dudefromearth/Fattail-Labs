@@ -94,17 +94,28 @@ async def create_account(request: Request) -> dict:
                     status_code=422,
                     detail=f"At most {cat.MAX_ACTIVE_ACCOUNTS} active accounts — archive one first",
                 )
+            starting = body.get("starting_balance")
+            if starting is not None and starting != "":
+                try:
+                    starting = float(starting)
+                except (TypeError, ValueError):
+                    raise HTTPException(
+                        status_code=422, detail="starting_balance must be a number"
+                    )
+            else:
+                starting = None
             cur.execute(
                 """INSERT INTO member_trade_log_accounts
-                     (identity_id, label, broker, broker_label, currency, status,
-                      badge_color, sort_order, notes_md)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                     (identity_id, label, broker, broker_label, currency, starting_balance,
+                      status, badge_color, sort_order, notes_md)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (
                     iid,
                     label[:128],
                     broker,
                     broker_label,
                     (body.get("currency") or "USD")[:8],
+                    starting,
                     status,
                     body.get("badge_color"),
                     int(body.get("sort_order") or 0),
@@ -168,9 +179,22 @@ async def patch_account(account_id: int, request: Request) -> dict:
                     status_code=422,
                     detail=f"At most {cat.MAX_ACTIVE_ACCOUNTS} active accounts",
                 )
+            starting = row.get("starting_balance")
+            if "starting_balance" in body:
+                raw_start = body.get("starting_balance")
+                if raw_start is None or raw_start == "":
+                    starting = None
+                else:
+                    try:
+                        starting = float(raw_start)
+                    except (TypeError, ValueError):
+                        raise HTTPException(
+                            status_code=422, detail="starting_balance must be a number"
+                        )
             cur.execute(
                 """UPDATE member_trade_log_accounts
-                   SET label=%s, broker=%s, broker_label=%s, currency=%s, status=%s,
+                   SET label=%s, broker=%s, broker_label=%s, currency=%s,
+                       starting_balance=%s, status=%s,
                        badge_color=%s, sort_order=%s, notes_md=%s
                    WHERE id=%s AND identity_id=%s""",
                 (
@@ -178,6 +202,7 @@ async def patch_account(account_id: int, request: Request) -> dict:
                     broker,
                     broker_label,
                     (body.get("currency") or row.get("currency") or "USD")[:8],
+                    starting,
                     status,
                     body.get("badge_color", row.get("badge_color")),
                     int(body["sort_order"]) if body.get("sort_order") is not None else row.get("sort_order") or 0,

@@ -157,12 +157,18 @@ def _parse_exec_at(raw: Any) -> datetime:
 
 
 def _account_row(r: dict) -> dict:
+    start = r.get("starting_balance")
+    try:
+        starting_balance = float(start) if start is not None else None
+    except (TypeError, ValueError):
+        starting_balance = None
     out = {
         "id": r["id"],
         "label": r["label"],
         "broker": r["broker"],
         "broker_label": r.get("broker_label"),
         "currency": r.get("currency") or "USD",
+        "starting_balance": starting_balance,
         "status": r["status"],
         "badge_color": r.get("badge_color"),
         "sort_order": r.get("sort_order") or 0,
@@ -305,19 +311,10 @@ def _ensure_default_account(cur, iid: int) -> dict:
            LIMIT 1""",
         (iid, DEFAULT_ACCOUNT_LABEL, LEGACY_DEFAULT_ACCOUNT_LABEL),
     )
-    def _with_ledger(acct_row: dict) -> dict:
-        # Structured practice §2.1 — ledger for every book, not only new inserts
-        try:
-            import practice_spine_domain as psd
-
-            psd.ensure_ledger_campaign(cur, iid, int(acct_row["id"]))
-        except Exception:
-            pass
-        return acct_row
-
+    # Amendment Top-Level Account: account only — never invent ledger furniture.
     row = cur.fetchone()
     if row:
-        return _with_ledger(row)
+        return row
     cur.execute(
         """SELECT * FROM member_trade_log_accounts
            WHERE identity_id = %s AND label IN (%s, %s)
@@ -354,7 +351,7 @@ def _ensure_default_account(cur, iid: int) -> dict:
             "SELECT * FROM member_trade_log_accounts WHERE id = %s",
             (standing["id"],),
         )
-        return _with_ledger(cur.fetchone())
+        return cur.fetchone()
     cur.execute(
         """INSERT INTO member_trade_log_accounts
              (identity_id, label, broker, status, sort_order, notes_md)
@@ -370,7 +367,7 @@ def _ensure_default_account(cur, iid: int) -> dict:
         "SELECT * FROM member_trade_log_accounts WHERE id = %s",
         (cur.lastrowid,),
     )
-    return _with_ledger(cur.fetchone())
+    return cur.fetchone()
 
 
 def _maybe_set_account_venue(

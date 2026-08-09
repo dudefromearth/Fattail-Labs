@@ -81,7 +81,7 @@ export default function PracticeContextBar({
             onChange={(e) => {
               const v = e.target.value;
               if (v === MANAGE_ACCOUNTS) {
-                router.push("/me#trade-accounts");
+                router.push("/accounts-capital");
                 return;
               }
               setAccountId(v === "all" ? "all" : Number(v));
@@ -116,9 +116,9 @@ export default function PracticeContextBar({
         </label>
 
         <div
-          className="inline-flex rounded-full bg-[var(--color-fill)] p-0.5"
+          className="inline-flex flex-wrap items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-0.5"
           role="group"
-          aria-label="Date granularity"
+          aria-label="Date and campaign filters"
           data-testid="practice-granularity"
         >
           {PRACTICE_GRANULARITIES.map((v) => {
@@ -140,6 +140,42 @@ export default function PracticeContextBar({
               </button>
             );
           })}
+          {/* Placeholder "Campaign" = no filter; pick a name to filter by that charter */}
+          <label className="relative inline-flex min-h-8 items-center">
+            <span className="sr-only">Campaign filter</span>
+            <select
+              className={[
+                "min-h-8 max-w-[12rem] cursor-pointer appearance-none rounded-full border-0 bg-transparent py-1 pl-3 pr-7 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
+                campaignId != null
+                  ? "bg-[var(--color-tint)] text-[var(--color-on-tint)] shadow-sm"
+                  : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
+              ].join(" ")}
+              value={campaignId != null ? String(campaignId) : ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setCampaignId(v ? Number(v) : null);
+              }}
+              aria-label="Campaign filter"
+              data-testid="practice-campaign-select"
+            >
+              <option value="">Campaign</option>
+              {selectableCampaigns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+            <span
+              className={[
+                "pointer-events-none absolute right-2 top-1/2 -translate-y-1/2",
+                campaignId != null
+                  ? "text-[var(--color-on-tint)]"
+                  : "text-[var(--color-label-secondary)]",
+              ].join(" ")}
+            >
+              <IconChevronDown size={14} />
+            </span>
+          </label>
         </div>
 
         {dateFilterActive ? (
@@ -176,45 +212,6 @@ export default function PracticeContextBar({
             </Button>
           </div>
         ) : null}
-
-        {/* Campaign selector — default = ledger (starts with first Trade Log fill) */}
-        <label className="relative inline-flex min-h-[var(--hit-min)] min-w-[10rem] items-center">
-          <span className="sr-only">Campaign</span>
-          <select
-            className={selectClass + " max-w-[16rem]"}
-            value={campaignId != null ? String(campaignId) : ""}
-            disabled={accountId === "all" || selectableCampaigns.length === 0}
-            onChange={(e) => {
-              const v = e.target.value;
-              setCampaignId(v ? Number(v) : null);
-            }}
-            aria-label="Active campaign"
-            data-testid="practice-campaign-select"
-          >
-            {accountId === "all" ? (
-              <option value="">Select an account first</option>
-            ) : selectableCampaigns.length === 0 ? (
-              <option value="">No campaigns</option>
-            ) : (
-              selectableCampaigns.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                  {c.is_ledger ? " · default" : ""}
-                  {c.status === "planned" && c.activated_at
-                    ? " · paused"
-                    : c.status === "planned"
-                      ? " · draft"
-                      : ""}
-                  {c.status === "completed" ? " · complete" : ""}
-                  {c.status === "abandoned" ? " · ended early" : ""}
-                </option>
-              ))
-            )}
-          </select>
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-label-secondary)]">
-            <IconChevronDown size={16} />
-          </span>
-        </label>
       </div>
 
       {inertHint && (

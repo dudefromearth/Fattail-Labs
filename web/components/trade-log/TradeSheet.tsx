@@ -360,8 +360,8 @@ export default function TradeSheet({
     (mode === "edit" && trade && isManualEntry(trade));
 
   /**
-   * L4 picker — only window-covering campaigns + ledger for this fill.
-   * Spec v1.3: membership law; zero extra keystrokes on happy path.
+   * L4 picker — window-covering deliberate campaigns only (no ledger furniture).
+   * Empty default = undirected / server memory (Amendment L2).
    */
   async function loadCampaignChoices(
     accountId: number | null | undefined,
@@ -379,7 +379,7 @@ export default function TradeSheet({
           accountId: aid,
           execAt: opts.execAt || undefined,
         });
-        choices = eligible.campaigns || [];
+        choices = (eligible.campaigns || []).filter((c) => !c.is_ledger);
       } else {
         const camps = await fetchCampaigns();
         const actives =
@@ -388,7 +388,7 @@ export default function TradeSheet({
             : camps.active
               ? [camps.active]
               : [];
-        choices = [...actives];
+        choices = actives.filter((c) => !c.is_ledger);
       }
       const keep = opts.keepCampaignId;
       if (keep != null && keep > 0 && !choices.some((c) => c.id === keep)) {
@@ -397,16 +397,15 @@ export default function TradeSheet({
         const camps = await fetchCampaigns(
           aid != null ? { accountId: aid } : undefined,
         );
-        const found = (camps.campaigns || []).find((c) => c.id === keep);
+        const found = (camps.campaigns || []).find(
+          (c) => c.id === keep && !c.is_ledger,
+        );
         if (found) choices = [...choices, found];
       }
       setCampaignChoices(choices);
       if (opts.prefillCreate) {
-        const book =
-          choices.find((c) => c.is_ledger) ||
-          choices.find((c) => c.is_default) ||
-          choices[0];
-        setPracticeCampaignId(book?.id ?? "");
+        // Undirected rest — leave empty so server uses memory or null
+        setPracticeCampaignId("");
       }
     } catch {
       setCampaignChoices([]);
@@ -1962,17 +1961,12 @@ export default function TradeSheet({
                         }
                         data-testid="trade-campaign-select"
                       >
-                        {/* Empty = server memory / ledger resolve */}
-                        <option value="">Account default (ledger / memory)</option>
+                        {/* Empty = undirected or server memory (no furniture) */}
+                        <option value="">Undirected (or memory if set)</option>
                         {campaignChoices.map((c) => (
                           <option key={c.id} value={String(c.id)}>
                             {c.title}
-                            {c.is_ledger || c.is_default ? " · ledger" : ""}
-                            {c.status === "active" &&
-                            !c.is_ledger &&
-                            !c.is_default
-                              ? " (active)"
-                              : ""}
+                            {c.status === "active" ? " (active)" : ""}
                           </option>
                         ))}
                       </select>

@@ -16,8 +16,8 @@ type PreviewTrade = {
   legs?: { side?: string; quantity?: number; underlier?: string; strike?: number }[];
 };
 
-/** Campaign target for import: account default, existing id, or create-new. */
-type CampMode = "default" | "pick" | "new";
+/** Campaign target for import: undirected, existing id, or create-new. */
+type CampMode = "none" | "pick" | "new";
 
 export default function ImportSheet({
   open,
@@ -50,7 +50,7 @@ export default function ImportSheet({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [campaigns, setCampaigns] = useState<PracticeCampaign[]>([]);
-  const [campMode, setCampMode] = useState<CampMode>("default");
+  const [campMode, setCampMode] = useState<CampMode>("none");
   const [pickedCampId, setPickedCampId] = useState<number | "">("");
   const [newCampTitle, setNewCampTitle] = useState("");
 
@@ -64,11 +64,13 @@ export default function ImportSheet({
     setError(null);
     setResult(null);
     setAdapter("auto");
-    setCampMode("default");
+    setCampMode("none");
     setPickedCampId("");
     setNewCampTitle("");
     void fetchCampaigns()
-      .then((d) => setCampaigns(d.campaigns || []))
+      .then((d) =>
+        setCampaigns((d.campaigns || []).filter((c) => !c.is_ledger)),
+      )
       .catch(() => setCampaigns([]));
   }, [open, defaultAccountId, accounts]);
 
@@ -84,23 +86,13 @@ export default function ImportSheet({
   const active = accounts.filter((a) => a.status === "active");
   const scopeAccount = accountId === "" ? null : Number(accountId);
 
-  const defaultCamp = useMemo(() => {
-    if (scopeAccount == null) return null;
-    return (
-      campaigns.find(
-        (c) =>
-          c.is_default &&
-          c.account_id === scopeAccount &&
-          c.status === "active",
-      ) || null
-    );
-  }, [campaigns, scopeAccount]);
-
   const pickableCamps = useMemo(() => {
-    if (scopeAccount == null) return campaigns.filter((c) => c.status === "active");
+    const deliberate = (c: PracticeCampaign) =>
+      c.status === "active" && !c.is_ledger;
+    if (scopeAccount == null) return campaigns.filter(deliberate);
     return campaigns.filter(
       (c) =>
-        c.status === "active" &&
+        deliberate(c) &&
         (c.account_id == null || c.account_id === scopeAccount),
     );
   }, [campaigns, scopeAccount]);
@@ -166,23 +158,19 @@ export default function ImportSheet({
       return;
     }
     if (campMode === "pick" && pickedCampId === "") {
-      setError("Choose a campaign, or switch to Account default.");
+      setError("Choose a campaign, or switch to Undirected.");
       return;
     }
     if (campMode === "new" && !newCampTitle.trim()) {
-      setError("Name the new campaign, or switch to Account default.");
+      setError("Name the new campaign, or switch to Undirected.");
       return;
     }
     setBusy(true);
     setError(null);
     try {
       let practice_campaign_id: number | null = null;
-      let use_default_campaign = false;
 
-      if (campMode === "default") {
-        use_default_campaign = true;
-      } else if (campMode === "pick") {
-        use_default_campaign = false;
+      if (campMode === "pick") {
         practice_campaign_id = Number(pickedCampId);
       } else if (campMode === "new") {
         const created = await createCampaign({
@@ -190,16 +178,15 @@ export default function ImportSheet({
           activate: true,
           account_id: Number(accountId),
         });
-        use_default_campaign = false;
         practice_campaign_id = created.id;
         setCampaigns((prev) => [created, ...prev]);
       }
+      // campMode === "none" → undirected null stamp
 
       const body: Record<string, unknown> = {
         text,
         adapter: adapter === "auto" ? "auto" : adapter,
         account_id: Number(accountId),
-        use_default_campaign,
       };
       if (practice_campaign_id != null) {
         body.practice_campaign_id = practice_campaign_id;
@@ -232,12 +219,6 @@ export default function ImportSheet({
       setBusy(false);
     }
   }
-
-  const defaultLabel = defaultCamp
-    ? defaultCamp.title
-    : scopeAccount != null
-      ? `${active.find((a) => a.id === scopeAccount)?.label || "Account"} default (created on import)`
-      : "Account default (created on import)";
 
   return (
     <>
@@ -275,10 +256,10 @@ export default function ImportSheet({
             <strong className="text-[var(--color-label)]">
               thinkorswim Account Statement
             </strong>{" "}
-            CSV (we use the <em>Account Trade History</em> block). Fills stamp
-            into the account&apos;s <strong>default campaign</strong> — or choose
-            another campaign / create one. Preview before commit; duplicates
-            skipped.
+            CSV (we use the <em>Account Trade History</em> block). By default
+            fills land <strong>undirected</strong> (no campaign stamp) — or
+            choose / create a deliberate campaign. Preview before commit;
+            duplicates skipped.
           </p>
 
           <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
@@ -288,7 +269,7 @@ export default function ImportSheet({
               value={accountId}
               onChange={(e) => {
                 setAccountId(e.target.value ? Number(e.target.value) : "");
-                setCampMode("default");
+                setCampMode("none");
                 setPickedCampId("");
               }}
             >
@@ -315,14 +296,14 @@ export default function ImportSheet({
                 type="radio"
                 name="import-camp"
                 className="mt-1"
-                checked={campMode === "default"}
-                onChange={() => setCampMode("default")}
-                data-testid="import-camp-default"
+                checked={campMode === "none"}
+                onChange={() => setCampMode("none")}
+                data-testid="import-camp-none"
               />
               <span>
-                <span className="font-medium">Account default</span>
+                <span className="font-medium">Undirected</span>
                 <span className="mt-0.5 block text-xs text-[var(--color-label-tertiary)]">
-                  {defaultLabel} — no-fuss path for brokerage history
+                  No campaign stamp — lawful rest for brokerage history
                 </span>
               </span>
             </label>

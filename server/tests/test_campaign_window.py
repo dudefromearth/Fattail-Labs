@@ -168,8 +168,8 @@ def test_stamp_across_books_and_window_reject(client):
         _cleanup(iid)
 
 
-def test_memory_falls_back_to_ledger_when_window_ends(client):
-    """D1-1 — memory of expired charter → silent ledger (L3)."""
+def test_memory_falls_to_undirected_when_window_ends(client):
+    """D1-1 / Amendment L3 — memory of expired charter → undirected null."""
     iid = _member("zztest-window-mem@labs.test")
     cookies = cookie_for("activator", iid)
     try:
@@ -213,8 +213,9 @@ def test_memory_falls_back_to_ledger_when_window_ends(client):
             },
         )
         assert r1.status_code == 200, r1.text
+        assert r1.json()["practice_campaign_id"] == cid
 
-        # No explicit stamp after season ends → ledger
+        # No explicit stamp after season ends → undirected
         r2 = client.post(
             "/api/me/trade-log/trades",
             cookies=cookies,
@@ -236,12 +237,8 @@ def test_memory_falls_back_to_ledger_when_window_ends(client):
         )
         assert r2.status_code == 200, r2.text
         body = r2.json()
-        assert body["practice_campaign_id"] != cid
-        with db.transaction() as conn:
-            with conn.cursor() as cur:
-                led = psd.get_ledger_campaign(cur, iid, aid)
-                assert led is not None
-                assert body["practice_campaign_id"] == int(led["id"])
+        assert body["practice_campaign_id"] is None
+        assert body.get("stamped_by") is None
     finally:
         _cleanup(iid)
 
@@ -275,7 +272,7 @@ def test_eligible_api_filters_window(client):
         assert inside.status_code == 200, inside.text
         ids_in = {c["id"] for c in inside.json()["campaigns"]}
         assert cid in ids_in
-        assert any(c.get("is_ledger") for c in inside.json()["campaigns"])
+        assert not any(c.get("is_ledger") for c in inside.json()["campaigns"])
 
         outside = client.get(
             f"/api/me/practice/campaigns/eligible?account_id={aid}"
@@ -285,7 +282,7 @@ def test_eligible_api_filters_window(client):
         assert outside.status_code == 200, outside.text
         ids_out = {c["id"] for c in outside.json()["campaigns"]}
         assert cid not in ids_out
-        assert any(c.get("is_ledger") for c in outside.json()["campaigns"])
+        assert not any(c.get("is_ledger") for c in outside.json()["campaigns"])
     finally:
         _cleanup(iid)
 

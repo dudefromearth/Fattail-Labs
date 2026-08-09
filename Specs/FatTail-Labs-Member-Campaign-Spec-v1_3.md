@@ -1,10 +1,11 @@
 # FatTail Labs — Member Campaign Spec v1.3
 ## Structured practice · the window model · the prescribed panel · the Campaign Journey
 
-**Status:** Product / architecture authority — complete restatement (redo, Coach-directed 2026-08-09) · **registry/badge clarification 2026-08-09**
-**Supersedes:** Member Campaign Structured Practice Spec v1.2 (and via it v1.0–v1.1); Campaign Amendment — Window, Direction, Badge (folded); UX Directive — Prescribed Panel (folded); Campaign Panel v1 — Six Controls (folded)
-**Companion:** [Trade Log Spec v1.1](./FatTail-Labs-Trade-Log-Spec-v1.1.md) §17 — **passive participant** (badge host; no campaign logic). Boundary owned here in §2.1 + §9; Trade Log §17 is the host-side amend.
-**Queued, not dropped:** D6 convexity gauge / vol-correlation module — Coach-ratified, blocked on the vol data-source OD; lands as v1.4 or companion spec
+**Status:** Product / architecture authority — complete restatement (redo, Coach-directed 2026-08-09) · **registry/badge clarification 2026-08-09**  
+**Pending supersession (DRAFT):** [Campaign Amendment — Top Level Is the Account v1.0](./FatTail-Labs-Campaign-Amendment-Top-Level-Is-The-Account-v1.0.md) — **abolishes ledger furniture**; undirected trades; targets Campaign Spec **v1.4**. Until ratified, v1.3 ledger laws remain as-built authority; do not implement reverse without Coach GO.  
+**Supersedes:** Member Campaign Structured Practice Spec v1.2 (and via it v1.0–v1.1); Campaign Amendment — Window, Direction, Badge (folded); UX Directive — Prescribed Panel (folded); Campaign Panel v1 — Six Controls (folded)  
+**Companion:** [Trade Log Spec v1.1](./FatTail-Labs-Trade-Log-Spec-v1.1.md) §17 — **passive participant** (badge host; no campaign logic). [Capital Spec v0.3](./FatTail-Labs-Capital-and-Position-Sizing-Spec-v0.3.md) · [Funding Spec v0.2](./FatTail-Labs-Funding-and-Defunding-Spec-v0.2.md) · [Staleness Spec v0.1](./FatTail-Labs-Staleness-Awareness-Spec-v0.1.md) — capital stack (beside, not inside).  
+**Queued, not dropped:** D6 convexity gauge / vol-correlation module — Coach-ratified, blocked on the vol data-source OD.  
 **Type:** Practice Campaign model — concept, laws, lifecycle, panel, journey, surfaces, schema, migration
 
 ---
@@ -144,18 +145,21 @@ Seeds are arbitrary starting bands around Coach's reference values — the admin
 - **Deferred, not dropped:** member range adjustment (informed-patient case — amendment machinery already waits), goal-role surface chrome, the style × horizon **frame grid** (Hotel's reference literature — complete panels per cell; remains the transmission target for admin tuning and the member-facing pick when it ships), custom blank-charter path (empty panel + one-line-at-a-time picker, tucked away, never the front door).
 - Expectancy cross-check (R:R band + win-rate band jointly encode expectancy; both-in-range + negative expectancy over valid n is arithmetically impossible) = frame-authoring sanity for Hotel and a free Kilo consistency test.
 
-## 6. The Campaign Journey — radar + time scrub
+## 6. The Campaign Journey — present-state radar
 
 **The Journey app is the trader's journey — lifelong, unending. This is the Campaign Journey — one season, finite by design**: born at signature, ending at completion or honest end. Day = atom · campaign = finishable journey · trader = unending journey; finished journeys are what make the unending one gradeable. The Archive is the bookshelf; Renew is the sequel; the cycle chain is a series.
 
-Charter detail renders the radar + **time slider bound T0 → present** (T0 = window start; bidirectional slider ↔ chart; J2 component pattern). Four laws:
+**Coach disposition (2026-08-09)** — supersedes scrub ship law and interim full-deferral notes: charter detail renders a **static radar of present standing** against declared bounds. **No lifetime time slider. No as-of-T historical rendering.** (Cut, not deferred.) See also [Campaign Amendment §2.1](./FatTail-Labs-Campaign-Amendment-Top-Level-Is-The-Account-v1.0.md).
 
-1. **Axes = the declared panel** (the six controls; goal rows render role-aware). **Ledger has no radar.**
+**Ship shape:**
+
+1. **Axes = the declared panel** (the six controls; goal rows render role-aware). **No radar without a deliberate charter** (no ledger furniture radar under Top-Level Account amendment).
 2. **Band-alignment, never raw magnitude:** extension = alignment with the declared range — full in-band, decaying off-band **both sides** (85% win rate against 40–60 *shrinks* the axis); goal axes = progress toward the mark. Outer ring = operating/reaching as declared. **Big shape = faithful, never big numbers.** Hotel gates the decay function.
-3. **Scrub to T evaluates fills [T0→T] against bounds in force at T** — amendments visibly bend the shape at their dates; the earlier season never rewrites.
+3. **Present only:** shape evaluates fills in the campaign window **as of now** (current standing). Amendments affect current bounds; no scrub replay of prior season shapes.
 4. **n-floor renders as focus:** below-validity axes render "gathering"; the fingerprint comes into focus as validity arrives.
 - **Minimum Shape rule:** radar renders only at ≥ N axes (floor 4, Hotel/Echo pin). Six-control panels satisfy it by construction; only the future custom path can go sub-N (bars render alone there). No one-spoke radars — fake precision is the same crime as numbers below the n-floor.
 - Guards: derived at render (no stored shape series); no Journey feed (shared pattern, never shared plane); clinical register; no P&L on any axis.
+- **Cut from ship:** T0→present slider; bidirectional scrub; as-of-T bound-history segmentation on the radar surface.
 
 ## 7. Witnessing — variance, never enforcement
 
@@ -214,7 +218,7 @@ Platform gating of trades (never — no 4xx on any logging path) · auto-termina
 **Direction/eligibility:** 3. No API path creates a trade without campaign_id; per-leg stamping has no path; redirect moves, never shares. 4. Picker offers only window-covering campaigns (fill time); future-armed absent until start; expired accept no new direction; ledger always fallback. 5. Memory recalls per account; ineligible memory falls back to ledger silently; survives devices. 6. Fill-time edits re-evaluate eligibility; outside-window stamps surface for redirect, never auto-move. 7. Charters accept fills from any account; each fill's account immutable (cross-account move = 4xx fail loud).
 **Lifecycle:** 8. Signature freezes `signed_terms` (amend every field; snapshot unchanged); hard-delete requires zero stamps AND never signed (else 409/4xx). 9. Amendments append-only, immutable, no UPDATE/DELETE path; multi-field PATCH → N rows. 10. Terminal = read-only + Renew; Renew copies draft + predecessor FK; cycle derives through a 3-chain; two successors both work. 11. Name collisions suffix on every path against the full namespace including archived; archived names never freed. 12. Backfilled rows display "Terms as of"; never-signed terminals display "Never signed."
 **Panel:** 13. Fresh charter renders all six controls with seeds; admin toggle invisible to members (render + grep); admin range edit on signed charter writes amendment. 14. Proportional geometry at 320 px = desktop percentages; gathering below n-floor shows no marker/number. 15. Vocabulary grep: no "violated / unlock / reward / earn access / max / limit / target / threshold" as primary member-facing bounds copy.
-**Journey:** 16. Radar axes = declared panel only; ledger no radar; sub-N (custom path) renders bars only. 17. Out-of-band-HIGH reduces extension (win-rate case explicit); goal axes render progress, never variance. 18. Scrub at T uses bounds-in-force-at-T; amendment dates segment the series; earlier shape unchanged. 19. Radar derived at render; no stored series; no Journey feed (score-input audit).
+**Journey:** 16. Radar axes = declared panel only; no radar without deliberate charter; sub-N (custom path) renders bars only. 17. Out-of-band-HIGH reduces extension (win-rate case explicit); goal axes render progress, never variance. 18. **Present-state only** — no time scrub, no as-of-T historical radar (Coach 2026-08-09). 19. Radar derived at render; no stored series; no Journey feed (score-input audit).
 **Witness:** 20. Boundary breach logs + variance + quiet line; no modal/block/4xx. 21. Goal rows never produce variance; critical on goal-role rejects 4xx. 22. Critical breach surfaces once; no auto-status-change. 23. Variance evaluated against bounds in force at fill time; amendment does not rewrite it (regression).
 **Badge / registry (Trade Log side, tested there):** 24. Create campaign → registry row available to dispense list; one chip per blotter row; provenance tiering; no variance styling on chip; tap filters via the one filter system; eligibility picker for new stamps; end season does not strip existing stamps; "Direct to campaign…" honors eligibility when shipped.
 **Pack/import:** 25. Round-trip: signature, amendments, lineage (pending-and-reported), bounds+role, provenance; import lands unchosen fills in ledger, memory untouched, colliding names suffixed with note.
@@ -226,7 +230,7 @@ Platform gating of trades (never — no 4xx on any logging path) · auto-termina
 | India | 103 reversal mechanics; bounds uniqueness; variance temporal mechanism (keep/kill within the §4 constraint); memory storage; display-domain placement; no second truth |
 | Hotel | Six-control doctrine (R:R structural basis, win definition ≥0 recommended, n-floor defaults horizon-relative, decay function, Minimum Shape N); frame grid when it ships; expectancy sanity |
 | Tango | Report register; badge vocabulary; "End campaign" copy (dignity of abandoned); ledger/default-account labels; redirect surfacing copy; admin chrome |
-| Echo | Control anatomy + container scaling; radar/slider; badge density; library segmentation |
+| Echo | Control anatomy + container scaling; present-state radar (no scrub); badge density; library segmentation |
 | Mike | Family B on bounds/amendments/memory/badge queries; import name handling |
 | Kilo | Every acceptance row as characterization, same change; celebrate-the-drift; spurious-state regressions |
 | Delta | All gates, ternary, evidence |
@@ -247,6 +251,7 @@ Platform gating of trades (never — no 4xx on any logging path) · auto-termina
 
 | Date | Note |
 |------|------|
+| 2026-08-09 | **Coach:** Campaign Journey radar = **present-state only**; lifetime scrub / as-of-T history **cut (not deferred)**. §6 restated; acceptance #18. Aligns Amendment §2.1. |
 | 2026-08-09 | **§2.1 Campaign registry + badge** codified (registry = `member_practice_campaigns`; dispense vs forever wear; Trade Log mounts registry, does not own it). §9 expanded; companion → Trade Log Spec §17. Acceptance #24 registry-aware. |
 | 2026-08-09 | **v1.3 — complete restatement.** Window model (L4 membership law; fill-time eligibility); Law-4-of-v1.1 removed (charters account-free; reverses migration 103 NOT NULL — Lima logs against landed work); exclusive membership + badge law; Trade Log passive-participant boundary pre-scoped (§9); prescribed panel + six controls + admin toggle folded as the v1 surface; Campaign Journey + Minimum Shape folded; dispositions 6–8 resolved/mooted. D6 still queued on vol OD. |
 | 2026-08-08/09 | v1.0–v1.2 — model inversion; Two Roles; Campaign Journey §6a; superseded by this restatement |

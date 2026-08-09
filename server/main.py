@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
     from routes.privacy import router as privacy_router
     from routes.export import router as export_router
     from routes.trade_log import router as trade_log_router
+    from routes.capital import router as capital_router
     from routes.retrospectives import router as retrospectives_router
     from routes.member_notifications import router as member_notifications_router
     from routes.journal_sessions import router as journal_sessions_router
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
     app.include_router(privacy_router)
     app.include_router(export_router)
     app.include_router(trade_log_router)
+    app.include_router(capital_router)
     app.include_router(retrospectives_router)
     app.include_router(member_notifications_router)
     app.include_router(journal_sessions_router)

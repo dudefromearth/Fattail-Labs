@@ -453,10 +453,12 @@ export default function TradeLogTable({
                               );
                             })()}
                             {(() => {
-                              // Spec §9 — one campaign badge chip; no variance color
+                              // Spec §9 / Amendment — badge only when stamped;
+                              // undirected (null) = empty chrome, not "Ledger".
                               const cid = trade.practice_campaign_id;
                               if (cid == null || cid <= 0) return null;
                               const meta = campaignTitleById.get(cid);
+                              if (meta?.is_ledger) return null;
                               const label = meta?.title
                                 ? meta.title.length > 18
                                   ? `${meta.title.slice(0, 16)}…`
@@ -468,9 +470,7 @@ export default function TradeLogTable({
                                   ? "Directed"
                                   : by === "memory"
                                     ? "Memory"
-                                    : meta?.is_ledger
-                                      ? "Ledger"
-                                      : "Campaign";
+                                    : "Campaign";
                               return (
                                 <button
                                   type="button"

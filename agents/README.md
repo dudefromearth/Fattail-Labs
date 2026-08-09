@@ -96,6 +96,13 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   Journal/Records contracts — multi-account totals & charts). Spec:
   `Specs/FatTail-Labs-Trade-Log-Spec-v1.1.md`. Board:
   `agents/p-trade-log/ORCHESTRATOR.md`. Seeds TL0–TL6.
+- `agents/p-accounts-capital/` — **Accounts & Capital stack** (identity capital surface;
+  ledger abolition; cash movements; balance vs trading curves; composition; staleness;
+  undirected stamps; Practice/Lab consume only). Specs: Capital v0.3 · Funding v0.2 ·
+  Staleness v0.1 · Top-Level Account Amendment · Trade Log undirected amend.  
+  **Full multi-agent plan:** `docs/Accounts-Capital-Full-Agent-Bench-Plan-v1.0.md`.  
+  Board: `agents/p-accounts-capital/ORCHESTRATOR.md`.  
+  **Next: W0-1…W0-5 → W0-G · no L/A/F code before W0-G.**
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,

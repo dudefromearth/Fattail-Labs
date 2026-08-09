@@ -4,6 +4,46 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-09 — DL-269 Accounts & Capital program BUILD AUTHORITY
+
+**Coach:** Full Spec set **APPROVED**. Execution law:
+[`docs/Accounts-Capital-Full-Agent-Bench-Plan-v1.0.md`](../docs/Accounts-Capital-Full-Agent-Bench-Plan-v1.0.md) · board `agents/p-accounts-capital/`.
+
+| Spec | Version |
+|------|---------|
+| Capital & Position Sizing | v0.3 |
+| Funding & Defunding | v0.2 |
+| Staleness Awareness | v0.1 |
+| Campaign Amendment — Top Level Is the Account | v1.0.2 |
+
+Ship ODs (defaults): tolerance **percent**; wrap **snapshot**; keep `starting_balance` separate; free-form latitude v1; live BP sync **out**.
+
+## 2026-08-09 — DL-268 Ledger furniture abolished (supersession)
+
+**Coach / Amendment:** The **account is the top level**. No genesis ledger campaign. Undirected trades (`practice_campaign_id` NULL) are lawful. Memory does not fall back to a furniture object. Registry = deliberate campaigns only.
+
+**Reverses** ledger-as-furniture doctrine from structured-practice L1 genesis (migrations 102–104 ledger portion). Furniture disposition: Option A soft-delete; unstamp clears stamp **and** `stamped_by`. Hard-delete only if zero export refs.
+
+Implements via program phases L\*. Spec: `Specs/FatTail-Labs-Campaign-Amendment-Top-Level-Is-The-Account-v1.0.md`.
+
+## 2026-08-09 — DL-267 Campaign Journey radar present-only; scrub cut
+
+**Coach:** Radar ships **present-state only** on deliberate charters. Lifetime time slider and as-of-T historical rendering are **cut (not deferred)**. Band-alignment and n-floor unchanged. Supersedes interim full-deferral posture. Resolves Advisor A-1.
+
+Spec: Campaign Spec v1.3 §6 · Amendment §2.1.
+
+## 2026-08-09 — DL-266 Funding curves + master drawdown dollars
+
+**Coach / Hotel (W0-1):** Balance curve = start + fills + cash movements. Trading curve = **Σ fill P&L only** (starts at 0). Master DD witness compares **realized drawdown dollars** (trading) vs **tolerance budget dollars** (from total net capital / form). Withdrawal ≠ drawdown; deposit ≠ recovery; new-account start ≠ recovery.
+
+Spec: Funding v0.2 §3 · Capital v0.3 §4.1.
+
+## 2026-08-09 — DL-265 Accounts & Capital surface (identity)
+
+**Coach:** Single identity-level **Accounts & Capital** under users menu. Sole account write path. Practice and Strategy Lab **consume** only. Product independence (DL-248–250). Parallel Practice “add account” after land is a **blocking** defect.
+
+Spec: Capital v0.3 §6.
+
 ## 2026-08-08 — DL-264 Campaign upgrade must not break existing books
 
 **Coach:** Enacting campaign structure (096/097, pack 1.1, multi-active) is **additive**.

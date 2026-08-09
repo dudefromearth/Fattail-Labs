@@ -190,10 +190,9 @@ async def import_preview(request: Request) -> dict:
 async def import_commit(request: Request) -> dict:
     """Parse and write trades into account_id (required). Idempotent on external_order_id.
 
-    Campaign stamp (Structured Practice Law 2 — always stamped):
-      - practice_campaign_id: int → stamp that campaign
-      - use_default_campaign: true (default) / omitted / false-without-id →
-        stamp account **ledger** (former \"none\" is ledger, not unstamped)
+    Campaign stamp (Amendment Top-Level Account):
+      - practice_campaign_id: int → stamp that deliberate campaign (not furniture)
+      - omit / null → **undirected** (null stamp) — lawful rest
       Memory is not consulted or updated by bulk import.
     """
     claims = require_session(request)
@@ -220,14 +219,8 @@ async def import_commit(request: Request) -> dict:
         )
     trades = result.get("trades") or []
     adapter_id = result.get("adapter") or adapter or "import"
-    # Campaign target: explicit id wins; else default book unless opted out
+    # Campaign target: explicit deliberate id only; else undirected
     raw_camp = body.get("practice_campaign_id")
-    use_default = body.get("use_default_campaign")
-    if use_default is None:
-        # No-fuss path: stamp into account book unless client opts out
-        use_default = raw_camp in (None, "")
-    else:
-        use_default = bool(use_default)
     created = 0
     skipped = 0
     camp_id: int | None = None
@@ -240,15 +233,23 @@ async def import_commit(request: Request) -> dict:
             else:
                 acct = _get_account(cur, iid, int(account_id))
                 account_id = int(account_id)
-            # Resolve campaign stamp — never leave unstamped (Law 2 / #15)
             try:
                 if raw_camp not in (None, ""):
                     camp_id = int(raw_camp)
                     psd.assert_campaign_owned(cur, iid, camp_id)
+                    cur.execute(
+                        """SELECT is_ledger FROM member_practice_campaigns
+                           WHERE id = %s AND identity_id = %s""",
+                        (camp_id, iid),
+                    )
+                    crow = cur.fetchone() or {}
+                    if bool(int(crow.get("is_ledger") or 0)):
+                        raise PracticeSpineError(
+                            422,
+                            "Cannot stamp import to furniture ledger — use a deliberate campaign or none",
+                        )
                 else:
-                    # Ledger absorbs unconsidered import volume (not memory)
-                    book = psd.ensure_ledger_campaign(cur, iid, account_id)
-                    camp_id = int(book["id"])
+                    camp_id = None  # undirected import
             except PracticeSpineError as e:
                 raise HTTPException(status_code=e.code, detail=e.detail) from e
             except (TypeError, ValueError) as e:

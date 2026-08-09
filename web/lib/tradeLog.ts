@@ -18,6 +18,7 @@ export type Account = {
   broker: string;
   broker_label?: string | null;
   currency: string;
+  starting_balance?: number | null;
   status: string;
   venue_kind: string;
   sort_order: number;

@@ -435,10 +435,9 @@ def list_amendments(cur, identity_id: int, campaign_id: int) -> list[dict]:
 
 
 def ensure_ledgers_for_identity(cur, identity_id: int) -> list[dict]:
-    """§2.1 Practice provision — ledger for every active trade account.
+    """DEPRECATED — Top-Level Account Amendment: no genesis ledger furniture.
 
-    Idempotent. Lawful on campaign library load (Practice-suite touch), not a
-    silent invent of member *charters* — only furniture ledgers.
+    Ensures a Default trade account exists if none; does **not** create campaigns.
     """
     cur.execute(
         """SELECT id FROM member_trade_log_accounts
@@ -446,24 +445,27 @@ def ensure_ledgers_for_identity(cur, identity_id: int) -> list[dict]:
            ORDER BY id ASC""",
         (identity_id,),
     )
-    out = []
-    for r in cur.fetchall() or []:
-        out.append(ensure_ledger_campaign(cur, identity_id, int(r["id"])))
-    if not out:
-        # No active book — ensure Primary + ledger
-        aid = _ensure_primary_trade_account(cur, identity_id)
-        out.append(ensure_ledger_campaign(cur, identity_id, aid))
-    return out
+    rows = list(cur.fetchall() or [])
+    if not rows:
+        _ensure_primary_trade_account(cur, identity_id)
+        cur.execute(
+            """SELECT id FROM member_trade_log_accounts
+               WHERE identity_id = %s AND status = 'active'
+               ORDER BY id ASC""",
+            (identity_id,),
+        )
+        rows = list(cur.fetchall() or [])
+    return []  # no ledger campaigns
 
 
 def list_campaigns(cur, identity_id: int) -> list[dict]:
-    # Practice-suite touch: ensure furniture so library is never hollow after migrate
+    # Ensure a book exists; never invent ledger campaigns (Amendment L1)
     ensure_ledgers_for_identity(cur, identity_id)
     cur.execute(
         """SELECT * FROM member_practice_campaigns
            WHERE identity_id = %s
+             AND is_ledger = 0
            ORDER BY
-             CASE WHEN is_ledger = 1 THEN 0 ELSE 1 END,
              CASE status
                WHEN 'active' THEN 0
                WHEN 'planned' THEN 1
@@ -502,9 +504,10 @@ def get_campaign(
 def get_active_campaign(
     cur, identity_id: int, *, account_id: int | None = None
 ) -> dict | None:
-    """One active campaign for stamp/prefill convenience (not exclusive).
+    """One active deliberate campaign for stamp/prefill (not exclusive).
 
-    Law 3: memory → ledger → most recently activated. Multi-active remains.
+    Amendment: memory → most recently activated deliberate. No ledger fallback.
+    Returns None when undirected is the lawful rest.
     """
     if account_id is not None:
         mem = get_campaign_memory(cur, identity_id, int(account_id))
@@ -512,18 +515,16 @@ def get_active_campaign(
             cur.execute(
                 """SELECT * FROM member_practice_campaigns
                    WHERE id = %s AND identity_id = %s AND status = 'active'
-                     AND account_id = %s""",
-                (mem, identity_id, int(account_id)),
+                     AND is_ledger = 0""",
+                (mem, identity_id),
             )
             row = cur.fetchone()
             if row:
                 return serialize_campaign(cur, row)
-        ledger = get_ledger_campaign(cur, identity_id, int(account_id))
-        if ledger and ledger.get("status") == "active":
-            return ledger
         cur.execute(
             """SELECT * FROM member_practice_campaigns
-               WHERE identity_id = %s AND status = 'active' AND account_id = %s
+               WHERE identity_id = %s AND status = 'active' AND is_ledger = 0
+                 AND (account_id = %s OR account_id IS NULL)
                ORDER BY activated_at DESC, id DESC
                LIMIT 1""",
             (identity_id, int(account_id)),
@@ -531,11 +532,8 @@ def get_active_campaign(
     else:
         cur.execute(
             """SELECT * FROM member_practice_campaigns
-               WHERE identity_id = %s AND status = 'active'
-               ORDER BY
-                 CASE WHEN is_ledger = 1 THEN 1 ELSE 0 END,
-                 activated_at DESC,
-                 id DESC
+               WHERE identity_id = %s AND status = 'active' AND is_ledger = 0
+               ORDER BY activated_at DESC, id DESC
                LIMIT 1""",
             (identity_id,),
         )
@@ -546,15 +544,15 @@ def get_active_campaign(
 def list_active_campaigns(
     cur, identity_id: int, *, account_id: int | None = None
 ) -> list[dict]:
-    """All active campaigns for scope, ordered by prefill rule (B2 + is_default).
+    """All active deliberate campaigns for scope (no ledger furniture).
 
-    When ``account_id`` is set: account-bound + unbound actives (unbound appears
-    for every account filter). Ordered: default first, account-bound, activated_at.
+    When ``account_id`` is set: account-bound + unbound actives. Ordered:
+    default first, account-bound, activated_at.
     """
     if account_id is not None:
         cur.execute(
             """SELECT * FROM member_practice_campaigns
-               WHERE identity_id = %s AND status = 'active'
+               WHERE identity_id = %s AND status = 'active' AND is_ledger = 0
                  AND (account_id = %s OR account_id IS NULL)
                ORDER BY
                  CASE WHEN is_default = 1 AND account_id = %s THEN 0 ELSE 1 END,
@@ -566,7 +564,7 @@ def list_active_campaigns(
     else:
         cur.execute(
             """SELECT * FROM member_practice_campaigns
-               WHERE identity_id = %s AND status = 'active'
+               WHERE identity_id = %s AND status = 'active' AND is_ledger = 0
                ORDER BY
                  CASE WHEN is_default = 1 THEN 0 ELSE 1 END,
                  activated_at DESC,
@@ -579,13 +577,12 @@ def list_active_campaigns(
 def get_default_campaign(
     cur, identity_id: int, account_id: int
 ) -> dict | None:
-    """Account ledger (is_ledger) or legacy is_default book."""
+    """Legacy is_default deliberate campaign for account (no ledger furniture)."""
     cur.execute(
         """SELECT * FROM member_practice_campaigns
            WHERE identity_id = %s AND account_id = %s
-             AND (is_ledger = 1 OR is_default = 1)
+             AND is_default = 1 AND is_ledger = 0
            ORDER BY
-             CASE WHEN is_ledger = 1 THEN 0 ELSE 1 END,
              CASE status WHEN 'active' THEN 0 ELSE 1 END,
              id DESC
            LIMIT 1""",
@@ -765,11 +762,9 @@ def list_eligible_campaigns_for_fill(
     time is offered. Always includes the account ledger.
     """
     account_id = int(account_id)
-    ledger = ensure_ledger_campaign(cur, identity_id, account_id)
-    out: list[dict] = [ledger]
-    seen = {int(ledger["id"])}
-    # Active + planned charters (future-armed still listed only if window covers —
-    # planned with future starts_at will be filtered out when fill is "now")
+    # Amendment: deliberate campaigns only (no furniture ledger offer)
+    out: list[dict] = []
+    seen: set[int] = set()
     cur.execute(
         """SELECT * FROM member_practice_campaigns
            WHERE identity_id = %s AND is_ledger = 0
@@ -799,12 +794,12 @@ def resolve_trade_campaign_id(
     stamped_by: str | None = None,
     update_memory: bool = True,
     exec_at: datetime | None = None,
-) -> tuple[int, str]:
-    """L2/L3/L4/L5 — resolve campaign for a trade stamp.
+) -> tuple[int | None, str | None]:
+    """Direction resolve — Amendment Top-Level Account.
 
-    Returns (campaign_id, stamped_by).
-    explicit id → member (must own + window-eligible); else memory if
-    window-eligible; else ledger. Charters are account-free (L5).
+    Returns (campaign_id|None, stamped_by|None).
+    Explicit deliberate campaign → member (window-eligible; never furniture).
+    Else memory if eligible non-ledger; else **undirected** (null, null).
     """
     account_id = int(account_id)
     if practice_campaign_id is not None:
@@ -817,14 +812,11 @@ def resolve_trade_campaign_id(
         row = cur.fetchone()
         if not row:
             raise PracticeSpineError(404, "Campaign not found")
-        is_ledger = bool(int(row.get("is_ledger") or 0))
-        # Ledger must match the trade's book; charters have no account bind (L5)
-        if is_ledger:
-            if row.get("account_id") is None or int(row["account_id"]) != account_id:
-                raise PracticeSpineError(
-                    422, "Ledger campaign is not for this trade account"
-                )
-        elif not campaign_covers_fill(row, exec_at):
+        if bool(int(row.get("is_ledger") or 0)):
+            raise PracticeSpineError(
+                422, "Cannot stamp to furniture ledger — use a deliberate campaign or none"
+            )
+        if not campaign_covers_fill(row, exec_at):
             raise PracticeSpineError(
                 422,
                 "Campaign window does not cover this fill time",
@@ -833,7 +825,7 @@ def resolve_trade_campaign_id(
             set_campaign_memory(cur, identity_id, account_id, cid)
         return cid, (stamped_by or "member")
 
-    # L3 — memory pre-answer when still window-eligible at fill
+    # L3 — memory when still window-eligible deliberate campaign
     mem = get_campaign_memory(cur, identity_id, account_id)
     if mem is not None:
         cur.execute(
@@ -842,23 +834,20 @@ def resolve_trade_campaign_id(
             (mem, identity_id),
         )
         mrow = cur.fetchone()
-        if mrow is not None:
-            is_ledger = bool(int(mrow.get("is_ledger") or 0))
-            if is_ledger:
-                if (
-                    mrow.get("account_id") is not None
-                    and int(mrow["account_id"]) == account_id
-                ):
-                    return mem, "memory"
-            elif campaign_covers_fill(mrow, exec_at):
+        if mrow is not None and not bool(int(mrow.get("is_ledger") or 0)):
+            if campaign_covers_fill(mrow, exec_at):
                 return mem, "memory"
-            # else: expired / unarmed memory → silent ledger (below)
+        # expired / furniture / missing → undirected (no fallback object)
 
-    ledger = ensure_ledger_campaign(cur, identity_id, account_id)
-    lid = int(ledger["id"])
+    # Undirected — lawful rest (Amendment L2/L3)
     if update_memory:
-        set_campaign_memory(cur, identity_id, account_id, lid)
-    return lid, "memory"
+        # Clear bad memory so we do not keep re-trying a dead campaign
+        cur.execute(
+            """DELETE FROM member_practice_campaign_memory
+               WHERE identity_id = %s AND account_id = %s""",
+            (identity_id, account_id),
+        )
+    return None, None
 
 
 def _first_trade_at_for_account(
@@ -975,9 +964,9 @@ def ensure_default_book_campaign(
     )
 
 
-def on_account_created(cur, identity_id: int, account_id: int) -> dict:
-    """Call after every trade-account insert — genesis ledger."""
-    return ensure_ledger_campaign(cur, identity_id, int(account_id))
+def on_account_created(cur, identity_id: int, account_id: int) -> dict | None:
+    """Call after every trade-account insert — account only (no ledger furniture)."""
+    return None
 
 
 def _ensure_primary_trade_account(cur, identity_id: int) -> int:
@@ -1008,26 +997,25 @@ def _ensure_primary_trade_account(cur, identity_id: int) -> int:
         ),
     )
     aid = int(cur.lastrowid)
-    ensure_ledger_campaign(cur, identity_id, aid)
+    # Amendment: account only — no genesis ledger
     return aid
 
 
 def ensure_starter_default_campaign(cur, identity_id: int) -> dict | None:
-    """Campaign nav cold-start: ensure Default account + ledger furniture.
+    """Campaign nav cold-start: ensure Default **account** only (no ledger).
 
     If the identity already has any campaign, no-op (return None).
     """
     cur.execute(
         """SELECT COUNT(*) AS n FROM member_practice_campaigns
-           WHERE identity_id = %s""",
+           WHERE identity_id = %s AND is_ledger = 0""",
         (identity_id,),
     )
     n = int((cur.fetchone() or {}).get("n") or 0)
     if n > 0:
         return None
-    # Spec §2.1 — Default account + ledger furniture
-    account_id = _ensure_primary_trade_account(cur, identity_id)
-    return ensure_ledger_campaign(cur, identity_id, account_id)
+    _ensure_primary_trade_account(cur, identity_id)
+    return None
 
 def _assert_account_owned(
     cur, identity_id: int, account_id: int | None

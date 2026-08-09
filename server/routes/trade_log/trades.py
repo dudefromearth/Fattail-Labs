@@ -310,11 +310,13 @@ async def create_trade(request: Request) -> dict:
                     "",
                 ):
                     raise
-                # Fail loud: trades require campaign resolution
-                raise HTTPException(
-                    status_code=500,
-                    detail="Could not resolve practice campaign for trade",
-                ) from exc
+                # Amendment L2: undirected is lawful — never invent furniture on error
+                camp_id, stamped_by = None, None
+                pb_id = (
+                    int(playbook_entry_id)
+                    if playbook_entry_id not in (None, "")
+                    else None
+                )
             cur.execute(
                 """INSERT INTO member_trade_log_trades
                      (identity_id, account_id, exec_at, asset_class, strategy, order_type,
@@ -347,26 +349,27 @@ async def create_trade(request: Request) -> dict:
             tid = int(cur.lastrowid)
             _insert_legs(cur, tid, iid, account_id, legs)
             out = _load_trade(cur, tid, iid)
-            # B2-1: quiet boundary variance notes (never block fill)
-            try:
-                import practice_spine_domain as psd
+            # B2-1: quiet boundary variance notes (never block fill; skip undirected)
+            if camp_id is not None:
+                try:
+                    import practice_spine_domain as psd
 
-                underliers = []
-                for lg in legs or []:
-                    if isinstance(lg, dict) and lg.get("underlier"):
-                        underliers.append(str(lg["underlier"]))
-                notes = psd.witness_process_bounds_at_fill(
-                    cur,
-                    iid,
-                    int(camp_id),
-                    exec_at=exec_at,
-                    strategy=strategy,
-                    underliers=underliers,
-                )
-                if notes:
-                    out = {**out, "charter_variance": notes}
-            except Exception:
-                pass
+                    underliers = []
+                    for lg in legs or []:
+                        if isinstance(lg, dict) and lg.get("underlier"):
+                            underliers.append(str(lg["underlier"]))
+                    notes = psd.witness_process_bounds_at_fill(
+                        cur,
+                        iid,
+                        int(camp_id),
+                        exec_at=exec_at,
+                        strategy=strategy,
+                        underliers=underliers,
+                    )
+                    if notes:
+                        out = {**out, "charter_variance": notes}
+                except Exception:
+                    pass
     return out
 
 

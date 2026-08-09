@@ -131,7 +131,7 @@ def test_playbook_and_campaign_lifecycle(client):
 
 
 def test_default_book_campaign_and_import_stamp(client):
-    """Silent book default + brokerage import stamps practice_campaign_id."""
+    """Import without campaign id → undirected null stamp (Amendment L2)."""
     iid = _member("zztest-spine-default-book@labs.test")
     cookies = cookie_for("activator", iid)
     try:
@@ -149,12 +149,6 @@ def test_default_book_campaign_and_import_stamp(client):
         assert primary is not None
         aid = int(primary["id"])
 
-        # Ledger is genesis furniture for Primary (GET accounts ensures it)
-        with db.transaction() as conn:
-            with conn.cursor() as cur:
-                ledger = psd.ensure_ledger_campaign(cur, iid, aid)
-                ledger_id = int(ledger["id"])
-
         focus = client.post(
             "/api/me/practice/campaigns",
             cookies=cookies,
@@ -165,17 +159,19 @@ def test_default_book_campaign_and_import_stamp(client):
             },
         )
         assert focus.status_code == 200, focus.text
+        focus_id = int(focus.json()["campaign"]["id"])
 
-        # Prefill prefers ledger for this account when memory empty
+        # Active deliberate exists for prefill; no ledger required
         pref = client.get(
             f"/api/me/practice/campaigns/active?account_id={aid}",
             cookies=cookies,
         )
         assert pref.status_code == 200
-        assert pref.json()["active"]["id"] == ledger_id
+        assert pref.json()["active"] is not None
+        assert pref.json()["active"]["id"] == focus_id
+        assert pref.json()["active"].get("is_ledger") is False
 
-        # Minimal native import body — use generic CSV adapter if available
-        # Empty legs still create a CUSTOM trade via thinkorswim-like? Use native JSON.
+        # Minimal native import — undirected when no practice_campaign_id
         native = {
             "format": "fattail.labs.trade_log",
             "model_version": "1.0",
@@ -206,21 +202,24 @@ def test_default_book_campaign_and_import_stamp(client):
                 "text": _json.dumps(native),
                 "adapter": "native",
                 "account_id": aid,
-                "use_default_campaign": True,
             },
         )
         assert commit.status_code == 200, commit.text
         body = commit.json()
         assert body["created"] >= 1
-        assert body.get("practice_campaign_id") == ledger_id
+        assert body.get("practice_campaign_id") is None
 
         trades = client.get(
-            f"/api/me/trade-log/trades?account_id={aid}&practice_campaign_id={ledger_id}&full=1",
+            f"/api/me/trade-log/trades?account_id={aid}&full=1",
             cookies=cookies,
         )
         assert trades.status_code == 200, trades.text
         rows = trades.json().get("trades") or []
-        assert any(t.get("practice_campaign_id") == ledger_id for t in rows)
+        assert any(
+            t.get("external_adapter") == "native"
+            and t.get("practice_campaign_id") is None
+            for t in rows
+        )
     finally:
         _cleanup(iid)
 
@@ -473,8 +472,8 @@ def test_campaign_pause_and_resume(client):
         _cleanup(iid)
 
 
-def test_campaign_list_ensures_ledger_furniture(client):
-    """GET list ensures ledger furniture (§2.1) — not member charters."""
+def test_campaign_list_no_ledger_furniture(client):
+    """GET list does not invent ledger furniture (Amendment L1)."""
     iid = _member("zztest-spine-coldstart@labs.test")
     cookies = cookie_for("activator", iid)
     try:
@@ -500,16 +499,13 @@ def test_campaign_list_ensures_ledger_furniture(client):
         r = client.get("/api/me/practice/campaigns", cookies=cookies)
         assert r.status_code == 200, r.text
         camps = r.json()["campaigns"]
-        assert len(camps) >= 1
-        assert any(c.get("is_ledger") for c in camps)
-        # Second GET does not invent extra charters — still one ledger furniture row
+        assert not any(c.get("is_ledger") for c in camps)
+        # Second GET still invents nothing
         r2 = client.get("/api/me/practice/campaigns", cookies=cookies)
         assert r2.status_code == 200
         camps2 = r2.json()["campaigns"]
+        assert not any(c.get("is_ledger") for c in camps2)
         assert len(camps2) == len(camps)
-        assert sum(1 for c in camps2 if c.get("is_ledger")) == sum(
-            1 for c in camps if c.get("is_ledger")
-        )
     finally:
         _cleanup(iid)
 
@@ -726,8 +722,8 @@ def test_campaign_renew_chain_and_multi_successor(client):
         _cleanup(iid)
 
 
-def test_structured_practice_ledger_stamp_memory(client):
-    """Law 1–3: Primary + ledger at first touch; trade stamps without campaign pick."""
+def test_structured_practice_undirected_stamp(client):
+    """Amendment L2: trade without campaign pick → null undirected stamp."""
     iid = _member("zztest-spine-structured@labs.test")
     cookies = cookie_for("activator", iid)
     try:
@@ -739,18 +735,6 @@ def test_structured_practice_ledger_stamp_memory(client):
             if a.get("label") in ("Default", "Primary")
         )
         aid = int(primary["id"])
-        with db.transaction() as conn:
-            with conn.cursor() as cur:
-                led = psd.ensure_ledger_campaign(cur, iid, aid)
-                assert led["is_ledger"] is True
-                assert led.get("signed_at") is None
-                lid = int(led["id"])
-                # Ledger cannot complete
-                try:
-                    psd.patch_campaign(cur, iid, lid, status="completed")
-                    assert False, "expected ledger status block"
-                except psd.PracticeSpineError as e:
-                    assert e.code == 422
 
         tr = client.post(
             "/api/me/trade-log/trades",
@@ -774,7 +758,8 @@ def test_structured_practice_ledger_stamp_memory(client):
         )
         assert tr.status_code == 200, tr.text
         body = tr.json()
-        assert body.get("practice_campaign_id") == lid
+        assert body.get("practice_campaign_id") is None
+        assert body.get("stamped_by") is None
     finally:
         _cleanup(iid)
 

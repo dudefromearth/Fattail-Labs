@@ -107,21 +107,23 @@ type StoredPrefs = {
   granularity: DateGranularity;
 };
 
-/** Default campaign for an account: ledger (first-trade book), else is_default. */
+/** Default campaign for suite filter: active deliberate only; null = undirected / all. */
 export function pickDefaultCampaignId(
   campaigns: PracticeCampaign[],
   accountId: AccountScope,
 ): number | null {
+  // Amendment: undirected is lawful rest — do not force a campaign filter.
   if (accountId === "all") return null;
   const forAcct = campaigns.filter(
-    (c) => c.account_id == null || c.account_id === accountId,
+    (c) =>
+      !c.is_ledger &&
+      (c.account_id == null || c.account_id === accountId) &&
+      c.status === "active",
   );
   if (!forAcct.length) return null;
-  const ledger = forAcct.find((c) => c.is_ledger);
-  if (ledger) return ledger.id;
-  const def = forAcct.find((c) => c.is_default);
-  if (def) return def.id;
-  return forAcct[0]?.id ?? null;
+  // Prefer nothing for blotter "all campaigns"; callers that need a stamp
+  // use explicit pick. Suite filter stays null unless user chose one.
+  return null;
 }
 
 function storageKey(identityId: number): string {
@@ -415,14 +417,14 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Load campaigns whenever account suite is ready (list ensures ledgers).
+  // Load deliberate campaigns whenever account suite is ready (no ledger furniture).
   useEffect(() => {
     if (!hydrated) return;
     let cancelled = false;
     void fetchCampaigns()
       .then((d) => {
         if (cancelled) return;
-        setCampaigns(d.campaigns || []);
+        setCampaigns((d.campaigns || []).filter((c) => !c.is_ledger));
       })
       .catch(() => {
         if (!cancelled) setCampaigns([]);
@@ -432,28 +434,33 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
     };
   }, [hydrated, accountId]);
 
-  // Resolve campaign for account: keep valid pref, else ledger / default.
+  // Resolve campaign filter: keep valid pref; else undirected (null).
   useEffect(() => {
-    if (!hydrated || !campaigns.length) return;
+    if (!hydrated) return;
     if (accountId === "all") {
       setCampaignIdState(null);
+      if (pendingCampaignId != null) setPendingCampaignId(null);
       return;
     }
     const forAcct = campaigns.filter(
-      (c) => c.account_id == null || c.account_id === accountId,
+      (c) =>
+        !c.is_ledger &&
+        (c.account_id == null || c.account_id === accountId),
     );
-    const preferred =
-      (pendingCampaignId != null &&
-        forAcct.some((c) => c.id === pendingCampaignId) &&
-        pendingCampaignId) ||
-      (campaignId != null &&
-        forAcct.some((c) => c.id === campaignId) &&
-        campaignId) ||
-      pickDefaultCampaignId(campaigns, accountId);
-    if (preferred !== campaignId) {
-      setCampaignIdState(preferred);
+    if (pendingCampaignId != null) {
+      if (forAcct.some((c) => c.id === pendingCampaignId)) {
+        if (campaignId !== pendingCampaignId) {
+          setCampaignIdState(pendingCampaignId);
+        }
+      } else if (campaignId != null) {
+        setCampaignIdState(null);
+      }
+      setPendingCampaignId(null);
+      return;
     }
-    if (pendingCampaignId != null) setPendingCampaignId(null);
+    if (campaignId != null && !forAcct.some((c) => c.id === campaignId)) {
+      setCampaignIdState(null);
+    }
   }, [hydrated, campaigns, accountId, campaignId, pendingCampaignId]);
 
   // Persist prefs under this identity only.
@@ -513,7 +520,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
 
   const setAccountId = useCallback((id: AccountScope) => {
     setAccountIdState(id);
-    // Force re-pick of default campaign (ledger) for the new account
+    // Clear campaign filter when switching books (undirected rest)
     setPendingCampaignId(null);
     setCampaignIdState(null);
   }, []);
@@ -561,20 +568,21 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
     if (accountId === "all") return "All accounts";
     const a = accounts.find((x) => x.id === accountId);
     if (!a) return "All accounts";
-    // Name only — venue (thinkorswim, etc.) is in Profile → Trade accounts
+    // Name only — venue lives in Accounts & Capital
     if (a.status === "archived") return `${a.label} · retired`;
     return a.label;
   }, [accountId, accounts]);
 
   const selectableCampaigns = useMemo(() => {
-    if (accountId === "all") return campaigns;
-    const scoped = campaigns.filter(
-      (c) => c.account_id == null || c.account_id === accountId,
-    );
-    // Ledger first (default continuous book), then active charters, then rest
-    return scoped.slice().sort((a, b) => {
-      if (a.is_ledger && !b.is_ledger) return -1;
-      if (b.is_ledger && !a.is_ledger) return 1;
+    const base =
+      accountId === "all"
+        ? campaigns.filter((c) => !c.is_ledger)
+        : campaigns.filter(
+            (c) =>
+              !c.is_ledger &&
+              (c.account_id == null || c.account_id === accountId),
+          );
+    return base.slice().sort((a, b) => {
       if (a.status === "active" && b.status !== "active") return -1;
       if (b.status === "active" && a.status !== "active") return 1;
       return (a.title || "").localeCompare(b.title || "");
@@ -582,10 +590,10 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
   }, [campaigns, accountId]);
 
   const campaignLabel = useMemo(() => {
-    if (campaignId == null) return "All campaigns";
+    // Placeholder "Campaign" = no filter applied (suite chrome default).
+    if (campaignId == null) return "Campaign";
     const c = campaigns.find((x) => x.id === campaignId);
     if (!c) return "Campaign";
-    if (c.is_ledger) return `${c.title} · default`;
     return c.title;
   }, [campaignId, campaigns]);
 
