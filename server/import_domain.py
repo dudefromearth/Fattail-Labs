@@ -20,6 +20,9 @@ from typing import Any
 import export_domain as ex
 
 MAX_BYTES = 25 * 1024 * 1024
+# C5 — zip-bomb caps (entry count + uncompressed total)
+MAX_ZIP_ENTRIES = 500
+MAX_ZIP_UNCOMPRESSED_BYTES = 100 * 1024 * 1024
 OPEN_STATUSES = frozenset({"draft", "gathering", "ready"})
 NOTE_SURFACES = frozenset({"journal", "pre_market", "playbook"})
 # Single policy — additive only (legacy "merge"/"skip_existing" accepted as alias)
@@ -100,6 +103,25 @@ def _load_json_obj(data: bytes) -> dict:
     return obj
 
 
+def _assert_zip_safe(zf: zipfile.ZipFile) -> None:
+    """C5 — fail loud on zip bombs (entry count + uncompressed total)."""
+    infos = zf.infolist()
+    if len(infos) > MAX_ZIP_ENTRIES:
+        raise ImportErrorLoud(
+            f"ZIP has too many entries ({len(infos)} > {MAX_ZIP_ENTRIES})",
+            status=413,
+        )
+    total = 0
+    for info in infos:
+        total += int(info.file_size or 0)
+        if total > MAX_ZIP_UNCOMPRESSED_BYTES:
+            raise ImportErrorLoud(
+                f"ZIP uncompressed size exceeds "
+                f"{MAX_ZIP_UNCOMPRESSED_BYTES} bytes",
+                status=413,
+            )
+
+
 def unpack_payload(data: bytes, kind: str) -> dict[str, dict]:
     """Map surface name → document dict. Partial packs OK."""
     docs: dict[str, dict] = {}
@@ -108,6 +130,7 @@ def unpack_payload(data: bytes, kind: str) -> dict[str, dict]:
             zf = zipfile.ZipFile(io.BytesIO(data))
         except zipfile.BadZipFile as exc:
             raise ImportErrorLoud("invalid ZIP") from exc
+        _assert_zip_safe(zf)
         name_map = {
             "trade_log.tradlog.json": "trade_log",
             "journal.json": "journal",
@@ -116,6 +139,7 @@ def unpack_payload(data: bytes, kind: str) -> dict[str, dict]:
             "journey.json": "journey",
             "playbook.json": "playbook",
             "practice_campaign.json": "practice_campaign",
+            "capital.json": "capital",
             "pack.json": "pack",
         }
         for name in zf.namelist():
@@ -157,6 +181,8 @@ def unpack_payload(data: bytes, kind: str) -> dict[str, dict]:
         return {"journey": obj}
     if fmt == ex.FMT_PLAYBOOK or fmt == "fattail.labs.playbook":
         return {"playbook": obj}
+    if fmt == ex.FMT_CAPITAL or fmt == "fattail.labs.capital":
+        return {"capital": obj}
     if (
         fmt == getattr(ex, "FMT_PRACTICE_CAMPAIGN", None)
         or fmt == "fattail.labs.practice_campaign"
@@ -1895,6 +1921,9 @@ def preview_all(cur, identity_id: int, docs: dict[str, dict], policy: str) -> di
             cur, identity_id, docs["practice_campaign"]
         )
         warnings.extend(surfaces["practice_campaign"].get("warnings") or [])
+    if "capital" in docs:
+        surfaces["capital"] = preview_capital(cur, identity_id, docs["capital"])
+        warnings.extend(surfaces["capital"].get("warnings") or [])
     return {
         "policy": "additive",
         "mode": "additive",
@@ -2105,6 +2134,187 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
     return counts
 
 
+def preview_capital(cur, identity_id: int, doc: dict) -> dict[str, Any]:
+    """B3 — capital prefs + cash movements (additive only)."""
+    counts = _count_bucket()
+    warnings: list[str] = []
+    prefs = doc.get("prefs") if isinstance(doc.get("prefs"), dict) else None
+    if prefs:
+        try:
+            cur.execute(
+                "SELECT identity_id FROM member_capital_prefs WHERE identity_id = %s",
+                (identity_id,),
+            )
+            if cur.fetchone():
+                counts["skip"] += 1
+            else:
+                counts["new"] += 1
+        except Exception:
+            warnings.append("capital prefs table unavailable")
+    for m in doc.get("movements") or []:
+        if not isinstance(m, dict):
+            counts["error"] += 1
+            continue
+        key = _portable_key(m.get("id"), "mvt", str(m.get("amount")), str(m.get("occurred_at")))
+        try:
+            cur.execute(
+                """SELECT id FROM member_account_cash_movements
+                   WHERE identity_id = %s AND export_key = %s""",
+                (identity_id, key),
+            )
+            if cur.fetchone():
+                counts["skip"] += 1
+            else:
+                counts["new"] += 1
+        except Exception:
+            counts["error"] += 1
+    return {
+        "surface": "capital",
+        "counts": counts,
+        "warnings": warnings,
+        "mode": "additive",
+    }
+
+
+def commit_capital(cur, identity_id: int, doc: dict) -> dict[str, Any]:
+    """Insert missing capital prefs + cash movements; never overwrite prefs."""
+    counts = _count_bucket()
+    warnings: list[str] = []
+    prefs = doc.get("prefs") if isinstance(doc.get("prefs"), dict) else None
+    if prefs:
+        try:
+            # PK is identity_id (no surrogate id column)
+            cur.execute(
+                "SELECT identity_id FROM member_capital_prefs WHERE identity_id = %s",
+                (identity_id,),
+            )
+            if cur.fetchone():
+                counts["skip"] += 1
+            else:
+                ek = _portable_key(prefs.get("export_key"), "cap", str(identity_id))
+                form = str(
+                    prefs.get("tolerated_master_drawdown_form") or "percent"
+                ).lower()
+                if form not in ("percent", "dollars"):
+                    form = "percent"
+                posture = str(prefs.get("buying_power_posture") or "arbitrary").lower()
+                if posture not in ("arbitrary", "self_report", "live_sync"):
+                    posture = "arbitrary"
+                tol = prefs.get("tolerated_master_drawdown")
+                try:
+                    tol_v = float(tol) if tol is not None and tol != "" else 6.0
+                except (TypeError, ValueError):
+                    tol_v = 6.0
+                bp = prefs.get("buying_power_value")
+                try:
+                    bp_v = float(bp) if bp is not None and bp != "" else None
+                except (TypeError, ValueError):
+                    bp_v = None
+                cur.execute(
+                    """INSERT INTO member_capital_prefs
+                         (identity_id, tolerated_master_drawdown,
+                          tolerated_master_drawdown_form, buying_power_posture,
+                          buying_power_value, export_key)
+                       VALUES (%s, %s, %s, %s, %s, %s)""",
+                    (identity_id, tol_v, form, posture, bp_v, ek[:64]),
+                )
+                counts["new"] += 1
+        except Exception as exc:
+            warnings.append(f"capital prefs insert failed: {exc}")
+            counts["error"] += 1
+
+    # account label → id (after trade_log import); also portable acct-N keys
+    label_to_id: dict[str, int] = {}
+    portable_to_id: dict[str, int] = {}
+    sole_account_id: int | None = None
+    try:
+        cur.execute(
+            """SELECT id, label FROM member_trade_log_accounts
+               WHERE identity_id = %s""",
+            (identity_id,),
+        )
+        rows = cur.fetchall() or []
+        if len(rows) == 1:
+            sole_account_id = int(rows[0]["id"])
+        for r in rows:
+            aid = int(r["id"])
+            lab = (r.get("label") or "").strip().lower()
+            if lab:
+                label_to_id[lab] = aid
+            # Match export account_export_key shapes if still present as id in key
+            portable_to_id[f"acct-{aid}"] = aid
+    except Exception:
+        pass
+
+    for m in doc.get("movements") or []:
+        if not isinstance(m, dict):
+            counts["error"] += 1
+            continue
+        key = _portable_key(
+            m.get("id"), "mvt", str(m.get("amount")), str(m.get("occurred_at"))
+        )
+        try:
+            cur.execute(
+                """SELECT id FROM member_account_cash_movements
+                   WHERE identity_id = %s AND export_key = %s""",
+                (identity_id, key),
+            )
+            if cur.fetchone():
+                counts["skip"] += 1
+                continue
+        except Exception as exc:
+            warnings.append(f"movement lookup failed: {exc}")
+            counts["error"] += 1
+            continue
+        label = (m.get("account_label") or "").strip().lower()
+        aek = (m.get("account_export_key") or "").strip()
+        aid = None
+        if label and label in label_to_id:
+            aid = label_to_id[label]
+        elif aek and aek in portable_to_id:
+            aid = portable_to_id[aek]
+        elif sole_account_id is not None:
+            # Single book after import — attach movements there (label drift)
+            aid = sole_account_id
+        if aid is None:
+            warnings.append(
+                f"movement {key}: no matching account label "
+                f"{(m.get('account_label') or '')!r} — skipped"
+            )
+            counts["error"] += 1
+            continue
+        try:
+            amount = float(m.get("amount") or 0)
+        except (TypeError, ValueError):
+            counts["error"] += 1
+            continue
+        if amount == 0:
+            counts["skip"] += 1
+            continue
+        when = _parse_dt(m.get("occurred_at")) or _utcnow()
+        note = (m.get("note") or "").strip() or None
+        try:
+            cur.execute(
+                """INSERT INTO member_account_cash_movements
+                     (identity_id, account_id, amount, occurred_at, recorded_at,
+                      note, export_key)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (identity_id, aid, amount, when, _utcnow(), note, key[:64]),
+            )
+            counts["new"] += 1
+        except Exception as exc:
+            warnings.append(f"movement {key}: insert failed ({exc})")
+            counts["error"] += 1
+
+    return {
+        "surface": "capital",
+        "counts": counts,
+        "warnings": warnings,
+        "mode": "additive",
+        "model_version": str(doc.get("model_version") or "1.0"),
+    }
+
+
 def commit_all(
     cur,
     identity_id: int,
@@ -2149,4 +2359,7 @@ def commit_all(
         )
     if "journey" in docs:
         results["journey"] = commit_journey(cur, identity_id, docs["journey"])
+    # Capital after trade_log so account labels resolve (B3)
+    if "capital" in docs:
+        results["capital"] = commit_capital(cur, identity_id, docs["capital"])
     return {"policy": "additive", "mode": "additive", "results": results}

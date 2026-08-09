@@ -245,6 +245,7 @@ def test_export_pack_json_and_zip(client):
             "journal_session",
             "retrospective",
             "journey",
+            "capital",
         }
         assert pack["documents"]["journal"]["format"] == "fattail.labs.journal"
         assert pack["documents"]["journal_session"]["format"] == "fattail.labs.journal_session"
@@ -254,6 +255,7 @@ def test_export_pack_json_and_zip(client):
         assert pack["documents"]["playbook"]["format"] == "fattail.labs.playbook"
         assert pack["documents"]["playbook"].get("stub") is False
         assert pack["documents"]["practice_campaign"]["format"] == "fattail.labs.practice_campaign"
+        assert pack["documents"]["capital"]["format"] == "fattail.labs.capital"
 
         rz = client.get("/api/me/export?format=zip", cookies=cookies)
         assert rz.status_code == 200
@@ -262,6 +264,7 @@ def test_export_pack_json_and_zip(client):
         names = set(zf.namelist())
         assert "manifest.json" in names
         assert "journal.json" in names
+        assert "capital.json" in names
         assert "journal_session.json" in names
         assert "trade_log.tradlog.json" in names
         assert "retrospective.json" in names

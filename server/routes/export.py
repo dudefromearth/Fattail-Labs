@@ -73,9 +73,12 @@ def export_pack(request: Request, format: str = "zip") -> Any:
                     "journal_session",
                     "retrospective",
                     "journey",
+                    "capital",
                 ],
                 detail=f"pack format={fmt}",
             )
+            if fmt == "zip":
+                body = ex.pack_to_zip_bytes(pack, cur=cur, identity_id=iid)
 
     if fmt == "json":
         return JSONResponse(
@@ -85,7 +88,6 @@ def export_pack(request: Request, format: str = "zip") -> Any:
             },
         )
 
-    body = ex.pack_to_zip_bytes(pack)
     return Response(
         content=body,
         media_type="application/zip",

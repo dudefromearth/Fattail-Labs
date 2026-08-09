@@ -32,7 +32,11 @@ FMT_PRACTICE_CAMPAIGN = "fattail.labs.practice_campaign"
 # 1.1 = first-class pack: account scope, capital, goals, activated_at (Campaign Spec §4.10)
 # 1.2 = signature · amendments · predecessor_export_key (Campaign Spec §4.5 / lifecycle)
 CAMPAIGN_MODEL_VERSION = "1.3"
+FMT_CAPITAL = "fattail.labs.capital"
+CAPITAL_MODEL_VERSION = "1.0"
 FMT_PACK = "fattail.labs.member_export"
+# Full-pack media budget (B4) — single-book packs may exceed via dedicated export
+FULL_PACK_MEDIA_MAX_BYTES = 20 * 1024 * 1024
 
 
 def _now_iso() -> str:
@@ -985,17 +989,108 @@ def build_trade_log_document(cur, identity_id: int) -> dict[str, Any]:
     return doc
 
 
+def build_capital_document(cur, identity_id: int) -> dict[str, Any]:
+    """Capital prefs + cash movements (Hardening B3). Empty is valid."""
+    email = _member_email(cur, identity_id)
+    doc = envelope(FMT_CAPITAL, email=email)
+    doc["format"] = FMT_CAPITAL
+    doc["model_version"] = CAPITAL_MODEL_VERSION
+    prefs: dict[str, Any] | None = None
+    try:
+        cur.execute(
+            "SELECT * FROM member_capital_prefs WHERE identity_id = %s",
+            (identity_id,),
+        )
+        row = cur.fetchone()
+        if row:
+            prefs = {
+                "export_key": row.get("export_key"),
+                "tolerated_master_drawdown": (
+                    float(row["tolerated_master_drawdown"])
+                    if row.get("tolerated_master_drawdown") is not None
+                    else None
+                ),
+                "tolerated_master_drawdown_form": row.get(
+                    "tolerated_master_drawdown_form"
+                )
+                or "percent",
+                "buying_power_posture": row.get("buying_power_posture") or "arbitrary",
+                "buying_power_value": (
+                    float(row["buying_power_value"])
+                    if row.get("buying_power_value") is not None
+                    else None
+                ),
+            }
+    except Exception:
+        prefs = None
+    movements: list[dict[str, Any]] = []
+    try:
+        cur.execute(
+            """SELECT m.*, a.label AS account_label
+               FROM member_account_cash_movements m
+               JOIN member_trade_log_accounts a
+                 ON a.id = m.account_id AND a.identity_id = m.identity_id
+               WHERE m.identity_id = %s
+               ORDER BY m.occurred_at ASC, m.id ASC""",
+            (identity_id,),
+        )
+        for r in cur.fetchall() or []:
+            aid = int(r["account_id"])
+            movements.append(
+                {
+                    "id": (r.get("export_key") or f"mvt-{r['id']}").strip(),
+                    "account_export_key": f"acct-{aid}",
+                    "account_label": (r.get("account_label") or "").strip(),
+                    "amount": float(r["amount"] or 0),
+                    "occurred_at": _iso(r.get("occurred_at")),
+                    "note": r.get("note") or "",
+                }
+            )
+    except Exception:
+        movements = []
+    doc["prefs"] = prefs
+    doc["movements"] = movements
+    return doc
+
+
 def build_member_pack(cur, identity_id: int, *, role: str = "observer") -> dict[str, Any]:
     email = _member_email(cur, identity_id)
     pack = envelope(FMT_PACK, email=email)
+    warnings: list[str] = []
+
+    def _safe(name: str, fn):
+        """C3 — never silent-skip a failed surface; emit warnings[]."""
+        try:
+            return fn()
+        except Exception as exc:
+            warnings.append(f"{name}: export failed ({exc})")
+            stub = envelope(f"fattail.labs.{name}", email=email)
+            stub["format"] = f"fattail.labs.{name}"
+            stub["stub"] = True
+            stub["export_error"] = str(exc)
+            return stub
+
     # Playbook before campaigns (import order matches)
-    playbook = build_playbook_document(cur, identity_id)
-    practice_campaign = build_practice_campaign_document(cur, identity_id)
-    trade_log = build_trade_log_document(cur, identity_id)
-    journal = build_journal_document(cur, identity_id)
-    journal_session = build_journal_session_document(cur, identity_id)
-    retrospective = build_retrospective_document(cur, identity_id)
-    journey = build_journey_document(cur, identity_id, role=role)
+    playbook = _safe("playbook", lambda: build_playbook_document(cur, identity_id))
+    practice_campaign = _safe(
+        "practice_campaign",
+        lambda: build_practice_campaign_document(cur, identity_id),
+    )
+    trade_log = _safe("trade_log", lambda: build_trade_log_document(cur, identity_id))
+    journal = _safe("journal", lambda: build_journal_document(cur, identity_id))
+    journal_session = _safe(
+        "journal_session",
+        lambda: build_journal_session_document(cur, identity_id),
+    )
+    retrospective = _safe(
+        "retrospective",
+        lambda: build_retrospective_document(cur, identity_id),
+    )
+    journey = _safe(
+        "journey",
+        lambda: build_journey_document(cur, identity_id, role=role),
+    )
+    capital = _safe("capital", lambda: build_capital_document(cur, identity_id))
     pack["surfaces"] = [
         "playbook",
         "practice_campaign",
@@ -1004,6 +1099,7 @@ def build_member_pack(cur, identity_id: int, *, role: str = "observer") -> dict[
         "journal_session",
         "retrospective",
         "journey",
+        "capital",
     ]
     pack["documents"] = {
         "playbook": playbook,
@@ -1013,29 +1109,91 @@ def build_member_pack(cur, identity_id: int, *, role: str = "observer") -> dict[
         "journal_session": journal_session,
         "retrospective": retrospective,
         "journey": journey,
+        "capital": capital,
     }
+    if warnings:
+        pack["warnings"] = warnings
     return pack
 
 
-def pack_to_zip_bytes(pack: dict[str, Any]) -> bytes:
+def pack_to_zip_bytes(
+    pack: dict[str, Any],
+    *,
+    cur=None,
+    identity_id: int | None = None,
+) -> bytes:
     docs = pack.get("documents") or {}
+    warnings = list(pack.get("warnings") or [])
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        files = {
+            "playbook": "playbook.json",
+            "practice_campaign": "practice_campaign.json",
+            "trade_log": "trade_log.tradlog.json",
+            "journal": "journal.json",
+            "journal_session": "journal_session.json",
+            "retrospective": "retrospective.json",
+            "journey": "journey.json",
+            "capital": "capital.json",
+        }
+        # B4 — optional media/* when cur provided (size-capped)
+        media_files: list[str] = []
+        if cur is not None and identity_id is not None:
+            try:
+                import playbook_scrapbook_domain as pbs
+
+                media_budget = FULL_PACK_MEDIA_MAX_BYTES
+                used = 0
+                books = (docs.get("playbook") or {}).get("entries") or []
+                for book in books:
+                    if not isinstance(book, dict):
+                        continue
+                    # Resolve book id via export_key when possible
+                    bk = (book.get("id") or "").strip()
+                    if not bk:
+                        continue
+                    cur.execute(
+                        """SELECT id FROM member_playbook_entries
+                           WHERE identity_id = %s AND export_key = %s""",
+                        (identity_id, bk),
+                    )
+                    brow = cur.fetchone()
+                    if not brow:
+                        continue
+                    book_id = int(brow["id"])
+                    for a in pbs.list_archive(cur, identity_id, book_id) or []:
+                        ek = (a.get("export_key") or f"pba-{a['id']}").strip()
+                        try:
+                            data, _ct = pbs.read_attachment_bytes(
+                                cur, identity_id, book_id, int(a["id"])
+                            )
+                        except Exception:
+                            warnings.append(f"media/{ek}: read failed — skipped")
+                            continue
+                        if used + len(data) > media_budget:
+                            warnings.append(
+                                f"media: size cap {FULL_PACK_MEDIA_MAX_BYTES} "
+                                f"bytes — remaining archive files skipped"
+                            )
+                            media_budget = 0
+                            break
+                        zf.writestr(f"media/{ek}", data)
+                        media_files.append(f"media/{ek}")
+                        used += len(data)
+                    if media_budget == 0:
+                        break
+            except Exception as exc:
+                warnings.append(f"media: pack attach failed ({exc})")
+        if media_files:
+            files["media"] = "media/"
         manifest = {
             "format": FMT_PACK,
             "model_version": MODEL_VERSION,
             "exported_at": pack.get("exported_at"),
             "identity": pack.get("identity"),
             "surfaces": pack.get("surfaces"),
-            "files": {
-                "playbook": "playbook.json",
-                "practice_campaign": "practice_campaign.json",
-                "trade_log": "trade_log.tradlog.json",
-                "journal": "journal.json",
-                "journal_session": "journal_session.json",
-                "retrospective": "retrospective.json",
-                "journey": "journey.json",
-            },
+            "files": files,
+            "warnings": warnings or None,
         }
         zf.writestr("manifest.json", json.dumps(manifest, indent=2, default=str))
         zf.writestr(
@@ -1057,6 +1215,10 @@ def pack_to_zip_bytes(pack: dict[str, Any]) -> bytes:
         zf.writestr(
             "journal_session.json",
             json.dumps(docs.get("journal_session") or {}, indent=2, default=str),
+        )
+        zf.writestr(
+            "capital.json",
+            json.dumps(docs.get("capital") or {}, indent=2, default=str),
         )
         zf.writestr(
             "retrospective.json",
