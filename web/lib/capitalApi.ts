@@ -42,6 +42,14 @@ export type PositionsValuation = {
   marks_as_of: string | null;
   marks_age_seconds: number | null;
   valuation_uses_latest_mark: boolean;
+  /** A6 — stream process heartbeat beyond ops threshold */
+  stream_heartbeat_stale?: boolean;
+  stream_heartbeat?: {
+    status?: string;
+    last_ok_at?: string | null;
+    last_ok_age_seconds?: number | null;
+    last_error?: string | null;
+  } | null;
   degraded_symbols: string[];
   campaigns: { id: number; title: string }[];
   accounts: {
@@ -256,6 +264,7 @@ export function formatMarksAsOf(v: PositionsValuation | null | undefined): strin
   if (!v) return "Marks unavailable";
   const age = v.marks_age_seconds;
   const stale = marksAgeIsStale(age);
+  const streamDead = !!v.stream_heartbeat_stale;
   let base = "";
   if (v.marks_as_of) {
     try {
@@ -281,7 +290,9 @@ export function formatMarksAsOf(v: PositionsValuation | null | undefined): strin
   if (age != null && v.marks_as_of) {
     base = `${base} (${formatAgeSeconds(age)})`;
   }
-  if (stale) {
+  if (streamDead) {
+    base = `${base} · Stream stale — check live marks process`;
+  } else if (stale) {
     base = `${base} · Stale — not a live last`;
   }
   return base;

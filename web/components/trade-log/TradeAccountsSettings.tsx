@@ -469,45 +469,60 @@ export default function TradeAccountsSettings() {
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <input
-          className="min-h-[var(--hit-min)] min-w-[8rem] flex-1 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 text-sm text-[var(--color-label)]"
-          placeholder="Label"
-          value={newLabel}
-          onChange={(e) => setNewLabel(e.target.value)}
-          aria-label="New account label"
-        />
-        <select
-          className="min-h-[var(--hit-min)] rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 text-sm text-[var(--color-label)]"
-          value={newBroker}
-          onChange={(e) => setNewBroker(e.target.value)}
-          aria-label="Book type"
-        >
-          <option value="fattail">FatTail book (canonical)</option>
-          <option value="sim">Sim book</option>
-          <option value="paper">Paper book</option>
-          {(catalog?.venues || [])
-            .filter(
-              (v) =>
-                v.kind === "sim" &&
-                v.code !== "sim" &&
-                v.code !== "paper" &&
-                v.code !== "unset",
-            )
-            .map((v) => (
-              <option key={v.code} value={v.code}>
-                Sim: {v.label}
-              </option>
-            ))}
-        </select>
-        <Button
-          type="button"
-          variant="primary"
-          disabled={busy || !newLabel.trim()}
-          onClick={() => void createAccount()}
-        >
-          {busy ? "Creating…" : "Create account"}
-        </Button>
+      <div className="mt-4 space-y-2">
+        <p className="text-xs text-[var(--color-label-tertiary)]">
+          FatTail books store canonical trades (not connected brokers). For
+          starting balance and cash movements, use{" "}
+          <a
+            href="/accounts-capital"
+            className="font-medium text-[var(--color-tint)] hover:underline"
+          >
+            Accounts &amp; Capital
+          </a>
+          .
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className="min-h-[var(--hit-min)] min-w-[8rem] flex-1 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 text-sm text-[var(--color-label)]"
+            placeholder="Label"
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            aria-label="New account label"
+            data-testid="trade-log-new-account-label"
+          />
+          <select
+            className="min-h-[var(--hit-min)] rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 text-sm text-[var(--color-label)]"
+            value={newBroker}
+            onChange={(e) => setNewBroker(e.target.value)}
+            aria-label="Book type"
+          >
+            <option value="fattail">FatTail book (canonical)</option>
+            <option value="sim">Sim book</option>
+            <option value="paper">Paper book</option>
+            {(catalog?.venues || [])
+              .filter(
+                (v) =>
+                  v.kind === "sim" &&
+                  v.code !== "sim" &&
+                  v.code !== "paper" &&
+                  v.code !== "unset",
+              )
+              .map((v) => (
+                <option key={v.code} value={v.code}>
+                  Sim: {v.label}
+                </option>
+              ))}
+          </select>
+          <Button
+            type="button"
+            variant="primary"
+            disabled={busy || !newLabel.trim()}
+            onClick={() => void createAccount()}
+            data-testid="trade-log-create-account"
+          >
+            {busy ? "Creating…" : "Create book"}
+          </Button>
+        </div>
       </div>
     </section>
   );

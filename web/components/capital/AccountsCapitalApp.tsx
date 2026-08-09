@@ -370,8 +370,13 @@ export default function AccountsCapitalApp() {
             {overview.witnesses.master_dd}
           </p>
         )}
-        <p className="mt-2 text-xs text-[var(--color-label-tertiary)]">
-          Allocations declared: none · overcommit: none
+        <p
+          className="mt-2 text-xs text-[var(--color-label-tertiary)]"
+          data-testid="capital-allocations-note"
+        >
+          Allocations across strategies are not tracked here yet — this total is
+          book capital (starting + fills + cash movements), not a declared
+          allocation plan.
         </p>
         <div className="mt-4">
           <Button

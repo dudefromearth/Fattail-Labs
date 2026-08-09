@@ -380,10 +380,18 @@ def positions_valuation(
         marks_as_of = marks_as_of or hb.get("last_ok_at")
         max_age = hb.get("last_ok_age_seconds")
 
+    hb_stale = False
+    try:
+        if hasattr(lm, "is_heartbeat_stale"):
+            hb_stale = bool(lm.is_heartbeat_stale(hb))
+    except Exception:
+        hb_stale = False
+
     return {
         "marks_as_of": marks_as_of,
         "marks_age_seconds": max_age,
         "stream_heartbeat": hb,
+        "stream_heartbeat_stale": hb_stale,
         # V17: do not blank on tick-stale
         "valuation_uses_latest_mark": True,
         "degraded_symbols": degraded,

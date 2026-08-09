@@ -115,13 +115,20 @@ export default function PositionsView({
           <p
             className={[
               "mt-0.5 text-xs",
+              data?.stream_heartbeat_stale ||
               marksAgeIsStale(data?.marks_age_seconds)
                 ? "font-medium text-amber-700 dark:text-amber-400"
                 : "text-[var(--color-label-tertiary)]",
             ].join(" ")}
             data-testid="positions-marks-as-of"
             data-stale={
-              marksAgeIsStale(data?.marks_age_seconds) ? "true" : "false"
+              data?.stream_heartbeat_stale ||
+              marksAgeIsStale(data?.marks_age_seconds)
+                ? "true"
+                : "false"
+            }
+            data-stream-stale={
+              data?.stream_heartbeat_stale ? "true" : "false"
             }
           >
             {formatMarksAsOf(data)}

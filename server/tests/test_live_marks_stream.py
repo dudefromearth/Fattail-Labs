@@ -191,8 +191,31 @@ def test_live_marks_api(client):
     assert "heartbeat" in j
     assert j["heartbeat"]["shared"] is True
     assert any(m["symbol"] == "QQQ" for m in j["marks"])
+    # A6 ops — stream status carries alert flags
+    assert "alerts" in j
+    assert "heartbeat_stale" in j["alerts"]
+    assert "heartbeat_stale_threshold_seconds" in j["alerts"]
 
     r = client.get("/api/me/strategy-lab/curate/meta", cookies=cookies)
     assert r.status_code == 200
     assert r.json().get("shared_live_marks") is True
     assert "SPY" in r.json().get("symbol_universe", [])
+
+
+def test_heartbeat_stale_helpers():
+    """A6 pure helpers — frozen stream ages out above threshold."""
+    assert lm.is_heartbeat_stale(
+        {"status": "ok", "last_ok_age_seconds": 10, "stale_seconds_policy": 60}
+    ) is False
+    assert lm.is_heartbeat_stale(
+        {
+            "status": "ok",
+            "last_ok_age_seconds": 100_000,
+            "stale_seconds_policy": 60,
+            "poll_interval_s": 30,
+        }
+    ) is True
+    assert lm.is_heartbeat_stale({"status": "stopped", "last_ok_age_seconds": None})
+    assert lm.heartbeat_stale_threshold_seconds(
+        {"stale_seconds_policy": 60, "poll_interval_s": 30}
+    ) >= 300

@@ -345,17 +345,62 @@ def get_heartbeat(cur) -> dict[str, Any]:
     }
 
 
+def heartbeat_stale_threshold_seconds(hb: dict[str, Any] | None = None) -> float:
+    """Age above which the stream is considered ops-stale (A6).
+
+    Floor 5 minutes; scales with poll interval and tick stale policy so a
+    quiet market is not alerted as dead while a frozen stream is.
+    """
+    hb = hb or {}
+    policy = float(hb.get("stale_seconds_policy") or stale_seconds())
+    poll = float(hb.get("poll_interval_s") or 60)
+    return max(300.0, poll * 10.0, policy * 30.0)
+
+
+def is_heartbeat_stale(hb: dict[str, Any] | None) -> bool:
+    if not hb:
+        return True
+    age = hb.get("last_ok_age_seconds")
+    if age is None:
+        # Never heartbeated, or table empty
+        return (hb.get("status") or "") not in ("ok", "running", "live")
+    return float(age) > heartbeat_stale_threshold_seconds(hb)
+
+
 def stream_status_payload(cur) -> dict[str, Any]:
     hb = get_heartbeat(cur)
     marks = list_live_marks(cur)
     universe = list_universe(cur, enabled_only=True)
+    fresh = sum(1 for m in marks if not m.get("stale"))
+    stale_n = sum(1 for m in marks if m.get("stale"))
+    mark_count = len(marks)
+    hb_stale = is_heartbeat_stale(hb)
+    thresh = heartbeat_stale_threshold_seconds(hb)
+    alerts: dict[str, Any] = {
+        "heartbeat_stale": hb_stale,
+        "heartbeat_stale_threshold_seconds": thresh,
+        "many_stale_marks": bool(
+            mark_count > 0 and stale_n > fresh and stale_n >= 3
+        ),
+    }
+    if hb_stale:
+        alerts["message"] = (
+            "Live marks stream heartbeat is stale — mids may freeze while the "
+            "real market moves. Check the live_stream process."
+        )
+    elif alerts["many_stale_marks"]:
+        alerts["message"] = (
+            f"{stale_n}/{mark_count} marks are tick-stale; valuation still uses "
+            "latest mid (V17) but last prices may lag."
+        )
     return {
         "heartbeat": hb,
         "universe": universe,
         "marks": marks,
-        "mark_count": len(marks),
-        "fresh_count": sum(1 for m in marks if not m.get("stale")),
-        "stale_count": sum(1 for m in marks if m.get("stale")),
+        "mark_count": mark_count,
+        "fresh_count": fresh,
+        "stale_count": stale_n,
+        "alerts": alerts,
         "vol_reference": vol_reference(cur),
         "asof": _now_iso(),
     }
