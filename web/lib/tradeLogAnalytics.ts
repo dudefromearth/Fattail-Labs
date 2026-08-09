@@ -101,6 +101,8 @@ export async function fetchReportsBook(opts: {
   /** Inclusive analysis window (Practice Context date). */
   fromDay?: string;
   toDay?: string;
+  /** Practice Context campaign (ledger = full account book). */
+  practiceCampaignId?: number | null;
 }): Promise<AnalyticsResult<ServerReportsBook>> {
   const params = new URLSearchParams();
   params.set("starting_capital", String(opts.startingCapital));
@@ -109,6 +111,9 @@ export async function fetchReportsBook(opts: {
   }
   if (opts.fromDay) params.set("from_day", opts.fromDay.slice(0, 10));
   if (opts.toDay) params.set("to_day", opts.toDay.slice(0, 10));
+  if (opts.practiceCampaignId != null && opts.practiceCampaignId > 0) {
+    params.set("practice_campaign_id", String(opts.practiceCampaignId));
+  }
   const r = await fetch(
     `/api/me/trade-log/analytics/reports-book?${params}`,
     { credentials: "same-origin" },

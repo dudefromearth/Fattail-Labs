@@ -660,18 +660,28 @@ def _unique_campaign_title(
 def set_campaign_memory(
     cur, identity_id: int, account_id: int, campaign_id: int
 ) -> None:
-    """Law 3 — last account↔campaign pair (server-side)."""
+    """L3 — last book→campaign direction (server-side memory).
+
+    Memory is keyed by account (the book the fill came from). The remembered
+    campaign may be that book's ledger OR any owned charter (L5 account-free).
+    """
     account_id = int(account_id)
     campaign_id = int(campaign_id)
     cur.execute(
-        """SELECT id FROM member_practice_campaigns
-           WHERE id = %s AND identity_id = %s AND account_id = %s""",
-        (campaign_id, identity_id, account_id),
+        """SELECT id, account_id, is_ledger FROM member_practice_campaigns
+           WHERE id = %s AND identity_id = %s""",
+        (campaign_id, identity_id),
     )
-    if not cur.fetchone():
-        raise PracticeSpineError(
-            422, "memory campaign must belong to the same account"
-        )
+    row = cur.fetchone()
+    if not row:
+        raise PracticeSpineError(404, "Campaign not found")
+    is_ledger = bool(int(row.get("is_ledger") or 0))
+    if is_ledger:
+        if row.get("account_id") is None or int(row["account_id"]) != account_id:
+            raise PracticeSpineError(
+                422, "memory ledger must belong to the same account"
+            )
+    # charters: no account bind — any book may remember them
     cur.execute(
         """INSERT INTO member_practice_campaign_memory
              (identity_id, account_id, campaign_id)
@@ -695,6 +705,91 @@ def get_campaign_memory(
     return int(row["campaign_id"])
 
 
+def campaign_covers_fill(row: dict, exec_at: datetime | None) -> bool:
+    """L4 — True when fill time falls inside campaign window [starts_at, ends_at].
+
+    Ledger (is_ledger) always covers. ends_at NULL = open-ended.
+    starts_at NULL = no floor (covers any fill day).
+    Fill day is date-atom of exec_at (day = atom doctrine).
+    """
+    if bool(int(row.get("is_ledger") or 0)):
+        return True
+    if exec_at is None:
+        # No fill time → only ledger is safe; charters need a day
+        return False
+    day = exec_at.date() if hasattr(exec_at, "date") else None
+    if day is None:
+        return False
+    sa, ea = row.get("starts_at"), row.get("ends_at")
+    if sa is not None:
+        start_d = sa.date() if hasattr(sa, "date") else sa
+        if hasattr(start_d, "isoformat"):
+            if day < start_d:
+                return False
+        else:
+            try:
+                from datetime import date as _date
+
+                sd = _date.fromisoformat(str(start_d)[:10])
+                if day < sd:
+                    return False
+            except ValueError:
+                pass
+    if ea is not None:
+        end_d = ea.date() if hasattr(ea, "date") else ea
+        if hasattr(end_d, "isoformat"):
+            if day > end_d:
+                return False
+        else:
+            try:
+                from datetime import date as _date
+
+                ed = _date.fromisoformat(str(end_d)[:10])
+                if day > ed:
+                    return False
+            except ValueError:
+                pass
+    return True
+
+
+def list_eligible_campaigns_for_fill(
+    cur,
+    identity_id: int,
+    account_id: int,
+    *,
+    exec_at: datetime | None = None,
+) -> list[dict]:
+    """L4 picker set: ledger for this account + window-covering non-ledger campaigns.
+
+    Charters are account-free (L5) — any owned charter whose window covers fill
+    time is offered. Always includes the account ledger.
+    """
+    account_id = int(account_id)
+    ledger = ensure_ledger_campaign(cur, identity_id, account_id)
+    out: list[dict] = [ledger]
+    seen = {int(ledger["id"])}
+    # Active + planned charters (future-armed still listed only if window covers —
+    # planned with future starts_at will be filtered out when fill is "now")
+    cur.execute(
+        """SELECT * FROM member_practice_campaigns
+           WHERE identity_id = %s AND is_ledger = 0
+             AND status IN ('active', 'planned')
+           ORDER BY
+             CASE status WHEN 'active' THEN 0 ELSE 1 END,
+             activated_at DESC, id DESC""",
+        (identity_id,),
+    )
+    for row in cur.fetchall() or []:
+        if not campaign_covers_fill(row, exec_at):
+            continue
+        cid = int(row["id"])
+        if cid in seen:
+            continue
+        seen.add(cid)
+        out.append(serialize_campaign(cur, row))
+    return out
+
+
 def resolve_trade_campaign_id(
     cur,
     identity_id: int,
@@ -703,47 +798,81 @@ def resolve_trade_campaign_id(
     practice_campaign_id: int | None = None,
     stamped_by: str | None = None,
     update_memory: bool = True,
+    exec_at: datetime | None = None,
 ) -> tuple[int, str]:
-    """Law 2/3 — resolve campaign for a trade stamp.
+    """L2/L3/L4/L5 — resolve campaign for a trade stamp.
 
     Returns (campaign_id, stamped_by).
-    explicit id → member; else memory if valid; else ledger.
+    explicit id → member (must own + window-eligible); else memory if
+    window-eligible; else ledger. Charters are account-free (L5).
     """
     account_id = int(account_id)
     if practice_campaign_id is not None:
         cid = int(practice_campaign_id)
         cur.execute(
-            """SELECT id, account_id, status FROM member_practice_campaigns
+            """SELECT * FROM member_practice_campaigns
                WHERE id = %s AND identity_id = %s""",
             (cid, identity_id),
         )
         row = cur.fetchone()
         if not row:
             raise PracticeSpineError(404, "Campaign not found")
-        if row.get("account_id") is None or int(row["account_id"]) != account_id:
+        is_ledger = bool(int(row.get("is_ledger") or 0))
+        # Ledger must match the trade's book; charters have no account bind (L5)
+        if is_ledger:
+            if row.get("account_id") is None or int(row["account_id"]) != account_id:
+                raise PracticeSpineError(
+                    422, "Ledger campaign is not for this trade account"
+                )
+        elif not campaign_covers_fill(row, exec_at):
             raise PracticeSpineError(
-                422, "Campaign is not bound to this trade account"
+                422,
+                "Campaign window does not cover this fill time",
             )
         if update_memory:
             set_campaign_memory(cur, identity_id, account_id, cid)
         return cid, (stamped_by or "member")
 
+    # L3 — memory pre-answer when still window-eligible at fill
     mem = get_campaign_memory(cur, identity_id, account_id)
     if mem is not None:
         cur.execute(
-            """SELECT id, account_id FROM member_practice_campaigns
+            """SELECT * FROM member_practice_campaigns
                WHERE id = %s AND identity_id = %s""",
             (mem, identity_id),
         )
         mrow = cur.fetchone()
-        if mrow and mrow.get("account_id") is not None and int(mrow["account_id"]) == account_id:
-            return mem, "memory"
+        if mrow is not None:
+            is_ledger = bool(int(mrow.get("is_ledger") or 0))
+            if is_ledger:
+                if (
+                    mrow.get("account_id") is not None
+                    and int(mrow["account_id"]) == account_id
+                ):
+                    return mem, "memory"
+            elif campaign_covers_fill(mrow, exec_at):
+                return mem, "memory"
+            # else: expired / unarmed memory → silent ledger (below)
 
     ledger = ensure_ledger_campaign(cur, identity_id, account_id)
     lid = int(ledger["id"])
     if update_memory:
         set_campaign_memory(cur, identity_id, account_id, lid)
     return lid, "memory"
+
+
+def _first_trade_at_for_account(
+    cur, identity_id: int, account_id: int
+) -> Any:
+    """Earliest Trade Log exec_at on this account — default campaign start."""
+    cur.execute(
+        """SELECT MIN(exec_at) AS d FROM member_trade_log_trades
+           WHERE identity_id = %s AND account_id = %s
+             AND exec_at IS NOT NULL""",
+        (identity_id, account_id),
+    )
+    row = cur.fetchone() or {}
+    return row.get("d")
 
 
 def ensure_ledger_campaign(
@@ -753,9 +882,27 @@ def ensure_ledger_campaign(
     *,
     title: str | None = None,
 ) -> dict:
-    """Law 1 — get or create account ledger (furniture, never signed)."""
+    """Law 1 — get or create account ledger (furniture, never signed).
+
+    Default campaign start = day of the account's first Trade Log fill when
+    any trades exist (Coach: the book begins with the first recorded trade).
+    """
     account_id = int(account_id)
     _assert_account_owned(cur, identity_id, account_id)
+    first_trade = _first_trade_at_for_account(cur, identity_id, account_id)
+
+    def _heal_starts(cid: int) -> None:
+        """Backfill starts_at from first trade when ledger has no real start."""
+        if first_trade is None:
+            return
+        cur.execute(
+            """UPDATE member_practice_campaigns
+               SET starts_at = %s
+               WHERE id = %s AND identity_id = %s
+                 AND (starts_at IS NULL OR starts_at > %s)""",
+            (first_trade, cid, identity_id, first_trade),
+        )
+
     existing = get_ledger_campaign(cur, identity_id, account_id)
     if existing:
         # Heal: keep active, never signed
@@ -768,10 +915,10 @@ def ensure_ledger_campaign(
                    WHERE id = %s AND identity_id = %s""",
                 (int(existing["id"]), identity_id),
             )
-            out = get_campaign(cur, identity_id, int(existing["id"]))
-            assert out is not None
-            return out
-        return existing
+        _heal_starts(int(existing["id"]))
+        out = get_campaign(cur, identity_id, int(existing["id"]))
+        assert out is not None
+        return out
 
     # Promote legacy is_default non-ledger if present
     legacy = get_default_campaign(cur, identity_id, account_id)
@@ -784,6 +931,7 @@ def ensure_ledger_campaign(
                WHERE id = %s AND identity_id = %s""",
             (int(legacy["id"]), identity_id),
         )
+        _heal_starts(int(legacy["id"]))
         out = get_campaign(cur, identity_id, int(legacy["id"]))
         assert out is not None
         return out
@@ -798,7 +946,8 @@ def ensure_ledger_campaign(
     book_title = _unique_campaign_title(
         cur, identity_id, (title or f"Default — {label}").strip()[:255]
     )
-    starts = row.get("created_at")
+    # First trade wins; else account created_at as provisional furniture date
+    starts = first_trade if first_trade is not None else row.get("created_at")
     return create_campaign(
         cur,
         identity_id,
@@ -936,24 +1085,26 @@ def create_campaign(
     title = (title or "").strip()
     if not title:
         raise PracticeSpineError(422, "title is required")
-    # Law 4 — every campaign binds one account (ensure Primary if omitted)
-    if account_id is None:
-        account_id = _ensure_primary_trade_account(cur, identity_id)
+    # L5 — charters are account-free; only ledger/default require a book
+    if is_ledger and account_id is None:
+        raise PracticeSpineError(422, "ledger campaign requires account_id")
+    if is_default and not is_ledger and account_id is None:
+        raise PracticeSpineError(
+            422, "default book campaign requires account_id"
+        )
     start = _parse_dt(starts_at)
     end = _parse_dt(ends_at)
     if start and end and end < start:
         raise PracticeSpineError(422, "ends_at must be on or after starts_at")
-    _assert_account_owned(cur, identity_id, account_id)
+    if account_id is not None:
+        _assert_account_owned(cur, identity_id, account_id)
     if is_ledger:
-        if account_id is None:
-            raise PracticeSpineError(422, "ledger campaign requires account_id")
         is_default = True
         activate = True
+    elif not is_default:
+        # L5 — charters never bind an account (ignore client account_id)
+        account_id = None
     if is_default:
-        if account_id is None:
-            raise PracticeSpineError(
-                422, "default book campaign requires account_id"
-            )
         activate = True
     status = "active" if activate else "planned"
     key = _export_key("camp")
@@ -1005,6 +1156,14 @@ def create_campaign(
         crow = cur.fetchone()
         if crow:
             _apply_signature(cur, identity_id, cid, crow)
+    # Panel v1: house-seed the six controls on every new charter
+    if not is_ledger:
+        try:
+            from campaign_panel import ensure_six_controls
+
+            ensure_six_controls(cur, identity_id, cid)
+        except Exception:
+            pass
     out = get_campaign(cur, identity_id, cid)
     assert out is not None
     return out
@@ -1072,8 +1231,8 @@ def patch_campaign(
     elif account_id is None or account_id == "":
         if is_ledger:
             raise PracticeSpineError(422, "Ledger campaign requires account_id")
-        # Law 4 — no unbound campaigns
-        raise PracticeSpineError(422, "account_id is required")
+        # L5 — charters may clear account binding
+        new_account = None
     else:
         try:
             new_account = int(account_id)
@@ -1082,8 +1241,11 @@ def patch_campaign(
         _assert_account_owned(cur, identity_id, new_account)
         if is_ledger and new_account != row.get("account_id"):
             raise PracticeSpineError(
-                422, "Ledger cannot move between accounts — instantiate a copy instead"
+                422, "Ledger cannot move between accounts"
             )
+        # Non-ledger: ignore account bind on write — store NULL for L5 honesty
+        if not is_ledger:
+            new_account = None
     if starting_capital is ...:
         new_cap = row.get("starting_capital")
     elif starting_capital is None or starting_capital == "":
@@ -1243,10 +1405,9 @@ def renew_campaign(cur, identity_id: int, campaign_id: int) -> dict:
         raise PracticeSpineError(
             422, "Only completed or abandoned campaigns can be renewed"
         )
-    if row.get("account_id") is None:
-        raise PracticeSpineError(422, "Campaign has no account — cannot renew")
     title = (row.get("title") or "Campaign").strip()
     # Avoid infinite " (cycle)" stacking — renew keeps base title
+    # L5 — successor charter stays account-free
     new = create_campaign(
         cur,
         identity_id,
@@ -1254,7 +1415,7 @@ def renew_campaign(cur, identity_id: int, campaign_id: int) -> dict:
         starts_at=row.get("starts_at"),
         ends_at=row.get("ends_at"),
         activate=False,
-        account_id=int(row["account_id"]),
+        account_id=None,
         starting_capital=row.get("starting_capital"),
         goals_md=row.get("goals_md"),
         is_default=False,
@@ -1530,6 +1691,8 @@ def serialize_bound(row: dict) -> dict:
         "window_kind": row.get("window_kind"),
         "range_low": _f("range_low"),
         "range_high": _f("range_high"),
+        "display_low": _f("display_low"),
+        "display_high": _f("display_high"),
         "is_critical": bool(int(row.get("is_critical") or 0)),
         "n_floor": n_floor_out,
         "export_key": row.get("export_key"),
@@ -1904,17 +2067,68 @@ def _default_n_floor(attribute: str) -> int:
     return 1  # process clauses wake immediately
 
 
+def _day_iso_from_campaign_field(val: Any) -> str | None:
+    """YYYY-MM-DD from campaign starts_at / ends_at (datetime or string)."""
+    if val is None:
+        return None
+    if hasattr(val, "date"):
+        try:
+            return val.date().isoformat()
+        except Exception:
+            pass
+    s = str(val).strip()
+    if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+        return s[:10]
+    return None
+
+
+def _window_day_bounds(
+    as_of_day: str,
+    *,
+    from_day: str | None = None,
+    to_day: str | None = None,
+) -> tuple[str | None, str]:
+    """Inclusive day bounds for panel samples (floor, ceiling)."""
+    hi = (as_of_day or "")[:10]
+    if to_day:
+        t = to_day[:10]
+        if not hi or t < hi:
+            hi = t
+    if not hi:
+        hi = _utcnow().date().isoformat()
+    lo = (from_day or "")[:10] if from_day else None
+    return lo, hi
+
+
 def _pnl_sample_as_of(
-    cur, identity_id: int, campaign_id: int, as_of_day: str
+    cur,
+    identity_id: int,
+    campaign_id: int,
+    as_of_day: str,
+    *,
+    from_day: str | None = None,
+    to_day: str | None = None,
 ) -> list[float]:
-    cur.execute(
-        """SELECT pnl_amount FROM member_trade_log_trades
-           WHERE identity_id = %s AND practice_campaign_id = %s
-             AND pnl_amount IS NOT NULL
-             AND DATE(exec_at) <= %s
-           ORDER BY exec_at ASC, id ASC""",
-        (identity_id, campaign_id, as_of_day),
-    )
+    """
+    Closed Trade Log P&Ls for this campaign, for outcome panel pointers.
+
+    Window (inclusive days):
+      from_day = campaign starts_at (if set), else no floor
+      to_day   = min(as_of scrub day, campaign ends_at if set)
+    Only rows with practice_campaign_id = campaign and non-null pnl_amount.
+    """
+    lo, hi = _window_day_bounds(as_of_day, from_day=from_day, to_day=to_day)
+
+    sql = """SELECT pnl_amount FROM member_trade_log_trades
+             WHERE identity_id = %s AND practice_campaign_id = %s
+               AND pnl_amount IS NOT NULL
+               AND DATE(exec_at) <= %s"""
+    args: list[Any] = [identity_id, campaign_id, hi]
+    if lo:
+        sql += " AND DATE(exec_at) >= %s"
+        args.append(lo)
+    sql += " ORDER BY exec_at ASC, id ASC"
+    cur.execute(sql, tuple(args))
     out: list[float] = []
     for r in cur.fetchall() or []:
         try:
@@ -1924,8 +2138,140 @@ def _pnl_sample_as_of(
     return out
 
 
-def _stat_readings_from_pnls(pnls: list[float]) -> dict[str, float | None]:
-    """Signature attribute readings from closed P&Ls (campaign window)."""
+def _campaign_trades_with_legs_as_of(
+    cur,
+    identity_id: int,
+    campaign_id: int,
+    as_of_day: str,
+    *,
+    from_day: str | None = None,
+    to_day: str | None = None,
+) -> list[dict]:
+    """Stamped trades in window with legs (for structural entry R:R)."""
+    lo, hi = _window_day_bounds(as_of_day, from_day=from_day, to_day=to_day)
+    sql = """SELECT * FROM member_trade_log_trades
+             WHERE identity_id = %s AND practice_campaign_id = %s
+               AND DATE(exec_at) <= %s"""
+    args: list[Any] = [identity_id, campaign_id, hi]
+    if lo:
+        sql += " AND DATE(exec_at) >= %s"
+        args.append(lo)
+    sql += " ORDER BY exec_at ASC, id ASC"
+    cur.execute(sql, tuple(args))
+    rows = list(cur.fetchall() or [])
+    if not rows:
+        return []
+    tids = [int(r["id"]) for r in rows]
+    # Legs batch (avoid per-trade round-trips)
+    by_leg: dict[int, list[dict]] = {tid: [] for tid in tids}
+    chunk = 500
+    for i in range(0, len(tids), chunk):
+        part = tids[i : i + chunk]
+        ph = ",".join(["%s"] * len(part))
+        cur.execute(
+            f"""SELECT * FROM member_trade_log_legs
+               WHERE identity_id = %s AND trade_id IN ({ph})
+               ORDER BY trade_id, leg_index, id""",
+            (identity_id, *part),
+        )
+        for lr in cur.fetchall() or []:
+            tid = int(lr["trade_id"])
+            if tid not in by_leg:
+                continue
+            by_leg[tid].append(
+                {
+                    "side": lr.get("side"),
+                    "quantity": lr.get("quantity"),
+                    "pos_effect": lr.get("pos_effect"),
+                    "asset_class": lr.get("asset_class"),
+                    "underlier": lr.get("underlier"),
+                    "symbol": lr.get("symbol"),
+                    "expiry": (
+                        lr["expiry"].isoformat()
+                        if hasattr(lr.get("expiry"), "isoformat")
+                        else lr.get("expiry")
+                    ),
+                    "strike": (
+                        float(lr["strike"]) if lr.get("strike") is not None else None
+                    ),
+                    "right": lr.get("right"),
+                    "fill_price": (
+                        float(lr["fill_price"])
+                        if lr.get("fill_price") is not None
+                        else None
+                    ),
+                }
+            )
+    out: list[dict] = []
+    for r in rows:
+        tid = int(r["id"])
+        out.append(
+            {
+                "id": tid,
+                "account_id": r.get("account_id"),
+                "strategy": r.get("strategy"),
+                "asset_class": r.get("asset_class"),
+                "exec_at": r.get("exec_at"),
+                "net_price": (
+                    float(r["net_price"]) if r.get("net_price") is not None else None
+                ),
+                "net_side": r.get("net_side"),
+                "legs": by_leg.get(tid) or [],
+            }
+        )
+    return out
+
+
+def _structural_r2r_as_of(
+    cur,
+    identity_id: int,
+    campaign_id: int,
+    as_of_day: str,
+    *,
+    from_day: str | None = None,
+    to_day: str | None = None,
+) -> tuple[float | None, int]:
+    """
+    Risk-to-reward at entry (structural) — Hotel / Coach law:
+
+      risk = capital at risk at open (debit, or width−credit on credit)
+      max_potential = width − risk
+      R2R = max_potential / risk
+
+    Averaged over open fills stamped to this campaign in the term window.
+    Close fills excluded. Not computed from realized win rate or P&L.
+    """
+    from trade_log_domain.structure import average_entry_r2r
+
+    trades = _campaign_trades_with_legs_as_of(
+        cur,
+        identity_id,
+        campaign_id,
+        as_of_day,
+        from_day=from_day,
+        to_day=to_day,
+    )
+    return average_entry_r2r(trades)
+
+
+def _stat_readings_from_pnls(
+    pnls: list[float],
+    *,
+    starting_capital: float | None = None,
+) -> dict[str, float | None]:
+    """Outcome readings from closed P&Ls (win rate, PF, avg W/L, DD, Sharpe).
+
+    Drawdown uses Trade Log law (``trade_log_domain.reports.max_drawdown_*``):
+    equity = starting_capital + cum P&L; DD = (equity − peak) / peak.
+    Panel displays magnitude in percent (e.g. 4.5 for 4.5% of peak).
+
+    Does **not** set risk_to_reward — that is structural at entry
+    (``_structural_r2r_as_of``). Avg win/loss remains the outcome W/L ratio only.
+    """
+    from math import sqrt
+
+    from trade_log_domain.reports import max_drawdown_pct_magnitude
+
     if not pnls:
         return {
             "win_rate": None,
@@ -1955,53 +2301,55 @@ def _stat_readings_from_pnls(pnls: list[float]) -> dict[str, float | None]:
         awl = None
     else:
         awl = 0.0
-    # Max drawdown % of peak equity from starting 0 cumulative
-    cum = 0.0
-    peak = 0.0
-    max_dd = 0.0
-    for p in pnls:
-        cum += p
-        peak = max(peak, cum)
-        if peak > 0:
-            max_dd = min(max_dd, (cum - peak) / peak)
-        elif peak == 0 and cum < 0:
-            max_dd = min(max_dd, -1.0)
-    drawdown_pct = abs(max_dd) * 100.0  # magnitude of max DD as %
+
+    # Running capital basis — same as Trade Log Reports (default $50k if unset)
+    from trade_log_domain.reports import resolve_starting_capital
+
+    cap = resolve_starting_capital(starting_capital)
+    # Max drawdown % of peak running capital (not bare P&L, not forced 100%)
+    drawdown_pct = max_drawdown_pct_magnitude(pnls, cap)
+
+    # Sample Sharpe (mean / std × √n) on closed outcomes — display control
+    sharpe: float | None = None
+    if len(pnls) > 1:
+        mean = sum(pnls) / len(pnls)
+        var = sum((p - mean) ** 2 for p in pnls) / (len(pnls) - 1)
+        std = sqrt(var) if var > 0 else 0.0
+        if std > 0:
+            sharpe = (mean / std) * sqrt(len(pnls))
+
     return {
         "win_rate": win_rate,
         "profit_factor": pf,
         "avg_win_loss": awl,
         "drawdown": drawdown_pct,
-        "risk_to_reward": None,  # structural R:R needs legs — gathering until wired
-        "sharpe": None,  # deferred v1
+        # risk_to_reward is structural — filled by build_panel, never from P&L
+        "risk_to_reward": None,
+        "sharpe": sharpe,
     }
 
 
-def journey_shape_at(
-    cur,
-    identity_id: int,
-    campaign_id: int,
-    *,
-    as_of: str | None = None,
-) -> dict:
+def campaign_term_window(
+    row: dict, as_of_day: str
+) -> tuple[str | None, str]:
     """
-    Campaign Journey shape DTO (Spec §6a).
-
-    Ledger → raises 404 (furniture has no journey-shape route).
-    Charter with zero bounds → invitation payload (200-level empty).
-    Axes: band-alignment (boundary) or progress (goal) via campaign_alignment.
+    Inclusive trade-day window for panel/radar pointers.
+    Floor = starts_at; ceiling = min(as_of, ends_at if set).
     """
-    from campaign_alignment import axis_extension
+    from_day = _day_iso_from_campaign_field(row.get("starts_at"))
+    end_day = _day_iso_from_campaign_field(row.get("ends_at"))
+    hi = (as_of_day or "")[:10]
+    if end_day and (not hi or end_day < hi):
+        hi = end_day
+    if not hi:
+        hi = _utcnow().date().isoformat()
+    return from_day, hi
 
-    row = _campaign_row(cur, identity_id, campaign_id)
-    if bool(int(row.get("is_ledger") or 0)):
-        raise PracticeSpineError(
-            404, "Ledger has no Campaign Journey shape (furniture, not charter)"
-        )
-    bounds = list_bounds(cur, identity_id, campaign_id)
-    # T0: signed_at date wins; else first fill day
-    t0 = None
-    if row.get("signed_at") is not None:
+
+def _campaign_t0_present(cur, identity_id: int, campaign_id: int, row: dict) -> tuple[str | None, str]:
+    """T0 = window start; present = today (Spec v1.3 §6)."""
+    t0 = _day_iso_from_campaign_field(row.get("starts_at"))
+    if not t0 and row.get("signed_at") is not None:
         sa = row["signed_at"]
         t0 = (
             sa.date().isoformat()
@@ -2018,141 +2366,215 @@ def journey_shape_at(
         if fr.get("d") is not None:
             t0 = str(fr["d"])[:10]
     present = (_utcnow().date()).isoformat()
-    as_of_day = (as_of or present)[:10]
-    if not bounds:
-        return {
-            "campaign_id": campaign_id,
-            "kind": "invitation",
-            "t0": t0,
-            "present": present,
-            "as_of": as_of_day,
-            "axes": [],
-            "amendment_markers": [],
-            "sample_n": 0,
-            "message": "Declare charter bounds to reveal this season's fingerprint",
-        }
+    return t0, present
 
-    pnls = _pnl_sample_as_of(cur, identity_id, campaign_id, as_of_day)
-    stats = _stat_readings_from_pnls(pnls)
-    sample_n = len(pnls)
 
-    axes = []
-    for b in bounds:
-        attr = str(b.get("attribute") or "")
-        role = str(b.get("role") or "boundary")
-        lo, hi = b.get("range_low"), b.get("range_high")
+def journey_series(
+    cur,
+    identity_id: int,
+    campaign_id: int,
+) -> dict:
+    """
+    One-shot scrub payload — load once, derive shape/panel in memory client-side.
+
+    Returns compact fill events (day, optional pnl, optional entry r2r) plus
+    axis meta (ranges / n_floors). Scrub does **not** re-hit the DB.
+
+    Memory: O(stamps) rows (~1–2k max typical) — far cheaper than N panel
+    round-trips while dragging the slider.
+    """
+    from campaign_panel import (
+        PANEL_ATTRIBUTES,
+        PANEL_LABELS,
+        PANEL_SEEDS,
+        ensure_six_controls,
+        _bound_row_for_attr,
+        _f,
+    )
+    from trade_log_domain.reports import resolve_starting_capital
+    from trade_log_domain.structure import entry_r2r
+
+    row = _campaign_row(cur, identity_id, campaign_id)
+    if bool(int(row.get("is_ledger") or 0)):
+        raise PracticeSpineError(
+            404, "Ledger has no Campaign Journey series (furniture, not charter)"
+        )
+    ensure_six_controls(cur, identity_id, campaign_id)
+    t0, present = _campaign_t0_present(cur, identity_id, campaign_id, row)
+    from_day, to_day = campaign_term_window(row, present)
+
+    # Axis meta (static ranges) — scrub only rewrites readings
+    axes_meta: list[dict] = []
+    for attr in PANEL_ATTRIBUTES:
+        b = _bound_row_for_attr(cur, identity_id, campaign_id, attr)
+        seed = PANEL_SEEDS[attr]
+        if not b:
+            continue
         n_floor = b.get("n_floor")
         if n_floor is None:
-            n_floor = _default_n_floor(attr)
+            n_floor = seed.get("n_floor") or 10
         try:
-            n_floor = int(n_floor)
+            n_floor_i = int(n_floor)
         except (TypeError, ValueError):
-            n_floor = _default_n_floor(attr)
+            n_floor_i = 10
+        axes_meta.append(
+            {
+                "bound_id": int(b["id"]),
+                "attribute": attr,
+                "label": PANEL_LABELS.get(attr, attr),
+                "role": "boundary",
+                "range_low": _f(b.get("range_low")),
+                "range_high": _f(b.get("range_high")),
+                "display_low": _f(b.get("display_low"))
+                if b.get("display_low") is not None
+                else float(seed["display_low"]),  # type: ignore[arg-type]
+                "display_high": _f(b.get("display_high"))
+                if b.get("display_high") is not None
+                else float(seed["display_high"]),  # type: ignore[arg-type]
+                "n_floor": n_floor_i,
+                "unit": b.get("unit") or seed.get("unit"),
+            }
+        )
 
-        reading: float | None = None
-        if attr in stats:
-            reading = stats.get(attr)  # type: ignore[assignment]
-            # Unbounded PF with wins only → treat as high in-band signal
-            if attr == "profit_factor" and reading is None and sample_n > 0:
-                if any(p > 0 for p in pnls) and not any(p < 0 for p in pnls):
-                    reading = float(hi) if hi is not None else 10.0
-
-        # Process: simple presence — gathering only if no fills when n_floor>0
-        process_attrs = {
-            "risk_per_trade",
-            "position_size",
-            "concurrent_open",
-            "strategy_scope",
-            "strategy_type_scope",
-            "asset_type_scope",
-            "asset_scope",
-            "trading_window",
-        }
-        if attr in process_attrs:
-            # Count fills in window as sample for process wake
-            cur.execute(
-                """SELECT COUNT(*) AS n FROM member_trade_log_trades
-                   WHERE identity_id = %s AND practice_campaign_id = %s
-                     AND DATE(exec_at) <= %s""",
-                (identity_id, campaign_id, as_of_day),
-            )
-            fill_n = int((cur.fetchone() or {}).get("n") or 0)
-            if fill_n < max(1, n_floor):
-                axes.append(
-                    {
-                        "bound_id": b["id"],
-                        "role": role,
-                        "attribute": attr,
-                        "range_low": lo,
-                        "range_high": hi,
-                        "reading": None,
-                        "extension": None,
-                        "state": "gathering",
-                        "n_floor": n_floor,
-                        "n": fill_n,
-                    }
-                )
-                continue
-            # Default process axes full until richer witness — never raw magnitude spike
-            reading = lo if lo is not None else (hi if hi is not None else 0.0)
-            if lo is not None and hi is not None:
-                reading = (float(lo) + float(hi)) / 2.0
-            ext = axis_extension(role, float(reading), lo, hi)
-            axes.append(
-                {
-                    "bound_id": b["id"],
-                    "role": role,
-                    "attribute": attr,
-                    "range_low": lo,
-                    "range_high": hi,
-                    "reading": reading,
-                    "extension": round(ext, 4),
-                    "state": "in_range" if ext >= 0.999 else "out_of_range",
-                    "n_floor": n_floor,
-                    "n": fill_n,
-                }
-            )
-            continue
-
-        if reading is None or sample_n < n_floor:
-            axes.append(
-                {
-                    "bound_id": b["id"],
-                    "role": role,
-                    "attribute": attr,
-                    "range_low": lo,
-                    "range_high": hi,
-                    "reading": reading,
-                    "extension": None,
-                    "state": "gathering",
-                    "n_floor": n_floor,
-                    "n": sample_n,
-                }
-            )
-            continue
-
-        ext = axis_extension(role, float(reading), lo, hi)
-        if role == "goal":
-            if ext >= 0.999:
-                state = "reached"
-            elif ext >= 0.5:
-                state = "tracking_toward"
-            else:
-                state = "tracking_away"
+    # All stamped fills in term window once (legs for structural R2R)
+    trades = _campaign_trades_with_legs_as_of(
+        cur,
+        identity_id,
+        campaign_id,
+        to_day,
+        from_day=from_day,
+        to_day=to_day,
+    )
+    # Map id → day + pnl (single query)
+    lo, hi = _window_day_bounds(to_day, from_day=from_day, to_day=to_day)
+    sql_pnl = """SELECT id, DATE(exec_at) AS d, pnl_amount
+                 FROM member_trade_log_trades
+                 WHERE identity_id = %s AND practice_campaign_id = %s
+                   AND DATE(exec_at) <= %s"""
+    args_pnl: list[Any] = [identity_id, campaign_id, hi]
+    if lo:
+        sql_pnl += " AND DATE(exec_at) >= %s"
+        args_pnl.append(lo)
+    sql_pnl += " ORDER BY exec_at ASC, id ASC"
+    cur.execute(sql_pnl, tuple(args_pnl))
+    pnl_by_id: dict[int, float | None] = {}
+    day_by_id: dict[int, str] = {}
+    for r in cur.fetchall() or []:
+        tid = int(r["id"])
+        d = r.get("d")
+        day_by_id[tid] = str(d)[:10] if d is not None else ""
+        if r.get("pnl_amount") is not None:
+            try:
+                pnl_by_id[tid] = float(r["pnl_amount"])
+            except (TypeError, ValueError):
+                pnl_by_id[tid] = None
         else:
-            state = "in_range" if ext >= 0.999 else "out_of_range"
+            pnl_by_id[tid] = None
+
+    events: list[dict] = []
+    for t in trades:
+        tid = int(t["id"])
+        day = day_by_id.get(tid) or ""
+        if not day and t.get("exec_at") is not None:
+            ea = t["exec_at"]
+            day = (
+                ea.date().isoformat()
+                if hasattr(ea, "date")
+                else str(ea)[:10]
+            )
+        if not day:
+            continue
+        ev: dict[str, Any] = {"d": day}
+        pnl = pnl_by_id.get(tid)
+        if pnl is not None:
+            ev["pnl"] = round(pnl, 4)
+        r2r = entry_r2r(t)
+        if r2r is not None and r2r == r2r and r2r > 0:
+            ev["r2r"] = round(float(r2r), 4)
+        # Skip empty shells (no pnl and no r2r)
+        if "pnl" not in ev and "r2r" not in ev:
+            continue
+        events.append(ev)
+
+    cur.execute(
+        """SELECT amended_at, field FROM member_practice_campaign_amendments
+           WHERE identity_id = %s AND campaign_id = %s
+           ORDER BY amended_at ASC""",
+        (identity_id, campaign_id),
+    )
+    markers = []
+    for am in cur.fetchall() or []:
+        at = am.get("amended_at")
+        markers.append(
+            {
+                "at": _iso(at)[:10] if at is not None else None,
+                "field": am.get("field"),
+            }
+        )
+
+    return {
+        "campaign_id": campaign_id,
+        "kind": "series",
+        "t0": t0,
+        "present": present,
+        "window_from": from_day,
+        "window_to": to_day,
+        "starting_capital": resolve_starting_capital(row.get("starting_capital")),
+        "axes_meta": axes_meta,
+        "events": events,
+        "amendment_markers": markers,
+        "event_count": len(events),
+    }
+
+
+def journey_shape_at(
+    cur,
+    identity_id: int,
+    campaign_id: int,
+    *,
+    as_of: str | None = None,
+) -> dict:
+    """
+    Campaign Journey shape DTO — Six Controls axes (Panel v1).
+
+    Ledger → 404. Charters always get six house axes (no empty-invitation mainline).
+    Prefer ``journey_series`` + client derive for scrubbing.
+    """
+    from campaign_panel import PANEL_ATTRIBUTES, build_panel, ensure_six_controls
+
+    row = _campaign_row(cur, identity_id, campaign_id)
+    if bool(int(row.get("is_ledger") or 0)):
+        raise PracticeSpineError(
+            404, "Ledger has no Campaign Journey shape (furniture, not charter)"
+        )
+    ensure_six_controls(cur, identity_id, campaign_id)
+
+    t0, present = _campaign_t0_present(cur, identity_id, campaign_id, row)
+    as_of_day = (as_of or present)[:10]
+
+    panel = build_panel(
+        cur, identity_id, campaign_id, as_of=as_of_day, can_edit=False
+    )
+    # Stable six-axis order
+    by_attr = {c["attribute"]: c for c in panel["controls"]}
+    axes = []
+    for attr in PANEL_ATTRIBUTES:
+        c = by_attr.get(attr)
+        if not c:
+            continue
         axes.append(
             {
-                "bound_id": b["id"],
-                "role": role,
+                "bound_id": c["bound_id"],
+                "role": "boundary",
                 "attribute": attr,
-                "range_low": lo,
-                "range_high": hi,
-                "reading": reading,
-                "extension": round(ext, 4),
-                "state": state,
-                "n_floor": n_floor,
-                "n": sample_n,
+                "label": c.get("label"),
+                "range_low": c.get("range_low"),
+                "range_high": c.get("range_high"),
+                "reading": c.get("reading"),
+                "extension": c.get("extension"),
+                "state": c.get("state"),
+                "n_floor": c.get("n_floor"),
+                "n": c.get("n"),
             }
         )
 
@@ -2179,7 +2601,7 @@ def journey_shape_at(
         "as_of": as_of_day,
         "axes": axes,
         "amendment_markers": markers,
-        "sample_n": sample_n,
+        "sample_n": panel.get("sample_n") or 0,
         "message": None,
     }
 
@@ -2194,11 +2616,11 @@ def witness_process_bounds_at_fill(
     underliers: list[str] | None = None,
 ) -> list[dict]:
     """
-    Boundary-role process clauses at fill time (Spec §7a / B2-1).
+    Boundary-role process clauses at fill time (Spec §7 / B2-1).
 
     Returns quiet variance notes — never raises to block the fill.
     Goal-role rows are ignored (never variance).
-    Trading window: fill outside campaign starts_at/ends_at is variance (not 422).
+    Trading window is membership law (L4), not variance — do not note here.
     """
     notes: list[dict] = []
     cur.execute(
@@ -2209,34 +2631,6 @@ def witness_process_bounds_at_fill(
     camp = cur.fetchone()
     if not camp or bool(int(camp.get("is_ledger") or 0)):
         return notes
-
-    # Term window from campaign dates (always process boundary)
-    if exec_at is not None:
-        day = exec_at.date() if hasattr(exec_at, "date") else None
-        if day is not None:
-            sa, ea = camp.get("starts_at"), camp.get("ends_at")
-            if sa is not None:
-                start_d = sa.date() if hasattr(sa, "date") else sa
-                if day < start_d:
-                    notes.append(
-                        {
-                            "attribute": "trading_window",
-                            "role": "boundary",
-                            "state": "variance",
-                            "detail": f"fill day {day.isoformat()} before starts_at",
-                        }
-                    )
-            if ea is not None:
-                end_d = ea.date() if hasattr(ea, "date") else ea
-                if day > end_d:
-                    notes.append(
-                        {
-                            "attribute": "trading_window",
-                            "role": "boundary",
-                            "state": "variance",
-                            "detail": f"fill day {day.isoformat()} after ends_at",
-                        }
-                    )
 
     bounds = list_bounds(cur, identity_id, campaign_id)
     und = {u.upper() for u in (underliers or []) if u}

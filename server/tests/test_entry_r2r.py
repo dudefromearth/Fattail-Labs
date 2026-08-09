@@ -41,8 +41,8 @@ def _open_fly(*, debit: float, width: float = 10.0, center: float = 560.0) -> di
     }
 
 
-def test_debit_fly_r2r_is_potential_over_risk():
-    # width 10, debit 1 → potential 9 → R2R = 9
+def test_debit_fly_r2r_is_width_minus_risk_over_risk():
+    # width 10, debit 1 → risk 1, max_potential = 10−1 = 9 → R2R = 9
     t = _open_fly(debit=1.0, width=10.0)
     r = entry_r2r(t)
     assert r is not None
@@ -50,11 +50,15 @@ def test_debit_fly_r2r_is_potential_over_risk():
 
 
 def test_debit_fly_high_r2r_near_ten():
-    # debit 0.91 on 10-wide → potential 9.09 → R2R ≈ 9.99
+    # debit 0.91 on 10-wide → risk 0.91, max_potential 9.09 → R2R ≈ 9.99
     t = _open_fly(debit=0.91, width=10.0)
     r = entry_r2r(t)
     assert r is not None
     assert 9.5 < r < 10.5
+    # Explicit Coach formula
+    risk = 0.91
+    width = 10.0
+    assert abs(r - (width - risk) / risk) < 1e-9
 
 
 def test_close_fill_has_no_entry_r2r():
@@ -64,8 +68,8 @@ def test_close_fill_has_no_entry_r2r():
     assert entry_r2r(t) is None
 
 
-def test_credit_vertical_r2r():
-    # width 5, credit 1 → risk 4, potential 1 → R2R = 0.25
+def test_credit_vertical_r2r_width_minus_risk_over_risk():
+    # width 5, credit 1 → risk = 5−1 = 4, max_potential = 5−4 = 1 → R2R = 0.25
     t = {
         "strategy": "VERTICAL",
         "net_price": 1.0,
@@ -92,6 +96,18 @@ def test_credit_vertical_r2r():
     r = entry_r2r(t)
     assert r is not None
     assert abs(r - 0.25) < 1e-9
+    risk = 4.0
+    width = 5.0
+    assert abs(r - (width - risk) / risk) < 1e-9
+
+
+def test_r2r_is_not_outcome_win_rate():
+    """Structural R2R ignores realized P&L / win rate entirely."""
+    t = _open_fly(debit=1.0, width=10.0)
+    t["pnl_amount"] = -999.0  # big loser outcome must not change entry R2R
+    r = entry_r2r(t)
+    assert r is not None
+    assert abs(r - 9.0) < 1e-9
 
 
 def test_average_entry_r2r():

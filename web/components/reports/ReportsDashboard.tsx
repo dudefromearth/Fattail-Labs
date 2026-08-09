@@ -59,6 +59,8 @@ export default function ReportsDashboard() {
     accountId,
     accountLabel,
     accounts,
+    campaignId,
+    campaignLabel,
     rangeFromYmd,
     rangeToYmd,
     dateFilterActive,
@@ -82,10 +84,10 @@ export default function ReportsDashboard() {
     setCapital(loadStartingCapital(50000));
   }, []);
 
-  // New account scope → allow empty-period recover again
+  // New account/campaign scope → allow empty-period recover again
   useEffect(() => {
     setEmptyPeriodRecovered(false);
-  }, [accountId]);
+  }, [accountId, campaignId]);
 
   const loadBook = useCallback(async () => {
     // Do not fetch until Practice Context prefs are final — prevents equity flash
@@ -102,6 +104,7 @@ export default function ReportsDashboard() {
         startingCapital: capital,
         fromDay: dateFilterActive ? rangeFromYmd : undefined,
         toDay: dateFilterActive ? rangeToYmd : undefined,
+        practiceCampaignId: campaignId,
       });
       if (!res.ok) {
         setState(res.error.kind === "err" ? "err" : res.error.kind);
@@ -121,6 +124,7 @@ export default function ReportsDashboard() {
           const fullRes = await fetchReportsBook({
             accountId,
             startingCapital: capital,
+            practiceCampaignId: campaignId,
           });
           if (fullRes.ok) {
             setFullBookEndBalance(fullRes.data.end_balance);
@@ -161,6 +165,7 @@ export default function ReportsDashboard() {
     }
   }, [
     accountId,
+    campaignId,
     accounts,
     capital,
     rangeFromYmd,

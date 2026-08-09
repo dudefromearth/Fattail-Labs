@@ -11,6 +11,70 @@ from trade_log_domain.pnl import enrich_trades_with_synthetic_pnl, realized_pnl
 from trade_log_domain.structure import average_entry_r2r, trade_is_close_fill
 
 
+# Same default as Reports / analytics_reports_book when capital not set.
+DEFAULT_STARTING_CAPITAL = 50_000.0
+
+
+def max_drawdown_fraction(
+    pnls: list[float],
+    starting_capital: float,
+) -> float:
+    """Max drawdown as a **negative fraction of peak running capital**.
+
+    Trade Log / Coach law — running capital, not bare P&L and not start-only:
+
+      running_capital[t] = starting_capital + sum(P&L up to t)
+      peak[t]            = max(running_capital[0..t])   # high-water mark
+      drawdown[t]        = (running_capital[t] − peak[t]) / peak[t]
+      max_drawdown       = min_t drawdown[t]            # most negative fraction
+
+    Example: capital 1000, +100 then −50 → running 1100 then 1050;
+    peak 1100; max DD = −50/1100 ≈ −4.55% of peak running capital.
+
+    If peak never becomes positive, returns 0.0 (no definable %).
+    """
+    cap = float(starting_capital) if starting_capital is not None else 0.0
+    if cap < 0:
+        cap = 0.0
+    running = cap
+    peak = cap
+    max_dd = 0.0
+    for p in pnls:
+        running += float(p)
+        peak = max(peak, running)
+        if peak > 0:
+            max_dd = min(max_dd, (running - peak) / peak)
+    return max_dd
+
+
+def max_drawdown_pct_magnitude(
+    pnls: list[float],
+    starting_capital: float,
+) -> float | None:
+    """Panel / display: max drawdown as **positive percent of peak running capital**.
+
+    e.g. 4.55 means 4.55% off the peak of running capital (matches Reports
+    ``abs(max_drawdown_pct) * 100``).
+    """
+    if not pnls:
+        return None
+    frac = max_drawdown_fraction(pnls, starting_capital)
+    return abs(frac) * 100.0
+
+
+def resolve_starting_capital(raw: Any, *, default: float = DEFAULT_STARTING_CAPITAL) -> float:
+    """Campaign or Reports capital basis for the running-capital equity curve."""
+    if raw is None or raw == "":
+        return float(default)
+    try:
+        v = float(raw)
+    except (TypeError, ValueError):
+        return float(default)
+    if v <= 0:
+        return float(default)
+    return v
+
+
 def build_reports_book(
     trades: list[dict[str, Any]],
     accounts: list[dict[str, Any]],
@@ -45,8 +109,10 @@ def build_reports_book(
         key=lambda t: (t.get("exec_at") or "", int(t.get("id") or 0)),
     )
 
+    # Running capital path: start → + each realized P&L (same as series equity).
+    cap = float(starting_capital)
     cum = 0.0
-    peak = float(starting_capital)
+    peak = cap
     max_dd_pct = 0.0
     pnls: list[float] = []
     gross_profit = 0.0
@@ -73,9 +139,9 @@ def build_reports_book(
     series: list[dict[str, Any]] = [
         {
             "t": first_day or "start",
-            "equity": float(starting_capital),
+            "equity": cap,
             "drawdown_pct": 0.0,
-            "peak": float(starting_capital),
+            "peak": cap,
             "trade_index": 0,
         }
     ]
@@ -98,8 +164,10 @@ def build_reports_book(
                 gross_loss += -pnl
                 largest_loss = min(largest_loss, pnl)
         trade_index += 1
-        equity = float(starting_capital) + cum
+        # running capital at this fill
+        equity = cap + cum
         peak = max(peak, equity)
+        # % drawdown on running capital = distance below peak / peak
         dd_pct = (equity - peak) / peak if peak > 0 else 0.0
         max_dd_pct = min(max_dd_pct, dd_pct)
         series.append(
@@ -112,6 +180,10 @@ def build_reports_book(
                 "trade_id": int(t["id"]),
             }
         )
+
+    # Scalar must match series-derived max (shared helper = single source of truth)
+    if pnls:
+        max_dd_pct = max_drawdown_fraction(pnls, cap)
 
     end_balance = float(starting_capital) + cum
     net_profit = cum

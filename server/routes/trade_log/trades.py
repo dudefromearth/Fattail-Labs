@@ -290,13 +290,14 @@ async def create_trade(request: Request) -> dict:
                     if practice_campaign_id not in (None, "")
                     else None
                 )
-                # Law 2/3 — every trade stamps; memory pre-answers
+                # L2/L3/L4/L5 — every trade stamps; window eligibility at fill
                 camp_id, stamped_by = psd.resolve_trade_campaign_id(
                     cur,
                     iid,
                     int(account_id),
                     practice_campaign_id=camp_raw,
                     update_memory=True,
+                    exec_at=exec_at,
                 )
                 psd.assert_playbook_owned(cur, iid, pb_id)
             except Exception as exc:
@@ -429,21 +430,44 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
                     if body.get("playbook_entry_id") not in (None, "")
                     else None
                 )
+            stamped_by = row.get("stamped_by")
             if "practice_campaign_id" in body:
-                camp_id = (
+                camp_raw = (
                     int(body["practice_campaign_id"])
                     if body.get("practice_campaign_id") not in (None, "")
                     else None
                 )
+                try:
+                    import practice_spine_domain as psd
+
+                    camp_id, stamped_by = psd.resolve_trade_campaign_id(
+                        cur,
+                        iid,
+                        int(account_id),
+                        practice_campaign_id=camp_raw,
+                        update_memory=True,
+                        exec_at=exec_at,
+                    )
+                except Exception as exc:
+                    from practice_spine_domain import PracticeSpineError
+
+                    if isinstance(exc, PracticeSpineError):
+                        raise HTTPException(
+                            status_code=exc.code, detail=exc.detail
+                        ) from exc
+                    raise
+            elif body.get("exec_at") is not None and camp_id is not None:
+                # D1-3: fill-time edit re-eval — out-of-window stamp stays until
+                # member redirects; never auto-move (quiet surface only).
+                pass
             try:
                 import practice_spine_domain as psd
 
                 psd.assert_playbook_owned(
                     cur, iid, int(pb_id) if pb_id is not None else None
                 )
-                psd.assert_campaign_owned(
-                    cur, iid, int(camp_id) if camp_id is not None else None
-                )
+                if camp_id is not None:
+                    psd.assert_campaign_owned(cur, iid, int(camp_id))
             except Exception as exc:
                 from practice_spine_domain import PracticeSpineError
 
@@ -455,7 +479,8 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
                        order_type=%s, net_price=%s, net_side=%s,
                        setup_md=%s, plan_md=%s, rules_md=%s, adherence=%s,
                        deviation_md=%s, lesson_md=%s, pnl_amount=%s,
-                       playbook_entry_id=%s, practice_campaign_id=%s
+                       playbook_entry_id=%s, practice_campaign_id=%s,
+                       stamped_by=%s
                    WHERE id=%s AND identity_id=%s""",
                 (
                     account_id,
@@ -474,6 +499,7 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
                     proc["pnl_amount"],
                     pb_id,
                     camp_id,
+                    stamped_by,
                     trade_id,
                     iid,
                 ),

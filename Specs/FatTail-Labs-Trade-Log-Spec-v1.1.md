@@ -1,10 +1,10 @@
 # FatTail Labs — Trade Log Spec v1.1
 
-**Status:** AS-BUILT (v1.1 + harden appendix + **manual management**) — product surface live  
-**Date:** 2026-07-28 · **As-built notes:** 2026-07-29 · **Manual management:** 2026-08-05  
+**Status:** AS-BUILT (v1.1 + harden appendix + **manual management** + **§17 campaign badge**) — product surface live  
+**Date:** 2026-07-28 · **As-built notes:** 2026-07-29 · **Manual management:** 2026-08-05 · **Campaign registry/badge:** 2026-08-09  
 **Route:** `/app/trade-log`  
 **Family:** B (member-private) · **Entitlement:** Observer trial / Navigator Practice gate (DL-193)  
-**Execution:** [`agents/p-trade-log/`](../agents/p-trade-log/) · harden [`agents/p-practice-harden/`](../agents/p-practice-harden/)  
+**Execution:** [`agents/p-trade-log/`](../agents/p-trade-log/) · harden [`agents/p-practice-harden/`](../agents/p-practice-harden/) · campaign chrome co-owned with [`agents/p-campaign-structured-practice/`](../agents/p-campaign-structured-practice/)  
 **Design architecture:** [`Architecture/15-trade-log-manual-management.md`](../Architecture/15-trade-log-manual-management.md)
 
 **Parents:**
@@ -12,9 +12,10 @@
 - [`FatTail-Labs-Member-Data-Privacy-Spec-v0.1.md`](./FatTail-Labs-Member-Data-Privacy-Spec-v0.1.md) — isolation, consent, aggregates
 - [`FatTail-Labs-Human-Interface-Spec-v1.0.md`](./FatTail-Labs-Human-Interface-Spec-v1.0.md) — HIG density, stay-put  
 
-**Sibling apps (integration contracts in §10):**
+**Sibling apps (integration contracts in §10 · campaign badge in §17):**
 - **Journal** — calendar-day process log (Application Framework T-D3); domain Spec TBD
 - **Reports** — multi-account **totals and charts** over Trade Log (and later Journal); product name replaces Statistics / interim “Records”; route `/app/reports`; domain Spec TBD
+- **Practice Campaign** — [Member Campaign Spec v1.3](./FatTail-Labs-Member-Campaign-Spec-v1_3.md) owns the **campaign registry** and stamp rules; Trade Log is a **passive host** for badge chrome only (§17)
 
 **Supersedes for product shape:** Trade Log MVP (migration `027_trade_log.sql` + form-first UI). Process fields retained; multi-leg multi-account model replaces storage and shell.
 
@@ -67,13 +68,14 @@ This Spec is implemented **only** through the FatTail Labs Agent Bench
 
 The Trade Log is the member’s **options-first trade blotter**: a permanent **log table** of strategy fills (multi-leg, ToS-style). The member **never leaves the log** for entry or detail — create/edit/import/account management use a **right slide-out**. Accounts are scoped to a **broker or sim** (max **10 active**). Data is portable via a **canonical document** and **platform adapters**.
 
-Compatible with **Journal** and **Reports** without merging UIs or stores in v1.1:
+Compatible with **Journal**, **Reports**, and **Practice Campaign** without merging UIs or stores in v1.1:
 
 | App | Owns | Trade Log relationship |
 |-----|------|------------------------|
-| **Trade Log** | Fills, legs, accounts, positions projection | Source of trade structure + optional process fields per trade |
+| **Trade Log** | Fills, legs, accounts, positions projection | Source of trade structure + optional process fields per trade; **hosts** campaign badge chrome (§17) |
 | **Journal** | Day / session narrative on a calendar | May **link** to trades; shared process vocabulary |
-| **Reports** | Totals, rollups, and **charts** across **all** (or selected) accounts | **Consumes** Trade Log via private aggregate APIs — never a second fill store; this is where the book is **totaled and charted** |
+| **Reports** | Totals, rollups, and **charts** across **all** (or selected) accounts | **Consumes** Trade Log via private aggregate APIs — never a second fill store; this is where the book is **totaled and charted**; **no campaign scoreboard chrome** (DL-257) |
+| **Practice Campaign** | Campaign **registry**, window eligibility, panel/radar, memory | Trade Log **reads** registry for dispense + chip label; stores only stamp ids on trades |
 
 ---
 
@@ -183,10 +185,15 @@ Template mismatch: keep label + warn (do not force CUSTOM).
 | `journal_entry_id` | Optional link to Journal (nullable until Journal ships) |
 | `external_adapter`, `external_order_id` | Import idempotency |
 | `entry_source` | **Provenance — three channels (never conflated).** See table below. Migrations `081`–`082`. |
+| `practice_campaign_id` | **Campaign badge stamp** — FK into the campaign registry (§17). Required on every create path (server resolve to ledger if omitted). Permanent wear until explicit redirect. |
+| `stamped_by` | Badge provenance: `member` \| `memory` \| `migration` \| `import` (Campaign Spec L2/L3). Chip tiering only — never conduct. |
+| `playbook_entry_id` | Optional link to Playbook scrapbook entry (Own spine); independent of campaign stamp |
 | `trash_reason` | Optional chip code when product records a trash intent (column reserved; hard-delete still removes the row) |
 | `created_at`, `updated_at` | Audit line on sheet |
 
 **Adherence:** `followed` \| `partial` \| `broke` \| `unknown` (shared with Journal).
+
+**Campaign stamp (summary):** See **§17**. Trade Log does not define campaigns; it stores the stamp and displays the badge.
 
 #### `entry_source` catalog (locked)
 
@@ -239,6 +246,7 @@ member_trade_log_import_batches
 | Exec time | First row of block | same |
 | Strategy | Catalog + source chip when not manual: **Import** (sky) · **Automated** (violet) | STOCK / FUTURE / CRYPTO |
 | Status | **Open** · **Complete** · **Orphan close** badge | same |
+| Campaign | **One campaign chip** per trade (first leg row) — title from registry; tap filters (§17) | same stamp |
 | Side | per leg | per leg |
 | Qty · effect | `+1 TO OPEN` | qty + effect or BUY/SELL |
 | Symbol | underlier | ticker / root / pair |
@@ -716,10 +724,103 @@ explicit confirm. Domain FIFO still pairs one open to one close by structure key
 
 ---
 
-## 17. Version history
+## 17. Campaign registry & badge (passive participant)
+
+**Authority split:** [Member Campaign Spec v1.3](./FatTail-Labs-Member-Campaign-Spec-v1_3.md) §2.1 (registry) + §9 (boundary) is product law for campaigns. **This section is the Trade Log host contract** — what the blotter and sheet must do. Campaign spine owns eligibility math, memory, panel, and lifecycle. Trade Log **never invents** campaigns, windows, or panel readings.
+
+### 17.1 Intent
+
+When a campaign is created (or a ledger is provisioned), it is **registered** in the campaign registry (`member_practice_campaigns`). Trade Log positions/trades use that registry to:
+
+1. **Dispense** badges — show which campaigns a fill may join at `exec_at`.  
+2. **Wear** badges — store the chosen campaign on the trade **forever**.  
+3. **Display** badges — one chip per blotter row, resolved from the registry by stamp id.
+
+Trade Log remains the system of record for **fills, accounts, times**. Campaign membership is **interpretation** layered on those facts.
+
+### 17.2 Registry (read-only to Trade Log)
+
+Trade Log does **not** own a parallel badge table. It **mounts** the registry via practice APIs:
+
+| API (indicative) | Use |
+|------------------|-----|
+| `GET /api/me/practice/campaigns` | Library / filter options / chip title map |
+| `GET /api/me/practice/campaigns/eligible?account_id=&exec_at=` | Sheet **dispense list** (L4 window + ledger) |
+| Campaign create/lifecycle | Outside Trade Log UI (Practice Campaign surfaces) |
+
+**Registry metadata the Trade Log cares about for chrome:**
+
+| Field | Trade Log use |
+|-------|----------------|
+| `id` | Stamp value (`practice_campaign_id`) |
+| `title` | Chip label (live lookup; rename renames chips) |
+| `starts_at`, `ends_at` | Eligibility for **new** stamps only (via eligible API) |
+| `status` | Terminal seasons drop out of dispense list; chips on old trades remain |
+| `is_ledger` / `is_default` | Ledger always offerable; quieter chip tier when worn via memory/ledger |
+| `account_id` | Ledger bound to book; charters unbound (any account’s fills may wear) |
+
+### 17.3 Stamp on the trade (forever wear)
+
+| Column | Law |
+|--------|-----|
+| `practice_campaign_id` | Required after resolve. **One campaign per trade** (L6). Legs inherit parent; no per-leg stamp. |
+| `stamped_by` | `member` (explicit pick) · `memory` (L3 prefill / silent ledger fallback) · `migration` · `import` |
+
+**Forever:** ending, archiving, or window-closing a campaign does **not** clear stamps on existing trades. History keeps its badges. Only **redirect** (explicit change of `practice_campaign_id`) moves membership — a move, never a share, never a silent peel.
+
+**Unit of wear:** the **trade** row. Product language may say “position wears the badge”; structure-matched open/close pairs may share narrative, but each fill row carries its own stamp field (typically same campaign via memory).
+
+### 17.4 Surfaces (Trade Log only)
+
+| Surface | Behavior |
+|---------|----------|
+| **Trade sheet — Campaign select** | Prefill by memory when eligible; else ledger. Options = eligible registry rows for `account_id` + `exec_at`. Empty selection → server resolve (never unstamped). |
+| **Blotter — one chip** | Title from registry; optional provenance tier in tooltip/tone (`stamped_by`). **No variance / conduct color** on the chip. |
+| **Chip tap** | Sets the **one** blotter campaign filter (same system as toolbar filter). |
+| **Filter** | Named campaign = exact stamp match. Ledger/default filter may mean “full book” for that account (analytics honesty — stamp filter docs in Practice Context). |
+| **Direct to campaign…** | Sheet/detail redirect → eligibility picker; PATCH stamp + memory update. |
+| **Fill-time edit** | Re-evaluate eligibility for *choices*; out-of-window **existing** stamp → quiet surface, **never auto-move**. |
+| **Import** | Unchosen → account ledger; explicit target must pass eligibility; memory not updated by import (Campaign Spec §11). |
+| **Reports** | No campaign P&L hero. Optional Practice Context stamp scope only (DL-257). |
+
+### 17.5 Non-goals (Trade Log campaign chrome)
+
+- Owning campaign create/edit lifecycle, panel, or radar  
+- A second badge definition store  
+- Denormalized campaign title on the trade (v1: live registry lookup)  
+- Per-leg stamping  
+- Conduct / variance styling on blotter chips  
+- Auto-stripping badges when a season ends  
+- Blocking fill save with 4xx for bound breach (umpire — witness lives on campaign path)
+
+### 17.6 Acceptance (badge host)
+
+1. Create a charter in Practice → it appears on the sheet dispense list when fill time is inside its window.  
+2. Every saved trade has `practice_campaign_id` set (ledger if no deliberate pick).  
+3. Blotter shows **one** campaign chip per trade; tap filters; no variance color on chip.  
+4. End / complete campaign → chip **remains** on historical trades; season no longer offered for **new** fills after `ends_at` / terminal (ledger still offered).  
+5. Redirect moves stamp; no dual membership.  
+6. Charters with `account_id` NULL accept stamps from any of the member’s accounts.  
+7. `stamped_by` distinguishes member vs memory for chip tiering.  
+8. Reports do not grow campaign scoreboard chrome.
+
+### 17.7 Client / server touchpoints (as-built indicative)
+
+| Path | Role |
+|------|------|
+| `server/practice_spine_domain.py` | Registry, eligibility, resolve stamp, memory |
+| `server/routes/trade_log/trades.py` | Resolve on create/patch; never leave unstamped |
+| `web/components/trade-log/TradeSheet.tsx` | Eligible picker mount |
+| `web/components/trade-log/TradeLogTable.tsx` | Chip + filter |
+| `web/lib/practiceSpineApi.ts` | `fetchCampaigns` / `fetchEligibleCampaigns` |
+
+---
+
+## 18. Version history
 
 | Version | Notes |
 |---------|--------|
+| **v1.1 + §17** | Campaign registry & badge passive-participant amend; forever wear; dispense list; chip host. Companion: Member Campaign Spec v1.3 §2.1 / §9 (2026-08-09) |
 | **v1.1 + A-2 retire** | Account **retire = archive** permanence; soft open-campaign gate (A-2a); unstamped not a gate (A-2b); show-retired (A-7); no auto-campaign on Primary (A-3). Concept: Member Campaign Spec §4.9 (2026-08-08) |
 | **v1.1 + §16.1** | `entry_source`: **manual · import · automated** (Strategy Lab ≠ import); UI chips (2026-08-05) |
 | **v1.1 + §16** | Manual management: structure entry, close/trash, match gates, entry_source, blotter open strip (2026-08-05) |
@@ -729,4 +830,4 @@ explicit confirm. Domain FIFO still pairs one open to one close by structure key
 
 ---
 
-*Where this Spec conflicts with MVP code, this document wins after Coach approval for build. Until then, production may continue to run MVP behavior.*
+*Where this Spec conflicts with MVP code, this document wins after Coach approval for build. Until then, production may continue to run MVP behavior. Campaign badge law: Campaign Spec v1.3 wins on registry/eligibility; this Spec wins on blotter host chrome.*

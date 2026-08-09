@@ -73,6 +73,8 @@ export type Trade = {
   external_adapter?: string | null;
   playbook_entry_id?: number | null;
   practice_campaign_id?: number | null;
+  /** member | memory | null — stamp provenance (Spec §9 badge tier). */
+  stamped_by?: string | null;
 };
 
 /** Normalize API/legacy values for display and policy. */

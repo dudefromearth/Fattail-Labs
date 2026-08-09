@@ -12,8 +12,10 @@ import export_domain as ex
 import member_privacy as privacy
 import playbook_scrapbook_domain as pbs
 import practice_spine_domain as psd
-from guards import require_session
+from guards import require_admin, require_session
 from routes.trade_log.common import _storage_identity_id
+import campaign_panel as cpanel
+import auth
 
 router = APIRouter(tags=["practice-spine"])
 
@@ -657,6 +659,36 @@ def get_active_campaign(
     return {"active": active, "actives": actives}
 
 
+@router.get("/api/me/practice/campaigns/eligible")
+def list_eligible_campaigns(
+    request: Request,
+    account_id: int,
+    exec_at: str | None = None,
+) -> dict:
+    """L4 picker — ledger + window-covering charters for this fill time.
+
+    account_id required (ledger is per-book). exec_at defaults to now.
+    """
+    claims = require_session(request)
+    try:
+        aid = int(account_id)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(
+            status_code=422, detail="account_id must be an integer"
+        ) from exc
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                when = psd._parse_dt(exec_at) if exec_at else psd._utcnow()
+                camps = psd.list_eligible_campaigns_for_fill(
+                    cur, iid, aid, exec_at=when
+                )
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return {"campaigns": camps, "exec_at": exec_at}
+
+
 @router.post("/api/me/practice/campaigns")
 async def create_campaign(request: Request) -> dict:
     claims = require_session(request)
@@ -725,13 +757,33 @@ def list_campaign_amendments(campaign_id: int, request: Request) -> dict:
     return {"amendments": amendments}
 
 
+@router.get("/api/me/practice/campaigns/{campaign_id}/journey-series")
+def get_campaign_journey_series(campaign_id: int, request: Request) -> dict:
+    """One-shot scrub series — events + axis meta. Client derives shape in memory.
+
+    Prefer this over repeated journey-shape?as_of= while dragging the slider.
+    """
+    claims = require_session(request)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                series = psd.journey_series(cur, iid, campaign_id)
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    return {"series": series}
+
+
 @router.get("/api/me/practice/campaigns/{campaign_id}/journey-shape")
 def get_campaign_journey_shape(
     campaign_id: int,
     request: Request,
     as_of: str | None = Query(None, description="YYYY-MM-DD scrub day"),
 ) -> dict:
-    """Campaign Journey shape-at-T (Spec §6a). Ledger → 404. Not Journey scores."""
+    """Campaign Journey shape-at-T — six house axes. Ledger → 404.
+
+    For interactive scrub, use journey-series (one fetch) instead.
+    """
     claims = require_session(request)
     try:
         with db.transaction() as conn:
@@ -745,68 +797,46 @@ def get_campaign_journey_shape(
     return {"shape": shape}
 
 
-@router.get("/api/me/practice/campaigns/{campaign_id}/bounds")
-def list_campaign_bounds(campaign_id: int, request: Request) -> dict:
-    """Charter bounds (Two Roles). Ledger returns empty list if queried."""
+@router.get("/api/me/practice/campaigns/{campaign_id}/panel")
+def get_campaign_panel(
+    campaign_id: int,
+    request: Request,
+    as_of: str | None = Query(None),
+) -> dict:
+    """Campaign Panel v1 — Six Controls blood-work report. Ledger → 404."""
     claims = require_session(request)
+    can_edit = auth.role_at_least(str(claims.get("role") or ""), "administrator")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
                 iid = _iid(cur, claims)
-                bounds = psd.list_bounds(cur, iid, campaign_id)
-    except psd.PracticeSpineError as e:
-        _raise(e)
-    return {"bounds": bounds}
-
-
-@router.post("/api/me/practice/campaigns/{campaign_id}/bounds")
-async def create_campaign_bound(campaign_id: int, request: Request) -> dict:
-    """Create a bound on a charter. Goals cannot be is_critical (422)."""
-    claims = require_session(request)
-    body = await request.json()
-    if not isinstance(body, dict):
-        body = {}
-    try:
-        with db.transaction() as conn:
-            with conn.cursor() as cur:
-                iid = _iid(cur, claims)
-                bound = psd.create_bound(
+                panel = cpanel.build_panel(
                     cur,
                     iid,
                     campaign_id,
-                    role=str(body.get("role") or "boundary"),
-                    attribute=str(body.get("attribute") or ""),
-                    range_low=body.get("range_low"),
-                    range_high=body.get("range_high"),
-                    unit=body.get("unit"),
-                    basis=body.get("basis"),
-                    window_kind=body.get("window_kind"),
-                    is_critical=bool(body.get("is_critical")),
-                    n_floor=body.get("n_floor"),
+                    as_of=as_of,
+                    can_edit=can_edit,
                 )
     except psd.PracticeSpineError as e:
         _raise(e)
-    return {"bound": bound}
+    return {"panel": panel}
 
 
-@router.patch("/api/me/practice/campaigns/{campaign_id}/bounds/{bound_id}")
-async def patch_campaign_bound(
-    campaign_id: int, bound_id: int, request: Request
+@router.patch("/api/me/practice/campaigns/{campaign_id}/panel/{attribute}")
+async def patch_campaign_panel_control(
+    campaign_id: int, attribute: str, request: Request
 ) -> dict:
-    claims = require_session(request)
+    """Admin-only dial: acceptable + display domain for one of the six controls."""
+    claims = require_admin(request)
     body = await request.json()
     if not isinstance(body, dict):
         body = {}
     kwargs: dict = {}
     for key in (
-        "role",
-        "attribute",
         "range_low",
         "range_high",
-        "unit",
-        "basis",
-        "window_kind",
-        "is_critical",
+        "display_low",
+        "display_high",
         "n_floor",
     ):
         if key in body:
@@ -815,25 +845,30 @@ async def patch_campaign_bound(
         with db.transaction() as conn:
             with conn.cursor() as cur:
                 iid = _iid(cur, claims)
-                bound = psd.patch_bound(cur, iid, campaign_id, bound_id, **kwargs)
+                panel = cpanel.patch_control(
+                    cur, iid, campaign_id, attribute, **kwargs
+                )
     except psd.PracticeSpineError as e:
         _raise(e)
-    return {"bound": bound}
+    return {"panel": panel}
 
 
-@router.delete("/api/me/practice/campaigns/{campaign_id}/bounds/{bound_id}")
-def delete_campaign_bound(
-    campaign_id: int, bound_id: int, request: Request
-) -> dict:
+@router.get("/api/me/practice/campaigns/{campaign_id}/bounds")
+def list_campaign_bounds(campaign_id: int, request: Request) -> dict:
+    """List bounds (includes house six after ensure). Prefer /panel for UI."""
     claims = require_session(request)
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
                 iid = _iid(cur, claims)
-                psd.delete_bound(cur, iid, campaign_id, bound_id)
+                try:
+                    cpanel.ensure_six_controls(cur, iid, campaign_id)
+                except psd.PracticeSpineError:
+                    pass
+                bounds = psd.list_bounds(cur, iid, campaign_id)
     except psd.PracticeSpineError as e:
         _raise(e)
-    return {"ok": True, "deleted_id": bound_id}
+    return {"bounds": bounds}
 
 
 @router.post("/api/me/practice/campaigns/{campaign_id}/renew")

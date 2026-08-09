@@ -69,11 +69,14 @@ def analytics_reports_book(
     starting_capital: float = 50000.0,
     from_day: str | None = None,
     to_day: str | None = None,
+    practice_campaign_id: int | None = None,
 ) -> dict:
     """Reports home: equity series, drawdown, stats (domain build_reports_book).
 
     Optional from_day/to_day (YYYY-MM-DD) adopt Practice Context date as the
     analysis window (Practice Context Spec v0.2 §0.1 / open #6).
+    Optional practice_campaign_id scopes to stamps on that campaign (ledger =
+    full account book via stamp filter elsewhere — here exact stamp match).
     """
     claims = require_session(request)
     _require_tool_member(claims)
@@ -92,6 +95,23 @@ def analytics_reports_book(
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
             trades, accounts = _load_member_book(cur, iid, account_id)
+            # Ledger stamp filter: ledger id means full account book (no extra filter)
+            camp_is_ledger = False
+            if practice_campaign_id is not None:
+                cur.execute(
+                    """SELECT is_ledger FROM member_practice_campaigns
+                       WHERE id = %s AND identity_id = %s""",
+                    (int(practice_campaign_id), iid),
+                )
+                crow = cur.fetchone()
+                camp_is_ledger = bool(crow and int(crow.get("is_ledger") or 0))
+    if practice_campaign_id is not None and not camp_is_ledger:
+        cid = int(practice_campaign_id)
+        trades = [
+            t
+            for t in trades
+            if int(t.get("practice_campaign_id") or 0) == cid
+        ]
     if from_day or to_day:
         lo = (from_day or "0000-01-01")[:10]
         hi = (to_day or "9999-12-31")[:10]

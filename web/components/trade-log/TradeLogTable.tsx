@@ -167,6 +167,7 @@ export default function TradeLogTable({
     title: string;
     is_default?: boolean;
     is_ledger?: boolean;
+    account_id?: number | null;
   }[];
   /** "" = All campaigns; "unaffiliated" = no playbook; number = linked playbook */
   playbookFilter?: number | "" | "unaffiliated";
@@ -187,6 +188,13 @@ export default function TradeLogTable({
     return new Set(unmatched.map((t) => t.id));
   }, [filterOpenOnly, trades, unmatched]);
   const visible = trades;
+  const campaignTitleById = useMemo(() => {
+    const m = new Map<number, { title: string; is_ledger?: boolean }>();
+    for (const c of campaignOptions || []) {
+      m.set(c.id, { title: c.title, is_ledger: c.is_ledger || c.is_default });
+    }
+    return m;
+  }, [campaignOptions]);
 
   const empty = !filterOpenOnly && trades.length === 0;
   const emptyFilter = filterOpenOnly && trades.length === 0;
@@ -442,6 +450,40 @@ export default function TradeLogTable({
                                 >
                                   {entrySourceLabel(src)}
                                 </span>
+                              );
+                            })()}
+                            {(() => {
+                              // Spec §9 — one campaign badge chip; no variance color
+                              const cid = trade.practice_campaign_id;
+                              if (cid == null || cid <= 0) return null;
+                              const meta = campaignTitleById.get(cid);
+                              const label = meta?.title
+                                ? meta.title.length > 18
+                                  ? `${meta.title.slice(0, 16)}…`
+                                  : meta.title
+                                : `#${cid}`;
+                              const by = trade.stamped_by;
+                              const tier =
+                                by === "member"
+                                  ? "Directed"
+                                  : by === "memory"
+                                    ? "Memory"
+                                    : meta?.is_ledger
+                                      ? "Ledger"
+                                      : "Campaign";
+                              return (
+                                <button
+                                  type="button"
+                                  data-testid="blotter-campaign-badge"
+                                  className="max-w-[9rem] truncate rounded-full border border-white/25 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-white/95 hover:bg-white/20"
+                                  title={`${tier}: ${meta?.title || `Campaign ${cid}`} — tap to filter`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onCampaignFilter?.(cid);
+                                  }}
+                                >
+                                  {label}
+                                </button>
                               );
                             })()}
                           </span>

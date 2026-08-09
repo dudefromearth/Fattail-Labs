@@ -20,6 +20,10 @@ import {
 } from "react";
 import type { Account } from "@/lib/tradeLog";
 import { fetchAccounts } from "@/lib/tradeLogApi";
+import {
+  fetchCampaigns,
+  type PracticeCampaign,
+} from "@/lib/practiceSpineApi";
 
 /**
  * Standing home for Practice: prefer the active account with the most trades,
@@ -97,9 +101,28 @@ const GRANULARITIES: DateGranularity[] = [
 
 type StoredPrefs = {
   accountId: AccountScope;
+  /** Practice campaign id for suite chrome (ledger = default book). */
+  campaignId: number | null;
   dateYmd: string;
   granularity: DateGranularity;
 };
+
+/** Default campaign for an account: ledger (first-trade book), else is_default. */
+export function pickDefaultCampaignId(
+  campaigns: PracticeCampaign[],
+  accountId: AccountScope,
+): number | null {
+  if (accountId === "all") return null;
+  const forAcct = campaigns.filter(
+    (c) => c.account_id == null || c.account_id === accountId,
+  );
+  if (!forAcct.length) return null;
+  const ledger = forAcct.find((c) => c.is_ledger);
+  if (ledger) return ledger.id;
+  const def = forAcct.find((c) => c.is_default);
+  if (def) return def.id;
+  return forAcct[0]?.id ?? null;
+}
 
 function storageKey(identityId: number): string {
   return `${STORAGE_PREFIX}:${identityId}`;
@@ -129,6 +152,7 @@ function loadPrefs(identityId: number | null): StoredPrefs {
   const fallback: StoredPrefs = {
     // Concrete account is applied after accounts load (pickDefaultAccountId).
     accountId: "all",
+    campaignId: null,
     dateYmd: ymd(startOfDay(new Date())),
     // Full book by default — multi-year imports must not hide behind "this month".
     granularity: "all",
@@ -146,6 +170,9 @@ function loadPrefs(identityId: number | null): StoredPrefs {
       const n = Number(parsed.accountId);
       accountId = Number.isFinite(n) && n > 0 ? n : "all";
     }
+    const cn = Number(parsed.campaignId);
+    const campaignId =
+      Number.isFinite(cn) && cn > 0 ? cn : null;
     const g = parsed.granularity;
     const granularity: DateGranularity =
       g && (GRANULARITIES as string[]).includes(g) ? g : "all";
@@ -153,7 +180,7 @@ function loadPrefs(identityId: number | null): StoredPrefs {
       parseYmd(parsed.dateYmd) != null
         ? (parsed.dateYmd as string)
         : fallback.dateYmd;
-    return { accountId, dateYmd, granularity };
+    return { accountId, campaignId, dateYmd, granularity };
   } catch {
     return fallback;
   }
@@ -177,6 +204,8 @@ export function rememberPracticeAccountId(accountId: number): void {
     savePrefs(iid, {
       ...prev,
       accountId,
+      // Campaign re-resolved on next hydrate for the new account
+      campaignId: null,
     });
   });
 }
@@ -231,6 +260,13 @@ export type PracticeContextValue = {
   prefsReady: boolean;
   accountId: AccountScope;
   setAccountId: (id: AccountScope) => void;
+  /** Active Practice campaign (ledger = default continuous book). */
+  campaignId: number | null;
+  setCampaignId: (id: number | null) => void;
+  campaigns: PracticeCampaign[];
+  /** Campaigns for the current account (ledger first). */
+  selectableCampaigns: PracticeCampaign[];
+  campaignLabel: string;
   selectedDate: Date;
   setSelectedDate: (d: Date) => void;
   granularity: DateGranularity;
@@ -272,6 +308,8 @@ async function fetchSessionIdentityId(): Promise<number | null> {
 export function PracticeContextProvider({ children }: { children: ReactNode }) {
   const [identityId, setIdentityId] = useState<number | null>(null);
   const [accountId, setAccountIdState] = useState<AccountScope>("all");
+  const [campaignId, setCampaignIdState] = useState<number | null>(null);
+  const [campaigns, setCampaigns] = useState<PracticeCampaign[]>([]);
   const [selectedDate, setSelectedDateState] = useState<Date>(() =>
     startOfDay(new Date()),
   );
@@ -280,6 +318,10 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountsReady, setAccountsReady] = useState(false);
+  /** Pref campaign id until campaigns list loads (then resolved). */
+  const [pendingCampaignId, setPendingCampaignId] = useState<number | null>(
+    null,
+  );
 
   // Resolve session + accounts, then apply prefs **once** before consumers fetch.
   // Order matters: first paint must NOT fetch until this finishes.
@@ -306,6 +348,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       let account = resolveAccountPref(prefs.accountId, accts);
       let gran = prefs.granularity;
       let dateYmd = prefs.dateYmd;
+      let campPref = prefs.campaignId;
 
       // One-time: leave forced "All accounts" home — default is named account (Primary).
       try {
@@ -315,6 +358,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
           if (iid != null) {
             savePrefs(iid, {
               accountId: account,
+              campaignId: campPref,
               dateYmd,
               granularity: gran,
             });
@@ -328,6 +372,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
           if (iid != null) {
             savePrefs(iid, {
               accountId: account,
+              campaignId: campPref,
               dateYmd,
               granularity: gran,
             });
@@ -360,6 +405,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       }
 
       setAccountIdState(account);
+      setPendingCampaignId(campPref);
       setSelectedDateState(parseYmd(dateYmd) ?? startOfDay(new Date()));
       setGranularityState(gran);
       setHydrated(true);
@@ -369,15 +415,57 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Load campaigns whenever account suite is ready (list ensures ledgers).
+  useEffect(() => {
+    if (!hydrated) return;
+    let cancelled = false;
+    void fetchCampaigns()
+      .then((d) => {
+        if (cancelled) return;
+        setCampaigns(d.campaigns || []);
+      })
+      .catch(() => {
+        if (!cancelled) setCampaigns([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, accountId]);
+
+  // Resolve campaign for account: keep valid pref, else ledger / default.
+  useEffect(() => {
+    if (!hydrated || !campaigns.length) return;
+    if (accountId === "all") {
+      setCampaignIdState(null);
+      return;
+    }
+    const forAcct = campaigns.filter(
+      (c) => c.account_id == null || c.account_id === accountId,
+    );
+    const preferred =
+      (pendingCampaignId != null &&
+        forAcct.some((c) => c.id === pendingCampaignId) &&
+        pendingCampaignId) ||
+      (campaignId != null &&
+        forAcct.some((c) => c.id === campaignId) &&
+        campaignId) ||
+      pickDefaultCampaignId(campaigns, accountId);
+    if (preferred !== campaignId) {
+      setCampaignIdState(preferred);
+    }
+    if (pendingCampaignId != null) setPendingCampaignId(null);
+  }, [hydrated, campaigns, accountId, campaignId, pendingCampaignId]);
+
   // Persist prefs under this identity only.
   useEffect(() => {
     if (!hydrated) return;
     savePrefs(identityId, {
       accountId,
+      campaignId,
       dateYmd: ymd(selectedDate),
       granularity,
     });
-  }, [accountId, selectedDate, granularity, identityId, hydrated]);
+  }, [accountId, campaignId, selectedDate, granularity, identityId, hydrated]);
 
   const refreshAccounts = useCallback(() => {
     fetchAccounts()
@@ -425,6 +513,14 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
 
   const setAccountId = useCallback((id: AccountScope) => {
     setAccountIdState(id);
+    // Force re-pick of default campaign (ledger) for the new account
+    setPendingCampaignId(null);
+    setCampaignIdState(null);
+  }, []);
+
+  const setCampaignId = useCallback((id: number | null) => {
+    setCampaignIdState(id);
+    setPendingCampaignId(id);
   }, []);
 
   const setSelectedDate = useCallback((d: Date) => {
@@ -470,6 +566,29 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
     return a.label;
   }, [accountId, accounts]);
 
+  const selectableCampaigns = useMemo(() => {
+    if (accountId === "all") return campaigns;
+    const scoped = campaigns.filter(
+      (c) => c.account_id == null || c.account_id === accountId,
+    );
+    // Ledger first (default continuous book), then active charters, then rest
+    return scoped.slice().sort((a, b) => {
+      if (a.is_ledger && !b.is_ledger) return -1;
+      if (b.is_ledger && !a.is_ledger) return 1;
+      if (a.status === "active" && b.status !== "active") return -1;
+      if (b.status === "active" && a.status !== "active") return 1;
+      return (a.title || "").localeCompare(b.title || "");
+    });
+  }, [campaigns, accountId]);
+
+  const campaignLabel = useMemo(() => {
+    if (campaignId == null) return "All campaigns";
+    const c = campaigns.find((x) => x.id === campaignId);
+    if (!c) return "Campaign";
+    if (c.is_ledger) return `${c.title} · default`;
+    return c.title;
+  }, [campaignId, campaigns]);
+
   const accountIdParam = accountId === "all" ? null : accountId;
 
   const shiftPeriod = useCallback(
@@ -509,6 +628,11 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       prefsReady: hydrated,
       accountId,
       setAccountId,
+      campaignId,
+      setCampaignId,
+      campaigns,
+      selectableCampaigns,
+      campaignLabel,
       selectedDate,
       setSelectedDate,
       granularity,
@@ -534,6 +658,11 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       hydrated,
       accountId,
       setAccountId,
+      campaignId,
+      setCampaignId,
+      campaigns,
+      selectableCampaigns,
+      campaignLabel,
       selectedDate,
       setSelectedDate,
       granularity,

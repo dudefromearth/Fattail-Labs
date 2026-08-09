@@ -3,10 +3,10 @@
 
 **Author:** Claude (advisor layer) — from Coach direction, 2026-08-08 (afternoon session)
 **Status:** Coach-ratified model narrative (advisor source). **Formal product/architecture authority:**  
-[`Specs/FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.1.md`](../Specs/FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.1.md)  
-(v1.1 restores **Two Roles** — boundary / goal — per [`docs/Delta-Handoff-Goal-Role-Restoration-and-Bench-Findings.md`](./Delta-Handoff-Goal-Role-Restoration-and-Bench-Findings.md).)  
-This docs note remains the narrative; the Spec is implementation/surgery authority. Supersedes specific sections of the Member Campaign Concept Spec v1.0 (enumerated in Spec §12 / here §9).  
-**Full agent bench plan:** [`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md`](./Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md)
+[`FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.1.md`](./FatTail-Labs-Member-Campaign-Structured-Practice-Spec-v1.1.md)  
+(v1.1 restores **Two Roles** — boundary / goal — per [`docs/Delta-Handoff-Goal-Role-Restoration-and-Bench-Findings.md`](../docs/Delta-Handoff-Goal-Role-Restoration-and-Bench-Findings.md).)  
+This note remains the narrative; the Spec is implementation/surgery authority. Supersedes specific sections of the Member Campaign Concept Spec v1.0 (enumerated in Spec §12 / here §9).  
+**Full agent bench plan:** [`docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md`](../docs/Campaign-Structured-Practice-Full-Agent-Bench-Plan-v1.1.md)
 **Scale of change:** This is a **model inversion**, not a patch. The campaign moves from *optional structure over an unstructured stream* to *the structure practice is born into*. Every trade lives in a campaign from the first fill. Optionality moves up one level: members are no longer free to have no campaign; they are free to never think about campaigns.
 
 ---

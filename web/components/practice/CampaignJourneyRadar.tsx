@@ -1,15 +1,19 @@
 "use client";
 
 /**
- * Campaign Journey — charter radar + T0→present scrub (Spec §6a).
- * Shared *pattern* with Journey J2 (slider ↔ chart); separate data plane.
+ * Campaign Journey — charter radar at present (Spec §6a).
+ * Time scrub removed — shape is always as-of now.
  * Big shape = faithful (alignment/progress), never raw magnitude.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  fetchCampaignJourneyShape,
+  deriveShapeAt,
+  type JourneySeries,
+} from "@/lib/campaignJourneySeries";
+import {
+  fetchCampaignJourneySeries,
   type JourneyShape,
   type JourneyShapeAxis,
 } from "@/lib/practiceSpineApi";
@@ -35,21 +39,6 @@ function stateLabel(state: string, role: string): string {
     default:
       return role === "goal" ? "progress" : state;
   }
-}
-
-function ymdToMs(ymd: string): number {
-  const [y, m, d] = ymd.split("-").map(Number);
-  return new Date(y, (m || 1) - 1, d || 1).getTime();
-}
-
-function daysBetween(a: string, b: string): number {
-  return Math.max(0, Math.round((ymdToMs(b) - ymdToMs(a)) / 86400000));
-}
-
-function addDaysYmd(ymd: string, n: number): string {
-  const t = ymdToMs(ymd) + n * 86400000;
-  const d = new Date(t);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function Spider({
@@ -188,52 +177,35 @@ export default function CampaignJourneyRadar({
   campaignId: number;
   isLedger?: boolean;
 }) {
-  const [shape, setShape] = useState<JourneyShape | null>(null);
+  const [series, setSeries] = useState<JourneySeries | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [scrubDay, setScrubDay] = useState<string | null>(null);
 
-  const load = useCallback(
-    async (asOf?: string | null) => {
-      if (isLedger) return;
-      setLoading(true);
-      setError(null);
-      try {
-        const s = await fetchCampaignJourneyShape(campaignId, asOf);
-        setShape(s);
-        if (!asOf && s.as_of) setScrubDay(s.as_of);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not load journey shape");
-        setShape(null);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [campaignId, isLedger],
-  );
+  const load = useCallback(async () => {
+    if (isLedger) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const s = await fetchCampaignJourneySeries(campaignId);
+      setSeries(s);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load journey shape");
+      setSeries(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [campaignId, isLedger]);
 
   useEffect(() => {
-    void load(null);
+    void load();
   }, [load]);
 
-  const t0 = shape?.t0 || null;
-  const present = shape?.present || null;
-  const spanDays = useMemo(() => {
-    if (!t0 || !present) return 0;
-    return daysBetween(t0, present);
-  }, [t0, present]);
-
-  const scrubIndex = useMemo(() => {
-    if (!t0 || !scrubDay) return spanDays;
-    return Math.min(spanDays, Math.max(0, daysBetween(t0, scrubDay)));
-  }, [t0, scrubDay, spanDays]);
-
-  function onScrub(idx: number) {
-    if (!t0) return;
-    const day = addDaysYmd(t0, idx);
-    setScrubDay(day);
-    void load(day);
-  }
+  const shape: JourneyShape | null = useMemo(() => {
+    if (!series) return null;
+    const asOf = (series.present || series.window_to || "").slice(0, 10);
+    if (!asOf) return null;
+    return deriveShapeAt(series, asOf);
+  }, [series]);
 
   if (isLedger) return null;
 
@@ -309,27 +281,6 @@ export default function CampaignJourneyRadar({
             ))}
           </ul>
         </>
-      )}
-
-      {t0 && present && spanDays >= 0 && shape?.kind === "shape" && (
-        <div className="mt-4" data-testid="campaign-journey-scrub">
-          <div className="mb-1 flex justify-between text-[10px] uppercase tracking-wide text-[var(--color-label-tertiary)]">
-            <span>T0 {t0}</span>
-            <span>Present {present}</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={Math.max(1, spanDays)}
-            value={scrubIndex}
-            onChange={(e) => onScrub(Number(e.target.value))}
-            className="w-full accent-[var(--color-tint)]"
-            aria-label="Scrub campaign journey from start to present"
-          />
-          <p className="mt-1 text-center text-xs tabular-nums text-[var(--color-label-secondary)]">
-            {scrubDay || present}
-          </p>
-        </div>
       )}
 
       {shape?.amendment_markers && shape.amendment_markers.length > 0 && (

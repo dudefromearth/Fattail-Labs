@@ -318,6 +318,30 @@ def test_equity_series_and_drawdown():
     assert abs(book["max_drawdown_pct"] - (-50.0 / 1100.0)) < 1e-9
 
 
+def test_max_drawdown_fraction_matches_reports_book():
+    """% drawdown on running capital (capital + cum P&L), peak high-water."""
+    from trade_log_domain.reports import (
+        max_drawdown_fraction,
+        max_drawdown_pct_magnitude,
+        resolve_starting_capital,
+    )
+
+    pnls = [100.0, -50.0]
+    # running: 1000 → 1100 → 1050; peak 1100; DD = −50/1100
+    frac = max_drawdown_fraction(pnls, 1000.0)
+    assert abs(frac - (-50.0 / 1100.0)) < 1e-9
+    mag = max_drawdown_pct_magnitude(pnls, 1000.0)
+    assert mag is not None
+    assert abs(mag - (50.0 / 1100.0) * 100.0) < 1e-9
+    # Loss from start capital: running 1000 → 950; DD = 5% of peak (1000)
+    assert abs(max_drawdown_fraction([-50.0], 1000.0) - (-50.0 / 1000.0)) < 1e-9
+    assert abs(max_drawdown_pct_magnitude([-50.0], 1000.0) - 5.0) < 1e-9
+    # Unset capital → Reports default $50k
+    assert resolve_starting_capital(None) == 50_000.0
+    assert resolve_starting_capital(0) == 50_000.0
+    assert resolve_starting_capital(250_000) == 250_000.0
+
+
 def test_seed_row_adapters_feed_domain_enrich():
     """PH1-4: seed_reports_demo_pnl adapters produce domain-compatible trades."""
     from seed_reports_demo_pnl import _leg_dict, _trade_dict

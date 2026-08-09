@@ -505,6 +505,21 @@ export async function fetchCampaigns(opts?: {
   return parse(r);
 }
 
+/** L4 picker — ledger + window-covering charters for this fill time. */
+export async function fetchEligibleCampaigns(opts: {
+  accountId: number;
+  execAt?: string | null;
+}): Promise<{ campaigns: PracticeCampaign[]; exec_at?: string | null }> {
+  const q = new URLSearchParams();
+  q.set("account_id", String(opts.accountId));
+  if (opts.execAt) q.set("exec_at", opts.execAt);
+  const r = await fetch(
+    `/api/me/practice/campaigns/eligible?${q.toString()}`,
+    { credentials: "same-origin" },
+  );
+  return parse(r);
+}
+
 export async function fetchCampaign(id: number): Promise<PracticeCampaign> {
   const r = await fetch(`/api/me/practice/campaigns/${id}`, {
     credentials: "same-origin",
@@ -609,66 +624,79 @@ export async function renewCampaign(
   return d.campaign;
 }
 
-/** Charter bound (Two Roles) — Spec Structured Practice §5.2 */
-export type CampaignBound = {
-  id: number;
-  campaign_id: number;
-  role: "boundary" | "goal" | string;
+/** Campaign Panel v1 — Six Controls (docs/Campaign-Panel-v1-The-Six-Controls.md) */
+export type PanelControl = {
+  bound_id: number;
   attribute: string;
-  unit?: string | null;
-  basis?: string | null;
-  window_kind?: string | null;
+  label: string;
+  role: string;
   range_low?: number | null;
   range_high?: number | null;
-  is_critical?: boolean;
+  display_low?: number | null;
+  display_high?: number | null;
   n_floor?: number | null;
-  export_key?: string | null;
+  n?: number;
+  reading?: number | null;
+  extension?: number | null;
+  state: string;
+  unit?: string | null;
 };
 
-export async function fetchCampaignBounds(
+export type PanelResponse = {
+  campaign_id: number;
+  as_of?: string | null;
+  /** Inclusive trade-day floor from campaign starts_at (null = no floor). */
+  window_from?: string | null;
+  /** Inclusive trade-day ceiling: min(as_of, ends_at). */
+  window_to?: string | null;
+  sample_n?: number;
+  can_edit?: boolean;
+  controls: PanelControl[];
+};
+
+export async function fetchCampaignPanel(
   campaignId: number,
-): Promise<CampaignBound[]> {
+  asOf?: string | null,
+): Promise<PanelResponse> {
+  const qs = asOf ? `?as_of=${encodeURIComponent(asOf.slice(0, 10))}` : "";
   const r = await fetch(
-    `/api/me/practice/campaigns/${campaignId}/bounds`,
+    `/api/me/practice/campaigns/${campaignId}/panel${qs}`,
     { credentials: "same-origin" },
   );
-  const d = await parse<{ bounds: CampaignBound[] }>(r);
-  return d.bounds || [];
+  const d = await parse<{ panel: PanelResponse }>(r);
+  return d.panel;
 }
 
-export async function createCampaignBound(
+export async function patchCampaignPanelControl(
   campaignId: number,
-  body: Partial<CampaignBound> & { role: string; attribute: string },
-): Promise<CampaignBound> {
+  attribute: string,
+  body: {
+    range_low?: number | null;
+    range_high?: number | null;
+    display_low?: number | null;
+    display_high?: number | null;
+    n_floor?: number | null;
+  },
+): Promise<PanelResponse> {
   const r = await fetch(
-    `/api/me/practice/campaigns/${campaignId}/bounds`,
+    `/api/me/practice/campaigns/${campaignId}/panel/${encodeURIComponent(attribute)}`,
     {
-      method: "POST",
+      method: "PATCH",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     },
   );
-  const d = await parse<{ bound: CampaignBound }>(r);
-  return d.bound;
+  const d = await parse<{ panel: PanelResponse }>(r);
+  return d.panel;
 }
 
-export async function deleteCampaignBound(
-  campaignId: number,
-  boundId: number,
-): Promise<void> {
-  const r = await fetch(
-    `/api/me/practice/campaigns/${campaignId}/bounds/${boundId}`,
-    { method: "DELETE", credentials: "same-origin" },
-  );
-  await parse(r);
-}
-
-/** Campaign Journey shape-at-T (Spec §6a) — not Journey process scores */
+/** Campaign Journey shape-at-T — six house axes; not Journey process scores */
 export type JourneyShapeAxis = {
   bound_id: number;
   role: string;
   attribute: string;
+  label?: string;
   range_low?: number | null;
   range_high?: number | null;
   reading?: number | null;
@@ -701,4 +729,18 @@ export async function fetchCampaignJourneyShape(
   );
   const d = await parse<{ shape: JourneyShape }>(r);
   return d.shape;
+}
+
+/** One-shot scrub series — client derives shape/panel in memory (no per-tick fetch). */
+export async function fetchCampaignJourneySeries(
+  campaignId: number,
+): Promise<import("@/lib/campaignJourneySeries").JourneySeries> {
+  const r = await fetch(
+    `/api/me/practice/campaigns/${campaignId}/journey-series`,
+    { credentials: "same-origin" },
+  );
+  const d = await parse<{
+    series: import("@/lib/campaignJourneySeries").JourneySeries;
+  }>(r);
+  return d.series;
 }

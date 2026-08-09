@@ -167,15 +167,16 @@ def structure_wing_width(trade: dict[str, Any]) -> float | None:
 
 
 def entry_r2r(trade: dict[str, Any]) -> float | None:
-    """Entry-time R2R — not from how the trade ended.
+    """Entry-time structural R2R — not from how the trade ended / win rate.
 
-    Coach definition:
-      R2R = potential_profit / risk
-    where risk = maximum you must put up (debit paid, or width−credit on
-    a credit structure), and potential_profit = max theoretical profit at
-    open (wing_width − debit on debit structures; credit on credit structures).
+    Coach law (unified):
+      risk           = capital at risk at open
+                       (debit paid, or width − credit on a credit structure)
+      max_potential  = width − risk
+      R2R            = max_potential / risk
 
-    Example debit fly: width 10, debit 0.91 → potential 9.09 → R2R ≈ 10.0.
+    Debit fly example: width 10, debit 1 → risk 1, max potential 9 → R2R = 9.
+    Credit vertical: width 5, credit 1 → risk 4, max potential 1 → R2R = 0.25.
 
     Close fills return None. Undefined without net price or strike width.
     """
@@ -188,25 +189,21 @@ def entry_r2r(trade: dict[str, Any]) -> float | None:
     if width is None or width <= 0:
         return None
 
-    # Debit: risk = debit; potential = width − debit
+    # Debit: risk = debit paid
     if cash < 0:
         risk = abs(cash)
-        if risk <= 1e-12:
-            return None
-        potential = width - risk
-        if potential <= 1e-12:
-            return None
-        return potential / risk
+    # Credit: risk = width − credit (max loss)
+    elif cash > 0:
+        risk = width - cash
+    else:
+        return None
 
-    # Credit: risk = width − credit; potential = credit
-    if cash > 0:
-        credit = cash
-        risk = width - credit
-        if risk <= 1e-12 or credit <= 1e-12:
-            return None
-        return credit / risk
-
-    return None
+    if risk <= 1e-12:
+        return None
+    max_potential = width - risk
+    if max_potential <= 1e-12:
+        return None
+    return max_potential / risk
 
 
 def average_entry_r2r(trades: list[dict[str, Any]]) -> tuple[float | None, int]:

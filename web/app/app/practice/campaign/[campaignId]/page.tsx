@@ -11,8 +11,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
-import CampaignBoundsPanel from "@/components/practice/CampaignBoundsPanel";
-import CampaignJourneyRadar from "@/components/practice/CampaignJourneyRadar";
+import CampaignPanel from "@/components/practice/CampaignPanel";
 import { Button } from "@/components/ui";
 import {
   fetchCampaign,
@@ -457,21 +456,14 @@ export default function CampaignEditorPage() {
                   data-testid="campaign-ledger-notice"
                 >
                   This is the account <strong>ledger</strong> — furniture, not a
-                  signed charter. No bounds panel and no Campaign Journey radar.
-                  Open a member campaign for deliberate seasons.
+                  signed charter. No Campaign Panel and no radar. Open a member
+                  campaign for deliberate seasons.
                 </p>
               ) : (
-                <>
-                  <CampaignJourneyRadar
-                    campaignId={campaign.id}
-                    isLedger={false}
-                  />
-                  <CampaignBoundsPanel
-                    campaignId={campaign.id}
-                    isLedger={false}
-                    readOnly={!isOpen}
-                  />
-                </>
+                <CampaignPanel
+                  campaignId={campaign.id}
+                  isLedger={false}
+                />
               )}
 
               <div className="surface-card space-y-4 border border-[var(--color-separator)] p-4 sm:p-6">

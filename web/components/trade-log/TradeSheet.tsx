@@ -34,6 +34,7 @@ import TagPicker from "@/components/tags/TagPicker";
 import TradeChart from "@/components/trade-log/TradeChart";
 import {
   fetchCampaigns,
+  fetchEligibleCampaigns,
   fetchPlaybookEntries,
   type PlaybookEntry,
   type PracticeCampaign,
@@ -358,37 +359,54 @@ export default function TradeSheet({
     mode === "close" ||
     (mode === "edit" && trade && isManualEntry(trade));
 
-  /** Load campaign picker options for account scope (Member Campaign Spec §4.7). */
+  /**
+   * L4 picker — only window-covering campaigns + ledger for this fill.
+   * Spec v1.3: membership law; zero extra keystrokes on happy path.
+   */
   async function loadCampaignChoices(
     accountId: number | null | undefined,
     opts: {
       prefillCreate: boolean;
       keepCampaignId?: number | null;
+      execAt?: string | null;
     },
   ) {
     try {
-      const camps = await fetchCampaigns(
-        accountId != null && accountId > 0 ? { accountId } : undefined,
-      );
-      const actives =
-        camps.actives && camps.actives.length > 0
-          ? camps.actives
-          : camps.active
-            ? [camps.active]
-            : [];
-      let choices = [...actives];
+      const aid = accountId != null && accountId > 0 ? accountId : null;
+      let choices: PracticeCampaign[] = [];
+      if (aid != null) {
+        const eligible = await fetchEligibleCampaigns({
+          accountId: aid,
+          execAt: opts.execAt || undefined,
+        });
+        choices = eligible.campaigns || [];
+      } else {
+        const camps = await fetchCampaigns();
+        const actives =
+          camps.actives && camps.actives.length > 0
+            ? camps.actives
+            : camps.active
+              ? [camps.active]
+              : [];
+        choices = [...actives];
+      }
       const keep = opts.keepCampaignId;
       if (keep != null && keep > 0 && !choices.some((c) => c.id === keep)) {
+        // Keep current stamp visible even if window-ineligible (edit re-eval;
+        // member must redirect deliberately — never auto-hide stamp).
+        const camps = await fetchCampaigns(
+          aid != null ? { accountId: aid } : undefined,
+        );
         const found = (camps.campaigns || []).find((c) => c.id === keep);
         if (found) choices = [...choices, found];
       }
       setCampaignChoices(choices);
       if (opts.prefillCreate) {
-        // Prefer account default campaign — unstamped fills live there.
         const book =
-          actives.find((c) => c.is_default) ||
-          (camps.campaigns || []).find((c) => c.is_default);
-        setPracticeCampaignId(book?.id ?? camps.active?.id ?? "");
+          choices.find((c) => c.is_ledger) ||
+          choices.find((c) => c.is_default) ||
+          choices[0];
+        setPracticeCampaignId(book?.id ?? "");
       }
     } catch {
       setCampaignChoices([]);
@@ -479,6 +497,13 @@ export default function TradeSheet({
         typeof f.account_id === "number" ? f.account_id : defaultAccountId ?? null;
     }
 
+    const execForPicker =
+      mode === "edit" && trade
+        ? trade.exec_at
+        : mode === "close" && trade
+          ? trade.exec_at
+          : undefined;
+
     void (async () => {
       try {
         const pb = await fetchPlaybookEntries(false);
@@ -496,10 +521,14 @@ export default function TradeSheet({
         await loadCampaignChoices(scopeAccountId, {
           prefillCreate: false,
           keepCampaignId: t.practice_campaign_id,
+          execAt: execForPicker,
         });
       } else if (mode === "create") {
         setPlaybookEntryId("");
-        await loadCampaignChoices(scopeAccountId, { prefillCreate: true });
+        await loadCampaignChoices(scopeAccountId, {
+          prefillCreate: true,
+          execAt: execForPicker,
+        });
       } else {
         // close mode — stamp not edited here, but show context if present
         setPlaybookEntryId("");
@@ -508,6 +537,7 @@ export default function TradeSheet({
           prefillCreate: false,
           keepCampaignId: (trade as Trade & { practice_campaign_id?: number | null })
             ?.practice_campaign_id,
+          execAt: execForPicker,
         });
       }
     })();
@@ -1306,7 +1336,10 @@ export default function TradeSheet({
                     if (mode === "create") {
                       void loadCampaignChoices(
                         next === "" ? null : next,
-                        { prefillCreate: true },
+                        {
+                          prefillCreate: true,
+                          execAt: form.exec_at || undefined,
+                        },
                       );
                     }
                   }}
@@ -1929,16 +1962,17 @@ export default function TradeSheet({
                         }
                         data-testid="trade-campaign-select"
                       >
-                        {/* Empty = server lands in account default campaign */}
-                        <option value="">Account default</option>
+                        {/* Empty = server memory / ledger resolve */}
+                        <option value="">Account default (ledger / memory)</option>
                         {campaignChoices.map((c) => (
                           <option key={c.id} value={String(c.id)}>
                             {c.title}
-                            {c.is_default ? " · default" : ""}
-                            {c.status === "active" && !c.is_default
+                            {c.is_ledger || c.is_default ? " · ledger" : ""}
+                            {c.status === "active" &&
+                            !c.is_ledger &&
+                            !c.is_default
                               ? " (active)"
                               : ""}
-                            {c.account_id == null ? " · any account" : ""}
                           </option>
                         ))}
                       </select>

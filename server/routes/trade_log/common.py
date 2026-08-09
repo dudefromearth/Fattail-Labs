@@ -242,6 +242,9 @@ def _trade_row(r: dict, legs: list[dict] | None = None) -> dict:
             if r.get("practice_campaign_id") is not None
             else None
         ),
+        "stamped_by": (
+            str(r["stamped_by"]) if r.get("stamped_by") not in (None, "") else None
+        ),
         "legs": legs if legs is not None else [],
         "created_at": r["created_at"].isoformat() if r.get("created_at") else None,
         "updated_at": r["updated_at"].isoformat() if r.get("updated_at") else None,
