@@ -14,7 +14,8 @@
 
 **Parents:** Journal Session v0.6 · Continuous Journaling · Positions View v0.2 (V8 valence) · Trade Log v1.1 · Practice Context · Arch 11 day-book / days-interest  
 **Guide:** `/guide` · **as-built only** (F1)  
-**Governance:** [`agents/bench/doctrine.md`](../agents/bench/doctrine.md) · first-principles · AGENTS.md
+**Governance:** [`agents/bench/doctrine.md`](../agents/bench/doctrine.md) · first-principles · AGENTS.md  
+**Claude plan review (2026-08-09):** **SOUND — approve-ready; zero blocking findings.** Two notes folded as normative (§1.4). Paint gate, L-table, T12, risk register affirmed.
 
 Specialists execute **only** via seeds. Coordination only through **Coach** or **Juliet**.  
 Delta gates: **PASS / FAIL / BLOCKED** with evidence — **never waived**.
@@ -89,6 +90,19 @@ Ship the Journal **Day Net Calendar / exposure map**:
 **JED-1 may start after W0-G.**  
 **JED-2 must not paint cells until E10–E12 (gradient exception + toggle + buckets) are coded and gated.**
 
+### 1.4 Claude plan-review notes (2026-08-09) — normative
+
+Zero blocking findings. Two underlines — structural, not optional:
+
+| ID | Note | Amendment |
+|----|------|-----------|
+| **C1** | **day_r2r aggregation is the only real technical risk.** Reports R is per *outcome*; a day with N outcomes has more than one defensible aggregate (mean of R-multiples · net-P&L / net-designed-risk · sample-weighted). | **W0-2 (Hotel) must state the aggregation rule in one explicit sentence** in the gate report — not only “matches Reports helper.” T-cases can green on any consistent formula while members compare a different mental model. JED-1-2 implements *that* sentence only. |
+| **C2** | **W0-4 Lima logs the valence carve-out at program lock** (before pixels). Correct under decision-log law (records decisions, not ships). | Lima entry wording: **“ratified for build”** (or equivalent) — **not “shipped.”** Ship/as-built language waits for Z-1 / Z-G. |
+
+**Paint gate (affirmed):** Charlie colors no cell until **both** JED-1-G and JED-1b-G pass — toggle exists before exposure; “chosen, never ambush” is a **dependency graph**, not copy. Echo may prototype on mock data; **no merge-to-main paint** without those gates (§6).
+
+**§10 GO-time words (Coach, four + GO):** toggle default ON · buckets $50/$250/$1k/$5k · R:R in-cell on desktop · JED-4 year in/deferred.
+
 ---
 
 ## 2. Full bench roster
@@ -119,7 +133,7 @@ Ship the Journal **Day Net Calendar / exposure map**:
 | **Kilo** | Co-agent on JED-1 · JED-1b · JED-2 · JED-3; phase Kilo packs; T1–T14 |
 | **Lima** | DL carve-out (Journal valence exception); Spec BUILD; Positions V8 cross-cite note |
 | **Tango** | Exposure copy (teach, don’t taunt); off-switch neutral; no chat money prompts |
-| **Hotel** | Day net = closed outcomes; R:R parity with Reports; red-at-designed-R:R ≠ failure |
+| **Hotel** | Day net = closed outcomes; **W0-2 day_r2r aggregation sentence (C1)**; R:R parity; red-at-designed-R:R ≠ failure |
 
 ### 2.4 Optional review only
 
@@ -186,11 +200,11 @@ Golf · content studio (Quebec/Bravo/November/Romeo/Papa) · Sierra (no SEO surf
 |------|-------|--------|
 | **W0-0** | Coach | GO on this bench plan + Spec v0.2; confirm toggle default ON (or flip) |
 | **W0-1** | India | Pin day_net formula; intensity_step constants; scope matrix §4.4; reuse vs new module path; prefs table keep/kill |
-| **W0-2** | Hotel | Confirm closed-outcome day bucketing + day_r2r = Reports helper (or document single new shared pure function) |
+| **W0-2** | Hotel | Confirm closed-outcome day bucketing. **C1:** write the **exact day_r2r aggregation rule** in one sentence (e.g. mean of per-outcome R-multiples on that ET day under scope · or net-P&L/net-designed-risk · or sample-weighted — **pick one**). Prefer reuse of a single shared pure function with Reports; if none exists, name the new helper. Gate fails if aggregation is left “TBD.” |
 | **W0-3** | Juliet | **Materialize cold-start seeds** under `agents/p-journal-day-net/seeds/` (this plan’s tables are the index) |
-| **W0-4** | Lima | Decision log: Journal valence carve-out + mental-toughness rationale; cross-cite Positions V8; Spec points to this plan |
+| **W0-4** | Lima | Decision log: Journal valence carve-out + mental-toughness rationale; cross-cite Positions V8; Spec points to this plan. **C2:** log as **ratified for build**, **not shipped**. |
 | **W0-5** | Tango | Copy ban list draft: no taunt; off-switch neutral; no notification money |
-| **W0-G** | **Delta** | Plan lock; seeds on disk (S4); L1–L10 written; Hotel/India formulas pinned; no paint seeds before W0-G |
+| **W0-G** | **Delta** | Plan lock; seeds on disk (S4); L1–L10 written; Hotel **aggregation sentence present (C1)**; Lima DL wording C2; no paint seeds before W0-G |
 
 **W0-G cold-start rule:** does **not** PASS until Juliet has materialized phase seeds (scope in/out, criteria, gate).
 
@@ -202,7 +216,7 @@ Golf · content studio (Quebec/Bravo/November/Romeo/Papa) · Sierra (no SEO surf
 |------|-------|--------|
 | **JED-1-0** | India · Alpha | Module boundary: e.g. `trade_log_domain` day buckets → `journal_day_net` or analytics extension; **no duplicate PnL** |
 | **JED-1-1** | Alpha · Mike | `GET /api/me/journal/day-net-calendar` (from/to, account, campaign, undirected); ET; Family B; tool member gate |
-| **JED-1-2** | Alpha · Hotel | `period.net` = Σ days; `intensity_step` from fixed buckets; `day_r2r` + sample_n |
+| **JED-1-2** | Alpha · Hotel | `period.net` = Σ days; `intensity_step` from fixed buckets; `day_r2r` + sample_n implementing **only** the W0-2 aggregation sentence (C1) |
 | **JED-1-3** | **Kilo** | Unit/API tests: T4–T7, T11–T12, empty≠zero, open+close structure, bucket stability |
 | **JED-1-G** | **Delta** | API 200 shapes; isolation; sum law; buckets; no declared_tone fields |
 
@@ -361,7 +375,8 @@ Confirm or flip:
 | Date | Note |
 |------|------|
 | 2026-08-09 | v1.0 — Full Agent Bench Plan from Spec v0.2 + Advisor JE + Coach exposure resolution |
+| 2026-08-09 | Claude plan review **SOUND** — §1.4 C1 (day_r2r aggregation sentence) · C2 (Lima “ratified for build”); paint gate affirmed; zero blockers |
 
 ---
 
-*Execution law for `p-journal-day-net`. Spec remains product authority; this plan is sequencing + seating + gates.*
+*Execution law for `p-journal-day-net`. Spec remains product authority; this plan is sequencing + seating + gates. Ready for Coach GO (§10 four words + GO) then W0.*
