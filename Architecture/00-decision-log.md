@@ -4,6 +4,34 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-09 — DL-273 Help concierge v1.2 — lean prompt + searchable reference library
+
+**Decision:** Change how the concierge gets its knowledge. Was: one static
+`help_concierge_kb.md` embedded whole in every Grok call (general-only → detailed course /
+area questions escalated, e.g. a real member asking "where are resources / what do I learn
+from each course / what do you recommend"). Now: a **lean system prompt** (identity + HARD
+guardrails + a compact `doc: section` **index**) plus a **reference library** the model
+searches on demand. Library = `server/help_reference/*.md` (`overview.md`; `app-areas.md` —
+one section per app area; `courses.md` — the 5 published courses distilled from their real
+descriptions + a recommended order), split on `## ` headings. Flow (`server/help_ai.py`):
+round 1 the model returns `{"action":"search","queries":[…]}` or `{"action":"answer",…}`; a
+search runs `_search()` (keyword scoring over the reference sections, heading-weighted,
+capped) and round 2 answers from the returned sections. **Max one search round** (cost).
+
+**Why it's still safe:** `_search` is **code-scoped to the reference folder** — the model
+can only ever read whitelisted member-facing content, never repo/db/infra/secrets, so the
+v1.0 whitelist invariant holds by construction ("search the database" can only hit the
+docs). Read-only + fail-open unchanged; **non-JSON model output now escalates** instead of
+being shown raw (safer). Answer contract `{reply,resolved,topic}` unchanged. May recommend a
+learning path; never personalised financial advice.
+
+**Verified:** `test_help_ai.py` rewritten (reference loads + searchable, index, guardrails,
+the search→answer loop, all failure paths escalate); 17/17 help tests pass. Live against
+Grok: the exact member question that escalated before now answers well (Resources location +
+course pointers + recommended order); course-detail, infra-probe, and prompt-injection cases
+all correct. **Server-only deploy: no migration, no web build** (ships `help_ai.py` +
+`help_reference/`, removes `help_concierge_kb.md`). Spec v1.2.
+
 ## 2026-08-09 — DL-272 Admin "Flow" — aggregate member journey (Sankey + drop-off)
 
 **Decision:** New admin view (`/admin/flow`, nav after Users) answering "where do
