@@ -229,13 +229,39 @@ export function fetchMarketUniverse(opts?: {
   return getJSON(`/api/me/market/universe${q}`);
 }
 
+/** Age (seconds) above which Positions header flags marks as stale (A6). */
+export const MARKS_STALE_UI_SECONDS = 5 * 60;
+
+export function marksAgeIsStale(
+  ageSeconds: number | null | undefined,
+  threshold = MARKS_STALE_UI_SECONDS,
+): boolean {
+  return ageSeconds != null && Number.isFinite(ageSeconds) && ageSeconds > threshold;
+}
+
+function formatAgeSeconds(age: number): string {
+  const h = Math.floor(age / 3600);
+  if (h >= 24) return `~${Math.floor(h / 24)}d ago`;
+  if (h >= 1) return `~${h}h ago`;
+  const m = Math.floor(age / 60);
+  if (m >= 1) return `~${m}m ago`;
+  return `~${Math.floor(age)}s ago`;
+}
+
+/**
+ * Header as-of with age honesty (A6). Never invent a live mid when age is huge —
+ * surface wall-clock as-of + relative age + Stale when over threshold.
+ */
 export function formatMarksAsOf(v: PositionsValuation | null | undefined): string {
   if (!v) return "Marks unavailable";
+  const age = v.marks_age_seconds;
+  const stale = marksAgeIsStale(age);
+  let base = "";
   if (v.marks_as_of) {
     try {
       const d = new Date(v.marks_as_of);
       if (!Number.isNaN(d.getTime())) {
-        return `Marks as of ${d.toLocaleString(undefined, {
+        base = `Marks as of ${d.toLocaleString(undefined, {
           weekday: "short",
           hour: "numeric",
           minute: "2-digit",
@@ -246,13 +272,17 @@ export function formatMarksAsOf(v: PositionsValuation | null | undefined): strin
     } catch {
       /* fall through */
     }
-    return `Marks as of ${v.marks_as_of}`;
+    if (!base) base = `Marks as of ${v.marks_as_of}`;
+  } else if (age != null) {
+    base = `Marks as of ${formatAgeSeconds(age)}`;
+  } else {
+    base = "Marks as of —";
   }
-  if (v.marks_age_seconds != null) {
-    const h = Math.floor(v.marks_age_seconds / 3600);
-    if (h >= 24) return `Marks as of ~${Math.floor(h / 24)}d ago`;
-    if (h >= 1) return `Marks as of ~${h}h ago`;
-    return `Marks as of ~${Math.floor(v.marks_age_seconds / 60)}m ago`;
+  if (age != null && v.marks_as_of) {
+    base = `${base} (${formatAgeSeconds(age)})`;
   }
-  return "Marks as of —";
+  if (stale) {
+    base = `${base} · Stale — not a live last`;
+  }
+  return base;
 }

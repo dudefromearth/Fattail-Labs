@@ -161,7 +161,13 @@ export function reportsBookFromServer(raw: ServerReportsBook): ReportsBook {
   const avgWin = raw.avg_win;
   const avgLoss = raw.avg_loss;
   const avgNet = pnls.length > 0 ? s.net_profit / pnls.length : 0;
-  const avgRisk = losers > 0 ? avgLoss : pnls.length > 0 ? Math.abs(avgNet) : 0;
+  // C9: only true average loss is "Avg Risk"; |avg net| when no losers is labeled honestly.
+  const avgRiskIsLossProxy = losers > 0;
+  const avgRisk = avgRiskIsLossProxy
+    ? avgLoss
+    : pnls.length > 0
+      ? Math.abs(avgNet)
+      : 0;
   // Entry-time R2R from server (potential ÷ risk at open). Never avg-win/avg-loss.
   const avgEntryR2r =
     raw.avg_entry_r2r != null && Number.isFinite(raw.avg_entry_r2r)
@@ -271,7 +277,9 @@ export function reportsBookFromServer(raw: ServerReportsBook): ReportsBook {
     },
     {
       key: "avgrisk",
-      label: "Avg Risk per trade",
+      label: avgRiskIsLossProxy
+        ? "Avg Risk per trade"
+        : "Avg |net| (no losers)",
       value: hasPnlData && avgRisk > 0 ? money(avgRisk) : "—",
       tone: "plain",
     },
@@ -407,7 +415,75 @@ export function accountPages(accounts: Account[]): AccountPage[] {
 }
 
 const CAPITAL_KEY = "ft_labs_reports_starting_capital";
+/** Per-scope what-if override (Hardening B1 — not a global $50k default). */
+const CAPITAL_OVERRIDE_PREFIX = "ft_labs_reports_starting_capital_v2:";
 
+/**
+ * Reports starting capital from account book(s), not browser-global $50k.
+ * Single account → that book's starting_balance when set.
+ * All accounts → sum of active books with a set starting_balance.
+ * Last resort only: 50_000 when nothing is configured.
+ */
+export function resolveReportsStartingCapital(
+  accounts: Account[],
+  accountId: number | "all" | null | undefined,
+  defaultCap = 50_000,
+): number {
+  if (accountId != null && accountId !== "all") {
+    const a = accounts.find((x) => x.id === accountId);
+    const bal = a?.starting_balance;
+    if (bal != null && Number.isFinite(Number(bal)) && Number(bal) > 0) {
+      return Number(bal);
+    }
+    return defaultCap;
+  }
+  const sum = accounts
+    .filter((a) => a.status === "active")
+    .reduce((s, a) => {
+      const bal = a.starting_balance;
+      if (bal != null && Number.isFinite(Number(bal)) && Number(bal) > 0) {
+        return s + Number(bal);
+      }
+      return s;
+    }, 0);
+  if (sum > 0) return sum;
+  return defaultCap;
+}
+
+function capitalOverrideKey(accountId: number | "all" | null | undefined): string {
+  if (accountId == null || accountId === "all") return `${CAPITAL_OVERRIDE_PREFIX}all`;
+  return `${CAPITAL_OVERRIDE_PREFIX}${accountId}`;
+}
+
+/** Optional per-account what-if override; null = use account starting_balance. */
+export function loadStartingCapitalOverride(
+  accountId: number | "all" | null | undefined,
+): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(capitalOverrideKey(accountId));
+    if (raw == null) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveStartingCapitalOverride(
+  accountId: number | "all" | null | undefined,
+  n: number,
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (!Number.isFinite(n) || n <= 0) return;
+    localStorage.setItem(capitalOverrideKey(accountId), String(n));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** @deprecated Prefer resolveReportsStartingCapital + per-account override. */
 export function loadStartingCapital(defaultCap = 50000): number {
   if (typeof window === "undefined") return defaultCap;
   try {
@@ -420,6 +496,7 @@ export function loadStartingCapital(defaultCap = 50000): number {
   }
 }
 
+/** @deprecated Prefer saveStartingCapitalOverride. */
 export function saveStartingCapital(n: number): void {
   if (typeof window === "undefined") return;
   try {

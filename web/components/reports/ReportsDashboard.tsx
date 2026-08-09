@@ -9,9 +9,10 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  loadStartingCapital,
+  loadStartingCapitalOverride,
   reportsBookFromServer,
-  saveStartingCapital,
+  resolveReportsStartingCapital,
+  saveStartingCapitalOverride,
   type ReportsBook,
 } from "@/lib/reportsBook";
 import { fetchReportsBook } from "@/lib/tradeLogApi";
@@ -80,9 +81,13 @@ export default function ReportsDashboard() {
   /** Avoid looping if all-time is also empty. */
   const [emptyPeriodRecovered, setEmptyPeriodRecovered] = useState(false);
 
+  // B1 — starting capital from account starting_balance (per-scope override optional)
   useEffect(() => {
-    setCapital(loadStartingCapital(50000));
-  }, []);
+    if (!prefsReady) return;
+    const base = resolveReportsStartingCapital(accounts, accountId);
+    const ov = loadStartingCapitalOverride(accountId);
+    setCapital(ov ?? base);
+  }, [prefsReady, accountId, accounts]);
 
   // New account/campaign scope → allow empty-period recover again
   useEffect(() => {
@@ -182,7 +187,7 @@ export default function ReportsDashboard() {
 
   function onCapital(n: number) {
     setCapital(n);
-    saveStartingCapital(n);
+    saveStartingCapitalOverride(accountId, n);
   }
 
   if (state === "loading" && !book) {
@@ -239,6 +244,28 @@ export default function ReportsDashboard() {
 
   return (
     <div className="mt-4 space-y-6" data-testid="reports-dashboard">
+      {/* D3 — one strip: cash vs marks vs reports equity languages */}
+      <p
+        className="text-[11px] leading-snug text-[var(--color-label-tertiary)]"
+        data-testid="reports-money-glossary"
+      >
+        <span className="font-medium text-[var(--color-label-secondary)]">
+          Money words:
+        </span>{" "}
+        <strong className="font-medium text-[var(--color-label-secondary)]">
+          Starting capital
+        </strong>{" "}
+        is this book&apos;s starting balance (Accounts &amp; Capital).{" "}
+        <strong className="font-medium text-[var(--color-label-secondary)]">
+          Balance / equity
+        </strong>{" "}
+        here is starting + closed outcomes (not live cash).{" "}
+        <strong className="font-medium text-[var(--color-label-secondary)]">
+          Positions
+        </strong>{" "}
+        uses live marks (age shown on Positions). Cash balance lives under
+        Accounts &amp; Capital.
+      </p>
       {dateFilterActive && book.tradeCount === 0 && (
         <div
           className="rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-fill)]/50 px-3 py-2 text-xs text-[var(--color-label-secondary)]"

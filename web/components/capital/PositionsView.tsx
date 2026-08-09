@@ -14,6 +14,7 @@ import PositionsValuationTable from "@/components/capital/PositionsValuationTabl
 import {
   fetchPositionsValuation,
   formatMarksAsOf,
+  marksAgeIsStale,
   type PositionsValuation,
 } from "@/lib/capitalApi";
 import { usePracticeContextOptional } from "@/lib/practiceContext";
@@ -112,8 +113,16 @@ export default function PositionsView({
             Positions
           </h2>
           <p
-            className="mt-0.5 text-xs text-[var(--color-label-tertiary)]"
+            className={[
+              "mt-0.5 text-xs",
+              marksAgeIsStale(data?.marks_age_seconds)
+                ? "font-medium text-amber-700 dark:text-amber-400"
+                : "text-[var(--color-label-tertiary)]",
+            ].join(" ")}
             data-testid="positions-marks-as-of"
+            data-stale={
+              marksAgeIsStale(data?.marks_age_seconds) ? "true" : "false"
+            }
           >
             {formatMarksAsOf(data)}
             {" · "}

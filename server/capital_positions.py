@@ -228,15 +228,28 @@ def positions_valuation(
         mult = _contract_multiplier(t)
         mark = lm.get_live_mark(cur, under) if under and equity_like else None
         # Options: no fabricated marks (V13)
-        if mark and mark.get("mid") is not None and equity_like:
-            mid = float(mark["mid"])
+        # A6: when stream mid missing, fall back to official prev_close (not silent $0).
+        value_source = "mark"
+        if mark and equity_like:
             prev = _f(mark.get("prev_close"))
-            day = (mid - prev) if prev is not None else None
-            value = mid * abs(qty) * mult  # mult=1 for equity
-            if mark.get("asof"):
-                marks_as_of = marks_as_of or str(mark["asof"])
-            if mark.get("age_seconds") is not None:
-                marks_ages.append(float(mark["age_seconds"]))
+            mid_raw = mark.get("mid")
+            mid = float(mid_raw) if mid_raw is not None else None
+            if mid is None and prev is not None:
+                mid = prev
+                value_source = "prev_close"
+            if mid is not None:
+                day = (mid - prev) if prev is not None and value_source == "mark" else None
+                value = mid * abs(qty) * mult  # mult=1 for equity
+                if mark.get("asof"):
+                    marks_as_of = marks_as_of or str(mark["asof"])
+                if mark.get("age_seconds") is not None:
+                    marks_ages.append(float(mark["age_seconds"]))
+            else:
+                mid = None
+                day = None
+                value = None
+                if under not in degraded:
+                    degraded.append(under)
         else:
             mid = None
             day = None
@@ -253,7 +266,7 @@ def positions_valuation(
             unrealized = None
         else:
             display_value = value
-            value_label = "mark"
+            value_label = value_source  # mark | prev_close
             unrealized = (
                 (value - at_cost)
                 if value is not None and at_cost is not None

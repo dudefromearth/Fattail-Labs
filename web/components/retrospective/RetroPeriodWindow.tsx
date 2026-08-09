@@ -18,12 +18,15 @@ import {
 } from "@/components/reports/FeaturedCards";
 import StatsTable from "@/components/reports/StatsTable";
 import {
-  loadStartingCapital,
+  loadStartingCapitalOverride,
   reportsBookFromServer,
-  saveStartingCapital,
+  resolveReportsStartingCapital,
+  saveStartingCapitalOverride,
   type ReportsBook,
 } from "@/lib/reportsBook";
 import { fetchReportsBook } from "@/lib/tradeLogAnalytics";
+import { fetchAccounts } from "@/lib/tradeLogApi";
+import type { Account } from "@/lib/tradeLog";
 
 function toDayYmd(iso: string | null | undefined): string | undefined {
   if (!iso) return undefined;
@@ -69,6 +72,7 @@ export default function RetroPeriodWindow({
   const fromDay = toDayYmd(scopeStart);
   const toDay = toDayYmd(scopeEnd);
   const [capital, setCapital] = useState(50000);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [book, setBook] = useState<ReportsBook | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "err" | "empty">(
     "loading",
@@ -76,9 +80,23 @@ export default function RetroPeriodWindow({
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
 
+  const capitalScope: number | "all" =
+    accountId != null && Number.isFinite(accountId) ? accountId : "all";
+
   useEffect(() => {
-    setCapital(loadStartingCapital(50000));
+    void fetchAccounts()
+      .then((res) => {
+        if (res.ok) setAccounts(res.data.accounts || []);
+      })
+      .catch(() => setAccounts([]));
   }, []);
+
+  // B1 — book starting_balance, not global $50k localStorage
+  useEffect(() => {
+    const base = resolveReportsStartingCapital(accounts, capitalScope);
+    const ov = loadStartingCapitalOverride(capitalScope);
+    setCapital(ov ?? base);
+  }, [accounts, capitalScope]);
 
   const load = useCallback(async () => {
     if (!fromDay || !toDay) {
@@ -122,7 +140,7 @@ export default function RetroPeriodWindow({
   function onCapital(n: number) {
     // Starting capital is a display scale for the path — allowed even on complete retros.
     setCapital(n);
-    saveStartingCapital(n);
+    saveStartingCapitalOverride(capitalScope, n);
   }
 
   const reportsHref =
