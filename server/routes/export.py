@@ -12,6 +12,7 @@ import export_domain as ex
 import import_domain as im
 import member_privacy as privacy
 from guards import require_session
+from routes.trade_log.common import _require_tool_member
 
 router = APIRouter(tags=["export"])
 
@@ -49,6 +50,7 @@ async def _read_import_body(request: Request) -> tuple[bytes, str, str]:
 def export_pack(request: Request, format: str = "zip") -> Any:
     """Full Practice pack: trade_log + journal + retrospective + journey."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="export")
     iid = _iid(claims)
     role = str(claims.get("role") or "observer")
     fmt = (format or "zip").strip().lower()
@@ -104,6 +106,7 @@ def _export_json(
 ) -> Any:
     """Shared single-surface JSON export + audit."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="export")
     iid = _iid(claims)
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -212,6 +215,7 @@ def export_trade_log_pack(request: Request) -> Any:
 @router.post("/api/me/import/detect")
 async def import_detect(request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     _iid(claims)
     try:
         data, kind, _policy = await _read_import_body(request)
@@ -226,6 +230,7 @@ async def import_detect(request: Request) -> dict:
 @router.post("/api/me/import/preview")
 async def import_preview(request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     iid = _iid(claims)
     try:
         data, kind, policy = await _read_import_body(request)
@@ -248,6 +253,7 @@ async def purge_practice_data(request: Request) -> dict:
     After purge, member may **Load Practice data** from an export (additive insert).
     """
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     iid = _iid(claims)
     body = await request.json()
     confirm = str((body or {}).get("confirm") or "").strip()
@@ -265,9 +271,17 @@ async def purge_practice_data(request: Request) -> dict:
                 "deleted_surfaces": [
                     "trade_log",
                     "journal",
+                    "journal_session",
                     "retrospective",
                     "habit_plans",
                     "live_checkins",
+                    "playbook",
+                    "practice_campaign",
+                    "capital_prefs",
+                    "account_cash_movements",
+                    "campaign_funding",
+                    "campaign_bounds",
+                    "campaign_memory",
                 ],
             },
         )
@@ -284,6 +298,9 @@ async def purge_practice_data(request: Request) -> dict:
                     "journal",
                     "retrospective",
                     "journey",
+                    "playbook",
+                    "practice_campaign",
+                    "capital",
                 ],
                 detail="practice data deleted; membership retained",
             )
@@ -292,8 +309,9 @@ async def purge_practice_data(request: Request) -> dict:
         "membership_retained": True,
         "deleted": counts,
         "note": (
-            "Practice data removed. Membership and course progress remain. "
-            "You can Load Practice data from an export (additive)."
+            "Practice data removed (trade log, journal, retros, playbook, "
+            "campaigns, capital prefs/movements). Membership and course progress "
+            "remain. You can Load Practice data from an export (additive)."
         ),
     }
 
@@ -301,6 +319,7 @@ async def purge_practice_data(request: Request) -> dict:
 @router.post("/api/me/import/commit")
 async def import_commit(request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     iid = _iid(claims)
     try:
         data, kind, policy = await _read_import_body(request)

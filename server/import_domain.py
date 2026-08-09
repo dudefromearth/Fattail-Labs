@@ -569,9 +569,9 @@ def preview_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any
     counts = _count_bucket()
     warnings: list[str] = []
     mv = str(doc.get("model_version") or "1.0")
-    if mv.startswith("1.") and mv not in ("1.0", "1.1", "1.2"):
+    if mv.startswith("1.") and mv not in ("1.0", "1.1", "1.2", "1.3"):
         warnings.append(
-            f"practice_campaign model_version {mv!r} not in 1.0|1.1|1.2 — import best-effort"
+            f"practice_campaign model_version {mv!r} not in 1.0–1.3 — import best-effort"
         )
     pack_keys = set()
     for e in doc.get("entries") or []:
@@ -853,7 +853,7 @@ def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]
         "warnings": warnings,
         "mode": "additive",
         "schema": "practice-campaign-v1",
-        "model_version": str(doc.get("model_version") or "1.2"),
+        "model_version": str(doc.get("model_version") or "1.3"),
     }
 
 
@@ -1914,12 +1914,12 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
     """Delete authored Practice surfaces; keep identity, memberships, course progress.
 
     Non-membership data removed:
-    - habit plans, retrospectives
-    - member_notifications (R7), member_retro_cadence_history (R6)
+    - habit plans, retrospectives, notifications, cadence history
     - trade log legs / trades / accounts (+ legacy entries if present)
-    - tool notes (journal / playbook / trade_log probe notes)
-    - live session check-ins (journey attendance signal)
+    - capital prefs, cash movements, campaign funding/bounds/memory
+    - tool notes, live session check-ins
     - journal sessions / media / tag assignments
+    - playbook scrapbook tree + practice campaigns
 
     Preserved: identities (incl. retro_cadence_days setting), memberships,
     enrollments, lesson_progress, certificates, analytics consent,
@@ -1930,6 +1930,18 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
     def _del(label: str, sql: str, args: tuple = ()) -> None:
         cur.execute(sql, args if args else (identity_id,))
         counts[label] = int(cur.rowcount or 0)
+
+    def _del_optional(label: str, sql: str) -> None:
+        """Table may be missing on old DBs — fail soft only then."""
+        try:
+            _del(label, sql)
+        except Exception as exc:
+            # Unknown table / missing column → 0; real errors re-raise
+            msg = str(exc).lower()
+            if "doesn't exist" in msg or "unknown table" in msg or "1146" in msg:
+                counts[label] = 0
+                return
+            raise
 
     # Order respects FKs
     # Tag assignments on member-owned objects (platform vocabulary retained)
@@ -1947,7 +1959,7 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
 
         counts["member_notifications"] = mn.purge_for_identity(cur, identity_id)
     except Exception:
-        _del(
+        _del_optional(
             "member_notifications",
             "DELETE FROM member_notifications WHERE identity_id = %s",
         )
@@ -1987,6 +1999,27 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
         "retrospectives",
         "DELETE FROM member_retrospectives WHERE identity_id = %s",
     )
+    # Capital (110–113) before trade accounts / campaigns
+    _del_optional(
+        "campaign_funding",
+        "DELETE FROM member_practice_campaign_funding WHERE identity_id = %s",
+    )
+    _del_optional(
+        "campaign_bounds",
+        "DELETE FROM member_practice_campaign_bounds WHERE identity_id = %s",
+    )
+    _del_optional(
+        "campaign_memory",
+        "DELETE FROM member_practice_campaign_memory WHERE identity_id = %s",
+    )
+    _del_optional(
+        "account_cash_movements",
+        "DELETE FROM member_account_cash_movements WHERE identity_id = %s",
+    )
+    _del_optional(
+        "capital_prefs",
+        "DELETE FROM member_capital_prefs WHERE identity_id = %s",
+    )
     _del(
         "trade_log_legs",
         "DELETE FROM member_trade_log_legs WHERE identity_id = %s",
@@ -2007,7 +2040,6 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
     except Exception:
         counts["trade_log_entries_legacy"] = 0
     # Practice spine — scrapbook children + campaigns + books (DL-255)
-    # Explicit deletes keep Family B purge inventory accurate; CASCADE would also work.
     try:
         import playbook_scrapbook_domain as pbs
 

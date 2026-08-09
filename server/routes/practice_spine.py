@@ -13,7 +13,7 @@ import member_privacy as privacy
 import playbook_scrapbook_domain as pbs
 import practice_spine_domain as psd
 from guards import require_admin, require_session
-from routes.trade_log.common import _storage_identity_id
+from routes.trade_log.common import _require_tool_member, _storage_identity_id
 import campaign_panel as cpanel
 import auth
 
@@ -42,6 +42,7 @@ def list_playbook_entries(
     include_archived: bool = Query(False),
 ) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _iid(cur, claims)
@@ -78,6 +79,7 @@ def list_playbook_entries(
 @router.post("/api/me/playbook/entries")
 async def create_playbook_entry(request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     body = await request.json()
     if not isinstance(body, dict):
         body = {}
@@ -107,6 +109,7 @@ def get_playbook_entry(
     full: bool = Query(False),
 ) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _iid(cur, claims)
@@ -132,6 +135,7 @@ def get_playbook_entry(
 @router.patch("/api/me/playbook/entries/{entry_id}")
 async def patch_playbook_entry(entry_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     body = await request.json()
     if not isinstance(body, dict):
         body = {}
@@ -164,6 +168,7 @@ async def patch_playbook_entry(entry_id: int, request: Request) -> dict:
 @router.post("/api/me/playbook/entries/{entry_id}/save")
 def save_playbook(entry_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -177,6 +182,7 @@ def save_playbook(entry_id: int, request: Request) -> dict:
 @router.get("/api/me/playbook/entries/{entry_id}/versions")
 def list_playbook_versions(entry_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -192,6 +198,7 @@ def restore_playbook_version(
     entry_id: int, version_n: int, request: Request
 ) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -205,6 +212,7 @@ def restore_playbook_version(
 @router.post("/api/me/playbook/entries/{entry_id}/discard")
 def discard_playbook(entry_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -221,6 +229,7 @@ def discard_playbook(entry_id: int, request: Request) -> dict:
 @router.post("/api/me/playbook/entries/{entry_id}/chapters")
 async def create_chapter(entry_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     body = await request.json()
     if not isinstance(body, dict):
         body = {}
@@ -243,6 +252,7 @@ async def create_chapter(entry_id: int, request: Request) -> dict:
 @router.patch("/api/me/playbook/chapters/{chapter_id}")
 async def patch_chapter(chapter_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     body = await request.json()
     if not isinstance(body, dict):
         body = {}
@@ -266,6 +276,7 @@ async def patch_chapter(chapter_id: int, request: Request) -> dict:
 @router.delete("/api/me/playbook/chapters/{chapter_id}")
 def delete_chapter(chapter_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -279,6 +290,7 @@ def delete_chapter(chapter_id: int, request: Request) -> dict:
 @router.post("/api/me/playbook/chapters/{chapter_id}/pages")
 async def create_page(chapter_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     body = await request.json()
     if not isinstance(body, dict):
         body = {}
@@ -301,6 +313,7 @@ async def create_page(chapter_id: int, request: Request) -> dict:
 @router.patch("/api/me/playbook/pages/{page_id}")
 async def patch_page(page_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     body = await request.json()
     if not isinstance(body, dict):
         body = {}
@@ -324,6 +337,7 @@ async def patch_page(page_id: int, request: Request) -> dict:
 @router.delete("/api/me/playbook/pages/{page_id}")
 def delete_page(page_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -340,6 +354,7 @@ def delete_page(page_id: int, request: Request) -> dict:
 @router.get("/api/me/playbook/entries/{entry_id}/evidence")
 def get_evidence(entry_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -353,6 +368,7 @@ def get_evidence(entry_id: int, request: Request) -> dict:
 @router.post("/api/me/playbook/entries/{entry_id}/evidence")
 async def post_evidence(entry_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     body = await request.json()
     if not isinstance(body, dict):
         body = {}
@@ -378,6 +394,7 @@ async def post_evidence(entry_id: int, request: Request) -> dict:
 @router.delete("/api/me/playbook/entries/{entry_id}/evidence/{evidence_id}")
 def delete_evidence(entry_id: int, evidence_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -392,6 +409,7 @@ def delete_evidence(entry_id: int, evidence_id: int, request: Request) -> dict:
 def journal_session_playbooks(session_id: int, request: Request) -> dict:
     """Playbooks linked to this journal (association is journal-side primary)."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -420,6 +438,7 @@ def journal_session_playbooks(session_id: int, request: Request) -> dict:
 @router.put("/api/me/journal-sessions/{session_id}/playbooks/{book_id}")
 def link_journal_playbook(session_id: int, book_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -435,6 +454,7 @@ def link_journal_playbook(session_id: int, book_id: int, request: Request) -> di
 @router.delete("/api/me/journal-sessions/{session_id}/playbooks/{book_id}")
 def unlink_journal_playbook(session_id: int, book_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -453,6 +473,7 @@ def unlink_journal_playbook(session_id: int, book_id: int, request: Request) -> 
 @router.get("/api/me/playbook/entries/{entry_id}/archive")
 def get_archive(entry_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -470,6 +491,7 @@ async def post_archive(
     file: UploadFile = File(...),
 ) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     data = await file.read()
     try:
         with db.transaction() as conn:
@@ -492,6 +514,7 @@ async def post_archive(
 def export_one_playbook(entry_id: int, request: Request, format: str = "zip") -> Any:
     """PB3 single-book export: ZIP (JSON + media) or playbook.json only."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="export")
     fmt = (format or "zip").strip().lower()
     if fmt not in ("zip", "json"):
         raise HTTPException(status_code=422, detail="format must be zip or json")
@@ -551,6 +574,7 @@ async def post_cover(
 ) -> dict:
     """Direct cover upload — one file sets the book cover (image only)."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     data = await file.read()
     try:
         with db.transaction() as conn:
@@ -573,6 +597,7 @@ async def post_cover(
 def delete_cover(entry_id: int, request: Request) -> dict:
     """Clear cover image (archive file kept)."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -586,6 +611,7 @@ def delete_cover(entry_id: int, request: Request) -> dict:
 @router.get("/api/me/playbook/entries/{entry_id}/archive/{att_id}/bytes")
 def get_archive_bytes(entry_id: int, att_id: int, request: Request) -> Response:
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -599,6 +625,7 @@ def get_archive_bytes(entry_id: int, att_id: int, request: Request) -> Response:
 @router.delete("/api/me/playbook/entries/{entry_id}/archive/{att_id}")
 def delete_archive(entry_id: int, att_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -623,6 +650,7 @@ def list_campaigns(
     not member charters. Does not invent seasonal campaigns on browse.
     """
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _iid(cur, claims)
@@ -647,6 +675,7 @@ def get_active_campaign(
     account_id: int | None = None,
 ) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _iid(cur, claims)
@@ -670,6 +699,7 @@ def list_eligible_campaigns(
     account_id required (ledger is per-book). exec_at defaults to now.
     """
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         aid = int(account_id)
     except (TypeError, ValueError) as exc:
@@ -692,6 +722,7 @@ def list_eligible_campaigns(
 @router.post("/api/me/practice/campaigns")
 async def create_campaign(request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     body = await request.json()
     if not isinstance(body, dict):
         body = {}
@@ -734,6 +765,7 @@ async def create_campaign(request: Request) -> dict:
 def get_campaign(campaign_id: int, request: Request) -> dict:
     """Single campaign for dedicated editor (Family B) + lineage chrome."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _iid(cur, claims)
@@ -747,6 +779,7 @@ def get_campaign(campaign_id: int, request: Request) -> dict:
 def list_campaign_amendments(campaign_id: int, request: Request) -> dict:
     """Append-only amendment history (Family B). No UPDATE/DELETE routes."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -764,6 +797,7 @@ def get_campaign_journey_series(campaign_id: int, request: Request) -> dict:
     Prefer this over repeated journey-shape?as_of= while dragging the slider.
     """
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -785,6 +819,7 @@ def get_campaign_journey_shape(
     For interactive scrub, use journey-series (one fetch) instead.
     """
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -805,6 +840,7 @@ def get_campaign_panel(
 ) -> dict:
     """Campaign Panel v1 — Six Controls blood-work report. Ledger → 404."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     can_edit = auth.role_at_least(str(claims.get("role") or ""), "administrator")
     try:
         with db.transaction() as conn:
@@ -857,6 +893,7 @@ async def patch_campaign_panel_control(
 def list_campaign_bounds(campaign_id: int, request: Request) -> dict:
     """List bounds (includes house six after ensure). Prefer /panel for UI."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -875,6 +912,7 @@ def list_campaign_bounds(campaign_id: int, request: Request) -> dict:
 def renew_campaign(campaign_id: int, request: Request) -> dict:
     """Draft successor from terminal campaign (Concept Spec §4.5.4)."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -888,6 +926,7 @@ def renew_campaign(campaign_id: int, request: Request) -> dict:
 @router.patch("/api/me/practice/campaigns/{campaign_id}")
 async def patch_campaign(campaign_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     body = await request.json()
     if not isinstance(body, dict):
         body = {}
@@ -930,6 +969,7 @@ async def patch_campaign(campaign_id: int, request: Request) -> dict:
 def delete_campaign(campaign_id: int, request: Request) -> dict:
     """Hard-delete only if never signed and unreferenced (§4.5.6 / OD-PB-7)."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -948,6 +988,7 @@ async def post_campaign_cover(
 ) -> dict:
     """Direct cover upload for campaign library card (image only)."""
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     data = await file.read()
     try:
         with db.transaction() as conn:
@@ -969,6 +1010,7 @@ async def post_campaign_cover(
 @router.delete("/api/me/practice/campaigns/{campaign_id}/cover")
 def delete_campaign_cover(campaign_id: int, request: Request) -> dict:
     claims = require_session(request)
+    _require_tool_member(claims, capability="write")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:
@@ -982,6 +1024,7 @@ def delete_campaign_cover(campaign_id: int, request: Request) -> dict:
 @router.get("/api/me/practice/campaigns/{campaign_id}/cover/bytes")
 def get_campaign_cover_bytes(campaign_id: int, request: Request) -> Response:
     claims = require_session(request)
+    _require_tool_member(claims, capability="read")
     try:
         with db.transaction() as conn:
             with conn.cursor() as cur:

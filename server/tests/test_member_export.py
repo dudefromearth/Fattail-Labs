@@ -929,7 +929,7 @@ def test_campaign_lifecycle_pack_round_trip(client):
 
         pack = client.get("/api/me/export?format=json", cookies=cookies).json()
         camp_doc = pack["documents"]["practice_campaign"]
-        assert camp_doc["model_version"] == "1.2"
+        assert camp_doc["model_version"] == "1.3"
         by_key = {e["id"]: e for e in camp_doc["entries"]}
         root_e = by_key[root["export_key"]]
         succ_e = by_key[successor["export_key"]]

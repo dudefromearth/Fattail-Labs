@@ -952,9 +952,9 @@ def build_trade_log_document(cur, identity_id: int) -> dict[str, Any]:
             placeholders = ",".join(["%s"] * len(trade_ids))
             cur.execute(
                 f"""SELECT * FROM member_trade_log_legs
-                    WHERE trade_id IN ({placeholders})
+                    WHERE identity_id = %s AND trade_id IN ({placeholders})
                     ORDER BY trade_id, leg_index, id""",
-                trade_ids,
+                [identity_id, *trade_ids],
             )
             for leg in cur.fetchall():
                 legs_by.setdefault(int(leg["trade_id"]), []).append(leg)
