@@ -9,6 +9,7 @@
  * container); New trade is a separate primary action.
  */
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { IconChevronDown, IconPlus } from "@/components/ui/icons";
@@ -104,6 +105,13 @@ export default function TradeLogToolbar({
           <span className="font-medium text-[var(--color-label-secondary)]">
             {accountLabel}
           </span>
+          {" · "}
+          <Link
+            href="/app/practice/symbols"
+            className="font-medium text-[var(--color-tint)] hover:underline"
+          >
+            Marked underliers
+          </Link>
         </p>
       </div>
 

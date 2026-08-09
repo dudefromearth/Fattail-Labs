@@ -191,10 +191,43 @@ async def patch_account(account_id: int, request: Request) -> dict:
                         raise HTTPException(
                             status_code=422, detail="starting_balance must be a number"
                         )
+            bp_posture = row.get("buying_power_posture") or "arbitrary"
+            bp_value = row.get("buying_power_value")
+            bp_as_of = row.get("buying_power_as_of")
+            if "buying_power_posture" in body or "buying_power_value" in body:
+                if "buying_power_posture" in body:
+                    bp_posture = str(body.get("buying_power_posture") or "arbitrary").lower()
+                if bp_posture not in ("arbitrary", "self_report", "live_sync"):
+                    raise HTTPException(
+                        status_code=422, detail="invalid buying_power_posture"
+                    )
+                if "buying_power_value" in body:
+                    raw_bp = body.get("buying_power_value")
+                    if raw_bp is None or raw_bp == "":
+                        bp_value = None
+                    else:
+                        try:
+                            bp_value = float(raw_bp)
+                        except (TypeError, ValueError):
+                            raise HTTPException(
+                                status_code=422,
+                                detail="buying_power_value must be a number",
+                            )
+                if bp_posture == "arbitrary":
+                    bp_value = None
+                    bp_as_of = None
+                elif bp_posture == "self_report" and (
+                    "buying_power_value" in body or "buying_power_posture" in body
+                ):
+                    from datetime import datetime, timezone
+
+                    bp_as_of = datetime.now(timezone.utc).replace(tzinfo=None)
             cur.execute(
                 """UPDATE member_trade_log_accounts
                    SET label=%s, broker=%s, broker_label=%s, currency=%s,
-                       starting_balance=%s, status=%s,
+                       starting_balance=%s,
+                       buying_power_posture=%s, buying_power_value=%s,
+                       buying_power_as_of=%s, status=%s,
                        badge_color=%s, sort_order=%s, notes_md=%s
                    WHERE id=%s AND identity_id=%s""",
                 (
@@ -203,6 +236,9 @@ async def patch_account(account_id: int, request: Request) -> dict:
                     broker_label,
                     (body.get("currency") or row.get("currency") or "USD")[:8],
                     starting,
+                    bp_posture,
+                    bp_value,
+                    bp_as_of,
                     status,
                     body.get("badge_color", row.get("badge_color")),
                     int(body["sort_order"]) if body.get("sort_order") is not None else row.get("sort_order") or 0,

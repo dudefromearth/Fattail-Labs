@@ -50,6 +50,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     testId: "admin-card-tags",
   },
   {
+    href: "/admin/market-universe",
+    title: "Market universe",
+    body: "Shared underliers for live marks — Practice Positions and Strategy Lab. Massive-validated CRUD.",
+    testId: "admin-card-market-universe",
+  },
+  {
     href: "/admin/appearance",
     title: "Appearance & chrome",
     body: "Brand tint, density, announcements — publish major interface elements without deploys (HIG v1.0).",

@@ -16,7 +16,9 @@ export type PracticeSuiteId =
   | "journal"
   | "retrospective"
   | "playbook"
-  | "campaign";
+  | "campaign"
+  /** Nested catalog — not a suite pill (Lab Design → Symbols pattern). */
+  | "symbols";
 
 export type PracticeSuiteItem = {
   id: PracticeSuiteId;
@@ -89,7 +91,19 @@ export const PRACTICE_NESTED_SLUGS = new Set(
   PRACTICE_SUITE.flatMap((i) => i.slugs),
 );
 
+/** Nested under Practice; not in the segmented suite control. */
+export const PRACTICE_MARKED_UNDERLIERS: PracticeSuiteItem = {
+  id: "symbols",
+  label: "Marked underliers",
+  href: "/app/practice/symbols",
+  slugs: ["symbols", "marked-underliers"],
+  blurb:
+    "Shared mark universe — underliers Labs can price for Positions (and Strategy Lab). Admin controls the list.",
+  status: "live",
+};
+
 export function suiteItem(id: PracticeSuiteId): PracticeSuiteItem {
+  if (id === "symbols") return PRACTICE_MARKED_UNDERLIERS;
   const item = PRACTICE_SUITE.find((i) => i.id === id);
   if (!item) throw new Error(`Unknown practice suite id: ${id}`);
   return item;

@@ -885,11 +885,24 @@ export default function TradeSheet({
       return;
     }
 
+    // STOCK/FUTURE/CRYPTO must stamp trade asset_class correctly — form can lag
+    // when strategy is set without setStrategy (default equity_option caused 100×
+    // valuation on IRA stock).
+    const strategyCode = (form.strategy || "").toUpperCase();
+    const tradeAssetClass =
+      strategyCode === "STOCK"
+        ? "equity"
+        : strategyCode === "FUTURE"
+          ? "future"
+          : strategyCode === "CRYPTO"
+            ? "crypto"
+            : form.asset_class || "equity_option";
+
     const body: Record<string, unknown> = {
       account_id,
       exec_at: execAtForApi(form.exec_at),
       strategy: form.strategy,
-      asset_class: form.asset_class,
+      asset_class: tradeAssetClass,
       order_type: form.order_type,
       net_price: form.net_price === "" ? null : Number(form.net_price),
       net_side: form.net_side || null,
@@ -912,8 +925,14 @@ export default function TradeSheet({
           mode === "close"
             ? "TO_CLOSE"
             : l.pos_effect || (mode === "create" ? "TO_OPEN" : null),
-        asset_class: l.asset_class || form.asset_class,
-        underlier: l.underlier || null,
+        asset_class: l.asset_class || tradeAssetClass,
+        // Stock simple entry uses symbol; valuation also keys underlier
+        underlier:
+          l.underlier ||
+          (strategyCode === "STOCK" || strategyCode === "FUTURE"
+            ? l.symbol || form.asset_symbol || null
+            : null) ||
+          null,
         symbol: l.symbol || null,
         expiry: l.expiry || null,
         strike:

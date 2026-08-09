@@ -10,6 +10,67 @@ export type CapitalAccountBalance = {
   fill_pnl_sum: number;
   movements_sum: number;
   current_balance: number;
+  account_value?: number;
+  account_value_kind?: string;
+  buying_power_posture?: string;
+  buying_power_value?: number | null;
+  buying_power_as_of?: string | null;
+};
+
+export type PositionValuationRow = {
+  trade_id: number;
+  account_id: number;
+  symbol: string;
+  underlier?: string | null;
+  asset_class: string;
+  strategy?: string | null;
+  qty: number;
+  avg_cost: number | null;
+  cost_basis: number | null;
+  last: number | null;
+  day: number | null;
+  day_gl: number | null;
+  value: number | null;
+  value_label: string;
+  unrealized: number | null;
+  pct_acct?: number | null;
+  campaign: { campaign_id: number; title: string; stamped_by?: string | null } | null;
+  degraded: boolean;
+};
+
+export type PositionsValuation = {
+  marks_as_of: string | null;
+  marks_age_seconds: number | null;
+  valuation_uses_latest_mark: boolean;
+  degraded_symbols: string[];
+  campaigns: { id: number; title: string }[];
+  accounts: {
+    account_id: number;
+    label: string;
+    broker?: string | null;
+    buying_power: {
+      posture: string;
+      value: number | null;
+      as_of: string | null;
+    };
+    cash: number | null;
+    cash_omitted_reason?: string | null;
+    positions: PositionValuationRow[];
+    totals: {
+      value: number;
+      day_gl: number;
+      unrealized: number;
+      n: number;
+      definition: string;
+    };
+  }[];
+  grand_total: {
+    value: number;
+    day_gl: number;
+    unrealized: number;
+    n: number;
+    definition: string;
+  };
 };
 
 export type CapitalPrefs = {
@@ -104,4 +165,94 @@ export function addMovement(
     "POST",
     body,
   );
+}
+
+export function fetchPositionsValuation(opts?: {
+  accountId?: number | null;
+  campaignId?: number | null;
+  undirected?: boolean | null;
+  assetClass?: string | null;
+}): Promise<PositionsValuation> {
+  const q = new URLSearchParams();
+  if (opts?.accountId != null && opts.accountId > 0) {
+    q.set("account_id", String(opts.accountId));
+  }
+  if (opts?.campaignId != null && opts.campaignId > 0) {
+    q.set("campaign_id", String(opts.campaignId));
+  }
+  if (opts?.undirected === true) q.set("undirected", "true");
+  if (opts?.undirected === false) q.set("undirected", "false");
+  if (opts?.assetClass) q.set("asset_class", opts.assetClass);
+  const qs = q.toString();
+  return getJSON(`/api/me/capital/positions-valuation${qs ? `?${qs}` : ""}`);
+}
+
+export function patchAccountBuyingPower(
+  accountId: number,
+  body: {
+    buying_power_posture?: string;
+    buying_power_value?: number | null;
+  },
+): Promise<{ account: CapitalAccountBalance }> {
+  return sendJSON(
+    `/api/me/capital/accounts/${accountId}/buying-power`,
+    "PATCH",
+    body,
+  );
+}
+
+/** Header as-of: true age (weekend rule) — never invent currency. */
+export type MarketUniverseSymbol = {
+  symbol: string;
+  kind?: string;
+  role?: string;
+  enabled?: boolean;
+  note?: string | null;
+  options_cadence?: string | null;
+  feed_symbol?: string | null;
+  proxy_symbol?: string | null;
+  mid?: number | null;
+  prev_close?: number | null;
+  day_change_pct?: number | null;
+  mark_asof?: string | null;
+};
+
+export function fetchMarketUniverse(opts?: {
+  enabledOnly?: boolean;
+}): Promise<{
+  symbols: MarketUniverseSymbol[];
+  count: number;
+  source: string;
+}> {
+  const q =
+    opts?.enabledOnly === false ? "?enabled_only=false" : "?enabled_only=true";
+  return getJSON(`/api/me/market/universe${q}`);
+}
+
+export function formatMarksAsOf(v: PositionsValuation | null | undefined): string {
+  if (!v) return "Marks unavailable";
+  if (v.marks_as_of) {
+    try {
+      const d = new Date(v.marks_as_of);
+      if (!Number.isNaN(d.getTime())) {
+        return `Marks as of ${d.toLocaleString(undefined, {
+          weekday: "short",
+          hour: "numeric",
+          minute: "2-digit",
+          month: "short",
+          day: "numeric",
+        })}`;
+      }
+    } catch {
+      /* fall through */
+    }
+    return `Marks as of ${v.marks_as_of}`;
+  }
+  if (v.marks_age_seconds != null) {
+    const h = Math.floor(v.marks_age_seconds / 3600);
+    if (h >= 24) return `Marks as of ~${Math.floor(h / 24)}d ago`;
+    if (h >= 1) return `Marks as of ~${h}h ago`;
+    return `Marks as of ~${Math.floor(v.marks_age_seconds / 60)}m ago`;
+  }
+  return "Marks as of —";
 }

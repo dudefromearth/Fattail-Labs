@@ -162,6 +162,12 @@ def _account_row(r: dict) -> dict:
         starting_balance = float(start) if start is not None else None
     except (TypeError, ValueError):
         starting_balance = None
+    bp_val = r.get("buying_power_value")
+    try:
+        buying_power_value = float(bp_val) if bp_val is not None else None
+    except (TypeError, ValueError):
+        buying_power_value = None
+    bp_as = r.get("buying_power_as_of")
     out = {
         "id": r["id"],
         "label": r["label"],
@@ -169,6 +175,11 @@ def _account_row(r: dict) -> dict:
         "broker_label": r.get("broker_label"),
         "currency": r.get("currency") or "USD",
         "starting_balance": starting_balance,
+        "buying_power_posture": r.get("buying_power_posture") or "arbitrary",
+        "buying_power_value": buying_power_value,
+        "buying_power_as_of": (
+            bp_as.isoformat() + "Z" if hasattr(bp_as, "isoformat") else None
+        ),
         "status": r["status"],
         "badge_color": r.get("badge_color"),
         "sort_order": r.get("sort_order") or 0,

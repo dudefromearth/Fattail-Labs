@@ -16,6 +16,7 @@ import TradeLogTable from "@/components/trade-log/TradeLogTable";
 import TradeLogToolbar from "@/components/trade-log/TradeLogToolbar";
 import TradeSheet from "@/components/trade-log/TradeSheet";
 import ImportSheet from "@/components/trade-log/ImportSheet";
+import PositionsView from "@/components/capital/PositionsView";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import type { Account, Catalog, Trade } from "@/lib/tradeLog";
 import {
@@ -81,6 +82,8 @@ function TradeLogBody() {
   const [importOpen, setImportOpen] = useState(false);
   const [deepLinked, setDeepLinked] = useState(false);
   const [filterOpenOnly, setFilterOpenOnly] = useState(false);
+  /** Log blotter vs cross-account Positions valuation (Spec v0.2). */
+  const [viewMode, setViewMode] = useState<"log" | "positions">("log");
   const [campaignFilter, setCampaignFilter] = useState<number | "">("");
   const [playbookFilter, setPlaybookFilter] = useState<
     number | "" | "unaffiliated"
@@ -466,7 +469,66 @@ function TradeLogBody() {
         }}
       />
 
-      {selectedIds.size > 0 && (
+      <div
+        className="mt-3 inline-flex rounded-full bg-[var(--color-fill)] p-0.5"
+        role="group"
+        aria-label="Trade Log view mode"
+        data-testid="trade-log-view-mode"
+      >
+        {(
+          [
+            { id: "log" as const, label: "Log" },
+            { id: "positions" as const, label: "Positions" },
+          ] as const
+        ).map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => setViewMode(m.id)}
+            className={[
+              "min-h-8 rounded-full px-3 py-1 text-sm font-medium transition-colors",
+              viewMode === m.id
+                ? "bg-[var(--color-tint)] text-[var(--color-on-tint)] shadow-sm"
+                : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
+            ].join(" ")}
+            aria-pressed={viewMode === m.id}
+            data-testid={`trade-log-mode-${m.id}`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {viewMode === "positions" && state === "ok" && (
+        <div className="mt-4">
+          <PositionsView
+            onOpenTrade={(tradeId) => {
+              const t =
+                trades.find((x) => x.id === tradeId) ||
+                openTrades.find((x) => x.id === tradeId);
+              if (t) {
+                setSelected(t);
+                setSheetMode("edit");
+                setSheetOpen(true);
+              } else {
+                void fetchTrades(null, { full: true }).then((res) => {
+                  if (!res.ok) return;
+                  const found = (res.data.trades || []).find(
+                    (x) => x.id === tradeId,
+                  );
+                  if (found) {
+                    setSelected(found);
+                    setSheetMode("edit");
+                    setSheetOpen(true);
+                  }
+                });
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {viewMode === "log" && selectedIds.size > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm dark:border-red-900 dark:bg-red-950">
           <span className="font-medium text-red-900 dark:text-red-100">
             {selectedIds.size} open selected
@@ -536,7 +598,7 @@ function TradeLogBody() {
         </div>
       )}
 
-      {state === "ok" &&
+      {viewMode === "log" && state === "ok" &&
         accountId !== "all" &&
         tableTrades.length === 0 &&
         dateFilterActive &&
@@ -562,7 +624,7 @@ function TradeLogBody() {
           </div>
         )}
 
-      {state === "ok" &&
+      {viewMode === "log" && state === "ok" &&
         accountId !== "all" &&
         tableTrades.length === 0 &&
         !dateFilterActive &&
@@ -586,7 +648,7 @@ function TradeLogBody() {
           </div>
         )}
 
-      {state === "ok" && adherenceMode === "drift" && (
+      {viewMode === "log" && state === "ok" && adherenceMode === "drift" && (
         <div
           className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-3 py-2 text-xs text-[var(--color-label-secondary)]"
           data-testid="journey-adhere-locate-banner"
@@ -617,7 +679,7 @@ function TradeLogBody() {
         </div>
       )}
 
-      {state === "ok" && (
+      {viewMode === "log" && state === "ok" && (
         <TradeLogTable
           trades={tableTrades}
           allTradesForIssues={sheetTrades}

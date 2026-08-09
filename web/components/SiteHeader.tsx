@@ -312,27 +312,6 @@ export default function SiteHeader() {
                     >
                       Accounts &amp; Capital
                     </Link>
-                    <Link
-                      href="/app/journey"
-                      className="block px-4 py-2 hover:bg-[var(--color-fill)]"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Journey
-                    </Link>
-                    <Link
-                      href="/app/toughness"
-                      className="block px-4 py-2 hover:bg-[var(--color-fill)]"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Toughness
-                    </Link>
-                    <Link
-                      href="/app/practice"
-                      className="block px-4 py-2 hover:bg-[var(--color-fill)]"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Practice
-                    </Link>
                     {gateRole(me) === "observer" && (
                       <Link
                         href="/membership"

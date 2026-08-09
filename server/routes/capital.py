@@ -1,13 +1,18 @@
-"""Accounts & Capital API — Capital v0.3 · Funding v0.2 · Staleness v0.1."""
+"""Accounts & Capital API — Capital v0.3 · Funding v0.2 · Positions View v0.2."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 
 import capital_domain as cap
+import capital_positions as cpos
 import db
 from guards import require_session
-from routes.trade_log.common import _require_tool_member, _storage_identity_id
+from routes.trade_log.common import (
+    _load_member_book,
+    _require_tool_member,
+    _storage_identity_id,
+)
 
 router = APIRouter(tags=["capital"])
 
@@ -24,6 +29,52 @@ def capital_overview(request: Request) -> dict:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
             return cap.capital_overview(cur, iid)
+
+
+@router.get("/api/me/capital/positions-valuation")
+def positions_valuation(
+    request: Request,
+    account_id: int | None = Query(None),
+    campaign_id: int | None = Query(None),
+    undirected: bool | None = Query(None),
+    asset_class: str | None = Query(None),
+) -> dict:
+    """Open book × marks — Positions View Spec v0.2. MySQL hot path only."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+
+            def load_book(c, identity_id, acct):
+                return _load_member_book(c, identity_id, acct)
+
+            return cpos.positions_valuation(
+                cur,
+                iid,
+                account_id=account_id,
+                campaign_id=campaign_id,
+                undirected=undirected,
+                asset_class=asset_class,
+                load_book=load_book,
+            )
+
+
+@router.patch("/api/me/capital/accounts/{account_id}/buying-power")
+async def patch_account_buying_power(account_id: int, request: Request) -> dict:
+    claims = require_session(request)
+    _require_tool_member(claims)
+    body = await request.json()
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            try:
+                row = cap.patch_account_buying_power(
+                    cur, iid, int(account_id), body or {}
+                )
+            except cap.CapitalError as e:
+                _raise(e)
+            return {"account": row}
 
 
 @router.get("/api/me/capital/prefs")

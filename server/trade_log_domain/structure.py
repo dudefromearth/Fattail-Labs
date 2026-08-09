@@ -122,13 +122,38 @@ def net_cash_points(trade: dict[str, Any]) -> float | None:
 
 
 def multiplier(trade: dict[str, Any]) -> int:
-    ac = trade.get("asset_class") or ""
+    """Contract multiplier for cash / valuation.
+
+    Shares (STOCK / equity legs without option fields) → 1.
+    Options → 100 (default). Case-insensitive; check legs + strategy STOCK.
+    """
+    strat = str(trade.get("strategy") or "").upper()
+    if strat == "STOCK":
+        return 1
+    ac = str(trade.get("asset_class") or "").lower()
     if not ac:
         legs = trade.get("legs") or []
         if legs:
-            ac = legs[0].get("asset_class") or ""
+            ac = str(legs[0].get("asset_class") or "").lower()
     if ac in ("equity", "stock"):
         return 1
+    # Equity-like legs (no option fields) even if trade asset_class mis-tagged
+    legs = trade.get("legs") or []
+    if legs and all(
+        str(l.get("asset_class") or "").lower() in ("equity", "stock", "")
+        and not l.get("expiry")
+        and l.get("strike") is None
+        and not l.get("right")
+        and not l.get("option_right")
+        for l in legs
+    ):
+        # Only treat as shares if at least one leg claims equity/stock or symbol only
+        if any(
+            str(l.get("asset_class") or "").lower() in ("equity", "stock")
+            or (l.get("symbol") and not l.get("expiry"))
+            for l in legs
+        ):
+            return 1
     return 100
 
 

@@ -13,10 +13,15 @@ import {
   addMovement,
   fetchCapitalOverview,
   fetchMovements,
+  fetchPositionsValuation,
+  formatMarksAsOf,
+  patchAccountBuyingPower,
   patchCapitalPrefs,
   type CapitalOverview,
   type CashMovement,
+  type PositionsValuation,
 } from "@/lib/capitalApi";
+import PositionsValuationTable from "@/components/capital/PositionsValuationTable";
 import {
   rememberPracticeAccountId,
   usePracticeContextOptional,
@@ -55,16 +60,18 @@ export default function AccountsCapitalApp() {
   const [bpPosture, setBpPosture] = useState<"arbitrary" | "self_report">(
     "arbitrary",
   );
+  const [valuation, setValuation] = useState<PositionsValuation | null>(null);
 
   const reload = useCallback(async () => {
     setError(null);
     try {
-      const [ov, ac, cat] = await Promise.all([
+      const [ov, ac, cat, val] = await Promise.all([
         fetchCapitalOverview().catch((e) => {
           throw e;
         }),
         fetchAccounts(),
         fetchCatalog(),
+        fetchPositionsValuation().catch(() => null),
       ]);
       if (!ac.ok) {
         setLoad(ac.error.kind === "anon" ? "anon" : "err");
@@ -73,6 +80,7 @@ export default function AccountsCapitalApp() {
       }
       setOverview(ov);
       setAccounts(ac.data.accounts || []);
+      setValuation(val);
       if (cat.ok) {
         setCatalog({
           venues: cat.data.venues || [],
@@ -86,16 +94,6 @@ export default function AccountsCapitalApp() {
         ov.prefs.tolerated_master_drawdown_form === "dollars"
           ? "dollars"
           : "percent",
-      );
-      setBpPosture(
-        ov.prefs.buying_power_posture === "self_report"
-          ? "self_report"
-          : "arbitrary",
-      );
-      setBpValue(
-        ov.prefs.buying_power_value != null
-          ? String(ov.prefs.buying_power_value)
-          : "",
       );
       setLoad("ok");
     } catch (e) {
@@ -125,7 +123,33 @@ export default function AccountsCapitalApp() {
     setStartDraft(
       bal?.starting_balance != null ? String(bal.starting_balance) : "",
     );
+    setBpPosture(
+      bal?.buying_power_posture === "self_report" ? "self_report" : "arbitrary",
+    );
+    setBpValue(
+      bal?.buying_power_value != null ? String(bal.buying_power_value) : "",
+    );
   }, [selectedId, overview]);
+
+  async function saveAccountBp(id: number) {
+    setBusy(true);
+    setError(null);
+    try {
+      await patchAccountBuyingPower(id, {
+        buying_power_posture: bpPosture,
+        buying_power_value:
+          bpPosture === "self_report" && bpValue.trim() !== ""
+            ? Number(bpValue)
+            : null,
+      });
+      setMsg("Buying power saved for this account.");
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function createAccount() {
     if (!newLabel.trim()) return;
@@ -249,14 +273,10 @@ export default function AccountsCapitalApp() {
     setBusy(true);
     setError(null);
     try {
+      // Portfolio prefs only — BP is per-account (PV-2)
       const body: Record<string, unknown> = {
         tolerated_master_drawdown: Number(tolDraft) || 0,
         tolerated_master_drawdown_form: tolForm,
-        buying_power_posture: bpPosture,
-        buying_power_value:
-          bpPosture === "self_report" && bpValue.trim() !== ""
-            ? Number(bpValue)
-            : null,
         ...extra,
       };
       await patchCapitalPrefs(body);
@@ -304,31 +324,55 @@ export default function AccountsCapitalApp() {
         </p>
       )}
 
-      {/* 1. Total net capital + master DD witness */}
-      <section className="surface-card border border-[var(--color-separator)] p-6">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-[var(--color-label-secondary)]">
-          Total net capital
-        </h2>
-        <p
-          className="mt-2 text-3xl font-semibold tabular-nums text-[var(--color-label)]"
-          data-testid="total-net-capital"
+      {/* Header as-of (V14 · weekend rule) */}
+      <p
+        className="text-right text-xs text-[var(--color-label-tertiary)]"
+        data-testid="accounts-capital-marks-as-of"
+      >
+        {formatMarksAsOf(valuation)} · declared figures vary by row ·{" "}
+        <a
+          href="/app/practice/symbols"
+          className="font-medium text-[var(--color-tint)] hover:underline"
         >
-          {money(overview?.total_net_capital)}
-        </p>
+          Marked underliers
+        </a>
+      </p>
+
+      {/* 1. Summary card — All accounts · master DD · allocations */}
+      <section className="surface-card border border-[var(--color-separator)] p-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-medium text-[var(--color-label-secondary)]">
+            All accounts
+          </h2>
+          <p
+            className="text-3xl font-semibold tabular-nums text-[var(--color-label)]"
+            data-testid="total-net-capital"
+          >
+            {money(overview?.total_net_capital)}
+          </p>
+        </div>
+        {md && (
+          <p className="mt-3 border-t border-[var(--color-separator)] pt-3 text-sm text-[var(--color-label)]">
+            Tolerated drawdown ·{" "}
+            {overview?.prefs.tolerated_master_drawdown_form === "dollars"
+              ? money(overview.prefs.tolerated_master_drawdown)
+              : `${overview?.prefs.tolerated_master_drawdown ?? "—"}%`}{" "}
+            of {money(overview?.total_net_capital)} base ·{" "}
+            {money(md.tolerance_budget_dollars)} · realized{" "}
+            {money(md.realized_dd_dollars)}
+          </p>
+        )}
         {md?.over_budget && overview?.witnesses.master_dd && (
           <p
-            className="mt-2 text-sm text-amber-700 dark:text-amber-400"
+            className="mt-1 text-sm text-amber-700 dark:text-amber-400"
             data-testid="master-dd-witness"
           >
             {overview.witnesses.master_dd}
           </p>
         )}
-        {md && !md.over_budget && md.tolerance_budget_dollars != null && (
-          <p className="mt-2 text-xs text-[var(--color-label-tertiary)]">
-            Trading drawdown {money(md.realized_dd_dollars)} · budget{" "}
-            {money(md.tolerance_budget_dollars)} ({md.sample_n} fills)
-          </p>
-        )}
+        <p className="mt-2 text-xs text-[var(--color-label-tertiary)]">
+          Allocations declared: none · overcommit: none
+        </p>
         <div className="mt-4">
           <Button
             type="button"
@@ -480,6 +524,26 @@ export default function AccountsCapitalApp() {
             </div>
           </div>
 
+          {/* Deployability: BP only until OD-MC (no provisional cash) */}
+          <p
+            className="mt-3 text-sm tabular-nums text-[var(--color-label-secondary)]"
+            data-testid="deployability-pair"
+          >
+            Buying power{" "}
+            {selectedBal.buying_power_posture === "self_report" &&
+            selectedBal.buying_power_value != null
+              ? money(selectedBal.buying_power_value)
+              : "—"}
+            {selectedBal.buying_power_as_of
+              ? ` (stated ${new Date(selectedBal.buying_power_as_of).toLocaleDateString()})`
+              : selectedBal.buying_power_posture === "arbitrary"
+                ? " (not tracking)"
+                : ""}
+            <span className="ml-2 text-xs text-[var(--color-label-tertiary)]">
+              · Cash omitted until match-cash calibration
+            </span>
+          </p>
+
           <div className="mt-4 flex flex-wrap items-end gap-2">
             <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
               Starting balance
@@ -499,6 +563,58 @@ export default function AccountsCapitalApp() {
             >
               Save start
             </Button>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+              Buying power (this account)
+              <select
+                className="mt-1 block min-h-[var(--hit-min)] rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 text-sm"
+                value={bpPosture}
+                onChange={(e) =>
+                  setBpPosture(
+                    e.target.value === "self_report"
+                      ? "self_report"
+                      : "arbitrary",
+                  )
+                }
+              >
+                <option value="arbitrary">Not tracking</option>
+                <option value="self_report">Self-report</option>
+              </select>
+            </label>
+            {bpPosture === "self_report" && (
+              <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+                BP $
+                <input
+                  className="mt-1 block min-h-[var(--hit-min)] w-28 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 text-sm tabular-nums"
+                  value={bpValue}
+                  onChange={(e) => setBpValue(e.target.value)}
+                  inputMode="decimal"
+                />
+              </label>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void saveAccountBp(selectedId)}
+              data-testid="capital-save-bp"
+            >
+              Save BP
+            </Button>
+          </div>
+
+          <h3 className="mt-6 text-sm font-semibold text-[var(--color-label)]">
+            Positions
+          </h3>
+          <div className="mt-2">
+            <PositionsValuationTable
+              data={valuation}
+              variant="compact"
+              accountIdFilter={selectedId}
+              showHeader={false}
+            />
           </div>
 
           <h3 className="mt-6 text-sm font-semibold text-[var(--color-label)]">
@@ -603,40 +719,10 @@ export default function AccountsCapitalApp() {
               </select>
             </div>
           </label>
-          <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-            Buying power
-            <div className="mt-1 flex flex-wrap gap-2">
-              <select
-                className="min-h-[var(--hit-min)] rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 text-sm"
-                value={bpPosture}
-                onChange={(e) =>
-                  setBpPosture(
-                    e.target.value === "self_report"
-                      ? "self_report"
-                      : "arbitrary",
-                  )
-                }
-              >
-                <option value="arbitrary">Not tracking</option>
-                <option value="self_report">Self-report</option>
-              </select>
-              {bpPosture === "self_report" && (
-                <input
-                  className="min-h-[var(--hit-min)] w-28 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 text-sm tabular-nums"
-                  value={bpValue}
-                  onChange={(e) => setBpValue(e.target.value)}
-                  placeholder="BP $"
-                  inputMode="decimal"
-                />
-              )}
-            </div>
-            {overview?.prefs.buying_power_as_of && (
-              <span className="mt-1 block text-[10px] text-[var(--color-label-tertiary)]">
-                as-of{" "}
-                {new Date(overview.prefs.buying_power_as_of).toLocaleString()}
-              </span>
-            )}
-          </label>
+          <p className="text-xs text-[var(--color-label-tertiary)]">
+            Buying power is set per account (open an account above). Cash on the
+            deployability line waits on match-cash (Coach OD-MC).
+          </p>
         </div>
         <div className="mt-4">
           <Button

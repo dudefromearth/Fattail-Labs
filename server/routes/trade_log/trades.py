@@ -227,6 +227,13 @@ async def create_trade(request: Request) -> dict:
     if strategy not in cat.STRATEGY_CODES:
         raise HTTPException(status_code=422, detail=f"unknown strategy: {strategy}")
     asset_class = (body.get("asset_class") or "equity_option").lower()
+    # STOCK/FUTURE/CRYPTO always own their asset_class (UI default was equity_option)
+    if strategy == "STOCK":
+        asset_class = "equity"
+    elif strategy == "FUTURE":
+        asset_class = "future"
+    elif strategy == "CRYPTO":
+        asset_class = "crypto"
     if asset_class not in cat.ASSET_CLASSES:
         raise HTTPException(status_code=422, detail="invalid asset_class")
     order_type = (body.get("order_type") or "LMT").upper()[:32]
@@ -397,6 +404,12 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
             if strategy not in cat.STRATEGY_CODES:
                 raise HTTPException(status_code=422, detail="unknown strategy")
             asset_class = (body.get("asset_class") or row.get("asset_class") or "equity_option").lower()
+            if strategy == "STOCK":
+                asset_class = "equity"
+            elif strategy == "FUTURE":
+                asset_class = "future"
+            elif strategy == "CRYPTO":
+                asset_class = "crypto"
             order_type = (body.get("order_type") or row.get("order_type") or "LMT").upper()[:32]
             net_side = body.get("net_side", row.get("net_side"))
             if net_side:

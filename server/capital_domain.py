@@ -91,6 +91,7 @@ def list_account_balances(cur, identity_id: int) -> list[dict]:
         bal = current_balance(cur, identity_id, aid, starting=start)
         if r.get("status") == "active" or bal != 0:
             total += bal
+        bp_as = r.get("buying_power_as_of")
         out.append(
             {
                 "id": aid,
@@ -102,9 +103,58 @@ def list_account_balances(cur, identity_id: int) -> list[dict]:
                 "fill_pnl_sum": account_fill_pnl_sum(cur, identity_id, aid),
                 "movements_sum": account_movements_sum(cur, identity_id, aid),
                 "current_balance": bal,
+                # V5 interim: stated = derived (OD-SV not shipped)
+                "stated_value": None,
+                "account_value": bal,
+                "account_value_kind": "derived",
+                "buying_power_posture": r.get("buying_power_posture") or "arbitrary",
+                "buying_power_value": _f(r.get("buying_power_value")),
+                "buying_power_as_of": (
+                    bp_as.isoformat() + "Z" if hasattr(bp_as, "isoformat") else None
+                ),
             }
         )
     return out
+
+
+def patch_account_buying_power(
+    cur, identity_id: int, account_id: int, body: dict
+) -> dict:
+    """Per-account BP (Positions View Spec v0.2 · PV-2)."""
+    cur.execute(
+        """SELECT * FROM member_trade_log_accounts
+           WHERE id = %s AND identity_id = %s""",
+        (account_id, identity_id),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise CapitalError(404, "Account not found")
+    posture = body.get("buying_power_posture", row.get("buying_power_posture") or "arbitrary")
+    posture = str(posture or "arbitrary").lower()
+    if posture not in ("arbitrary", "self_report", "live_sync"):
+        raise CapitalError(422, "invalid buying_power_posture")
+    if "buying_power_value" in body:
+        bp_v = _f(body.get("buying_power_value"))
+    else:
+        bp_v = _f(row.get("buying_power_value"))
+    bp_as = row.get("buying_power_as_of")
+    if "buying_power_value" in body or body.get("buying_power_posture") is not None:
+        if posture == "self_report" and bp_v is not None:
+            bp_as = _utcnow()
+        elif posture == "arbitrary":
+            bp_v = None
+            bp_as = None
+    cur.execute(
+        """UPDATE member_trade_log_accounts
+           SET buying_power_posture = %s,
+               buying_power_value = %s,
+               buying_power_as_of = %s
+           WHERE id = %s AND identity_id = %s""",
+        (posture, bp_v, bp_as, account_id, identity_id),
+    )
+    return next(
+        a for a in list_account_balances(cur, identity_id) if a["id"] == account_id
+    )
 
 
 def total_net_capital(cur, identity_id: int) -> float:
