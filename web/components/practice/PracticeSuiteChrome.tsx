@@ -13,7 +13,7 @@ import PracticeSuiteNav from "./PracticeSuiteNav";
 import PracticeContextBar from "./PracticeContextBar";
 import PracticeStoryStrip from "./PracticeStoryStrip";
 import PracticePortabilityPanel from "./PracticePortabilityPanel";
-import { PracticeContextProvider } from "@/lib/practiceContext";
+import { usePracticeContextOptional } from "@/lib/practiceContext";
 import { suiteItem, type PracticeSuiteId } from "@/lib/practiceSuite";
 
 function Breadcrumb({ label }: { label: string }) {
@@ -169,22 +169,29 @@ export default function PracticeSuiteChrome({
   showBlurb?: boolean;
   breadcrumbUnderTitle?: boolean;
 }) {
+  // Prefer layout-level PracticeContextProvider (B2). Fail loud if missing —
+  // do not re-wrap: nested providers remount prefs on every suite nav.
+  const scope = usePracticeContextOptional();
+  if (!scope) {
+    throw new Error(
+      "PracticeSuiteChrome requires PracticeContextProvider " +
+        "(expected under /app layout PracticeScopeRoot)",
+    );
+  }
   return (
-    <PracticeContextProvider>
-      <PracticeSuiteChromeInner
-        active={active}
-        hideTitle={hideTitle}
-        subtitle={subtitle}
-        contextInert={contextInert}
-        contextInertMessage={contextInertMessage}
-        hideStoryStrip={hideStoryStrip}
-        hideToughness={hideToughness}
-        hidePortability={hidePortability}
-        showBlurb={showBlurb}
-        breadcrumbUnderTitle={breadcrumbUnderTitle}
-      >
-        {children}
-      </PracticeSuiteChromeInner>
-    </PracticeContextProvider>
+    <PracticeSuiteChromeInner
+      active={active}
+      hideTitle={hideTitle}
+      subtitle={subtitle}
+      contextInert={contextInert}
+      contextInertMessage={contextInertMessage}
+      hideStoryStrip={hideStoryStrip}
+      hideToughness={hideToughness}
+      hidePortability={hidePortability}
+      showBlurb={showBlurb}
+      breadcrumbUnderTitle={breadcrumbUnderTitle}
+    >
+      {children}
+    </PracticeSuiteChromeInner>
   );
 }

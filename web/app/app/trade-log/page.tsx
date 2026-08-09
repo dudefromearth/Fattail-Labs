@@ -63,6 +63,11 @@ function TradeLogBody() {
     dateFilterActive,
     periodLabel,
     setGranularity,
+    campaignId,
+    setCampaignId,
+    campaignLabel,
+    rangeFromYmd,
+    rangeToYmd,
   } = usePracticeContext();
 
   const [state, setState] = useState<LoadState>("loading");
@@ -84,7 +89,17 @@ function TradeLogBody() {
   const [filterOpenOnly, setFilterOpenOnly] = useState(false);
   /** Log blotter vs cross-account Positions valuation (Spec v0.2). */
   const [viewMode, setViewMode] = useState<"log" | "positions">("log");
-  const [campaignFilter, setCampaignFilter] = useState<number | "">("");
+  /**
+   * Campaign filter is chrome Practice context only (A3) — no local auto-ledger.
+   * Table dropdown writes back via setCampaignId.
+   */
+  const campaignFilter: number | "" = campaignId != null ? campaignId : "";
+  const setCampaignFilter = useCallback(
+    (v: number | "") => {
+      setCampaignId(v === "" ? null : v);
+    },
+    [setCampaignId],
+  );
   const [playbookFilter, setPlaybookFilter] = useState<
     number | "" | "unaffiliated"
   >("");
@@ -136,43 +151,12 @@ function TradeLogBody() {
     });
   }, []);
 
-  // Apply ?campaign= from Practice Campaign → Trade Log deep-link
+  // Apply ?campaign= from Practice Campaign → Trade Log deep-link into chrome scope
   useEffect(() => {
     if (deepLinkCampaign > 0) {
-      setCampaignFilter((prev) =>
-        prev === deepLinkCampaign ? prev : deepLinkCampaign,
-      );
+      setCampaignId(deepLinkCampaign);
     }
-  }, [deepLinkCampaign]);
-
-  // When account changes, reset campaign filter to that account's ledger/default
-  // (or clear if none). Never leave a campaign id from another account selected.
-  useEffect(() => {
-    if (deepLinkCampaign > 0) return;
-    if (accountId === "all") {
-      setCampaignFilter((prev) => (prev === "" ? prev : ""));
-      return;
-    }
-    if (!campaignOptions.length) {
-      setCampaignFilter((prev) => (prev === "" ? prev : ""));
-      return;
-    }
-    const forAccount = campaignOptions.filter(
-      (c) => c.account_id == null || c.account_id === accountId,
-    );
-    const pool = forAccount.length ? forAccount : campaignOptions;
-    // Keep current filter if it still belongs to this account
-    const stillValid =
-      campaignFilter !== "" &&
-      pool.some((c) => c.id === campaignFilter);
-    if (stillValid) return;
-    const preferred =
-      pool.find((c) => c.is_ledger) ||
-      pool.find((c) => c.is_default) ||
-      pool[0];
-    const next = preferred ? preferred.id : "";
-    setCampaignFilter((prev) => (prev === next ? prev : next));
-  }, [accountId, campaignOptions, deepLinkCampaign, campaignFilter]);
+  }, [deepLinkCampaign, setCampaignId]);
 
   // Journey Adhere deep-link only (F2) — no standing process filter on the blotter
   useEffect(() => {
@@ -199,6 +183,12 @@ function TradeLogBody() {
     router.replace(qs ? `${pathname}?${qs}` : pathname);
   }
 
+  /** A4 — blotter date = chrome period, unless Journey locate overrides. */
+  const blotterFromDay =
+    filterFromDay || (dateFilterActive ? rangeFromYmd : null);
+  const blotterToDay =
+    filterToDay || (dateFilterActive ? rangeToYmd : null);
+
   const load = useCallback(() => {
     if (!prefsReady) {
       setState("loading");
@@ -217,8 +207,8 @@ function TradeLogBody() {
         playbook_mode:
           playbookFilter === "unaffiliated" ? "unaffiliated" : null,
         adherence_mode: adherenceMode === "drift" ? "drift" : null,
-        from_day: filterFromDay || null,
-        to_day: filterToDay || null,
+        from_day: blotterFromDay,
+        to_day: blotterToDay,
       }),
       fetchUnmatchedOpens(accountIdParam),
       fetchCatalog(),
@@ -292,8 +282,8 @@ function TradeLogBody() {
     campaignFilter,
     playbookFilter,
     adherenceMode,
-    filterFromDay,
-    filterToDay,
+    blotterFromDay,
+    blotterToDay,
   ]);
 
   const loadMore = useCallback(async () => {
@@ -310,8 +300,8 @@ function TradeLogBody() {
         playbook_mode:
           playbookFilter === "unaffiliated" ? "unaffiliated" : null,
         adherence_mode: adherenceMode === "drift" ? "drift" : null,
-        from_day: filterFromDay || null,
-        to_day: filterToDay || null,
+        from_day: blotterFromDay,
+        to_day: blotterToDay,
       });
       if (!tr.ok) {
         setLoadingMore(false);
@@ -335,6 +325,9 @@ function TradeLogBody() {
     loadingMore,
     campaignFilter,
     playbookFilter,
+    adherenceMode,
+    blotterFromDay,
+    blotterToDay,
   ]);
 
   useEffect(() => {
@@ -401,12 +394,14 @@ function TradeLogBody() {
   }, [accountId, campaignOptions]);
 
   const campaignFilterLabel = useMemo(() => {
-    if (campaignFilter === "" || campaignFilter == null) return "All campaigns";
-    const c = campaignOptions.find((x) => x.id === campaignFilter);
+    // Prefer chrome label (null = no campaign filter / undirected rest)
+    if (campaignId == null) return "All campaigns";
+    if (campaignLabel && campaignLabel !== "Campaign") return campaignLabel;
+    const c = campaignOptions.find((x) => x.id === campaignId);
     if (!c) return "Campaign";
     const tag = c.is_ledger || c.is_default ? " · default" : "";
     return `${c.title}${tag}`;
-  }, [campaignFilter, campaignOptions]);
+  }, [campaignId, campaignLabel, campaignOptions]);
 
   const contextScopeLabel = useMemo(() => {
     return `${accountLabel} · ${campaignFilterLabel}`;

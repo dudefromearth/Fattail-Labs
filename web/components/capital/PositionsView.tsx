@@ -3,6 +3,9 @@
 /**
  * Cross-account Positions view — Spec v0.2 surface two.
  * Chip filters: accounts · asset class · campaign · Undirected.
+ *
+ * Hardening C6: when under Practice chrome, account + campaign follow suite
+ * scope (same book as Trade Log / Reports). Asset class + Undirected stay local.
  */
 
 import Link from "next/link";
@@ -13,6 +16,7 @@ import {
   formatMarksAsOf,
   type PositionsValuation,
 } from "@/lib/capitalApi";
+import { usePracticeContextOptional } from "@/lib/practiceContext";
 
 type Chip =
   | { kind: "all_accounts" }
@@ -26,14 +30,44 @@ export default function PositionsView({
 }: {
   onOpenTrade?: (tradeId: number) => void;
 }) {
+  const practice = usePracticeContextOptional();
   const [data, setData] = useState<PositionsValuation | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [accountId, setAccountId] = useState<number | null>(null);
-  const [campaignId, setCampaignId] = useState<number | null>(null);
+  /** Local fallback when rendered outside Practice chrome. */
+  const [localAccountId, setLocalAccountId] = useState<number | null>(null);
+  const [localCampaignId, setLocalCampaignId] = useState<number | null>(null);
   const [undirected, setUndirected] = useState(false);
   const [assetClass, setAssetClass] = useState<string | null>(null);
 
+  const accountId =
+    practice != null ? practice.accountIdParam : localAccountId;
+  const campaignId =
+    practice != null ? practice.campaignId : localCampaignId;
+
+  const setAccountId = useCallback(
+    (id: number | null) => {
+      if (practice) {
+        practice.setAccountId(id == null ? "all" : id);
+      } else {
+        setLocalAccountId(id);
+      }
+    },
+    [practice],
+  );
+
+  const setCampaignId = useCallback(
+    (id: number | null) => {
+      if (practice) {
+        practice.setCampaignId(id);
+      } else {
+        setLocalCampaignId(id);
+      }
+    },
+    [practice],
+  );
+
   const reload = useCallback(async () => {
+    if (practice && !practice.prefsReady) return;
     setError(null);
     try {
       const v = await fetchPositionsValuation({
@@ -46,7 +80,7 @@ export default function PositionsView({
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [accountId, campaignId, undirected, assetClass]);
+  }, [accountId, campaignId, undirected, assetClass, practice]);
 
   useEffect(() => {
     void reload();

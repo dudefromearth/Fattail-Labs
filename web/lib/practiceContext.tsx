@@ -15,6 +15,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -324,6 +325,11 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
   const [pendingCampaignId, setPendingCampaignId] = useState<number | null>(
     null,
   );
+  /**
+   * Empty-book auto-hop runs at most once after hydrate (or never after a
+   * deliberate account pick). Hardening C7 — do not fight intentional empty books.
+   */
+  const emptyBookHopDoneRef = useRef(false);
 
   // Resolve session + accounts, then apply prefs **once** before consumers fetch.
   // Order matters: first paint must NOT fetch until this finishes.
@@ -490,21 +496,26 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  // Missing account id only → busiest active book.
+  // Missing account id only → busiest active book (invalid id is always corrected).
   useEffect(() => {
     if (!hydrated || !accountsReady || accountId === "all") return;
     const ok = accounts.some((a) => a.id === accountId);
     if (!ok) setAccountIdState(pickDefaultAccountId(accounts));
   }, [accounts, accountsReady, accountId, hydrated]);
 
-  // Empty book while another has fills → hop to the fuller book (active preferred).
+  // Empty book while another has fills → hop **once** after hydrate (C7).
+  // Deliberate empty picks via setAccountId suppress further hops.
   useEffect(() => {
     if (!hydrated || !accountsReady || accountId === "all") return;
+    if (emptyBookHopDoneRef.current) return;
     const cur = accounts.find((a) => a.id === accountId);
     if (!cur) return;
     const countsKnown = accounts.some((a) => typeof a.trade_count === "number");
     if (!countsKnown) return;
-    if ((cur.trade_count ?? 0) > 0) return;
+    if ((cur.trade_count ?? 0) > 0) {
+      emptyBookHopDoneRef.current = true;
+      return;
+    }
     const richer = accounts
       .filter((a) => (a.trade_count ?? 0) > 0)
       .sort((a, b) => {
@@ -513,12 +524,15 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
         if (b.status === "active" && a.status !== "active") return 1;
         return (b.trade_count ?? 0) - (a.trade_count ?? 0);
       })[0];
+    emptyBookHopDoneRef.current = true;
     if (richer && richer.id !== accountId) {
       setAccountIdState(richer.id);
     }
   }, [accounts, accountsReady, accountId, hydrated]);
 
   const setAccountId = useCallback((id: AccountScope) => {
+    // User (or chrome) deliberate pick — never re-auto-hop away from empty books.
+    emptyBookHopDoneRef.current = true;
     setAccountIdState(id);
     // Clear campaign filter when switching books (undirected rest)
     setPendingCampaignId(null);
