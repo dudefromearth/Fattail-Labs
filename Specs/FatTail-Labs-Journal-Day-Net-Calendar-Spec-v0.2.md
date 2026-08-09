@@ -5,6 +5,7 @@
 **Date:** 2026-08-09  
 **Type:** Product / UX / data contract — **Journal year · month · week zoom-out**  
 **Audience:** Implementation agents (Claude / bench) · Coach · Lima  
+**Execution law (bench):** [`docs/Journal-Day-Net-Calendar-Full-Agent-Bench-Plan-v1.0.md`](../docs/Journal-Day-Net-Calendar-Full-Agent-Bench-Plan-v1.0.md) · board [`agents/p-journal-day-net/`](../agents/p-journal-day-net/)  
 **Supersedes:** [Journal Equity Day Calendar Spec v0.1](./FatTail-Labs-Journal-Equity-Day-Calendar-Spec-v0.1.md)  
 **Review folded:**
 
@@ -455,7 +456,8 @@ Tango: copy teaches acceptance and R:R literacy; never taunts.
 | 2026-08-09 | Advisor review JE-1…JE-6 |
 | 2026-08-09 | Coach Resolution — exposure map; valence exception; money map only; toggle; R:R; fixed-bucket gradient |
 | 2026-08-09 | **v0.2** — folded review + resolution; renamed Day Net Calendar; declaration removed |
+| 2026-08-09 | Linked Full Agent Bench Plan v1.0 + `agents/p-journal-day-net/` board |
 
 ---
 
-*End of Spec v0.2 — Coach-ratified instrument; ready for JED-1.*
+*End of Spec v0.2 — Coach-ratified instrument; ready for W0 GO then JED-1.*
