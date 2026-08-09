@@ -15,7 +15,8 @@ export default function LoginPage() {
           Sign in to FatTail Labs
         </h1>
         <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-          Enter your email and password, or use your membership site login.
+          Members sign in with their FatTail.ai account (same credentials as
+          the membership site).
         </p>
         <Suspense fallback={null}>
           <LoginIdleNotice />

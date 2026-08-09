@@ -132,6 +132,11 @@ export default function LoginForm() {
     existing?.email ||
     (existing ? `identity #${existing.identity_id}` : "");
 
+  // FatTail.ai first — every member signs in via membership-site SSO.
+  const ssoEntries = Object.entries(sso);
+  const fattailSso = ssoEntries.filter(([name]) => name === "wordpress:fattail");
+  const otherSso = ssoEntries.filter(([name]) => name !== "wordpress:fattail");
+
   return (
     <div className="mt-8">
       {existing && (
@@ -144,8 +149,7 @@ export default function LoginForm() {
             This browser still has a Labs session as{" "}
             <strong>{existingLabel}</strong>
             {existing.role ? ` (${existing.access_role || existing.role})` : ""}.
-            The form below does not mean that session was cleared — Sign out can
-            fail if cookies were stuck. Clear it before switching accounts.
+            Clear it before switching FatTail.ai accounts.
           </p>
           <button
             type="button"
@@ -156,99 +160,109 @@ export default function LoginForm() {
             {switching ? "Clearing…" : "Force clear Labs session"}
           </button>
           <p className="mt-2 text-xs text-amber-800/80 dark:text-amber-200/70">
-            FatTail.ai and 0-DTE.com each keep their own WordPress login. Labs
-            SSO now forces a WP credential prompt (reauth) so you can pick the
-            right site account — not the last test user cookie.
+            FatTail.ai and 0-DTE.com each keep their own WordPress login. SSO
+            forces a credential prompt (reauth) so you can pick the right site
+            account.
           </p>
         </div>
       )}
 
-      <form onSubmit={submit} className="space-y-4">
-        <label className="block text-sm">
-          <span className="font-medium">Email</span>
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            className={field}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@example.com"
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="flex items-center justify-between font-medium">
-            Password
-            <a
-              href="/forgot-password"
-              className="text-xs font-normal text-emerald-600 hover:underline"
-            >
-              Forgot password?
-            </a>
-          </span>
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            className={field}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-            {error}
-          </p>
-        )}
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded-full bg-emerald-500 py-2.5 font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-50"
-        >
-          {busy ? "Signing in…" : "Sign In"}
-        </button>
-      </form>
-
-      {Object.keys(sso).length > 0 && (
-        <>
-          <div className="my-6 flex items-center gap-3 text-xs text-zinc-400">
-            <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-            MEMBERSHIP SITE
-            <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-          </div>
-          <p className="mb-3 text-center text-xs text-zinc-500">
-            Each button opens that site&apos;s WordPress login (you can choose a
-            different account than last time). FatTail.ai and 0-DTE are separate
-            logins.
-          </p>
-          <div className="space-y-2">
-            {Object.entries(sso).map(([name, url]) => (
-              <a
-                key={name}
-                href={url}
-                onClick={(e) => void startSso(url, e)}
-                className="group flex items-center gap-3 rounded-full border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] px-4 py-3 text-sm font-semibold text-[var(--color-label)] shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--color-fill)] hover:shadow-lg"
-              >
-                {PROVIDER_LOGOS[name] && (
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-zinc-900/5">
-                    <img
-                      src={PROVIDER_LOGOS[name]}
-                      alt=""
-                      className="h-5 w-5 object-contain"
-                    />
-                  </span>
-                )}
-                <span className="flex-1 text-center">
-                  {PROVIDER_LABELS[name] ?? name}
-                </span>
-                {PROVIDER_LOGOS[name] && (
-                  <span className="w-7 shrink-0" aria-hidden="true" />
-                )}
-              </a>
-            ))}
-          </div>
-        </>
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+          {error}
+        </p>
       )}
+
+      {/* Primary: membership site SSO (FatTail.ai) */}
+      {(fattailSso.length > 0 || otherSso.length > 0) && (
+        <div className="space-y-2" data-testid="login-sso-primary">
+          <p className="mb-3 text-center text-xs text-zinc-500">
+            Use your FatTail.ai membership email and password on the next
+            screen.
+          </p>
+          {[...fattailSso, ...otherSso].map(([name, url]) => (
+            <a
+              key={name}
+              href={url}
+              onClick={(e) => void startSso(url, e)}
+              data-testid={
+                name === "wordpress:fattail"
+                  ? "login-sso-fattail"
+                  : `login-sso-${name.replace(/[^a-z0-9]+/gi, "-")}`
+              }
+              className={[
+                "group flex items-center gap-3 rounded-full border px-4 py-3 text-sm font-semibold shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
+                name === "wordpress:fattail"
+                  ? "border-emerald-600/30 bg-emerald-500 text-white hover:bg-emerald-600"
+                  : "border-[var(--color-separator)] bg-[var(--color-surface-secondary)] text-[var(--color-label)] hover:bg-[var(--color-fill)]",
+              ].join(" ")}
+            >
+              {PROVIDER_LOGOS[name] && (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-zinc-900/5">
+                  <img
+                    src={PROVIDER_LOGOS[name]}
+                    alt=""
+                    className="h-5 w-5 object-contain"
+                  />
+                </span>
+              )}
+              <span className="flex-1 text-center">
+                {PROVIDER_LABELS[name] ?? name}
+              </span>
+              {PROVIDER_LOGOS[name] && (
+                <span className="w-7 shrink-0" aria-hidden="true" />
+              )}
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* Secondary: Labs-local password (ops / rare) */}
+      <details className="mt-8" data-testid="login-labs-password-details">
+        <summary className="cursor-pointer text-center text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300">
+          Labs password sign-in (not used by members)
+        </summary>
+        <form onSubmit={submit} className="mt-4 space-y-4">
+          <label className="block text-sm">
+            <span className="font-medium">Email</span>
+            <input
+              type="email"
+              required
+              autoComplete="email"
+              className={field}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@example.com"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="flex items-center justify-between font-medium">
+              Password
+              <a
+                href="/forgot-password"
+                className="text-xs font-normal text-emerald-600 hover:underline"
+              >
+                Forgot password?
+              </a>
+            </span>
+            <input
+              type="password"
+              required
+              autoComplete="current-password"
+              className={field}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full rounded-full border border-zinc-300 bg-white py-2.5 font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          >
+            {busy ? "Signing in…" : "Sign in with Labs password"}
+          </button>
+        </form>
+      </details>
 
       <p className="mt-8 text-center text-sm text-zinc-500">
         Not a member yet?{" "}
