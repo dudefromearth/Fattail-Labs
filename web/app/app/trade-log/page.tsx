@@ -2,7 +2,14 @@
 
 // Trade Log v1.1 — table-first blotter, right sheet, manual management UX.
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import TradeLogTable from "@/components/trade-log/TradeLogTable";
@@ -51,7 +58,6 @@ function TradeLogBody() {
     setAccountId,
     accountLabel,
     accounts: ctxAccounts,
-    refreshAccounts,
     prefsReady,
     dateFilterActive,
     periodLabel,
@@ -97,6 +103,11 @@ function TradeLogBody() {
   >([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  /** Stable ref so load() does not re-create when Practice Context accounts refresh. */
+  const ctxAccountsRef = useRef(ctxAccounts);
+  useEffect(() => {
+    ctxAccountsRef.current = ctxAccounts;
+  }, [ctxAccounts]);
 
   useEffect(() => {
     void Promise.all([
@@ -125,7 +136,9 @@ function TradeLogBody() {
   // Apply ?campaign= from Practice Campaign → Trade Log deep-link
   useEffect(() => {
     if (deepLinkCampaign > 0) {
-      setCampaignFilter(deepLinkCampaign);
+      setCampaignFilter((prev) =>
+        prev === deepLinkCampaign ? prev : deepLinkCampaign,
+      );
     }
   }, [deepLinkCampaign]);
 
@@ -134,24 +147,29 @@ function TradeLogBody() {
   useEffect(() => {
     if (deepLinkCampaign > 0) return;
     if (accountId === "all") {
-      setCampaignFilter("");
+      setCampaignFilter((prev) => (prev === "" ? prev : ""));
       return;
     }
     if (!campaignOptions.length) {
-      setCampaignFilter("");
+      setCampaignFilter((prev) => (prev === "" ? prev : ""));
       return;
     }
     const forAccount = campaignOptions.filter(
       (c) => c.account_id == null || c.account_id === accountId,
     );
     const pool = forAccount.length ? forAccount : campaignOptions;
+    // Keep current filter if it still belongs to this account
+    const stillValid =
+      campaignFilter !== "" &&
+      pool.some((c) => c.id === campaignFilter);
+    if (stillValid) return;
     const preferred =
       pool.find((c) => c.is_ledger) ||
       pool.find((c) => c.is_default) ||
       pool[0];
-    if (preferred) setCampaignFilter(preferred.id);
-    else setCampaignFilter("");
-  }, [accountId, campaignOptions, deepLinkCampaign]);
+    const next = preferred ? preferred.id : "";
+    setCampaignFilter((prev) => (prev === next ? prev : next));
+  }, [accountId, campaignOptions, deepLinkCampaign, campaignFilter]);
 
   // Journey Adhere deep-link only (F2) — no standing process filter on the blotter
   useEffect(() => {
@@ -211,8 +229,8 @@ function TradeLogBody() {
             tr.error.kind === "err" &&
             /account not found/i.test(tr.error.message || "")
           ) {
-            // Fall back to Primary (default account), not "All accounts"
-            const active = (ctxAccounts || []).filter(
+            // Fall back to Default (or Primary legacy), not "All accounts"
+            const active = (ctxAccountsRef.current || []).filter(
               (a) => a.status === "active",
             );
             const home =
@@ -249,7 +267,9 @@ function TradeLogBody() {
         if (tr.data.accounts?.length) {
           setAccounts(tr.data.accounts);
         }
-        refreshAccounts();
+        // Do NOT refreshAccounts() here — it rewrites Practice Context accounts,
+        // recreates this callback (if ctxAccounts were a dep), and loops the page
+        // into an endless load → header/footer vibration.
         if (vn.ok) {
           setCatalog({
             venues: vn.data.venues || [],
@@ -265,14 +285,12 @@ function TradeLogBody() {
   }, [
     accountIdParam,
     prefsReady,
-    refreshAccounts,
     setAccountId,
     campaignFilter,
     playbookFilter,
     adherenceMode,
     filterFromDay,
     filterToDay,
-    ctxAccounts,
   ]);
 
   const loadMore = useCallback(async () => {
