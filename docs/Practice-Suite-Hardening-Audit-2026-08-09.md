@@ -183,5 +183,6 @@ The suite has grown **faster than its contracts**. The highest-value work is not
 | Date | Note |
 |------|------|
 | 2026-08-09 | Initial audit captured from read-only code review (server + web Practice suite) |
+| 2026-08-09 | **Slices 1–4 implemented:** trust/access (A1/A2/A5/C8), one scope (A3/A4/B2/C6/C7), money honesty (B1/C9/D3/A6 UI+prev_close), portability (B3/B4 media budget/C3/C5). Remaining: Slice 5 scale & UI kit (B5/D1/D2/D6), deeper marks ops, C1–C4 hygiene. |
 
 *Related recent work: FatTail-book accounts (migration 105), structure trade counts, playbook cover/export PB3, practice portability panel, campaign/capital expansions (migrations 096–115).*
