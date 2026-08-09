@@ -110,7 +110,6 @@ function Compose({ onStarted }: { onStarted: (id: number) => void }) {
   }, []);
 
   const submit = useCallback(async () => {
-    if (!category) { setErr("Please choose what this relates to."); return; }
     if (!text.trim() || busy) return;
     setBusy(true); setErr(null);
     try {
@@ -134,7 +133,7 @@ function Compose({ onStarted }: { onStarted: (id: number) => void }) {
     <div className="space-y-3 p-4 text-sm">
       <select value={category} onChange={(e) => setCategory(e.target.value)}
         className={`w-full rounded-md border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800 ${category ? "" : "text-zinc-400"}`}>
-        <option value="" disabled>Please choose what this relates to</option>
+        <option value="">What's it about? (optional — we'll sort it)</option>
         {TOPICS.map((t) => <option key={t.value} value={t.value} className="text-zinc-900 dark:text-zinc-100">{t.label}</option>)}
       </select>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5}
@@ -156,7 +155,7 @@ function Compose({ onStarted }: { onStarted: (id: number) => void }) {
         </div>
       )}
       {err && <p className="text-xs text-red-600">{err}</p>}
-      <button onClick={submit} disabled={busy || !text.trim() || !category}
+      <button onClick={submit} disabled={busy || !text.trim()}
         className="w-full rounded-md bg-emerald-600 py-2 font-medium text-white disabled:opacity-50">
         {busy ? "Sending…" : "Start chat"}
       </button>

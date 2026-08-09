@@ -116,9 +116,10 @@ async def create_question(request: Request) -> dict:
     if not isinstance(body, dict):
         raise HTTPException(status_code=422, detail="JSON object required")
     qbody = (body.get("body") or "").strip()
-    category = (body.get("category") or "general").strip().lower()
-    if category not in VALID_CATEGORIES:
-        category = "general"
+    # Topic is optional — if the member doesn't pick one, the concierge classifies it.
+    raw_category = (body.get("category") or "").strip().lower()
+    auto_topic = raw_category not in VALID_CATEGORIES
+    category = "general" if auto_topic else raw_category
     page = (body.get("page_context") or "").strip()[:512] or None
     if not qbody:
         raise HTTPException(status_code=422, detail="Please type your question")
@@ -161,17 +162,31 @@ async def create_question(request: Request) -> dict:
     ai_payload = None
     resolved = False
     if ai_on:
-        res = help_ai.answer(category, [{"author_role": "member", "body": qbody}])
+        # Pass "" when the member didn't choose a topic, so the model classifies it.
+        res = help_ai.answer(
+            "" if auto_topic else category,
+            [{"author_role": "member", "body": qbody}],
+        )
         resolved = bool(res.get("resolved"))
+        if auto_topic:
+            inferred = (res.get("topic") or "general")
+            if inferred in VALID_CATEGORIES and inferred != category:
+                category = inferred
+                with db.transaction() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "UPDATE help_questions SET category = %s WHERE id = %s",
+                            (category, qid),
+                        )
         _store_ai_reply(qid, res["reply"], resolved)
-        ai_payload = {"reply": res["reply"], "resolved": resolved}
+        ai_payload = {"reply": res["reply"], "resolved": resolved, "topic": category}
 
     # Notify the human team only when a human is actually needed.
     if not ai_on or not resolved:
         help_domain.notify_admins_new_question(qid, subject, email or f"member {iid}")
 
-    return {"ok": True, "id": qid, "status": ("ai_resolved" if resolved else "open"),
-            "ai": ai_payload}
+    return {"ok": True, "id": qid, "category": category,
+            "status": ("ai_resolved" if resolved else "open"), "ai": ai_payload}
 
 
 @router.get("/api/help/questions")

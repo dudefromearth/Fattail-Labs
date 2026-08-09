@@ -104,11 +104,14 @@ If the member then says yes / asks for a person, set "resolved": false.
 
 OUTPUT: reply with a STRICT JSON object and nothing else (no code fences, no prose \
 around it):
-{{"reply": "<your message to the member>", "resolved": <true|false>}}
+{{"reply": "<your message to the member>", "resolved": <true|false>, "topic": "<bug|struggling|general>"}}
 Set "resolved": false when you cannot answer from the knowledge base, or the member asks \
 to speak to a person / accepts your offer of a human. When resolved is false, keep "reply" \
 to a short, warm hand-off line. Otherwise set "resolved": true and put the helpful answer \
 in "reply".
+"topic" = your best classification of what the member's message is about: "bug" (something \
+not working / an error / broken), "struggling" (they can't figure out how to do something), \
+or "general" (anything else). ALWAYS include it, even if the member already picked a topic.
 
 KNOWLEDGE BASE
 ----
@@ -135,8 +138,10 @@ def _build_messages(category: str, thread: list[dict]) -> list[dict]:
     author_role 'member' -> user, 'assistant' -> assistant. Admin/other omitted
     (once a human is involved the concierge steps back)."""
     msgs: list[dict] = [{"role": "system", "content": _system_prompt()}]
-    topic = _TOPIC_LABEL.get(category, "General question")
-    msgs.append({"role": "system", "content": f"The member chose this topic: {topic}."})
+    if category in _TOPIC_LABEL:
+        msgs.append({"role": "system", "content": f"The member chose this topic: {_TOPIC_LABEL[category]}."})
+    else:
+        msgs.append({"role": "system", "content": "The member did not pick a topic — infer it into the 'topic' field."})
     for row in thread[-_MAX_THREAD_MSGS:]:
         role = row.get("author_role")
         body = (row.get("body") or "").strip()
@@ -153,7 +158,7 @@ def answer(category: str, thread: list[dict]) -> dict:
     """Return {"reply": str, "resolved": bool}. Never raises; escalates on any
     failure (unconfigured, model/network error, unparseable output)."""
     if not is_enabled() or not _kb():
-        return {"reply": ESCALATION_REPLY, "resolved": False}
+        return {"reply": ESCALATION_REPLY, "resolved": False, "topic": "general"}
 
     try:
         from ai.config import get_ai_config
@@ -170,21 +175,21 @@ def answer(category: str, thread: list[dict]) -> dict:
         )
     except Exception as exc:  # noqa: BLE001 — AI must never break help
         log.warning("help concierge model call failed (%s) — escalating", exc)
-        return {"reply": ESCALATION_REPLY, "resolved": False}
+        return {"reply": ESCALATION_REPLY, "resolved": False, "topic": "general"}
 
     parsed = _extract_json(getattr(result, "text", "") or "")
     if parsed is None:
         # Model answered but didn't format as JSON: show its text, don't claim resolved.
         raw = (getattr(result, "text", "") or "").strip()
         if not raw:
-            return {"reply": ESCALATION_REPLY, "resolved": False}
-        return {"reply": raw[:4000], "resolved": True}
+            return {"reply": ESCALATION_REPLY, "resolved": False, "topic": "general"}
+        return {"reply": raw[:4000], "resolved": True, "topic": "general"}
 
     reply = str(parsed.get("reply") or "").strip()
     resolved = bool(parsed.get("resolved"))
+    topic = str(parsed.get("topic") or "").strip().lower()
+    if topic not in _TOPIC_LABEL:
+        topic = "general"
     if not reply:
-        return {"reply": ESCALATION_REPLY, "resolved": False}
-    if not resolved:
-        # Use our standard hand-off line unless the model wrote a decent one.
-        return {"reply": reply[:4000], "resolved": False}
-    return {"reply": reply[:4000], "resolved": True}
+        return {"reply": ESCALATION_REPLY, "resolved": False, "topic": topic}
+    return {"reply": reply[:4000], "resolved": resolved, "topic": topic}
