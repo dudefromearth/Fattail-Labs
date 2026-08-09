@@ -20,6 +20,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/gates", label: "Gates" },
   { href: "/admin/access", label: "Access" },
   { href: "/admin/users", label: "Users" },
+  { href: "/admin/flow", label: "Flow" },
   { href: "/admin/help", label: "Help" },
   { href: "/admin/community", label: "Community" },
 ];

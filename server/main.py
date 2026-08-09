@@ -82,6 +82,7 @@ def create_app() -> FastAPI:
     from routes.feature_gates import public as feature_gates_public_router
     from routes.pageview import router as pageview_router
     from routes.users_admin import router as users_admin_router
+    from routes.flow_admin import router as flow_admin_router
     from routes.access_admin import router as access_admin_router
 
     app.include_router(auth_router)
@@ -92,6 +93,7 @@ def create_app() -> FastAPI:
     app.include_router(feature_gates_admin_router)
     app.include_router(pageview_router)
     app.include_router(users_admin_router)
+    app.include_router(flow_admin_router)
     app.include_router(appearance_router)
     app.include_router(auth_dev_router)
     app.include_router(integrations_router)

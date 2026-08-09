@@ -4,6 +4,44 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-09 — DL-272 Admin "Flow" — aggregate member journey (Sankey + drop-off)
+
+**Decision:** New admin view (`/admin/flow`, nav after Users) answering "where do
+members naturally flow, and where do they drop off." Read-only, admin-only. Data =
+existing `page_views` (no migration): sessionised per member on the same 30-min gap as
+the Users view (`activity.SESSION_GAP_SECONDS`), granular paths mapped to ~15 readable
+**areas** (`flow.area_for`, longest-prefix; unknown paths fall back to a titleised
+segment so new routes surface instead of being dropped). All aggregation is pure in
+`server/flow.py`; `routes/flow_admin.py` only fetches rows + applies the date-window
+(7/30/90/all) and tier (all/paid/free, paid via the same active-membership rule as the
+billing view) filters. Endpoint: `GET /api/admin/flow`.
+
+**The visual (hero = Sankey):** a **step-based** behavior-flow — column N = the Nth page
+of a session. Sessions that end are carried into a growing grey **"Left"** lane along the
+bottom, so every column is the same height (all sessions) and drop-off reads as the
+widening grey band. Balance invariant the frontend depends on and a test locks: for every
+step with a next column, `node[i][A] == Σ_B link[i][A→B] + exit[i][A]`. Below the Sankey:
+a **drop-off table** (per area: reached / left-here / exit-rate, sorted by exits) and the
+**top journeys** (ordered area paths). Hand-rolled SVG Sankey — no chart lib.
+
+**Verified locally** on seeded synthetic journeys (7/7 `test_flow.py` incl. the balance
+invariant; visual confirmed in-browser — funnel narrows 79→66→41→14→10, grey "Left" lane
+grows, panels populate). Meaningful only on **production** traffic; local `page_views` is
+otherwise empty. Spec: `FatTail-Labs-User-Flow-Spec-v1.0`. Status: implemented + locally
+verified; pending live deploy to MiniTwo.
+
+## 2026-08-09 — DL-271 Help concierge — optional topic (AI auto-classifies)
+
+**Decision:** The help topic dropdown is now **optional**. If a member submits without
+picking one, the concierge classifies the message into `bug` | `struggling` | `general`
+itself (new `"topic"` field in the JSON answer contract; `help_ai.answer` always returns
+it, defaulting to `general`). `routes/help.py` writes the AI's topic back onto the
+question row when none was chosen, so admin filtering/counts stay accurate. Removes a
+point of friction (members shouldn't have to categorise their own problem) without losing
+the categorisation the admin side needs. No migration. Verified locally (submit with no
+topic → 200, auto-tagged `bug`; 14/14 help tests pass). Folded into the help concierge
+work; pending the same MiniTwo deploy as DL-270.
+
 ## 2026-08-09 — DL-270 Help concierge v1.1 — inactivity close, proactive human, feedback
 
 *(Renumbered from DL-254 on rebase — origin concurrently took DL-254 for the Trader
