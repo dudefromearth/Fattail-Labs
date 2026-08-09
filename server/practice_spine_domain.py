@@ -1540,8 +1540,38 @@ def campaign_media_root():
     raw = getattr(cfg, "playbook_media_dir", None) or ""
     raw = (raw or "").strip()
     if raw:
-        return Path(raw) / "campaign_covers"
-    return Path(__file__).resolve().parent / "var" / "campaign_covers"
+        return (Path(raw) / "campaign_covers").resolve()
+    return (
+        Path(__file__).resolve().parent / "var" / "campaign_covers"
+    ).resolve()
+
+
+def _confine_campaign_media_path(path):
+    """C2 — reject path escape under campaign cover root."""
+    from pathlib import Path
+
+    root = campaign_media_root().resolve()
+    resolved = Path(path).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise PracticeSpineError(500, "invalid media path") from exc
+    return resolved
+
+
+def _image_magic_content_type(data: bytes) -> str | None:
+    """C1 — image by magic bytes (not client Content-Type alone)."""
+    if not data:
+        return None
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    return None
 
 
 def set_campaign_cover_from_upload(
@@ -1553,14 +1583,14 @@ def set_campaign_cover_from_upload(
     data: bytes,
     original_name: str | None = None,
 ) -> dict:
-    """Store cover image and point campaign at it. Images only."""
+    """Store cover image and point campaign at it. Magic-byte images only (C1)."""
     row = get_campaign(cur, identity_id, campaign_id)
     if not row:
         raise PracticeSpineError(404, "Campaign not found")
-    ct = (content_type or "").split(";")[0].strip().lower()
-    if not ct.startswith("image/"):
+    ct = _image_magic_content_type(data)
+    if ct is None:
         raise PracticeSpineError(
-            422, "Cover must be an image (JPEG, PNG, WebP, GIF, …)"
+            422, "Cover must be an image (JPEG, PNG, WebP, GIF)"
         )
     if len(data) > _CAMPAIGN_COVER_MAX:
         raise PracticeSpineError(413, "Cover image exceeds 5 MB")
@@ -1588,12 +1618,13 @@ def set_campaign_cover_from_upload(
     )
     if prev_key and str(prev_key).startswith("ccmedia:"):
         rel = str(prev_key)[len("ccmedia:") :]
-        old = root / rel
-        try:
-            if old.is_file():
-                old.unlink()
-        except OSError:
-            pass
+        if ".." not in rel and not rel.startswith(("/", "\\")):
+            old = _confine_campaign_media_path(root / rel)
+            try:
+                if old.is_file():
+                    old.unlink()
+            except OSError:
+                pass
     camp = get_campaign(cur, identity_id, campaign_id)
     return {
         "campaign": camp,
@@ -1621,12 +1652,13 @@ def clear_campaign_cover(cur, identity_id: int, campaign_id: int) -> dict:
     if key and str(key).startswith("ccmedia:"):
         root = campaign_media_root()
         rel = str(key)[len("ccmedia:") :]
-        path = root / rel
-        try:
-            if path.is_file():
-                path.unlink()
-        except OSError:
-            pass
+        if ".." not in rel and not rel.startswith(("/", "\\")):
+            path = _confine_campaign_media_path(root / rel)
+            try:
+                if path.is_file():
+                    path.unlink()
+            except OSError:
+                pass
     camp = get_campaign(cur, identity_id, campaign_id)
     return {"campaign": camp}
 
@@ -1646,7 +1678,9 @@ def read_campaign_cover_bytes(
     if not key.startswith("ccmedia:"):
         raise PracticeSpineError(500, "invalid cover storage key")
     rel = key[len("ccmedia:") :]
-    path = campaign_media_root() / rel
+    if ".." in rel or rel.startswith(("/", "\\")):
+        raise PracticeSpineError(500, "invalid cover storage key")
+    path = _confine_campaign_media_path(campaign_media_root() / rel)
     if not path.is_file():
         raise PracticeSpineError(404, "Cover file missing")
     ct = (row.get("cover_content_type") or "image/jpeg").split(";")[0]

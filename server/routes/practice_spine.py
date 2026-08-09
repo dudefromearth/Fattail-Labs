@@ -60,17 +60,11 @@ def list_playbook_entries(
                     (iid,),
                 )
             rows = cur.fetchall() or []
+            # D2 — list is meta only; migrate flat→pages on open (get/full), not N+1 here.
             entries = []
             for r in rows:
                 try:
-                    pbs.ensure_book_pages_migrated(cur, iid, int(r["id"]))
-                    cur.execute(
-                        """SELECT * FROM member_playbook_entries
-                           WHERE id = %s AND identity_id = %s""",
-                        (int(r["id"]), iid),
-                    )
-                    r2 = cur.fetchone() or r
-                    entries.append(pbs.serialize_book_meta(cur, r2))
+                    entries.append(pbs.serialize_book_meta(cur, r))
                 except psd.PracticeSpineError:
                     entries.append(psd.serialize_playbook(r))
     return {"entries": entries}

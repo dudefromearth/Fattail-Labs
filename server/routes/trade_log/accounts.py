@@ -42,27 +42,30 @@ def list_accounts(request: Request) -> dict:
             # ToS import stores open + close as separate trade rows; counting
             # every row double-counts ~round-trips (e.g. 1474 fills → ~737 books).
             # Align with structure.trade_is_close_fill: close when TO_CLOSE > TO_OPEN.
+            # B5: aggregate legs once scoped by identity (not unscoped global GROUP BY).
             cur.execute(
-                """SELECT a.*,
-                          (SELECT COUNT(*)
-                           FROM member_trade_log_trades t
-                           LEFT JOIN (
-                             SELECT trade_id,
-                                    SUM(CASE WHEN pos_effect = 'TO_CLOSE' THEN 1 ELSE 0 END)
-                                      AS n_close,
-                                    SUM(CASE WHEN pos_effect = 'TO_OPEN' THEN 1 ELSE 0 END)
-                                      AS n_open
-                             FROM member_trade_log_legs
-                             GROUP BY trade_id
-                           ) leg ON leg.trade_id = t.id
-                           WHERE t.account_id = a.id
-                             AND t.identity_id = a.identity_id
-                             AND COALESCE(leg.n_close, 0) <= COALESCE(leg.n_open, 0)
-                          ) AS trade_count
+                """SELECT a.*, COALESCE(tc.cnt, 0) AS trade_count
                    FROM member_trade_log_accounts a
+                   LEFT JOIN (
+                     SELECT t.account_id AS account_id, COUNT(*) AS cnt
+                     FROM member_trade_log_trades t
+                     LEFT JOIN (
+                       SELECT trade_id,
+                              SUM(CASE WHEN pos_effect = 'TO_CLOSE' THEN 1 ELSE 0 END)
+                                AS n_close,
+                              SUM(CASE WHEN pos_effect = 'TO_OPEN' THEN 1 ELSE 0 END)
+                                AS n_open
+                       FROM member_trade_log_legs
+                       WHERE identity_id = %s
+                       GROUP BY trade_id
+                     ) leg ON leg.trade_id = t.id
+                     WHERE t.identity_id = %s
+                       AND COALESCE(leg.n_close, 0) <= COALESCE(leg.n_open, 0)
+                     GROUP BY t.account_id
+                   ) tc ON tc.account_id = a.id
                    WHERE a.identity_id = %s
                    ORDER BY a.status ASC, a.sort_order ASC, a.id ASC""",
-                (iid,),
+                (iid, iid, iid),
             )
             rows = cur.fetchall()
     return {"accounts": [_account_row(r) for r in rows]}

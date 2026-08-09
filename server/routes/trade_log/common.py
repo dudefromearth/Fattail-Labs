@@ -325,6 +325,35 @@ def _ensure_default_account(cur, iid: int) -> dict:
     # Amendment Top-Level Account: account only — never invent ledger furniture.
     row = cur.fetchone()
     if row:
+        # Soft-migrate legacy Primary + unset venue on standing stock book (C4)
+        if row.get("label") == LEGACY_DEFAULT_ACCOUNT_LABEL:
+            cur.execute(
+                """UPDATE member_trade_log_accounts
+                   SET label = %s
+                   WHERE id = %s AND identity_id = %s AND label = %s""",
+                (
+                    DEFAULT_ACCOUNT_LABEL,
+                    row["id"],
+                    iid,
+                    LEGACY_DEFAULT_ACCOUNT_LABEL,
+                ),
+            )
+        if (row.get("broker") or "") in ("", "unset"):
+            cur.execute(
+                """UPDATE member_trade_log_accounts
+                   SET broker = %s
+                   WHERE id = %s AND identity_id = %s
+                     AND (broker IS NULL OR broker = '' OR broker = 'unset')""",
+                (DEFAULT_ACCOUNT_VENUE, row["id"], iid),
+            )
+        if row.get("label") == LEGACY_DEFAULT_ACCOUNT_LABEL or (
+            row.get("broker") or ""
+        ) in ("", "unset"):
+            cur.execute(
+                "SELECT * FROM member_trade_log_accounts WHERE id = %s",
+                (row["id"],),
+            )
+            return cur.fetchone() or row
         return row
     cur.execute(
         """SELECT * FROM member_trade_log_accounts
@@ -357,6 +386,14 @@ def _ensure_default_account(cur, iid: int) -> dict:
                     iid,
                     LEGACY_DEFAULT_ACCOUNT_LABEL,
                 ),
+            )
+        if (standing.get("broker") or "") in ("", "unset"):
+            cur.execute(
+                """UPDATE member_trade_log_accounts
+                   SET broker = %s
+                   WHERE id = %s AND identity_id = %s
+                     AND (broker IS NULL OR broker = '' OR broker = 'unset')""",
+                (DEFAULT_ACCOUNT_VENUE, standing["id"], iid),
             )
         cur.execute(
             "SELECT * FROM member_trade_log_accounts WHERE id = %s",

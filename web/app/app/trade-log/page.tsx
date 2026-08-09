@@ -17,6 +17,7 @@ import TradeLogToolbar from "@/components/trade-log/TradeLogToolbar";
 import TradeSheet from "@/components/trade-log/TradeSheet";
 import ImportSheet from "@/components/trade-log/ImportSheet";
 import PositionsView from "@/components/capital/PositionsView";
+import EmptyPeriodNotice from "@/components/practice/EmptyPeriodNotice";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import type { Account, Catalog, Trade } from "@/lib/tradeLog";
 import {
@@ -599,24 +600,13 @@ function TradeLogBody() {
         dateFilterActive &&
         (mergedAccounts.find((a) => a.id === accountId)?.trade_count ?? 0) >
           0 && (
-          <div
-            className="mt-4 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-fill)]/50 px-3 py-2 text-xs text-[var(--color-label-secondary)]"
-            role="status"
-            data-testid="trade-log-empty-period"
-          >
-            No trades in{" "}
-            <span className="font-medium text-[var(--color-label)]">
-              {periodLabel}
-            </span>{" "}
-            for this account ({accountLabel} has fills outside this window).{" "}
-            <button
-              type="button"
-              className="font-medium text-[var(--color-tint)] hover:underline"
-              onClick={() => setGranularity("all")}
-            >
-              Show all time
-            </button>
-          </div>
+          <EmptyPeriodNotice
+            periodLabel={periodLabel}
+            accountLabel={accountLabel}
+            variant="trades"
+            onShowAllTime={() => setGranularity("all")}
+            testId="trade-log-empty-period"
+          />
         )}
 
       {viewMode === "log" && state === "ok" &&

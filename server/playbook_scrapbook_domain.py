@@ -867,8 +867,19 @@ def media_root() -> Path:
     cfg = get_config()
     raw = (cfg.playbook_media_dir or "").strip()
     if raw:
-        return Path(raw)
-    return Path(__file__).resolve().parent / "var" / "playbook_media"
+        return Path(raw).resolve()
+    return (Path(__file__).resolve().parent / "var" / "playbook_media").resolve()
+
+
+def _confine_media_path(path: Path) -> Path:
+    """C2 — reject path escape if storage_key is ever poisoned."""
+    root = media_root().resolve()
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise PracticeSpineError(500, "invalid media path") from exc
+    return resolved
 
 
 def _assert_attachment(cur, identity_id: int, book_id: int, att_id: int) -> dict:
@@ -985,7 +996,10 @@ def read_attachment_bytes(
     if not key.startswith("pbmedia:"):
         raise PracticeSpineError(500, "invalid storage key")
     rel = key[len("pbmedia:") :]
-    path = media_root() / rel
+    # No path separators beyond identity/name
+    if ".." in rel or rel.startswith(("/", "\\")):
+        raise PracticeSpineError(500, "invalid storage key")
+    path = _confine_media_path(media_root() / rel)
     if not path.is_file():
         raise PracticeSpineError(404, "Attachment file missing")
     return path.read_bytes(), str(row.get("content_type") or "application/octet-stream")
@@ -1008,6 +1022,21 @@ def purge_attachment(cur, identity_id: int, book_id: int, att_id: int) -> dict:
     return {"archive": list_archive(cur, identity_id, book_id)}
 
 
+def _image_magic_content_type(data: bytes) -> str | None:
+    """C1 — recognise image by magic bytes (not client Content-Type alone)."""
+    if not data:
+        return None
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    return None
+
+
 def set_cover_from_upload(
     cur,
     identity_id: int,
@@ -1019,14 +1048,16 @@ def set_cover_from_upload(
 ) -> dict:
     """Direct cover path: store image attachment + point book cover at it.
 
-    Images only (image/*). Replaces previous cover pointer; old file stays in
-    archive until purged. One-step for the member — not “upload then pick.”
+    Images only — magic-byte sniff (C1). Replaces previous cover pointer; old
+    file stays in archive until purged.
     """
-    ct = (content_type or "").split(";")[0].strip().lower()
-    if not ct.startswith("image/"):
+    magic_ct = _image_magic_content_type(data)
+    if magic_ct is None:
         raise PracticeSpineError(
-            422, "Cover must be an image (JPEG, PNG, WebP, GIF, …)"
+            422, "Cover must be an image (JPEG, PNG, WebP, GIF)"
         )
+    # Prefer sniffed type over client-claimed Content-Type
+    ct = magic_ct
     out = save_attachment(
         cur,
         identity_id,

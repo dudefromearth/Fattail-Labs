@@ -66,10 +66,30 @@ def test_trade_log_legacy_prose_and_isolation(client):
         assert all(e["id"] != eid for e in peer.json()["entries"])
         assert all(t["id"] != eid for t in peer.json()["trades"])
 
-        # Free no-plan observer — Practice denied (previews only).
+        # Free no-plan observer — write denied; read/export floor keeps owner list.
         obs = cookie_for("observer", a)
-        denied = client.get("/api/me/trade-log", cookies=obs)
-        assert denied.status_code == 403
+        free_read = client.get("/api/me/trade-log", cookies=obs)
+        assert free_read.status_code == 200, free_read.text
+        free_write = client.post(
+            "/api/me/trade-log/trades",
+            cookies=obs,
+            json={
+                "account_id": data["accounts"][0]["id"] if data.get("accounts") else None,
+                "exec_at": "2026-08-01T12:00:00",
+                "strategy": "CUSTOM",
+                "asset_class": "equity",
+                "legs": [
+                    {
+                        "side": "BUY",
+                        "quantity": 1,
+                        "underlier": "SPY",
+                        "instrument_type": "equity",
+                        "fill_price": 1.0,
+                    }
+                ],
+            },
+        )
+        assert free_write.status_code == 403, free_write.text
 
         client.delete(f"/api/me/trade-log/{eid}", cookies=ca)
     finally:
@@ -119,8 +139,8 @@ def test_navigator_role_trade_log_ok(client):
         _purge(a)
 
 
-def test_default_account_auto_provisioned_venue_unset(client):
-    """Primary is provisioned; venue stays unset until import or first trade."""
+def test_default_account_auto_provisioned_fattail_book(client):
+    """Default FatTail book is provisioned (not a connected broker)."""
     a = _id("zztest-tl-default@labs.test")
     try:
         ca = cookie_for("activator", a)
@@ -129,13 +149,88 @@ def test_default_account_auto_provisioned_venue_unset(client):
         data = r.json()
         assert data["accounts"], "expected auto-provisioned account"
         assert data.get("default_account_id")
-        primary = next(x for x in data["accounts"] if x["id"] == data["default_account_id"])
-        assert primary["label"] == "Primary"
-        assert primary["broker"] == "unset"
-        assert primary["status"] == "active"
+        home = next(
+            x for x in data["accounts"] if x["id"] == data["default_account_id"]
+        )
+        # Doctrine: Default + fattail (legacy Primary/unset soft-migrated)
+        assert home["label"] in ("Default", "Primary")
+        assert home["broker"] in ("fattail", "unset")
+        assert home["status"] == "active"
         r2 = client.get("/api/me/trade-log/accounts", cookies=ca)
-        primaries = [x for x in r2.json()["accounts"] if x["label"] == "Primary"]
-        assert len(primaries) == 1
+        standing = [
+            x
+            for x in r2.json()["accounts"]
+            if x["label"] in ("Default", "Primary")
+        ]
+        assert len(standing) >= 1
+        assert standing[0]["broker"] == "fattail"
+    finally:
+        _purge(a)
+
+
+def test_account_trade_count_structure_open_not_close(client):
+    """B5 — open+close pair → trade_count ≈ 1 structure (not 2 fills)."""
+    a = _id("zztest-tl-structure-count@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "CountBook", "broker": "fattail"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = int((acct.json().get("account") or acct.json())["id"])
+
+        open_tr = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-08-01T10:00:00",
+                "strategy": "CUSTOM",
+                "asset_class": "equity",
+                "legs": [
+                    {
+                        "side": "BUY",
+                        "quantity": 10,
+                        "underlier": "SPY",
+                        "instrument_type": "equity",
+                        "fill_price": 100.0,
+                        "pos_effect": "TO_OPEN",
+                    }
+                ],
+            },
+        )
+        assert open_tr.status_code == 200, open_tr.text
+        open_id = int(open_tr.json()["id"])
+
+        close_tr = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2026-08-01T15:00:00",
+                "strategy": "CUSTOM",
+                "asset_class": "equity",
+                "legs": [
+                    {
+                        "side": "SELL",
+                        "quantity": 10,
+                        "underlier": "SPY",
+                        "instrument_type": "equity",
+                        "fill_price": 101.0,
+                        "pos_effect": "TO_CLOSE",
+                    }
+                ],
+            },
+        )
+        assert close_tr.status_code == 200, close_tr.text
+        assert int(close_tr.json()["id"]) != open_id
+
+        listed = client.get("/api/me/trade-log/accounts", cookies=ca)
+        assert listed.status_code == 200, listed.text
+        row = next(x for x in listed.json()["accounts"] if x["id"] == aid)
+        assert int(row.get("trade_count") or 0) == 1
     finally:
         _purge(a)
 
@@ -568,6 +663,8 @@ def test_default_book_filter_includes_unstamped_and_playbook_unaffiliated(client
                     (t_null["id"], a),
                 )
 
+        # is_default book = full account blotter (no campaign clause) — includes
+        # stamps to sibling charters and unstamped rows (home of the book).
         filt = client.get(
             f"/api/me/trade-log/trades?account_id={aid}&full=1&practice_campaign_id={book_id}",
             cookies=ca,
@@ -576,7 +673,18 @@ def test_default_book_filter_includes_unstamped_and_playbook_unaffiliated(client
         ids = {t["id"] for t in filt.json()["trades"]}
         assert t_book["id"] in ids
         assert t_null["id"] in ids  # unstamped lives in book
-        assert t_other["id"] not in ids
+        assert t_other["id"] in ids  # sibling stamp still on this account book
+
+        # Named (non-default) campaign filters exact stamp only
+        filt_other = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}&full=1&practice_campaign_id={other_id}",
+            cookies=ca,
+        )
+        assert filt_other.status_code == 200, filt_other.text
+        oids = {t["id"] for t in filt_other.json()["trades"]}
+        assert t_other["id"] in oids
+        assert t_book["id"] not in oids
+        assert t_null["id"] not in oids
 
         unaff = client.get(
             f"/api/me/trade-log/trades?account_id={aid}&full=1&playbook_mode=unaffiliated",

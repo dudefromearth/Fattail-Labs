@@ -146,6 +146,31 @@ def test_purge_removes_capital_prefs_and_movements(client):
                         pass
 
 
+def test_playbook_cover_rejects_non_image_magic(client):
+    """C1 — cover upload sniffs magic bytes; text body with image/* fails."""
+    iid = _member("zztest-cover-magic@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        created = client.post(
+            "/api/me/playbook/entries",
+            cookies=cookies,
+            json={"title": "Cover Magic Book"},
+        )
+        assert created.status_code == 200, created.text
+        bid = int(created.json()["entry"]["id"])
+        # Pretend JPEG content-type but send plain text
+        r = client.post(
+            f"/api/me/playbook/entries/{bid}/cover",
+            cookies=cookies,
+            files={
+                "file": ("fake.jpg", b"not-an-image-payload", "image/jpeg"),
+            },
+        )
+        assert r.status_code in (400, 422), r.text
+    finally:
+        _cleanup(iid)
+
+
 def test_capital_pack_export_purge_import_round_trip(client):
     """B3 — capital prefs + movements survive export → purge → import."""
     import json

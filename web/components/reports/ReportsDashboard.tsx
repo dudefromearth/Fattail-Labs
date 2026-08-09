@@ -17,6 +17,7 @@ import {
 } from "@/lib/reportsBook";
 import { fetchReportsBook } from "@/lib/tradeLogApi";
 import { usePracticeContext } from "@/lib/practiceContext";
+import EmptyPeriodNotice from "@/components/practice/EmptyPeriodNotice";
 import EquityChart from "./EquityChart";
 import DrawdownChart from "./DrawdownChart";
 import StatsTable from "./StatsTable";
@@ -267,34 +268,13 @@ export default function ReportsDashboard() {
         Accounts &amp; Capital.
       </p>
       {dateFilterActive && book.tradeCount === 0 && (
-        <div
-          className="rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-fill)]/50 px-3 py-2 text-xs text-[var(--color-label-secondary)]"
-          role="status"
-          data-testid="reports-empty-period"
-        >
-          No closed outcomes in{" "}
-          <span className="font-medium text-[var(--color-label)]">
-            {periodLabel}
-          </span>
-          {accountId !== "all" ? (
-            <>
-              {" "}
-              for{" "}
-              <span className="font-medium text-[var(--color-label)]">
-                {accountLabel}
-              </span>
-            </>
-          ) : null}
-          . The account may still have trades outside this window — choose{" "}
-          <button
-            type="button"
-            className="font-medium text-[var(--color-tint)] hover:underline"
-            onClick={() => setGranularity("all")}
-          >
-            All
-          </button>{" "}
-          (full book) or another month.
-        </div>
+        <EmptyPeriodNotice
+          periodLabel={periodLabel}
+          accountLabel={accountId !== "all" ? accountLabel : null}
+          variant="outcomes"
+          onShowAllTime={() => setGranularity("all")}
+          testId="reports-empty-period"
+        />
       )}
       {/* Main: stats | charts — scope is only the context controls above */}
       <div className="grid gap-5 lg:grid-cols-[minmax(17rem,22rem)_1fr] lg:items-stretch">
