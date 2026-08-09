@@ -4,14 +4,14 @@
 
 | Phase | State |
 |-------|--------|
-| W0 Program lock | **APPROVE-READY** — Claude plan review SOUND (2026-08-09); awaiting **Coach GO** + §10 four words; seeds not yet cold-started |
-| JED-1 API | Blocked on W0-G |
-| JED-1b Toggle prefs | Blocked on W0-G (parallel with JED-1 after JED-1-0) |
-| JED-2 Month paint | Blocked on **both** JED-1-G **and** JED-1b-G (paint gate — structural) |
-| JED-3 Week | Blocked on JED-2-G |
-| JED-4 Year | Optional (Coach §10) |
-| JED-6 R:R polish | Optional / fold into JED-2 |
-| Z Close | Blocked on JED-3-G (or JED-2-G if week deferred by Coach) |
+| W0 Program lock | **PASS** — Coach GO 2026-08-09; defaults ON / buckets / R:R density / JED-4 deferred |
+| JED-1 API | **PASS** — domain + route + tests |
+| JED-1b Toggle prefs | **PASS** — migration 116 + API |
+| JED-2 Month paint | **PASS** — amounts, gradient, period bar, toggle |
+| JED-3 Week | **PASS** — week nets + Week P&L bar |
+| JED-4 Year | **Deferred** (Coach GO) |
+| JED-6 R:R polish | Folded into JED-2 (desktop R shown when sample_n > 0) |
+| Z Close | In progress — ship commit |
 
 ## Claude plan review (folded)
 

@@ -12,12 +12,17 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 
 import db
+import journal_day_net_prefs as jdnp
 import journal_session_agent as jsa
 import journal_session_domain as jsd
 import journal_session_media as jsm
 import journal_session_structured as jss
 from guards import require_session
-from routes.trade_log.common import _storage_identity_id
+from routes.trade_log.common import (
+    _load_member_book,
+    _require_tool_member,
+    _storage_identity_id,
+)
 
 router = APIRouter(tags=["journal-sessions"])
 
@@ -35,6 +40,79 @@ def _require_create(cur, claims: dict, identity_id: int) -> None:
     role = str(claims.get("role") or "observer")
     if not jsd.can_create_session(cur, identity_id, role):
         raise HTTPException(status_code=403, detail=jsd.CREATE_DENY_DETAIL)
+
+
+@router.get("/api/me/journal/day-net-calendar")
+def journal_day_net_calendar(
+    request: Request,
+    from_day: str = "",
+    to_day: str = "",
+    account_id: int | None = None,
+    practice_campaign_id: int | None = None,
+    undirected: bool = False,
+) -> dict:
+    """Day net exposure map — Spec v0.2 (derived realized nets + intensity)."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    for label, val in (("from_day", from_day), ("to_day", to_day)):
+        if not val or len(val) < 10 or val[4] != "-" or val[7] != "-":
+            raise HTTPException(
+                status_code=422, detail=f"{label} must be YYYY-MM-DD"
+            )
+    from trade_log_domain import build_day_net_calendar
+
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            trades, _accounts = _load_member_book(cur, iid, account_id)
+    body = build_day_net_calendar(
+        trades,
+        from_day=from_day[:10],
+        to_day=to_day[:10],
+        practice_campaign_id=practice_campaign_id,
+        undirected=bool(undirected),
+    )
+    body["scope"] = {
+        "account_id": account_id,
+        "practice_campaign_id": practice_campaign_id,
+        "undirected": bool(undirected),
+    }
+    return body
+
+
+@router.get("/api/me/journal/preferences")
+def journal_preferences_get(request: Request) -> dict:
+    """Journal prefs — day_net_map_enabled default ON."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            enabled = jdnp.get_day_net_map_enabled(cur, iid)
+    return {"day_net_map_enabled": enabled}
+
+
+@router.patch("/api/me/journal/preferences")
+async def journal_preferences_patch(request: Request) -> dict:
+    claims = require_session(request)
+    _require_tool_member(claims, capability="write")
+    body = await request.json()
+    if not isinstance(body, dict) or "day_net_map_enabled" not in body:
+        raise HTTPException(
+            status_code=422, detail="day_net_map_enabled required"
+        )
+    enabled = bool(body.get("day_net_map_enabled"))
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            try:
+                enabled = jdnp.set_day_net_map_enabled(cur, iid, enabled)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"journal prefs unavailable: {exc}",
+                ) from exc
+    return {"day_net_map_enabled": enabled}
 
 
 @router.get("/api/me/journal-sessions/week-activity")

@@ -11,6 +11,10 @@ from trade_log_domain.day_book import (
     opens_on_day,
     union_day_book_items,
 )
+from trade_log_domain.day_net_calendar import (
+    build_day_net_calendar,
+    intensity_step,
+)
 from trade_log_domain.matching import match_open_close
 from trade_log_domain.pnl import enrich_trades_with_synthetic_pnl, realized_pnl
 from trade_log_domain.reports import build_reports_book
@@ -44,6 +48,7 @@ __all__ = [
     "adherence_mix",
     "average_entry_r2r",
     "build_day_book",
+    "build_day_net_calendar",
     "build_markers",
     "build_process_pack",
     "build_reports_book",
@@ -52,6 +57,7 @@ __all__ = [
     "enrich_trades_with_synthetic_pnl",
     "entry_r2r",
     "fills_on_day",
+    "intensity_step",
     "match_open_close",
     "multiplier",
     "net_cash_points",
