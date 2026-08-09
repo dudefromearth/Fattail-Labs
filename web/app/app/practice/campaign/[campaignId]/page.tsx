@@ -201,9 +201,17 @@ export default function CampaignEditorPage() {
           throw new Error("Starting capital must be a non-negative number");
         }
       }
+      // Default book campaigns must keep a trade account. Don't send null and
+      // wipe the bind (server also preserves existing, but be explicit).
+      const acct =
+        accountId === ""
+          ? campaign.is_default
+            ? (campaign.account_id ?? null)
+            : null
+          : accountId;
       const updated = await patchCampaign(campaign.id, {
         title: title.trim(),
-        account_id: accountId === "" ? null : accountId,
+        account_id: acct,
         starting_capital: cap,
         goals_md: goals.trim() || null,
         starts_at: startsAt || null,

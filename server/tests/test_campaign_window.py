@@ -305,3 +305,55 @@ def test_campaign_covers_fill_pure():
         "ends_at": None,
     }
     assert psd.campaign_covers_fill(open_end, datetime(2099, 1, 1))
+
+
+def test_default_campaign_save_preserves_account(client):
+    """Regression: Save on default book campaign must not strip account_id (L5 vs default)."""
+    iid = _member("zztest-window-default-save@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        aid = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=cookies,
+            json={"label": "BookDefault", "broker": "fattail"},
+        ).json()["id"]
+
+        c = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "0DTE Classic",
+                "activate": True,
+                "is_default": True,
+                "account_id": aid,
+            },
+        )
+        assert c.status_code == 200, c.text
+        camp = c.json()["campaign"]
+        assert camp.get("is_default") is True
+        assert camp.get("account_id") == aid
+
+        # Charter edit that re-sends account_id (or null from empty UI) must not 422
+        p = client.patch(
+            f"/api/me/practice/campaigns/{camp['id']}",
+            cookies=cookies,
+            json={
+                "title": "0DTE Classic",
+                "goals_md": "Stay process-first",
+                "account_id": aid,
+            },
+        )
+        assert p.status_code == 200, p.text
+        assert p.json()["campaign"]["account_id"] == aid
+        assert p.json()["campaign"]["goals_md"] == "Stay process-first"
+
+        # Explicit null from client must keep existing bind when still default
+        p2 = client.patch(
+            f"/api/me/practice/campaigns/{camp['id']}",
+            cookies=cookies,
+            json={"goals_md": "Updated goals", "account_id": None},
+        )
+        assert p2.status_code == 200, p2.text
+        assert p2.json()["campaign"]["account_id"] == aid
+    finally:
+        _cleanup(iid)

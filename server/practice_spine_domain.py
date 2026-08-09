@@ -1214,13 +1214,38 @@ def patch_campaign(
                 422,
                 f"cannot transition campaign from {cur_status!r} to {new_status!r}",
             )
+    # Resolve is_default before account rules — default book campaigns need a book;
+    # non-default deliberate charters are account-free (L5).
+    if is_default is ...:
+        new_default = bool(int(row.get("is_default") or 0))
+    else:
+        new_default = bool(is_default)
+    if new_status != "active":
+        new_default = False
+
     if account_id is ...:
         new_account = row.get("account_id")
+        if new_account is not None:
+            try:
+                new_account = int(new_account)
+            except (TypeError, ValueError):
+                new_account = None
     elif account_id is None or account_id == "":
         if is_ledger:
             raise PracticeSpineError(422, "Ledger campaign requires account_id")
-        # L5 — charters may clear account binding
-        new_account = None
+        if new_default:
+            # Keep existing bind when Save clears the field; fail only if never bound
+            existing = row.get("account_id")
+            if existing is not None:
+                try:
+                    new_account = int(existing)
+                except (TypeError, ValueError):
+                    new_account = None
+            else:
+                new_account = None
+        else:
+            # L5 — non-default charters clear account binding
+            new_account = None
     else:
         try:
             new_account = int(account_id)
@@ -1231,9 +1256,10 @@ def patch_campaign(
             raise PracticeSpineError(
                 422, "Ledger cannot move between accounts"
             )
-        # Non-ledger: ignore account bind on write — store NULL for L5 honesty
-        if not is_ledger:
+        # Non-ledger non-default: L5 strips bind. Default book campaigns keep it.
+        if not is_ledger and not new_default:
             new_account = None
+
     if starting_capital is ...:
         new_cap = row.get("starting_capital")
     elif starting_capital is None or starting_capital == "":
@@ -1249,14 +1275,12 @@ def patch_campaign(
         new_goals = row.get("goals_md")
     else:
         new_goals = (str(goals_md) if goals_md is not None else "").strip() or None
-    if is_default is ...:
-        new_default = bool(int(row.get("is_default") or 0))
-    else:
-        new_default = bool(is_default)
     if new_default and new_account is None:
-        raise PracticeSpineError(422, "default book campaign requires account_id")
-    if new_status != "active":
-        new_default = False
+        raise PracticeSpineError(
+            422,
+            "default book campaign requires account_id "
+            "(set the trade account, then Save or Set as default)",
+        )
 
     # Terminal = charter read-only (status already terminal; only allow no-op)
     charter_touched = any(
