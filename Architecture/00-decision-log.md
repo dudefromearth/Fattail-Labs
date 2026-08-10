@@ -4,6 +4,17 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-10 — DL-288 Admin help thread — sender is visually unambiguous
+
+**Decision:** In the admin help ticket view, messages were only split into "admin →
+Team" vs everything-else → "Member", so the **AI concierge's `assistant` messages were
+mislabeled "Member"** and styled identically to the real member — an operator couldn't
+tell who said what. Fixed `web/app/admin/help/page.tsx`: a `roleStyle()` helper gives each
+sender a distinct labelled badge + coloured left border — **Member** (blue, incl. the
+original question), **AI assistant** (violet), **Team** (green), **Team · internal note**
+(amber). Frontend-only, no migration. Verified in-browser on real threads (member question
+vs bot reply now clearly separated). Deployed LIVE to MiniTwo.
+
 ## 2026-08-10 — DL-287 Market Bus architecture map for agents (Arch 28)
 
 **Decision:** Agents navigate market data via as-built **Architecture/28-massive-market-bus.md**

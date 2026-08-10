@@ -12,6 +12,33 @@ type Row = {
   created_at: string | null; updated_at: string | null;
 };
 type Msg = { id: number; author_role: string; visibility: string; body: string; created_at: string | null };
+
+// Who sent a message, made visually distinct so the bot is never mistaken for the member.
+function roleStyle(authorRole: string, visibility?: string): { label: string; box: string; badge: string } {
+  if (authorRole === "assistant")
+    return {
+      label: "AI assistant",
+      box: "border-l-violet-400 bg-violet-50/70 dark:bg-violet-950/30",
+      badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300",
+    };
+  if (authorRole === "admin")
+    return visibility === "internal"
+      ? {
+          label: "Team · internal note",
+          box: "border-l-amber-400 bg-amber-50/70 dark:bg-amber-950/30",
+          badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
+        }
+      : {
+          label: "Team",
+          box: "border-l-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/30",
+          badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300",
+        };
+  return {
+    label: "Member",
+    box: "border-l-sky-400 bg-sky-50/70 dark:bg-sky-950/30",
+    badge: "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300",
+  };
+}
 type Detail = {
   question: {
     id: number; email: string; subject: string; body: string; category: string;
@@ -144,7 +171,12 @@ export default function AdminHelpPage() {
                 </p>
               </div>
 
-              <div className="rounded-md bg-zinc-50 p-3 dark:bg-zinc-900/60">
+              <div className="rounded-md border-l-4 border-l-sky-400 bg-sky-50/70 p-3 dark:bg-sky-950/30">
+                <div className="mb-1">
+                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-900/50 dark:text-sky-300">
+                    Member · original question
+                  </span>
+                </div>
                 <div className="whitespace-pre-wrap">{detail.question.body}</div>
                 {detail.question.screenshot_url && (
                   <a href={detail.question.screenshot_url} target="_blank" rel="noreferrer">
@@ -155,16 +187,20 @@ export default function AdminHelpPage() {
               </div>
 
               <ul className="space-y-2">
-                {detail.messages.map((m) => (
-                  <li key={m.id}
-                    className={`rounded-md p-3 ${m.author_role === "admin" ? (m.visibility === "internal" ? "bg-amber-50 dark:bg-amber-950/30" : "bg-emerald-50 dark:bg-emerald-950/30") : "bg-zinc-50 dark:bg-zinc-900/60"}`}>
-                    <div className="mb-1 text-xs text-zinc-500">
-                      {m.author_role === "admin" ? "Team" : "Member"}
-                      {m.visibility === "internal" ? " · internal note" : ""} · {fmt(m.created_at)}
-                    </div>
-                    <div className="whitespace-pre-wrap">{m.body}</div>
-                  </li>
-                ))}
+                {detail.messages.map((m) => {
+                  const s = roleStyle(m.author_role, m.visibility);
+                  return (
+                    <li key={m.id} className={`rounded-md border-l-4 p-3 ${s.box}`}>
+                      <div className="mb-1 flex items-center gap-2 text-xs text-zinc-500">
+                        <span className={`rounded-full px-2 py-0.5 font-medium ${s.badge}`}>
+                          {s.label}
+                        </span>
+                        <span>{fmt(m.created_at)}</span>
+                      </div>
+                      <div className="whitespace-pre-wrap">{m.body}</div>
+                    </li>
+                  );
+                })}
               </ul>
 
               <div className="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
