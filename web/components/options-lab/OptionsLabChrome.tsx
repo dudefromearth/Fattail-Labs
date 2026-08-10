@@ -2,7 +2,7 @@
 
 /**
  * Shared chrome: breadcrumb · suite nav · symbol selector.
- * Each app renders as children and reads symbol via useOptionsLab().
+ * When `wide`, controls stay max-w-5xl centered; children may go full-bleed.
  */
 
 import Link from "next/link";
@@ -11,6 +11,9 @@ import OptionsLabNav from "./OptionsLabNav";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import { optionsLabApp, type OptionsLabAppId } from "@/lib/optionsLabSuite";
 
+/** Standard content width for suite controls (matches Practice / ladder). */
+const CONTROLS_WIDTH = "mx-auto w-full max-w-5xl px-3 sm:px-4";
+
 export default function OptionsLabChrome({
   active,
   children,
@@ -18,8 +21,8 @@ export default function OptionsLabChrome({
   fillHeight = false,
   /**
    * Width mode:
-   * - default: max-w-5xl (Heatmap ladder)
-   * - wide: full browser width (Volume Profile chart)
+   * - default: whole page max-w-5xl
+   * - wide: full window for children; controls stay max-w-5xl
    */
   wide = false,
 }: {
@@ -31,18 +34,8 @@ export default function OptionsLabChrome({
   const item = optionsLabApp(active);
   const { symbol, setSymbol, universe, loading, error } = useOptionsLab();
 
-  return (
-    <main
-      className={[
-        "flex w-full flex-col gap-3 px-3 py-4 sm:px-4",
-        // Leave room for SiteHeader (~4.5rem); suite chrome is inside this box
-        fillHeight
-          ? "h-[calc(100dvh-4.5rem)] min-h-0 overflow-hidden"
-          : "min-h-screen",
-        // Full window width when wide; otherwise centered content column
-        wide ? "max-w-none" : "mx-auto max-w-5xl",
-      ].join(" ")}
-    >
+  const controls = (
+    <>
       <div
         className="shrink-0 grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-3"
         data-testid="options-lab-chrome-top"
@@ -66,7 +59,7 @@ export default function OptionsLabChrome({
           <OptionsLabNav active={active} />
         </div>
 
-        <div className="justify-self-end" aria-hidden />
+        <div className="hidden sm:block" aria-hidden />
       </div>
 
       <div className="flex shrink-0 flex-wrap items-end gap-3 rounded-lg border border-[var(--color-separator)] p-3">
@@ -109,11 +102,33 @@ export default function OptionsLabChrome({
           {error}
         </p>
       )}
+    </>
+  );
+
+  return (
+    <main
+      className={[
+        "flex w-full flex-col gap-3",
+        fillHeight
+          ? "h-[calc(100dvh-4.5rem)] min-h-0 overflow-hidden"
+          : "min-h-screen",
+        wide ? "max-w-none py-4" : "mx-auto max-w-5xl px-3 py-4 sm:px-4",
+      ].join(" ")}
+    >
+      {wide ? (
+        <div className={`flex shrink-0 flex-col gap-3 ${CONTROLS_WIDTH}`}>
+          {controls}
+        </div>
+      ) : (
+        controls
+      )}
 
       <div
         className={
           fillHeight
-            ? "flex min-h-0 flex-1 flex-col"
+            ? wide
+              ? "flex min-h-0 flex-1 flex-col px-0"
+              : "flex min-h-0 flex-1 flex-col"
             : undefined
         }
       >

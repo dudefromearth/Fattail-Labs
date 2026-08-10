@@ -285,58 +285,61 @@ export default function VolumeProfileChart() {
       className="flex min-h-0 flex-1 flex-col gap-2"
       data-testid="volume-profile-chart"
     >
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <nav
-          className="inline-flex flex-wrap items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
-          aria-label="Chart timeframe"
-          data-testid="volume-profile-tf"
-        >
-          {OHL_C_TIMEFRAMES.map((item) => {
-            const active = item.id === tf;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setTf(item.id)}
-                aria-pressed={active}
-                className={[
-                  "inline-flex min-h-9 items-center justify-center rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
-                  active
-                    ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
-                    : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
-                ].join(" ")}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-        <StyleToggle style={style} onChange={onStyleChange} />
-        <span className="text-xs text-[var(--color-label-tertiary)]">
-          {payload
-            ? `${payload.bar_count} bars · ${payload.series_ticker}${
-                payload.proxy_label ? ` · ${payload.proxy_label}` : ""
-              }${
-                payload.history_span_days != null
-                  ? ` · ~${Math.round(Number(payload.history_span_days))}d`
-                  : ""
-              }`
-            : loading
-              ? "Loading…"
-              : ""}
-        </span>
+      {/* Timeframe / style controls — standard page width, centered */}
+      <div className="mx-auto w-full max-w-5xl shrink-0 px-3 sm:px-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <nav
+            className="inline-flex flex-wrap items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
+            aria-label="Chart timeframe"
+            data-testid="volume-profile-tf"
+          >
+            {OHL_C_TIMEFRAMES.map((item) => {
+              const active = item.id === tf;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTf(item.id)}
+                  aria-pressed={active}
+                  className={[
+                    "inline-flex min-h-9 items-center justify-center rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
+                    active
+                      ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
+                      : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
+                  ].join(" ")}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+          <StyleToggle style={style} onChange={onStyleChange} />
+          <span className="text-xs text-[var(--color-label-tertiary)]">
+            {payload
+              ? `${payload.bar_count} bars · ${payload.series_ticker}${
+                  payload.proxy_label ? ` · ${payload.proxy_label}` : ""
+                }${
+                  payload.history_span_days != null
+                    ? ` · ~${Math.round(Number(payload.history_span_days))}d`
+                    : ""
+                }`
+              : loading
+                ? "Loading…"
+                : ""}
+          </span>
+        </div>
+        {error && (
+          <p className="mt-2 text-sm text-red-600" role="alert">
+            {error}
+          </p>
+        )}
       </div>
 
-      {error && (
-        <p className="shrink-0 text-sm text-red-600" role="alert">
-          {error}
-        </p>
-      )}
-
+      {/* Chart — full window width */}
       <div
         className={[
-          "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border p-1",
+          "flex min-h-0 flex-1 flex-col overflow-hidden border-y p-0 sm:rounded-none",
           theme.panelBorder,
           theme.panelBg,
         ].join(" ")}
