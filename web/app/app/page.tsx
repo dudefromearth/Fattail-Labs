@@ -42,6 +42,7 @@ const TOP_LEVEL_ORDER = [
   "practice-log",
   "toughness",
   "strategy-lab",
+  "options-lab",
   "community",
   "wiki",
 ] as const;
@@ -82,6 +83,15 @@ const FALLBACK_APPS: AppRow[] = [
       "Design → Curate → Deploy. Strategies on your account. Validate edges before capital; process over profit claims.",
     status: "soon",
     href: "/app/strategy-lab",
+  },
+  {
+    id: 0,
+    slug: "options-lab",
+    title: "Options Lab",
+    blurb:
+      "Chain ladder: pick a name from the shared universe, the next three expiries, and watch strikes update in place — process structure, not P&L theater.",
+    status: "live",
+    href: "/app/options-lab",
   },
   {
     id: 0,
@@ -170,17 +180,32 @@ function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
       }
     : (FALLBACK_APPS.find((a) => a.slug === "community") as AppRow);
 
+  const optionsFromApi = bySlug.get("options-lab");
+  const optionsLab: AppRow = optionsFromApi
+    ? {
+        ...optionsFromApi,
+        title: "Options Lab",
+        blurb:
+          optionsFromApi.blurb ||
+          (FALLBACK_APPS.find((a) => a.slug === "options-lab") as AppRow).blurb,
+        href: optionsFromApi.href || "/app/options-lab",
+        status: "live",
+      }
+    : (FALLBACK_APPS.find((a) => a.slug === "options-lab") as AppRow);
+
   const composed = new Map<string, AppRow>();
   for (const a of apiApps) {
     if (NESTED_UNDER_PRACTICE.has(a.slug)) continue;
     if (a.slug === "strategy-lab") continue; // use composed title below
     if (a.slug === "toughness") continue; // use composed row below
     if (a.slug === "community") continue; // use composed row below
+    if (a.slug === "options-lab") continue; // use composed row below
     composed.set(a.slug, a);
   }
   composed.set("practice-log", practice);
   composed.set("toughness", toughness);
   composed.set("strategy-lab", strategy);
+  composed.set("options-lab", optionsLab);
   composed.set("community", community);
 
   const ordered: AppRow[] = [];
