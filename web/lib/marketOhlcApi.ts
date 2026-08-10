@@ -1,6 +1,6 @@
 /** Options Lab underlier OHLC — GET /api/me/market/ohlc */
 
-export type OhlcTf = "1d" | "4h" | "1h" | "30m" | "10m";
+export type OhlcTf = "1d" | "4h" | "1h" | "30m" | "10m" | "5m";
 
 export const OHL_C_TIMEFRAMES: { id: OhlcTf; label: string }[] = [
   { id: "1d", label: "Day" },
@@ -8,6 +8,7 @@ export const OHL_C_TIMEFRAMES: { id: OhlcTf; label: string }[] = [
   { id: "1h", label: "1 hr" },
   { id: "30m", label: "30 min" },
   { id: "10m", label: "10 min" },
+  { id: "5m", label: "5 min" },
 ];
 
 export type OhlcBar = {

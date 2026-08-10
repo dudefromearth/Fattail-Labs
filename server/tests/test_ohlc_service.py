@@ -15,8 +15,9 @@ def test_normalize_ohlc_tf():
     assert normalize_ohlc_tf("1d") == "1d"
     assert normalize_ohlc_tf("4H") == "4h"
     assert normalize_ohlc_tf("10m") == "10m"
+    assert normalize_ohlc_tf("5m") == "5m"
     with pytest.raises(ValueError):
-        normalize_ohlc_tf("5m")
+        normalize_ohlc_tf("1m")
 
 
 def test_lookback_at_least_three_years():

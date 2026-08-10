@@ -24,6 +24,7 @@ _TF_SPEC: dict[str, tuple[int, str]] = {
     "1h": (1, "hour"),
     "30m": (30, "minute"),
     "10m": (10, "minute"),
+    "5m": (5, "minute"),
 }
 
 _ALLOWED = frozenset(_TF_SPEC.keys())

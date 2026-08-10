@@ -19,7 +19,7 @@ def get_market_ohlc(
     symbol: str = Query(..., description="Admin universe product symbol"),
     tf: str = Query(
         default="1d",
-        description="1d | 4h | 1h | 30m | 10m",
+        description="1d | 4h | 1h | 30m | 10m | 5m",
     ),
 ) -> dict:
     claims = require_session(request)
