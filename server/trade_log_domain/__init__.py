@@ -35,6 +35,7 @@ from trade_log_domain.trade_chart import (
     chart_window,
     normalize_tf,
     product_underlier,
+    resolve_series_candidates,
     resolve_series_ticker,
     structure_strike_band,
 )
@@ -66,6 +67,7 @@ __all__ = [
     "product_underlier",
     "realized_pnl",
     "records_summary_from_trades",
+    "resolve_series_candidates",
     "resolve_series_ticker",
     "structure_key",
     "structure_strike_band",

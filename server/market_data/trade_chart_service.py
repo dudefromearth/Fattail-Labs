@@ -20,7 +20,7 @@ from trade_log_domain.trade_chart import (
     chart_window,
     normalize_tf,
     product_underlier,
-    resolve_series_ticker,
+    resolve_series_candidates,
     structure_strike_band,
     tf_agg_params,
 )
@@ -158,83 +158,105 @@ def build_trade_chart(
     w_start, w_end = window
 
     universe = _universe_rows(cur) if cur is not None else []
-    series, proxy_label, source = resolve_series_ticker(product, universe=universe)
+    # Native index feed first (I:SPX); labeled SPY/VIXY proxy only if feed fails.
+    candidates = resolve_series_candidates(product, universe=universe)
     mult, timespan = tf_agg_params(tf_n)
     markers = build_markers(
         trade, paired_open=paired_open, paired_close=paired_close
     )
-    band = structure_strike_band(trade)
-    # Structure band uses option strikes; only meaningful for options books
-    # and when series is a close proxy (SPY vs SPX strikes are different scale).
-    # Hide band when proxy is used for index products (strikes not on same price axis).
-    if proxy_label and product in ("SPX", "XSP", "VIX", "VIX1D"):
-        band = None
+    structure_band_raw = structure_strike_band(trade)
 
-    cache_key = (
-        f"{series}|{tf_n}|{w_start.date().isoformat()}|{w_end.date().isoformat()}"
-    )
-    cache_hit = False
-    bars = _cache_get(cache_key)
-    if bars is not None:
-        cache_hit = True
-    else:
-        try:
-            md = client or MassiveClient()
-        except MassiveClientError as exc:
-            return {
-                "ok": False,
-                "status": "error",
-                "error": "market_data_unavailable",
-                "message": str(exc),
-                "trade_id": trade.get("id"),
-                "tf": tf_n,
-                "product_symbol": product,
-                "series_ticker": series,
-                "proxy_label": proxy_label,
-                "source": source,
-                "bars": [],
-                "markers": markers,
-                "structure_band": band,
-            }
-        try:
-            bars = md.fetch_aggs(
-                series,
-                multiplier=mult,
-                timespan=timespan,
-                start=w_start,
-                end=w_end,
-            )
-        except MassiveClientError as exc:
-            return {
-                "ok": False,
-                "status": "error",
-                "error": "market_data_error",
-                "message": str(exc),
-                "trade_id": trade.get("id"),
-                "tf": tf_n,
-                "product_symbol": product,
-                "series_ticker": series,
-                "proxy_label": proxy_label,
-                "source": source,
-                "window": {
-                    "from": w_start.isoformat().replace("+00:00", "Z"),
-                    "to": w_end.isoformat().replace("+00:00", "Z"),
-                },
-                "bars": [],
-                "markers": markers,
-                "structure_band": band,
-            }
-        _cache_put(cache_key, bars)
-
-    # Clip to window (aggs API is day-granular on from/to)
     t0 = int(w_start.timestamp() * 1000)
     t1 = int(w_end.timestamp() * 1000)
-    bars = [b for b in bars if b.get("t") is not None and t0 <= int(b["t"]) <= t1]
+    window_meta = {
+        "from": w_start.isoformat().replace("+00:00", "Z"),
+        "to": w_end.isoformat().replace("+00:00", "Z"),
+    }
 
-    complete, reason = bars_look_complete(
-        bars, window_start=w_start, window_end=w_end, tf=tf_n
-    )
-    if not complete:
+    cache_hit = False
+    last_err: Exception | None = None
+    last_incomplete: tuple[str, str | None, str, str | None] | None = None
+    # (series, proxy_label, source, reason)
+    series = candidates[0][0]
+    proxy_label: str | None = candidates[0][1]
+    source = candidates[0][2]
+    bars: list[dict[str, Any]] = []
+    md: MassiveClient | None = None
+
+    for idx, (cand_series, cand_proxy_label, cand_source) in enumerate(candidates):
+        series, proxy_label, source = cand_series, cand_proxy_label, cand_source
+        cache_key = (
+            f"{series}|{tf_n}|{w_start.date().isoformat()}|{w_end.date().isoformat()}"
+        )
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            bars = cached
+            cache_hit = True
+        else:
+            if md is None:
+                try:
+                    md = client or MassiveClient()
+                except MassiveClientError as exc:
+                    return {
+                        "ok": False,
+                        "status": "error",
+                        "error": "market_data_unavailable",
+                        "message": str(exc),
+                        "trade_id": trade.get("id"),
+                        "tf": tf_n,
+                        "product_symbol": product,
+                        "series_ticker": series,
+                        "proxy_label": proxy_label,
+                        "source": source,
+                        "bars": [],
+                        "markers": markers,
+                        "structure_band": None,
+                    }
+            try:
+                bars = md.fetch_aggs(
+                    series,
+                    multiplier=mult,
+                    timespan=timespan,
+                    start=w_start,
+                    end=w_end,
+                )
+            except MassiveClientError as exc:
+                last_err = exc
+                # Try next candidate (proxy) when native feed not entitled / errors.
+                if idx + 1 < len(candidates):
+                    continue
+                return {
+                    "ok": False,
+                    "status": "error",
+                    "error": "market_data_error",
+                    "message": str(exc),
+                    "trade_id": trade.get("id"),
+                    "tf": tf_n,
+                    "product_symbol": product,
+                    "series_ticker": series,
+                    "proxy_label": proxy_label,
+                    "source": source,
+                    "window": window_meta,
+                    "bars": [],
+                    "markers": markers,
+                    "structure_band": None,
+                }
+            _cache_put(cache_key, bars)
+
+        # Clip to window (aggs API is day-granular on from/to)
+        clipped = [
+            b for b in bars if b.get("t") is not None and t0 <= int(b["t"]) <= t1
+        ]
+        complete, reason = bars_look_complete(
+            clipped, window_start=w_start, window_end=w_end, tf=tf_n
+        )
+        if complete:
+            bars = clipped
+            break
+        last_incomplete = (series, proxy_label, source, reason)
+        # Empty/incomplete native series → fall through to proxy when available.
+        if idx + 1 < len(candidates):
+            continue
         return {
             "ok": False,
             "status": "error",
@@ -250,15 +272,48 @@ def build_trade_chart(
             "series_ticker": series,
             "proxy_label": proxy_label,
             "source": source,
-            "window": {
-                "from": w_start.isoformat().replace("+00:00", "Z"),
-                "to": w_end.isoformat().replace("+00:00", "Z"),
-            },
+            "window": window_meta,
             "bars": [],  # never partial path as complete
             "markers": markers,
-            "structure_band": band,
+            "structure_band": None,
             "cache": {"hit": cache_hit, "ttl_s": cache_ttl_s()},
         }
+    else:
+        # Exhausted candidates without complete bars (should have returned above).
+        series, proxy_label, source, reason = last_incomplete or (
+            series,
+            proxy_label,
+            source,
+            "missing_bars",
+        )
+        msg_extra = f" ({last_err})" if last_err else ""
+        return {
+            "ok": False,
+            "status": "error",
+            "error": reason or "missing_bars",
+            "message": (
+                "No complete bars for this window — chart will not invent a path."
+                + msg_extra
+            ),
+            "trade_id": trade.get("id"),
+            "tf": tf_n,
+            "product_symbol": product,
+            "series_ticker": series,
+            "proxy_label": proxy_label,
+            "source": source,
+            "window": window_meta,
+            "bars": [],
+            "markers": markers,
+            "structure_band": None,
+            "cache": {"hit": cache_hit, "ttl_s": cache_ttl_s()},
+        }
+
+    # Structure band uses option strikes; only meaningful when the price axis
+    # matches the book (native SPX). Hide when a proxy series is active
+    # (SPY vs SPX strikes are different scale).
+    band = structure_band_raw
+    if proxy_label and product in ("SPX", "XSP", "VIX", "VIX1D"):
+        band = None
 
     return {
         "ok": True,
@@ -271,10 +326,7 @@ def build_trade_chart(
         "series_ticker": series,
         "proxy_label": proxy_label,
         "source": source,
-        "window": {
-            "from": w_start.isoformat().replace("+00:00", "Z"),
-            "to": w_end.isoformat().replace("+00:00", "Z"),
-        },
+        "window": window_meta,
         "bars": bars,
         "markers": markers,
         "structure_band": band,

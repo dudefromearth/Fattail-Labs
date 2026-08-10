@@ -20,7 +20,15 @@ _MARGIN: dict[str, timedelta] = {
 }
 
 # Static fallback when market_symbol_universe is empty / unavailable.
-# Matches migration 085–086 doctrine (labeled proxies).
+# Doctrine (aligned with live_stream): try native index feed first; labeled
+# proxy only when the feed cannot deliver. Cash indexes are calculated series,
+# not traded books — prefer I:SPX over SPY shape-proxy by default.
+_DEFAULT_FEED: dict[str, str] = {
+    "SPX": "I:SPX",
+    "XSP": "I:XSP",
+    "VIX": "I:VIX",
+    "VIX1D": "I:VIX1D",
+}
 _DEFAULT_PROXY: dict[str, str] = {
     "SPX": "SPY",
     "XSP": "SPY",
@@ -224,44 +232,78 @@ def build_markers(
     return markers
 
 
-def resolve_series_ticker(
+def resolve_series_candidates(
     product: str,
     *,
     universe: list[dict[str, Any]] | None = None,
-) -> tuple[str, str | None, str]:
-    """Map book product → Massive series ticker + optional proxy label.
+) -> list[tuple[str, str | None, str]]:
+    """Ordered Massive series attempts for a book product.
 
-    Returns (series_ticker, proxy_label_or_None, source).
-    source is ``massive_v1`` or ``massive_proxy_v1`` (never silent proxy).
+    Native feed first (e.g. ``I:SPX``), then labeled proxy (e.g. SPY) if
+    configured. Each item is ``(series_ticker, proxy_label_or_None, source)``.
+    ``proxy_label`` is set only on proxy candidates — never silent.
+    source is ``massive_v1`` or ``massive_proxy_v1``.
     """
     product = (product or "").strip().upper().lstrip("/")
     if not product:
         raise ValueError("product underlier required")
 
+    feed: str | None = None
+    proxy: str | None = None
     if universe:
         for u in universe:
             if (u.get("symbol") or "").strip().upper() != product:
                 continue
-            proxy = (u.get("proxy_symbol") or "").strip().upper()
-            feed = (u.get("feed_symbol") or "").strip()
-            if proxy:
-                return (
-                    proxy,
-                    f"{proxy} proxy for {product}",
-                    "massive_proxy_v1",
-                )
-            # Prefer non-index feed when present (I:SPX often not entitled for aggs)
-            if feed and not feed.upper().startswith("I:"):
-                return feed.upper(), None, "massive_v1"
-            if feed and feed.upper().startswith("I:"):
-                # Index feed without proxy — try feed, label as native index
-                return feed, None, "massive_v1"
-            return product, None, "massive_v1"
+            raw_feed = (u.get("feed_symbol") or "").strip()
+            raw_proxy = (u.get("proxy_symbol") or "").strip().upper()
+            feed = raw_feed or None
+            proxy = raw_proxy or None
+            break
+    if feed is None and product in _DEFAULT_FEED:
+        feed = _DEFAULT_FEED[product]
+    if proxy is None and product in _DEFAULT_PROXY:
+        proxy = _DEFAULT_PROXY[product]
 
-    proxy = _DEFAULT_PROXY.get(product)
-    if proxy:
-        return proxy, f"{proxy} proxy for {product}", "massive_proxy_v1"
-    return product, None, "massive_v1"
+    out: list[tuple[str, str | None, str]] = []
+    seen: set[str] = set()
+
+    def _add(ticker: str, label: str | None, source: str) -> None:
+        key = ticker.strip()
+        if not key:
+            return
+        # Cache/identity key: case-sensitive path segment for I:SPX vs i:spx
+        norm = key if key.upper().startswith("I:") else key.upper()
+        if norm in seen:
+            return
+        seen.add(norm)
+        out.append((key if key.upper().startswith("I:") else key.upper(), label, source))
+
+    # 1) Explicit feed (I:SPX, equity ticker, …)
+    if feed:
+        _add(feed, None, "massive_v1")
+    # 2) Product symbol itself when distinct from feed
+    _add(product, None, "massive_v1")
+    # 3) Labeled proxy last (only when Massive cannot deliver native)
+    if proxy and proxy != product:
+        _add(proxy, f"{proxy} proxy for {product}", "massive_proxy_v1")
+
+    if not out:
+        _add(product, None, "massive_v1")
+    return out
+
+
+def resolve_series_ticker(
+    product: str,
+    *,
+    universe: list[dict[str, Any]] | None = None,
+) -> tuple[str, str | None, str]:
+    """Primary preferred series (native feed first).
+
+    For fallback attempts use :func:`resolve_series_candidates`. Returns
+    ``(series_ticker, proxy_label_or_None, source)`` for the first candidate
+    (proxy_label is None when primary is native).
+    """
+    return resolve_series_candidates(product, universe=universe)[0]
 
 
 def tf_agg_params(tf: Timeframe) -> tuple[int, str]:

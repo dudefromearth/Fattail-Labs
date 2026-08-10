@@ -10,6 +10,7 @@ from trade_log_domain.trade_chart import (
     chart_window,
     normalize_tf,
     product_underlier,
+    resolve_series_candidates,
     resolve_series_ticker,
     structure_strike_band,
     tf_agg_params,
@@ -96,11 +97,23 @@ def test_structure_strike_band():
     assert band == {"low": 5800.0, "high": 5900.0}
 
 
-def test_resolve_series_proxy_default_and_universe():
+def test_resolve_series_native_first_proxy_fallback():
+    """SPX prefers I:SPX; SPY is a labeled fallback candidate, not primary."""
     ticker, label, source = resolve_series_ticker("SPX")
-    assert ticker == "SPY"
-    assert label is not None and "SPY" in label and "SPX" in label
-    assert source == "massive_proxy_v1"
+    assert ticker == "I:SPX"
+    assert label is None
+    assert source == "massive_v1"
+
+    cands = resolve_series_candidates("SPX")
+    assert cands[0][0] == "I:SPX"
+    assert cands[0][1] is None
+    # Product symbol then proxy (order may include SPX before SPY)
+    tickers = [c[0] for c in cands]
+    assert "SPY" in tickers
+    spy = next(c for c in cands if c[0] == "SPY")
+    assert spy[1] is not None and "SPY" in spy[1] and "SPX" in spy[1]
+    assert spy[2] == "massive_proxy_v1"
+    assert tickers.index("I:SPX") < tickers.index("SPY")
 
     ticker2, label2, source2 = resolve_series_ticker(
         "SPX",
@@ -112,14 +125,28 @@ def test_resolve_series_proxy_default_and_universe():
             }
         ],
     )
-    assert ticker2 == "SPY"
-    assert source2 == "massive_proxy_v1"
-    assert label2
+    assert ticker2 == "I:SPX"
+    assert label2 is None
+    assert source2 == "massive_v1"
+
+    cands2 = resolve_series_candidates(
+        "SPX",
+        universe=[
+            {
+                "symbol": "SPX",
+                "feed_symbol": "I:SPX",
+                "proxy_symbol": "SPY",
+            }
+        ],
+    )
+    assert [c[0] for c in cands2][0] == "I:SPX"
+    assert any(c[0] == "SPY" and c[2] == "massive_proxy_v1" for c in cands2)
 
     ticker3, label3, source3 = resolve_series_ticker("AAPL")
     assert ticker3 == "AAPL"
     assert label3 is None
     assert source3 == "massive_v1"
+    assert resolve_series_candidates("AAPL") == [("AAPL", None, "massive_v1")]
 
 
 def test_chart_window_and_markers_paired():
