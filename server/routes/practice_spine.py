@@ -749,6 +749,12 @@ async def create_campaign(request: Request) -> dict:
                     starting_capital=body.get("starting_capital"),
                     goals_md=body.get("goals_md"),
                     is_default=bool(body.get("is_default")),
+                    max_drawdown_pct=body.get("max_drawdown_pct"),
+                    capital_allocation_mode=body.get("capital_allocation_mode"),
+                    capital_allocation_note=body.get("capital_allocation_note"),
+                    strategy_codes=body.get("strategy_codes"),
+                    retrospective_id=body.get("retrospective_id"),
+                    same_bet=body.get("same_bet"),
                 )
     except psd.PracticeSpineError as e:
         _raise(e)
@@ -941,6 +947,18 @@ async def patch_campaign(campaign_id: int, request: Request) -> dict:
         kwargs["goals_md"] = body.get("goals_md")
     if "is_default" in body:
         kwargs["is_default"] = bool(body.get("is_default"))
+    if "max_drawdown_pct" in body:
+        kwargs["max_drawdown_pct"] = body.get("max_drawdown_pct")
+    if "capital_allocation_mode" in body:
+        kwargs["capital_allocation_mode"] = body.get("capital_allocation_mode")
+    if "capital_allocation_note" in body:
+        kwargs["capital_allocation_note"] = body.get("capital_allocation_note")
+    if "strategy_codes" in body:
+        kwargs["strategy_codes"] = body.get("strategy_codes")
+    if "retrospective_id" in body:
+        kwargs["retrospective_id"] = body.get("retrospective_id")
+    if "same_bet" in body:
+        kwargs["same_bet"] = body.get("same_bet")
     if "playbook_entry_ids" in body:
         pids = body.get("playbook_entry_ids")
         if pids is not None and not isinstance(pids, list):

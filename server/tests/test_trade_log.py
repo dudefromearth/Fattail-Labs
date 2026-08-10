@@ -598,7 +598,7 @@ def test_default_book_filter_includes_unstamped_and_playbook_unaffiliated(client
             cookies=ca,
             json={
                 "title": "BookFilt book",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
                 "account_id": aid,
                 "is_default": True,
             },
@@ -611,7 +611,7 @@ def test_default_book_filter_includes_unstamped_and_playbook_unaffiliated(client
             cookies=ca,
             json={
                 "title": "Named season no",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
                 "account_id": aid,
             },
         )

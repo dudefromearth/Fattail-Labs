@@ -1407,7 +1407,7 @@ def test_admin_journal_prompt_versions(client):
                 "id": vid,
                 "label": "Test prompt",
                 "body_md": body,
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
             },
             cookies=cookies,
         )

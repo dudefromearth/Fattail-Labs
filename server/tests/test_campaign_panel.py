@@ -39,7 +39,7 @@ def _charter(client, cookies, title: str = "Panel charter") -> dict:
     r = client.post(
         "/api/me/practice/campaigns",
         cookies=cookies,
-        json={"title": title, "activate": True, "starting_capital": 50000},
+        json={"title": title, "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 50000},
     )
     assert r.status_code == 200, r.text
     return r.json()["campaign"]
@@ -172,7 +172,7 @@ def test_win_rate_extension_after_n_floor(client):
             cookies=cookies,
             json={
                 "title": "Shape season",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
                 "starts_at": "2026-06-01",
                 "ends_at": "2026-06-30",
             },

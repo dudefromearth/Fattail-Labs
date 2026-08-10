@@ -766,6 +766,9 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                       is_ledger,
                       signed_at, signed_terms, signed_terms_backfilled,
                       predecessor_campaign_id,
+                      charter_version, max_drawdown_pct, strategy_codes,
+                      capital_allocation_mode, capital_allocation_note,
+                      retrospective_id, same_bet_json,
                       export_key, created_at, updated_at
                FROM member_practice_campaigns
                WHERE identity_id = %s
@@ -888,6 +891,25 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                         int(c.get("signed_terms_backfilled") or 0)
                     ),
                     "predecessor_export_key": predecessor_export_key,
+                    "charter_version": int(c.get("charter_version") or 1),
+                    "max_drawdown_pct": (
+                        float(c["max_drawdown_pct"])
+                        if c.get("max_drawdown_pct") is not None
+                        else None
+                    ),
+                    "capital_allocation_mode": (
+                        (c.get("capital_allocation_mode") or "fixed") or "fixed"
+                    ),
+                    "capital_allocation_note": (
+                        (c.get("capital_allocation_note") or None) or None
+                    ),
+                    "strategy_codes": c.get("strategy_codes"),
+                    "retrospective_id": (
+                        int(c["retrospective_id"])
+                        if c.get("retrospective_id") is not None
+                        else None
+                    ),
+                    "same_bet": c.get("same_bet_json"),
                     "amendments": amendments,
                     "bounds": bounds_out,
                     "playbook_export_keys": pb_export_keys,

@@ -833,7 +833,7 @@ def test_playbook_campaign_spine_export_round_trip(client):
             json={
                 "title": "August season",
                 "playbook_entry_ids": [entry["id"]],
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
             },
         )
         assert camp.status_code == 200, camp.text
@@ -908,7 +908,7 @@ def test_campaign_lifecycle_pack_round_trip(client):
             cookies=cookies,
             json={
                 "title": "Cycle Root",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01",
                 "starting_capital": 8000,
                 "goals_md": "Preserve",
             },
@@ -922,7 +922,7 @@ def test_campaign_lifecycle_pack_round_trip(client):
         client.patch(
             f"/api/me/practice/campaigns/{root['id']}",
             cookies=cookies,
-            json={"status": "completed"},
+            json={"status": "completed", "ends_at": "2026-12-31"},
         )
         successor = client.post(
             f"/api/me/practice/campaigns/{root['id']}/renew",

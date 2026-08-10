@@ -20,6 +20,8 @@ _CAMPAIGN_TRANSITIONS: dict[str, frozenset[str]] = {
     "completed": frozenset(),
     "abandoned": frozenset(),
 }
+# Campaign Phase Spec — capital allocation modes (funding, not direction)
+CAPITAL_ALLOCATION_MODES = frozenset({"fixed", "wrap", "proportion", "dynamic"})
 
 
 class PracticeSpineError(Exception):
@@ -220,6 +222,18 @@ def serialize_campaign(cur, row: dict) -> dict:
         account_id_out = int(account_id) if account_id is not None else None
     except (TypeError, ValueError):
         account_id_out = None
+    mdd = _parse_max_drawdown_pct(row.get("max_drawdown_pct"), allow_null=True)
+    mode = (row.get("capital_allocation_mode") or "fixed") or "fixed"
+    mode = str(mode).strip().lower()
+    try:
+        charter_version = int(row.get("charter_version") or 1)
+    except (TypeError, ValueError):
+        charter_version = 1
+    retro_id = row.get("retrospective_id")
+    try:
+        retrospective_id = int(retro_id) if retro_id is not None else None
+    except (TypeError, ValueError):
+        retrospective_id = None
     return {
         "id": cid,
         "title": row.get("title") or "",
@@ -230,6 +244,13 @@ def serialize_campaign(cur, row: dict) -> dict:
         "activated_at": _iso(row.get("activated_at")),
         "starting_capital": starting_capital,
         "goals_md": row.get("goals_md") or "",
+        "charter_version": charter_version,
+        "max_drawdown_pct": mdd,
+        "capital_allocation_mode": mode if mode in CAPITAL_ALLOCATION_MODES else "fixed",
+        "capital_allocation_note": (row.get("capital_allocation_note") or "") or "",
+        "strategy_codes": _parse_json_list(row.get("strategy_codes")),
+        "retrospective_id": retrospective_id,
+        "same_bet": _parse_json_obj(row.get("same_bet_json")),
         # Account default / ledger (structured practice)
         "is_default": bool(int(row.get("is_default") or 0)),
         "is_ledger": bool(int(row.get("is_ledger") or 0)),
@@ -255,7 +276,7 @@ def serialize_campaign(cur, row: dict) -> dict:
     }
 
 
-# Charter fields for signature + amendments (Concept Spec §4.5.1)
+# Charter fields for signature + amendments (Concept Spec §4.5.1 + Phase Spec)
 _CHARTER_FIELDS = (
     "title",
     "goals_md",
@@ -263,7 +284,149 @@ _CHARTER_FIELDS = (
     "account_id",
     "starts_at",
     "ends_at",
+    "max_drawdown_pct",
+    "capital_allocation_mode",
+    "capital_allocation_note",
+    "strategy_codes",
+    "retrospective_id",
+    "same_bet",
 )
+
+
+def _parse_json_obj(raw: Any) -> dict | None:
+    if raw is None:
+        return None
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8")
+    if isinstance(raw, str):
+        raw = raw.strip()
+        if not raw:
+            return None
+        try:
+            out = json.loads(raw)
+            return out if isinstance(out, dict) else None
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _parse_json_list(raw: Any) -> list | None:
+    if raw is None:
+        return None
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8")
+    if isinstance(raw, str):
+        raw = raw.strip()
+        if not raw:
+            return None
+        try:
+            out = json.loads(raw)
+            return out if isinstance(out, list) else None
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _parse_max_drawdown_pct(val: Any, *, allow_null: bool = True) -> float | None:
+    """Max DD is always percent of campaign allocation (0 < pct ≤ 100)."""
+    if val is None or val == "":
+        if allow_null:
+            return None
+        raise PracticeSpineError(422, "max_drawdown_pct is required")
+    try:
+        pct = float(val)
+    except (TypeError, ValueError) as exc:
+        raise PracticeSpineError(422, "max_drawdown_pct must be a number") from exc
+    if pct <= 0 or pct > 100:
+        raise PracticeSpineError(
+            422, "max_drawdown_pct must be percent of allocation (0 exclusive … 100]"
+        )
+    return pct
+
+
+def _parse_allocation_mode(val: Any, *, default: str = "fixed") -> str:
+    if val is None or val == "":
+        return default
+    mode = str(val).strip().lower()
+    if mode not in CAPITAL_ALLOCATION_MODES:
+        raise PracticeSpineError(
+            422,
+            "capital_allocation_mode must be fixed|wrap|proportion|dynamic",
+        )
+    return mode
+
+
+def _parse_strategy_codes(val: Any) -> list | None:
+    """Null/empty = unadopted (no list rule). Non-empty list = adopted allow-list."""
+    if val is None or val == "":
+        return None
+    if isinstance(val, str):
+        parsed = _parse_json_list(val)
+        if parsed is None:
+            # comma-separated fallback
+            parts = [p.strip() for p in val.split(",") if p.strip()]
+            return parts or None
+        val = parsed
+    if not isinstance(val, list):
+        raise PracticeSpineError(422, "strategy_codes must be a list of strings")
+    out: list[str] = []
+    for item in val:
+        s = str(item).strip()
+        if s:
+            out.append(s[:64])
+    return out or None
+
+
+def _parse_same_bet(val: Any) -> dict | None:
+    """Null/empty = not answered. Dict = adopted Same-bet answers."""
+    if val is None or val == "":
+        return None
+    if isinstance(val, str):
+        return _parse_json_obj(val)
+    if isinstance(val, dict):
+        # drop empty values — fully empty dict stays null (unadopted)
+        cleaned = {str(k): v for k, v in val.items() if v is not None and v != ""}
+        return cleaned or None
+    raise PracticeSpineError(422, "same_bet must be an object or null")
+
+
+def _assert_big_three_for_sign(
+    *,
+    is_ledger: bool,
+    starting_capital: float | None,
+    max_drawdown_pct: float | None,
+    starts_at: Any,
+) -> None:
+    """P2/P3 — Big Three required to first-activate a deliberate charter."""
+    if is_ledger:
+        return
+    missing: list[str] = []
+    if starting_capital is None:
+        missing.append("capital allocation (starting_capital)")
+    if max_drawdown_pct is None:
+        missing.append("max_drawdown_pct")
+    if starts_at is None:
+        missing.append("starts_at")
+    if missing:
+        raise PracticeSpineError(
+            422,
+            "Big Three required to activate: " + "; ".join(missing),
+        )
+
+
+def _assert_end_for_terminal(*, is_ledger: bool, ends_at: Any, new_status: str) -> None:
+    """P5 L-End — end date required to complete or abandon."""
+    if is_ledger:
+        return
+    if new_status in ("completed", "abandoned") and ends_at is None:
+        raise PracticeSpineError(
+            422,
+            "ends_at is required to complete or abandon a campaign",
+        )
 
 
 def _parse_signed_terms(raw: Any) -> dict | None:
@@ -285,10 +448,15 @@ def _parse_signed_terms(raw: Any) -> dict | None:
 def _charter_snapshot(row: dict) -> dict:
     """JSON-serializable charter snapshot from a campaign row or values."""
     def _v(key: str):
+        # API name same_bet ↔ column same_bet_json
+        if key == "same_bet":
+            return _parse_json_obj(row.get("same_bet_json") if "same_bet_json" in row else row.get("same_bet"))
+        if key == "strategy_codes":
+            return _parse_json_list(row.get("strategy_codes"))
         val = row.get(key)
         if key in ("starts_at", "ends_at") and val is not None:
             return _iso(val)
-        if key == "starting_capital" and val is not None:
+        if key in ("starting_capital", "max_drawdown_pct") and val is not None:
             try:
                 return float(val)
             except (TypeError, ValueError):
@@ -298,8 +466,18 @@ def _charter_snapshot(row: dict) -> dict:
                 return int(val)
             except (TypeError, ValueError):
                 return None
+        if key == "retrospective_id" and val is not None:
+            try:
+                return int(val)
+            except (TypeError, ValueError):
+                return None
         if key == "goals_md":
             return (val or "") if val is not None else ""
+        if key == "capital_allocation_note":
+            return (val or "") if val is not None else ""
+        if key == "capital_allocation_mode":
+            m = (val or "fixed") if val is not None else "fixed"
+            return str(m).strip().lower()
         if key == "title":
             return str(val or "")
         return val
@@ -1069,10 +1247,17 @@ def create_campaign(
     goals_md: str | None = None,
     is_default: bool = False,
     is_ledger: bool = False,
+    max_drawdown_pct: Any = None,
+    capital_allocation_mode: Any = None,
+    capital_allocation_note: Any = None,
+    strategy_codes: Any = None,
+    retrospective_id: Any = None,
+    same_bet: Any = None,
 ) -> dict:
     title = (title or "").strip()
     if not title:
-        raise PracticeSpineError(422, "title is required")
+        # OD-title — default "Campaign" + date when blank
+        title = f"Campaign {_utcnow().date().isoformat()}"
     # L5 — charters are account-free; only ledger/default require a book
     if is_ledger and account_id is None:
         raise PracticeSpineError(422, "ledger campaign requires account_id")
@@ -1097,16 +1282,43 @@ def create_campaign(
     status = "active" if activate else "planned"
     key = _export_key("camp")
     cap = None
-    if starting_capital is not None:
+    if starting_capital is not None and starting_capital != "":
         try:
             cap = float(starting_capital)
         except (TypeError, ValueError) as exc:
             raise PracticeSpineError(422, "starting_capital must be a number") from exc
         if cap < 0:
             raise PracticeSpineError(422, "starting_capital must be ≥ 0")
+    mdd = _parse_max_drawdown_pct(max_drawdown_pct, allow_null=True)
+    alloc_mode = _parse_allocation_mode(capital_allocation_mode, default="fixed")
+    alloc_note = (
+        (str(capital_allocation_note).strip() or None)
+        if capital_allocation_note is not None and capital_allocation_note != ""
+        else None
+    )
+    strat = _parse_strategy_codes(strategy_codes)
+    same = _parse_same_bet(same_bet)
+    retro: int | None = None
+    if retrospective_id is not None and retrospective_id != "":
+        try:
+            retro = int(retrospective_id)
+        except (TypeError, ValueError) as exc:
+            raise PracticeSpineError(422, "retrospective_id must be an integer") from exc
+    if status == "active" and not is_ledger:
+        _assert_big_three_for_sign(
+            is_ledger=False,
+            starting_capital=cap,
+            max_drawdown_pct=mdd,
+            starts_at=start,
+        )
     goals = (goals_md or "").strip() or None
     if is_ledger:
         goals = None  # ledger has no charter prose by definition
+        mdd = None
+        alloc_note = None
+        strat = None
+        same = None
+        retro = None
     activated = _utcnow() if status == "active" else None
     if is_default and account_id is not None and not is_ledger:
         _clear_default_for_account(cur, identity_id, int(account_id))
@@ -1114,8 +1326,12 @@ def create_campaign(
     cur.execute(
         """INSERT INTO member_practice_campaigns
              (identity_id, account_id, title, status, activated_at, starts_at, ends_at,
-              starting_capital, goals_md, is_default, is_ledger, export_key)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+              starting_capital, goals_md, is_default, is_ledger, export_key,
+              charter_version, max_drawdown_pct, strategy_codes,
+              capital_allocation_mode, capital_allocation_note, retrospective_id,
+              same_bet_json)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                   1, %s, %s, %s, %s, %s, %s)""",
         (
             identity_id,
             account_id,
@@ -1129,6 +1345,12 @@ def create_campaign(
             1 if is_default else 0,
             1 if is_ledger else 0,
             key,
+            mdd,
+            json.dumps(strat) if strat is not None else None,
+            alloc_mode,
+            alloc_note,
+            retro,
+            json.dumps(same) if same is not None else None,
         ),
     )
     cid = int(cur.lastrowid)
@@ -1171,6 +1393,12 @@ def patch_campaign(
     starting_capital: Any = ...,
     goals_md: Any = ...,
     is_default: Any = ...,
+    max_drawdown_pct: Any = ...,
+    capital_allocation_mode: Any = ...,
+    capital_allocation_note: Any = ...,
+    strategy_codes: Any = ...,
+    retrospective_id: Any = ...,
+    same_bet: Any = ...,
 ) -> dict:
     cur.execute(
         """SELECT * FROM member_practice_campaigns
@@ -1262,6 +1490,11 @@ def patch_campaign(
 
     if starting_capital is ...:
         new_cap = row.get("starting_capital")
+        if new_cap is not None:
+            try:
+                new_cap = float(new_cap)
+            except (TypeError, ValueError):
+                new_cap = None
     elif starting_capital is None or starting_capital == "":
         new_cap = None
     else:
@@ -1275,6 +1508,50 @@ def patch_campaign(
         new_goals = row.get("goals_md")
     else:
         new_goals = (str(goals_md) if goals_md is not None else "").strip() or None
+
+    if max_drawdown_pct is ...:
+        new_mdd = _parse_max_drawdown_pct(row.get("max_drawdown_pct"), allow_null=True)
+    else:
+        new_mdd = _parse_max_drawdown_pct(max_drawdown_pct, allow_null=True)
+
+    if capital_allocation_mode is ...:
+        new_mode = _parse_allocation_mode(
+            row.get("capital_allocation_mode"), default="fixed"
+        )
+    else:
+        new_mode = _parse_allocation_mode(capital_allocation_mode, default="fixed")
+
+    if capital_allocation_note is ...:
+        new_alloc_note = row.get("capital_allocation_note")
+    elif capital_allocation_note is None or capital_allocation_note == "":
+        new_alloc_note = None
+    else:
+        new_alloc_note = str(capital_allocation_note).strip() or None
+
+    if strategy_codes is ...:
+        new_strat = _parse_json_list(row.get("strategy_codes"))
+    else:
+        new_strat = _parse_strategy_codes(strategy_codes)
+
+    if same_bet is ...:
+        new_same = _parse_json_obj(row.get("same_bet_json"))
+    else:
+        new_same = _parse_same_bet(same_bet)
+
+    if retrospective_id is ...:
+        rid = row.get("retrospective_id")
+        try:
+            new_retro = int(rid) if rid is not None else None
+        except (TypeError, ValueError):
+            new_retro = None
+    elif retrospective_id is None or retrospective_id == "":
+        new_retro = None
+    else:
+        try:
+            new_retro = int(retrospective_id)
+        except (TypeError, ValueError) as exc:
+            raise PracticeSpineError(422, "retrospective_id must be an integer") from exc
+
     if new_default and new_account is None:
         raise PracticeSpineError(
             422,
@@ -1291,6 +1568,12 @@ def patch_campaign(
             account_id is not ...,
             starting_capital is not ...,
             goals_md is not ...,
+            max_drawdown_pct is not ...,
+            capital_allocation_mode is not ...,
+            capital_allocation_note is not ...,
+            strategy_codes is not ...,
+            retrospective_id is not ...,
+            same_bet is not ...,
         )
     )
     if terminal and (charter_touched or (status is not None and new_status != cur_status)):
@@ -1300,6 +1583,46 @@ def patch_campaign(
                 422,
                 "Terminal campaigns are read-only — renew instead of editing",
             )
+
+    # P2 — first activate requires Big Three (deliberate charters only)
+    will_first_activate = (
+        new_status == "active"
+        and cur_status != "active"
+        and row.get("signed_at") is None
+        and not is_ledger
+    )
+    if will_first_activate or (
+        new_status == "active"
+        and cur_status != "active"
+        and not is_ledger
+        and row.get("signed_at") is None
+    ):
+        _assert_big_three_for_sign(
+            is_ledger=False,
+            starting_capital=new_cap if new_cap is None else float(new_cap),
+            max_drawdown_pct=new_mdd,
+            starts_at=new_start,
+        )
+    # Also gate create-as-active path already handled; resume after pause: already signed — no re-check of missing Big Three if they somehow null? Require still present on any transition to active when never signed.
+    if (
+        new_status == "active"
+        and cur_status != "active"
+        and not is_ledger
+        and row.get("signed_at") is not None
+    ):
+        # Resume — still require Big Three present on charter (data integrity)
+        _assert_big_three_for_sign(
+            is_ledger=False,
+            starting_capital=new_cap if new_cap is None else float(new_cap),
+            max_drawdown_pct=new_mdd,
+            starts_at=new_start,
+        )
+
+    # P5 — complete/abandon requires end date
+    if new_status != cur_status:
+        _assert_end_for_terminal(
+            is_ledger=is_ledger, ends_at=new_end, new_status=new_status
+        )
 
     if new_status == "active" and cur_status != "active":
         new_activated = _utcnow()
@@ -1320,25 +1643,45 @@ def patch_campaign(
     # After first sign, charter edits on active/paused produce amendments
     record_amends = was_signed and not terminal
     amend_at = _utcnow()
+    try:
+        charter_version = int(row.get("charter_version") or 1)
+    except (TypeError, ValueError):
+        charter_version = 1
+    charter_fields_amended = 0
     if record_amends:
         old_snap = _charter_snapshot(row)
         new_snap = {
             "title": new_title[:255],
             "goals_md": new_goals or "",
-            "starting_capital": new_cap,
+            "starting_capital": (
+                float(new_cap) if new_cap is not None else None
+            ),
             "account_id": (
                 int(new_account) if new_account is not None else None
             ),
             "starts_at": _iso(new_start),
             "ends_at": _iso(new_end),
+            "max_drawdown_pct": new_mdd,
+            "capital_allocation_mode": new_mode,
+            "capital_allocation_note": new_alloc_note or "",
+            "strategy_codes": new_strat,
+            "retrospective_id": new_retro,
+            "same_bet": new_same,
         }
         for field in _CHARTER_FIELDS:
             ov, nv = old_snap.get(field), new_snap.get(field)
-            # normalize empty goals
-            if field == "goals_md":
+            # normalize empty strings / empty optional
+            if field in ("goals_md", "capital_allocation_note"):
                 ov = ov or ""
                 nv = nv or ""
+            if field in ("strategy_codes", "same_bet"):
+                # treat None and empty as same for unadopted
+                if not ov:
+                    ov = None
+                if not nv:
+                    nv = None
             if ov != nv:
+                charter_fields_amended += 1
                 _insert_amendment(
                     cur,
                     identity_id,
@@ -1358,6 +1701,9 @@ def patch_campaign(
                 new_value=new_status,
                 amended_at=amend_at,
             )
+        # P11 — version bump when signed charter terms change (not status-only)
+        if charter_fields_amended > 0:
+            charter_version = charter_version + 1
 
     if new_default and new_account is not None:
         _clear_default_for_account(
@@ -1368,7 +1714,14 @@ def patch_campaign(
            SET title = %s, starts_at = %s, ends_at = %s, status = %s,
                activated_at = %s,
                account_id = %s, starting_capital = %s, goals_md = %s,
-               is_default = %s
+               is_default = %s,
+               charter_version = %s,
+               max_drawdown_pct = %s,
+               capital_allocation_mode = %s,
+               capital_allocation_note = %s,
+               strategy_codes = %s,
+               retrospective_id = %s,
+               same_bet_json = %s
            WHERE id = %s AND identity_id = %s""",
         (
             new_title[:255],
@@ -1380,6 +1733,13 @@ def patch_campaign(
             new_cap,
             new_goals,
             1 if new_default else 0,
+            charter_version,
+            new_mdd,
+            new_mode,
+            new_alloc_note,
+            json.dumps(new_strat) if new_strat is not None else None,
+            new_retro,
+            json.dumps(new_same) if new_same is not None else None,
             campaign_id,
             identity_id,
         ),
@@ -1432,6 +1792,12 @@ def renew_campaign(cur, identity_id: int, campaign_id: int) -> dict:
         goals_md=row.get("goals_md"),
         is_default=False,
         is_ledger=False,
+        max_drawdown_pct=row.get("max_drawdown_pct"),
+        capital_allocation_mode=row.get("capital_allocation_mode"),
+        capital_allocation_note=row.get("capital_allocation_note"),
+        strategy_codes=_parse_json_list(row.get("strategy_codes")),
+        retrospective_id=row.get("retrospective_id"),
+        same_bet=_parse_json_obj(row.get("same_bet_json")),
     )
     nid = int(new["id"])
     cur.execute(

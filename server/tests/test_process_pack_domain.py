@@ -70,7 +70,7 @@ def test_adherence_rate_series_excludes_unknown_from_denom():
 def test_campaign_summary_process_only():
     camps = [
         {"id": 10, "title": "Season A", "status": "active"},
-        {"id": 11, "title": "Old", "status": "completed"},
+        {"id": 11, "title": "Old", "status": "completed", "ends_at": "2026-12-31"},
     ]
     trades = [
         _t(1, "2026-04-01", adherence="followed", campaign_id=10),

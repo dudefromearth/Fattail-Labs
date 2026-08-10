@@ -46,7 +46,7 @@ def test_free_observer_denied_playbook_write(client):
         r3 = client.post(
             "/api/me/practice/campaigns",
             cookies=cookies,
-            json={"title": "No", "activate": True},
+            json={"title": "No", "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000},
         )
         assert r3.status_code == 403, r3.text
 

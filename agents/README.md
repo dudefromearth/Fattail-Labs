@@ -109,7 +109,7 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   Spec: `Specs/FatTail-Labs-Campaign-Phase-and-Charter-Tiering-Spec-v1.0.md` (v1.0.1).  
   **Full multi-agent plan:** `docs/Campaign-Phase-Charter-Tiering-Full-Agent-Bench-Plan-v1.0.md`.  
   Board: `agents/p-campaign-phase/ORCHESTRATOR.md`.  
-  **W0-G PASS 2026-08-09 · Next: S1-0 schema/domain · no G before S1-G.**
+  **W0-G · S1-G · G1-G PASS · Next: U1 tiered definition UI ∥ R1 report strip.**
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,

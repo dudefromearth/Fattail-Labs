@@ -87,7 +87,7 @@ def test_playbook_and_campaign_lifecycle(client):
             json={
                 "title": "September",
                 "playbook_entry_ids": [pb["id"]],
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
             },
         )
         assert c.status_code == 200, c.text
@@ -99,7 +99,7 @@ def test_playbook_and_campaign_lifecycle(client):
         c2 = client.post(
             "/api/me/practice/campaigns",
             cookies=cookies,
-            json={"title": "October", "activate": True},
+            json={"title": "October", "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000},
         )
         assert c2.status_code == 200, c2.text
         camp2 = c2.json()["campaign"]
@@ -113,7 +113,7 @@ def test_playbook_and_campaign_lifecycle(client):
         done = client.patch(
             f"/api/me/practice/campaigns/{camp['id']}",
             cookies=cookies,
-            json={"status": "completed"},
+            json={"status": "completed", "ends_at": "2026-12-31"},
         )
         assert done.status_code == 200, done.text
         assert done.json()["campaign"]["status"] == "completed"
@@ -154,7 +154,7 @@ def test_default_book_campaign_and_import_stamp(client):
             cookies=cookies,
             json={
                 "title": "Focus season",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
                 "account_id": aid,
             },
         )
@@ -243,7 +243,7 @@ def test_trade_links_playbook_campaign(client):
         camp = client.post(
             "/api/me/practice/campaigns",
             cookies=cookies,
-            json={"title": "Season", "activate": True, "account_id": aid},
+            json={"title": "Season", "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000, "account_id": aid},
         ).json()["campaign"]
         tr = client.post(
             "/api/me/trade-log/trades",
@@ -377,7 +377,7 @@ def test_journal_campaign_stamp_default_and_clear(client):
         camp = client.post(
             "/api/me/practice/campaigns",
             cookies=cookies,
-            json={"title": "Journal season", "activate": True},
+            json={"title": "Journal season", "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000},
         ).json()["campaign"]
         # Default stamp on fresh create
         r = client.post(
@@ -410,7 +410,7 @@ def test_campaign_abandon_and_edit(client):
             cookies=cookies,
             json={
                 "title": "To abandon",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01",
                 "goals_md": "North Star draft",
                 "starting_capital": 10000,
             },
@@ -431,7 +431,7 @@ def test_campaign_abandon_and_edit(client):
         ab = client.patch(
             f"/api/me/practice/campaigns/{camp['id']}",
             cookies=cookies,
-            json={"status": "abandoned"},
+            json={"status": "abandoned", "ends_at": "2026-12-31"},
         )
         assert ab.status_code == 200, ab.text
         assert ab.json()["campaign"]["status"] == "abandoned"
@@ -447,7 +447,7 @@ def test_campaign_pause_and_resume(client):
         c = client.post(
             "/api/me/practice/campaigns",
             cookies=cookies,
-            json={"title": "Pause me", "activate": True},
+            json={"title": "Pause me", "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000},
         )
         assert c.status_code == 200, c.text
         camp = c.json()["campaign"]
@@ -464,7 +464,7 @@ def test_campaign_pause_and_resume(client):
         resumed = client.patch(
             f"/api/me/practice/campaigns/{camp['id']}",
             cookies=cookies,
-            json={"status": "active"},
+            json={"status": "active", "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000},
         )
         assert resumed.status_code == 200, resumed.text
         assert resumed.json()["campaign"]["status"] == "active"
@@ -544,11 +544,15 @@ def test_campaign_sign_amend_terminal_delete(client):
         )
         assert d.status_code == 200, d.text
 
-        # Activate → sign
+        # Activate → sign (keep draft starting_capital 5000; supply missing Big Three)
         act = client.patch(
             f"/api/me/practice/campaigns/{cid}",
             cookies=cookies,
-            json={"status": "active"},
+            json={
+                "status": "active",
+                "max_drawdown_pct": 15,
+                "starts_at": "2026-01-01",
+            },
         )
         assert act.status_code == 200, act.text
         signed = act.json()["campaign"]
@@ -563,7 +567,7 @@ def test_campaign_sign_amend_terminal_delete(client):
         live = client.post(
             "/api/me/practice/campaigns",
             cookies=cookies,
-            json={"title": "Live-born", "activate": True, "goals_md": "Go"},
+            json={"title": "Live-born", "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000, "goals_md": "Go"},
         )
         assert live.status_code == 200, live.text
         assert live.json()["campaign"].get("signed_at") is not None
@@ -617,7 +621,7 @@ def test_campaign_sign_amend_terminal_delete(client):
         done = client.patch(
             f"/api/me/practice/campaigns/{cid}",
             cookies=cookies,
-            json={"status": "completed"},
+            json={"status": "completed", "ends_at": "2026-12-31"},
         )
         assert done.status_code == 200
         assert done.json()["campaign"]["status"] == "completed"
@@ -649,7 +653,7 @@ def test_campaign_renew_chain_and_multi_successor(client):
             cookies=cookies,
             json={
                 "title": "Q1 Season",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01",
                 "starting_capital": 10000,
                 "goals_md": "Stop the bleeding",
             },
@@ -665,7 +669,7 @@ def test_campaign_renew_chain_and_multi_successor(client):
         client.patch(
             f"/api/me/practice/campaigns/{rid}",
             cookies=cookies,
-            json={"status": "completed"},
+            json={"status": "completed", "ends_at": "2026-12-31"},
         )
 
         c2 = client.post(
@@ -686,12 +690,12 @@ def test_campaign_renew_chain_and_multi_successor(client):
         client.patch(
             f"/api/me/practice/campaigns/{s2['id']}",
             cookies=cookies,
-            json={"status": "active"},
+            json={"status": "active", "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000},
         )
         client.patch(
             f"/api/me/practice/campaigns/{s2['id']}",
             cookies=cookies,
-            json={"status": "completed"},
+            json={"status": "completed", "ends_at": "2026-12-31"},
         )
         c3 = client.post(
             f"/api/me/practice/campaigns/{s2['id']}/renew", cookies=cookies
@@ -772,7 +776,7 @@ def test_campaign_amendments_get_family_b(client):
         camp = client.post(
             "/api/me/practice/campaigns",
             cookies=cookies,
-            json={"title": "Amend me", "activate": True, "starting_capital": 1},
+            json={"title": "Amend me", "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 1},
         ).json()["campaign"]
         client.patch(
             f"/api/me/practice/campaigns/{camp['id']}",

@@ -73,7 +73,7 @@ def test_charter_create_account_free(client):
             cookies=cookies,
             json={
                 "title": "Account-free season",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
                 "account_id": aid,  # client may still send; server strips
                 "starts_at": "2026-01-01",
                 "ends_at": "2026-12-31",
@@ -108,7 +108,7 @@ def test_stamp_across_books_and_window_reject(client):
             cookies=cookies,
             json={
                 "title": "Summer window",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
                 "starts_at": "2026-06-01",
                 "ends_at": "2026-08-31",
             },
@@ -184,7 +184,7 @@ def test_memory_falls_to_undirected_when_window_ends(client):
             cookies=cookies,
             json={
                 "title": "Short season",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
                 "starts_at": "2026-03-01",
                 "ends_at": "2026-03-31",
             },
@@ -257,7 +257,7 @@ def test_eligible_api_filters_window(client):
             cookies=cookies,
             json={
                 "title": "Q3 only",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
                 "starts_at": "2026-07-01",
                 "ends_at": "2026-09-30",
             },
@@ -323,7 +323,7 @@ def test_default_campaign_save_preserves_account(client):
             cookies=cookies,
             json={
                 "title": "0DTE Classic",
-                "activate": True,
+                "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000,
                 "is_default": True,
                 "account_id": aid,
             },
