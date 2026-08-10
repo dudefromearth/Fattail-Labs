@@ -33,3 +33,4 @@ data/market/
 Labs-Intro/**/*.mp4
 Labs-Intro/**/*.m4a
 scripts/output/
+server/var/
