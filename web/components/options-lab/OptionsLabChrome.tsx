@@ -16,7 +16,11 @@ export default function OptionsLabChrome({
   children,
   /** Fill viewport height; children grow into remaining space (charts). */
   fillHeight = false,
-  /** Wider max width for chart apps. */
+  /**
+   * Width mode:
+   * - default: max-w-5xl (Heatmap ladder)
+   * - wide: full browser width (Volume Profile chart)
+   */
   wide = false,
 }: {
   active: OptionsLabAppId;
@@ -30,12 +34,13 @@ export default function OptionsLabChrome({
   return (
     <main
       className={[
-        "mx-auto flex w-full flex-col gap-3 px-3 py-4",
+        "flex w-full flex-col gap-3 px-3 py-4 sm:px-4",
         // Leave room for SiteHeader (~4.5rem); suite chrome is inside this box
         fillHeight
           ? "h-[calc(100dvh-4.5rem)] min-h-0 overflow-hidden"
           : "min-h-screen",
-        wide ? "max-w-[1600px]" : "max-w-5xl",
+        // Full window width when wide; otherwise centered content column
+        wide ? "max-w-none" : "mx-auto max-w-5xl",
       ].join(" ")}
     >
       <div
