@@ -105,6 +105,33 @@ def test_sankey_balance_invariant():
             )
 
 
+def test_dropoff_reports_avg_dwell():
+    # Member 1: Home(t0) -> Hub(t0+30) -> Courses(t0+60), then session ends.
+    # Home dwell = 30s, Hub dwell = 30s, Courses = unmeasurable (no next view).
+    rows = [
+        (1, "/home", 0),
+        (1, "/hub", 30),
+        (1, "/course", 60),
+    ]
+    out = flow.build_flow(rows)
+    drop = {d["area"]: d for d in out["dropoff"]}
+    assert drop["Home"]["avg_seconds"] == 30
+    assert drop["Hub"]["avg_seconds"] == 30
+    assert drop["Courses"]["avg_seconds"] is None  # terminal view — unknowable
+
+
+def test_dwell_ignores_cross_session_gap():
+    g = flow.SESSION_GAP_SECONDS
+    rows = [
+        (1, "/home", 0),
+        (1, "/home", 10 * g),  # next session — the big gap must NOT count as dwell
+    ]
+    out = flow.build_flow(rows)
+    drop = {d["area"]: d for d in out["dropoff"]}
+    # neither view has a measurable in-session successor
+    assert drop["Home"]["avg_seconds"] is None
+
+
 def test_empty_rows_safe():
     out = flow.build_flow([])
     assert out["totals"]["sessions"] == 0

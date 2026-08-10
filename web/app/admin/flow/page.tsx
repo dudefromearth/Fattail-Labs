@@ -21,7 +21,13 @@ type Step = {
   total: number;
 };
 type StepLink = { step: number; from: string; to: string; count: number };
-type DropRow = { area: string; reached: number; exits: number; exit_rate: number };
+type DropRow = {
+  area: string;
+  reached: number;
+  exits: number;
+  exit_rate: number;
+  avg_seconds: number | null;
+};
 type Journey = { areas: string[]; count: number };
 type FlowData = {
   filters: { days: number; tier: string };
@@ -49,6 +55,14 @@ function nodeFill(area: string): string {
 function linkFill(area: string): string {
   if (area === EXIT) return "hsl(220 9% 62%)";
   return `hsl(${areaHue(area)} 58% 55%)`;
+}
+
+function fmtDur(s: number | null | undefined): string {
+  if (s == null) return "—";
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return r ? `${m}m ${r}s` : `${m}m`;
 }
 
 const DAYS: { key: number; label: string }[] = [
@@ -154,6 +168,7 @@ export default function AdminFlowPage() {
                 Grey = left the platform · step = Nth page in a session
               </span>
             </div>
+            <FlowSummary data={data} />
             <Sankey data={data} />
           </section>
 
@@ -164,6 +179,43 @@ export default function AdminFlowPage() {
         </>
       )}
     </main>
+  );
+}
+
+function FlowSummary({ data }: { data: FlowData }) {
+  const top = data.journeys[0];
+  const path = top ? top.areas.slice(0, 4).join(" → ") : null;
+  const byTime = [...data.dropoff]
+    .filter((d) => d.avg_seconds != null)
+    .sort((a, b) => (b.avg_seconds ?? 0) - (a.avg_seconds ?? 0));
+  const timeStr = byTime
+    .slice(0, 2)
+    .map((d) => `${d.area} (${fmtDur(d.avg_seconds)})`)
+    .join(" and ");
+  const exit = [...data.dropoff].sort((a, b) => b.exits - a.exits)[0];
+  if (!path && !timeStr && !exit) return null;
+  return (
+    <p className="mb-3 rounded-md bg-zinc-50 px-3 py-2 text-sm leading-relaxed text-zinc-600 dark:bg-zinc-900/40 dark:text-zinc-300">
+      {path && (
+        <>
+          Most common path: <b className="font-medium text-zinc-800 dark:text-zinc-100">{path}</b>.{" "}
+        </>
+      )}
+      {timeStr && (
+        <>
+          Members spend the most time in{" "}
+          <b className="font-medium text-zinc-800 dark:text-zinc-100">{timeStr}</b>.{" "}
+        </>
+      )}
+      {exit && (
+        <>
+          Biggest exit point:{" "}
+          <b className="font-medium text-zinc-800 dark:text-zinc-100">{exit.area}</b> (
+          {Math.round(exit.exit_rate * 100)}% leave
+          {exit.avg_seconds != null ? `, avg ${fmtDur(exit.avg_seconds)} there` : ""}).
+        </>
+      )}
+    </p>
   );
 }
 
@@ -220,88 +272,381 @@ const TOP_PAD = 26;
 const BOT_PAD = 16;
 const NODE_GAP = 3;
 
+type Hover =
+  | { kind: "node"; node: LaidNode; x: number; y: number }
+  | { kind: "band"; band: Band; x: number; y: number }
+  | null;
+
+const nodeId = (n: LaidNode) => `${n.col}:${n.area}`;
+
+// Everything reachable FORWARD from a node (the full downstream journey), for lock mode.
+function downstream(start: LaidNode, bands: Band[]) {
+  const nodes = new Set<string>([nodeId(start)]);
+  const keys = new Set<string>();
+  const queue: LaidNode[] = [start];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const b of bands) {
+      if (b.from === cur) {
+        keys.add(b.key);
+        if (!nodes.has(nodeId(b.to))) {
+          nodes.add(nodeId(b.to));
+          queue.push(b.to);
+        }
+      }
+    }
+  }
+  return { nodes, bands: keys };
+}
+
 function Sankey({ data }: { data: FlowData }) {
   const layout = useMemo(() => buildLayout(data), [data]);
+  const [hover, setHover] = useState<Hover>(null);
+  const [locked, setLocked] = useState<Hover>(null);
   if (!layout) return null;
   const { nodes, bands, width, cols } = layout;
 
+  // A locked selection (from a click) takes precedence over hover and pins the popup.
+  const active: Hover = locked ?? hover;
+
+  // What to keep lit. null sets = nothing selected → everything normal.
+  let liveBands: Set<string> | null = null;
+  let liveNodes: Set<string> | null = null;
+  if (active?.kind === "node") {
+    if (locked?.kind === "node" && locked.node === active.node) {
+      // Locked on a node: light the WHOLE downstream path, several steps deep.
+      const ds = downstream(active.node, bands);
+      liveNodes = ds.nodes;
+      liveBands = ds.bands;
+    } else {
+      // Hover peek: just the node and its immediate in/out.
+      liveBands = new Set();
+      liveNodes = new Set([nodeId(active.node)]);
+      for (const b of bands) {
+        if (b.from === active.node || b.to === active.node) {
+          liveBands.add(b.key);
+          liveNodes.add(nodeId(b.from));
+          liveNodes.add(nodeId(b.to));
+        }
+      }
+    }
+  } else if (active?.kind === "band") {
+    liveBands = new Set([active.band.key]);
+    liveNodes = new Set([nodeId(active.band.from), nodeId(active.band.to)]);
+  }
+  const bandLit = (b: Band) => !liveBands || liveBands.has(b.key);
+  const nodeLit = (n: LaidNode) => !liveNodes || liveNodes.has(nodeId(n));
+  const stepTotal = (col: number) => data.steps[col]?.total ?? 0;
+  const avgByArea: Record<string, number | null> = {};
+  for (const d of data.dropoff) avgByArea[d.area] = d.avg_seconds;
+
   return (
-    <div className="overflow-x-auto">
-      <svg
-        width={width}
-        height={SVG_H}
-        viewBox={`0 0 ${width} ${SVG_H}`}
-        className="min-w-full"
-        style={{ display: "block" }}
-      >
-        {/* column headers */}
-        {cols.map((c) => (
-          <text
-            key={`h${c.col}`}
-            x={c.x + NODE_W / 2}
-            y={14}
-            textAnchor="middle"
-            className="fill-zinc-400"
-            fontSize={11}
-            fontWeight={600}
+    <div className="relative">
+      <p className="mb-2 flex items-center gap-2 text-xs text-zinc-400">
+        <span>
+          Hover to peek · <b className="font-medium text-zinc-500 dark:text-zinc-300">click</b>{" "}
+          a box to lock its full downstream path.
+        </span>
+        {locked && (
+          <button
+            onClick={() => setLocked(null)}
+            className="rounded-full border border-zinc-300 px-2 py-0.5 text-[11px] font-medium text-zinc-600 hover:border-zinc-400 dark:border-zinc-600 dark:text-zinc-300"
           >
-            Step {c.col + 1}
-          </text>
-        ))}
-        {/* bands under nodes */}
-        <g>
-          {bands.map((b) => (
-            <path
-              key={b.key}
-              d={bandPath(b)}
-              fill={linkFill(b.area)}
-              fillOpacity={b.area === EXIT ? 0.18 : 0.32}
-            >
-              <title>
-                {b.from.area === EXIT ? "Left" : b.from.area} →{" "}
-                {b.to.area === EXIT ? "Left" : b.to.area}: {b.count.toLocaleString()}
-              </title>
-            </path>
-          ))}
-        </g>
-        {/* nodes + labels */}
-        <g>
-          {nodes.map((n) => (
-            <g key={`${n.col}:${n.area}`}>
-              <rect
-                x={n.x}
-                y={n.y}
-                width={NODE_W}
-                height={Math.max(1, n.h)}
-                rx={2}
-                fill={nodeFill(n.area)}
-                stroke={n.area === EXIT ? "hsl(220 9% 50%)" : "rgba(0,0,0,0.15)"}
-                strokeWidth={0.5}
+            Clear lock ✕
+          </button>
+        )}
+      </p>
+      <div className="overflow-x-auto">
+        <svg
+          width={width}
+          height={SVG_H}
+          viewBox={`0 0 ${width} ${SVG_H}`}
+          className="min-w-full"
+          style={{ display: "block" }}
+          onMouseLeave={() => setHover(null)}
+          onClick={() => setLocked(null)}
+        >
+          {/* column headers + step session counts */}
+          {cols.map((c) => (
+            <g key={`h${c.col}`}>
+              <text
+                x={c.x + NODE_W / 2}
+                y={11}
+                textAnchor="middle"
+                className="fill-zinc-400"
+                fontSize={11}
+                fontWeight={600}
               >
-                <title>
-                  {n.area === EXIT ? "Left the platform" : n.area}:{" "}
-                  {n.count.toLocaleString()}
-                </title>
-              </rect>
-              {n.h >= 11 && (
-                <text
-                  x={n.x + NODE_W + 4}
-                  y={n.y + n.h / 2}
-                  dominantBaseline="middle"
-                  fontSize={11}
-                  className="fill-zinc-600 dark:fill-zinc-300"
-                  style={{ paintOrder: "stroke" }}
-                >
-                  {n.area === EXIT ? "Left" : n.area}
-                  <tspan className="fill-zinc-400" dx={4} fontSize={10}>
-                    {n.count.toLocaleString()}
-                  </tspan>
-                </text>
-              )}
+                Step {c.col + 1}
+              </text>
+              <text
+                x={c.x + NODE_W / 2}
+                y={21}
+                textAnchor="middle"
+                className="fill-zinc-300 dark:fill-zinc-500"
+                fontSize={9}
+              >
+                {stepTotal(c.col).toLocaleString()} here
+              </text>
             </g>
           ))}
-        </g>
-      </svg>
+          {/* bands */}
+          <g>
+            {bands.map((b) => {
+              const lit = bandLit(b);
+              const base = b.area === EXIT ? 0.18 : 0.32;
+              const op = lit ? (liveBands ? (b.area === EXIT ? 0.4 : 0.62) : base) : 0.05;
+              return (
+                <path
+                  key={b.key}
+                  d={bandPath(b)}
+                  fill={linkFill(b.area)}
+                  fillOpacity={op}
+                  style={{ cursor: "pointer", transition: "fill-opacity 0.12s" }}
+                  onMouseMove={(e) =>
+                    setHover({ kind: "band", band: b, x: e.clientX, y: e.clientY })
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLocked((prev) =>
+                      prev?.kind === "band" && prev.band === b
+                        ? null
+                        : { kind: "band", band: b, x: e.clientX, y: e.clientY },
+                    );
+                  }}
+                />
+              );
+            })}
+          </g>
+          {/* nodes + labels */}
+          <g>
+            {nodes.map((n) => {
+              const lit = nodeLit(n);
+              return (
+                <g
+                  key={nodeId(n)}
+                  opacity={lit ? 1 : 0.22}
+                  style={{ cursor: "pointer", transition: "opacity 0.12s" }}
+                  onMouseMove={(e) =>
+                    setHover({ kind: "node", node: n, x: e.clientX, y: e.clientY })
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLocked((prev) =>
+                      prev?.kind === "node" && prev.node === n
+                        ? null
+                        : { kind: "node", node: n, x: e.clientX, y: e.clientY },
+                    );
+                  }}
+                >
+                  <rect
+                    x={n.x}
+                    y={n.y}
+                    width={NODE_W}
+                    height={Math.max(1, n.h)}
+                    rx={2}
+                    fill={nodeFill(n.area)}
+                    stroke={
+                      (locked?.kind === "node" && locked.node === n) ||
+                      (hover?.kind === "node" && hover.node === n)
+                        ? "hsl(0 0% 20%)"
+                        : n.area === EXIT
+                          ? "hsl(220 9% 50%)"
+                          : "rgba(0,0,0,0.15)"
+                    }
+                    strokeWidth={
+                      (locked?.kind === "node" && locked.node === n) ||
+                      (hover?.kind === "node" && hover.node === n)
+                        ? 1.5
+                        : 0.5
+                    }
+                  />
+                  {n.h >= 11 && (
+                    <text
+                      x={n.x + NODE_W + 4}
+                      y={n.y + n.h / 2}
+                      dominantBaseline="middle"
+                      fontSize={11}
+                      className="fill-zinc-600 dark:fill-zinc-300"
+                      style={{ paintOrder: "stroke" }}
+                    >
+                      {n.area === EXIT ? "Left" : n.area}
+                      <tspan className="fill-zinc-400" dx={4} fontSize={10}>
+                        {n.count.toLocaleString()}
+                      </tspan>
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        </svg>
+      </div>
+      {active && (
+        <FlowTooltip
+          hover={active}
+          bands={bands}
+          avgByArea={avgByArea}
+          pinned={!!locked}
+        />
+      )}
+    </div>
+  );
+}
+
+function FlowTooltip({
+  hover,
+  bands,
+  avgByArea,
+  pinned,
+}: {
+  hover: NonNullable<Hover>;
+  bands: Band[];
+  avgByArea: Record<string, number | null>;
+  pinned: boolean;
+}) {
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const style: React.CSSProperties = {
+    position: "fixed",
+    left: Math.min(hover.x + 14, vw - 250),
+    top: Math.min(hover.y + 14, vh - 160),
+    pointerEvents: "none",
+    zIndex: 50,
+    maxWidth: 230,
+  };
+  const box =
+    "rounded-lg border border-zinc-200 bg-white/95 px-3 py-2 text-xs shadow-lg backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/95";
+  const name = (a: string) => (a === EXIT ? "Left the platform" : a);
+  const Dot = ({ a }: { a: string }) => (
+    <span
+      className="mr-1 inline-block h-2 w-2 rounded-full align-middle"
+      style={{ background: nodeFill(a) }}
+    />
+  );
+
+  if (hover.kind === "band") {
+    const b = hover.band;
+    const pct =
+      b.from.area !== EXIT && b.from.count
+        ? Math.round((b.count / b.from.count) * 100)
+        : null;
+    return (
+      <div style={style} className={box}>
+        <div className="mb-1 flex items-center gap-1 font-medium">
+          <Dot a={b.from.area} />
+          {name(b.from.area)}
+          <span className="text-zinc-400">→</span>
+          <Dot a={b.to.area} />
+          {name(b.to.area)}
+        </div>
+        <div className="text-zinc-500">
+          <b className="text-zinc-700 tabular-nums dark:text-zinc-200">
+            {b.count.toLocaleString()}
+          </b>{" "}
+          sessions
+          {pct != null && (
+            <> · {pct}% of everyone at {b.from.area}</>
+          )}
+        </div>
+        {pinned && <PinnedFooter />}
+      </div>
+    );
+  }
+
+  const n = hover.node;
+  const incoming = bands
+    .filter((b) => b.to === n && b.from.area !== EXIT)
+    .sort((a, b) => b.count - a.count);
+  const outReal = bands
+    .filter((b) => b.from === n && b.to.area !== EXIT)
+    .sort((a, b) => b.count - a.count);
+  const leftBand = bands.find((b) => b.from === n && b.to.area === EXIT);
+  const hasOut = bands.some((b) => b.from === n);
+  const Row = ({ a, c }: { a: string; c: number }) => (
+    <div className="flex items-center justify-between gap-2">
+      <span className="truncate">
+        <Dot a={a} />
+        {name(a)}
+      </span>
+      <span className="tabular-nums text-zinc-400">{c.toLocaleString()}</span>
+    </div>
+  );
+
+  return (
+    <div style={style} className={box}>
+      <div className="mb-1 flex items-center gap-1 font-medium">
+        <Dot a={n.area} />
+        {name(n.area)}
+        <span className="ml-auto text-[10px] font-normal text-zinc-400">
+          Step {n.col + 1}
+        </span>
+      </div>
+      <div className="text-zinc-500">
+        <b className="text-zinc-700 tabular-nums dark:text-zinc-200">
+          {n.count.toLocaleString()}
+        </b>{" "}
+        {n.area === EXIT ? "gone by here" : "sessions here"}
+      </div>
+      {n.area !== EXIT && (
+        <div className="mb-1.5 text-zinc-500">
+          Avg time here:{" "}
+          <b className="text-zinc-700 tabular-nums dark:text-zinc-200">
+            {fmtDur(avgByArea[n.area])}
+          </b>
+        </div>
+      )}
+      {n.area === EXIT && <div className="mb-1.5" />}
+      {n.area !== EXIT && (
+        <>
+          {incoming.length > 0 && (
+            <div className="mb-1">
+              <div className="mb-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
+                Came from
+              </div>
+              {incoming.slice(0, 4).map((b, i) => (
+                <Row key={i} a={b.from.area} c={b.count} />
+              ))}
+            </div>
+          )}
+          {incoming.length === 0 && n.col === 0 && (
+            <div className="mb-1 text-zinc-400">Entry point — sessions start here.</div>
+          )}
+          {(outReal.length > 0 || leftBand) && (
+            <div>
+              <div className="mb-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
+                Went next to
+              </div>
+              {outReal.slice(0, 4).map((b, i) => (
+                <Row key={i} a={b.to.area} c={b.count} />
+              ))}
+              {leftBand && (
+                <div className="flex items-center justify-between gap-2 text-zinc-500">
+                  <span>
+                    <Dot a={EXIT} />
+                    Left here
+                  </span>
+                  <span className="tabular-nums text-zinc-400">
+                    {leftBand.count.toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          {!hasOut && (
+            <div className="text-zinc-400">End of the tracked path (first 6 steps).</div>
+          )}
+        </>
+      )}
+      {pinned && <PinnedFooter />}
+    </div>
+  );
+}
+
+function PinnedFooter() {
+  return (
+    <div className="mt-1.5 border-t border-zinc-100 pt-1 text-[10px] text-zinc-400 dark:border-zinc-800">
+      📌 Locked · full downstream path shown — click empty space to clear
     </div>
   );
 }
@@ -479,6 +824,7 @@ function DropOff({ rows }: { rows: DropRow[] }) {
             <tr>
               <th className="px-4 py-2">Area</th>
               <th className="px-4 py-2 text-right">Reached</th>
+              <th className="px-4 py-2 text-right">Avg time</th>
               <th className="px-4 py-2 text-right">Left here</th>
               <th className="px-4 py-2">Exit rate</th>
             </tr>
@@ -498,6 +844,9 @@ function DropOff({ rows }: { rows: DropRow[] }) {
                 </td>
                 <td className="px-4 py-2 text-right tabular-nums text-zinc-500">
                   {r.reached.toLocaleString()}
+                </td>
+                <td className="px-4 py-2 text-right tabular-nums text-zinc-500">
+                  {fmtDur(r.avg_seconds)}
                 </td>
                 <td className="px-4 py-2 text-right tabular-nums">
                   {r.exits.toLocaleString()}
@@ -519,7 +868,7 @@ function DropOff({ rows }: { rows: DropRow[] }) {
             ))}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
                   No data.
                 </td>
               </tr>

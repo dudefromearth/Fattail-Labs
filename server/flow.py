@@ -130,7 +130,20 @@ def build_flow(rows: list[tuple[int, str, int]]) -> dict:
     exited_from: Counter = Counter()  # sessions whose LAST area was this
     entries: Counter = Counter()   # sessions whose FIRST area was this
     journeys: Counter = Counter()
+    dwell_total: Counter = Counter()  # area -> summed seconds with a measurable next view
+    dwell_n: Counter = Counter()      # area -> number of measurable intervals
     total_sessions = 0
+
+    # Per-area dwell: time from a view to the next view within the same session is
+    # "time spent" on that view's area (the last view before a gap is unknowable — no
+    # next timestamp — so it's excluded, same limitation as time-on-platform).
+    for events in by_user.values():
+        ev = sorted(events)  # (ts, area)
+        for (t0, a0), (t1, _a1) in zip(ev, ev[1:]):
+            gap = t1 - t0
+            if 0 <= gap <= SESSION_GAP_SECONDS:
+                dwell_total[a0] += gap
+                dwell_n[a0] += 1
 
     for events in by_user.values():
         for seq in _sessionise(events):
@@ -176,11 +189,15 @@ def build_flow(rows: list[tuple[int, str, int]]) -> dict:
     dropoff = []
     for area, reached_n in reached.most_common():
         exits = exited_from.get(area, 0)
+        n = dwell_n.get(area, 0)
         dropoff.append({
             "area": area,
             "reached": reached_n,
             "exits": exits,
             "exit_rate": round(exits / reached_n, 4) if reached_n else 0.0,
+            # Average seconds spent in the area per measured visit; None if we never had
+            # a next view to measure against (so the UI shows "—" rather than a fake 0).
+            "avg_seconds": round(dwell_total[area] / n) if n else None,
         })
 
     top_journeys = [
