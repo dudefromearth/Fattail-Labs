@@ -4,6 +4,25 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-10 — DL-280 Options Chain Picker locks — OC2/OC5a/OC15 · HIG · Market parent · OC11
+
+**Coach (W0):**
+
+| Lock | Law |
+|------|-----|
+| **OC2** | Spot for strike math: chain `underlying_asset.value` first; non-proxy marks only; never SPY proxy scale; 503 if unusable |
+| **OC5a** | Proxy vol never σ input; VIX1D for 0–1 DTE when native; √T uses max(1,dte) |
+| **OC15** | Shared Massive generation per (feed_symbol, expiration) per TTL — not per-member upstream |
+| **HIG** | Human Interface Spec v1.0 binds prelim design and production UI |
+| **Nav** | Parent area **Market** `/app/market/*` — not Practice suite pill (DL-232 lesson) |
+| **OC11** | Preformed expiry calendar **required** for v1.1 acceptance — Delta must not hedge |
+
+Residual ODs: OD-nav Market · OD-poll 2s · OD-ttl 1.5–2s · OD-preform-ttl 1 session day · OD-strike-step by kind.
+
+## 2026-08-10 — DL-279 Options Chain Picker Spec v1.0.1 BUILD AUTHORITY
+
+**Coach:** Spec `FatTail-Labs-Options-Chain-Picker-Spec-v1.0.md` **v1.0.1** is product law. Execution: `docs/Options-Chain-Picker-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-chain-picker/`. Critical path W0→H→E→U→K→P→Z. Companion: Human Interface Spec v1.0 (Apple HIG for Labs web). Gate: `agents/p-options-chain-picker/gate-reports/W0-0-coach-go.md`.
+
 ## 2026-08-09 — DL-278 Campaign phase reports — free cash, structure_risk_open, P13
 
 **Hotel / Coach (W0-1):** Phase report strip is **read-time only** (no second equity store).

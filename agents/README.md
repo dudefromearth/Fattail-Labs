@@ -110,6 +110,14 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   **Full multi-agent plan:** `docs/Campaign-Phase-Charter-Tiering-Full-Agent-Bench-Plan-v1.0.md`.  
   Board: `agents/p-campaign-phase/ORCHESTRATOR.md`.  
   **PROGRAM PASS (Z-G 2026-08-09)** · residual polish: Trade Log deep link · retro picker · MiniTwo deploy.
+- `agents/p-options-chain-picker/` — **Options Chain Picker** (Admin-universe symbol;
+  next-3 distinct expiries + DTE; vertical ±σ ladder; proxy-safe spot/vol; shared Massive
+  generation; strike-level diffs; **Apple HIG / Human Interface Spec** on prelim + production;
+  preform calendar v1.1 required).  
+  Spec: `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.md` (v1.0.1).  
+  **Full multi-agent plan:** `docs/Options-Chain-Picker-Full-Agent-Bench-Plan-v1.0.md`.  
+  Board: `agents/p-options-chain-picker/ORCHESTRATOR.md`.  
+  **PROGRAM PASS (Z-G 2026-08-10)** · residual: Admin calendar refresh chrome · MiniTwo deploy.
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,
