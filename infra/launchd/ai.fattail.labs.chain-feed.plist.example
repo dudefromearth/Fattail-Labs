@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ai.fattail.labs.chain-feed</string>
+  <key>WorkingDirectory</key><string>/Users/ernie/Fattail-Labs/server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/ernie/Fattail-Labs/server/.venv/bin/python</string>
+    <string>-m</string>
+    <string>market_data.chain_feed</string>
+    <string>--interval</string>
+    <string>2</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>LABS_MARKET_BUS</key><string>1</string>
+    <key>REDIS_URL</key><string>redis://127.0.0.1:6379/0</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/labs-chain-feed.log</string>
+  <key>StandardErrorPath</key><string>/tmp/labs-chain-feed.err</string>
+</dict>
+</plist>

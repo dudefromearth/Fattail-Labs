@@ -261,3 +261,49 @@ Commits: `fca01d7` … `889cc9b` (logout, reauth, allowlist, live role).
 **WordPress fotw-sso TTL:** see `docs/ops/WP-SSO-JWT-TTL.md` — target **≤ 120s**.
 
 **Labs:** never log the raw `sso` query parameter or JWT body (H2).
+
+
+## Market Bus (Redis + feeds)
+
+Shared market data plane (Spec: `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md`).
+
+### Env (API + feeds)
+
+```bash
+LABS_MARKET_BUS=1
+REDIS_URL=redis://127.0.0.1:6379/0
+# optional:
+# LABS_MB_CHAIN_TTL_S=2.0
+# LABS_MB_INTEREST_GRACE_S=45
+```
+
+### Redis
+
+```bash
+brew install redis          # once
+brew services start redis   # or launchd
+redis-cli ping              # PONG
+```
+
+Bind **localhost only** in production (`redis.conf` bind 127.0.0.1).
+
+### Processes (launchd suggested labels)
+
+| Label | Command |
+|-------|---------|
+| `ai.fattail.labs.api` | existing uvicorn (export `LABS_MARKET_BUS` + `REDIS_URL`) |
+| `ai.fattail.labs.chain-feed` | `cd server && .venv/bin/python -m market_data.chain_feed --interval 2` |
+| `ai.fattail.labs.sym-feed` | `cd server && .venv/bin/python -m market_data.sym_feed --interval 5` |
+
+One writer per feed class. API workers only **read** Redis / serve WS.
+
+### Smoke
+
+```bash
+cd server && set -a && source ../.env && set +a
+export LABS_MARKET_BUS=1 REDIS_URL=redis://127.0.0.1:6379/0
+.venv/bin/python scripts/mb_scale_smoke.py --n 10
+.venv/bin/python -m market_data.sym_feed --probe-ws
+.venv/bin/python -m market_data.sym_feed --once
+```
+

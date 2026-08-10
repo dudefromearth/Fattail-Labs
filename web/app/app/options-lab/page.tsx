@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * Vertical chain ladder — data updates in place.
- * Symbol list = Admin market universe (same SoR as /admin symbols).
- * Only strike rows whose mid/bid/ask/vol/oi/greeks/iv actually changed re-render.
+ * Vertical chain ladder — Market Bus shared client (one WS/tab) + poll fallback.
+ * Symbol list = Admin market universe. Exact listed strikes (OC6a).
  */
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -11,9 +10,7 @@ import Link from "next/link";
 import {
   DEFAULT_STRIKE_WINGS,
   STRIKE_WING_CHOICES,
-  applyLadderDiff,
   fetchLadderExpirations,
-  pollChainLadder,
   type LadderExpirationContract,
   type LadderRow,
   type StrikeWings,
@@ -22,8 +19,8 @@ import {
   fetchMarketUniverse,
   type MarketUniverseSymbol,
 } from "@/lib/capitalApi";
+import { useOptionChainBus } from "@/lib/market/useOptionChainBus";
 
-const POLL_MS = 2000;
 /** Next N distinct listed expirations (not calendar days). */
 const EXPIRY_PICK_COUNT = 3;
 
@@ -35,22 +32,17 @@ function fmt(n: number | null | undefined, digits = 2): string {
   });
 }
 
-/**
- * Show the **listed** strike exactly (OCC dollars + cents).
- * Never format with maxFractionDigits:0 — that rounded 302.50 → "303".
- * Work in integer cents so half-strikes stay 302.50, not 302.5 or 303.
- */
+/** Listed strikes cent-exact (OC6a) — never round 302.50 → 303. */
 function fmtStrike(n: number | null | undefined): string {
   if (n == null) return "—";
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
-  // Round only to the nearest cent (listed strikes are cent-quantized).
   const cents = Math.round(v * 100);
   const neg = cents < 0;
   const abs = Math.abs(cents);
   const whole = Math.floor(abs / 100);
   const frac = abs % 100;
-  const wholeStr = String(whole); // no locale rounding of the strike itself
+  const wholeStr = String(whole);
   const body =
     frac === 0 ? wholeStr : `${wholeStr}.${String(frac).padStart(2, "0")}`;
   return neg ? `-${body}` : body;
@@ -120,23 +112,20 @@ export default function ChainLadderPage() {
   const [expiration, setExpiration] = useState("");
   const [side, setSide] = useState<"call" | "put">("call");
   const [wings, setWings] = useState<StrikeWings>(DEFAULT_STRIKE_WINGS);
-  const [error, setError] = useState<string | null>(null);
-  const [hash, setHash] = useState<string | null>(null);
-  const [spot, setSpot] = useState<number | null>(null);
-  const [band, setBand] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [ladderDte, setLadderDte] = useState<number | null>(null);
-  const [asOf, setAsOf] = useState<string | null>(null);
-  const [rowsByStrike, setRowsByStrike] = useState<Map<number, LadderRow>>(
-    () => new Map(),
-  );
-  const [flashStrikes, setFlashStrikes] = useState<Set<number>>(() => new Set());
-  const [lastPatch, setLastPatch] = useState<string>("—");
-  const hashRef = useRef<string | null>(null);
   const mounted = useRef(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  /** After a new ladder is presented, center once — then only on demand. */
   const presentKeyRef = useRef<string>("");
   const centerOnPresentRef = useRef(true);
+
+  const bus = useOptionChainBus({
+    symbol,
+    expiration,
+    side,
+    wings,
+    enabled: Boolean(expiration && symbol),
+  });
 
   useEffect(() => {
     mounted.current = true;
@@ -145,7 +134,6 @@ export default function ChainLadderPage() {
     };
   }, []);
 
-  // Admin market universe — same list as Admin → Symbols
   useEffect(() => {
     void (async () => {
       try {
@@ -159,7 +147,7 @@ export default function ChainLadderPage() {
         }
       } catch (e) {
         if (mounted.current)
-          setError(
+          setLoadError(
             e instanceof Error ? e.message : "Could not load market universe",
           );
       }
@@ -167,7 +155,6 @@ export default function ChainLadderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Next 3 distinct listed expirations for this symbol (SPX daily, others M/W/F or Fri…)
   useEffect(() => {
     if (!symbol) return;
     setExpiration("");
@@ -178,81 +165,22 @@ export default function ChainLadderPage() {
         const pack = await fetchLadderExpirations(symbol, EXPIRY_PICK_COUNT);
         if (!mounted.current) return;
         setExpiryContracts(pack.contracts);
-        const def = pack.default_expiration || pack.contracts[0]?.expiration || "";
+        const def =
+          pack.default_expiration || pack.contracts[0]?.expiration || "";
         setExpiration(def);
         const dte0 = pack.contracts.find((c) => c.expiration === def)?.dte;
         setLadderDte(dte0 != null ? dte0 : null);
-        setError(null);
+        setLoadError(null);
       } catch (e) {
         if (mounted.current)
-          setError(
+          setLoadError(
             e instanceof Error ? e.message : "Could not load expirations",
           );
       }
     })();
   }, [symbol]);
 
-  const tick = useCallback(async () => {
-    if (!expiration || !symbol) return;
-    try {
-      const result = await pollChainLadder({
-        expiration,
-        symbol,
-        side,
-        wings,
-        since_hash: hashRef.current,
-      });
-      if (!mounted.current) return;
-      setError(null);
-
-      setRowsByStrike((prev) => {
-        const { next, touched, meta, hash: h } = applyLadderDiff(prev, result);
-        hashRef.current = h;
-        queueMicrotask(() => {
-          if (!mounted.current) return;
-          setHash(h);
-          if (meta?.spot != null) setSpot(Number(meta.spot));
-          if (meta?.band != null) setBand(Number(meta.band));
-          if (meta?.as_of) setAsOf(String(meta.as_of));
-          if (result.mode === "full" && result.ladder.dte != null) {
-            setLadderDte(Number(result.ladder.dte));
-          }
-          if (result.mode === "diff") {
-            setLastPatch(
-              `${result.changed_strike_count ?? result.upserts.length} strike(s) · ${result.removes.length} removed`,
-            );
-          } else if (result.mode === "full") {
-            setLastPatch(`full ${result.ladder.row_count} rows`);
-          } else {
-            setLastPatch("no change");
-          }
-          if (touched.size) {
-            const reduceMotion =
-              typeof window !== "undefined" &&
-              window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            if (!reduceMotion) {
-              setFlashStrikes(new Set(touched));
-              window.setTimeout(() => {
-                if (mounted.current) setFlashStrikes(new Set());
-              }, 600);
-            }
-          }
-        });
-        return next;
-      });
-    } catch (e) {
-      if (mounted.current)
-        setError(e instanceof Error ? e.message : "Poll failed");
-    }
-  }, [expiration, symbol, side, wings]);
-
-  // Reset hash when controls change so first response is full; center once after present
   useEffect(() => {
-    hashRef.current = null;
-    setHash(null);
-    setRowsByStrike(new Map());
-    setSpot(null);
-    setBand(null);
     const key = `${symbol}|${expiration}|${side}|${wings}`;
     if (presentKeyRef.current !== key) {
       presentKeyRef.current = key;
@@ -261,24 +189,19 @@ export default function ChainLadderPage() {
   }, [expiration, symbol, side, wings]);
 
   useEffect(() => {
-    if (!expiration) return;
-    void tick();
-    const id = window.setInterval(() => void tick(), POLL_MS);
-    return () => window.clearInterval(id);
-  }, [expiration, tick]);
+    if (bus.dte != null) setLadderDte(bus.dte);
+  }, [bus.dte]);
 
   const ordered = useMemo(() => {
-    // High strikes first so OTM calls scroll up / ITM down like most brokers
-    return [...rowsByStrike.values()].sort((a, b) => b.strike - a.strike);
-  }, [rowsByStrike]);
+    return [...bus.rows.values()].sort((a, b) => b.strike - a.strike);
+  }, [bus.rows]);
 
-  /** Scroll so the SPOT row sits mid-viewport (used after present + on demand). */
   const centerSpot = useCallback(() => {
     const root = scrollRef.current;
     if (!root) return false;
-    const spotEl =
-      (root.querySelector('tr[data-spot="1"]') as HTMLElement | null) ||
-      null;
+    const spotEl = root.querySelector(
+      'tr[data-spot="1"]',
+    ) as HTMLElement | null;
     if (!spotEl) return false;
     const rootRect = root.getBoundingClientRect();
     const elRect = spotEl.getBoundingClientRect();
@@ -288,7 +211,6 @@ export default function ChainLadderPage() {
     return true;
   }, []);
 
-  // Center once after the ladder is first painted for this geometry
   useEffect(() => {
     if (!centerOnPresentRef.current || !ordered.length) return;
     if (!ordered.some((r) => r.is_spot)) return;
@@ -299,13 +221,17 @@ export default function ChainLadderPage() {
   }, [ordered, centerSpot]);
 
   const selectedMeta = universe.find((u) => u.symbol === symbol);
-  const selectedExpiry = expiryContracts.find((c) => c.expiration === expiration);
+  const selectedExpiry = expiryContracts.find(
+    (c) => c.expiration === expiration,
+  );
   const displayDte =
     ladderDte != null
       ? ladderDte
       : selectedExpiry != null
         ? selectedExpiry.dte
         : null;
+
+  const error = loadError || bus.error;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-3 px-3 py-4">
@@ -322,7 +248,7 @@ export default function ChainLadderPage() {
         <span className="text-xs text-[var(--color-label-tertiary)]">
           {symbol}
           {displayDte != null ? ` · ${displayDte} DTE` : ""}
-          {" · "}±{wings} strikes · row diffs only
+          {" · "}±{wings} strikes · {bus.transport}
         </span>
       </div>
 
@@ -369,10 +295,6 @@ export default function ChainLadderPage() {
               </option>
             ))}
           </select>
-          <span className="mt-0.5 block text-[10px] text-[var(--color-label-tertiary)]">
-            Distinct listed dates for {symbol}
-            {displayDte != null ? ` · selected ${displayDte} DTE` : ""}
-          </span>
         </label>
         <label className="text-xs text-[var(--color-label-secondary)]">
           Side
@@ -390,9 +312,7 @@ export default function ChainLadderPage() {
           <select
             className="mt-0.5 block min-h-11 min-w-[7rem] rounded border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm"
             value={wings}
-            onChange={(e) =>
-              setWings(Number(e.target.value) as StrikeWings)
-            }
+            onChange={(e) => setWings(Number(e.target.value) as StrikeWings)}
             data-testid="chain-ladder-wings"
           >
             {STRIKE_WING_CHOICES.map((n) => (
@@ -401,9 +321,6 @@ export default function ChainLadderPage() {
               </option>
             ))}
           </select>
-          <span className="mt-0.5 block text-[10px] text-[var(--color-label-tertiary)]">
-            Above &amp; below ATM
-          </span>
         </label>
         <div className="flex flex-col gap-0.5">
           <span className="text-xs text-[var(--color-label-secondary)]">
@@ -415,7 +332,6 @@ export default function ChainLadderPage() {
             onClick={() => centerSpot()}
             disabled={!ordered.some((r) => r.is_spot)}
             data-testid="chain-ladder-center-spot"
-            title="Scroll so the SPOT strike is mid-viewport"
           >
             Center spot
           </button>
@@ -424,14 +340,17 @@ export default function ChainLadderPage() {
           <div>
             Spot{" "}
             <span className="tabular-nums text-[var(--color-label)]">
-              {spot != null ? fmt(spot, 2) : "—"}
+              {bus.spot != null ? fmt(bus.spot, 2) : "—"}
             </span>
-            {band != null && (
-              <span className="ml-2">window ±{fmt(band, 0)}</span>
+            {bus.band != null && (
+              <span className="ml-2">window ±{fmt(bus.band, 0)}</span>
             )}
           </div>
-          <div>hash {hash?.slice(0, 8) || "—"} · {lastPatch}</div>
-          <div>{asOf ? `as of ${asOf}` : ""}</div>
+          <div>
+            hash {bus.hash?.slice(0, 8) || "—"} · {bus.lastPatch} · via{" "}
+            {bus.transport}
+          </div>
+          <div>{bus.asOf ? `as of ${bus.asOf}` : ""}</div>
         </div>
       </div>
 
@@ -465,7 +384,7 @@ export default function ChainLadderPage() {
               <StrikeRow
                 key={row.strike}
                 row={row}
-                flash={flashStrikes.has(row.strike)}
+                flash={bus.flashStrikes.has(row.strike)}
               />
             ))}
             {!ordered.length && (
@@ -482,9 +401,9 @@ export default function ChainLadderPage() {
         </table>
       </div>
       <p className="text-[11px] text-[var(--color-label-tertiary)]">
-        Poll every {POLL_MS / 1000}s. Ladder centers on SPOT once when first
-        presented; use <strong className="font-medium">Center spot</strong> to
-        re-center on demand. Diffs only patch moved strikes.
+        Shared Market Bus: one WebSocket per tab (poll fallback if stream
+        stale). Center spot once on present; use{" "}
+        <strong className="font-medium">Center spot</strong> on demand.
       </p>
     </main>
   );
