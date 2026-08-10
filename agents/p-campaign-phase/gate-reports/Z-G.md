@@ -30,4 +30,4 @@ Deliberate campaign phase: tiered charter, umpire-preserving gates, phase report
 
 ## Decision log
 
-DL-273 · DL-274 · DL-275
+DL-276 · DL-277 · DL-278

@@ -5,7 +5,7 @@
 
 ## As-built
 
-- Spec v1.0.1 RATIFIED (DL-273…275)
+- Spec v1.0.1 RATIFIED (DL-276…278)
 - Domain: Big Three · end-on-close · charter_version · same_bet · strategy_codes · max_drawdown_pct
 - API: create/patch fields · `GET …/phase-report`
 - UI: tiered definition · report strip · CR-12 create banner · change log label
