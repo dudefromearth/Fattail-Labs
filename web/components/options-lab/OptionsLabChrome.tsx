@@ -14,17 +14,32 @@ import { optionsLabApp, type OptionsLabAppId } from "@/lib/optionsLabSuite";
 export default function OptionsLabChrome({
   active,
   children,
+  /** Fill viewport height; children grow into remaining space (charts). */
+  fillHeight = false,
+  /** Wider max width for chart apps. */
+  wide = false,
 }: {
   active: OptionsLabAppId;
   children: ReactNode;
+  fillHeight?: boolean;
+  wide?: boolean;
 }) {
   const item = optionsLabApp(active);
   const { symbol, setSymbol, universe, loading, error } = useOptionsLab();
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-3 px-3 py-4">
+    <main
+      className={[
+        "mx-auto flex w-full flex-col gap-3 px-3 py-4",
+        // Leave room for SiteHeader (~4.5rem); suite chrome is inside this box
+        fillHeight
+          ? "h-[calc(100dvh-4.5rem)] min-h-0 overflow-hidden"
+          : "min-h-screen",
+        wide ? "max-w-[1600px]" : "max-w-5xl",
+      ].join(" ")}
+    >
       <div
-        className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-3"
+        className="shrink-0 grid grid-cols-1 items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-3"
         data-testid="options-lab-chrome-top"
       >
         <nav
@@ -49,7 +64,7 @@ export default function OptionsLabChrome({
         <div className="justify-self-end" aria-hidden />
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--color-separator)] p-3">
+      <div className="flex shrink-0 flex-wrap items-end gap-3 rounded-lg border border-[var(--color-separator)] p-3">
         <label className="text-xs text-[var(--color-label-secondary)]">
           Symbol
           <select
@@ -85,12 +100,20 @@ export default function OptionsLabChrome({
       </div>
 
       {error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="shrink-0 text-sm text-red-600" role="alert">
           {error}
         </p>
       )}
 
-      {children}
+      <div
+        className={
+          fillHeight
+            ? "flex min-h-0 flex-1 flex-col"
+            : undefined
+        }
+      >
+        {children}
+      </div>
     </main>
   );
 }

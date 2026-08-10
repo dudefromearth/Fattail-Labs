@@ -8,7 +8,7 @@ import VolumeProfileChart from "@/components/options-lab/VolumeProfileChart";
  */
 export default function OptionsLabVolumeProfilePage() {
   return (
-    <OptionsLabChrome active="volume-profile">
+    <OptionsLabChrome active="volume-profile" fillHeight wide>
       <VolumeProfileChart />
     </OptionsLabChrome>
   );

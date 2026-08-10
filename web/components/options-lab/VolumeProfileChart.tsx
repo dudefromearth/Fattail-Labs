@@ -2,6 +2,7 @@
 
 /**
  * Candlestick chart for Options Lab Volume Profile app.
+ * Fills remaining viewport below suite + timeframe controls.
  * Timeframes: Day · 4 hr · 1 hr · 30 min · 10 min
  */
 
@@ -9,7 +10,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   type IChartApi,
-  type ISeriesApi,
   type CandlestickData,
   type UTCTimestamp,
   type Time,
@@ -109,9 +109,14 @@ function CandleHost({
     if (!el) return;
     const dark = isDarkMode();
     const theme = chartTheme(dark);
+
+    const size = () => ({
+      width: Math.max(1, el.clientWidth),
+      height: Math.max(200, el.clientHeight),
+    });
+
     const chart = createChart(el, {
-      width: el.clientWidth,
-      height: Math.max(360, el.clientHeight || 360),
+      ...size(),
       layout: theme.layout,
       grid: theme.grid,
       crosshair: {
@@ -121,7 +126,7 @@ function CandleHost({
       },
       rightPriceScale: {
         borderColor: theme.border,
-        scaleMargins: { top: 0.08, bottom: 0.08 },
+        scaleMargins: { top: 0.06, bottom: 0.06 },
       },
       timeScale: {
         borderColor: theme.border,
@@ -141,20 +146,30 @@ function CandleHost({
       wickDownColor: theme.wickDown,
       borderVisible: false,
     });
-    const candles = toCandles(payload, tf);
-    series.setData(candles);
+    series.setData(toCandles(payload, tf));
     chart.timeScale().fitContent();
 
     const ro = new ResizeObserver(() => {
-      if (hostRef.current) {
-        chart.applyOptions({
-          width: hostRef.current.clientWidth,
-          height: Math.max(360, hostRef.current.clientHeight || 360),
+      if (!hostRef.current || !chartRef.current) return;
+      const { width, height } = {
+        width: Math.max(1, hostRef.current.clientWidth),
+        height: Math.max(200, hostRef.current.clientHeight),
+      };
+      chartRef.current.applyOptions({ width, height });
+    });
+    ro.observe(el);
+    // One more frame after layout settles (flex fill)
+    const raf = requestAnimationFrame(() => {
+      if (hostRef.current && chartRef.current) {
+        chartRef.current.applyOptions({
+          width: Math.max(1, hostRef.current.clientWidth),
+          height: Math.max(200, hostRef.current.clientHeight),
         });
       }
     });
-    ro.observe(el);
+
     return () => {
+      cancelAnimationFrame(raf);
       ro.disconnect();
       chart.remove();
       chartRef.current = null;
@@ -164,7 +179,7 @@ function CandleHost({
   return (
     <div
       ref={hostRef}
-      className="h-[min(60vh,520px)] w-full min-h-[360px]"
+      className="h-full min-h-[200px] w-full flex-1"
       data-testid="volume-profile-candle-host"
     />
   );
@@ -202,8 +217,11 @@ export default function VolumeProfileChart() {
   }, [symbol, tf]);
 
   return (
-    <div className="flex flex-col gap-3" data-testid="volume-profile-chart">
-      <div className="flex flex-wrap items-center gap-2">
+    <div
+      className="flex min-h-0 flex-1 flex-col gap-2"
+      data-testid="volume-profile-chart"
+    >
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <nav
           className="inline-flex flex-wrap items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
           aria-label="Chart timeframe"
@@ -234,6 +252,10 @@ export default function VolumeProfileChart() {
           {payload
             ? `${payload.bar_count} bars · ${payload.series_ticker}${
                 payload.proxy_label ? ` · ${payload.proxy_label}` : ""
+              }${
+                payload.history_span_days != null
+                  ? ` · ~${Math.round(Number(payload.history_span_days))}d`
+                  : ""
               }`
             : loading
               ? "Loading…"
@@ -242,27 +264,24 @@ export default function VolumeProfileChart() {
       </div>
 
       {error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p className="shrink-0 text-sm text-red-600" role="alert">
           {error}
         </p>
       )}
 
-      <div className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] p-2">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] p-1">
         {payload && payload.bars?.length ? (
-          <CandleHost key={`${symbol}-${tf}-${payload.bar_count}`} payload={payload} tf={tf} />
+          <CandleHost
+            key={`${symbol}-${tf}-${payload.bar_count}`}
+            payload={payload}
+            tf={tf}
+          />
         ) : (
-          <div className="flex h-[360px] items-center justify-center text-sm text-[var(--color-label-tertiary)]">
+          <div className="flex min-h-[200px] flex-1 items-center justify-center text-sm text-[var(--color-label-tertiary)]">
             {loading ? "Loading candles…" : "No bars for this symbol / timeframe"}
           </div>
         )}
       </div>
-      <p className="text-[11px] text-[var(--color-label-tertiary)]">
-        Candlesticks for the suite symbol (requesting ≥3 years of history at every
-        timeframe, including 10 min). Volume profile histogram ships next.
-        {payload?.history_span_days != null
-          ? ` Provider returned ~${Math.round(Number(payload.history_span_days))} days of bars.`
-          : ""}
-      </p>
     </div>
   );
 }
