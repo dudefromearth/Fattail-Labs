@@ -1,108 +1,322 @@
 "use client";
 
 /**
- * Candlestick chart for Options Lab Volume Profile app.
- * Fills remaining viewport below suite + timeframe controls.
- * Light / dark chart styles (dark default).
- * Timeframes: Day · 4 hr · 1 hr · 30 min · 10 min
+ * Candlestick chart for Options Lab Volume Profile.
+ *
+ * TF switch performance (critical path):
+ * 1. Memory series store — no React state holding 100k bars
+ * 2. Fast lookback fetch first (e.g. 30d of 5m), paint immediately
+ * 3. Background full 3y backfill without blocking the chart
+ * 4. Stable chart + applyOptions for appearance
+ * 5. Viewport-first setData; pan-left expands from memory
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createChart,
   type IChartApi,
+  type ISeriesApi,
   type CandlestickData,
-  type UTCTimestamp,
-  type Time,
+  type LogicalRange,
   ColorType,
   CrosshairMode,
 } from "lightweight-charts";
 import {
-  fetchMarketOhlc,
   OHL_C_TIMEFRAMES,
-  type OhlcPayload,
+  type OhlcMeta,
   type OhlcTf,
 } from "@/lib/marketOhlcApi";
+import {
+  getSeries,
+  loadSeriesFast,
+  loadSeriesFull,
+} from "@/lib/marketOhlcSeries";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 
-export type ChartStyle = "dark" | "light";
+/* ── Scale text size ─────────────────────────────────────────────────── */
 
-const STYLE_STORAGE_KEY = "options-lab-chart-style";
+export type ScaleTextSize = "small" | "medium" | "larger" | "xlarge";
 
-function chartTheme(style: ChartStyle) {
-  if (style === "dark") {
-    return {
-      layout: {
-        background: { type: ColorType.Solid, color: "#0c0c0e" },
-        textColor: "#a1a1aa",
-      },
-      grid: {
-        vertLines: { color: "rgba(255,255,255,0.06)" },
-        horzLines: { color: "rgba(255,255,255,0.06)" },
-      },
-      border: "rgba(255,255,255,0.12)",
-      panelBg: "bg-[#0c0c0e]",
-      panelBorder: "border-zinc-800",
-      up: "#22c55e",
-      down: "#ef4444",
-      wickUp: "#22c55e",
-      wickDown: "#ef4444",
-      crosshair: "rgba(255,255,255,0.25)",
-    };
+const SCALE_TEXT_OPTIONS: { id: ScaleTextSize; label: string; px: number }[] = [
+  { id: "small", label: "Small", px: 10 },
+  { id: "medium", label: "Medium", px: 12 },
+  { id: "larger", label: "Larger", px: 15 },
+  { id: "xlarge", label: "X Large", px: 18 },
+];
+
+function scaleFontPx(size: ScaleTextSize): number {
+  return SCALE_TEXT_OPTIONS.find((o) => o.id === size)?.px ?? 12;
+}
+
+/* ── Color helpers ───────────────────────────────────────────────────── */
+
+type Hsl = { h: number; s: number; l: number };
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, n));
+}
+
+function normalizeHex(hex: string): string {
+  let h = (hex || "").trim().replace(/^#/, "");
+  if (h.length === 3) {
+    h = h
+      .split("")
+      .map((c) => c + c)
+      .join("");
   }
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return "#0c0c0e";
+  return `#${h.toLowerCase()}`;
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const h = normalizeHex(hex).slice(1);
   return {
-    layout: {
-      background: { type: ColorType.Solid, color: "#ffffff" },
-      textColor: "#52525b",
-    },
-    grid: {
-      vertLines: { color: "rgba(0,0,0,0.06)" },
-      horzLines: { color: "rgba(0,0,0,0.06)" },
-    },
-    border: "rgba(0,0,0,0.12)",
-    panelBg: "bg-white",
-    panelBorder: "border-[var(--color-separator)]",
-    up: "#16a34a",
-    down: "#dc2626",
-    wickUp: "#16a34a",
-    wickDown: "#dc2626",
-    crosshair: "rgba(0,0,0,0.2)",
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
   };
 }
 
-function toCandles(payload: OhlcPayload, tf: OhlcTf): CandlestickData[] {
-  const out: CandlestickData[] = [];
-  let lastT: number | string | null = null;
-  for (const b of payload.bars || []) {
-    if (b.t == null || b.c == null) continue;
-    const o = b.o ?? b.c;
-    const h = b.h ?? Math.max(o, b.c);
-    const l = b.l ?? Math.min(o, b.c);
-    let time: Time;
-    if (tf === "1d") {
-      const d = new Date(b.t);
-      const y = d.getUTCFullYear();
-      const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-      const day = String(d.getUTCDate()).padStart(2, "0");
-      time = `${y}-${m}-${day}` as Time;
-    } else {
-      time = Math.floor(b.t / 1000) as UTCTimestamp;
-    }
-    if (lastT !== null && time <= lastT) continue;
-    lastT = time as number | string;
-    out.push({ time, open: o, high: h, low: l, close: b.c });
-  }
-  return out;
+function rgbToHex(r: number, g: number, b: number): string {
+  const p = (n: number) =>
+    clamp(Math.round(n), 0, 255).toString(16).padStart(2, "0");
+  return `#${p(r)}${p(g)}${p(b)}`;
 }
 
-/**
- * How many bars to show when a TF is selected — similar candle density across TFs.
- * Full 3y history stays loaded so the user can zoom/pan out.
- */
+function hexToHsl(hex: string): Hsl {
+  const { r, g, b } = hexToRgb(hex);
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l: l * 100 };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === rn) h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6;
+  else if (max === gn) h = ((bn - rn) / d + 2) / 6;
+  else h = ((rn - gn) / d + 4) / 6;
+  return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const hh = ((h % 360) + 360) % 360;
+  const ss = clamp(s, 0, 100) / 100;
+  const ll = clamp(l, 0, 100) / 100;
+  if (ss === 0) {
+    const v = ll * 255;
+    return rgbToHex(v, v, v);
+  }
+  const hue2rgb = (p: number, q: number, t: number) => {
+    let tt = t;
+    if (tt < 0) tt += 1;
+    if (tt > 1) tt -= 1;
+    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+    if (tt < 1 / 2) return q;
+    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+    return p;
+  };
+  const q = ll < 0.5 ? ll * (1 + ss) : ll + ss - ll * ss;
+  const p = 2 * ll - q;
+  const hk = hh / 360;
+  const r = hue2rgb(p, q, hk + 1 / 3) * 255;
+  const g = hue2rgb(p, q, hk) * 255;
+  const b = hue2rgb(p, q, hk - 1 / 3) * 255;
+  return rgbToHex(r, g, b);
+}
+
+function colorWithBrightness(hex: string, brightness: number): string {
+  const { h, s } = hexToHsl(hex);
+  return hslToHex(h, s, clamp(brightness, 0, 100));
+}
+
+function relativeLuminance(hex: string): number {
+  const { r, g, b } = hexToRgb(hex);
+  const lin = (c: number) => {
+    const x = c / 255;
+    return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+function rgbaFromHex(hex: string, alpha: number): string {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${clamp(alpha, 0, 1)})`;
+}
+
+/* ── Appearance ──────────────────────────────────────────────────────── */
+
+export type ChartAppearance = {
+  scaleText: ScaleTextSize;
+  bgColor: string;
+  bgBrightness: number;
+  gridColor: string;
+  gridBrightness: number;
+};
+
+const APPEARANCE_STORAGE_KEY = "options-lab-chart-appearance-v1";
+
+const DEFAULT_APPEARANCE: ChartAppearance = {
+  scaleText: "medium",
+  bgColor: "#0c0c0e",
+  bgBrightness: 5,
+  gridColor: "#ffffff",
+  gridBrightness: 100,
+};
+
+const PRESETS: { id: string; label: string; patch: Partial<ChartAppearance> }[] =
+  [
+    {
+      id: "dark",
+      label: "Dark",
+      patch: {
+        bgColor: "#0c0c0e",
+        bgBrightness: 5,
+        gridColor: "#ffffff",
+        gridBrightness: 100,
+      },
+    },
+    {
+      id: "light",
+      label: "Light",
+      patch: {
+        bgColor: "#ffffff",
+        bgBrightness: 100,
+        gridColor: "#000000",
+        gridBrightness: 0,
+      },
+    },
+  ];
+
+function loadAppearance(): ChartAppearance {
+  try {
+    const raw = sessionStorage.getItem(APPEARANCE_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_APPEARANCE };
+    const p = JSON.parse(raw) as Partial<ChartAppearance>;
+    return {
+      scaleText:
+        p.scaleText && SCALE_TEXT_OPTIONS.some((o) => o.id === p.scaleText)
+          ? p.scaleText
+          : DEFAULT_APPEARANCE.scaleText,
+      bgColor: normalizeHex(p.bgColor ?? DEFAULT_APPEARANCE.bgColor),
+      bgBrightness: clamp(
+        Number(p.bgBrightness ?? DEFAULT_APPEARANCE.bgBrightness),
+        0,
+        100,
+      ),
+      gridColor: normalizeHex(p.gridColor ?? DEFAULT_APPEARANCE.gridColor),
+      gridBrightness: clamp(
+        Number(p.gridBrightness ?? DEFAULT_APPEARANCE.gridBrightness),
+        0,
+        100,
+      ),
+    };
+  } catch {
+    return { ...DEFAULT_APPEARANCE };
+  }
+}
+
+function saveAppearance(a: ChartAppearance): void {
+  try {
+    sessionStorage.setItem(APPEARANCE_STORAGE_KEY, JSON.stringify(a));
+  } catch {
+    /* ignore */
+  }
+}
+
+type ResolvedTheme = {
+  bg: string;
+  textColor: string;
+  gridColor: string;
+  border: string;
+  crosshair: string;
+  up: string;
+  down: string;
+  wickUp: string;
+  wickDown: string;
+  fontSize: number;
+  isDark: boolean;
+};
+
+function resolveTheme(a: ChartAppearance): ResolvedTheme {
+  const bg = colorWithBrightness(a.bgColor, a.bgBrightness);
+  const gridSolid = colorWithBrightness(a.gridColor, a.gridBrightness);
+  const isDark = relativeLuminance(bg) < 0.45;
+  const textColor = isDark ? "#c4c4cc" : "#3f3f46";
+  const border = isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)";
+  const crosshair = isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.22)";
+  const gridAlpha = isDark ? 0.14 : 0.12;
+  return {
+    bg,
+    textColor,
+    gridColor: rgbaFromHex(gridSolid, gridAlpha),
+    border,
+    crosshair,
+    up: isDark ? "#22c55e" : "#16a34a",
+    down: isDark ? "#ef4444" : "#dc2626",
+    wickUp: isDark ? "#22c55e" : "#16a34a",
+    wickDown: isDark ? "#ef4444" : "#dc2626",
+    fontSize: scaleFontPx(a.scaleText),
+    isDark,
+  };
+}
+
+function applyThemeToChart(
+  chart: IChartApi,
+  series: ISeriesApi<"Candlestick">,
+  theme: ResolvedTheme,
+  tf: OhlcTf,
+): void {
+  chart.applyOptions({
+    layout: {
+      background: { type: ColorType.Solid, color: theme.bg },
+      textColor: theme.textColor,
+      fontSize: theme.fontSize,
+    },
+    grid: {
+      vertLines: { color: theme.gridColor },
+      horzLines: { color: theme.gridColor },
+    },
+    crosshair: {
+      mode: CrosshairMode.Normal,
+      vertLine: {
+        color: theme.crosshair,
+        labelBackgroundColor: theme.up,
+      },
+      horzLine: {
+        color: theme.crosshair,
+        labelBackgroundColor: theme.up,
+      },
+    },
+    rightPriceScale: { borderColor: theme.border },
+    timeScale: {
+      borderColor: theme.border,
+      timeVisible: tf !== "1d",
+      secondsVisible: false,
+    },
+  });
+  series.applyOptions({
+    upColor: theme.up,
+    downColor: theme.down,
+    borderUpColor: theme.up,
+    borderDownColor: theme.down,
+    wickUpColor: theme.wickUp,
+    wickDownColor: theme.wickDown,
+    borderVisible: false,
+  });
+}
+
+/* ── Viewport windowing ──────────────────────────────────────────────── */
+
+/** Bars in LWC on first paint of a series. */
+const INITIAL_SERIES_BARS = 3500;
+const EXPAND_CHUNK = 2500;
+const LEFT_EDGE_BARS = 80;
+
 function visibleBarCount(tf: OhlcTf, widthPx: number): number {
-  // ~6–8 px per candle; clamp to a usable range
   const byWidth = Math.floor(Math.max(280, widthPx) / 7);
-  // Slightly more bars on coarser TFs so wall-clock span feels related
   const tfBias: Record<OhlcTf, number> = {
     "1d": 1.15,
     "4h": 1.1,
@@ -117,47 +331,72 @@ function visibleBarCount(tf: OhlcTf, widthPx: number): number {
 
 function showRecentBars(
   chart: IChartApi,
-  barCount: number,
+  seriesBarCount: number,
   visible: number,
 ): void {
-  if (barCount < 1) return;
-  const vis = Math.min(visible, barCount);
-  // Logical indices: 0..barCount-1; pad a few empty slots on the right
-  const to = barCount - 1 + 4;
+  if (seriesBarCount < 1) return;
+  const vis = Math.min(visible, seriesBarCount);
+  const to = seriesBarCount - 1 + 4;
   const from = Math.max(-0.5, to - vis);
   chart.timeScale().setVisibleLogicalRange({ from, to });
 }
 
+/* ── Chart host (stable instance) ────────────────────────────────────── */
+
 function CandleHost({
-  payload,
+  symbol,
   tf,
-  style,
+  /** Bumps when module series store updates for this symbol|tf. */
+  seriesRev,
+  appearance,
 }: {
-  payload: OhlcPayload;
+  symbol: string;
   tf: OhlcTf;
-  style: ChartStyle;
+  seriesRev: number;
+  appearance: ChartAppearance;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const fullCandlesRef = useRef<CandlestickData[]>([]);
+  const paintedFromRef = useRef(0);
+  /** Length of fullCandles last applied to memory (for backfill offset). */
+  const memoryLenRef = useRef(0);
+  const expandingRef = useRef(false);
+  const tfRef = useRef(tf);
+  tfRef.current = tf;
+  /** Last symbol|tf we setData for — avoid resetting viewport on backfill. */
+  const dataIdentityRef = useRef("");
 
+  const theme = useMemo(() => resolveTheme(appearance), [appearance]);
+
+  // Create chart once
   useEffect(() => {
     const el = hostRef.current;
     if (!el) return;
-    const theme = chartTheme(style);
-
-    const size = () => ({
-      width: Math.max(1, el.clientWidth),
-      height: Math.max(200, el.clientHeight),
-    });
 
     const chart = createChart(el, {
-      ...size(),
-      layout: theme.layout,
-      grid: theme.grid,
+      width: Math.max(1, el.clientWidth),
+      height: Math.max(200, el.clientHeight),
+      layout: {
+        background: { type: ColorType.Solid, color: theme.bg },
+        textColor: theme.textColor,
+        fontSize: theme.fontSize,
+      },
+      grid: {
+        vertLines: { color: theme.gridColor },
+        horzLines: { color: theme.gridColor },
+      },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: theme.crosshair, labelBackgroundColor: theme.up },
-        horzLine: { color: theme.crosshair, labelBackgroundColor: theme.up },
+        vertLine: {
+          color: theme.crosshair,
+          labelBackgroundColor: theme.up,
+        },
+        horzLine: {
+          color: theme.crosshair,
+          labelBackgroundColor: theme.up,
+        },
       },
       rightPriceScale: {
         borderColor: theme.border,
@@ -165,14 +404,13 @@ function CandleHost({
       },
       timeScale: {
         borderColor: theme.border,
-        timeVisible: tf !== "1d",
+        timeVisible: tfRef.current !== "1d",
         secondsVisible: false,
         rightOffset: 4,
       },
       handleScroll: { mouseWheel: true, pressedMouseMove: true },
       handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
     });
-    chartRef.current = chart;
     const series = chart.addCandlestickSeries({
       upColor: theme.up,
       downColor: theme.down,
@@ -182,51 +420,128 @@ function CandleHost({
       wickDownColor: theme.wickDown,
       borderVisible: false,
     });
-    const candles = toCandles(payload, tf);
-    series.setData(candles);
-    // Do not fitContent() — that compresses 3y of bars. Show a proportional
-    // recent window for this timeframe; user can zoom/pan for more history.
-    showRecentBars(
-      chart,
-      candles.length,
-      visibleBarCount(tf, el.clientWidth),
-    );
+    chartRef.current = chart;
+    seriesRef.current = series;
+
+    const expandIfNeeded = (range: LogicalRange | null) => {
+      if (!range || expandingRef.current) return;
+      const full = fullCandlesRef.current;
+      const fromIdx = paintedFromRef.current;
+      if (fromIdx <= 0) return;
+      if (range.from > LEFT_EDGE_BARS) return;
+
+      expandingRef.current = true;
+      try {
+        const add = Math.min(EXPAND_CHUNK, fromIdx);
+        const newFrom = fromIdx - add;
+        const painted = full.slice(newFrom);
+        const prevLen = full.length - fromIdx;
+        const rangeBefore = chart.timeScale().getVisibleLogicalRange();
+
+        series.setData(painted);
+        paintedFromRef.current = newFrom;
+
+        if (rangeBefore) {
+          const delta = painted.length - prevLen;
+          chart.timeScale().setVisibleLogicalRange({
+            from: rangeBefore.from + delta,
+            to: rangeBefore.to + delta,
+          });
+        }
+      } finally {
+        expandingRef.current = false;
+      }
+    };
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(expandIfNeeded);
 
     const ro = new ResizeObserver(() => {
       if (!hostRef.current || !chartRef.current) return;
-      const w = Math.max(1, hostRef.current.clientWidth);
-      const h = Math.max(200, hostRef.current.clientHeight);
-      chartRef.current.applyOptions({ width: w, height: h });
-      // Keep density proportional on resize (recent end)
-      showRecentBars(
-        chartRef.current,
-        candles.length,
-        visibleBarCount(tf, w),
-      );
+      chartRef.current.applyOptions({
+        width: Math.max(1, hostRef.current.clientWidth),
+        height: Math.max(200, hostRef.current.clientHeight),
+      });
     });
     ro.observe(el);
+
     const raf = requestAnimationFrame(() => {
       if (hostRef.current && chartRef.current) {
-        const w = Math.max(1, hostRef.current.clientWidth);
         chartRef.current.applyOptions({
-          width: w,
+          width: Math.max(1, hostRef.current.clientWidth),
           height: Math.max(200, hostRef.current.clientHeight),
         });
-        showRecentBars(
-          chartRef.current,
-          candles.length,
-          visibleBarCount(tf, w),
-        );
       }
     });
 
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(expandIfNeeded);
       chart.remove();
       chartRef.current = null;
+      seriesRef.current = null;
     };
-  }, [payload, tf, style]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Appearance only
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!chart || !series) return;
+    applyThemeToChart(chart, series, theme, tf);
+  }, [theme, tf]);
+
+  // Series data from module store (not React props with bars)
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    const el = hostRef.current;
+    if (!chart || !series || !el) return;
+
+    const entry = getSeries(symbol, tf);
+    const full = entry?.candles ?? [];
+    fullCandlesRef.current = full;
+
+    if (full.length < 1) {
+      series.setData([]);
+      paintedFromRef.current = 0;
+      memoryLenRef.current = 0;
+      dataIdentityRef.current = "";
+      return;
+    }
+
+    const identity = `${symbol}|${tf}`;
+    const isTfOrSymbolChange = dataIdentityRef.current !== identity;
+
+    if (isTfOrSymbolChange) {
+      dataIdentityRef.current = identity;
+      const fromIdx = Math.max(0, full.length - INITIAL_SERIES_BARS);
+      paintedFromRef.current = fromIdx;
+      memoryLenRef.current = full.length;
+      const painted = full.slice(fromIdx);
+      series.setData(painted);
+      showRecentBars(
+        chart,
+        painted.length,
+        visibleBarCount(tf, el.clientWidth),
+      );
+      return;
+    }
+
+    // Same symbol|tf — usually full 3y backfill finished. Update memory only;
+    // keep the on-screen series and viewport. Adjust paintedFrom so pan-left
+    // can reach newly available older bars.
+    const prevLen = memoryLenRef.current;
+    const grew = full.length - prevLen;
+    if (grew > 0) {
+      // New bars are older history on the left of the array
+      paintedFromRef.current += grew;
+      memoryLenRef.current = full.length;
+    } else {
+      memoryLenRef.current = full.length;
+    }
+  }, [symbol, tf, seriesRev]);
 
   return (
     <div
@@ -237,26 +552,29 @@ function CandleHost({
   );
 }
 
-function StyleToggle({
-  style,
+/* ── Controls UI ─────────────────────────────────────────────────────── */
+
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
   onChange,
+  testId,
 }: {
-  style: ChartStyle;
-  onChange: (s: ChartStyle) => void;
+  label: string;
+  value: T;
+  options: { id: T; label: string }[];
+  onChange: (v: T) => void;
+  testId?: string;
 }) {
   return (
     <nav
-      className="inline-flex items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
-      aria-label="Chart color style"
-      data-testid="volume-profile-style"
+      className="inline-flex flex-wrap items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
+      aria-label={label}
+      data-testid={testId}
     >
-      {(
-        [
-          { id: "dark" as const, label: "Dark" },
-          { id: "light" as const, label: "Light" },
-        ] as const
-      ).map((item) => {
-        const active = item.id === style;
+      {options.map((item) => {
+        const active = item.id === value;
         return (
           <button
             key={item.id}
@@ -279,140 +597,294 @@ function StyleToggle({
   );
 }
 
+function ColorBrightnessControl({
+  label,
+  color,
+  brightness,
+  onColor,
+  onBrightness,
+  testId,
+}: {
+  label: string;
+  color: string;
+  brightness: number;
+  onColor: (hex: string) => void;
+  onBrightness: (n: number) => void;
+  testId: string;
+}) {
+  const preview = colorWithBrightness(color, brightness);
+  return (
+    <div
+      className="inline-flex flex-wrap items-center gap-2 rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-2.5 py-1.5"
+      data-testid={testId}
+    >
+      <span className="text-xs font-medium text-[var(--color-label-secondary)]">
+        {label}
+      </span>
+      <label className="inline-flex cursor-pointer items-center gap-1.5">
+        <span className="sr-only">{label} color</span>
+        <input
+          type="color"
+          value={colorWithBrightness(color, brightness)}
+          onChange={(e) => onColor(normalizeHex(e.target.value))}
+          className="h-8 w-10 cursor-pointer rounded border border-[var(--color-separator)] bg-transparent p-0.5"
+          title={`${label} color`}
+          aria-label={`${label} color`}
+        />
+      </label>
+      <label className="inline-flex items-center gap-1.5 text-xs text-[var(--color-label-secondary)]">
+        <span className="whitespace-nowrap">Bright</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={brightness}
+          onChange={(e) => onBrightness(Number(e.target.value))}
+          className="h-2 w-24 cursor-pointer accent-[var(--color-tint)] sm:w-28"
+          aria-label={`${label} brightness`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={brightness}
+        />
+        <span className="w-7 tabular-nums text-[var(--color-label-tertiary)]">
+          {brightness}
+        </span>
+      </label>
+      <span
+        className="h-5 w-5 shrink-0 rounded border border-[var(--color-separator)]"
+        style={{ backgroundColor: preview }}
+        title={`Preview: ${preview}`}
+        aria-hidden
+      />
+    </div>
+  );
+}
+
+/* ── Main ────────────────────────────────────────────────────────────── */
+
 export default function VolumeProfileChart() {
   const { symbol } = useOptionsLab();
   const [tf, setTf] = useState<OhlcTf>("1d");
-  const [style, setStyle] = useState<ChartStyle>("dark");
-  const [payload, setPayload] = useState<OhlcPayload | null>(null);
+  const [appearance, setAppearance] =
+    useState<ChartAppearance>(DEFAULT_APPEARANCE);
+  const [hydrated, setHydrated] = useState(false);
+  /** Lightweight meta only — never the bars array. */
+  const [meta, setMeta] = useState<OhlcMeta | null>(null);
+  const [seriesRev, setSeriesRev] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
 
-  // Restore style preference; default dark
-  useEffect(() => {
-    try {
-      const s = sessionStorage.getItem(STYLE_STORAGE_KEY);
-      if (s === "light" || s === "dark") setStyle(s);
-    } catch {
-      /* ignore */
-    }
+  const bumpSeries = useCallback(() => {
+    setSeriesRev((n) => n + 1);
   }, []);
 
-  const onStyleChange = (s: ChartStyle) => {
-    setStyle(s);
-    try {
-      sessionStorage.setItem(STYLE_STORAGE_KEY, s);
-    } catch {
-      /* ignore */
-    }
-  };
+  useEffect(() => {
+    setAppearance(loadAppearance());
+    setHydrated(true);
+  }, []);
 
+  const patchAppearance = useCallback((patch: Partial<ChartAppearance>) => {
+    setAppearance((prev) => {
+      const next = { ...prev, ...patch };
+      saveAppearance(next);
+      return next;
+    });
+  }, []);
+
+  // TF / symbol load: memory → fast network → background full
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
+    const ac = new AbortController();
+
+    // Sync warm path: paint from memory before any await
+    const warm = getSeries(symbol, tf);
+    if (warm && warm.candles.length >= 2) {
+      setMeta(warm.meta);
+      setLoading(false);
+      setError(null);
+      setBackfilling(!warm.complete);
+      bumpSeries();
+    } else {
+      setLoading(true);
+      setError(null);
+      setBackfilling(false);
+      // Keep previous chart until new data arrives (no flash empty)
+    }
+
     void (async () => {
       try {
-        const data = await fetchMarketOhlc(symbol, tf);
+        const { entry, fromCache, needsBackfill } = await loadSeriesFast(
+          symbol,
+          tf,
+          { signal: ac.signal },
+        );
         if (cancelled) return;
-        setPayload(data);
+        setMeta({ ...entry.meta, fromCache });
+        setLoading(false);
         setError(null);
+        bumpSeries();
+
+        if (!needsBackfill) {
+          setBackfilling(false);
+          return;
+        }
+
+        setBackfilling(true);
+        try {
+          const full = await loadSeriesFull(symbol, tf, {
+            signal: ac.signal,
+          });
+          if (cancelled) return;
+          setMeta({ ...full.meta, fromCache: false });
+          setBackfilling(false);
+          bumpSeries();
+        } catch (e) {
+          if (cancelled || (e instanceof DOMException && e.name === "AbortError"))
+            return;
+          // Fast chart stays; backfill failure is non-fatal
+          setBackfilling(false);
+        }
       } catch (e) {
-        if (!cancelled) {
-          setPayload(null);
+        if (cancelled || (e instanceof DOMException && e.name === "AbortError"))
+          return;
+        if (!warm) {
+          setMeta(null);
           setError(e instanceof Error ? e.message : "Failed to load OHLC");
         }
-      } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
+        setBackfilling(false);
       }
     })();
+
     return () => {
       cancelled = true;
+      ac.abort();
     };
-  }, [symbol, tf]);
+  }, [symbol, tf, bumpSeries]);
 
-  const theme = chartTheme(style);
+  const theme = useMemo(() => resolveTheme(appearance), [appearance]);
+  const hasSeries =
+    hydrated && (meta != null || getSeries(symbol, tf)?.candles.length);
 
   return (
     <div
       className="flex min-h-0 flex-1 flex-col gap-2"
       data-testid="volume-profile-chart"
     >
-      {/* Timeframe / style controls — standard page width, centered */}
-      <div className="mx-auto w-full max-w-5xl shrink-0 px-3 sm:px-4">
+      <div className="mx-auto w-full max-w-5xl shrink-0 space-y-2 px-3 sm:px-4">
         <div className="flex flex-wrap items-center gap-2">
-          <nav
-            className="inline-flex flex-wrap items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
-            aria-label="Chart timeframe"
-            data-testid="volume-profile-tf"
-          >
-            {OHL_C_TIMEFRAMES.map((item) => {
-              const active = item.id === tf;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setTf(item.id)}
-                  aria-pressed={active}
-                  className={[
-                    "inline-flex min-h-9 items-center justify-center rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
-                    active
-                      ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
-                      : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
-                  ].join(" ")}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </nav>
-          <StyleToggle style={style} onChange={onStyleChange} />
+          <Segmented
+            label="Bar period (time each candle represents)"
+            value={tf}
+            options={OHL_C_TIMEFRAMES}
+            onChange={setTf}
+            testId="volume-profile-tf"
+          />
           <span className="text-xs text-[var(--color-label-tertiary)]">
-            {payload
-              ? `${payload.bar_count} bars · ${payload.series_ticker}${
-                  payload.proxy_label ? ` · ${payload.proxy_label}` : ""
+            {meta
+              ? `${meta.bar_count} bars · ${meta.series_ticker}${
+                  meta.proxy_label ? ` · ${meta.proxy_label}` : ""
                 }${
-                  payload.history_span_days != null
-                    ? ` · ~${Math.round(Number(payload.history_span_days))}d`
+                  meta.history_span_days != null
+                    ? ` · ~${Math.round(Number(meta.history_span_days))}d`
                     : ""
+                }${meta.fromCache ? " · cached" : ""}${
+                  loading ? " · …" : ""
+                }${backfilling ? " · loading history…" : ""}${
+                  meta.complete ? "" : backfilling ? "" : " · partial"
                 }`
               : loading
                 ? "Loading…"
                 : ""}
           </span>
         </div>
+
+        <div
+          className="flex flex-wrap items-center gap-2"
+          data-testid="volume-profile-appearance"
+        >
+          <Segmented
+            label="Scale text size"
+            value={appearance.scaleText}
+            options={SCALE_TEXT_OPTIONS.map((o) => ({
+              id: o.id,
+              label: o.label,
+            }))}
+            onChange={(scaleText) => patchAppearance({ scaleText })}
+            testId="volume-profile-scale-text"
+          />
+
+          <Segmented
+            label="Background preset"
+            value={
+              (PRESETS.find(
+                (p) =>
+                  p.patch.bgColor === appearance.bgColor &&
+                  p.patch.bgBrightness === appearance.bgBrightness &&
+                  p.patch.gridColor === appearance.gridColor &&
+                  p.patch.gridBrightness === appearance.gridBrightness,
+              )?.id ?? "custom") as string
+            }
+            options={[
+              ...PRESETS.map((p) => ({ id: p.id, label: p.label })),
+              { id: "custom", label: "Custom" },
+            ]}
+            onChange={(id) => {
+              const p = PRESETS.find((x) => x.id === id);
+              if (p) patchAppearance(p.patch);
+            }}
+            testId="volume-profile-preset"
+          />
+
+          <ColorBrightnessControl
+            label="Background"
+            color={appearance.bgColor}
+            brightness={appearance.bgBrightness}
+            onColor={(bgColor) => patchAppearance({ bgColor })}
+            onBrightness={(bgBrightness) => patchAppearance({ bgBrightness })}
+            testId="volume-profile-bg"
+          />
+
+          <ColorBrightnessControl
+            label="Grid"
+            color={appearance.gridColor}
+            brightness={appearance.gridBrightness}
+            onColor={(gridColor) => patchAppearance({ gridColor })}
+            onBrightness={(gridBrightness) =>
+              patchAppearance({ gridBrightness })
+            }
+            testId="volume-profile-grid"
+          />
+        </div>
+
         {error && (
-          <p className="mt-2 text-sm text-red-600" role="alert">
+          <p className="text-sm text-red-600" role="alert">
             {error}
           </p>
         )}
       </div>
 
-      {/* Chart — full window width */}
       <div
-        className={[
-          "flex min-h-0 flex-1 flex-col overflow-hidden border-y p-0 sm:rounded-none",
-          theme.panelBorder,
-          theme.panelBg,
-        ].join(" ")}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden border-y border-[var(--color-separator)] p-0"
+        style={{ backgroundColor: theme.bg }}
       >
-        {payload && payload.bars?.length ? (
+        {hasSeries ? (
           <CandleHost
-            key={`${symbol}-${tf}-${style}-${payload.bar_count}`}
-            payload={payload}
+            symbol={symbol}
             tf={tf}
-            style={style}
+            seriesRev={seriesRev}
+            appearance={appearance}
           />
         ) : (
           <div
-            className={[
-              "flex min-h-[200px] flex-1 items-center justify-center text-sm",
-              style === "dark"
-                ? "text-zinc-500"
-                : "text-[var(--color-label-tertiary)]",
-            ].join(" ")}
+            className="flex min-h-[200px] flex-1 items-center justify-center text-sm"
+            style={{ color: theme.textColor }}
           >
-            {loading ? "Loading candles…" : "No bars for this symbol / timeframe"}
+            {loading || !hydrated
+              ? "Loading candles…"
+              : "No bars for this symbol / timeframe"}
           </div>
         )}
       </div>

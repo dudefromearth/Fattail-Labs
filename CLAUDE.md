@@ -8,7 +8,10 @@ course library, live sessions, resources, and community. Replaces LearnDash.
 
 Full product spec: `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md`.  
 As-built architecture: `Architecture/README.md` (start with `01-system-overview.md`).  
-Deploy playbook: `infra/deploy.md`.
+Deploy playbook: `infra/deploy.md`.  
+**Live market data (chains/symbols/WS):** `Architecture/28-massive-market-bus.md` —  
+Massive → feeds → Redis → one WebSocket/tab → `web/lib/market` shared client.  
+Do **not** add per-request Massive or per-widget sockets. Options Lab: `/app/options-lab`.
 
 ## Architecture Decisions (locked 2026-07-21)
 
@@ -76,6 +79,14 @@ cd server && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python migrate.py                    # apply pending migrations
 .venv/bin/python migrate.py --dry-run          # preview
 .venv/bin/uvicorn main:app --port 4000         # dev only
+
+# Market Bus (optional live plane — Arch 28)
+# redis-cli ping  # need PONG
+export LABS_MARKET_BUS=1 REDIS_URL=redis://127.0.0.1:6379/0
+# .venv/bin/python -m market_data.chain_feed --interval 2
+# .venv/bin/python -m market_data.sym_feed --interval 5
+# .venv/bin/python scripts/mb_at_evidence.py
+# .venv/bin/python scripts/mb_scale_smoke.py --n 10
 
 # Frontend
 cd web && npm install && npm run build && npm start

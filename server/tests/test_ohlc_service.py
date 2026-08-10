@@ -7,6 +7,7 @@ import pytest
 from market_data.ohlc_service import (
     OHLC_LOOKBACK_DAYS,
     OHLC_LOOKBACK_YEARS,
+    normalize_lookback_days,
     normalize_ohlc_tf,
 )
 
@@ -23,3 +24,11 @@ def test_normalize_ohlc_tf():
 def test_lookback_at_least_three_years():
     assert OHLC_LOOKBACK_YEARS >= 3
     assert OHLC_LOOKBACK_DAYS >= 3 * 365
+
+
+def test_normalize_lookback_days():
+    assert normalize_lookback_days(None) == OHLC_LOOKBACK_DAYS
+    assert normalize_lookback_days(30) == 30
+    assert normalize_lookback_days(OHLC_LOOKBACK_DAYS + 50) == OHLC_LOOKBACK_DAYS
+    with pytest.raises(ValueError):
+        normalize_lookback_days(0)

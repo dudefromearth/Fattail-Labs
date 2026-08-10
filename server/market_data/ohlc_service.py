@@ -1,6 +1,10 @@
 """Underlier OHLC for Options Lab Volume Profile (Massive aggs).
 
-All timeframes request **at least 3 calendar years** of history (down to 10m).
+``tf`` selects **bar period** (one candle = that duration of price activity):
+  1d → 1 day, 4h → 4 hours, 1h → 1 hour, 30m/10m/5m → N minutes.
+
+Default lookback is ≥3 calendar years. Callers may pass a shorter
+``lookback_days`` for fast first-paint (client then backfills full history).
 Pagination is handled in MassiveClient.fetch_aggs.
 """
 
@@ -13,11 +17,11 @@ from typing import Any
 
 from market_data.massive_client import MassiveClient, MassiveClientError
 
-# Product requirement: ≥3 years of bars at every TF including the smallest (10m).
+# Product requirement: ≥3 years available at every TF (full backfill path).
 OHLC_LOOKBACK_YEARS = 3
 OHLC_LOOKBACK_DAYS = OHLC_LOOKBACK_YEARS * 365 + 1  # 1096 calendar days
 
-# tf_id → (multiplier, timespan) — lookback is always OHLC_LOOKBACK_DAYS
+# tf_id → Massive agg (multiplier, timespan) = duration of one bar
 _TF_SPEC: dict[str, tuple[int, str]] = {
     "1d": (1, "day"),
     "4h": (4, "hour"),
@@ -31,7 +35,9 @@ _ALLOWED = frozenset(_TF_SPEC.keys())
 
 _lock = threading.Lock()
 _cache: dict[str, tuple[float, dict[str, Any]]] = {}
-_CACHE_TTL = 120.0  # larger payloads; 2 min cache
+# Multi-year history barely changes within a session; longer TTL cuts Massive
+# round-trips when members flip TFs. Not a substitute for client cache.
+_CACHE_TTL = 1800.0  # 30 minutes
 
 
 def normalize_ohlc_tf(tf: str) -> str:
@@ -43,6 +49,18 @@ def normalize_ohlc_tf(tf: str) -> str:
     return t
 
 
+def normalize_lookback_days(days: int | None) -> int:
+    """Clamp lookback; default = full 3y product window."""
+    if days is None:
+        return OHLC_LOOKBACK_DAYS
+    d = int(days)
+    if d < 1:
+        raise ValueError("lookback_days must be >= 1")
+    if d > OHLC_LOOKBACK_DAYS:
+        return OHLC_LOOKBACK_DAYS
+    return d
+
+
 def _cache_get(key: str) -> dict[str, Any] | None:
     with _lock:
         hit = _cache.get(key)
@@ -52,15 +70,16 @@ def _cache_get(key: str) -> dict[str, Any] | None:
         if time.monotonic() - ts > _CACHE_TTL:
             del _cache[key]
             return None
+        # Shallow copy envelope; bars list is treated read-only by callers
         return dict(doc)
 
 
 def _cache_put(key: str, doc: dict[str, Any]) -> None:
     with _lock:
         _cache[key] = (time.monotonic(), dict(doc))
-        if len(_cache) > 64:
+        if len(_cache) > 96:
             ordered = sorted(_cache.items(), key=lambda kv: kv[1][0])
-            for k, _ in ordered[:32]:
+            for k, _ in ordered[:48]:
                 _cache.pop(k, None)
 
 
@@ -95,20 +114,22 @@ def fetch_product_ohlc(
     feed_symbol: str | None,
     proxy_symbol: str | None,
     tf: str,
+    lookback_days: int | None = None,
     client: MassiveClient | None = None,
 ) -> dict[str, Any]:
-    """Return ≥3y bars for product when the provider has them; fail loud if none."""
+    """Return bars for product; lookback_days defaults to full ≥3y window."""
     product = (product or "").strip().upper()
     if not product:
         raise ValueError("product required")
     tf_n = normalize_ohlc_tf(tf)
     mult, timespan = _TF_SPEC[tf_n]
+    days = normalize_lookback_days(lookback_days)
 
     end = datetime.now(timezone.utc)
-    start = end - timedelta(days=OHLC_LOOKBACK_DAYS)
+    start = end - timedelta(days=days)
     cache_key = (
         f"{product}|{feed_symbol}|{proxy_symbol}|{tf_n}|"
-        f"{start.date()}|{end.date()}|y{OHLC_LOOKBACK_YEARS}"
+        f"d{days}|{start.date()}|{end.date()}"
     )
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -136,7 +157,6 @@ def fetch_product_ohlc(
             last_err = f"insufficient bars for {ticker}"
             continue
 
-        # Span of returned history (provider may have less than 3y entitlement)
         first_t = bars[0].get("t")
         last_t = bars[-1].get("t")
         span_days = None
@@ -152,9 +172,12 @@ def fetch_product_ohlc(
             "tf": tf_n,
             "multiplier": mult,
             "timespan": timespan,
-            "lookback_years_requested": OHLC_LOOKBACK_YEARS,
-            "lookback_days_requested": OHLC_LOOKBACK_DAYS,
+            "lookback_years_requested": OHLC_LOOKBACK_YEARS
+            if days >= OHLC_LOOKBACK_DAYS
+            else None,
+            "lookback_days_requested": days,
             "history_span_days": span_days,
+            "complete": days >= OHLC_LOOKBACK_DAYS,
             "from": start.isoformat().replace("+00:00", "Z"),
             "to": end.isoformat().replace("+00:00", "Z"),
             "bar_count": len(bars),
