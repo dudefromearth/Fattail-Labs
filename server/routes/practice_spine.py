@@ -775,6 +775,42 @@ def get_campaign(campaign_id: int, request: Request) -> dict:
     return {"campaign": camp}
 
 
+@router.get("/api/me/practice/campaigns/{campaign_id}/phase-report")
+def get_campaign_phase_report(campaign_id: int, request: Request) -> dict:
+    """Phase report strip aggregates (Spec §6) — free cash, free margin, P13 DD%, mix."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    import campaign_phase_reports as cpr
+
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                iid = _iid(cur, claims)
+                camp = psd.get_campaign(cur, iid, campaign_id, with_lineage=False)
+                if camp is None:
+                    raise HTTPException(status_code=404, detail="Campaign not found")
+                # Need raw row fields for allocation / max DD — re-fetch row
+                cur.execute(
+                    """SELECT * FROM member_practice_campaigns
+                       WHERE id = %s AND identity_id = %s""",
+                    (campaign_id, iid),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Campaign not found")
+                if bool(int(row.get("is_ledger") or 0)):
+                    raise HTTPException(
+                        status_code=404, detail="Ledger has no phase report"
+                    )
+                report = cpr.build_phase_report(cur, iid, row)
+    except psd.PracticeSpineError as e:
+        _raise(e)
+    # Guard: never expose banned name
+    if "margin_at_risk" in report:
+        report.pop("margin_at_risk", None)
+    return {"report": report, "campaign_id": campaign_id}
+
+
 @router.get("/api/me/practice/campaigns/{campaign_id}/amendments")
 def list_campaign_amendments(campaign_id: int, request: Request) -> dict:
     """Append-only amendment history (Family B). No UPDATE/DELETE routes."""

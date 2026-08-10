@@ -16,9 +16,11 @@ import { Button } from "@/components/ui";
 import {
   fetchCampaign,
   fetchCampaignAmendments,
+  fetchCampaignPhaseReport,
   patchCampaign,
   renewCampaign,
   type CampaignAmendment,
+  type CampaignPhaseReport,
   type PracticeCampaign,
 } from "@/lib/practiceSpineApi";
 import { fetchAccounts } from "@/lib/tradeLogAnalytics";
@@ -58,7 +60,19 @@ function fieldLabel(field: string): string {
     case "goals_md":
       return "Goals";
     case "starting_capital":
-      return "Capital";
+      return "Capital allocation";
+    case "max_drawdown_pct":
+      return "Max drawdown %";
+    case "capital_allocation_mode":
+      return "Allocation mode";
+    case "capital_allocation_note":
+      return "Allocation note";
+    case "strategy_codes":
+      return "Strategies";
+    case "same_bet":
+      return "Same-bet";
+    case "retrospective_id":
+      return "Retrospective";
     case "account_id":
       return "Account";
     case "starts_at":
@@ -132,9 +146,21 @@ export default function CampaignEditorPage() {
   const [title, setTitle] = useState("");
   const [accountId, setAccountId] = useState<number | "">("");
   const [capital, setCapital] = useState("");
+  const [maxDdPct, setMaxDdPct] = useState("");
+  const [allocMode, setAllocMode] = useState("fixed");
+  const [allocNote, setAllocNote] = useState("");
   const [goals, setGoals] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
+  const [strategiesText, setStrategiesText] = useState("");
+  const [sameBetWhat, setSameBetWhat] = useState("");
+  const [sameBetLean, setSameBetLean] = useState("");
+  const [sameBetRegime, setSameBetRegime] = useState("");
+  const [sameBetKills, setSameBetKills] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [phaseReport, setPhaseReport] = useState<CampaignPhaseReport | null>(
+    null,
+  );
 
   const load = useCallback(async () => {
     if (!campaignId || Number.isNaN(campaignId)) return;
@@ -155,19 +181,50 @@ export default function CampaignEditorPage() {
           ? String(c.starting_capital)
           : "",
       );
+      setMaxDdPct(
+        c.max_drawdown_pct != null && Number.isFinite(Number(c.max_drawdown_pct))
+          ? String(c.max_drawdown_pct)
+          : "",
+      );
+      setAllocMode(c.capital_allocation_mode || "fixed");
+      setAllocNote(c.capital_allocation_note || "");
       setGoals(c.goals_md || "");
       setStartsAt((c.starts_at || "").slice(0, 10));
       setEndsAt((c.ends_at || "").slice(0, 10));
+      setStrategiesText((c.strategy_codes || []).join(", "));
+      const sb = c.same_bet || {};
+      setSameBetWhat(String(sb.what ?? sb.trading ?? ""));
+      setSameBetLean(String(sb.leaning ?? ""));
+      setSameBetRegime(String(sb.regime ?? ""));
+      setSameBetKills(String(sb.kills ?? ""));
+      if (
+        c.goals_md ||
+        c.ends_at ||
+        (c.strategy_codes && c.strategy_codes.length) ||
+        c.capital_allocation_note
+      ) {
+        setMoreOpen(true);
+      }
       setDirty(false);
       if (acctRes.ok) {
         setAccounts(
           (acctRes.data.accounts || []).filter((a) => a.status === "active"),
         );
       }
+      if (!c.is_ledger) {
+        try {
+          setPhaseReport(await fetchCampaignPhaseReport(campaignId));
+        } catch {
+          setPhaseReport(null);
+        }
+      } else {
+        setPhaseReport(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load campaign");
       setCampaign(null);
       setAmendments([]);
+      setPhaseReport(null);
     } finally {
       setLoading(false);
     }
@@ -181,6 +238,63 @@ export default function CampaignEditorPage() {
     setDirty(true);
   }
 
+  function parseCapital(): number | null {
+    if (!capital.trim()) return null;
+    const cap = Number(capital);
+    if (!Number.isFinite(cap) || cap < 0) {
+      throw new Error("Capital allocation must be a non-negative number");
+    }
+    return cap;
+  }
+
+  function parseMaxDd(): number | null {
+    if (!maxDdPct.trim()) return null;
+    const m = Number(maxDdPct);
+    if (!Number.isFinite(m) || m <= 0 || m > 100) {
+      throw new Error("Max drawdown must be a percent between 0 exclusive and 100");
+    }
+    return m;
+  }
+
+  function sameBetPayload(): Record<string, string> | null {
+    const o: Record<string, string> = {};
+    if (sameBetWhat.trim()) o.what = sameBetWhat.trim();
+    if (sameBetLean.trim()) o.leaning = sameBetLean.trim();
+    if (sameBetRegime.trim()) o.regime = sameBetRegime.trim();
+    if (sameBetKills.trim()) o.kills = sameBetKills.trim();
+    return Object.keys(o).length ? o : null;
+  }
+
+  function strategyCodesPayload(): string[] | null {
+    const parts = strategiesText
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return parts.length ? parts : null;
+  }
+
+  function charterBody() {
+    const acct =
+      accountId === ""
+        ? campaign?.is_default
+          ? (campaign.account_id ?? null)
+          : null
+        : accountId;
+    return {
+      title: title.trim(),
+      account_id: acct as number | null,
+      starting_capital: parseCapital(),
+      max_drawdown_pct: parseMaxDd(),
+      capital_allocation_mode: allocMode || "fixed",
+      capital_allocation_note: allocNote.trim() || null,
+      goals_md: goals.trim() || null,
+      starts_at: startsAt || null,
+      ends_at: endsAt || null,
+      strategy_codes: strategyCodesPayload(),
+      same_bet: sameBetPayload(),
+    };
+  }
+
   async function refreshAmendments(id: number) {
     try {
       setAmendments(await fetchCampaignAmendments(id));
@@ -189,37 +303,24 @@ export default function CampaignEditorPage() {
     }
   }
 
+  async function refreshPhaseReport(id: number) {
+    try {
+      setPhaseReport(await fetchCampaignPhaseReport(id));
+    } catch {
+      setPhaseReport(null);
+    }
+  }
+
   async function save() {
     if (!campaign || busy || !title.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      let cap: number | null = null;
-      if (capital.trim()) {
-        cap = Number(capital);
-        if (!Number.isFinite(cap) || cap < 0) {
-          throw new Error("Starting capital must be a non-negative number");
-        }
-      }
-      // Default book campaigns must keep a trade account. Don't send null and
-      // wipe the bind (server also preserves existing, but be explicit).
-      const acct =
-        accountId === ""
-          ? campaign.is_default
-            ? (campaign.account_id ?? null)
-            : null
-          : accountId;
-      const updated = await patchCampaign(campaign.id, {
-        title: title.trim(),
-        account_id: acct,
-        starting_capital: cap,
-        goals_md: goals.trim() || null,
-        starts_at: startsAt || null,
-        ends_at: endsAt || null,
-      });
+      const updated = await patchCampaign(campaign.id, charterBody());
       setCampaign(updated);
       setDirty(false);
       await refreshAmendments(updated.id);
+      if (!updated.is_ledger) await refreshPhaseReport(updated.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -232,9 +333,25 @@ export default function CampaignEditorPage() {
     setBusy(true);
     setError(null);
     try {
-      const updated = await patchCampaign(campaign.id, { status });
+      // Activate needs Big Three; complete/abandon needs end date
+      const body: Parameters<typeof patchCampaign>[1] = { status };
+      if (status === "active") {
+        Object.assign(body, {
+          starting_capital: parseCapital(),
+          max_drawdown_pct: parseMaxDd(),
+          starts_at: startsAt || null,
+        });
+      }
+      if (status === "completed" || status === "abandoned") {
+        if (!endsAt) {
+          throw new Error("Set an end date before completing or ending early");
+        }
+        body.ends_at = endsAt;
+      }
+      const updated = await patchCampaign(campaign.id, body);
       setCampaign(updated);
       await refreshAmendments(updated.id);
+      if (!updated.is_ledger) await refreshPhaseReport(updated.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Update failed");
     } finally {
@@ -257,24 +374,8 @@ export default function CampaignEditorPage() {
     setBusy(true);
     setError(null);
     try {
-      let cap: number | null = null;
-      if (capital.trim()) {
-        cap = Number(capital);
-        if (!Number.isFinite(cap) || cap < 0) {
-          throw new Error("Starting capital must be a non-negative number");
-        }
-      }
       const updated = await patchCampaign(campaign.id, {
-        ...(dirty
-          ? {
-              title: title.trim(),
-              account_id: acct,
-              starting_capital: cap,
-              goals_md: goals.trim() || null,
-              starts_at: startsAt || null,
-              ends_at: endsAt || null,
-            }
-          : {}),
+        ...(dirty ? charterBody() : {}),
         is_default: asDefault,
         account_id: acct,
       });
@@ -348,6 +449,14 @@ export default function CampaignEditorPage() {
                 <span className="rounded-full bg-[var(--color-tint-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label)]">
                   {statusLabel(campaign)}
                 </span>
+                {!campaign.is_ledger && (
+                  <span
+                    className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[var(--color-label-secondary)]"
+                    data-testid="campaign-charter-version"
+                  >
+                    v{campaign.charter_version ?? 1}
+                  </span>
+                )}
                 {campaign.is_ledger && (
                   <span
                     className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]"
@@ -458,51 +567,22 @@ export default function CampaignEditorPage() {
                 )}
               </div>
 
-              {/* Definition (charter fields) above panel / radar */}
+              {/* Definition (tiered) above panel / radar — Spec §2 · §4 */}
               <div
-                className="surface-card space-y-4 border border-[var(--color-separator)] p-4 sm:p-6"
+                className="surface-card space-y-5 border border-[var(--color-separator)] p-4 sm:p-6"
                 data-testid="campaign-definition"
               >
-                <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                  Title
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => {
-                      setTitle(e.target.value);
-                      markDirty();
-                    }}
-                    className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
-                    data-testid="campaign-editor-title"
-                    disabled={!isOpen || !!campaign.is_ledger}
-                  />
-                </label>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                  Definition
+                </p>
 
-                <div className="flex flex-wrap gap-3">
-                  <label className="block min-w-[10rem] flex-1 text-xs font-medium text-[var(--color-label-secondary)]">
-                    Trade account
-                    <select
-                      className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm text-[var(--color-label)]"
-                      value={accountId === "" ? "" : String(accountId)}
-                      onChange={(e) => {
-                        setAccountId(
-                          e.target.value ? Number(e.target.value) : "",
-                        );
-                        markDirty();
-                      }}
-                      data-testid="campaign-editor-account"
-                      disabled={!isOpen}
-                    >
-                      <option value="">Any account</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block min-w-[8rem] text-xs font-medium text-[var(--color-label-secondary)]">
-                    Starting capital
+                {/* Tier 1 — Big Three (large) */}
+                <div
+                  className="grid gap-4 sm:grid-cols-3"
+                  data-testid="campaign-big-three"
+                >
+                  <label className="block text-sm font-semibold text-[var(--color-label)]">
+                    Capital allocation
                     <input
                       type="number"
                       min={0}
@@ -512,12 +592,37 @@ export default function CampaignEditorPage() {
                         setCapital(e.target.value);
                         markDirty();
                       }}
-                      className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm tabular-nums"
+                      className="mt-1.5 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-3 text-lg tabular-nums font-medium"
                       data-testid="campaign-editor-capital"
                       disabled={!isOpen}
+                      placeholder="Required to activate"
                     />
+                    <span className="mt-1 block text-[11px] font-normal text-[var(--color-label-tertiary)]">
+                      Amount claimed from the pool (Big Three)
+                    </span>
                   </label>
-                  <label className="block min-w-[8rem] text-xs font-medium text-[var(--color-label-secondary)]">
+                  <label className="block text-sm font-semibold text-[var(--color-label)]">
+                    Max drawdown %
+                    <input
+                      type="number"
+                      min={0.01}
+                      max={100}
+                      step={0.5}
+                      value={maxDdPct}
+                      onChange={(e) => {
+                        setMaxDdPct(e.target.value);
+                        markDirty();
+                      }}
+                      className="mt-1.5 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-3 text-lg tabular-nums font-medium"
+                      data-testid="campaign-editor-max-dd"
+                      disabled={!isOpen}
+                      placeholder="% of allocation"
+                    />
+                    <span className="mt-1 block text-[11px] font-normal text-[var(--color-label-tertiary)]">
+                      Percent of this campaign’s allocation only
+                    </span>
+                  </label>
+                  <label className="block text-sm font-semibold text-[var(--color-label)]">
                     Starts
                     <input
                       type="date"
@@ -526,40 +631,256 @@ export default function CampaignEditorPage() {
                         setStartsAt(e.target.value);
                         markDirty();
                       }}
-                      className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm"
+                      className="mt-1.5 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-3 text-lg"
+                      data-testid="campaign-editor-starts"
                       disabled={!isOpen}
                     />
-                  </label>
-                  <label className="block min-w-[8rem] text-xs font-medium text-[var(--color-label-secondary)]">
-                    Ends
-                    <input
-                      type="date"
-                      value={endsAt}
-                      onChange={(e) => {
-                        setEndsAt(e.target.value);
-                        markDirty();
-                      }}
-                      className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm"
-                      disabled={!isOpen}
-                    />
+                    <span className="mt-1 block text-[11px] font-normal text-[var(--color-label-tertiary)]">
+                      Window open — required to activate
+                    </span>
                   </label>
                 </div>
 
-                <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                  Goals
-                  <textarea
-                    value={goals}
-                    onChange={(e) => {
-                      setGoals(e.target.value);
-                      markDirty();
-                    }}
-                    rows={10}
-                    className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
-                    data-testid="campaign-editor-goals"
-                    disabled={!isOpen}
-                  />
-                </label>
+                {/* Tier 2 — Same-bet (inline, skippable) */}
+                {!campaign.is_ledger && (
+                  <div
+                    className="rounded-lg border border-dashed border-[var(--color-separator)] bg-[var(--color-fill)]/30 p-3 space-y-2"
+                    data-testid="campaign-same-bet"
+                  >
+                    <p className="text-xs font-medium text-[var(--color-label-secondary)]">
+                      Same-bet answers{" "}
+                      <span className="font-normal text-[var(--color-label-tertiary)]">
+                        (optional — skip is fine)
+                      </span>
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {(
+                        [
+                          ["What are you trading?", sameBetWhat, setSameBetWhat, "what"],
+                          ["Leaning?", sameBetLean, setSameBetLean, "lean"],
+                          ["Calm or wild?", sameBetRegime, setSameBetRegime, "regime"],
+                          ["What kills it?", sameBetKills, setSameBetKills, "kills"],
+                        ] as const
+                      ).map(([label, val, setVal, key]) => (
+                        <label
+                          key={key}
+                          className="block text-[11px] font-medium text-[var(--color-label-tertiary)]"
+                        >
+                          {label}
+                          <input
+                            type="text"
+                            value={val}
+                            onChange={(e) => {
+                              setVal(e.target.value);
+                              markDirty();
+                            }}
+                            className="mt-0.5 w-full rounded-md border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-1.5 text-sm font-normal text-[var(--color-label)]"
+                            disabled={!isOpen}
+                            data-testid={`campaign-same-bet-${key}`}
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tier 3 — More options */}
+                <div>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-[var(--color-label-secondary)] hover:underline"
+                    onClick={() => setMoreOpen((v) => !v)}
+                    data-testid="campaign-more-options"
+                  >
+                    {moreOpen ? "▾ More options" : "▸ More options"}
+                  </button>
+                  {moreOpen && (
+                    <div className="mt-3 space-y-3" data-testid="campaign-more-options-body">
+                      <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+                        Title
+                        <input
+                          type="text"
+                          value={title}
+                          onChange={(e) => {
+                            setTitle(e.target.value);
+                            markDirty();
+                          }}
+                          className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
+                          data-testid="campaign-editor-title"
+                          disabled={!isOpen || !!campaign.is_ledger}
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-3">
+                        <label className="block min-w-[10rem] flex-1 text-xs font-medium text-[var(--color-label-secondary)]">
+                          Trade account
+                          <select
+                            className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm text-[var(--color-label)]"
+                            value={accountId === "" ? "" : String(accountId)}
+                            onChange={(e) => {
+                              setAccountId(
+                                e.target.value ? Number(e.target.value) : "",
+                              );
+                              markDirty();
+                            }}
+                            data-testid="campaign-editor-account"
+                            disabled={!isOpen}
+                          >
+                            <option value="">Any account</option>
+                            {accounts.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block min-w-[8rem] text-xs font-medium text-[var(--color-label-secondary)]">
+                          Ends
+                          <input
+                            type="date"
+                            value={endsAt}
+                            onChange={(e) => {
+                              setEndsAt(e.target.value);
+                              markDirty();
+                            }}
+                            className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm"
+                            data-testid="campaign-editor-ends"
+                            disabled={!isOpen}
+                          />
+                          <span className="mt-0.5 block text-[10px] font-normal text-[var(--color-label-tertiary)]">
+                            Optional until complete / end early
+                          </span>
+                        </label>
+                        <label className="block min-w-[8rem] text-xs font-medium text-[var(--color-label-secondary)]">
+                          Allocation mode
+                          <select
+                            className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm"
+                            value={allocMode}
+                            onChange={(e) => {
+                              setAllocMode(e.target.value);
+                              markDirty();
+                            }}
+                            disabled={!isOpen}
+                            data-testid="campaign-alloc-mode"
+                          >
+                            <option value="fixed">Fixed</option>
+                            <option value="dynamic">Dynamic</option>
+                            <option value="wrap">Wrap</option>
+                            <option value="proportion">Proportion</option>
+                          </select>
+                        </label>
+                      </div>
+                      <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+                        Allocation note
+                        <input
+                          type="text"
+                          value={allocNote}
+                          onChange={(e) => {
+                            setAllocNote(e.target.value);
+                            markDirty();
+                          }}
+                          className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
+                          disabled={!isOpen}
+                          data-testid="campaign-alloc-note"
+                        />
+                      </label>
+                      <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+                        Strategy allow-list{" "}
+                        <span className="font-normal text-[var(--color-label-tertiary)]">
+                          (comma-separated; leave blank = no list rule)
+                        </span>
+                        <input
+                          type="text"
+                          value={strategiesText}
+                          onChange={(e) => {
+                            setStrategiesText(e.target.value);
+                            markDirty();
+                          }}
+                          className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
+                          disabled={!isOpen}
+                          data-testid="campaign-strategy-codes"
+                          placeholder="iron_condor, butterfly"
+                        />
+                      </label>
+                      <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+                        Goals
+                        <textarea
+                          value={goals}
+                          onChange={(e) => {
+                            setGoals(e.target.value);
+                            markDirty();
+                          }}
+                          rows={6}
+                          className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
+                          data-testid="campaign-editor-goals"
+                          disabled={!isOpen}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Phase report strip — under definition, above radar */}
+              {!campaign.is_ledger && phaseReport && (
+                <div
+                  className="grid grid-cols-2 gap-3 rounded-xl border border-[var(--color-separator)] bg-[var(--color-fill)]/25 p-3 sm:grid-cols-4"
+                  data-testid="campaign-phase-report"
+                >
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                      Free cash
+                    </p>
+                    <p className="mt-0.5 text-sm tabular-nums text-[var(--color-label)]">
+                      {phaseReport.free_cash == null
+                        ? "—"
+                        : phaseReport.free_cash.toLocaleString(undefined, {
+                            maximumFractionDigits: 0,
+                          })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                      Free margin
+                    </p>
+                    <p className="mt-0.5 text-sm tabular-nums text-[var(--color-label)]">
+                      {phaseReport.free_margin == null
+                        ? "—"
+                        : phaseReport.free_margin.toLocaleString(undefined, {
+                            maximumFractionDigits: 0,
+                          })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                      Realized DD %
+                    </p>
+                    <p className="mt-0.5 text-sm tabular-nums text-[var(--color-label)]">
+                      {phaseReport.realized_max_drawdown_pct == null
+                        ? "—"
+                        : `${phaseReport.realized_max_drawdown_pct.toFixed(1)}%`}
+                      {phaseReport.declared_max_drawdown_pct != null && (
+                        <span className="text-[var(--color-label-tertiary)]">
+                          {" "}
+                          / {phaseReport.declared_max_drawdown_pct}%
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                      Strategy mix
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--color-label-secondary)] line-clamp-2">
+                      {(phaseReport.strategy_mix || []).length === 0
+                        ? "No stamps yet"
+                        : phaseReport.strategy_mix
+                            .slice(0, 3)
+                            .map((m) => `${m.strategy} (${m.count})`)
+                            .join(" · ")}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {campaign.is_ledger ? (
                 <p
@@ -586,7 +907,7 @@ export default function CampaignEditorPage() {
                   {termAmends.length > 0 && (
                     <div>
                       <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                        Amendments
+                        Change log
                       </h2>
                       <ul className="mt-2 space-y-1.5">
                         {termAmends.map((a) => (

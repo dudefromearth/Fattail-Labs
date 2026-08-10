@@ -84,6 +84,17 @@ export type PracticeCampaign = {
   ends_at?: string | null;
   starting_capital?: number | null;
   goals_md?: string;
+  /** Integer charter version (P11); bumps on signed-term amend. */
+  charter_version?: number;
+  /** Max DD % of this campaign's allocation (Big Three · L-DD). */
+  max_drawdown_pct?: number | null;
+  capital_allocation_mode?: string | null;
+  capital_allocation_note?: string | null;
+  /** Adopted strategy allow-list; null = unadopted. */
+  strategy_codes?: string[] | null;
+  retrospective_id?: number | null;
+  /** Same-bet answers; null = not answered. */
+  same_bet?: Record<string, unknown> | null;
   /** Account default (import + stamp prefill). */
   is_default?: boolean;
   /** Ledger furniture for an account (not a signed charter). */
@@ -110,6 +121,20 @@ export type PracticeCampaign = {
   export_key?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+};
+
+/** Phase report strip (Spec §6) — never includes margin_at_risk. */
+export type CampaignPhaseReport = {
+  free_cash: number | null;
+  free_margin: number | null;
+  buying_power: number | null;
+  structure_risk_open: number | null;
+  open_structure_count: number;
+  allocation: number | null;
+  declared_max_drawdown_pct: number | null;
+  realized_max_drawdown_pct: number | null;
+  strategy_mix: { strategy: string; count: number; share: number }[];
+  scope: "account" | "identity" | string;
 };
 
 export type CampaignAmendment = {
@@ -537,6 +562,12 @@ export async function createCampaign(body: {
   account_id?: number | null;
   starting_capital?: number | null;
   goals_md?: string | null;
+  max_drawdown_pct?: number | null;
+  capital_allocation_mode?: string | null;
+  capital_allocation_note?: string | null;
+  strategy_codes?: string[] | null;
+  retrospective_id?: number | null;
+  same_bet?: Record<string, unknown> | null;
   /** Silent book home for account (requires account_id). */
   is_default?: boolean;
 }): Promise<PracticeCampaign> {
@@ -562,6 +593,12 @@ export async function patchCampaign(
     starting_capital: number | null;
     goals_md: string | null;
     is_default: boolean;
+    max_drawdown_pct: number | null;
+    capital_allocation_mode: string | null;
+    capital_allocation_note: string | null;
+    strategy_codes: string[] | null;
+    retrospective_id: number | null;
+    same_bet: Record<string, unknown> | null;
   }>,
 ): Promise<PracticeCampaign> {
   const r = await fetch(`/api/me/practice/campaigns/${id}`, {
@@ -572,6 +609,16 @@ export async function patchCampaign(
   });
   const d = await parse<{ campaign: PracticeCampaign }>(r);
   return d.campaign;
+}
+
+export async function fetchCampaignPhaseReport(
+  id: number,
+): Promise<CampaignPhaseReport> {
+  const r = await fetch(`/api/me/practice/campaigns/${id}/phase-report`, {
+    credentials: "same-origin",
+  });
+  const d = await parse<{ report: CampaignPhaseReport }>(r);
+  return d.report;
 }
 
 export function campaignCoverUrl(campaignId: number): string {

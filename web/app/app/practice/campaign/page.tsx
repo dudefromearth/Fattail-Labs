@@ -48,6 +48,11 @@ export default function PracticeCampaignPage() {
   const [asDefault, setAsDefault] = useState(false);
   const [frameId, setFrameId] = useState<string | null>(null);
   const [goals, setGoals] = useState("");
+  const [capital, setCapital] = useState("");
+  const [maxDdPct, setMaxDdPct] = useState("15");
+  const [startsAt, setStartsAt] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
   const [busy, setBusy] = useState(false);
   /** Open = planned|active; Archive = completed|abandoned (status sole authority). */
   const [libraryView, setLibraryView] = useState<"open" | "archive">("open");
@@ -95,19 +100,35 @@ export default function PracticeCampaignPage() {
   }
 
   async function createAndOpen() {
-    if (!title.trim() || busy) return;
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
       if (asDefault && accountId === "") {
         throw new Error("Default requires a trade account");
       }
+      const cap = capital.trim() ? Number(capital) : NaN;
+      const mdd = maxDdPct.trim() ? Number(maxDdPct) : NaN;
+      if (!asDefault) {
+        if (!Number.isFinite(cap) || cap < 0) {
+          throw new Error("Capital allocation is required to activate");
+        }
+        if (!Number.isFinite(mdd) || mdd <= 0 || mdd > 100) {
+          throw new Error("Max drawdown % is required (0 exclusive … 100]");
+        }
+        if (!startsAt) {
+          throw new Error("Start date is required to activate");
+        }
+      }
       const camp = await createCampaign({
-        title: title.trim(),
+        title: title.trim() || `Campaign ${new Date().toISOString().slice(0, 10)}`,
         activate: true,
         account_id: accountId === "" ? null : accountId,
         goals_md: goals.trim() || null,
         is_default: asDefault,
+        starting_capital: asDefault ? (Number.isFinite(cap) ? cap : null) : cap,
+        max_drawdown_pct: asDefault ? (Number.isFinite(mdd) ? mdd : null) : mdd,
+        starts_at: startsAt || null,
       });
       router.push(`/app/practice/campaign/${camp.id}`);
     } catch (e) {
@@ -181,13 +202,59 @@ export default function PracticeCampaignPage() {
                   );
                 })}
               </div>
-              <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+              <p
+                className="mb-3 rounded-md border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-3 py-2 text-xs text-[var(--color-label-secondary)]"
+                data-testid="campaign-cr12-banner"
+              >
+                Before you activate: this charter is a deliberate phase. Same-bet
+                and advanced terms stay optional. Trade log stays open without a
+                campaign.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3" data-testid="campaign-create-big-three">
+                <label className="block text-sm font-semibold text-[var(--color-label)]">
+                  Capital allocation
+                  <input
+                    type="number"
+                    min={0}
+                    step={1000}
+                    className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-base tabular-nums"
+                    value={capital}
+                    onChange={(e) => setCapital(e.target.value)}
+                    data-testid="campaign-capital-input"
+                    placeholder="Required"
+                  />
+                </label>
+                <label className="block text-sm font-semibold text-[var(--color-label)]">
+                  Max drawdown %
+                  <input
+                    type="number"
+                    min={0.01}
+                    max={100}
+                    step={0.5}
+                    className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-base tabular-nums"
+                    value={maxDdPct}
+                    onChange={(e) => setMaxDdPct(e.target.value)}
+                    data-testid="campaign-max-dd-input"
+                  />
+                </label>
+                <label className="block text-sm font-semibold text-[var(--color-label)]">
+                  Starts
+                  <input
+                    type="date"
+                    className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-base"
+                    value={startsAt}
+                    onChange={(e) => setStartsAt(e.target.value)}
+                    data-testid="campaign-starts-input"
+                  />
+                </label>
+              </div>
+              <label className="mt-3 block text-xs font-medium text-[var(--color-label-secondary)]">
                 Title
                 <input
                   className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Campaign name"
+                  placeholder="Campaign name (optional — defaults if blank)"
                   data-testid="campaign-title-input"
                   autoFocus
                 />
@@ -224,7 +291,7 @@ export default function PracticeCampaignPage() {
                 <Button
                   type="button"
                   variant="primary"
-                  disabled={busy || !title.trim()}
+                  disabled={busy}
                   onClick={() => void createAndOpen()}
                   data-testid="campaign-start"
                 >

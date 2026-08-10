@@ -8,29 +8,19 @@
 | Phase | Status |
 |-------|--------|
 | **W0** | **PASS** (W0-G 2026-08-09) — Spec v1.0.1 RATIFIED · DL-276…278 |
-| **S** | **PASS** (S1-G) — 116+117 · domain serialize · adopt amend + version |
-| **G** | **PASS** (G1-G) — Big Three · end-on-close · umpire |
-| **U** | **next** — tiered definition UI |
-| R · C · L · Z | pending (R may parallel U after G) |
+| **S** | **PASS** (S1-G) |
+| **G** | **PASS** (G1-G) |
+| **U** | **PASS** (U1-G) |
+| **R** | **PASS** (R1-G) |
+| **C** | **PASS** (C1-G placement) |
+| **L** | **PASS** (L1-G core) |
+| **Z** | **next** — Kilo pack · as-built · deploy checklist |
 
-## Sequence (critical path)
+## Sequence
 
 ```
-W0-G ✓ → S1-G ✓ → G1-G ✓
-              ├─► U* (tiered definition UI) ──► U1-G  ─┐
-              └─► R* (phase report strip)   ──► R1-G  ─┤ parallel
-                    └─► C* → L* → Z*
+W0-G ✓ → S1-G ✓ → G1-G ✓ → U1-G ✓ ∥ R1-G ✓ → C1-G ✓ → L1-G ✓ → Z*
 ```
-
-## Gate protocol
-
-1. Seeds complete with evidence in `gate-reports/`.  
-2. Delta records **PASS / FAIL / BLOCKED** — never waive.  
-3. **Never waive** G1 (umpire) or R1 (denominator / `structure_risk_open`).
-
-## Residual ODs (W0 — locked defaults)
-
-See `gate-reports/W0-0-coach-go.md`.
 
 ## Decision log
 

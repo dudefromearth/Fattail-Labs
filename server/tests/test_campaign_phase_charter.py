@@ -172,6 +172,51 @@ def test_end_required_to_complete(client):
         _cleanup(iid)
 
 
+def test_phase_report_strip_and_p13(client):
+    """§10 #8–10 · #13 — phase report; no margin_at_risk; P13 allocation base."""
+    import campaign_phase_reports as cpr
+
+    assert cpr.realized_dd_pct_of_allocation([], 10_000) == 0.0
+    # trading curve: +1000 then -400 → peak 1000, trough 600, dd $400 → 4% of 10k
+    assert abs(cpr.realized_dd_pct_of_allocation([1000.0, -400.0], 10_000) - 4.0) < 1e-9
+    assert cpr.realized_dd_pct_of_allocation([100.0], None) is None
+
+    iid = _member("zztest-phase-report@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        c = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "Report season",
+                "activate": True,
+                "starting_capital": 10_000,
+                "max_drawdown_pct": 15,
+                "starts_at": "2026-01-01",
+            },
+        )
+        assert c.status_code == 200, c.text
+        cid = c.json()["campaign"]["id"]
+        r = client.get(
+            f"/api/me/practice/campaigns/{cid}/phase-report", cookies=cookies
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert "margin_at_risk" not in r.text
+        assert "margin_at_risk" not in (body.get("report") or {})
+        rep = body["report"]
+        assert "structure_risk_open" in rep
+        assert "free_cash" in rep
+        assert "free_margin" in rep
+        assert "realized_max_drawdown_pct" in rep
+        assert "strategy_mix" in rep
+        assert rep.get("declared_max_drawdown_pct") == 15.0 or float(
+            rep.get("declared_max_drawdown_pct") or 0
+        ) == 15.0
+    finally:
+        _cleanup(iid)
+
+
 def test_post_sign_adopt_unadopt_bumps_version(client):
     """§10 #6–7 — post-sign adopt/un-adopt → amendment + charter_version++."""
     iid = _member("zztest-phase-adopt@labs.test")
