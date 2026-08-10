@@ -3,6 +3,7 @@
 /**
  * Candlestick chart for Options Lab Volume Profile app.
  * Fills remaining viewport below suite + timeframe controls.
+ * Light / dark chart styles (dark default).
  * Timeframes: Day · 4 hr · 1 hr · 30 min · 10 min
  */
 
@@ -24,19 +25,15 @@ import {
 } from "@/lib/marketOhlcApi";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 
-function isDarkMode(): boolean {
-  if (typeof document === "undefined") return false;
-  const root = document.documentElement;
-  if (root.classList.contains("dark")) return true;
-  if (root.dataset.theme === "dark") return true;
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
-}
+export type ChartStyle = "dark" | "light";
 
-function chartTheme(dark: boolean) {
-  if (dark) {
+const STYLE_STORAGE_KEY = "options-lab-chart-style";
+
+function chartTheme(style: ChartStyle) {
+  if (style === "dark") {
     return {
       layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
+        background: { type: ColorType.Solid, color: "#0c0c0e" },
         textColor: "#a1a1aa",
       },
       grid: {
@@ -44,6 +41,8 @@ function chartTheme(dark: boolean) {
         horzLines: { color: "rgba(255,255,255,0.06)" },
       },
       border: "rgba(255,255,255,0.12)",
+      panelBg: "bg-[#0c0c0e]",
+      panelBorder: "border-zinc-800",
       up: "#22c55e",
       down: "#ef4444",
       wickUp: "#22c55e",
@@ -53,14 +52,16 @@ function chartTheme(dark: boolean) {
   }
   return {
     layout: {
-      background: { type: ColorType.Solid, color: "transparent" },
+      background: { type: ColorType.Solid, color: "#ffffff" },
       textColor: "#52525b",
     },
     grid: {
-      vertLines: { color: "rgba(0,0,0,0.05)" },
-      horzLines: { color: "rgba(0,0,0,0.05)" },
+      vertLines: { color: "rgba(0,0,0,0.06)" },
+      horzLines: { color: "rgba(0,0,0,0.06)" },
     },
-    border: "rgba(0,0,0,0.1)",
+    border: "rgba(0,0,0,0.12)",
+    panelBg: "bg-white",
+    panelBorder: "border-[var(--color-separator)]",
     up: "#16a34a",
     down: "#dc2626",
     wickUp: "#16a34a",
@@ -97,9 +98,11 @@ function toCandles(payload: OhlcPayload, tf: OhlcTf): CandlestickData[] {
 function CandleHost({
   payload,
   tf,
+  style,
 }: {
   payload: OhlcPayload;
   tf: OhlcTf;
+  style: ChartStyle;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -107,8 +110,7 @@ function CandleHost({
   useEffect(() => {
     const el = hostRef.current;
     if (!el) return;
-    const dark = isDarkMode();
-    const theme = chartTheme(dark);
+    const theme = chartTheme(style);
 
     const size = () => ({
       width: Math.max(1, el.clientWidth),
@@ -151,14 +153,12 @@ function CandleHost({
 
     const ro = new ResizeObserver(() => {
       if (!hostRef.current || !chartRef.current) return;
-      const { width, height } = {
+      chartRef.current.applyOptions({
         width: Math.max(1, hostRef.current.clientWidth),
         height: Math.max(200, hostRef.current.clientHeight),
-      };
-      chartRef.current.applyOptions({ width, height });
+      });
     });
     ro.observe(el);
-    // One more frame after layout settles (flex fill)
     const raf = requestAnimationFrame(() => {
       if (hostRef.current && chartRef.current) {
         chartRef.current.applyOptions({
@@ -174,7 +174,7 @@ function CandleHost({
       chart.remove();
       chartRef.current = null;
     };
-  }, [payload, tf]);
+  }, [payload, tf, style]);
 
   return (
     <div
@@ -185,12 +185,74 @@ function CandleHost({
   );
 }
 
+function StyleToggle({
+  style,
+  onChange,
+}: {
+  style: ChartStyle;
+  onChange: (s: ChartStyle) => void;
+}) {
+  return (
+    <nav
+      className="inline-flex items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
+      aria-label="Chart color style"
+      data-testid="volume-profile-style"
+    >
+      {(
+        [
+          { id: "dark" as const, label: "Dark" },
+          { id: "light" as const, label: "Light" },
+        ] as const
+      ).map((item) => {
+        const active = item.id === style;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onChange(item.id)}
+            aria-pressed={active}
+            className={[
+              "inline-flex min-h-9 items-center justify-center rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
+              active
+                ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
+                : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
+            ].join(" ")}
+          >
+            {item.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function VolumeProfileChart() {
   const { symbol } = useOptionsLab();
   const [tf, setTf] = useState<OhlcTf>("1d");
+  const [style, setStyle] = useState<ChartStyle>("dark");
   const [payload, setPayload] = useState<OhlcPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Restore style preference; default dark
+  useEffect(() => {
+    try {
+      const s = sessionStorage.getItem(STYLE_STORAGE_KEY);
+      if (s === "light" || s === "dark") setStyle(s);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const onStyleChange = (s: ChartStyle) => {
+    setStyle(s);
+    try {
+      sessionStorage.setItem(STYLE_STORAGE_KEY, s);
+    } catch {
+      /* ignore */
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -215,6 +277,8 @@ export default function VolumeProfileChart() {
       cancelled = true;
     };
   }, [symbol, tf]);
+
+  const theme = chartTheme(style);
 
   return (
     <div
@@ -248,6 +312,7 @@ export default function VolumeProfileChart() {
             );
           })}
         </nav>
+        <StyleToggle style={style} onChange={onStyleChange} />
         <span className="text-xs text-[var(--color-label-tertiary)]">
           {payload
             ? `${payload.bar_count} bars · ${payload.series_ticker}${
@@ -269,15 +334,29 @@ export default function VolumeProfileChart() {
         </p>
       )}
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] p-1">
+      <div
+        className={[
+          "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border p-1",
+          theme.panelBorder,
+          theme.panelBg,
+        ].join(" ")}
+      >
         {payload && payload.bars?.length ? (
           <CandleHost
-            key={`${symbol}-${tf}-${payload.bar_count}`}
+            key={`${symbol}-${tf}-${style}-${payload.bar_count}`}
             payload={payload}
             tf={tf}
+            style={style}
           />
         ) : (
-          <div className="flex min-h-[200px] flex-1 items-center justify-center text-sm text-[var(--color-label-tertiary)]">
+          <div
+            className={[
+              "flex min-h-[200px] flex-1 items-center justify-center text-sm",
+              style === "dark"
+                ? "text-zinc-500"
+                : "text-[var(--color-label-tertiary)]",
+            ].join(" ")}
+          >
             {loading ? "Loading candles…" : "No bars for this symbol / timeframe"}
           </div>
         )}
