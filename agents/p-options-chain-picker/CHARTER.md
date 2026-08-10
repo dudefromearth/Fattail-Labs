@@ -10,7 +10,7 @@
 
 | Spec | Path |
 |------|------|
-| Options Chain Picker Spec v1.0.1 | `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.md` |
+| Options Chain Picker Spec v1.0.2 | `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` |
 | Human Interface Spec v1.0 (**HIG**) | `Specs/FatTail-Labs-Human-Interface-Spec-v1.0.md` |
 
 **Companions:** Architecture/18 live marks · Admin `market_symbol_universe` · `chain_collector` / Massive client  

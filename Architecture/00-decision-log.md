@@ -4,6 +4,61 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-10 — DL-285 Market Bus bench plan v1.0.1 + Picker Spec v1.0.2 filename
+
+**Decision:** Heal plan governance per architecture review of the bench plan:
+
+1. **Overrule ≠ waive** — removed “Coach-documented waive / Coach-waived” from plan DoD, W0-G, and Spec Coach gate. Delta remains ternary **PASS/FAIL/BLOCKED** never waived. Coach may **overrule a specialist finding** only via **DL entry with reasoning**.
+2. **No SKIP verdict** — Phase X optionality is **scope** (descope → gate never convenes); if X runs, ternary only.
+3. **Picker Spec v1.0.2** canonical file: `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` (OC6a, routes `/app/options-lab` + legacy redirect, Market Bus parent). Stub at old `…-v1.0.md` path. Seed **W0-12** owns link sweep completion.
+4. Bench plan revision **v1.0.1**; ready to run W0 after this fold.
+
+## 2026-08-10 — DL-284 Market Bus Full Agent Bench Plan v1.0 filed
+
+**Decision:** Implementation program for Market Bus Spec v1.0.1:
+
+- Plan: `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md`
+- Board: `agents/p-market-bus/` (CHARTER · ORCHESTRATOR · seeds · gate-reports)
+- Phases: **W0** (Spec §18 gates + Coach GO) → **R** Redis/MB-P1 → **F** chain feed → **S** sym/session → **T** WS+client → **C** ladder consumer + **1→N smoke** → **K** AT pack → **X** optional → **Z** deploy
+- Seating: Coach · Juliet · India · Mike · Foxtrot · Alpha · Echo · Tango · Hotel · Delta · Lima · Charlie · Kilo
+- H1-2 / MB-P1 single OC15 evidence trail locked in plan + W0-9 seed
+- First smoke after build: single client chain, then N clients same topic (Massive O(gen) not O(N))
+- Coach GO still blocked on Spec §18 specialist PASS (plan W0)
+
+## 2026-08-10 — DL-283 Market Bus Spec v1.0.1 — architecture review fold (pre-GO)
+
+**Decision:** Fold peer architecture review into Market Bus Spec **v1.0.1** and companions. **Coach GO remains blocked** until §18 specialist gates PASS and O1–O6 are explicitly accepted/overridden (no silent defaults).
+
+| Finding | Spec response |
+|---------|----------------|
+| No bench gates | §18 gate table: India · Mike · Foxtrot · Alpha · Echo · Tango · Hotel · Delta · Juliet · Lima · Coach |
+| Header as side-door product | §0.1 — header is **possible consumer only**; live header needs its own surface Spec (Tango/Echo) |
+| “Options Lab” naming drift | §0.2 — chain ladder surface; OD-nav unsettled; as-built route string only |
+| H1-2 vs MB-P1 double OC15 | §1.2 — H1-2 = in-process **minimal**; MB-P1 = Redis **successor**; one evidence trail |
+| Redis posture | §1.1 — named **reversal** of Picker “no Redis pipeline” + Arch/18 MySQL-only live path; full DL text at **GO** |
+| O2 dual-write | Named **exit**: N=20 green sessions or 14d + dedicated DL to remove dual-write |
+| Missing ATs | AT-MB8 MB7 reconnect snapshot; AT-MB9 MB8 proxy e2e; AT-MB10 MB6 universe reject |
+| OC6a strikes | Law mirrored on Picker Spec **v1.0.2** OC6a; bus keeps AT-MB5 only |
+| Silent GO defaults | §15 — Accept/Override per row required |
+| Massive WS assumption | MB-P3 requires entitlement probe transcript |
+| Version / hash | Spec scheme **v1.0.1**; sha1 at landing commit |
+
+Companions: Picker Spec **v1.0.2** (OC6a, OC15 stages, Market Bus parent); bench plan H1-2 text.
+
+## 2026-08-10 — DL-282 Massive Market Bus & Shared Client Spec v1.0 DRAFT filed
+
+**Decision:** File architecture Spec for the shared market data plane:
+
+- Path: `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` (**DRAFT** → revised **v1.0.1** in DL-283)
+- Stack law: **Massive → feed process(es) → Redis (store + pub/sub) → labs-api → one WebSocket per tab → shared web MarketClient → Labs apps**
+- Chain ladder surface is a **consumer**, not transport owner; OC15 generalized beyond ladder-only
+- Browsers never talk to Redis or Massive; multi-worker requires Redis (not process-local-only cache)
+- **Coach GO blocked** on specialist gates (DL-283) before MB-P1+ build authority
+
+Rationale: scale chain ladder and multi-chart boards to many concurrent members without N× Massive; one WS for aged-browser socket limits; independent app pages add/remove interest on the shared client.
+
+**Note (posture):** Introducing Redis for live multi-worker market data is a **deliberate reversal** of the Chain Picker mission line against an “always-on multi-worker Redis pipeline” and of Arch/18’s MySQL+poller-only shape — full named reversal text at Coach GO (Spec §1.1).
+
 ## 2026-08-10 — DL-281 Admin Flow readability — hover-trace, dwell time, summary, click-to-lock
 
 **Decision:** Make the DL-272 Flow Sankey actually legible (Coach feedback: "cool but

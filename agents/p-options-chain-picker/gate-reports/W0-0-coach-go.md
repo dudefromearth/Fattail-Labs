@@ -10,7 +10,7 @@
 
 | Artifact | Path |
 |----------|------|
-| Product law | Spec v1.0.1 `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.md` |
+| Product law | Spec v1.0.2 `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` (pointer: `…-v1.0.md`) |
 | Execution law | `docs/Options-Chain-Picker-Full-Agent-Bench-Plan-v1.0.md` |
 | HIG | Human Interface Spec v1.0 — binds prelim + production |
 | Board | `agents/p-options-chain-picker/` |

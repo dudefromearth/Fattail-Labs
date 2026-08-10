@@ -23,7 +23,7 @@ and production UI both go through Echo HIG review before Delta UI gates.
 
 | Spec / doc | Path | Role |
 |------------|------|------|
-| **Options Chain Picker Spec v1.0.1** | [`Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.md`](../Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.md) | **Primary law** — OC1–OC15, pickers, ladder, diff, proxy-safe spot/vol, shared fetch, preform v1.1 |
+| **Options Chain Picker Spec v1.0.2** | [`Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md`](../Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md) | **Primary law** — OC1–OC15 · **OC6a** · pickers, ladder, diff, proxy-safe spot/vol, shared fetch, preform v1.1 · routes `/app/options-lab` |
 | **Human Interface Spec v1.0** | [`Specs/FatTail-Labs-Human-Interface-Spec-v1.0.md`](../Specs/FatTail-Labs-Human-Interface-Spec-v1.0.md) | **HIG constitution** — tokens, controls, density, a11y; member dialect |
 | Architecture/18 Shared live marks | [`Architecture/18-shared-live-marks-stream.md`](../Architecture/18-shared-live-marks-stream.md) | Proxy doctrine · S-3 shared generation · VIX1D |
 | Architecture/09 (Tradier / chain-store doctrine) | as cited in Spec | ChainStore / `chain_collector` reuse — no orphan fourth process |
@@ -222,8 +222,8 @@ Ship (heal → harden → preform) the **Options Chain Picker**: Admin-universe 
 |------|-------|--------|
 | **H1-0** | Alpha · **Kilo** | Prove spot: chain `underlying_asset.value` preferred; proxy product mark never centers band; 503 path |
 | **H1-1** | Alpha · Hotel · **Kilo** | Prove vol: ignore proxy VIX/VIXY; VIX1D when DTE≤1 and native; 0DTE band non-empty |
-| **H1-2** | Alpha · India · **Kilo** | Shared generation per (feed_symbol, expiration); singleflight; N readers share; spot_source on payload |
-| **H1-G** | Delta · Kilo · Hotel | §7.12–14 green; OC15 evidence |
+| **H1-2** | Alpha · India · **Kilo** | **OC15 minimal (in-process):** generation key + singleflight; N readers share **within one API process**; spot_source on payload. **Does not** claim multi-worker Redis. Production multi-worker OC15 is **MB-P1** (Market Bus Spec §1.2) — successor. If MB-P1 lands first, mark H1-2 **superseded-by-MB-P1** (one evidence trail). |
+| **H1-G** | Delta · Kilo · Hotel | §7.12–14 green; OC15 **minimal** evidence; gate report **cites Market Bus §1.2** so OC15 is not double-passed |
 
 ### Phase E — Expirations + identity
 
