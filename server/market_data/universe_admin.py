@@ -5,6 +5,8 @@ Create / enable validates symbol is available from Massive (or proxy path).
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
 from typing import Any
 
 from market_data.live_stream import _fetch_for_row
@@ -43,7 +45,31 @@ def _opt_sym(raw: Any) -> str | None:
     return s or None
 
 
+def _parse_json_field(raw: Any) -> Any:
+    if raw is None:
+        return None
+    if isinstance(raw, (list, dict)):
+        return raw
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8")
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return None
+        try:
+            return json.loads(s)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
 def serialize_row(r: dict) -> dict:
+    step = r.get("strike_step")
+    try:
+        strike_step = float(step) if step is not None else None
+    except (TypeError, ValueError):
+        strike_step = None
+    as_of = r.get("expirations_as_of")
     return {
         "symbol": r["symbol"],
         "feed_symbol": r.get("feed_symbol"),
@@ -54,6 +80,13 @@ def serialize_row(r: dict) -> dict:
         "sort_order": int(r.get("sort_order") or 0),
         "note": r.get("note") or "",
         "options_cadence": r.get("options_cadence") or "",
+        "next_expirations_json": _parse_json_field(r.get("next_expirations_json")),
+        "expirations_as_of": (
+            as_of.isoformat().replace("+00:00", "Z")
+            if hasattr(as_of, "isoformat")
+            else (str(as_of) if as_of else None)
+        ),
+        "strike_step": strike_step,
     }
 
 
@@ -80,6 +113,61 @@ def get_one(cur, symbol: str) -> dict | None:
     )
     r = cur.fetchone()
     return serialize_row(r) if r else None
+
+
+def write_chain_calendar(
+    cur,
+    symbol: str,
+    *,
+    expirations: list[str],
+    strike_step: float | None = None,
+) -> dict:
+    """Store preformed next-expirations (OC11). Dates only; DTE recomputed at read."""
+    symbol = _norm_symbol(symbol)
+    dates = [str(e)[:10] for e in expirations if e]
+    payload = json.dumps(dates)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    if strike_step is not None:
+        cur.execute(
+            """UPDATE market_symbol_universe
+               SET next_expirations_json = %s,
+                   expirations_as_of = %s,
+                   strike_step = %s
+               WHERE symbol = %s""",
+            (payload, now, float(strike_step), symbol),
+        )
+    else:
+        cur.execute(
+            """UPDATE market_symbol_universe
+               SET next_expirations_json = %s,
+                   expirations_as_of = %s
+               WHERE symbol = %s""",
+            (payload, now, symbol),
+        )
+    if cur.rowcount == 0:
+        raise UniverseError(404, f"symbol {symbol!r} not found")
+    row = get_one(cur, symbol)
+    assert row is not None
+    return row
+
+
+def calendar_is_fresh(row: dict, *, today: datetime | None = None) -> bool:
+    """OD-preform-ttl: fresh if as_of is same UTC calendar day as today."""
+    raw = row.get("expirations_as_of")
+    if not raw:
+        return False
+    today = today or datetime.now(timezone.utc)
+    try:
+        if isinstance(raw, datetime):
+            as_of = raw
+        else:
+            s = str(raw).replace("Z", "+00:00")
+            as_of = datetime.fromisoformat(s)
+            if as_of.tzinfo:
+                as_of = as_of.astimezone(timezone.utc).replace(tzinfo=None)
+        return as_of.date() == today.date()
+    except (TypeError, ValueError):
+        return False
 
 
 def validate_with_massive(

@@ -90,15 +90,18 @@ class MassiveClient:
         underlying: str,
         *,
         limit: int = 250,
+        expiration_date: str | None = None,
         expiration_date_gte: str | None = None,
         expiration_date_lte: str | None = None,
+        strike_price_gte: float | None = None,
+        strike_price_lte: float | None = None,
         contract_type: str | None = None,
         max_pages: int = 500,
         page_pause_s: float = 0.05,
     ) -> list[dict[str, Any]]:
         """Paginate GET /v3/snapshot/options/{underlying} until exhausted.
 
-        Massive max limit is 250 per page. Full SPX chains need many pages.
+        Massive max limit is 250 per page. Prefer strike + expiry filters for SPX.
         """
         underlying = (underlying or "").strip()
         if not underlying:
@@ -107,10 +110,16 @@ class MassiveClient:
             raise MassiveClientError("limit must be 1..250")
 
         params: dict[str, str] = {"limit": str(limit), "order": "asc", "sort": "ticker"}
+        if expiration_date:
+            params["expiration_date"] = str(expiration_date).strip()[:10]
         if expiration_date_gte:
             params["expiration_date.gte"] = expiration_date_gte
         if expiration_date_lte:
             params["expiration_date.lte"] = expiration_date_lte
+        if strike_price_gte is not None:
+            params["strike_price.gte"] = str(float(strike_price_gte))
+        if strike_price_lte is not None:
+            params["strike_price.lte"] = str(float(strike_price_lte))
         if contract_type:
             params["contract_type"] = contract_type
 
