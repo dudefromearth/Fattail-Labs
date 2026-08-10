@@ -185,49 +185,75 @@ def build_markers(
     paired_open: dict[str, Any] | None = None,
     paired_close: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Entry/exit markers from fill exec times (not option prints)."""
+    """Entry/exit markers from fill exec times (not option prints).
+
+    Selection-aware (which blotter row the member opened):
+
+    - **TO OPEN** selected → always **Entry** at this fill (never Exit here).
+    - **TO CLOSE** selected → always **Exit** at this fill; **Entry** only when
+      a paired open exists (matched open fill with exec_at).
+
+    Chart window may still span the full hold via :func:`hold_endpoints`;
+    markers follow the selected side only.
+    """
     from trade_log_domain.structure import trade_is_close_fill
 
-    markers: list[dict[str, Any]] = []
-    entry_t, exit_t = hold_endpoints(
-        trade, paired_open=paired_open, paired_close=paired_close
-    )
-    # Single-fill open with no pair still gets an entry marker.
-    if entry_t is None and exit_t is None:
-        t = _parse_exec(trade.get("exec_at"))
-        if t is None:
-            return []
-        kind = "exit" if trade_is_close_fill(trade) else "entry"
-        markers.append(
-            {
-                "kind": kind,
-                "t": t.isoformat().replace("+00:00", "Z"),
-                "t_ms": int(t.timestamp() * 1000),
-                "label": "Exit" if kind == "exit" else "Entry",
-                "trade_id": trade.get("id"),
-            }
-        )
-        return markers
+    def _mk(
+        kind: str,
+        dt: datetime,
+        *,
+        trade_id: Any,
+    ) -> dict[str, Any]:
+        return {
+            "kind": kind,
+            "t": dt.isoformat().replace("+00:00", "Z"),
+            "t_ms": int(dt.timestamp() * 1000),
+            "label": "Exit" if kind == "exit" else "Entry",
+            "trade_id": trade_id,
+        }
 
+    is_close = trade_is_close_fill(trade)
+    self_t = _parse_exec(trade.get("exec_at"))
+
+    # --- TO OPEN selected: Entry only ---
+    if not is_close:
+        entry_t = None
+        if paired_open is not None:
+            entry_t = _parse_exec(paired_open.get("exec_at"))
+        if entry_t is None:
+            entry_t = self_t
+        if entry_t is None:
+            return []
+        return [
+            _mk(
+                "entry",
+                entry_t,
+                trade_id=(paired_open or trade).get("id"),
+            )
+        ]
+
+    # --- TO CLOSE selected: Exit always; Entry if paired open has time ---
+    markers: list[dict[str, Any]] = []
+    entry_t = None
+    if paired_open is not None:
+        entry_t = _parse_exec(paired_open.get("exec_at"))
     if entry_t is not None:
         markers.append(
-            {
-                "kind": "entry",
-                "t": entry_t.isoformat().replace("+00:00", "Z"),
-                "t_ms": int(entry_t.timestamp() * 1000),
-                "label": "Entry",
-                "trade_id": (paired_open or trade).get("id"),
-            }
+            _mk("entry", entry_t, trade_id=paired_open.get("id") if paired_open else None)
         )
+
+    exit_t = None
+    if paired_close is not None:
+        exit_t = _parse_exec(paired_close.get("exec_at"))
+    if exit_t is None:
+        exit_t = self_t
     if exit_t is not None:
         markers.append(
-            {
-                "kind": "exit",
-                "t": exit_t.isoformat().replace("+00:00", "Z"),
-                "t_ms": int(exit_t.timestamp() * 1000),
-                "label": "Exit",
-                "trade_id": (paired_close or trade).get("id"),
-            }
+            _mk(
+                "exit",
+                exit_t,
+                trade_id=(paired_close or trade).get("id"),
+            )
         )
     return markers
 

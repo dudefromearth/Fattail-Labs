@@ -164,10 +164,15 @@ def test_chart_window_and_markers_paired():
     assert win is not None
     start, end = win
     assert start < end
+    # TO CLOSE selected: Entry (paired) + Exit always
     markers = build_markers(close_t, paired_open=open_t, paired_close=close_t)
     kinds = {m["kind"] for m in markers}
     assert kinds == {"entry", "exit"}
+    assert markers[0]["kind"] == "entry"
+    assert markers[1]["kind"] == "exit"
     assert markers[0]["t_ms"] < markers[1]["t_ms"]
+    assert markers[0]["label"] == "Entry"
+    assert markers[1]["label"] == "Exit"
 
 
 def test_markers_open_only():
@@ -175,6 +180,28 @@ def test_markers_open_only():
     markers = build_markers(open_t)
     assert len(markers) == 1
     assert markers[0]["kind"] == "entry"
+    assert markers[0]["label"] == "Entry"
+
+
+def test_markers_open_selected_hides_exit_even_when_paired():
+    """Selecting the TO OPEN row shows Entry only — not the paired close."""
+    open_t = _trade(10, "2026-04-01T14:30:00", [_leg(effect="TO_OPEN")])
+    close_t = _trade(11, "2026-04-01T15:45:00", [_leg(effect="TO_CLOSE")])
+    markers = build_markers(open_t, paired_open=open_t, paired_close=close_t)
+    assert len(markers) == 1
+    assert markers[0]["kind"] == "entry"
+    assert markers[0]["label"] == "Entry"
+    assert markers[0]["trade_id"] == 10
+
+
+def test_markers_close_without_pair_still_shows_exit():
+    """TO CLOSE always gets Exit even when no matched open exists."""
+    close_t = _trade(11, "2026-04-01T15:45:00", [_leg(effect="TO_CLOSE")])
+    markers = build_markers(close_t)
+    assert len(markers) == 1
+    assert markers[0]["kind"] == "exit"
+    assert markers[0]["label"] == "Exit"
+    assert markers[0]["trade_id"] == 11
 
 
 def test_bars_look_complete_fail_loud():

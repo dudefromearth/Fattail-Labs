@@ -187,9 +187,20 @@ function CandleChart({
     const candles = toCandleData(payload.bars, tf);
     series.setData(candles);
 
-    // Entry / exit markers on nearest candle
-    const markers = (payload.markers || [])
-      .map((m) => {
+    // Entry / exit markers on nearest candle.
+    // TO OPEN → Entry only; TO CLOSE → Exit always + Entry when paired (API).
+    // If entry+exit snap to the same bar (e.g. 1D chart), merge labels so
+    // lightweight-charts does not drop one of two same-time markers.
+    type ChartMarker = {
+      time: Time;
+      position: "belowBar" | "aboveBar";
+      color: string;
+      shape: "arrowUp" | "arrowDown" | "circle";
+      text: string;
+      kind: string;
+    };
+    const rawMarkers = (payload.markers || [])
+      .map((m): ChartMarker | null => {
         if (m.t_ms == null) return null;
         const raw = markerTime(m.t_ms, tf);
         const time = nearestBarTime(candles, raw);
@@ -197,23 +208,50 @@ function CandleChart({
         const isEntry = m.kind === "entry";
         return {
           time,
-          position: (isEntry ? "belowBar" : "aboveBar") as
-            | "belowBar"
-            | "aboveBar",
+          position: isEntry ? "belowBar" : "aboveBar",
           color: isEntry ? "#059669" : "#dc2626",
-          shape: (isEntry ? "arrowUp" : "arrowDown") as "arrowUp" | "arrowDown",
+          shape: isEntry ? "arrowUp" : "arrowDown",
           text: m.label || (isEntry ? "Entry" : "Exit"),
+          kind: m.kind,
         };
       })
-      .filter((m): m is NonNullable<typeof m> => m != null)
-      // unique by time+text (LWC requires sorted by time)
-      .sort((a, b) => {
-        const na = typeof a.time === "number" ? a.time : String(a.time);
-        const nb = typeof b.time === "number" ? b.time : String(b.time);
-        if (na < nb) return -1;
-        if (na > nb) return 1;
-        return 0;
-      });
+      .filter((m): m is ChartMarker => m != null);
+
+    const byTime = new Map<string, ChartMarker[]>();
+    for (const m of rawMarkers) {
+      const key = String(m.time);
+      const list = byTime.get(key) || [];
+      list.push(m);
+      byTime.set(key, list);
+    }
+    const markers: ChartMarker[] = [];
+    for (const [, group] of byTime) {
+      if (group.length === 1) {
+        markers.push(group[0]);
+        continue;
+      }
+      const kinds = new Set(group.map((g) => g.kind));
+      if (kinds.has("entry") && kinds.has("exit")) {
+        // Same bar: single marker, both labels
+        markers.push({
+          time: group[0].time,
+          position: "aboveBar",
+          color: "#7c3aed",
+          shape: "circle",
+          text: "Entry · Exit",
+          kind: "both",
+        });
+      } else {
+        markers.push(...group);
+      }
+    }
+    markers.sort((a, b) => {
+      const na = typeof a.time === "number" ? a.time : String(a.time);
+      const nb = typeof b.time === "number" ? b.time : String(b.time);
+      if (na < nb) return -1;
+      if (na > nb) return 1;
+      return 0;
+    });
     if (markers.length) {
       series.setMarkers(markers);
     }
@@ -361,11 +399,24 @@ export default function TradeChart({ tradeId }: { tradeId: number }) {
         </div>
       </div>
 
-      {payload?.proxy_label ? (
+      {payload?.proxy_label || payload?.message ? (
         <p className="text-[11px] text-[var(--color-label-secondary)]">
-          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-950 dark:text-amber-100">
-            {payload.proxy_label}
-          </span>
+          {payload.proxy_label ? (
+            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+              {payload.proxy_label}
+            </span>
+          ) : null}
+          {payload.message ? (
+            <span
+              className={
+                payload.proxy_label
+                  ? "ml-1.5 text-[var(--color-label-tertiary)]"
+                  : "rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-950 dark:bg-sky-950 dark:text-sky-100"
+              }
+            >
+              {payload.message}
+            </span>
+          ) : null}
           {payload.cache?.hit ? (
             <span className="ml-1.5 text-[var(--color-label-tertiary)]">
               · cached

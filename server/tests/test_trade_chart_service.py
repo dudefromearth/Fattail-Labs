@@ -105,18 +105,32 @@ def test_build_trade_chart_uses_native_spx_when_available():
     assert "SPY" not in client.calls
 
 
-def test_build_trade_chart_falls_back_to_spy_when_index_not_entitled():
+def test_build_trade_chart_falls_back_to_spy_when_index_not_entitled(monkeypatch):
+    """When Massive native fails and Yahoo has no series, use labeled SPY proxy."""
     center = datetime(2026, 4, 1, 15, 0, tzinfo=timezone.utc)
     trade = _trade("2026-04-01T15:00:00+00:00")
     client = _FakeMassive(
         {
             "I:SPX": MassiveClientError("Massive HTTP 403 not entitled"),
             "SPX": MassiveClientError("Massive HTTP 404"),
-            "SPY": _bars_around(center, n=8),  # ETF-scale prices ok for completeness
+            "SPY": _bars_around(center, n=8),
         }
     )
-    # Rewrite SPY bars to ETF-ish prices (completeness only checks count/times)
     client.by_symbol["SPY"] = _bars_around(center)
+
+    def _no_yahoo(*_a, **_k):
+        from market_data.yahoo_index import YahooIndexError
+
+        raise YahooIndexError("forced off for unit test")
+
+    monkeypatch.setattr(
+        "market_data.trade_chart_service.fetch_yahoo_index_aggs",
+        _no_yahoo,
+    )
+    monkeypatch.setattr(
+        "market_data.trade_chart_service.yahoo_ticker_for_product",
+        lambda _p: "^GSPC",
+    )
     out = build_trade_chart(
         None,
         trade,
@@ -133,7 +147,7 @@ def test_build_trade_chart_falls_back_to_spy_when_index_not_entitled():
     assert "SPY" in client.calls
 
 
-def test_build_trade_chart_falls_back_when_native_empty():
+def test_build_trade_chart_falls_back_when_native_empty(monkeypatch):
     center = datetime(2026, 4, 1, 15, 0, tzinfo=timezone.utc)
     trade = _trade("2026-04-01T15:00:00+00:00")
     client = _FakeMassive(
@@ -142,6 +156,20 @@ def test_build_trade_chart_falls_back_when_native_empty():
             "SPX": [],
             "SPY": _bars_around(center),
         }
+    )
+
+    def _no_yahoo(*_a, **_k):
+        from market_data.yahoo_index import YahooIndexError
+
+        raise YahooIndexError("forced off for unit test")
+
+    monkeypatch.setattr(
+        "market_data.trade_chart_service.fetch_yahoo_index_aggs",
+        _no_yahoo,
+    )
+    monkeypatch.setattr(
+        "market_data.trade_chart_service.yahoo_ticker_for_product",
+        lambda _p: "^GSPC",
     )
     out = build_trade_chart(
         None,
