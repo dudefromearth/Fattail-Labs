@@ -6,6 +6,11 @@
 **Correlation:** On-demand only — **never** block `GET .../comparison` on Massive daily bars (DL-231).  
 **UI catalog:** Design → **Symbols** sub-nav (not a top suite tab — DL-232).
 
+**Companion (2026-08-10):** Real-time multi-worker **chain ladders + WS fan-out** use the **Market Bus** (Redis generations), not this MySQL marks table as the live path. See [`Architecture/28-massive-market-bus.md`](./28-massive-market-bus.md).  
+- **Arch/18** = durable / Curate marks SoR (`market_live_marks` via `live_stream`).  
+- **Arch/28** = Redis `mb:*` + feeds + one WebSocket for Options Lab / shared client.  
+- Proxy doctrine (SPY/VIXY labeled `massive_proxy_v1`) applies to **both**. Do not use proxy mids for SPX strike math (OC2).
+
 ## Why
 
 - Multi-member Curate cannot open N Massive/Tradier sockets per strategy.  

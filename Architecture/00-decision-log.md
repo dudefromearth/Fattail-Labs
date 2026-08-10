@@ -4,6 +4,13 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-10 — DL-287 Market Bus architecture map for agents (Arch 28)
+
+**Decision:** Agents navigate market data via as-built **Architecture/28-massive-market-bus.md**
+plus AGENTS.md / Claude.md / agents/README pointers. Arch/18 remains MySQL marks (Curate);
+Arch/28 is Redis bus + WS + Options Lab. Spec + bench + board already law; this is
+documentation parity so future agents do not invent parallel Massive clients or sockets.
+
 ## 2026-08-10 — DL-286 Market Bus W0 GO + MB-P1…P5 land (Redis posture)
 
 **Coach GO (program execution):** Market Bus Spec v1.0.1 + bench plan v1.0.1 **BUILD**.

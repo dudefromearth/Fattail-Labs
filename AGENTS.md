@@ -17,6 +17,7 @@ LearnDash. No shared code with MarketSwarm-Canonical (HTTP only).
 - [`Architecture/README.md`](./Architecture/README.md) — as-built index + decision log
 - [`Architecture/00-decision-log.md`](./Architecture/00-decision-log.md) — binding DLs
 - Specs under `Specs/`; human explainers under `docs/`
+- **Market data (live):** [`Architecture/28-massive-market-bus.md`](./Architecture/28-massive-market-bus.md) — read before any Massive / options / marks / WS work
 
 ### Current state & focus (as-built · single host)
 
@@ -24,9 +25,10 @@ LearnDash. No shared code with MarketSwarm-Canonical (HTTP only).
 |----------|---------------------|
 | **Strategy Lab NOW** | Lock **Design + Curate** for entitled members. Multi-member Curate is absolute. |
 | **Deploy** | Members get **Deploy UX** except **real-broker (Tradier) real-money**. Admin dogfoods Tradier, then provision. **DL-251 / DL-252**. |
-| **Do not** | Open multi-member live Tradier before admin proof. Do not block Design/Curate on Deploy. |
-| **Shipped** | Courses, practice stack (trade log, journal, retros, reports), toughness, admin board/cast/HeyGen, shared marks / house designs path |
-| **Spec’d, not shipped** | Community Discord second window · Visualize AI · Bot Marketplace |
+| **Market Bus (shipped core)** | Live chains/symbols: **Massive → feeds → Redis → one WS/tab → shared client**. Options Lab at `/app/options-lab`. See Arch **28**. |
+| **Do not** | Open multi-member live Tradier before admin proof. Do not block Design/Curate on Deploy. **Do not** add per-widget Massive or extra market WebSockets. |
+| **Shipped** | Courses, practice stack (trade log, journal, retros, reports), toughness, admin board/cast/HeyGen, shared marks / house designs path, **Market Bus + Options Lab** |
+| **Spec’d, not shipped** | Community Discord second window · Visualize AI · Bot Marketplace · live **header** marks UI |
 
 Timeline: [`docs/Strategy-Lab-Member-Timeline.md`](./docs/Strategy-Lab-Member-Timeline.md) ·
 [`Architecture/26-strategy-lab-member-timeline.md`](./Architecture/26-strategy-lab-member-timeline.md) ·
@@ -53,12 +55,28 @@ growth playbook [`Architecture/17-strategy-lab-growth-playbook.md`](./Architectu
 |-------|------------|
 | Course hosting | `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md` |
 | Strategy Lab Curate/Deploy surface | `Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` |
+| **Market Bus (live market plane)** | Spec `FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` · Arch **28** · bench `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md` |
+| **Options chain ladder** | Spec `FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` · route `/app/options-lab` · board `agents/p-market-bus/` + `agents/p-options-chain-picker/` |
+| Curate MySQL marks (not Redis bus) | Arch **18** · `live_stream` → `market_live_marks` |
 | Community | `Specs/FatTail-Labs-Community-App-Spec-v1.0.md` · `docs/Community-Chat-Discord-Second-Window.md` |
 | Visualize AI | `Specs/FatTail-Labs-Visualize-AI-Spec-v0.1.md` · `docs/Visualize-AI-How-It-Works.md` |
 | Bot Marketplace | `Specs/FatTail-Labs-Bot-Marketplace-Framework-Spec-v0.1.md` · `docs/Bot-Marketplace-How-It-Works.md` |
 | OA-class positioning | `Architecture/16-strategy-lab-vs-option-alpha-positioning.md` |
 
 Also: `CLAUDE.md` for ops/commands invariants.
+
+### Market data invariants (agents — non-negotiable)
+
+1. **Sole upstream:** Only feed processes / single-flight miss paths call Massive for live bus topics — not Next.js, not N handlers without coalesce.  
+2. **Shared store:** With `LABS_MARKET_BUS=1`, generations live in Redis (`mb:*`); multi-worker requires Redis.  
+3. **One WebSocket per tab:** `web/lib/market/MarketSocket.ts` — Options Lab and future apps share it.  
+4. **Universe SoR:** `market_symbol_universe` only.  
+5. **Proxy honesty:** `massive_proxy_v1` labeled; never center SPX strikes on SPY proxy (OC2).  
+6. **Exact strikes:** display listed values cent-exact (OC6a).  
+7. **No MSC** market code or MSC Redis schemas.  
+8. **Header UI** is not product law until a surface Spec — bus may still publish `session` / `sym` topics.  
+
+Full map: [`Architecture/28-massive-market-bus.md`](./Architecture/28-massive-market-bus.md).
 
 ---
 

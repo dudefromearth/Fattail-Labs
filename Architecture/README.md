@@ -26,7 +26,8 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [15-trade-log-manual-management.md](./15-trade-log-manual-management.md) | Trade Log manual entry/close/trash design (as-built) |
 | [16-strategy-lab-vs-option-alpha-positioning.md](./16-strategy-lab-vs-option-alpha-positioning.md) | Same service type, opposite doctrine (DL-217) |
 | [17-strategy-lab-growth-playbook.md](./17-strategy-lab-growth-playbook.md) | Design+Curate all → Deploy Coach → provision |
-| [18-shared-live-marks-stream.md](./18-shared-live-marks-stream.md) | Shared symbol universe + live stream + correlation |
+| [18-shared-live-marks-stream.md](./18-shared-live-marks-stream.md) | Shared symbol universe + live stream + correlation (MySQL marks / Curate) |
+| [28-massive-market-bus.md](./28-massive-market-bus.md) | **Market Bus:** Massive → feeds → Redis → one WS/tab → shared client (Options Lab, scale) |
 | [19-strategy-lab-as-built-map.md](./19-strategy-lab-as-built-map.md) | Code/spec/route map for Curate/Deploy as-built |
 | [20-strategy-lab-curate-board-performance.md](./20-strategy-lab-curate-board-performance.md) | Multi-bot Curate board performance/stability (DL-231) |
 | [21-visualize-ai.md](./21-visualize-ai.md) | Visualize AI system architecture (pre-impl · DL-236) |
@@ -35,6 +36,17 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [24-bots-marketplace-design.md](./24-bots-marketplace-design.md) | Bot Marketplace Framework UX (pre-impl · DL-243) |
 | [25-dual-subdomain-practice-labs.md](./25-dual-subdomain-practice-labs.md) | **Future:** practice.fattail.ai vs labs.fattail.ai (DL-248) |
 | [26-strategy-lab-member-timeline.md](./26-strategy-lab-member-timeline.md) | **NOW:** Design+Curate lock; Deploy UX for members; Tradier real-money gated (DL-252) |
+
+**Market Bus / Options chain (2026-08-10) — as-built live market plane:**
+
+| Doc | Role |
+|---|---|
+| Arch **28** | Massive → feed → Redis → API → one WebSocket → shared client |
+| Spec | `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` v1.0.1 |
+| Chain surface | `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` · route `/app/options-lab` |
+| Bench | `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md` · `agents/p-market-bus/` |
+| Marks (Curate) | Arch **18** MySQL path — do not confuse with Redis `mb:*` |
+| Decisions | **DL-282…286** |
 
 **Strategy Lab member timeline (2026-08-07) — current product focus:**
 

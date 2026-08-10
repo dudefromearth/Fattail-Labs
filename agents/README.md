@@ -111,13 +111,19 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   Board: `agents/p-campaign-phase/ORCHESTRATOR.md`.  
   **PROGRAM PASS (Z-G 2026-08-09)** · residual polish: Trade Log deep link · retro picker · MiniTwo deploy.
 - `agents/p-options-chain-picker/` — **Options Chain Picker** (Admin-universe symbol;
-  next-3 distinct expiries + DTE; vertical ±σ ladder; proxy-safe spot/vol; shared Massive
-  generation; strike-level diffs; **Apple HIG / Human Interface Spec** on prelim + production;
-  preform calendar v1.1 required).  
+  next-3 distinct expiries + DTE; vertical ladder / wings; proxy-safe spot/vol; **OC15 minimal**
+  in-process generation; strike-level diffs; HIG; preform calendar v1.1).  
   Spec: `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` (v1.0.2).  
   **Full multi-agent plan:** `docs/Options-Chain-Picker-Full-Agent-Bench-Plan-v1.0.md`.  
   Board: `agents/p-options-chain-picker/ORCHESTRATOR.md`.  
-  **PROGRAM PASS (Z-G 2026-08-10)** · residual: Admin calendar refresh chrome · MiniTwo deploy.
+  **PROGRAM PASS (Z-G 2026-08-10)** · **OC15 production scale is Market Bus MB-P1 (successor)**.
+- `agents/p-market-bus/` — **Massive Market Bus** (Massive → feeds → Redis → one WS/tab →
+  shared client; Options Lab consumer; scale without N× Massive).  
+  Spec: `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` v1.0.1.  
+  Arch: `Architecture/28-massive-market-bus.md`.  
+  **Full multi-agent plan:** `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md`.  
+  Board: `agents/p-market-bus/ORCHESTRATOR.md`.  
+  **PROGRAM COMPLETE for independent testing (DL-286)** · enable `LABS_MARKET_BUS=1` + Redis.
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,

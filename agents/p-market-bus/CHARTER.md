@@ -3,7 +3,9 @@
 **Program:** Massive Market Bus & Shared Client  
 **Plan:** [`docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md)  
 **Spec:** [`Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md`](../../Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) **v1.0.1**  
+**As-built architecture:** [`Architecture/28-massive-market-bus.md`](../../Architecture/28-massive-market-bus.md)  
 **Orchestration:** Juliet · **Authority:** Coach  
+
 
 ## Mission
 
