@@ -9,11 +9,14 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  DEFAULT_STRIKE_WINGS,
+  STRIKE_WING_CHOICES,
   applyLadderDiff,
   fetchLadderExpirations,
   pollChainLadder,
   type LadderExpirationContract,
   type LadderRow,
+  type StrikeWings,
 } from "@/lib/chainLadderApi";
 import {
   fetchMarketUniverse,
@@ -30,6 +33,27 @@ function fmt(n: number | null | undefined, digits = 2): string {
     maximumFractionDigits: digits,
     minimumFractionDigits: 0,
   });
+}
+
+/**
+ * Show the **listed** strike exactly (OCC dollars + cents).
+ * Never format with maxFractionDigits:0 — that rounded 302.50 → "303".
+ * Work in integer cents so half-strikes stay 302.50, not 302.5 or 303.
+ */
+function fmtStrike(n: number | null | undefined): string {
+  if (n == null) return "—";
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "—";
+  // Round only to the nearest cent (listed strikes are cent-quantized).
+  const cents = Math.round(v * 100);
+  const neg = cents < 0;
+  const abs = Math.abs(cents);
+  const whole = Math.floor(abs / 100);
+  const frac = abs % 100;
+  const wholeStr = String(whole); // no locale rounding of the strike itself
+  const body =
+    frac === 0 ? wholeStr : `${wholeStr}.${String(frac).padStart(2, "0")}`;
+  return neg ? `-${body}` : body;
 }
 
 const StrikeRow = memo(function StrikeRow({
@@ -51,8 +75,11 @@ const StrikeRow = memo(function StrikeRow({
       data-strike={row.strike}
       data-spot={row.is_spot ? "1" : "0"}
     >
-      <td className="sticky left-0 z-[1] border-b border-[var(--color-separator)] bg-inherit px-2 py-1 text-right tabular-nums">
-        {fmt(row.strike, 0)}
+      <td
+        className="sticky left-0 z-[1] border-b border-[var(--color-separator)] bg-inherit px-2 py-1 text-right tabular-nums"
+        title={String(row.strike)}
+      >
+        {fmtStrike(row.strike)}
         {row.is_spot ? (
           <span className="ml-1 text-[10px] font-bold text-[var(--color-tint)]">
             SPOT
@@ -92,7 +119,7 @@ export default function ChainLadderPage() {
   >([]);
   const [expiration, setExpiration] = useState("");
   const [side, setSide] = useState<"call" | "put">("call");
-  const [sigma, setSigma] = useState(2);
+  const [wings, setWings] = useState<StrikeWings>(DEFAULT_STRIKE_WINGS);
   const [error, setError] = useState<string | null>(null);
   const [hash, setHash] = useState<string | null>(null);
   const [spot, setSpot] = useState<number | null>(null);
@@ -106,6 +133,10 @@ export default function ChainLadderPage() {
   const [lastPatch, setLastPatch] = useState<string>("—");
   const hashRef = useRef<string | null>(null);
   const mounted = useRef(true);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  /** After a new ladder is presented, center once — then only on demand. */
+  const presentKeyRef = useRef<string>("");
+  const centerOnPresentRef = useRef(true);
 
   useEffect(() => {
     mounted.current = true;
@@ -168,7 +199,7 @@ export default function ChainLadderPage() {
         expiration,
         symbol,
         side,
-        sigma,
+        wings,
         since_hash: hashRef.current,
       });
       if (!mounted.current) return;
@@ -213,16 +244,21 @@ export default function ChainLadderPage() {
       if (mounted.current)
         setError(e instanceof Error ? e.message : "Poll failed");
     }
-  }, [expiration, symbol, side, sigma]);
+  }, [expiration, symbol, side, wings]);
 
-  // Reset hash when controls change so first response is full
+  // Reset hash when controls change so first response is full; center once after present
   useEffect(() => {
     hashRef.current = null;
     setHash(null);
     setRowsByStrike(new Map());
     setSpot(null);
     setBand(null);
-  }, [expiration, symbol, side, sigma]);
+    const key = `${symbol}|${expiration}|${side}|${wings}`;
+    if (presentKeyRef.current !== key) {
+      presentKeyRef.current = key;
+      centerOnPresentRef.current = true;
+    }
+  }, [expiration, symbol, side, wings]);
 
   useEffect(() => {
     if (!expiration) return;
@@ -232,8 +268,35 @@ export default function ChainLadderPage() {
   }, [expiration, tick]);
 
   const ordered = useMemo(() => {
-    return [...rowsByStrike.values()].sort((a, b) => a.strike - b.strike);
+    // High strikes first so OTM calls scroll up / ITM down like most brokers
+    return [...rowsByStrike.values()].sort((a, b) => b.strike - a.strike);
   }, [rowsByStrike]);
+
+  /** Scroll so the SPOT row sits mid-viewport (used after present + on demand). */
+  const centerSpot = useCallback(() => {
+    const root = scrollRef.current;
+    if (!root) return false;
+    const spotEl =
+      (root.querySelector('tr[data-spot="1"]') as HTMLElement | null) ||
+      null;
+    if (!spotEl) return false;
+    const rootRect = root.getBoundingClientRect();
+    const elRect = spotEl.getBoundingClientRect();
+    const elMid = elRect.top + elRect.height / 2;
+    const rootMid = rootRect.top + rootRect.height / 2;
+    root.scrollTop += elMid - rootMid;
+    return true;
+  }, []);
+
+  // Center once after the ladder is first painted for this geometry
+  useEffect(() => {
+    if (!centerOnPresentRef.current || !ordered.length) return;
+    if (!ordered.some((r) => r.is_spot)) return;
+    const id = window.requestAnimationFrame(() => {
+      if (centerSpot()) centerOnPresentRef.current = false;
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [ordered, centerSpot]);
 
   const selectedMeta = universe.find((u) => u.symbol === symbol);
   const selectedExpiry = expiryContracts.find((c) => c.expiration === expiration);
@@ -259,7 +322,7 @@ export default function ChainLadderPage() {
         <span className="text-xs text-[var(--color-label-tertiary)]">
           {symbol}
           {displayDte != null ? ` · ${displayDte} DTE` : ""}
-          {" · "}±{sigma}σ · row diffs only
+          {" · "}±{wings} strikes · row diffs only
         </span>
       </div>
 
@@ -323,17 +386,40 @@ export default function ChainLadderPage() {
           </select>
         </label>
         <label className="text-xs text-[var(--color-label-secondary)]">
-          Sigma
-          <input
-            type="number"
-            min={0.5}
-            max={5}
-            step={0.5}
-            className="mt-0.5 block h-11 w-20 rounded border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 text-sm"
-            value={sigma}
-            onChange={(e) => setSigma(Number(e.target.value) || 2)}
-          />
+          Wings
+          <select
+            className="mt-0.5 block min-h-11 min-w-[7rem] rounded border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm"
+            value={wings}
+            onChange={(e) =>
+              setWings(Number(e.target.value) as StrikeWings)
+            }
+            data-testid="chain-ladder-wings"
+          >
+            {STRIKE_WING_CHOICES.map((n) => (
+              <option key={n} value={n}>
+                ±{n} strikes
+              </option>
+            ))}
+          </select>
+          <span className="mt-0.5 block text-[10px] text-[var(--color-label-tertiary)]">
+            Above &amp; below ATM
+          </span>
         </label>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs text-[var(--color-label-secondary)]">
+            Viewport
+          </span>
+          <button
+            type="button"
+            className="min-h-11 rounded border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm font-medium text-[var(--color-label)] hover:bg-[var(--color-fill-secondary)] active:opacity-80"
+            onClick={() => centerSpot()}
+            disabled={!ordered.some((r) => r.is_spot)}
+            data-testid="chain-ladder-center-spot"
+            title="Scroll so the SPOT strike is mid-viewport"
+          >
+            Center spot
+          </button>
+        </div>
         <div className="ml-auto text-right text-xs text-[var(--color-label-tertiary)]">
           <div>
             Spot{" "}
@@ -341,7 +427,7 @@ export default function ChainLadderPage() {
               {spot != null ? fmt(spot, 2) : "—"}
             </span>
             {band != null && (
-              <span className="ml-2">band ±{fmt(band, 0)}</span>
+              <span className="ml-2">window ±{fmt(band, 0)}</span>
             )}
           </div>
           <div>hash {hash?.slice(0, 8) || "—"} · {lastPatch}</div>
@@ -355,7 +441,10 @@ export default function ChainLadderPage() {
         </p>
       )}
 
-      <div className="max-h-[70vh] overflow-auto rounded-lg border border-[var(--color-separator)]">
+      <div
+        ref={scrollRef}
+        className="max-h-[70vh] overflow-auto rounded-lg border border-[var(--color-separator)]"
+      >
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-[2] bg-[var(--color-canvas)] text-left text-[10px] uppercase tracking-wide text-[var(--color-label-tertiary)]">
             <tr>
@@ -393,9 +482,9 @@ export default function ChainLadderPage() {
         </table>
       </div>
       <p className="text-[11px] text-[var(--color-label-tertiary)]">
-        Poll every {POLL_MS / 1000}s. Unchanged hash → no row work. Diff mode
-        only patches strikes whose price/greeks/vol/oi moved. Not a page
-        refresh; not a full-table rewrite.
+        Poll every {POLL_MS / 1000}s. Ladder centers on SPOT once when first
+        presented; use <strong className="font-medium">Center spot</strong> to
+        re-center on demand. Diffs only patch moved strikes.
       </p>
     </main>
   );

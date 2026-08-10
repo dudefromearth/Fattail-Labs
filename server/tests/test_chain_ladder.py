@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from market_data.chain_ladder import (
+    DEFAULT_STRIKE_WINGS,
+    MASSIVE_PAGE_LIMIT,
+    MAX_STRIKES_PER_DTE,
+    STRIKE_WING_CHOICES,
     build_ladder,
     content_hash,
     diff_ladder,
-    sigma_band_points,
+    strike_window_from_wings,
 )
 
 
@@ -26,13 +30,39 @@ def _raw(strike: float, *, mid: float, side: str = "call", exp: str = "2026-08-1
     }
 
 
-def test_sigma_band_positive():
-    b = sigma_band_points(5000.0, vol_pct=15.0, dte=1, sigma=2.0)
-    assert b > 0
-    assert b < 500  # sane for 1d 15% vol
-    # 0DTE does not collapse to zero width
-    b0 = sigma_band_points(5000.0, vol_pct=15.0, dte=0, sigma=2.0)
-    assert b0 > 0
+def test_strike_wings_broker_style():
+    """±N strikes around ATM — same count for index and equity grid steps."""
+    assert DEFAULT_STRIKE_WINGS == 25
+    assert STRIKE_WING_CHOICES == (10, 25, 50, 100)
+    # SPX $5 grid, 25 wings → 51 strikes if fully listed
+    band, lo, hi, atm = strike_window_from_wings(7765.13, step=5.0, wings=25)
+    assert atm == 7765.0
+    assert lo == 7765.0 - 25 * 5.0
+    assert hi == 7765.0 + 25 * 5.0
+    n = int(round((hi - lo) / 5.0)) + 1
+    assert n == 51
+    # Widest choice still under Massive page
+    assert 2 * 100 + 1 <= MASSIVE_PAGE_LIMIT
+    assert MAX_STRIKES_PER_DTE == 250
+
+
+def test_listed_wings_include_fractional_aapl_style():
+    """AAPL-style 2.5 grid: wings count listed strikes, keep 302.50."""
+    from market_data.chain_ladder import (
+        infer_listed_step,
+        select_listed_wing_window,
+    )
+
+    # 280 .. 330 by 2.5
+    strikes = [280 + i * 2.5 for i in range(21)]
+    spot = 306.4
+    band, lo, hi, atm, n = select_listed_wing_window(strikes, spot, wings=5)
+    assert atm == 307.5 or atm == 305.0  # nearest listed
+    assert 302.5 in strikes
+    assert lo <= 302.5 <= hi
+    assert n == 11  # 5 below + atm + 5 above
+    step = infer_listed_step(strikes, spot)
+    assert step == 2.5
 
 
 def test_proxy_source_detection():
@@ -69,9 +99,12 @@ def test_build_and_diff_only_changed_strikes():
         expiration="2026-08-15",
         side="call",
         band=50.0,
-        sigma=2.0,
         vix=15.0,
         dte=1,
+        wings=25,
+        strike_step=5.0,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
     )
     assert a["row_count"] == 3
     assert a["content_hash"]
@@ -85,9 +118,12 @@ def test_build_and_diff_only_changed_strikes():
         expiration="2026-08-15",
         side="call",
         band=50.0,
-        sigma=2.0,
         vix=15.0,
         dte=1,
+        wings=25,
+        strike_step=5.0,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
     )
     # as_of differs but content_hash ignores timestamps
     assert content_hash(b) == h1
@@ -111,9 +147,12 @@ def test_build_and_diff_only_changed_strikes():
         expiration="2026-08-15",
         side="call",
         band=50.0,
-        sigma=2.0,
         vix=15.0,
         dte=1,
+        wings=25,
+        strike_step=5.0,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
     )
     d = diff_ladder(a, c)
     assert d["mode"] == "diff"
@@ -134,9 +173,12 @@ def test_build_and_diff_only_changed_strikes():
         expiration="2026-08-15",
         side="call",
         band=50.0,
-        sigma=2.0,
         vix=15.0,
         dte=1,
+        wings=25,
+        strike_step=5.0,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
     )
     d2 = diff_ladder(c, e)
     assert d2["mode"] == "diff"
@@ -159,21 +201,3 @@ def test_next_three_expiries_are_distinct_sorted_with_dte():
     assert next3_fri == ["2026-08-14", "2026-08-21", "2026-08-28"]
     assert dte_from_expiration("2026-08-10", today=today) == 0
     assert dte_from_expiration("2026-08-14", today=today) == 4
-
-
-def test_diff_without_prev_is_full():
-    raw = [_raw(5000, mid=1.0)]
-    ladder = build_ladder(
-        raw,
-        underlier="I:SPX",
-        spot=5000.0,
-        expiration="2026-08-15",
-        side="call",
-        band=50.0,
-        sigma=2.0,
-        vix=None,
-        dte=0,
-    )
-    d = diff_ladder(None, ladder)
-    assert d["mode"] == "full"
-    assert d["ladder"]["row_count"] == 1

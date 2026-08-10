@@ -132,6 +132,10 @@ class MassiveClient:
         while url:
             pages += 1
             if pages > max_pages:
+                # Soft stop: return what we have when filters are loose (e.g. expiry scan)
+                # only if we already collected something; else fail loud.
+                if results:
+                    return results
                 raise MassiveClientError(
                     f"Chain pagination exceeded max_pages={max_pages} "
                     f"({len(results)} contracts so far) — check filters"
@@ -145,8 +149,6 @@ class MassiveClient:
                     results.append(row)
             next_url = data.get("next_url")
             if next_url:
-                # next_url may already include apiKey from Massive; use as-is
-                # if absolute, else join.
                 nu = str(next_url).strip()
                 if nu.startswith("http"):
                     url = nu
@@ -156,6 +158,70 @@ class MassiveClient:
                     time.sleep(page_pause_s)
             else:
                 url = None
+        return results
+
+    def fetch_option_chain_until(
+        self,
+        underlying: str,
+        *,
+        should_stop,
+        limit: int = 250,
+        expiration_date: str | None = None,
+        expiration_date_gte: str | None = None,
+        expiration_date_lte: str | None = None,
+        strike_price_gte: float | None = None,
+        strike_price_lte: float | None = None,
+        contract_type: str | None = None,
+        max_pages: int = 40,
+        page_pause_s: float = 0.05,
+    ) -> list[dict[str, Any]]:
+        """Paginate option snapshots until ``should_stop(results)`` is true.
+
+        Used for expiry discovery (stop after N distinct dates) so SPX never
+        downloads thousands of strikes just to learn the calendar.
+        """
+        underlying = (underlying or "").strip()
+        if not underlying:
+            raise MassiveClientError("underlying is required")
+        params: dict[str, str] = {"limit": str(limit), "order": "asc", "sort": "ticker"}
+        if expiration_date:
+            params["expiration_date"] = str(expiration_date).strip()[:10]
+        if expiration_date_gte:
+            params["expiration_date.gte"] = expiration_date_gte
+        if expiration_date_lte:
+            params["expiration_date.lte"] = expiration_date_lte
+        if strike_price_gte is not None:
+            params["strike_price.gte"] = str(float(strike_price_gte))
+        if strike_price_lte is not None:
+            params["strike_price.lte"] = str(float(strike_price_lte))
+        if contract_type:
+            params["contract_type"] = contract_type
+
+        path = f"/v3/snapshot/options/{urllib.parse.quote(underlying, safe='')}"
+        qs = urllib.parse.urlencode(params)
+        url: str | None = f"{self.base_url}{path}?{qs}"
+        results: list[dict[str, Any]] = []
+        pages = 0
+        while url:
+            pages += 1
+            if pages > max_pages:
+                return results
+            data = self._get_json(url)
+            batch = data.get("results") or []
+            if not isinstance(batch, list):
+                raise MassiveClientError("Massive results must be an array")
+            for row in batch:
+                if isinstance(row, dict):
+                    results.append(row)
+            if should_stop(results):
+                return results
+            next_url = data.get("next_url")
+            if not next_url:
+                break
+            nu = str(next_url).strip()
+            url = nu if nu.startswith("http") else f"{self.base_url}{nu}"
+            if page_pause_s > 0:
+                time.sleep(page_pause_s)
         return results
 
     def fetch_last_trade(self, symbol: str) -> dict[str, Any]:

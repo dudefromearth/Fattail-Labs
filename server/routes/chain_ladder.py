@@ -28,12 +28,18 @@ from guards import require_session
 from market_data import live_marks as lm
 from market_data import universe_admin as ua
 from market_data.chain_ladder import (
+    DEFAULT_STRIKE_WINGS,
+    MASSIVE_PAGE_LIMIT,
+    MAX_STRIKES_PER_DTE,
+    STRIKE_WING_CHOICES,
     build_ladder,
     diff_ladder,
     dte_from_expiration,
     extract_chain_underlying_price,
+    infer_listed_step,
     is_proxy_mark_source,
-    sigma_band_points,
+    select_listed_wing_window,
+    strike_window_from_wings,
 )
 from market_data.massive_client import MassiveClient, MassiveClientError
 from routes.trade_log.common import _require_tool_member
@@ -47,8 +53,8 @@ _fetched_at: dict[str, float] = {}
 _CACHE_TTL_S = 1.5
 
 
-def _cache_key(product: str, chain_ul: str, expiration: str, side: str, sigma: float) -> str:
-    return f"{product}|{chain_ul}|{expiration}|{side}|{sigma}"
+def _cache_key(product: str, chain_ul: str, expiration: str, side: str, wings: int) -> str:
+    return f"{product}|{chain_ul}|{expiration}|{side}|w{int(wings)}"
 
 
 def _native_mark_mid(product_symbol: str) -> tuple[float | None, str | None]:
@@ -101,12 +107,14 @@ def _resolve_universe_symbol(symbol: str | None) -> dict[str, Any]:
                 "chain_underlier": (row.get("feed_symbol") or feed).strip(),
                 "kind": row.get("kind") or "index",
                 "enabled": row.get("enabled", True),
+                "strike_step": row.get("strike_step"),
             }
         return {
             "product": product,
             "chain_underlier": feed,
             "kind": "index",
             "enabled": True,
+            "strike_step": None,
         }
 
     with db.transaction() as conn:
@@ -129,15 +137,84 @@ def _resolve_universe_symbol(symbol: str | None) -> dict[str, Any]:
         "chain_underlier": chain_ul,
         "kind": row.get("kind") or "equity",
         "enabled": True,
+        "strike_step": row.get("strike_step"),
     }
 
 
-def _strike_step(product: str, kind: str) -> float:
+def _strike_step(product: str, kind: str, configured: float | None = None) -> float:
+    """Guess step for **fetch width** only. Prefer Admin strike_step when set.
+
+    Equities/ETFs often list **0.5 / 1 / 2.5 / 5** near ATM — use 0.5 as the
+    finest common grid so the Massive strike filter does not skip halves.
+    Final wings are applied on **listed** strikes, not this guess.
+    """
+    if configured is not None:
+        try:
+            s = float(configured)
+            if s > 0:
+                return s
+        except (TypeError, ValueError):
+            pass
     if kind == "index" or product in ("SPX", "NDX", "RUT"):
         return 5.0
     if product == "XSP":
         return 1.0
-    return 1.0
+    # equity / etf / other — finest common OCC fraction
+    return 0.5
+
+
+def _strikes_from_raw(raw: list) -> list[float]:
+    out: list[float] = []
+    for row in raw:
+        if not isinstance(row, dict):
+            continue
+        details = row.get("details") or {}
+        k = details.get("strike_price")
+        if k is None:
+            continue
+        try:
+            out.append(float(k))
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def _probe_spot(
+    client: MassiveClient,
+    *,
+    chain_underlier: str,
+    expiration: str,
+    product: str,
+    mark_mid: float | None,
+    mark_src: str | None,
+) -> tuple[float, str]:
+    """Resolve usable spot without downloading the full chain (OC2).
+
+    Order: one-page Massive sample for underlying_asset → native marks → 503.
+    """
+    # Tiny sample: single page, single expiry — enough for underlying_asset.value
+    try:
+        sample = client.fetch_option_chain(
+            chain_underlier,
+            expiration_date=expiration,
+            limit=50,
+            max_pages=1,
+        )
+    except MassiveClientError:
+        sample = []
+    chain_spot = extract_chain_underlying_price(sample)
+    if chain_spot is not None:
+        return chain_spot, "chain_underlying"
+    if mark_mid is not None:
+        return mark_mid, "marks_native"
+    raise HTTPException(
+        status_code=503,
+        detail=(
+            f"No usable spot for {product}: chain sample had no underlying_asset.value "
+            f"and live marks are missing or proxy-only (source={mark_src or 'none'}). "
+            "Not using SPY/VIXY scale for strikes."
+        ),
+    )
 
 
 def _fetch_ladder(
@@ -147,46 +224,64 @@ def _fetch_ladder(
     kind: str,
     expiration: str,
     side: str,
-    sigma: float,
+    wings: int,
+    strike_step_cfg: float | None = None,
 ) -> dict[str, Any]:
-    # OC15: shared generation key is (feed, expiration) for upstream; include
-    # product/side/sigma so filtered ladders stay distinct in the response cache.
-    key = _cache_key(product, chain_underlier, expiration, side, sigma)
+    """Fetch one expiry + side, broker-style ±wings strikes around ATM.
+
+    Never paginate the full surface. Spot → wing window → one filtered page.
+    """
+    wings = int(wings)
+    key = _cache_key(product, chain_underlier, expiration, side, wings)
     now = time.monotonic()
     with _cache_lock:
         prev_payload = _latest.get(key)
         ts = _fetched_at.get(key, 0.0)
-        if prev_payload and (now - ts) < _CACHE_TTL_S:
+        if prev_payload and (now - ts) < _CACHE_TTL_S and "_raw" not in prev_payload:
             return prev_payload
 
     dte = dte_from_expiration(expiration)
-    vol_pct = _vol_pct_for_dte(dte)
-
-    # Wide provisional band for first Massive pull when spot unknown pre-fetch;
-    # re-filter with true spot after chain underlying is known.
+    vol_pct = _vol_pct_for_dte(dte)  # display context only — not used for range
     mark_mid, mark_src = _native_mark_mid(product)
-    provisional_spot = mark_mid if mark_mid is not None else 5000.0
-    step = _strike_step(product, kind)
-    # Generous first window so we get underlying_asset on results
-    prov_band = sigma_band_points(
-        provisional_spot, vol_pct=vol_pct, dte=dte, sigma=max(float(sigma), 2.0)
-    )
-    # Expand further so underlying_asset arrives even if provisional was SPY-scale
-    # (we no longer use proxy mid — mark_mid is native-only).
-    lo = math.floor((provisional_spot - prov_band * 2) / step) * step
-    hi = math.ceil((provisional_spot + prov_band * 2) / step) * step
-    if mark_mid is None:
-        # No native mark: open a wider strike query (indexes ~ index levels)
-        lo = max(step, lo * 0.5) if lo > 1000 else lo
-        hi = hi * 1.5 if hi > 1000 else hi + 500
+    step_guess = _strike_step(product, kind, strike_step_cfg)
+    is_index = kind == "index" or product in ("SPX", "NDX", "RUT")
 
     try:
         client = MassiveClient()
     except MassiveClientError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    # OC15 generation: one upstream fetch per (feed, expiry) window
-    gen_key = f"gen|{chain_underlier}|{expiration}"
+    spot, spot_source = _probe_spot(
+        client,
+        chain_underlier=chain_underlier,
+        expiration=expiration,
+        product=product,
+        mark_mid=mark_mid,
+        mark_src=mark_src,
+    )
+
+    # Fetch width: pad so fractional listings (2.5) still yield ±wings listed.
+    # Equities/ETFs: prefer full expiry+side page (usually ≪ 250); indexes: $ window.
+    def _pull(lo: float | None, hi: float | None) -> list:
+        return client.fetch_option_chain(
+            chain_underlier,
+            expiration_date=expiration,
+            strike_price_gte=lo,
+            strike_price_lte=hi,
+            contract_type=side if side in ("call", "put") else None,
+            limit=MASSIVE_PAGE_LIMIT,
+            max_pages=1,
+        )
+
+    if is_index:
+        _band0, lo0, hi0, _atm0 = strike_window_from_wings(
+            spot, step=step_guess, wings=wings
+        )
+        gen_key = f"gen|{chain_underlier}|{expiration}|{side}|{lo0}|{hi0}"
+    else:
+        # No strike filter first — includes 0.5 / 1 / 2.5 / 5 listings
+        gen_key = f"gen|{chain_underlier}|{expiration}|{side}|fullpage"
+
     with _cache_lock:
         gen_hit = _latest.get(gen_key)
         gen_ts = _fetched_at.get(gen_key, 0.0)
@@ -194,71 +289,49 @@ def _fetch_ladder(
             raw = gen_hit["_raw"]
         else:
             raw = None
+
     if raw is None:
         try:
-            raw = client.fetch_option_chain(
-                chain_underlier,
-                expiration_date=expiration,
-                # omit tight strike filter when no native spot — underlying price first
-                strike_price_gte=lo if mark_mid is not None else None,
-                strike_price_lte=hi if mark_mid is not None else None,
-                max_pages=40 if mark_mid is not None else 12,
-            )
+            if is_index:
+                raw = _pull(lo0, hi0)
+            else:
+                raw = _pull(None, None)
+                listed = _strikes_from_raw(raw)
+                # If expiry is huge and page truncates far from spot, re-pull a pad window
+                if listed:
+                    atm_tmp = min(listed, key=lambda k: abs(k - spot))
+                    # Need ~wings listed each side; pad with fine step × wings × 1.5
+                    pad = max(wings * step_guess * 1.5, wings * 2.5)
+                    if min(listed) > spot - pad * 0.5 or max(listed) < spot + pad * 0.5:
+                        raw = _pull(spot - pad, spot + pad)
         except MassiveClientError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
         with _cache_lock:
             _latest[gen_key] = {"_raw": raw}
             _fetched_at[gen_key] = time.monotonic()
 
-    # OC2: chain underlying first
-    chain_spot = extract_chain_underlying_price(raw)
-    spot_source = "chain_underlying"
-    if chain_spot is not None:
-        spot = chain_spot
-    elif mark_mid is not None:
-        spot = mark_mid
-        spot_source = "marks_native"
-    else:
+    # Prefer fresher underlying from payload if present
+    chain_spot2 = extract_chain_underlying_price(raw)
+    if chain_spot2 is not None:
+        spot = chain_spot2
+        spot_source = "chain_underlying"
+
+    listed_strikes = _strikes_from_raw(raw)
+    if not listed_strikes:
         raise HTTPException(
-            status_code=503,
-            detail=(
-                f"No usable spot for {product}: chain had no underlying_asset.value "
-                f"and live marks are missing or proxy-only "
-                f"(source={mark_src or 'none'}) — not using SPY/VIXY scale for strikes"
-            ),
+            status_code=502,
+            detail=f"No option contracts returned for {product} {expiration} {side}",
         )
 
-    band = sigma_band_points(spot, vol_pct=vol_pct, dte=dte, sigma=sigma)
-    lo2 = math.floor((spot - band) / step) * step
-    hi2 = math.ceil((spot + band) / step) * step
-
-    # If first fetch was unfiltered wide, re-fetch banded when needed
-    if mark_mid is None or any(
-        True
-        for row in raw
-        if (row.get("details") or {}).get("strike_price") is not None
-        and (
-            float((row.get("details") or {}).get("strike_price")) < lo2
-            or float((row.get("details") or {}).get("strike_price")) > hi2
+    # Broker wings = ±N **listed** strikes (keeps AAPL 302.50, etc.)
+    try:
+        band, lo, hi, atm, listed_n = select_listed_wing_window(
+            listed_strikes, spot, wings
         )
-    ):
-        try:
-            raw = client.fetch_option_chain(
-                chain_underlier,
-                expiration_date=expiration,
-                strike_price_gte=lo2,
-                strike_price_lte=hi2,
-                contract_type=side if side in ("call", "put") else None,
-                max_pages=40,
-            )
-        except MassiveClientError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-        # refresh underlying if present
-        chain_spot2 = extract_chain_underlying_price(raw)
-        if chain_spot2 is not None:
-            spot = chain_spot2
-            spot_source = "chain_underlying"
-            band = sigma_band_points(spot, vol_pct=vol_pct, dte=dte, sigma=sigma)
+    except ValueError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    step = infer_listed_step(listed_strikes, spot) or step_guess
 
     payload = build_ladder(
         raw,
@@ -267,14 +340,21 @@ def _fetch_ladder(
         expiration=expiration,
         side=side,
         band=band,
-        sigma=sigma,
         vix=vol_pct,
         dte=dte,
+        strike_lo=lo,
+        strike_hi=hi,
+        wings=wings,
+        strike_step=step,
     )
     payload["product"] = product
     payload["kind"] = kind
     payload["spot_source"] = spot_source
-    payload["vol_source"] = "vix1d_or_vix_native" if vol_pct is not None else "fallback_band"
+    payload["vol_source"] = "vix1d_or_vix_native" if vol_pct is not None else "none"
+    payload["atm_strike"] = atm
+    payload["listed_in_window"] = listed_n
+    payload["max_strikes_per_dte"] = MAX_STRIKES_PER_DTE
+    payload["massive_page_limit"] = MASSIVE_PAGE_LIMIT
     with _cache_lock:
         _latest[key] = payload
         _fetched_at[key] = time.monotonic()
@@ -302,7 +382,10 @@ def get_chain_ladder(
         description="Deprecated alias for symbol / feed (prefer symbol=)",
     ),
     side: str = Query(default="call", description="call|put"),
-    sigma: float = Query(default=2.0, ge=0.5, le=5.0),
+    wings: int = Query(
+        default=DEFAULT_STRIKE_WINGS,
+        description="Strikes above and below ATM (10|25|50|100; default 25)",
+    ),
     since_hash: str | None = Query(
         default=None,
         description="Last applied content_hash — enables strike-level diff",
@@ -322,6 +405,13 @@ def get_chain_ladder(
     if side_n not in ("call", "put"):
         raise HTTPException(status_code=422, detail="side must be call|put")
 
+    wings_n = int(wings)
+    if wings_n not in STRIKE_WING_CHOICES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"wings must be one of {list(STRIKE_WING_CHOICES)}",
+        )
+
     resolved = _resolve_universe_symbol(symbol or underlier or "SPX")
     nxt = _fetch_ladder(
         product=resolved["product"],
@@ -329,7 +419,8 @@ def get_chain_ladder(
         kind=str(resolved.get("kind") or "equity"),
         expiration=exp,
         side=side_n,
-        sigma=float(sigma),
+        wings=wings_n,
+        strike_step_cfg=resolved.get("strike_step"),
     )
 
     prev: dict[str, Any] | None = None
@@ -385,22 +476,37 @@ def _contracts_from_dates(dates: list[str], *, today: date, limit: int) -> list[
 def _scan_expirations_live(
     chain_underlier: str, *, days: int, limit: int, today: date
 ) -> list[str]:
+    """Discover next ``limit`` distinct listed dates without full-chain download.
+
+    Stops as soon as we have enough future expirations (early exit).
+    """
     gte = today.isoformat()
     lte = (today + timedelta(days=int(days))).isoformat()
+    today_s = today.isoformat()
+    need = int(limit)
     client = MassiveClient()
-    raw = client.fetch_option_chain(
+    found: set[str] = set()
+
+    def _stop(results: list) -> bool:
+        for row in results:
+            details = row.get("details") or {}
+            e = details.get("expiration_date")
+            if e:
+                es = str(e)[:10]
+                if es >= today_s:
+                    found.add(es)
+        return len(found) >= need
+
+    # call_type filter halves SPX volume; we only need dates, either side works
+    client.fetch_option_chain_until(
         chain_underlier,
+        should_stop=_stop,
         expiration_date_gte=gte,
         expiration_date_lte=lte,
-        max_pages=12,
+        contract_type="call",
+        max_pages=20,
     )
-    exps: set[str] = set()
-    for row in raw:
-        details = row.get("details") or {}
-        e = details.get("expiration_date")
-        if e:
-            exps.add(str(e)[:10])
-    return sorted(e for e in exps if e >= today.isoformat())[: int(limit)]
+    return sorted(found)[:need]
 
 
 @router.get("/api/me/market/chain-ladder/expirations")

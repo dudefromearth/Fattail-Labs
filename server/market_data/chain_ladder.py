@@ -69,22 +69,97 @@ def is_proxy_mark_source(source: str | None) -> bool:
     return False
 
 
+# Massive Option Chain Snapshot: max limit is 250 contracts per page.
+MASSIVE_PAGE_LIMIT = 250
+MAX_STRIKES_PER_DTE = MASSIVE_PAGE_LIMIT  # one side, one expiry (per DTE)
+
+# Broker-style wing count: N **listed** strikes above *and* below ATM.
+# Includes fractional listings (e.g. AAPL 302.50). 2×100+1 ≤ 250 page.
+STRIKE_WING_CHOICES = (10, 25, 50, 100)
+DEFAULT_STRIKE_WINGS = 25
+
+
+def infer_listed_step(strikes: list[float], spot: float) -> float | None:
+    """Smallest positive gap among strikes near spot (e.g. 2.5 for AAPL, 5 for SPX)."""
+    xs = sorted({float(s) for s in strikes if s is not None})
+    if len(xs) < 2:
+        return None
+    # Prefer gaps within ~8% of spot (or ±40 pts floor) so far OTM $5/$10 don't dominate
+    radius = max(40.0, abs(float(spot)) * 0.08) if spot else 40.0
+    near = [k for k in xs if abs(k - float(spot)) <= radius] or xs
+    gaps = [near[i + 1] - near[i] for i in range(len(near) - 1) if near[i + 1] > near[i]]
+    if not gaps:
+        return None
+    return float(min(gaps))
+
+
+def select_listed_wing_window(
+    strikes: list[float],
+    spot: float,
+    wings: int,
+) -> tuple[float, float, float, float, int]:
+    """Pick ±``wings`` **listed** strikes around ATM (fractional OK).
+
+    Returns ``(band, lo, hi, atm, listed_count)``.
+    """
+    wings = int(wings)
+    if wings < 1:
+        raise ValueError("wings must be >= 1")
+    max_wings = (MAX_STRIKES_PER_DTE - 1) // 2
+    if wings > max_wings:
+        wings = max_wings
+    xs = sorted({float(s) for s in strikes if s is not None})
+    if not xs:
+        raise ValueError("no listed strikes")
+    spot = float(spot)
+    atm = min(xs, key=lambda k: abs(k - spot))
+    i = xs.index(atm)
+    lo_i = max(0, i - wings)
+    hi_i = min(len(xs) - 1, i + wings)
+    lo = xs[lo_i]
+    hi = xs[hi_i]
+    band = max(spot - lo, hi - spot)
+    return band, lo, hi, atm, (hi_i - lo_i + 1)
+
+
+def strike_window_from_wings(
+    spot: float,
+    *,
+    step: float,
+    wings: int,
+) -> tuple[float, float, float, float]:
+    """Dollar window from assumed grid step (fetch pre-filter only).
+
+    Prefer ``select_listed_wing_window`` on real listings for the final ladder —
+    equities list 0.5 / 1 / 2.5 / 5 intervals that a fixed $1 grid mis-counts.
+    """
+    spot = float(spot)
+    step = float(step)
+    wings = int(wings)
+    if spot <= 0:
+        raise ValueError("spot must be positive")
+    if step <= 0:
+        raise ValueError("step must be positive")
+    if wings < 1:
+        raise ValueError("wings must be >= 1")
+    max_wings = (MAX_STRIKES_PER_DTE - 1) // 2
+    if wings > max_wings:
+        wings = max_wings
+    atm = round(spot / step) * step
+    lo = atm - wings * step
+    hi = atm + wings * step
+    band = max(spot - lo, hi - spot)
+    return band, lo, hi, atm
+
+
 def sigma_band_points(
     spot: float,
     *,
     vol_pct: float | None,
     dte: int,
-    sigma: float = 2.0,
+    sigma: float = 2.5,
 ) -> float:
-    """Strike half-width (points) for ±sigma of expected move over DTE.
-
-    vol_pct: annualized vol in percent points (e.g. 14.2 for 14.2% IV) —
-    **never** an ETF dollar price. Caller must refuse proxy VIXY marks (OC5a).
-
-    em ≈ spot × (vol_pct/100) × √(effective_days/252); band = sigma × em.
-    effective_days = max(1, dte) so 0DTE never collapses to zero width.
-    Fallback if no usable vol: 3% of spot × √days × (sigma/2).
-    """
+    """Legacy σ half-width (points). Ladder range uses strike wings instead."""
     spot = float(spot)
     if spot <= 0:
         raise ValueError("spot must be positive")
@@ -96,6 +171,38 @@ def sigma_band_points(
         em = spot * (float(vol_pct) / 100.0) * math.sqrt(days / 252.0)
         return max(spot * 0.005, sigma * em)  # floor ~0.5% of spot
     return spot * 0.03 * math.sqrt(days) * (sigma / 2.0)
+
+
+def clamp_band_to_max_strikes(
+    spot: float,
+    band: float,
+    *,
+    step: float,
+    max_strikes: int = MAX_STRIKES_PER_DTE,
+) -> tuple[float, float, float]:
+    """Clamp half-width so strike count for one DTE/side is ≤ max_strikes."""
+    spot = float(spot)
+    band = float(band)
+    step = float(step)
+    if spot <= 0:
+        raise ValueError("spot must be positive")
+    if step <= 0:
+        raise ValueError("step must be positive")
+    if band < 0:
+        raise ValueError("band must be non-negative")
+    max_strikes = max(3, int(max_strikes))
+    max_half_steps = (max_strikes - 1) // 2
+    max_band = max_half_steps * step
+    if band > max_band:
+        band = max_band
+    lo = math.floor((spot - band) / step) * step
+    hi = math.ceil((spot + band) / step) * step
+    while int(round((hi - lo) / step)) + 1 > max_strikes and hi > lo:
+        if abs(hi - spot) >= abs(spot - lo):
+            hi -= step
+        else:
+            lo += step
+    return band, lo, hi
 
 
 def extract_chain_underlying_price(raw_contracts: list[dict[str, Any]]) -> float | None:
@@ -197,17 +304,29 @@ def build_ladder(
     expiration: str,
     side: str = "call",
     band: float,
-    sigma: float,
     vix: float | None,
     dte: int,
+    strike_lo: float | None = None,
+    strike_hi: float | None = None,
+    wings: int | None = None,
+    strike_step: float | None = None,
+    sigma: float | None = None,
 ) -> dict[str, Any]:
-    """Filter ±band around spot, one side, vertical strike order."""
+    """Filter one side to strike window; vertical strike order.
+
+    Prefer explicit ``strike_lo`` / ``strike_hi`` (broker wings). Falls back to
+    ``spot ± band`` when bounds are omitted.
+    """
     side = (side or "call").strip().lower()
     if side not in ("call", "put"):
         raise ValueError("side must be call|put")
     exp = str(expiration)[:10]
-    lo = float(spot) - float(band)
-    hi = float(spot) + float(band)
+    if strike_lo is not None and strike_hi is not None:
+        lo = float(strike_lo)
+        hi = float(strike_hi)
+    else:
+        lo = float(spot) - float(band)
+        hi = float(spot) + float(band)
 
     by_strike: dict[float, dict[str, Any]] = {}
     for raw in raw_contracts:
@@ -257,7 +376,6 @@ def build_ladder(
         "spot": float(spot),
         "vix": vix,
         "dte": int(dte),
-        "sigma": float(sigma),
         "band": float(band),
         "strike_lo": lo,
         "strike_hi": hi,
@@ -268,6 +386,12 @@ def build_ladder(
         "as_of": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "fetched_at_unix": time.time(),
     }
+    if wings is not None:
+        payload["wings"] = int(wings)
+    if strike_step is not None:
+        payload["strike_step"] = float(strike_step)
+    if sigma is not None:
+        payload["sigma"] = float(sigma)
     payload["content_hash"] = content_hash(payload)
     return payload
 
@@ -362,7 +486,8 @@ def diff_ladder(
         "expiration": nxt.get("expiration"),
         "side": nxt.get("side"),
         "fields": nxt.get("fields"),
-        "sigma": nxt.get("sigma"),
+        "wings": nxt.get("wings"),
+        "strike_step": nxt.get("strike_step"),
         "dte": nxt.get("dte"),
         "row_count": nxt.get("row_count"),
         # meta always included when diff so spot highlight can move

@@ -23,7 +23,8 @@ export type LadderFull = {
   spot: number;
   vix?: number | null;
   dte?: number;
-  sigma?: number;
+  wings?: number;
+  strike_step?: number;
   band?: number;
   strike_lo?: number;
   strike_hi?: number;
@@ -116,19 +117,25 @@ export async function fetchLadderExpirations(
   };
 }
 
+/** Strikes above and below ATM — broker-style wing choices. */
+export const STRIKE_WING_CHOICES = [10, 25, 50, 100] as const;
+export type StrikeWings = (typeof STRIKE_WING_CHOICES)[number];
+export const DEFAULT_STRIKE_WINGS: StrikeWings = 25;
+
 export async function pollChainLadder(opts: {
   expiration: string;
   /** Admin universe product symbol (SPX, AAPL, …) */
   symbol?: string;
   side?: "call" | "put";
-  sigma?: number;
+  /** Strikes above and below ATM (10|25|50|100). Default 25. */
+  wings?: number;
   since_hash?: string | null;
 }): Promise<LadderPollResult> {
   const q = new URLSearchParams({
     expiration: opts.expiration,
     symbol: opts.symbol || "SPX",
     side: opts.side || "call",
-    sigma: String(opts.sigma ?? 2),
+    wings: String(opts.wings ?? DEFAULT_STRIKE_WINGS),
   });
   if (opts.since_hash) q.set("since_hash", opts.since_hash);
   const r = await fetch(`/api/me/market/chain-ladder?${q}`, {
