@@ -55,6 +55,7 @@ FatTail Labs replaces LearnDash with a first-party course platform for FatTail.a
 | **Frontend** | `web/` | Member UX, public SSG pages, in-place admin UI, SEO surfaces |
 | **API** | `server/` | Auth, domain API, admin mutations, billing webhooks, agent model gateway |
 | **Data** | MySQL `labs` + `migrations/` | System of record for identities, content, progress, live, hub |
+| **Market Bus** | Redis `mb:*` + feeds | Live chains/symbols: Massive → feeds → Redis → one WS/tab → `web/lib/market` — **Arch 28** |
 | **Media files** | `server/uploads/` | Public banners + private resource blobs (not DB BLOBs) |
 | **Edge** | MiniThree nginx + Cloudflare | TLS, host routing, proxy to MiniTwo |
 
