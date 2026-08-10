@@ -4,6 +4,21 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-10 — DL-286 Market Bus W0 GO + MB-P1…P5 land (Redis posture)
+
+**Coach GO (program execution):** Market Bus Spec v1.0.1 + bench plan v1.0.1 **BUILD**.
+
+**Posture reversal (named):** Live multi-worker market data uses **Redis** (`mb:*` keys + pub/sub) as shared generation store — reversing the Chain Picker mission line against an always-on multi-worker Redis pipeline and Arch/18 MySQL-only live marks shape for *this* plane. Reasoning: concurrent chain readers must not multiply Massive. Arch/18 `live_stream` → MySQL marks remains lawful for Curate until O2 exit. MB11: no MSC Redis schemas. Foxtrot: Redis localhost; `LABS_MARKET_BUS=1` + `REDIS_URL`.
+
+**Landed:**
+- `server/market_data/market_bus/` (store, singleflight, metrics)
+- Ladder shared generation via Redis when enabled
+- `python -m market_data.chain_feed`
+- `WS /api/me/market/stream` + `web/lib/market/*`
+- Scale smoke: 10 concurrent fills → 2 Massive calls
+- Gate reports W0…Z under `agents/p-market-bus/gate-reports/`
+
+
 ## 2026-08-10 — DL-285 Market Bus bench plan v1.0.1 + Picker Spec v1.0.2 filename
 
 **Decision:** Heal plan governance per architecture review of the bench plan:

@@ -42,6 +42,10 @@ from market_data.chain_ladder import (
     strike_window_from_wings,
 )
 from market_data.massive_client import MassiveClient, MassiveClientError
+from market_data.market_bus import metrics as mb_metrics
+from market_data.market_bus import singleflight as mb_sf
+from market_data.market_bus.config import bus_enabled
+from market_data.market_bus.store import get_store
 from routes.trade_log.common import _require_tool_member
 
 router = APIRouter(tags=["chain-ladder"])
@@ -55,6 +59,10 @@ _CACHE_TTL_S = 1.5
 
 def _cache_key(product: str, chain_ul: str, expiration: str, side: str, wings: int) -> str:
     return f"{product}|{chain_ul}|{expiration}|{side}|w{int(wings)}"
+
+
+def _bus_ladder_key(chain_ul: str, expiration: str, side: str, wings: int) -> str:
+    return f"mb:ladder:{chain_ul}:{expiration}:{side}:w{int(wings)}"
 
 
 def _native_mark_mid(product_symbol: str) -> tuple[float | None, str | None]:
@@ -217,7 +225,7 @@ def _probe_spot(
     )
 
 
-def _fetch_ladder(
+def _fetch_ladder_uncached(
     *,
     product: str,
     chain_underlier: str,
@@ -227,21 +235,10 @@ def _fetch_ladder(
     wings: int,
     strike_step_cfg: float | None = None,
 ) -> dict[str, Any]:
-    """Fetch one expiry + side, broker-style ±wings strikes around ATM.
-
-    Never paginate the full surface. Spot → wing window → one filtered page.
-    """
+    """Massive pull + ladder build (no process cache). Counts Massive calls."""
     wings = int(wings)
-    key = _cache_key(product, chain_underlier, expiration, side, wings)
-    now = time.monotonic()
-    with _cache_lock:
-        prev_payload = _latest.get(key)
-        ts = _fetched_at.get(key, 0.0)
-        if prev_payload and (now - ts) < _CACHE_TTL_S and "_raw" not in prev_payload:
-            return prev_payload
-
     dte = dte_from_expiration(expiration)
-    vol_pct = _vol_pct_for_dte(dte)  # display context only — not used for range
+    vol_pct = _vol_pct_for_dte(dte)
     mark_mid, mark_src = _native_mark_mid(product)
     step_guess = _strike_step(product, kind, strike_step_cfg)
     is_index = kind == "index" or product in ("SPX", "NDX", "RUT")
@@ -259,10 +256,11 @@ def _fetch_ladder(
         mark_mid=mark_mid,
         mark_src=mark_src,
     )
+    # probe counts as Massive traffic
+    mb_metrics.record_massive_call(1)
 
-    # Fetch width: pad so fractional listings (2.5) still yield ±wings listed.
-    # Equities/ETFs: prefer full expiry+side page (usually ≪ 250); indexes: $ window.
     def _pull(lo: float | None, hi: float | None) -> list:
+        mb_metrics.record_massive_call(1)
         return client.fetch_option_chain(
             chain_underlier,
             expiration_date=expiration,
@@ -277,40 +275,15 @@ def _fetch_ladder(
         _band0, lo0, hi0, _atm0 = strike_window_from_wings(
             spot, step=step_guess, wings=wings
         )
-        gen_key = f"gen|{chain_underlier}|{expiration}|{side}|{lo0}|{hi0}"
+        raw = _pull(lo0, hi0)
     else:
-        # No strike filter first — includes 0.5 / 1 / 2.5 / 5 listings
-        gen_key = f"gen|{chain_underlier}|{expiration}|{side}|fullpage"
+        raw = _pull(None, None)
+        listed = _strikes_from_raw(raw)
+        if listed:
+            pad = max(wings * step_guess * 1.5, wings * 2.5)
+            if min(listed) > spot - pad * 0.5 or max(listed) < spot + pad * 0.5:
+                raw = _pull(spot - pad, spot + pad)
 
-    with _cache_lock:
-        gen_hit = _latest.get(gen_key)
-        gen_ts = _fetched_at.get(gen_key, 0.0)
-        if gen_hit and (now - gen_ts) < _CACHE_TTL_S and isinstance(gen_hit.get("_raw"), list):
-            raw = gen_hit["_raw"]
-        else:
-            raw = None
-
-    if raw is None:
-        try:
-            if is_index:
-                raw = _pull(lo0, hi0)
-            else:
-                raw = _pull(None, None)
-                listed = _strikes_from_raw(raw)
-                # If expiry is huge and page truncates far from spot, re-pull a pad window
-                if listed:
-                    atm_tmp = min(listed, key=lambda k: abs(k - spot))
-                    # Need ~wings listed each side; pad with fine step × wings × 1.5
-                    pad = max(wings * step_guess * 1.5, wings * 2.5)
-                    if min(listed) > spot - pad * 0.5 or max(listed) < spot + pad * 0.5:
-                        raw = _pull(spot - pad, spot + pad)
-        except MassiveClientError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
-        with _cache_lock:
-            _latest[gen_key] = {"_raw": raw}
-            _fetched_at[gen_key] = time.monotonic()
-
-    # Prefer fresher underlying from payload if present
     chain_spot2 = extract_chain_underlying_price(raw)
     if chain_spot2 is not None:
         spot = chain_spot2
@@ -323,7 +296,6 @@ def _fetch_ladder(
             detail=f"No option contracts returned for {product} {expiration} {side}",
         )
 
-    # Broker wings = ±N **listed** strikes (keeps AAPL 302.50, etc.)
     try:
         band, lo, hi, atm, listed_n = select_listed_wing_window(
             listed_strikes, spot, wings
@@ -355,6 +327,78 @@ def _fetch_ladder(
     payload["listed_in_window"] = listed_n
     payload["max_strikes_per_dte"] = MAX_STRIKES_PER_DTE
     payload["massive_page_limit"] = MASSIVE_PAGE_LIMIT
+    payload["bus"] = "redis" if bus_enabled() else "process"
+    return payload
+
+
+def _fetch_ladder(
+    *,
+    product: str,
+    chain_underlier: str,
+    kind: str,
+    expiration: str,
+    side: str,
+    wings: int,
+    strike_step_cfg: float | None = None,
+) -> dict[str, Any]:
+    """Shared generation: Redis (MB-P1) or in-process TTL + single-flight.
+
+    Concurrent members share one Massive fill per key (OC15 / MB2).
+    """
+    wings = int(wings)
+    key = _cache_key(product, chain_underlier, expiration, side, wings)
+    bus_key = _bus_ladder_key(chain_underlier, expiration, side, wings)
+    now = time.monotonic()
+
+    store = get_store()
+    if store is not None:
+        try:
+            hit = store.get_json(bus_key)
+            if hit and hit.get("content_hash"):
+                store.touch_interest(bus_key)
+                # park for diff
+                with _cache_lock:
+                    _latest[key] = hit
+                    _fetched_at[key] = now
+                    h = str(hit.get("content_hash") or "")
+                    if h:
+                        _by_hash[h] = hit
+                return hit
+        except Exception:
+            pass  # fall through to fill
+
+    # In-process L1 (H1-2 minimal + L1 in front of Redis)
+    with _cache_lock:
+        prev_payload = _latest.get(key)
+        ts = _fetched_at.get(key, 0.0)
+        if prev_payload and (now - ts) < _CACHE_TTL_S and "_raw" not in prev_payload:
+            return prev_payload
+
+    def _fill() -> dict[str, Any]:
+        return _fetch_ladder_uncached(
+            product=product,
+            chain_underlier=chain_underlier,
+            kind=kind,
+            expiration=expiration,
+            side=side,
+            wings=wings,
+            strike_step_cfg=strike_step_cfg,
+        )
+
+    try:
+        payload = mb_sf.do(bus_key, _fill)
+    except HTTPException:
+        raise
+    except MassiveClientError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    if store is not None:
+        try:
+            store.set_json(bus_key, payload)
+            store.touch_interest(bus_key)
+        except Exception:
+            pass
+
     with _cache_lock:
         _latest[key] = payload
         _fetched_at[key] = time.monotonic()
@@ -367,6 +411,24 @@ def _fetch_ladder(
                     if dead not in keep:
                         _by_hash.pop(dead, None)
     return payload
+
+
+@router.get("/api/me/market/bus-metrics")
+def market_bus_metrics(request: Request) -> dict:
+    """Debug counters for AT-MB1 (tool member)."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    store_ok = False
+    try:
+        st = get_store()
+        store_ok = bool(st and st.ping())
+    except Exception:
+        store_ok = False
+    return {
+        "bus_enabled": bus_enabled(),
+        "redis_ok": store_ok,
+        "massive_calls": mb_metrics.massive_call_count(),
+    }
 
 
 @router.get("/api/me/market/chain-ladder")
