@@ -103,6 +103,13 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   **Full multi-agent plan:** `docs/Accounts-Capital-Full-Agent-Bench-Plan-v1.0.md`.  
   Board: `agents/p-accounts-capital/ORCHESTRATOR.md`.  
   **Next: W0-1…W0-5 → W0-G · no L/A/F code before W0-G.**
+- `agents/p-campaign-phase/` — **Campaign Phase & Charter Tiering** (Big Three sign gate;
+  dormant-until-adopted optionals; end-on-close; Same-bet Tier 2; CR-12 charter-only;
+  phase report strip: free cash / free margin / P13 DD% / strategy mix; prune judgment).  
+  Spec: `Specs/FatTail-Labs-Campaign-Phase-and-Charter-Tiering-Spec-v1.0.md` (v1.0.1).  
+  **Full multi-agent plan:** `docs/Campaign-Phase-Charter-Tiering-Full-Agent-Bench-Plan-v1.0.md`.  
+  Board: `agents/p-campaign-phase/ORCHESTRATOR.md`.  
+  **W0-G PASS 2026-08-09 · Next: S1-0 schema/domain · no G before S1-G.**
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,

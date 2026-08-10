@@ -4,6 +4,40 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-09 — DL-278 Campaign phase reports — free cash, structure_risk_open, P13
+
+**Hotel / Coach (W0-1):** Phase report strip is **read-time only** (no second equity store).
+
+| Metric | Law |
+|--------|-----|
+| **Free cash** | Balance − open cost basis; negative lawful; account-free campaign → identity total free cash (OD-free-cash-scope) |
+| **Free margin** | `declared_buying_power − structure_risk_open` when BP set; else null. `structure_risk_open` = sum defined max loss of open structures — **not** broker MM. Public API **forbids** field name `margin_at_risk`. |
+| **Realized DD% (campaign strip)** | Peak-to-trough of campaign trading curve as **% of campaign allocation** (P13) — same denominator as declared max DD%. Master campaign-blind DD stays on Accounts & Capital. |
+| **Strategy mix** | Informational counts — not prune rank |
+| **Prune** | Lifecycle + judgment only; **no** P&L-ranked prune candidates (P10) |
+
+Board: `agents/p-campaign-phase/` · Spec §6 · plan R*.
+
+## 2026-08-09 — DL-277 Campaign charter locks — L-End, L-T2, L-DD, L-Adopt + Finding five
+
+**Coach (W0-0):**
+
+| Lock | Law |
+|------|-----|
+| **L-End** | End date optional to start; **required** to complete/archive |
+| **L-T2** | Same-bet Tier 2 visible/skippable; actionable when adopted |
+| **L-DD** | Max DD always **percent of this campaign’s allocation** |
+| **L-Adopt** | Optional attributes dormant until adopted; **post-sign** adopt and un-adopt are amendments + `charter_version` bump |
+| **P9** | No per-campaign correlation strip on phase report (Finding five blessed) |
+| **P10** | No P&L prune-candidate ranking in v1 (Finding five blessed) |
+| **CR-12** | Once at campaign create / pre-sign only — never Trade Log / trade create; ban product copy “at stamp” for this prompt |
+
+Residual ODs for ship (defaults): OD-SB indicative Same-bet copy · OD-alloc-modes fixed+dynamic note UI · OD-free-cash-scope identity total · OD-CR12-copy inline quiet banner · OD-title “Campaign”+date.
+
+## 2026-08-09 — DL-276 Campaign Phase & Charter Tiering Spec v1.0.1 RATIFIED + BUILD AUTHORITY
+
+**Coach:** Spec `FatTail-Labs-Campaign-Phase-and-Charter-Tiering-Spec-v1.0.md` **v1.0.1** is **product law**. Execution: `docs/Campaign-Phase-Charter-Tiering-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-campaign-phase/`. **BUILD AUTHORITY** after W0-G for S→G→U∥R→C→L→Z. Critical path: `W0-G → S1-G → G1-G → U1-G ∥ R1-G → C1-G → L1-G → Z-G`. Umpire (P3) and P13/`structure_risk_open` gates never waived. Queued out: Lab Pearson CR-4, per-campaign correlation strip, P&L prune rank, Lab curation handoff list, live broker margin engine. Companion consume: Capital v0.3 · Funding v0.2 · Campaign v1.3 · Positions · Trade Log · Top-Level Account Amendment. Gate: `agents/p-campaign-phase/gate-reports/W0-0-coach-go.md` · W0-G.
+
 ## 2026-08-09 — DL-273 Help concierge v1.2 — lean prompt + searchable reference library
 
 **Decision:** Change how the concierge gets its knowledge. Was: one static
