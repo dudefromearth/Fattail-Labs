@@ -95,6 +95,39 @@ function toCandles(payload: OhlcPayload, tf: OhlcTf): CandlestickData[] {
   return out;
 }
 
+/**
+ * How many bars to show when a TF is selected — similar candle density across TFs.
+ * Full 3y history stays loaded so the user can zoom/pan out.
+ */
+function visibleBarCount(tf: OhlcTf, widthPx: number): number {
+  // ~6–8 px per candle; clamp to a usable range
+  const byWidth = Math.floor(Math.max(280, widthPx) / 7);
+  // Slightly more bars on coarser TFs so wall-clock span feels related
+  const tfBias: Record<OhlcTf, number> = {
+    "1d": 1.15,
+    "4h": 1.1,
+    "1h": 1.0,
+    "30m": 0.95,
+    "10m": 0.9,
+    "5m": 0.85,
+  };
+  const n = Math.round(byWidth * (tfBias[tf] ?? 1));
+  return Math.max(40, Math.min(280, n));
+}
+
+function showRecentBars(
+  chart: IChartApi,
+  barCount: number,
+  visible: number,
+): void {
+  if (barCount < 1) return;
+  const vis = Math.min(visible, barCount);
+  // Logical indices: 0..barCount-1; pad a few empty slots on the right
+  const to = barCount - 1 + 4;
+  const from = Math.max(-0.5, to - vis);
+  chart.timeScale().setVisibleLogicalRange({ from, to });
+}
+
 function CandleHost({
   payload,
   tf,
@@ -134,6 +167,7 @@ function CandleHost({
         borderColor: theme.border,
         timeVisible: tf !== "1d",
         secondsVisible: false,
+        rightOffset: 4,
       },
       handleScroll: { mouseWheel: true, pressedMouseMove: true },
       handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
@@ -148,23 +182,41 @@ function CandleHost({
       wickDownColor: theme.wickDown,
       borderVisible: false,
     });
-    series.setData(toCandles(payload, tf));
-    chart.timeScale().fitContent();
+    const candles = toCandles(payload, tf);
+    series.setData(candles);
+    // Do not fitContent() — that compresses 3y of bars. Show a proportional
+    // recent window for this timeframe; user can zoom/pan for more history.
+    showRecentBars(
+      chart,
+      candles.length,
+      visibleBarCount(tf, el.clientWidth),
+    );
 
     const ro = new ResizeObserver(() => {
       if (!hostRef.current || !chartRef.current) return;
-      chartRef.current.applyOptions({
-        width: Math.max(1, hostRef.current.clientWidth),
-        height: Math.max(200, hostRef.current.clientHeight),
-      });
+      const w = Math.max(1, hostRef.current.clientWidth);
+      const h = Math.max(200, hostRef.current.clientHeight);
+      chartRef.current.applyOptions({ width: w, height: h });
+      // Keep density proportional on resize (recent end)
+      showRecentBars(
+        chartRef.current,
+        candles.length,
+        visibleBarCount(tf, w),
+      );
     });
     ro.observe(el);
     const raf = requestAnimationFrame(() => {
       if (hostRef.current && chartRef.current) {
+        const w = Math.max(1, hostRef.current.clientWidth);
         chartRef.current.applyOptions({
-          width: Math.max(1, hostRef.current.clientWidth),
+          width: w,
           height: Math.max(200, hostRef.current.clientHeight),
         });
+        showRecentBars(
+          chartRef.current,
+          candles.length,
+          visibleBarCount(tf, w),
+        );
       }
     });
 
