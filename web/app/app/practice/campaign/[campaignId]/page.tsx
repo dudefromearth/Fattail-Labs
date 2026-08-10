@@ -458,23 +458,11 @@ export default function CampaignEditorPage() {
                 )}
               </div>
 
-              {campaign.is_ledger ? (
-                <p
-                  className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-3 py-2 text-sm text-[var(--color-label-secondary)]"
-                  data-testid="campaign-ledger-notice"
-                >
-                  This is the account <strong>ledger</strong> — furniture, not a
-                  signed charter. No Campaign Panel and no radar. Open a member
-                  campaign for deliberate seasons.
-                </p>
-              ) : (
-                <CampaignPanel
-                  campaignId={campaign.id}
-                  isLedger={false}
-                />
-              )}
-
-              <div className="surface-card space-y-4 border border-[var(--color-separator)] p-4 sm:p-6">
+              {/* Definition (charter fields) above panel / radar */}
+              <div
+                className="surface-card space-y-4 border border-[var(--color-separator)] p-4 sm:p-6"
+                data-testid="campaign-definition"
+              >
                 <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
                   Title
                   <input
@@ -572,6 +560,22 @@ export default function CampaignEditorPage() {
                   />
                 </label>
               </div>
+
+              {campaign.is_ledger ? (
+                <p
+                  className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-3 py-2 text-sm text-[var(--color-label-secondary)]"
+                  data-testid="campaign-ledger-notice"
+                >
+                  This is the account <strong>ledger</strong> — furniture, not a
+                  signed charter. No Campaign Panel and no radar. Open a member
+                  campaign for deliberate seasons.
+                </p>
+              ) : (
+                <CampaignPanel
+                  campaignId={campaign.id}
+                  isLedger={false}
+                />
+              )}
 
               {/* Amendments — neutral history, no judgment chrome */}
               {(termAmends.length > 0 || statusAmends.length > 0) && (
