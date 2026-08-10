@@ -21,7 +21,7 @@ export const OPTIONS_LAB_SUITE: OptionsLabAppItem[] = [
     href: "/app/options-lab/volume-profile",
     blurb:
       "Candlestick chart of the underlier with volume profile — session structure before structure.",
-    status: "soon",
+    status: "live",
   },
   {
     id: "heatmap",

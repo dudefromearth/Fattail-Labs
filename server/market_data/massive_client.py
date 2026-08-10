@@ -292,28 +292,47 @@ class MassiveClient:
                 "limit": str(max(1, min(50000, int(limit)))),
             }
         )
-        data = self._get_json(f"{self.base_url}{path}?{qs}")
-        results = data.get("results") if isinstance(data, dict) else None
-        if not isinstance(results, list):
-            return []
+        url: str | None = f"{self.base_url}{path}?{qs}"
         out: list[dict[str, Any]] = []
-        for row in results:
-            if not isinstance(row, dict) or row.get("c") is None:
-                continue
-            try:
-                out.append(
-                    {
-                        "t": int(row["t"]) if row.get("t") is not None else None,
-                        "o": float(row["o"]) if row.get("o") is not None else None,
-                        "h": float(row["h"]) if row.get("h") is not None else None,
-                        "l": float(row["l"]) if row.get("l") is not None else None,
-                        "c": float(row["c"]),
-                        "v": float(row["v"]) if row.get("v") is not None else None,
-                    }
-                )
-            except (TypeError, ValueError, KeyError):
-                continue
-        return [b for b in out if b.get("t") is not None]
+        # Paginate: multi-year minute/hour ranges often exceed one 50k page
+        max_pages = 40
+        pages = 0
+        while url and pages < max_pages:
+            pages += 1
+            data = self._get_json(url)
+            results = data.get("results") if isinstance(data, dict) else None
+            if not isinstance(results, list):
+                break
+            for row in results:
+                if not isinstance(row, dict) or row.get("c") is None:
+                    continue
+                try:
+                    out.append(
+                        {
+                            "t": int(row["t"]) if row.get("t") is not None else None,
+                            "o": float(row["o"]) if row.get("o") is not None else None,
+                            "h": float(row["h"]) if row.get("h") is not None else None,
+                            "l": float(row["l"]) if row.get("l") is not None else None,
+                            "c": float(row["c"]),
+                            "v": float(row["v"]) if row.get("v") is not None else None,
+                        }
+                    )
+                except (TypeError, ValueError, KeyError):
+                    continue
+            next_url = data.get("next_url") if isinstance(data, dict) else None
+            if not next_url:
+                break
+            nu = str(next_url).strip()
+            url = nu if nu.startswith("http") else f"{self.base_url}{nu}"
+            if self.timeout_s and pages > 1:
+                time.sleep(0.05)
+        # Deduplicate by t ascending (pagination can rare-overlap)
+        by_t: dict[int, dict[str, Any]] = {}
+        for b in out:
+            t = b.get("t")
+            if t is not None:
+                by_t[int(t)] = b
+        return [by_t[k] for k in sorted(by_t.keys())]
 
     def fetch_daily_closes(
         self,

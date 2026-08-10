@@ -113,6 +113,7 @@ def _resolve_universe_symbol(symbol: str | None) -> dict[str, Any]:
             return {
                 "product": row["symbol"],
                 "chain_underlier": (row.get("feed_symbol") or feed).strip(),
+                "proxy_symbol": (row.get("proxy_symbol") or None),
                 "kind": row.get("kind") or "index",
                 "enabled": row.get("enabled", True),
                 "strike_step": row.get("strike_step"),
@@ -120,6 +121,7 @@ def _resolve_universe_symbol(symbol: str | None) -> dict[str, Any]:
         return {
             "product": product,
             "chain_underlier": feed,
+            "proxy_symbol": None,
             "kind": "index",
             "enabled": True,
             "strike_step": None,
@@ -140,9 +142,11 @@ def _resolve_universe_symbol(symbol: str | None) -> dict[str, Any]:
         )
     feed = (row.get("feed_symbol") or "").strip()
     chain_ul = feed if feed else row["symbol"]
+    proxy = (row.get("proxy_symbol") or "").strip() or None
     return {
         "product": row["symbol"],
         "chain_underlier": chain_ul,
+        "proxy_symbol": proxy,
         "kind": row.get("kind") or "equity",
         "enabled": True,
         "strike_step": row.get("strike_step"),
