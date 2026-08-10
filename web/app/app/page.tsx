@@ -91,7 +91,7 @@ const FALLBACK_APPS: AppRow[] = [
     blurb:
       "Chain ladder: pick a name from the shared universe, the next three expiries, and watch strikes update in place — process structure, not P&L theater.",
     status: "live",
-    href: "/app/options-lab",
+    href: "/app/options-lab/heatmap",
   },
   {
     id: 0,
@@ -188,7 +188,7 @@ function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
         blurb:
           optionsFromApi.blurb ||
           (FALLBACK_APPS.find((a) => a.slug === "options-lab") as AppRow).blurb,
-        href: optionsFromApi.href || "/app/options-lab",
+        href: optionsFromApi.href || "/app/options-lab/heatmap",
         status: "live",
       }
     : (FALLBACK_APPS.find((a) => a.slug === "options-lab") as AppRow);
