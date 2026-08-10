@@ -4,6 +4,25 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-10 — DL-281 Admin Flow readability — hover-trace, dwell time, summary, click-to-lock
+
+**Decision:** Make the DL-272 Flow Sankey actually legible (Coach feedback: "cool but
+hard to see the journey; and it can't tell dwell from drop-off"). Four additions, all on
+the existing `page_views` data — **no migration**. (1) **Hover-to-trace** — replace the
+native SVG `<title>` tooltips with a custom popup; hovering a box/ribbon dims everything
+else and shows a clean summary. (2) **Click-to-lock** — clicking a box freezes the
+selection and lights the **full downstream path** (forward reachability, several steps
+deep), with a pinned popup + "Clear lock" affordance; click empty space to clear. (3)
+**Average time per area** — `flow.py` sums the gap from each page view to the next within a
+session (terminal views are unknowable → `avg_seconds=null`, shown as "—", never a fake 0);
+surfaced in the box popup, a new drop-off "Avg time" column, and the summary. This
+disambiguates a high exit as an *engaged exit* vs a *quick bounce*. (4) **Plain-English
+summary line** — most-common path · where members spend the most time · biggest exit point
+(with dwell). Frontend `web/app/admin/flow/page.tsx` (needs web build); backend adds dwell
+to `flow.py` + `test_flow.py` (21 flow/help tests pass). **Verified on real prod data**
+(522 sessions/72 members): e.g. Courses reached by 421 but 82% exit at avg ~1m29s (a real
+drop-off), vs Trade Log 26% exit at avg ~2m51s (engaged). Deployed LIVE (origin `a3ccd44`).
+
 ## 2026-08-10 — DL-280 Options Chain Picker locks — OC2/OC5a/OC15 · HIG · Market parent · OC11
 
 **Coach (W0):**
