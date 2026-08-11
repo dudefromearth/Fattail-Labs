@@ -29,6 +29,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [18-shared-live-marks-stream.md](./18-shared-live-marks-stream.md) | Shared symbol universe + live stream + correlation (MySQL marks / Curate) |
 | [28-massive-market-bus.md](./28-massive-market-bus.md) | **Market Bus:** Massive → feeds → Redis → one WS/tab → shared client (Options Lab, scale) |
 | [29-options-lab-heatmap-templates.md](./29-options-lab-heatmap-templates.md) | **Options Lab Heatmap:** chain template framework (flies, verticals, GEX) over one live model |
+| [30-options-pricing-foundation.md](./30-options-pricing-foundation.md) | **Options Pricing Foundation (design):** multi-exp data plane + use-case model packs · apps wire later |
 | [19-strategy-lab-as-built-map.md](./19-strategy-lab-as-built-map.md) | Code/spec/route map for Curate/Deploy as-built |
 | [20-strategy-lab-curate-board-performance.md](./20-strategy-lab-curate-board-performance.md) | Multi-bot Curate board performance/stability (DL-231) |
 | [21-visualize-ai.md](./21-visualize-ai.md) | Visualize AI system architecture (pre-impl · DL-236) |
@@ -44,6 +45,8 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 |---|---|
 | Arch **28** | Massive → feed → Redis → API → one WebSocket → shared client |
 | Arch **29** | **Heatmap templates** (design): flies / verticals / GEX over one chain model · diff once · many views |
+| Arch **30** | **Options Pricing Foundation** (design): L0–L4 data plane + day/outlook/backtest packs · foundation before app wiring |
+| Spec **OPF v0.1** | `Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_1.md` — normative layers, packs, lock, AT |
 | Spec **Heatmap Templates v0.2** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` — product law (DRAFT); v0.1 superseded |
 | Bench plan | `docs/Options-Lab-Heatmap-Templates-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-heatmap/` |
 | Spec | `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` v1.0.1 |
