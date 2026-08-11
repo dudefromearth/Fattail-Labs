@@ -4,6 +4,15 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-295 Position Builder & Book Spec v0.1 (review baseline)
+
+**Decision:** File product Spec for Options Lab **Position Builder + Position list/cards + lock/unlock + card↔viewport law** as **DRAFT review baseline** — review before implementation plan.
+
+- Path: `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_1.md`
+- **Card = definition**; **viewport = OPF visualization**; **chain = live market**
+- Lock/unlock maps OPF §5.7; §11 gap map admits as-built incompleteness (DL-294 partial land)
+- Process: Accept/Override OD-PB1–10 → implementation plan → code/ATs — **not** silent code-first
+
 ## 2026-08-11 — DL-294 Analyzer Position Builder + cards + threshold alerts
 
 **Decision:** Options Lab Analyzer gains MSC-style **Position Builder** (live dual-side mids for accurate debit/credit), **position cards** (list after Analyze), and **threshold alert cards** (price above/below/touch from PnLChart context menu). All pricing remains **OPF**; builder only hydrates leg mids/IV from chain generations.
