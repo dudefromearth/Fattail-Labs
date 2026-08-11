@@ -654,12 +654,12 @@ export default function HeatmapChainPanel() {
           >
             {tpl.layout === "matrix" && matrix ? (
               /* MSC-look matrix: gold figures, green width headers, ATM gold */
-              <table className="w-full min-w-[28rem] border-collapse text-[11px] leading-none">
+              <table className="w-full min-w-[28rem] border-collapse text-[12px] leading-none">
                 <thead className="sticky top-0 z-[2] bg-[#0a0a0e]/90 backdrop-blur-sm">
-                  <tr className="border-b border-white/10">
+                  <tr className="h-8 border-b border-white/10">
                     <th
                       scope="col"
-                      className="sticky left-0 z-[3] w-[3.75rem] min-w-[3.75rem] bg-[#0a0a0e] px-2 py-1.5 text-center text-[10px] font-medium uppercase tracking-wide text-white/45"
+                      className="sticky left-0 z-[3] h-8 w-[3.75rem] min-w-[3.75rem] bg-[#0a0a0e] px-2 text-center align-middle text-[10px] font-medium uppercase tracking-wide text-white/45"
                     >
                       Strike
                     </th>
@@ -667,7 +667,7 @@ export default function HeatmapChainPanel() {
                       <th
                         key={c.id}
                         scope="col"
-                        className="min-w-[3rem] px-1 py-1.5 text-center text-[11px] font-semibold tabular-nums text-emerald-400"
+                        className="h-8 min-w-[3rem] px-1 text-center align-middle text-[12px] font-semibold tabular-nums text-emerald-400"
                       >
                         {c.label}
                       </th>
@@ -680,13 +680,13 @@ export default function HeatmapChainPanel() {
                       key={row.strike}
                       data-spot={row.isSpot ? "1" : "0"}
                       className={[
-                        "h-6 border-b border-white/[0.03]",
+                        "h-8 border-b border-white/[0.03]",
                         row.isSpot ? "border-t border-amber-400/80" : "",
                       ].join(" ")}
                     >
                       <td
                         className={[
-                          "sticky left-0 z-[1] w-[3.75rem] min-w-[3.75rem] border-r border-white/[0.03] px-1 text-center tabular-nums",
+                          "sticky left-0 z-[1] h-8 w-[3.75rem] min-w-[3.75rem] border-r border-white/[0.03] px-1 text-center align-middle tabular-nums",
                           row.isSpot
                             ? "bg-black/40 font-bold text-amber-400"
                             : "bg-black/20 text-white/45",
@@ -700,10 +700,9 @@ export default function HeatmapChainPanel() {
                           <td
                             key={col.id}
                             title={cell?.tooltip}
-                            className="min-w-[3rem] px-0.5 text-center tabular-nums text-amber-400 [text-shadow:0_0_2px_rgba(0,0,0,0.8)]"
+                            className="h-8 min-w-[3rem] px-0.5 text-center align-middle tabular-nums text-[12px] text-amber-400 [text-shadow:0_0_2px_rgba(0,0,0,0.8)]"
                             style={{
                               backgroundColor: cell?.bgCss || "#1a1a1a",
-                              height: "24px",
                             }}
                           >
                             {cell?.display ?? "—"}
