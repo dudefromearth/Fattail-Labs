@@ -2,6 +2,8 @@
 
 export type LadderRow = {
   strike: number;
+  /** call | put — dual-side model (HM15) */
+  side?: "call" | "put" | string;
   is_spot?: boolean;
   ticker?: string | null;
   mid?: number | null;
@@ -16,10 +18,20 @@ export type LadderRow = {
   iv?: number | null;
 };
 
+/** Composite key for dual-side maps: "call:7800" */
+export function contractKey(
+  side: string | undefined,
+  strike: number,
+): string {
+  return `${(side || "call").toLowerCase()}:${Number(strike)}`;
+}
+
 export type LadderFull = {
   underlier: string;
   expiration: string;
   side: string;
+  /** HM15: both call and put books in rows */
+  dual_side?: boolean;
   spot: number;
   vix?: number | null;
   dte?: number;
@@ -34,6 +46,7 @@ export type LadderFull = {
   row_count: number;
   as_of?: string;
   content_hash: string;
+  excluded_adjusted_count?: number;
 };
 
 export type LadderPollResult =
@@ -50,7 +63,8 @@ export type LadderPollResult =
       strike_hi?: number;
       row_count?: number;
       upserts: LadderRow[];
-      removes: number[];
+      /** Composite keys "call:K" or legacy bare strike numbers */
+      removes: Array<number | string>;
       changed_strike_count?: number;
     }
   | { mode: "full"; content_hash: string; ladder: LadderFull };
@@ -191,28 +205,28 @@ export async function pollChainLadder(opts: {
   };
 }
 
-/** Apply server patch into local row map — only touched strikes change. */
+/** Apply server patch into dual-side contract map — key = side:strike. */
 export function applyLadderDiff(
-  rowsByStrike: Map<number, LadderRow>,
+  rowsByKey: Map<string, LadderRow>,
   result: LadderPollResult,
 ): {
-  next: Map<number, LadderRow>;
-  touched: Set<number>;
+  next: Map<string, LadderRow>;
+  touched: Set<string>;
   meta: Partial<LadderFull> | null;
   hash: string;
 } {
   if (result.mode === "unchanged") {
     return {
-      next: rowsByStrike,
+      next: rowsByKey,
       touched: new Set(),
       meta: null,
       hash: result.content_hash,
     };
   }
   if (result.mode === "full") {
-    const next = new Map<number, LadderRow>();
+    const next = new Map<string, LadderRow>();
     for (const row of result.ladder.rows) {
-      next.set(Number(row.strike), row);
+      next.set(contractKey(row.side, Number(row.strike)), row);
     }
     return {
       next,
@@ -222,22 +236,38 @@ export function applyLadderDiff(
     };
   }
   // diff
-  const next = new Map(rowsByStrike);
-  const touched = new Set<number>();
+  const next = new Map(rowsByKey);
+  const touched = new Set<string>();
   for (const s of result.removes) {
-    const k = Number(s);
-    next.delete(k);
-    touched.add(k);
+    const k =
+      typeof s === "string" && s.includes(":")
+        ? s
+        : contractKey("call", Number(s)); // legacy bare strike
+    // also try put if legacy
+    if (typeof s === "string" && s.includes(":")) {
+      next.delete(k);
+      touched.add(k);
+    } else {
+      const ck = contractKey("call", Number(s));
+      const pk = contractKey("put", Number(s));
+      if (next.has(ck)) {
+        next.delete(ck);
+        touched.add(ck);
+      }
+      if (next.has(pk)) {
+        next.delete(pk);
+        touched.add(pk);
+      }
+    }
   }
   for (const row of result.upserts) {
-    const k = Number(row.strike);
+    const k = contractKey(row.side, Number(row.strike));
     next.set(k, row);
     touched.add(k);
   }
-  // spot flag may move without mid change — clear is_spot then set
   if (result.spot_strike != null) {
     for (const [k, row] of next) {
-      const want = k === Number(result.spot_strike);
+      const want = Number(row.strike) === Number(result.spot_strike);
       if (Boolean(row.is_spot) !== want) {
         next.set(k, { ...row, is_spot: want });
         touched.add(k);
@@ -260,4 +290,16 @@ export function applyLadderDiff(
     },
     hash: result.content_hash,
   };
+}
+
+/** Rows for one side, high strike first. */
+export function rowsForSide(
+  map: Map<string, LadderRow>,
+  side: "call" | "put",
+): LadderRow[] {
+  const out: LadderRow[] = [];
+  for (const row of map.values()) {
+    if ((row.side || "call").toLowerCase() === side) out.push(row);
+  }
+  return out.sort((a, b) => b.strike - a.strike);
 }
