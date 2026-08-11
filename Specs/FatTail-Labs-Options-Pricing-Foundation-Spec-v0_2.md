@@ -1,18 +1,19 @@
 # FatTail Labs — Options Pricing Foundation Spec v0.2
 
-**Status:** **DRAFT · ratification-ready** (2026-08-11) · **current revision v0.2.1**  
+**Status:** **BUILD AUTHORITY** (Coach W0-0 GO 2026-08-11) · **current revision v0.2.1**  
 **Type:** Foundation product + architecture law — **data plane + model packs**  
 **Short name:** **OPF** (Options Pricing Foundation)  
 **Filename:** `FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` (underscore convention)  
 **Architecture:** [`Architecture/30-options-pricing-foundation.md`](../Architecture/30-options-pricing-foundation.md)  
 **Supersedes:** [`FatTail-Labs-Options-Pricing-Foundation-Spec-v0_1.md`](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_1.md) (v0.1 retained as historical; **do not implement against v0.1**)  
-**DL:** DL-289  
+**DL:** DL-289 (file) · **DL-290** (Coach GO + OD-PF Accept)  
+**Bench:** [`docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md`](../docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md)
 
 **Revisions:**  
 - **v0.2** — OPF21–33, τ, RECON, calendar arb, archive stale, advisories  
 - **v0.2.1** — AM/PM settlement for τ; **1-minute** τ floor + clamp disclosure  
 
-**Content integrity:** Landing content hash (sha1 of body excluding this line): `3b70e4f4253df1dfa9fcaa60b381df67e0ea14e1`.
+**Content integrity:** Landing content hash (sha1 of body excluding this line): `cb5f3cc201d1c4fb257a37dd67ade35fecaa108d`.
 
 **Parents (normative where noted):**
 

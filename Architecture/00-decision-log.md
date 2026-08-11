@@ -4,6 +4,43 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-291 OPF foundation L0–L4 AS-BUILT (program close)
+
+**Decision:** Options Pricing Foundation **foundation exit** — L0–L4 landed; **no L5 app wiring**.
+
+**Evidence:** `pytest tests/test_opf_foundation.py` → **19 passed**. Gates T…Z PASS under `agents/p-options-pricing-foundation/gate-reports/`. Arch 30 status → **AS-BUILT (foundation)**.
+
+**Ship surface:** `server/opf/*` + `routes/pricing.py` (resolve / interest / lock / packs). Dual-key `chain_feed` parse via `opf.keys`. Cold archive under `LABS_OPF_ARCHIVE_ROOT` (default `server/data/opf_archive`).
+
+**Explicit non-claim:** Heatmap, Analyzer, GEX, and bots still use pre-OPF paths until a separate L5 program. MSC remains non-authority.
+
+## 2026-08-11 — DL-290 OPF Coach W0-0 GO + OD-PF1–11 Accept
+
+**Decision:** Options Pricing Foundation Spec **v0.2.1** is **BUILD AUTHORITY**. Execute full agent bench plan v1.0: L0–L4 foundation only (no L5 app wiring).
+
+**Content hash (sha1 body excl. integrity line):** `cb5f3cc201d1c4fb257a37dd67ade35fecaa108d`
+
+**OD-PF Accept (Coach — plan recommendations as law):**
+
+| OD | Accept |
+|----|--------|
+| OD-PF1 Primary exp | Earliest leg expiration |
+| OD-PF2 Default expiration curve | Front-exp residual |
+| OD-PF3 Sticky day-trade | Sticky delta index 0–2 DTE |
+| OD-PF4 Package bid/ask | After mid natural (v1 mid-only marks) |
+| OD-PF5 Archive retention + max-stale | Config days; default max-stale **15 min** intraday (`LABS_OPF_ARCHIVE_MAX_STALE_MS=900000`) |
+| OD-PF6 Client engine mirror | **Server-only v1** (no dual-language engines) |
+| OD-PF7 American engine | **CRR** |
+| OD-PF8 Day-trade on skew | **Fail loud** @ `LABS_OPF_MAX_SKEW_MS=3000` |
+| OD-PF9 Rates bootstrap | Config SOFR continuous (`LABS_OPF_RISK_FREE_RATE`) |
+| OD-PF10 Interest cap | **32** concurrent (`LABS_OPF_MAX_GENERATION_INTERESTS`) |
+| OD-PF11 RECON tol | **$1** abs or **1%** \|mark\| |
+
+**Scope:** Phases W0→T→G→R→P→D→O→B→A→K→Z. NX1–5 (Heatmap/Analyzer/GEX/bots UI, full OPRA ticks, 3D risk) **out**.
+
+**Board:** `agents/p-options-pricing-foundation/`  
+**Gate:** `agents/p-options-pricing-foundation/gate-reports/W0-0-coach-go.md`
+
 ## 2026-08-11 — DL-289 Options Pricing Foundation Spec v0.2.1 (ratification-ready DRAFT)
 
 **Decision:** File and fold **Options Pricing Foundation (OPF)** as Labs pricing north star — foundation **before** app wiring.
@@ -18,7 +55,7 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 **MSC is not the standard.** Parent citations: Market Bus Spec (content v1.0.1), Chain Picker Spec v1.0.2 (**OC6a verified**), Heatmap Spec v0_2 (**HM18/HM19 verified**).
 
-**Coach GO for implementation** still requires specialist gates as for other DRAFT Specs; document is **ratification-ready** per advisor seat on v0.2 + v0.2.1 τ one-liners. App wiring (Heatmap/Analyzer/GEX) is a **separate** program after foundation exit (F6).
+**Coach GO:** issued **DL-290**. Foundation as-built: **DL-291**. App wiring (Heatmap/Analyzer/GEX) remains a **separate** L5 program.
 
 ## 2026-08-10 — DL-288 Admin help thread — sender is visually unambiguous
 
