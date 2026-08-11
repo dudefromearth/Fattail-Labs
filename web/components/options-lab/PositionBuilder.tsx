@@ -2,7 +2,12 @@
 
 /**
  * Live Position Builder for Options Lab Analyzer.
- * Modeled on MSC Risk Graph PositionBuilder; mids/IV from dual-side chain.
+ *
+ * Client data plane only:
+ *  - Listed strikes from dual-side chain ladders (PB6 / OC6a)
+ *  - Center on ATM (spot strike) when opening / product hydrates
+ *  - Live package DEBIT|CREDIT from chain mids (PB4 incomplete → —)
+ *  - Per-leg mid + package contribution while the dialog is open
  */
 
 import {
@@ -12,6 +17,17 @@ import {
   useRef,
   useState,
 } from "react";
+import StrikeSelect from "@/components/options-lab/StrikeSelect";
+import {
+  listedWingChoices,
+  listedWidthPoints,
+  normalizeStrike,
+  snapToListed,
+} from "@/lib/options-lab/listedStrikes";
+import {
+  formatPackageSide,
+  packageEconomics,
+} from "@/lib/options-lab/packageEconomics";
 import type {
   ChainAccessors,
   LegInput,
@@ -40,7 +56,6 @@ import {
   buildNotation,
 } from "@/lib/options-lab/positionLabels";
 import { generateTosScript } from "@/lib/options-lab/tosGenerator";
-import { positionNetPremium } from "@/lib/options-lab/positionToTrade";
 
 const TEMPLATE_LABELS: Record<TemplateType, string> = {
   single: "Single",
@@ -97,14 +112,12 @@ const STRATEGY_DIAGRAMS: Record<TemplateType, string> = {
 function defaultWidth(symbol: string): number {
   const s = symbol.toUpperCase();
   if (s === "NDX" || s.startsWith("NQ")) return 50;
-  return 20;
+  if (s === "SPX" || s === "XSP" || s === "RUT") return 20;
+  return 5;
 }
 
 /** PB22: next listed only — never synthesize unlisted calendar day. */
-function nextListedBack(
-  front: string,
-  listed: string[],
-): string | null {
+function nextListedBack(front: string, listed: string[]): string | null {
   const after = listed.filter((e) => e > front).sort();
   return after[0] ?? null;
 }
@@ -112,7 +125,8 @@ function nextListedBack(
 function defaultDiagonalWidth(symbol: string): number {
   const s = symbol.toUpperCase();
   if (s === "NDX" || s.startsWith("NQ")) return 75;
-  return 15;
+  if (s === "SPX" || s === "XSP") return 15;
+  return 5;
 }
 
 const field =
@@ -148,7 +162,7 @@ export default function PositionBuilder({
   onSave,
   onCancel,
 }: PositionBuilderProps) {
-  const hasChain = chain.expirations.length > 0;
+  const hasExps = chain.expirations.length > 0;
   const frontDefault =
     initial?.expiration ||
     chain.expirations[0] ||
@@ -170,20 +184,42 @@ export default function PositionBuilder({
   const [template, setTemplate] = useState<TemplateType>("butterfly");
   const [direction, setDirection] = useState<TradeDirection>("buy");
   const [optionSide, setOptionSide] = useState<OptionRight>("call");
-  const [centerStrike, setCenterStrike] = useState(() =>
-    Math.round(spotPrice || 5000),
-  );
+  const [centerStrike, setCenterStrike] = useState(0);
   const [wingWidth, setWingWidth] = useState(() => defaultWidth(symbol));
   const [backExpiration, setBackExpiration] = useState("");
   const [copied, setCopied] = useState(false);
   const didInit = useRef(false);
+  const lastSnapRev = useRef(-1);
 
-  // Reset init gate each time dialog opens
+  const frontStrikes = useMemo(
+    () => chain.getStrikes(position.expiration),
+    // rev forces refresh when ladder hydrates
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [chain, position.expiration, chain.rev],
+  );
+
+  const atmCenter = useMemo(() => {
+    const listed = frontStrikes;
+    const prefer =
+      chain.spotStrike ??
+      (chain.spot != null && chain.spot > 0 ? chain.spot : null) ??
+      (spotPrice > 0 ? spotPrice : null);
+    if (prefer != null && listed.length) {
+      return snapToListed(prefer, listed) ?? listed[Math.floor(listed.length / 2)];
+    }
+    if (listed.length) return listed[Math.floor(listed.length / 2)];
+    return prefer != null ? normalizeStrike(prefer) : 0;
+  }, [frontStrikes, chain.spotStrike, chain.spot, spotPrice]);
+
+  const wingChoices = useMemo(
+    () => listedWingChoices(centerStrike || atmCenter, frontStrikes, 16),
+    [centerStrike, atmCenter, frontStrikes],
+  );
+
   useEffect(() => {
     if (open) didInit.current = false;
   }, [open]);
 
-  // Keep underlying in sync with symbol prop
   useEffect(() => {
     setPosition((p) =>
       p.underlying === symbol ? p : { ...p, underlying: symbol },
@@ -194,10 +230,13 @@ export default function PositionBuilder({
 
   const priceLegs = useCallback(
     (legs: LegInput[], frontExp: string): LegInput[] => {
-      if (!hasChain) return legs;
+      if (!hasExps) return legs;
       return legs.map((leg) => {
-        const exp = leg.expiration || frontExp;
-        const strike = chain.nearestStrike(exp, leg.strike);
+        const exp = (leg.expiration || frontExp).slice(0, 10);
+        const listed = chain.getStrikes(exp);
+        const strike =
+          snapToListed(leg.strike, listed) ??
+          (listed.length ? listed[0] : normalizeStrike(leg.strike));
         const c = chain.getContract(exp, strike, leg.type);
         return {
           ...leg,
@@ -207,7 +246,7 @@ export default function PositionBuilder({
         };
       });
     },
-    [chain, hasChain],
+    [chain, hasExps],
   );
 
   const regenerate = useCallback(
@@ -220,48 +259,53 @@ export default function PositionBuilder({
       frontExp: string,
       backExp?: string,
     ) => {
+      const listed = chain.getStrikes(frontExp);
+      const c =
+        snapToListed(center, listed) ??
+        (listed.length ? listed[Math.floor(listed.length / 2)] : center);
+      // Map width onto listed grid so wings never invent strikes
+      const w =
+        listed.length && width > 0
+          ? listedWidthPoints(c, width, listed)
+          : width;
+
       let legs: LegInput[];
       switch (tmpl) {
         case "single":
-          legs = singleLeg(center, side);
+          legs = singleLeg(c, side);
           break;
         case "vertical":
-          legs = verticalLegs(center, center + width, side);
+          legs = verticalLegs(c, c + w, side);
           break;
         case "butterfly":
-          legs = butterflyLegs(center, width, side);
+          legs = butterflyLegs(c, w, side);
           break;
         case "bwb":
-          legs = bwbLegs(center, width, side);
+          legs = bwbLegs(c, w, side);
           break;
         case "condor":
-          legs = condorLegs(center, width, side);
+          legs = condorLegs(c, w, side);
           break;
         case "straddle":
-          legs = straddleLegs(center);
+          legs = straddleLegs(c);
           break;
         case "strangle":
-          legs = strangleLegs(center, width || 20);
+          legs = strangleLegs(c, w || defaultWidth(symbol));
           break;
         case "iron_fly":
-          legs = ironFlyLegs(center, width || 20);
+          legs = ironFlyLegs(c, w || defaultWidth(symbol));
           break;
         case "iron_condor":
-          legs = ironCondorLegs(
-            center - width * 2,
-            center - width,
-            center + width,
-            center + width * 2,
-          );
+          legs = ironCondorLegs(c - w * 2, c - w, c + w, c + w * 2);
           break;
         case "calendar":
-          legs = calendarLegs(center, side);
+          legs = calendarLegs(c, side);
           break;
         case "diagonal":
-          legs = diagonalLegs(center, width, side);
+          legs = diagonalLegs(c, w, side);
           break;
         default:
-          legs = butterflyLegs(center, width, side);
+          legs = butterflyLegs(c, w, side);
       }
 
       if (tmpl === "calendar" || tmpl === "diagonal") {
@@ -276,58 +320,122 @@ export default function PositionBuilder({
       legs = priceLegs(legs, frontExp);
       if (dir === "sell") legs = flipLegs(legs);
 
+      setCenterStrike(c);
+      if (w > 0) setWingWidth(w);
       setPosition((prev) => ({
         ...prev,
         expiration: frontExp,
         legs,
         direction: dir,
-        // clear override so live mid shows
         net_debit_override: null,
       }));
     },
-    [priceLegs],
+    [chain, priceLegs, symbol],
   );
 
-  // Init create
+  // Init create / edit once per open
   useEffect(() => {
     if (!open || didInit.current) return;
+    // Wait for expirations before first paint of structure
+    if (!hasExps && mode === "create") return;
     didInit.current = true;
     if (mode === "edit" && initial?.legs.length) {
+      const front = initial.expiration || frontDefault;
+      const priced = priceLegs(
+        initial.legs.map((l) => ({ ...l })),
+        front,
+      );
       setPosition({
         ...initial,
-        legs: initial.legs.map((l) => ({ ...l })),
+        legs: priced,
       });
       setDirection(initial.direction || "buy");
+      const body =
+        priced.find((l) => l.side === "short")?.strike ??
+        priced[0]?.strike ??
+        atmCenter;
+      setCenterStrike(body);
       return;
     }
     const front = chain.expirations[0] || frontDefault;
-    let center = Math.round(spotPrice || chain.spot || 5000);
-    if (hasChain) center = chain.nearestStrike(front, center);
+    const listed = chain.getStrikes(front);
+    // If ladder still empty, wait for rev bump (see re-snap effect)
+    let center = atmCenter;
+    if (listed.length) {
+      center =
+        snapToListed(
+          chain.spotStrike ?? chain.spot ?? spotPrice ?? atmCenter,
+          listed,
+        ) ?? listed[Math.floor(listed.length / 2)];
+    }
     setCenterStrike(center);
     setPosition((p) => ({ ...p, expiration: front, underlying: symbol }));
-    regenerate(
-      "butterfly",
-      center,
-      defaultWidth(symbol),
-      "call",
-      "buy",
-      front,
-    );
+    let width = defaultWidth(symbol);
+    if (listed.length) {
+      const choices = listedWingChoices(center, listed, 8);
+      if (choices.length) {
+        // Prefer default if listed, else first listed wing
+        width = choices.includes(width) ? width : choices[Math.min(2, choices.length - 1)];
+      }
+    }
+    setWingWidth(width);
+    regenerate("butterfly", center, width, "call", "buy", front);
   }, [
     open,
     mode,
     initial,
     chain,
     frontDefault,
-    hasChain,
+    hasExps,
     spotPrice,
     symbol,
     regenerate,
+    priceLegs,
+    atmCenter,
   ]);
 
-  // Live reprice when chain updates
+  // When ladder hydrates (rev↑) re-snap center + legs onto listed strikes
   useEffect(() => {
-    if (!open || !hasChain || position.legs.length === 0) return;
+    if (!open || !hasExps) return;
+    const rev = chain.rev ?? 0;
+    if (rev === lastSnapRev.current) return;
+    const listed = chain.getStrikes(position.expiration);
+    if (!listed.length) return;
+    lastSnapRev.current = rev;
+
+    const prefer =
+      centerStrike > 0
+        ? centerStrike
+        : chain.spotStrike ?? chain.spot ?? spotPrice ?? atmCenter;
+    const center = snapToListed(prefer, listed) ?? listed[Math.floor(listed.length / 2)];
+    if (center !== centerStrike) setCenterStrike(center);
+
+    setPosition((prev) => {
+      if (!prev.legs.length) return prev;
+      const next = priceLegs(prev.legs, prev.expiration);
+      const same = next.every(
+        (l, i) =>
+          l.strike === prev.legs[i]?.strike &&
+          l.entry_price === prev.legs[i]?.entry_price &&
+          l.volatility === prev.legs[i]?.volatility,
+      );
+      return same ? prev : { ...prev, legs: next };
+    });
+  }, [
+    open,
+    hasExps,
+    chain.rev,
+    chain,
+    position.expiration,
+    centerStrike,
+    spotPrice,
+    atmCenter,
+    priceLegs,
+  ]);
+
+  // Live reprice mids on chain tick
+  useEffect(() => {
+    if (!open || !hasExps || position.legs.length === 0) return;
     setPosition((prev) => {
       const next = priceLegs(prev.legs, prev.expiration);
       const same = next.every(
@@ -338,25 +446,21 @@ export default function PositionBuilder({
       );
       return same ? prev : { ...prev, legs: next };
     });
-  }, [open, hasChain, chain, position.legs.length, position.expiration, priceLegs]);
+  }, [open, hasExps, chain.rev, position.legs.length, position.expiration, priceLegs, chain]);
 
-  const net = useMemo(() => positionNetPremium(position), [position]);
-  // debit when we pay (net < 0 in our sign convention: long pays → negative contribution)
-  // Actually positionNetPremium: long * -1 * qty * price → long pay is negative; credit is positive
-  const liveAbs = Math.abs(net);
-  const isCredit = net > 1e-9;
-  const displayCost =
-    position.net_debit_override != null
-      ? Math.abs(position.net_debit_override)
-      : liveAbs;
-  const costLabel =
-    position.net_debit_override != null
-      ? direction === "sell" || isCredit
-        ? "CREDIT"
-        : "DEBIT"
-      : isCredit
-        ? "CREDIT"
-        : "DEBIT";
+  const eco = useMemo(
+    () =>
+      packageEconomics(position, (exp, strike, type) => {
+        const c = chain.getContract(exp, strike, type);
+        if (!c) return undefined;
+        return { mid: c.mid, bid: c.bid, ask: c.ask };
+      }),
+    [position, chain, chain.rev],
+  );
+
+  const costLabel = eco.side ?? "—";
+  const displayCost = eco.absMid ?? 0;
+  const overrideActive = position.net_debit_override != null;
 
   const previewLabel = useMemo(
     () => buildLabel(position.underlying, position.legs, position.expiration),
@@ -377,11 +481,14 @@ export default function PositionBuilder({
         right: leg.type,
         quantity: leg.side === "long" ? leg.quantity : -leg.quantity,
       })),
-      costBasis: displayCost > 0 ? displayCost : null,
+      costBasis:
+        overrideActive && position.net_debit_override != null
+          ? Math.abs(position.net_debit_override)
+          : displayCost > 0
+            ? displayCost
+            : null,
     });
-  }, [position, displayCost]);
-
-  const strikes = hasChain ? chain.getStrikes(position.expiration) : [];
+  }, [position, overrideActive, displayCost]);
 
   const handleTemplate = (tmpl: TemplateType) => {
     setTemplate(tmpl);
@@ -398,15 +505,15 @@ export default function PositionBuilder({
       setBackExpiration(back);
     }
     if (tmpl === "diagonal") {
-      const ladder = chain.getStrikes(position.expiration);
+      const ladder = frontStrikes;
       width =
-        diagonalWidthFromLadder(centerStrike, ladder, 2) ??
+        diagonalWidthFromLadder(centerStrike || atmCenter, ladder, 2) ??
         defaultDiagonalWidth(symbol);
       setWingWidth(width);
     }
     regenerate(
       tmpl,
-      centerStrike,
+      centerStrike || atmCenter,
       width,
       side,
       direction,
@@ -422,6 +529,7 @@ export default function PositionBuilder({
       ...prev,
       direction: dir,
       legs: flipLegs(prev.legs),
+      net_debit_override: null,
     }));
   };
 
@@ -430,8 +538,14 @@ export default function PositionBuilder({
       const legs = prev.legs.map((l, i) => {
         if (i !== index) return l;
         const next = { ...l, ...patch };
-        if (hasChain && (patch.strike != null || patch.type != null)) {
-          const exp = next.expiration || prev.expiration;
+        if (patch.strike != null) {
+          const exp = (next.expiration || prev.expiration).slice(0, 10);
+          const listed = chain.getStrikes(exp);
+          next.strike =
+            snapToListed(next.strike, listed) ?? normalizeStrike(next.strike);
+        }
+        if (hasExps && (patch.strike != null || patch.type != null)) {
+          const exp = (next.expiration || prev.expiration).slice(0, 10);
           const c = chain.getContract(exp, next.strike, next.type);
           if (c) {
             next.entry_price = c.mid ?? next.entry_price;
@@ -445,18 +559,20 @@ export default function PositionBuilder({
   };
 
   const addLeg = () => {
+    const strike = centerStrike || atmCenter;
     setPosition((prev) => ({
       ...prev,
       legs: [
         ...prev.legs,
         {
-          strike: centerStrike,
+          strike,
           type: "call",
           quantity: 1,
           side: "long",
           entry_price: 0,
         },
       ],
+      net_debit_override: null,
     }));
   };
 
@@ -464,6 +580,7 @@ export default function PositionBuilder({
     setPosition((prev) => ({
       ...prev,
       legs: prev.legs.filter((_, j) => j !== i),
+      net_debit_override: null,
     }));
   };
 
@@ -480,13 +597,22 @@ export default function PositionBuilder({
       }}
     >
       <div
-        className="flex max-h-[min(92vh,780px)] w-full max-w-[740px] flex-col overflow-hidden rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-2xl"
+        className="flex max-h-[min(92vh,820px)] w-full max-w-[780px] flex-col overflow-hidden rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-2xl"
         data-testid="position-builder"
       >
         <div className="flex items-center justify-between border-b border-[var(--color-separator)] px-4 py-3">
-          <h3 className="text-base font-semibold text-[var(--color-label)]">
-            {mode === "edit" ? "Edit Position" : "Create Position"}
-          </h3>
+          <div>
+            <h3 className="text-base font-semibold text-[var(--color-label)]">
+              {mode === "edit" ? "Edit Position" : "Create Position"}
+            </h3>
+            <p className="text-[11px] text-[var(--color-label-tertiary)]">
+              Listed strikes · live package from chain mids
+              {chain.spot != null ? ` · spot ${chain.spot.toFixed(2)}` : ""}
+              {chain.spotStrike != null
+                ? ` · ATM ${chain.spotStrike}`
+                : ""}
+            </p>
+          </div>
           <button type="button" className={btn} onClick={onCancel}>
             Close
           </button>
@@ -573,7 +699,7 @@ export default function PositionBuilder({
                   setOptionSide(s);
                   regenerate(
                     template,
-                    centerStrike,
+                    centerStrike || atmCenter,
                     wingWidth,
                     s,
                     direction,
@@ -590,53 +716,18 @@ export default function PositionBuilder({
 
           <div className="grid grid-cols-3 gap-2">
             <label className="block">
-              <span className={labelCls}>Center</span>
-              {hasChain && strikes.length ? (
-                <select
-                  className={field}
-                  value={centerStrike}
-                  onChange={(e) => {
-                    const c = parseFloat(e.target.value);
-                    setCenterStrike(c);
-                    regenerate(
-                      template,
-                      c,
-                      wingWidth,
-                      optionSide,
-                      direction,
-                      position.expiration,
-                      backExpiration,
-                    );
-                  }}
-                >
-                  {strikes.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  className={field}
-                  type="number"
-                  value={centerStrike}
-                  onChange={(e) => setCenterStrike(parseFloat(e.target.value) || 0)}
-                />
-              )}
-            </label>
-            <label className="block">
-              <span className={labelCls}>Width</span>
-              <input
-                className={field}
-                type="number"
-                value={wingWidth}
-                onChange={(e) => {
-                  const w = Math.max(0, parseFloat(e.target.value) || 0);
-                  setWingWidth(w);
+              <span className={labelCls}>Center (listed)</span>
+              <StrikeSelect
+                listed={frontStrikes}
+                value={centerStrike || atmCenter}
+                center={atmCenter}
+                testId="builder-center-strike"
+                onChange={(c) => {
+                  setCenterStrike(c);
                   regenerate(
                     template,
-                    centerStrike,
-                    w,
+                    c,
+                    wingWidth,
                     optionSide,
                     direction,
                     position.expiration,
@@ -646,8 +737,59 @@ export default function PositionBuilder({
               />
             </label>
             <label className="block">
+              <span className={labelCls}>Width (listed)</span>
+              {wingChoices.length ? (
+                <select
+                  className={field}
+                  value={
+                    wingChoices.includes(wingWidth)
+                      ? wingWidth
+                      : wingChoices[0]
+                  }
+                  onChange={(e) => {
+                    const w = Math.max(0, parseFloat(e.target.value) || 0);
+                    setWingWidth(w);
+                    regenerate(
+                      template,
+                      centerStrike || atmCenter,
+                      w,
+                      optionSide,
+                      direction,
+                      position.expiration,
+                      backExpiration,
+                    );
+                  }}
+                >
+                  {wingChoices.map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className={field}
+                  type="number"
+                  value={wingWidth}
+                  onChange={(e) => {
+                    const w = Math.max(0, parseFloat(e.target.value) || 0);
+                    setWingWidth(w);
+                    regenerate(
+                      template,
+                      centerStrike || atmCenter,
+                      w,
+                      optionSide,
+                      direction,
+                      position.expiration,
+                      backExpiration,
+                    );
+                  }}
+                />
+              )}
+            </label>
+            <label className="block">
               <span className={labelCls}>Front exp</span>
-              {hasChain ? (
+              {hasExps ? (
                 <select
                   className={field}
                   value={position.expiration}
@@ -665,7 +807,7 @@ export default function PositionBuilder({
                     }
                     regenerate(
                       template,
-                      centerStrike,
+                      centerStrike || atmCenter,
                       wingWidth,
                       optionSide,
                       direction,
@@ -696,7 +838,7 @@ export default function PositionBuilder({
           {isTimeSpread && (
             <label className="block max-w-xs">
               <span className={labelCls}>Back exp</span>
-              {hasChain ? (
+              {hasExps ? (
                 chain.expirations.filter((e) => e > position.expiration)
                   .length === 0 ? (
                   <p className="text-xs text-amber-400" role="status">
@@ -715,6 +857,7 @@ export default function PositionBuilder({
                         legs: prev.legs.map((leg) =>
                           leg.side === "long" ? { ...leg, expiration: b } : leg,
                         ),
+                        net_debit_override: null,
                       }));
                     }}
                   >
@@ -735,8 +878,51 @@ export default function PositionBuilder({
             </label>
           )}
 
+          {/* Live package DEBIT / CREDIT strip */}
+          <div
+            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-separator)] bg-[var(--color-fill)]/50 px-3 py-2"
+            data-testid="builder-package-economics"
+          >
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                Package (natural mid)
+              </div>
+              <div
+                className={
+                  "font-mono text-xl font-semibold tabular-nums " +
+                  (eco.side === "CREDIT"
+                    ? "text-emerald-600"
+                    : eco.side === "DEBIT"
+                      ? "text-rose-600"
+                      : "text-[var(--color-label-tertiary)]")
+                }
+              >
+                {formatPackageSide(eco)}
+              </div>
+            </div>
+            <div className="text-right text-[11px] text-[var(--color-label-secondary)]">
+              {chain.loading ? (
+                <span>Refreshing chain…</span>
+              ) : !eco.complete ? (
+                <span className="text-amber-600">
+                  Incomplete mids ({eco.missingMids} leg
+                  {eco.missingMids === 1 ? "" : "s"}) — package —
+                </span>
+              ) : (
+                <span>
+                  Live from dual-side ladder
+                  {eco.signedNatural != null &&
+                  eco.signedMid != null &&
+                  Math.abs(eco.signedNatural - eco.signedMid) > 0.005
+                    ? ` · nat≈ ${eco.signedNatural >= 0 ? "CREDIT" : "DEBIT"} ${Math.abs(eco.signedNatural).toFixed(2)}`
+                    : ""}
+                </span>
+              )}
+            </div>
+          </div>
+
           <div>
-            <span className={labelCls}>Legs · live mids</span>
+            <span className={labelCls}>Legs · live mids · package contrib</span>
             <div className="overflow-x-auto rounded-lg border border-[var(--color-separator)]">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[var(--color-fill)] text-[10px] uppercase text-[var(--color-label-tertiary)]">
@@ -746,100 +932,105 @@ export default function PositionBuilder({
                     <th className="px-2 py-1.5">Type</th>
                     <th className="px-2 py-1.5">Exp</th>
                     <th className="px-2 py-1.5">Mid</th>
+                    <th className="px-2 py-1.5">Contrib</th>
                     <th className="px-2 py-1.5">IV</th>
                     <th className="px-2 py-1.5" />
                   </tr>
                 </thead>
                 <tbody>
-                  {position.legs.map((leg, i) => (
-                    <tr
-                      key={i}
-                      className="border-t border-[var(--color-separator)]"
-                    >
-                      <td className="px-2 py-1">
-                        <input
-                          className={field + " w-16"}
-                          type="number"
-                          value={
-                            leg.side === "long" ? leg.quantity : -leg.quantity
-                          }
-                          onChange={(e) => {
-                            const v = parseInt(e.target.value, 10) || 1;
-                            updateLeg(i, {
-                              quantity: Math.max(1, Math.abs(v)),
-                              side: v >= 0 ? "long" : "short",
-                            });
-                          }}
-                        />
-                      </td>
-                      <td className="px-2 py-1">
-                        {hasChain && strikes.length ? (
-                          <select
-                            className={field + " min-w-[5rem]"}
-                            value={leg.strike}
-                            onChange={(e) =>
+                  {position.legs.map((leg, i) => {
+                    const exp = (leg.expiration || position.expiration).slice(
+                      0,
+                      10,
+                    );
+                    const legStrikes = chain.getStrikes(exp);
+                    const legEco = eco.legs[i];
+                    const contrib = legEco?.contribMid;
+                    return (
+                      <tr
+                        key={i}
+                        className="border-t border-[var(--color-separator)]"
+                      >
+                        <td className="px-2 py-1">
+                          <input
+                            className={field + " w-16"}
+                            type="number"
+                            value={
+                              leg.side === "long" ? leg.quantity : -leg.quantity
+                            }
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10) || 1;
                               updateLeg(i, {
-                                strike: parseFloat(e.target.value),
+                                quantity: Math.max(1, Math.abs(v)),
+                                side: v >= 0 ? "long" : "short",
+                              });
+                            }}
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <StrikeSelect
+                            listed={legStrikes}
+                            value={leg.strike}
+                            center={atmCenter}
+                            className="min-w-[5.5rem]"
+                            testId={`builder-leg-strike-${i}`}
+                            onChange={(s) => updateLeg(i, { strike: s })}
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <button
+                            type="button"
+                            className={btn + " !min-h-8 !px-2 !text-xs"}
+                            onClick={() =>
+                              updateLeg(i, {
+                                type: leg.type === "call" ? "put" : "call",
                               })
                             }
                           >
-                            {strikes.map((s) => (
-                              <option key={s} value={s}>
-                                {s}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            className={field + " w-20"}
-                            type="number"
-                            value={leg.strike}
-                            onChange={(e) =>
-                              updateLeg(i, {
-                                strike: parseFloat(e.target.value) || 0,
-                              })
-                            }
-                          />
-                        )}
-                      </td>
-                      <td className="px-2 py-1">
-                        <button
-                          type="button"
-                          className={btn + " !min-h-8 !px-2 !text-xs"}
-                          onClick={() =>
-                            updateLeg(i, {
-                              type: leg.type === "call" ? "put" : "call",
-                            })
+                            {leg.type === "call" ? "Call" : "Put"}
+                          </button>
+                        </td>
+                        <td className="px-2 py-1 font-mono text-[11px]">
+                          {exp.slice(5)}
+                        </td>
+                        <td className="px-2 py-1 font-mono text-emerald-600 dark:text-emerald-400">
+                          {leg.entry_price > 0
+                            ? leg.entry_price.toFixed(2)
+                            : "—"}
+                        </td>
+                        <td
+                          className={
+                            "px-2 py-1 font-mono tabular-nums " +
+                            (contrib == null
+                              ? "text-[var(--color-label-tertiary)]"
+                              : contrib >= 0
+                                ? "text-emerald-600"
+                                : "text-rose-600")
                           }
+                          title="Contribution to package (long −mid · short +mid)"
                         >
-                          {leg.type === "call" ? "Call" : "Put"}
-                        </button>
-                      </td>
-                      <td className="px-2 py-1 font-mono text-[11px]">
-                        {(leg.expiration || position.expiration).slice(5)}
-                      </td>
-                      <td className="px-2 py-1 font-mono text-emerald-500">
-                        {leg.entry_price > 0
-                          ? leg.entry_price.toFixed(2)
-                          : "—"}
-                      </td>
-                      <td className="px-2 py-1 font-mono text-[var(--color-label-tertiary)]">
-                        {leg.volatility != null
-                          ? (leg.volatility * 100).toFixed(1) + "%"
-                          : "—"}
-                      </td>
-                      <td className="px-2 py-1">
-                        <button
-                          type="button"
-                          className="text-red-400"
-                          disabled={position.legs.length <= 1}
-                          onClick={() => removeLeg(i)}
-                        >
-                          ×
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                          {contrib == null
+                            ? "—"
+                            : `${contrib >= 0 ? "+" : ""}${contrib.toFixed(2)}`}
+                        </td>
+                        <td className="px-2 py-1 font-mono text-[var(--color-label-tertiary)]">
+                          {leg.volatility != null
+                            ? (leg.volatility * 100).toFixed(1) + "%"
+                            : "—"}
+                        </td>
+                        <td className="px-2 py-1">
+                          <button
+                            type="button"
+                            className="text-red-400"
+                            disabled={position.legs.length <= 1}
+                            onClick={() => removeLeg(i)}
+                          >
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -851,7 +1042,7 @@ export default function PositionBuilder({
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className={labelCls}>
-                Package {costLabel} (live mid)
+                Limit override (optional)
               </span>
               <input
                 className={field}
@@ -860,12 +1051,12 @@ export default function PositionBuilder({
                 value={
                   position.net_debit_override != null
                     ? position.net_debit_override
-                    : displayCost > 0
-                      ? Number(displayCost.toFixed(2))
-                      : ""
+                    : ""
                 }
                 placeholder={
-                  displayCost > 0 ? displayCost.toFixed(2) : "awaiting mids"
+                  eco.complete && displayCost > 0
+                    ? `live ${displayCost.toFixed(2)}`
+                    : "awaiting mids"
                 }
                 onChange={(e) => {
                   const v = parseFloat(e.target.value);
@@ -876,11 +1067,8 @@ export default function PositionBuilder({
                 }}
               />
               <p className="mt-0.5 text-[10px] text-[var(--color-label-tertiary)]">
-                {chain.loading
-                  ? "Refreshing chain…"
-                  : chain.error
-                    ? chain.error
-                    : `Natural mid ${costLabel.toLowerCase()} ${displayCost.toFixed(2)} · edit to lock limit`}
+                Natural mid {formatPackageSide(eco)}
+                {overrideActive ? " · override active" : " · edit to lock limit"}
               </p>
             </label>
             <label className="block">
@@ -927,8 +1115,19 @@ export default function PositionBuilder({
             <div className="font-mono text-xs text-[var(--color-label-secondary)]">
               {previewNotation}
             </div>
-            <div className="mt-1 text-xs text-[var(--color-label-tertiary)]">
-              ${displayCost.toFixed(2)} {costLabel}
+            <div
+              className={
+                "mt-1 font-mono text-sm font-semibold " +
+                (eco.side === "CREDIT"
+                  ? "text-emerald-600"
+                  : eco.side === "DEBIT"
+                    ? "text-rose-600"
+                    : "text-[var(--color-label-tertiary)]")
+              }
+            >
+              {overrideActive && position.net_debit_override != null
+                ? `LIMIT ${Math.abs(position.net_debit_override).toFixed(2)}`
+                : formatPackageSide(eco)}
               {position.contracts > 1 ? ` × ${position.contracts}` : ""}
             </div>
           </div>
@@ -950,7 +1149,7 @@ export default function PositionBuilder({
                   net_debit_override:
                     position.net_debit_override != null
                       ? position.net_debit_override
-                      : displayCost > 0
+                      : eco.complete && displayCost > 0
                         ? Number(displayCost.toFixed(2))
                         : null,
                   direction,

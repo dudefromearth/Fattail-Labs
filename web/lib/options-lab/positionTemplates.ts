@@ -158,6 +158,7 @@ export function flipLegs(legs: LegInput[]): LegInput[] {
   }));
 }
 
+/** @deprecated Prefer snapToListed from listedStrikes (null when empty). */
 export function snapToNearestStrike(target: number, strikes: number[]): number {
   if (!strikes.length) return target;
   let best = strikes[0];

@@ -1,5 +1,9 @@
 /**
  * Live chain accessors for Position Builder (dual-side ladder hydrate).
+ *
+ * SoR: Market Bus chain-ladder generations on the client plane.
+ * Strikes are listed-only (OC6a / PB6). Wider wings so multi-leg structures
+ * stay on the grid without inventing arithmetic strikes.
  */
 
 "use client";
@@ -11,18 +15,23 @@ import {
   type LadderFull,
   type LadderRow,
 } from "@/lib/chainLadderApi";
+import {
+  normalizeStrike,
+  snapToListed,
+  uniqueListedStrikes,
+} from "@/lib/options-lab/listedStrikes";
 import type {
   ChainAccessors,
   ChainContract,
   OptionRight,
 } from "@/lib/options-lab/positionTypes";
-import { snapToNearestStrike } from "@/lib/options-lab/positionTemplates";
 
-const WINGS = 50;
+/** Builder needs room for condors / BWB — max lawful wing choice. */
+const WINGS = 100;
 const POLL_MS = 3000;
 
 function rowKey(side: string, strike: number): string {
-  return `${side.toLowerCase()}:${strike}`;
+  return `${side.toLowerCase()}:${normalizeStrike(strike)}`;
 }
 
 export function useBuilderChain(
@@ -33,15 +42,16 @@ export function useBuilderChain(
 ): ChainAccessors {
   const [expirations, setExpirations] = useState<string[]>([]);
   const [spot, setSpot] = useState<number | null>(null);
+  const [spotStrike, setSpotStrike] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const laddersRef = useRef<Map<string, LadderFull>>(new Map());
-  const [, bump] = useState(0);
+  const [rev, bump] = useState(0);
 
   const refreshExpirations = useCallback(async () => {
     if (!enabled || !symbol) return;
     try {
-      const r = await fetchLadderExpirations(symbol, 12);
+      const r = await fetchLadderExpirations(symbol, 16);
       setExpirations(r.contracts.map((c) => c.expiration));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -80,6 +90,7 @@ export function useBuilderChain(
             content_hash: polled.content_hash,
             as_of: polled.as_of,
             spot: polled.spot ?? prev.spot,
+            spot_strike: polled.spot_strike ?? prev.spot_strike,
             rows: [...byKey.values()],
           };
         } else if (polled.mode === "unchanged" && prev) {
@@ -93,8 +104,25 @@ export function useBuilderChain(
           if (full.mode === "full") ladder = full.ladder;
         }
         if (ladder) {
+          // Normalize strike fields once
+          ladder = {
+            ...ladder,
+            rows: ladder.rows.map((r) => ({
+              ...r,
+              strike: normalizeStrike(Number(r.strike)),
+            })),
+          };
           laddersRef.current.set(exp, ladder);
           if (ladder.spot > 0) setSpot(ladder.spot);
+          if (ladder.spot_strike != null) {
+            setSpotStrike(normalizeStrike(Number(ladder.spot_strike)));
+          } else if (ladder.spot > 0) {
+            const strikes = uniqueListedStrikes(
+              ladder.rows.map((r) => r.strike),
+            );
+            const atm = snapToListed(ladder.spot, strikes);
+            if (atm != null) setSpotStrike(atm);
+          }
           setError(null);
           bump((n) => n + 1);
         }
@@ -119,16 +147,21 @@ export function useBuilderChain(
     void refreshExpirations();
   }, [enabled, refreshExpirations]);
 
+  // Clear ladders when product changes
+  useEffect(() => {
+    laddersRef.current.clear();
+    setSpot(null);
+    setSpotStrike(null);
+    bump((n) => n + 1);
+  }, [symbol]);
+
   useEffect(() => {
     if (!enabled) return;
     setLoading(true);
     const run = async () => {
       const targets = warmExpirations.filter(Boolean);
-      // Always warm first listed exp if none
       const list =
-        targets.length > 0
-          ? targets
-          : expirations.slice(0, 2);
+        targets.length > 0 ? targets : expirations.slice(0, 2);
       await Promise.all(list.map((e) => hydrateExp(e)));
       setLoading(false);
     };
@@ -141,15 +174,15 @@ export function useBuilderChain(
     return () => window.clearInterval(id);
   }, [enabled, warmExpirations, expirations, hydrateExp]);
 
-  const getStrikes = useCallback((expiration: string): number[] => {
-    const lad = laddersRef.current.get(expiration);
-    if (!lad) return [];
-    const set = new Set<number>();
-    for (const r of lad.rows) {
-      if (r.strike != null) set.add(Number(r.strike));
-    }
-    return [...set].sort((a, b) => a - b);
-  }, []);
+  const getStrikes = useCallback(
+    (expiration: string): number[] => {
+      void rev; // re-bind when ladders bump
+      const lad = laddersRef.current.get(expiration);
+      if (!lad) return [];
+      return uniqueListedStrikes(lad.rows.map((r) => r.strike));
+    },
+    [rev],
+  );
 
   const getContract = useCallback(
     (
@@ -157,18 +190,20 @@ export function useBuilderChain(
       strike: number,
       type: OptionRight,
     ): ChainContract | undefined => {
+      void rev;
       const lad = laddersRef.current.get(expiration);
       if (!lad) return undefined;
+      const k = normalizeStrike(strike);
       const row = lad.rows.find(
         (r: LadderRow) =>
-          Number(r.strike) === Number(strike) &&
+          normalizeStrike(Number(r.strike)) === k &&
           (r.side || "call").toLowerCase() === type,
       );
       if (!row) return undefined;
       let iv = row.iv ?? null;
-      if (iv != null && iv > 3) iv = iv / 100; // percent → decimal
+      if (iv != null && iv > 3) iv = iv / 100;
       return {
-        strike: Number(row.strike),
+        strike: normalizeStrike(Number(row.strike)),
         type,
         mid: row.mid ?? null,
         bid: row.bid ?? null,
@@ -177,13 +212,15 @@ export function useBuilderChain(
         expiration,
       };
     },
-    [],
+    [rev],
   );
 
   const nearestStrike = useCallback(
     (expiration: string, target: number): number => {
       const strikes = getStrikes(expiration);
-      return snapToNearestStrike(target, strikes);
+      const snapped = snapToListed(target, strikes);
+      // Never invent: if empty, return target but UI must not treat as listed
+      return snapped ?? target;
     },
     [getStrikes],
   );
@@ -192,22 +229,27 @@ export function useBuilderChain(
     () => ({
       expirations,
       spot,
+      spotStrike,
       loading,
       error,
       getStrikes,
       getContract,
       nearestStrike,
       refresh,
+      /** Ladder revision — consumers can depend for re-snap */
+      rev,
     }),
     [
       expirations,
       spot,
+      spotStrike,
       loading,
       error,
       getStrikes,
       getContract,
       nearestStrike,
       refresh,
+      rev,
     ],
   );
 }

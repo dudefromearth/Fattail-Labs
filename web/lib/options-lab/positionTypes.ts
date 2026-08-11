@@ -53,8 +53,11 @@ export type ChainContract = {
 export type ChainAccessors = {
   expirations: string[];
   spot: number | null;
+  /** ATM listed strike from ladder (spot snap) — preferred Builder center. */
+  spotStrike?: number | null;
   loading: boolean;
   error: string | null;
+  /** Listed strikes only for expiration (from dual-side ladder). */
   getStrikes: (expiration: string) => number[];
   getContract: (
     expiration: string,
@@ -63,4 +66,6 @@ export type ChainAccessors = {
   ) => ChainContract | undefined;
   nearestStrike: (expiration: string, target: number) => number;
   refresh: () => void;
+  /** Bumps when ladder rows change — Builder re-snaps illegal strikes. */
+  rev?: number;
 };
