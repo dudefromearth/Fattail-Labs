@@ -1,8 +1,13 @@
 "use client";
 
 /**
- * Options Lab Analyzer v1 — expiration risk graph from ToS trade selection.
- * Input: heatmap Option-click (session) or paste ToS line.
+ * Options Lab Risk Analyzer — MSC-inspired dual-curve risk graph.
+ *
+ * v2: expiration + T+0 theoretical (BS flat IV), what-if (time/vol/spot),
+ * package greeks, ToS trade input from Heatmap Option-click.
+ *
+ * Not a line-for-line MSC port (no 3D, multi-book registry, GEX backdrop,
+ * order flow). Pricing formulas match MSC blackScholes / risk graph shape.
  */
 
 import Link from "next/link";
@@ -15,101 +20,125 @@ import {
   type StoredAnalyzerTrade,
 } from "@/lib/options-lab/analyzerTrade";
 import {
-  buildPayoffCurve,
-  tradeLabel,
-} from "@/lib/options-lab/riskPayoff";
+  DEFAULT_WHAT_IF,
+  buildRiskGraph,
+  type WhatIf,
+} from "@/lib/options-lab/riskGraphEngine";
+import { tradeLabel } from "@/lib/options-lab/riskPayoff";
 import { parseTosScript, type ParsedTosTrade } from "@/lib/options-lab/tosParser";
 
 const fieldLabel =
   "mb-1 block text-xs font-medium text-[var(--color-label-secondary)]";
 
-const selectControl =
-  "block min-h-11 w-full rounded-[var(--radius-md,0.5rem)] border border-[var(--color-separator)] " +
+const control =
+  "block w-full rounded-[var(--radius-md,0.5rem)] border border-[var(--color-separator)] " +
   "bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-label)] " +
   "shadow-[var(--elevation-1)] " +
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]";
 
-const secondaryBtn =
-  "inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-separator)] " +
-  "bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-label)] " +
+const btn =
+  "inline-flex min-h-10 items-center justify-center rounded-full border border-[var(--color-separator)] " +
+  "bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium text-[var(--color-label)] " +
   "shadow-[var(--elevation-1)] hover:bg-[var(--color-fill)] " +
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)] " +
   "disabled:opacity-45";
 
-function fmtMoney(n: number, digits = 0): string {
-  return n.toLocaleString(undefined, {
-    maximumFractionDigits: digits,
+function fmt$(n: number, d = 0): string {
+  const sign = n < 0 ? "-" : "";
+  return `${sign}$${Math.abs(n).toLocaleString(undefined, {
+    maximumFractionDigits: d,
     minimumFractionDigits: 0,
-  });
+  })}`;
 }
 
-function PayoffChart({
+function DualCurveChart({
   trade,
-  spot,
+  baseSpot,
+  baseIv,
+  whatIf,
 }: {
   trade: ParsedTosTrade;
-  spot: number | null;
+  baseSpot: number;
+  baseIv: number;
+  whatIf: WhatIf;
 }) {
-  const curve = useMemo(
-    () => buildPayoffCurve(trade, { spot, padPts: Math.max(40, (trade.width ?? 25) * 3) }),
-    [trade, spot],
+  const rg = useMemo(
+    () =>
+      buildRiskGraph(trade, {
+        baseSpot,
+        baseIv,
+        whatIf,
+        steps: 280,
+      }),
+    [trade, baseSpot, baseIv, whatIf],
   );
 
-  const W = 720;
-  const H = 360;
-  const padL = 56;
-  const padR = 16;
-  const padT = 16;
-  const padB = 36;
+  const W = 900;
+  const H = 420;
+  const padL = 58;
+  const padR = 18;
+  const padT = 28;
+  const padB = 40;
   const plotW = W - padL - padR;
   const plotH = H - padT - padB;
 
-  const xScale = (x: number) =>
-    padL + ((x - curve.xMin) / (curve.xMax - curve.xMin || 1)) * plotW;
-  const yScale = (y: number) =>
-    padT + ((curve.yMax - y) / (curve.yMax - curve.yMin || 1)) * plotH;
+  const xS = (x: number) =>
+    padL + ((x - rg.xMin) / (rg.xMax - rg.xMin || 1)) * plotW;
+  const yS = (y: number) =>
+    padT + ((rg.yMax - y) / (rg.yMax - rg.yMin || 1)) * plotH;
 
-  const pathD = curve.points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${xScale(p.x).toFixed(1)} ${yScale(p.y).toFixed(1)}`)
+  const expPath = rg.points
+    .map(
+      (p, i) =>
+        `${i === 0 ? "M" : "L"} ${xS(p.x).toFixed(2)} ${yS(p.exp).toFixed(2)}`,
+    )
+    .join(" ");
+  const theoPath = rg.points
+    .map(
+      (p, i) =>
+        `${i === 0 ? "M" : "L"} ${xS(p.x).toFixed(2)} ${yS(p.theo).toFixed(2)}`,
+    )
     .join(" ");
 
-  const zeroY = yScale(0);
-  const spotX = spot != null ? xScale(spot) : null;
+  const zeroY = yS(0);
+  const spotX = xS(rg.spot);
 
-  // Area under curve split profit / loss
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="h-auto w-full max-h-[28rem]"
-      role="img"
-      aria-label="Expiration payoff chart"
-    >
-      <rect x={0} y={0} width={W} height={H} fill="#0a0a0e" rx={8} />
-      {/* grid */}
-      {[0.25, 0.5, 0.75].map((t) => {
-        const y = padT + plotH * t;
-        return (
-          <line
-            key={`h${t}`}
-            x1={padL}
-            x2={W - padR}
-            y1={y}
-            y2={y}
-            stroke="rgba(255,255,255,0.06)"
-          />
-        );
-      })}
-      {/* zero line */}
-      <line
-        x1={padL}
-        x2={W - padR}
-        y1={zeroY}
-        y2={zeroY}
-        stroke="rgba(255,255,255,0.28)"
-        strokeDasharray="4 3"
-      />
-      {/* spot */}
-      {spotX != null && spotX >= padL && spotX <= W - padR ? (
+    <div className="flex h-full min-h-0 flex-col">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="h-auto w-full max-h-[min(32rem,55vh)]"
+        role="img"
+        aria-label="Risk graph dual curve"
+      >
+        <rect width={W} height={H} fill="#0b0b10" rx={10} />
+
+        {/* horizontal grid */}
+        {[0.2, 0.4, 0.6, 0.8].map((t) => {
+          const y = padT + plotH * t;
+          return (
+            <line
+              key={t}
+              x1={padL}
+              x2={W - padR}
+              y1={y}
+              y2={y}
+              stroke="rgba(255,255,255,0.05)"
+            />
+          );
+        })}
+
+        {/* zero */}
+        <line
+          x1={padL}
+          x2={W - padR}
+          y1={zeroY}
+          y2={zeroY}
+          stroke="rgba(255,255,255,0.3)"
+          strokeDasharray="5 4"
+        />
+
+        {/* spot */}
         <line
           x1={spotX}
           x2={spotX}
@@ -117,69 +146,156 @@ function PayoffChart({
           y2={H - padB}
           stroke="rgb(251,191,36)"
           strokeWidth={1.5}
-          strokeOpacity={0.85}
+          opacity={0.9}
         />
-      ) : null}
-      {/* payoff */}
-      <path
-        d={pathD}
-        fill="none"
-        stroke="rgb(52,211,153)"
-        strokeWidth={2.25}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      {/* axes labels */}
-      <text
-        x={padL}
-        y={H - 10}
-        fill="rgba(255,255,255,0.45)"
-        fontSize={11}
-        fontFamily="ui-monospace, monospace"
-      >
-        {fmtMoney(curve.xMin, 0)}
-      </text>
-      <text
-        x={W - padR}
-        y={H - 10}
-        fill="rgba(255,255,255,0.45)"
-        fontSize={11}
-        fontFamily="ui-monospace, monospace"
-        textAnchor="end"
-      >
-        {fmtMoney(curve.xMax, 0)}
-      </text>
-      <text
-        x={8}
-        y={padT + 10}
-        fill="rgba(255,255,255,0.45)"
-        fontSize={11}
-        fontFamily="ui-monospace, monospace"
-      >
-        ${fmtMoney(curve.yMax, 0)}
-      </text>
-      <text
-        x={8}
-        y={H - padB}
-        fill="rgba(255,255,255,0.45)"
-        fontSize={11}
-        fontFamily="ui-monospace, monospace"
-      >
-        ${fmtMoney(curve.yMin, 0)}
-      </text>
-      {spot != null ? (
+
+        {/* theoretical T+0 — magenta (MSC mkt/theo convention simplified) */}
+        <path
+          d={theoPath}
+          fill="none"
+          stroke="rgb(232,121,249)"
+          strokeWidth={2.25}
+          strokeLinejoin="round"
+        />
+        {/* expiration — green */}
+        <path
+          d={expPath}
+          fill="none"
+          stroke="rgb(52,211,153)"
+          strokeWidth={2.5}
+          strokeLinejoin="round"
+        />
+
+        {/* legend */}
+        <g fontFamily="ui-sans-serif, system-ui" fontSize={12}>
+          <rect x={padL + 8} y={8} width={10} height={3} fill="rgb(52,211,153)" />
+          <text x={padL + 22} y={12} fill="rgba(255,255,255,0.7)">
+            Expiration
+          </text>
+          <rect
+            x={padL + 110}
+            y={8}
+            width={10}
+            height={3}
+            fill="rgb(232,121,249)"
+          />
+          <text x={padL + 124} y={12} fill="rgba(255,255,255,0.7)">
+            T+0 theo (BS)
+          </text>
+          <text
+            x={spotX}
+            y={padT + 14}
+            fill="rgb(251,191,36)"
+            textAnchor="middle"
+            fontSize={11}
+            fontFamily="ui-monospace, monospace"
+          >
+            Spot {rg.spot.toFixed(1)}
+          </text>
+        </g>
+
         <text
-          x={spotX ?? padL}
-          y={padT + 12}
-          fill="rgb(251,191,36)"
+          x={padL}
+          y={H - 12}
+          fill="rgba(255,255,255,0.4)"
           fontSize={11}
           fontFamily="ui-monospace, monospace"
-          textAnchor="middle"
         >
-          Spot {fmtMoney(spot, 1)}
+          {rg.xMin.toFixed(0)}
         </text>
-      ) : null}
-    </svg>
+        <text
+          x={W - padR}
+          y={H - 12}
+          fill="rgba(255,255,255,0.4)"
+          fontSize={11}
+          fontFamily="ui-monospace, monospace"
+          textAnchor="end"
+        >
+          {rg.xMax.toFixed(0)}
+        </text>
+        <text
+          x={10}
+          y={padT + 8}
+          fill="rgba(255,255,255,0.4)"
+          fontSize={11}
+          fontFamily="ui-monospace, monospace"
+        >
+          {fmt$(rg.yMax)}
+        </text>
+        <text
+          x={10}
+          y={H - padB}
+          fill="rgba(255,255,255,0.4)"
+          fontSize={11}
+          fontFamily="ui-monospace, monospace"
+        >
+          {fmt$(rg.yMin)}
+        </text>
+      </svg>
+
+      {/* stats strip — MSC-ish */}
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+        <Stat
+          label="Max profit"
+          value={fmt$(rg.maxProfit)}
+          tone="good"
+        />
+        <Stat label="Max loss" value={fmt$(rg.maxLoss)} tone="bad" />
+        <Stat
+          label="Theo @ spot"
+          value={fmt$(rg.theoAtSpot, 0)}
+          tone="magenta"
+        />
+        <Stat label="Exp @ spot" value={fmt$(rg.expAtSpot, 0)} tone="good" />
+        <Stat
+          label="Δ / Γ"
+          value={`${rg.greeks.delta.toFixed(1)} / ${rg.greeks.gamma.toFixed(2)}`}
+        />
+        <Stat
+          label="Θ / ν"
+          value={`${rg.greeks.theta.toFixed(1)} / ${rg.greeks.vega.toFixed(1)}`}
+        />
+      </div>
+      {rg.breakevensExp.length > 0 ? (
+        <p className="mt-2 text-xs text-white/45">
+          Exp breakevens:{" "}
+          {rg.breakevensExp.map((b) => b.toFixed(1)).join(" · ")}
+          {" · "}
+          IV {(rg.iv * 100).toFixed(1)}% · T {(rg.T * 365).toFixed(2)}d
+        </p>
+      ) : (
+        <p className="mt-2 text-xs text-white/45">
+          IV {(rg.iv * 100).toFixed(1)}% · T {(rg.T * 365).toFixed(2)}d to exp
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "good" | "bad" | "magenta";
+}) {
+  const color =
+    tone === "good"
+      ? "text-emerald-400"
+      : tone === "bad"
+        ? "text-red-400"
+        : tone === "magenta"
+          ? "text-fuchsia-400"
+          : "text-[var(--color-label)]";
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+      <div className="text-[10px] uppercase tracking-wide text-white/40">
+        {label}
+      </div>
+      <div className={`mt-0.5 font-semibold tabular-nums ${color}`}>{value}</div>
+    </div>
   );
 }
 
@@ -189,7 +305,9 @@ export default function RiskAnalyzerPanel() {
   const [raw, setRaw] = useState("");
   const [stored, setStored] = useState<StoredAnalyzerTrade | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
-  const [spotOverride, setSpotOverride] = useState<string>("");
+  const [spotStr, setSpotStr] = useState("");
+  const [ivStr, setIvStr] = useState("18");
+  const [whatIf, setWhatIf] = useState<WhatIf>({ ...DEFAULT_WHAT_IF });
 
   const hydrate = useCallback(() => {
     const s = loadAnalyzerTrade();
@@ -204,11 +322,7 @@ export default function RiskAnalyzerPanel() {
     hydrate();
     const onEvt = () => hydrate();
     window.addEventListener("ft-analyzer-trade", onEvt);
-    window.addEventListener("storage", onEvt);
-    return () => {
-      window.removeEventListener("ft-analyzer-trade", onEvt);
-      window.removeEventListener("storage", onEvt);
-    };
+    return () => window.removeEventListener("ft-analyzer-trade", onEvt);
   }, [hydrate]);
 
   const trade = useMemo(() => {
@@ -225,64 +339,56 @@ export default function RiskAnalyzerPanel() {
   }, [raw, trade]);
 
   useEffect(() => {
-    if (trade?.symbol && trade.symbol !== symbol) {
-      // Align suite symbol when trade carries one
+    if (trade?.symbol) {
       const known = universe.some((u) => u.symbol === trade.symbol);
-      if (known) setSymbol(trade.symbol);
+      if (known && trade.symbol !== symbol) setSymbol(trade.symbol);
     }
   }, [trade?.symbol, symbol, universe, setSymbol]);
 
-  const spotNum = useMemo(() => {
-    if (spotOverride.trim()) {
-      const n = Number(spotOverride);
-      return Number.isFinite(n) ? n : null;
+  // Seed spot from body when trade loads and spot empty
+  useEffect(() => {
+    if (trade?.body != null && !spotStr.trim()) {
+      setSpotStr(String(trade.body));
     }
-    return null;
-  }, [spotOverride]);
+  }, [trade?.body, trade?.raw, spotStr]);
 
-  const summary = useMemo(() => {
-    if (!trade) return null;
-    return buildPayoffCurve(trade, { spot: spotNum });
-  }, [trade, spotNum]);
+  const baseSpot = useMemo(() => {
+    const n = Number(spotStr);
+    if (Number.isFinite(n) && n > 0) return n;
+    return trade?.body ?? trade?.strikes[1] ?? trade?.strikes[0] ?? 5000;
+  }, [spotStr, trade]);
 
-  const applyPaste = () => {
-    if (!raw.trim()) return;
-    const p = parseTosScript(raw);
-    if (!p) {
-      setParseError("Could not parse ToS line");
-      return;
-    }
-    saveAnalyzerTrade(raw.trim(), "paste");
-    setStored(loadAnalyzerTrade());
-    setParseError(null);
-  };
+  const baseIv = useMemo(() => {
+    const n = Number(ivStr);
+    if (Number.isFinite(n) && n > 0) return n / 100;
+    return 0.18;
+  }, [ivStr]);
+
+  const resetWhatIf = () => setWhatIf({ ...DEFAULT_WHAT_IF });
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col md:flex-row"
+      className="flex min-h-0 flex-1 flex-col lg:flex-row"
       data-testid="options-lab-analyzer-panel"
     >
-      {/* Controls */}
+      {/* Left rail — MSC risk graph style controls */}
       <aside
-        className="flex w-full shrink-0 flex-col gap-4 overflow-y-auto border-b border-[var(--color-separator)] bg-[var(--color-surface)] p-3 sm:p-4 md:w-[22%] md:min-w-[14rem] md:max-w-[22rem] md:border-b-0 md:border-r"
-        aria-label="Analyzer controls"
+        className="flex w-full shrink-0 flex-col gap-3 overflow-y-auto border-b border-[var(--color-separator)] bg-[var(--color-surface)] p-3 sm:p-4 lg:w-[20rem] lg:border-b-0 lg:border-r"
+        aria-label="Risk analyzer controls"
       >
         <div>
-          <h2
-            className="font-semibold tracking-tight text-[var(--color-label)]"
-            style={{ fontSize: "var(--text-headline, 1.0625rem)" }}
-          >
-            Analyzer
+          <h2 className="text-base font-semibold text-[var(--color-label)]">
+            Risk Analyzer
           </h2>
-          <p className="mt-0.5 text-xs leading-snug text-[var(--color-label-tertiary)]">
-            Expiration risk graph from a ToS order line
+          <p className="mt-0.5 text-[11px] leading-snug text-[var(--color-label-tertiary)]">
+            Dual-curve risk graph · ToS trade from Heatmap
           </p>
         </div>
 
         <label className="block">
           <span className={fieldLabel}>Symbol</span>
           <select
-            className={selectControl}
+            className={control + " min-h-11"}
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
             disabled={universeLoading || !universe.length}
@@ -296,103 +402,179 @@ export default function RiskAnalyzerPanel() {
         </label>
 
         <div>
-          <span className={fieldLabel}>ToS trade</span>
+          <span className={fieldLabel}>ToS order (trade selection)</span>
           <textarea
             className={
-              selectControl +
-              " min-h-[6.5rem] resize-y font-mono text-[11px] leading-snug"
+              control +
+              " min-h-[5.5rem] resize-y font-mono text-[11px] leading-snug"
             }
             value={raw}
             onChange={(e) => setRaw(e.target.value)}
-            placeholder="BUY +1 BUTTERFLY SPX 100 (Weeklys) 11 AUG 26 7720/7750/7780 CALL @1.25 LMT"
+            placeholder="BUY +1 BUTTERFLY SPX 100 (Weeklys) … @1.25 LMT"
             spellCheck={false}
             data-testid="analyzer-tos-input"
           />
-          <p className="mt-1 text-[11px] text-[var(--color-label-tertiary)]">
-            From Heatmap: ⌥-click a fly tile, then open Analyzer — or paste here.
+          <p className="mt-1 text-[10px] text-[var(--color-label-tertiary)]">
+            Heatmap ⌥-click fly tile → Open in Analyzer, or paste ToS here.
           </p>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className={secondaryBtn + " w-full"}
-            onClick={applyPaste}
+            className={btn}
             disabled={!raw.trim()}
+            onClick={() => {
+              if (!parseTosScript(raw)) {
+                setParseError("Could not parse ToS line");
+                return;
+              }
+              saveAnalyzerTrade(raw.trim(), "paste");
+              setStored(loadAnalyzerTrade());
+              setParseError(null);
+            }}
           >
             Load trade
           </button>
           <button
             type="button"
-            className={secondaryBtn + " w-full"}
+            className={btn}
             onClick={() => {
               clearAnalyzerTrade();
               setRaw("");
               setStored(null);
               setParseError(null);
+              resetWhatIf();
             }}
           >
             Clear
           </button>
-          <Link
-            href="/app/options-lab/heatmap"
-            className={
-              secondaryBtn +
-              " w-full no-underline " +
-              "inline-flex"
-            }
-          >
-            Open Heatmap
+          <Link href="/app/options-lab/heatmap" className={btn + " no-underline"}>
+            Heatmap
           </Link>
         </div>
 
         {stored?.source === "heatmap" ? (
-          <p className="text-[11px] text-emerald-500/90">
-            Loaded from Heatmap Option-click
-            {stored.savedAt
-              ? ` · ${new Date(stored.savedAt).toLocaleTimeString()}`
-              : ""}
+          <p className="text-[11px] text-emerald-500">
+            Source: Heatmap Option-click
+          </p>
+        ) : null}
+        {parseError ? (
+          <p className="text-xs text-red-400" role="alert">
+            {parseError}
           </p>
         ) : null}
 
-        {parseError ? (
-          <div
-            className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
-            role="alert"
-          >
-            {parseError}
-          </div>
-        ) : null}
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block">
+            <span className={fieldLabel}>Spot</span>
+            <input
+              className={control}
+              value={spotStr}
+              onChange={(e) => setSpotStr(e.target.value)}
+              inputMode="decimal"
+            />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>Base IV %</span>
+            <input
+              className={control}
+              value={ivStr}
+              onChange={(e) => setIvStr(e.target.value)}
+              inputMode="decimal"
+            />
+          </label>
+        </div>
 
-        <label className="block">
-          <span className={fieldLabel}>Spot marker (optional)</span>
-          <input
-            className={selectControl}
-            type="text"
-            inputMode="decimal"
-            placeholder="e.g. 5750"
-            value={spotOverride}
-            onChange={(e) => setSpotOverride(e.target.value)}
-          />
-        </label>
+        {/* What-if — MSC 3D-of-options simplified to 2D offsets */}
+        <div className="rounded-xl border border-[var(--color-separator)] bg-[var(--color-fill)]/40 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold text-[var(--color-label)]">
+              What-if
+            </span>
+            <button type="button" className="text-[11px] text-[var(--color-tint)]" onClick={resetWhatIf}>
+              Reset
+            </button>
+          </div>
+          <label className="mb-2 block">
+            <span className={fieldLabel}>
+              Time {whatIf.timeOffsetHours >= 0 ? "+" : ""}
+              {whatIf.timeOffsetHours.toFixed(0)}h
+            </span>
+            <input
+              type="range"
+              min={-72}
+              max={72}
+              step={1}
+              value={whatIf.timeOffsetHours}
+              onChange={(e) =>
+                setWhatIf((w) => ({
+                  ...w,
+                  timeOffsetHours: Number(e.target.value),
+                }))
+              }
+              className="w-full accent-[var(--color-tint)]"
+            />
+          </label>
+          <label className="mb-2 block">
+            <span className={fieldLabel}>
+              Vol {whatIf.volOffsetPts >= 0 ? "+" : ""}
+              {whatIf.volOffsetPts.toFixed(0)} pts
+            </span>
+            <input
+              type="range"
+              min={-20}
+              max={20}
+              step={0.5}
+              value={whatIf.volOffsetPts}
+              onChange={(e) =>
+                setWhatIf((w) => ({
+                  ...w,
+                  volOffsetPts: Number(e.target.value),
+                }))
+              }
+              className="w-full accent-[var(--color-tint)]"
+            />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>
+              Spot {whatIf.spotPct >= 0 ? "+" : ""}
+              {whatIf.spotPct.toFixed(1)}%
+            </span>
+            <input
+              type="range"
+              min={-5}
+              max={5}
+              step={0.1}
+              value={whatIf.spotPct}
+              onChange={(e) =>
+                setWhatIf((w) => ({
+                  ...w,
+                  spotPct: Number(e.target.value),
+                }))
+              }
+              className="w-full accent-[var(--color-tint)]"
+            />
+          </label>
+        </div>
 
         {trade ? (
-          <div className="mt-auto space-y-1 border-t border-[var(--color-separator)] pt-3 text-xs text-[var(--color-label-secondary)]">
+          <div className="mt-auto space-y-1 border-t border-[var(--color-separator)] pt-3 text-xs">
             <div className="font-semibold text-[var(--color-label)]">
               {tradeLabel(trade)}
             </div>
-            <div>
-              {trade.expiration} · {trade.action} · {trade.structure}
+            <div className="text-[var(--color-label-secondary)]">
+              {trade.expiration} · {trade.structure} · {trade.action}
             </div>
-            <div className="font-mono text-[11px] text-emerald-500/90">
+            <div className="font-mono text-emerald-400">
               {trade.isCredit ? "Credit" : "Debit"}{" "}
               {trade.limit != null ? trade.limit.toFixed(2) : "—"}
             </div>
-            <ul className="mt-1 space-y-0.5 font-mono text-[11px]">
+            <ul className="font-mono text-[11px] text-[var(--color-label-secondary)]">
               {trade.legs.map((l) => (
-                <li key={`${l.strike}-${l.quantity}`}>
+                <li key={`${l.strike}-${l.quantity}-${l.right}`}>
                   {l.quantity > 0 ? "+" : ""}
-                  {l.quantity} {l.right[0].toUpperCase()} {l.strike}
+                  {l.quantity}× {l.right} {l.strike}
                 </li>
               ))}
             </ul>
@@ -400,52 +582,34 @@ export default function RiskAnalyzerPanel() {
         ) : null}
       </aside>
 
-      {/* Chart panel */}
+      {/* Chart */}
       <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-canvas)] p-2 sm:p-3">
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-2,0_4px_16px_rgba(0,0,0,0.18))]">
-          <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-[var(--color-separator)] bg-[var(--color-surface-secondary,var(--color-fill))] px-3 py-2 sm:px-4">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--color-separator)] bg-[#0b0b10] shadow-[var(--elevation-2)]">
+          <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-white/10 px-3 py-2.5 sm:px-4">
             <div className="min-w-0 flex-1">
-              <h3 className="truncate font-semibold text-[var(--color-label)]">
+              <h3 className="truncate font-semibold text-white">
                 {trade ? tradeLabel(trade) : "No trade selected"}
               </h3>
-              <p className="text-[11px] text-[var(--color-label-tertiary)]">
-                Expiration P&amp;L · 1 package × $100 multiplier · v1 (no T+0 theo yet)
+              <p className="text-[11px] text-white/40">
+                MSC-style dual curve · green = expiration · magenta = T+0 theo ·
+                what-if offsets · not full MSC (no 3D / multi-book / GEX backdrop)
               </p>
             </div>
-            {summary ? (
-              <div className="flex flex-wrap gap-4 text-xs tabular-nums">
-                <span>
-                  Max{" "}
-                  <span className="font-semibold text-emerald-500">
-                    ${fmtMoney(summary.maxProfit, 0)}
-                  </span>
-                </span>
-                <span>
-                  Min{" "}
-                  <span className="font-semibold text-red-400">
-                    ${fmtMoney(summary.maxLoss, 0)}
-                  </span>
-                </span>
-                {summary.breakevens.length ? (
-                  <span className="text-[var(--color-label-secondary)]">
-                    BE{" "}
-                    {summary.breakevens
-                      .map((b) => fmtMoney(b, 1))
-                      .join(" · ")}
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
           </header>
-          <div className="min-h-0 flex-1 overflow-auto bg-[#0a0a0e] p-3">
+          <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
             {trade ? (
-              <PayoffChart trade={trade} spot={spotNum} />
+              <DualCurveChart
+                trade={trade}
+                baseSpot={baseSpot}
+                baseIv={baseIv}
+                whatIf={whatIf}
+              />
             ) : (
-              <div className="flex h-full min-h-[16rem] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-white/45">
-                <p>Select a trade to graph expiration risk.</p>
-                <p className="text-xs text-white/30">
-                  On Heatmap, Option-click a Symmetric flies tile (copies ToS), then
-                  return here — or paste a ToS line in the left rail.
+              <div className="flex min-h-[18rem] flex-col items-center justify-center gap-2 text-center text-sm text-white/40">
+                <p className="max-w-md">
+                  Select a trade the way MSC does from structure surfaces: on{" "}
+                  <strong className="text-white/60">Heatmap</strong>, Option-click a
+                  Symmetric flies tile, then open Analyzer — or paste a ToS line.
                 </p>
               </div>
             )}
