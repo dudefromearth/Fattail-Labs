@@ -551,172 +551,265 @@ export default function HeatmapChainPanel() {
         )}
       </aside>
 
-      {/* Right ~4/5 — active template view */}
+      {/* Right ~4/5 — contained panel with header */}
       <section
-        className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-canvas)]"
+        className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-canvas)] p-2 sm:p-3"
         aria-label="Heatmap view"
       >
         <div
-          ref={scrollRef}
-          className="min-h-0 flex-1 overflow-auto bg-[var(--color-surface)]"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-2,0_4px_16px_rgba(0,0,0,0.18))]"
+          data-testid="heatmap-view-panel"
         >
-          {tpl.layout === "matrix" && matrix ? (
-            /* MSC-look matrix: gold figures, green width headers, ATM gold */
-            <table className="w-full min-w-[28rem] border-collapse text-[11px] leading-none">
-              <thead className="sticky top-0 z-[2] bg-[#0a0a0e]">
-                <tr className="border-b border-white/10">
-                  <th
-                    scope="col"
-                    className="sticky left-0 z-[3] w-[3.75rem] min-w-[3.75rem] bg-[#0a0a0e] px-2 py-1.5 text-center text-[10px] font-medium uppercase tracking-wide text-white/45"
-                  >
-                    Strike
-                  </th>
-                  {matrix.cols.map((c) => (
+          {/* Panel header */}
+          <header className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-[var(--color-separator)] bg-[var(--color-surface-secondary,var(--color-fill))] px-3 py-2 sm:px-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <h3
+                  className="truncate font-semibold tracking-tight text-[var(--color-label)]"
+                  style={{ fontSize: "var(--text-headline, 1.0625rem)" }}
+                >
+                  {tpl.label}
+                </h3>
+                {tpl.valueModes.length > 1 ? (
+                  <span className="text-xs font-medium text-[var(--color-label-secondary)]">
+                    ·{" "}
+                    {tpl.valueModes.find((m) => m.id === valueMode)?.label ??
+                      valueMode}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-0.5 truncate text-[11px] text-[var(--color-label-tertiary)]">
+                {[
+                  symbol || null,
+                  side === "call" ? "Calls" : "Puts",
+                  expiration || null,
+                  displayDte != null ? `${displayDte} DTE` : null,
+                  tpl.layout === "matrix" ? "Width 20–50" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-label-secondary)]">
+              <span className="inline-flex items-center gap-1.5 font-medium text-[var(--color-label)]">
+                <span
+                  className={[
+                    "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                    streaming
+                      ? "bg-[var(--color-tint)]"
+                      : held
+                        ? "bg-amber-500"
+                        : "bg-[var(--color-label-tertiary)]",
+                  ].join(" ")}
+                  aria-hidden
+                />
+                {streaming
+                  ? "Live"
+                  : held
+                    ? "Held"
+                    : bus.transport === "error"
+                      ? "Error"
+                      : "…"}
+              </span>
+              <span className="tabular-nums">
+                Spot{" "}
+                <span className="font-semibold text-[var(--color-label)]">
+                  {bus.spot != null ? fmt(bus.spot, 2) : "—"}
+                </span>
+              </span>
+              {bus.hash ? (
+                <span
+                  className="hidden tabular-nums text-[var(--color-label-tertiary)] sm:inline"
+                  title={bus.hash}
+                >
+                  gen {bus.hash.slice(0, 8)}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                className={
+                  secondaryBtn +
+                  " min-h-9 px-3 py-1 text-xs " +
+                  (!ordered.some((r) => r.is_spot)
+                    ? "pointer-events-none opacity-45"
+                    : "")
+                }
+                onClick={() => centerSpot()}
+                disabled={!ordered.some((r) => r.is_spot)}
+                data-testid="chain-ladder-center-spot-panel"
+              >
+                Center spot
+              </button>
+            </div>
+          </header>
+
+          {/* Panel body — scrollable grid */}
+          <div
+            ref={scrollRef}
+            className={[
+              "min-h-0 flex-1 overflow-auto",
+              tpl.layout === "matrix" ? "bg-[#0a0a0e]" : "bg-[var(--color-surface)]",
+            ].join(" ")}
+          >
+            {tpl.layout === "matrix" && matrix ? (
+              /* MSC-look matrix: gold figures, green width headers, ATM gold */
+              <table className="w-full min-w-[28rem] border-collapse text-[11px] leading-none">
+                <thead className="sticky top-0 z-[2] bg-[#0a0a0e]/90 backdrop-blur-sm">
+                  <tr className="border-b border-white/10">
                     <th
-                      key={c.id}
                       scope="col"
-                      className="min-w-[3rem] px-1 py-1.5 text-center text-[11px] font-semibold tabular-nums text-emerald-400"
+                      className="sticky left-0 z-[3] w-[3.75rem] min-w-[3.75rem] bg-[#0a0a0e] px-2 py-1.5 text-center text-[10px] font-medium uppercase tracking-wide text-white/45"
                     >
-                      {c.label}
+                      Strike
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {matrix.rows.map((row, ri) => (
-                  <tr
-                    key={row.strike}
-                    data-spot={row.isSpot ? "1" : "0"}
-                    className={[
-                      "h-6 border-b border-white/[0.03]",
-                      row.isSpot ? "border-t border-amber-400/80" : "",
-                    ].join(" ")}
-                  >
-                    <td
+                    {matrix.cols.map((c) => (
+                      <th
+                        key={c.id}
+                        scope="col"
+                        className="min-w-[3rem] px-1 py-1.5 text-center text-[11px] font-semibold tabular-nums text-emerald-400"
+                      >
+                        {c.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrix.rows.map((row, ri) => (
+                    <tr
+                      key={row.strike}
+                      data-spot={row.isSpot ? "1" : "0"}
                       className={[
-                        "sticky left-0 z-[1] w-[3.75rem] min-w-[3.75rem] border-r border-white/[0.03] px-1 text-center tabular-nums",
-                        row.isSpot
-                          ? "bg-black/40 font-bold text-amber-400"
-                          : "bg-black/20 text-white/45",
+                        "h-6 border-b border-white/[0.03]",
+                        row.isSpot ? "border-t border-amber-400/80" : "",
                       ].join(" ")}
                     >
-                      {row.label}
-                    </td>
-                    {matrix.cols.map((col, ci) => {
-                      const cell = matrix.cells[ri]?.[ci];
-                      return (
-                        <td
-                          key={col.id}
-                          title={cell?.tooltip}
-                          className="min-w-[3rem] px-0.5 text-center tabular-nums text-amber-400 [text-shadow:0_0_2px_rgba(0,0,0,0.8)]"
-                          style={{
-                            backgroundColor: cell?.bgCss || "#1a1a1a",
-                            height: "24px",
-                          }}
-                        >
-                          {cell?.display ?? "—"}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-                {!matrix.rows.length && (
+                      <td
+                        className={[
+                          "sticky left-0 z-[1] w-[3.75rem] min-w-[3.75rem] border-r border-white/[0.03] px-1 text-center tabular-nums",
+                          row.isSpot
+                            ? "bg-black/40 font-bold text-amber-400"
+                            : "bg-black/20 text-white/45",
+                        ].join(" ")}
+                      >
+                        {row.label}
+                      </td>
+                      {matrix.cols.map((col, ci) => {
+                        const cell = matrix.cells[ri]?.[ci];
+                        return (
+                          <td
+                            key={col.id}
+                            title={cell?.tooltip}
+                            className="min-w-[3rem] px-0.5 text-center tabular-nums text-amber-400 [text-shadow:0_0_2px_rgba(0,0,0,0.8)]"
+                            style={{
+                              backgroundColor: cell?.bgCss || "#1a1a1a",
+                              height: "24px",
+                            }}
+                          >
+                            {cell?.display ?? "—"}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                  {!matrix.rows.length && (
+                    <tr>
+                      <td
+                        colSpan={matrix.cols.length + 1}
+                        className="px-4 py-24 text-center text-white/40"
+                      >
+                        {expiration
+                          ? "Waiting for chain…"
+                          : "Choose a contract"}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full min-w-[32rem] border-collapse text-sm">
+                <thead
+                  className="sticky top-0 z-[2] border-b border-[var(--color-separator)] bg-[var(--color-surface-secondary,var(--color-fill))] text-[var(--color-label-secondary)]"
+                  style={{ fontSize: "var(--text-caption, 0.75rem)" }}
+                >
                   <tr>
-                    <td
-                      colSpan={matrix.cols.length + 1}
-                      className="px-4 py-24 text-center text-[var(--color-label-secondary)]"
+                    <th
+                      scope="col"
+                      className="sticky left-0 z-[3] bg-[var(--color-surface-secondary,var(--color-fill))] px-3 py-2.5 text-right font-semibold tracking-wide"
                     >
-                      {expiration
-                        ? "Waiting for chain…"
-                        : "Choose a contract"}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          ) : (
-            <table className="w-full min-w-[32rem] border-collapse text-sm">
-              <thead
-                className="sticky top-0 z-[2] border-b border-[var(--color-separator)] bg-[var(--color-surface-secondary,var(--color-fill))] text-[var(--color-label-secondary)]"
-                style={{ fontSize: "var(--text-caption, 0.75rem)" }}
-              >
-                <tr>
-                  <th
-                    scope="col"
-                    className="sticky left-0 z-[3] bg-[var(--color-surface-secondary,var(--color-fill))] px-3 py-2.5 text-right font-semibold tracking-wide"
-                  >
-                    Strike
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                  >
-                    Mid
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                  >
-                    Bid
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                  >
-                    Ask
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                  >
-                    Vol
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                  >
-                    OI
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                  >
-                    Δ
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
-                  >
-                    IV
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {ordered.map((row) => (
-                  <StrikeRow
-                    key={`${row.side}-${row.strike}`}
-                    row={row}
-                    flash={bus.flashStrikes.has(row.strike)}
-                  />
-                ))}
-                {!ordered.length && (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-4 py-24 text-center text-[var(--color-label-secondary)]"
-                      style={{
-                        fontSize: "var(--text-subheadline, 0.9375rem)",
-                      }}
+                      Strike
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
                     >
-                      {expiration
-                        ? "Waiting for chain quotes…"
-                        : "Choose a contract to load the ladder"}
-                    </td>
+                      Mid
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                    >
+                      Bid
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                    >
+                      Ask
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                    >
+                      Vol
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                    >
+                      OI
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                    >
+                      Δ
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                    >
+                      IV
+                    </th>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {ordered.map((row) => (
+                    <StrikeRow
+                      key={`${row.side}-${row.strike}`}
+                      row={row}
+                      flash={bus.flashStrikes.has(row.strike)}
+                    />
+                  ))}
+                  {!ordered.length && (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="px-4 py-24 text-center text-[var(--color-label-secondary)]"
+                        style={{
+                          fontSize: "var(--text-subheadline, 0.9375rem)",
+                        }}
+                      >
+                        {expiration
+                          ? "Waiting for chain quotes…"
+                          : "Choose a contract to load the ladder"}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </section>
     </div>
