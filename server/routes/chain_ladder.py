@@ -253,6 +253,13 @@ def _fetch_ladder_uncached(
     mark_mid, mark_src = _native_mark_mid(product)
     step_guess = _strike_step(product, kind, strike_step_cfg)
     is_index = kind == "index" or product in ("SPX", "NDX", "RUT")
+    # Fetch pre-filter only: equities/ETFs often use step_guess=0.5 so
+    # wings×0.5 ≈ ±$12.5 — too narrow for fly widths 10–50 and for listed
+    # 1 / 2.5 / 5 grids. Over-fetch with a coarser floor, then trim to
+    # ±wings *listed* strikes via select_listed_wing_window.
+    fetch_step = step_guess
+    if not is_index and step_guess < 5.0:
+        fetch_step = max(step_guess, 2.5)
 
     try:
         client = MassiveClient()
@@ -284,16 +291,10 @@ def _fetch_ladder_uncached(
         )
 
     try:
-        if is_index:
-            _band0, lo0, hi0, _atm0 = strike_window_from_wings(
-                spot, step=step_guess, wings=wings_eff
-            )
-            raw = _pull(lo0, hi0)
-        else:
-            _band0, lo0, hi0, _atm0 = strike_window_from_wings(
-                spot, step=step_guess, wings=wings_eff
-            )
-            raw = _pull(lo0, hi0)
+        _band0, lo0, hi0, _atm0 = strike_window_from_wings(
+            spot, step=fetch_step, wings=wings_eff
+        )
+        raw = _pull(lo0, hi0)
     except MassiveClientError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 

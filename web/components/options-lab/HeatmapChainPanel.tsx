@@ -27,7 +27,7 @@ import {
   getTemplate,
   buildGrid,
 } from "@/lib/options-lab/templates/registry";
-import { SYM_FLY_WIDTHS_DEFAULT } from "@/lib/options-lab/templates/symFly";
+import { heatmapFlyWidths } from "@/lib/options-lab/templates/symFly";
 import {
   BW_STRIKE_COUNT_CHOICES,
   BW_STRIKE_COUNT_DEFAULT,
@@ -438,18 +438,23 @@ export default function HeatmapChainPanel() {
     ],
   );
 
+  /** SPX: 20…50; equities/ETFs: multiples of listed strike step. */
+  const flyWidths = useMemo(
+    () => heatmapFlyWidths(chainCtx.strikeStep ?? bus.strikeStep, 8),
+    [chainCtx.strikeStep, bus.strikeStep],
+  );
+
   const templateParams: TemplateParams = useMemo(
     () => ({
       valueMode,
-      // MSC SPX widths 20…50 (MASSIVE_WIDTHS_SPX)
       widthMode: "fixed_points",
-      fixedPoints: [...SYM_FLY_WIDTHS_DEFAULT],
+      fixedPoints: flyWidths,
       stickyScale,
       gradientThreshold: DEFAULT_GRADIENT_THRESHOLD,
       bwStrikeCount,
       bwWingSide,
     }),
-    [valueMode, stickyScale, bwStrikeCount, bwWingSide],
+    [valueMode, stickyScale, bwStrikeCount, bwWingSide, flyWidths],
   );
 
   const matrix = useMemo(() => {
@@ -864,8 +869,8 @@ export default function HeatmapChainPanel() {
                   displayDte != null ? `${displayDte} DTE` : null,
                   tpl.layout === "matrix"
                     ? templateId === "bw-fly"
-                      ? `Equal 20–50 · break ${bwStrikeCount}stk ${bwWingSide}`
-                      : "Width 20–50"
+                      ? `Equal ${flyWidths[0]}–${flyWidths[flyWidths.length - 1]} · break ${bwStrikeCount}stk ${bwWingSide}`
+                      : `Width ${flyWidths[0]}–${flyWidths[flyWidths.length - 1]}`
                     : tpl.layout === "profile"
                       ? "Vertical profile"
                       : null,

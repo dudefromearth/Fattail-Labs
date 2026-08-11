@@ -28,6 +28,32 @@ import { contractKey } from "@/lib/chainLadderApi";
 /** MSC SPX default widths (center-to-wing points). */
 export const SYM_FLY_WIDTHS_DEFAULT = [20, 25, 30, 35, 40, 45, 50] as const;
 
+/**
+ * Fly column widths for the active chain.
+ * SPX-class (step ≥ 5): MSC 20…50.
+ * Equity/ETF (finer step): multiples of listed step so cells can form on-chain.
+ */
+export function heatmapFlyWidths(
+  strikeStep: number | null | undefined,
+  count = 7,
+): number[] {
+  const step =
+    strikeStep != null && Number.isFinite(strikeStep) && strikeStep > 0
+      ? strikeStep
+      : 5;
+  if (step >= 5) {
+    return [...SYM_FLY_WIDTHS_DEFAULT];
+  }
+  const n = Math.max(1, Math.min(12, count));
+  const out: number[] = [];
+  for (let i = 1; i <= n; i++) {
+    // Avoid float noise (e.g. 2.5 * 3)
+    const w = Math.round(step * i * 1000) / 1000;
+    out.push(w);
+  }
+  return out;
+}
+
 function widthList(ctx: ChainContext, params: TemplateParams): number[] {
   if (params.widthMode === "fixed_points" && params.fixedPoints?.length) {
     return [...params.fixedPoints];
@@ -35,12 +61,10 @@ function widthList(ctx: ChainContext, params: TemplateParams): number[] {
   if (params.widthMode === "step_multiples") {
     const step = ctx.strikeStep && ctx.strikeStep > 0 ? ctx.strikeStep : 5;
     const n = Math.max(1, Math.min(12, params.widthCount ?? 7));
-    const out: number[] = [];
-    for (let i = 1; i <= n; i++) out.push(step * i);
-    return out;
+    return heatmapFlyWidths(step, n);
   }
-  // Default: MSC SPX ladder 20…50
-  return [...SYM_FLY_WIDTHS_DEFAULT];
+  // Adaptive default: SPX ladder or step multiples for equities
+  return heatmapFlyWidths(ctx.strikeStep, params.widthCount ?? 7);
 }
 
 function formatDebit(n: number): string {
