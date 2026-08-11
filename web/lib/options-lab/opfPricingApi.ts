@@ -131,10 +131,27 @@ export type OpfResolveRequest = {
     curve_steps?: number;
     curve_range_pct?: number;
   };
+  scenario?: {
+    vol_offset_pts?: number;
+    time_offset_hours?: number;
+    spot_pct?: number;
+  };
   spot?: number | null;
   vix?: number | null;
   vix1d?: number | null;
 };
+
+/** Registry packs exposed by L4 */
+export type OpfPackInfo = {
+  pack_id: string;
+  use_case: string;
+  role: string;
+};
+
+export async function listOpfPacks(): Promise<OpfPackInfo[]> {
+  const r = await getJSON<{ packs?: OpfPackInfo[] }>("/api/me/pricing/packs");
+  return r?.packs ?? [];
+}
 
 export async function resolveOpfPricing(
   body: OpfResolveRequest,
@@ -145,6 +162,7 @@ export async function resolveOpfPricing(
     strategy: body.strategy,
     generations: body.generations,
     what_if: body.what_if ?? {},
+    scenario: body.scenario ?? null,
     spot: body.spot ?? null,
     vix: body.vix ?? null,
     vix1d: body.vix1d ?? null,

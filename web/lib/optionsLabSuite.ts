@@ -36,7 +36,7 @@ export const OPTIONS_LAB_SUITE: OptionsLabAppItem[] = [
     label: "Analyzer",
     href: "/app/options-lab/analyzer",
     blurb:
-      "OPF dual-curve risk graph (expiration + T+0) — Heatmap ToS (⌥-click) or paste; compare to ToS Risk Analyzer.",
+      "Exercise OPF model packs on live dual-side chain — expiration + T+0/scenario curves; ToS paste or Heatmap ⌥-click.",
     status: "live",
   },
 ];

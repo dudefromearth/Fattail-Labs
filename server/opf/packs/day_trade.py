@@ -195,6 +195,10 @@ def run_surface(
 
     import math
 
+    wi = what_if or {}
+    vol_pts = float(wi.get("vol_offset_pts") or 0.0)
+    # Stamp surface IVs onto leg marks for curve generation (OPF alternate)
+    stamped: list[dict[str, Any]] = []
     model_sum = 0.0
     for lm in quote["leg_marks"]:
         surf = surfaces[lm["expiration"]]
@@ -210,22 +214,47 @@ def run_surface(
                 model_t0=None,
                 error=str(exc),
             )
+        row = dict(lm)
+        row["iv"] = iv
+        row["iv_source"] = "surface"
+        stamped.append(row)
+        iv_adj = iv + vol_pts / 100.0
         px = bsm_european_price(
-            float(spot), float(lm["strike"]), t, r, q, iv, lm["side"]
+            float(spot), float(lm["strike"]), t, r, q, max(iv_adj, 1e-6), lm["side"]
         )
         model_sum += float(lm["qty"]) * px
+
+    quote_surf = dict(quote)
+    quote_surf["leg_marks"] = stamped
 
     packages = float(intent.packages or 1.0)
     d_basis = quote.get("basis_debit_per_share")
     model_dollars = (
         (model_sum - float(d_basis)) * 100.0 * packages if d_basis is not None else None
     )
-    recon = _recon(quote.get("mark_dollars"), model_dollars)
+    recon = _recon(quote.get("mark_dollars"), model_dollars if vol_pts == 0 else None)
+
+    curves = _dual_curves(
+        quote_surf,
+        facts,
+        "bsm_european",
+        float(spot),
+        r,
+        q,
+        vol_pts,
+        d_basis,
+        packages,
+        steps=int(wi.get("curve_steps") or 161),
+        range_pct=float(wi.get("curve_range_pct") or 8.0),
+        time_offset_hours=float(wi.get("time_offset_hours") or 0.0),
+        as_of_clock=as_of_clock,
+        product=intent.product,
+    )
 
     return _result(
         intent,
         "day_trade.surface@1.0.0",
-        quote,
+        quote_surf,
         model_t0={
             "label": "model_t0",
             "engine_id": "surface_tv_logk",
@@ -233,6 +262,7 @@ def run_surface(
             "pnl_dollars": model_dollars,
             "spot": float(spot),
         },
+        curves=curves,
         recon=recon,
         rate_source=facts.rate_source,
         engine_id="surface_tv_logk",

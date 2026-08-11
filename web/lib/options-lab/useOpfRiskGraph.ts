@@ -55,6 +55,9 @@ export function useOpfRiskGraph(opts: {
   /** Manual spot override; null → use chain spot */
   spotOverride?: number | null;
   vix?: number | null;
+  /** OPF use case + pack (data model) */
+  useCase?: "day_trade" | "outlook" | "backtest";
+  packId?: string | null;
   /** what-if */
   timeOffsetHours?: number;
   volOffsetPts?: number;
@@ -66,6 +69,8 @@ export function useOpfRiskGraph(opts: {
     trade,
     spotOverride = null,
     vix = null,
+    useCase = "day_trade",
+    packId = null,
     timeOffsetHours = 0,
     volOffsetPts = 0,
     spotPct = 0,
@@ -161,7 +166,8 @@ export function useOpfRiskGraph(opts: {
       }
 
       const resolved = await resolveOpfPricing({
-        use_case: "day_trade",
+        use_case: useCase,
+        pack_id: packId,
         strategy: tradeToOpfStrategy(trade),
         generations: gens,
         spot: spotUse,
@@ -173,6 +179,14 @@ export function useOpfRiskGraph(opts: {
           curve_steps: 161,
           curve_range_pct: 8,
         },
+        scenario:
+          useCase === "outlook"
+            ? {
+                vol_offset_pts: volOffsetPts,
+                time_offset_hours: timeOffsetHours,
+                spot_pct: spotPct,
+              }
+            : undefined,
       });
 
       if (tick !== tickRef.current) return;
@@ -197,6 +211,8 @@ export function useOpfRiskGraph(opts: {
     enabled,
     spotOverride,
     vix,
+    useCase,
+    packId,
     timeOffsetHours,
     volOffsetPts,
     spotPct,

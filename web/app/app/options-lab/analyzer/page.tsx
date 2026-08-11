@@ -1,16 +1,17 @@
 "use client";
 
 import OptionsLabChrome from "@/components/options-lab/OptionsLabChrome";
-import MscRiskAnalyzer from "@/components/options-lab/MscRiskAnalyzer";
+import OpfRiskAnalyzer from "@/components/options-lab/OpfRiskAnalyzer";
 
 /**
- * Risk Analyzer — OPF day_trade dual-curve risk graph (ToS-comparable).
- * Trade input: Heatmap ToS Option-click or paste. PnLChart canvas for pan/zoom.
+ * Options Lab Analyzer — full exercise of Options Pricing Foundation.
+ * Data: dual-side chain generations. Pricing: OPF model packs only.
+ * Render: PnLChart (presentation). MSC is not the pricing standard.
  */
 export default function OptionsLabAnalyzerPage() {
   return (
     <OptionsLabChrome active="analyzer" workspace>
-      <MscRiskAnalyzer />
+      <OpfRiskAnalyzer />
     </OptionsLabChrome>
   );
 }

@@ -87,6 +87,32 @@ def run_scenario_surface(
     d_basis = quote.get("basis_debit_per_share") or quote.get("package_debit_per_share") or 0.0
     pnl = (model_sum - float(d_basis)) * 100.0 * packages
 
+    # Dense dual curves for Analyzer exercise (scenario T+0 never labeled mark — OPF15)
+    from opf.packs.day_trade import _dual_curves
+
+    curves = _dual_curves(
+        quote,
+        facts,
+        "bsm_european",
+        float(spot),
+        r,
+        q,
+        vol_pts,
+        float(d_basis) if d_basis is not None else None,
+        packages,
+        steps=int((what_if or {}).get("curve_steps") or 161),
+        range_pct=float((what_if or {}).get("curve_range_pct") or 8.0),
+        time_offset_hours=time_h,
+        as_of_clock=as_of_clock,
+        product=intent.product,
+    )
+    # Relabel theo series as scenario (not live mark)
+    if curves.get("model_t0"):
+        curves["model_t0"] = {
+            **curves["model_t0"],
+            "label": "scenario",
+        }
+
     return {
         "use_case": "outlook",
         "pack_id": "outlook.scenario_surface@1.0.0",
@@ -98,6 +124,14 @@ def run_scenario_surface(
             "complete": quote.get("complete"),
             "leg_marks": quote.get("leg_marks"),
         },
+        "model_t0": {
+            "label": "scenario",
+            "engine_id": "bsm_european",
+            "debit_per_share": model_sum,
+            "pnl_dollars": pnl,
+            "spot": S,
+        },
+        "curves": curves,
         "scenario": {
             "label": "scenario",  # OPF15 — never present as live mark
             "vol_offset_pts": vol_pts,

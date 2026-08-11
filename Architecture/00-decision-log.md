@@ -4,6 +4,19 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-293 Analyzer is OPF-only (MSC pricing substituted out)
+
+**Decision:** Options Lab **Analyzer** exists to **fully exercise OPF** — dual-side chain generations as data plane, L4 `resolve` + model packs as the **only** pricing path. MSC regimes / Heston / Monte Carlo / client `riskGraphEngine` are **not** Analyzer pricing models.
+
+| Layer | Law |
+|-------|-----|
+| Data | Market Bus dual ladder → OPF generations (no private Massive) |
+| Pricing | OPF packs: day_trade mark_hybrid/surface · outlook scenario/dynamics · backtest replay/reconstruct |
+| Render | PnLChart presentation only |
+| UI control | `OPF model pack` select (`opfModels.ts`) — not MSC model dropdown |
+
+**Artifacts:** `OpfRiskAnalyzer.tsx` · `MscRiskAnalyzer` / `RiskAnalyzerPanel` re-export OPF · dense dual curves on surface + outlook packs.
+
 ## 2026-08-11 — DL-292 Options Lab Analyzer L5 wires OPF dual-curve risk graph
 
 **Decision:** Options Lab **Analyzer** consumes OPF L4 `day_trade` resolve for real-time dual curves (expiration + model_t0), ToS-comparable presentation on PnLChart. Not MSC authority.
