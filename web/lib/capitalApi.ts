@@ -219,6 +219,8 @@ export function patchAccountBuyingPower(
   );
 }
 
+import type { SymbolAppProfile } from "@/lib/market/symbolProfile";
+
 /** Header as-of: true age (weekend rule) — never invent currency. */
 export type MarketUniverseSymbol = {
   symbol: string;
@@ -229,6 +231,11 @@ export type MarketUniverseSymbol = {
   options_cadence?: string | null;
   feed_symbol?: string | null;
   proxy_symbol?: string | null;
+  strike_step?: number | null;
+  /** Raw Admin JSON overrides (optional). */
+  app_profile_json?: Partial<SymbolAppProfile> | null;
+  /** Server-resolved app config for heatmap / analyzer / charts. */
+  profile?: SymbolAppProfile | null;
   mid?: number | null;
   prev_close?: number | null;
   day_change_pct?: number | null;

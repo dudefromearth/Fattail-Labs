@@ -253,13 +253,26 @@ def _fetch_ladder_uncached(
     mark_mid, mark_src = _native_mark_mid(product)
     step_guess = _strike_step(product, kind, strike_step_cfg)
     is_index = kind == "index" or product in ("SPX", "NDX", "RUT")
-    # Fetch pre-filter only: equities/ETFs often use step_guess=0.5 so
-    # wings×0.5 ≈ ±$12.5 — too narrow for fly widths 10–50 and for listed
-    # 1 / 2.5 / 5 grids. Over-fetch with a coarser floor, then trim to
-    # ±wings *listed* strikes via select_listed_wing_window.
+    # Fetch pre-filter: use per-symbol profile floor when present (Admin / kind defaults).
+    fetch_floor = 2.5
+    try:
+        from market_data import universe_admin as _ua
+        from market_data.symbol_profile import resolve_symbol_profile
+
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                urow = _ua.get_one(cur, product)
+        if urow:
+            prof = resolve_symbol_profile(urow, symbol=product)
+            if prof.get("fetch_step_floor") is not None:
+                fetch_floor = float(prof["fetch_step_floor"])
+    except Exception:
+        pass
+    # Equities/ETFs often use step_guess=0.5 so wings×0.5 ≈ ±$12.5 — too narrow.
+    # Over-fetch with floor, then trim via select_listed_wing_window.
     fetch_step = step_guess
     if not is_index and step_guess < 5.0:
-        fetch_step = max(step_guess, 2.5)
+        fetch_step = max(step_guess, fetch_floor)
 
     try:
         client = MassiveClient()

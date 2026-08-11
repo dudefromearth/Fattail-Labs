@@ -70,7 +70,8 @@ def serialize_row(r: dict) -> dict:
     except (TypeError, ValueError):
         strike_step = None
     as_of = r.get("expirations_as_of")
-    return {
+    app_profile = _parse_json_field(r.get("app_profile_json"))
+    out = {
         "symbol": r["symbol"],
         "feed_symbol": r.get("feed_symbol"),
         "proxy_symbol": r.get("proxy_symbol"),
@@ -87,7 +88,16 @@ def serialize_row(r: dict) -> dict:
             else (str(as_of) if as_of else None)
         ),
         "strike_step": strike_step,
+        "app_profile_json": app_profile if isinstance(app_profile, dict) else None,
     }
+    # Resolved profile for all consumers (Heatmap, Analyzer, Positions, …)
+    try:
+        from market_data.symbol_profile import resolve_symbol_profile
+
+        out["profile"] = resolve_symbol_profile(out, symbol=out["symbol"])
+    except Exception:
+        out["profile"] = None
+    return out
 
 
 def list_all(cur, *, enabled_only: bool = False) -> list[dict]:

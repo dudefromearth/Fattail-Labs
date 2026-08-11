@@ -27,7 +27,7 @@ import {
   getTemplate,
   buildGrid,
 } from "@/lib/options-lab/templates/registry";
-import { heatmapFlyWidths } from "@/lib/options-lab/templates/symFly";
+import { flyWidthsFromProfile } from "@/lib/market/symbolProfile";
 import {
   BW_STRIKE_COUNT_CHOICES,
   BW_STRIKE_COUNT_DEFAULT,
@@ -243,7 +243,7 @@ const StrikeRow = memo(function StrikeRow({
 });
 
 export default function HeatmapChainPanel() {
-  const { symbol, setSymbol, universe, loading: universeLoading } =
+  const { symbol, setSymbol, universe, profile, loading: universeLoading } =
     useOptionsLab();
   const [expiryContracts, setExpiryContracts] = useState<
     LadderExpirationContract[]
@@ -266,6 +266,31 @@ export default function HeatmapChainPanel() {
   const [tosScript, setTosScript] = useState<string>("");
   const [tosCopied, setTosCopied] = useState(false);
   const mounted = useRef(true);
+
+  // Apply per-symbol profile when product changes (wings, side, template defaults)
+  useEffect(() => {
+    if (!profile?.symbol) return;
+    const w = profile.default_wings;
+    if (
+      STRIKE_WING_CHOICES.includes(w as StrikeWings) ||
+      (w >= 5 && w <= 50)
+    ) {
+      const allowed = [...STRIKE_WING_CHOICES];
+      const nearest = allowed.reduce((a, b) =>
+        Math.abs(b - w) < Math.abs(a - w) ? b : a,
+      );
+      setWings(nearest as StrikeWings);
+    }
+    if (profile.default_view_side === "call" || profile.default_view_side === "put") {
+      setSide(profile.default_view_side);
+    }
+    if (
+      profile.heatmap_default_template &&
+      HEATMAP_TEMPLATES.some((t) => t.id === profile.heatmap_default_template)
+    ) {
+      setTemplateId(profile.heatmap_default_template);
+    }
+  }, [profile.symbol]); // only on symbol identity change
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const presentKeyRef = useRef<string>("");
   const centerOnPresentRef = useRef(true);
@@ -438,10 +463,14 @@ export default function HeatmapChainPanel() {
     ],
   );
 
-  /** SPX: 20…50; equities/ETFs: multiples of listed strike step. */
+  /** From Admin/symbol profile; live chain step refines step_multiples. */
   const flyWidths = useMemo(
-    () => heatmapFlyWidths(chainCtx.strikeStep ?? bus.strikeStep, 8),
-    [chainCtx.strikeStep, bus.strikeStep],
+    () =>
+      flyWidthsFromProfile(
+        profile,
+        chainCtx.strikeStep ?? bus.strikeStep ?? profile.strike_step,
+      ),
+    [profile, chainCtx.strikeStep, bus.strikeStep],
   );
 
   const templateParams: TemplateParams = useMemo(
@@ -621,6 +650,11 @@ export default function HeatmapChainPanel() {
               <option key={u.symbol} value={u.symbol}>
                 {u.symbol}
                 {u.kind ? ` · ${u.kind}` : ""}
+                {u.profile?.strike_step != null
+                  ? ` · step ${u.profile.strike_step}`
+                  : u.strike_step != null
+                    ? ` · step ${u.strike_step}`
+                    : ""}
               </option>
             ))}
             {!universe.length && !universeLoading && (
@@ -695,6 +729,17 @@ export default function HeatmapChainPanel() {
 
         <p className="text-[11px] leading-snug text-[var(--color-label-tertiary)]">
           {tpl.description}
+        </p>
+        <p
+          className="text-[11px] leading-snug text-[var(--color-label-tertiary)]"
+          data-testid="heatmap-symbol-profile"
+        >
+          Profile · wings ±{profile.default_wings}
+          {profile.strike_step != null
+            ? ` · step ${profile.strike_step}`
+            : ""}
+          {` · widths ${flyWidths[0]}–${flyWidths[flyWidths.length - 1]}`}
+          {profile.kind ? ` · ${profile.kind}` : ""}
         </p>
 
         <label className="block">

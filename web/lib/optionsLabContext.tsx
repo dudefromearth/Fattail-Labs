@@ -18,6 +18,10 @@ import {
   fetchMarketUniverse,
   type MarketUniverseSymbol,
 } from "@/lib/capitalApi";
+import {
+  coerceSymbolProfile,
+  type SymbolAppProfile,
+} from "@/lib/market/symbolProfile";
 
 const STORAGE_KEY = "options-lab-symbol";
 
@@ -25,6 +29,8 @@ type Ctx = {
   symbol: string;
   setSymbol: (s: string) => void;
   universe: MarketUniverseSymbol[];
+  /** Resolved attributes for the active symbol (wings, fly widths, …). */
+  profile: SymbolAppProfile;
   loading: boolean;
   error: string | null;
 };
@@ -91,9 +97,26 @@ export function OptionsLabProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const profile = useMemo(() => {
+    const row = universe.find((u) => u.symbol === symbol);
+    if (row?.profile) {
+      return coerceSymbolProfile(row.profile, symbol, row.kind || "equity");
+    }
+    return coerceSymbolProfile(
+      {
+        symbol,
+        kind: row?.kind,
+        strike_step: row?.strike_step ?? null,
+        ...(row?.app_profile_json || {}),
+      },
+      symbol,
+      row?.kind || "equity",
+    );
+  }, [universe, symbol]);
+
   const value = useMemo(
-    () => ({ symbol, setSymbol, universe, loading, error }),
-    [symbol, setSymbol, universe, loading, error],
+    () => ({ symbol, setSymbol, universe, profile, loading, error }),
+    [symbol, setSymbol, universe, profile, loading, error],
   );
 
   return (
