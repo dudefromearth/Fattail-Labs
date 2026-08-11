@@ -38,6 +38,12 @@ behind auth, every page matching Echo's design system.
    API, not client-side hiding.
 5. **Memory safety** — no uncapped collections, no untracked timers, no per-mousemove
    setState.
+6. **Live underlier mids (site-wide)** — any mid/last/live price for universe symbols uses
+   `useLiveUnderlierMarks` + `bindUnderlierMark` + `<LiveMid />` /
+   `LiveUnderliersTable` (`web/lib/market/liveUnderlierPattern.ts`). Do **not** invent
+   ad-hoc mark polls, extra market WebSockets, or WS-only mid tables. Chains →
+   `useOptionChainBus`; multi-leg → OPF package-quote. Arch **28** §4.4 · `AGENTS.md`
+   market invariant 9 · **DL-300**.
 
 ## WORKFLOW
 

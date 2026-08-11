@@ -3,10 +3,13 @@
 /**
  * Symbol picker for Design (underlying attribute) and Curate (sim scan).
  * Catalog lives under Design → Symbols — not a top-level suite tab.
+ * Live mids use the site-wide underlier pattern (not a one-shot catalog mid).
  */
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { formatUnderlierMid } from "@/lib/market/liveUnderlierPattern";
+import { useLiveUnderlierMarks } from "@/lib/market/useLiveUnderlierMarks";
 import {
   fetchCurateSymbolCatalog,
   type CurateSymbolCatalog,
@@ -28,6 +31,11 @@ export default function CurateSymbolPicker({
   id = "curate-symbol",
 }: Props) {
   const [catalog, setCatalog] = useState<CurateSymbolCatalog | null>(null);
+
+  const { bySymbol } = useLiveUnderlierMarks({
+    enabledOnly: true,
+    pollMs: 5000,
+  });
 
   useEffect(() => {
     void fetchCurateSymbolCatalog({ tradeable_only: tradeableOnly }).then(
@@ -75,20 +83,30 @@ export default function CurateSymbolPicker({
         ) : (
           groups.map((g) => (
             <optgroup key={g.kind} label={g.label}>
-              {g.symbols.map((s) => (
-                <option key={s.symbol} value={s.symbol}>
-                  {s.symbol}
-                  {s.mid != null ? ` · ${s.mid.toFixed(2)}` : ""}
-                  {s.is_proxy ? " ~" : ""}
-                  {s.options_cadence ? ` · ${s.options_cadence}` : ""}
-                </option>
-              ))}
+              {g.symbols.map((s) => {
+                const mark = bySymbol.get(s.symbol.toUpperCase());
+                const mid =
+                  mark?.mid ??
+                  (mark?.viaProxy ? mark.proxyMid : null) ??
+                  s.mid ??
+                  null;
+                const proxy = mark?.viaProxy ?? Boolean(s.is_proxy);
+                return (
+                  <option key={s.symbol} value={s.symbol}>
+                    {s.symbol}
+                    {mid != null ? ` · ${formatUnderlierMid(mid)}` : ""}
+                    {proxy ? " ~" : ""}
+                    {s.options_cadence ? ` · ${s.options_cadence}` : ""}
+                  </option>
+                );
+              })}
             </optgroup>
           ))
         )}
       </select>
       <p className="text-[10px] text-[var(--color-label-secondary)]">
-        Organized by type. Full catalog under{" "}
+        Organized by type. Live mids via site-wide underlier pattern. Full
+        catalog under{" "}
         <Link
           href="/app/strategy-lab/symbols"
           className="text-blue-600 hover:underline"

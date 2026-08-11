@@ -36,6 +36,10 @@ config-driven, fail-loud, evidence-verified.
    the client.
 4. **Video URLs are signed per-request** — no durable public media URLs for gated lessons.
 5. **No MSC imports** — the product boundary is absolute.
+6. **Underlier marks SoR** — product mids via `get_underlier_mark` (bus → MySQL) and
+   `ensure_fresh_underlier_marks` on list/valuation endpoints; never silent proxy as
+   native index mid. Frontend consumers use Charlie's live underlier pattern (Arch **28**
+   §4.4 · **DL-300**).
 
 ## WORKFLOW
 

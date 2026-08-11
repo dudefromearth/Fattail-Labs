@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import {
+  LiveDayPct,
+  LiveMarksStatus,
+  LiveMid,
+  LiveProxyMid,
+} from "@/components/market/LiveMid";
 import StrategyLabChrome from "@/components/strategy-lab/StrategyLabChrome";
+import { formatUnderlierMid } from "@/lib/market/liveUnderlierPattern";
+import { useLiveUnderlierMarks } from "@/lib/market/useLiveUnderlierMarks";
 import {
   fetchCurateSymbolDetail,
   type CurateSymbolDetail,
@@ -15,7 +23,17 @@ export default function StrategyLabSymbolDetailApp({
 }) {
   const [detail, setDetail] = useState<CurateSymbolDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const symKey = symbol.toUpperCase();
 
+  // Live mid — site-wide pattern (not ad-hoc detail poll for price)
+  const { bySymbol, transport, lastHttpAt, tick } = useLiveUnderlierMarks({
+    enabledOnly: false,
+    pollMs: 5000,
+    symbols: [symKey],
+  });
+  const liveMark = bySymbol.get(symKey);
+
+  // Static metadata (role, note, related) — slower poll
   const load = useCallback(async () => {
     const d = await fetchCurateSymbolDetail(symbol);
     if (!d) {
@@ -29,24 +47,19 @@ export default function StrategyLabSymbolDetailApp({
 
   useEffect(() => {
     void load();
-    const t = setInterval(() => void load(), 10000);
+    const t = setInterval(() => void load(), 30000);
     return () => clearInterval(t);
   }, [load]);
 
-  const chg = detail?.day_change_pct;
-  const chgTone =
-    chg == null
-      ? "text-[var(--color-label-secondary)]"
-      : chg >= 0
-        ? "text-rose-700"
-        : "text-emerald-700";
+  const viaProxy = liveMark?.viaProxy ?? Boolean(detail?.is_proxy);
+  const prevClose = liveMark?.prevClose ?? detail?.prev_close ?? null;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
       <StrategyLabChrome
         active="development"
         designSub="symbols"
-        subtitle={`${symbol.toUpperCase()} — shared stream info for Design (back test / forward walk) and Curate sim.`}
+        subtitle={`${symKey} — shared stream info for Design (back test / forward walk) and Curate sim.`}
       >
         <div className="mt-4 space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -70,6 +83,12 @@ export default function StrategyLabSymbolDetailApp({
             >
               Curate
             </Link>
+            <span className="text-[var(--color-label-secondary)]">·</span>
+            <LiveMarksStatus
+              transport={transport}
+              lastHttpAt={lastHttpAt}
+              tick={tick}
+            />
           </div>
 
           {err ? <p className="text-sm text-rose-600">{err}</p> : null}
@@ -87,7 +106,7 @@ export default function StrategyLabSymbolDetailApp({
                   <div>
                     <h1 className="font-mono text-3xl font-bold text-[var(--color-label)]">
                       {detail.symbol}
-                      {detail.is_proxy ? (
+                      {viaProxy ? (
                         <span className="ml-2 text-sm font-semibold text-sky-700">
                           ~proxy
                         </span>
@@ -101,17 +120,26 @@ export default function StrategyLabSymbolDetailApp({
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="font-mono text-3xl font-semibold tabular-nums text-[var(--color-label)]">
-                      {detail.mid != null ? detail.mid.toFixed(2) : "—"}
+                    <div className="text-3xl">
+                      <LiveMid
+                        mark={liveMark}
+                        digits={2}
+                        className="!text-3xl"
+                      />
                     </div>
-                    <div className={`text-sm tabular-nums ${chgTone}`}>
-                      prev{" "}
-                      {detail.prev_close != null
-                        ? detail.prev_close.toFixed(2)
-                        : "—"}
-                      {chg != null
-                        ? ` · ${chg >= 0 ? "+" : ""}${chg.toFixed(2)}%`
-                        : ""}
+                    {viaProxy ? (
+                      <div className="mt-0.5">
+                        <LiveProxyMid mark={liveMark} />
+                      </div>
+                    ) : null}
+                    <div className="mt-1 flex items-center justify-end gap-1 text-sm tabular-nums">
+                      <span className="text-[var(--color-label-secondary)]">
+                        prev {formatUnderlierMid(prevClose)}
+                      </span>
+                      <span className="text-[var(--color-label-tertiary)]">
+                        ·
+                      </span>
+                      <LiveDayPct mark={liveMark} />
                     </div>
                   </div>
                 </div>

@@ -43,7 +43,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 
 | Doc | Role |
 |---|---|
-| Arch **28** | Massive → feed → Redis → API → one WebSocket → shared client |
+| Arch **28** | Massive → feed → Redis → API → one WebSocket → shared client · **§4.4 live underlier mids UI standard** |
 | Arch **29** | **Heatmap templates** (design): flies / verticals / GEX over one chain model · diff once · many views |
 | Arch **30** | **Options Pricing Foundation** (design): L0–L4 data plane + day/outlook/backtest packs · foundation before app wiring |
 | Spec **OPF v0.2.1** | `Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` — normative law (OPF1–33); v0.1 superseded |

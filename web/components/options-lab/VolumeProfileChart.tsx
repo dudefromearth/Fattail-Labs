@@ -33,7 +33,7 @@ import {
   loadSeriesFull,
   refreshSeriesLive,
 } from "@/lib/marketOhlcSeries";
-import { useSymbolMarks } from "@/lib/market/useSymbolMarks";
+import { useLiveUnderlierMarks } from "@/lib/market/useLiveUnderlierMarks";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 
 /* ── Scale text size ─────────────────────────────────────────────────── */
@@ -724,12 +724,18 @@ export default function VolumeProfileChart() {
   const [backfilling, setBackfilling] = useState(false);
   const [liveAsOf, setLiveAsOf] = useState<string | null>(null);
 
-  // Live underlier mid from Market Bus / dual-write marks (mb:sym)
-  const { marks: liveMarks, transport: liveTransport } = useSymbolMarks({
-    symbols: symbol ? [symbol] : [],
-    enabled: Boolean(symbol),
-  });
-  const liveMid = liveMarks.get(symbol.toUpperCase())?.mid ?? null;
+  // Live underlier mid — site-wide pattern (HTTP ensure_fresh + WS bind)
+  const { bySymbol: liveBySymbol, transport: liveTransport } =
+    useLiveUnderlierMarks({
+      enabledOnly: true,
+      pollMs: 5000,
+      enabled: Boolean(symbol),
+      symbols: symbol ? [symbol] : null,
+    });
+  const liveMark = liveBySymbol.get((symbol || "").toUpperCase());
+  // Chart tip: native mid preferred; labeled proxy only if no native print
+  const liveMid =
+    liveMark?.mid ?? (liveMark?.viaProxy ? liveMark.proxyMid : null) ?? null;
 
   // Prefer symbol-profile default TF once
   useEffect(() => {

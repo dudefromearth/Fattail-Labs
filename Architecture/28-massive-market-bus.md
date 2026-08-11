@@ -69,7 +69,8 @@ Redis (localhost)     keys mb:*  · pub channel mb:pub
 | WS gateway | `server/routes/market_stream.py` | Multiplex sub/unsub; snapshot-then-delta |
 | Chain feed | `server/market_data/chain_feed.py` | Warms interest keys from Massive |
 | Sym feed | `server/market_data/sym_feed.py` | Universe marks + `marketstatus/now` |
-| Shared client | `web/lib/market/` | `MarketSocket`, `useOptionChainBus` |
+| Shared client | `web/lib/market/` | `MarketSocket`, `useOptionChainBus`, **`useLiveUnderlierMarks`** |
+| Live underlier UI | `web/components/market/LiveMid.tsx`, `LiveUnderliersTable.tsx` | Canonical mid display (Arch §4.4) |
 | Options Lab UI | `web/app/app/options-lab/page.tsx` | Consumer of shared client |
 | Legacy route | `/app/market/chain-ladder` → redirect to `/app/options-lab` |
 | Scale smoke | `server/scripts/mb_scale_smoke.py` | N concurrent fills → Massive O(1) |
@@ -126,6 +127,31 @@ Options Lab: `useOptionChainBus` prefers WS; polls when stream stale.
 ### 4.3 One socket law
 
 `getMarketSocket()` is a **tab singleton**. Multiple widgets register interest; they must not create additional WebSockets (aged-browser socket limits).
+
+### 4.4 Live underlier mids — site-wide UI standard (mandatory)
+
+Any surface that shows underlier **mid / last / live price** for symbols in
+`market_symbol_universe` uses **one** pattern. Do not invent a third path.
+
+| Layer | Path | Role |
+|-------|------|------|
+| Contract + bind | `web/lib/market/liveUnderlierPattern.ts` | `bindUnderlierMark`, formatters, poll constants |
+| Hook | `web/lib/market/useLiveUnderlierMarks.ts` | HTTP poll (`GET` market universe / ensure_fresh) + optional WS via `useSymbolMarks` |
+| Display | `web/components/market/LiveMid.tsx` | `<LiveMid />` · `<LiveProxyMid />` · `<LiveDayPct />` · status |
+| Table | `web/components/market/LiveUnderliersTable.tsx` | Practice / Admin / Lab shared table |
+
+**Rules:**
+
+1. **HTTP ensure_fresh is primary** for tables; WS overlays **non-proxy** mids only.  
+2. **Bind by product key only** — never apply SPY mid to an SPX row (or any cross-fill).  
+3. **Proxy honesty** — native mid vs labeled proxy mid are separate fields; UI shows both when relevant.  
+4. **Do not** poll `/api/me/strategy-lab/curate/live-marks` solely for mid chips (legacy Curate strip path retired).  
+5. **Do not** use raw `useSymbolMarks` alone when you need a hydrated table mid (WS-only is incomplete without HTTP).  
+6. **Exceptions (different planes):** options **chain** → `useOptionChainBus`; multi-leg **package** marks → OPF package-quote.
+
+**Consumers (as-built):** Practice Marked underliers · Admin Market universe · Strategy Lab Symbols · Curate live marks strip · Curate symbol picker · Symbol detail · Positions equity Last · Volume Profile live tip.
+
+Server SoR for mids: `get_underlier_mark` (bus → MySQL dual-write) + `ensure_fresh_underlier_marks` on list/valuation paths. Writers: `sym_feed` / `live_stream`.
 
 ---
 
@@ -202,7 +228,8 @@ export LABS_MARKET_BUS=1 REDIS_URL=redis://127.0.0.1:6379/0
 5. Proxy path labeled?  
 6. Strikes cent-exact in any UI?  
 7. Fail loud if Redis/bus required but missing (`LABS_MARKET_BUS=1` without `REDIS_URL`)?  
-8. Update Spec / DL / this Arch file when behavior changes (documentation parity).
+8. Showing an underlier **mid/last**? Use `useLiveUnderlierMarks` + `<LiveMid />` (§4.4) — no ad-hoc poll.  
+9. Update Spec / DL / this Arch file when behavior changes (documentation parity).
 
 ---
 

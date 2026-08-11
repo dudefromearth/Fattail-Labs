@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-300 Live underlier mids — site-wide UI standard
+
+**Decision:** Every product surface that shows underlier mid / last / live price for
+`market_symbol_universe` symbols **must** use the live underlier pattern:
+
+- `useLiveUnderlierMarks` + `bindUnderlierMark` + `<LiveMid />` / `LiveUnderliersTable`
+- HTTP `ensure_fresh` primary; Market Bus WS overlay non-proxy only
+- Never cross-fill another product's mid (e.g. SPY → SPX)
+
+**Converted consumers:** Practice Marked underliers · Admin Market universe · Strategy Lab
+Symbols table · Curate live marks strip · Curate symbol picker · Symbol detail · Positions
+equity Last · Volume Profile live tip.
+
+**Not this path:** options chain (`useOptionChainBus`) · OPF package-quote · one-shot
+Admin Massive validate buttons.
+
+**Docs:** Arch **28** §4.4 · `AGENTS.md` market invariant 9 · `CLAUDE.md` · Charlie
+charter · Arch **18** companion note.
+
+**Rationale:** Ad-hoc polls (`/curate/live-marks` chips, WS-only mid tables) caused stale
+UI, wrong product binding, and proxy-as-native confusion. One pattern.
+
 ## 2026-08-11 — DL-299 Position Builder program close (litmus path landed)
 
 **Decision:** Position Builder bench **phases D…Z** landed against Spec v0.2 / plan v1.0.

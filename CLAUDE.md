@@ -13,6 +13,11 @@ Deploy playbook: `infra/deploy.md`.
 Massive → feeds → Redis → one WebSocket/tab → `web/lib/market` shared client.  
 Do **not** add per-request Massive or per-widget sockets. Options Lab: `/app/options-lab`.
 
+**Live underlier mids (site-wide UI standard):** any mid/last/live price for universe
+symbols uses `useLiveUnderlierMarks` + `bindUnderlierMark` + `<LiveMid />` /
+`LiveUnderliersTable` (`web/lib/market/liveUnderlierPattern.ts`). Do **not** invent
+ad-hoc polls or WS-only mid tables. See Arch **28** §4.4 and `AGENTS.md` market invariant 9.
+
 ## Architecture Decisions (locked 2026-07-21)
 
 - **Standalone repo. NO shared code with MarketSwarm-Canonical.** Anything needed from

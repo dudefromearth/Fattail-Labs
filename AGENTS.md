@@ -56,8 +56,9 @@ growth playbook [`Architecture/17-strategy-lab-growth-playbook.md`](./Architectu
 | Course hosting | `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md` |
 | Strategy Lab Curate/Deploy surface | `Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` |
 | **Market Bus (live market plane)** | Spec `FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` · Arch **28** · bench `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md` |
+| **Live underlier mids (UI standard)** | Arch **28** §4.4 · `web/lib/market/liveUnderlierPattern.ts` · hook `useLiveUnderlierMarks` · `<LiveMid />` / `LiveUnderliersTable` |
 | **Options chain ladder** | Spec `FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` · route `/app/options-lab` · board `agents/p-market-bus/` + `agents/p-options-chain-picker/` |
-| Curate MySQL marks (not Redis bus) | Arch **18** · `live_stream` → `market_live_marks` |
+| Curate MySQL marks (dual-write / fallback) | Arch **18** · `live_stream` / `sym_feed` → `market_live_marks`; product UI mids still use live underlier pattern |
 | Community | `Specs/FatTail-Labs-Community-App-Spec-v1.0.md` · `docs/Community-Chat-Discord-Second-Window.md` |
 | Visualize AI | `Specs/FatTail-Labs-Visualize-AI-Spec-v0.1.md` · `docs/Visualize-AI-How-It-Works.md` |
 | Bot Marketplace | `Specs/FatTail-Labs-Bot-Marketplace-Framework-Spec-v0.1.md` · `docs/Bot-Marketplace-How-It-Works.md` |
@@ -75,8 +76,18 @@ Also: `CLAUDE.md` for ops/commands invariants.
 6. **Exact strikes:** display listed values cent-exact (OC6a).  
 7. **No MSC** market code or MSC Redis schemas.  
 8. **Header UI** is not product law until a surface Spec — bus may still publish `session` / `sym` topics.  
+9. **Live underlier mids (site-wide UI standard — do not invent a third path):**  
+   Any surface that shows underlier **mid / last / live price** for symbols in
+   `market_symbol_universe` **must** use:
+   - Hook: `useLiveUnderlierMarks` (`web/lib/market/useLiveUnderlierMarks.ts`)
+   - Bind: `bindUnderlierMark` (product key only — never cross-fill SPY→SPX)
+   - Display: `<LiveMid />` / `<LiveProxyMid />` / `LiveUnderliersTable`
+   - HTTP poll (`ensure_fresh` on list endpoints) is primary for tables; WS overlays non-proxy only  
+   **Do not** poll ad-hoc `/curate/live-marks` for mid chips, invent per-widget Massive,
+   or read raw `useSymbolMarks` alone when you need a table mid (WS-only is incomplete).  
+   Chains still use `useOptionChainBus`. Multi-leg packages use OPF package-quote.  
 
-Full map: [`Architecture/28-massive-market-bus.md`](./Architecture/28-massive-market-bus.md).
+Full map: [`Architecture/28-massive-market-bus.md`](./Architecture/28-massive-market-bus.md) §4.4.
 
 ---
 

@@ -6,9 +6,9 @@
 **Correlation:** On-demand only — **never** block `GET .../comparison` on Massive daily bars (DL-231).  
 **UI catalog:** Design → **Symbols** sub-nav (not a top suite tab — DL-232).
 
-**Companion (2026-08-10):** Real-time multi-worker **chain ladders + WS fan-out** use the **Market Bus** (Redis generations), not this MySQL marks table as the live path. See [`Architecture/28-massive-market-bus.md`](./28-massive-market-bus.md).  
-- **Arch/18** = durable / Curate marks SoR (`market_live_marks` via `live_stream`).  
-- **Arch/28** = Redis `mb:*` + feeds + one WebSocket for Options Lab / shared client.  
+**Companion (2026-08-10 / updated 2026-08-11):** Real-time multi-worker **chain ladders + WS fan-out** use the **Market Bus** (Redis generations). Product **UI underlier mids** use the site-wide live underlier pattern (Arch **28** §4.4) — not ad-hoc Curate polls. See [`Architecture/28-massive-market-bus.md`](./28-massive-market-bus.md).  
+- **Arch/18** = durable MySQL marks (`market_live_marks`) + heartbeat; dual-write from `sym_feed` / `live_stream`; server `get_underlier_mark` falls through bus → MySQL.  
+- **Arch/28** = Redis `mb:*` + feeds + one WebSocket + **frontend standard** for live underlier mids.  
 - Proxy doctrine (SPY/VIXY labeled `massive_proxy_v1`) applies to **both**. Do not use proxy mids for SPX strike math (OC2).
 
 ## Why

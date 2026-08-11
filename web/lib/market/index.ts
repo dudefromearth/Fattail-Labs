@@ -1,8 +1,10 @@
 /**
  * Market data client — one plane for the whole site.
  *
- * Live underliers: `liveUnderlierPattern` + `useLiveUnderlierMarks` + `<LiveMid />`
+ * Live underliers (SITE STANDARD): `liveUnderlierPattern` + `useLiveUnderlierMarks` +
+ *   `<LiveMid />` / `LiveUnderliersTable` — Arch 28 §4.4 · AGENTS.md invariant 9 · DL-300
  * Chain: `useOptionChainBus` / `MarketSocket`
+ * Low-level WS only: `useSymbolMarks` (prefer the hook above for product mids)
  */
 
 export {
