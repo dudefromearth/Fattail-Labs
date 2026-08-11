@@ -2,7 +2,8 @@
 
 /**
  * Heatmap app v1 — options chain ladder (templates later).
- * Symbol from Options Lab suite context.
+ * Layout: left control rail ~1/5 · right chain ~4/5 · full remaining viewport height.
+ * Apple HIG: surface cards, segmented controls, token chrome (HIS v1.0).
  */
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -16,8 +17,36 @@ import {
 } from "@/lib/chainLadderApi";
 import { useOptionChainBus } from "@/lib/market/useOptionChainBus";
 import { useOptionsLab } from "@/lib/optionsLabContext";
+import {
+  HEATMAP_TEMPLATES,
+  getTemplate,
+  buildGrid,
+} from "@/lib/options-lab/templates/registry";
+import type {
+  ChainContext,
+  TemplateParams,
+  ValueModeId,
+} from "@/lib/options-lab/templates/types";
 
 const EXPIRY_PICK_COUNT = 3;
+
+const fieldLabel =
+  "mb-1 block text-xs font-medium text-[var(--color-label-secondary)]";
+
+const selectControl =
+  "block min-h-11 w-full min-w-[8rem] rounded-[var(--radius-md,0.5rem)] border border-[var(--color-separator)] " +
+  "bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-label)] " +
+  "shadow-[var(--elevation-1)] transition-colors " +
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)] " +
+  "disabled:opacity-45";
+
+const secondaryBtn =
+  "inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-separator)] " +
+  "bg-[var(--color-surface)] px-4 py-2 text-sm font-medium text-[var(--color-label)] " +
+  "shadow-[var(--elevation-1)] transition-colors " +
+  "hover:bg-[var(--color-fill)] " +
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)] " +
+  "disabled:pointer-events-none disabled:opacity-45";
 
 function fmt(n: number | null | undefined, digits = 2): string {
   if (n == null || Number.isNaN(Number(n))) return "—";
@@ -42,6 +71,52 @@ function fmtStrike(n: number | null | undefined): string {
   return neg ? `-${body}` : body;
 }
 
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  testId,
+}: {
+  label: string;
+  value: T;
+  options: { id: T; label: string }[];
+  onChange: (v: T) => void;
+  testId?: string;
+}) {
+  return (
+    <div>
+      <span className={fieldLabel}>{label}</span>
+      <nav
+        className="inline-flex flex-wrap items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
+        aria-label={label}
+        data-testid={testId}
+      >
+        {options.map((item) => {
+          const active = item.id === value;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onChange(item.id)}
+              aria-pressed={active}
+              className={[
+                "inline-flex min-h-9 items-center justify-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
+                active
+                  ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
+                  : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
+              ].join(" ")}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
 const StrikeRow = memo(function StrikeRow({
   row,
   flash,
@@ -49,48 +124,60 @@ const StrikeRow = memo(function StrikeRow({
   row: LadderRow;
   flash: boolean;
 }) {
+  const rowBg = row.is_spot
+    ? "bg-[var(--color-tint)]/15"
+    : flash
+      ? "bg-[var(--color-fill)] motion-safe:transition-colors motion-safe:duration-500"
+      : "bg-[var(--color-surface)]";
+
   return (
     <tr
-      className={
-        row.is_spot
-          ? "bg-[var(--color-tint)]/20 font-semibold"
-          : flash
-            ? "bg-amber-500/15 transition-colors duration-500"
-            : undefined
-      }
+      className={[
+        rowBg,
+        row.is_spot ? "font-semibold" : "",
+        "text-[var(--color-label)]",
+      ].join(" ")}
       data-strike={row.strike}
       data-spot={row.is_spot ? "1" : "0"}
     >
       <td
-        className="sticky left-0 z-[1] border-b border-[var(--color-separator)] bg-inherit px-2 py-1 text-right tabular-nums"
+        className={[
+          "sticky left-0 z-[1] border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums",
+          rowBg,
+        ].join(" ")}
         title={String(row.strike)}
       >
-        {fmtStrike(row.strike)}
-        {row.is_spot ? (
-          <span className="ml-1 text-[10px] font-bold text-[var(--color-tint)]">
-            SPOT
-          </span>
-        ) : null}
+        <span className="inline-flex items-center justify-end gap-1.5">
+          {fmtStrike(row.strike)}
+          {row.is_spot ? (
+            <span
+              className="inline-flex items-center rounded-full bg-[var(--color-tint)] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white"
+              aria-label="Spot strike"
+            >
+              Spot
+            </span>
+          ) : null}
+        </span>
       </td>
-      <td className="border-b border-[var(--color-separator)] px-2 py-1 text-right tabular-nums">
+      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums">
         {fmt(row.mid)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-2 py-1 text-right tabular-nums">
+      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums text-[var(--color-label-secondary)]">
         {fmt(row.bid)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-2 py-1 text-right tabular-nums">
+      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums text-[var(--color-label-secondary)]">
         {fmt(row.ask)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-2 py-1 text-right tabular-nums">
+      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums text-[var(--color-label-secondary)]">
         {fmt(row.volume, 0)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-2 py-1 text-right tabular-nums">
+      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums text-[var(--color-label-secondary)]">
         {fmt(row.open_interest, 0)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-2 py-1 text-right tabular-nums">
+      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums">
         {fmt(row.delta, 3)}
       </td>
-      <td className="border-b border-[var(--color-separator)] px-2 py-1 text-right tabular-nums">
+      <td className="border-b border-[var(--color-separator)] px-3 py-2.5 text-right tabular-nums">
         {row.iv != null ? `${(Number(row.iv) * 100).toFixed(1)}%` : "—"}
       </td>
     </tr>
@@ -98,7 +185,8 @@ const StrikeRow = memo(function StrikeRow({
 });
 
 export default function HeatmapChainPanel() {
-  const { symbol, universe } = useOptionsLab();
+  const { symbol, setSymbol, universe, loading: universeLoading } =
+    useOptionsLab();
   const [expiryContracts, setExpiryContracts] = useState<
     LadderExpirationContract[]
   >([]);
@@ -107,6 +195,9 @@ export default function HeatmapChainPanel() {
   const [wings, setWings] = useState<StrikeWings>(DEFAULT_STRIKE_WINGS);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ladderDte, setLadderDte] = useState<number | null>(null);
+  const [templateId, setTemplateId] = useState("ladder");
+  const [valueMode, setValueMode] = useState<ValueModeId>("quote");
+  const [stickyScale, setStickyScale] = useState<number | undefined>(undefined);
   const mounted = useRef(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const presentKeyRef = useRef<string>("");
@@ -119,6 +210,14 @@ export default function HeatmapChainPanel() {
     wings,
     enabled: Boolean(expiration && symbol),
   });
+
+  const tpl = getTemplate(templateId);
+
+  useEffect(() => {
+    // Reset value mode when template changes
+    setValueMode(tpl.defaultValueMode);
+    setStickyScale(undefined);
+  }, [templateId, tpl.defaultValueMode]);
 
   useEffect(() => {
     mounted.current = true;
@@ -168,6 +267,54 @@ export default function HeatmapChainPanel() {
     return [...bus.rows.values()].sort((a, b) => b.strike - a.strike);
   }, [bus.rows]);
 
+  const chainCtx: ChainContext = useMemo(
+    () => ({
+      symbol,
+      viewSide: side,
+      spot: bus.spot,
+      strikeStep: bus.strikeStep,
+      wings,
+      contracts: bus.contracts,
+      asOf: bus.asOf,
+      contentHash: bus.hash,
+    }),
+    [
+      symbol,
+      side,
+      bus.spot,
+      bus.strikeStep,
+      wings,
+      bus.contracts,
+      bus.asOf,
+      bus.hash,
+    ],
+  );
+
+  const templateParams: TemplateParams = useMemo(
+    () => ({
+      valueMode,
+      widthMode: "step_multiples",
+      widthCount: 7,
+      stickyScale,
+    }),
+    [valueMode, stickyScale],
+  );
+
+  const matrix = useMemo(() => {
+    if (tpl.layout !== "matrix") return null;
+    const g = buildGrid(tpl, chainCtx, templateParams);
+    return g;
+  }, [tpl, chainCtx, templateParams]);
+
+  useEffect(() => {
+    if (matrix?.stickyScale == null) return;
+    setStickyScale((prev) =>
+      prev != null && Math.abs(prev - matrix.stickyScale) < 1e-12
+        ? prev
+        : matrix.stickyScale,
+    );
+  }, [matrix?.stickyScale]);
+
   const centerSpot = useCallback(() => {
     const root = scrollRef.current;
     if (!root) return false;
@@ -178,9 +325,7 @@ export default function HeatmapChainPanel() {
     const rootRect = root.getBoundingClientRect();
     const elRect = spotEl.getBoundingClientRect();
     root.scrollTop +=
-      elRect.top +
-      elRect.height / 2 -
-      (rootRect.top + rootRect.height / 2);
+      elRect.top + elRect.height / 2 - (rootRect.top + rootRect.height / 2);
     return true;
   }, []);
 
@@ -205,25 +350,125 @@ export default function HeatmapChainPanel() {
         : null;
 
   const error = loadError || bus.error;
+  const streaming = bus.transport === "stream";
+  const held = bus.transport === "held";
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--color-separator)] p-3">
-        <div className="text-xs text-[var(--color-label-tertiary)]">
-          <span className="font-medium text-[var(--color-label)]">{symbol}</span>
-          {displayDte != null ? ` · ${displayDte} DTE` : ""}
-          {selectedMeta?.feed_symbol
-            ? ` · feed ${selectedMeta.feed_symbol}`
-            : ""}
-          {" · "}±{wings} · {bus.transport}
-          <span className="mt-0.5 block text-[10px]">
-            Templates (flies, verticals, …) — coming next
-          </span>
+    <div
+      className="flex min-h-0 flex-1 flex-col md:flex-row"
+      data-testid="options-lab-heatmap-panel"
+    >
+      {/* Left rail ~1/5 — controls, full height */}
+      <aside
+        className="flex w-full shrink-0 flex-col gap-4 overflow-y-auto border-b border-[var(--color-separator)] bg-[var(--color-surface)] p-3 sm:p-4 md:w-[20%] md:min-w-[12.5rem] md:max-w-[20rem] md:border-b-0 md:border-r"
+        aria-label="Chain controls"
+      >
+        <div>
+          <h2
+            className="font-semibold tracking-tight text-[var(--color-label)]"
+            style={{ fontSize: "var(--text-headline, 1.0625rem)" }}
+          >
+            Heatmap
+          </h2>
+          <p className="mt-0.5 text-xs leading-snug text-[var(--color-label-tertiary)]">
+            Dual-side chain · live templates
+          </p>
         </div>
-        <label className="text-xs text-[var(--color-label-secondary)]">
-          Contract (next {EXPIRY_PICK_COUNT})
+
+        {/* Live status */}
+        <div className="flex flex-col gap-1 text-xs text-[var(--color-label-tertiary)]">
+          <span className="inline-flex items-center gap-1.5 font-medium text-[var(--color-label)]">
+            <span
+              className={[
+                "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                streaming
+                  ? "bg-[var(--color-tint)]"
+                  : held
+                    ? "bg-amber-500"
+                    : "bg-[var(--color-label-tertiary)]",
+              ].join(" ")}
+              aria-hidden
+            />
+            {streaming
+              ? "Live stream"
+              : held
+                ? "Held · market closed"
+                : bus.transport === "error"
+                  ? "Stream error"
+                  : "Connecting…"}
+          </span>
+          {displayDte != null ? <span>{displayDte} DTE</span> : null}
+          {selectedMeta?.feed_symbol ? (
+            <span className="break-all">Feed {selectedMeta.feed_symbol}</span>
+          ) : null}
+          <span className="tabular-nums break-all">{bus.lastPatch}</span>
+        </div>
+
+        <label className="block">
+          <span className={fieldLabel}>Symbol</span>
           <select
-            className="mt-0.5 block min-h-11 min-w-[12rem] rounded border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm"
+            className={selectControl}
+            value={symbol}
+            onChange={(e) => setSymbol(e.target.value)}
+            disabled={universeLoading || !universe.length}
+            data-testid="options-lab-symbol"
+          >
+            {universe.map((u) => (
+              <option key={u.symbol} value={u.symbol}>
+                {u.symbol}
+                {u.kind ? ` · ${u.kind}` : ""}
+              </option>
+            ))}
+            {!universe.length && !universeLoading && (
+              <option value={symbol}>{symbol}</option>
+            )}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className={fieldLabel}>Template</span>
+          <select
+            className={selectControl}
+            value={templateId}
+            onChange={(e) => setTemplateId(e.target.value)}
+            data-testid="heatmap-template"
+          >
+            {HEATMAP_TEMPLATES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {tpl.valueModes.length > 1 ? (
+          <label className="block">
+            <span className={fieldLabel}>Value</span>
+            <select
+              className={selectControl}
+              value={valueMode}
+              onChange={(e) => setValueMode(e.target.value as ValueModeId)}
+              data-testid="heatmap-value-mode"
+            >
+              {tpl.valueModes.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        <p className="text-[11px] leading-snug text-[var(--color-label-tertiary)]">
+          {tpl.description}
+        </p>
+
+        <label className="block">
+          <span className={fieldLabel}>
+            Contract (next {EXPIRY_PICK_COUNT})
+          </span>
+          <select
+            className={selectControl}
             value={expiration}
             onChange={(e) => {
               const v = e.target.value;
@@ -233,7 +478,7 @@ export default function HeatmapChainPanel() {
             }}
             data-testid="chain-ladder-expiration"
           >
-            {!expiration && <option value="">—</option>}
+            {!expiration && <option value="">Select…</option>}
             {expiryContracts.map((c) => (
               <option key={c.expiration} value={c.expiration}>
                 {c.label}
@@ -241,21 +486,22 @@ export default function HeatmapChainPanel() {
             ))}
           </select>
         </label>
-        <label className="text-xs text-[var(--color-label-secondary)]">
-          Side
+
+        <Segmented
+          label="Side"
+          value={side}
+          options={[
+            { id: "call", label: "Calls" },
+            { id: "put", label: "Puts" },
+          ]}
+          onChange={setSide}
+          testId="chain-ladder-side"
+        />
+
+        <label className="block">
+          <span className={fieldLabel}>Wings</span>
           <select
-            className="mt-0.5 block min-h-11 rounded border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm"
-            value={side}
-            onChange={(e) => setSide(e.target.value as "call" | "put")}
-          >
-            <option value="call">Calls</option>
-            <option value="put">Puts</option>
-          </select>
-        </label>
-        <label className="text-xs text-[var(--color-label-secondary)]">
-          Wings
-          <select
-            className="mt-0.5 block min-h-11 min-w-[7rem] rounded border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-2 text-sm"
+            className={selectControl}
             value={wings}
             onChange={(e) => setWings(Number(e.target.value) as StrikeWings)}
             data-testid="chain-ladder-wings"
@@ -267,74 +513,200 @@ export default function HeatmapChainPanel() {
             ))}
           </select>
         </label>
+
         <button
           type="button"
-          className="min-h-11 rounded border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 text-sm font-medium text-[var(--color-label)]"
+          className={secondaryBtn + " w-full"}
           onClick={() => centerSpot()}
           disabled={!ordered.some((r) => r.is_spot)}
           data-testid="chain-ladder-center-spot"
         >
           Center spot
         </button>
-        <div className="ml-auto text-right text-xs text-[var(--color-label-tertiary)]">
-          <div>
-            Spot{" "}
-            <span className="tabular-nums text-[var(--color-label)]">
-              {bus.spot != null ? fmt(bus.spot, 2) : "—"}
-            </span>
+
+        <div className="mt-auto border-t border-[var(--color-separator)] pt-4">
+          <span className={fieldLabel}>Spot</span>
+          <div
+            className="font-semibold tabular-nums tracking-tight text-[var(--color-label)]"
+            style={{ fontSize: "var(--text-title-2, 1.375rem)" }}
+          >
+            {bus.spot != null ? fmt(bus.spot, 2) : "—"}
           </div>
-          <div>
-            hash {bus.hash?.slice(0, 8) || "—"} · {bus.lastPatch}
+          <div className="mt-1 text-[11px] tabular-nums text-[var(--color-label-tertiary)]">
+            {bus.hash ? `gen ${bus.hash.slice(0, 8)}` : "—"}
           </div>
         </div>
-      </div>
 
-      {error && (
-        <p className="text-sm text-red-600" role="alert">
-          {error}
-        </p>
-      )}
+        {error && (
+          <div
+            className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
+      </aside>
 
-      <div
-        ref={scrollRef}
-        className="max-h-[70vh] overflow-auto rounded-lg border border-[var(--color-separator)]"
+      {/* Right ~4/5 — active template view */}
+      <section
+        className="flex min-h-0 min-w-0 flex-1 flex-col bg-[var(--color-canvas)]"
+        aria-label="Heatmap view"
       >
-        <table className="w-full border-collapse text-sm">
-          <thead className="sticky top-0 z-[2] bg-[var(--color-canvas)] text-left text-[10px] uppercase tracking-wide text-[var(--color-label-tertiary)]">
-            <tr>
-              <th className="sticky left-0 bg-[var(--color-canvas)] px-2 py-2">
-                Strike
-              </th>
-              <th className="px-2 py-2 text-right">Mid</th>
-              <th className="px-2 py-2 text-right">Bid</th>
-              <th className="px-2 py-2 text-right">Ask</th>
-              <th className="px-2 py-2 text-right">Vol</th>
-              <th className="px-2 py-2 text-right">OI</th>
-              <th className="px-2 py-2 text-right">Δ</th>
-              <th className="px-2 py-2 text-right">IV</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ordered.map((row) => (
-              <StrikeRow
-                key={row.strike}
-                row={row}
-                flash={bus.flashStrikes.has(row.strike)}
-              />
-            ))}
-            {!ordered.length && (
-              <tr>
-                <td
-                  colSpan={8}
-                  className="px-3 py-8 text-center text-[var(--color-label-tertiary)]"
-                >
-                  {expiration ? "Waiting for chain…" : "Pick an expiration"}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+        <div
+          ref={scrollRef}
+          className="min-h-0 flex-1 overflow-auto bg-[var(--color-surface)]"
+        >
+          {tpl.layout === "matrix" && matrix ? (
+            <table className="w-full min-w-[28rem] border-collapse text-xs">
+              <thead className="sticky top-0 z-[2] bg-[#0a0a0e] text-amber-200/90">
+                <tr>
+                  <th
+                    scope="col"
+                    className="sticky left-0 z-[3] bg-[#0a0a0e] px-2 py-2 text-left font-semibold tracking-wide"
+                  >
+                    Strike
+                  </th>
+                  {matrix.cols.map((c) => (
+                    <th
+                      key={c.id}
+                      scope="col"
+                      className="px-1.5 py-2 text-center font-semibold tabular-nums"
+                    >
+                      {c.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {matrix.rows.map((row, ri) => (
+                  <tr key={row.strike} data-spot={row.isSpot ? "1" : "0"}>
+                    <td
+                      className={[
+                        "sticky left-0 z-[1] px-2 py-1 text-right tabular-nums font-medium",
+                        row.isSpot
+                          ? "bg-[#1a1508] text-amber-300"
+                          : "bg-[#0c0c10] text-amber-100/90",
+                      ].join(" ")}
+                    >
+                      {row.label}
+                    </td>
+                    {matrix.cols.map((col, ci) => {
+                      const cell = matrix.cells[ri]?.[ci];
+                      return (
+                        <td
+                          key={col.id}
+                          title={cell?.tooltip}
+                          className="px-1 py-1 text-center tabular-nums font-medium text-amber-200"
+                          style={{
+                            backgroundColor: cell?.bgCss || "rgb(12,12,16)",
+                            minWidth: "2.75rem",
+                          }}
+                        >
+                          {cell?.display ?? "—"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                {!matrix.rows.length && (
+                  <tr>
+                    <td
+                      colSpan={matrix.cols.length + 1}
+                      className="px-4 py-24 text-center text-[var(--color-label-secondary)]"
+                    >
+                      {expiration
+                        ? "Waiting for chain…"
+                        : "Choose a contract"}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full min-w-[32rem] border-collapse text-sm">
+              <thead
+                className="sticky top-0 z-[2] border-b border-[var(--color-separator)] bg-[var(--color-surface-secondary,var(--color-fill))] text-[var(--color-label-secondary)]"
+                style={{ fontSize: "var(--text-caption, 0.75rem)" }}
+              >
+                <tr>
+                  <th
+                    scope="col"
+                    className="sticky left-0 z-[3] bg-[var(--color-surface-secondary,var(--color-fill))] px-3 py-2.5 text-right font-semibold tracking-wide"
+                  >
+                    Strike
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                  >
+                    Mid
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                  >
+                    Bid
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                  >
+                    Ask
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                  >
+                    Vol
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                  >
+                    OI
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                  >
+                    Δ
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-semibold tracking-wide"
+                  >
+                    IV
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {ordered.map((row) => (
+                  <StrikeRow
+                    key={`${row.side}-${row.strike}`}
+                    row={row}
+                    flash={bus.flashStrikes.has(row.strike)}
+                  />
+                ))}
+                {!ordered.length && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-24 text-center text-[var(--color-label-secondary)]"
+                      style={{
+                        fontSize: "var(--text-subheadline, 0.9375rem)",
+                      }}
+                    >
+                      {expiration
+                        ? "Waiting for chain quotes…"
+                        : "Choose a contract to load the ladder"}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
