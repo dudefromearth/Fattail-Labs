@@ -1,7 +1,7 @@
 # FatTail Labs — Options Lab Analyzer Spec v0.1
 
 **Status:** **DRAFT · product law + as-built inventory** (2026-08-11)  
-**Type:** Product Spec — Options Lab **Analyzer** surface (viewport, book, builder shell, modes, alerts, handoffs)  
+**Type:** Product Spec — Options Lab **Analyzer** surface (viewport, position book, **threshold alerts**, builder shell, modes, handoffs)  
 **Short name:** **Analyzer** · **AZ**  
 **Filename:** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md`  
 **Surface route:** `/app/options-lab/analyzer`  
@@ -9,7 +9,7 @@
 
 **Process:** Spec review → OD Accept/Override → implementation plan for residual TARGET laws → code/ATs.  
 **Content integrity:** Landing content hash (sha1 of body excluding this line):  
-`e8a0c7d5aa2e6dbe4505beb17ebd50556399b458`.
+`c80e2160c1a238975b60d676abae6c753ff10df1` (v0.1.1 · alerts first-class fold).
 
 ---
 
@@ -22,8 +22,10 @@ Options Lab **Analyzer** is the member surface that:
 3. Constructs and edits definitions via **Position Builder** (full) and **position cards** (read-only limited view).  
 4. Accepts alternate definition entry (ToS paste, Heatmap handoff) as **unlocked-live** when no card is focused.  
 5. Operates in **day_trade · outlook · backtest** modes via OPF pack selection — one surface, not three apps.  
-6. Evaluates **threshold price alerts** against underlier mark.  
+6. Owns **threshold price alerts** as a **first-class Analyzer subsystem** — create from the viewport, list/manage in Analyzer chrome, draw on the graph, evaluate against the same underlier mark the viewport uses.  
 7. Never uses MSC as pricing SoR (DL-293).
+
+**Alerts are not an afterthought.** They are part of the Analyzer product (with the book and the viewport), not a separate app and not optional chrome.
 
 **Coach litmus (shared with Position Builder Spec):**  
 *When looking at a position in the Builder or the position card, if it is unlocked, the correct pricing is displayed and the rendered position in the viewport is correct — as guaranteed for the active use case and session state.*
@@ -52,30 +54,32 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
-│  ANALYZER SESSION (one browser tab / sessionStorage book)         │
+│  ANALYZER SESSION (one browser tab / sessionStorage)              │
 │  · use case + pack_id · posture Live|Held|Closed|Error            │
 │  · focused definition id (or null)                                │
 │  · what-if knobs · spot/VIX overrides                             │
+│  · threshold alert book (0..N)                                    │
 └────────────────────────────┬─────────────────────────────────────┘
                              │
-     ┌───────────────────────┼───────────────────────┐
-     ▼                       ▼                       ▼
-┌─────────────┐    ┌─────────────────┐    ┌─────────────────────┐
-│ POSITION    │    │ VIEWPORT        │    │ DEFINITION ENTRY    │
-│ BOOK / LIST │    │ (OPF risk graph)│    │ Builder · paste ·   │
-│ cards 0..N  │───▶│ one focused def │◀───│ Heatmap ToS         │
-└─────────────┘    └─────────────────┘    └─────────────────────┘
-        │                    ▲
-        │  package quotes    │ resolve (generations + strategy)
-        ▼                    │
-   OPF package-quote    OPF L4 resolve
-   (PB17 card SoR)      (viewport SoR)
+     ┌───────────────────────┼───────────────────────┬──────────────────┐
+     ▼                       ▼                       ▼                  ▼
+┌─────────────┐    ┌─────────────────┐    ┌─────────────────────┐ ┌──────────────┐
+│ POSITION    │    │ VIEWPORT        │    │ DEFINITION ENTRY    │ │ ALERTS       │
+│ BOOK / LIST │───▶│ (OPF risk graph)│◀───│ Builder · paste ·   │ │ create list  │
+│ cards 0..N  │    │ one focused def │    │ Heatmap ToS         │ │ evaluate draw│
+└─────────────┘    └────────▲────────┘    └─────────────────────┘ └──────┬───────┘
+        │                   │                                              │
+        │ package quotes    │ resolve                                      │ price lines
+        ▼                   │                                              │ on chart
+   OPF package-quote   OPF L4 resolve                              underlier mark
+   (PB17 card SoR)     (viewport SoR)                              (same as viewport)
 ```
 
 | Object | SoR | Edit surface |
 |--------|-----|--------------|
 | **Definition** | Position card (`AnalyzerPosition`) | Builder (full); card is **read-only limited** |
 | **Visualization** | OPF resolve curves + marks | Viewport only — no structure draw-to-edit (PB-VIEW-1) |
+| **Threshold alerts** | Analyzer alert book (`AnalyzerThresholdAlert`) | Create: viewport context menu; Manage: Alerts list; Draw: chart lines |
 | **Unlocked-live alternate** | Parsed ToS / stored handoff when **no focused visible card** | Paste box · Heatmap · Load |
 | **Market** | Dual-side chain generations + underlier marks | Market Bus / ensure_fresh |
 
@@ -103,7 +107,7 @@ This section is **normative for “what exists today.”** TARGET laws in later 
 | Region | **As-built** | **TARGET (Coach)** |
 |--------|--------------|---------------------|
 | Main split | **Left sidebar** (~21rem) + **right viewport** (`lg:flex-row`) | **Vertical stack:** viewport **above**, position list **below**, with **divider**; single panel with divider *or* two stacked panels |
-| Sidebar contents | Positions list · Alerts · OPF pack · Symbol · ToS · actions · Spot/VIX · What-if · mark/RECON chips | Controls may remain in a chrome strip; **book moves under viewport** |
+| Sidebar contents | **Positions list · Alerts list** · OPF pack · Symbol · ToS · actions · Spot/VIX · What-if · mark/RECON chips | Controls may remain in a chrome strip; **book moves under viewport**; **alerts remain a first-class Analyzer region** (strip, under list, or collapsible panel — OD-AZ2) |
 | Viewport | Full remaining height · dark canvas · chart panel | Same — **one** focused graph panel |
 | MSC heritage | MSC had list **left** of viewport | Labs: list **under** viewport |
 
@@ -290,17 +294,83 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 
 Builder internals (also PB Spec + recent land): listed strikes only, ATM center, live package DEBIT/CREDIT + per-leg contrib, templates, ToS script copy, limit override, packages count — **see §4 and PB Spec §7**.
 
-### 1.14 Threshold alerts
+### 1.14 Threshold alerts (first-class Analyzer subsystem)
+
+Alerts are a **core Analyzer feature**, co-equal with the position book and the viewport for day-trader workflow. Implementation: `AnalyzerAlertsSection` + `analyzerBook` alert model + `PnLChart` context menu / `alertLines`.
+
+#### 1.14.1 Persistence & identity
 
 | Feature | As-built |
 |---------|----------|
-| Store | `sessionStorage` `ft_options_lab_analyzer_alerts_v1` |
-| Types | price_above · price_below · price_touch |
-| Create | Chart right-click; optional positionId |
-| Evaluate | Against smoothed display spot + symbol filter |
-| Status | new · acknowledged · dismissed · triggered |
-| UI | Severity rail · Ack/Dismiss/Delete · max 20 shown · symbol filter |
-| Chart lines | Dashed until triggered → active; Held suffix on label |
+| Store | `sessionStorage` key `ft_options_lab_analyzer_alerts_v1` |
+| Scope | **Session / tab** (not server multi-device in v0.1) |
+| Load/save | On Analyzer mount / on every alerts state change |
+| Id | Client uid `al_…` |
+
+#### 1.14.2 Alert model (`AnalyzerThresholdAlert`)
+
+| Field | Meaning |
+|-------|---------|
+| `id` | Stable session id |
+| `type` | `price_above` · `price_below` · `price_touch` |
+| `symbol` | Underlier product key (uppercase) |
+| `targetPrice` | Level on underlier axis |
+| `positionId?` | Optional link to a book card (position-scoped alert) |
+| `title` | Short member text (e.g. `SPX rises above 5500`) — **no profit claims** |
+| `severity` | `info` · `low` · `medium` · `high` · `critical` (create defaults `medium`) |
+| `status` | `new` · `acknowledged` · `dismissed` · `triggered` |
+| `enabled` | When false, not evaluated |
+| `createdAt` | ISO timestamp |
+| `triggeredAt?` | Set when first triggered |
+| `color` | Chart line color (above green / below red / touch blue by default) |
+
+#### 1.14.3 Create paths
+
+| Path | As-built |
+|------|----------|
+| **Viewport context menu** | Right-click chart → **Price Alert at {price}** → above / below / touch → `createPriceAlert` · `onOpenAlertDialog` |
+| **Position-scoped** | Context near curve with `positionLabels` → pick position notation → alert with `positionId` + price (`onPositionAlertSelect`) |
+| **Focused card default** | Global chart create may attach `focusedId` when present |
+
+#### 1.14.4 Evaluate (runtime)
+
+| Rule | As-built |
+|------|----------|
+| Mark | **Same underlier mark as viewport** (smoothed `displaySpot`) |
+| Symbol filter | Alert `symbol` must match Analyzer suite symbol (or empty) |
+| Skip | `enabled=false` · `dismissed` · already `triggered` |
+| `price_above` | trigger when `spot >= targetPrice` |
+| `price_below` | trigger when `spot <= targetPrice` |
+| `price_touch` | trigger when `abs(spot − target) ≤ 0.5` (points) |
+| Effect | Status → `triggered` · set `triggeredAt` · re-render list + chart style |
+| Cadence | On every spot update effect (not a separate server stream) |
+
+#### 1.14.5 List UI (`AnalyzerAlertsSection`)
+
+| Feature | As-built |
+|---------|----------|
+| Region | Analyzer chrome (as-built: left sidebar under Positions) |
+| Empty copy | “No threshold alerts — right-click the risk graph…” |
+| Filter | Drop `dismissed`; filter by current symbol; sort newest first; **cap 20** shown |
+| Card | Title · relative time · severity left rail color · status chip when triggered |
+| Actions | **Ack** / **× dismiss** when `new`; **× delete** when acknowledged or triggered |
+| testids | `analyzer-alerts-section` · `analyzer-alert-{id}` |
+
+#### 1.14.6 Chart draw
+
+| Feature | As-built |
+|---------|----------|
+| Source | Enabled, non-dismissed alerts for current symbol |
+| Line style | `dashed` until triggered → `active` when triggered |
+| Label | Type fragment + **“ · held”** when session Held/Closed |
+| Preview | Temporary line while context menu open at cursor price |
+
+#### 1.14.7 What alerts are not (v0.1)
+
+- Not a multi-device Alert Center / SSE bus  
+- Not OPF package-level P&amp;L alerts (underlier **price** thresholds only)  
+- Not broker order triggers  
+- Not profit/payout promises
 
 ### 1.15 Client modules (code map)
 
@@ -338,12 +408,16 @@ Builder internals (also PB Spec + recent land): listed strikes only, ATM center,
 ├─────────────────────────────────────────────┤
 │                                               │
 │   VIEWPORT PANEL — OPF risk graph             │  single focused
-│   (one definition)                            │
+│   (+ alert price lines drawn on graph)        │
 │                                               │
 ├─────────────── divider ─────────────────────┤
 │                                               │
 │   POSITION LIST PANEL — 0..N cards            │  multi definition
 │   (read-only limited Builder views)           │
+│                                               │
+├─────────────── (optional) ──────────────────┤
+│   ALERTS PANEL — threshold alert book         │  first-class
+│   (list · ack · dismiss · delete)             │  not optional product
 │                                               │
 └─────────────────────────────────────────────┘
 ```
@@ -354,7 +428,8 @@ Builder internals (also PB Spec + recent land): listed strikes only, ATM center,
 | **AZ-LAYOUT-2** | A **visible divider** separates viewport and list (single panel with split, or two stacked panels). |
 | **AZ-LAYOUT-3** | Viewport is a **single** visualization panel (one focused definition). |
 | **AZ-LAYOUT-4** | List may hold **multiple** positions; focus selects which definition the viewport shows. |
-| **AZ-LAYOUT-5** | Alerts may sit in control strip or a tertiary region — must not replace the list-under-viewport law. |
+| **AZ-LAYOUT-5** | **Alerts are part of Analyzer.** Placement may be under the position list, a collapsible panel beside the list, or a control-strip section (**OD-AZ2**) — but alerts must remain a **dedicated, discoverable Analyzer region**, not dropped from the surface. |
+| **AZ-LAYOUT-6** | Alert **lines** always render on the viewport when alerts exist for the active symbol; list placement must not remove graph affordances (right-click create). |
 
 **As-built gap:** Layout is still **sidebar-left** (AZ-LAYOUT-1..2 residual).
 
@@ -452,15 +527,24 @@ Analyzer **must** show session posture and must not claim Live when Held/Closed 
 
 ---
 
-## 7. Alerts (surface law)
+## 7. Alerts (surface law — first-class)
+
+Threshold **price** alerts are an Analyzer subsystem: **create · list · evaluate · draw · acknowledge**.
 
 | ID | Law |
 |----|-----|
-| **AZ-AL-1** | Threshold alerts are session-local (as-built sessionStorage). |
-| **AZ-AL-2** | Create from viewport context (price above/below/touch). |
-| **AZ-AL-3** | Evaluate against underlier mark used by the viewport (smoothed display spot). |
-| **AZ-AL-4** | When Held/Closed, alert UI carries Held labeling — not “live fire and forget.” |
-| **AZ-AL-5** | No profit/payout claims on alert titles. |
+| **AZ-AL-0** | Alerts are **in scope of Analyzer** (with book + viewport). Removing the Alerts UI without Coach disposition is a Spec violation. |
+| **AZ-AL-1** | Persistence is **session-local** in v0.1 (`sessionStorage`); multi-device Alert Center is out of scope unless a later OD. |
+| **AZ-AL-2** | **Create** from the viewport: right-click (or equivalent) → price above / below / touch at that underlier price. |
+| **AZ-AL-3** | Optional **position-scoped** create: associate `positionId` with a book card (context near curve / position menu). |
+| **AZ-AL-4** | **Evaluate** against the **same underlier mark** the viewport uses for spot (smoothed display spot / live underlier pattern). |
+| **AZ-AL-5** | Evaluation rules: above ≥ · below ≤ · touch within **0.5** points (or product-appropriate tick later via OD). |
+| **AZ-AL-6** | Triggered alerts stay visible until dismissed/deleted; chart line style changes to **active**. |
+| **AZ-AL-7** | When session posture is **Held/Closed**, alert labels and list copy carry **Held** honesty — no “live fire” claim off-session. |
+| **AZ-AL-8** | List supports **ack · dismiss · delete**; dismissed alerts are hidden from the active list. |
+| **AZ-AL-9** | Chart **draws** enabled, non-dismissed alerts for the active symbol as horizontal price lines. |
+| **AZ-AL-10** | No profit, P&amp;L, or payout claims in alert titles or copy (ethos). Underlier **price** thresholds only in v0.1. |
+| **AZ-AL-11** | Alerts do **not** invent package mids or rewrite card definitions. |
 
 ---
 
@@ -502,7 +586,10 @@ Analyzer **must** show session posture and must not claim Live when Held/Closed 
 | **AT-AZ-5** | Hide focused → incomplete/empty fallback per focus law |
 | **AT-AZ-6** | Lock mkt freezes basis; unlock restores natural path |
 | **AT-AZ-7** | Heatmap ToS handoff appears in paste with heatmap source flag |
-| **AT-AZ-8** | Right-click chart → alert → line on chart; trigger on spot cross |
+| **AT-AZ-8** | Right-click chart → create price_above/below/touch → alert appears in **Alerts list** and as chart line |
+| **AT-AZ-8b** | Spot crosses target → status `triggered` · line style active · Held label when session held |
+| **AT-AZ-8c** | Ack / dismiss / delete behaviors match §1.14.5 |
+| **AT-AZ-8d** | Position-scoped create attaches `positionId` when chosen from curve menu |
 | **AT-AZ-9** | Switch pack day_trade → outlook → Re-anchor works; scenario labeled |
 | **AT-AZ-10** | Route Heatmap → Analyzer → last graph paints from cache then soft-refreshes |
 | **AT-AZ-11** | Incomplete package → no fabricated curve |
@@ -529,7 +616,7 @@ Analyzer **must** show session posture and must not claim Live when Held/Closed 
 | Card book + lock + package quotes | Yes | Parity ATs continuous |
 | Dual-curve viewport + what-if | Yes | PB-VIEW-5 pure generation-driven (reduce independent poll) |
 | Heatmap/ToS handoff | Yes | — |
-| Alerts | Yes (session) | Server multi-device out of scope |
+| **Threshold alerts (create · list · evaluate · draw)** | **Yes** (session) | Server multi-device / package-P&amp;L alerts out of v0.1; placement OD-AZ2 after list-under-viewport |
 | Listed Builder strikes + live DEBIT/CREDIT | Yes (recent) | Per-template §4.3 matrix completeness |
 | **List under viewport + divider** | **No** (left rail) | **TARGET** |
 | **Full default geometry matrix** | Partial (butterfly-first init) | **TARGET** |
@@ -543,7 +630,7 @@ Analyzer **must** show session posture and must not claim Live when Held/Closed 
 | ID | Topic | Recommendation |
 |----|-------|----------------|
 | **OD-AZ1** | Control strip: keep left slim rail vs top compact bar after list moves under graph | Top compact + list under |
-| **OD-AZ2** | Alerts location after layout change | Collapsible under list or control strip |
+| **OD-AZ2** | Alerts **panel** placement after list moves under viewport | **Under position list** (default) or collapsible third band; never remove alerts from Analyzer |
 | **OD-AZ3** | Default template on empty Builder open | Butterfly (day-trader default) |
 | **OD-AZ4** | Multi-tab book sync | Out of v0.1 (sessionStorage only) |
 
@@ -566,5 +653,6 @@ Analyzer **must** show session posture and must not claim Live when Held/Closed 
 | Version | Date | Notes |
 |---------|------|-------|
 | **v0.1** | 2026-08-11 | Full as-built inventory + TARGET layout/defaults from Coach; DRAFT |
+| **v0.1.1** | 2026-08-11 | **Alerts elevated** to first-class Analyzer subsystem: mission, cardinal objects, full §1.14 model, AZ-AL-0…11, layout, ATs |
 
-**Reference UX (non-authority):** MSC Risk Graph — workflow only. **MSC is not the standard.**
+**Reference UX (non-authority):** MSC Risk Graph — workflow only (incl. alerts UX heritage). **MSC is not the standard.**
