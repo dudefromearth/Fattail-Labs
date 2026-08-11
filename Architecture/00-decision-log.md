@@ -28,7 +28,9 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 **v0.1.5 (same DL day):** **Volume Profile viewport = bins only** — no candlesticks on the VP surface (AZ-VP-9). As-built candle+profile chart is residual drift.
 
-**Does not:** implement layout residual or full default matrix (plan after Coach GO / OD).
+**v0.1.6 (same DL day):** **Surface is an Analyzer viewport mode** (Risk graph 2D | Surface 3D), **not** a suite app. Same Positions, Alerts, Models, Time machine, OPF data plane; 3D presentation only (MSC scene port, no MSC theo SoR). Laws AZ-VP-S1…S6.
+
+**Does not:** implement full 3D OPF mesh port (viewport switcher + Spec first).
 
 ## 2026-08-11 — DL-300 Live underlier mids — site-wide UI standard
 

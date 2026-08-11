@@ -43,11 +43,15 @@ import { usePackageQuotes } from "@/lib/options-lab/usePackageQuotes";
 import AnalyzerAlertsSection from "@/components/options-lab/AnalyzerAlertsSection";
 import AnalyzerPositionsList from "@/components/options-lab/AnalyzerPositionsList";
 import PositionBuilder from "@/components/options-lab/PositionBuilder";
+import SurfaceViewport from "@/components/options-lab/SurfaceViewport";
 import PnLChart, {
   type PnLChartHandle,
   type PriceAlertType,
 } from "@/components/options-lab/msc-risk/PnLChart";
 import { useSmoothNumber } from "@/lib/useSmoothValue";
+
+/** Analyzer viewport modes — Surface is in-viewport, not a suite app (AZ-VP-S1). */
+type AnalyzerViewportMode = "risk" | "surface";
 
 const fieldLabel =
   "mb-1 block text-xs font-medium text-[var(--color-label-secondary)]";
@@ -99,6 +103,8 @@ export default function OpfRiskAnalyzer() {
   const [editId, setEditId] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<AnalyzerThresholdAlert[]>([]);
   const [posture, setPosture] = useState(streamPosture);
+  const [viewportMode, setViewportMode] =
+    useState<AnalyzerViewportMode>("risk");
 
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
@@ -377,10 +383,10 @@ export default function OpfRiskAnalyzer() {
       <aside className="flex w-full shrink-0 flex-col gap-3 overflow-y-auto border-b border-[var(--color-separator)] bg-[var(--color-surface)] p-3 lg:w-[21rem] lg:border-b-0 lg:border-r">
         <div>
           <h2 className="text-base font-semibold text-[var(--color-label)]">
-            Risk Graph
+            Analyzer
           </h2>
           <p className="text-[11px] text-[var(--color-label-tertiary)]">
-            Card = definition · viewport = OPF · package SoR
+            Positions · Alerts · OPF · viewport Risk or Surface
           </p>
           <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
             <span
@@ -776,8 +782,41 @@ export default function OpfRiskAnalyzer() {
 
       <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0a0a0e] p-2">
         <div className="mb-2 flex flex-wrap items-center gap-3 px-1 text-xs text-white/50">
+          {/* Viewport mode — Surface is in-canvas, not suite nav (AZ-VP-S1) */}
+          <div
+            className="inline-flex rounded-full border border-white/15 bg-white/5 p-0.5"
+            role="tablist"
+            aria-label="Analyzer viewport"
+            data-testid="analyzer-viewport-mode"
+          >
+            {(
+              [
+                { id: "risk" as const, label: "Risk graph" },
+                { id: "surface" as const, label: "Surface" },
+              ] as const
+            ).map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                role="tab"
+                aria-selected={viewportMode === m.id}
+                className={
+                  "rounded-full px-3 py-1 text-[11px] font-semibold transition " +
+                  (viewportMode === m.id
+                    ? "bg-white/15 text-white"
+                    : "text-white/45 hover:text-white/70")
+                }
+                onClick={() => setViewportMode(m.id)}
+                data-testid={`analyzer-viewport-${m.id}`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
           <span className="font-semibold text-white/80">
-            {trade ? `${trade.symbol} · OPF risk graph` : "No trade"}
+            {trade
+              ? `${trade.symbol} · ${viewportMode === "surface" ? "Surface" : "OPF risk graph"}`
+              : "No trade"}
           </span>
           <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80">
             {activeModel.label}
@@ -785,14 +824,28 @@ export default function OpfRiskAnalyzer() {
           <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60">
             {timeRefLabel}
           </span>
-          <span>
-            Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
-          </span>
-          <span className="text-emerald-400/80">Expiration</span>
-          <span className="text-fuchsia-400/80">{activeModel.theoLegend}</span>
+          {viewportMode === "risk" && (
+            <>
+              <span>
+                Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
+              </span>
+              <span className="text-emerald-400/80">Expiration</span>
+              <span className="text-fuchsia-400/80">
+                {activeModel.theoLegend}
+              </span>
+            </>
+          )}
         </div>
         <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
-          {incompleteFocus ? (
+          {viewportMode === "surface" ? (
+            <SurfaceViewport
+              hasTrade={!!trade && !incompleteFocus}
+              symbol={trade?.symbol || symbol}
+              packLabel={activeModel.label}
+              loading={risk.loading}
+              error={risk.error}
+            />
+          ) : incompleteFocus ? (
             <div className="flex h-full min-h-[420px] items-center justify-center px-6 text-center text-sm text-amber-400/90">
               Incomplete or skewed package — no fabricated curve (PB-VIEW-6).
               Wait for dual-side generations or fix legs.
