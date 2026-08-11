@@ -7,9 +7,11 @@ export type ValueModeId =
   | "credit"
   | "r2r"
   | "pct_change"
+  | "gex_all"
   | "gex_net"
   | "gex_call"
   | "gex_put"
+  | "gex_abs"
   | "quote";
 
 export type TemplateLayout = "table" | "matrix" | "profile";

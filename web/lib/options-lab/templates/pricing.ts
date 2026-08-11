@@ -73,6 +73,28 @@ export function gexSide(
   return side === "call" ? raw : -raw;
 }
 
+/** Net = call + put; both sides required (AT-HM13). */
+export function gexNet(
+  ctx: ChainContext,
+  strike: number,
+): number | null {
+  const c = gexSide(ctx, "call", strike);
+  const p = gexSide(ctx, "put", strike);
+  if (c == null || p == null) return null;
+  return c + p;
+}
+
+/** Absolute = |call| + |put| (total magnitude; both sides required). */
+export function gexAbs(
+  ctx: ChainContext,
+  strike: number,
+): number | null {
+  const c = gexSide(ctx, "call", strike);
+  const p = gexSide(ctx, "put", strike);
+  if (c == null || p == null) return null;
+  return Math.abs(c) + Math.abs(p);
+}
+
 export function fmtMoney(n: number, digits = 2): string {
   return n.toLocaleString(undefined, {
     minimumFractionDigits: 0,

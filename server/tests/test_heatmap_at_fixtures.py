@@ -67,7 +67,7 @@ def test_at_hm8_gex_null_greeks():
 
 
 def test_at_hm8_gex_v1_sign_and_units():
-    """Call +, put −; per-share Γ·OI·S²."""
+    """Call +, put −; per-share Γ·OI·S²; abs = |C|+|P|."""
     spot = 100.0
     gamma, oi = 0.02, 50
     call_gex = gamma * oi * spot * spot
@@ -75,6 +75,7 @@ def test_at_hm8_gex_v1_sign_and_units():
     assert call_gex == 0.02 * 50 * 10000
     assert put_gex == -call_gex
     assert call_gex + put_gex == 0.0
+    assert abs(call_gex) + abs(put_gex) == 2 * call_gex
 
 
 def test_at_hm13_net_gex_needs_both_books():
