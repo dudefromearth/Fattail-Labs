@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""labs-chain-feed — sole Massive writer for chain generations (MB-P2).
+"""labs-chain-feed — sole Massive writer for chain generations (MB-P2 · OPF L0).
 
 Usage:
   LABS_MARKET_BUS=1 REDIS_URL=redis://127.0.0.1:6379/0 \\
@@ -30,6 +30,7 @@ def main(argv: list[str] | None = None) -> int:
 
     from market_data.market_bus.config import bus_enabled
     from market_data.market_bus.store import BusStore, get_store
+    from opf.keys import parse_ladder_topic
     from routes import chain_ladder as cl
 
     if not bus_enabled():
@@ -43,18 +44,23 @@ def main(argv: list[str] | None = None) -> int:
     def tick() -> None:
         topics = store.list_interest_topics("mb:ladder:")
         if not topics:
-            # Eager warm default SPX nearest via empty interest — feed still needs
-            # API demand; for --once smoke, warm SPX if universe allows.
             print("no interest keys; idle", flush=True)
             return
         for topic in topics:
-            # mb:ladder:{feed}:{exp}:{side}:w{N}
-            parts = topic.split(":")
-            if len(parts) < 6:
+            # OPF4: dual keys end with :w{N}:dual; underlier may contain ':' (I:SPX)
+            parsed = parse_ladder_topic(topic)
+            if parsed is None:
+                print(f"skip unparseable topic {topic}", flush=True)
                 continue
-            feed, exp, side, wpart = parts[2], parts[3], parts[4], parts[5]
-            wings = int(wpart[1:]) if wpart.startswith("w") else 25
-            product = feed[2:] if feed.startswith("I:") else feed
+            wings = parsed.wings
+            product = parsed.product_hint
+            exp = parsed.expiration
+            side = parsed.side or "call"
+            write_key = (
+                f"mb:ladder:{parsed.chain_underlier}:{exp}:w{wings}:dual"
+                if parsed.dual
+                else topic
+            )
             try:
                 resolved = cl._resolve_universe_symbol(product)
             except Exception as exc:
@@ -70,9 +76,14 @@ def main(argv: list[str] | None = None) -> int:
                     wings=wings,
                     strike_step_cfg=resolved.get("strike_step"),
                 )
-                store.set_json(topic, payload)
+                # Always write dual canonical key when dual interest
+                store.set_json(write_key, payload)
+                if write_key != topic and parsed.dual:
+                    # interest may have been dual already under write_key
+                    pass
                 print(
-                    f"wrote {topic} hash={payload.get('content_hash')} rows={payload.get('row_count')}",
+                    f"wrote {write_key} hash={payload.get('content_hash')} "
+                    f"rows={payload.get('row_count')} dual={parsed.dual}",
                     flush=True,
                 )
             except Exception as exc:

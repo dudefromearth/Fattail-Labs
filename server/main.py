@@ -72,6 +72,7 @@ def create_app() -> FastAPI:
     from routes.market_stream import router as market_stream_router
     from routes.market_ohlc import router as market_ohlc_router
     from routes.market_session import router as market_session_router
+    from routes.pricing import router as pricing_router
     from routes.hard import router as hard_router
     from routes.pathway import router as pathway_router
     from routes.quizzes import router as quizzes_router
@@ -133,6 +134,7 @@ def create_app() -> FastAPI:
     app.include_router(market_stream_router)
     app.include_router(market_ohlc_router)
     app.include_router(market_session_router)
+    app.include_router(pricing_router)
     app.include_router(hard_router)
     app.include_router(community_router)
     app.include_router(community_app_router)
