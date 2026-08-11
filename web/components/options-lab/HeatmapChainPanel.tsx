@@ -18,6 +18,7 @@ import {
 import { useOptionChainBus } from "@/lib/market/useOptionChainBus";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import {
+  DEFAULT_HEATMAP_TEMPLATE_ID,
   HEATMAP_TEMPLATES,
   getTemplate,
   buildGrid,
@@ -29,6 +30,7 @@ import type {
   TemplateParams,
   ValueModeId,
 } from "@/lib/options-lab/templates/types";
+import { isUsEquityRthOpenByClock } from "@/lib/market/usEquitySession";
 
 const EXPIRY_PICK_COUNT = 3;
 
@@ -197,8 +199,10 @@ export default function HeatmapChainPanel() {
   const [wings, setWings] = useState<StrikeWings>(DEFAULT_STRIKE_WINGS);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ladderDte, setLadderDte] = useState<number | null>(null);
-  const [templateId, setTemplateId] = useState("ladder");
-  const [valueMode, setValueMode] = useState<ValueModeId>("quote");
+  const [templateId, setTemplateId] = useState(DEFAULT_HEATMAP_TEMPLATE_ID);
+  const [valueMode, setValueMode] = useState<ValueModeId>(
+    () => getTemplate(DEFAULT_HEATMAP_TEMPLATE_ID).defaultValueMode,
+  );
   const [stickyScale, setStickyScale] = useState<number | undefined>(undefined);
   const mounted = useRef(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -238,8 +242,18 @@ export default function HeatmapChainPanel() {
         const pack = await fetchLadderExpirations(symbol, EXPIRY_PICK_COUNT);
         if (!mounted.current) return;
         setExpiryContracts(pack.contracts);
-        const def =
+        // Prefer server default (skips 0DTE after RTH close). Client clock
+        // is a safety net if an older API still returns expired 0DTE first.
+        let def =
           pack.default_expiration || pack.contracts[0]?.expiration || "";
+        const sessionOpen = isUsEquityRthOpenByClock();
+        if (!sessionOpen && pack.contracts.length) {
+          const first = pack.contracts.find((c) => c.expiration === def);
+          if (first && first.dte === 0) {
+            const next = pack.contracts.find((c) => c.dte > 0);
+            if (next) def = next.expiration;
+          }
+        }
         setExpiration(def);
         const dte0 = pack.contracts.find((c) => c.expiration === def)?.dte;
         setLadderDte(dte0 != null ? dte0 : null);

@@ -551,6 +551,30 @@ def _contracts_from_dates(dates: list[str], *, today: date, limit: int) -> list[
     return out
 
 
+def _session_open_for_expiry_default() -> bool:
+    """RTH open? After close, 0DTE is treated as expired for default pick."""
+    try:
+        from routes.market_stream import _session_open_for_chain_push
+
+        return bool(_session_open_for_chain_push())
+    except Exception:
+        return True  # fail open: keep calendar 0DTE as default
+
+
+def _pick_default_expiration(
+    contracts: list[dict], *, session_open: bool
+) -> str | None:
+    """Prefer live 0DTE while RTH open; after close, skip to next expiry."""
+    if not contracts:
+        return None
+    if session_open:
+        return str(contracts[0]["expiration"])
+    for c in contracts:
+        if int(c.get("dte") or 0) > 0:
+            return str(c["expiration"])
+    return str(contracts[0]["expiration"])
+
+
 def _scan_expirations_live(
     chain_underlier: str, *, days: int, limit: int, today: date
 ) -> list[str]:
@@ -654,13 +678,16 @@ def list_chain_ladder_expirations(
                     source = "live_scan"
                 contracts = _contracts_from_dates(dates, today=today, limit=limit)
 
+    session_open = _session_open_for_expiry_default()
+    default_exp = _pick_default_expiration(contracts, session_open=session_open)
     return {
         "symbol": product,
         "underlier": ul,
         "as_of_day": today.isoformat(),
         "limit": int(limit),
         "source": source,
+        "session_open": session_open,
         "contracts": contracts,
         "expirations": [c["expiration"] for c in contracts],
-        "default_expiration": contracts[0]["expiration"] if contracts else None,
+        "default_expiration": default_exp,
     }

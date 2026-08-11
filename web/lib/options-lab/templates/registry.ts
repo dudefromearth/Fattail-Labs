@@ -4,7 +4,11 @@ import type { HeatmapTemplate } from "./types";
 import { symFlyTemplate } from "./symFly";
 import { gexTemplate } from "./gex";
 
+/** Default Heatmap template — Symmetric flies (MSC look). */
+export const DEFAULT_HEATMAP_TEMPLATE_ID = "sym-fly";
+
 export const HEATMAP_TEMPLATES: HeatmapTemplate[] = [
+  symFlyTemplate,
   {
     id: "ladder",
     label: "Strike ladder",
@@ -17,7 +21,6 @@ export const HEATMAP_TEMPLATES: HeatmapTemplate[] = [
     computeCell: () => ({ display: null, value: null, valid: false }),
     assignColors: () => ({ stickyScale: 1 }),
   },
-  symFlyTemplate,
   gexTemplate,
 ];
 
@@ -25,9 +28,14 @@ export function getTemplate(id: string): HeatmapTemplate {
   const t = HEATMAP_TEMPLATES.find((x) => x.id === id);
   if (!t) {
     if (process.env.NODE_ENV !== "production") {
-      console.error(`Unknown heatmap template ${id}; falling back to ladder`);
+      console.error(
+        `Unknown heatmap template ${id}; falling back to ${DEFAULT_HEATMAP_TEMPLATE_ID}`,
+      );
     }
-    return HEATMAP_TEMPLATES[0];
+    return (
+      HEATMAP_TEMPLATES.find((x) => x.id === DEFAULT_HEATMAP_TEMPLATE_ID) ||
+      HEATMAP_TEMPLATES[0]
+    );
   }
   return t;
 }
