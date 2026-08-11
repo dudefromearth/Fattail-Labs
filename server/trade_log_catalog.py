@@ -76,6 +76,11 @@ STRATEGIES: list[dict] = [
     {"code": "SINGLE", "label": "Single", "group": "Basic"},
     {"code": "VERTICAL", "label": "Vertical", "group": "Spreads"},
     {"code": "BUTTERFLY", "label": "Butterfly", "group": "Spreads"},
+    {
+        "code": "BROKEN_WING_FLY",
+        "label": "Broken Wing Fly",
+        "group": "Spreads",
+    },
     {"code": "CONDOR", "label": "Condor", "group": "Spreads"},
     {"code": "STRADDLE", "label": "Straddle", "group": "Spreads"},
     {"code": "STRANGLE", "label": "Strangle", "group": "Spreads"},

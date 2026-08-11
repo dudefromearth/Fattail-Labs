@@ -68,6 +68,8 @@ type FormState = {
   expiry: string;
   center_strike: string;
   width: string;
+  /** Upper wing for BROKEN_WING_FLY (lower wing uses width). */
+  width_right: string;
   right: "PUT" | "CALL";
   units: string;
   // Simple asset
@@ -144,6 +146,7 @@ function emptyForm(accountId: number | "", strategy = "BUTTERFLY"): FormState {
     expiry: exp,
     center_strike: "",
     width: strategy === "SINGLE" || strategy === "STRADDLE" ? "0" : "25",
+    width_right: strategy === "BROKEN_WING_FLY" ? "50" : "",
     right: "PUT",
     units: "1",
     asset_symbol: strategy === "STOCK" ? "SPY" : strategy === "FUTURE" ? "/ES" : "BTC-USD",
@@ -166,10 +169,17 @@ function fromTrade(t: Trade): FormState {
         )
       : "";
   const sorted = [...strikes].sort((a, b) => a - b);
-  const width =
-    sorted.length >= 2
-      ? String(Math.abs(sorted[sorted.length - 1] - sorted[0]) / (sorted.length > 2 ? 2 : 1))
-      : "0";
+  let width = "0";
+  let widthRight = "";
+  if (sorted.length === 3) {
+    width = String(sorted[1] - sorted[0]);
+    widthRight = String(sorted[2] - sorted[1]);
+  } else if (sorted.length >= 2) {
+    width = String(
+      Math.abs(sorted[sorted.length - 1] - sorted[0]) /
+        (sorted.length > 2 ? 2 : 1),
+    );
+  }
 
   return {
     account_id: t.account_id,
@@ -191,6 +201,7 @@ function fromTrade(t: Trade): FormState {
     expiry: first?.expiry?.slice(0, 10) || todayYmd(),
     center_strike: center,
     width,
+    width_right: widthRight,
     right: (first?.right as "PUT" | "CALL") || "PUT",
     units: "1",
     asset_symbol: first?.symbol || first?.underlier || "",
@@ -561,12 +572,19 @@ export default function TradeSheet({
       (form.width === "" || Number.isNaN(width) || width < 0)
     )
       return [];
+    const widthRight = Number(form.width_right);
     return buildStructureLegs({
       strategy: form.strategy,
       underlier: form.underlier || "SPX",
       expiry: form.expiry || todayYmd(),
       centerStrike: center,
       width: width || 0,
+      widthRight:
+        form.strategy === "BROKEN_WING_FLY" &&
+        form.width_right !== "" &&
+        !Number.isNaN(widthRight)
+          ? widthRight
+          : undefined,
       right: form.right,
       units: Number(form.units) || 1,
       posEffect: "TO_OPEN",
@@ -749,12 +767,24 @@ export default function TradeSheet({
         setError("Enter expiration date.");
         return null;
       }
+      const wr = Number(form.width_right);
+      if (
+        form.strategy === "BROKEN_WING_FLY" &&
+        (form.width_right === "" || Number.isNaN(wr) || wr <= 0)
+      ) {
+        setError("Enter upper wing width (points) for broken wing fly.");
+        return null;
+      }
       const legs = buildStructureLegs({
         strategy: form.strategy,
         underlier: (form.underlier || "SPX").toUpperCase(),
         expiry: form.expiry,
         centerStrike: center,
         width,
+        widthRight:
+          form.strategy === "BROKEN_WING_FLY" && !Number.isNaN(wr)
+            ? wr
+            : undefined,
         right: form.right,
         units: Number(form.units) || 1,
         posEffect: "TO_OPEN",
@@ -1520,7 +1550,9 @@ export default function TradeSheet({
                     {form.strategy !== "SINGLE" &&
                       form.strategy !== "STRADDLE" && (
                         <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
-                          Width
+                          {form.strategy === "BROKEN_WING_FLY"
+                            ? "Lower wing width"
+                            : "Width"}
                           <input
                             type="number"
                             step="any"
@@ -1534,7 +1566,27 @@ export default function TradeSheet({
                           />
                         </label>
                       )}
+                    {form.strategy === "BROKEN_WING_FLY" && (
+                      <label className="block text-xs font-medium text-[var(--color-label-secondary)]">
+                        Upper wing width
+                        <input
+                          type="number"
+                          step="any"
+                          min={0}
+                          className={field}
+                          value={form.width_right}
+                          placeholder="e.g. 50"
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              width_right: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                    )}
                     {(form.strategy === "BUTTERFLY" ||
+                      form.strategy === "BROKEN_WING_FLY" ||
                       form.strategy === "VERTICAL" ||
                       form.strategy === "CONDOR" ||
                       form.strategy === "SINGLE") && (

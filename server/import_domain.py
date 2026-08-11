@@ -1787,6 +1787,10 @@ def commit_trade_log(cur, identity_id: int, doc: dict, claims: dict) -> dict[str
         if adherence not in cat.ADHERENCE:
             adherence = "unknown"
         strategy = t.get("strategy") or "CUSTOM"
+        from trade_log_domain.strategy_infer import refine_strategy_from_legs
+
+        legs_list = t.get("legs") if isinstance(t.get("legs"), list) else []
+        strategy = refine_strategy_from_legs(str(strategy), legs_list)
         if strategy not in cat.STRATEGY_CODES:
             strategy = "CUSTOM"
         net_side = t.get("net_side")

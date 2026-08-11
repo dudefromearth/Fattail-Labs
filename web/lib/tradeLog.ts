@@ -108,6 +108,7 @@ export type Catalog = {
 /** Strategies that support one-shot structure entry (not leg-by-leg). */
 export const STRUCTURE_SIMPLE_STRATEGIES = new Set([
   "BUTTERFLY",
+  "BROKEN_WING_FLY",
   "VERTICAL",
   "SINGLE",
   "CONDOR",
@@ -127,8 +128,13 @@ export type StructureSimpleParams = {
   expiry: string; // YYYY-MM-DD
   /** Body / center strike (or long strike for vertical). */
   centerStrike: number;
-  /** Wing spacing in points (0 for SINGLE / STRADDLE). */
+  /** Wing spacing in points (0 for SINGLE / STRADDLE). Symmetric flies use this alone. */
   width: number;
+  /**
+   * Upper wing width for BROKEN_WING_FLY (points). When set and ≠ width,
+   lower wing = width (center − lower), upper wing = widthRight (upper − center).
+   */
+  widthRight?: number;
   right: "PUT" | "CALL";
   /** Unit size: 1 fly = body 2, wings 1. */
   units: number;
@@ -179,11 +185,24 @@ export function buildStructureLegs(p: StructureSimpleParams): Leg[] {
       ];
     }
     case "BUTTERFLY": {
-      // Long fly: buy wings, sell 2× body at center.
+      // Long fly: buy wings, sell 2× body at center (symmetric).
       return [
         optLeg("BUY", u, c - w, r, p),
         optLeg("SELL", 2 * u, c, r, p),
         optLeg("BUY", u, c + w, r, p),
+      ];
+    }
+    case "BROKEN_WING_FLY": {
+      // Long broken wing: +1 / −2 / +1, unequal wing widths.
+      const wLo = w;
+      const wHi =
+        p.widthRight != null && !Number.isNaN(Number(p.widthRight))
+          ? Math.abs(Number(p.widthRight))
+          : w;
+      return [
+        optLeg("BUY", u, c - wLo, r, p),
+        optLeg("SELL", 2 * u, c, r, p),
+        optLeg("BUY", u, c + wHi, r, p),
       ];
     }
     case "CONDOR": {
@@ -258,6 +277,7 @@ export function templateLegs(strategy: string, underlier = "SPX"): Leg[] {
       expiry: exp,
       centerStrike: 100,
       width: strategy === "SINGLE" || strategy === "STRADDLE" ? 0 : 5,
+      widthRight: strategy === "BROKEN_WING_FLY" ? 10 : undefined,
       right: "PUT",
       units: 1,
       posEffect: "TO_OPEN",

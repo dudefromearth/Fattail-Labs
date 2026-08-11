@@ -295,6 +295,10 @@ async def import_commit(request: Request) -> dict:
                 }
                 exec_at = _parse_exec_at(t.get("exec_at"))
                 strategy = t.get("strategy") or "CUSTOM"
+                from trade_log_domain.strategy_infer import refine_strategy_from_legs
+
+                legs_list = t.get("legs") if isinstance(t.get("legs"), list) else []
+                strategy = refine_strategy_from_legs(str(strategy), legs_list)
                 if strategy not in cat.STRATEGY_CODES:
                     strategy = "CUSTOM"
                 net_price = _dec(t.get("net_price"))

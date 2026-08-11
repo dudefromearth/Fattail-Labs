@@ -225,6 +225,11 @@ async def create_trade(request: Request) -> dict:
 
     strategy = (body.get("strategy") or "CUSTOM").upper()
     if strategy not in cat.STRATEGY_CODES:
+        # Allow fly aliases before geometry refine
+        from trade_log_domain.strategy_infer import refine_strategy_from_legs
+
+        strategy = refine_strategy_from_legs(strategy, [])
+    if strategy not in cat.STRATEGY_CODES:
         raise HTTPException(status_code=422, detail=f"unknown strategy: {strategy}")
     asset_class = (body.get("asset_class") or "equity_option").lower()
     # STOCK/FUTURE/CRYPTO always own their asset_class (UI default was equity_option)
@@ -247,6 +252,12 @@ async def create_trade(request: Request) -> dict:
     net_price = _dec(body.get("net_price"))
     proc = _process_fields(body)
     legs = legs_in if isinstance(legs_in, list) else []
+    # Symmetric +1/−2/+1 → BUTTERFLY; unequal wings → BROKEN_WING_FLY
+    from trade_log_domain.strategy_infer import refine_strategy_from_legs
+
+    strategy = refine_strategy_from_legs(strategy, legs if isinstance(legs, list) else [])
+    if strategy not in cat.STRATEGY_CODES:
+        raise HTTPException(status_code=422, detail=f"unknown strategy: {strategy}")
     if strategy != "NOTE" and len(legs) == 0 and strategy not in ("CUSTOM", "NOTE"):
         # allow empty for STOCK etc if they send one leg — require ≥1 for non-NOTE
         if strategy not in ("NOTE",):
@@ -489,6 +500,24 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
 
                 if isinstance(exc, PracticeSpineError):
                     raise HTTPException(status_code=exc.code, detail=exc.detail) from exc
+            # Refine fly geometry from legs being saved (or existing legs).
+            from trade_log_domain.strategy_infer import refine_strategy_from_legs
+
+            legs_for_infer: list = []
+            if "legs" in body and isinstance(body["legs"], list):
+                legs_for_infer = body["legs"]
+            else:
+                cur.execute(
+                    """SELECT side, quantity, strike, right, underlier, symbol, expiry
+                       FROM member_trade_log_legs
+                       WHERE trade_id = %s AND identity_id = %s
+                       ORDER BY leg_index""",
+                    (trade_id, iid),
+                )
+                legs_for_infer = list(cur.fetchall() or [])
+            strategy = refine_strategy_from_legs(strategy, legs_for_infer)
+            if strategy not in cat.STRATEGY_CODES:
+                raise HTTPException(status_code=422, detail="unknown strategy")
             cur.execute(
                 """UPDATE member_trade_log_trades
                    SET account_id=%s, exec_at=%s, asset_class=%s, strategy=%s,

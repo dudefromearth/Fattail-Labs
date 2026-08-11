@@ -258,6 +258,11 @@ def _strategy_code(raw: str) -> str:
     aliases = {
         "FLY": "BUTTERFLY",
         "BF": "BUTTERFLY",
+        "BWF": "BROKEN_WING_FLY",
+        "BROKEN_WING": "BROKEN_WING_FLY",
+        "BROKEN_WING_BUTTERFLY": "BROKEN_WING_FLY",
+        "BROKENWING": "BROKEN_WING_FLY",
+        "BROKENWINGFLY": "BROKEN_WING_FLY",
         "IRONCONDOR": "IRON_CONDOR",
         "IRONFLY": "IRON_FLY",
         "VERT": "VERTICAL",
@@ -786,6 +791,11 @@ def _normalize_trade(t: dict, warnings: list[str]) -> dict | None:
             tac = Counter(leg_acs).most_common(1)[0][0]
         else:
             tac = "equity_option"
+    # Refine butterfly vs broken wing from strikes (create/import geometry).
+    from trade_log_domain.strategy_infer import refine_strategy_from_legs
+
+    strategy = refine_strategy_from_legs(strategy, legs)
+
     out = {
         "exec_at": exec_at,
         "strategy": strategy,
