@@ -25,6 +25,11 @@ import {
 } from "@/lib/options-lab/templates/registry";
 import { SYM_FLY_WIDTHS_DEFAULT } from "@/lib/options-lab/templates/symFly";
 import { DEFAULT_GRADIENT_THRESHOLD } from "@/lib/options-lab/templates/color";
+import {
+  buildGexProfile,
+  fmtGexProfile,
+  gexProfileScale,
+} from "@/lib/options-lab/templates/gex";
 import type {
   ChainContext,
   TemplateParams,
@@ -396,6 +401,18 @@ export default function HeatmapChainPanel() {
     return g;
   }, [tpl, chainCtx, templateParams]);
 
+  const gexProfile = useMemo(() => {
+    if (tpl.layout !== "profile" || tpl.id !== "gex") return null;
+    const points = buildGexProfile(chainCtx, valueMode);
+    const scale = gexProfileScale(points);
+    return { points, scale };
+  }, [tpl.layout, tpl.id, chainCtx, valueMode]);
+
+  const hasSpotRow = useMemo(() => {
+    if (gexProfile?.points.some((p) => p.isSpot)) return true;
+    return ordered.some((r) => r.is_spot);
+  }, [gexProfile, ordered]);
+
   useEffect(() => {
     if (matrix?.stickyScale == null) return;
     setStickyScale((prev) =>
@@ -409,7 +426,7 @@ export default function HeatmapChainPanel() {
     const root = scrollRef.current;
     if (!root) return false;
     const spotEl = root.querySelector(
-      'tr[data-spot="1"]',
+      '[data-spot="1"]',
     ) as HTMLElement | null;
     if (!spotEl) return false;
     const rootRect = root.getBoundingClientRect();
@@ -608,7 +625,7 @@ export default function HeatmapChainPanel() {
           type="button"
           className={secondaryBtn + " w-full"}
           onClick={() => centerSpot()}
-          disabled={!ordered.some((r) => r.is_spot)}
+          disabled={!hasSpotRow}
           data-testid="chain-ladder-center-spot"
         >
           Center spot
@@ -705,7 +722,11 @@ export default function HeatmapChainPanel() {
                   side === "call" ? "Calls" : "Puts",
                   expiration || null,
                   displayDte != null ? `${displayDte} DTE` : null,
-                  tpl.layout === "matrix" ? "Width 20–50" : null,
+                  tpl.layout === "matrix"
+                    ? "Width 20–50"
+                    : tpl.layout === "profile"
+                      ? "Vertical profile"
+                      : null,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -752,12 +773,10 @@ export default function HeatmapChainPanel() {
                 className={
                   secondaryBtn +
                   " min-h-9 px-3 py-1 text-xs " +
-                  (!ordered.some((r) => r.is_spot)
-                    ? "pointer-events-none opacity-45"
-                    : "")
+                  (!hasSpotRow ? "pointer-events-none opacity-45" : "")
                 }
                 onClick={() => centerSpot()}
-                disabled={!ordered.some((r) => r.is_spot)}
+                disabled={!hasSpotRow}
                 data-testid="chain-ladder-center-spot-panel"
               >
                 Center spot
@@ -765,15 +784,141 @@ export default function HeatmapChainPanel() {
             </div>
           </header>
 
-          {/* Panel body — scrollable grid */}
+          {/* Panel body — scrollable grid / profile */}
           <div
             ref={scrollRef}
             className={[
               "min-h-0 flex-1 overflow-auto",
-              tpl.layout === "matrix" ? "bg-[#0a0a0e]" : "bg-[var(--color-surface)]",
+              tpl.layout === "matrix" || tpl.layout === "profile"
+                ? "bg-[#0a0a0e]"
+                : "bg-[var(--color-surface)]",
             ].join(" ")}
           >
-            {tpl.layout === "matrix" && matrix ? (
+            {tpl.layout === "profile" && gexProfile ? (
+              /* Vertical GEX profile: strike down, bars from zero line */
+              <div
+                className="flex min-h-full flex-col text-[13px]"
+                data-testid="heatmap-gex-profile"
+              >
+                <div className="sticky top-0 z-[2] flex h-9 items-center border-b border-white/10 bg-[#0a0a0e]/95 px-2 text-[11px] font-medium uppercase tracking-wide text-white/45 backdrop-blur-sm">
+                  <span className="w-20 shrink-0 text-right tabular-nums">
+                    Strike
+                  </span>
+                  <span className="mx-2 flex-1 text-center text-emerald-400/90 normal-case tracking-normal">
+                    {valueMode === "gex_call"
+                      ? "Call GEX →"
+                      : valueMode === "gex_put"
+                        ? "← Put GEX"
+                        : valueMode === "gex_abs"
+                          ? "Absolute GEX →"
+                          : "← Put · Net · Call →"}
+                  </span>
+                  <span className="w-16 shrink-0 text-right tabular-nums">
+                    Value
+                  </span>
+                </div>
+                {gexProfile.points.map((pt) => {
+                  const scale = gexProfile.scale || 1;
+                  const v = pt.valid && pt.value != null ? pt.value : 0;
+                  // Bar geometry: center zero; positive → right, negative → left
+                  // Abs / call: always grow right from center (call is +)
+                  // Put: value is negative → left from center
+                  const signed =
+                    valueMode === "gex_abs"
+                      ? Math.abs(v)
+                      : valueMode === "gex_call"
+                        ? Math.max(0, v)
+                        : valueMode === "gex_put"
+                          ? v // negative
+                          : v; // net signed
+                  const frac = Math.min(1, Math.abs(signed) / scale);
+                  const pct = `${(frac * 50).toFixed(2)}%`; // half-track each side
+                  const isNeg = signed < 0;
+                  const isPos = signed > 0;
+                  const barColor = !pt.valid
+                    ? "transparent"
+                    : valueMode === "gex_abs"
+                      ? "rgb(59,130,246)"
+                      : isNeg
+                        ? "rgb(220,60,70)"
+                        : isPos
+                          ? "rgb(59,130,246)"
+                          : "transparent";
+                  return (
+                    <div
+                      key={pt.strike}
+                      data-spot={pt.isSpot ? "1" : "0"}
+                      className={[
+                        "flex h-8 items-center border-b border-white/[0.04] px-2",
+                        pt.isSpot ? "border-t border-amber-400/70 bg-amber-400/5" : "",
+                      ].join(" ")}
+                      title={
+                        pt.valid && pt.value != null
+                          ? `${pt.label}: ${fmtGexProfile(pt.value)} (÷1e9)`
+                          : `${pt.label}: missing γ/OI`
+                      }
+                    >
+                      <span
+                        className={[
+                          "w-20 shrink-0 text-right tabular-nums font-medium",
+                          pt.isSpot
+                            ? "font-bold text-amber-400"
+                            : "text-white/50",
+                        ].join(" ")}
+                      >
+                        {pt.label}
+                      </span>
+                      <div className="relative mx-2 h-5 flex-1 overflow-hidden rounded-sm bg-white/[0.04]">
+                        {/* zero line */}
+                        <div
+                          className="absolute inset-y-0 left-1/2 w-px bg-white/25"
+                          aria-hidden
+                        />
+                        {pt.valid && (isPos || isNeg || valueMode === "gex_abs") ? (
+                          <div
+                            className="absolute top-0.5 bottom-0.5 rounded-sm transition-[width,left] duration-150"
+                            style={
+                              isNeg
+                                ? {
+                                    right: "50%",
+                                    width: pct,
+                                    backgroundColor: barColor,
+                                  }
+                                : {
+                                    left: "50%",
+                                    width: pct,
+                                    backgroundColor: barColor,
+                                  }
+                            }
+                          />
+                        ) : null}
+                      </div>
+                      <span
+                        className={[
+                          "w-16 shrink-0 text-right tabular-nums text-[12px]",
+                          !pt.valid
+                            ? "text-white/25"
+                            : isNeg
+                              ? "text-red-400"
+                              : "text-sky-400",
+                        ].join(" ")}
+                      >
+                        {pt.valid && pt.value != null
+                          ? fmtGexProfile(pt.value)
+                          : "—"}
+                      </span>
+                    </div>
+                  );
+                })}
+                {!gexProfile.points.length && (
+                  <div className="px-4 py-24 text-center text-white/40">
+                    {expiration
+                      ? "Waiting for dual-side chain (γ / OI)…"
+                      : "Choose a contract"}
+                  </div>
+                )}
+              </div>
+            ) : tpl.layout === "matrix" && matrix ? (
               /* Symmetric flies matrix: 2× type vs MSC 12/10px baseline */
               <table className="w-full min-w-[40rem] border-collapse text-[24px] leading-none">
                 <thead className="sticky top-0 z-[2] bg-[#0a0a0e]/90 backdrop-blur-sm">
