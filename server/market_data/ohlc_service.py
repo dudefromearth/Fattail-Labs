@@ -117,6 +117,50 @@ def _candidates(
     return out
 
 
+def _payload_from_bars(
+    *,
+    product: str,
+    tf_n: str,
+    mult: int,
+    timespan: str,
+    days: int,
+    bars: list[dict[str, Any]],
+    series_ticker: str | None,
+    proxy_label: str | None,
+    source: str,
+    store_complete: bool,
+) -> dict[str, Any]:
+    first_t = bars[0].get("t") if bars else None
+    last_t = bars[-1].get("t") if bars else None
+    span_days = None
+    if isinstance(first_t, (int, float)) and isinstance(last_t, (int, float)):
+        span_days = max(0.0, (float(last_t) - float(first_t)) / 86400000.0)
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=days)
+    return {
+        "ok": True,
+        "product": product,
+        "series_ticker": series_ticker or product,
+        "proxy_label": proxy_label,
+        "source": source,
+        "tf": tf_n,
+        "multiplier": mult,
+        "timespan": timespan,
+        "lookback_years_requested": OHLC_LOOKBACK_YEARS
+        if days >= OHLC_LOOKBACK_DAYS
+        else None,
+        "lookback_days_requested": days,
+        "history_span_days": span_days,
+        "complete": bool(store_complete) and days >= OHLC_LOOKBACK_DAYS,
+        "from": start.isoformat().replace("+00:00", "Z"),
+        "to": end.isoformat().replace("+00:00", "Z"),
+        "bar_count": len(bars),
+        "bars": bars,
+        "cache_hit": False,
+        "store": True,
+    }
+
+
 def fetch_product_ohlc(
     *,
     product: str,
@@ -126,7 +170,11 @@ def fetch_product_ohlc(
     lookback_days: int | None = None,
     client: MassiveClient | None = None,
 ) -> dict[str, Any]:
-    """Return bars for product; lookback_days defaults to full ≥3y window."""
+    """Return bars for product.
+
+    Prefer durable ``market_ohlc_*`` store (bootstrap once, morning append).
+    Massive is used only to fill/append the store, not as the sole chart SoR.
+    """
     product = (product or "").strip().upper()
     if not product:
         raise ValueError("product required")
@@ -136,7 +184,6 @@ def fetch_product_ohlc(
 
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
-    # Live short windows: bucket by minute so forming bars can refresh
     end_bucket = (
         end.strftime("%Y%m%d%H%M") if days <= 14 else end.date().isoformat()
     )
@@ -149,6 +196,54 @@ def fetch_product_ohlc(
         cached["cache_hit"] = True
         return cached
 
+    # ── Durable store: ensure series exists + tip is current ───────────
+    try:
+        import db
+        from market_data import ohlc_store as ostore
+        from market_data.ohlc_feed import sync_symbol_tf
+
+        md = client or MassiveClient()
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                meta = ostore.get_series_meta(cur, product, tf_n)
+                need_boot = (
+                    not meta
+                    or not meta.get("bootstrap_complete")
+                    or (meta.get("bar_count") or 0) < 2
+                )
+                need_app = ostore.needs_append(meta, tf_n)
+                if need_boot or need_app:
+                    sync_symbol_tf(
+                        cur,
+                        product=product,
+                        tf=tf_n,
+                        force_bootstrap=need_boot,
+                        client=md,
+                    )
+                    meta = ostore.get_series_meta(cur, product, tf_n)
+
+                from_t = int(start.timestamp() * 1000)
+                bars = ostore.load_bars(cur, product, tf_n, from_t=from_t)
+                if len(bars) >= 2 and meta:
+                    payload = _payload_from_bars(
+                        product=product,
+                        tf_n=tf_n,
+                        mult=mult,
+                        timespan=timespan,
+                        days=days,
+                        bars=bars,
+                        series_ticker=meta.get("series_ticker"),
+                        proxy_label=meta.get("proxy_label"),
+                        source=str(meta.get("source") or "market_ohlc_store"),
+                        store_complete=bool(meta.get("bootstrap_complete")),
+                    )
+                    _cache_put(cache_key, payload)
+                    return payload
+    except Exception:
+        # Fall through to direct Massive (dev / table missing)
+        pass
+
+    # ── Legacy direct Massive (no store / bootstrap failed) ────────────
     md = client or MassiveClient()
     last_err: str | None = None
     for ticker, proxy_label, source in _candidates(
@@ -170,33 +265,52 @@ def fetch_product_ohlc(
             last_err = f"insufficient bars for {ticker}"
             continue
 
-        first_t = bars[0].get("t")
-        last_t = bars[-1].get("t")
-        span_days = None
-        if isinstance(first_t, (int, float)) and isinstance(last_t, (int, float)):
-            span_days = max(0.0, (float(last_t) - float(first_t)) / 86400000.0)
+        # Best-effort write-through so next load is store-backed
+        try:
+            import db
+            from market_data import ohlc_store as ostore
 
-        payload = {
-            "ok": True,
-            "product": product,
-            "series_ticker": ticker,
-            "proxy_label": proxy_label,
-            "source": source,
-            "tf": tf_n,
-            "multiplier": mult,
-            "timespan": timespan,
-            "lookback_years_requested": OHLC_LOOKBACK_YEARS
-            if days >= OHLC_LOOKBACK_DAYS
-            else None,
-            "lookback_days_requested": days,
-            "history_span_days": span_days,
-            "complete": days >= OHLC_LOOKBACK_DAYS,
-            "from": start.isoformat().replace("+00:00", "Z"),
-            "to": end.isoformat().replace("+00:00", "Z"),
-            "bar_count": len(bars),
-            "bars": bars,
-            "cache_hit": False,
-        }
+            norm = []
+            for b in bars:
+                if isinstance(b, dict) and b.get("t") is not None and b.get("c") is not None:
+                    norm.append(
+                        {
+                            "t": int(b["t"]),
+                            "o": b.get("o"),
+                            "h": b.get("h"),
+                            "l": b.get("l"),
+                            "c": b.get("c"),
+                            "v": b.get("v"),
+                        }
+                    )
+            with db.transaction() as conn:
+                with conn.cursor() as cur:
+                    ostore.upsert_bars(
+                        cur,
+                        product,
+                        tf_n,
+                        norm,
+                        series_ticker=ticker,
+                        proxy_label=proxy_label,
+                        source=source,
+                        bootstrap_complete=days >= OHLC_LOOKBACK_DAYS,
+                    )
+        except Exception:
+            pass
+
+        payload = _payload_from_bars(
+            product=product,
+            tf_n=tf_n,
+            mult=mult,
+            timespan=timespan,
+            days=days,
+            bars=bars,
+            series_ticker=ticker,
+            proxy_label=proxy_label,
+            source=source,
+            store_complete=days >= OHLC_LOOKBACK_DAYS,
+        )
+        payload["store"] = False
         _cache_put(cache_key, payload)
         return payload
 

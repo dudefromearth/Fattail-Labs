@@ -156,6 +156,22 @@ curl -sS 'localhost:4000/api/me/capital/positions-valuation' -H "Cookie: …" | 
 
 Plan: `docs/Market-Data-Plane-Universal-Adoption-Implementation-Plan-v1.0.md`.
 
+### OHLC durable store (Volume Profile)
+
+Charts **bootstrap once** from Massive into MySQL (`market_ohlc_series` / `market_ohlc_bars`), then **append** each morning (and on read if tip is stale). Members do not re-download 3y history every visit.
+
+```bash
+# one-shot bootstrap (first host)
+cd server && set -a && source ../.env && set +a
+.venv/bin/python migrate.py
+.venv/bin/python -m market_data.ohlc_feed --once --bootstrap   # full universe TFs
+# daily append only
+.venv/bin/python -m market_data.ohlc_feed --once
+```
+
+launchd template: `infra/launchd/ai.fattail.labs.ohlc-feed.plist.example`  
+(Weekdays 09:40 + 16:20 local — set MiniTwo TZ to America/New_York.)
+
 ## launchd (production process management)
 
 `~/Library/LaunchAgents/ai.fattail.labs.api.plist` — runs

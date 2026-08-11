@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Morning OHLC append for Volume Profile / charts.
+  Install on MiniTwo:
+    cp infra/launchd/ai.fattail.labs.ohlc-feed.plist.example \
+       ~/Library/LaunchAgents/ai.fattail.labs.ohlc-feed.plist
+    # Edit WorkingDirectory, ProgramArguments python path, EnvironmentVariables from .env
+    launchctl load ~/Library/LaunchAgents/ai.fattail.labs.ohlc-feed.plist
+
+  Schedule: weekdays ~09:40 America/New_York (after RTH open) + optional 16:15 close.
+  StartCalendarInterval uses local machine TZ — set MiniTwo TZ to America/New_York
+  or use a small shell wrapper with `TZ=America/New_York`.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.fattail.labs.ohlc-feed</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/ernie/Fattail-Labs/server/.venv/bin/python</string>
+    <string>-m</string>
+    <string>market_data.ohlc_feed</string>
+    <string>--once</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/ernie/Fattail-Labs/server</string>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Weekday</key><integer>1</integer>
+      <key>Hour</key><integer>9</integer>
+      <key>Minute</key><integer>40</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key><integer>2</integer>
+      <key>Hour</key><integer>9</integer>
+      <key>Minute</key><integer>40</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key><integer>3</integer>
+      <key>Hour</key><integer>9</integer>
+      <key>Minute</key><integer>40</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key><integer>4</integer>
+      <key>Hour</key><integer>9</integer>
+      <key>Minute</key><integer>40</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key><integer>5</integer>
+      <key>Hour</key><integer>9</integer>
+      <key>Minute</key><integer>40</integer>
+    </dict>
+    <!-- After close tip seal -->
+    <dict>
+      <key>Weekday</key><integer>1</integer>
+      <key>Hour</key><integer>16</integer>
+      <key>Minute</key><integer>20</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key><integer>2</integer>
+      <key>Hour</key><integer>16</integer>
+      <key>Minute</key><integer>20</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key><integer>3</integer>
+      <key>Hour</key><integer>16</integer>
+      <key>Minute</key><integer>20</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key><integer>4</integer>
+      <key>Hour</key><integer>16</integer>
+      <key>Minute</key><integer>20</integer>
+    </dict>
+    <dict>
+      <key>Weekday</key><integer>5</integer>
+      <key>Hour</key><integer>16</integer>
+      <key>Minute</key><integer>20</integer>
+    </dict>
+  </array>
+  <key>StandardOutPath</key>
+  <string>/Users/ernie/Library/Logs/fattail-labs/ohlc-feed.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/ernie/Library/Logs/fattail-labs/ohlc-feed.log</string>
+</dict>
+</plist>
