@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui";
+import LiveUnderliersTable from "@/components/market/LiveUnderliersTable";
 
 type UniverseRow = {
   symbol: string;
@@ -75,33 +76,6 @@ export default function MarketUniverseAdmin() {
 
   useEffect(() => {
     void reload();
-    // Live mids: server on-demand refresh + poll
-    let t: number | null = null;
-    const tick = () => {
-      if (document.visibilityState === "visible") void reload();
-    };
-    const start = () => {
-      if (t != null) return;
-      t = window.setInterval(tick, 8000);
-    };
-    const stop = () => {
-      if (t != null) {
-        window.clearInterval(t);
-        t = null;
-      }
-    };
-    const onVis = () => {
-      if (document.visibilityState === "visible") {
-        tick();
-        start();
-      } else stop();
-    };
-    if (document.visibilityState === "visible") start();
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      stop();
-      document.removeEventListener("visibilitychange", onVis);
-    };
   }, [reload]);
 
   async function createSymbol() {
@@ -356,110 +330,42 @@ export default function MarketUniverseAdmin() {
         </div>
       </section>
 
-      <section className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <table className="w-full min-w-[40rem] text-left text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200 text-xs text-zinc-500 dark:border-zinc-800">
-              <th className="px-3 py-2 font-medium">Symbol</th>
-              <th className="px-2 py-2 font-medium">Kind</th>
-              <th className="px-2 py-2 font-medium">Native mid</th>
-              <th className="px-2 py-2 font-medium">Proxy mid</th>
-              <th className="px-2 py-2 font-medium">Source</th>
-              <th className="px-2 py-2 font-medium">Feed</th>
-              <th className="px-2 py-2 font-medium">Proxy</th>
-              <th className="px-2 py-2 font-medium">On</th>
-              <th className="px-2 py-2 font-medium">Sort</th>
-              <th className="px-2 py-2 font-medium">Note</th>
-              <th className="px-3 py-2 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.symbol}
-                className="border-b border-zinc-100 dark:border-zinc-800"
-                data-testid={`universe-row-${row.symbol}`}
+      {/* Same live-underlier pattern as Practice / Lab */}
+      <LiveUnderliersTable
+        variant="admin"
+        enabledOnly={false}
+        title="Live marks (all universe rows)"
+        description={
+          <>
+            Mids use the site-wide live underlier pattern (HTTP ensure_fresh +
+            bus). CRUD actions still use the admin API below the prices.
+          </>
+        }
+        showActions={(sym) => {
+          const row = rows.find((r) => r.symbol === sym);
+          if (!row) return null;
+          return (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="text-xs font-medium text-zinc-700 underline-offset-2 hover:underline dark:text-zinc-300"
+                disabled={busy}
+                onClick={() => void toggleEnabled(row)}
               >
-                <td className="px-3 py-2 font-medium tabular-nums">{row.symbol}</td>
-                <td className="px-2 py-2 text-zinc-600">{row.kind}</td>
-                <td
-                  className={[
-                    "px-2 py-2 font-mono tabular-nums font-semibold",
-                    row.mid != null && !row.mark_via_proxy
-                      ? "text-emerald-700 dark:text-emerald-400"
-                      : "text-zinc-400",
-                  ].join(" ")}
-                  data-testid={`admin-mid-${row.symbol}`}
-                >
-                  {row.mid != null && !row.mark_via_proxy
-                    ? Number(row.mid).toFixed(2)
-                    : "—"}
-                  {row.mark_age_seconds != null && row.mid != null ? (
-                    <span className="ml-1 text-[10px] font-normal text-zinc-400">
-                      {Math.round(Number(row.mark_age_seconds))}s
-                    </span>
-                  ) : null}
-                </td>
-                <td className="px-2 py-2 font-mono text-xs tabular-nums text-sky-700">
-                  {row.mark_via_proxy && row.proxy_mid != null
-                    ? `${Number(row.proxy_mid).toFixed(2)}${
-                        row.mark_feed_used ? ` · ${row.mark_feed_used}` : ""
-                      }`
-                    : row.proxy_mid != null
-                      ? Number(row.proxy_mid).toFixed(2)
-                      : "—"}
-                </td>
-                <td className="px-2 py-2 text-[10px] text-zinc-400">
-                  {[row.mark_plane, row.mark_source].filter(Boolean).join(" · ") ||
-                    "—"}
-                </td>
-                <td className="px-2 py-2 text-xs text-zinc-500">
-                  {row.feed_symbol || "—"}
-                </td>
-                <td className="px-2 py-2 text-xs text-zinc-500">
-                  {row.proxy_symbol || "—"}
-                </td>
-                <td className="px-2 py-2">
-                  {row.enabled ? (
-                    <span className="text-emerald-600">yes</span>
-                  ) : (
-                    <span className="text-zinc-400">no</span>
-                  )}
-                </td>
-                <td className="px-2 py-2 tabular-nums text-zinc-500">
-                  {row.sort_order}
-                </td>
-                <td className="max-w-[12rem] truncate px-2 py-2 text-xs text-zinc-500">
-                  {row.note || "—"}
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-zinc-700 underline-offset-2 hover:underline dark:text-zinc-300"
-                      disabled={busy}
-                      onClick={() => void toggleEnabled(row)}
-                    >
-                      {row.enabled ? "Disable" : "Enable"}
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs font-medium text-red-600 underline-offset-2 hover:underline"
-                      disabled={busy}
-                      onClick={() => void remove(row)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {rows.length === 0 && (
-          <p className="p-4 text-sm text-zinc-500">No symbols in universe.</p>
-        )}
-      </section>
+                {row.enabled ? "Disable" : "Enable"}
+              </button>
+              <button
+                type="button"
+                className="text-xs font-medium text-red-600 underline-offset-2 hover:underline"
+                disabled={busy}
+                onClick={() => void remove(row)}
+              >
+                Delete
+              </button>
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }

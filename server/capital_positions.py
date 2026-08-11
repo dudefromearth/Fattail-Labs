@@ -204,7 +204,7 @@ def positions_valuation(
             if u:
                 underliers.append(u)
     try:
-        ensure_fresh_underlier_marks(cur, underliers, max_age_s=45.0)
+        ensure_fresh_underlier_marks(cur, underliers, max_age_s=12.0)
     except Exception:
         pass
 

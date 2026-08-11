@@ -36,7 +36,8 @@ def admin_list(request: Request, enabled_only: bool = Query(False)) -> dict:
                 )
 
                 syms = [str(r.get("symbol") or "") for r in rows if r.get("enabled", True)]
-                ensure_fresh_underlier_marks(cur, syms, max_age_s=45.0, max_fetch=50)
+                # Aggressive tip refresh so admin table moves with the tape
+                ensure_fresh_underlier_marks(cur, syms, max_age_s=12.0, max_fetch=60)
                 for row in rows:
                     sym = str(row.get("symbol") or "").upper()
                     m = get_underlier_mark(sym, cur=cur)
@@ -152,7 +153,8 @@ def member_list_universe(
                 )
 
                 syms = [str(r.get("symbol") or "") for r in rows]
-                ensure_fresh_underlier_marks(cur, syms, max_age_s=45.0, max_fetch=50)
+                # Member Marked underliers: refresh tip often (not 45s freeze)
+                ensure_fresh_underlier_marks(cur, syms, max_age_s=12.0, max_fetch=60)
                 for row in rows:
                     sym = str(row.get("symbol") or "").upper()
                     m = get_underlier_mark(sym, cur=cur)

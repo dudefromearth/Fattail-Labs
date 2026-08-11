@@ -18,7 +18,7 @@ import {
   type PositionValuationRow,
   type PositionsValuation,
 } from "@/lib/capitalApi";
-import { useSymbolMarks } from "@/lib/market/useSymbolMarks";
+import { useLiveUnderlierMarks } from "@/lib/market/useLiveUnderlierMarks";
 import { usePracticeContextOptional } from "@/lib/practiceContext";
 
 type Chip =
@@ -98,7 +98,7 @@ export default function PositionsView({
     };
     const start = () => {
       if (t != null) return;
-      t = window.setInterval(tick, 3000);
+      t = window.setInterval(tick, 4000);
     };
     const stop = () => {
       if (t != null) {
@@ -134,28 +134,34 @@ export default function PositionsView({
     return [...s];
   }, [data]);
 
-  const { marks: liveMarks, transport: marksTransport } = useSymbolMarks({
-    symbols: equityUnderliers,
-    enabled: equityUnderliers.length > 0,
-  });
+  // Same site-wide underlier pattern as Marked underliers / Admin
+  const { bySymbol: liveBySymbol, transport: marksTransport } =
+    useLiveUnderlierMarks({
+      enabledOnly: true,
+      pollMs: 4000,
+      enabled: equityUnderliers.length > 0,
+      symbols: equityUnderliers.length ? equityUnderliers : null,
+    });
 
-  /** Merge live mids into equity rows so Last/Value/Unrealized move with the bus. */
+  /** Merge bound underlier mids into equity rows (canonical pattern). */
   const liveData = useMemo((): PositionsValuation | null => {
     if (!data) return null;
-    if (!liveMarks.size) return data;
+    if (!liveBySymbol.size) return data;
     const accounts = data.accounts.map((acct) => {
       const positions = acct.positions.map((p): PositionValuationRow => {
         if ((p.asset_class || "").toLowerCase() !== "equity" || !p.underlier) {
           return p;
         }
-        const live = liveMarks.get(p.underlier.toUpperCase());
-        if (live?.mid == null || !Number.isFinite(live.mid)) return p;
-        const mid = live.mid;
+        const mark = liveBySymbol.get(p.underlier.toUpperCase());
+        if (!mark || mark.mid == null || mark.viaProxy) return p;
+        const mid = mark.mid;
         const qty = Math.abs(Number(p.qty) || 0);
         const value = mid * qty;
         const cost = p.cost_basis;
         const unrealized =
-          cost != null && Number.isFinite(cost) ? value - Number(cost) : p.unrealized;
+          cost != null && Number.isFinite(cost)
+            ? value - Number(cost)
+            : p.unrealized;
         return {
           ...p,
           last: mid,
@@ -166,8 +172,8 @@ export default function PositionsView({
           mark_meta: {
             ...(p.mark_meta || {}),
             engine: "underlier",
-            plane: live.plane || "mb:sym",
-            source: live.source,
+            plane: mark.plane || "live_underlier_pattern",
+            source: mark.source ?? undefined,
             live_overlay: true,
           },
         };
@@ -196,7 +202,10 @@ export default function PositionsView({
         },
       };
     });
-    const grand_value = accounts.reduce((s, a) => s + Number(a.totals.value || 0), 0);
+    const grand_value = accounts.reduce(
+      (s, a) => s + Number(a.totals.value || 0),
+      0,
+    );
     const grand_u = accounts.reduce(
       (s, a) => s + Number(a.totals.unrealized || 0),
       0,
@@ -211,7 +220,7 @@ export default function PositionsView({
         unrealized: grand_u,
       },
     };
-  }, [data, liveMarks]);
+  }, [data, liveBySymbol]);
 
   const accountChips = useMemo(() => {
     if (!liveData) return [] as { id: number; label: string }[];
