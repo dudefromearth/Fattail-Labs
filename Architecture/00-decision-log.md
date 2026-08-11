@@ -14,8 +14,9 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 | Spec v0.1 | SUPERSEDED historical |
 
 **Blocking folds:** OPF-served card package (OD-PB12) · PB-VIEW-5 live re-resolve · PB18a skew · signed D\* · AT-PB-R1a–d litmus · PB17b interest · Held labels (PB-MODE-3).  
-**Coherence matrix:** day_trade live HARD / closed provenance-only / outlook scenario honesty / backtest determinism+gaps.  
-**Next:** OD-PB1–15 Accept/Override → implementation plan → code. **No BUILD GO** from fold alone.
+**Coherence matrix:** day_trade live HARD / closed provenance-only / outlook scenario honesty / backtest determinism+gaps.
+
+**Residual fold (same-day hygiene, advisor verify N1–N5):** §4.4 algorithm gains hidden/not-live and locked-mkt-Held branches; **OD-PB16** outlook epoch re-anchor; **OD-PB17** replay UX deferral; content hash recomputed. Process gate unchanged: **OD-PB1–17 Accept/Override → implementation plan → code**. **No BUILD GO** from fold alone.
 
 ## 2026-08-11 — DL-295 Position Builder & Book Spec v0.1 (review baseline)
 

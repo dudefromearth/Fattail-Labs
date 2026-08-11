@@ -10,7 +10,7 @@
 **Process:** Spec for review → OD Accept/Override → **implementation plan** → code/ATs.  
 **No BUILD GO** implied by this fold alone.
 
-**Content integrity:** Landing content hash (sha1 of body excluding this line): `0c8f2ac2864bd50e48b1e074ae808cfc3cd9732a`.
+**Content integrity:** Landing content hash (sha1 of body excluding this line): `076c0416de1f820428a2bf488c7740eb38a1a1c4`.
 
 **Parents (normative where noted):**
 
@@ -84,6 +84,8 @@ On Options Lab Analyzer, members must be able to:
 **PB-VIEW-3:** What-if does not rewrite the card unless member explicitly saves an edit.  
 **PB-VIEW-4:** v0.1/v0.2: **exactly one focused** definition visualized (no multi-card aggregate).  
 **PB-VIEW-5 (B2):** While Analyzer is open and stream is healthy (**day_trade live**), the focused definition **re-resolves on each applied generation update** for any of its legs’ keys (throttled to generation cadence; **client-triggered on diff apply — never an independent `setInterval` HTTP poll loop**). Viewport renders the resolve’s `as_of`; a curve older than the newest applied generation for its keys is **labeled stale**.
+
+**PB-VIEW-7 (outlook epoch re-anchor — OD-PB16):** PB-VIEW-5 applies to **day_trade live** only. In **outlook** mode, scenario curves **do not** auto-re-anchor on every generation by default. Recommendation (**OD-PB16**): **member-controlled re-anchor** with an **“epoch stale”** indicator when newer generations exist for the definition’s keys — so scenario comparison work does not shift underfoot mid-analysis. Until OD-PB16 is Accepted/Overridden, implementers must not invent silent auto-re-anchor.
 
 ---
 
@@ -327,19 +329,28 @@ Create (+), empty CTA, order (newest-first recommended). No OPF math in the list
 
 ### 4.4 Package display algorithm (normative)
 
+Evaluate **top to bottom**. “Session closed/held” means stream posture is not Live (PB-STREAM-1).
+
 ```text
 if lock.mode == locked:
   display basis = D* (signed → UI magnitude + side)
-  optional mkt = PackageQuote.D_nat when available, labeled "mkt"
+  optional secondary mkt = PackageQuote.D_nat when available
+  label secondary "mkt"
+  if session closed/held:
+    secondary also carries Held  # PB-MODE-3; never bare "mkt" as live after close
+elif not visible:  # interest dropped (PB17b) — N1
+  display last PackageQuote (or last known) with label "not live"
+  # never style as live; priceSide from last known or null
 elif incomplete:
   display "—"; priceSide = null
-elif session closed/held:
-  display last PackageQuote for keys, label Held; same content_hash as viewport if focused
-elif interest refused (budget):
+elif interest refused (budget):  # PB17b cap
   display loud "not live (budget)"
+elif session closed/held:
+  display last PackageQuote for keys, label Held
+  if focused: same content_hash as viewport (R1b provenance)
 elif multi-exp skew beyond threshold:
   per LABS_OPF_SKEW_MODE (PB18a)
-else:
+else:  # unlocked, visible, live, complete, interest held
   display PackageQuote.D_nat (OPF-served / PB17); show as_of when available
 ```
 
@@ -492,10 +503,14 @@ Create from viewport; list; chart lines; spot evaluation; Held when closed.
 | Interest PB17b | §1.3 | Implicit | **Plan** |
 | Lock card → OPF | §5 | Incomplete | **Plan** |
 | Mode banner / Held | PB-MODE / STREAM | Partial | **Plan** |
+| Replay UX (date range, step/play) | OD-PB17 | Unspecified | **Defer** — not a side-door surface |
+| Outlook epoch re-anchor | PB-VIEW-7 / OD-PB16 | Unspecified | **OD** |
 
 ---
 
 ## 12. Open decisions (Accept/Override)
+
+**Gate:** OD Accept/Override on this table is required **before** any implementation plan (Spec §15 · DL-296 sequence).
 
 | ID | Question | Recommendation |
 |----|----------|----------------|
@@ -511,15 +526,17 @@ Create from viewport; list; chart lines; spot evaluation; Held when closed.
 | **OD-PB10** | mkt mid when locked | Yes, labeled |
 | **OD-PB11** | Retain freeze snapshots after unlock | **No** session book |
 | **OD-PB12** | Card live package source | **OPF-served PackageQuote** (B1a). If client-sum retained for non-focus: PB17a + R1a mandatory |
-| **OD-PB13** | Focused re-resolve cadence | On applied generation update (~stream interval); no independent poll loop |
+| **OD-PB13** | Focused re-resolve cadence (day_trade live) | On applied generation update (~stream interval); no independent poll loop |
 | **OD-PB14** | Forward-walk naming | Workflow over `backtest.chain_replay`; not a fourth pack |
 | **OD-PB15** | Replay-mode card package field | **(a)** stay live/held market (PB-MODE-2) for v0.2 |
+| **OD-PB16** | Outlook epoch re-anchor when generations land | **Member-controlled re-anchor** + “epoch stale” indicator; no silent auto-shift of scenario curves mid-analysis (N3) |
+| **OD-PB17** | Replay-mode member UX (date range, step/play, cadence) | **Defer** to implementation plan / v0.3 surface design — must not arrive as a side-door chrome; named here so gap is explicit (N4) |
 
 ---
 
 ## 13. Non-goals
 
-Broker place/close · multi-tab authoritative sync · MSC alert SSE/AI · client Heston/MC SoR · profit theater · multi-definition stacked P&amp;L · silent dual package math · RECON-as-live after close.
+Broker place/close · multi-tab authoritative sync · MSC alert SSE/AI · client Heston/MC SoR · profit theater · multi-definition stacked P&amp;L · silent dual package math · RECON-as-live after close · **ad-hoc replay controls without OD-PB17 plan**.
 
 ---
 
@@ -528,8 +545,8 @@ Broker place/close · multi-tab authoritative sync · MSC alert SSE/AI · client
 1. Card = definition; viewport = OPF visualization; chain/archive = market.  
 2. Coherence matrix §6.5 understood; litmus is **R1a** (live), not false precision after close.  
 3. B1–B6 laws present (PB17, VIEW-5, PB18a, signed D\*, ATs, PB17b).  
-4. OD-PB1–15 ready for Accept/Override.  
-5. §11 gaps → implementation plan only after OD table.
+4. **OD-PB1–17** ready for Accept/Override.  
+5. §11 gaps → implementation plan **only after** OD table.
 
 ---
 
@@ -563,6 +580,11 @@ Broker place/close · multi-tab authoritative sync · MSC alert SSE/AI · client
 | A8 | Alternate unlocked | §8 |
 | A9 | priceSide incomplete | §3.3 null |
 | **Ad1** | Use-case guarantees | §0.2 · §6.5 · PB-MODE-0..3 · OD-PB14/15 |
+| **N1** | §4.4 missing hidden/not-live branch | §4.4 `not visible` branch |
+| **N2** | Locked mkt secondary after close | §4.4 locked + Held on secondary |
+| **N3** | Outlook epoch re-anchor | PB-VIEW-7 · OD-PB16 |
+| **N4** | Replay UX unspecified | OD-PB17 · §11 · non-goals |
+| **N5** | Process: DL same day + OD before plan | DL-296 present; §12 gate sentence · §15 |
 
 ---
 
