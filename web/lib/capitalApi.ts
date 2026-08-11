@@ -237,6 +237,15 @@ export type MarketUniverseSymbol = {
   /** Server-resolved app config for heatmap / analyzer / charts. */
   profile?: SymbolAppProfile | null;
   mid?: number | null;
+  /** When mid is a labeled ETF proxy for an index product. */
+  proxy_mid?: number | null;
+  mark_via_proxy?: boolean;
+  mark_feed_used?: string | null;
+  mark_source?: string | null;
+  mark_label?: string | null;
+  mark_plane?: string | null;
+  mark_age_seconds?: number | null;
+  mark_stale?: boolean | null;
   prev_close?: number | null;
   day_change_pct?: number | null;
   mark_asof?: string | null;

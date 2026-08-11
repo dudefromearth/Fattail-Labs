@@ -28,6 +28,35 @@ def admin_list(request: Request, enabled_only: bool = Query(False)) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             rows = ua.list_all(cur, enabled_only=enabled_only)
+            # Live mids for admin table (same plane as member universe)
+            try:
+                from market_data.underlier_marks import (
+                    ensure_fresh_underlier_marks,
+                    get_underlier_mark,
+                )
+
+                syms = [str(r.get("symbol") or "") for r in rows if r.get("enabled", True)]
+                ensure_fresh_underlier_marks(cur, syms, max_age_s=45.0, max_fetch=50)
+                for row in rows:
+                    sym = str(row.get("symbol") or "").upper()
+                    m = get_underlier_mark(sym, cur=cur)
+                    if m and str(m.get("symbol") or "").upper() == sym:
+                        via = bool(m.get("via_proxy") or m.get("mid_is_proxy"))
+                        row["mid"] = None if via else m.get("mid")
+                        row["proxy_mid"] = m.get("mid") if via else None
+                        row["prev_close"] = None if via else m.get("prev_close")
+                        row["day_change_pct"] = (
+                            None if via else m.get("day_change_pct")
+                        )
+                        row["mark_asof"] = m.get("asof")
+                        row["mark_plane"] = m.get("plane")
+                        row["mark_age_seconds"] = m.get("age_seconds")
+                        row["mark_stale"] = m.get("stale")
+                        row["mark_via_proxy"] = via
+                        row["mark_feed_used"] = m.get("feed_used")
+                        row["mark_source"] = m.get("source")
+            except Exception:
+                pass
     return {"symbols": rows, "count": len(rows)}
 
 
@@ -115,22 +144,47 @@ def member_list_universe(
     with db.transaction() as conn:
         with conn.cursor() as cur:
             rows = ua.list_all(cur, enabled_only=enabled_only)
-            # Attach latest mark when present (Positions / Lab same SoR)
+            # On-demand refresh so Marked underliers / Lab stay live when stream lags
             try:
-                from market_data import live_marks as lm
+                from market_data.underlier_marks import (
+                    ensure_fresh_underlier_marks,
+                    get_underlier_mark,
+                )
 
+                syms = [str(r.get("symbol") or "") for r in rows]
+                ensure_fresh_underlier_marks(cur, syms, max_age_s=45.0, max_fetch=50)
                 for row in rows:
-                    m = lm.get_live_mark(cur, row["symbol"])
-                    if m:
-                        row["mid"] = m.get("mid")
-                        row["prev_close"] = m.get("prev_close")
-                        row["day_change_pct"] = m.get("day_change_pct")
+                    sym = str(row.get("symbol") or "").upper()
+                    m = get_underlier_mark(sym, cur=cur)
+                    # Strict: only attach if mark is for this product key
+                    if m and str(m.get("symbol") or "").upper() == sym:
+                        via = bool(m.get("via_proxy") or m.get("mid_is_proxy"))
+                        row["mid"] = None if via else m.get("mid")
+                        row["proxy_mid"] = m.get("proxy_mid") if via else None
+                        if via:
+                            row["proxy_mid"] = m.get("mid")
+                        row["prev_close"] = None if via else m.get("prev_close")
+                        row["day_change_pct"] = (
+                            None if via else m.get("day_change_pct")
+                        )
                         row["mark_asof"] = m.get("asof")
+                        row["mark_plane"] = m.get("plane")
+                        row["mark_age_seconds"] = m.get("age_seconds")
+                        row["mark_stale"] = m.get("stale")
+                        row["mark_via_proxy"] = via
+                        row["mark_feed_used"] = m.get("feed_used")
+                        row["mark_source"] = m.get("source")
+                        row["mark_label"] = m.get("label")
                     else:
                         row["mid"] = None
+                        row["proxy_mid"] = None
                         row["prev_close"] = None
                         row["day_change_pct"] = None
                         row["mark_asof"] = None
+                        row["mark_plane"] = None
+                        row["mark_age_seconds"] = None
+                        row["mark_stale"] = True
+                        row["mark_via_proxy"] = False
             except Exception:
                 for row in rows:
                     row.setdefault("mid", None)

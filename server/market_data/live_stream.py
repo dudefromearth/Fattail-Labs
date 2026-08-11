@@ -37,11 +37,55 @@ def _handle_stop(signum: int, frame: Any) -> None:
     print(f"\n[live_stream] signal {signum} — stopping", flush=True)
 
 
+def _index_spot_from_options(
+    client: MassiveClient, chain_underlier: str
+) -> dict[str, Any] | None:
+    """True index level from options snapshot underlying_asset (not ETF proxy)."""
+    try:
+        rows = client.fetch_option_chain(
+            chain_underlier,
+            limit=10,
+            max_pages=1,
+            allow_truncate=True,
+            contract_type=None,
+        )
+    except MassiveClientError:
+        return None
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        ua = row.get("underlying_asset") or {}
+        if not isinstance(ua, dict):
+            continue
+        for key in ("value", "price"):
+            if ua.get(key) is not None:
+                try:
+                    mid = float(ua[key])
+                except (TypeError, ValueError):
+                    continue
+                if mid > 0:
+                    return {
+                        "mid": mid,
+                        "bid": None,
+                        "ask": None,
+                        "last_trade": mid,
+                        "feed_used": chain_underlier,
+                        "via_proxy": False,
+                        "source_detail": "options_underlying_asset",
+                    }
+    return None
+
+
 def _fetch_for_row(client: MassiveClient, row: dict[str, Any]) -> dict[str, Any]:
-    """Resolve mark for universe row → product symbol mid + provenance."""
-    product = row["symbol"]
+    """Resolve mark for universe row → product symbol mid + provenance.
+
+    Order: native stock/index feed → product ticker → options underlying
+    spot for I:* feeds → labeled ETF proxy (never stored as silent native mid).
+    """
+    product = str(row["symbol"] or "").strip().upper()
     feed = (row.get("feed_symbol") or product or "").strip()
     proxy = (row.get("proxy_symbol") or "").strip() or None
+    kind = str(row.get("kind") or "").lower()
 
     tried: list[str] = []
     last_err: Exception | None = None
@@ -50,14 +94,52 @@ def _fetch_for_row(client: MassiveClient, row: dict[str, Any]) -> dict[str, Any]
         if not candidate or candidate in tried:
             continue
         tried.append(candidate)
-        try:
-            m = client.fetch_underlier_mark(candidate)
-            m["product_symbol"] = product
-            m["feed_used"] = candidate
-            m["via_proxy"] = False
-            return m
-        except MassiveClientError as exc:
-            last_err = exc
+        # Stock snapshot path does not accept I: for many plans — try strip for equity-like
+        candidates = [candidate]
+        if candidate.upper().startswith("I:"):
+            candidates.append(candidate[2:])
+        for cand in candidates:
+            if cand in tried and cand != candidate:
+                continue
+            if cand not in tried:
+                tried.append(cand)
+            try:
+                m = client.fetch_underlier_mark(cand)
+                # Reject absurd proxy-scale mids for index products (SPX ≠ SPY)
+                mid = float(m["mid"])
+                if kind == "index" and product in ("SPX", "NDX", "RUT") and mid < 1000:
+                    last_err = MassiveClientError(
+                        f"{cand} mid={mid} too small for index {product}"
+                    )
+                    continue
+                m["product_symbol"] = product
+                m["feed_used"] = cand
+                m["via_proxy"] = False
+                m["mid_is_proxy"] = False
+                return m
+            except MassiveClientError as exc:
+                last_err = exc
+
+    # Index: true level from options chain underlying (same SoR as Heatmap spot)
+    chain_ul = feed if feed else product
+    if kind == "index" or (feed or "").upper().startswith("I:"):
+        spot = _index_spot_from_options(client, chain_ul)
+        if spot is None and chain_ul.upper().startswith("I:"):
+            # try bare product as options underlying path
+            spot = _index_spot_from_options(client, f"I:{product}")
+        if spot is not None:
+            return {
+                "symbol": product,
+                "product_symbol": product,
+                "mid": spot["mid"],
+                "bid": spot.get("bid"),
+                "ask": spot.get("ask"),
+                "last_trade": spot.get("last_trade"),
+                "feed_used": spot.get("feed_used"),
+                "via_proxy": False,
+                "mid_is_proxy": False,
+                "source_detail": spot.get("source_detail"),
+            }
 
     if proxy:
         try:
@@ -65,7 +147,9 @@ def _fetch_for_row(client: MassiveClient, row: dict[str, Any]) -> dict[str, Any]
             m["product_symbol"] = product
             m["feed_used"] = proxy
             m["via_proxy"] = True
+            m["mid_is_proxy"] = True
             m["proxy_for"] = product
+            m["proxy_mid"] = float(m["mid"])
             return m
         except MassiveClientError as exc:
             last_err = exc
@@ -89,20 +173,34 @@ def poll_once(client: MassiveClient, universe: list[dict[str, Any]]) -> dict[str
                 try:
                     m = _fetch_for_row(client, row)
                     asof = datetime.now(timezone.utc)
-                    via_proxy = bool(m.get("via_proxy"))
+                    via_proxy = bool(m.get("via_proxy") or m.get("mid_is_proxy"))
                     source = (
-                        "massive_proxy_v1" if via_proxy else "massive_live_stream_v1"
+                        "massive_proxy_v1"
+                        if via_proxy
+                        else (
+                            "massive_index_options_v1"
+                            if m.get("source_detail") == "options_underlying_asset"
+                            else "massive_live_stream_v1"
+                        )
                     )
                     if via_proxy:
                         label = (
-                            f"Shared stream PROXY {m.get('feed_used')}→{product} "
-                            f"(index feed not entitled; not true {product})"
+                            f"PROXY {m.get('feed_used')} for {product} "
+                            f"(not true {product} print)"
                         )
                     else:
                         label = "Shared live stream (all members)"
-                    # Daily reference: prev session OHLC on feed or proxy ticker
-                    prev_sym = str(m.get("feed_used") or product)
-                    prev = client.fetch_prev_day(prev_sym)
+                    # Prev session OHLC on a stock/ETF ticker Massive accepts
+                    feed_used = str(m.get("feed_used") or product)
+                    prev_sym = feed_used[2:] if feed_used.upper().startswith("I:") else feed_used
+                    if via_proxy:
+                        prev_sym = str(m.get("feed_used") or proxy or product)
+                    prev = None
+                    try:
+                        prev = client.fetch_prev_day(prev_sym)
+                    except Exception:
+                        prev = None
+                    # For proxy marks: still store mid for continuity but flag heavily
                     lm.upsert_mark(
                         cur,
                         symbol=product,
@@ -121,11 +219,35 @@ def poll_once(client: MassiveClient, universe: list[dict[str, Any]]) -> dict[str
                             "asof_ns": m.get("asof_ns"),
                             "feed_used": m.get("feed_used"),
                             "via_proxy": via_proxy,
+                            "mid_is_proxy": via_proxy,
                             "proxy_for": m.get("proxy_for"),
+                            "proxy_mid": m.get("proxy_mid") or (m["mid"] if via_proxy else None),
                             "prev_day": prev,
                             "role": row.get("role"),
+                            "source_detail": m.get("source_detail"),
                         },
                     )
+                    try:
+                        from market_data.underlier_marks import write_bus_sym
+
+                        write_bus_sym(
+                            product,
+                            {
+                                "mid": m["mid"],
+                                "bid": m.get("bid"),
+                                "ask": m.get("ask"),
+                                "prev_close": prev.get("close") if prev else None,
+                                "source": source,
+                                "label": label[:128],
+                                "via_proxy": via_proxy,
+                                "mid_is_proxy": via_proxy,
+                                "feed_used": m.get("feed_used"),
+                                "proxy_mid": m.get("proxy_mid")
+                                or (m["mid"] if via_proxy else None),
+                            },
+                        )
+                    except Exception:
+                        pass
                     ok += 1
                     tag = "PROXY" if via_proxy else "LIVE"
                     print(

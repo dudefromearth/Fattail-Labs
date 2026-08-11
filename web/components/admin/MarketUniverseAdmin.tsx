@@ -18,6 +18,16 @@ type UniverseRow = {
   sort_order: number;
   note?: string;
   options_cadence?: string;
+  mid?: number | null;
+  proxy_mid?: number | null;
+  mark_via_proxy?: boolean;
+  mark_feed_used?: string | null;
+  mark_source?: string | null;
+  prev_close?: number | null;
+  day_change_pct?: number | null;
+  mark_plane?: string | null;
+  mark_age_seconds?: number | null;
+  mark_stale?: boolean | null;
   validation?: {
     ok: boolean;
     mid?: number;
@@ -65,6 +75,33 @@ export default function MarketUniverseAdmin() {
 
   useEffect(() => {
     void reload();
+    // Live mids: server on-demand refresh + poll
+    let t: number | null = null;
+    const tick = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    const start = () => {
+      if (t != null) return;
+      t = window.setInterval(tick, 8000);
+    };
+    const stop = () => {
+      if (t != null) {
+        window.clearInterval(t);
+        t = null;
+      }
+    };
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+        start();
+      } else stop();
+    };
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [reload]);
 
   async function createSymbol() {
@@ -325,6 +362,9 @@ export default function MarketUniverseAdmin() {
             <tr className="border-b border-zinc-200 text-xs text-zinc-500 dark:border-zinc-800">
               <th className="px-3 py-2 font-medium">Symbol</th>
               <th className="px-2 py-2 font-medium">Kind</th>
+              <th className="px-2 py-2 font-medium">Native mid</th>
+              <th className="px-2 py-2 font-medium">Proxy mid</th>
+              <th className="px-2 py-2 font-medium">Source</th>
               <th className="px-2 py-2 font-medium">Feed</th>
               <th className="px-2 py-2 font-medium">Proxy</th>
               <th className="px-2 py-2 font-medium">On</th>
@@ -342,6 +382,37 @@ export default function MarketUniverseAdmin() {
               >
                 <td className="px-3 py-2 font-medium tabular-nums">{row.symbol}</td>
                 <td className="px-2 py-2 text-zinc-600">{row.kind}</td>
+                <td
+                  className={[
+                    "px-2 py-2 font-mono tabular-nums font-semibold",
+                    row.mid != null && !row.mark_via_proxy
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-zinc-400",
+                  ].join(" ")}
+                  data-testid={`admin-mid-${row.symbol}`}
+                >
+                  {row.mid != null && !row.mark_via_proxy
+                    ? Number(row.mid).toFixed(2)
+                    : "—"}
+                  {row.mark_age_seconds != null && row.mid != null ? (
+                    <span className="ml-1 text-[10px] font-normal text-zinc-400">
+                      {Math.round(Number(row.mark_age_seconds))}s
+                    </span>
+                  ) : null}
+                </td>
+                <td className="px-2 py-2 font-mono text-xs tabular-nums text-sky-700">
+                  {row.mark_via_proxy && row.proxy_mid != null
+                    ? `${Number(row.proxy_mid).toFixed(2)}${
+                        row.mark_feed_used ? ` · ${row.mark_feed_used}` : ""
+                      }`
+                    : row.proxy_mid != null
+                      ? Number(row.proxy_mid).toFixed(2)
+                      : "—"}
+                </td>
+                <td className="px-2 py-2 text-[10px] text-zinc-400">
+                  {[row.mark_plane, row.mark_source].filter(Boolean).join(" · ") ||
+                    "—"}
+                </td>
                 <td className="px-2 py-2 text-xs text-zinc-500">
                   {row.feed_symbol || "—"}
                 </td>

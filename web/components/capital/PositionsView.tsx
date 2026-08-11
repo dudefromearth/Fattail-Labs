@@ -15,8 +15,10 @@ import {
   fetchPositionsValuation,
   formatMarksAsOf,
   marksAgeIsStale,
+  type PositionValuationRow,
   type PositionsValuation,
 } from "@/lib/capitalApi";
+import { useSymbolMarks } from "@/lib/market/useSymbolMarks";
 import { usePracticeContextOptional } from "@/lib/practiceContext";
 
 type Chip =
@@ -87,8 +89,7 @@ export default function PositionsView({
     void reload();
   }, [reload]);
 
-  // Live refresh — server bus/OPF valuation (no second Massive path).
-  // RTH-ish poll; visibility-aware to avoid idle tabs thrashing.
+  // Live refresh — server ensure_fresh + OPF; visibility-aware.
   useEffect(() => {
     if (practice && !practice.prefsReady) return;
     let t: number | null = null;
@@ -97,7 +98,7 @@ export default function PositionsView({
     };
     const start = () => {
       if (t != null) return;
-      t = window.setInterval(tick, 5000);
+      t = window.setInterval(tick, 3000);
     };
     const stop = () => {
       if (t != null) {
@@ -119,14 +120,106 @@ export default function PositionsView({
     };
   }, [reload, practice]);
 
+  // Equity underliers → Market Bus stream for snappy Last (overlay)
+  const equityUnderliers = useMemo(() => {
+    if (!data) return [] as string[];
+    const s = new Set<string>();
+    for (const a of data.accounts) {
+      for (const p of a.positions) {
+        if ((p.asset_class || "").toLowerCase() === "equity" && p.underlier) {
+          s.add(p.underlier.toUpperCase());
+        }
+      }
+    }
+    return [...s];
+  }, [data]);
+
+  const { marks: liveMarks, transport: marksTransport } = useSymbolMarks({
+    symbols: equityUnderliers,
+    enabled: equityUnderliers.length > 0,
+  });
+
+  /** Merge live mids into equity rows so Last/Value/Unrealized move with the bus. */
+  const liveData = useMemo((): PositionsValuation | null => {
+    if (!data) return null;
+    if (!liveMarks.size) return data;
+    const accounts = data.accounts.map((acct) => {
+      const positions = acct.positions.map((p): PositionValuationRow => {
+        if ((p.asset_class || "").toLowerCase() !== "equity" || !p.underlier) {
+          return p;
+        }
+        const live = liveMarks.get(p.underlier.toUpperCase());
+        if (live?.mid == null || !Number.isFinite(live.mid)) return p;
+        const mid = live.mid;
+        const qty = Math.abs(Number(p.qty) || 0);
+        const value = mid * qty;
+        const cost = p.cost_basis;
+        const unrealized =
+          cost != null && Number.isFinite(cost) ? value - Number(cost) : p.unrealized;
+        return {
+          ...p,
+          last: mid,
+          value,
+          unrealized,
+          value_label: "underlier_mark",
+          degraded: false,
+          mark_meta: {
+            ...(p.mark_meta || {}),
+            engine: "underlier",
+            plane: live.plane || "mb:sym",
+            source: live.source,
+            live_overlay: true,
+          },
+        };
+      });
+      const pos_value = positions.reduce(
+        (s, r) => s + (r.value != null ? Number(r.value) : 0),
+        0,
+      );
+      const pos_u = positions.reduce(
+        (s, r) => s + (r.unrealized != null ? Number(r.unrealized) : 0),
+        0,
+      );
+      for (const r of positions) {
+        r.pct_acct =
+          r.value != null && pos_value
+            ? (Number(r.value) / pos_value) * 100
+            : r.pct_acct;
+      }
+      return {
+        ...acct,
+        positions,
+        totals: {
+          ...acct.totals,
+          value: pos_value,
+          unrealized: pos_u,
+        },
+      };
+    });
+    const grand_value = accounts.reduce((s, a) => s + Number(a.totals.value || 0), 0);
+    const grand_u = accounts.reduce(
+      (s, a) => s + Number(a.totals.unrealized || 0),
+      0,
+    );
+    return {
+      ...data,
+      accounts,
+      marks_plane: data.marks_plane || "market_bus_v1",
+      grand_total: {
+        ...data.grand_total,
+        value: grand_value,
+        unrealized: grand_u,
+      },
+    };
+  }, [data, liveMarks]);
+
   const accountChips = useMemo(() => {
-    if (!data) return [] as { id: number; label: string }[];
-    // Prefer groups present; also list campaigns' accounts from totals
-    return data.accounts.map((a) => ({
+    if (!liveData) return [] as { id: number; label: string }[];
+    return liveData.accounts.map((a) => ({
       id: a.account_id,
       label: a.label,
     }));
-  }, [data]);
+  }, [liveData]);
 
   function chipClass(on: boolean) {
     return [
@@ -147,23 +240,26 @@ export default function PositionsView({
           <p
             className={[
               "mt-0.5 text-xs",
-              data?.stream_heartbeat_stale ||
-              marksAgeIsStale(data?.marks_age_seconds)
+              liveData?.stream_heartbeat_stale ||
+              marksAgeIsStale(liveData?.marks_age_seconds)
                 ? "font-medium text-amber-700 dark:text-amber-400"
                 : "text-[var(--color-label-tertiary)]",
             ].join(" ")}
             data-testid="positions-marks-as-of"
             data-stale={
-              data?.stream_heartbeat_stale ||
-              marksAgeIsStale(data?.marks_age_seconds)
+              liveData?.stream_heartbeat_stale ||
+              marksAgeIsStale(liveData?.marks_age_seconds)
                 ? "true"
                 : "false"
             }
             data-stream-stale={
-              data?.stream_heartbeat_stale ? "true" : "false"
+              liveData?.stream_heartbeat_stale ? "true" : "false"
             }
           >
-            {formatMarksAsOf(data)}
+            {formatMarksAsOf(liveData)}
+            {equityUnderliers.length > 0
+              ? ` · marks ${marksTransport}`
+              : ""}
             {" · "}
             <Link
               href="/app/practice/symbols"
@@ -224,7 +320,7 @@ export default function PositionsView({
         >
           Options
         </button>
-        {(data?.campaigns || []).map((c) => (
+        {(liveData?.campaigns || []).map((c) => (
           <button
             key={c.id}
             type="button"
@@ -257,7 +353,7 @@ export default function PositionsView({
       )}
 
       <PositionsValuationTable
-        data={data}
+        data={liveData}
         variant="full"
         showHeader={false}
         onDirectCampaign={onOpenTrade}

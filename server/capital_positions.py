@@ -13,7 +13,10 @@ from typing import Any
 
 from market_data import live_marks as lm
 from market_data.open_book_marks import quote_open_option_structure
-from market_data.underlier_marks import get_underlier_mark
+from market_data.underlier_marks import (
+    ensure_fresh_underlier_marks,
+    get_underlier_mark,
+)
 from trade_log_domain.matching import match_open_close
 from trade_log_domain.structure import (
     multiplier,
@@ -191,6 +194,19 @@ def positions_valuation(
 
     matched = match_open_close(trades)
     opens = [m for m in matched if m.get("close") is None]
+
+    # Refresh stale underliers for equity opens (bus + MySQL) before marking
+    underliers: list[str] = []
+    for m in opens:
+        t0 = m.get("open") or {}
+        if _is_equity_like(t0):
+            u = _underlier(t0)
+            if u:
+                underliers.append(u)
+    try:
+        ensure_fresh_underlier_marks(cur, underliers, max_age_s=45.0)
+    except Exception:
+        pass
 
     # Heartbeat / marks as-of (true age — never blank for closed market)
     hb = lm.get_heartbeat(cur) if hasattr(lm, "get_heartbeat") else None

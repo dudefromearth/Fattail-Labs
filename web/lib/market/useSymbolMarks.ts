@@ -17,6 +17,8 @@ export type SymbolMark = {
   plane?: string;
   asOf?: string | null;
   stale?: boolean;
+  via_proxy?: boolean;
+  feed_used?: string;
 };
 
 export function useSymbolMarks(opts: {
@@ -76,8 +78,12 @@ export function useSymbolMarks(opts: {
         source?: string;
         plane?: string;
         ts?: number;
+        via_proxy?: boolean;
+        mid_is_proxy?: boolean;
+        feed_used?: string;
       };
       const sym = String(m.symbol || "").toUpperCase();
+      // Strict: only accept if this interest list includes the product key
       if (!sym || !symList.includes(sym)) return;
       setMarks((prev) => {
         const next = new Map(prev);
@@ -89,6 +95,8 @@ export function useSymbolMarks(opts: {
           source: m.source,
           plane: m.plane || "mb:sym",
           asOf: m.ts != null ? new Date(Number(m.ts) * 1000).toISOString() : null,
+          via_proxy: Boolean(m.via_proxy || m.mid_is_proxy),
+          feed_used: m.feed_used,
         });
         return next;
       });
