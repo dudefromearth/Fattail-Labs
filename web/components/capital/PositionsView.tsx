@@ -87,6 +87,38 @@ export default function PositionsView({
     void reload();
   }, [reload]);
 
+  // Live refresh — server bus/OPF valuation (no second Massive path).
+  // RTH-ish poll; visibility-aware to avoid idle tabs thrashing.
+  useEffect(() => {
+    if (practice && !practice.prefsReady) return;
+    let t: number | null = null;
+    const tick = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    const start = () => {
+      if (t != null) return;
+      t = window.setInterval(tick, 5000);
+    };
+    const stop = () => {
+      if (t != null) {
+        window.clearInterval(t);
+        t = null;
+      }
+    };
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+        start();
+      } else stop();
+    };
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [reload, practice]);
+
   const accountChips = useMemo(() => {
     if (!data) return [] as { id: number; label: string }[];
     // Prefer groups present; also list campaigns' accounts from totals

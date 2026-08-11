@@ -111,6 +111,36 @@ export default function AccountsCapitalApp() {
     void reload();
   }, [reload]);
 
+  // Refresh capital overview + valuation on a live cadence (bus/OPF server path).
+  useEffect(() => {
+    let t: number | null = null;
+    const tick = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    const start = () => {
+      if (t != null) return;
+      t = window.setInterval(tick, 5000);
+    };
+    const stop = () => {
+      if (t != null) {
+        window.clearInterval(t);
+        t = null;
+      }
+    };
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+        start();
+      } else stop();
+    };
+    if (document.visibilityState === "visible") start();
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [reload]);
+
   useEffect(() => {
     if (selectedId == null) {
       setMovements([]);

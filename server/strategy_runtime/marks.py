@@ -1,6 +1,6 @@
-"""Mark provider for Curate — shared live stream first, then labeled stub.
+"""Mark provider for Curate — Market Bus underlier first, then MySQL, then stub.
 
-All members read the **same** `market_live_marks` table (one stream).
+Priority: overrides → ``mb:sym`` / dual-write MySQL → labeled stub (if allowed).
 No per-member Massive/Tradier sockets.
 """
 
@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from market_data import live_marks as lm
+from market_data.underlier_marks import get_underlier_mark
 
 
 class MarksError(RuntimeError):
@@ -101,37 +102,37 @@ def get_mark(
             shared_stream=False,
         )
 
-    # Shared stream (requires DB cursor)
-    if cur is not None:
-        try:
-            live = lm.get_live_mark(cur, sym)
-        except Exception as exc:  # table missing etc.
-            live = None
-            if lm.live_marks_required():
-                raise MarksError(f"live marks unavailable for {sym}: {exc}") from exc
-        if live is not None:
-            if live.get("stale") and lm.live_marks_required():
-                raise MarksError(
-                    f"shared live mark for {sym} is stale "
-                    f"(age={live.get('age_seconds')}s > {lm.stale_seconds()}s)"
-                )
-            return MarkQuote(
-                symbol=sym,
-                mid=float(live["mid"]),
-                bid=live.get("bid"),
-                ask=live.get("ask"),
-                asof=str(live.get("asof") or _now_iso()),
-                source=str(live.get("source") or "shared_live"),
-                label=str(live.get("label") or "Shared live stream"),
-                stale=bool(live.get("stale")),
-                age_seconds=live.get("age_seconds"),
-                shared_stream=True,
-            )
+    # Bus-first underlier (mb:sym → MySQL dual-write); cur optional for MySQL
+    try:
+        live = get_underlier_mark(sym, cur=cur)
+    except Exception as exc:
+        live = None
         if lm.live_marks_required():
+            raise MarksError(f"live marks unavailable for {sym}: {exc}") from exc
+    if live is not None:
+        if live.get("stale") and lm.live_marks_required():
             raise MarksError(
-                f"no shared live mark for {sym!r} — start "
-                f"`python -m market_data.live_stream` or add symbol to universe"
+                f"shared live mark for {sym} is stale "
+                f"(age={live.get('age_seconds')}s > {lm.stale_seconds()}s)"
             )
+        plane = str(live.get("plane") or "unknown")
+        return MarkQuote(
+            symbol=sym,
+            mid=float(live["mid"]),
+            bid=live.get("bid"),
+            ask=live.get("ask"),
+            asof=str(live.get("asof") or _now_iso()),
+            source=str(live.get("source") or plane),
+            label=str(live.get("label") or f"Underlier mark ({plane})"),
+            stale=bool(live.get("stale")),
+            age_seconds=live.get("age_seconds"),
+            shared_stream=True,
+        )
+    if lm.live_marks_required():
+        raise MarksError(
+            f"no shared live mark for {sym!r} — ensure sym_feed / Market Bus "
+            f"(mb:sym) or live_stream dual-write is running"
+        )
 
     # Stub fallback
     if lm.live_marks_required():

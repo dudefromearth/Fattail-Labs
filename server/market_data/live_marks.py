@@ -369,13 +369,20 @@ def is_heartbeat_stale(hb: dict[str, Any] | None) -> bool:
 
 def stream_status_payload(cur) -> dict[str, Any]:
     hb = get_heartbeat(cur)
-    marks = list_live_marks(cur)
+    # Bus-first underlier marks (Universal Adoption Plan B)
+    try:
+        from market_data.underlier_marks import list_underlier_marks
+
+        marks = list_underlier_marks(cur)
+    except Exception:
+        marks = list_live_marks(cur)
     universe = list_universe(cur, enabled_only=True)
     fresh = sum(1 for m in marks if not m.get("stale"))
     stale_n = sum(1 for m in marks if m.get("stale"))
     mark_count = len(marks)
     hb_stale = is_heartbeat_stale(hb)
     thresh = heartbeat_stale_threshold_seconds(hb)
+    bus_n = sum(1 for m in marks if m.get("plane") == "mb:sym")
     alerts: dict[str, Any] = {
         "heartbeat_stale": hb_stale,
         "heartbeat_stale_threshold_seconds": thresh,
@@ -383,11 +390,17 @@ def stream_status_payload(cur) -> dict[str, Any]:
             mark_count > 0 and stale_n > fresh and stale_n >= 3
         ),
     }
-    if hb_stale:
+    if hb_stale and bus_n == 0:
         alerts["message"] = (
-            "Live marks stream heartbeat is stale — mids may freeze while the "
-            "real market moves. Check the live_stream process."
+            "Live marks heartbeat is stale and no Market Bus mb:sym marks — "
+            "check sym_feed / live_stream."
         )
+    elif hb_stale and bus_n > 0:
+        alerts["message"] = (
+            f"MySQL stream heartbeat stale, but {bus_n} marks from Market Bus "
+            "(mb:sym) — underlier SoR is bus-first."
+        )
+        alerts["heartbeat_stale"] = False  # bus is live SoR
     elif alerts["many_stale_marks"]:
         alerts["message"] = (
             f"{stale_n}/{mark_count} marks are tick-stale; valuation still uses "
@@ -400,6 +413,8 @@ def stream_status_payload(cur) -> dict[str, Any]:
         "mark_count": mark_count,
         "fresh_count": fresh,
         "stale_count": stale_n,
+        "marks_plane": "market_bus_v1",
+        "bus_mark_count": bus_n,
         "alerts": alerts,
         "vol_reference": vol_reference(cur),
         "asof": _now_iso(),

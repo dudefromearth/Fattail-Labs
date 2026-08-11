@@ -125,6 +125,37 @@ Member UI uses **one WebSocket** per tab: `WS /api/me/market/stream` (not HTTP p
 
 Always `pip install -r requirements.txt` on deploy when requirements change, then **restart** the API (install alone does not reload the running process).
 
+### Universal market plane (Practice Positions · Curate · Capital)
+
+All live underlier mids and open-book option marks should flow through **Market Bus + OPF**:
+
+```bash
+# API env (launchd or .env)
+LABS_MARKET_BUS=1
+REDIS_URL=redis://127.0.0.1:6379/0
+# Open option MTM via OPF (default on). Set 0 only for emergency at-cost fallback:
+# LABS_POSITIONS_OPF=0
+```
+
+| Process | Role |
+|---------|------|
+| `sym_feed` | Writes `mb:sym:{PRODUCT}` + O2 dual-write MySQL |
+| `chain_feed` | Warms dual-side ladder generations |
+| `live_stream` | Optional during dual-write; bus-first readers prefer `mb:sym` |
+| API | Positions valuation · Curate live-marks · WS sym push |
+
+Smoke:
+
+```bash
+# Bus underlier present
+redis-cli GET 'mb:sym:SPY' | head -c 200
+# Valuation plane
+curl -sS 'localhost:4000/api/me/capital/positions-valuation' -H "Cookie: …" | head
+# Expect marks_plane market_bus_v1; option rows value_label package_mark|at_cost
+```
+
+Plan: `docs/Market-Data-Plane-Universal-Adoption-Implementation-Plan-v1.0.md`.
+
 ## launchd (production process management)
 
 `~/Library/LaunchAgents/ai.fattail.labs.api.plist` — runs

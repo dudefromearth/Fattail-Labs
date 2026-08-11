@@ -119,11 +119,26 @@ def main(argv: list[str] | None = None) -> int:
                     "mid": float(mid),
                     "bid": mark.get("bid"),
                     "ask": mark.get("ask"),
+                    "prev_close": mark.get("prev_close"),
                     "source": source,
+                    "label": (
+                        f"Market Bus underlier ({source})"
+                        if source != "massive_proxy_v1"
+                        else f"Proxy underlier via {proxy} (massive_proxy_v1)"
+                    ),
                     "ts": time.time(),
                     "seq": int(time.time() * 1000),
                 }
                 store.set_json(f"mb:sym:{product}", doc, ttl_s=30.0)
+                # O2 dual-write → MySQL (temporary; exit after bus-primary proof)
+                try:
+                    from market_data.underlier_marks import dual_write_mysql_from_bus_doc
+
+                    with db.transaction() as conn:
+                        with conn.cursor() as cur:
+                            dual_write_mysql_from_bus_doc(cur, product, doc)
+                except Exception as dw_exc:
+                    print(f"sym {product} dual-write warn: {dw_exc}", flush=True)
                 print(f"sym {product} mid={mid} src={source}", flush=True)
             except Exception as exc:
                 print(f"sym {product} fail: {exc}", flush=True)

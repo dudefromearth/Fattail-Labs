@@ -36,11 +36,21 @@ export type PositionValuationRow = {
   pct_acct?: number | null;
   campaign: { campaign_id: number; title: string; stamped_by?: string | null } | null;
   degraded: boolean;
+  mark_meta?: {
+    engine?: string;
+    plane?: string;
+    source?: string;
+    complete?: boolean;
+    degraded_reason?: string;
+    [k: string]: unknown;
+  } | null;
 };
 
 export type PositionsValuation = {
   marks_as_of: string | null;
   marks_age_seconds: number | null;
+  /** market_bus_v1 when bus-first underlier + OPF packages */
+  marks_plane?: string | null;
   valuation_uses_latest_mark: boolean;
   /** A6 — stream process heartbeat beyond ops threshold */
   stream_heartbeat_stale?: boolean;
@@ -290,8 +300,11 @@ export function formatMarksAsOf(v: PositionsValuation | null | undefined): strin
   if (age != null && v.marks_as_of) {
     base = `${base} (${formatAgeSeconds(age)})`;
   }
+  if (v.marks_plane) {
+    base = `${base} · ${v.marks_plane}`;
+  }
   if (streamDead) {
-    base = `${base} · Stream stale — check live marks process`;
+    base = `${base} · Stream stale — check sym_feed / live_stream`;
   } else if (stale) {
     base = `${base} · Stale — not a live last`;
   }

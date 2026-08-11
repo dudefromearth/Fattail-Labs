@@ -191,7 +191,7 @@ def get_trade_chart(
     """
     claims = require_session(request)
     _require_tool_member(claims, capability="read")
-    from market_data.trade_chart_service import build_trade_chart
+    from market_data.aggs_service import build_trade_chart
 
     with db.transaction() as conn:
         with conn.cursor() as cur:

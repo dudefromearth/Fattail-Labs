@@ -17,7 +17,8 @@ export class MarketSocket {
   private ws: WebSocket | null = null;
   private listeners = new Set<Listener>();
   private chains = new Map<string, ChainSub>();
-  private symbols = new Set<string>();
+  /** Union of per-widget symbol interests (id → symbols). */
+  private symbolInterest = new Map<string, Set<string>>();
   private wantSession = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
@@ -27,7 +28,11 @@ export class MarketSocket {
     this.ensureOpen();
     return () => {
       this.listeners.delete(fn);
-      if (this.listeners.size === 0 && this.chains.size === 0 && this.symbols.size === 0) {
+      if (
+        this.listeners.size === 0 &&
+        this.chains.size === 0 &&
+        this.symbolInterest.size === 0
+      ) {
         this.teardown();
       }
     };
@@ -39,14 +44,38 @@ export class MarketSocket {
     this.flushSubs();
   }
 
-  setSymbols(syms: string[]): void {
-    this.symbols = new Set(syms.map((s) => s.toUpperCase()));
+  /**
+   * Register underlier symbols for this interest id (e.g. widget).
+   * Pass empty / null to clear this id only — other widgets keep their sets.
+   */
+  setSymbolInterest(id: string, syms: string[] | null): void {
+    if (!syms || !syms.length) {
+      this.symbolInterest.delete(id);
+    } else {
+      this.symbolInterest.set(
+        id,
+        new Set(syms.map((s) => s.trim().toUpperCase()).filter(Boolean)),
+      );
+    }
     this.flushSubs();
+  }
+
+  /** @deprecated Prefer setSymbolInterest(id, syms) for multi-widget tabs. */
+  setSymbols(syms: string[]): void {
+    this.setSymbolInterest("default", syms);
   }
 
   setSession(on: boolean): void {
     this.wantSession = on;
     this.flushSubs();
+  }
+
+  private allSymbols(): string[] {
+    const u = new Set<string>();
+    for (const set of this.symbolInterest.values()) {
+      for (const s of set) u.add(s);
+    }
+    return [...u];
   }
 
   private emit(msg: MarketInbound): void {
@@ -92,7 +121,7 @@ export class MarketSocket {
       return;
     }
     const chains = [...this.chains.values()];
-    const symbols = [...this.symbols];
+    const symbols = this.allSymbols();
     if (!chains.length && !symbols.length && !this.wantSession) return;
     ws.send(
       JSON.stringify({
@@ -111,7 +140,7 @@ export class MarketSocket {
     this.ws = null;
     this.listeners.clear();
     this.chains.clear();
-    this.symbols.clear();
+    this.symbolInterest.clear();
   }
 }
 

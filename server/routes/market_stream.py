@@ -99,9 +99,11 @@ async def market_stream(ws: WebSocket) -> None:
 
     # Active chain subscriptions: key -> params + last content_hash
     chain_subs: dict[str, dict[str, Any]] = {}
+    # Active underlier symbol interests (mb:sym push)
+    symbol_subs: set[str] = set()
     stop = asyncio.Event()
     push_task = asyncio.create_task(
-        _chain_push_loop(ws, chain_subs, stop),
+        _chain_push_loop(ws, chain_subs, symbol_subs, stop),
         name="market-stream-chain-push",
     )
 
@@ -134,17 +136,20 @@ async def market_stream(ws: WebSocket) -> None:
                 )
                 continue
             if op == "sub":
-                await _handle_sub(ws, msg, chain_subs)
+                await _handle_sub(ws, msg, chain_subs, symbol_subs)
                 continue
             if op == "unsub":
                 for c in msg.get("chains") or []:
                     if isinstance(c, dict):
                         key = _chain_sub_key(c)
                         chain_subs.pop(key, None)
+                for s in msg.get("symbols") or []:
+                    symbol_subs.discard(str(s).strip().upper())
                 await ws.send_json(
                     {
                         "t": "unsub_ok",
                         "chains": sorted(chain_subs.keys()),
+                        "symbols": sorted(symbol_subs),
                     }
                 )
                 continue
@@ -174,10 +179,14 @@ async def _handle_sub(
     ws: WebSocket,
     msg: dict[str, Any],
     chain_subs: dict[str, dict[str, Any]],
+    symbol_subs: set[str],
 ) -> None:
     from routes import chain_ladder as cl
 
-    # Symbols (marks snapshot) — one-shot; not the chain push path
+    # Symbols — snapshot now + continuous push via push loop
+    # Replace interest set when client sends symbols key (may be empty list)
+    if "symbols" in msg:
+        symbol_subs.clear()
     for s in msg.get("symbols") or []:
         sym = str(s).strip().upper()
         if not sym:
@@ -193,6 +202,7 @@ async def _handle_sub(
                 }
             )
             continue
+        symbol_subs.add(sym)
         store_doc = None
         try:
             from market_data.market_bus.store import get_store
@@ -201,6 +211,27 @@ async def _handle_sub(
             store_doc = store.get_json(f"mb:sym:{sym}") if store else None
         except Exception:
             store_doc = None
+        if store_doc is None:
+            # MySQL dual-write fallback for snapshot
+            try:
+                import db
+                from market_data.underlier_marks import get_underlier_mark
+
+                with db.transaction() as conn:
+                    with conn.cursor() as cur:
+                        m = get_underlier_mark(sym, cur=cur)
+                if m:
+                    store_doc = {
+                        "symbol": sym,
+                        "mid": m.get("mid"),
+                        "bid": m.get("bid"),
+                        "ask": m.get("ask"),
+                        "source": m.get("source"),
+                        "plane": m.get("plane"),
+                        "ts": time.time(),
+                    }
+            except Exception:
+                store_doc = None
         await ws.send_json(
             {
                 "t": "sym",
@@ -312,8 +343,49 @@ async def _handle_sub(
         {
             "t": "sub_ok",
             "chains": sorted(chain_subs.keys()),
+            "symbols": sorted(symbol_subs),
             "session_open": _session_open_for_chain_push(),
             "push": True,
+        }
+    )
+
+
+async def _push_sym(ws: WebSocket, sym: str) -> None:
+    """Push one underlier mark from bus (or MySQL fallback)."""
+    store_doc = None
+    try:
+        from market_data.market_bus.store import get_store
+
+        store = get_store()
+        store_doc = store.get_json(f"mb:sym:{sym}") if store else None
+    except Exception:
+        store_doc = None
+    if store_doc is None:
+        try:
+            import db
+            from market_data.underlier_marks import get_underlier_mark
+
+            with db.transaction() as conn:
+                with conn.cursor() as cur:
+                    m = get_underlier_mark(sym, cur=cur)
+            if m:
+                store_doc = {
+                    "symbol": sym,
+                    "mid": m.get("mid"),
+                    "bid": m.get("bid"),
+                    "ask": m.get("ask"),
+                    "source": m.get("source"),
+                    "plane": m.get("plane"),
+                    "ts": time.time(),
+                }
+        except Exception:
+            store_doc = None
+    await ws.send_json(
+        {
+            "t": "sym",
+            "symbol": sym,
+            "mode": "full",
+            **(store_doc or {"mid": None, "note": "warming"}),
         }
     )
 
@@ -321,21 +393,22 @@ async def _handle_sub(
 async def _chain_push_loop(
     ws: WebSocket,
     chain_subs: dict[str, dict[str, Any]],
+    symbol_subs: set[str],
     stop: asyncio.Event,
 ) -> None:
-    """Server-side loop: push chain full/diff/unchanged into the open socket."""
+    """Server-side loop: push chain + underlier sym updates into the open socket."""
     from routes import chain_ladder as cl
     from market_data.chain_ladder import diff_ladder
 
     held_notified = False
     while not stop.is_set():
         try:
-            if not chain_subs:
+            if not chain_subs and not symbol_subs:
                 await asyncio.sleep(_PUSH_INTERVAL_S)
                 continue
 
             if not _session_open_for_chain_push():
-                if not held_notified and chain_subs:
+                if not held_notified and (chain_subs or symbol_subs):
                     try:
                         await ws.send_json(
                             {
@@ -349,10 +422,26 @@ async def _chain_push_loop(
                     except Exception:
                         return
                     held_notified = True
+                # Still push last underlier marks while held (stale-honest)
+                for sym in list(symbol_subs):
+                    try:
+                        await _push_sym(ws, sym)
+                    except Exception:
+                        return
                 await asyncio.sleep(_CLOSED_SLEEP_S)
                 continue
 
             held_notified = False
+
+            # Underlier marks (mb:sym)
+            for sym in list(symbol_subs):
+                if stop.is_set():
+                    return
+                try:
+                    await _push_sym(ws, sym)
+                except Exception:
+                    return
+
             # Snapshot keys to avoid mutation during iteration
             for key, meta in list(chain_subs.items()):
                 if stop.is_set():

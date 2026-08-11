@@ -125,13 +125,15 @@ export default function CurateLiveMarksStrip() {
   }, []);
 
   useEffect(() => {
+    // HTTP hydrate (bus-first server payload) + faster refresh than 15s legacy.
+    // Underlier SoR is Market Bus; this poll only re-reads the shared API.
     void load();
     let t: number | null = null;
     const start = () => {
       if (t != null) return;
       t = window.setInterval(() => {
         if (document.visibilityState === "visible") void load();
-      }, 15000);
+      }, 5000);
     };
     const stop = () => {
       if (t != null) {

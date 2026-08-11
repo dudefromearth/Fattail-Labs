@@ -1,6 +1,7 @@
-"""Positions valuation — open book × market_live_marks.
+"""Positions valuation — open book × Market Bus underliers + OPF packages.
 
 Spec: Accounts & Capital and Positions View v0.2
+Plane: bus-first underlier (mb:sym) · option package-quote (OPF).
 V17: stale-for-ticking ≠ unusable-for-valuation (weekend rule).
 OD-MC: cash omitted from deployability until match-cash ratified.
 """
@@ -11,6 +12,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from market_data import live_marks as lm
+from market_data.open_book_marks import quote_open_option_structure
+from market_data.underlier_marks import get_underlier_mark
 from trade_log_domain.matching import match_open_close
 from trade_log_domain.structure import (
     multiplier,
@@ -170,7 +173,7 @@ def positions_valuation(
     asset_class: str | None = None,
     load_book,  # callable(cur, iid, account_id|None) -> (trades, accounts)
 ) -> dict:
-    """Open structures × marks join. MySQL only. No external fetch."""
+    """Open structures × marks join (bus underliers + OPF option packages)."""
     trades, accounts = load_book(cur, identity_id, account_id)
     # Campaign registry titles for chips
     cur.execute(
@@ -226,38 +229,68 @@ def positions_valuation(
         equity_like = _is_equity_like(t)
         # Always 1 for shares; 100 for options — never trust mis-tagged asset_class
         mult = _contract_multiplier(t)
-        mark = lm.get_live_mark(cur, under) if under and equity_like else None
-        # Options: no fabricated marks (V13)
-        # A6: when stream mid missing, fall back to official prev_close (not silent $0).
-        value_source = "mark"
-        if mark and equity_like:
-            prev = _f(mark.get("prev_close"))
-            mid_raw = mark.get("mid")
-            mid = float(mid_raw) if mid_raw is not None else None
-            if mid is None and prev is not None:
-                mid = prev
-                value_source = "prev_close"
-            if mid is not None:
-                day = (mid - prev) if prev is not None and value_source == "mark" else None
-                value = mid * abs(qty) * mult  # mult=1 for equity
-                if mark.get("asof"):
-                    marks_as_of = marks_as_of or str(mark["asof"])
-                if mark.get("age_seconds") is not None:
-                    marks_ages.append(float(mark["age_seconds"]))
+        # Bus-first underlier (mb:sym → MySQL fallback)
+        mark = get_underlier_mark(under, cur=cur) if under and equity_like else None
+        value_source = "underlier_mark"
+        mark_meta: dict | None = None
+        mid: float | None = None
+        day: float | None = None
+        value: float | None = None
+
+        if equity_like:
+            # A6: when stream mid missing, fall back to official prev_close (not silent $0).
+            if mark:
+                prev = _f(mark.get("prev_close"))
+                mid_raw = mark.get("mid")
+                mid = float(mid_raw) if mid_raw is not None else None
+                if mid is None and prev is not None:
+                    mid = prev
+                    value_source = "prev_close"
+                if mid is not None:
+                    day = (
+                        (mid - prev)
+                        if prev is not None and value_source == "underlier_mark"
+                        else None
+                    )
+                    value = mid * abs(qty) * mult  # mult=1 for equity
+                    if mark.get("asof"):
+                        marks_as_of = marks_as_of or str(mark["asof"])
+                    if mark.get("age_seconds") is not None:
+                        marks_ages.append(float(mark["age_seconds"]))
+                    mark_meta = {
+                        "engine": "underlier",
+                        "plane": mark.get("plane") or "unknown",
+                        "source": mark.get("source"),
+                    }
+                else:
+                    if under not in degraded:
+                        degraded.append(under)
             else:
-                mid = None
-                day = None
-                value = None
-                if under not in degraded:
+                if under and under not in degraded:
                     degraded.append(under)
         else:
-            mid = None
-            day = None
-            value = None
-            if under and equity_like:
-                if under not in degraded:
+            # Option structures: OPF package-quote over dual-side generations
+            pq = quote_open_option_structure(t)
+            mark_meta = pq.get("mark_meta") if isinstance(pq.get("mark_meta"), dict) else {}
+            if pq.get("complete") and pq.get("package_debit_per_share") is not None:
+                d_ps = float(pq["package_debit_per_share"])
+                mid = d_ps  # points per share (package natural debit)
+                # Absolute market value of the open package-set (long debit > 0)
+                if pq.get("mark_dollars") is not None:
+                    value = abs(float(pq["mark_dollars"]))
+                else:
+                    value = abs(d_ps) * float(mult) * abs(float(qty) or 1.0)
+                value_source = "package_mark"
+            else:
+                # Degraded: labeled at-cost only (no silent $0)
+                mid = None
+                value = None
+                if under and under not in degraded:
                     degraded.append(under)
-            # option structures: no chain marks → at-cost (V13)
+                mark_meta = {
+                    **(mark_meta or {}),
+                    "degraded_reason": pq.get("error") or "incomplete_package",
+                }
 
         at_cost = cost_basis
         if value is None and at_cost is not None:
@@ -266,7 +299,7 @@ def positions_valuation(
             unrealized = None
         else:
             display_value = value
-            value_label = value_source  # mark | prev_close
+            value_label = value_source  # underlier_mark | prev_close | package_mark
             unrealized = (
                 (value - at_cost)
                 if value is not None and at_cost is not None
@@ -304,7 +337,8 @@ def positions_valuation(
             "unrealized": unrealized,
             "campaign": camp_chip,  # null = undirected absence
             "exec_at": t.get("exec_at"),
-            "degraded": mid is None,
+            "degraded": mid is None or value_label == "at_cost",
+            "mark_meta": mark_meta,
         }
         by_account.setdefault(aid, []).append(row)
 
@@ -390,6 +424,7 @@ def positions_valuation(
     return {
         "marks_as_of": marks_as_of,
         "marks_age_seconds": max_age,
+        "marks_plane": "market_bus_v1",
         "stream_heartbeat": hb,
         "stream_heartbeat_stale": hb_stale,
         # V17: do not blank on tick-stale

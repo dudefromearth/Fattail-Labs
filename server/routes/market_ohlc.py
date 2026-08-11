@@ -5,9 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from guards import require_session
+from market_data.aggs_service import fetch_product_ohlc
 from market_data.ohlc_service import (
     OHLC_LOOKBACK_DAYS,
-    fetch_product_ohlc,
     normalize_lookback_days,
     normalize_ohlc_tf,
 )
