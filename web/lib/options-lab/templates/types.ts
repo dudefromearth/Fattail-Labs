@@ -50,6 +50,9 @@ export type GridCell = {
   bgCss?: string;
 };
 
+/** Which side of the body gets the broken (N-strike) wing. */
+export type BwWingSide = "closest" | "furthest";
+
 export type TemplateParams = {
   valueMode: ValueModeId;
   widthMode: "step_multiples" | "fixed_points" | "msc_default";
@@ -63,6 +66,16 @@ export type TemplateParams = {
    * Default 50 — blue below, red above (see MSHeatmap.debitColor).
    */
   gradientThreshold?: number;
+  /**
+   * bw-fly: listed-strike count from body for the broken wing (1 = next strike).
+   * The other wing uses the column width (points).
+   */
+  bwStrikeCount?: number;
+  /**
+   * bw-fly: place the broken wing on the side of body closest to spot,
+   * or furthest from spot. When spot is missing, furthest → upper wing.
+   */
+  bwWingSide?: BwWingSide;
 };
 
 export type HeatmapTemplate = {

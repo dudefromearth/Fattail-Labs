@@ -127,3 +127,22 @@ export function symFlyTosLegs(params: {
     { strike: hi, expiration, right: side, quantity: 1 * s },
   ];
 }
+
+/** Broken-wing (or any 1-2-1) fly legs at explicit lo / body / hi. */
+export function bwFlyTosLegs(params: {
+  lo: number;
+  body: number;
+  hi: number;
+  expiration: string;
+  side: "call" | "put";
+  /** long fly (default) or short fly */
+  short?: boolean;
+}): TosLeg[] {
+  const { lo, body, hi, expiration, side, short = false } = params;
+  const s = short ? -1 : 1;
+  return [
+    { strike: lo, expiration, right: side, quantity: 1 * s },
+    { strike: body, expiration, right: side, quantity: -2 * s },
+    { strike: hi, expiration, right: side, quantity: 1 * s },
+  ];
+}

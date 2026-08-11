@@ -2,6 +2,7 @@
 
 import type { HeatmapTemplate } from "./types";
 import { symFlyTemplate } from "./symFly";
+import { bwFlyTemplate } from "./bwFly";
 import { gexTemplate } from "./gex";
 
 /** Default Heatmap template — Symmetric flies (MSC look). */
@@ -9,6 +10,7 @@ export const DEFAULT_HEATMAP_TEMPLATE_ID = "sym-fly";
 
 export const HEATMAP_TEMPLATES: HeatmapTemplate[] = [
   symFlyTemplate,
+  bwFlyTemplate,
   {
     id: "ladder",
     label: "Strike ladder",

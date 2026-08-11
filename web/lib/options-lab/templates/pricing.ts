@@ -37,6 +37,111 @@ export function symFlyDebit(
   return mLo + mHi - 2 * mBody;
 }
 
+/**
+ * Broken-wing fly debit: long lo / short 2×body / long hi (mids).
+ * Wings need not be equal; all three strikes must be listed with mids.
+ */
+export function bwFlyDebit(
+  ctx: ChainContext,
+  body: number,
+  lo: number,
+  hi: number,
+): number | null {
+  if (!(lo < body && body < hi)) return null;
+  const side = ctx.viewSide;
+  const mLo = midAt(ctx, side, lo);
+  const mBody = midAt(ctx, side, body);
+  const mHi = midAt(ctx, side, hi);
+  if (mLo == null || mBody == null || mHi == null) return null;
+  return mLo + mHi - 2 * mBody;
+}
+
+/** View-side strikes sorted ascending (for N-strike wing walk). */
+export function listedStrikesAsc(ctx: ChainContext): number[] {
+  const side = ctx.viewSide;
+  const set = new Set<number>();
+  for (const row of ctx.contracts.values()) {
+    if ((row.side || "call").toLowerCase() !== side) continue;
+    const k = Number(row.strike);
+    if (Number.isFinite(k)) set.add(k);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
+/**
+ * Walk `n` listed strikes from body toward lower (−) or upper (+).
+ * n ≥ 1. Returns the wing strike, or null if body/wing not on the ladder.
+ */
+export function wingStrikeByCount(
+  listedAsc: readonly number[],
+  body: number,
+  nStrikes: number,
+  dir: "lower" | "upper",
+): number | null {
+  if (nStrikes < 1 || !listedAsc.length) return null;
+  let idx = -1;
+  for (let i = 0; i < listedAsc.length; i++) {
+    if (listedAsc[i] === body) {
+      idx = i;
+      break;
+    }
+  }
+  if (idx < 0) return null;
+  const j = dir === "upper" ? idx + nStrikes : idx - nStrikes;
+  if (j < 0 || j >= listedAsc.length) return null;
+  return listedAsc[j];
+}
+
+/**
+ * Resolve BWB wing strikes for body + equal wing (points) + broken wing (N strikes).
+ *
+ * - Equal wing: body ± equalWidthPts (exact listed strike required; no snap).
+ * - Broken wing: N listed strikes from body on closest or furthest side vs spot.
+ * - When spot is null: furthest → upper, closest → lower.
+ */
+export function resolveBwWings(
+  ctx: ChainContext,
+  body: number,
+  equalWidthPts: number,
+  nStrikes: number,
+  wingSide: "closest" | "furthest",
+): { lo: number; hi: number; brokenDir: "lower" | "upper" } | null {
+  if (!(equalWidthPts > 0) || nStrikes < 1) return null;
+  const side = ctx.viewSide;
+  const listed = listedStrikesAsc(ctx);
+  if (!listed.length) return null;
+  if (!ctx.contracts.has(contractKey(side, body))) return null;
+
+  // Side of body closest to spot (or lower when spot missing / at body).
+  let closestDir: "lower" | "upper";
+  if (ctx.spot == null || !Number.isFinite(ctx.spot)) {
+    closestDir = "lower";
+  } else if (body > ctx.spot) {
+    closestDir = "lower"; // toward spot from above
+  } else if (body < ctx.spot) {
+    closestDir = "upper"; // toward spot from below
+  } else {
+    closestDir = "lower";
+  }
+  const furthestDir: "lower" | "upper" =
+    closestDir === "lower" ? "upper" : "lower";
+  const brokenDir = wingSide === "closest" ? closestDir : furthestDir;
+  const equalDir: "lower" | "upper" =
+    brokenDir === "lower" ? "upper" : "lower";
+
+  const brokenK = wingStrikeByCount(listed, body, nStrikes, brokenDir);
+  if (brokenK == null) return null;
+
+  const equalK =
+    equalDir === "lower" ? body - equalWidthPts : body + equalWidthPts;
+  if (!ctx.contracts.has(contractKey(side, equalK))) return null;
+
+  const lo = Math.min(brokenK, equalK);
+  const hi = Math.max(brokenK, equalK);
+  if (!(lo < body && body < hi)) return null;
+  return { lo, hi, brokenDir };
+}
+
 /** Long vertical debit: long body, short body+width (calls) or body-width (puts). */
 export function verticalDebit(
   ctx: ChainContext,

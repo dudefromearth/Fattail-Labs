@@ -28,6 +28,11 @@ import {
   buildGrid,
 } from "@/lib/options-lab/templates/registry";
 import { SYM_FLY_WIDTHS_DEFAULT } from "@/lib/options-lab/templates/symFly";
+import {
+  BW_STRIKE_COUNT_CHOICES,
+  BW_STRIKE_COUNT_DEFAULT,
+  BW_WING_SIDE_DEFAULT,
+} from "@/lib/options-lab/templates/bwFly";
 import { DEFAULT_GRADIENT_THRESHOLD } from "@/lib/options-lab/templates/color";
 import {
   buildGexProfile,
@@ -35,6 +40,7 @@ import {
   gexProfileScale,
 } from "@/lib/options-lab/templates/gex";
 import type {
+  BwWingSide,
   ChainContext,
   TemplateParams,
   ValueModeId,
@@ -42,9 +48,14 @@ import type {
 import { isUsEquityRthOpenByClock } from "@/lib/market/usEquitySession";
 import {
   generateTosScript,
+  bwFlyTosLegs,
   symFlyTosLegs,
 } from "@/lib/options-lab/tosGenerator";
-import { symFlyDebit } from "@/lib/options-lab/templates/pricing";
+import {
+  bwFlyDebit,
+  resolveBwWings,
+  symFlyDebit,
+} from "@/lib/options-lab/templates/pricing";
 import { saveAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
 import Link from "next/link";
 
@@ -247,6 +258,10 @@ export default function HeatmapChainPanel() {
     () => getTemplate(DEFAULT_HEATMAP_TEMPLATE_ID).defaultValueMode,
   );
   const [stickyScale, setStickyScale] = useState<number | undefined>(undefined);
+  /** bw-fly: N listed strikes from body for the broken wing */
+  const [bwStrikeCount, setBwStrikeCount] = useState(BW_STRIKE_COUNT_DEFAULT);
+  /** bw-fly: place broken wing closest to spot or furthest */
+  const [bwWingSide, setBwWingSide] = useState<BwWingSide>(BW_WING_SIDE_DEFAULT);
   const [selectedTile, setSelectedTile] = useState<MatrixTileKey | null>(null);
   const [tosScript, setTosScript] = useState<string>("");
   const [tosCopied, setTosCopied] = useState(false);
@@ -274,7 +289,7 @@ export default function HeatmapChainPanel() {
 
   useEffect(() => {
     setSelectedTile(null);
-  }, [symbol, expiration, side, wings, valueMode]);
+  }, [symbol, expiration, side, wings, valueMode, bwStrikeCount, bwWingSide]);
 
   useEffect(() => {
     mounted.current = true;
@@ -361,16 +376,39 @@ export default function HeatmapChainPanel() {
     async (body: number, widthPts: number) => {
       if (!expiration) return;
       const shortFly = valueMode === "credit";
-      // Always price from mid debit (structure cost), not RoC / R:R display modes
-      const d = symFlyDebit(chainCtx, body, widthPts);
-      const cost = d != null && Number.isFinite(d) ? Math.abs(d) : null;
-      const legs = symFlyTosLegs({
-        body,
-        widthPts,
-        expiration,
-        side,
-        short: shortFly,
-      });
+      let cost: number | null = null;
+      let legs;
+      if (templateId === "bw-fly") {
+        const wings = resolveBwWings(
+          chainCtx,
+          body,
+          widthPts,
+          bwStrikeCount,
+          bwWingSide,
+        );
+        if (!wings) return;
+        const d = bwFlyDebit(chainCtx, body, wings.lo, wings.hi);
+        cost = d != null && Number.isFinite(d) ? Math.abs(d) : null;
+        legs = bwFlyTosLegs({
+          lo: wings.lo,
+          body,
+          hi: wings.hi,
+          expiration,
+          side,
+          short: shortFly,
+        });
+      } else {
+        // Always price from mid debit (structure cost), not RoC / R:R display modes
+        const d = symFlyDebit(chainCtx, body, widthPts);
+        cost = d != null && Number.isFinite(d) ? Math.abs(d) : null;
+        legs = symFlyTosLegs({
+          body,
+          widthPts,
+          expiration,
+          side,
+          short: shortFly,
+        });
+      }
       const script = generateTosScript({
         symbol,
         legs,
@@ -388,7 +426,16 @@ export default function HeatmapChainPanel() {
         setTosCopied(false);
       }
     },
-    [chainCtx, expiration, side, symbol, valueMode],
+    [
+      chainCtx,
+      expiration,
+      side,
+      symbol,
+      valueMode,
+      templateId,
+      bwStrikeCount,
+      bwWingSide,
+    ],
   );
 
   const templateParams: TemplateParams = useMemo(
@@ -399,8 +446,10 @@ export default function HeatmapChainPanel() {
       fixedPoints: [...SYM_FLY_WIDTHS_DEFAULT],
       stickyScale,
       gradientThreshold: DEFAULT_GRADIENT_THRESHOLD,
+      bwStrikeCount,
+      bwWingSide,
     }),
-    [valueMode, stickyScale],
+    [valueMode, stickyScale, bwStrikeCount, bwWingSide],
   );
 
   const matrix = useMemo(() => {
@@ -609,6 +658,36 @@ export default function HeatmapChainPanel() {
           </label>
         ) : null}
 
+        {templateId === "bw-fly" ? (
+          <>
+            <label className="block">
+              <span className={fieldLabel}>Broken wing · strikes from body</span>
+              <select
+                className={selectControl}
+                value={bwStrikeCount}
+                onChange={(e) => setBwStrikeCount(Number(e.target.value))}
+                data-testid="heatmap-bw-strike-count"
+              >
+                {BW_STRIKE_COUNT_CHOICES.map((n) => (
+                  <option key={n} value={n}>
+                    {n} strike{n === 1 ? "" : "s"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Segmented
+              label="Broken wing side (vs spot)"
+              value={bwWingSide}
+              options={[
+                { id: "closest", label: "Closest" },
+                { id: "furthest", label: "Furthest" },
+              ]}
+              onChange={setBwWingSide}
+              testId="heatmap-bw-wing-side"
+            />
+          </>
+        ) : null}
+
         <p className="text-[11px] leading-snug text-[var(--color-label-tertiary)]">
           {tpl.description}
         </p>
@@ -687,7 +766,12 @@ export default function HeatmapChainPanel() {
           <pre
             className="max-h-40 min-h-[4.5rem] overflow-auto whitespace-pre-wrap break-all rounded-lg border border-emerald-500/25 bg-[#0a0f0a] px-2.5 py-2 font-mono text-[11px] leading-snug text-emerald-400 shadow-inner"
             data-testid="heatmap-tos-script"
-            title={tosScript || "Option-click a Symmetric flies tile"}
+            title={
+              tosScript ||
+              (templateId === "bw-fly"
+                ? "Option-click a broken-wing tile"
+                : "Option-click a Symmetric flies tile")
+            }
           >
             {tosScript ||
               "Option-click a fly tile to generate BUY/SELL BUTTERFLY … @debit LMT"}
@@ -779,7 +863,9 @@ export default function HeatmapChainPanel() {
                   expiration || null,
                   displayDte != null ? `${displayDte} DTE` : null,
                   tpl.layout === "matrix"
-                    ? "Width 20–50"
+                    ? templateId === "bw-fly"
+                      ? `Equal 20–50 · break ${bwStrikeCount}stk ${bwWingSide}`
+                      : "Width 20–50"
                     : tpl.layout === "profile"
                       ? "Vertical profile"
                       : null,
