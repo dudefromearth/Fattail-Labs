@@ -1,8 +1,10 @@
 /**
  * Chain GEX estimate — vertical profile (strike axis), Spec §5.5 / MSC-style.
  *
- * Layout: profile (not multi-column matrix).
- * Value modes: Call · Put · Net · Absolute (one series each).
+ * Value modes:
+ *   - Combined (default): call bar → right, put bar → left on same strike
+ *   - Net: single signed bar
+ *   - Absolute: |call|+|put| → right
  *
  * Formula gex_v1: call +Γ·OI·S² ; put −Γ·OI·S² ; net = sum ; abs = |C|+|P|
  */
@@ -15,7 +17,7 @@ export type GexProfilePoint = {
   strike: number;
   label: string;
   isSpot: boolean;
-  /** Signed for net/call/put; ≥0 for abs */
+  /** Mode series value (net / abs / or null when combined-only) */
   value: number | null;
   valid: boolean;
   call: number | null;
@@ -36,27 +38,29 @@ export function buildGexProfile(
     const pRow = ctx.contracts.get(contractKey("put", k));
     const call = gexSide(ctx, "call", k);
     const put = gexSide(ctx, "put", k);
+
     let value: number | null = null;
     let valid = false;
+
     switch (mode) {
-      case "gex_call":
-        value = call;
-        valid = call != null;
-        break;
-      case "gex_put":
-        value = put;
-        valid = put != null;
-        break;
       case "gex_abs":
         value = gexAbs(ctx, k);
         valid = value != null;
         break;
       case "gex_net":
-      default:
         value = gexNet(ctx, k);
         valid = value != null;
         break;
+      case "gex_all": // combined book view
+      case "gex_call": // legacy → treat as combined
+      case "gex_put":
+      default:
+        // Combined: valid if either side has data
+        valid = call != null || put != null;
+        value = gexNet(ctx, k); // still compute net for label/tooltip when both present
+        break;
     }
+
     return {
       strike: k,
       label: String(k),
@@ -69,18 +73,29 @@ export function buildGexProfile(
   });
 }
 
-/** p95 |value| for bar scale */
-export function gexProfileScale(points: GexProfilePoint[]): number {
-  const vals = points
-    .filter((p) => p.valid && p.value != null)
-    .map((p) => Math.abs(p.value as number));
+/** p95 scale for bar widths — mode-aware */
+export function gexProfileScale(
+  points: GexProfilePoint[],
+  mode: ValueModeId,
+): number {
+  const vals: number[] = [];
+  for (const p of points) {
+    if (mode === "gex_abs") {
+      if (p.valid && p.value != null) vals.push(Math.abs(p.value));
+    } else if (mode === "gex_net") {
+      if (p.valid && p.value != null) vals.push(Math.abs(p.value));
+    } else {
+      // combined: scale from call magnitude and |put|
+      if (p.call != null) vals.push(Math.abs(p.call));
+      if (p.put != null) vals.push(Math.abs(p.put));
+    }
+  }
   if (!vals.length) return 1;
   vals.sort((a, b) => a - b);
   const i = Math.min(vals.length - 1, Math.floor(vals.length * 0.95));
   return vals[i] || 1;
 }
 
-/** Display divisor — raw / 1e9 */
 export const GEX_DISPLAY_DIV = 1e9;
 
 export function fmtGexProfile(n: number): string {
@@ -95,15 +110,14 @@ export const gexTemplate: HeatmapTemplate = {
   id: "gex",
   label: "Chain GEX (estimate)",
   description:
-    "Vertical strike profile · Γ×OI×S² · Call / Put / Net / Absolute · not dealer GEX",
+    "Vertical profile · Call+Put combined · Net · Absolute · Γ×OI×S² · not dealer GEX",
   layout: "profile",
   valueModes: [
+    { id: "gex_all", label: "Call / Put" },
     { id: "gex_net", label: "Net" },
-    { id: "gex_call", label: "Call" },
-    { id: "gex_put", label: "Put" },
     { id: "gex_abs", label: "Absolute" },
   ],
-  defaultValueMode: "gex_net",
+  defaultValueMode: "gex_all",
 
   resolveColumns: () => [],
   resolveRows: () => [],
