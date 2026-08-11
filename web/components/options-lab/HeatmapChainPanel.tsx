@@ -18,6 +18,10 @@ import {
 import { useOptionChainBus } from "@/lib/market/useOptionChainBus";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import {
+  useSmoothNumber,
+  useSmoothNumberMap,
+} from "@/lib/useSmoothValue";
+import {
   DEFAULT_HEATMAP_TEMPLATE_ID,
   HEATMAP_TEMPLATES,
   getTemplate,
@@ -412,6 +416,41 @@ export default function HeatmapChainPanel() {
     return { points, scale };
   }, [tpl.layout, tpl.id, chainCtx, valueMode]);
 
+  /** Live spot — ease between bus updates instead of hard jump */
+  const smoothSpot = useSmoothNumber(bus.spot, { durationMs: 420 });
+
+  /** GEX magnitudes → animate bar widths / labels */
+  const gexAnimKey = useMemo(() => {
+    if (!gexProfile) return "";
+    return (
+      gexProfile.points
+        .map(
+          (p) =>
+            `${p.strike}:${p.call ?? ""}:${p.put ?? ""}:${p.value ?? ""}`,
+        )
+        .join("|") + `|s${gexProfile.scale}`
+    );
+  }, [gexProfile]);
+
+  const gexTargets = useMemo(() => {
+    const m: Record<string, number> = {};
+    if (!gexProfile) return m;
+    for (const pt of gexProfile.points) {
+      if (pt.call != null) m[`${pt.strike}:c`] = Math.abs(pt.call);
+      if (pt.put != null) m[`${pt.strike}:p`] = Math.abs(pt.put);
+      if (pt.value != null) m[`${pt.strike}:v`] = pt.value;
+    }
+    m.__scale = gexProfile.scale || 1;
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- gexAnimKey fingerprints profile
+  }, [gexAnimKey]);
+
+  const smoothGex = useSmoothNumberMap(gexTargets, {
+    durationMs: 420,
+    startAtZero: true,
+  });
+  const smoothGexScale = Math.max(1e-12, smoothGex.__scale ?? gexProfile?.scale ?? 1);
+
   const hasSpotRow = useMemo(() => {
     if (gexProfile?.points.some((p) => p.isSpot)) return true;
     return ordered.some((r) => r.is_spot);
@@ -689,7 +728,7 @@ export default function HeatmapChainPanel() {
             className="font-semibold tabular-nums tracking-tight text-[var(--color-label)]"
             style={{ fontSize: "var(--text-title-2, 1.375rem)" }}
           >
-            {bus.spot != null ? fmt(bus.spot, 2) : "—"}
+            {smoothSpot != null ? fmt(smoothSpot, 2) : "—"}
           </div>
           <div className="mt-1 text-[11px] tabular-nums text-[var(--color-label-tertiary)]">
             {bus.hash ? `gen ${bus.hash.slice(0, 8)}` : "—"}
@@ -774,7 +813,7 @@ export default function HeatmapChainPanel() {
               <span className="tabular-nums">
                 Spot{" "}
                 <span className="font-semibold text-[var(--color-label)]">
-                  {bus.spot != null ? fmt(bus.spot, 2) : "—"}
+                  {smoothSpot != null ? fmt(smoothSpot, 2) : "—"}
                 </span>
               </span>
               {bus.hash ? (
@@ -845,15 +884,21 @@ export default function HeatmapChainPanel() {
                   </span>
                 </div>
                 {gexProfile.points.map((pt) => {
-                  const scale = gexProfile.scale || 1;
+                  const scale = smoothGexScale;
                   const combined =
                     valueMode === "gex_all" ||
                     valueMode === "gex_call" ||
                     valueMode === "gex_put";
 
+                  // Animated magnitudes (lerp toward live GEX)
                   const callMag =
-                    pt.call != null ? Math.abs(pt.call) : null;
-                  const putMag = pt.put != null ? Math.abs(pt.put) : null;
+                    pt.call != null
+                      ? (smoothGex[`${pt.strike}:c`] ?? Math.abs(pt.call))
+                      : null;
+                  const putMag =
+                    pt.put != null
+                      ? (smoothGex[`${pt.strike}:p`] ?? Math.abs(pt.put))
+                      : null;
                   const callPct =
                     callMag != null
                       ? `${(Math.min(1, callMag / scale) * 50).toFixed(2)}%`
@@ -863,10 +908,13 @@ export default function HeatmapChainPanel() {
                       ? `${(Math.min(1, putMag / scale) * 50).toFixed(2)}%`
                       : "0%";
 
-                  // Net / Abs single bar
-                  const series = pt.valid && pt.value != null ? pt.value : 0;
+                  // Net / Abs single bar (value signed; abs mode uses magnitude)
+                  const seriesRaw =
+                    pt.valid && pt.value != null
+                      ? (smoothGex[`${pt.strike}:v`] ?? pt.value)
+                      : 0;
                   const seriesSigned =
-                    valueMode === "gex_abs" ? Math.abs(series) : series;
+                    valueMode === "gex_abs" ? Math.abs(seriesRaw) : seriesRaw;
                   const seriesFrac = Math.min(
                     1,
                     Math.abs(seriesSigned) / scale,
@@ -926,14 +974,14 @@ export default function HeatmapChainPanel() {
                             {/* Put → left (red) */}
                             {putMag != null && putMag > 0 ? (
                               <div
-                                className="absolute top-0.5 bottom-0.5 rounded-sm bg-red-500/85 transition-[width] duration-150"
+                                className="absolute top-0.5 bottom-0.5 rounded-sm bg-red-500/85 motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-out"
                                 style={{ right: "50%", width: putPct }}
                               />
                             ) : null}
                             {/* Call → right (blue) */}
                             {callMag != null && callMag > 0 ? (
                               <div
-                                className="absolute top-0.5 bottom-0.5 rounded-sm bg-sky-500/85 transition-[width] duration-150"
+                                className="absolute top-0.5 bottom-0.5 rounded-sm bg-sky-500/85 motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-out"
                                 style={{ left: "50%", width: callPct }}
                               />
                             ) : null}
@@ -941,7 +989,7 @@ export default function HeatmapChainPanel() {
                         ) : pt.valid && (seriesPos || seriesNeg) ? (
                           <div
                             className={[
-                              "absolute top-0.5 bottom-0.5 rounded-sm transition-[width,left,right] duration-150",
+                              "absolute top-0.5 bottom-0.5 rounded-sm motion-safe:transition-[width,left,right] motion-safe:duration-300 motion-safe:ease-out",
                               valueMode === "gex_abs"
                                 ? "bg-sky-500/90"
                                 : seriesNeg
@@ -960,13 +1008,11 @@ export default function HeatmapChainPanel() {
                         {combined ? (
                           <>
                             <span className="text-sky-400">
-                              {pt.call != null ? fmtGexProfile(pt.call) : "—"}
+                              {callMag != null ? fmtGexProfile(callMag) : "—"}
                             </span>
                             <span className="text-white/30">/</span>
                             <span className="text-red-400">
-                              {pt.put != null
-                                ? fmtGexProfile(Math.abs(pt.put))
-                                : "—"}
+                              {putMag != null ? fmtGexProfile(putMag) : "—"}
                             </span>
                           </>
                         ) : (
@@ -980,7 +1026,7 @@ export default function HeatmapChainPanel() {
                             }
                           >
                             {pt.valid && pt.value != null
-                              ? fmtGexProfile(pt.value)
+                              ? fmtGexProfile(seriesRaw)
                               : "—"}
                           </span>
                         )}
@@ -1087,7 +1133,7 @@ export default function HeatmapChainPanel() {
                             className={[
                               "h-14 min-w-[5.5rem] cursor-pointer px-1 text-center align-middle tabular-nums text-[24px] text-amber-400",
                               "[text-shadow:0_0_2px_rgba(0,0,0,0.8)]",
-                              "transition-[filter,transform,box-shadow] duration-150 ease-out",
+                              "motion-safe:transition-[background-color,filter,transform,box-shadow] motion-safe:duration-300 motion-safe:ease-out",
                               "hover:z-[1] hover:scale-[1.04] hover:brightness-125 hover:ring-1 hover:ring-white/35 hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]",
                               "active:scale-[0.98] active:brightness-75",
                               selected

@@ -47,6 +47,7 @@ import PnLChart, {
   type PnLChartHandle,
   type PriceAlertType,
 } from "@/components/options-lab/msc-risk/PnLChart";
+import { useSmoothNumber } from "@/lib/useSmoothValue";
 
 const fieldLabel =
   "mb-1 block text-xs font-medium text-[var(--color-label-secondary)]";
@@ -241,8 +242,13 @@ export default function OpfRiskAnalyzer() {
   }, [risk.generationEpoch, model.useCase, epochPinned]);
 
   const activeModel = findOpfModel(risk.packId ?? model.packId);
-  const displaySpot =
+  const displaySpotRaw =
     spotOverride ?? risk.spot ?? chain.spot ?? trade?.body ?? 0;
+  /** Live spot eases between ticks — risk graph line moves continuously */
+  const displaySpot =
+    useSmoothNumber(displaySpotRaw > 0 ? displaySpotRaw : null, {
+      durationMs: 420,
+    }) ?? (displaySpotRaw > 0 ? displaySpotRaw : 0);
 
   useEffect(() => {
     if (!(displaySpot > 0)) return;
