@@ -6,6 +6,7 @@
 
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
+import { BLOTTER_CSS_VARS } from "@/lib/blotterTheme";
 import type { Trade } from "@/lib/tradeLog";
 import {
   entrySourceLabel,
@@ -204,16 +205,7 @@ export default function TradeLogTable({
       className="mt-4 overflow-hidden rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[0_2px_8px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.08)]"
       data-testid="trade-log-table"
       data-empty={empty ? "true" : "false"}
-      style={
-        {
-          ["--blotter-open-bg" as string]: "#0B4A1F",
-          ["--blotter-close-bg" as string]: "#8B1A1A",
-          ["--blotter-border-open" as string]: "#062E12",
-          ["--blotter-border-close" as string]: "#4A0C0C",
-          ["--blotter-position-rule" as string]: "rgba(0,0,0,0.55)",
-          ["--blotter-select-bg" as string]: "#2A7AB8",
-        } as CSSProperties
-      }
+      style={BLOTTER_CSS_VARS}
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3">
         <div className="flex flex-wrap items-center gap-3 text-[13px]">
