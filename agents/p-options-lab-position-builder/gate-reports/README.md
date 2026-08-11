@@ -2,10 +2,10 @@
 
 | Gate | Status |
 |------|--------|
-| W0-0-coach-go | pending |
-| W0-G-delta | pending |
-| D…A phase gates | pending |
-| K-G-delta (incl. R1a) | pending |
-| Z-G-delta | pending |
+| W0-0-coach-go | **GO** |
+| W0-G-delta | **PASS** |
+| D…A phase gates | **PASS** |
+| K-G-delta | **PASS** (22 pytest; R1a path) |
+| Z-G-delta | **PASS** |
 
 Delta: PASS / FAIL / BLOCKED only — never waived.

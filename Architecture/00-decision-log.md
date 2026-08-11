@@ -4,6 +4,53 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-299 Position Builder program close (litmus path landed)
+
+**Decision:** Position Builder bench **phases D…Z** landed against Spec v0.2 / plan v1.0.
+
+**Landed:**
+- `POST /api/me/pricing/package-quote` (PB17 card SoR)
+- Book domain signed D\* · lock/unlock · liveState · §4.4 apply
+- `usePackageQuotes` + generation-epoch re-resolve (VIEW-5)
+- Card lock UI · stream posture · mode banner · outlook re-anchor
+- Builder listed-only back exp (PB22)
+- Tests: 22 OPF suite green
+
+**Explicit residual:** full live R1a multi-panel transcript on RTH host is ops smoke (same PackagePricer path proven in unit tests). Replay chrome deferred (OD-PB17).
+
+**Board:** `agents/p-options-lab-position-builder/gate-reports/` K-G · Z-G PASS.
+
+## 2026-08-11 — DL-298 Position Builder W0 GO + OD-PB1–17 Accept
+
+**Coach GO:** Position Builder Spec **v0.2** + bench plan **v1.0** are **BUILD AUTHORITY**.
+
+**Content hash (sha1 body excl. integrity line):** recompute at W0 from Spec file; program locks OD Accept below.
+
+**OD-PB1–17 Accept (Spec recommendations as law):**
+
+| OD | Accept |
+|----|--------|
+| OD-PB1 | Session book |
+| OD-PB2 | Widths 20/50 |
+| OD-PB3 | Regenerate clears limit override |
+| OD-PB4 | No multi-card aggregate |
+| OD-PB5 | Alerts session |
+| OD-PB6 | ANALYSIS only |
+| OD-PB7 | Diagonal 2 strikes between when ladder |
+| OD-PB8 | Paste does not auto-create card |
+| OD-PB9 | freeze_iv/marks default false |
+| OD-PB10 | mkt when locked, labeled |
+| OD-PB11 | No freeze snapshot retain on unlock |
+| OD-PB12 | OPF-served PackageQuote for card package |
+| OD-PB13 | Generation-driven re-resolve; no poll-as-SoR |
+| OD-PB14 | Forward-walk = chain_replay workflow |
+| OD-PB15 | Replay card package stays market-plane |
+| OD-PB16 | Outlook member re-anchor + epoch stale |
+| OD-PB17 | Replay UX deferred |
+
+**Gate:** `agents/p-options-lab-position-builder/gate-reports/W0-0-coach-go.md`  
+**Next:** D → P → I → L → S → C → U → M → A → K → Z
+
 ## 2026-08-11 — DL-297 Position Builder full-agent bench plan v1.0 (BUILD plan filed)
 
 **Decision:** File full agent bench implementation plan for Position Builder Spec **v0.2** (Coach accepted).
