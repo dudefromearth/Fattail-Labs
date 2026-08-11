@@ -1,6 +1,7 @@
 # FatTail Labs — Options Lab Position Builder & Position Book Spec v0.1
 
-**Status:** **DRAFT · review baseline only** (2026-08-11)  
+**Status:** **SUPERSEDED** by v0.2 (2026-08-11) — historical only; do not implement against v0.1
+**Successor:** [`FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md`](./FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md)  
 **Type:** Product Spec — structure construction, position book, card↔viewport law, package lock  
 **Short name:** **Position Builder / Book** · **PB**  
 **Filename:** `FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_1.md`  

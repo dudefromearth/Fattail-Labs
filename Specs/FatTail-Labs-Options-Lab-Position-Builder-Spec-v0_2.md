@@ -10,7 +10,7 @@
 **Process:** Spec for review → OD Accept/Override → **implementation plan** → code/ATs.  
 **No BUILD GO** implied by this fold alone.
 
-**Content integrity:** Landing content hash (sha1 of body excluding this line): `PENDING_AT_COMMIT`.
+**Content integrity:** Landing content hash (sha1 of body excluding this line): `0c8f2ac2864bd50e48b1e074ae808cfc3cd9732a`.
 
 **Parents (normative where noted):**
 
