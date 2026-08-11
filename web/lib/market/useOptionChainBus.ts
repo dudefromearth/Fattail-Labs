@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { touchSessionActivity } from "@/lib/sessionActivity";
 import { getMarketSocket } from "./MarketSocket";
 import type { ChainMessage } from "./types";
 import {
@@ -281,6 +282,7 @@ export function useOptionChainBus(opts: {
 
       if (m.mode === "full" && m.ladder) {
         applyFull(m.ladder);
+        touchSessionActivity("chain");
         if (m.session_open === false) {
           setLastPatch("market closed · holding last");
           setTransport("held");
@@ -308,6 +310,7 @@ export function useOptionChainBus(opts: {
           removes: m.removes || [],
           changed_strike_count: m.changed_strike_count,
         });
+        touchSessionActivity("chain");
       }
     });
 

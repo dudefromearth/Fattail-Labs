@@ -116,14 +116,24 @@ def _clear_session_cookie(resp) -> None:
 
 
 def _session_response(resp, identity_id: int, provider: str, role: str, request=None):
-    """Mint session JWT cookie — always clears prior variants first (no stacked cookies)."""
+    """Mint session JWT cookie — always clears prior variants first (no stacked cookies).
+
+    Cookie is **persistent** (Max-Age + Expires = LABS_SESSION_TTL_SECONDS), not a
+    browser session cookie. Browser crashes / restarts must not force re-login
+    while the JWT is still valid. Idle logout is a separate client path.
+    """
+    from datetime import datetime, timedelta, timezone
+
     cfg = get_config()
     _clear_session_cookie(resp)
     token = auth.issue_session(identity_id=identity_id, issuer=provider, role=role)
+    ttl = int(cfg.session_ttl_seconds)
+    expires = datetime.now(timezone.utc) + timedelta(seconds=ttl)
     resp.set_cookie(
         key=cfg.session_cookie,
         value=token,
-        max_age=cfg.session_ttl_seconds,
+        max_age=ttl,
+        expires=expires,
         **_session_cookie_kwargs(),
     )
     # Record the login for the admin Users analytics (best-effort, never raises).

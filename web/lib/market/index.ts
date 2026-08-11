@@ -24,3 +24,4 @@ export {
 
 export { useSymbolMarks, type SymbolMark } from "./useSymbolMarks";
 export { getMarketSocket, MarketSocket } from "./MarketSocket";
+export { subscribeSharedUniverse } from "./sharedUniversePoll";

@@ -3,18 +3,20 @@
 /**
  * Canonical hook for live underlier marks (site-wide pattern).
  * @see liveUnderlierPattern.ts
+ *
+ * HTTP side shares one tab-wide poll (sharedUniversePoll) so many mounts do
+ * not multiply ensure_fresh. WS side binds via useSymbolMarks with equality
+ * guards to avoid render storms.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  fetchMarketUniverse,
-  type MarketUniverseSymbol,
-} from "@/lib/capitalApi";
+import { useEffect, useMemo, useState } from "react";
+import type { MarketUniverseSymbol } from "@/lib/capitalApi";
 import {
   bindUnderlierMark,
   LIVE_UNDERLIER_POLL_MS,
   type BoundUnderlierMark,
 } from "@/lib/market/liveUnderlierPattern";
+import { subscribeSharedUniverse } from "@/lib/market/sharedUniversePoll";
 import { useSymbolMarks } from "@/lib/market/useSymbolMarks";
 
 export type LiveUnderlierRow = MarketUniverseSymbol & {
@@ -50,64 +52,54 @@ export function useLiveUnderlierMarks(opts?: {
       opts?.symbols?.length
         ? [...new Set(opts.symbols.map((s) => s.toUpperCase()))].sort().join(",")
         : "",
-    [opts?.symbols],
+    // Stable when caller passes a new array with same contents
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [opts?.symbols?.join(",")],
   );
 
   const [base, setBase] = useState<MarketUniverseSymbol[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [lastHttpAt, setLastHttpAt] = useState<number | null>(null);
   const [tick, setTick] = useState(0);
-
-  const load = useCallback(async () => {
-    if (!enabled) return;
-    try {
-      const d = await fetchMarketUniverse({ enabledOnly });
-      let list = d.symbols || [];
-      if (filterKey) {
-        const want = new Set(filterKey.split(","));
-        list = list.filter((r) =>
-          want.has(String(r.symbol || "").toUpperCase()),
-        );
-      }
-      setBase([...list]);
-      setLastHttpAt(Date.now());
-      setError(null);
-      setTick((n) => n + 1);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [enabled, enabledOnly, filterKey]);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   useEffect(() => {
-    void load();
     if (!enabled) return;
-    let t: number | null = null;
-    const tickFn = () => {
-      if (document.visibilityState === "visible") void load();
-    };
-    const start = () => {
-      if (t != null) return;
-      t = window.setInterval(tickFn, pollMs);
-    };
-    const stop = () => {
-      if (t != null) {
-        window.clearInterval(t);
-        t = null;
-      }
-    };
-    const onVis = () => {
-      if (document.visibilityState === "visible") {
-        tickFn();
-        start();
-      } else stop();
-    };
-    if (document.visibilityState === "visible") start();
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      stop();
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [load, pollMs, enabled]);
+    return subscribeSharedUniverse(
+      enabledOnly,
+      (snap) => {
+        if (snap.enabledOnly !== enabledOnly) return;
+        let list = snap.symbols || [];
+        if (filterKey) {
+          const want = new Set(filterKey.split(","));
+          list = list.filter((r) =>
+            want.has(String(r.symbol || "").toUpperCase()),
+          );
+        }
+        setBase((prev) => {
+          // Identity-stable when shared poll reuses the same array
+          if (prev === list) return prev;
+          if (
+            prev.length === list.length &&
+            prev.every(
+              (r, i) =>
+                r.symbol === list[i]?.symbol &&
+                r.mid === list[i]?.mid &&
+                r.proxy_mid === list[i]?.proxy_mid &&
+                r.mark_asof === list[i]?.mark_asof,
+            )
+          ) {
+            return prev;
+          }
+          return list;
+        });
+        setLastHttpAt(snap.fetchedAt);
+        setError(snap.error);
+        setTick((n) => n + 1);
+      },
+      { pollMs },
+    );
+  }, [enabled, enabledOnly, filterKey, pollMs, reloadNonce]);
 
   const symbols = useMemo(
     () =>
@@ -135,8 +127,7 @@ export function useLiveUnderlierMarks(opts?: {
         mid: mark.mid,
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [base, marks, tick]);
+  }, [base, marks]);
 
   const bySymbol = useMemo(() => {
     const m = new Map<string, BoundUnderlierMark>();
@@ -159,7 +150,7 @@ export function useLiveUnderlierMarks(opts?: {
     symbols,
     transport,
     error,
-    reload: () => void load(),
+    reload: () => setReloadNonce((n) => n + 1),
     lastHttpAt,
     tick,
   };

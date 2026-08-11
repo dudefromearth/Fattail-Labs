@@ -29,10 +29,14 @@ def dev_login() -> RedirectResponse:
     from routes.auth_routes import _clear_session_cookie, _session_cookie_kwargs
 
     _clear_session_cookie(resp)
+    from datetime import datetime, timedelta, timezone
+
+    ttl = int(cfg.session_ttl_seconds)
     resp.set_cookie(
         key=cfg.session_cookie,
         value=token,
-        max_age=cfg.session_ttl_seconds,
+        max_age=ttl,
+        expires=datetime.now(timezone.utc) + timedelta(seconds=ttl),
         **_session_cookie_kwargs(),
     )
     return resp
@@ -60,10 +64,14 @@ def dev_login_practice() -> RedirectResponse:
     from routes.auth_routes import _clear_session_cookie, _session_cookie_kwargs
 
     _clear_session_cookie(resp)
+    from datetime import datetime, timedelta, timezone
+
+    ttl = int(cfg.session_ttl_seconds)
     resp.set_cookie(
         key=cfg.session_cookie,
         value=token,
-        max_age=cfg.session_ttl_seconds,
+        max_age=ttl,
+        expires=datetime.now(timezone.utc) + timedelta(seconds=ttl),
         **_session_cookie_kwargs(),
     )
     return resp

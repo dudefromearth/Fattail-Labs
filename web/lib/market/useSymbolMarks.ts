@@ -3,9 +3,13 @@
 /**
  * Shared underlier marks via Market Bus (one WS/tab — MB3).
  * Snapshot on sub + continuous sym pushes from market_stream.
+ *
+ * Equality-guarded: identical mids do not allocate a new Map or re-render.
+ * Touches session activity so idle logout does not fire while the tape moves.
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { touchSessionActivity } from "@/lib/sessionActivity";
 import { getMarketSocket } from "./MarketSocket";
 
 export type SymbolMark = {
@@ -21,6 +25,19 @@ export type SymbolMark = {
   feed_used?: string;
 };
 
+function sameMark(a: SymbolMark | undefined, b: SymbolMark): boolean {
+  if (!a) return false;
+  return (
+    a.symbol === b.symbol &&
+    a.mid === b.mid &&
+    a.bid === b.bid &&
+    a.ask === b.ask &&
+    a.source === b.source &&
+    a.via_proxy === b.via_proxy &&
+    a.feed_used === b.feed_used
+  );
+}
+
 export function useSymbolMarks(opts: {
   symbols: string[];
   enabled?: boolean;
@@ -35,7 +52,9 @@ export function useSymbolMarks(opts: {
       [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))]
         .sort()
         .join(","),
-    [symbols],
+    // symbols array identity changes often; content key is enough
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [symbols.join(",")],
   );
   const symList = useMemo(
     () => (key ? key.split(",") : []),
@@ -66,7 +85,7 @@ export function useSymbolMarks(opts: {
         return;
       }
       if (msg.t === "hello" || msg.t === "sub_ok" || msg.t === "pong") {
-        setTransport("stream");
+        setTransport((t) => (t === "stream" ? t : "stream"));
         return;
       }
       if (msg.t !== "sym") return;
@@ -85,23 +104,35 @@ export function useSymbolMarks(opts: {
       const sym = String(m.symbol || "").toUpperCase();
       // Strict: only accept if this interest list includes the product key
       if (!sym || !symList.includes(sym)) return;
+
+      const nextMark: SymbolMark = {
+        symbol: sym,
+        mid:
+          m.mid != null && Number.isFinite(Number(m.mid))
+            ? Number(m.mid)
+            : null,
+        bid: m.bid != null ? Number(m.bid) : null,
+        ask: m.ask != null ? Number(m.ask) : null,
+        source: m.source,
+        plane: m.plane || "mb:sym",
+        asOf:
+          m.ts != null
+            ? new Date(Number(m.ts) * 1000).toISOString()
+            : null,
+        via_proxy: Boolean(m.via_proxy || m.mid_is_proxy),
+        feed_used: m.feed_used,
+      };
+
       setMarks((prev) => {
+        if (sameMark(prev.get(sym), nextMark)) return prev;
         const next = new Map(prev);
-        next.set(sym, {
-          symbol: sym,
-          mid: m.mid != null && Number.isFinite(Number(m.mid)) ? Number(m.mid) : null,
-          bid: m.bid != null ? Number(m.bid) : null,
-          ask: m.ask != null ? Number(m.ask) : null,
-          source: m.source,
-          plane: m.plane || "mb:sym",
-          asOf: m.ts != null ? new Date(Number(m.ts) * 1000).toISOString() : null,
-          via_proxy: Boolean(m.via_proxy || m.mid_is_proxy),
-          feed_used: m.feed_used,
-        });
+        next.set(sym, nextMark);
         return next;
       });
-      setTransport("stream");
-      setError(null);
+      setTransport((t) => (t === "stream" ? t : "stream"));
+      setError((e) => (e == null ? e : null));
+      // Live tape counts as session activity (watching markets is use)
+      touchSessionActivity("sym");
     });
 
     return () => {
