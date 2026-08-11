@@ -55,6 +55,17 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 | A1–A8 | Adopt as law (A8 intent with OD-AZ8) |
 | P1–P2 | Hash recompute + this DL |
 
+## 2026-08-11 — DL-305 Analyzer residual full-agent bench plan v1.0
+
+**Decision:** File residual implementation program for Analyzer Spec v0.2.1:
+
+- Plan: `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md`  
+- Board: `agents/p-options-lab-analyzer/`  
+
+**Phases:** W0 → L (layout) → B (defaults) → T (what-if) → A (alerts) → D (domain) → S (stream/stale) → V (VP bins) → U (Surface 3D OPF) → R (Probability) → K → Z.
+
+**Authority:** OD-AZ1–8 already Accept (DL-304). Residual **BUILD GO** = Coach W0-0 on this board (not implied by this DL alone).
+
 ## 2026-08-11 — DL-304 Coach Accept OD-AZ1–8 (Analyzer)
 
 **Coach Accept** of open decisions on Analyzer Spec content v0.2.1:
