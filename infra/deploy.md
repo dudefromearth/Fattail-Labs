@@ -106,7 +106,24 @@ launchctl kickstart -k gui/$(id -u)/ai.fattail.labs.web
 # VERIFY — same doctrine as MarketSwarm: same code on disk + old process = old behavior
 lsof -iTCP:4000 -sTCP:LISTEN -P
 curl -s localhost:4000/api/health
+# Market WebSocket (live Options Lab): must upgrade, not 404.
+# Missing package → api.log: "No supported WebSocket library detected"
+server/.venv/bin/python -c "import websockets; print('websockets', websockets.__version__)"
+# Expect: accepted / auth err JSON — NOT HTTP 404
+# python -c "import asyncio,websockets; asyncio.run((lambda: __import__('websockets').connect('ws://127.0.0.1:4000/api/me/market/stream'))())" 
 ```
+
+### Live chain stream (Options Lab heatmap)
+
+Member UI uses **one WebSocket** per tab: `WS /api/me/market/stream` (not HTTP poll).
+
+| Symptom | Likely cause |
+|---------|----------------|
+| Data only changes on full page refresh | API started without `websockets` (or `wsproto`); upgrade → **404** |
+| `api.log`: `No supported WebSocket library detected` | Same — `pip install -r server/requirements.txt` then kickstart API |
+| StudioTwo live, MiniTwo static | Dev venv had the package; prod venv did not |
+
+Always `pip install -r requirements.txt` on deploy when requirements change, then **restart** the API (install alone does not reload the running process).
 
 ## launchd (production process management)
 

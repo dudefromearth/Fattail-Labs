@@ -1,5 +1,9 @@
 fastapi>=0.115
 uvicorn>=0.32
+# Required for WS /api/me/market/stream — without it uvicorn logs
+# "No supported WebSocket library" and returns HTTP 404 on upgrade
+# (live heatmap looks static until hard refresh).
+websockets>=12
 pymysql>=1.1
 pyjwt>=2.9
 python-multipart>=0.0.9
