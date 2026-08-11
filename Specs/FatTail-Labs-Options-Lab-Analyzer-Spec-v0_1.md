@@ -3,7 +3,7 @@
 **Status:** **DRAFT · product law + as-built inventory** (2026-08-11)  
 **Type:** Product Spec — Options Lab **Analyzer** surface  
 **Major buckets:** **Alerts · Positions · Viewport(s) · Time machine · Models · Controls**  
-**Viewports:** **Analyzer** (OPF risk graph) · **Volume Profile** · **GEX** (attached / suite)  
+**Viewports:** **Analyzer** (OPF risk graph) · **Volume Profile** · **GEX** · **Probability** (attached / suite)  
 **Short name:** **Analyzer** · **AZ**  
 **Filename:** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md`  
 **Surface route (primary):** `/app/options-lab/analyzer`  
@@ -11,7 +11,7 @@
 
 **Process:** Spec review → OD Accept/Override → implementation plan for residual TARGET laws → code/ATs.  
 **Content integrity:** Landing content hash (sha1 of body excluding this line):  
-`2c331cf65578551eee9d28fe35f81b36c60f638e` (v0.1.3 · attached viewports).
+`dc2f9a4a735812604ac34e73630f05c18886c774` (v0.1.4 · probability viewport).
 
 ---
 
@@ -23,7 +23,7 @@ Options Lab **Analyzer** is the member **day-trader risk surface**. Product is o
 |---|--------|----------------|
 | 1 | **Alerts** | Threshold price rules: create, list, evaluate, draw on the **Analyzer** graph |
 | 2 | **Positions** | Definition book (cards) + Builder (full edit) + package/lock |
-| 3 | **Viewport(s)** | Analytical canvases: **Analyzer** risk graph · **Volume Profile** · **GEX** (see §0.3) |
+| 3 | **Viewport(s)** | Analytical canvases: **Analyzer** risk graph · **Volume Profile** · **GEX** · **Probability** (see §0.3) |
 | 4 | **Time machine** | What-if / scenario knobs (time · vol · spot %) over OPF resolve (Analyzer viewport) |
 | 5 | **Models** | OPF pack / use-case selection (day_trade · outlook · backtest) |
 | 6 | **Controls** | Session chrome: posture, symbol, spot/VIX, ToS handoff, actions |
@@ -130,20 +130,21 @@ The **Viewport** bucket is a **family**, not a single canvas. Members work one *
 | **analyzer** | OPF **risk graph** — expiration + T+0/scenario curves for the **focused** definition | Dual-side chain generations + OPF resolve | OPF only (DL-293) |
 | **volume-profile** | Underlier **OHLC + volume profile** — session structure, live mid tip | OHLC store + live underlier marks | Not package pricing; underlier geometry |
 | **gex** | **Gamma exposure** profile by strike (call/put/net/abs modes) | Dual-side chain (Γ · OI · S) | Estimate / template law — not OPF package SoR |
+| **probability** | **Probability** framing — 1σ / distribution context for the underlier (and structure-relative bands) | Underlier marks + vol reference (VIX / chain IV) · optional OPF meta | **Not** package SoR; honest probability geometry only — no profit claims |
 
 ```text
                  CONTROLS · symbol S (suite SoR)
                             │
-        ┌───────────────────┼───────────────────┐
-        ▼                   ▼                   ▼
-┌───────────────┐  ┌────────────────┐  ┌───────────────┐
-│  VIEWPORT     │  │  VIEWPORT      │  │  VIEWPORT     │
-│  analyzer     │  │  volume-profile│  │  gex          │
-│  OPF risk     │  │  OHLC + VP     │  │  strike GEX   │
-│  graph        │  │                │  │  profile      │
-└───────▲───────┘  └────────────────┘  └───────────────┘
-        │
-   POSITIONS focus · MODELS · TIME MACHINE · ALERTS (lines on analyzer)
+     ┌──────────┬───────────┼───────────┬──────────┐
+     ▼          ▼           ▼           ▼          │
+┌─────────┐ ┌────────┐ ┌────────┐ ┌──────────────┐ │
+│VIEWPORT │ │VIEWPORT│ │VIEWPORT│ │VIEWPORT      │ │
+│analyzer │ │vol-prof│ │  gex   │ │ probability  │ │
+│OPF risk │ │OHLC+VP │ │strike  │ │ 1σ / dist.   │ │
+│graph    │ │        │ │GEX     │ │ framing      │ │
+└────▲────┘ └────────┘ └────────┘ └──────────────┘ │
+     │                                              │
+     └──── POSITIONS · MODELS · TIME MACHINE · ALERTS
 ```
 
 ### 0.3.2 Attachment law
@@ -151,33 +152,35 @@ The **Viewport** bucket is a **family**, not a single canvas. Members work one *
 | ID | Law |
 |----|-----|
 | **AZ-VP-1** | There is one **Analyzer viewport** (risk graph) per Analyzer session focus — still **one definition** visualized there (PB-VIEW-4). |
-| **AZ-VP-2** | **Volume Profile** and **GEX** are **attached viewports**: same product universe/symbol context; complementary analytics; not second position books. |
-| **AZ-VP-3** | Attached viewports **must not** open private Massive sockets or hardcode symbol lists — Market Bus / OHLC / dual-side chain only. |
+| **AZ-VP-2** | **Volume Profile**, **GEX**, and **Probability** are **attached viewports**: same product universe/symbol context; complementary analytics; not second position books. |
+| **AZ-VP-3** | Attached viewports **must not** open private Massive sockets or hardcode symbol lists — Market Bus / OHLC / dual-side chain / shared underlier marks only. |
 | **AZ-VP-4** | Switching attached viewport **must not** destroy Positions book or Alerts book (session continuity). Route switches may unmount UI; sessionStorage + suite symbol preserve state (as-built pattern). |
 | **AZ-VP-5** | **Heatmap** remains a **chain template surface** (flies, ladder, GEX-as-template). GEX may ship as Heatmap template **and/or** a dedicated attached viewport — both are lawful; dedicated GEX viewport must share the same chain generation SoR (HM dual-side). |
-| **AZ-VP-6** | Time machine + OPF **Models** apply to the **Analyzer** viewport. VP/GEX may later accept limited overlays (e.g. spot line) but must not silently re-price packages. |
-| **AZ-VP-7** | Alerts evaluate underlier price for the suite symbol; alert lines draw on the **Analyzer** graph first. Drawing the same alerts on VP/GEX is optional future (OD-AZ5). |
+| **AZ-VP-6** | Time machine + OPF **Models** apply to the **Analyzer** viewport. VP / GEX / Probability may accept limited overlays (e.g. spot line, 1σ band) but must not silently re-price packages. |
+| **AZ-VP-7** | Alerts evaluate underlier price for the suite symbol; alert lines draw on the **Analyzer** graph first. Drawing the same alerts on VP/GEX/Probability is optional future (OD-AZ5). |
+| **AZ-VP-8** | **Probability viewport** must be **epistemically honest**: labeled model/vol basis (e.g. IV / VIX / pack meta); never “win rate” or profit theater; no claim that 1σ bands are guarantees. |
 
 ### 0.3.3 As-built vs TARGET
 
 | Viewport | As-built | TARGET |
 |----------|----------|--------|
 | **analyzer** | `/app/options-lab/analyzer` — full risk graph + book + alerts | Remains primary; list under graph (layout residual) |
-| **volume-profile** | `/app/options-lab/volume-profile` — suite sibling app · shared `OptionsLabProvider` symbol · OHLC durable store · live mid tip | Stay suite-attached; optional deeper embed next to Analyzer later (OD-AZ6) |
-| **gex** | Heatmap **template** `gex` over dual-side chain (not a top-level suite nav item) | Either keep as Heatmap template **or** promote to first-class attached viewport in suite nav (OD-AZ7) |
+| **volume-profile** | `/app/options-lab/volume-profile` — suite sibling app · shared symbol · OHLC store · live mid tip | Stay suite-attached; optional embed (OD-AZ6) |
+| **gex** | Heatmap **template** `gex` over dual-side chain (not top-level suite nav) | Template and/or suite attached viewport (OD-AZ7) |
+| **probability** | **Partial:** PnLChart accepts `oneSigmaBandWidth` for autofit (PROB 1σ window heritage); **no** dedicated suite app or panel yet | First-class **attached Probability viewport** (OD-AZ8): 1σ / distribution framing for symbol S, optional structure-relative band; may overlay Analyzer or stand alone |
 
 ### 0.3.4 Shared context matrix
 
-| Context | Analyzer | Volume Profile | GEX |
-|---------|----------|----------------|-----|
-| Product symbol | Suite | Suite | Suite / Heatmap symbol |
-| Underlier mid | Live underlier pattern + spot override | Live underlier tip | Spot from chain |
-| Dual-side chain | Yes (legs + quotes) | No (underlier OHLC) | Yes (Γ/OI) |
-| OPF resolve | **Yes** | No | No |
-| Positions book | **Yes** | No (read suite only) | No |
-| Alerts book | **Yes** (draw on graph) | Optional later | Optional later |
-| Time machine | **Yes** | No | No |
-| Models (OPF packs) | **Yes** | No | No |
+| Context | Analyzer | Volume Profile | GEX | Probability |
+|---------|----------|----------------|-----|-------------|
+| Product symbol | Suite | Suite | Suite / Heatmap | Suite |
+| Underlier mid | Live underlier + override | Live underlier tip | Spot from chain | Live underlier + vol ref |
+| Dual-side chain | Yes (legs + quotes) | No (OHLC) | Yes (Γ/OI) | Optional IV surface |
+| OPF resolve | **Yes** | No | No | Optional meta for band width only |
+| Positions book | **Yes** | No | No | No (may *read* focused structure for relative bands) |
+| Alerts book | **Yes** (draw) | Optional later | Optional later | Optional later |
+| Time machine | **Yes** | No | No | Optional (scenario vol → band) |
+| Models (OPF packs) | **Yes** | No | No | Optional vol basis label only |
 
 ---
 
@@ -517,6 +520,16 @@ See §1.9–1.10. Route `/app/options-lab/analyzer`. Owns OPF curves, focus, inc
 | Suite nav item | **Not yet** a top-level Options Lab tab (unlike VP · Heatmap · Analyzer) |
 | PnLChart | Optional `gexByStrike` autofit prop exists for future Analyzer overlay |
 
+#### 1.16.4 Probability (attached · TARGET / partial as-built)
+
+| Feature | As-built | TARGET |
+|---------|----------|--------|
+| Role | Probability framing for the underlier (and optional structure-relative bands) | Dedicated **Probability viewport** |
+| MSC / chart heritage | `PnLChart` prop `oneSigmaBandWidth` — autofit X so **1σ ≈ ⅓ of viewport** (never less); structure wins if wider | Full PROB panel: 1σ band, labeled vol basis, optional PDF/histogram later |
+| Suite nav / route | **None** | TBD (`/app/options-lab/probability` or Analyzer sub-panel — OD-AZ8) |
+| Data | — | Live underlier mid · VIX / chain IV · optional OPF meta; **not** package SoR |
+| Ethos | — | No win-rate or profit claims (AZ-VP-8) |
+
 ---
 
 ---
@@ -762,6 +775,7 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **OD-AZ5** | Draw threshold alerts on VP/GEX canvases | Optional later; Analyzer graph first |
 | **OD-AZ6** | Embed VP adjacent to Analyzer vs suite-tab only | Suite-tab sufficient for v0.1; embed later |
 | **OD-AZ7** | GEX as suite attached viewport vs Heatmap template only | Template is as-built; promote to suite if Coach wants parity with VP |
+| **OD-AZ8** | Probability viewport: suite route vs Analyzer sub-panel; 1σ source (IV vs VIX vs pack) | Recommend suite-attached panel + labeled IV/VIX basis; structure-relative band when a card is focused |
 
 ---
 
@@ -785,5 +799,6 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **v0.1.1** | 2026-08-11 | **Alerts elevated** to first-class Analyzer subsystem: mission, cardinal objects, full §1.14 model, AZ-AL-0…11, layout, ATs |
 | **v0.1.2** | 2026-08-11 | **Six major buckets** architecture: Alerts · Positions · Viewport · Time machine · Models · Controls (§0.2) |
 | **v0.1.3** | 2026-08-11 | **Attached viewports:** Analyzer risk graph · Volume Profile · GEX (§0.3); AZ-VP-1…7; inventory §1.16 |
+| **v0.1.4** | 2026-08-11 | **Probability** attached viewport (fourth canvas); AZ-VP-8 honesty; OD-AZ8; §1.16.4 |
 
-**Reference UX (non-authority):** MSC Risk Graph — workflow only (incl. alerts UX heritage). **MSC is not the standard.**
+**Reference UX (non-authority):** MSC Risk Graph — workflow only (incl. alerts / 1σ viewport heritage). **MSC is not the standard.**
