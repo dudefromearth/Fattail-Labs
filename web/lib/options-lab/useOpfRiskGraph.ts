@@ -25,6 +25,9 @@ export type OpfRiskGraphState = {
   error: string | null;
   result: OpfResolveResult | null;
   spot: number | null;
+  /** Fingerprint of generation content_hashes — VIEW-5 epoch */
+  generationEpoch: string;
+  contentHashes: Record<string, string>;
   expirationPoints: { price: number; pnl: number }[];
   theoreticalPoints: { price: number; pnl: number }[];
   expirationBreakevens: number[];
@@ -81,8 +84,13 @@ export function useOpfRiskGraph(opts: {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<OpfResolveResult | null>(null);
   const [spot, setSpot] = useState<number | null>(null);
+  const [generationEpoch, setGenerationEpoch] = useState("");
+  const [contentHashes, setContentHashes] = useState<Record<string, string>>(
+    {},
+  );
   const laddersRef = useRef<Map<string, LadderFull>>(new Map());
   const tickRef = useRef(0);
+  const lastResolveKey = useRef("");
 
   const run = useCallback(async () => {
     if (!trade || !enabled) {
@@ -164,6 +172,37 @@ export function useOpfRiskGraph(opts: {
       if (spotUse == null || !(spotUse > 0)) {
         throw new Error("No spot from chain or override");
       }
+
+      const hashes: Record<string, string> = {};
+      for (const g of gens) {
+        if (g.content_hash) hashes[g.expiration] = g.content_hash;
+      }
+      const epochKey = Object.entries(hashes)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([e, h]) => `${e}:${h}`)
+        .join("|");
+      setGenerationEpoch(epochKey);
+      setContentHashes(hashes);
+
+      // VIEW-5: re-resolve when generation epoch or what-if/pack/trade changes
+      // (chain poll applies diffs; skip resolve if epoch+inputs unchanged)
+      const resolveKey = [
+        epochKey,
+        useCase,
+        packId,
+        trade.raw,
+        String(spotUse),
+        String(spotPct),
+        String(volOffsetPts),
+        String(timeOffsetHours),
+      ].join("#");
+      if (lastResolveKey.current === resolveKey) {
+        if (tick !== tickRef.current) return;
+        setSpot(spotUse);
+        setLoading(false);
+        return;
+      }
+      lastResolveKey.current = resolveKey;
 
       const resolved = await resolveOpfPricing({
         use_case: useCase,
@@ -291,6 +330,8 @@ export function useOpfRiskGraph(opts: {
     error,
     result,
     spot,
+    generationEpoch,
+    contentHashes,
     expirationPoints,
     theoreticalPoints,
     expirationBreakevens: findBreakevens(expirationPoints),
@@ -303,6 +344,9 @@ export function useOpfRiskGraph(opts: {
     reconPass: result?.meta?.recon?.pass ?? null,
     packId: result?.pack_id ?? null,
     engineId: result?.meta?.engine_id ?? result?.model_t0?.engine_id ?? null,
-    refresh: () => void run(),
+    refresh: () => {
+      lastResolveKey.current = "";
+      void run();
+    },
   };
 }

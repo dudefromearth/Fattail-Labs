@@ -183,6 +183,77 @@ export async function resolveOpfPricing(
   return (await r.json()) as OpfResolveResult;
 }
 
+/** PB17 SoR — card live package from OPF PackagePricer (no model curves). */
+export type OpfPackageQuoteResult = {
+  complete?: boolean;
+  package_debit_per_share?: number | null;
+  basis_debit_per_share?: number | null;
+  basis_source?: string;
+  max_skew_ms?: number | null;
+  epoch_quality?: string | null;
+  generations_used?: Record<
+    string,
+    { content_hash?: string; as_of?: string }
+  >;
+  as_of?: string | null;
+  error?: string | null;
+  skew_fail?: boolean;
+  leg_marks?: Array<Record<string, unknown>>;
+};
+
+export async function quoteOpfPackage(body: {
+  strategy: ReturnType<typeof tradeToOpfStrategy>;
+  generations: OpfGenerationIn[];
+  require_epoch_ok?: boolean;
+  vix?: number | null;
+  vix1d?: number | null;
+}): Promise<OpfPackageQuoteResult> {
+  const r = await postJSON("/api/me/pricing/package-quote", {
+    strategy: body.strategy,
+    generations: body.generations,
+    require_epoch_ok: body.require_epoch_ok !== false,
+    vix: body.vix ?? null,
+    vix1d: body.vix1d ?? null,
+  });
+  if (!r.ok) {
+    let detail = r.statusText;
+    try {
+      const j = (await r.json()) as { detail?: unknown };
+      detail =
+        typeof j.detail === "string"
+          ? j.detail
+          : JSON.stringify(j.detail ?? j);
+    } catch {
+      /* */
+    }
+    throw new Error(`OPF package-quote ${r.status}: ${detail}`);
+  }
+  return (await r.json()) as OpfPackageQuoteResult;
+}
+
+export async function touchOpfInterest(body: {
+  chain_underlier: string;
+  expiration: string;
+  wings?: number;
+  action?: "touch" | "release";
+}): Promise<{ held?: number; cap?: number }> {
+  const r = await postJSON("/api/me/pricing/interest", {
+    chain_underlier: body.chain_underlier,
+    expiration: body.expiration,
+    wings: body.wings ?? 50,
+    action: body.action ?? "touch",
+  });
+  if (r.status === 429) {
+    const err = new Error("interest_budget") as Error & {
+      budget: boolean;
+    };
+    err.budget = true;
+    throw err;
+  }
+  if (!r.ok) return {};
+  return (await r.json()) as { held?: number; cap?: number };
+}
+
 export async function opfPricingHealth(): Promise<{
   ok?: boolean;
   foundation?: string;

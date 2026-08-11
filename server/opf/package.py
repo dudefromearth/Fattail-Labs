@@ -92,9 +92,13 @@ class PackagePricer:
                 return {
                     "complete": False,
                     "error": skew_err,
+                    "skew_fail": True,
                     "epoch": epoch,
                     "leg_marks": leg_marks,
                     "package_debit_per_share": None,
+                    "max_skew_ms": epoch.get("max_skew_ms"),
+                    "epoch_quality": "skewed_fail",
+                    "generations_used": epoch.get("generations"),
                 }
 
         marks_sum = mark_sum_package(leg_marks)

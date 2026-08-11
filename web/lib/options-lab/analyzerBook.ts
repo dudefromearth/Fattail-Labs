@@ -1,6 +1,6 @@
 /**
  * Analyzer position book + threshold alerts (session persistence).
- * Labs-owned — modeled on MSC Risk Graph list/alert UX, no MSC runtime.
+ * Spec v0.2 — card = definition; lock signed D*; liveState.
  */
 
 import type { PositionInput } from "@/lib/options-lab/positionTypes";
@@ -19,22 +19,58 @@ export type AnalyzerTradeStatus =
   | "CANCELLED"
   | "REJECTED";
 
+export type LiveState =
+  | "live"
+  | "held"
+  | "not_live"
+  | "budget_refused"
+  | "incomplete"
+  | "skewed";
+
+export type LockSource = "natural_mid" | "user_limit" | "tos_limit";
+
+/** OPF-aligned lock — package_debit_per_share SIGNED per PB3. */
+export type CardLockState =
+  | { mode: "unlocked" }
+  | {
+      mode: "locked";
+      lockedAt: string;
+      /** Signed per-share D* (same convention as D_nat) */
+      packageDebitPerShare: number;
+      lockSource: LockSource;
+      freezeIv: boolean;
+      freezeMarks: boolean;
+      generationHashesAtLock?: Record<string, string>;
+    };
+
 export type AnalyzerPosition = {
   id: string;
   label: string;
   notation: string;
   position: PositionInput;
   status: AnalyzerTradeStatus;
-  /** Live mid package (per share); updated from chain */
+  /** From OPF PackageQuote when unlocked live; basis magnitude when locked */
   livePackagePerShare: number | null;
-  priceSide: "debit" | "credit";
+  /** Signed natural from last OPF quote (for lock natural / parity) */
+  lastNatSigned: number | null;
+  priceSide: "debit" | "credit" | null;
   visible: boolean;
+  lock: CardLockState;
+  liveState: LiveState;
+  displayAsOf: string | null;
+  contentHashes: Record<string, string>;
+  maxSkewMs: number | null;
+  epochQuality: string | null;
   createdAt: number;
   updatedAt: number;
 };
 
 export type ThresholdAlertType = "price_above" | "price_below" | "price_touch";
-export type ThresholdAlertStatus = "new" | "acknowledged" | "dismissed" | "triggered";
+export type ThresholdAlertStatus =
+  | "new"
+  | "acknowledged"
+  | "dismissed"
+  | "triggered";
 export type ThresholdSeverity = "info" | "low" | "medium" | "high" | "critical";
 
 export type AnalyzerThresholdAlert = {
@@ -42,7 +78,6 @@ export type AnalyzerThresholdAlert = {
   type: ThresholdAlertType;
   symbol: string;
   targetPrice: number;
-  /** Optional position scope */
   positionId?: string;
   title: string;
   severity: ThresholdSeverity;
@@ -53,20 +88,50 @@ export type AnalyzerThresholdAlert = {
   color: string;
 };
 
-const POS_KEY = "ft_options_lab_analyzer_positions_v1";
+const POS_KEY = "ft_options_lab_analyzer_positions_v2";
 const ALERT_KEY = "ft_options_lab_analyzer_alerts_v1";
 
 function uid(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function migratePos(raw: unknown): AnalyzerPosition | null {
+  if (!raw || typeof raw !== "object") return null;
+  const p = raw as Partial<AnalyzerPosition> & {
+    priceSide?: "debit" | "credit" | null;
+  };
+  if (!p.id || !p.position) return null;
+  return {
+    id: p.id,
+    label: p.label || "Position",
+    notation: p.notation || "",
+    position: p.position,
+    status: p.status || "ANALYSIS",
+    livePackagePerShare: p.livePackagePerShare ?? null,
+    lastNatSigned: p.lastNatSigned ?? null,
+    priceSide: p.priceSide === undefined ? "debit" : p.priceSide,
+    visible: p.visible !== false,
+    lock: p.lock?.mode === "locked" ? p.lock : { mode: "unlocked" },
+    liveState: p.liveState || "not_live",
+    displayAsOf: p.displayAsOf ?? null,
+    contentHashes: p.contentHashes || {},
+    maxSkewMs: p.maxSkewMs ?? null,
+    epochQuality: p.epochQuality ?? null,
+    createdAt: p.createdAt || Date.now(),
+    updatedAt: p.updatedAt || Date.now(),
+  };
+}
+
 export function loadPositions(): AnalyzerPosition[] {
   if (typeof window === "undefined") return [];
   try {
-    const s = sessionStorage.getItem(POS_KEY);
+    const s =
+      sessionStorage.getItem(POS_KEY) ||
+      sessionStorage.getItem("ft_options_lab_analyzer_positions_v1");
     if (!s) return [];
-    const arr = JSON.parse(s) as AnalyzerPosition[];
-    return Array.isArray(arr) ? arr : [];
+    const arr = JSON.parse(s) as unknown[];
+    if (!Array.isArray(arr)) return [];
+    return arr.map(migratePos).filter(Boolean) as AnalyzerPosition[];
   } catch {
     return [];
   }
@@ -80,14 +145,19 @@ export function savePositions(positions: AnalyzerPosition[]): void {
 export function positionFromInput(input: PositionInput): AnalyzerPosition {
   const net = positionNetPremium(input);
   const override = input.net_debit_override;
-  const mag =
-    override != null && Number.isFinite(override)
-      ? Math.abs(override)
-      : Math.abs(net);
-  const isCredit =
-    override != null
-      ? input.direction === "sell" || net > 0
-      : net > 0;
+  let signed: number | null = null;
+  if (override != null && Number.isFinite(override)) {
+    const mag = Math.abs(override);
+    signed = input.direction === "sell" || net > 0 ? -mag : mag;
+  } else if (Number.isFinite(net)) {
+    signed = net;
+  }
+  const priceSide: "debit" | "credit" | null =
+    signed == null
+      ? null
+      : signed >= 0
+        ? "debit"
+        : "credit";
   return {
     id: uid("pos"),
     label: buildLabel(input.underlying, input.legs, input.expiration),
@@ -97,10 +167,189 @@ export function positionFromInput(input: PositionInput): AnalyzerPosition {
       legs: input.legs.map((l) => ({ ...l })),
     },
     status: "ANALYSIS",
-    livePackagePerShare: mag > 0 ? mag : null,
-    priceSide: isCredit ? "credit" : "debit",
+    livePackagePerShare: signed != null ? Math.abs(signed) : null,
+    lastNatSigned: signed,
+    priceSide,
     visible: true,
+    lock: { mode: "unlocked" },
+    liveState: "not_live",
+    displayAsOf: null,
+    contentHashes: {},
+    maxSkewMs: null,
+    epochQuality: null,
     createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+}
+
+function sameCardPricing(a: AnalyzerPosition, b: AnalyzerPosition): boolean {
+  return (
+    a.livePackagePerShare === b.livePackagePerShare &&
+    a.lastNatSigned === b.lastNatSigned &&
+    a.priceSide === b.priceSide &&
+    a.liveState === b.liveState &&
+    a.displayAsOf === b.displayAsOf &&
+    a.maxSkewMs === b.maxSkewMs &&
+    a.epochQuality === b.epochQuality &&
+    JSON.stringify(a.contentHashes) === JSON.stringify(b.contentHashes)
+  );
+}
+
+/** Apply OPF package quote onto card (PB17 SoR). */
+export function applyPackageQuote(
+  pos: AnalyzerPosition,
+  quote: {
+    complete?: boolean;
+    package_debit_per_share?: number | null;
+    max_skew_ms?: number | null;
+    epoch_quality?: string | null;
+    generations_used?: Record<string, { content_hash?: string; as_of?: string }>;
+    as_of?: string | null;
+    error?: string | null;
+    skew_fail?: boolean;
+  },
+  opts?: { sessionHeld?: boolean; interestOk?: boolean },
+): AnalyzerPosition {
+  const sessionHeld = opts?.sessionHeld ?? false;
+  const interestOk = opts?.interestOk !== false;
+
+  const finish = (next: AnalyzerPosition) =>
+    sameCardPricing(pos, next) ? pos : { ...next, updatedAt: Date.now() };
+
+  if (!pos.visible) {
+    return finish({
+      ...pos,
+      liveState: "not_live",
+    });
+  }
+
+  if (!interestOk) {
+    return finish({
+      ...pos,
+      liveState: "budget_refused",
+      livePackagePerShare: null,
+      priceSide: null,
+    });
+  }
+
+  if (quote.skew_fail || quote.epoch_quality === "skewed_fail") {
+    return finish({
+      ...pos,
+      liveState: "skewed",
+      livePackagePerShare: null,
+      priceSide: null,
+      maxSkewMs: quote.max_skew_ms ?? null,
+      epochQuality: quote.epoch_quality ?? "skewed",
+    });
+  }
+
+  if (!quote.complete || quote.package_debit_per_share == null) {
+    return finish({
+      ...pos,
+      liveState: "incomplete",
+      livePackagePerShare: null,
+      priceSide: null,
+      lastNatSigned: null,
+      displayAsOf: quote.as_of ?? pos.displayAsOf,
+      maxSkewMs: quote.max_skew_ms ?? null,
+      epochQuality: quote.epoch_quality ?? null,
+    });
+  }
+
+  const nat = Number(quote.package_debit_per_share);
+  const hashes: Record<string, string> = {};
+  let asOf = quote.as_of ?? null;
+  if (quote.generations_used) {
+    for (const [exp, meta] of Object.entries(quote.generations_used)) {
+      if (meta?.content_hash) hashes[exp] = meta.content_hash;
+      if (!asOf && meta?.as_of) asOf = meta.as_of;
+    }
+  }
+
+  if (pos.lock.mode === "locked") {
+    const dStar = pos.lock.packageDebitPerShare;
+    return finish({
+      ...pos,
+      lastNatSigned: nat,
+      livePackagePerShare: Math.abs(dStar),
+      priceSide: dStar >= 0 ? "debit" : "credit",
+      liveState: sessionHeld ? "held" : "live",
+      displayAsOf: asOf,
+      contentHashes: hashes,
+      maxSkewMs: quote.max_skew_ms ?? null,
+      epochQuality: quote.epoch_quality ?? null,
+    });
+  }
+
+  return finish({
+    ...pos,
+    lastNatSigned: nat,
+    livePackagePerShare: Math.abs(nat),
+    priceSide: nat >= 0 ? "debit" : "credit",
+    liveState: sessionHeld ? "held" : "live",
+    displayAsOf: asOf,
+    contentHashes: hashes,
+    maxSkewMs: quote.max_skew_ms ?? null,
+    epochQuality: quote.epoch_quality ?? null,
+  });
+}
+
+export function lockNatural(pos: AnalyzerPosition): AnalyzerPosition {
+  if (pos.lastNatSigned == null || pos.liveState === "incomplete") {
+    throw new Error("cannot lock natural: incomplete package");
+  }
+  return {
+    ...pos,
+    lock: {
+      mode: "locked",
+      lockedAt: new Date().toISOString(),
+      packageDebitPerShare: pos.lastNatSigned,
+      lockSource: "natural_mid",
+      freezeIv: false,
+      freezeMarks: false,
+      generationHashesAtLock: { ...pos.contentHashes },
+    },
+    livePackagePerShare: Math.abs(pos.lastNatSigned),
+    priceSide: pos.lastNatSigned >= 0 ? "debit" : "credit",
+    updatedAt: Date.now(),
+  };
+}
+
+/** limitMagnitude > 0; isCredit true → negative D* */
+export function lockLimit(
+  pos: AnalyzerPosition,
+  limitMagnitude: number,
+  isCredit: boolean,
+  source: LockSource = "user_limit",
+): AnalyzerPosition {
+  const mag = Math.abs(limitMagnitude);
+  const signed = isCredit ? -mag : mag;
+  return {
+    ...pos,
+    lock: {
+      mode: "locked",
+      lockedAt: new Date().toISOString(),
+      packageDebitPerShare: signed,
+      lockSource: source,
+      freezeIv: false,
+      freezeMarks: false,
+      generationHashesAtLock: { ...pos.contentHashes },
+    },
+    livePackagePerShare: mag,
+    priceSide: isCredit ? "credit" : "debit",
+    position: {
+      ...pos.position,
+      net_debit_override: mag,
+      direction: isCredit ? "sell" : "buy",
+    },
+    updatedAt: Date.now(),
+  };
+}
+
+export function unlockCard(pos: AnalyzerPosition): AnalyzerPosition {
+  return {
+    ...pos,
+    lock: { mode: "unlocked" },
     updatedAt: Date.now(),
   };
 }
@@ -155,7 +404,6 @@ export function createPriceAlert(opts: {
   };
 }
 
-/** Evaluate threshold rules against current spot; returns updated list. */
 export function evaluateAlerts(
   alerts: AnalyzerThresholdAlert[],
   spot: number,
@@ -184,20 +432,8 @@ export function evaluateAlerts(
   return changed ? out : alerts;
 }
 
-export function packageMidFromLegs(
-  legs: PositionInput["legs"],
-  getMid: (exp: string, strike: number, type: "call" | "put") => number | null,
-  defaultExp: string,
-): number | null {
-  let total = 0;
-  let any = false;
-  for (const leg of legs) {
-    const exp = (leg.expiration || defaultExp).slice(0, 10);
-    const mid = getMid(exp, leg.strike, leg.type);
-    if (mid == null) return null;
-    any = true;
-    const sign = leg.side === "long" ? 1 : -1;
-    total += sign * Math.abs(leg.quantity) * mid;
-  }
-  return any ? total : null;
+/** Basis for OPF handoff: locked D* or live natural. */
+export function basisSigned(pos: AnalyzerPosition): number | null {
+  if (pos.lock.mode === "locked") return pos.lock.packageDebitPerShare;
+  return pos.lastNatSigned;
 }

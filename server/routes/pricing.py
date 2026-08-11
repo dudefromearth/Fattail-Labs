@@ -166,6 +166,54 @@ def pricing_resolve(request: Request, body: ResolveIn) -> dict[str, Any]:
     return out
 
 
+class PackageQuoteIn(BaseModel):
+    """Lightweight package quote — card SoR (PB17); no full model pack curves."""
+
+    strategy: StrategyIn
+    generations: list[GenerationIn] | None = None
+    require_epoch_ok: bool = True
+    vix: float | None = None
+    vix1d: float | None = None
+
+
+@router.post("/api/me/pricing/package-quote")
+def pricing_package_quote(request: Request, body: PackageQuoteIn) -> dict[str, Any]:
+    """OPF PackageQuote for Analyzer cards (single pricing SoR with resolve)."""
+    session = require_session(request)
+    _require_tool_member(session)
+    _hydrate(body.generations)
+    pricer = PackagePricer(
+        _store,
+        facts=default_static_facts(),
+        vix=body.vix,
+        vix1d=body.vix1d,
+    )
+    quote = pricer.quote(
+        _intent(body.strategy),
+        require_epoch_ok=body.require_epoch_ok,
+    )
+    gens = quote.get("generations_used") or {}
+    as_ofs = [
+        (meta or {}).get("as_of")
+        for meta in gens.values()
+        if isinstance(meta, dict) and meta.get("as_of")
+    ]
+    return {
+        "complete": quote.get("complete"),
+        "package_debit_per_share": quote.get("package_debit_per_share"),
+        "basis_debit_per_share": quote.get("basis_debit_per_share"),
+        "basis_source": quote.get("basis_source"),
+        "leg_marks": quote.get("leg_marks"),
+        "max_skew_ms": quote.get("max_skew_ms"),
+        "epoch_quality": quote.get("epoch_quality"),
+        "generations_used": gens,
+        "as_of": max(as_ofs) if as_ofs else None,
+        "error": quote.get("error"),
+        "skew_fail": bool(quote.get("skew_fail")),
+        "pnl_unit": quote.get("pnl_unit"),
+    }
+
+
 @router.post("/api/me/pricing/interest")
 def pricing_interest(request: Request, body: InterestIn) -> dict[str, Any]:
     session = require_session(request)

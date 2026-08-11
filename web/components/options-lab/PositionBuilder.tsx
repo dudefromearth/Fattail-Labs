@@ -100,11 +100,13 @@ function defaultWidth(symbol: string): number {
   return 20;
 }
 
-function defaultBackExpiration(front: string): string {
-  const d = new Date(front + "T12:00:00");
-  d.setDate(d.getDate() + 1);
-  if (d.getDay() === 6) d.setDate(d.getDate() + 2);
-  return d.toISOString().slice(0, 10);
+/** PB22: next listed only — never synthesize unlisted calendar day. */
+function nextListedBack(
+  front: string,
+  listed: string[],
+): string | null {
+  const after = listed.filter((e) => e > front).sort();
+  return after[0] ?? null;
 }
 
 function defaultDiagonalWidth(symbol: string): number {
@@ -264,7 +266,7 @@ export default function PositionBuilder({
 
       if (tmpl === "calendar" || tmpl === "diagonal") {
         const front = frontExp;
-        const back = backExp || defaultBackExpiration(front);
+        const back = backExp || front;
         legs = legs.map((leg) => ({
           ...leg,
           expiration: leg.side === "short" ? front : back,
@@ -392,7 +394,7 @@ export default function PositionBuilder({
       back =
         idx >= 0 && idx + 1 < exps.length
           ? exps[idx + 1]
-          : defaultBackExpiration(position.expiration);
+          : nextListedBack(position.expiration, exps) || "";
       setBackExpiration(back);
     }
     if (tmpl === "diagonal") {
@@ -658,7 +660,7 @@ export default function PositionBuilder({
                       back =
                         idx >= 0 && idx + 1 < exps.length
                           ? exps[idx + 1]
-                          : defaultBackExpiration(exp);
+                          : nextListedBack(exp, exps) || "";
                       setBackExpiration(back);
                     }
                     regenerate(
@@ -695,35 +697,40 @@ export default function PositionBuilder({
             <label className="block max-w-xs">
               <span className={labelCls}>Back exp</span>
               {hasChain ? (
-                <select
-                  className={field}
-                  value={backExpiration}
-                  onChange={(e) => {
-                    const b = e.target.value;
-                    setBackExpiration(b);
-                    setPosition((prev) => ({
-                      ...prev,
-                      legs: prev.legs.map((leg) =>
-                        leg.side === "long" ? { ...leg, expiration: b } : leg,
-                      ),
-                    }));
-                  }}
-                >
-                  {chain.expirations
-                    .filter((e) => e > position.expiration)
-                    .map((e) => (
-                      <option key={e} value={e}>
-                        {e}
-                      </option>
-                    ))}
-                </select>
+                chain.expirations.filter((e) => e > position.expiration)
+                  .length === 0 ? (
+                  <p className="text-xs text-amber-400" role="status">
+                    No back expiration listed after front — pick another front
+                    or product.
+                  </p>
+                ) : (
+                  <select
+                    className={field}
+                    value={backExpiration}
+                    onChange={(e) => {
+                      const b = e.target.value;
+                      setBackExpiration(b);
+                      setPosition((prev) => ({
+                        ...prev,
+                        legs: prev.legs.map((leg) =>
+                          leg.side === "long" ? { ...leg, expiration: b } : leg,
+                        ),
+                      }));
+                    }}
+                  >
+                    {chain.expirations
+                      .filter((e) => e > position.expiration)
+                      .map((e) => (
+                        <option key={e} value={e}>
+                          {e}
+                        </option>
+                      ))}
+                  </select>
+                )
               ) : (
-                <input
-                  className={field}
-                  type="date"
-                  value={backExpiration}
-                  onChange={(e) => setBackExpiration(e.target.value)}
-                />
+                <p className="text-xs text-amber-400">
+                  Chain unavailable — cannot set listed back expiration.
+                </p>
               )}
             </label>
           )}

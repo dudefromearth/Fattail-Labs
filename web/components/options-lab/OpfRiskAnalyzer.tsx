@@ -1,10 +1,8 @@
 "use client";
 
 /**
- * Options Lab Analyzer — full OPF exercise surface.
- *
- * Data: dual-side chain · Pricing: OPF packs only · Render: PnLChart
- * Position Builder (live mids) · position cards · threshold alerts
+ * Options Lab Analyzer — PB Spec v0.2 + OPF.
+ * Card = definition · viewport = OPF viz · package SoR from OPF quote API.
  */
 
 import Link from "next/link";
@@ -21,10 +19,12 @@ import {
   evaluateAlerts,
   loadAlerts,
   loadPositions,
-  packageMidFromLegs,
+  lockLimit,
+  lockNatural,
   positionFromInput,
   saveAlerts,
   savePositions,
+  unlockCard,
   type AnalyzerPosition,
   type AnalyzerThresholdAlert,
 } from "@/lib/options-lab/analyzerBook";
@@ -39,6 +39,7 @@ import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
 import type { PositionInput } from "@/lib/options-lab/positionTypes";
 import { useBuilderChain } from "@/lib/options-lab/useBuilderChain";
 import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
+import { usePackageQuotes } from "@/lib/options-lab/usePackageQuotes";
 import AnalyzerAlertsSection from "@/components/options-lab/AnalyzerAlertsSection";
 import AnalyzerPositionsList from "@/components/options-lab/AnalyzerPositionsList";
 import PositionBuilder from "@/components/options-lab/PositionBuilder";
@@ -58,6 +59,22 @@ const btn =
   "bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium text-[var(--color-label)] " +
   "shadow-sm hover:bg-[var(--color-fill)] disabled:opacity-45";
 
+function streamPosture(): "Live" | "Held" | "Closed" | "Error" {
+  try {
+    const d = new Date();
+    const et = new Date(
+      d.toLocaleString("en-US", { timeZone: "America/New_York" }),
+    );
+    const day = et.getDay();
+    const mins = et.getHours() * 60 + et.getMinutes();
+    if (day === 0 || day === 6) return "Closed";
+    if (mins >= 9 * 60 + 30 && mins < 16 * 60) return "Live";
+    return "Held";
+  } catch {
+    return "Error";
+  }
+}
+
 export default function OpfRiskAnalyzer() {
   const { symbol, setSymbol, universe, loading: universeLoading } =
     useOptionsLab();
@@ -67,6 +84,8 @@ export default function OpfRiskAnalyzer() {
   const [spotStr, setSpotStr] = useState("");
   const [vixStr, setVixStr] = useState("");
   const [model, setModel] = useState<OpfModelOption>(DEFAULT_OPF_MODEL);
+  const [epochPinned, setEpochPinned] = useState(false);
+  const [epochStale, setEpochStale] = useState(false);
 
   const [timeMachineEnabled, setTimeMachineEnabled] = useState(false);
   const [simTimeOffsetHours, setSimTimeOffsetHours] = useState(0);
@@ -78,10 +97,12 @@ export default function OpfRiskAnalyzer() {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<AnalyzerThresholdAlert[]>([]);
+  const [posture, setPosture] = useState(streamPosture);
 
   const chartRef = useRef<PnLChartHandle>(null);
+  const positionsRef = useRef(positions);
+  positionsRef.current = positions;
 
-  // Persist book
   useEffect(() => {
     setPositions(loadPositions());
     setAlerts(loadAlerts());
@@ -92,6 +113,12 @@ export default function OpfRiskAnalyzer() {
   useEffect(() => {
     saveAlerts(alerts);
   }, [alerts]);
+  useEffect(() => {
+    const id = window.setInterval(() => setPosture(streamPosture()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const sessionHeld = posture === "Held" || posture === "Closed";
 
   const hydrate = useCallback(() => {
     const s = loadAnalyzerTrade();
@@ -119,7 +146,6 @@ export default function OpfRiskAnalyzer() {
     return parseTosScript(raw);
   }, [raw]);
 
-  // Focused position book wins over paste for OPF resolve
   const trade = useMemo(() => {
     if (focused && focused.visible) {
       return positionToParsedTrade(focused.position);
@@ -159,45 +185,9 @@ export default function OpfRiskAnalyzer() {
 
   const chain = useBuilderChain(symbol, warmExps, true);
 
-  // Live reprice package mids on cards
-  useEffect(() => {
-    if (!positions.length || !chain.expirations.length) return;
-    setPositions((prev) => {
-      let changed = false;
-      const next = prev.map((pos) => {
-        const mid = packageMidFromLegs(
-          pos.position.legs,
-          (exp, strike, type) => {
-            const c = chain.getContract(exp, strike, type);
-            return c?.mid ?? null;
-          },
-          pos.position.expiration,
-        );
-        if (mid == null) return pos;
-        const abs = Math.abs(mid);
-        const side: "debit" | "credit" = mid >= 0 ? "debit" : "credit";
-        // long pays → mid sum of qty*sign: our packageMid uses long +1 so debit structure is positive cost
-        // Actually packageMidFromLegs: long + mid, short - mid → debit fly natural cost is positive
-        const priceSide: "debit" | "credit" =
-          mid >= 0 ? "debit" : "credit";
-        if (
-          pos.livePackagePerShare != null &&
-          Math.abs(pos.livePackagePerShare - abs) < 1e-6 &&
-          pos.priceSide === priceSide
-        ) {
-          return pos;
-        }
-        changed = true;
-        return {
-          ...pos,
-          livePackagePerShare: abs,
-          priceSide,
-          updatedAt: Date.now(),
-        };
-      });
-      return changed ? next : prev;
-    });
-  }, [chain, positions.length, chain.spot, warmExps.join("|")]);
+  const onPackageUpdate = useCallback((id: string, next: AnalyzerPosition) => {
+    setPositions((prev) => prev.map((p) => (p.id === id ? next : p)));
+  }, []);
 
   const spotOverride = useMemo(() => {
     const n = Number(spotStr);
@@ -216,16 +206,44 @@ export default function OpfRiskAnalyzer() {
     vix,
     useCase: model.useCase,
     packId: model.packId,
-    timeOffsetHours: timeMachineEnabled ? simTimeOffsetHours : 0,
+    timeOffsetHours:
+      model.useCase === "outlook"
+        ? epochPinned
+          ? 0
+          : timeMachineEnabled
+            ? simTimeOffsetHours
+            : 0
+        : timeMachineEnabled
+          ? simTimeOffsetHours
+          : 0,
     volOffsetPts: simVolatilityOffset,
     spotPct: simSpotPct,
-    enabled: !!trade,
+    enabled: !!trade && !(trade && focused && !focused.visible),
   });
 
-  const activeModel = findOpfModel(risk.packId ?? model.packId);
-  const displaySpot = spotOverride ?? risk.spot ?? chain.spot ?? trade?.body ?? 0;
+  usePackageQuotes({
+    positions,
+    sessionHeld,
+    enabled: true,
+    onUpdate: onPackageUpdate,
+    generationEpoch: risk.generationEpoch,
+  });
 
-  // Evaluate alerts against spot
+  // Outlook epoch stale when generation moves while pinned
+  useEffect(() => {
+    if (model.useCase !== "outlook") {
+      setEpochStale(false);
+      return;
+    }
+    if (epochPinned && risk.generationEpoch) {
+      setEpochStale(true);
+    }
+  }, [risk.generationEpoch, model.useCase, epochPinned]);
+
+  const activeModel = findOpfModel(risk.packId ?? model.packId);
+  const displaySpot =
+    spotOverride ?? risk.spot ?? chain.spot ?? trade?.body ?? 0;
+
   useEffect(() => {
     if (!(displaySpot > 0)) return;
     setAlerts((prev) => {
@@ -250,8 +268,12 @@ export default function OpfRiskAnalyzer() {
   };
 
   const simSpot = displaySpot * (1 + simSpotPct / 100);
+  const incompleteFocus =
+    focused?.visible &&
+    (focused.liveState === "incomplete" || focused.liveState === "skewed");
   const hasCurves =
     !!trade &&
+    !incompleteFocus &&
     risk.expirationPoints.length > 0 &&
     risk.theoreticalPoints.length > 0;
 
@@ -263,13 +285,15 @@ export default function OpfRiskAnalyzer() {
         .map((a) => ({
           price: a.targetPrice,
           color: a.color,
-          label: a.type.replace("price_", ""),
+          label:
+            (a.type.replace("price_", "") || "alert") +
+            (sessionHeld ? " · held" : ""),
           style:
             a.status === "triggered"
               ? ("active" as const)
               : ("dashed" as const),
         })),
-    [alerts, symbol],
+    [alerts, symbol, sessionHeld],
   );
 
   const onOpenAlertDialog = useCallback(
@@ -292,20 +316,12 @@ export default function OpfRiskAnalyzer() {
           prev.map((p) =>
             p.id === editId
               ? {
-                  ...p,
+                  ...positionFromInput(input),
+                  id: editId,
                   label,
                   notation,
-                  position: {
-                    ...input,
-                    legs: input.legs.map((l) => ({ ...l })),
-                  },
-                  livePackagePerShare:
-                    input.net_debit_override != null
-                      ? Math.abs(input.net_debit_override)
-                      : p.livePackagePerShare,
-                  priceSide:
-                    input.direction === "sell" ? "credit" : p.priceSide,
-                  updatedAt: Date.now(),
+                  createdAt: p.createdAt,
+                  lock: p.lock,
                 }
               : p,
           ),
@@ -318,7 +334,6 @@ export default function OpfRiskAnalyzer() {
         setPositions((prev) => [pos, ...prev]);
         setFocusedId(pos.id);
       }
-      // Sync ToS paste buffer for transparency
       const t = positionToParsedTrade(input);
       if (t.raw) {
         setRaw(t.raw);
@@ -327,8 +342,9 @@ export default function OpfRiskAnalyzer() {
       }
       setBuilderOpen(false);
       setEditId(null);
+      risk.refresh();
     },
-    [editId],
+    [editId, risk],
   );
 
   const editInitial = useMemo(() => {
@@ -336,14 +352,16 @@ export default function OpfRiskAnalyzer() {
     return positions.find((p) => p.id === editId)?.position ?? null;
   }, [editId, positions]);
 
-  const legMarks = (risk.result?.marks?.leg_marks || []) as Array<{
-    leg_id?: string;
-    side?: string;
-    strike?: number;
-    mid?: number | null;
-    iv?: number | null;
-    iv_source?: string;
-  }>;
+  const timeRefLabel =
+    model.useCase === "day_trade"
+      ? sessionHeld
+        ? `Held · ${risk.generationEpoch ? "last gen" : "—"}`
+        : `Live · gen ${risk.generationEpoch.slice(0, 24) || "…"}`
+      : model.useCase === "outlook"
+        ? epochStale
+          ? "Scenario · epoch stale"
+          : "Scenario · epoch"
+        : "Replay · no live claim";
 
   return (
     <div
@@ -356,13 +374,31 @@ export default function OpfRiskAnalyzer() {
             Risk Graph
           </h2>
           <p className="text-[11px] text-[var(--color-label-tertiary)]">
-            OPF only · live builder · position cards · threshold alerts
+            Card = definition · viewport = OPF · package SoR
           </p>
+          <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
+            <span
+              className={
+                "rounded px-1.5 py-0.5 font-semibold uppercase " +
+                (posture === "Live"
+                  ? "bg-emerald-500/20 text-emerald-300"
+                  : posture === "Held"
+                    ? "bg-amber-500/20 text-amber-300"
+                    : "bg-white/10 text-white/50")
+              }
+            >
+              {posture}
+            </span>
+            <span className="rounded bg-white/10 px-1.5 py-0.5 text-white/70">
+              {activeModel.useCase}
+            </span>
+          </div>
         </div>
 
         <AnalyzerPositionsList
           positions={positions}
           focusedId={focusedId}
+          sessionHeld={sessionHeld}
           onFocus={setFocusedId}
           onToggleVisibility={(id) =>
             setPositions((prev) =>
@@ -383,23 +419,50 @@ export default function OpfRiskAnalyzer() {
             setEditId(null);
             setBuilderOpen(true);
           }}
-          onUpdatePrice={(id, value) =>
+          onLockNatural={(id) => {
+            setPositions((prev) =>
+              prev.map((p) => {
+                if (p.id !== id) return p;
+                try {
+                  return lockNatural(p);
+                } catch (e) {
+                  setParseError(
+                    e instanceof Error ? e.message : "lock natural failed",
+                  );
+                  return p;
+                }
+              }),
+            );
+            risk.refresh();
+          }}
+          onLockLimit={(id) => {
+            const pos = positionsRef.current.find((p) => p.id === id);
+            if (!pos) return;
+            const rawLim = window.prompt(
+              "Limit package magnitude (per share)",
+              pos.livePackagePerShare != null
+                ? String(pos.livePackagePerShare)
+                : "1.00",
+            );
+            if (rawLim == null) return;
+            const mag = Math.abs(parseFloat(rawLim));
+            if (!Number.isFinite(mag) || mag <= 0) return;
+            const isCredit =
+              window.confirm("OK = CREDIT limit, Cancel = DEBIT limit") ===
+              true;
             setPositions((prev) =>
               prev.map((p) =>
-                p.id === id
-                  ? {
-                      ...p,
-                      livePackagePerShare: value,
-                      position: {
-                        ...p.position,
-                        net_debit_override: value,
-                      },
-                      updatedAt: Date.now(),
-                    }
-                  : p,
+                p.id === id ? lockLimit(p, mag, isCredit) : p,
               ),
-            )
-          }
+            );
+            risk.refresh();
+          }}
+          onUnlock={(id) => {
+            setPositions((prev) =>
+              prev.map((p) => (p.id === id ? unlockCard(p) : p)),
+            );
+            risk.refresh();
+          }}
         />
 
         <AnalyzerAlertsSection
@@ -425,11 +488,17 @@ export default function OpfRiskAnalyzer() {
         />
 
         <label className="block">
-          <span className={fieldLabel}>OPF model pack</span>
+          <span className={fieldLabel}>OPF model pack / mode</span>
           <select
             className={control}
             value={model.packId}
-            onChange={(e) => setModel(findOpfModel(e.target.value))}
+            onChange={(e) => {
+              const m = findOpfModel(e.target.value);
+              setModel(m);
+              if (m.useCase === "outlook") setEpochPinned(true);
+              else setEpochPinned(false);
+              setEpochStale(false);
+            }}
             data-testid="opf-model-select"
           >
             {OPF_ANALYZER_MODELS.map((m) => (
@@ -441,6 +510,21 @@ export default function OpfRiskAnalyzer() {
           <p className="mt-1 text-[10px] leading-snug text-[var(--color-label-tertiary)]">
             {model.description}
           </p>
+          {model.useCase === "outlook" && (
+            <button
+              type="button"
+              className={btn + " mt-2 w-full"}
+              onClick={() => {
+                setEpochPinned(false);
+                setEpochStale(false);
+                risk.refresh();
+                setEpochPinned(true);
+              }}
+            >
+              Re-anchor epoch
+              {epochStale ? " · stale" : ""}
+            </button>
+          )}
         </label>
 
         <label className="block">
@@ -460,13 +544,13 @@ export default function OpfRiskAnalyzer() {
         </label>
 
         <div>
-          <span className={fieldLabel}>ToS trade (paste / Heatmap)</span>
+          <span className={fieldLabel}>ToS trade (unlocked-live if no card)</span>
           <textarea
             className={control + " min-h-[4.5rem] font-mono text-[11px]"}
             value={raw}
             onChange={(e) => {
               setRaw(e.target.value);
-              setFocusedId(null); // paste overrides focus
+              setFocusedId(null);
             }}
             spellCheck={false}
             placeholder="BUY +1 BUTTERFLY SPX … @1.25 LMT"
@@ -541,7 +625,8 @@ export default function OpfRiskAnalyzer() {
         )}
         {focused && (
           <p className="text-[11px] text-[var(--color-tint)]">
-            Graph: {focused.label}
+            Viewport: {focused.label}
+            {focused.lock.mode === "locked" ? " · locked basis" : ""}
           </p>
         )}
         {parseError && (
@@ -562,13 +647,6 @@ export default function OpfRiskAnalyzer() {
               className={control}
               value={spotStr}
               onChange={(e) => setSpotStr(e.target.value)}
-              placeholder={
-                risk.spot != null
-                  ? String(risk.spot)
-                  : chain.spot != null
-                    ? String(chain.spot)
-                    : "chain"
-              }
             />
           </label>
           <label className="block">
@@ -577,7 +655,6 @@ export default function OpfRiskAnalyzer() {
               className={control}
               value={vixStr}
               onChange={(e) => setVixStr(e.target.value)}
-              placeholder="OC5a"
             />
           </label>
         </div>
@@ -615,7 +692,7 @@ export default function OpfRiskAnalyzer() {
             />
           </label>
           <label className="mb-2 block text-xs">
-            Vol offset {simVolatilityOffset >= 0 ? "+" : ""}
+            Vol {simVolatilityOffset >= 0 ? "+" : ""}
             {simVolatilityOffset.toFixed(0)} pts
             <input
               type="range"
@@ -644,30 +721,15 @@ export default function OpfRiskAnalyzer() {
 
         {trade && (
           <div className="space-y-1 border-t border-[var(--color-separator)] pt-3 text-xs">
-            <div className="font-semibold">
-              {trade.symbol} {trade.structure}
-            </div>
-            {legMarks.length > 0 && (
-              <ul className="space-y-0.5 font-mono text-[10px] text-[var(--color-label-secondary)]">
-                {legMarks.map((m, i) => (
-                  <li key={m.leg_id || i}>
-                    {m.side} {m.strike} mid=
-                    {m.mid != null ? Number(m.mid).toFixed(2) : "—"} iv=
-                    {m.iv != null
-                      ? (Number(m.iv) * 100).toFixed(1) + "%"
-                      : "—"}{" "}
-                    <span className="opacity-50">{m.iv_source}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="grid grid-cols-2 gap-1 pt-1 text-center">
+            <div className="grid grid-cols-2 gap-1 text-center">
               <div className="rounded bg-black/20 p-1">
                 <div className="text-[9px] text-white/40">Mark pkg</div>
                 <div className="font-mono text-[11px]">
                   {risk.packageDebit != null
                     ? risk.packageDebit.toFixed(2)
-                    : "—"}
+                    : focused?.livePackagePerShare != null
+                      ? focused.livePackagePerShare.toFixed(2)
+                      : "—"}
                 </div>
               </div>
               <div className="rounded bg-black/20 p-1">
@@ -675,24 +737,27 @@ export default function OpfRiskAnalyzer() {
                 <div
                   className={
                     "font-mono text-[11px] " +
-                    (risk.reconPass === true
-                      ? "text-emerald-400"
-                      : risk.reconPass === false
-                        ? "text-red-400"
-                        : "text-white/50")
+                    (sessionHeld
+                      ? "text-white/40"
+                      : risk.reconPass === true
+                        ? "text-emerald-400"
+                        : risk.reconPass === false
+                          ? "text-red-400"
+                          : "text-white/50")
                   }
                 >
-                  {risk.reconPass === true
-                    ? "pass"
-                    : risk.reconPass === false
-                      ? "fail"
-                      : "—"}
+                  {sessionHeld
+                    ? "n/a held"
+                    : risk.reconPass === true
+                      ? "pass"
+                      : risk.reconPass === false
+                        ? "fail"
+                        : "—"}
                 </div>
               </div>
             </div>
             <div className="text-[10px] text-[var(--color-label-tertiary)]">
               {risk.packId ?? model.packId}
-              {risk.engineId ? ` · ${risk.engineId}` : ""}
               {risk.loading ? " · live…" : ""}
             </div>
           </div>
@@ -704,8 +769,11 @@ export default function OpfRiskAnalyzer() {
           <span className="font-semibold text-white/80">
             {trade ? `${trade.symbol} · OPF risk graph` : "No trade"}
           </span>
-          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/70">
+          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80">
             {activeModel.label}
+          </span>
+          <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60">
+            {timeRefLabel}
           </span>
           <span>
             Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
@@ -714,14 +782,21 @@ export default function OpfRiskAnalyzer() {
           <span className="text-fuchsia-400/80">{activeModel.theoLegend}</span>
         </div>
         <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
-          {hasCurves ? (
+          {incompleteFocus ? (
+            <div className="flex h-full min-h-[420px] items-center justify-center px-6 text-center text-sm text-amber-400/90">
+              Incomplete or skewed package — no fabricated curve (PB-VIEW-6).
+              Wait for dual-side generations or fix legs.
+            </div>
+          ) : hasCurves ? (
             <div className="h-full min-h-[420px] w-full">
               <PnLChart
                 ref={chartRef}
                 expirationData={risk.expirationPoints}
                 theoreticalData={risk.theoreticalPoints}
                 theoreticalStroke="#e879f9"
-                theoreticalLegendLabel={activeModel.theoLegend}
+                theoreticalLegendLabel={
+                  activeModel.theoLegend + (sessionHeld ? " · held" : "")
+                }
                 spotPrice={displaySpot > 0 ? displaySpot : 1}
                 spotIndicatorPrice={simSpot > 0 ? simSpot : undefined}
                 expirationBreakevens={risk.expirationBreakevens}
@@ -749,14 +824,13 @@ export default function OpfRiskAnalyzer() {
           ) : (
             <div className="flex h-full min-h-[420px] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-white/40">
               {trade && risk.loading ? (
-                <span>OPF resolve · dual-side generations…</span>
+                <span>OPF resolve · generation apply…</span>
               ) : trade && risk.error ? (
                 <span className="text-amber-400/90">{risk.error}</span>
               ) : (
                 <span>
                   Open <strong className="text-white/60">Builder</strong> for
-                  live mid package debit, or paste ToS / Heatmap ⌥-click. Right-click
-                  the graph for price alerts.
+                  live OPF package, or paste ToS. Right-click graph for alerts.
                 </span>
               )}
             </div>
