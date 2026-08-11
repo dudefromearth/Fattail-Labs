@@ -58,11 +58,16 @@ _CACHE_TTL_S = 1.5
 
 
 def _cache_key(product: str, chain_ul: str, expiration: str, side: str, wings: int) -> str:
-    return f"{product}|{chain_ul}|{expiration}|{side}|w{int(wings)}"
+    # HM15: dual-side generation shared across viewSide (side not in key)
+    return f"{product}|{chain_ul}|{expiration}|w{int(wings)}|dual"
 
 
 def _bus_ladder_key(chain_ul: str, expiration: str, side: str, wings: int) -> str:
-    return f"mb:ladder:{chain_ul}:{expiration}:{side}:w{int(wings)}"
+    return f"mb:ladder:{chain_ul}:{expiration}:w{int(wings)}:dual"
+
+
+# Dual-side one-page budget: strikes × 2 ≤ 250 ⇒ ≤125 strikes
+_MAX_DUAL_WINGS = 50  # ±50 ≈ 101 strikes × 2 ≈ 202 contracts
 
 
 def _native_mark_mid(product_symbol: str) -> tuple[float | None, str | None]:
@@ -239,8 +244,10 @@ def _fetch_ladder_uncached(
     wings: int,
     strike_step_cfg: float | None = None,
 ) -> dict[str, Any]:
-    """Massive pull + ladder build (no process cache). Counts Massive calls."""
-    wings = int(wings)
+    """Massive pull + dual-side ladder build (HM15–HM20). No process cache."""
+    wings_req = int(wings)
+    # HM17 / OD8: keep dual-side under 250 contracts (one page)
+    wings_eff = min(wings_req, _MAX_DUAL_WINGS)
     dte = dte_from_expiration(expiration)
     vol_pct = _vol_pct_for_dte(dte)
     mark_mid, mark_src = _native_mark_mid(product)
@@ -260,33 +267,35 @@ def _fetch_ladder_uncached(
         mark_mid=mark_mid,
         mark_src=mark_src,
     )
-    # probe counts as Massive traffic
     mb_metrics.record_massive_call(1)
 
     def _pull(lo: float | None, hi: float | None) -> list:
         mb_metrics.record_massive_call(1)
+        # HM15: both sides — never pass contract_type
         return client.fetch_option_chain(
             chain_underlier,
             expiration_date=expiration,
             strike_price_gte=lo,
             strike_price_lte=hi,
-            contract_type=side if side in ("call", "put") else None,
+            contract_type=None,
             limit=MASSIVE_PAGE_LIMIT,
             max_pages=1,
+            allow_truncate=False,  # HM18
         )
 
-    if is_index:
-        _band0, lo0, hi0, _atm0 = strike_window_from_wings(
-            spot, step=step_guess, wings=wings
-        )
-        raw = _pull(lo0, hi0)
-    else:
-        raw = _pull(None, None)
-        listed = _strikes_from_raw(raw)
-        if listed:
-            pad = max(wings * step_guess * 1.5, wings * 2.5)
-            if min(listed) > spot - pad * 0.5 or max(listed) < spot + pad * 0.5:
-                raw = _pull(spot - pad, spot + pad)
+    try:
+        if is_index:
+            _band0, lo0, hi0, _atm0 = strike_window_from_wings(
+                spot, step=step_guess, wings=wings_eff
+            )
+            raw = _pull(lo0, hi0)
+        else:
+            _band0, lo0, hi0, _atm0 = strike_window_from_wings(
+                spot, step=step_guess, wings=wings_eff
+            )
+            raw = _pull(lo0, hi0)
+    except MassiveClientError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     chain_spot2 = extract_chain_underlying_price(raw)
     if chain_spot2 is not None:
@@ -297,12 +306,12 @@ def _fetch_ladder_uncached(
     if not listed_strikes:
         raise HTTPException(
             status_code=502,
-            detail=f"No option contracts returned for {product} {expiration} {side}",
+            detail=f"No option contracts returned for {product} {expiration}",
         )
 
     try:
         band, lo, hi, atm, listed_n = select_listed_wing_window(
-            listed_strikes, spot, wings
+            listed_strikes, spot, wings_eff
         )
     except ValueError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -320,8 +329,9 @@ def _fetch_ladder_uncached(
         dte=dte,
         strike_lo=lo,
         strike_hi=hi,
-        wings=wings,
+        wings=wings_eff,
         strike_step=step,
+        dual_side=True,
     )
     payload["product"] = product
     payload["kind"] = kind
@@ -329,6 +339,8 @@ def _fetch_ladder_uncached(
     payload["vol_source"] = "vix1d_or_vix_native" if vol_pct is not None else "none"
     payload["atm_strike"] = atm
     payload["listed_in_window"] = listed_n
+    payload["wings_requested"] = wings_req
+    payload["wings_effective"] = wings_eff
     payload["max_strikes_per_dte"] = MAX_STRIKES_PER_DTE
     payload["massive_page_limit"] = MASSIVE_PAGE_LIMIT
     payload["bus"] = "redis" if bus_enabled() else "process"

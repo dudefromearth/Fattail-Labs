@@ -45,14 +45,21 @@ def _i(v: Any) -> int | None:
 
 
 def content_hash(payload: dict[str, Any]) -> str:
-    """Stable hash of ladder rows + spot (ignore fetch timestamps for equality)."""
+    """Stable hash of ladder rows + spot (ignore fetch timestamps for equality).
+
+    HM15/HM16: when dual_side, view ``side`` is not part of the hash — both
+    books are already in rows; Calls/Puts is a client filter only.
+    """
+    dual = bool(payload.get("dual_side", False))
     core = {
         "underlier": payload.get("underlier"),
         "expiration": payload.get("expiration"),
-        "side": payload.get("side"),
+        "dual_side": dual,
         "spot": payload.get("spot"),
         "rows": payload.get("rows") or [],
     }
+    if not dual:
+        core["side"] = payload.get("side")
     raw = json.dumps(core, sort_keys=True, default=str, separators=(",", ":"))
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
 
@@ -248,11 +255,50 @@ def _contract_side(row: dict[str, Any]) -> str | None:
     return None
 
 
+def _is_standard_contract(details: dict[str, Any], row: dict[str, Any]) -> bool:
+    """HM19: keep standard 100-share contracts; drop adjusted/non-standard."""
+    spc = details.get("shares_per_contract")
+    if spc is not None:
+        try:
+            if int(float(spc)) != 100:
+                return False
+        except (TypeError, ValueError):
+            return False
+    # Some feeds flag adjustments
+    for k in ("adjustment", "adjusted", "nonstandard", "is_adjusted"):
+        v = details.get(k)
+        if v is True or str(v).lower() in ("1", "true", "yes", "adjusted"):
+            return False
+    return True
+
+
+def modal_strike_step(strikes: list[float]) -> float | None:
+    """HM20: most common consecutive gap among distinct strikes in band."""
+    s = sorted({round(float(x), 6) for x in strikes if x is not None})
+    if len(s) < 2:
+        return None
+    counts: dict[float, int] = {}
+    for i in range(1, len(s)):
+        g = round(s[i] - s[i - 1], 6)
+        if g > 0:
+            counts[g] = counts.get(g, 0) + 1
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda kv: (kv[1], -kv[0]))[0]
+
+
+def _row_key(side: str, strike: float) -> str:
+    return f"{side}:{float(strike)}"
+
+
 def _normalize_contract(row: dict[str, Any]) -> dict[str, Any] | None:
     details = row.get("details") or {}
     quote = row.get("last_quote") or {}
     greeks = row.get("greeks") or {}
     day = row.get("day") or {}
+
+    if not _is_standard_contract(details, row):
+        return None
 
     strike = _f(details.get("strike_price"))
     if strike is None:
@@ -311,14 +357,17 @@ def build_ladder(
     wings: int | None = None,
     strike_step: float | None = None,
     sigma: float | None = None,
+    dual_side: bool = True,
+    excluded_adjusted_count: int = 0,
 ) -> dict[str, Any]:
-    """Filter one side to strike window; vertical strike order.
+    """Build ladder for strike window.
 
-    Prefer explicit ``strike_lo`` / ``strike_hi`` (broker wings). Falls back to
-    ``spot ± band`` when bounds are omitted.
+    **HM15:** When ``dual_side=True`` (default for Heatmap), both call and put
+    standard contracts in the window are included. ``side`` is retained for
+    view-filter consumers (rows filtered) and meta.
     """
-    side = (side or "call").strip().lower()
-    if side not in ("call", "put"):
+    view_side = (side or "call").strip().lower()
+    if view_side not in ("call", "put"):
         raise ValueError("side must be call|put")
     exp = str(expiration)[:10]
     if strike_lo is not None and strike_hi is not None:
@@ -328,51 +377,64 @@ def build_ladder(
         lo = float(spot) - float(band)
         hi = float(spot) + float(band)
 
-    by_strike: dict[float, dict[str, Any]] = {}
+    # key (side, strike) → contract; standard only via _normalize_contract
+    by_key: dict[tuple[str, float], dict[str, Any]] = {}
+    excluded = int(excluded_adjusted_count)
     for raw in raw_contracts:
+        details = raw.get("details") or {}
+        if details and not _is_standard_contract(details, raw):
+            excluded += 1
+            continue
         n = _normalize_contract(raw)
         if not n:
+            # side unknown or missing strike — not necessarily adjusted
             continue
         if n["expiration"] != exp:
             continue
-        if n["side"] != side:
+        if not dual_side and n["side"] != view_side:
             continue
         k = float(n["strike"])
         if k < lo or k > hi:
             continue
-        by_strike[k] = n
+        by_key[(str(n["side"]), k)] = n
 
-    strikes = sorted(by_strike.keys())
-    # Nearest strike to spot for highlight
+    all_strikes = sorted({k for (_s, k) in by_key.keys()}, reverse=True)
     spot_strike = None
-    if strikes:
-        spot_strike = min(strikes, key=lambda s: abs(s - float(spot)))
+    if all_strikes:
+        spot_strike = min(all_strikes, key=lambda s: abs(s - float(spot)))
 
-    rows = []
-    for k in strikes:
-        c = by_strike[k]
-        rows.append(
-            {
-                "strike": k,
-                "is_spot": spot_strike is not None and k == spot_strike,
-                "ticker": c.get("ticker"),
-                "mid": c.get("mid"),
-                "bid": c.get("bid"),
-                "ask": c.get("ask"),
-                "volume": c.get("volume"),
-                "open_interest": c.get("open_interest"),
-                "delta": c.get("delta"),
-                "gamma": c.get("gamma"),
-                "theta": c.get("theta"),
-                "vega": c.get("vega"),
-                "iv": c.get("iv"),
-            }
-        )
+    rows: list[dict[str, Any]] = []
+    for k in all_strikes:
+        for sd in ("call", "put") if dual_side else (view_side,):
+            c = by_key.get((sd, k))
+            if not c:
+                continue
+            rows.append(
+                {
+                    "strike": k,
+                    "side": sd,
+                    "is_spot": spot_strike is not None and k == spot_strike,
+                    "ticker": c.get("ticker"),
+                    "mid": c.get("mid"),
+                    "bid": c.get("bid"),
+                    "ask": c.get("ask"),
+                    "volume": c.get("volume"),
+                    "open_interest": c.get("open_interest"),
+                    "delta": c.get("delta"),
+                    "gamma": c.get("gamma"),
+                    "theta": c.get("theta"),
+                    "vega": c.get("vega"),
+                    "iv": c.get("iv"),
+                }
+            )
+
+    modal = strike_step if strike_step is not None else modal_strike_step(all_strikes)
 
     payload = {
         "underlier": underlier,
         "expiration": exp,
-        "side": side,
+        "side": view_side,  # view default; books hold both when dual_side
+        "dual_side": bool(dual_side),
         "spot": float(spot),
         "vix": vix,
         "dte": int(dte),
@@ -383,13 +445,14 @@ def build_ladder(
         "fields": list(LADDER_FIELDS),
         "rows": rows,
         "row_count": len(rows),
+        "excluded_adjusted_count": excluded,
         "as_of": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "fetched_at_unix": time.time(),
     }
     if wings is not None:
         payload["wings"] = int(wings)
-    if strike_step is not None:
-        payload["strike_step"] = float(strike_step)
+    if modal is not None:
+        payload["strike_step"] = float(modal)
     if sigma is not None:
         payload["sigma"] = float(sigma)
     payload["content_hash"] = content_hash(payload)
@@ -444,15 +507,28 @@ def diff_ladder(
             "as_of": nxt.get("as_of"),
         }
 
-    prev_by = {float(r["strike"]): r for r in (prev.get("rows") or []) if r.get("strike") is not None}
-    next_by = {float(r["strike"]): r for r in (nxt.get("rows") or []) if r.get("strike") is not None}
+    def _key(r: dict[str, Any]) -> str:
+        sd = str(r.get("side") or "call").lower()
+        return _row_key(sd, float(r["strike"]))
+
+    prev_by = {
+        _key(r): r
+        for r in (prev.get("rows") or [])
+        if r.get("strike") is not None
+    }
+    next_by = {
+        _key(r): r
+        for r in (nxt.get("rows") or [])
+        if r.get("strike") is not None
+    }
 
     upserts: list[dict[str, Any]] = []
-    for strike, row in next_by.items():
-        old = prev_by.get(strike)
+    for key, row in next_by.items():
+        old = prev_by.get(key)
         if old is None or _row_signature(old) != _row_signature(row):
             upserts.append(row)
 
+    # removes: composite keys "call:7800.0" for dual-side safety
     removes = sorted(s for s in prev_by.keys() if s not in next_by)
 
     meta_changed = {

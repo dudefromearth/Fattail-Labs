@@ -182,7 +182,169 @@ def test_build_and_diff_only_changed_strikes():
     )
     d2 = diff_ladder(c, e)
     assert d2["mode"] == "diff"
-    assert 5010.0 in d2["removes"]
+    # HM15: removes are composite "side:strike" keys
+    assert "call:5010.0" in d2["removes"]
+    assert 5010.0 not in d2["removes"]
+
+
+def test_dual_side_build_includes_calls_and_puts():
+    """HM15: one ladder holds both books; side is view meta only."""
+    spot = 5000.0
+    raw = [
+        _raw(4990, mid=10.0, side="call"),
+        _raw(4990, mid=9.0, side="put"),
+        _raw(5000, mid=12.0, side="call"),
+        _raw(5000, mid=11.0, side="put"),
+        _raw(5010, mid=8.0, side="call"),
+        _raw(5010, mid=13.0, side="put"),
+    ]
+    a = build_ladder(
+        raw,
+        underlier="I:SPX",
+        spot=spot,
+        expiration="2026-08-15",
+        side="call",
+        band=50.0,
+        vix=15.0,
+        dte=1,
+        wings=25,
+        strike_step=5.0,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
+        dual_side=True,
+    )
+    assert a["dual_side"] is True
+    assert a["side"] == "call"
+    assert a["row_count"] == 6
+    sides = {(r["side"], r["strike"]) for r in a["rows"]}
+    assert ("call", 5000.0) in sides
+    assert ("put", 5000.0) in sides
+    assert a.get("strike_step") == 5.0
+
+    # put-only view meta still keeps both books
+    b = build_ladder(
+        raw,
+        underlier="I:SPX",
+        spot=spot,
+        expiration="2026-08-15",
+        side="put",
+        band=50.0,
+        vix=15.0,
+        dte=1,
+        wings=25,
+        strike_step=5.0,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
+        dual_side=True,
+    )
+    assert b["row_count"] == 6
+    assert b["side"] == "put"
+
+    # single-side opt-out still works for legacy
+    c = build_ladder(
+        raw,
+        underlier="I:SPX",
+        spot=spot,
+        expiration="2026-08-15",
+        side="call",
+        band=50.0,
+        vix=15.0,
+        dte=1,
+        dual_side=False,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
+    )
+    assert c["row_count"] == 3
+    assert all(r["side"] == "call" for r in c["rows"])
+
+
+def test_diff_dual_side_composite_keys():
+    """Only the changed side:strike upserts; other book untouched."""
+    spot = 5000.0
+    raw = [
+        _raw(5000, mid=12.0, side="call"),
+        _raw(5000, mid=11.0, side="put"),
+    ]
+    a = build_ladder(
+        raw,
+        underlier="I:SPX",
+        spot=spot,
+        expiration="2026-08-15",
+        side="call",
+        band=50.0,
+        vix=15.0,
+        dte=1,
+        dual_side=True,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
+    )
+    raw2 = [
+        _raw(5000, mid=12.5, side="call"),  # call mid change
+        _raw(5000, mid=11.0, side="put"),
+    ]
+    b = build_ladder(
+        raw2,
+        underlier="I:SPX",
+        spot=spot,
+        expiration="2026-08-15",
+        side="call",
+        band=50.0,
+        vix=15.0,
+        dte=1,
+        dual_side=True,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
+    )
+    d = diff_ladder(a, b)
+    assert d["mode"] == "diff"
+    assert d["changed_strike_count"] == 1
+    assert d["upserts"][0]["side"] == "call"
+    assert float(d["upserts"][0]["mid"]) == 12.5
+
+
+def test_standard_contract_filter_excludes_adjusted():
+    """HM19: non-100 shares_per_contract dropped + counted."""
+    raw = [
+        _raw(5000, mid=12.0, side="call"),
+        {
+            "details": {
+                "strike_price": 5010,
+                "expiration_date": "2026-08-15",
+                "contract_type": "call",
+                "ticker": "O:SPXW260815C05010000",
+                "shares_per_contract": 10,
+            },
+            "last_quote": {"bid": 1.0, "ask": 1.2, "midpoint": 1.1},
+            "greeks": {},
+            "open_interest": 5,
+            "day": {"volume": 1},
+        },
+    ]
+    a = build_ladder(
+        raw,
+        underlier="I:SPX",
+        spot=5000.0,
+        expiration="2026-08-15",
+        side="call",
+        band=50.0,
+        vix=15.0,
+        dte=1,
+        dual_side=True,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
+    )
+    assert a["row_count"] == 1
+    assert a["excluded_adjusted_count"] == 1
+    assert a["rows"][0]["strike"] == 5000.0
+
+
+def test_modal_strike_step():
+    from market_data.chain_ladder import modal_strike_step
+
+    # mostly 5s with one 10 gap
+    strikes = [4990, 4995, 5000, 5005, 5010, 5020]
+    assert modal_strike_step(strikes) == 5.0
+    assert modal_strike_step([100.0]) is None
 
 
 def test_next_three_expiries_are_distinct_sorted_with_dte():

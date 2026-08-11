@@ -98,10 +98,14 @@ class MassiveClient:
         contract_type: str | None = None,
         max_pages: int = 500,
         page_pause_s: float = 0.05,
+        allow_truncate: bool = True,
     ) -> list[dict[str, Any]]:
         """Paginate GET /v3/snapshot/options/{underlying} until exhausted.
 
         Massive max limit is 250 per page. Prefer strike + expiry filters for SPX.
+
+        ``allow_truncate=False`` (Heatmap HM18): if ``next_url`` remains after
+        ``max_pages``, raise — never return a silent partial dual-side chain.
         """
         underlying = (underlying or "").strip()
         if not underlying:
@@ -132,13 +136,12 @@ class MassiveClient:
         while url:
             pages += 1
             if pages > max_pages:
-                # Soft stop: return what we have when filters are loose (e.g. expiry scan)
-                # only if we already collected something; else fail loud.
-                if results:
+                if allow_truncate and results:
                     return results
                 raise MassiveClientError(
                     f"Chain pagination exceeded max_pages={max_pages} "
-                    f"({len(results)} contracts so far) — check filters"
+                    f"({len(results)} contracts so far) — check filters "
+                    f"(HM18: truncated chain not allowed when allow_truncate=False)"
                 )
             data = self._get_json(url)
             batch = data.get("results") or []
@@ -149,6 +152,11 @@ class MassiveClient:
                     results.append(row)
             next_url = data.get("next_url")
             if next_url:
+                if pages >= max_pages and not allow_truncate:
+                    raise MassiveClientError(
+                        "truncated option chain: next_url present after page limit "
+                        f"(contracts={len(results)}) — narrow wings (HM18)"
+                    )
                 nu = str(next_url).strip()
                 if nu.startswith("http"):
                     url = nu
