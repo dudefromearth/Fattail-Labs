@@ -4,6 +4,21 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-297 Position Builder full-agent bench plan v1.0 (BUILD plan filed)
+
+**Decision:** File full agent bench implementation plan for Position Builder Spec **v0.2** (Coach accepted).
+
+| Artifact | Path |
+|----------|------|
+| Plan v1.0 | `docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md` |
+| Board | `agents/p-options-lab-position-builder/` |
+| Law | Spec v0.2 · OPF v0.2.1 |
+
+**DAG:** W0 → D → P → I → L → S → C → U → M → A → K → Z  
+**Critical path:** Package SoR (P) → live re-resolve (S) → cards algorithm (C) → litmus **AT-PB-R1a** (K).  
+**OD-PB1–17:** locked to Spec recommendations as program Accept at W0 unless Override on DL.  
+**Coach W0-0 GO** still required before implementation seeds fire. No OMS / multi-aggregate / full replay UX (NX).
+
 ## 2026-08-11 — DL-296 Position Builder Spec v0.2 — advisor + Coach coherence fold
 
 **Decision:** Fold external advisor review (B1–B6, A1–A9) and Coach Addendum 1 (use-case-scoped litmus) into **Position Builder & Book Spec v0.2**.

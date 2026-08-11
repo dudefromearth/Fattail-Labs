@@ -7,10 +7,11 @@
 **Supersedes:** [`FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_1.md`](./FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_1.md) (v0.1 retained as historical; **do not implement against v0.1**)  
 **Surface:** Options Lab **Analyzer** (`/app/options-lab/analyzer`)  
 
-**Process:** Spec for review → OD Accept/Override → **implementation plan** → code/ATs.  
-**No BUILD GO** implied by this fold alone.
+**Process:** Spec accepted (Coach) → OD Accept/Override at W0 → **implementation plan** (bench) → code/ATs.  
+**Bench plan:** [`docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md`](../docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md) · board `agents/p-options-lab-position-builder/` · **DL-297**.  
+**No implementation seed fire** until Coach **W0-0 GO**.
 
-**Content integrity:** Landing content hash (sha1 of body excluding this line): `076c0416de1f820428a2bf488c7740eb38a1a1c4`.
+**Content integrity:** Landing content hash (sha1 of body excluding this line): `26551f826ef5979abb0cdf4a22bc54966c8f8d6f`.
 
 **Parents (normative where noted):**
 
