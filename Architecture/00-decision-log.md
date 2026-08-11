@@ -4,6 +4,19 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-294 Analyzer Position Builder + cards + threshold alerts
+
+**Decision:** Options Lab Analyzer gains MSC-style **Position Builder** (live dual-side mids for accurate debit/credit), **position cards** (list after Analyze), and **threshold alert cards** (price above/below/touch from PnLChart context menu). All pricing remains **OPF**; builder only hydrates leg mids/IV from chain generations.
+
+| Piece | Path |
+|-------|------|
+| Builder | `PositionBuilder.tsx` + `useBuilderChain` |
+| Book | `analyzerBook.ts` session store |
+| Cards | `AnalyzerPositionsList.tsx` |
+| Alerts | `AnalyzerAlertsSection.tsx` + chart `onOpenAlertDialog` |
+
+Focused visible card drives OPF resolve; paste/Heatmap still works when no focus.
+
 ## 2026-08-11 — DL-293 Analyzer is OPF-only (MSC pricing substituted out)
 
 **Decision:** Options Lab **Analyzer** exists to **fully exercise OPF** — dual-side chain generations as data plane, L4 `resolve` + model packs as the **only** pricing path. MSC regimes / Heston / Monte Carlo / client `riskGraphEngine` are **not** Analyzer pricing models.

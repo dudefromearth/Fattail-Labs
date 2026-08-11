@@ -11,7 +11,7 @@ export const ANALYZER_TRADE_KEY = "ft_options_lab_analyzer_trade_v1";
 export type StoredAnalyzerTrade = {
   raw: string;
   savedAt: number;
-  source: "heatmap" | "paste" | "manual";
+  source: "heatmap" | "paste" | "manual" | "builder";
 };
 
 export function saveAnalyzerTrade(
