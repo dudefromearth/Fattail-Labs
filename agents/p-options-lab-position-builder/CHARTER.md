@@ -2,7 +2,7 @@
 
 **Program:** Position Builder / Book (Analyzer)  
 **Plan:** [`docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md)  
-**Law:** [`Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md`](../../Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md) · OPF Spec v0.2.1
+**Law:** [`Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md`](../../Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md) (v0.2 SUPERSEDED · VIEW-7 + B5 fold DL-306) · OPF Spec v0.2.1
 
 ## Mission
 

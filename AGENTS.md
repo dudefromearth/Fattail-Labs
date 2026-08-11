@@ -57,7 +57,7 @@ growth playbook [`Architecture/17-strategy-lab-growth-playbook.md`](./Architectu
 | Strategy Lab Curate/Deploy surface | `Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` |
 | **Market Bus (live market plane)** | Spec `FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` · Arch **28** · bench `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md` |
 | **Live underlier mids (UI standard)** | Arch **28** §4.4 · `web/lib/market/liveUnderlierPattern.ts` · hook `useLiveUnderlierMarks` · `<LiveMid />` / `LiveUnderliersTable` |
-| **Options Lab Analyzer** | Spec content **v0.2.1** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md` · residual bench `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-analyzer/` · **DL-301…305** · OD-AZ1–8 Accept |
+| **Options Lab Analyzer** | Spec content **v0.2.1** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md` (v0_1 SUPERSEDED) · PB Spec **v0.3** · residual bench plan **v1.0.1** `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-analyzer/` · **DL-301…306** · OD-AZ1–8 Accept · BUILD GO = Coach W0-0 |
 | **Options chain ladder** | Spec `FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` · route `/app/options-lab` · board `agents/p-market-bus/` + `agents/p-options-chain-picker/` |
 | Curate MySQL marks (dual-write / fallback) | Arch **18** · `live_stream` / `sym_feed` → `market_live_marks`; product UI mids still use live underlier pattern |
 | Community | `Specs/FatTail-Labs-Community-App-Spec-v1.0.md` · `docs/Community-Chat-Discord-Second-Window.md` |

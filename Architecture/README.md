@@ -48,10 +48,10 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Arch **30** | **Options Pricing Foundation** (design): L0–L4 data plane + day/outlook/backtest packs · foundation before app wiring |
 | Spec **OPF v0.2.1** | `Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` — normative law (OPF1–33); v0.1 superseded |
 | Bench **OPF** | `docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-pricing-foundation/` |
-| Spec **Position Builder/Book v0.2** | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md` — product law (Coach accepted); DL-296; v0.1 SUPERSEDED |
+| Spec **Position Builder/Book v0.3** | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md` — VIEW-7 + B5; v0.2 SUPERSEDED; **DL-306** |
 | Bench **Position Builder** | `docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-position-builder/` · DL-297 |
-| Spec **Analyzer v0.2.1** | `Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md` — six buckets · Risk/Surface · OD-AZ1–8 Accept · advisor fold; **DL-301…304** |
-| Bench **Analyzer residual** | `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-analyzer/` · **DL-305** |
+| Spec **Analyzer v0.2.1** | `Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md` — six buckets · Risk/Surface · OD-AZ1–8 Accept · advisor fold; v0_1 SUPERSEDED; **DL-301…306** |
+| Bench **Analyzer residual** | `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` (**v1.0.1**) · board `agents/p-options-lab-analyzer/` · **DL-305/306** |
 | Spec **Heatmap Templates v0.2** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` — product law (DRAFT); v0.1 superseded |
 | Bench plan | `docs/Options-Lab-Heatmap-Templates-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-heatmap/` |
 | Spec | `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` v1.0.1 |

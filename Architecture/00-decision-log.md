@@ -55,6 +55,25 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 | A1–A8 | Adopt as law (A8 intent with OD-AZ8) |
 | P1–P2 | Hash recompute + this DL |
 
+## 2026-08-11 — DL-306 Analyzer residual plan advisor fold + path/hash reconcile
+
+**Decision:** Fold external advisor **plan review** (Claude 2026-08-11 · P-B1…P-B4 · P-A1…P-A5) into residual program law and primary Spec paths.
+
+| ID | Disposition |
+|----|-------------|
+| **P-B1** | Analyzer Spec content v0.2.1 lives at `Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md`. Path `...Analyzer-Spec-v0_1.md` is **SUPERSEDED** stub only. |
+| **P-B2** | Land **PB Spec v0.3** at `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md` carrying PB-VIEW-7 + B5 triple (six-state `liveState` · package magnitude invariant · ANALYSIS-only). PB v0.2 **SUPERSEDED**. D-phase cites v0.3. |
+| **P-B3** | U-phase exit: any new OPF surface-sample API requires **OPF Spec delta** + DL; U-G includes load posture (samples/render, requests/mesh, budget). |
+| **P-B4** | Posture fixture ATs (holiday · half-day · 16:00–16:15 index window) in S/K — not unevidenced “Landed”. |
+| **P-A1** | T depends on **W0 only** (not L). |
+| **P-A2** | Probability surface law promoted before R-G; Mike auth in R-G evidence. |
+| **P-A3** | Tango T-2 seed; Kilo owns characterization (A-2, S-2). |
+| **P-A4** | U hard-depends **S + L**. |
+| **P-A5** | W0-1 hash-verifies **Analyzer + PB + OPF** in one pass. |
+
+**Plan revision:** `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` → **v1.0.1**.  
+**Does not:** authorize residual BUILD — still Coach **W0-0 GO**.
+
 ## 2026-08-11 — DL-305 Analyzer residual full-agent bench plan v1.0
 
 **Decision:** File residual implementation program for Analyzer Spec v0.2.1:
@@ -64,7 +83,8 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 **Phases:** W0 → L (layout) → B (defaults) → T (what-if) → A (alerts) → D (domain) → S (stream/stale) → V (VP bins) → U (Surface 3D OPF) → R (Probability) → K → Z.
 
-**Authority:** OD-AZ1–8 already Accept (DL-304). Residual **BUILD GO** = Coach W0-0 on this board (not implied by this DL alone).
+**Authority:** OD-AZ1–8 already Accept (DL-304). Residual **BUILD GO** = Coach W0-0 on this board (not implied by this DL alone).  
+**Superseding hygiene:** path/hash + PB v0.3 + plan advisor fold → **DL-306**.
 
 ## 2026-08-11 — DL-304 Coach Accept OD-AZ1–8 (Analyzer)
 
@@ -175,7 +195,8 @@ UI, wrong product binding, and proxy-as-native confusion. One pattern.
 
 | Artifact | Path |
 |----------|------|
-| Spec **v0.2** (current) | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md` |
+| Spec **v0.3** (current) | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md` |
+| Spec **v0.2** (SUPERSEDED) | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md` |
 | Spec v0.1 | SUPERSEDED historical |
 
 **Blocking folds:** OPF-served card package (OD-PB12) · PB-VIEW-5 live re-resolve · PB18a skew · signed D\* · AT-PB-R1a–d litmus · PB17b interest · Held labels (PB-MODE-3).  

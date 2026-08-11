@@ -4,7 +4,7 @@
 
 → [`docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md)
 
-**Spec:** [`Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md`](../../Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md)
+**Spec:** [`Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md`](../../Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md) (v0.2 SUPERSEDED)
 
 **OPF law:** [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](../../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md)
 

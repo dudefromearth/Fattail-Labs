@@ -1,18 +1,18 @@
-# FatTail Labs — Options Lab Position Builder & Position Book Spec v0.2
+# FatTail Labs — Options Lab Position Builder & Position Book Spec v0.3
 
-**Status:** **SUPERSEDED** by [`FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md`](./FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md) (2026-08-11 · residual P-B2)  
-**Historical:** DRAFT · review baseline (review-folded) (2026-08-11)  
+**Status:** **DRAFT · residual fold (Analyzer advisor)** (2026-08-11)  
 **Type:** Product Spec — structure construction, position book, card↔viewport law, package lock, **use-case coherence**  
 **Short name:** **Position Builder / Book** · **PB**  
-**Filename:** `FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md`  
-**Supersedes:** [`FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_1.md`](./FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_1.md) (v0.1 retained as historical; **do not implement against v0.1**)  
+**Filename:** `FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md`  
+**Supersedes:** [`FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md`](./FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md) (v0.2 retained historical; implement against **v0.3**)
+**Parents still:** v0.1 historical only  
 **Surface:** Options Lab **Analyzer** (`/app/options-lab/analyzer`)  
 
 **Process:** Spec accepted (Coach) → OD Accept/Override at W0 → **implementation plan** (bench) → code/ATs.  
 **Bench plan:** [`docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md`](../docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md) · board `agents/p-options-lab-position-builder/` · **DL-297**.  
 **No implementation seed fire** until Coach **W0-0 GO**.
 
-**Content integrity:** Landing content hash (sha1 of body excluding this line): `26551f826ef5979abb0cdf4a22bc54966c8f8d6f`.
+**Content integrity:** Landing content hash (sha1 of body excluding this line): `88e96ed8d2ecae3de64abe32d58fb320bdd70c20`.
 
 **Parents (normative where noted):**
 
@@ -606,3 +606,34 @@ Broker place/close · multi-tab authoritative sync · MSC alert SSE/AI · client
 **End of Spec v0.2.**  
 **Litmus status as product law:** defined and AT-gated (R1a live; R1b held; R1c outlook; R1d backtest).  
 **Litmus status as code:** not claimed green until implementation plan lands ATs.
+
+
+---
+
+## 16. v0.3 residual fold (Analyzer advisor P-B2 · 2026-08-11)
+
+Material law changes from Analyzer residual-bench review. **Implement against this file.**
+
+### 16.1 PB-VIEW-7 — ratified (OD-PB16 Accept)
+
+Already stated in §0.1 as normative (pin · re-anchor · stale). v0.3 **closes** the “recommendation until OD” wording: **OD-PB16 Accept**. Silent auto-re-anchor forbidden.
+
+### 16.2 Six-state `liveState` (B5)
+
+Normative enum:
+
+`live | held | not_live | budget_refused | incomplete | skewed`
+
+### 16.3 Package field invariant (B5)
+
+When `lastNatSigned` is set: **`livePackagePerShare ≡ |lastNatSigned|`** at all times. Prefer signed storage; derive magnitude at render.
+
+### 16.4 Status enum (OD-PB6)
+
+v0.3 book product status: **ANALYSIS only**. Full OMS enum reserved until a future OD opens lifecycle tracking — not silent dual scope.
+
+### 16.5 Document control
+
+| Version | Date | Notes |
+|---------|------|-------|
+| **v0.3** | 2026-08-11 | PB-VIEW-7 + B5 triple · Analyzer residual bench P-B2 |

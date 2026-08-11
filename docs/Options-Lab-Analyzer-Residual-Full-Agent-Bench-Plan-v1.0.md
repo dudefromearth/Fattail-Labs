@@ -1,7 +1,7 @@
 # Options Lab Analyzer Residual — Full Agent Bench Plan v1.0
 
 **Date:** 2026-08-11  
-**Plan revision:** **v1.0**  
+**Plan revision:** **v1.0.1** (advisor Claude plan review fold)  
 **Owner (orchestration):** Juliet  
 **Authority:** Coach (GO / ship)  
 **Board:** [`agents/p-options-lab-analyzer/`](../agents/p-options-lab-analyzer/)  
@@ -11,10 +11,10 @@
 
 | Doc | Path |
 |-----|------|
-| **Analyzer Spec content v0.2.1** | [`Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md) |
-| **Position Builder Spec v0.2** (+ PB-VIEW-7 fold) | [`Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md) |
-| **OPF Spec v0.2.1** | [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) |
-| **DL-301…304** | [`Architecture/00-decision-log.md`](../Architecture/00-decision-log.md) |
+| **Analyzer Spec v0.2.1** | [`Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md) (v0_1 path **SUPERSEDED**) |
+| **Position Builder Spec v0.3** | [`Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md`](../Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md) (v0.2 SUPERSEDED) |
+| **OPF Spec v0.2.1** (+ surface-sample delta if U lands API) | [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) |
+| **DL-301…306** | [`Architecture/00-decision-log.md`](../Architecture/00-decision-log.md) |
 
 **Parents (do not re-litigate):**
 
@@ -37,7 +37,8 @@ Delta gates: **PASS / FAIL / BLOCKED** with evidence — **never waived**.
 | Analyzer Spec product map | Coach + advisor fold (DL-303) |
 | **OD-AZ1–8 Accept** | **DL-304** |
 | Advisor B1–B5 / A1–A8 fold | DL-302/303 + Spec §15 |
-| PB-VIEW-7 / OD-PB16 | Ratified Accept |
+| PB-VIEW-7 / OD-PB16 | Ratified Accept · **PB Spec v0.3** |
+| Plan advisor fold | P-B1…P-B4 · P-A1…P-A5 (this revision) |
 
 **This plan does not re-open ODs.** It executes residual **as-built → law** gaps.
 
@@ -111,7 +112,8 @@ Suite symbol + market posture
 | Builder listed strikes · live DEBIT/CREDIT | Landed partial |
 | Surface viewport **mode shell** (Risk \| Surface switcher) | Landed scaffold |
 | Advisor fold B1–B5 · A1–A8 (Spec + partial code) | Landed Spec; partial code |
-| `risk-graph/` rename · session-status posture · RECON override chip | Landed |
+| `risk-graph/` rename · RECON override chip | Landed |
+| session-status posture (B2) | **Code partial — fixture ATs residual (P-B4 → S/K)** |
 | OD-AZ1–8 Coach Accept | **DL-304** |
 
 ### 2.2 Build (this program — residual matrix)
@@ -186,29 +188,34 @@ Suite symbol + market posture
 ## 4. Phase DAG
 
 ```text
-W0 ──► L ──► B ──► T ──► A ──► D ──► S ──► V ──► U ──► R ──► K ──► Z
-              │         │              │
-              └─────────┴── T/A may parallel after L;
-                           V may parallel U after S (shared OPF care);
-                           R after L (suite page) can start mid-DAG after W0+L
+W0 ──► L ──► A ──► R ──► K ──► Z
+ │      │
+ │      └──► (U needs L hard)
+ │
+ ├──► B ──────────────────────────┐
+ ├──► T ──────────────────────────┤
+ ├──► D (after PB v0.3 in W0) ────┼──► K
+ ├──► S (+ posture fixtures) ─────┤
+ └──► V ──────────────────────────┘
+           S+L ──► U ─────────────┘
 ```
 
 | Phase | Name | Depends | Exit summary |
 |-------|------|---------|--------------|
-| **W0** | GO · board · hash · seeds skeleton | — | Coach W0-0 GO fire; Spec v0.2.1 BUILD authority for residual |
+| **W0** | GO · path/hash reconcile · **PB v0.3** · board | — | Analyzer-Spec-v0_2 path · PB v0.3 · OPF hash · W0-0 GO |
 | **L** | Layout residual (OD-AZ1/2) | W0 | Top strip · viewport · divider · positions under · alerts under |
 | **B** | Builder defaults matrix (OD-AZ3 · AZ-DEF) | W0 | Butterfly default · ATM · profile min wing · all templates |
-| **T** | Time machine / override UX (A6 · B4) | L | Enable gates all knobs · banner · RECON override intact |
-| **A** | Alerts polish (A1/A5/A7) | L | Raw eval · 20 of N · multi-symbol badge |
-| **D** | Domain hygiene (B5) | W0 | ANALYSIS-only · magnitude invariant tests |
-| **S** | Stream / cache stale (VIEW-5 · A4) | W0 | Generation-driven resolve polish · stale cache label |
+| **T** | Time machine / override UX (A6 · B4) | **W0 only** (P-A1) | Enable gates all knobs · banner · RECON override · Tango copy |
+| **A** | Alerts polish (A1/A5/A7) | L | 20 of N · multi-symbol badge · Kilo characterization |
+| **D** | Domain hygiene (B5) | W0 + **PB v0.3** | ANALYSIS-only · magnitude invariant · cites PB v0.3 |
+| **S** | Stream / cache stale + posture fixtures (P-B4) | W0 | Stale label · session-status ATs (holiday/half-day/16:15) |
 | **V** | VP bins-only (AZ-VP-9) | W0 | No candles on VP surface |
-| **U** | Surface 3D OPF mesh (AZ-VP-S*) | S + L | Mesh from OPF samples · MSC scene only |
-| **R** | Probability suite panel (OD-AZ8) | L | Route + panel · IV/VIX as_of label |
-| **K** | Full residual AT matrix | all prior | K-G PASS |
+| **U** | Surface 3D OPF mesh | **S + L** (hard) | Mesh OPF-fed · OPF spec delta if new API · load posture evidence |
+| **R** | Probability suite panel (OD-AZ8) | L | Normative Spec section · route · Mike auth · as_of label |
+| **K** | Full residual AT matrix + posture ATs | all prior | K-G PASS |
 | **Z** | As-built · DL close | K | Program close |
 
-**Parallelism:** After **W0**, **B**, **D**, **S**, **V** can start in parallel. **L** unblocks **T**, **A**, **R**. **U** needs **S** (and preferably **L** for full-bleed canvas).
+**Parallelism:** After **W0**: **B · T · D · S · V** parallel. **L** unblocks **A · R · U**. **U** hard-depends **S and L**.
 
 ---
 
@@ -217,7 +224,10 @@ W0 ──► L ──► B ──► T ──► A ──► D ──► S ─�
 ### W0 — Board GO
 
 - Juliet: CHARTER · ORCHESTRATOR · IMPLEMENTATION-PLAN · seeds · gate-reports skeleton.  
-- Lima: Spec v0.2.1 hash verify; DL-304 already Accept; DL residual program open.  
+- Lima (**P-B1 / P-B2 / P-A5**):  
+  - Filename reconcile: Analyzer law at `...Analyzer-Spec-v0_2.md`; v0_1 = SUPERSEDED stub.  
+  - Land **PB Spec v0.3** (VIEW-7 + B5 triple); mark PB v0.2 SUPERSEDED.  
+  - Hash-verify **Analyzer + PB + OPF** in one pass; update integrity lines; DL-306.  
 - India: parents intact; NX list; DL-302 port boundary.  
 - Delta: W0-G PASS → Coach **W0-0 residual BUILD GO**.
 
@@ -239,30 +249,31 @@ W0 ──► L ──► B ──► T ──► A ──► D ──► S ─�
 - Profile wings / fly_widths[0] (A2/A3).  
 - Hotel: listed-only integrity.
 
-### T — Time machine / override (A6 · B4)
+### T — Time machine / override (A6 · B4) · deps **W0 only**
 
 - Enable gates **time · vol · spot%** uniformly.  
 - Active what-if / override banner.  
 - RECON remains `override` when active (already partial).  
-- Tango: copy for override/Held.
+- **Tango seed T-2:** copy for override / Held / incomplete / stale (P-A3).
 
 ### A — Alerts polish
 
 - List “showing 20 of N”.  
 - Multi-symbol: show all cards; badge off-symbol; focus syncs symbol (A5).  
 - Touch tolerance profile field residual if cheap.  
-- Raw eval already landed — characterize.
+- **Kilo seed A-2:** characterize raw-mark evaluation (P-A3) — not Charlie-only.
 
-### D — Domain hygiene (B5)
+### D — Domain hygiene (B5) · cites **PB Spec v0.3**
 
 - Enforce status ANALYSIS in create path; document reserved OMS tokens.  
 - Assert package magnitude invariant in applyPackageQuote / tests.  
-- Kilo unit tests.
+- Kilo unit tests against PB v0.3 field laws.
 
-### S — Stream / cache stale
+### S — Stream / cache stale + posture evidence (P-B4)
 
 - Reduce poll-as-SoR toward generation-driven apply where feasible.  
 - Explicit **stale** label on module-cache paint until soft-refresh (A4).  
+- **Posture fixtures (Kilo):** holiday date → Held; half-day early close → Held after close; SPX **16:05** vs profile (index 16:15 law residual).  
 - India: dual-truth check.
 
 ### V — Volume Profile bins-only
@@ -271,27 +282,31 @@ W0 ──► L ──► B ──► T ──► A ──► D ──► S ─�
 - Keep OHLC store as bin input only.  
 - AT: no candle series in DOM/canvas for VP.
 
-### U — Surface 3D OPF mesh
+### U — Surface 3D OPF mesh · **hard deps S + L** (P-A4)
 
-- Port MSC `RiskGraph3DView` scene under `risk-graph/` (DL-302).  
-- Feed mesh from OPF samples (Alpha: dense resolve / multi-spot multi-τ or client sample loop **calling OPF only**).  
-- Same trade/focus/pack/what-if as Risk mode.  
-- Hotel: no MSC theo.  
-- AT: mode switch preserves book; mesh updates with pack/focus.
+- Port MSC `RiskGraph3DView` scene under `risk-graph/` (DL-302 presentation-only).  
+- Feed mesh from OPF samples only.  
+- **P-B3 law:** if a **new** server sample/surface endpoint is required → land **OPF Spec delta** (v0.2.2 or v0.3) + **DL entry** **before** U-G. Client storm of unbounded resolves is **not** an acceptable SoR design — load posture must be explicit (samples per render, requests per mesh, budget interaction).  
+- U-G evidence: mode switch preserves book; mesh updates with pack/focus; OPF-only grep; **load posture numbers**; OPF delta path if API new.  
+- Hotel: no MSC theo.
 
-### R — Probability suite panel (OD-AZ8)
+### R — Probability suite panel (OD-AZ8) · P-A2
 
-- Route `/app/options-lab/probability` (or agreed path) · suite nav entry.  
+- **Before R-G:** promote Spec §1.16.4 to a **normative Probability section** (laws + AT + route) in Analyzer Spec v0.2.x (or slim standalone).  
+- Route `/app/options-lab/probability` · suite nav entry.  
 - Labeled IV/VIX basis + own as_of/session (A8).  
-- Structure-relative band when Analyzer-focused card exists (read session book if available).  
+- Structure-relative band when focused card exists.  
+- **Mike seed R-2:** auth on new route (P-A2).  
+- Tango: no profit theater copy.  
 - No profit theater (Hotel/Tango).
 
 ### K — Evidence
 
 - AT-AZ-1…12 residual + AT-AZ-L1…L6 layout/defaults.  
-- Surface mode smoke.  
+- **Posture ATs (P-B4):** holiday · half-day · 16:00–16:15 index window (fixtures).  
+- Surface mode smoke + load posture.  
 - VP bins-only.  
-- R1a if package path touched (coordinate PB close evidence).
+- R1a if package path touched.
 
 ### Z — Close
 
@@ -306,22 +321,26 @@ W0 ──► L ──► B ──► T ──► A ──► D ──► S ─�
 | Seed | Agent | Phase |
 |------|-------|--------|
 | W0-0-coach-go | Coach | W0 |
-| W0-1-lima-hash | Lima | W0 |
+| W0-1-lima-hash | Lima | W0 · **Analyzer+PB+OPF hashes · path reconcile · PB v0.3** |
 | W0-2-india-parents | India | W0 |
 | L-1-echo-layout | Echo | L |
 | L-2-charlie-layout | Charlie | L |
 | B-1-charlie-defaults | Charlie | B |
 | B-2-hotel-listed | Hotel | B |
 | T-1-charlie-whatif | Charlie | T |
+| T-2-tango-copy | Tango | T (+ R copy) |
 | A-1-charlie-alerts | Charlie | A |
-| D-1-alpha-book | Alpha | D |
+| A-2-kilo-alert-eval | Kilo | A |
+| D-1-alpha-book | Alpha | D (PB v0.3) |
 | S-1-charlie-stale | Charlie | S |
+| S-2-kilo-posture-fixtures | Kilo | S / K |
 | V-1-charlie-vp-bins | Charlie | V |
 | U-1-india-surface-plane | India | U |
 | U-2-charlie-surface-mesh | Charlie | U |
-| U-3-alpha-opf-sample | Alpha | U |
-| R-1-charlie-probability | Charlie | R |
-| K-1-kilo-matrix | Kilo | K |
+| U-3-alpha-opf-sample | Alpha | U · **OPF spec delta if API new** |
+| R-1-charlie-probability | Charlie | R · **Spec section first** |
+| R-2-mike-auth | Mike | R |
+| K-1-kilo-matrix | Kilo | K · **posture ATs** |
 | Z-1-lima-asbuilt | Lima | Z |
 | *-G-delta | Delta | each phase |
 
@@ -333,18 +352,18 @@ Seeds under `agents/p-options-lab-analyzer/seeds/`. Expand per phase before fire
 
 | Gate | Owner | Evidence |
 |------|-------|----------|
-| W0-G | Delta | Spec path · DL-304 · board · seeds skeleton |
+| W0-G | Delta | Analyzer-Spec-v0_2 path · PB v0.3 · triple hash · DL-304/306 · board |
 | L-G | Delta | Layout screenshots · testids · no left-rail book |
 | B-G | Delta | Butterfly ATM create · listed wings |
-| T-G | Delta | Enable gates all · override banner · RECON override |
-| A-G | Delta | 20 of N · multi-symbol badge |
-| D-G | Delta | invariant tests green |
-| S-G | Delta | stale cache label · resolve behavior note |
+| T-G | Delta | Enable gates all · override banner · RECON override · Tango copy |
+| A-G | Delta | 20 of N · multi-symbol badge · Kilo raw-eval note |
+| D-G | Delta | invariant tests green · cites PB v0.3 |
+| S-G | Delta | stale cache label · **posture fixture evidence** (or explicit handoff to K) |
 | V-G | Delta | VP no candles |
-| U-G | Delta | Surface mesh smoke · same book on switch · no MSC theo grep |
-| R-G | Delta | Probability route · as_of label |
-| K-G | Delta | AT matrix pack |
-| Z-G | Delta | as-built · program close |
+| U-G | Delta | Mesh smoke · book preserve · no MSC theo · **load posture** · OPF delta if API new |
+| R-G | Delta | Normative Spec section · route · as_of · **Mike auth evidence** |
+| K-G | Delta | AT matrix pack · **posture ATs** |
+| Z-G | Delta | as-built · program close · no NX false green |
 
 ---
 
@@ -365,9 +384,10 @@ Seeds under `agents/p-options-lab-analyzer/seeds/`. Expand per phase before fire
 
 | Risk | Mitigation |
 |------|------------|
-| OPF lacks dense surface samples for 3D | Alpha designs OPF multi-sample path; India blocks MSC theo shortcut |
+| OPF lacks dense surface samples for 3D | Alpha designs OPF multi-sample path **with Spec delta + DL if new API** (P-B3); India blocks MSC theo; U-G load posture |
 | Layout rewrite regresses book state | Session store tests · focus preserve ATs |
 | VP candle removal breaks bin input | Keep OHLC store; only strip presentation |
+| Posture claimed Live on holiday/half-day | S-2/K posture fixtures — no wall-clock green (P-B4) |
 | Scope creep (GEX suite, multi-device book) | NX list · Juliet blocks |
 
 ---
@@ -377,5 +397,20 @@ Seeds under `agents/p-options-lab-analyzer/seeds/`. Expand per phase before fire
 | Version | Date | Notes |
 |---------|------|-------|
 | **v1.0** | 2026-08-11 | Residual program after Spec v0.2.1 + OD-AZ1–8 Accept · DL-304 |
+| **v1.0.1** | 2026-08-11 | Advisor Claude plan review: P-B1…P-B4 · P-A1…P-A5 fold |
+
+## 11. Plan advisor disposition (Claude · residual plan review)
+
+| ID | Disposition |
+|----|-------------|
+| **P-B1** | **Accept** — Analyzer Spec at `v0_2.md`; v0_1 SUPERSEDED stub |
+| **P-B2** | **Accept** — PB Spec **v0.3** with VIEW-7 + B5 triple; D cites v0.3 |
+| **P-B3** | **Accept** — U exit requires OPF spec delta + DL if new sample API; load posture in U-G |
+| **P-B4** | **Accept** — posture fixture ATs in S/K |
+| **P-A1** | **Accept** — T depends on **W0 only** |
+| **P-A2** | **Accept** — Probability normative Spec section before R-G; Mike R-2 |
+| **P-A3** | **Accept** — Tango T-2; Kilo A-2 / S-2 |
+| **P-A4** | **Accept** — U hard-depends **S + L** |
+| **P-A5** | **Accept** — W0-1 hashes Analyzer + PB + OPF |
 
 **End of plan.**
