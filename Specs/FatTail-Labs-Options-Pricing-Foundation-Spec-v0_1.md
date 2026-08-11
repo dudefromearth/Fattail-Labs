@@ -1,6 +1,8 @@
 # FatTail Labs — Options Pricing Foundation Spec v0.1
 
-**Status:** **DRAFT** (2026-08-11) · **review-fold H1–H8 applied**  
+**Status:** **SUPERSEDED** by [`FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md)  
+**Do not implement against this file.** Retained for fold history only.
+
 **Type:** Foundation product + architecture law — **data plane + model packs**  
 **Short name:** **OPF** (Options Pricing Foundation)  
 **Architecture:** [`Architecture/30-options-pricing-foundation.md`](../Architecture/30-options-pricing-foundation.md)  

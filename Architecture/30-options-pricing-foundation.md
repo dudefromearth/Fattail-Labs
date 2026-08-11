@@ -2,12 +2,14 @@
 
 **Status:** **DESIGN** (2026-08-11) — foundation-first; **not** bound to current Options Lab apps  
 **Type:** Design architecture — shared **data plane + model packs** for accurate real-time and research P&amp;L  
-**Product law:** [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_1.md`](../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_1.md)  
-**Parents:** [Arch/28 Market Bus](./28-massive-market-bus.md) · [Market Bus Spec](../Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) (content **v1.0.1**) · [Chain Picker Spec v1.0.2](../Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md)  
+**Product law:** [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) (**v0.2**) · v0.1 historical only  
+**Parents:** [Arch/28 Market Bus](./28-massive-market-bus.md) · [Market Bus Spec](../Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) (content **v1.0.1**) · [Chain Picker Spec v1.0.2](../Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md) · [Heatmap Spec v0_2](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) (HM18/HM19)  
 
 **Not:** MSC as standard · per-app Massive clients · SSE as market transport · “pretty curves” without marks/IV truth  
 
-**Review fold (2026-08-11):** external design review H1–H8 metabolized below and in Spec v0.1 (rates/divs, epoch skew visibility, surface geometry, generation budget vs HM17, golden vectors, cold archive, OC5a on VIX tier, interest cap).
+**Review folds:**  
+- Design-doc H1–H8 → Spec v0.1 laws OPF21–28  
+- Crossed-artifact remainder R1–R7 → **Spec v0.2** (τ, RECON AT, archive stale, calendar arb, advisories, version bump, HM18/19 parent)
 
 ---
 
@@ -38,9 +40,9 @@ Build a **Labs-owned Options Pricing Foundation** so that:
 | **Fail loud** | Incomplete legs, truncated chains, missing IV for “exact” tier, surface fit fail — no silent ATM/VIX theater labeled as mark. |
 | **No MSC code/runtime** | Labs-owned types and Redis keys; no MarketSwarm schemas. |
 | **Apps are consumers** | Foundation ships without rewiring existing apps; wiring is a later program. |
-| **r/q are first-class** | Model T+0 must use explicit risk-free and dividend/borrow inputs so engine marks can be reconciled at \(t=0\). |
+| **r/q/τ are first-class** | Continuous \(r\), dividends, and **τ law** (incl. 0DTE intraday + VIX1D tenor) so T+0 can reconcile at spot. |
 | **Incoherence is visible** | Multi-exp generation skew is measured and labeled (or fail-loud for day-trade marks). |
-| **Surface geometry is frozen** | Interpolation / arb guards named in Spec — not left to implementers. |
+| **Surface geometry is frozen** | Total-variance / log-moneyness; butterfly **and calendar** arb; fit fail loud. |
 
 ---
 
@@ -163,7 +165,7 @@ Vendor chain IV embeds the vendor’s \(r,q\) assumptions. Labs engines that rep
 ```text
 MarketStaticFacts = {
   as_of: ISO-8601,
-  risk_free_rate: number,          // continuous or simple — frozen in Spec
+  risk_free_rate: number,          // CONTINUOUS annualized (normative)
   rate_source: "config_sofr_proxy" | "feed" | ...,
   underlier_dividends: {           // per product
     [product]: {
@@ -263,10 +265,11 @@ Applies to `day_trade.surface` and `outlook.scenario_surface` (and any surface b
 
 | Topic | Law |
 |-------|-----|
-| **Strike dimension** | Interpolate in **total variance** \(w = \sigma^2 T\) vs **log-moneyness** \(k=\ln(K/F)\) (or equivalent documented \(k\)); butterfly-arbitrage guards on discrete \(k\) (non-negative butterfly densities / convexity of call prices). |
-| **Expiry dimension** | Interpolate total variance **linear in \(T\)** at fixed \(k\) (calendar-arb resistant construction). |
-| **Fit failure** | **Fail loud** → do not emit surface pack output; resolve may fall back to **default pack** only if caller allows fallback; never a silently bad surface labeled production. |
-| **SABR (`outlook.dynamics`)** | Calibration cadence frozen (e.g. per generation or per N seconds); **RMSE / fit-quality gate** → labeled fallback to `outlook.scenario_surface` if gate fails. |
+| **Strike dimension** | Interpolate in **total variance** \(w = \sigma^2 T\) vs **log-moneyness** \(k=\ln(K/F)\); butterfly-arbitrage guards on discrete \(k\). |
+| **Expiry dimension** | Interpolate \(w\) **linear in calendar \(T\)** at fixed \(k\). |
+| **Calendar arb** | At fixed \(k\), **\(w(k,T)\) non-decreasing in \(T\)**; violation → **fail fit** (do not interpolate through decreasing total variance). |
+| **Fit failure** | **Fail loud** → no surface; optional fallback to default pack only if allowed; never silent bad surface. |
+| **SABR (`outlook.dynamics`)** | Calibration cadence config; **RMSE gate** → labeled fallback to `outlook.scenario_surface`. |
 
 Sticky rules for day_trade hybrid (spot slide without full surface rebuild): OD-PF3.
 
@@ -293,8 +296,9 @@ Members with many multi-exp strategies can request many keys — the foundation 
 | **Redis** | **Hot / live window only** (hours-scale TTL) |
 | **Cold archive** | Day-sharded **disk / object / parquet** (append-only, resumable) — VP artifact pattern |
 
-`backtest.chain_replay` reads **cold archive**, not Redis months of `mb:genarch:*`.  
-OD-PF5: retention **and medium** are config; missing archive → fail loud for default backtest pack.
+`backtest.chain_replay` reads **cold archive**, not Redis months of keys.  
+**Replay staleness:** `archive.get(key, as_of)` with **max-stale bound** per step; beyond → **labeled gap**, never silent stale fill.  
+OD-PF5: retention + medium + max-stale are config; missing archive → fail loud for default backtest pack.
 
 ---
 
@@ -335,11 +339,11 @@ Foundation **extends** dual-key hygiene, multi-interest, budgets; it does **not*
 |-------|------|
 | **F0** | Dual-key + feed + interest alignment; single-exp dual generation proven on bus |
 | **F1** | Multi-exp ContractStore + InterestManager + **interest budget** + **epoch skew fields** |
-| **F2** | LegPricer + PackagePricer + Lock + **MarketStaticFacts (r/q)** |
-| **F3** | Pack registry + `day_trade.mark_hybrid` with **named CRR/BSM** + per-leg IV; alternate surface with **frozen geometry** |
-| **F4** | `outlook.scenario_surface` + alternate SABR with **fit gate** |
-| **F5** | **Cold archive** + `backtest.chain_replay` (+ reconstruct alternate) |
-| **F6** | L4 public API + AT green + **golden vectors** if dual engine |
+| **F2** | LegPricer + PackagePricer + Lock + **MarketStaticFacts (continuous r)** + **τ law** |
+| **F3** | Pack registry + `day_trade.mark_hybrid` (CRR/BSM) + per-leg IV + **AT-L3-RECON**; surface alternate + **calendar arb** |
+| **F4** | `outlook.scenario_surface` + SABR gate |
+| **F5** | **Cold archive** + max-stale gaps + `backtest.chain_replay` |
+| **F6** | L4 API + AT green + golden vectors if dual engine |
 
 **App wiring (Heatmap, Analyzer, …) is a separate program after F6.**
 
@@ -363,12 +367,13 @@ Foundation **extends** dual-key hygiene, multi-interest, budgets; it does **not*
 | OD-PF2 | Default expiration curve | Front-exp residual policy |
 | OD-PF3 | Sticky rule day-trade | Sticky delta for index 0–2 DTE; sticky strike configurable |
 | OD-PF4 | Package bid/ask | Phase after mid natural (optional day-trade) |
-| OD-PF5 | Archive | **Cold day-shard medium** + retention days; fail-loud if backtest default without archive |
+| OD-PF5 | Archive | **Cold day-shard** + retention + **max-stale** for replay steps |
 | OD-PF6 | Server vs client engine | **Server SoR**; client mirror only with **golden-vector CI** |
 | OD-PF7 | American engine | **CRR binomial** default; BAW only if OD documents swap |
 | OD-PF8 | Day-trade mark on epoch skew | Fail loud if `max_skew_ms > LABS_OPF_MAX_SKEW_MS` (default 3000) |
-| OD-PF9 | Rates bootstrap | Config SOFR proxy until rates feed exists |
+| OD-PF9 | Rates bootstrap | Config SOFR proxy; **r continuous** |
 | OD-PF10 | Global interest cap | Config; refuse loud at cap |
+| OD-PF11 | t=0 recon tolerance | abs $1 or 1% of \|mark\| (Spec AT-L3-RECON) |
 
 ---
 
@@ -377,9 +382,10 @@ Foundation **extends** dual-key hygiene, multi-interest, budgets; it does **not*
 | Doc | Role |
 |-----|------|
 | **This architecture** | System design, layers, topology, phasing, review fold |
-| **Spec v0.1** | Normative types, pack law, surface geometry, AT, fail-loud |
-| Arch 28 / MB Spec | Transport parent (filename `…Spec-v1.0.md`, content rev **v1.0.1**) |
-| Chain Picker Spec **v1.0.2** | Universe, **OC2/OC5a** proxy spot, wing/diff heritage — file present at `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` |
+| **Spec v0.2** | Normative law (OPF1–33), τ, RECON AT, surface+calendar arb, archive stale |
+| Arch 28 / MB Spec | Transport parent (`…Spec-v1.0.md`, content **v1.0.1**) |
+| Chain Picker Spec **v1.0.2** | `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` (RATIFIED header; OC6a in body) |
+| Heatmap Spec **v0_2** | HM18 / HM19 heritage targets for OPF17–18 |
 
 ---
 
@@ -389,26 +395,40 @@ Foundation is complete when:
 
 1. Headless multi-exp dual generation interest works on Market Bus (within interest budget).  
 2. Multi-leg PackageQuote with per-leg `iv_source`, `as_of`, and `max_skew_ms`.  
-3. Day_trade default resolve returns mark + model_t0 + expiration with **Labs r/q** and **named engine**.  
-4. Lock/unlock basis behavior as specified.  
-5. Alternate pack selectable via registry.  
-6. Surface fit failure fails loud (no silent bad surface).  
-7. Backtest default uses **cold archive** or fails loud.  
-8. Golden vectors pass if any dual-language engine exists.
+3. day_trade resolve: mark + model_t0 + expiration; continuous **r**; **τ law**; **AT-L3-RECON** green.  
+4. Lock/unlock + freeze_iv/freeze_marks.  
+5. Alternate pack via registry.  
+6. Surface fit fails on butterfly **or** calendar arb.  
+7. Backtest cold archive + **max-stale gaps**.  
+8. Golden vectors if dual engine.
 
 Only then: wire apps.
 
 ---
 
-## 18. Review fold log (2026-08-11)
+## 18. Review fold log
+
+### 18.1 Design-doc H1–H8 → Spec v0.1 / Arch body
 
 | ID | Finding | Disposition |
 |----|---------|-------------|
-| H1 | No rates/dividends; American unnamed | §5.3–5.4; Spec L0 static facts + named CRR/BSM |
-| H2 | Multi-exp epoch skew invisible | §5.6 `max_skew_ms`; OD-PF8 |
-| H3 | Surface geometry unfrozen | §8 total-variance / log-moneyness + arb + fit fail |
-| H4 | HM17 vs strike-union | §6.1 separate Heatmap vs OPF budgets |
-| H5 | Client mirror parity trap | §11 golden vectors; OD-PF6 |
-| H6 | Redis archive wrong for months | §10 cold day-shard |
-| H7 | VIX tier vs OC5a | §7 tier 6 native index only |
-| H8 | Unbounded interest | §9 global generation-interest budget |
+| H1 | r/q + American | MarketStaticFacts; CRR/BSM |
+| H2 | Epoch skew | max_skew_ms; OD-PF8 |
+| H3 | Surface geometry | §8 + Spec §6.5 |
+| H4 | HM17 vs union | §6.1 dual budgets |
+| H5 | Client mirror | golden vectors |
+| H6 | Redis archive | cold day-shard |
+| H7 | OC5a VIX | tier 6 |
+| H8 | Interest cap | §9 |
+
+### 18.2 Crossed-artifact remainder → Spec **v0.2**
+
+| ID | Finding | Disposition |
+|----|---------|-------------|
+| R1 | τ + continuous r | Spec §3.7 OPF29; r continuous |
+| R2 | t=0 recon AT | AT-L3-RECON |
+| R3 | Archive max-stale | OPF33 |
+| R4 | Calendar arb w↑T | Spec §6.5.4 |
+| R5 | Advisories (locked, freeze_*, units, strikes) | OPF8/30–32, Spec §5.7, §4.7 |
+| R6 | Version bump | **Spec-v0_2.md** |
+| R7 | HM18/HM19 parent | Heatmap Spec v0_2 cited |
