@@ -18,6 +18,8 @@ import {
 } from "@/lib/marketOhlcApi";
 
 const TTL_MS = 30 * 60 * 1000;
+/** Fresh tip of the series — used for live poll (seconds). */
+const LIVE_TIP_TTL_MS = 15 * 1000;
 const MAX_ENTRIES = 32;
 
 export type SeriesEntry = {
@@ -193,4 +195,79 @@ export async function loadSeriesFull(
     tf,
     payloadToEntry(payload, false, true),
   );
+}
+
+/**
+ * Live tip refresh: re-fetch a short lookback and merge onto the right of any
+ * cached series so forming / latest bars update without dropping history.
+ */
+export async function refreshSeriesLive(
+  symbol: string,
+  tf: OhlcTf,
+  opts?: { signal?: AbortSignal },
+): Promise<SeriesEntry | null> {
+  const existing = getSeries(symbol, tf);
+  if (existing && Date.now() - existing.at < LIVE_TIP_TTL_MS) {
+    return existing;
+  }
+  const liveDays = Math.min(OHLC_FAST_LOOKBACK_DAYS[tf] ?? 14, 14);
+  const payload = await fetchMarketOhlc(symbol, tf, {
+    lookbackDays: liveDays,
+    signal: opts?.signal,
+  });
+  const fresh = barsToCandles(payload.bars, tf);
+  if (fresh.length < 1) return existing;
+
+  if (!existing || existing.candles.length < 2) {
+    return setSeries(
+      symbol,
+      tf,
+      payloadToEntry(payload, false, false),
+    );
+  }
+
+  // Merge by time: keep older history, replace overlapping tip with fresh bars
+  const byTime = new Map<string | number, CandlestickData>();
+  for (const c of existing.candles) {
+    byTime.set(c.time as string | number, c);
+  }
+  for (const c of fresh) {
+    byTime.set(c.time as string | number, c);
+  }
+  const merged = [...byTime.values()].sort((a, b) => {
+    if (a.time === b.time) return 0;
+    return a.time < b.time ? -1 : 1;
+  });
+
+  return setSeries(symbol, tf, {
+    meta: {
+      ...existing.meta,
+      product: payload.product || existing.meta.product,
+      series_ticker: payload.series_ticker || existing.meta.series_ticker,
+      proxy_label: payload.proxy_label ?? existing.meta.proxy_label,
+      source: payload.source || existing.meta.source,
+      bar_count: merged.length,
+      complete: existing.complete,
+      fromCache: false,
+    },
+    candles: merged,
+    complete: existing.complete,
+  });
+}
+
+/** Poll interval for live tip by TF (ms). */
+export function liveRefreshIntervalMs(tf: OhlcTf): number {
+  switch (tf) {
+    case "5m":
+    case "10m":
+      return 15_000;
+    case "30m":
+    case "1h":
+      return 30_000;
+    case "4h":
+      return 60_000;
+    case "1d":
+    default:
+      return 60_000;
+  }
 }

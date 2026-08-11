@@ -28,9 +28,12 @@ import {
 } from "@/lib/marketOhlcApi";
 import {
   getSeries,
+  liveRefreshIntervalMs,
   loadSeriesFast,
   loadSeriesFull,
+  refreshSeriesLive,
 } from "@/lib/marketOhlcSeries";
+import { useSymbolMarks } from "@/lib/market/useSymbolMarks";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 
 /* ── Scale text size ─────────────────────────────────────────────────── */
@@ -349,15 +352,21 @@ function CandleHost({
   /** Bumps when module series store updates for this symbol|tf. */
   seriesRev,
   appearance,
+  liveMid,
 }: {
   symbol: string;
   tf: OhlcTf;
   seriesRev: number;
   appearance: ChartAppearance;
+  /** Market Bus underlier mid for live price line */
+  liveMid?: number | null;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const liveLineRef = useRef<ReturnType<
+    ISeriesApi<"Candlestick">["createPriceLine"]
+  > | null>(null);
   const fullCandlesRef = useRef<CandlestickData[]>([]);
   const paintedFromRef = useRef(0);
   /** Length of fullCandles last applied to memory (for backfill offset). */
@@ -529,19 +538,57 @@ function CandleHost({
       return;
     }
 
-    // Same symbol|tf — usually full 3y backfill finished. Update memory only;
-    // keep the on-screen series and viewport. Adjust paintedFrom so pan-left
-    // can reach newly available older bars.
+    // Same symbol|tf — history backfill (left) and/or live tip update (right).
     const prevLen = memoryLenRef.current;
     const grew = full.length - prevLen;
     if (grew > 0) {
-      // New bars are older history on the left of the array
+      // Prefer treating growth as older history on the left (backfill).
+      // Live merge usually keeps length similar or adds tip bars on the right.
       paintedFromRef.current += grew;
       memoryLenRef.current = full.length;
     } else {
       memoryLenRef.current = full.length;
     }
+    // Re-apply painted window so the latest candle OHLC updates live
+    const fromIdx = paintedFromRef.current;
+    const painted = full.slice(fromIdx);
+    if (painted.length >= 1) {
+      const rangeBefore = chart.timeScale().getVisibleLogicalRange();
+      series.setData(painted);
+      if (rangeBefore) {
+        chart.timeScale().setVisibleLogicalRange(rangeBefore);
+      }
+    }
   }, [symbol, tf, seriesRev]);
+
+  // Live mid price line from Market Bus underlier marks
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series) return;
+    try {
+      if (liveMid == null || !Number.isFinite(liveMid) || liveMid <= 0) {
+        if (liveLineRef.current) {
+          series.removePriceLine(liveLineRef.current);
+          liveLineRef.current = null;
+        }
+        return;
+      }
+      if (liveLineRef.current) {
+        liveLineRef.current.applyOptions({ price: liveMid });
+        return;
+      }
+      liveLineRef.current = series.createPriceLine({
+        price: liveMid,
+        color: "rgba(251, 191, 36, 0.95)",
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: "Live",
+      });
+    } catch {
+      liveLineRef.current = null;
+    }
+  }, [liveMid, seriesRev, symbol, tf]);
 
   return (
     <div
@@ -664,7 +711,7 @@ function ColorBrightnessControl({
 /* ── Main ────────────────────────────────────────────────────────────── */
 
 export default function VolumeProfileChart() {
-  const { symbol } = useOptionsLab();
+  const { symbol, profile } = useOptionsLab();
   const [tf, setTf] = useState<OhlcTf>("1d");
   const [appearance, setAppearance] =
     useState<ChartAppearance>(DEFAULT_APPEARANCE);
@@ -675,6 +722,24 @@ export default function VolumeProfileChart() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [liveAsOf, setLiveAsOf] = useState<string | null>(null);
+
+  // Live underlier mid from Market Bus / dual-write marks (mb:sym)
+  const { marks: liveMarks, transport: liveTransport } = useSymbolMarks({
+    symbols: symbol ? [symbol] : [],
+    enabled: Boolean(symbol),
+  });
+  const liveMid = liveMarks.get(symbol.toUpperCase())?.mid ?? null;
+
+  // Prefer symbol-profile default TF once
+  useEffect(() => {
+    const def = profile?.ohlc_default_tf as OhlcTf | undefined;
+    if (def && OHL_C_TIMEFRAMES.some((t) => t.id === def)) {
+      setTf(def);
+    }
+    // only when product identity changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.symbol]);
 
   const bumpSeries = useCallback(() => {
     setSeriesRev((n) => n + 1);
@@ -764,6 +829,44 @@ export default function VolumeProfileChart() {
     };
   }, [symbol, tf, bumpSeries]);
 
+  // Live tip: re-fetch recent bars on an interval (visibility-aware)
+  useEffect(() => {
+    if (!symbol) return;
+    let cancelled = false;
+    const ac = new AbortController();
+    const intervalMs = liveRefreshIntervalMs(tf);
+
+    const tick = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const entry = await refreshSeriesLive(symbol, tf, {
+          signal: ac.signal,
+        });
+        if (cancelled || !entry) return;
+        setMeta({ ...entry.meta, fromCache: false });
+        setLiveAsOf(new Date().toISOString());
+        bumpSeries();
+      } catch {
+        /* non-fatal — keep last series */
+      }
+    };
+
+    // First live tick shortly after mount (don’t race initial load)
+    const t0 = window.setTimeout(() => void tick(), 4_000);
+    const id = window.setInterval(() => void tick(), intervalMs);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      ac.abort();
+      window.clearTimeout(t0);
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [symbol, tf, bumpSeries]);
+
   const theme = useMemo(() => resolveTheme(appearance), [appearance]);
   const hasSeries =
     hydrated && (meta != null || getSeries(symbol, tf)?.candles.length);
@@ -794,7 +897,13 @@ export default function VolumeProfileChart() {
                   loading ? " · …" : ""
                 }${backfilling ? " · loading history…" : ""}${
                   meta.complete ? "" : backfilling ? "" : " · partial"
-                }`
+                }${
+                  liveMid != null
+                    ? ` · live ${liveMid.toFixed(2)}${
+                        liveTransport === "stream" ? "" : ` (${liveTransport})`
+                      }`
+                    : " · live mid —"
+                }${liveAsOf ? " · tip refresh on" : ""}`
               : loading
                 ? "Loading…"
                 : ""}
@@ -876,6 +985,7 @@ export default function VolumeProfileChart() {
             tf={tf}
             seriesRev={seriesRev}
             appearance={appearance}
+            liveMid={liveMid}
           />
         ) : (
           <div

@@ -37,7 +37,9 @@ _lock = threading.Lock()
 _cache: dict[str, tuple[float, dict[str, Any]]] = {}
 # Multi-year history barely changes within a session; longer TTL cuts Massive
 # round-trips when members flip TFs. Not a substitute for client cache.
-_CACHE_TTL = 1800.0  # 30 minutes
+_CACHE_TTL = 1800.0  # 30 minutes (full / long lookbacks)
+# Short lookbacks power live chart refresh — keep cache brief.
+_CACHE_TTL_LIVE = 20.0  # seconds when lookback_days <= 14
 
 
 def normalize_ohlc_tf(tf: str) -> str:
@@ -61,13 +63,20 @@ def normalize_lookback_days(days: int | None) -> int:
     return d
 
 
-def _cache_get(key: str) -> dict[str, Any] | None:
+def _cache_ttl_for_days(days: int) -> float:
+    if days <= 14:
+        return _CACHE_TTL_LIVE
+    return _CACHE_TTL
+
+
+def _cache_get(key: str, *, ttl: float | None = None) -> dict[str, Any] | None:
+    limit = _CACHE_TTL if ttl is None else float(ttl)
     with _lock:
         hit = _cache.get(key)
         if not hit:
             return None
         ts, doc = hit
-        if time.monotonic() - ts > _CACHE_TTL:
+        if time.monotonic() - ts > limit:
             del _cache[key]
             return None
         # Shallow copy envelope; bars list is treated read-only by callers
@@ -127,11 +136,15 @@ def fetch_product_ohlc(
 
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
+    # Live short windows: bucket by minute so forming bars can refresh
+    end_bucket = (
+        end.strftime("%Y%m%d%H%M") if days <= 14 else end.date().isoformat()
+    )
     cache_key = (
         f"{product}|{feed_symbol}|{proxy_symbol}|{tf_n}|"
-        f"d{days}|{start.date()}|{end.date()}"
+        f"d{days}|{start.date()}|{end_bucket}"
     )
-    cached = _cache_get(cache_key)
+    cached = _cache_get(cache_key, ttl=_cache_ttl_for_days(days))
     if cached is not None:
         cached["cache_hit"] = True
         return cached
