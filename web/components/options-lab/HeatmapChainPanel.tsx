@@ -75,6 +75,33 @@ function fmtStrike(n: number | null | undefined): string {
   return neg ? `-${body}` : body;
 }
 
+/** Darken rgb()/hex for selected matrix tile. */
+function darkenCssColor(css: string | undefined, factor = 0.55): string {
+  const base = css || "#1a1a1a";
+  const m = base.match(
+    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*[\d.]+)?\s*\)/i,
+  );
+  if (m) {
+    const r = Math.round(Number(m[1]) * factor);
+    const g = Math.round(Number(m[2]) * factor);
+    const b = Math.round(Number(m[3]) * factor);
+    return `rgb(${r},${g},${b})`;
+  }
+  if (base.startsWith("#") && (base.length === 7 || base.length === 4)) {
+    const hex =
+      base.length === 4
+        ? `#${base[1]}${base[1]}${base[2]}${base[2]}${base[3]}${base[3]}`
+        : base;
+    const r = Math.round(parseInt(hex.slice(1, 3), 16) * factor);
+    const g = Math.round(parseInt(hex.slice(3, 5), 16) * factor);
+    const b = Math.round(parseInt(hex.slice(5, 7), 16) * factor);
+    return `rgb(${r},${g},${b})`;
+  }
+  return base;
+}
+
+type MatrixTileKey = { strike: number; colId: string };
+
 function Segmented<T extends string>({
   label,
   value,
@@ -204,6 +231,7 @@ export default function HeatmapChainPanel() {
     () => getTemplate(DEFAULT_HEATMAP_TEMPLATE_ID).defaultValueMode,
   );
   const [stickyScale, setStickyScale] = useState<number | undefined>(undefined);
+  const [selectedTile, setSelectedTile] = useState<MatrixTileKey | null>(null);
   const mounted = useRef(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const presentKeyRef = useRef<string>("");
@@ -223,7 +251,12 @@ export default function HeatmapChainPanel() {
     // Reset value mode when template changes
     setValueMode(tpl.defaultValueMode);
     setStickyScale(undefined);
+    setSelectedTile(null);
   }, [templateId, tpl.defaultValueMode]);
+
+  useEffect(() => {
+    setSelectedTile(null);
+  }, [symbol, expiration, side, wings, valueMode]);
 
   useEffect(() => {
     mounted.current = true;
@@ -710,14 +743,51 @@ export default function HeatmapChainPanel() {
                       </td>
                       {matrix.cols.map((col, ci) => {
                         const cell = matrix.cells[ri]?.[ci];
+                        const selected =
+                          selectedTile?.strike === row.strike &&
+                          selectedTile?.colId === col.id;
+                        const bg = selected
+                          ? darkenCssColor(cell?.bgCss || "#1a1a1a", 0.5)
+                          : cell?.bgCss || "#1a1a1a";
                         return (
                           <td
                             key={col.id}
+                            role="button"
+                            tabIndex={0}
                             title={cell?.tooltip}
-                            className="h-14 min-w-[5.5rem] px-1 text-center align-middle tabular-nums text-[24px] text-amber-400 [text-shadow:0_0_2px_rgba(0,0,0,0.8)]"
-                            style={{
-                              backgroundColor: cell?.bgCss || "#1a1a1a",
+                            aria-pressed={selected}
+                            data-selected={selected ? "1" : "0"}
+                            onClick={() => {
+                              setSelectedTile((prev) =>
+                                prev?.strike === row.strike &&
+                                prev?.colId === col.id
+                                  ? null
+                                  : { strike: row.strike, colId: col.id },
+                              );
                             }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setSelectedTile((prev) =>
+                                  prev?.strike === row.strike &&
+                                  prev?.colId === col.id
+                                    ? null
+                                    : { strike: row.strike, colId: col.id },
+                                );
+                              }
+                            }}
+                            className={[
+                              "h-14 min-w-[5.5rem] cursor-pointer px-1 text-center align-middle tabular-nums text-[24px] text-amber-400",
+                              "[text-shadow:0_0_2px_rgba(0,0,0,0.8)]",
+                              "transition-[filter,transform,box-shadow] duration-150 ease-out",
+                              "hover:z-[1] hover:scale-[1.04] hover:brightness-125 hover:ring-1 hover:ring-white/35 hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]",
+                              "active:scale-[0.98] active:brightness-75",
+                              selected
+                                ? "z-[1] ring-2 ring-amber-400/70 brightness-90"
+                                : "",
+                              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-300",
+                            ].join(" ")}
+                            style={{ backgroundColor: bg }}
                           >
                             {cell?.display ?? "—"}
                           </td>
