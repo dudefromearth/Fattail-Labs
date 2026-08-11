@@ -31,6 +31,11 @@ import type {
   ValueModeId,
 } from "@/lib/options-lab/templates/types";
 import { isUsEquityRthOpenByClock } from "@/lib/market/usEquitySession";
+import {
+  generateTosScript,
+  symFlyTosLegs,
+} from "@/lib/options-lab/tosGenerator";
+import { symFlyDebit } from "@/lib/options-lab/templates/pricing";
 
 const EXPIRY_PICK_COUNT = 3;
 
@@ -232,6 +237,8 @@ export default function HeatmapChainPanel() {
   );
   const [stickyScale, setStickyScale] = useState<number | undefined>(undefined);
   const [selectedTile, setSelectedTile] = useState<MatrixTileKey | null>(null);
+  const [tosScript, setTosScript] = useState<string>("");
+  const [tosCopied, setTosCopied] = useState(false);
   const mounted = useRef(true);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const presentKeyRef = useRef<string>("");
@@ -337,6 +344,38 @@ export default function HeatmapChainPanel() {
       bus.asOf,
       bus.hash,
     ],
+  );
+
+  const copyTosForFly = useCallback(
+    async (body: number, widthPts: number) => {
+      if (!expiration) return;
+      const shortFly = valueMode === "credit";
+      // Always price from mid debit (structure cost), not RoC / R:R display modes
+      const d = symFlyDebit(chainCtx, body, widthPts);
+      const cost = d != null && Number.isFinite(d) ? Math.abs(d) : null;
+      const legs = symFlyTosLegs({
+        body,
+        widthPts,
+        expiration,
+        side,
+        short: shortFly,
+      });
+      const script = generateTosScript({
+        symbol,
+        legs,
+        costBasis: cost,
+      });
+      setTosScript(script);
+      setSelectedTile({ strike: body, colId: `w${widthPts}` });
+      try {
+        await navigator.clipboard.writeText(script);
+        setTosCopied(true);
+        window.setTimeout(() => setTosCopied(false), 1600);
+      } catch {
+        setTosCopied(false);
+      }
+    },
+    [chainCtx, expiration, side, symbol, valueMode],
   );
 
   const templateParams: TemplateParams = useMemo(
@@ -575,6 +614,41 @@ export default function HeatmapChainPanel() {
           Center spot
         </button>
 
+        {/* ToS script — Option-click a matrix tile to fill + copy */}
+        <div className="flex flex-col gap-1.5" data-testid="heatmap-tos-panel">
+          <div className="flex items-center justify-between gap-2">
+            <span className={fieldLabel + " mb-0"}>ToS script</span>
+            <span className="text-[10px] text-[var(--color-label-tertiary)]">
+              {tosCopied
+                ? "Copied"
+                : "⌥-click tile"}
+            </span>
+          </div>
+          <pre
+            className="max-h-40 min-h-[4.5rem] overflow-auto whitespace-pre-wrap break-all rounded-lg border border-emerald-500/25 bg-[#0a0f0a] px-2.5 py-2 font-mono text-[11px] leading-snug text-emerald-400 shadow-inner"
+            data-testid="heatmap-tos-script"
+            title={tosScript || "Option-click a Symmetric flies tile"}
+          >
+            {tosScript ||
+              "Option-click a fly tile to generate BUY/SELL BUTTERFLY … @debit LMT"}
+          </pre>
+          {tosScript ? (
+            <button
+              type="button"
+              className={secondaryBtn + " w-full min-h-9 py-1.5 text-xs"}
+              onClick={() => {
+                void navigator.clipboard.writeText(tosScript).then(() => {
+                  setTosCopied(true);
+                  window.setTimeout(() => setTosCopied(false), 1600);
+                });
+              }}
+              data-testid="heatmap-tos-copy"
+            >
+              {tosCopied ? "Copied" : "Copy again"}
+            </button>
+          ) : null}
+        </div>
+
         <div className="mt-auto border-t border-[var(--color-separator)] pt-4">
           <span className={fieldLabel}>Spot</span>
           <div
@@ -754,10 +828,21 @@ export default function HeatmapChainPanel() {
                             key={col.id}
                             role="button"
                             tabIndex={0}
-                            title={cell?.tooltip}
+                            title={
+                              (cell?.tooltip || "") +
+                              "\nOption-click: copy ToS butterfly script"
+                            }
                             aria-pressed={selected}
                             data-selected={selected ? "1" : "0"}
-                            onClick={() => {
+                            onClick={(e) => {
+                              // Option (Mac) / Alt (Win): ToS script + clipboard
+                              if (e.altKey) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!cell?.valid) return;
+                                void copyTosForFly(row.strike, col.widthPts);
+                                return;
+                              }
                               setSelectedTile((prev) =>
                                 prev?.strike === row.strike &&
                                 prev?.colId === col.id
