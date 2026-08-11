@@ -382,7 +382,8 @@ Foundation **extends** dual-key hygiene, multi-interest, budgets; it does **not*
 | Doc | Role |
 |-----|------|
 | **This architecture** | System design, layers, topology, phasing, review fold |
-| **Spec v0.2** | Normative law (OPF1–33), τ, RECON AT, surface+calendar arb, archive stale |
+| **Spec v0.2.1** | Normative law (OPF1–33), τ, RECON AT, surface+calendar arb, archive stale |
+| **Bench plan v1.0** | [`docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md`](../docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md) · board `agents/p-options-pricing-foundation/` |
 | Arch 28 / MB Spec | Transport parent (`…Spec-v1.0.md`, content **v1.0.1**) |
 | Chain Picker Spec **v1.0.2** | `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` (RATIFIED header; OC6a in body) |
 | Heatmap Spec **v0_2** | HM18 / HM19 heritage targets for OPF17–18 |

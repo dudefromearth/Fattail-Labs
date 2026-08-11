@@ -46,7 +46,8 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Arch **28** | Massive → feed → Redis → API → one WebSocket → shared client |
 | Arch **29** | **Heatmap templates** (design): flies / verticals / GEX over one chain model · diff once · many views |
 | Arch **30** | **Options Pricing Foundation** (design): L0–L4 data plane + day/outlook/backtest packs · foundation before app wiring |
-| Spec **OPF v0.2** | `Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` — normative law (OPF1–33); v0.1 superseded |
+| Spec **OPF v0.2.1** | `Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` — normative law (OPF1–33); v0.1 superseded |
+| Bench **OPF** | `docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-pricing-foundation/` |
 | Spec **Heatmap Templates v0.2** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` — product law (DRAFT); v0.1 superseded |
 | Bench plan | `docs/Options-Lab-Heatmap-Templates-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-heatmap/` |
 | Spec | `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` v1.0.1 |
