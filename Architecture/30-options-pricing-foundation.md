@@ -1,11 +1,12 @@
 # Options Pricing Foundation — Design Architecture
 
-**Status:** **DESIGN** (2026-08-11) — foundation-first; **not** bound to current Options Lab apps  
-**Type:** Design architecture — shared **data plane + model packs** for accurate real-time and research P&amp;L  
-**Product law:** [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) (**v0.2.1** ratification-ready) · v0.1 historical only  
+**Status:** **AS-BUILT (foundation L0–L4)** (2026-08-11) — apps (L5) **not** wired  
+**Type:** Design + as-built architecture — shared **data plane + model packs** for accurate real-time and research P&amp;L  
+**Product law:** [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) (**v0.2.1** BUILD AUTHORITY · DL-290) · v0.1 historical only  
+**Bench:** [`docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md`](../docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md) · board `agents/p-options-pricing-foundation/`  
 **Parents:** [Arch/28 Market Bus](./28-massive-market-bus.md) · [Market Bus Spec](../Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) (content **v1.0.1**) · [Chain Picker Spec v1.0.2](../Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md) · [Heatmap Spec v0_2](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) (HM18/HM19)  
 
-**Not:** MSC as standard · per-app Massive clients · SSE as market transport · “pretty curves” without marks/IV truth  
+**Not:** MSC as standard · per-app Massive clients · SSE as market transport · “pretty curves” without marks/IV truth · **L5 app wiring (explicit non-claim)**  
 
 **Review folds:**  
 - Design-doc H1–H8 → Spec v0.1 laws OPF21–28  
@@ -404,6 +405,27 @@ Foundation is complete when:
 8. Golden vectors if dual engine.
 
 Only then: wire apps.
+
+---
+
+## 17b. As-built map (foundation exit 2026-08-11)
+
+| Layer | Path |
+|-------|------|
+| Dual keys / feed | `server/opf/keys.py` · `server/market_data/chain_feed.py` |
+| Config | `server/opf/config.py` |
+| τ / static facts | `server/opf/tau.py` · `static_facts.py` |
+| L1 store / interest | `server/opf/generation.py` · `interest.py` · `strike.py` |
+| L2 | `server/opf/leg.py` · `package.py` · `lock.py` · `engines/*` |
+| L3 packs | `server/opf/packs/{registry,day_trade,outlook,backtest}.py` · `engines/surface.py` |
+| Archive | `server/opf/archive.py` · `server/data/opf_archive/` |
+| L4 API | `server/opf/resolve.py` · `server/routes/pricing.py` |
+| ATs | `server/tests/test_opf_foundation.py` (19) |
+
+**Env (fail loud / config):** `LABS_OPF_MAX_GENERATION_INTERESTS` · `LABS_OPF_MAX_SKEW_MS` · `LABS_OPF_SKEW_MODE` · `LABS_OPF_T0_RECON_TOL_*` · `LABS_OPF_ARCHIVE_*` · `LABS_OPF_RISK_FREE_RATE`
+
+**API (member session + tool gate):**  
+`GET /api/me/pricing/packs` · `POST /api/me/pricing/resolve` · `POST /api/me/pricing/interest` · `POST /api/me/pricing/lock` · `GET /api/me/pricing/health`
 
 ---
 
