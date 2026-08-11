@@ -1,13 +1,18 @@
 # FatTail Labs — Options Pricing Foundation Spec v0.2
 
-**Status:** **DRAFT** (2026-08-11)  
+**Status:** **DRAFT · ratification-ready** (2026-08-11) · **current revision v0.2.1**  
 **Type:** Foundation product + architecture law — **data plane + model packs**  
 **Short name:** **OPF** (Options Pricing Foundation)  
 **Filename:** `FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` (underscore convention)  
 **Architecture:** [`Architecture/30-options-pricing-foundation.md`](../Architecture/30-options-pricing-foundation.md)  
-**Supersedes:** [`FatTail-Labs-Options-Pricing-Foundation-Spec-v0_1.md`](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_1.md) (v0.1 retained as historical; **do not implement against v0.1**)
+**Supersedes:** [`FatTail-Labs-Options-Pricing-Foundation-Spec-v0_1.md`](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_1.md) (v0.1 retained as historical; **do not implement against v0.1**)  
+**DL:** DL-289  
 
-**Content integrity:** Landing content hash (sha1): `316c91681950c4554fef0336d2d9c4bf9e54be0c`.
+**Revisions:**  
+- **v0.2** — OPF21–33, τ, RECON, calendar arb, archive stale, advisories  
+- **v0.2.1** — AM/PM settlement for τ; **1-minute** τ floor + clamp disclosure  
+
+**Content integrity:** Landing content hash (sha1 of body excluding this line): `3b70e4f4253df1dfa9fcaa60b381df67e0ea14e1`.
 
 **Parents (normative where noted):**
 
@@ -131,15 +136,20 @@ All model engines use a **single Labs τ function** `τ(expiration, as_of_clock,
 | Rule | Law |
 |------|-----|
 | **Year basis** | **Actual/365.25 calendar** year-fraction (continuous time). Not trading-day count for BS/CRR default. |
-| **Expiry instant** | Cash/European index: **16:00 America/New_York** on `expiration` date (EDT/EST as calendar dictates). Equity: same unless product table overrides (OD). |
-| **Minimum τ** | `τ ≥ 1/365.25/24` (1 hour) for numerical stability when clock is past open but before final settle handling. |
+| **Expiry instant — PM (default)** | **16:00 America/New_York** on `expiration` date (EDT/EST as calendar dictates). Applies to **PM-settled** products (SPXW weeklies / 0DTE and most Labs day-trade flow). |
+| **Expiry instant — AM** | Product table may set `settlement: "am"` → expiry instant is the **opening auction / SOQ** on `expiration` (traditionally ~09:30 ET for classic SPX AM monthlies). **Must not** use 16:00 for AM-settled contracts. |
+| **Product table fields** | Per product (or contract class): `settlement: "am" \| "pm"` (default **`pm`**). Equity may override further (OD). |
+| **Minimum τ** | `τ ≥ 1/365.25/24/60` (**1 minute**). CRR/BS remain stable well below 1 hour. **Forbidden default:** 1-hour floor that flatlines the final hour of 0DTE. |
+| **If a higher floor is ever configured** | Model output **must** set meta `final_hour_clamped: true` (or equivalent) when wall-clock τ would be below the configured floor so the freeze is disclosed — not discovered by members. |
 | **0DTE / sub-day** | τ = max(min_τ, seconds_to_expiry_instant / (365.25×86400)). **Intraday 0DTE is first-class** — afternoon fly T+0 is dominated by τ; packs **must not** use “whole day = 1/365”. |
 | **VIX1D vs VIX** | When resolving tier `vix` or vol regime: **0–1 calendar DTE** (and 0DTE) prefer **VIX1D** native mid if available and non-proxy; else **VIX**. Mapping is **tenor-aware**, not a single vol for all horizons. |
 | **What-if time** | `as_of_clock' = as_of_clock + time_offset`; recompute all leg τ from the same shifted clock. |
-| **Multi-exp** | Each leg has **own** \(τ_ℓ = τ(\mathrm{exp}_ℓ, \mathrm{clock})\). |
+| **Multi-exp** | Each leg has **own** \(τ_ℓ = τ(\mathrm{exp}_ℓ, \mathrm{clock}, \mathrm{settlement}_ℓ)\). |
 
 **AT-L0-τ1:** Fixture 0DTE at 15:00 ET → τ in (0, 2/365) and **not** equal to 1/365.  
-**AT-L0-τ2:** VIX1D selected for 0DTE fallback path when both VIX and VIX1D present.
+**AT-L0-τ2:** VIX1D selected for 0DTE fallback path when both VIX and VIX1D present.  
+**AT-L0-τ3:** AM-settled product at 10:00 ET on expiry day → τ uses open/SOQ instant, not 16:00.  
+**AT-L0-τ4:** 0DTE at 15:30 ET → τ still decreases vs 15:00 (not clamped to a 1-hour floor).
 
 ### 3.3–3.5 Writers, Redis hot keys, fan-out
 
@@ -153,6 +163,8 @@ Unchanged dual form (`…:w{N}:dual`); Redis = **hot live window only**.
 | **AT-L0-5** | MarketStaticFacts required for model_t0 |
 | **AT-L0-τ1** | 0DTE intraday τ |
 | **AT-L0-τ2** | VIX1D tenor mapping |
+| **AT-L0-τ3** | AM settlement SOQ not 16:00 |
+| **AT-L0-τ4** | Final hour 0DTE τ still moves (1-min floor) |
 
 ---
 
@@ -397,13 +409,15 @@ Mapped in v0.1 fold → OPF21–28; retained and refined in v0.2.
 | R5e | Strike string format | OPF32 · §4.7 |
 | R6 | Version bump | **This file v0.2** |
 | R7 | HM18/HM19 heritage | Parent Heatmap Spec v0_2; OPF17–18 cite it |
+| R8 | AM settlement τ | §3.7 `settlement: am\|pm` (v0.2.1) |
+| R9 | 1h τ floor kills last hour | §3.7 **1-minute** floor + clamp disclosure (v0.2.1) |
 
 ---
 
-## 14. Parent evidence (Picker)
+## 14. Parent evidence (verified in-repo 2026-08-11)
 
 | Claim | Evidence |
 |-------|----------|
-| Picker v1.0.2 exists | `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` (repo path; filename uses **dots** in `v1.0.2` — Labs mixed convention; OPF new files prefer `v0_2` underscores) |
-| OC6a | In Picker Spec v1.0.2 body (fractional listed strikes) — verify on formal artifact pass |
-| HM18/HM19 | Heatmap Templates Spec **v0_2** § HM18/HM19 |
+| Picker v1.0.2 exists | `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` — **RATIFIED** header; filename uses **dots** (`v1.0.2`); OPF prefers underscores for new files |
+| **OC6a** | Picker Spec v1.0.2 line ~87: *Strike cells show the **listed** contract strike **cent-exact** (e.g. AAPL **302.50**). … rounds half-strikes … **forbidden**.* |
+| **HM18 / HM19** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` — HM18 next_url hard error; HM19 standard contracts only + `excluded_adjusted_count` |

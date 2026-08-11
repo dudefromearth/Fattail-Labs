@@ -2,7 +2,7 @@
 
 **Status:** **DESIGN** (2026-08-11) — foundation-first; **not** bound to current Options Lab apps  
 **Type:** Design architecture — shared **data plane + model packs** for accurate real-time and research P&amp;L  
-**Product law:** [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) (**v0.2**) · v0.1 historical only  
+**Product law:** [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) (**v0.2.1** ratification-ready) · v0.1 historical only  
 **Parents:** [Arch/28 Market Bus](./28-massive-market-bus.md) · [Market Bus Spec](../Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) (content **v1.0.1**) · [Chain Picker Spec v1.0.2](../Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md) · [Heatmap Spec v0_2](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) (HM18/HM19)  
 
 **Not:** MSC as standard · per-app Massive clients · SSE as market transport · “pretty curves” without marks/IV truth  
@@ -432,3 +432,5 @@ Only then: wire apps.
 | R5 | Advisories (locked, freeze_*, units, strikes) | OPF8/30–32, Spec §5.7, §4.7 |
 | R6 | Version bump | **Spec-v0_2.md** |
 | R7 | HM18/HM19 parent | Heatmap Spec v0_2 cited |
+| R8 | AM settlement for τ | Spec §3.7 settlement am/pm (v0.2.1) |
+| R9 | 1h τ floor | Spec §3.7 **1-minute** floor + clamp label (v0.2.1) |

@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-289 Options Pricing Foundation Spec v0.2.1 (ratification-ready DRAFT)
+
+**Decision:** File and fold **Options Pricing Foundation (OPF)** as Labs pricing north star — foundation **before** app wiring.
+
+| Artifact | Path |
+|----------|------|
+| Architecture | `Architecture/30-options-pricing-foundation.md` |
+| Spec **v0.2.1** | `Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` |
+| Superseded | `…-Spec-v0_1.md` (historical only) |
+
+**Law summary:** L0–L4 data plane + model packs; use cases `day_trade` / `outlook` / `backtest` each with default + alternate pack; dual-side multi-exp generations on Market Bus; package natural + lock; continuous \(r\); τ law (Actual/365.25, 0DTE intraday, **AM/PM settlement**, **1-minute τ floor**); surface total-variance geometry + butterfly/calendar arb; cold day-shard archive; OC5a on VIX tier; interest budget; AT-L3-RECON.
+
+**MSC is not the standard.** Parent citations: Market Bus Spec (content v1.0.1), Chain Picker Spec v1.0.2 (**OC6a verified**), Heatmap Spec v0_2 (**HM18/HM19 verified**).
+
+**Coach GO for implementation** still requires specialist gates as for other DRAFT Specs; document is **ratification-ready** per advisor seat on v0.2 + v0.2.1 τ one-liners. App wiring (Heatmap/Analyzer/GEX) is a **separate** program after foundation exit (F6).
+
 ## 2026-08-10 — DL-288 Admin help thread — sender is visually unambiguous
 
 **Decision:** In the admin help ticket view, messages were only split into "admin →
