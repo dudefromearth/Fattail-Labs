@@ -157,9 +157,8 @@ export function buildRiskGraph(
   const strikes = trade.legs.map((l) => l.strike);
   const lo = Math.min(...strikes);
   const hi = Math.max(...strikes);
-  const pad =
-    opts.padPts ??
-    Math.max(50, (trade.width ?? (hi - lo) / 2 || 25) * 4);
+  const half = trade.width ?? ((hi - lo) / 2 || 25);
+  const pad = opts.padPts ?? Math.max(50, half * 4);
   const xMin = Math.min(lo, spot) - pad;
   const xMax = Math.max(hi, spot) + pad;
 
