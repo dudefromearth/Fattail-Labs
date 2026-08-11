@@ -764,7 +764,11 @@ export default function OpfRiskAnalyzer() {
             </div>
             <div className="text-[10px] text-[var(--color-label-tertiary)]">
               {risk.packId ?? model.packId}
-              {risk.loading ? " · live…" : ""}
+              {risk.fromCache && !risk.loading
+                ? " · restored"
+                : risk.loading
+                  ? " · live…"
+                  : ""}
             </div>
           </div>
         )}
