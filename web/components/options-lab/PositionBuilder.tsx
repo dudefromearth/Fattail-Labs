@@ -28,6 +28,7 @@ import {
   formatPackageSide,
   packageEconomics,
 } from "@/lib/options-lab/packageEconomics";
+import { useOptionsLab } from "@/lib/optionsLabContext";
 import type {
   ChainAccessors,
   LegInput,
@@ -109,7 +110,9 @@ const STRATEGY_DIAGRAMS: Record<TemplateType, string> = {
   diagonal: "M2,18 L20,12 L32,6 L44,10 L58,16",
 };
 
-function defaultWidth(symbol: string): number {
+/** Fallback when profile fly_widths missing (A2/A3 prefer profile.fly_widths[0]). */
+function defaultWidth(symbol: string, profileMin?: number | null): number {
+  if (profileMin != null && profileMin > 0) return profileMin;
   const s = symbol.toUpperCase();
   if (s === "NDX" || s.startsWith("NQ")) return 50;
   if (s === "SPX" || s === "XSP" || s === "RUT") return 20;
@@ -162,6 +165,12 @@ export default function PositionBuilder({
   onSave,
   onCancel,
 }: PositionBuilderProps) {
+  const { profile } = useOptionsLab();
+  const profileMinWing =
+    profile?.fly_widths?.[0] ??
+    (profile?.strike_step != null && profile.strike_step > 0
+      ? profile.strike_step
+      : null);
   const hasExps = chain.expirations.length > 0;
   const frontDefault =
     initial?.expiration ||
@@ -185,7 +194,9 @@ export default function PositionBuilder({
   const [direction, setDirection] = useState<TradeDirection>("buy");
   const [optionSide, setOptionSide] = useState<OptionRight>("call");
   const [centerStrike, setCenterStrike] = useState(0);
-  const [wingWidth, setWingWidth] = useState(() => defaultWidth(symbol));
+  const [wingWidth, setWingWidth] = useState(() =>
+    defaultWidth(symbol, profileMinWing),
+  );
   const [backExpiration, setBackExpiration] = useState("");
   const [copied, setCopied] = useState(false);
   const didInit = useRef(false);
@@ -290,10 +301,10 @@ export default function PositionBuilder({
           legs = straddleLegs(c);
           break;
         case "strangle":
-          legs = strangleLegs(c, w || defaultWidth(symbol));
+          legs = strangleLegs(c, w || defaultWidth(symbol, profileMinWing));
           break;
         case "iron_fly":
-          legs = ironFlyLegs(c, w || defaultWidth(symbol));
+          legs = ironFlyLegs(c, w || defaultWidth(symbol, profileMinWing));
           break;
         case "iron_condor":
           legs = ironCondorLegs(c - w * 2, c - w, c + w, c + w * 2);
@@ -370,15 +381,20 @@ export default function PositionBuilder({
     }
     setCenterStrike(center);
     setPosition((p) => ({ ...p, expiration: front, underlying: symbol }));
-    let width = defaultWidth(symbol);
+    // OD-AZ3 · AZ-DEF · A2/A3: butterfly default · ATM · profile min wing
+    let width = defaultWidth(symbol, profileMinWing);
     if (listed.length) {
       const choices = listedWingChoices(center, listed, 8);
       if (choices.length) {
-        // Prefer default if listed, else first listed wing
-        width = choices.includes(width) ? width : choices[Math.min(2, choices.length - 1)];
+        // Prefer profile min if listed, else nearest listed wing
+        width = choices.includes(width)
+          ? width
+          : choices.find((c) => c >= width) ??
+            choices[Math.min(0, choices.length - 1)];
       }
     }
     setWingWidth(width);
+    setTemplate("butterfly");
     regenerate("butterfly", center, width, "call", "buy", front);
   }, [
     open,

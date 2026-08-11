@@ -82,6 +82,24 @@ re-import (9 pass); backfill verified on seeded data + browser-verified end to e
 | A1–A8 | Adopt as law (A8 intent with OD-AZ8) |
 | P1–P2 | Hash recompute + this DL |
 
+## 2026-08-11 — DL-307 Analyzer residual BUILD GO + first residual ship
+
+**Decision:** Coach **W0-0 GO** on Analyzer residual board; residual implementation started and first matrix landed:
+
+| Phase | Ship |
+|-------|------|
+| L | Layout: top controls · viewport · divider · positions · alerts |
+| B | Butterfly ATM + profile min wing |
+| T | What-if Enable gates all knobs · override banner |
+| A | Alerts 20 of N · multi-symbol badge |
+| D | ANALYSIS-only · package magnitude invariant |
+| S | Cache stale label · posture fixtures + server open-map tests |
+| V | VP bins-only (no candles) |
+
+**Still residual:** U (Surface 3D OPF mesh) · R (Probability suite panel + Spec section) · K full AT pack · Z close.
+
+**Authority:** W0-0 GO · plan v1.0.1 · Specs Analyzer v0_2 / PB v0_3.
+
 ## 2026-08-11 — DL-306 Analyzer residual plan advisor fold + path/hash reconcile
 
 **Decision:** Fold external advisor **plan review** (Claude 2026-08-11 · P-B1…P-B4 · P-A1…P-A5) into residual program law and primary Spec paths.

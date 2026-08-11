@@ -2,7 +2,8 @@
  * Module-level OHLC series store for Options Lab charts.
  *
  * Bars live here (not in React state) so TF switches do not re-render 100k objects.
- * Candles are pre-converted once per fetch for Lightweight Charts.
+ * Candles remain for any legacy consumers; **Volume Profile surface uses ohlcBars only**
+ * (bins presentation — AZ-VP-9).
  */
 
 import type {
@@ -26,6 +27,8 @@ export type SeriesEntry = {
   at: number;
   meta: OhlcMeta;
   candles: CandlestickData[];
+  /** Raw OHLC (+volume) for volume-profile bins — data plane, not candle UI */
+  ohlcBars: OhlcBar[];
   /** True when full ≥3y (or max) history is loaded. */
   complete: boolean;
 };
@@ -119,6 +122,7 @@ function payloadToEntry(
       fromCache,
     },
     candles: barsToCandles(payload.bars, tf),
+    ohlcBars: Array.isArray(payload.bars) ? [...payload.bars] : [],
     complete,
   };
 }
@@ -239,6 +243,16 @@ export async function refreshSeriesLive(
     return a.time < b.time ? -1 : 1;
   });
 
+  // Merge raw OHLC for bins (key by t ms)
+  const barByT = new Map<number, OhlcBar>();
+  for (const b of existing.ohlcBars || []) {
+    if (b.t != null) barByT.set(b.t, b);
+  }
+  for (const b of payload.bars || []) {
+    if (b.t != null) barByT.set(b.t, b);
+  }
+  const ohlcBars = [...barByT.values()].sort((a, b) => a.t - b.t);
+
   return setSeries(symbol, tf, {
     meta: {
       ...existing.meta,
@@ -251,6 +265,7 @@ export async function refreshSeriesLive(
       fromCache: false,
     },
     candles: merged,
+    ohlcBars,
     complete: existing.complete,
   });
 }

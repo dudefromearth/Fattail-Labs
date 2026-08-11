@@ -1,6 +1,8 @@
 /**
  * Analyzer position book + threshold alerts (session persistence).
- * Spec v0.2 — card = definition; lock signed D*; liveState.
+ * PB Spec v0.3 — card = definition; lock signed D*; liveState; B5 invariants.
+ *
+ * Product status for residual: **ANALYSIS only** (OMS tokens reserved).
  */
 
 import type { PositionInput } from "@/lib/options-lab/positionTypes";
@@ -10,8 +12,11 @@ import {
 } from "@/lib/options-lab/positionLabels";
 import { positionNetPremium } from "@/lib/options-lab/positionToTrade";
 
-export type AnalyzerTradeStatus =
-  | "ANALYSIS"
+/** Product status — residual book is ANALYSIS-only (PB v0.3 §16.4). */
+export type AnalyzerTradeStatus = "ANALYSIS";
+
+/** Reserved OMS lifecycle tokens — not assignable until a future OD. */
+export type ReservedOmsStatus =
   | "PENDING"
   | "OPEN"
   | "PARTIAL_OPEN"
@@ -106,7 +111,8 @@ function migratePos(raw: unknown): AnalyzerPosition | null {
     label: p.label || "Position",
     notation: p.notation || "",
     position: p.position,
-    status: p.status || "ANALYSIS",
+    // Force ANALYSIS — ignore any legacy OMS status from storage (B5)
+    status: "ANALYSIS",
     livePackagePerShare: p.livePackagePerShare ?? null,
     lastNatSigned: p.lastNatSigned ?? null,
     priceSide: p.priceSide === undefined ? "debit" : p.priceSide,
@@ -195,6 +201,33 @@ function sameCardPricing(a: AnalyzerPosition, b: AnalyzerPosition): boolean {
   );
 }
 
+/**
+ * PB v0.3 §16.3 package magnitude law:
+ * - unlocked + lastNatSigned set → livePackagePerShare ≡ |lastNatSigned|
+ * - locked → livePackagePerShare ≡ |packageDebitPerShare|
+ * Incomplete/budget/skewed may clear livePackage (null) — OK.
+ */
+export function packageMagnitudeInvariantHolds(
+  pos: AnalyzerPosition,
+): boolean {
+  if (pos.lock.mode === "locked") {
+    const d = Math.abs(pos.lock.packageDebitPerShare);
+    if (pos.livePackagePerShare == null) return false;
+    return Math.abs(pos.livePackagePerShare - d) < 1e-9;
+  }
+  if (pos.lastNatSigned == null) return true;
+  if (pos.livePackagePerShare == null) {
+    // incomplete / refused / skewed may clear magnitude while keeping prior nat cleared
+    return (
+      pos.liveState === "incomplete" ||
+      pos.liveState === "budget_refused" ||
+      pos.liveState === "skewed" ||
+      pos.liveState === "not_live"
+    );
+  }
+  return Math.abs(pos.livePackagePerShare - Math.abs(pos.lastNatSigned)) < 1e-9;
+}
+
 /** Apply OPF package quote onto card (PB17 SoR). */
 export function applyPackageQuote(
   pos: AnalyzerPosition,
@@ -281,7 +314,7 @@ export function applyPackageQuote(
     });
   }
 
-  return finish({
+  const next: AnalyzerPosition = {
     ...pos,
     lastNatSigned: nat,
     livePackagePerShare: Math.abs(nat),
@@ -291,7 +324,16 @@ export function applyPackageQuote(
     contentHashes: hashes,
     maxSkewMs: quote.max_skew_ms ?? null,
     epochQuality: quote.epoch_quality ?? null,
-  });
+  };
+  // B5 invariant — fail loud in dev if drift
+  if (
+    typeof process !== "undefined" &&
+    process.env.NODE_ENV !== "production" &&
+    !packageMagnitudeInvariantHolds(next)
+  ) {
+    console.error("package magnitude invariant broken", next.id, next);
+  }
+  return finish(next);
 }
 
 export function lockNatural(pos: AnalyzerPosition): AnalyzerPosition {

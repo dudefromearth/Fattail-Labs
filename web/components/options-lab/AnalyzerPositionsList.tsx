@@ -57,6 +57,8 @@ export type AnalyzerPositionsListProps = {
   positions: AnalyzerPosition[];
   focusedId: string | null;
   sessionHeld?: boolean;
+  /** Suite symbol — off-symbol cards get a badge (A5) */
+  sessionSymbol?: string;
   onFocus: (id: string) => void;
   onToggleVisibility: (id: string) => void;
   onEdit: (id: string) => void;
@@ -71,6 +73,7 @@ export default function AnalyzerPositionsList({
   positions,
   focusedId,
   sessionHeld = false,
+  sessionSymbol,
   onFocus,
   onToggleVisibility,
   onEdit,
@@ -80,6 +83,8 @@ export default function AnalyzerPositionsList({
   onLockLimit,
   onUnlock,
 }: AnalyzerPositionsListProps) {
+  // A5: show all cards (do not filter by session symbol)
+  const list = positions;
   return (
     <div
       className="space-y-2"
@@ -89,6 +94,11 @@ export default function AnalyzerPositionsList({
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
           Positions
+          {list.length > 0 ? (
+            <span className="ml-1 font-normal normal-case text-[var(--color-label-tertiary)]">
+              ({list.length})
+            </span>
+          ) : null}
         </span>
         <button
           type="button"
@@ -126,13 +136,13 @@ export default function AnalyzerPositionsList({
         </span>
       </div>
 
-      {positions.length === 0 ? (
+      {list.length === 0 ? (
         <p className="text-[11px] text-[var(--color-label-tertiary)]">
           No positions — open Builder for live OPF package debit.
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {positions.map((pos) => {
+          {list.map((pos) => {
             const hidden = !pos.visible;
             const focused = pos.id === focusedId;
             const locked = pos.lock.mode === "locked";
@@ -141,6 +151,11 @@ export default function AnalyzerPositionsList({
             const side = pos.priceSide;
             const kind = blotterKindFromPackageSide(side);
             const tone = blotterOnFillText(focused, kind);
+            const und = (pos.position.underlying || "").toUpperCase();
+            const offSymbol =
+              !!sessionSymbol &&
+              !!und &&
+              und !== sessionSymbol.toUpperCase();
             const chip =
               !pos.visible
                 ? "not_live"
@@ -167,6 +182,7 @@ export default function AnalyzerPositionsList({
                 data-testid={`analyzer-pos-card-${pos.id}`}
                 data-blotter-kind={kind}
                 data-focused={focused ? "1" : "0"}
+                data-off-symbol={offSymbol ? "1" : "0"}
               >
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span
@@ -185,6 +201,15 @@ export default function AnalyzerPositionsList({
                   >
                     {pos.status}
                   </span>
+                  {offSymbol && (
+                    <span
+                      className="rounded bg-sky-600/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-white"
+                      data-testid="analyzer-pos-off-symbol"
+                      title="Different symbol than suite session — focus syncs suite symbol"
+                    >
+                      {und}
+                    </span>
+                  )}
                   {locked && (
                     <span className="rounded bg-violet-500/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-white">
                       Locked

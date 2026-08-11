@@ -3,6 +3,7 @@
 /**
  * Threshold alert cards — same UX family as MSC Risk Graph AlertsSection.
  * Local session store; chart right-click creates price rules.
+ * A7: show first 20 of N with count label.
  */
 
 import type { AnalyzerThresholdAlert } from "@/lib/options-lab/analyzerBook";
@@ -14,6 +15,8 @@ const SEVERITY: Record<string, string> = {
   high: "#F97316",
   critical: "#EF4444",
 };
+
+const ALERT_LIST_CAP = 20;
 
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -40,20 +43,47 @@ export default function AnalyzerAlertsSection({
   onDismiss,
   onDelete,
 }: AnalyzerAlertsSectionProps) {
-  const filtered = alerts
+  const active = alerts
     .filter((a) => a.status !== "dismissed")
-    .filter((a) => !symbol || a.symbol === symbol || !a.symbol)
     .sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
-    .slice(0, 20);
+    );
+  // Prefer session symbol but keep others visible with count honesty
+  const sorted = [
+    ...active.filter((a) => !symbol || a.symbol === symbol || !a.symbol),
+    ...active.filter(
+      (a) => symbol && a.symbol && a.symbol !== symbol,
+    ),
+  ];
+  // de-dupe after prefer sort
+  const seen = new Set<string>();
+  const ordered: AnalyzerThresholdAlert[] = [];
+  for (const a of sorted) {
+    if (seen.has(a.id)) continue;
+    seen.add(a.id);
+    ordered.push(a);
+  }
+  const total = ordered.length;
+  const filtered = ordered.slice(0, ALERT_LIST_CAP);
 
   return (
     <div className="space-y-2" data-testid="analyzer-alerts-section">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-        Alerts
-      </span>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+          Alerts
+        </span>
+        {total > 0 && (
+          <span
+            className="text-[10px] text-[var(--color-label-tertiary)]"
+            data-testid="analyzer-alerts-count"
+          >
+            {total > ALERT_LIST_CAP
+              ? `showing ${ALERT_LIST_CAP} of ${total}`
+              : `${total} alert${total === 1 ? "" : "s"}`}
+          </span>
+        )}
+      </div>
       {filtered.length === 0 ? (
         <p className="text-[11px] text-[var(--color-label-tertiary)]">
           No threshold alerts — right-click the risk graph to set price above /
@@ -79,6 +109,11 @@ export default function AnalyzerAlertsSection({
                 </div>
                 <div className="mt-0.5 text-[10px] text-[var(--color-label-tertiary)]">
                   {relTime(alert.createdAt)}
+                  {alert.symbol && symbol && alert.symbol !== symbol && (
+                    <span className="ml-1.5 rounded bg-sky-600/20 px-1 text-sky-700 dark:text-sky-300">
+                      {alert.symbol}
+                    </span>
+                  )}
                   {alert.status !== "new" && alert.status !== "triggered" && (
                     <span className="ml-1.5 opacity-70">{alert.status}</span>
                   )}
