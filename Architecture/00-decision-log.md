@@ -4,6 +4,19 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-296 Position Builder Spec v0.2 — advisor + Coach coherence fold
+
+**Decision:** Fold external advisor review (B1–B6, A1–A9) and Coach Addendum 1 (use-case-scoped litmus) into **Position Builder & Book Spec v0.2**.
+
+| Artifact | Path |
+|----------|------|
+| Spec **v0.2** (current) | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md` |
+| Spec v0.1 | SUPERSEDED historical |
+
+**Blocking folds:** OPF-served card package (OD-PB12) · PB-VIEW-5 live re-resolve · PB18a skew · signed D\* · AT-PB-R1a–d litmus · PB17b interest · Held labels (PB-MODE-3).  
+**Coherence matrix:** day_trade live HARD / closed provenance-only / outlook scenario honesty / backtest determinism+gaps.  
+**Next:** OD-PB1–15 Accept/Override → implementation plan → code. **No BUILD GO** from fold alone.
+
 ## 2026-08-11 — DL-295 Position Builder & Book Spec v0.1 (review baseline)
 
 **Decision:** File product Spec for Options Lab **Position Builder + Position list/cards + lock/unlock + card↔viewport law** as **DRAFT review baseline** — review before implementation plan.
