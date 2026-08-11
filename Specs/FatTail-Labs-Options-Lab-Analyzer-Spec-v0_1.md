@@ -1,7 +1,8 @@
 # FatTail Labs — Options Lab Analyzer Spec v0.1
 
 **Status:** **DRAFT · product law + as-built inventory** (2026-08-11)  
-**Type:** Product Spec — Options Lab **Analyzer** surface (viewport, position book, **threshold alerts**, builder shell, modes, handoffs)  
+**Type:** Product Spec — Options Lab **Analyzer** surface  
+**Major buckets:** **Alerts · Positions · Viewport · Time machine · Models · Controls**  
 **Short name:** **Analyzer** · **AZ**  
 **Filename:** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md`  
 **Surface route:** `/app/options-lab/analyzer`  
@@ -9,23 +10,25 @@
 
 **Process:** Spec review → OD Accept/Override → implementation plan for residual TARGET laws → code/ATs.  
 **Content integrity:** Landing content hash (sha1 of body excluding this line):  
-`c80e2160c1a238975b60d676abae6c753ff10df1` (v0.1.1 · alerts first-class fold).
+`e3168ab552b37fb8c33a5eb2335091eb2fd06eeb` (v0.1.2 · six-bucket architecture).
 
 ---
 
 ## 0. Mission
 
-Options Lab **Analyzer** is the member surface that:
+Options Lab **Analyzer** is the member **day-trader risk surface**. Product is organized as **six major buckets** (Coach):
 
-1. Holds a **position book** (0..N definitions as cards).  
-2. Visualizes **exactly one focused** definition as an **OPF risk graph** (viewport).  
-3. Constructs and edits definitions via **Position Builder** (full) and **position cards** (read-only limited view).  
-4. Accepts alternate definition entry (ToS paste, Heatmap handoff) as **unlocked-live** when no card is focused.  
-5. Operates in **day_trade · outlook · backtest** modes via OPF pack selection — one surface, not three apps.  
-6. Owns **threshold price alerts** as a **first-class Analyzer subsystem** — create from the viewport, list/manage in Analyzer chrome, draw on the graph, evaluate against the same underlier mark the viewport uses.  
-7. Never uses MSC as pricing SoR (DL-293).
+| # | Bucket | One-line job |
+|---|--------|----------------|
+| 1 | **Alerts** | Threshold price rules: create, list, evaluate, draw on the graph |
+| 2 | **Positions** | Definition book (cards) + Builder (full edit) + package/lock |
+| 3 | **Viewport** | Single focused OPF risk graph (visualization only) |
+| 4 | **Time machine** | What-if / scenario knobs (time · vol · spot %) over OPF resolve |
+| 5 | **Models** | OPF pack / use-case selection (day_trade · outlook · backtest) |
+| 6 | **Controls** | Session chrome: posture, symbol, spot/VIX, ToS handoff, actions |
 
-**Alerts are not an afterthought.** They are part of the Analyzer product (with the book and the viewport), not a separate app and not optional chrome.
+Supporting: Market Bus dual-side generations + underlier marks; suite Options Lab chrome.  
+**Never** MSC as pricing SoR (DL-293).
 
 **Coach litmus (shared with Position Builder Spec):**  
 *When looking at a position in the Builder or the position card, if it is unlocked, the correct pricing is displayed and the rendered position in the viewport is correct — as guaranteed for the active use case and session state.*
@@ -38,58 +41,88 @@ Options Lab **Analyzer** is the member surface that:
 
 | Doc | Analyzer owns / inherits |
 |-----|---------------------------|
-| [Position Builder & Book Spec v0.2](./FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md) | Card = definition · viewport = viz · package SoR (PB17) · lock · PB-VIEW-* · PB-MODE-* · Builder templates law |
-| [Options Pricing Foundation Spec v0.2.1](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) | Resolve · PackageQuote · packs · RECON · interest · epoch skew |
-| [Market Bus Spec](./FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) | Dual-side ladder generations · stream posture |
+| [Position Builder & Book Spec v0.2](./FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md) | **Positions** definition/lock/package · **Viewport** viz law · PB-VIEW-* · PB-MODE-* · Builder templates |
+| [Options Pricing Foundation Spec v0.2.1](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) | **Models** packs · resolve · PackageQuote · RECON · interest · epoch |
+| [Market Bus Spec](./FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) | Dual-side ladder · stream posture (**Controls** posture) |
 | [Chain Picker Spec v1.0.2](./FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md) | Universe · OC2 · OC5a · OC6a |
-| [Heatmap Templates Spec v0_2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | Live/Held/Closed posture heritage · ToS handoff · fly width profiles |
+| [Heatmap Templates Spec v0_2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | ToS handoff · fly width profiles · Live/Held/Closed heritage |
 | [Human Interface Spec v1.0](./FatTail-Labs-Human-Interface-Spec-v1.0.md) | Dialog · panels · fail-loud |
 
-**This Spec** is the **surface assembly** law: chrome layout, focus rules, defaults on open, handoffs, alerts, and an exhaustive inventory of as-built behavior.  
-Where PB Spec already defines book/package/lock/viewport economics, Analyzer **must not contradict** PB; it may only **specialize layout and entry**.
+**This Spec** assembles the **six buckets** into one surface: layout, cross-bucket laws, as-built inventory, TARGET residuals.  
+Where PB Spec already defines book/package/lock/viewport economics, Analyzer **must not contradict** PB.
 
 ---
 
-## 0.2 Cardinal objects
+## 0.2 Six major buckets (architecture)
 
 ```text
-┌──────────────────────────────────────────────────────────────────┐
-│  ANALYZER SESSION (one browser tab / sessionStorage)              │
-│  · use case + pack_id · posture Live|Held|Closed|Error            │
-│  · focused definition id (or null)                                │
-│  · what-if knobs · spot/VIX overrides                             │
-│  · threshold alert book (0..N)                                    │
-└────────────────────────────┬─────────────────────────────────────┘
-                             │
-     ┌───────────────────────┼───────────────────────┬──────────────────┐
-     ▼                       ▼                       ▼                  ▼
-┌─────────────┐    ┌─────────────────┐    ┌─────────────────────┐ ┌──────────────┐
-│ POSITION    │    │ VIEWPORT        │    │ DEFINITION ENTRY    │ │ ALERTS       │
-│ BOOK / LIST │───▶│ (OPF risk graph)│◀───│ Builder · paste ·   │ │ create list  │
-│ cards 0..N  │    │ one focused def │    │ Heatmap ToS         │ │ evaluate draw│
-└─────────────┘    └────────▲────────┘    └─────────────────────┘ └──────┬───────┘
-        │                   │                                              │
-        │ package quotes    │ resolve                                      │ price lines
-        ▼                   │                                              │ on chart
-   OPF package-quote   OPF L4 resolve                              underlier mark
-   (PB17 card SoR)     (viewport SoR)                              (same as viewport)
+                         ┌─────────────────────────┐
+                         │     CONTROLS            │
+                         │  posture · symbol · ToS  │
+                         │  spot/VIX · actions     │
+                         └───────────┬─────────────┘
+                                     │ session context
+         ┌───────────────────────────┼───────────────────────────┐
+         ▼                           ▼                           ▼
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│     MODELS      │──────▶│    VIEWPORT     │◀──────│  TIME MACHINE   │
+│  OPF pack pick  │ resolve│  OPF risk graph │ what-if│  t · σ · S%     │
+│  day/outlk/bt   │       │  one focus      │       │                 │
+└─────────────────┘       └────────▲────────┘       └─────────────────┘
+                                   │ focus definition
+                                   │ package quotes (visible cards)
+                          ┌────────┴────────┐
+                          │   POSITIONS     │
+                          │  list · cards   │
+                          │  Builder edit   │
+                          │  lock · package │
+                          └─────────────────┘
+                                   │
+                          ┌────────┴────────┐
+                          │     ALERTS      │
+                          │  create · list  │
+                          │  evaluate·draw  │─── price lines on VIEWPORT
+                          └─────────────────┘
 ```
 
-| Object | SoR | Edit surface |
-|--------|-----|--------------|
-| **Definition** | Position card (`AnalyzerPosition`) | Builder (full); card is **read-only limited** |
-| **Visualization** | OPF resolve curves + marks | Viewport only — no structure draw-to-edit (PB-VIEW-1) |
-| **Threshold alerts** | Analyzer alert book (`AnalyzerThresholdAlert`) | Create: viewport context menu; Manage: Alerts list; Draw: chart lines |
-| **Unlocked-live alternate** | Parsed ToS / stored handoff when **no focused visible card** | Paste box · Heatmap · Load |
-| **Market** | Dual-side chain generations + underlier marks | Market Bus / ensure_fresh |
+| Bucket | Owns | Does not own |
+|--------|------|--------------|
+| **Alerts** | Threshold rules, list UI, evaluation vs underlier mark, chart lines | Structure legs, OPF curves, pack choice |
+| **Positions** | Definition SoR (cards), Builder, focus, lock, package display path | Curve pixels, alert evaluation |
+| **Viewport** | OPF resolve visualization, dual curves, spot line, incomplete/empty states | Writing definition structure (PB-VIEW-1) |
+| **Time machine** | What-if time / vol / spot % into resolve; sim spot indicator | Changing card legs unless Save |
+| **Models** | Pack id + use case (day_trade · outlook · backtest); epoch re-anchor | Drawing curves (Viewport consumes packs) |
+| **Controls** | Posture badge, symbol, ToS paste/Load/Clear, Heatmap link, spot/VIX fields, Refresh/Auto-fit/Builder buttons | Replacing any other bucket’s SoR |
+
+### 0.2.1 Cross-bucket laws
+
+| ID | Law |
+|----|-----|
+| **AZ-X-1** | **Positions → Viewport:** only the **focused visible** definition (or unlocked-live ToS when none) drives structure. |
+| **AZ-X-2** | **Models + Time machine → Viewport:** pack and what-if re-resolve the **same** definition (PB-VIEW-2/3). |
+| **AZ-X-3** | **Alerts ↔ Viewport:** create from graph; evaluate on viewport underlier mark; draw lines on graph. |
+| **AZ-X-4** | **Controls → all:** symbol, posture, and spot/VIX overrides are session context for Positions quotes, Viewport, and Alerts. |
+| **AZ-X-5** | **Positions package SoR** remains OPF PackageQuote (PB17); Viewport curves remain OPF resolve — never MSC. |
+
+### 0.2.2 Inventory map (where detail lives)
+
+| Bucket | Spec sections (detail) |
+|--------|------------------------|
+| **Controls** | §1.1–1.3, §1.5–1.6, §1.12, actions in §1.9–1.13 |
+| **Models** | §1.4, §6 modes |
+| **Viewport** | §1.9–1.10, §3 focus, §6 |
+| **Time machine** | §1.11 |
+| **Positions** | §1.7–1.8, §1.13 Builder, §4–5 |
+| **Alerts** | §1.14, §7 |
 
 ---
 
 ## 1. As-built inventory (complete feature catalog)
 
-This section is **normative for “what exists today.”** TARGET laws in later sections may supersede layout/default behavior after Coach GO.
+This section is **normative for “what exists today.”** TARGET laws in later sections may supersede layout/default behavior after Coach GO.  
+Read with §0.2 buckets: each subsection below tags its bucket.
 
-### 1.1 Route, shell, shared suite context
+### 1.1 Route, shell, shared suite context · **Controls** (host)
 
 | Feature | As-built |
 |---------|----------|
@@ -102,7 +135,7 @@ This section is **normative for “what exists today.”** TARGET laws in later 
 | Primary component | `OpfRiskAnalyzer` (`data-testid="options-lab-opf-risk-analyzer"`) |
 | Pricing authority | **OPF only** (DL-293). `MscRiskAnalyzer` / `RiskAnalyzerPanel` re-export OPF if present |
 
-### 1.2 Layout (as-built vs TARGET)
+### 1.2 Layout (as-built vs TARGET) · **Controls** shell
 
 | Region | **As-built** | **TARGET (Coach)** |
 |--------|--------------|---------------------|
@@ -111,7 +144,7 @@ This section is **normative for “what exists today.”** TARGET laws in later 
 | Viewport | Full remaining height · dark canvas · chart panel | Same — **one** focused graph panel |
 | MSC heritage | MSC had list **left** of viewport | Labs: list **under** viewport |
 
-### 1.3 Session posture
+### 1.3 Session posture · **Controls**
 
 | Feature | As-built |
 |---------|----------|
@@ -121,7 +154,7 @@ This section is **normative for “what exists today.”** TARGET laws in later 
 | UI | Badge on chrome; Held labels on theo legend and alert lines when held |
 | RECON chip | Hidden as `n/a held` when Held/Closed; pass/fail when Live |
 
-### 1.4 OPF model / mode catalog (UI)
+### 1.4 OPF model / mode catalog (UI) · **Models**
 
 Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 
@@ -141,7 +174,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Outlook epoch | Selecting outlook pack **pins** epoch; **Re-anchor epoch** button clears pin, refreshes, re-pins; **epoch stale** when generation epoch advances while pinned (PB-VIEW-7 partial) |
 | Time reference label | Live/Held gen · Scenario epoch · Replay no live claim |
 
-### 1.5 Definition sources & focus law
+### 1.5 Definition sources & focus law · **Positions** + **Controls** (paste)
 
 | Priority | Source | Drives viewport when |
 |----------|--------|----------------------|
@@ -155,7 +188,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Symbol sync | If trade symbol ∈ universe and ≠ suite symbol → set suite symbol |
 | Incomplete focus | If focused card `liveState` is `incomplete` or `skewed` → **no curve** (PB-VIEW-6); loud incomplete message |
 
-### 1.6 ToS / Heatmap handoff
+### 1.6 ToS / Heatmap handoff · **Controls** (entry)
 
 | Feature | As-built |
 |---------|----------|
@@ -168,7 +201,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Clear | Removes stored trade, raw, focus, resets what-if |
 | Parse | `parseTosScript` — butterfly · vertical · single · custom; limit @x LMT; debit/credit |
 
-### 1.7 Position book (cards)
+### 1.7 Position book (cards) · **Positions**
 
 **Persistence:** `sessionStorage` `ft_options_lab_analyzer_positions_v2` (migrates v1).  
 **List component:** `AnalyzerPositionsList` · `data-testid="analyzer-positions-list"`.
@@ -216,7 +249,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 
 **Law (TARGET restatement):** Card is a **read-only limited view** of the Builder definition — no freeform leg edit on the card itself (only focus, visibility, lock, remove, open Builder).
 
-### 1.8 Package quotes on cards (PB17 path)
+### 1.8 Package quotes on cards (PB17 path) · **Positions**
 
 | Feature | As-built |
 |---------|----------|
@@ -229,7 +262,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Locked | Display basis D*; still tracks `lastNatSigned` for mkt compare |
 | Trigger | Positions change + `generationEpoch` from risk graph |
 
-### 1.9 Viewport — OPF risk graph
+### 1.9 Viewport — OPF risk graph · **Viewport**
 
 | Feature | As-built |
 |---------|----------|
@@ -252,7 +285,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | RECON | Pass/fail from resolve meta when Live |
 | Mark pkg chip | resolve package_debit or focused card live package |
 
-### 1.10 Chart interaction (`PnLChart` presentation)
+### 1.10 Chart interaction (`PnLChart` presentation) · **Viewport** (+ **Alerts** create/draw)
 
 | Feature | As-built (wired) |
 |---------|------------------|
@@ -264,7 +297,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Legend labels | Pack theo legend + Held suffix |
 | **Not required for v0.1 law** but present in component | hi-res secondary series, GEX/VP autofit props, strike drag, curve context, PnL zones — available for future wiring |
 
-### 1.11 What-if (OPF scenario knobs)
+### 1.11 What-if (OPF scenario knobs) · **Time machine**
 
 | Knob | Range | As-built |
 |------|-------|----------|
@@ -274,14 +307,14 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Spot % | −5%…+5% | Always available; also drives sim spot indicator |
 | Reset | button | Clears all three + disable |
 
-### 1.12 Spot & VIX overrides
+### 1.12 Spot & VIX overrides · **Controls**
 
 | Control | As-built |
 |---------|----------|
 | Spot text field | Override chain/OPF spot when finite &gt; 0; auto-fill from risk/chain when empty |
 | VIX text field | Optional vol reference into resolve |
 
-### 1.13 Position Builder (shell from Analyzer)
+### 1.13 Position Builder (shell from Analyzer) · **Positions**
 
 | Feature | As-built |
 |---------|----------|
@@ -294,7 +327,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 
 Builder internals (also PB Spec + recent land): listed strikes only, ATM center, live package DEBIT/CREDIT + per-leg contrib, templates, ToS script copy, limit override, packages count — **see §4 and PB Spec §7**.
 
-### 1.14 Threshold alerts (first-class Analyzer subsystem)
+### 1.14 Threshold alerts · **Alerts**
 
 Alerts are a **core Analyzer feature**, co-equal with the position book and the viewport for day-trader workflow. Implementation: `AnalyzerAlertsSection` + `analyzerBook` alert model + `PnLChart` context menu / `alertLines`.
 
@@ -654,5 +687,6 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 |---------|------|-------|
 | **v0.1** | 2026-08-11 | Full as-built inventory + TARGET layout/defaults from Coach; DRAFT |
 | **v0.1.1** | 2026-08-11 | **Alerts elevated** to first-class Analyzer subsystem: mission, cardinal objects, full §1.14 model, AZ-AL-0…11, layout, ATs |
+| **v0.1.2** | 2026-08-11 | **Six major buckets** architecture: Alerts · Positions · Viewport · Time machine · Models · Controls (§0.2) |
 
 **Reference UX (non-authority):** MSC Risk Graph — workflow only (incl. alerts UX heritage). **MSC is not the standard.**

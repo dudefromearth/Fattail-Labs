@@ -18,7 +18,9 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 - Parents: PB Spec v0.2 · OPF v0.2.1 · Market Bus · Chain Picker · Heatmap Templates
 - Gap map + OD-AZ1–4 · ATs AT-AZ-1…12 + residual L1–L6
 
-**v0.1.1 (same DL day):** Coach reminder — **alerts are first-class Analyzer**. Spec folded: mission item 6, cardinal objects, full §1.14 model (create/list/evaluate/draw), AZ-AL-0…11, layout AZ-LAYOUT-5/6, ATs AT-AZ-8b–d. Hash `c80e2160c1a238975b60d676abae6c753ff10df1`.
+**v0.1.1 (same DL day):** Coach reminder — **alerts are first-class Analyzer**. Spec folded: mission item 6, cardinal objects, full §1.14 model (create/list/evaluate/draw), AZ-AL-0…11, layout AZ-LAYOUT-5/6, ATs AT-AZ-8b–d.
+
+**v0.1.2 (same DL day):** Coach framing — Analyzer product = six major buckets: **Alerts · Positions · Viewport · Time machine · Models · Controls**. Spec §0.2 architecture + inventory map.
 
 **Does not:** implement layout residual or full default matrix (plan after Coach GO / OD).
 
