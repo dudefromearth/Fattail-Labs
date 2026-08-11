@@ -26,6 +26,8 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 **v0.1.4 (same DL day):** Fourth attached viewport — **Probability** (1σ / distribution framing). Spec AZ-VP-8 (no profit theater); partial as-built (`oneSigmaBandWidth` on PnLChart); OD-AZ8 for route vs sub-panel.
 
+**v0.1.5 (same DL day):** **Volume Profile viewport = bins only** — no candlesticks on the VP surface (AZ-VP-9). As-built candle+profile chart is residual drift.
+
 **Does not:** implement layout residual or full default matrix (plan after Coach GO / OD).
 
 ## 2026-08-11 — DL-300 Live underlier mids — site-wide UI standard

@@ -11,7 +11,7 @@
 
 **Process:** Spec review → OD Accept/Override → implementation plan for residual TARGET laws → code/ATs.  
 **Content integrity:** Landing content hash (sha1 of body excluding this line):  
-`dc2f9a4a735812604ac34e73630f05c18886c774` (v0.1.4 · probability viewport).
+`4acbb8756252282f5ec6e29e603a5bc2e0d8720c` (v0.1.5 · VP bins only).
 
 ---
 
@@ -28,7 +28,7 @@ Options Lab **Analyzer** is the member **day-trader risk surface**. Product is o
 | 5 | **Models** | OPF pack / use-case selection (day_trade · outlook · backtest) |
 | 6 | **Controls** | Session chrome: posture, symbol, spot/VIX, ToS handoff, actions |
 
-Supporting: Market Bus dual-side generations + underlier marks + OHLC plane; suite Options Lab chrome.  
+Supporting: Market Bus dual-side generations + underlier marks + volume/OHLC data plane as needed by viewports.  
 **Never** MSC as pricing SoR (DL-293).
 
 **Coach litmus (shared with Position Builder Spec):**  
@@ -128,7 +128,7 @@ The **Viewport** bucket is a **family**, not a single canvas. Members work one *
 | Viewport id | Role | Primary data plane | Pricing / value law |
 |-------------|------|--------------------|---------------------|
 | **analyzer** | OPF **risk graph** — expiration + T+0/scenario curves for the **focused** definition | Dual-side chain generations + OPF resolve | OPF only (DL-293) |
-| **volume-profile** | Underlier **OHLC + volume profile** — session structure, live mid tip | OHLC store + live underlier marks | Not package pricing; underlier geometry |
+| **volume-profile** | **Volume profile bins only** (horizontal volume-by-price histogram) — **not** a candlestick chart | Volume/OHLC feed → **bins** · live underlier mid for tip/spot | Not package pricing; **bins-only** canvas (AZ-VP-9) |
 | **gex** | **Gamma exposure** profile by strike (call/put/net/abs modes) | Dual-side chain (Γ · OI · S) | Estimate / template law — not OPF package SoR |
 | **probability** | **Probability** framing — 1σ / distribution context for the underlier (and structure-relative bands) | Underlier marks + vol reference (VIX / chain IV) · optional OPF meta | **Not** package SoR; honest probability geometry only — no profit claims |
 
@@ -140,8 +140,8 @@ The **Viewport** bucket is a **family**, not a single canvas. Members work one *
 ┌─────────┐ ┌────────┐ ┌────────┐ ┌──────────────┐ │
 │VIEWPORT │ │VIEWPORT│ │VIEWPORT│ │VIEWPORT      │ │
 │analyzer │ │vol-prof│ │  gex   │ │ probability  │ │
-│OPF risk │ │OHLC+VP │ │strike  │ │ 1σ / dist.   │ │
-│graph    │ │        │ │GEX     │ │ framing      │ │
+│OPF risk │ │VP bins │ │strike  │ │ 1σ / dist.   │ │
+│graph    │ │only    │ │GEX     │ │ framing      │ │
 └────▲────┘ └────────┘ └────────┘ └──────────────┘ │
      │                                              │
      └──── POSITIONS · MODELS · TIME MACHINE · ALERTS
@@ -159,13 +159,14 @@ The **Viewport** bucket is a **family**, not a single canvas. Members work one *
 | **AZ-VP-6** | Time machine + OPF **Models** apply to the **Analyzer** viewport. VP / GEX / Probability may accept limited overlays (e.g. spot line, 1σ band) but must not silently re-price packages. |
 | **AZ-VP-7** | Alerts evaluate underlier price for the suite symbol; alert lines draw on the **Analyzer** graph first. Drawing the same alerts on VP/GEX/Probability is optional future (OD-AZ5). |
 | **AZ-VP-8** | **Probability viewport** must be **epistemically honest**: labeled model/vol basis (e.g. IV / VIX / pack meta); never “win rate” or profit theater; no claim that 1σ bands are guarantees. |
+| **AZ-VP-9** | **Volume Profile viewport is bins only** — volume-by-price histogram. It does **not** include candlesticks / OHLC bars as part of the VP product surface. (Underlying bar data may feed bin construction off-screen; the member-facing canvas is the profile bins + optional live mid/POC/VA markers.) |
 
 ### 0.3.3 As-built vs TARGET
 
 | Viewport | As-built | TARGET |
 |----------|----------|--------|
 | **analyzer** | `/app/options-lab/analyzer` — full risk graph + book + alerts | Remains primary; list under graph (layout residual) |
-| **volume-profile** | `/app/options-lab/volume-profile` — suite sibling app · shared symbol · OHLC store · live mid tip | Stay suite-attached; optional embed (OD-AZ6) |
+| **volume-profile** | Suite app ships a **candlestick + profile** chart today (`VolumeProfileChart`) | **Product law: bins only** (AZ-VP-9) — remove/omit candles from VP viewport; optional embed (OD-AZ6) |
 | **gex** | Heatmap **template** `gex` over dual-side chain (not top-level suite nav) | Template and/or suite attached viewport (OD-AZ7) |
 | **probability** | **Partial:** PnLChart accepts `oneSigmaBandWidth` for autofit (PROB 1σ window heritage); **no** dedicated suite app or panel yet | First-class **attached Probability viewport** (OD-AZ8): 1σ / distribution framing for symbol S, optional structure-relative band; may overlay Analyzer or stand alone |
 
@@ -174,8 +175,9 @@ The **Viewport** bucket is a **family**, not a single canvas. Members work one *
 | Context | Analyzer | Volume Profile | GEX | Probability |
 |---------|----------|----------------|-----|-------------|
 | Product symbol | Suite | Suite | Suite / Heatmap | Suite |
-| Underlier mid | Live underlier + override | Live underlier tip | Spot from chain | Live underlier + vol ref |
-| Dual-side chain | Yes (legs + quotes) | No (OHLC) | Yes (Γ/OI) | Optional IV surface |
+| Underlier mid | Live underlier + override | Live mid on bin scale | Spot from chain | Live underlier + vol ref |
+| Dual-side chain | Yes (legs + quotes) | No | Yes (Γ/OI) | Optional IV surface |
+| Member canvas | OPF curves | **Volume bins only** (not candles) | GEX bars | Prob / 1σ framing |
 | OPF resolve | **Yes** | No | No | Optional meta for band width only |
 | Positions book | **Yes** | No | No | No (may *read* focused structure for relative bands) |
 | Alerts book | **Yes** (draw) | Optional later | Optional later | Optional later |
@@ -481,7 +483,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 | `AnalyzerAlertsSection.tsx` | Alerts UI | Alerts |
 | `PositionBuilder.tsx` · `StrikeSelect.tsx` | Full definition editor | Positions |
 | `msc-risk/PnLChart.tsx` | Analyzer graph presentation | Viewport analyzer |
-| `VolumeProfileChart.tsx` | VP attached viewport | Viewport volume-profile |
+| `VolumeProfileChart.tsx` | VP suite app (as-built candles+bins; law = bins only) | Viewport volume-profile |
 | `HeatmapChainPanel.tsx` + `templates/gex.ts` | Chain templates incl. GEX | Viewport gex / Heatmap |
 | `lib/options-lab/useOpfRiskGraph.ts` | Resolve + curve cache | Viewport analyzer |
 | `lib/options-lab/usePackageQuotes.ts` | Card package SoR | Positions |
@@ -490,7 +492,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 | `lib/options-lab/analyzerTrade.ts` | ToS handoff storage | Controls |
 | `lib/options-lab/opfModels.ts` | Pack catalog | Models |
 | `lib/options-lab/opfPricingApi.ts` | HTTP resolve / package-quote / interest | Models · Positions |
-| `lib/marketOhlc*.ts` · OHLC series store | Underlier candles | Viewport volume-profile |
+| `lib/marketOhlc*.ts` · OHLC series store | Bar feed **input** to binning (not member VP canvas) | Viewport volume-profile |
 | `lib/optionsLabSuite.ts` · `optionsLabContext.tsx` | Suite nav + shared symbol | Controls |
 
 ### 1.16 Attached viewports inventory · **Viewport(s)**
@@ -499,16 +501,16 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 
 See §1.9–1.10. Route `/app/options-lab/analyzer`. Owns OPF curves, focus, incomplete empty, alerts draw.
 
-#### 1.16.2 Volume Profile (attached)
+#### 1.16.2 Volume Profile (attached) — **bins only**
 
-| Feature | As-built |
-|---------|----------|
+| Feature | Law / as-built |
+|---------|----------------|
 | Route | `/app/options-lab/volume-profile` |
-| Chrome | `OptionsLabChrome` · `fillHeight` · `wide` |
-| Component | `VolumeProfileChart` |
-| Data | Durable OHLC store (bootstrap + morning append) · multi-TF · live tip via live underlier pattern |
+| **Product law (AZ-VP-9)** | Member-facing surface = **volume profile bins** (volume-by-price histogram). **No candlesticks** on the VP viewport. |
+| As-built gap | `VolumeProfileChart` currently renders **candles + profile** — residual vs law; remediation = bins-only (or move candles to a separate non-VP tool if ever needed) |
+| Data | Bar/OHLC history may feed **bin construction** off-screen; display bins + optional live mid / POC / value-area markers |
 | Shared | Suite **symbol** from `OptionsLabProvider` |
-| Not in surface | Positions book · Alerts list · OPF packs · Time machine |
+| Not in surface | Positions book · Alerts list · OPF packs · Time machine · **candle chart UI** |
 
 #### 1.16.3 GEX (attached / template)
 
@@ -800,5 +802,6 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **v0.1.2** | 2026-08-11 | **Six major buckets** architecture: Alerts · Positions · Viewport · Time machine · Models · Controls (§0.2) |
 | **v0.1.3** | 2026-08-11 | **Attached viewports:** Analyzer risk graph · Volume Profile · GEX (§0.3); AZ-VP-1…7; inventory §1.16 |
 | **v0.1.4** | 2026-08-11 | **Probability** attached viewport (fourth canvas); AZ-VP-8 honesty; OD-AZ8; §1.16.4 |
+| **v0.1.5** | 2026-08-11 | **Volume Profile = bins only** (no candles) — AZ-VP-9; as-built candle chart flagged residual |
 
 **Reference UX (non-authority):** MSC Risk Graph — workflow only (incl. alerts / 1σ viewport heritage). **MSC is not the standard.**
