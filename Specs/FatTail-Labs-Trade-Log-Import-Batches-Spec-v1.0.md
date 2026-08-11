@@ -1,10 +1,15 @@
-# FatTail Labs — Trade Log Import Batches & Import Manager Spec v1.0
+# FatTail Labs — Trade Log Import Batches & Import Manager Spec v1.1
 
-**Status:** Proposed (2026-08-11). Spec-first; **Coach sign-off required** (destructive +
-schema migration).
+**Status:** IMPLEMENTED + LIVE (2026-08-11). Migrations 119 (batches + backfill) and 121
+(recycle bin). Decisions: DL-307 (batches + Import Manager), DL-308 (recoverable deletes;
+full-wipe removed).
 **Owner surface:** Member Trade Log (`/app/trade-log`), the Import/Export toolbar group.
-**Builds on:** `FatTail-Labs-Trade-Log-Spec-v1.1`. Supersedes the "Delete all
-transactions" trashcan behaviour that currently opens a single typed-confirm wipe.
+**Builds on:** `FatTail-Labs-Trade-Log-Spec-v1.1`.
+
+**v1.1 amendment (what shipped vs the original v1.0 draft):** the "Delete all transactions"
+full-wipe was **removed** — there is no one-click nuke in the UI. Deleting an import is
+**recoverable for 30 days** (recycle bin), not a hard cascade. Sections 2, 6, 7, 8, 9 below
+reflect the shipped behaviour; §6a documents the recycle bin.
 
 ---
 
@@ -25,8 +30,8 @@ Make every import a first-class, identifiable **batch**:
 - Trades remember which import created them.
 - The trashcan opens an **Import Manager**: list every import (when, source, account,
   count), **preview** the trades inside one, and **delete a specific import** (removing
-  exactly its trades). Keep a separate, harder-gated **"Delete all transactions"** for a
-  full start-over.
+  exactly its trades). Deletes are **recoverable for 30 days** (§6a). There is **no**
+  full-wipe / "Delete all transactions" control.
 - All dialogs follow the Labs **HIG** design system (tokens + `AlertDialog`/`Button`),
   not hand-rolled styling.
 
@@ -119,10 +124,35 @@ All identity-scoped; `require_session` + tool-member.
 
 | Method / path | Purpose |
 |---|---|
-| `GET /api/me/trade-log/imports` | List batches, newest first: `{id, created_at, adapter, account_id, account_label, source_filename, label, trade_count, skipped_count, campaign_id, campaign_name}`. |
-| `GET /api/me/trade-log/imports/{id}` | Preview: `{import: {…meta}, trades: [{exec_at, strategy, legs_count, net_price, net_side, symbol}]}` (lightweight, capped at 200 rows). |
-| `DELETE /api/me/trade-log/imports/{id}` | Delete that import (cascade → trades → legs) + the row. Returns `{ok, deleted}`. 404 if not owned. |
-| `POST /api/me/trade-log/delete-all` *(existing)* | Full wipe — every trade, all accounts. Kept, still typed-confirm gated. |
+| `GET /api/me/trade-log/imports` | `{imports, deleted, recoverable_days}` — active batches + a recently-deleted list (each with `deleted_at`); lazily purges anything past the window first. Each row: `{id, created_at, deleted_at, adapter, account_id, account_label, source_filename, label, trade_count, skipped_count, campaign_id, campaign_name}`. |
+| `GET /api/me/trade-log/imports/{id}` | Preview: `{import: {…meta}, trades: […]}` (≤200 rows). Reads from **trash** when the import is soft-deleted, so a deleted import can still be previewed before restore. |
+| `DELETE /api/me/trade-log/imports/{id}` | **Soft-delete** (recycle bin, §6a): moves trades+legs to trash, stamps `deleted_at`. Returns `{ok, deleted, recoverable_days}`. 404 if not owned / already deleted. |
+| `POST /api/me/trade-log/imports/{id}/restore` | Restore a soft-deleted import — trades+legs move back (ids preserved), `deleted_at` cleared. 404 if not in a deleted state; 409 if a same-key trade was re-imported meanwhile. |
+
+`POST /api/me/trade-log/delete-all` still exists server-side but is **no longer reachable
+from the UI** (the full-wipe control was removed, DL-308).
+
+## 6a. Recycle bin (recoverable deletes — migration 121)
+
+Member trades are read in ~20 places (blotter, reports, journey scores, capital, campaigns,
+export…). Rather than a `deleted_at` flag on trades — which would need a filter in every one
+of those reads and leak on the one you miss — deleting an import **moves its trades out of
+the live tables**:
+
+- **Trash tables** `member_trade_log_trades_trash` / `member_trade_log_legs_trash`, created
+  `LIKE` the live tables so a move is `INSERT … SELECT *` with **ids preserved** (lossless
+  restore). `LIKE` copies indexes but not FKs, so trashed rows survive independently; the
+  ext-order unique key is dropped on trash so a trashed trade and a later re-import can
+  coexist.
+- **Delete:** copy legs then trades to trash, delete the live trades (live legs cascade),
+  `UPDATE member_trade_log_imports SET deleted_at = NOW()`. The rows are gone from the live
+  tables, so **every existing read excludes them for free** — correct by construction.
+- **Restore:** `INSERT … SELECT *` back into the live tables, clear `deleted_at`, empty the
+  trash for that import.
+- **Purge:** lazily on `GET /imports`, hard-delete imports whose `deleted_at` is older than
+  `RECOVERY_DAYS = 30` (+ their trash rows). The recovery clock is `imports.deleted_at`.
+- Single-trade delete (`DELETE …/{trade_id}`) stays a **hard** delete — recovery is an
+  import-level feature.
 
 ## 7. UI — Import Manager (replaces the direct wipe on the trashcan)
 
@@ -134,13 +164,15 @@ The red trashcan in the Import/Export group opens the **Import Manager** dialog:
   (exec time · strategy · legs · net) so the member can confirm *which* import it is
   before deleting.
 - **Delete (per import):** HIG destructive confirm naming the batch — e.g. *"Delete this
-  import? 42 trades from thinkorswim on Aug 11, 2:32 PM will be permanently removed. Your
-  other trades stay."* → `destructive` Button. On success, refresh list + blotter.
-- **Footer — "Delete all transactions":** the full start-over, still gated by the
-  **type-to-confirm** ("delete") flow. Type-to-confirm is reserved for this one
-  catastrophic action; per-import deletes use the standard HIG destructive confirm.
-- **Empty state:** "No tracked imports yet — imports you make will show up here to preview
-  or remove. (Manually-added trades aren't part of an import.)"
+  import? 42 trades from thinkorswim on Aug 11, 2:32 PM will be removed from your log. You
+  can restore it from Recently deleted for 30 days."* → `destructive` Button. On success,
+  refresh list + blotter (the trades leave the blotter immediately).
+- **Recently deleted section:** below the active list, "Recently deleted · restorable for
+  30 days" — each row shows when it was deleted, a live "removed in N days" countdown,
+  **Preview** (reads trash) and a **Restore** button.
+- **No full-wipe footer.** The dialog footer is just **Done**.
+- **Empty state:** "No imports yet — imports you make show up here to preview or remove.
+  (Manually-added trades aren't part of an import.)"
 
 ## 8. HIG compliance (applies to every dialog here)
 
@@ -159,14 +191,17 @@ The red trashcan in the Import/Export group opens the **Import Manager** dialog:
 
 - Import rows and `import_id` are strictly identity-scoped; a member sees/deletes only
   their own imports.
-- Deleting an import removes **exactly** its trades (+ legs) — never another import's,
+- Deleting an import affects **exactly** its trades (+ legs) — never another import's,
   never manual/automated trades, never accounts or campaigns.
+- A soft-deleted import's trades leave the live tables entirely, so they vanish from every
+  member surface (blotter, reports, export) at once; restore brings them back with ids
+  intact. Purge only after ≥ `RECOVERY_DAYS`.
 - Dedup unchanged: re-importing a file skips duplicates (they remain in their original
   import); no empty import rows are ever created.
-- Migration is additive; `import_id NULL` preserves today's behaviour for manual,
-  automated, and legacy trades.
-- "Delete all transactions" remains the only path that removes untracked (manual/legacy)
-  trades.
+- Migrations are additive; `import_id NULL` preserves behaviour for manual, automated, and
+  legacy trades.
+- No UI path performs a full-log wipe. Untracked (manual/legacy) trades are removed only by
+  single-trade delete.
 
 ## 10. Verification
 
