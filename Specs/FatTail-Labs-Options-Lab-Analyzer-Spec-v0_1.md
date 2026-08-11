@@ -2,15 +2,16 @@
 
 **Status:** **DRAFT · product law + as-built inventory** (2026-08-11)  
 **Type:** Product Spec — Options Lab **Analyzer** surface  
-**Major buckets:** **Alerts · Positions · Viewport · Time machine · Models · Controls**  
+**Major buckets:** **Alerts · Positions · Viewport(s) · Time machine · Models · Controls**  
+**Viewports:** **Analyzer** (OPF risk graph) · **Volume Profile** · **GEX** (attached / suite)  
 **Short name:** **Analyzer** · **AZ**  
 **Filename:** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md`  
-**Surface route:** `/app/options-lab/analyzer`  
-**Chrome:** Options Lab suite workspace (`OptionsLabChrome` · `workspace`) under Options Lab nav (Volume Profile · Heatmap · Analyzer)
+**Surface route (primary):** `/app/options-lab/analyzer`  
+**Chrome:** Options Lab suite workspace under Options Lab nav (Volume Profile · Heatmap · Analyzer)
 
 **Process:** Spec review → OD Accept/Override → implementation plan for residual TARGET laws → code/ATs.  
 **Content integrity:** Landing content hash (sha1 of body excluding this line):  
-`e3168ab552b37fb8c33a5eb2335091eb2fd06eeb` (v0.1.2 · six-bucket architecture).
+`2c331cf65578551eee9d28fe35f81b36c60f638e` (v0.1.3 · attached viewports).
 
 ---
 
@@ -20,14 +21,14 @@ Options Lab **Analyzer** is the member **day-trader risk surface**. Product is o
 
 | # | Bucket | One-line job |
 |---|--------|----------------|
-| 1 | **Alerts** | Threshold price rules: create, list, evaluate, draw on the graph |
+| 1 | **Alerts** | Threshold price rules: create, list, evaluate, draw on the **Analyzer** graph |
 | 2 | **Positions** | Definition book (cards) + Builder (full edit) + package/lock |
-| 3 | **Viewport** | Single focused OPF risk graph (visualization only) |
-| 4 | **Time machine** | What-if / scenario knobs (time · vol · spot %) over OPF resolve |
+| 3 | **Viewport(s)** | Analytical canvases: **Analyzer** risk graph · **Volume Profile** · **GEX** (see §0.3) |
+| 4 | **Time machine** | What-if / scenario knobs (time · vol · spot %) over OPF resolve (Analyzer viewport) |
 | 5 | **Models** | OPF pack / use-case selection (day_trade · outlook · backtest) |
 | 6 | **Controls** | Session chrome: posture, symbol, spot/VIX, ToS handoff, actions |
 
-Supporting: Market Bus dual-side generations + underlier marks; suite Options Lab chrome.  
+Supporting: Market Bus dual-side generations + underlier marks + OHLC plane; suite Options Lab chrome.  
 **Never** MSC as pricing SoR (DL-293).
 
 **Coach litmus (shared with Position Builder Spec):**  
@@ -89,20 +90,21 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 |--------|------|--------------|
 | **Alerts** | Threshold rules, list UI, evaluation vs underlier mark, chart lines | Structure legs, OPF curves, pack choice |
 | **Positions** | Definition SoR (cards), Builder, focus, lock, package display path | Curve pixels, alert evaluation |
-| **Viewport** | OPF resolve visualization, dual curves, spot line, incomplete/empty states | Writing definition structure (PB-VIEW-1) |
-| **Time machine** | What-if time / vol / spot % into resolve; sim spot indicator | Changing card legs unless Save |
-| **Models** | Pack id + use case (day_trade · outlook · backtest); epoch re-anchor | Drawing curves (Viewport consumes packs) |
-| **Controls** | Posture badge, symbol, ToS paste/Load/Clear, Heatmap link, spot/VIX fields, Refresh/Auto-fit/Builder buttons | Replacing any other bucket’s SoR |
+| **Viewport(s)** | See §0.3 — Analyzer risk graph · VP · GEX canvases | Pricing SoR (OPF owns package/curves for Analyzer) |
+| **Time machine** | What-if time / vol / spot % into **Analyzer** resolve; sim spot indicator | Changing card legs unless Save; not required on VP/GEX |
+| **Models** | Pack id + use case (day_trade · outlook · backtest); epoch re-anchor | Drawing curves (Analyzer viewport consumes packs) |
+| **Controls** | Posture badge, symbol, ToS paste/Load/Clear, Heatmap/VP links, spot/VIX fields, Refresh/Auto-fit/Builder buttons | Replacing any other bucket’s SoR |
 
 ### 0.2.1 Cross-bucket laws
 
 | ID | Law |
 |----|-----|
-| **AZ-X-1** | **Positions → Viewport:** only the **focused visible** definition (or unlocked-live ToS when none) drives structure. |
-| **AZ-X-2** | **Models + Time machine → Viewport:** pack and what-if re-resolve the **same** definition (PB-VIEW-2/3). |
-| **AZ-X-3** | **Alerts ↔ Viewport:** create from graph; evaluate on viewport underlier mark; draw lines on graph. |
-| **AZ-X-4** | **Controls → all:** symbol, posture, and spot/VIX overrides are session context for Positions quotes, Viewport, and Alerts. |
-| **AZ-X-5** | **Positions package SoR** remains OPF PackageQuote (PB17); Viewport curves remain OPF resolve — never MSC. |
+| **AZ-X-1** | **Positions → Analyzer Viewport:** only the **focused visible** definition (or unlocked-live ToS when none) drives structure. |
+| **AZ-X-2** | **Models + Time machine → Analyzer Viewport:** pack and what-if re-resolve the **same** definition (PB-VIEW-2/3). |
+| **AZ-X-3** | **Alerts ↔ Analyzer Viewport:** create from risk graph; evaluate on underlier mark; draw lines on **Analyzer** graph (not a substitute for VP/GEX). |
+| **AZ-X-4** | **Controls → all:** **symbol** (and posture where relevant) is **shared suite context** for Positions, all viewports, and Alerts. |
+| **AZ-X-5** | **Positions package SoR** remains OPF PackageQuote (PB17); **Analyzer** curves remain OPF resolve — never MSC. |
+| **AZ-X-6** | **Attached viewports** (VP, GEX) share **Controls.symbol** (and underlier marks) with Analyzer; they do **not** each invent a private product symbol or Massive client. |
 
 ### 0.2.2 Inventory map (where detail lives)
 
@@ -110,10 +112,72 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 |--------|------------------------|
 | **Controls** | §1.1–1.3, §1.5–1.6, §1.12, actions in §1.9–1.13 |
 | **Models** | §1.4, §6 modes |
-| **Viewport** | §1.9–1.10, §3 focus, §6 |
+| **Viewport(s)** | §0.3 · §1.9–1.10 · §1.16 · §3 focus · §6 |
 | **Time machine** | §1.11 |
 | **Positions** | §1.7–1.8, §1.13 Builder, §4–5 |
 | **Alerts** | §1.14, §7 |
+
+---
+
+## 0.3 Attached viewports (Analyzer · Volume Profile · GEX)
+
+The **Viewport** bucket is a **family**, not a single canvas. Members work one **product symbol** and may use multiple **analytical viewports** attached to the Options Lab / Analyzer session.
+
+### 0.3.1 Viewport catalog
+
+| Viewport id | Role | Primary data plane | Pricing / value law |
+|-------------|------|--------------------|---------------------|
+| **analyzer** | OPF **risk graph** — expiration + T+0/scenario curves for the **focused** definition | Dual-side chain generations + OPF resolve | OPF only (DL-293) |
+| **volume-profile** | Underlier **OHLC + volume profile** — session structure, live mid tip | OHLC store + live underlier marks | Not package pricing; underlier geometry |
+| **gex** | **Gamma exposure** profile by strike (call/put/net/abs modes) | Dual-side chain (Γ · OI · S) | Estimate / template law — not OPF package SoR |
+
+```text
+                 CONTROLS · symbol S (suite SoR)
+                            │
+        ┌───────────────────┼───────────────────┐
+        ▼                   ▼                   ▼
+┌───────────────┐  ┌────────────────┐  ┌───────────────┐
+│  VIEWPORT     │  │  VIEWPORT      │  │  VIEWPORT     │
+│  analyzer     │  │  volume-profile│  │  gex          │
+│  OPF risk     │  │  OHLC + VP     │  │  strike GEX   │
+│  graph        │  │                │  │  profile      │
+└───────▲───────┘  └────────────────┘  └───────────────┘
+        │
+   POSITIONS focus · MODELS · TIME MACHINE · ALERTS (lines on analyzer)
+```
+
+### 0.3.2 Attachment law
+
+| ID | Law |
+|----|-----|
+| **AZ-VP-1** | There is one **Analyzer viewport** (risk graph) per Analyzer session focus — still **one definition** visualized there (PB-VIEW-4). |
+| **AZ-VP-2** | **Volume Profile** and **GEX** are **attached viewports**: same product universe/symbol context; complementary analytics; not second position books. |
+| **AZ-VP-3** | Attached viewports **must not** open private Massive sockets or hardcode symbol lists — Market Bus / OHLC / dual-side chain only. |
+| **AZ-VP-4** | Switching attached viewport **must not** destroy Positions book or Alerts book (session continuity). Route switches may unmount UI; sessionStorage + suite symbol preserve state (as-built pattern). |
+| **AZ-VP-5** | **Heatmap** remains a **chain template surface** (flies, ladder, GEX-as-template). GEX may ship as Heatmap template **and/or** a dedicated attached viewport — both are lawful; dedicated GEX viewport must share the same chain generation SoR (HM dual-side). |
+| **AZ-VP-6** | Time machine + OPF **Models** apply to the **Analyzer** viewport. VP/GEX may later accept limited overlays (e.g. spot line) but must not silently re-price packages. |
+| **AZ-VP-7** | Alerts evaluate underlier price for the suite symbol; alert lines draw on the **Analyzer** graph first. Drawing the same alerts on VP/GEX is optional future (OD-AZ5). |
+
+### 0.3.3 As-built vs TARGET
+
+| Viewport | As-built | TARGET |
+|----------|----------|--------|
+| **analyzer** | `/app/options-lab/analyzer` — full risk graph + book + alerts | Remains primary; list under graph (layout residual) |
+| **volume-profile** | `/app/options-lab/volume-profile` — suite sibling app · shared `OptionsLabProvider` symbol · OHLC durable store · live mid tip | Stay suite-attached; optional deeper embed next to Analyzer later (OD-AZ6) |
+| **gex** | Heatmap **template** `gex` over dual-side chain (not a top-level suite nav item) | Either keep as Heatmap template **or** promote to first-class attached viewport in suite nav (OD-AZ7) |
+
+### 0.3.4 Shared context matrix
+
+| Context | Analyzer | Volume Profile | GEX |
+|---------|----------|----------------|-----|
+| Product symbol | Suite | Suite | Suite / Heatmap symbol |
+| Underlier mid | Live underlier pattern + spot override | Live underlier tip | Spot from chain |
+| Dual-side chain | Yes (legs + quotes) | No (underlier OHLC) | Yes (Γ/OI) |
+| OPF resolve | **Yes** | No | No |
+| Positions book | **Yes** | No (read suite only) | No |
+| Alerts book | **Yes** (draw on graph) | Optional later | Optional later |
+| Time machine | **Yes** | No | No |
+| Models (OPF packs) | **Yes** | No | No |
 
 ---
 
@@ -407,24 +471,53 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 
 ### 1.15 Client modules (code map)
 
-| Path | Role |
-|------|------|
-| `web/components/options-lab/OpfRiskAnalyzer.tsx` | Surface assembly |
-| `AnalyzerPositionsList.tsx` | Book UI |
-| `AnalyzerAlertsSection.tsx` | Alerts UI |
-| `PositionBuilder.tsx` | Full definition editor |
-| `StrikeSelect.tsx` | Listed strike dropdown |
-| `msc-risk/PnLChart.tsx` | Presentation chart (not pricing SoR) |
-| `lib/options-lab/useOpfRiskGraph.ts` | Resolve + curve cache |
-| `lib/options-lab/usePackageQuotes.ts` | Card package SoR |
-| `lib/options-lab/useBuilderChain.ts` | Dual-side ladder for Builder |
-| `lib/options-lab/analyzerBook.ts` | Book + lock + alerts model |
-| `lib/options-lab/analyzerTrade.ts` | ToS handoff storage |
-| `lib/options-lab/opfModels.ts` | Pack catalog |
-| `lib/options-lab/opfPricingApi.ts` | HTTP resolve / package-quote / interest |
-| `lib/options-lab/tosParser.ts` · `tosGenerator.ts` | ToS I/O |
-| `lib/options-lab/position*.ts` | Templates · types · labels · economics |
-| `lib/options-lab/listedStrikes.ts` · `packageEconomics.ts` | Listed grid + debit/credit |
+| Path | Role | Bucket |
+|------|------|--------|
+| `web/components/options-lab/OpfRiskAnalyzer.tsx` | Analyzer surface assembly | all |
+| `AnalyzerPositionsList.tsx` | Book UI | Positions |
+| `AnalyzerAlertsSection.tsx` | Alerts UI | Alerts |
+| `PositionBuilder.tsx` · `StrikeSelect.tsx` | Full definition editor | Positions |
+| `msc-risk/PnLChart.tsx` | Analyzer graph presentation | Viewport analyzer |
+| `VolumeProfileChart.tsx` | VP attached viewport | Viewport volume-profile |
+| `HeatmapChainPanel.tsx` + `templates/gex.ts` | Chain templates incl. GEX | Viewport gex / Heatmap |
+| `lib/options-lab/useOpfRiskGraph.ts` | Resolve + curve cache | Viewport analyzer |
+| `lib/options-lab/usePackageQuotes.ts` | Card package SoR | Positions |
+| `lib/options-lab/useBuilderChain.ts` | Dual-side ladder for Builder | Positions |
+| `lib/options-lab/analyzerBook.ts` | Book + lock + alerts model | Positions · Alerts |
+| `lib/options-lab/analyzerTrade.ts` | ToS handoff storage | Controls |
+| `lib/options-lab/opfModels.ts` | Pack catalog | Models |
+| `lib/options-lab/opfPricingApi.ts` | HTTP resolve / package-quote / interest | Models · Positions |
+| `lib/marketOhlc*.ts` · OHLC series store | Underlier candles | Viewport volume-profile |
+| `lib/optionsLabSuite.ts` · `optionsLabContext.tsx` | Suite nav + shared symbol | Controls |
+
+### 1.16 Attached viewports inventory · **Viewport(s)**
+
+#### 1.16.1 Analyzer risk graph (primary)
+
+See §1.9–1.10. Route `/app/options-lab/analyzer`. Owns OPF curves, focus, incomplete empty, alerts draw.
+
+#### 1.16.2 Volume Profile (attached)
+
+| Feature | As-built |
+|---------|----------|
+| Route | `/app/options-lab/volume-profile` |
+| Chrome | `OptionsLabChrome` · `fillHeight` · `wide` |
+| Component | `VolumeProfileChart` |
+| Data | Durable OHLC store (bootstrap + morning append) · multi-TF · live tip via live underlier pattern |
+| Shared | Suite **symbol** from `OptionsLabProvider` |
+| Not in surface | Positions book · Alerts list · OPF packs · Time machine |
+
+#### 1.16.3 GEX (attached / template)
+
+| Feature | As-built |
+|---------|----------|
+| Primary ship | Heatmap **template** `gex` (`web/lib/options-lab/templates/gex.ts`) over dual-side chain |
+| Modes | gex_net · gex_abs · side variants (template value modes) |
+| Formula heritage | call +Γ·OI·S² · put −Γ·OI·S² · net / abs |
+| Suite nav item | **Not yet** a top-level Options Lab tab (unlike VP · Heatmap · Analyzer) |
+| PnLChart | Optional `gexByStrike` autofit prop exists for future Analyzer overlay |
+
+---
 
 ---
 
@@ -666,6 +759,9 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **OD-AZ2** | Alerts **panel** placement after list moves under viewport | **Under position list** (default) or collapsible third band; never remove alerts from Analyzer |
 | **OD-AZ3** | Default template on empty Builder open | Butterfly (day-trader default) |
 | **OD-AZ4** | Multi-tab book sync | Out of v0.1 (sessionStorage only) |
+| **OD-AZ5** | Draw threshold alerts on VP/GEX canvases | Optional later; Analyzer graph first |
+| **OD-AZ6** | Embed VP adjacent to Analyzer vs suite-tab only | Suite-tab sufficient for v0.1; embed later |
+| **OD-AZ7** | GEX as suite attached viewport vs Heatmap template only | Template is as-built; promote to suite if Coach wants parity with VP |
 
 ---
 
@@ -688,5 +784,6 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **v0.1** | 2026-08-11 | Full as-built inventory + TARGET layout/defaults from Coach; DRAFT |
 | **v0.1.1** | 2026-08-11 | **Alerts elevated** to first-class Analyzer subsystem: mission, cardinal objects, full §1.14 model, AZ-AL-0…11, layout, ATs |
 | **v0.1.2** | 2026-08-11 | **Six major buckets** architecture: Alerts · Positions · Viewport · Time machine · Models · Controls (§0.2) |
+| **v0.1.3** | 2026-08-11 | **Attached viewports:** Analyzer risk graph · Volume Profile · GEX (§0.3); AZ-VP-1…7; inventory §1.16 |
 
 **Reference UX (non-authority):** MSC Risk Graph — workflow only (incl. alerts UX heritage). **MSC is not the standard.**

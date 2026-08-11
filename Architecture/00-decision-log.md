@@ -22,6 +22,8 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 **v0.1.2 (same DL day):** Coach framing — Analyzer product = six major buckets: **Alerts · Positions · Viewport · Time machine · Models · Controls**. Spec §0.2 architecture + inventory map.
 
+**v0.1.3 (same DL day):** Coach framing — **attached viewports**: **Analyzer** (OPF risk graph) · **Volume Profile** · **GEX**. Spec §0.3 AZ-VP-1…7; as-built: VP suite app, GEX Heatmap template; shared suite symbol; OD-AZ5–7.
+
 **Does not:** implement layout residual or full default matrix (plan after Coach GO / OD).
 
 ## 2026-08-11 — DL-300 Live underlier mids — site-wide UI standard
