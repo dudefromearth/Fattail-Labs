@@ -4,8 +4,8 @@ import OptionsLabChrome from "@/components/options-lab/OptionsLabChrome";
 import MscRiskAnalyzer from "@/components/options-lab/MscRiskAnalyzer";
 
 /**
- * Risk Analyzer — MSC Risk Graph engine + canvas PnLChart (ported).
- * Trade input: Heatmap ToS Option-click or paste.
+ * Risk Analyzer — OPF day_trade dual-curve risk graph (ToS-comparable).
+ * Trade input: Heatmap ToS Option-click or paste. PnLChart canvas for pan/zoom.
  */
 export default function OptionsLabAnalyzerPage() {
   return (

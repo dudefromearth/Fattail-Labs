@@ -14,6 +14,8 @@ from opf.lock import LockState
 from opf.package import PackagePricer, StrategyIntent
 from opf.static_facts import MarketStaticFacts, require_static_facts
 
+# re-export for type checkers; datetime used in _dual_curves
+
 
 def run_mark_hybrid(
     intent: StrategyIntent,
@@ -102,17 +104,24 @@ def run_mark_hybrid(
 
     recon = _recon(mark_dollars, model_dollars if spot_pct == 0 and vol_pts == 0 else None)
 
-    curves = _spot_curve(
-        intent,
+    # Dense dual curves for Risk Analyzer / ToS-comparable presentation
+    curve_steps = int(wi.get("curve_steps") or 161)
+    curve_range_pct = float(wi.get("curve_range_pct") or 8.0)
+    curves = _dual_curves(
         quote,
         facts,
         engine_id,
-        spot_s if spot_pct == 0 else float(spot),
+        float(spot),
         r,
         q,
         vol_pts,
         d_basis,
         packages,
+        steps=curve_steps,
+        range_pct=curve_range_pct,
+        time_offset_hours=float(wi.get("time_offset_hours") or 0.0),
+        as_of_clock=as_of_clock,
+        product=intent.product,
     )
 
     return _result(
@@ -255,8 +264,16 @@ def _recon(mark_dollars: float | None, model_dollars: float | None) -> dict[str,
     }
 
 
-def _spot_curve(
-    intent: StrategyIntent,
+def _intrinsic(side: str, strike: float, spot: float) -> float:
+    s = str(side).lower()
+    K = float(strike)
+    S = float(spot)
+    if s in ("c", "call"):
+        return max(0.0, S - K)
+    return max(0.0, K - S)
+
+
+def _dual_curves(
     quote: dict[str, Any],
     facts: MarketStaticFacts,
     engine_id: str,
@@ -266,29 +283,93 @@ def _spot_curve(
     vol_pts: float,
     d_basis: float | None,
     packages: float,
+    *,
+    steps: int = 161,
+    range_pct: float = 8.0,
+    time_offset_hours: float = 0.0,
+    as_of_clock: datetime | None = None,
+    product: str = "SPX",
 ) -> dict[str, Any]:
+    """Dense model_t0 + expiration curves (OPF30 · ToS Risk Analyzer dual shape).
+
+    points[] = {x: underlier, y: pnl USD per package-set, basis-referenced}.
+    """
     if d_basis is None:
         return {}
-    points = []
-    for pct in range(-5, 6):
-        S = float(spot) * (1.0 + pct / 100.0)
-        v = 0.0
-        for lm in quote["leg_marks"]:
+    steps = max(21, min(401, int(steps)))
+    range_pct = max(1.0, min(40.0, float(range_pct)))
+    # Expand range to cover all strikes + padding
+    strikes = [float(lm["strike"]) for lm in quote.get("leg_marks") or []]
+    if strikes:
+        lo_s, hi_s = min(strikes), max(strikes)
+        pad = max((hi_s - lo_s) * 0.35, float(spot) * 0.02, 5.0)
+        x_lo = min(float(spot) * (1.0 - range_pct / 100.0), lo_s - pad)
+        x_hi = max(float(spot) * (1.0 + range_pct / 100.0), hi_s + pad)
+    else:
+        x_lo = float(spot) * (1.0 - range_pct / 100.0)
+        x_hi = float(spot) * (1.0 + range_pct / 100.0)
+    if x_hi <= x_lo:
+        x_hi = x_lo + 1.0
+
+    # Optional time roll for theo τ (what-if hours)
+    from opf.tau import shift_clock, tau as compute_tau
+
+    clock = as_of_clock
+    if time_offset_hours and clock is not None:
+        clock = shift_clock(clock, time_offset_hours)
+    elif time_offset_hours:
+        from zoneinfo import ZoneInfo
+
+        clock = shift_clock(
+            datetime.now(tz=ZoneInfo("America/New_York")), time_offset_hours
+        )
+
+    settlement = facts.product(product).settlement
+    leg_taus: list[float] = []
+    for lm in quote.get("leg_marks") or []:
+        if clock is not None:
+            tmeta = compute_tau(
+                lm["expiration"], clock, settlement=settlement  # type: ignore[arg-type]
+            )
+            leg_taus.append(float(tmeta["tau"]))
+        else:
+            leg_taus.append(float(lm.get("tau") or 0.0))
+
+    model_pts: list[dict[str, float]] = []
+    exp_pts: list[dict[str, float]] = []
+    n = steps
+    for i in range(n):
+        S = x_lo + (x_hi - x_lo) * (i / (n - 1))
+        v_model = 0.0
+        v_exp = 0.0
+        for j, lm in enumerate(quote.get("leg_marks") or []):
             iv = float(lm["iv"]) + vol_pts / 100.0
-            t = float(lm["tau"])
+            if iv <= 0:
+                iv = 1e-6
+            t = leg_taus[j] if j < len(leg_taus) else float(lm.get("tau") or 0.0)
+            qty = float(lm["qty"])
             if engine_id == "crr_american":
                 px = crr_american_price(S, float(lm["strike"]), t, r, q, iv, lm["side"])
             else:
                 px = bsm_european_price(S, float(lm["strike"]), t, r, q, iv, lm["side"])
-            v += float(lm["qty"]) * px
-        y = (v - float(d_basis)) * 100.0 * packages
-        points.append({"x": S, "y": y})
+            v_model += qty * px
+            v_exp += qty * _intrinsic(lm["side"], float(lm["strike"]), S)
+        y_m = (v_model - float(d_basis)) * 100.0 * packages
+        y_e = (v_exp - float(d_basis)) * 100.0 * packages
+        model_pts.append({"x": S, "y": y_m})
+        exp_pts.append({"x": S, "y": y_e})
+
     return {
         "model_t0": {
             "label": "model_t0",
             "pnl_unit": "usd_per_package_set",
-            "points": points,
-        }
+            "points": model_pts,
+        },
+        "expiration": {
+            "label": "expiration",
+            "pnl_unit": "usd_per_package_set",
+            "points": exp_pts,
+        },
     }
 
 

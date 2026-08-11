@@ -387,6 +387,29 @@ def test_epoch_skew():
     assert epoch["max_skew_ms"] >= 60_000  # 1 minute between as_ofs
 
 
+def test_dual_curves_dense_expiration_and_model():
+    """Analyzer needs dense dual curves (expiration + model_t0)."""
+    store = _fly_store()
+    clock = datetime.fromisoformat("2026-08-11T15:00:00-04:00")
+    out = resolve_pricing(
+        use_case="day_trade",
+        intent=_fly_intent(),
+        store=store,
+        facts=default_static_facts(),
+        as_of_clock=clock,
+        spot_override=100.0,
+        what_if={"curve_steps": 41, "curve_range_pct": 10},
+    )
+    curves = out.get("curves") or {}
+    mt0 = (curves.get("model_t0") or {}).get("points") or []
+    exp = (curves.get("expiration") or {}).get("points") or []
+    assert len(mt0) == 41
+    assert len(exp) == 41
+    assert mt0[0]["x"] < 100 < mt0[-1]["x"]
+    # At deep OTM for long call fly wings, expiration is defined
+    assert all("y" in p for p in exp)
+
+
 def test_vol_offset_pts_units():
     """OPF31: +5 pts means +0.05 absolute vol."""
     store = _fly_store()

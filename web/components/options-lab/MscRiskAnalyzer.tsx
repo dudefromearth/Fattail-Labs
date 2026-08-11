@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * Labs Risk Analyzer — MSC Risk Graph engine + PnLChart (ported).
+ * Labs Risk Analyzer — OPF day_trade dual-curve risk graph (ToS-comparable).
  * Trade selection: Heatmap ToS Option-click (session) or paste.
+ * Engine: Options Pricing Foundation L4 resolve (not MSC as authority).
  */
 
 import Link from "next/link";
@@ -14,15 +15,8 @@ import {
   saveAnalyzerTrade,
   type StoredAnalyzerTrade,
 } from "@/lib/options-lab/analyzerTrade";
-import { parseTosScript, type ParsedTosTrade } from "@/lib/options-lab/tosParser";
-import {
-  useRiskGraphCalculations,
-  type Strategy,
-  type MarketRegime,
-  type PricingModel,
-  MARKET_REGIMES,
-  PRICING_MODELS,
-} from "@/lib/msc-risk/useRiskGraphCalculations";
+import { parseTosScript } from "@/lib/options-lab/tosParser";
+import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
 import PnLChart, {
   type PnLChartHandle,
 } from "@/components/options-lab/msc-risk/PnLChart";
@@ -38,38 +32,6 @@ const btn =
   "bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium text-[var(--color-label)] " +
   "shadow-sm hover:bg-[var(--color-fill)] disabled:opacity-45";
 
-function tradeToStrategy(trade: ParsedTosTrade): Strategy {
-  const debitAbs =
-    trade.limit != null
-      ? Math.abs(trade.limit)
-      : trade.debit != null
-        ? Math.abs(trade.debit)
-        : 0;
-  return {
-    id: "tos-selected",
-    strike: trade.body ?? trade.strikes[Math.floor(trade.strikes.length / 2)] ?? 0,
-    width: trade.width ?? 0,
-    side: trade.right,
-    strategy:
-      trade.structure === "butterfly"
-        ? "butterfly"
-        : trade.structure === "vertical"
-          ? "vertical"
-          : "single",
-    debit: debitAbs,
-    costBasisType: trade.isCredit ? "credit" : "debit",
-    visible: true,
-    expiration: trade.expiration,
-    symbol: trade.symbol,
-    legs: trade.legs.map((l) => ({
-      strike: l.strike,
-      expiration: l.expiration,
-      right: l.right,
-      quantity: l.quantity,
-    })),
-  };
-}
-
 export default function MscRiskAnalyzer() {
   const { symbol, setSymbol, universe, loading: universeLoading } =
     useOptionsLab();
@@ -77,15 +39,12 @@ export default function MscRiskAnalyzer() {
   const [stored, setStored] = useState<StoredAnalyzerTrade | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [spotStr, setSpotStr] = useState("");
-  const [vixStr, setVixStr] = useState("16");
+  const [vixStr, setVixStr] = useState("");
 
-  // MSC simulation / model controls
   const [timeMachineEnabled, setTimeMachineEnabled] = useState(false);
   const [simTimeOffsetHours, setSimTimeOffsetHours] = useState(0);
   const [simVolatilityOffset, setSimVolatilityOffset] = useState(0);
   const [simSpotPct, setSimSpotPct] = useState(0);
-  const [marketRegime, setMarketRegime] = useState<MarketRegime>("normal");
-  const [pricingModel, setPricingModel] = useState<PricingModel>("black-scholes");
 
   const chartRef = useRef<PnLChartHandle>(null);
 
@@ -125,39 +84,33 @@ export default function MscRiskAnalyzer() {
     }
   }, [trade?.symbol, symbol, universe, setSymbol]);
 
-  useEffect(() => {
-    if (trade?.body != null && !spotStr.trim()) {
-      setSpotStr(String(trade.body));
-    }
-  }, [trade?.body, trade?.raw, spotStr]);
-
-  const spotPrice = useMemo(() => {
+  const spotOverride = useMemo(() => {
     const n = Number(spotStr);
     if (Number.isFinite(n) && n > 0) return n;
-    return trade?.body ?? 5000;
-  }, [spotStr, trade]);
+    return null;
+  }, [spotStr]);
 
   const vix = useMemo(() => {
     const n = Number(vixStr);
-    return Number.isFinite(n) && n > 0 ? n : 16;
+    return Number.isFinite(n) && n > 0 ? n : null;
   }, [vixStr]);
 
-  const strategies = useMemo<Strategy[]>(() => {
-    if (!trade) return [];
-    return [tradeToStrategy(trade)];
-  }, [trade]);
-
-  const risk = useRiskGraphCalculations({
-    strategies,
-    spotPrice,
+  const risk = useOpfRiskGraph({
+    trade,
+    spotOverride,
     vix,
-    timeMachineEnabled,
-    simTimeOffsetHours,
-    simVolatilityOffset,
-    simSpotPct,
-    marketRegime,
-    pricingModel,
+    timeOffsetHours: timeMachineEnabled ? simTimeOffsetHours : 0,
+    volOffsetPts: simVolatilityOffset,
+    spotPct: simSpotPct,
+    enabled: !!trade,
   });
+
+  // Prefer live chain spot into the field when empty
+  useEffect(() => {
+    if (risk.spot != null && !spotStr.trim()) {
+      setSpotStr(String(Math.round(risk.spot * 100) / 100));
+    }
+  }, [risk.spot, spotStr]);
 
   const resetSim = () => {
     setTimeMachineEnabled(false);
@@ -166,21 +119,26 @@ export default function MscRiskAnalyzer() {
     setSimSpotPct(0);
   };
 
-  const simSpot = spotPrice * (1 + simSpotPct / 100);
+  const displaySpot = spotOverride ?? risk.spot ?? trade?.body ?? 0;
+  const simSpot = displaySpot * (1 + simSpotPct / 100);
+
+  const hasCurves =
+    trade &&
+    risk.expirationPoints.length > 0 &&
+    risk.theoreticalPoints.length > 0;
 
   return (
     <div
       className="flex min-h-0 flex-1 flex-col lg:flex-row"
-      data-testid="options-lab-msc-risk-analyzer"
+      data-testid="options-lab-opf-risk-analyzer"
     >
-      {/* Left rail — MSC-like controls */}
       <aside className="flex w-full shrink-0 flex-col gap-3 overflow-y-auto border-b border-[var(--color-separator)] bg-[var(--color-surface)] p-3 lg:w-[19rem] lg:border-b-0 lg:border-r">
         <div>
           <h2 className="text-base font-semibold text-[var(--color-label)]">
             Risk Graph
           </h2>
           <p className="text-[11px] text-[var(--color-label-tertiary)]">
-            MSC engine · dual-curve PnLChart · ToS trade select
+            OPF day_trade · dual-curve (expiration + T+0) · ToS-comparable
           </p>
         </div>
 
@@ -224,6 +182,7 @@ export default function MscRiskAnalyzer() {
               saveAnalyzerTrade(raw.trim(), "paste");
               setStored(loadAnalyzerTrade());
               setParseError(null);
+              risk.refresh();
             }}
           >
             Load
@@ -247,9 +206,17 @@ export default function MscRiskAnalyzer() {
             type="button"
             className={btn}
             onClick={() => chartRef.current?.autoFit()}
-            disabled={!trade}
+            disabled={!hasCurves}
           >
             Auto-fit
+          </button>
+          <button
+            type="button"
+            className={btn}
+            onClick={() => risk.refresh()}
+            disabled={!trade || risk.loading}
+          >
+            {risk.loading ? "…" : "Refresh"}
           </button>
         </div>
 
@@ -261,6 +228,11 @@ export default function MscRiskAnalyzer() {
             {parseError}
           </p>
         )}
+        {risk.error && (
+          <p className="text-xs text-amber-400" role="status">
+            {risk.error}
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
@@ -269,49 +241,20 @@ export default function MscRiskAnalyzer() {
               className={control}
               value={spotStr}
               onChange={(e) => setSpotStr(e.target.value)}
+              placeholder={risk.spot != null ? String(risk.spot) : "chain"}
             />
           </label>
           <label className="block">
-            <span className={fieldLabel}>VIX</span>
+            <span className={fieldLabel}>VIX (opt)</span>
             <input
               className={control}
               value={vixStr}
               onChange={(e) => setVixStr(e.target.value)}
+              placeholder="chain/native"
             />
           </label>
         </div>
 
-        <label className="block">
-          <span className={fieldLabel}>Regime</span>
-          <select
-            className={control}
-            value={marketRegime}
-            onChange={(e) => setMarketRegime(e.target.value as MarketRegime)}
-          >
-            {Object.entries(MARKET_REGIMES).map(([id, r]) => (
-              <option key={id} value={id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className={fieldLabel}>Pricing model</span>
-          <select
-            className={control}
-            value={pricingModel}
-            onChange={(e) => setPricingModel(e.target.value as PricingModel)}
-          >
-            {Object.entries(PRICING_MODELS).map(([id, m]) => (
-              <option key={id} value={id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/* What-if / Time machine — MSC */}
         <div className="rounded-xl border border-[var(--color-separator)] bg-[var(--color-fill)]/50 p-3">
           <div className="mb-2 flex items-center justify-between">
             <label className="flex items-center gap-2 text-xs font-semibold">
@@ -322,7 +265,11 @@ export default function MscRiskAnalyzer() {
               />
               Time machine
             </label>
-            <button type="button" className="text-[11px] text-[var(--color-tint)]" onClick={resetSim}>
+            <button
+              type="button"
+              className="text-[11px] text-[var(--color-tint)]"
+              onClick={resetSim}
+            >
               Reset
             </button>
           </div>
@@ -342,7 +289,7 @@ export default function MscRiskAnalyzer() {
           </label>
           <label className="mb-2 block text-xs">
             Vol offset {simVolatilityOffset >= 0 ? "+" : ""}
-            {simVolatilityOffset.toFixed(0)}
+            {simVolatilityOffset.toFixed(0)} pts
             <input
               type="range"
               className="mt-1 w-full"
@@ -370,7 +317,9 @@ export default function MscRiskAnalyzer() {
 
         {trade && (
           <div className="mt-auto space-y-1 border-t border-[var(--color-separator)] pt-3 text-xs">
-            <div className="font-semibold">{trade.symbol} {trade.structure}</div>
+            <div className="font-semibold">
+              {trade.symbol} {trade.structure}
+            </div>
             <div className="text-[var(--color-label-secondary)]">
               {trade.expiration} · {trade.action} ·{" "}
               {trade.isCredit ? "credit" : "debit"}{" "}
@@ -378,68 +327,104 @@ export default function MscRiskAnalyzer() {
             </div>
             <ul className="font-mono text-[11px] text-[var(--color-label-secondary)]">
               {trade.legs.map((l) => (
-                <li key={`${l.strike}-${l.quantity}`}>
+                <li key={`${l.expiration}-${l.strike}-${l.quantity}-${l.right}`}>
                   {l.quantity > 0 ? "+" : ""}
                   {l.quantity} {l.right} {l.strike}
+                  {l.expiration !== trade.expiration ? ` ${l.expiration}` : ""}
                 </li>
               ))}
             </ul>
-            <div className="grid grid-cols-3 gap-1 pt-2 text-center">
+            <div className="grid grid-cols-2 gap-1 pt-2 text-center">
               <div className="rounded bg-black/20 p-1">
-                <div className="text-[9px] text-white/40">Δ</div>
-                <div className="font-mono text-[11px]">{risk.delta.toFixed(1)}</div>
+                <div className="text-[9px] text-white/40">Mark pkg</div>
+                <div className="font-mono text-[11px]">
+                  {risk.packageDebit != null
+                    ? risk.packageDebit.toFixed(2)
+                    : "—"}
+                </div>
               </div>
               <div className="rounded bg-black/20 p-1">
-                <div className="text-[9px] text-white/40">Γ</div>
-                <div className="font-mono text-[11px]">{risk.gamma.toFixed(2)}</div>
-              </div>
-              <div className="rounded bg-black/20 p-1">
-                <div className="text-[9px] text-white/40">Θ</div>
-                <div className="font-mono text-[11px]">{risk.theta.toFixed(1)}</div>
+                <div className="text-[9px] text-white/40">RECON</div>
+                <div
+                  className={
+                    "font-mono text-[11px] " +
+                    (risk.reconPass === true
+                      ? "text-emerald-400"
+                      : risk.reconPass === false
+                        ? "text-red-400"
+                        : "text-white/50")
+                  }
+                >
+                  {risk.reconPass === true
+                    ? "pass"
+                    : risk.reconPass === false
+                      ? "fail"
+                      : "—"}
+                </div>
               </div>
             </div>
             <div className="pt-1 text-[11px] text-[var(--color-label-secondary)]">
-              Theo @ spot{" "}
+              T+0 @ spot{" "}
               <span className="font-semibold text-fuchsia-400">
                 ${risk.theoreticalPnLAtSpot.toFixed(0)}
               </span>
+            </div>
+            <div className="text-[10px] text-[var(--color-label-tertiary)]">
+              {risk.packId ?? "…"} · {risk.engineId ?? "…"}
+              {risk.loading ? " · live…" : ""}
             </div>
           </div>
         )}
       </aside>
 
-      {/* MSC PnLChart */}
       <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0a0a0e] p-2">
         <div className="mb-2 flex flex-wrap items-center gap-3 px-1 text-xs text-white/50">
           <span className="font-semibold text-white/80">
             {trade ? `${trade.symbol} risk graph` : "No trade"}
           </span>
-          <span>Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}</span>
+          <span>
+            Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
+          </span>
           <span className="text-emerald-400/80">Expiration</span>
-          <span className="text-fuchsia-400/80">Real-time theo</span>
+          <span className="text-fuchsia-400/80">Real-time (OPF T+0)</span>
+          {trade?.limit != null && (
+            <span className="text-amber-400/70">basis = limit</span>
+          )}
         </div>
         <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
-          {trade && risk.expirationPoints.length > 0 ? (
+          {hasCurves ? (
             <div className="h-full min-h-[420px] w-full">
               <PnLChart
                 ref={chartRef}
                 expirationData={risk.expirationPoints}
                 theoreticalData={risk.theoreticalPoints}
                 theoreticalStroke="#e879f9"
-                theoreticalLegendLabel="Real-Time (Theo)"
-                spotPrice={spotPrice}
-                spotIndicatorPrice={simSpot}
+                theoreticalLegendLabel="Real-Time (OPF)"
+                spotPrice={displaySpot > 0 ? displaySpot : 1}
+                spotIndicatorPrice={simSpot > 0 ? simSpot : undefined}
                 expirationBreakevens={risk.expirationBreakevens}
                 theoreticalBreakevens={risk.theoreticalBreakevens}
                 strikes={risk.allStrikes}
-                expiredExpirationData={risk.expiredExpirationPoints}
-                expiredTheoreticalData={risk.expiredTheoreticalPoints}
               />
             </div>
           ) : (
-            <div className="flex h-full min-h-[420px] items-center justify-center px-6 text-center text-sm text-white/40">
-              Option-click a Symmetric flies tile on Heatmap (ToS), then open
-              Analyzer — or paste a ToS order line and Load.
+            <div className="flex h-full min-h-[420px] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-white/40">
+              {trade && risk.loading ? (
+                <span>Loading OPF resolve + chain…</span>
+              ) : trade && risk.error ? (
+                <>
+                  <span className="text-amber-400/90">{risk.error}</span>
+                  <span className="text-xs">
+                    Need dual-side chain for each leg expiration (Market Bus /
+                    ladder). Then OPF builds expiration + T+0 curves.
+                  </span>
+                </>
+              ) : (
+                <span>
+                  Option-click a Symmetric flies tile on Heatmap (ToS), then open
+                  Analyzer — or paste a ToS order line and Load.
+                </span>
+              )}
             </div>
           )}
         </div>
