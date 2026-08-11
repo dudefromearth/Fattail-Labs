@@ -86,7 +86,7 @@ On Options Lab Analyzer, members must be able to:
 **PB-VIEW-4:** v0.1/v0.2: **exactly one focused** definition visualized (no multi-card aggregate).  
 **PB-VIEW-5 (B2):** While Analyzer is open and stream is healthy (**day_trade live**), the focused definition **re-resolves on each applied generation update** for any of its legs’ keys (throttled to generation cadence; **client-triggered on diff apply — never an independent `setInterval` HTTP poll loop**). Viewport renders the resolve’s `as_of`; a curve older than the newest applied generation for its keys is **labeled stale**.
 
-**PB-VIEW-7 (outlook epoch re-anchor — OD-PB16):** PB-VIEW-5 applies to **day_trade live** only. In **outlook** mode, scenario curves **do not** auto-re-anchor on every generation by default. Recommendation (**OD-PB16**): **member-controlled re-anchor** with an **“epoch stale”** indicator when newer generations exist for the definition’s keys — so scenario comparison work does not shift underfoot mid-analysis. Until OD-PB16 is Accepted/Overridden, implementers must not invent silent auto-re-anchor.
+**PB-VIEW-7 (outlook epoch re-anchor — OD-PB16 **Accepted** · Analyzer as-built ratifies):** PB-VIEW-5 applies to **day_trade live** only. In **outlook** mode, scenario curves **do not** auto-re-anchor on every generation by default. **Law (normative):** (1) selecting outlook **pins** the scenario epoch; (2) member must **explicitly re-anchor** (button) to pick up newer generations; (3) when generations advance while pinned, show **epoch stale**; (4) scenario curves keep their epoch label. Silent auto-re-anchor is forbidden.
 
 ---
 
@@ -269,11 +269,13 @@ underlying, expiration (front), contracts, legs, direction, optional limit magni
 | id, label, notation, position | Definition |
 | status | ANALYSIS default |
 | visible | Hide from viewport drive |
-| livePackagePerShare | From OPF PackageQuote / parity path when unlocked live |
+| livePackagePerShare | **Magnitude** for display; **invariant:** when `lastNatSigned` set, `livePackagePerShare ≡ |lastNatSigned|` (B5 fold) |
+| lastNatSigned | Signed OPF natural D_nat (or locked basis source for compare) |
 | priceSide | debit \| credit \| **null** when incomplete (A9) |
 | lock | LockState |
 | displayAsOf? | Generation as_of for live package (A3) |
-| liveState | live \| held \| not_live \| budget_refused |
+| liveState | **live \| held \| not_live \| budget_refused \| incomplete \| skewed** (six-state; Analyzer/PB fold) |
+| status | **ANALYSIS** for v0.2 book (OD-PB6); full OMS enum reserved until OD opens lifecycle |
 | createdAt / updatedAt | |
 
 ### 3.4 LockState — **D\* signed (B4)**

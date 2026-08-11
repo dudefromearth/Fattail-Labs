@@ -1,5 +1,8 @@
 /**
- * PnLChart - Custom Canvas-based P&L chart
+ * PnLChart - Custom Canvas-based P&L chart (Labs risk-graph presentation)
+ *
+ * Heritage: MSC Risk Graph 2D chart UX (interaction grammar only).
+ * Re-typed for Labs; no MSC runtime import. Pricing SoR is OPF (DL-293, DL-302).
  *
  * Simple, no-nonsense charting:
  * - Auto-fit on load or when data changes
@@ -14,7 +17,7 @@ import {
   fitPnlYRange,
   AUTOFIT_PAD_FRAC,
   type AutofitProfile,
-} from '@/lib/msc-risk/pricing/autofitView';
+} from '@/lib/risk-graph/pricing/autofitView';
 
 export interface PnLPoint {
   price: number;

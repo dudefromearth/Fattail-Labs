@@ -47,7 +47,7 @@ import SurfaceViewport from "@/components/options-lab/SurfaceViewport";
 import PnLChart, {
   type PnLChartHandle,
   type PriceAlertType,
-} from "@/components/options-lab/msc-risk/PnLChart";
+} from "@/components/options-lab/risk-graph/PnLChart";
 import { useSmoothNumber } from "@/lib/useSmoothValue";
 
 /** Analyzer viewport modes — Surface is in-viewport, not a suite app (AZ-VP-S1). */
@@ -64,7 +64,8 @@ const btn =
   "bg-[var(--color-surface)] px-3 py-1.5 text-sm font-medium text-[var(--color-label)] " +
   "shadow-sm hover:bg-[var(--color-fill)] disabled:opacity-45";
 
-function streamPosture(): "Live" | "Held" | "Closed" | "Error" {
+/** Clock fallback only when market-plane session facts unavailable (B2). */
+function clockPostureFallback(): "Live" | "Held" | "Closed" | "Error" {
   try {
     const d = new Date();
     const et = new Date(
@@ -73,10 +74,33 @@ function streamPosture(): "Live" | "Held" | "Closed" | "Error" {
     const day = et.getDay();
     const mins = et.getHours() * 60 + et.getMinutes();
     if (day === 0 || day === 6) return "Closed";
-    if (mins >= 9 * 60 + 30 && mins < 16 * 60) return "Live";
+    // Index options often print to 16:15 ET — prefer plane facts when available
+    if (mins >= 9 * 60 + 30 && mins < 16 * 60 + 15) return "Live";
     return "Held";
   } catch {
     return "Error";
+  }
+}
+
+async function fetchPlanePosture(): Promise<"Live" | "Held" | "Closed" | "Error"> {
+  try {
+    const r = await fetch("/api/me/market/session-status", {
+      credentials: "same-origin",
+    });
+    if (!r.ok) return clockPostureFallback();
+    const d = (await r.json()) as {
+      open?: boolean;
+      market?: string | null;
+    };
+    if (typeof d.open === "boolean") {
+      if (d.open) return "Live";
+      const m = String(d.market || "").toLowerCase();
+      if (m === "closed" || m === "early-close") return "Closed";
+      return "Held";
+    }
+    return clockPostureFallback();
+  } catch {
+    return clockPostureFallback();
   }
 }
 
@@ -102,7 +126,9 @@ export default function OpfRiskAnalyzer() {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<AnalyzerThresholdAlert[]>([]);
-  const [posture, setPosture] = useState(streamPosture);
+  const [posture, setPosture] = useState<"Live" | "Held" | "Closed" | "Error">(
+    "Held",
+  );
   const [viewportMode, setViewportMode] =
     useState<AnalyzerViewportMode>("risk");
 
@@ -121,8 +147,18 @@ export default function OpfRiskAnalyzer() {
     saveAlerts(alerts);
   }, [alerts]);
   useEffect(() => {
-    const id = window.setInterval(() => setPosture(streamPosture()), 30_000);
-    return () => window.clearInterval(id);
+    let cancelled = false;
+    const tick = () => {
+      void fetchPlanePosture().then((p) => {
+        if (!cancelled) setPosture(p);
+      });
+    };
+    tick();
+    const id = window.setInterval(tick, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
   }, []);
 
   const sessionHeld = posture === "Held" || posture === "Closed";
@@ -207,6 +243,14 @@ export default function OpfRiskAnalyzer() {
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [vixStr]);
 
+  /** B4: member spot/VIX / what-if inputs → labeled override; RECON not pass/fail vs live */
+  const inputOverrideActive =
+    (spotOverride != null && spotOverride > 0) ||
+    (vix != null && vix > 0) ||
+    timeMachineEnabled ||
+    simVolatilityOffset !== 0 ||
+    simSpotPct !== 0;
+
   const risk = useOpfRiskGraph({
     trade,
     spotOverride,
@@ -256,13 +300,15 @@ export default function OpfRiskAnalyzer() {
       durationMs: 420,
     }) ?? (displaySpotRaw > 0 ? displaySpotRaw : 0);
 
+  // A1: evaluate alerts on raw underlier mark (not smoothed, not what-if override)
+  const rawMarkForAlerts = risk.spot ?? chain.spot ?? null;
   useEffect(() => {
-    if (!(displaySpot > 0)) return;
+    if (rawMarkForAlerts == null || !(rawMarkForAlerts > 0)) return;
     setAlerts((prev) => {
-      const next = evaluateAlerts(prev, displaySpot, symbol);
+      const next = evaluateAlerts(prev, rawMarkForAlerts, symbol);
       return next === prev ? prev : next;
     });
-  }, [displaySpot, symbol]);
+  }, [rawMarkForAlerts, symbol]);
 
   useEffect(() => {
     if (risk.spot != null && !spotStr.trim()) {
@@ -749,22 +795,26 @@ export default function OpfRiskAnalyzer() {
                 <div
                   className={
                     "font-mono text-[11px] " +
-                    (sessionHeld
-                      ? "text-white/40"
-                      : risk.reconPass === true
-                        ? "text-emerald-400"
-                        : risk.reconPass === false
-                          ? "text-red-400"
-                          : "text-white/50")
+                    (inputOverrideActive
+                      ? "text-sky-300"
+                      : sessionHeld
+                        ? "text-white/40"
+                        : risk.reconPass === true
+                          ? "text-emerald-400"
+                          : risk.reconPass === false
+                            ? "text-red-400"
+                            : "text-white/50")
                   }
                 >
-                  {sessionHeld
-                    ? "n/a held"
-                    : risk.reconPass === true
-                      ? "pass"
-                      : risk.reconPass === false
-                        ? "fail"
-                        : "—"}
+                  {inputOverrideActive
+                    ? "override"
+                    : sessionHeld
+                      ? "n/a held"
+                      : risk.reconPass === true
+                        ? "pass"
+                        : risk.reconPass === false
+                          ? "fail"
+                          : "—"}
                 </div>
               </div>
             </div>

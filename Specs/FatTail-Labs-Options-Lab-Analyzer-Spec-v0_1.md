@@ -1,18 +1,19 @@
-# FatTail Labs — Options Lab Analyzer Spec v0.1
+# FatTail Labs — Options Lab Analyzer Spec v0.2
 
-**Status:** **DRAFT · product law + as-built inventory** (2026-08-11)  
+**Status:** **DRAFT · review-folded** (2026-08-11 · external advisor Claude)  
 **Type:** Product Spec — Options Lab **Analyzer** surface  
 **Major buckets:** **Alerts · Positions · Viewport(s) · Time machine · Models · Controls**  
 **Analyzer viewports (in-session):** **Risk graph (2D)** · **Surface (3D)**  
 **Attached / suite viewports:** **Volume Profile** · **GEX** · **Probability**  
 **Short name:** **Analyzer** · **AZ**  
-**Filename:** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md`  
+**Filename:** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md` (content **v0.2**; path rename optional at GO)  
 **Surface route (primary):** `/app/options-lab/analyzer` — **Surface is a viewport mode here, not a suite app**  
 **Chrome:** Options Lab suite workspace under Options Lab nav (Volume Profile · Heatmap · Analyzer)
 
-**Process:** Spec review → OD Accept/Override → implementation plan for residual TARGET laws → code/ATs.  
+**Process:** Advisor fold landed (§15) → Coach OD Accept on OD-AZ1–8 → residual plan → BUILD GO.  
+**Review:** External advisor Claude 2026-08-11 (B1–B5, A1–A8, P1–P2).  
 **Content integrity:** Landing content hash (sha1 of body excluding this line):  
-`719f353f4f598b8ab4a49ce86392b50c0c092415` (v0.1.6 · Surface in Analyzer viewport).
+`f274d60bf2054aae1605e477598d573086bb221e` (v0.2 · advisor fold).
 
 ---
 
@@ -138,7 +139,7 @@ These share **one** Analyzer session: same **Positions**, **Alerts**, **Models**
 | **AZ-VP-S1** | **Surface lives in the Analyzer viewport** — not Options Lab top nav, not a second route that owns its own book. |
 | **AZ-VP-S2** | Switching **Risk graph ↔ Surface** must **not** clear focus, positions, alerts, pack, or what-if. |
 | **AZ-VP-S3** | Surface uses the **exact same data plane and pricing SoR as Risk graph** (OPF + dual-side generations). Presentation only differs (mesh vs lines). |
-| **AZ-VP-S4** | **Do not** port MSC client theo as Surface pricing. Port MSC **scene/UX** only. |
+| **AZ-VP-S4** | **MSC port boundary (DL-302 / B1):** MSC **presentation / scene / interaction** code may be ported when **re-typed** to Labs domain types, with a heritage comment (not an MSC import path). MSC **pricing, theo engines, schemas, Redis keys, and runtime remain forbidden** (DL-293). Labs namespace: `risk-graph/` (not `msc-risk/`). |
 | **AZ-VP-S5** | Dense mesh sampling may need more OPF queries / a surface sample API — still OPF, never a second engine. |
 | **AZ-VP-S6** | Alerts evaluate on underlier mark; draw on Risk graph first; Surface may show spot/price reference planes (OD optional). |
 
@@ -242,15 +243,17 @@ Read with §0.2 buckets: each subsection below tags its bucket.
 | Viewport | Full remaining height · dark canvas · chart panel | Same — **one** focused graph panel |
 | MSC heritage | MSC had list **left** of viewport | Labs: list **under** viewport |
 
-### 1.3 Session posture · **Controls**
+### 1.3 Session posture · **Controls** (B2 fold)
 
-| Feature | As-built |
-|---------|----------|
+| Feature | Law / as-built |
+|---------|----------------|
 | States | `Live` · `Held` · `Closed` · `Error` |
-| Clock | America/New_York · Mon–Fri 09:30–16:00 → Live; weekend → Closed; else Held |
-| Refresh | Interval 30s recompute |
+| **Primary SoR (law)** | **Market-plane session facts** — `GET /api/me/market/session-status` (Redis `mb:session:market_status` / Massive marketstatus). `open:true` → Live; closed/early-close → Closed; extended-hours / open:false → Held |
+| **Fallback (law)** | Wall-clock America/New_York only when plane facts unavailable — **labeled** as clock fallback in meta when needed; **must not** be sole SoR when plane is warm (B2) |
+| Product close | Prefer symbol-profile / product session bounds when available (index options often **16:15 ET** — not equities 16:00). Hardcoded 16:00 alone is residual |
+| Refresh | Interval ~30s re-fetch plane status |
 | UI | Badge on chrome; Held labels on theo legend and alert lines when held |
-| RECON chip | Hidden as `n/a held` when Held/Closed; pass/fail when Live |
+| RECON chip | Held → `n/a held`; **override-active (B4)** → `override` (never pass/fail vs live mark); Live + no override → pass/fail |
 
 ### 1.4 OPF model / mode catalog (UI) · **Models**
 
@@ -269,7 +272,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 |---------|----------|
 | Default | `day_trade.mark_hybrid@1.0.0` |
 | Mode switch | Changing pack re-resolves **same** definition (PB-VIEW-2) |
-| Outlook epoch | Selecting outlook pack **pins** epoch; **Re-anchor epoch** button clears pin, refreshes, re-pins; **epoch stale** when generation epoch advances while pinned (PB-VIEW-7 partial) |
+| Outlook epoch | Selecting outlook pack **pins** epoch; **Re-anchor epoch** button clears pin, refreshes, re-pins; **epoch stale** when generation epoch advances while pinned (**PB-VIEW-7** ratified · OD-PB16 Accept · B3) |
 | Time reference label | Live/Held gen · Scenario epoch · Replay no live claim |
 
 ### 1.5 Definition sources & focus law · **Positions** + **Controls** (paste)
@@ -312,13 +315,14 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | `label` | Human label from structure |
 | `notation` | Compact leg notation |
 | `position` | `PositionInput` (underlying, expiration, contracts, legs, direction, net_debit_override) |
-| `status` | `ANALYSIS` \| `PENDING` \| `OPEN` \| `PARTIAL_OPEN` \| `CLOSED` \| `CANCELLED` \| `REJECTED` (default ANALYSIS) |
-| `livePackagePerShare` | Magnitude of package for display |
-| `lastNatSigned` | Last OPF natural signed D_nat |
+| `status` | **ANALYSIS** for v0.2 book (OD-PB6 disposition until lifecycle OD); OMS tokens reserved not product scope (B5) |
+| `livePackagePerShare` | Magnitude for display |
+| `lastNatSigned` | Signed OPF natural D_nat |
+| **Package invariant (B5)** | When `lastNatSigned` is set: `livePackagePerShare ≡ |lastNatSigned|` always |
 | `priceSide` | `debit` \| `credit` \| null |
 | `visible` | Hidden cards do not drive viewport; package not live |
 | `lock` | Unlocked or locked D* (source natural_mid \| user_limit \| tos_limit; freeze flags; hashes at lock) |
-| `liveState` | `live` \| `held` \| `not_live` \| `budget_refused` \| `incomplete` \| `skewed` |
+| `liveState` | **Six-state (B5):** `live` \| `held` \| `not_live` \| `budget_refused` \| `incomplete` \| `skewed` |
 | `displayAsOf` | Generation as_of |
 | `contentHashes` | Per-exp content_hash map |
 | `maxSkewMs` / `epochQuality` | Multi-exp skew metadata |
@@ -380,37 +384,43 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Incomplete | Loud empty — **no fabricated curve** |
 | Error | Loud amber status |
 | Empty | Prompt Builder or paste; right-click for alerts |
-| RECON | Pass/fail from resolve meta when Live |
+| RECON | Live + no override → pass/fail; Held → n/a held; **override-active → `override` (B4)** — never RECON fail against live while what-if inputs active |
 | Mark pkg chip | resolve package_debit or focused card live package |
+| Wings (A3) | From symbol profile when available; residual hardcode until wired |
 
 ### 1.10 Chart interaction (`PnLChart` presentation) · **Viewport** (+ **Alerts** create/draw)
 
 | Feature | As-built (wired) |
 |---------|------------------|
+| Path | `web/components/options-lab/risk-graph/PnLChart.tsx` (renamed from `msc-risk/` · B1) |
 | Dual series render | Expiration + theoretical |
 | Spot / sim spot lines | Yes |
 | Alert lines | From threshold alerts |
 | Context menu alerts | price_above · price_below · price_touch |
 | Position-specific alert | Context near curve → pick position notation |
 | Legend labels | Pack theo legend + Held suffix |
-| **Not required for v0.1 law** but present in component | hi-res secondary series, GEX/VP autofit props, strike drag, curve context, PnL zones — available for future wiring |
+| Heritage | MSC Risk Graph UX only — no MSC pricing import (DL-302 / AZ-VP-S4) |
 
-### 1.11 What-if (OPF scenario knobs) · **Time machine**
+### 1.11 What-if (OPF scenario knobs) · **Time machine** (A6 fold)
 
-| Knob | Range | As-built |
-|------|-------|----------|
-| Enable | checkbox | Gates time offset application (day_trade); vol/spot always pass to resolve when set |
-| Time offset | 0…72 h | Applied when enabled (outlook respects epoch pin) |
-| Vol offset | −30…+30 pts | Always available |
-| Spot % | −5%…+5% | Always available; also drives sim spot indicator |
+| Knob | Range | Law |
+|------|-------|-----|
+| Enable | checkbox | **Gates all three** time / vol / spot% (A6) — residual may still gate time-only until code matches |
+| Time offset | 0…72 h | Applied when Enable (outlook respects epoch pin) |
+| Vol offset | −30…+30 pts | Applied when Enable |
+| Spot % | −5%…+5% | Applied when Enable; sim spot indicator |
+| Active banner | — | Labeled what-if / override state (B4) |
 | Reset | button | Clears all three + disable |
 
-### 1.12 Spot & VIX overrides · **Controls**
+### 1.12 Spot & VIX overrides · **Controls → Time machine class (B4)**
 
-| Control | As-built |
-|---------|----------|
-| Spot text field | Override chain/OPF spot when finite &gt; 0; auto-fill from risk/chain when empty |
-| VIX text field | Optional vol reference into resolve |
+| Control | Law |
+|---------|-----|
+| Spot / VIX text | Member overrides are **what-if inputs**, not silent live marks |
+| Active override | Viewport enters labeled **override / what-if** state |
+| RECON | Chip shows **`override`** — never pass/fail vs live package while override or what-if active |
+| R1a gate | AT-PB-R1a / AT-AZ RECON litmus **excludes** override-active states |
+| Auto-fill empty spot | From plane mark only when field empty |
 
 ### 1.13 Position Builder (shell from Analyzer) · **Positions**
 
@@ -642,7 +652,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 | **AZ-DEF-1** | Builder **must never** open with empty legs and no geometry when chain/universe is available. |
 | **AZ-DEF-2** | Center = **ATM listed strike** from dual-side ladder: prefer `spot_strike`, else snap live **spot** (or **closing/last mark** when session Held/Closed) to listed grid. |
 | **AZ-DEF-3** | Every supported template has a **canonical default geometry** (see §4.3). |
-| **AZ-DEF-4** | Butterfly (and width-based flies/condors) open at **minimum listed wing** consistent with **symbol profile / heatmap fly widths** — for index MSC-style profile, minimum listed width is **20** (first of `fly_widths` / profile minimum), never an unlisted arithmetic width. |
+| **AZ-DEF-4** | Butterfly (and width-based flies/condors) open at **minimum listed wing** from **symbol profile** (`fly_widths[0]` / profile minimum / step-multiple min) — never invent unlisted arithmetic width. *(Illustrative: SPX-class profiles often start near 20 pts — not a hardcoded law constant · A2.)* |
 | **AZ-DEF-5** | All strikes shown and written are **listed-only** (OC6a / PB6). |
 | **AZ-DEF-6** | Default direction **Buy**; default right **Call** where template has side. |
 | **AZ-DEF-7** | Front expiration = first listed available expiration for product; time spreads pick next listed back (PB22). |
@@ -714,8 +724,8 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **AZ-AL-1** | Persistence is **session-local** in v0.1 (`sessionStorage`); multi-device Alert Center is out of scope unless a later OD. |
 | **AZ-AL-2** | **Create** from the viewport: right-click (or equivalent) → price above / below / touch at that underlier price. |
 | **AZ-AL-3** | Optional **position-scoped** create: associate `positionId` with a book card (context near curve / position menu). |
-| **AZ-AL-4** | **Evaluate** against the **same underlier mark** the viewport uses for spot (smoothed display spot / live underlier pattern). |
-| **AZ-AL-5** | Evaluation rules: above ≥ · below ≤ · touch within **0.5** points (or product-appropriate tick later via OD). |
+| **AZ-AL-4** | **Evaluate** on the **raw underlier mark**; **draw** alert lines on the smoothed display series (A1). |
+| **AZ-AL-5** | Evaluation rules: above ≥ · below ≤ · touch within product tick (default 0.5 residual; prefer profile tick · A1). |
 | **AZ-AL-6** | Triggered alerts stay visible until dismissed/deleted; chart line style changes to **active**. |
 | **AZ-AL-7** | When session posture is **Held/Closed**, alert labels and list copy carry **Held** honesty — no “live fire” claim off-session. |
 | **AZ-AL-8** | List supports **ack · dismiss · delete**; dismissed alerts are hidden from the active list. |
@@ -733,7 +743,8 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **AZ-DATA-2** | Chain hydrate is dual-side Market Bus ladder generations. |
 | **AZ-DATA-3** | Underlier mid for spot line uses site-wide live underlier pattern when available. |
 | **AZ-DATA-4** | Suite interest: focused definition keys + visible card keys (PB17b). |
-| **AZ-DATA-5** | Analyzer may keep a **client module cache** of last risk graph for route switches (Heatmap ↔ Analyzer) without inventing prices — soft refresh after paint. |
+| **AZ-DATA-5** | Analyzer may keep a **client module cache** of last risk graph for route switches without inventing prices — soft refresh after paint. |
+| **AZ-DATA-5a** | Cached paint is **labeled stale** until soft-refresh resolve completes (A4 / PB-VIEW-5). |
 
 ---
 
@@ -824,7 +835,9 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **DL-293** | Analyzer OPF-only |
 | **DL-294** | Builder + cards + alerts land |
 | **DL-296…299** | PB Spec / program |
-| **DL-301** | This Analyzer Spec v0.1 filed |
+| **DL-301** | Analyzer Spec filed |
+| **DL-302** | MSC presentation port boundary + `risk-graph/` rename (B1) |
+| **DL-303** | Advisor Claude review fold → Analyzer v0.2 content |
 | Board (future) | `agents/p-options-lab-analyzer/` when implementation residual opens |
 
 ---
@@ -834,11 +847,43 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | Version | Date | Notes |
 |---------|------|-------|
 | **v0.1** | 2026-08-11 | Full as-built inventory + TARGET layout/defaults from Coach; DRAFT |
-| **v0.1.1** | 2026-08-11 | **Alerts elevated** to first-class Analyzer subsystem: mission, cardinal objects, full §1.14 model, AZ-AL-0…11, layout, ATs |
-| **v0.1.2** | 2026-08-11 | **Six major buckets** architecture: Alerts · Positions · Viewport · Time machine · Models · Controls (§0.2) |
-| **v0.1.3** | 2026-08-11 | **Attached viewports:** Analyzer risk graph · Volume Profile · GEX (§0.3); AZ-VP-1…7; inventory §1.16 |
-| **v0.1.4** | 2026-08-11 | **Probability** attached viewport (fourth canvas); AZ-VP-8 honesty; OD-AZ8; §1.16.4 |
-| **v0.1.5** | 2026-08-11 | **Volume Profile = bins only** (no candles) — AZ-VP-9; as-built candle chart flagged residual |
-| **v0.1.6** | 2026-08-11 | **Surface = Analyzer viewport mode** (not suite app); AZ-VP-S1…S6; same Positions/Alerts/OPF as Risk graph |
+| **v0.1.1** | 2026-08-11 | **Alerts elevated** to first-class Analyzer subsystem |
+| **v0.1.2** | 2026-08-11 | **Six major buckets** architecture |
+| **v0.1.3–v0.1.5** | 2026-08-11 | Attached viewports · Probability · VP bins-only |
+| **v0.1.6** | 2026-08-11 | Surface = Analyzer viewport mode |
+| **v0.2** | 2026-08-11 | **Advisor fold** B1–B5 · A1–A8 · P1–P2 (§15) |
 
 **Reference UX (non-authority):** MSC Risk Graph (2D + 3D) — workflow / scene only. **MSC is not the pricing standard.**
+
+---
+
+## 15. Advisor review disposition (Claude 2026-08-11)
+
+**Verdict accepted:** Strong assembly Spec; five blockers reconcilable; fold landed below. **No BUILD GO** until Coach OD-AZ1–8 and residual plan.
+
+| ID | Class | Disposition | Lands |
+|----|-------|-------------|-------|
+| **B1** | Blocking | **Accept** — DL-302 port boundary; rename `msc-risk/` → `risk-graph/`; AZ-VP-S4 tightened | DL-302 · §1.10/1.16 · tree |
+| **B2** | Blocking | **Accept** — posture from `session-status` plane; clock fallback only; 16:15 index residual via profile | §1.3 · code |
+| **B3** | Blocking | **Accept** — PB-VIEW-7 ratified (pin · re-anchor · stale); OD-PB16 closed as Accept | PB Spec · §1.4/§6 |
+| **B4** | Blocking | **Accept** — overrides/what-if → RECON chip `override`; R1a excludes override-active | §1.9/1.11/1.12 · code |
+| **B5** | Blocking | **Accept** — six-state liveState; package magnitude invariant; status ANALYSIS-only for v0.2 | PB §3.3 · §1.7.1 |
+| **A1** | Advisory | **Adopt** — evaluate raw mark; draw smoothed | §1.14.4 · code |
+| **A2** | Advisory | **Adopt** — AZ-DEF-4 profile-driven; 20 illustrative only | §4.2 |
+| **A3** | Advisory | **Adopt** — wings from profile | §1.9 |
+| **A4** | Advisory | **Adopt** — cached paint labeled stale until refresh | AZ-DATA-5 |
+| **A5** | Advisory | **Adopt** — show all cards; badge off-symbol; focus syncs symbol | §1.5/1.7 |
+| **A6** | Advisory | **Adopt** — Enable gates all what-if knobs + banner | §1.11 |
+| **A7** | Advisory | **Adopt** — list shows “20 of N” | §1.14.5 |
+| **A8** | Advisory | **Adopt intent** — Prob vol basis own as_of/session (OD-AZ8 detail) | §1.16.4 |
+| **P1** | Process | **Fix** — recompute content hash at this fold | Header |
+| **P2** | Process | **Fix** — DL-302/303 same-day | DL |
+
+### 15.1 Law text adopted (summary)
+
+- **AZ-POSTURE-1:** Market-plane session facts primary; clock fallback labeled secondary.  
+- **AZ-OVERRIDE-1:** Spot/VIX/what-if active → labeled override; RECON = `override`.  
+- **AZ-PKG-1:** `livePackagePerShare ≡ |lastNatSigned|` when signed present.  
+- **AZ-AL-EVAL-1:** Alerts evaluate raw underlier mark; lines use display series.  
+- **AZ-DATA-5a:** Module cache paint labeled **stale** until soft-refresh resolves.  
+- **AZ-BOOK-SYM-1:** Positions list shows all symbols; off-symbol cards badged; focus syncs suite symbol.

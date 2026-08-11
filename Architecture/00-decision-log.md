@@ -30,6 +30,33 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 **v0.1.6 (same DL day):** **Surface is an Analyzer viewport mode** (Risk graph 2D | Surface 3D), **not** a suite app. Same Positions, Alerts, Models, Time machine, OPF data plane; 3D presentation only (MSC scene port, no MSC theo SoR). Laws AZ-VP-S1…S6.
 
+## 2026-08-11 — DL-302 MSC presentation port boundary (Analyzer B1)
+
+**Decision (Coach-facing / advisor fold):**
+
+- **May port:** MSC **presentation / scene / interaction** code (2D chart UX, 3D scene, gestures) when **re-typed** into Labs domain types under Labs namespaces (`web/components/options-lab/risk-graph/`, `web/lib/risk-graph/`).
+- **Must not:** MSC pricing/theo engines, MSC schemas, MSC Redis keys, MSC runtime imports, or dual pricing SoR.
+- **Naming:** directory **`risk-graph`** (not `msc-risk/`). Heritage belongs in comments + this DL — not the import path.
+- **Pricing SoR** remains OPF (DL-293). AZ-VP-S4 restates the same boundary.
+
+**Does not** authorize wholesale MSC vendoring without re-type.
+
+## 2026-08-11 — DL-303 Analyzer Spec v0.2 — advisor Claude review fold
+
+**Decision:** Fold external advisor review (2026-08-11) into Analyzer Spec content **v0.2** (DRAFT · review-folded).
+
+| Class | Disposition |
+|-------|-------------|
+| B1 | Accept → DL-302 + `risk-graph/` rename |
+| B2 | Accept → posture from market session-status; clock fallback |
+| B3 | Accept → PB-VIEW-7 ratified (OD-PB16 Accept) |
+| B4 | Accept → override/what-if RECON=`override` |
+| B5 | Accept → six-state liveState · package magnitude invariant · status ANALYSIS-only |
+| A1–A8 | Adopt as law (A8 intent with OD-AZ8) |
+| P1–P2 | Hash recompute + this DL |
+
+**Still open:** OD-AZ1–8 (Coach Accept/Override). **No BUILD GO** for residual TARGET matrix.
+
 **Does not:** implement full 3D OPF mesh port (viewport switcher + Spec first).
 
 ## 2026-08-11 — DL-300 Live underlier mids — site-wide UI standard
