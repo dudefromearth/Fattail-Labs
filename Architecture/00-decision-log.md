@@ -55,9 +55,24 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 | A1–A8 | Adopt as law (A8 intent with OD-AZ8) |
 | P1–P2 | Hash recompute + this DL |
 
-**Still open:** OD-AZ1–8 (Coach Accept/Override). **No BUILD GO** for residual TARGET matrix.
+## 2026-08-11 — DL-304 Coach Accept OD-AZ1–8 (Analyzer)
 
-**Does not:** implement full 3D OPF mesh port (viewport switcher + Spec first).
+**Coach Accept** of open decisions on Analyzer Spec content v0.2.1:
+
+| OD | Accept (normative) |
+|----|---------------------|
+| **OD-AZ1** | Top compact control strip · position list **under** viewport · divider |
+| **OD-AZ2** | Alerts **under** position list |
+| **OD-AZ3** | Empty Builder default template = **butterfly** |
+| **OD-AZ4** | Multi-tab book sync **out of v0.2** (sessionStorage only) |
+| **OD-AZ5** | Alerts on VP/GEX optional later; **Analyzer Risk graph first** |
+| **OD-AZ6** | Volume Profile remains **suite tab** for v0.2 (embed later optional) |
+| **OD-AZ7** | GEX remains **Heatmap template**; suite promotion deferred |
+| **OD-AZ8** | Probability = **suite-attached panel**; IV/VIX basis with own as_of/session; structure-relative band when card focused |
+
+**Next:** residual implementation plan (layout, bins-only VP, Surface 3D OPF mesh, default geometry matrix, A6 Enable gates all knobs) → explicit **BUILD GO**.
+
+**Does not:** implement residual matrix in this DL alone.
 
 ## 2026-08-11 — DL-300 Live underlier mids — site-wide UI standard
 

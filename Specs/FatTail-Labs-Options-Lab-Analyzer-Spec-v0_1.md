@@ -10,10 +10,10 @@
 **Surface route (primary):** `/app/options-lab/analyzer` — **Surface is a viewport mode here, not a suite app**  
 **Chrome:** Options Lab suite workspace under Options Lab nav (Volume Profile · Heatmap · Analyzer)
 
-**Process:** Advisor fold landed (§15) → Coach OD Accept on OD-AZ1–8 → residual plan → BUILD GO.  
+**Process:** Advisor fold (§15) · **Coach OD-AZ1–8 Accept (DL-304)** · residual implementation plan → **BUILD GO** still separate.  
 **Review:** External advisor Claude 2026-08-11 (B1–B5, A1–A8, P1–P2).  
 **Content integrity:** Landing content hash (sha1 of body excluding this line):  
-`f274d60bf2054aae1605e477598d573086bb221e` (v0.2 · advisor fold).
+`183f549e0ce97840e841079c295a35156536ee05` (v0.2.1 · OD-AZ1–8 Accept).
 
 ---
 
@@ -197,8 +197,8 @@ Same **product symbol**; **not** second Positions books. May live as suite tabs 
 | **risk** | 2D OPF graph in Analyzer | Primary default mode |
 | **surface** | **In viewport switcher** (scaffold → MSC 3D port on OPF) | Full 3D mesh, same session as Risk |
 | **volume-profile** | Suite app; candles+bins residual | Bins only (AZ-VP-9) |
-| **gex** | Heatmap template | Template and/or attach (OD-AZ7) |
-| **probability** | Partial (`oneSigmaBandWidth`) | Attached Prob viewport (OD-AZ8) |
+| **gex** | Heatmap template | **OD-AZ7 Accept:** keep as Heatmap template (as-built); suite promotion deferred |
+| **probability** | Partial (`oneSigmaBandWidth`) | **OD-AZ8 Accept:** suite-attached panel · labeled IV/VIX basis · structure-relative band when card focused · vol basis own as_of/session |
 
 ### 0.3.4 Shared context matrix
 
@@ -239,7 +239,7 @@ Read with §0.2 buckets: each subsection below tags its bucket.
 | Region | **As-built** | **TARGET (Coach)** |
 |--------|--------------|---------------------|
 | Main split | **Left sidebar** (~21rem) + **right viewport** (`lg:flex-row`) | **Vertical stack:** viewport **above**, position list **below**, with **divider**; single panel with divider *or* two stacked panels |
-| Sidebar contents | **Positions list · Alerts list** · OPF pack · Symbol · ToS · actions · Spot/VIX · What-if · mark/RECON chips | Controls may remain in a chrome strip; **book moves under viewport**; **alerts remain a first-class Analyzer region** (strip, under list, or collapsible panel — OD-AZ2) |
+| Sidebar contents | **Positions list · Alerts list** · OPF pack · Symbol · ToS · actions · Spot/VIX · What-if · mark/RECON chips | **OD-AZ1 Accept:** top compact control strip; **list under viewport**; **OD-AZ2 Accept:** Alerts under position list |
 | Viewport | Full remaining height · dark canvas · chart panel | Same — **one** focused graph panel |
 | MSC heritage | MSC had list **left** of viewport | Labs: list **under** viewport |
 
@@ -574,8 +574,9 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 |---------|----------|--------|
 | Role | Probability framing for the underlier (and optional structure-relative bands) | Dedicated **Probability viewport** |
 | MSC / chart heritage | `PnLChart` prop `oneSigmaBandWidth` — autofit X so **1σ ≈ ⅓ of viewport** (never less); structure wins if wider | Full PROB panel: 1σ band, labeled vol basis, optional PDF/histogram later |
-| Suite nav / route | **None** | TBD (`/app/options-lab/probability` or Analyzer sub-panel — OD-AZ8) |
-| Data | — | Live underlier mid · VIX / chain IV · optional OPF meta; **not** package SoR |
+| Suite nav / route | **None** | **OD-AZ8 Accept:** suite-attached panel (e.g. `/app/options-lab/probability`) |
+| Data | — | Live underlier mid · **labeled IV/VIX basis with own as_of/session** (A8); optional OPF meta; **not** package SoR |
+| Focused card | — | Optional **structure-relative** 1σ / band when a position is focused |
 | Ethos | — | No win-rate or profit claims (AZ-VP-8) |
 
 ---
@@ -611,14 +612,15 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 
 | ID | Law |
 |----|-----|
-| **AZ-LAYOUT-1** | Position list lives **under** the viewport (not left of it). |
-| **AZ-LAYOUT-2** | A **visible divider** separates viewport and list (single panel with split, or two stacked panels). |
-| **AZ-LAYOUT-3** | Viewport is a **single** visualization panel (one focused definition). |
+| **AZ-LAYOUT-1** | Position list lives **under** the viewport (not left of it). **OD-AZ1 Accept.** |
+| **AZ-LAYOUT-2** | A **visible divider** separates viewport and list (single panel with split, or two stacked panels). **OD-AZ1 Accept.** |
+| **AZ-LAYOUT-3** | Viewport is a **single** visualization panel (one focused definition) — Risk graph or Surface mode. |
 | **AZ-LAYOUT-4** | List may hold **multiple** positions; focus selects which definition the viewport shows. |
-| **AZ-LAYOUT-5** | **Alerts are part of Analyzer.** Placement may be under the position list, a collapsible panel beside the list, or a control-strip section (**OD-AZ2**) — but alerts must remain a **dedicated, discoverable Analyzer region**, not dropped from the surface. |
-| **AZ-LAYOUT-6** | Alert **lines** always render on the viewport when alerts exist for the active symbol; list placement must not remove graph affordances (right-click create). |
+| **AZ-LAYOUT-5** | **Alerts** sit **under the position list** (default). Dedicated, discoverable Analyzer region — never removed without Coach disposition (AZ-AL-0). **OD-AZ2 Accept.** |
+| **AZ-LAYOUT-6** | Alert **lines** always render on the Risk graph viewport when alerts exist; list placement must not remove graph affordances (right-click create). **OD-AZ5 Accept:** VP/GEX alert draw optional later; Analyzer graph first. |
+| **AZ-LAYOUT-7** | **Controls** after layout residual: **top compact strip** (pack · posture · symbol · ToS · actions · what-if). **OD-AZ1 Accept.** |
 
-**As-built gap:** Layout is still **sidebar-left** (AZ-LAYOUT-1..2 residual).
+**As-built gap:** Layout is still **sidebar-left** (AZ-LAYOUT-1..2 residual until residual build).
 
 ---
 
@@ -655,6 +657,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 | **AZ-DEF-4** | Butterfly (and width-based flies/condors) open at **minimum listed wing** from **symbol profile** (`fly_widths[0]` / profile minimum / step-multiple min) — never invent unlisted arithmetic width. *(Illustrative: SPX-class profiles often start near 20 pts — not a hardcoded law constant · A2.)* |
 | **AZ-DEF-5** | All strikes shown and written are **listed-only** (OC6a / PB6). |
 | **AZ-DEF-6** | Default direction **Buy**; default right **Call** where template has side. |
+| **AZ-DEF-9** | Empty Builder create default template = **butterfly**. **OD-AZ3 Accept.** |
 | **AZ-DEF-7** | Front expiration = first listed available expiration for product; time spreads pick next listed back (PB22). |
 | **AZ-DEF-8** | Package DEBIT/CREDIT display uses live chain mids (Builder) / OPF package path (cards); incomplete → “—”. |
 
@@ -813,18 +816,20 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 
 ---
 
-## 12. Open decisions (Coach)
+## 12. Open decisions — **Coach Accept OD-AZ1–8** (DL-304)
 
-| ID | Topic | Recommendation |
+All ODs below are **Accepted** as written. Recommendations become **normative law**.
+
+| ID | Topic | Accept (law) |
 |----|-------|----------------|
-| **OD-AZ1** | Control strip: keep left slim rail vs top compact bar after list moves under graph | Top compact + list under |
-| **OD-AZ2** | Alerts **panel** placement after list moves under viewport | **Under position list** (default) or collapsible third band; never remove alerts from Analyzer |
-| **OD-AZ3** | Default template on empty Builder open | Butterfly (day-trader default) |
-| **OD-AZ4** | Multi-tab book sync | Out of v0.1 (sessionStorage only) |
-| **OD-AZ5** | Draw threshold alerts on VP/GEX canvases | Optional later; Analyzer graph first |
-| **OD-AZ6** | Embed VP adjacent to Analyzer vs suite-tab only | Suite-tab sufficient for v0.1; embed later |
-| **OD-AZ7** | GEX as suite attached viewport vs Heatmap template only | Template is as-built; promote to suite if Coach wants parity with VP |
-| **OD-AZ8** | Probability viewport: suite route vs Analyzer sub-panel; 1σ source (IV vs VIX vs pack) | Recommend suite-attached panel + labeled IV/VIX basis; structure-relative band when a card is focused |
+| **OD-AZ1** | Layout after residual build | **Top compact control strip** + **position list under viewport** + divider |
+| **OD-AZ2** | Alerts placement | **Under the position list** (dedicated region; never remove without Coach · AZ-AL-0) |
+| **OD-AZ3** | Empty Builder default template | **Butterfly** |
+| **OD-AZ4** | Multi-tab book sync | **Out of v0.2** — sessionStorage only; multi-device later OD |
+| **OD-AZ5** | Alerts on VP/GEX | **Optional later** — Analyzer Risk graph first |
+| **OD-AZ6** | VP embed vs suite tab | **Suite tab sufficient** for v0.2; embed later optional |
+| **OD-AZ7** | GEX surface shape | **Heatmap template** as-built; suite promotion deferred |
+| **OD-AZ8** | Probability viewport | **Suite-attached panel**; labeled **IV/VIX** basis with **own as_of/session**; structure-relative band when a card is focused |
 
 ---
 
@@ -838,7 +843,8 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **DL-301** | Analyzer Spec filed |
 | **DL-302** | MSC presentation port boundary + `risk-graph/` rename (B1) |
 | **DL-303** | Advisor Claude review fold → Analyzer v0.2 content |
-| Board (future) | `agents/p-options-lab-analyzer/` when implementation residual opens |
+| **DL-304** | **Coach Accept OD-AZ1–8** — layout, alerts, defaults, VP/GEX/Prob |
+| Board (future) | `agents/p-options-lab-analyzer/` when residual build opens |
 
 ---
 
@@ -852,6 +858,7 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **v0.1.3–v0.1.5** | 2026-08-11 | Attached viewports · Probability · VP bins-only |
 | **v0.1.6** | 2026-08-11 | Surface = Analyzer viewport mode |
 | **v0.2** | 2026-08-11 | **Advisor fold** B1–B5 · A1–A8 · P1–P2 (§15) |
+| **v0.2.1** | 2026-08-11 | **Coach Accept OD-AZ1–8** (DL-304) — law locked |
 
 **Reference UX (non-authority):** MSC Risk Graph (2D + 3D) — workflow / scene only. **MSC is not the pricing standard.**
 
@@ -859,7 +866,8 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 
 ## 15. Advisor review disposition (Claude 2026-08-11)
 
-**Verdict accepted:** Strong assembly Spec; five blockers reconcilable; fold landed below. **No BUILD GO** until Coach OD-AZ1–8 and residual plan.
+**Verdict accepted:** Strong assembly Spec; five blockers reconcilable; fold landed below.  
+**OD-AZ1–8:** **Coach Accept** (DL-304). Residual **implementation plan + BUILD GO** still required before residual matrix ships.
 
 | ID | Class | Disposition | Lands |
 |----|-------|-------------|-------|
