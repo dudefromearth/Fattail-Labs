@@ -50,12 +50,17 @@ export type GridCell = {
 
 export type TemplateParams = {
   valueMode: ValueModeId;
-  widthMode: "step_multiples" | "fixed_points";
+  widthMode: "step_multiples" | "fixed_points" | "msc_default";
   /** n = 1..N for step_multiples */
   widthCount?: number;
   fixedPoints?: number[];
-  /** Sticky scale for color hysteresis */
+  /** Sticky scale for color hysteresis (GEX etc.) */
   stickyScale?: number;
+  /**
+   * MSC gradient threshold (1–100 scale, same units as vertical % change).
+   * Default 50 — blue below, red above (see MSHeatmap.debitColor).
+   */
+  gradientThreshold?: number;
 };
 
 export type HeatmapTemplate = {

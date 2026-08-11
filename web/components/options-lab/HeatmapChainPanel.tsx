@@ -22,6 +22,8 @@ import {
   getTemplate,
   buildGrid,
 } from "@/lib/options-lab/templates/registry";
+import { SYM_FLY_WIDTHS_DEFAULT } from "@/lib/options-lab/templates/symFly";
+import { DEFAULT_GRADIENT_THRESHOLD } from "@/lib/options-lab/templates/color";
 import type {
   ChainContext,
   TemplateParams,
@@ -293,9 +295,11 @@ export default function HeatmapChainPanel() {
   const templateParams: TemplateParams = useMemo(
     () => ({
       valueMode,
-      widthMode: "step_multiples",
-      widthCount: 7,
+      // MSC SPX widths 20…50 (MASSIVE_WIDTHS_SPX)
+      widthMode: "fixed_points",
+      fixedPoints: [...SYM_FLY_WIDTHS_DEFAULT],
       stickyScale,
+      gradientThreshold: DEFAULT_GRADIENT_THRESHOLD,
     }),
     [valueMode, stickyScale],
   );
@@ -557,12 +561,13 @@ export default function HeatmapChainPanel() {
           className="min-h-0 flex-1 overflow-auto bg-[var(--color-surface)]"
         >
           {tpl.layout === "matrix" && matrix ? (
-            <table className="w-full min-w-[28rem] border-collapse text-xs">
-              <thead className="sticky top-0 z-[2] bg-[#0a0a0e] text-amber-200/90">
-                <tr>
+            /* MSC-look matrix: gold figures, green width headers, ATM gold */
+            <table className="w-full min-w-[28rem] border-collapse text-[11px] leading-none">
+              <thead className="sticky top-0 z-[2] bg-[#0a0a0e]">
+                <tr className="border-b border-white/10">
                   <th
                     scope="col"
-                    className="sticky left-0 z-[3] bg-[#0a0a0e] px-2 py-2 text-left font-semibold tracking-wide"
+                    className="sticky left-0 z-[3] w-[3.75rem] min-w-[3.75rem] bg-[#0a0a0e] px-2 py-1.5 text-center text-[10px] font-medium uppercase tracking-wide text-white/45"
                   >
                     Strike
                   </th>
@@ -570,7 +575,7 @@ export default function HeatmapChainPanel() {
                     <th
                       key={c.id}
                       scope="col"
-                      className="px-1.5 py-2 text-center font-semibold tabular-nums"
+                      className="min-w-[3rem] px-1 py-1.5 text-center text-[11px] font-semibold tabular-nums text-emerald-400"
                     >
                       {c.label}
                     </th>
@@ -579,13 +584,20 @@ export default function HeatmapChainPanel() {
               </thead>
               <tbody>
                 {matrix.rows.map((row, ri) => (
-                  <tr key={row.strike} data-spot={row.isSpot ? "1" : "0"}>
+                  <tr
+                    key={row.strike}
+                    data-spot={row.isSpot ? "1" : "0"}
+                    className={[
+                      "h-6 border-b border-white/[0.03]",
+                      row.isSpot ? "border-t border-amber-400/80" : "",
+                    ].join(" ")}
+                  >
                     <td
                       className={[
-                        "sticky left-0 z-[1] px-2 py-1 text-right tabular-nums font-medium",
+                        "sticky left-0 z-[1] w-[3.75rem] min-w-[3.75rem] border-r border-white/[0.03] px-1 text-center tabular-nums",
                         row.isSpot
-                          ? "bg-[#1a1508] text-amber-300"
-                          : "bg-[#0c0c10] text-amber-100/90",
+                          ? "bg-black/40 font-bold text-amber-400"
+                          : "bg-black/20 text-white/45",
                       ].join(" ")}
                     >
                       {row.label}
@@ -596,10 +608,10 @@ export default function HeatmapChainPanel() {
                         <td
                           key={col.id}
                           title={cell?.tooltip}
-                          className="px-1 py-1 text-center tabular-nums font-medium text-amber-200"
+                          className="min-w-[3rem] px-0.5 text-center tabular-nums text-amber-400 [text-shadow:0_0_2px_rgba(0,0,0,0.8)]"
                           style={{
-                            backgroundColor: cell?.bgCss || "rgb(12,12,16)",
-                            minWidth: "2.75rem",
+                            backgroundColor: cell?.bgCss || "#1a1a1a",
+                            height: "24px",
                           }}
                         >
                           {cell?.display ?? "—"}
