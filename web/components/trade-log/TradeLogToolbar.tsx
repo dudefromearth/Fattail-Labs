@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { IconChevronDown, IconPlus } from "@/components/ui/icons";
+import ImportManager from "@/components/trade-log/ImportManager";
 
 const EXPORT_FORMATS: { value: string; label: string; hint?: string }[] = [
   {
@@ -46,12 +47,15 @@ export default function TradeLogToolbar({
   onImport,
   onNewTrade,
   onExport,
+  onDeleted,
   nativeVenueLabel,
   accountLabel,
 }: {
   onImport: () => void;
   onNewTrade: () => void;
   onExport: (format: string) => void;
+  /** Called after the member wipes their whole trade log — reload the blotter. */
+  onDeleted: () => void;
   nativeVenueLabel: string;
   /** Stated account from Practice context (always named). */
   accountLabel: string;
@@ -194,6 +198,11 @@ export default function TradeLogToolbar({
               </div>
             )}
           </div>
+          <span
+            className="my-1.5 w-px shrink-0 bg-[var(--color-separator)]"
+            aria-hidden
+          />
+          <ImportManager onChanged={onDeleted} />
         </div>
 
         {/* Primary create — separate group from transfer */}

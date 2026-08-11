@@ -197,3 +197,126 @@ def test_export_native_thinkorswim_and_roundtrip(client):
         assert any(len(t["legs"]) == 3 for t in again["trades"])
     finally:
         _purge(a)
+
+
+def _import_three(client, ca) -> int:
+    acct = client.post(
+        "/api/me/trade-log/accounts", cookies=ca,
+        json={"label": "ToS", "broker": "thinkorswim"},
+    )
+    aid = acct.json()["id"]
+    client.post(
+        "/api/me/trade-log/import/commit", cookies=ca,
+        json={"adapter": "thinkorswim", "text": FIXTURE.read_text(encoding="utf-8"), "account_id": aid},
+    )
+    return aid
+
+
+def test_delete_all_requires_typed_confirm(client):
+    a = _id("zztest-tl-delall@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        aid = _import_three(client, ca)
+        # missing / wrong confirm → 400, nothing deleted
+        assert client.post("/api/me/trade-log/delete-all", cookies=ca, json={}).status_code == 400
+        bad = client.post("/api/me/trade-log/delete-all", cookies=ca, json={"confirm": "yes"})
+        assert bad.status_code == 400
+        still = client.get(f"/api/me/trade-log/trades?account_id={aid}", cookies=ca)
+        assert len(still.json()["trades"]) == 3
+        # correct confirm, case-insensitive → wipes all
+        ok = client.post("/api/me/trade-log/delete-all", cookies=ca, json={"confirm": "DELETE"})
+        assert ok.status_code == 200, ok.text
+        assert ok.json()["deleted"] >= 3
+        gone = client.get(f"/api/me/trade-log/trades?account_id={aid}", cookies=ca)
+        assert gone.json()["trades"] == []
+    finally:
+        _purge(a)
+
+
+def test_delete_all_is_identity_scoped(client):
+    a = _id("zztest-tl-delall-a@labs.test")
+    b = _id("zztest-tl-delall-b@labs.test")
+    try:
+        ca, cb = cookie_for("activator", a), cookie_for("activator", b)
+        _import_three(client, ca)
+        bid = _import_three(client, cb)
+        # A wipes their own — B's trades must be untouched
+        assert client.post("/api/me/trade-log/delete-all", cookies=ca, json={"confirm": "delete"}).status_code == 200
+        lb = client.get(f"/api/me/trade-log/trades?account_id={bid}", cookies=cb)
+        assert len(lb.json()["trades"]) == 3
+    finally:
+        _purge(a)
+        _purge(b)
+
+
+# --- import batches (Import Manager) -----------------------------------------
+
+
+def test_import_batch_list_preview_delete(client):
+    a = _id("zztest-tl-batch@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts", cookies=ca,
+            json={"label": "ToS", "broker": "thinkorswim"},
+        )
+        aid = acct.json()["id"]
+        commit = client.post(
+            "/api/me/trade-log/import/commit", cookies=ca,
+            json={"adapter": "thinkorswim", "text": FIXTURE.read_text(encoding="utf-8"),
+                  "account_id": aid, "filename": "tos.csv"},
+        )
+        assert commit.status_code == 200, commit.text
+        imp_id = commit.json()["import_id"]
+        assert imp_id is not None and commit.json()["created"] == 3
+
+        imps = client.get("/api/me/trade-log/imports", cookies=ca).json()["imports"]
+        assert len(imps) == 1 and imps[0]["id"] == imp_id
+        assert imps[0]["trade_count"] == 3 and imps[0]["adapter"] == "thinkorswim"
+        assert imps[0]["source_filename"] == "tos.csv"
+
+        prev = client.get(f"/api/me/trade-log/imports/{imp_id}", cookies=ca)
+        assert prev.status_code == 200
+        assert prev.json()["import"]["id"] == imp_id
+        assert len(prev.json()["trades"]) == 3
+
+        d = client.delete(f"/api/me/trade-log/imports/{imp_id}", cookies=ca)
+        assert d.status_code == 200 and d.json()["deleted"] == 3
+        assert client.get(f"/api/me/trade-log/trades?account_id={aid}", cookies=ca).json()["trades"] == []
+        assert client.get("/api/me/trade-log/imports", cookies=ca).json()["imports"] == []
+    finally:
+        _purge(a)
+
+
+def test_reimport_creates_no_empty_batch(client):
+    a = _id("zztest-tl-batch2@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        aid = _import_three(client, ca)
+        again = client.post(
+            "/api/me/trade-log/import/commit", cookies=ca,
+            json={"adapter": "thinkorswim", "text": FIXTURE.read_text(encoding="utf-8"),
+                  "account_id": aid},
+        )
+        assert again.status_code == 200
+        assert again.json()["created"] == 0 and again.json()["import_id"] is None
+        # still exactly one batch (the original), no empty duplicate
+        assert len(client.get("/api/me/trade-log/imports", cookies=ca).json()["imports"]) == 1
+    finally:
+        _purge(a)
+
+
+def test_delete_import_is_scoped(client):
+    a = _id("zztest-tl-batch-a@labs.test")
+    b = _id("zztest-tl-batch-b@labs.test")
+    try:
+        ca, cb = cookie_for("activator", a), cookie_for("activator", b)
+        _import_three(client, ca)
+        _import_three(client, cb)
+        imp_a = client.get("/api/me/trade-log/imports", cookies=ca).json()["imports"][0]["id"]
+        # B cannot delete A's import → 404, and B's own import stays intact
+        assert client.delete(f"/api/me/trade-log/imports/{imp_a}", cookies=cb).status_code == 404
+        assert len(client.get("/api/me/trade-log/imports", cookies=cb).json()["imports"]) == 1
+    finally:
+        _purge(a)
+        _purge(b)

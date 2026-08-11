@@ -4,6 +4,33 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-307 Trade Log import batches + Import Manager
+
+**Decision:** Make every import an identifiable, previewable, individually-deletable unit,
+so a member can undo *one* import instead of only wiping the whole log. New table
+`member_trade_log_imports` (its `id` = the unique import ID; stores date/time, adapter,
+account, filename, campaign, counts). `member_trade_log_trades.import_id` FK → imports
+`ON DELETE CASCADE` (legs already cascade from trades, 040) — one delete removes exactly a
+batch's trades + legs. Commit now opens an import row, stamps each created trade, and drops
+the row if the file was all duplicates. Endpoints: `GET /api/me/trade-log/imports`,
+`GET …/imports/{id}` (preview), `DELETE …/imports/{id}`; the typed-confirm
+`POST …/delete-all` (full start-over) stays. The toolbar red trashcan opens the **Import
+Manager** (HIG: design tokens + `Button` + `useConfirm`/`AlertDialog`) — list, preview,
+per-import delete, footer full-wipe.
+
+**Backfill (default-ON, in migration 119):** existing import trades were never batched, so
+migration reconstructs historical imports by **gap-clustering** their `created_at` within
+(identity, account, adapter), GAP=300s — verified against prod (a 444-trade ToS import
+straddled a second boundary; exact-second grouping would fragment it, gap-clustering keeps
+it whole). So older imports are deletable too, not just new ones. Manual/automated trades
+keep `import_id NULL`.
+
+Migration file is `119_trade_log_import_batches.sql` — coexists with origin's
+`119_symbol_app_profile.sql` (repo already runs double-numbered migrations; runner keys by
+filename). Tests: batch create/list/preview/delete + identity scoping + no-empty-batch on
+re-import (9 pass); backfill verified on seeded data + browser-verified end to end. Spec
+`FatTail-Labs-Trade-Log-Import-Batches-Spec-v1.0`.
+
 ## 2026-08-11 — DL-301 Options Lab Analyzer Spec v0.1 filed
 
 **Decision:** File product Spec for Options Lab **Analyzer** surface as **DRAFT**:

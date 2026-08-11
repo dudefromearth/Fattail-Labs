@@ -270,6 +270,19 @@ async def import_commit(request: Request) -> dict:
                 broker_label=body.get("broker_label"),
                 only_if_unset=True,
             )
+            # Open an import batch up front so every trade this commit creates can be
+            # stamped with it. Removed at the end if the whole file was duplicates.
+            source_filename = body.get("filename") or None
+            if source_filename:
+                source_filename = str(source_filename)[:255]
+            cur.execute(
+                """INSERT INTO member_trade_log_imports
+                     (identity_id, account_id, adapter, source_filename,
+                      practice_campaign_id, trade_count, skipped_count)
+                   VALUES (%s, %s, %s, %s, %s, 0, 0)""",
+                (iid, account_id, str(adapter_id)[:32], source_filename, camp_id),
+            )
+            import_id: int | None = int(cur.lastrowid)
             for t in trades:
                 ext = t.get("external_order_id") or None
                 if ext:
@@ -311,8 +324,8 @@ async def import_commit(request: Request) -> dict:
                           order_type, net_price, net_side, setup_md, plan_md, rules_md,
                           adherence, deviation_md, lesson_md, pnl_amount,
                           external_adapter, external_order_id, entry_source,
-                          practice_campaign_id)
-                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                          import_id, practice_campaign_id)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                     (
                         iid,
                         account_id,
@@ -332,18 +345,150 @@ async def import_commit(request: Request) -> dict:
                         adapter_id,
                         ext,
                         "import",
+                        import_id,
                         camp_id,
                     ),
                 )
                 tid = int(cur.lastrowid)
                 _insert_legs(cur, tid, iid, account_id, t.get("legs") or [])
                 created += 1
+            # Reconcile the batch: keep it with real counts, or drop it if the whole
+            # file was duplicates (nothing was created — no batch worth showing).
+            if created == 0:
+                cur.execute(
+                    "DELETE FROM member_trade_log_imports WHERE id = %s AND identity_id = %s",
+                    (import_id, iid),
+                )
+                import_id = None
+            else:
+                cur.execute(
+                    """UPDATE member_trade_log_imports
+                          SET trade_count = %s, skipped_count = %s
+                        WHERE id = %s AND identity_id = %s""",
+                    (created, skipped, import_id, iid),
+                )
     return {
         "ok": True,
         "adapter": adapter_id,
         "account_id": account_id,
         "practice_campaign_id": camp_id,
+        "import_id": import_id,
         "created": created,
         "skipped": skipped,
         "warnings": result.get("warnings") or [],
     }
+
+
+# --- Import batches: list / preview / delete (Import Manager) ------------------
+
+
+def _import_public(r: dict) -> dict:
+    return {
+        "id": int(r["id"]),
+        "created_at": r["created_at"],
+        "adapter": r["adapter"],
+        "account_id": int(r["account_id"]) if r.get("account_id") is not None else None,
+        "account_label": r.get("account_label"),
+        "source_filename": r.get("source_filename"),
+        "label": r.get("label"),
+        "trade_count": int(r["trade_count"]),
+        "skipped_count": int(r["skipped_count"]),
+        "campaign_id": int(r["practice_campaign_id"]) if r.get("practice_campaign_id") is not None else None,
+        "campaign_name": r.get("campaign_name"),
+    }
+
+
+_IMPORT_SELECT = """
+    SELECT i.id, i.adapter, i.account_id, i.source_filename, i.label,
+           i.trade_count, i.skipped_count, i.practice_campaign_id, i.created_at,
+           a.label AS account_label, c.title AS campaign_name
+      FROM member_trade_log_imports i
+      LEFT JOIN member_trade_log_accounts a ON a.id = i.account_id
+      LEFT JOIN member_practice_campaigns c ON c.id = i.practice_campaign_id
+"""
+
+
+@router.get("/api/me/trade-log/imports")
+def list_imports(request: Request) -> dict:
+    """Every import batch for this member, newest first (for the Import Manager)."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            cur.execute(
+                _IMPORT_SELECT + " WHERE i.identity_id = %s ORDER BY i.created_at DESC, i.id DESC",
+                (iid,),
+            )
+            rows = cur.fetchall()
+    return {"imports": [_import_public(r) for r in rows]}
+
+
+@router.get("/api/me/trade-log/imports/{import_id}")
+def preview_import(import_id: int, request: Request) -> dict:
+    """One batch + a lightweight list of its trades, so the member can see which
+    import it is before deleting. Capped at 200 rows."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            cur.execute(
+                _IMPORT_SELECT + " WHERE i.id = %s AND i.identity_id = %s",
+                (import_id, iid),
+            )
+            meta = cur.fetchone()
+            if not meta:
+                raise HTTPException(status_code=404, detail="Import not found")
+            cur.execute(
+                """SELECT t.id, t.exec_at, t.strategy, t.net_price, t.net_side,
+                          (SELECT COUNT(*) FROM member_trade_log_legs l
+                            WHERE l.trade_id = t.id) AS legs_count,
+                          (SELECT l2.underlier FROM member_trade_log_legs l2
+                            WHERE l2.trade_id = t.id ORDER BY l2.leg_index, l2.id
+                            LIMIT 1) AS symbol
+                     FROM member_trade_log_trades t
+                    WHERE t.identity_id = %s AND t.import_id = %s
+                    ORDER BY t.exec_at DESC, t.id DESC
+                    LIMIT 200""",
+                (iid, import_id),
+            )
+            trades = cur.fetchall()
+    return {
+        "import": _import_public(meta),
+        "trades": [
+            {
+                "id": int(t["id"]),
+                "exec_at": t["exec_at"],
+                "strategy": t["strategy"],
+                "net_price": float(t["net_price"]) if t["net_price"] is not None else None,
+                "net_side": t["net_side"],
+                "legs_count": int(t["legs_count"] or 0),
+                "symbol": t["symbol"],
+            }
+            for t in trades
+        ],
+    }
+
+
+@router.delete("/api/me/trade-log/imports/{import_id}")
+def delete_import(import_id: int, request: Request) -> dict:
+    """Delete one import batch — its trades (and legs) cascade via the FK. Identity-
+    scoped; other imports, manual trades, accounts and campaigns are untouched."""
+    claims = require_session(request)
+    _require_tool_member(claims)  # write
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            cur.execute(
+                "SELECT trade_count FROM member_trade_log_imports WHERE id = %s AND identity_id = %s",
+                (import_id, iid),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Import not found")
+            cur.execute(
+                "DELETE FROM member_trade_log_imports WHERE id = %s AND identity_id = %s",
+                (import_id, iid),
+            )
+    return {"ok": True, "deleted": int(row["trade_count"])}

@@ -455,6 +455,11 @@ function TradeLogBody() {
           setSelected(null);
           setSheetOpen(true);
         }}
+        onDeleted={() => {
+          setSelectedIds(new Set());
+          setSelected(null);
+          load();
+        }}
         nativeVenueLabel={nativeVenueLabel}
         onExport={(fmt) => {
           let aid: number | null = accountIdParam;

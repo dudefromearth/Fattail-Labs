@@ -560,6 +560,42 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
             return _load_trade(cur, trade_id, iid)
 
 
+@router.post("/api/me/trade-log/delete-all")
+async def delete_all_trades(request: Request) -> dict:
+    """Delete ALL of this member's trades and legs — a full "start over".
+
+    Identity-scoped (only the caller's own rows, every account). Requires an explicit
+    typed confirm token in the body (``confirm`` == "delete", case-insensitive) so a
+    stray or mistaken call can never wipe the log. Accounts and settings are left
+    intact — re-import a CSV to begin again.
+    """
+    claims = require_session(request)
+    _require_tool_member(claims)
+    try:
+        body = await request.json()
+    except Exception:  # noqa: BLE001 — no/invalid body is just a failed confirm
+        body = {}
+    confirm = str((body or {}).get("confirm") or "").strip().lower()
+    if confirm != "delete":
+        raise HTTPException(status_code=400, detail='Type "delete" to confirm.')
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            cur.execute(
+                "DELETE FROM member_trade_log_legs WHERE identity_id = %s", (iid,)
+            )
+            cur.execute(
+                "DELETE FROM member_trade_log_trades WHERE identity_id = %s", (iid,)
+            )
+            deleted = cur.rowcount
+            # legacy MVP table (same one the single-trade delete falls back to)
+            cur.execute(
+                "DELETE FROM member_trade_log_entries WHERE identity_id = %s", (iid,)
+            )
+            deleted += cur.rowcount
+    return {"ok": True, "deleted": deleted}
+
+
 @router.delete("/api/me/trade-log/{trade_id}")
 @router.delete("/api/me/trade-log/trades/{trade_id}")
 def delete_trade(trade_id: int, request: Request) -> dict:
