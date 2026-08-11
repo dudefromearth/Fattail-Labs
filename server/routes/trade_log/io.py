@@ -379,13 +379,19 @@ async def import_commit(request: Request) -> dict:
     }
 
 
-# --- Import batches: list / preview / delete (Import Manager) ------------------
+# --- Import batches: list / preview / delete / restore (Import Manager) --------
+#
+# Deletes are recoverable: deleting an import moves its trades to trash tables and
+# stamps the import deleted_at; it's restorable for RECOVERY_DAYS, then purged.
+
+RECOVERY_DAYS = 30
 
 
 def _import_public(r: dict) -> dict:
     return {
         "id": int(r["id"]),
         "created_at": r["created_at"],
+        "deleted_at": r.get("deleted_at"),
         "adapter": r["adapter"],
         "account_id": int(r["account_id"]) if r.get("account_id") is not None else None,
         "account_label": r.get("account_label"),
@@ -401,33 +407,71 @@ def _import_public(r: dict) -> dict:
 _IMPORT_SELECT = """
     SELECT i.id, i.adapter, i.account_id, i.source_filename, i.label,
            i.trade_count, i.skipped_count, i.practice_campaign_id, i.created_at,
-           a.label AS account_label, c.title AS campaign_name
+           i.deleted_at, a.label AS account_label, c.title AS campaign_name
       FROM member_trade_log_imports i
       LEFT JOIN member_trade_log_accounts a ON a.id = i.account_id
       LEFT JOIN member_practice_campaigns c ON c.id = i.practice_campaign_id
 """
 
 
+def _purge_expired(cur, iid: int) -> None:
+    """Permanently remove imports deleted more than RECOVERY_DAYS ago (identity-scoped)."""
+    cur.execute(
+        """SELECT id FROM member_trade_log_imports
+            WHERE identity_id = %s AND deleted_at IS NOT NULL
+              AND deleted_at < (NOW() - INTERVAL %s DAY)""",
+        (iid, RECOVERY_DAYS),
+    )
+    for r in cur.fetchall():
+        imp = int(r["id"])
+        cur.execute(
+            """DELETE lt FROM member_trade_log_legs_trash lt
+               JOIN member_trade_log_trades_trash tt ON tt.id = lt.trade_id
+               WHERE tt.import_id = %s AND tt.identity_id = %s""",
+            (imp, iid),
+        )
+        cur.execute(
+            "DELETE FROM member_trade_log_trades_trash WHERE import_id = %s AND identity_id = %s",
+            (imp, iid),
+        )
+        cur.execute(
+            "DELETE FROM member_trade_log_imports WHERE id = %s AND identity_id = %s",
+            (imp, iid),
+        )
+
+
 @router.get("/api/me/trade-log/imports")
 def list_imports(request: Request) -> dict:
-    """Every import batch for this member, newest first (for the Import Manager)."""
+    """Active imports + a recently-deleted list (restorable for RECOVERY_DAYS).
+    Lazily purges anything past its recovery window first."""
     claims = require_session(request)
     _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
+            _purge_expired(cur, iid)
             cur.execute(
-                _IMPORT_SELECT + " WHERE i.identity_id = %s ORDER BY i.created_at DESC, i.id DESC",
+                _IMPORT_SELECT
+                + " WHERE i.identity_id = %s AND i.deleted_at IS NULL"
+                + " ORDER BY i.created_at DESC, i.id DESC",
                 (iid,),
             )
-            rows = cur.fetchall()
-    return {"imports": [_import_public(r) for r in rows]}
+            active = [_import_public(r) for r in cur.fetchall()]
+            cur.execute(
+                _IMPORT_SELECT
+                + " WHERE i.identity_id = %s AND i.deleted_at IS NOT NULL"
+                + " ORDER BY i.deleted_at DESC",
+                (iid,),
+            )
+            deleted = [_import_public(r) for r in cur.fetchall()]
+    return {"imports": active, "deleted": deleted, "recoverable_days": RECOVERY_DAYS}
 
 
 @router.get("/api/me/trade-log/imports/{import_id}")
 def preview_import(import_id: int, request: Request) -> dict:
     """One batch + a lightweight list of its trades, so the member can see which
-    import it is before deleting. Capped at 200 rows."""
+    import it is before deleting (or restoring). Reads from trash when it's a
+    soft-deleted import. Capped at 200 rows."""
     claims = require_session(request)
     _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
@@ -440,14 +484,17 @@ def preview_import(import_id: int, request: Request) -> dict:
             meta = cur.fetchone()
             if not meta:
                 raise HTTPException(status_code=404, detail="Import not found")
+            deleted = meta.get("deleted_at") is not None
+            t_tbl = "member_trade_log_trades_trash" if deleted else "member_trade_log_trades"
+            l_tbl = "member_trade_log_legs_trash" if deleted else "member_trade_log_legs"
             cur.execute(
-                """SELECT t.id, t.exec_at, t.strategy, t.net_price, t.net_side,
-                          (SELECT COUNT(*) FROM member_trade_log_legs l
+                f"""SELECT t.id, t.exec_at, t.strategy, t.net_price, t.net_side,
+                          (SELECT COUNT(*) FROM {l_tbl} l
                             WHERE l.trade_id = t.id) AS legs_count,
-                          (SELECT l2.underlier FROM member_trade_log_legs l2
+                          (SELECT l2.underlier FROM {l_tbl} l2
                             WHERE l2.trade_id = t.id ORDER BY l2.leg_index, l2.id
                             LIMIT 1) AS symbol
-                     FROM member_trade_log_trades t
+                     FROM {t_tbl} t
                     WHERE t.identity_id = %s AND t.import_id = %s
                     ORDER BY t.exec_at DESC, t.id DESC
                     LIMIT 200""",
@@ -473,22 +520,94 @@ def preview_import(import_id: int, request: Request) -> dict:
 
 @router.delete("/api/me/trade-log/imports/{import_id}")
 def delete_import(import_id: int, request: Request) -> dict:
-    """Delete one import batch — its trades (and legs) cascade via the FK. Identity-
-    scoped; other imports, manual trades, accounts and campaigns are untouched."""
+    """Soft-delete one import: its trades + legs move to trash, recoverable for
+    RECOVERY_DAYS. They leave the live tables (so every blotter/report/export read
+    excludes them for free) but nothing is destroyed yet. Identity-scoped."""
     claims = require_session(request)
     _require_tool_member(claims)  # write
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
             cur.execute(
-                "SELECT trade_count FROM member_trade_log_imports WHERE id = %s AND identity_id = %s",
+                "SELECT trade_count, deleted_at FROM member_trade_log_imports WHERE id = %s AND identity_id = %s",
                 (import_id, iid),
             )
             row = cur.fetchone()
-            if not row:
+            if not row or row["deleted_at"] is not None:
                 raise HTTPException(status_code=404, detail="Import not found")
+            # legs → trash (while live), trades → trash, drop live trades (legs cascade),
+            # mark the import deleted (starts the recovery clock).
             cur.execute(
-                "DELETE FROM member_trade_log_imports WHERE id = %s AND identity_id = %s",
+                """INSERT INTO member_trade_log_legs_trash
+                   SELECT l.* FROM member_trade_log_legs l
+                   JOIN member_trade_log_trades t ON t.id = l.trade_id
+                   WHERE t.import_id = %s AND t.identity_id = %s""",
                 (import_id, iid),
             )
-    return {"ok": True, "deleted": int(row["trade_count"])}
+            cur.execute(
+                """INSERT INTO member_trade_log_trades_trash
+                   SELECT * FROM member_trade_log_trades
+                   WHERE import_id = %s AND identity_id = %s""",
+                (import_id, iid),
+            )
+            cur.execute(
+                "DELETE FROM member_trade_log_trades WHERE import_id = %s AND identity_id = %s",
+                (import_id, iid),
+            )
+            cur.execute(
+                "UPDATE member_trade_log_imports SET deleted_at = NOW() WHERE id = %s AND identity_id = %s",
+                (import_id, iid),
+            )
+    return {"ok": True, "deleted": int(row["trade_count"]), "recoverable_days": RECOVERY_DAYS}
+
+
+@router.post("/api/me/trade-log/imports/{import_id}/restore")
+def restore_import(import_id: int, request: Request) -> dict:
+    """Restore a soft-deleted import — move its trades + legs back from trash and
+    clear deleted_at. 404 if it isn't in a deleted state (e.g. already purged)."""
+    claims = require_session(request)
+    _require_tool_member(claims)  # write
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            cur.execute(
+                "SELECT trade_count, deleted_at FROM member_trade_log_imports WHERE id = %s AND identity_id = %s",
+                (import_id, iid),
+            )
+            row = cur.fetchone()
+            if not row or row["deleted_at"] is None:
+                raise HTTPException(status_code=404, detail="No deleted import to restore")
+            try:
+                cur.execute(
+                    """INSERT INTO member_trade_log_trades
+                       SELECT * FROM member_trade_log_trades_trash
+                       WHERE import_id = %s AND identity_id = %s""",
+                    (import_id, iid),
+                )
+                cur.execute(
+                    """INSERT INTO member_trade_log_legs
+                       SELECT lt.* FROM member_trade_log_legs_trash lt
+                       JOIN member_trade_log_trades_trash tt ON tt.id = lt.trade_id
+                       WHERE tt.import_id = %s AND tt.identity_id = %s""",
+                    (import_id, iid),
+                )
+            except Exception as exc:  # noqa: BLE001 — integrity (e.g. re-imported dupes)
+                raise HTTPException(
+                    status_code=409,
+                    detail="Couldn't restore — some of these trades were re-imported since.",
+                ) from exc
+            cur.execute(
+                """DELETE lt FROM member_trade_log_legs_trash lt
+                   JOIN member_trade_log_trades_trash tt ON tt.id = lt.trade_id
+                   WHERE tt.import_id = %s AND tt.identity_id = %s""",
+                (import_id, iid),
+            )
+            cur.execute(
+                "DELETE FROM member_trade_log_trades_trash WHERE import_id = %s AND identity_id = %s",
+                (import_id, iid),
+            )
+            cur.execute(
+                "UPDATE member_trade_log_imports SET deleted_at = NULL WHERE id = %s AND identity_id = %s",
+                (import_id, iid),
+            )
+    return {"ok": True, "restored": int(row["trade_count"])}

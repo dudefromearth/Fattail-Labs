@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-308 Recoverable import deletes; drop full-wipe button
+
+**Decision (amends DL-307):** (1) Remove the Import Manager's "Delete all transactions"
+full-wipe button — that capability is gone from the UI (the `delete-all` endpoint remains
+but is no longer reachable from the app). (2) Deleting an import is now **recoverable for
+30 days** instead of a hard cascade delete.
+
+**Mechanism — recycle bin, not a `deleted_at` flag on trades:** member trades are read in
+~20 places (blotter, reports, journey scores, capital, campaigns, export…); a soft-delete
+flag would need a filter in every one and would leak on the one you miss. Instead, deleting
+an import **moves its trades+legs into trash tables** (`member_trade_log_{trades,legs}_trash`,
+created `LIKE` the live tables so the move is `INSERT … SELECT *` with ids preserved for
+lossless restore) and stamps `member_trade_log_imports.deleted_at`. The rows leave the live
+tables, so every existing read excludes them for free — correct by construction.
+`POST …/imports/{id}/restore` moves them back; `GET …/imports` returns `{imports, deleted,
+recoverable_days}` and lazily purges anything past 30 days (the recovery clock is the
+import's `deleted_at`). Migration `121_trade_log_import_recycle.sql` (additive: `deleted_at`
++ trash tables; drops the ext-order unique key on trash so a trashed trade and a later
+re-import can coexist). Import Manager gains a "Recently deleted · restorable for 30 days"
+section (Restore + days-left). Single-trade delete stays hard (unchanged). Tests: soft-delete
+→ trades leave blotter → preview from trash → restore → return; restore-404 (10 pass).
+
 ## 2026-08-11 — DL-307 Trade Log import batches + Import Manager
 
 **Decision:** Make every import an identifiable, previewable, individually-deletable unit,

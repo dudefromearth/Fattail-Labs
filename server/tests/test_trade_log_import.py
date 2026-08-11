@@ -26,6 +26,15 @@ def _purge(iid: int) -> None:
                 "DELETE FROM member_trade_log_trades WHERE identity_id = %s", (iid,)
             )
             cur.execute(
+                "DELETE FROM member_trade_log_legs_trash WHERE identity_id = %s", (iid,)
+            )
+            cur.execute(
+                "DELETE FROM member_trade_log_trades_trash WHERE identity_id = %s", (iid,)
+            )
+            cur.execute(
+                "DELETE FROM member_trade_log_imports WHERE identity_id = %s", (iid,)
+            )
+            cur.execute(
                 "DELETE FROM member_trade_log_accounts WHERE identity_id = %s", (iid,)
             )
             cur.execute("DELETE FROM identity_links WHERE identity_id = %s", (iid,))
@@ -280,10 +289,33 @@ def test_import_batch_list_preview_delete(client):
         assert prev.json()["import"]["id"] == imp_id
         assert len(prev.json()["trades"]) == 3
 
+        # soft-delete: trades leave the live blotter, import moves to "deleted"
         d = client.delete(f"/api/me/trade-log/imports/{imp_id}", cookies=ca)
         assert d.status_code == 200 and d.json()["deleted"] == 3
         assert client.get(f"/api/me/trade-log/trades?account_id={aid}", cookies=ca).json()["trades"] == []
-        assert client.get("/api/me/trade-log/imports", cookies=ca).json()["imports"] == []
+        listing = client.get("/api/me/trade-log/imports", cookies=ca).json()
+        assert listing["imports"] == []
+        assert len(listing["deleted"]) == 1 and listing["deleted"][0]["id"] == imp_id
+        # preview of a deleted import reads from trash
+        assert len(client.get(f"/api/me/trade-log/imports/{imp_id}", cookies=ca).json()["trades"]) == 3
+        # restore brings the trades back to the live blotter
+        r = client.post(f"/api/me/trade-log/imports/{imp_id}/restore", cookies=ca)
+        assert r.status_code == 200 and r.json()["restored"] == 3
+        assert len(client.get(f"/api/me/trade-log/trades?account_id={aid}", cookies=ca).json()["trades"]) == 3
+        back = client.get("/api/me/trade-log/imports", cookies=ca).json()
+        assert len(back["imports"]) == 1 and back["deleted"] == []
+    finally:
+        _purge(a)
+
+
+def test_restore_missing_is_404(client):
+    a = _id("zztest-tl-batch3@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        _import_three(client, ca)
+        imp = client.get("/api/me/trade-log/imports", cookies=ca).json()["imports"][0]["id"]
+        # not deleted yet → nothing to restore
+        assert client.post(f"/api/me/trade-log/imports/{imp}/restore", cookies=ca).status_code == 404
     finally:
         _purge(a)
 
