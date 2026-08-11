@@ -4,6 +4,16 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-292 Options Lab Analyzer L5 wires OPF dual-curve risk graph
+
+**Decision:** Options Lab **Analyzer** consumes OPF L4 `day_trade` resolve for real-time dual curves (expiration + model_t0), ToS-comparable presentation on PnLChart. Not MSC authority.
+
+**Client:** `useOpfRiskGraph` hydrates dual-side chain-ladder generations per leg expiration → `POST /api/me/pricing/resolve`. Limit price (when present) becomes cost basis shift for ToS-like P&L. Poll ~2.5s.
+
+**Server:** Dense curves via `what_if.curve_steps` / `curve_range_pct` on `day_trade.mark_hybrid` (161 pts default).
+
+**Compare workflow:** Load same ToS line in Labs Analyzer and thinkorswim Analyze → Risk Profile; overlay shape / breakevens / T+0 vs expiration.
+
 ## 2026-08-11 — DL-291 OPF foundation L0–L4 AS-BUILT (program close)
 
 **Decision:** Options Pricing Foundation **foundation exit** — L0–L4 landed; **no L5 app wiring**.
