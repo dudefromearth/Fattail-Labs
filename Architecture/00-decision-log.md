@@ -4,6 +4,24 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-11 — DL-301 Options Lab Analyzer Spec v0.1 filed
+
+**Decision:** File product Spec for Options Lab **Analyzer** surface as **DRAFT**:
+
+`Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md`
+
+**Contents:**
+- Exhaustive **as-built inventory** (route, chrome, posture, OPF packs, book/cards/lock, package quotes, viewport/resolve, PnLChart, what-if, ToS/Heatmap handoff, alerts, Builder shell, module map)
+- **TARGET** layout law: position list **under** viewport with divider (not MSC left rail)
+- **TARGET** Builder defaults: every template standard geometry from market (Held/Closed → last/close mark); butterfly min width = heatmap/profile minimum; handoff fields win when supplied
+- Card = read-only limited Builder view; Edit opens full Builder
+- Parents: PB Spec v0.2 · OPF v0.2.1 · Market Bus · Chain Picker · Heatmap Templates
+- Gap map + OD-AZ1–4 · ATs AT-AZ-1…12 + residual L1–L6
+
+**Does not:** implement layout residual or full default matrix (plan after Coach GO / OD).
+
+**Content hash (body excl. integrity line):** `e8a0c7d5aa2e6dbe4505beb17ebd50556399b458`.
+
 ## 2026-08-11 — DL-300 Live underlier mids — site-wide UI standard
 
 **Decision:** Every product surface that shows underlier mid / last / live price for

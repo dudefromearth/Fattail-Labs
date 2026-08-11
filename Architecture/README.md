@@ -50,6 +50,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Bench **OPF** | `docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-pricing-foundation/` |
 | Spec **Position Builder/Book v0.2** | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_2.md` — product law (Coach accepted); DL-296; v0.1 SUPERSEDED |
 | Bench **Position Builder** | `docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-position-builder/` · DL-297 |
+| Spec **Analyzer v0.1** | `Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_1.md` — surface assembly (viewport · book under graph TARGET · defaults · as-built inventory); **DL-301** |
 | Spec **Heatmap Templates v0.2** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` — product law (DRAFT); v0.1 superseded |
 | Bench plan | `docs/Options-Lab-Heatmap-Templates-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-heatmap/` |
 | Spec | `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` v1.0.1 |
