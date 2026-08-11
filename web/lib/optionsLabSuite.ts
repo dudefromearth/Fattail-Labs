@@ -35,8 +35,9 @@ export const OPTIONS_LAB_SUITE: OptionsLabAppItem[] = [
     id: "analyzer",
     label: "Analyzer",
     href: "/app/options-lab/analyzer",
-    blurb: "Risk graph — payoff and greek surface for the selected underlier.",
-    status: "soon",
+    blurb:
+      "Expiration risk graph — load a trade from Heatmap ToS (⌥-click) or paste.",
+    status: "live",
   },
 ];
 

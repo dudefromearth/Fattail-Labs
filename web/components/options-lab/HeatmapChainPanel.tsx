@@ -41,6 +41,8 @@ import {
   symFlyTosLegs,
 } from "@/lib/options-lab/tosGenerator";
 import { symFlyDebit } from "@/lib/options-lab/templates/pricing";
+import { saveAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
+import Link from "next/link";
 
 const EXPIRY_PICK_COUNT = 3;
 
@@ -372,6 +374,8 @@ export default function HeatmapChainPanel() {
       });
       setTosScript(script);
       setSelectedTile({ strike: body, colId: `w${widthPts}` });
+      // Hand off to Analyzer (session) — same line as clipboard
+      saveAnalyzerTrade(script, "heatmap");
       try {
         await navigator.clipboard.writeText(script);
         setTosCopied(true);
@@ -650,19 +654,32 @@ export default function HeatmapChainPanel() {
               "Option-click a fly tile to generate BUY/SELL BUTTERFLY … @debit LMT"}
           </pre>
           {tosScript ? (
-            <button
-              type="button"
-              className={secondaryBtn + " w-full min-h-9 py-1.5 text-xs"}
-              onClick={() => {
-                void navigator.clipboard.writeText(tosScript).then(() => {
-                  setTosCopied(true);
-                  window.setTimeout(() => setTosCopied(false), 1600);
-                });
-              }}
-              data-testid="heatmap-tos-copy"
-            >
-              {tosCopied ? "Copied" : "Copy again"}
-            </button>
+            <div className="flex flex-col gap-1.5">
+              <button
+                type="button"
+                className={secondaryBtn + " w-full min-h-9 py-1.5 text-xs"}
+                onClick={() => {
+                  void navigator.clipboard.writeText(tosScript).then(() => {
+                    setTosCopied(true);
+                    window.setTimeout(() => setTosCopied(false), 1600);
+                  });
+                }}
+                data-testid="heatmap-tos-copy"
+              >
+                {tosCopied ? "Copied" : "Copy again"}
+              </button>
+              <Link
+                href="/app/options-lab/analyzer"
+                className={
+                  secondaryBtn +
+                  " w-full min-h-9 py-1.5 text-xs no-underline inline-flex"
+                }
+                data-testid="heatmap-open-analyzer"
+                onClick={() => saveAnalyzerTrade(tosScript, "heatmap")}
+              >
+                Open in Analyzer
+              </Link>
+            </div>
           ) : null}
         </div>
 

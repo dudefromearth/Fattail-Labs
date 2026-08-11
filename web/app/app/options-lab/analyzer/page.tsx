@@ -1,19 +1,15 @@
 "use client";
 
 import OptionsLabChrome from "@/components/options-lab/OptionsLabChrome";
-import AppPlaceholder from "@/components/options-lab/AppPlaceholder";
+import RiskAnalyzerPanel from "@/components/options-lab/RiskAnalyzerPanel";
 
 /**
- * Analyzer app — risk graph for the selected underlier (next).
+ * Analyzer — expiration risk graph from Heatmap ToS selection or paste.
  */
 export default function OptionsLabAnalyzerPage() {
   return (
-    <OptionsLabChrome active="analyzer">
-      <AppPlaceholder
-        testId="options-lab-analyzer"
-        title="Analyzer"
-        body="Risk graph for the selected underlier — payoff and greek surface. Scaffold only for now; symbol selection is shared with Volume Profile and Heatmap."
-      />
+    <OptionsLabChrome active="analyzer" workspace>
+      <RiskAnalyzerPanel />
     </OptionsLabChrome>
   );
 }
