@@ -32,8 +32,8 @@ In-flight RAW under Spec §16 is not stopped for W0 paperwork alone.
 | Phase | Status | Gate |
 |-------|--------|------|
 | W0 Coach GO | **DONE** | W0-G **PASS** |
-| A Multi-mount + catalog | **next** | A-G |
-| B RAW campaign | ready (SPY trades as-built) | B-G |
+| A Multi-mount + catalog | **partial** — migration 093 applied; staging root active | A-G |
+| B RAW campaign | **IN FLIGHT** — `raw_campaign` PID on host; staging `/Users/ernie/data/fattail-market-data` | B-G |
 | P2 Remaining | ready | P2-G |
 | **P2-3 condition freeze** | **OPEN — bin gate** | hard |
 | C BIN tool | blocked on P2-3 | C-G |
