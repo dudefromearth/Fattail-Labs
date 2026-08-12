@@ -4,6 +4,31 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-12 — DL-312 Consolidate to one Observer tier (fix Observer tool access)
+
+**Bug (member ticket, radams@pme360.com):** Observer members couldn't add Journal / Trade
+Log entries — "requires an active Observer trial or Navigator". **Root cause:** prod had
+drifted from `seed_dev`. The intended state is a single Observer tier `observer-trial`
+(`grants_role=navigator` → full tools), with every observer entitlement key mapping to it.
+But prod also had a stale `observer` plan (`grants_role=observer` → no tools) and two stale
+`provider_plan_map` rows `'Observer Access' -> observer`. The SSO sends the WooCommerce
+plan **name** `"Observer Access"`, and `plan_id_for_provider_key` tries candidates in order
+with exact-match first — so `'Observer Access' -> observer` shadowed the correct
+`'observer-access' -> observer-trial`. Result: **37 active Observers all on the no-tools
+plan, 0 on observer-trial**, so the `feature_role` elevation (which only fires for
+observer-trial, DL-126/128) never ran. Confirmed radams was on `observer` (grants observer)
+→ `can_create_or_gather` False.
+
+**Decision (owner-authorised):** consolidate to the single intended Observer tier.
+Migration `123` (data-only, env-safe by slug, idempotent): (1) repoint every
+`provider_plan_map` row off the stale `observer` plan → `observer-trial`; (2) move all 38
+`observer` memberships → `observer-trial` (full access; no member held observer-trial, so
+no collision); (3) delete the now-unreferenced stale `observer` plan. Only `memberships`
+and `provider_plan_map` FK-reference `plans`, and no code assigns the `observer` plan
+(self-serve accounts are plan-less; role derived), so the delete is safe. Takes effect live
+(the tool gate reads memberships live) — no restart. Observers now correctly show as
+"Paid · Observer" in admin while getting navigator-tier tool access, matching the product.
+
 ## 2026-08-12 — DL-311 Advanced Fly heatmap — Spec GO + Wave‑1 ship (AF0…AF-Z)
 
 **Coach AF0-0 GO** (after plan v1.1.1 / Spec v0.2.1 fold): implement **Advanced Fly** on board
