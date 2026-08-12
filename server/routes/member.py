@@ -38,6 +38,7 @@ HOME_QUICK_NAV_DEFAULT = ("journal",)
 HOME_QUICK_NAV_OPTIONAL = (
     "wiki",
     "strategy_lab",
+    "options_lab",
     "fattail_hard",
     "courses",
 )
@@ -76,8 +77,20 @@ def _normalize_journey_ui_prefs(raw) -> dict:
     }
 
 
+def _canonical_home_quick_nav_key(item) -> str:
+    """Normalize one raw nav token to canonical id (empty if blank)."""
+    key = str(item or "").strip().lower().replace("-", "_")
+    if key == "strategy-lab":
+        key = "strategy_lab"
+    if key in ("options-lab", "optionslab"):
+        key = "options_lab"
+    if key == "fattail-hard":
+        key = "fattail_hard"
+    return key
+
+
 def _normalize_home_quick_nav(raw) -> list[str]:
-    """Return ordered unique keys; journal always first. Invalid keys dropped."""
+    """Return ordered unique keys; journal always first. Unknown keys dropped (read path)."""
     if raw is None:
         return list(HOME_QUICK_NAV_DEFAULT)
     if isinstance(raw, str):
@@ -95,16 +108,38 @@ def _normalize_home_quick_nav(raw) -> list[str]:
     out.append("journal")
     seen.add("journal")
     for item in raw:
-        key = str(item or "").strip().lower().replace("-", "_")
-        if key == "strategy-lab":
-            key = "strategy_lab"
-        if key == "fattail-hard":
-            key = "fattail_hard"
-        if key not in HOME_QUICK_NAV_ALLOWED or key in seen:
+        key = _canonical_home_quick_nav_key(item)
+        if not key or key not in HOME_QUICK_NAV_ALLOWED or key in seen:
             continue
         out.append(key)
         seen.add(key)
     return out
+
+
+def _parse_home_quick_nav_write(raw) -> list[str]:
+    """Write path: fail loud on non-list or unknown keys (do not silently drop)."""
+    if not isinstance(raw, (list, tuple)):
+        raise HTTPException(
+            status_code=422,
+            detail="home_quick_nav must be an array of nav ids",
+        )
+    unknown: list[str] = []
+    for item in raw:
+        key = _canonical_home_quick_nav_key(item)
+        if not key:
+            continue
+        if key not in HOME_QUICK_NAV_ALLOWED:
+            unknown.append(str(item))
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Unknown home_quick_nav keys: "
+                + ", ".join(unknown)
+                + f". Allowed: {', '.join(sorted(HOME_QUICK_NAV_ALLOWED))}"
+            ),
+        )
+    return _normalize_home_quick_nav(raw)
 
 
 def _lesson_for_access(
@@ -666,6 +701,7 @@ def _profile_payload(row: dict, role: str) -> dict:
             {"id": "journal", "label": "Journal", "required": True},
             {"id": "wiki", "label": "Wiki", "required": False},
             {"id": "strategy_lab", "label": "Strategy Lab", "required": False},
+            {"id": "options_lab", "label": "Options Lab", "required": False},
             {"id": "fattail_hard", "label": "FatTail Hard", "required": False},
             {"id": "courses", "label": "Courses", "required": False},
         ],
@@ -757,7 +793,7 @@ async def patch_profile(request: Request) -> dict:
         params.append(1 if exp else 0)
 
     if "home_quick_nav" in body:
-        nav = _normalize_home_quick_nav(body["home_quick_nav"])
+        nav = _parse_home_quick_nav_write(body["home_quick_nav"])
         updates.append("home_quick_nav_json = %s")
         params.append(json.dumps(nav))
 

@@ -7,6 +7,7 @@ export type HomeQuickNavId =
   | "journal"
   | "wiki"
   | "strategy_lab"
+  | "options_lab"
   | "fattail_hard"
   | "courses";
 
@@ -35,6 +36,12 @@ export const HOME_QUICK_NAV_OPTIONS: HomeQuickNavOption[] = [
     label: "Strategy Lab",
     required: false,
     description: "Design → Curation → Deployment.",
+  },
+  {
+    id: "options_lab",
+    label: "Options Lab",
+    required: false,
+    description: "Heatmap, Analyzer, Volume Profile — live options chain.",
   },
   {
     id: "fattail_hard",
@@ -66,6 +73,7 @@ export function normalizeHomeQuickNav(
       .toLowerCase()
       .replace(/-/g, "_");
     if (key === "strategy-lab") key = "strategy_lab";
+    if (key === "options-lab" || key === "optionslab") key = "options_lab";
     if (key === "fattail-hard") key = "fattail_hard";
     if (!ALLOWED.has(key as HomeQuickNavId) || seen.has(key)) continue;
     out.push(key as HomeQuickNavId);
@@ -91,6 +99,9 @@ export function hrefForQuickNav(id: HomeQuickNavId): string {
       return "/app/wiki";
     case "strategy_lab":
       return "/app/strategy-lab";
+    case "options_lab":
+      // Suite home redirects to Heatmap; Analyzer/VP via suite chrome.
+      return "/app/options-lab";
     case "fattail_hard":
       return "/app/toughness/fattail-hard";
     case "courses":

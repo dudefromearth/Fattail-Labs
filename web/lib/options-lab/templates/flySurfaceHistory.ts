@@ -1,6 +1,10 @@
 /**
  * Client fly debit-grid history — Spec Advanced Fly §6 · AF10 · AF17.
  * Pure memory; no fetch. Live Debit always recomputed from ChainContext.
+ *
+ * Lag rule: time modes compare **live** to the newest history snap that is
+ * **not** the same generation as live (contentHash). After we push the current
+ * gen for the *next* tick, re-renders still resolve lag to the prior gen.
  */
 
 export const FLY_HISTORY_DEFAULT_DEPTH = 32;
@@ -32,10 +36,26 @@ export type PairClock = {
   dtMs: number;
 };
 
+function parseAsOfMs(asOf: string | null | undefined): number | null {
+  if (!asOf) return null;
+  const t = Date.parse(asOf);
+  return Number.isFinite(t) ? t : null;
+}
+
+/** True when both snaps carry the same generation identity. */
+export function sameGeneration(
+  a: DebitGridSnap,
+  b: DebitGridSnap,
+): boolean {
+  if (a.contentHash && b.contentHash) {
+    return a.contentHash === b.contentHash;
+  }
+  return false;
+}
+
 /**
- * Δt with single clock basis only (AF17b).
- * Prefer asOf–asOf when both present; else receivedAt–receivedAt.
- * Mixed basis → null.
+ * Δt with single clock basis (AF17b), plus equal-asOf fallback to receivedAt
+ * when both asOf parse equal (second-granularity server stamps on distinct gens).
  */
 export function pairDeltaMs(
   newer: DebitGridSnap,
@@ -44,22 +64,21 @@ export function pairDeltaMs(
   const a0 = parseAsOfMs(newer.asOf);
   const a1 = parseAsOfMs(older.asOf);
   if (a0 != null && a1 != null) {
-    return { basis: "asOf", dtMs: a0 - a1 };
+    const dt = a0 - a1;
+    if (dt > 0) return { basis: "asOf", dtMs: dt };
+    if (dt < 0) return null; // non-monotonic asOf
+    // dt === 0: same asOf string — fall back to receive clock (distinct gens)
+    const rdt = newer.receivedAt - older.receivedAt;
+    if (rdt > 0) return { basis: "receivedAt", dtMs: rdt };
+    return null;
   }
   if (a0 != null || a1 != null) {
     // Mixed: one has asOf, other doesn't — do not cross bases
     return null;
   }
-  return {
-    basis: "receivedAt",
-    dtMs: newer.receivedAt - older.receivedAt,
-  };
-}
-
-function parseAsOfMs(asOf: string | null | undefined): number | null {
-  if (!asOf) return null;
-  const t = Date.parse(asOf);
-  return Number.isFinite(t) ? t : null;
+  const rdt = newer.receivedAt - older.receivedAt;
+  if (rdt > 0) return { basis: "receivedAt", dtMs: rdt };
+  return null;
 }
 
 /** tickPairHonest: d_debit · pct_change — NO 0.5s floor (P-B2). */
@@ -90,8 +109,6 @@ export function velocityPairHonest(
 export class FlySurfaceHistory {
   private snaps: DebitGridSnap[] = [];
   private readonly depth: number;
-  /** After seam, time modes need fresh samples. */
-  private seamed = false;
 
   constructor(depth: number = FLY_HISTORY_DEFAULT_DEPTH) {
     this.depth = Math.max(2, Math.min(256, depth));
@@ -99,7 +116,6 @@ export class FlySurfaceHistory {
 
   clear(): void {
     this.snaps = [];
-    this.seamed = true;
   }
 
   /** AF10/AF11 seam — discontinuity for time derivatives. */
@@ -121,24 +137,59 @@ export class FlySurfaceHistory {
   }
 
   /**
-   * Push a debit grid. AF17(a): non-monotonic asOf → reject (return false)
-   * without appending. Caller may seam instead.
+   * Newest snap that is **not** the live generation (by contentHash).
+   * After push(current), lag still resolves to the prior gen.
+   */
+  previousFor(live: DebitGridSnap): DebitGridSnap | null {
+    for (const s of this.snaps) {
+      if (sameGeneration(live, s)) continue;
+      return s;
+    }
+    return null;
+  }
+
+  /** Two prior snaps for Δ² / acceleration (skip live gen). */
+  previousPairFor(
+    live: DebitGridSnap,
+  ): { h0: DebitGridSnap; h1: DebitGridSnap } | null {
+    const lags: DebitGridSnap[] = [];
+    for (const s of this.snaps) {
+      if (sameGeneration(live, s)) continue;
+      lags.push(s);
+      if (lags.length >= 2) break;
+    }
+    if (lags.length < 2) return null;
+    return { h0: lags[0], h1: lags[1] };
+  }
+
+  /**
+   * Push a debit grid. AF17(a): non-monotonic asOf → reject (return false).
+   * Same contentHash as newest → no-op success (idempotent re-push).
    */
   push(snap: DebitGridSnap): boolean {
     const newest = this.snaps[0];
+    if (newest && sameGeneration(snap, newest)) {
+      // Refresh cells for same gen (mid fills in) without adding a new lag slot
+      newest.cells = new Map(snap.cells);
+      newest.receivedAt = snap.receivedAt;
+      if (snap.asOf) newest.asOf = snap.asOf;
+      return true;
+    }
     if (newest) {
       const aNew = parseAsOfMs(snap.asOf);
       const aOld = parseAsOfMs(newest.asOf);
-      if (aNew != null && aOld != null && aNew <= aOld) {
-        return false; // reject non-monotonic
+      if (aNew != null && aOld != null && aNew < aOld) {
+        return false; // reject reverse-time asOf
       }
+      // aNew === aOld allowed — receivedAt ordering carries the lag
     }
     this.snaps.unshift({
-      ...snap,
+      asOf: snap.asOf,
+      contentHash: snap.contentHash,
+      receivedAt: snap.receivedAt,
       cells: new Map(snap.cells),
     });
     while (this.snaps.length > this.depth) this.snaps.pop();
-    this.seamed = false;
     return true;
   }
 
@@ -154,25 +205,29 @@ export class FlySurfaceHistory {
     return v == null || !Number.isFinite(v) ? null : v;
   }
 
-  /**
-   * Live D vs history[0] for tick modes.
-   * liveSnap synthesizes current generation for pairing clocks.
-   */
+  private cellD(
+    snap: DebitGridSnap,
+    side: string,
+    strike: number,
+    widthPts: number,
+  ): number | null {
+    const v = snap.cells.get(cellKey(side, strike, widthPts));
+    return v == null || !Number.isFinite(v) ? null : v;
+  }
+
   tickDelta(
     live: DebitGridSnap,
     side: string,
     strike: number,
     widthPts: number,
   ): { dD: number; dtMs: number } | null {
-    const prev = this.snaps[0];
+    const prev = this.previousFor(live);
     if (!prev) return null;
     const pair = tickPairHonest(live, prev);
     if (!pair) return null;
-    const d0 = live.cells.get(cellKey(side, strike, widthPts));
-    const d1 = prev.cells.get(cellKey(side, strike, widthPts));
-    if (d0 == null || d1 == null || !Number.isFinite(d0) || !Number.isFinite(d1)) {
-      return null;
-    }
+    const d0 = this.cellD(live, side, strike, widthPts);
+    const d1 = this.cellD(prev, side, strike, widthPts);
+    if (d0 == null || d1 == null) return null;
     return { dD: d0 - d1, dtMs: pair.dtMs };
   }
 
@@ -182,50 +237,33 @@ export class FlySurfaceHistory {
     strike: number,
     widthPts: number,
   ): { dD: number; dtMs: number } | null {
-    const prev = this.snaps[0];
+    const prev = this.previousFor(live);
     if (!prev) return null;
     const pair = velocityPairHonest(live, prev);
     if (!pair) return null;
-    const d0 = live.cells.get(cellKey(side, strike, widthPts));
-    const d1 = prev.cells.get(cellKey(side, strike, widthPts));
-    if (d0 == null || d1 == null || !Number.isFinite(d0) || !Number.isFinite(d1)) {
-      return null;
-    }
+    const d0 = this.cellD(live, side, strike, widthPts);
+    const d1 = this.cellD(prev, side, strike, widthPts);
+    if (d0 == null || d1 == null) return null;
     return { dD: d0 - d1, dtMs: pair.dtMs };
   }
 
-  /**
-   * Δ² from last two history samples vs live for d2_debit.
-   * Needs history[0] and history[1] both tick-honest with successive pairs.
-   */
   d2Debit(
     live: DebitGridSnap,
     side: string,
     strike: number,
     widthPts: number,
   ): number | null {
-    const h0 = this.snaps[0];
-    const h1 = this.snaps[1];
-    if (!h0 || !h1) return null;
+    const pair = this.previousPairFor(live);
+    if (!pair) return null;
+    const { h0, h1 } = pair;
     const p0 = tickPairHonest(live, h0);
     const p1 = tickPairHonest(h0, h1);
     if (!p0 || !p1) return null;
-    const dL = live.cells.get(cellKey(side, strike, widthPts));
-    const d0 = h0.cells.get(cellKey(side, strike, widthPts));
-    const d1 = h1.cells.get(cellKey(side, strike, widthPts));
-    if (
-      dL == null ||
-      d0 == null ||
-      d1 == null ||
-      !Number.isFinite(dL) ||
-      !Number.isFinite(d0) ||
-      !Number.isFinite(d1)
-    ) {
-      return null;
-    }
-    const dD0 = dL - d0;
-    const dD1 = d0 - d1;
-    return dD0 - dD1;
+    const dL = this.cellD(live, side, strike, widthPts);
+    const d0 = this.cellD(h0, side, strike, widthPts);
+    const d1 = this.cellD(h1, side, strike, widthPts);
+    if (dL == null || d0 == null || d1 == null) return null;
+    return dL - d0 - (d0 - d1);
   }
 
   acceleration(
@@ -234,26 +272,17 @@ export class FlySurfaceHistory {
     strike: number,
     widthPts: number,
   ): number | null {
-    const h0 = this.snaps[0];
-    const h1 = this.snaps[1];
-    if (!h0 || !h1) return null;
+    const pair = this.previousPairFor(live);
+    if (!pair) return null;
+    const { h0, h1 } = pair;
     const p0 = velocityPairHonest(live, h0);
     const p1 = velocityPairHonest(h0, h1);
     if (!p0 || !p1) return null;
-    const dL = live.cells.get(cellKey(side, strike, widthPts));
-    const d0 = h0.cells.get(cellKey(side, strike, widthPts));
-    const d1 = h1.cells.get(cellKey(side, strike, widthPts));
-    if (
-      dL == null ||
-      d0 == null ||
-      d1 == null ||
-      !Number.isFinite(dL) ||
-      !Number.isFinite(d0) ||
-      !Number.isFinite(d1)
-    ) {
-      return null;
-    }
-    const v0 = (dL - d0) / (p0.dtMs / 60_000); // per minute
+    const dL = this.cellD(live, side, strike, widthPts);
+    const d0 = this.cellD(h0, side, strike, widthPts);
+    const d1 = this.cellD(h1, side, strike, widthPts);
+    if (dL == null || d0 == null || d1 == null) return null;
+    const v0 = (dL - d0) / (p0.dtMs / 60_000);
     const v1 = (d0 - d1) / (p1.dtMs / 60_000);
     const dtMin = p0.dtMs / 60_000;
     if (!(dtMin > 0)) return null;

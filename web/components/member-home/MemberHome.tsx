@@ -226,7 +226,46 @@ export default function MemberHome() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      {/* Suite-style capsule nav at page top (same HIG pattern as Practice / Options Lab) */}
+      <div
+        className="mb-6 grid grid-cols-1 items-center gap-2 sm:mb-8 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-3"
+        data-testid="home-chrome-top"
+      >
+        <div className="hidden sm:block" aria-hidden />
+        <div className="flex justify-center justify-self-center">
+          <nav
+            className="inline-flex max-w-full flex-wrap items-center justify-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
+            aria-label="Home quick navigation"
+            data-testid="home-quick-nav"
+          >
+            {quickNav.map((id) => (
+              <Link
+                key={id}
+                href={hrefForQuickNav(id)}
+                className={[
+                  "inline-flex min-h-9 items-center justify-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors sm:px-4",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
+                  "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
+                ].join(" ")}
+                data-testid={`home-quick-nav-${id}`}
+              >
+                {labelForQuickNav(id)}
+              </Link>
+            ))}
+          </nav>
+        </div>
+        <div className="flex justify-center sm:justify-end sm:justify-self-end">
+          <Link
+            href="/me"
+            className="text-xs font-medium text-[var(--color-label-tertiary)] underline-offset-2 hover:text-[var(--color-tint)] hover:underline"
+            data-testid="home-quick-nav-customize"
+          >
+            Customize
+          </Link>
+        </div>
+      </div>
+
       <div className="lg:grid lg:grid-cols-[1fr_17.5rem] lg:gap-8">
         {/* ── Main column: personal path ── */}
         <div className="min-w-0 space-y-8">
@@ -259,36 +298,6 @@ export default function MemberHome() {
               )}
             </p>
           </header>
-
-          {/* Configurable quick nav — Journal → today by default */}
-          <nav
-            className="flex flex-wrap items-center gap-2"
-            aria-label="Quick navigation"
-            data-testid="home-quick-nav"
-          >
-            {quickNav.map((id) => (
-              <Link
-                key={id}
-                href={hrefForQuickNav(id)}
-                className="inline-flex items-center rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-3.5 py-1.5 text-sm font-medium text-[var(--color-label)] shadow-[var(--elevation-1)] transition-colors hover:border-[var(--color-tint)] hover:text-[var(--color-tint)]"
-                data-testid={`home-quick-nav-${id}`}
-              >
-                {labelForQuickNav(id)}
-                {id === "journal" ? (
-                  <span className="ml-1.5 text-xs font-normal text-[var(--color-label-tertiary)]">
-                    · today
-                  </span>
-                ) : null}
-              </Link>
-            ))}
-            <Link
-              href="/me"
-              className="text-xs font-medium text-[var(--color-label-tertiary)] underline-offset-2 hover:text-[var(--color-tint)] hover:underline"
-              data-testid="home-quick-nav-customize"
-            >
-              Customize
-            </Link>
-          </nav>
 
           {/* Continue Learning hero */}
           <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-1)]">

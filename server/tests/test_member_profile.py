@@ -100,20 +100,37 @@ def test_home_quick_nav_default_and_patch(client, member_cookies):
     body = g.json()
     assert body["home_quick_nav"] == ["journal"]
     assert any(o["id"] == "wiki" for o in body["home_quick_nav_options"])
+    assert any(o["id"] == "options_lab" for o in body["home_quick_nav_options"])
 
     r = client.patch(
         "/api/me/profile",
         cookies=cookies,
-        json={"home_quick_nav": ["wiki", "courses", "journal", "bogus"]},
+        json={
+            "home_quick_nav": [
+                "wiki",
+                "options_lab",
+                "courses",
+                "journal",
+            ]
+        },
     )
     assert r.status_code == 200, r.text
     nav = r.json()["home_quick_nav"]
-    # journal always first; invalid dropped; order of optionals preserved
+    # journal always first; order of optionals preserved
     assert nav[0] == "journal"
     assert "wiki" in nav
+    assert "options_lab" in nav
     assert "courses" in nav
-    assert "bogus" not in nav
-    assert nav.index("wiki") < nav.index("courses")
+    assert nav.index("wiki") < nav.index("options_lab") < nav.index("courses")
+
+    # Unknown keys fail loud (never silent drop on write)
+    bad = client.patch(
+        "/api/me/profile",
+        cookies=cookies,
+        json={"home_quick_nav": ["journal", "bogus"]},
+    )
+    assert bad.status_code == 422
+    assert "bogus" in str(bad.json().get("detail", "")).lower()
 
     r2 = client.patch(
         "/api/me/profile",

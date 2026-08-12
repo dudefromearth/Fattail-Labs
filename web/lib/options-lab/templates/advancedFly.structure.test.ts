@@ -107,7 +107,7 @@ const ctx = makeCtx();
   assert(a != null && Math.abs(a) < 1e-9, `cp_asym ~0 got ${a}`);
 }
 
-// Time: 0.3s tick valid velocity invalid (via history)
+// Time: 0.3s tick valid velocity invalid; after push(live) lag still prior
 {
   const hist = new FlySurfaceHistory(8);
   const k = cellKey("call", 100, 10);
@@ -125,8 +125,31 @@ const ctx = makeCtx();
   };
   const tick = hist.tickDelta(live, "call", 100, 10);
   assert(tick != null && Math.abs(tick.dD - 0.5) < 1e-9, "tick dD");
+  assert(hist.velocityDelta(live, "call", 100, 10) == null, "velocity null at 0.3s");
+  // Archive live gen — lag must still resolve to "a"
+  hist.push(live);
+  const tick2 = hist.tickDelta(live, "call", 100, 10);
+  assert(tick2 != null && Math.abs(tick2.dD - 0.5) < 1e-9, "post-push lag still A");
+}
+// Velocity at 3s after prior gen archived
+{
+  const hist = new FlySurfaceHistory(8);
+  const k = cellKey("call", 100, 10);
+  hist.push({
+    asOf: null,
+    contentHash: "a",
+    receivedAt: 1_000_000,
+    cells: new Map([[k, 2]]),
+  });
+  const live: DebitGridSnap = {
+    asOf: null,
+    contentHash: "b",
+    receivedAt: 1_003_000,
+    cells: new Map([[k, 2.5]]),
+  };
+  hist.push(live);
   const vel = hist.velocityDelta(live, "call", 100, 10);
-  assert(vel == null, "velocity null at 0.3s");
+  assert(vel != null && Math.abs(vel.dD - 0.5) < 1e-9, "velocity after push");
 }
 
 // Label

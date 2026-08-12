@@ -88,8 +88,9 @@ export type TemplateParams = {
    * Optional; when absent, time modes render invalid.
    */
   flyHistory?: import("./flySurfaceHistory").FlySurfaceHistory | null;
-  /** Live generation clocks for pairing (before history push). */
+  /** Live generation clocks / identity for pairing (before history push). */
   flyLiveAsOf?: string | null;
+  flyLiveContentHash?: string | null;
   flyLiveReceivedAt?: number;
   /** Descending centers for this grid (slope/curvature). */
   flyRowStrikes?: readonly number[];

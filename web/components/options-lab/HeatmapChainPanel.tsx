@@ -39,11 +39,11 @@ import {
   fmtGexProfile,
   gexProfileScale,
 } from "@/lib/options-lab/templates/gex";
-import { buildDebitCellMap } from "@/lib/options-lab/templates/symFly";
+import { symFlyTemplate } from "@/lib/options-lab/templates/symFly";
 import {
-  getFlyHistory,
-  seamFlyHistory,
-} from "@/lib/options-lab/templates/flySurfaceHistory";
+  FlySurfacePipeline,
+  type FlyPipelinePaint,
+} from "@/lib/options-lab/templates/flySurfacePipeline";
 import type {
   BwWingSide,
   ChainContext,
@@ -301,9 +301,17 @@ export default function HeatmapChainPanel() {
   const centerOnPresentRef = useRef(true);
   /** AF10 — track market-plane Live transition for history seam */
   const prevSessionOpenRef = useRef<boolean | null>(null);
-  const lastPushedHashRef = useRef<string | null>(null);
-  /** Bump when fly history mutates so matrix re-reads lag samples */
-  const [flyHistRev, setFlyHistRev] = useState(0);
+  /** Single pipeline instance — destroyed on plane change */
+  const flyPipeRef = useRef<FlySurfacePipeline | null>(null);
+  /** Lightweight paint for active mode only (never store all 11 mode grids). */
+  const [flyPaint, setFlyPaint] = useState<FlyPipelinePaint | null>(null);
+  const lastIngestKeyRef = useRef("");
+  const genReceivedAtRef = useRef<{ key: string; at: number }>({
+    key: "",
+    at: 0,
+  });
+  /** rAF coalesce — at most one ingest per frame */
+  const ingestRafRef = useRef(0);
 
   const bus = useOptionChainBus({
     symbol,
@@ -315,27 +323,25 @@ export default function HeatmapChainPanel() {
 
   const tpl = getTemplate(templateId);
 
-  // AF10 / AF11 — seam history on plane identity
+  // AF10 / AF11 — dispose pipeline memory on plane change
   useEffect(() => {
-    if (!symbol || !expiration) return;
-    seamFlyHistory(symbol, expiration, wings);
-    lastPushedHashRef.current = null;
-    setFlyHistRev((n) => n + 1);
+    flyPipeRef.current?.seam();
+    flyPipeRef.current = null;
+    setFlyPaint(null);
+    lastIngestKeyRef.current = "";
   }, [symbol, expiration, wings]);
 
   useEffect(() => {
     const open = bus.sessionOpen;
     const prev = prevSessionOpenRef.current;
     prevSessionOpenRef.current = open;
-    if (prev === false && open === true && symbol && expiration) {
-      seamFlyHistory(symbol, expiration, wings);
-      lastPushedHashRef.current = null;
-      setFlyHistRev((n) => n + 1);
+    if (prev === false && open === true) {
+      flyPipeRef.current?.seam();
+      lastIngestKeyRef.current = "";
     }
-  }, [bus.sessionOpen, symbol, expiration, wings]);
+  }, [bus.sessionOpen]);
 
   useEffect(() => {
-    // Reset value mode when template changes
     setValueMode(tpl.defaultValueMode);
     setStickyScale(undefined);
     setSelectedTile(null);
@@ -344,6 +350,23 @@ export default function HeatmapChainPanel() {
   useEffect(() => {
     setSelectedTile(null);
   }, [symbol, expiration, side, wings, valueMode, bwStrikeCount, bwWingSide]);
+
+  // Leave fly template → free pipeline
+  useEffect(() => {
+    if (templateId === "sym-fly") return;
+    flyPipeRef.current?.seam();
+    flyPipeRef.current = null;
+    setFlyPaint(null);
+    lastIngestKeyRef.current = "";
+  }, [templateId]);
+
+  useEffect(() => {
+    return () => {
+      if (ingestRafRef.current) cancelAnimationFrame(ingestRafRef.current);
+      flyPipeRef.current?.seam();
+      flyPipeRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     mounted.current = true;
@@ -502,10 +525,56 @@ export default function HeatmapChainPanel() {
     [profile, chainCtx.strikeStep, bus.strikeStep],
   );
 
-  const flyHistory =
-    templateId === "sym-fly" && symbol && expiration
-      ? getFlyHistory(symbol, expiration, wings)
-      : null;
+  const genKey = `${bus.hash ?? ""}|${side}|${valueMode}`;
+  if (bus.hash && genReceivedAtRef.current.key !== (bus.hash || "")) {
+    genReceivedAtRef.current = {
+      key: bus.hash || "",
+      at: Date.now(),
+    };
+  }
+
+  /**
+   * Advanced Fly: ingest only when content_hash / mode / side / widths change.
+   * One mode only · rAF coalesce · skip if key unchanged.
+   */
+  useEffect(() => {
+    if (templateId !== "sym-fly") return;
+    if (!bus.hash || !chainCtx.contracts.size) return;
+
+    const ingestKey = `${bus.hash}|${side}|${valueMode}|${flyWidths.join(",")}`;
+    if (ingestKey === lastIngestKeyRef.current) return;
+
+    if (ingestRafRef.current) cancelAnimationFrame(ingestRafRef.current);
+    const hashAtSchedule = bus.hash;
+    const modeAtSchedule = valueMode;
+    ingestRafRef.current = requestAnimationFrame(() => {
+      ingestRafRef.current = 0;
+      // Drop stale frame if hash moved again
+      if (bus.hash !== hashAtSchedule) return;
+      if (!flyPipeRef.current) flyPipeRef.current = new FlySurfacePipeline();
+      const paint = flyPipeRef.current.ingest(
+        chainCtx,
+        modeAtSchedule,
+        flyWidths,
+        { receivedAt: genReceivedAtRef.current.at || Date.now() },
+      );
+      symFlyTemplate.assignColors(paint.cells, {
+        valueMode: modeAtSchedule,
+        widthMode: "fixed_points",
+        fixedPoints: flyWidths,
+        stickyScale,
+        gradientThreshold: DEFAULT_GRADIENT_THRESHOLD,
+      });
+      lastIngestKeyRef.current = `${hashAtSchedule}|${side}|${modeAtSchedule}|${flyWidths.join(",")}`;
+      setFlyPaint(paint);
+    });
+
+    return () => {
+      if (ingestRafRef.current) cancelAnimationFrame(ingestRafRef.current);
+    };
+    // Intentionally NOT depending on full chainCtx identity — hash is the gen gate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chainCtx read inside when hash changes
+  }, [templateId, bus.hash, side, valueMode, flyWidths, stickyScale]);
 
   const templateParams: TemplateParams = useMemo(
     () => ({
@@ -516,64 +585,23 @@ export default function HeatmapChainPanel() {
       gradientThreshold: DEFAULT_GRADIENT_THRESHOLD,
       bwStrikeCount,
       bwWingSide,
-      flyHistory: flyHistory,
-      flyLiveAsOf: bus.asOf,
-      flyLiveReceivedAt: Date.now(),
     }),
-    [
-      valueMode,
-      stickyScale,
-      bwStrikeCount,
-      bwWingSide,
-      flyWidths,
-      flyHistory,
-      bus.asOf,
-      flyHistRev,
-    ],
+    [valueMode, stickyScale, bwStrikeCount, bwWingSide, flyWidths],
   );
 
   const matrix = useMemo(() => {
     if (tpl.layout !== "matrix") return null;
-    return buildGrid(tpl, chainCtx, templateParams);
-  }, [tpl, chainCtx, templateParams, flyHistRev]);
-
-  // Push debit grid once per generation (not per value-mode paint)
-  useEffect(() => {
-    if (tpl.id !== "sym-fly" || !flyHistory || !symbol || !expiration) return;
-    if (!bus.hash && !bus.asOf) return;
-    const genKey = `${bus.hash ?? ""}|${bus.asOf ?? ""}`;
-    if (lastPushedHashRef.current === genKey) return;
-    if (tpl.layout !== "matrix") return;
-    const cols = tpl.resolveColumns(chainCtx, templateParams);
-    const rows = tpl.resolveRows(chainCtx, templateParams);
-    if (!rows.length || !cols.length) return;
-    const cells = buildDebitCellMap(chainCtx, rows, cols);
-    const ok = flyHistory.push({
-      asOf: bus.asOf,
-      contentHash: bus.hash,
-      receivedAt: Date.now(),
-      cells,
-    });
-    if (!ok) {
-      flyHistory.seam();
-      lastPushedHashRef.current = null;
-      setFlyHistRev((n) => n + 1);
-    } else {
-      // Do not bump flyHistRev — next generation still sees this snap as lag-0.
-      // Re-paint with history[0]===live would zero-out tick Δ.
-      lastPushedHashRef.current = genKey;
+    if (tpl.id === "sym-fly") {
+      if (!flyPaint || flyPaint.mode !== valueMode) return null;
+      return {
+        rows: flyPaint.rows,
+        cols: flyPaint.cols,
+        cells: flyPaint.cells,
+        stickyScale: stickyScale ?? DEFAULT_GRADIENT_THRESHOLD,
+      };
     }
-  }, [
-    tpl,
-    flyHistory,
-    symbol,
-    expiration,
-    chainCtx,
-    templateParams,
-    bus.hash,
-    bus.asOf,
-  ]);
-
+    return buildGrid(tpl, chainCtx, templateParams);
+  }, [tpl, chainCtx, templateParams, flyPaint, valueMode, stickyScale]);
   const gexProfile = useMemo(() => {
     if (tpl.layout !== "profile" || tpl.id !== "gex") return null;
     const points = buildGexProfile(chainCtx, valueMode);
@@ -1322,7 +1350,6 @@ export default function HeatmapChainPanel() {
                             aria-pressed={selected}
                             data-selected={selected ? "1" : "0"}
                             onClick={(e) => {
-                              // Option (Mac) / Alt (Win): ToS script + clipboard
                               if (e.altKey) {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -1351,9 +1378,7 @@ export default function HeatmapChainPanel() {
                             className={[
                               "h-14 min-w-[5.5rem] cursor-pointer px-1 text-center align-middle tabular-nums text-[24px] text-amber-400",
                               "[text-shadow:0_0_2px_rgba(0,0,0,0.8)]",
-                              "motion-safe:transition-[background-color,filter,transform,box-shadow] motion-safe:duration-300 motion-safe:ease-out",
-                              "hover:z-[1] hover:scale-[1.04] hover:brightness-125 hover:ring-1 hover:ring-white/35 hover:shadow-[0_0_10px_rgba(255,255,255,0.25)]",
-                              "active:scale-[0.98] active:brightness-75",
+                              "hover:z-[1] hover:ring-1 hover:ring-white/35",
                               selected
                                 ? "z-[1] ring-2 ring-amber-400/70 brightness-90"
                                 : "",

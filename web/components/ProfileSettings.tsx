@@ -138,15 +138,29 @@ export default function ProfileSettings() {
       });
       if (!r.ok) {
         const body = await r.json().catch(() => ({}));
-        throw new Error(
-          typeof body.detail === "string"
-            ? body.detail
-            : `Save failed (${r.status})`
-        );
+        const detail = body?.detail;
+        const msg =
+          typeof detail === "string"
+            ? detail
+            : Array.isArray(detail)
+              ? detail
+                  .map((d: { msg?: string } | string) =>
+                    typeof d === "string" ? d : d?.msg || JSON.stringify(d),
+                  )
+                  .join("; ")
+              : `Save failed (${r.status})`;
+        throw new Error(msg);
       }
       const p = (await r.json()) as Profile;
       applyProfile(p);
-      setMsg("Saved.");
+      const savedNav = normalizeHomeQuickNav(p.home_quick_nav);
+      const labels = savedNav
+        .map(
+          (id) =>
+            HOME_QUICK_NAV_OPTIONS.find((o) => o.id === id)?.label ?? id,
+        )
+        .join(" · ");
+      setMsg(`Saved. Home quick nav: ${labels}`);
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : "Save failed");
     } finally {

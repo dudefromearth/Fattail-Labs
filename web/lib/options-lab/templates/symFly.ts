@@ -85,7 +85,7 @@ function liveSnap(
 ): DebitGridSnap {
   return {
     asOf: params.flyLiveAsOf ?? null,
-    contentHash: null,
+    contentHash: params.flyLiveContentHash ?? null,
     receivedAt: params.flyLiveReceivedAt ?? Date.now(),
     cells,
   };
@@ -313,6 +313,8 @@ export const symFlyTemplate: HeatmapTemplate = {
       params.gradientThreshold ?? DEFAULT_GRADIENT_THRESHOLD;
 
     if (mode === "debit" || mode === "credit") {
+      // Color uses |D| magnitude — negative debit mids are real (not null).
+      // Prior path treated value≤0 as empty and painted black → flash/phase-out.
       for (let i = 0; i < grid.length; i++) {
         for (let j = 0; j < grid[i].length; j++) {
           const cell = grid[i][j];
@@ -321,25 +323,22 @@ export const symFlyTemplate: HeatmapTemplate = {
             cell.bgCss = NULL_CELL_COLOR;
             continue;
           }
-          const val =
-            mode === "credit"
-              ? Math.abs(cell.value)
-              : cell.value > 0
-                ? cell.value
-                : null;
+          const val = Math.abs(cell.value);
+          if (!(val > 0)) {
+            cell.colorT = 0;
+            cell.bgCss = debitColor(0.01, 0, threshold); // near-zero still visible
+            continue;
+          }
 
           let pctChange = 0;
           if (i >= 1) {
             const upper = grid[i - 1][j];
-            const curr =
-              mode === "credit" ? Math.abs(cell.value) : cell.value;
+            const curr = val;
             const prev =
               upper?.valid && upper.value != null
-                ? mode === "credit"
-                  ? Math.abs(upper.value)
-                  : upper.value
+                ? Math.abs(upper.value)
                 : null;
-            if (curr != null && curr > 0 && prev != null && prev > 0) {
+            if (curr > 0 && prev != null && prev > 0) {
               pctChange = (Math.abs(curr - prev) / prev) * 100;
             }
           }
