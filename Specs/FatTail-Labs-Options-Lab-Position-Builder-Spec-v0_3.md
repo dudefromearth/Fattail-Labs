@@ -24,11 +24,21 @@
 | [Heatmap Templates Spec v0_2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | Dual-side · Live/Held/Closed posture heritage · ToS path |
 | [Human Interface Spec v1.0](./FatTail-Labs-Human-Interface-Spec-v1.0.md) | Dialog · cards · fail-loud |
 | Claude.md / FatTail ethos | No profit claims · fail loud · no MSC |
+| [**OPF Truth & Elegant Failure Doctrine v1.0**](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md) | **Capital-risk:** OPF-held chain sole instrument truth · representable or named state · atomic resolve · **DL-309** |
 
-**DL:** DL-294 (partial as-built) · DL-295 (v0.1 filed) · **DL-296** (this v0.2 fold).  
+**DL:** DL-294 (partial as-built) · DL-295 (v0.1 filed) · **DL-296** (this v0.2 fold) · **DL-309** (OPF truth · elegant failure).  
 **Review folded:** External advisor Claude 2026-08-11 (B1–B6, A1–A9) + Coach Addendum 1 (use-case-scoped coherence).
 
 **Reference UX (non-authority):** MSC Risk Graph — workflow only. **MSC is not the standard.**
+
+### 0.0 Capital-risk laws (summary — full text in OT-EF doctrine)
+
+1. **OPF is the only truth** for create/edit/prefill: listed dual-side chain OPF holds. No invented strike book. Open vs closed = live vs held marks, not a second universe.  
+2. **Representable or not:** every leg on that plane, or the structure is not package-priceable.  
+3. **Elegant failure:** package field shows a **named truthful state** (EXPIRED · NOT TRADED · …) rather than blank, stale, or synthetic debit/credit.  
+4. **Atomic resolve** on pointer change — settle once; no flash loops.  
+
+Severity **high** if we invent instruments or silent false package prices.
 
 ---
 

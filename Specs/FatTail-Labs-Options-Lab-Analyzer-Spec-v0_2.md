@@ -35,7 +35,10 @@ Supporting: Market Bus dual-side generations + underlier marks + volume/OHLC dat
 **Coach litmus (shared with Position Builder Spec):**  
 *When looking at a position in the Builder or the position card, if it is unlocked, the correct pricing is displayed and the rendered position in the viewport is correct — as guaranteed for the active use case and session state.*
 
-**What this is not:** brokerage OMS; multi-definition stacked P&amp;L; MSC regimes/Heston/MC; silent dual package math; profit claims.
+**Capital-risk doctrine (normative parent):**  
+[OPF Truth & Elegant Failure Doctrine v1.0](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md) · **DL-309** — OPF-held chain is sole instrument truth for create/edit/cards; package cell shows defendable mark **or** named state (never silent lie); atomic pointer resolve.
+
+**What this is not:** brokerage OMS; multi-definition stacked P&amp;L; MSC regimes/Heston/MC; silent dual package math; profit claims; invented strikes.
 
 ---
 

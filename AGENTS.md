@@ -58,6 +58,7 @@ growth playbook [`Architecture/17-strategy-lab-growth-playbook.md`](./Architectu
 | **Market Bus (live market plane)** | Spec `FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` · Arch **28** · bench `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md` |
 | **Live underlier mids (UI standard)** | Arch **28** §4.4 · `web/lib/market/liveUnderlierPattern.ts` · hook `useLiveUnderlierMarks` · `<LiveMid />` / `LiveUnderliersTable` |
 | **Options Lab Analyzer** | Spec content **v0.2.1** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md` (v0_1 SUPERSEDED) · PB Spec **v0.3** · residual bench plan **v1.0.1** `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-analyzer/` · **DL-301…306** · OD-AZ1–8 Accept · BUILD GO = Coach W0-0 |
+| **OPF Truth · Elegant Failure (positions)** | **NORMATIVE capital-risk doctrine** `Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md` · **DL-309** — OPF-held chain is sole instrument truth; representable or named state; atomic card resolve; never invent strikes or silent false package prices |
 | **Options chain ladder** | Spec `FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` · route `/app/options-lab` · board `agents/p-market-bus/` + `agents/p-options-chain-picker/` |
 | Curate MySQL marks (dual-write / fallback) | Arch **18** · `live_stream` / `sym_feed` → `market_live_marks`; product UI mids still use live underlier pattern |
 | Community | `Specs/FatTail-Labs-Community-App-Spec-v1.0.md` · `docs/Community-Chat-Discord-Second-Window.md` |
@@ -89,6 +90,30 @@ Also: `CLAUDE.md` for ops/commands invariants.
    Chains still use `useOptionChainBus`. Multi-leg packages use OPF package-quote.  
 
 Full map: [`Architecture/28-massive-market-bus.md`](./Architecture/28-massive-market-bus.md) §4.4.
+
+### Options Lab position invariants (agents — capital-risk, non-negotiable)
+
+**Doctrine:** [`Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md`](./Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md) · **DL-309**
+
+These sit next to market invariants. Violations that invent instruments or silent false
+marks are **severity: high** (member capital-adjacent judgment).
+
+1. **OPF is the only truth** for create/edit/prefill/package: dual-side chain the OPF holds
+   (listed exp + listed strikes + contract marks). No arithmetic placeholder structure
+   presented as a finished position. RTH vs closed ≠ second strike universe (live vs held only).
+2. **Representable or not:** every leg must be placeable on that plane, or the structure is
+   not package-priceable. Do not invent a debit/credit.
+3. **Elegant failure:** never leave the member believing the app is broken. Package cell shows
+   a **named state** (EXPIRED · NOT TRADED · CHECK LEGS · UPDATING · BUDGET LIMIT · WAITING ·
+   HIDDEN) plus calm truthful detail — not blank, not stale prior pointer mark after rebind.
+4. **Atomic resolve:** on definition change (exp / strikes / template rebuild), settle **once**
+   (hydrate → bind all legs → package quote if bindable). No flash loops / endless re-search.
+5. **Card = pointer; OPF = instrument.** Rebind exp/strikes rebinds the pointer; EXPIRED is
+   calendar on the pointer; NOT TRADED is missing market (incl. chain edge).
+6. **Builder:** strategy/quick-build only via listed-grid placement (`listedStructure` /
+   wait for ladder). Analyze must not ship non-listed strikes as if real.
+7. **Tests:** prefer bind + display-state characterization (`optionBind`, `cardDisplayState`,
+   pointer tests) when changing these paths.
 
 ---
 

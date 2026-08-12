@@ -4,6 +4,31 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-12 — DL-309 OPF Truth & Elegant Failure doctrine (Options Lab positions)
+
+**Decision:** Adopt **OPF Truth + Elegant Failure** as capital-risk doctrine for Options Lab
+**create / edit / position cards / package marks**.
+
+1. **OPF is the only truth** for whether a structure is real: dual-side chain generations the
+   OPF holds (listed exp + listed strikes + contract marks). No invented strike book. RTH vs
+   closed changes live/held freshness, not the instrument universe.
+2. **Representable or not:** every leg must sit on that plane or the structure is not
+   priceable as a package.
+3. **Elegant failure:** never leave the member believing the app is broken; replace package
+   numeric with named states (EXPIRED · NOT TRADED · CHECK LEGS · UPDATING · BUDGET LIMIT ·
+   WAITING · HIDDEN) and calm truthful detail.
+4. **Atomic resolve:** pointer change settles once (hydrate → bind → quote); no flash loops.
+5. **Severity:** inventing non-OPF strikes or silent false debit/credit is **high**.
+
+**Normative Spec:**  
+`Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md`  
+**Agent entry:** `AGENTS.md` · `CLAUDE.md` doctrine bullets.  
+**As-built anchors:** `listedStructure.ts` · `optionBind.ts` · `cardDisplayState.ts` ·
+`usePackageQuotes.ts` (atomic) · `analyzerBook` pointer rebind.
+
+**Rationale:** Analyzer/Builder sit next to capital-adjacent judgment. Instrument honesty and
+named failure outrank “always show a number.”
+
 ## 2026-08-11 — DL-308 Recoverable import deletes; drop full-wipe button
 
 **Decision (amends DL-307):** (1) Remove the Import Manager's "Delete all transactions"
