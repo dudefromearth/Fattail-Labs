@@ -1,0 +1,9 @@
+{
+  "symbol": "SPY",
+  "day": "2024-06-03",
+  "trade_rows": 468425,
+  "tape_size_sum": 51189810.0,
+  "massive_daily_v": 46835702.0,
+  "relative_error": 0.09296557570547358,
+  "note": "condition filter not yet frozen — all trades included; ~9.3% above Massive daily v — P2-3 still OPEN for freeze"
+}

@@ -14,3 +14,12 @@
 **Production bin writes:** blocked until P2-3 frozen list + tolerance + Coach GO.  
 **Campaign:** full estate under Coach authority (Spec §16).  
 **VIX/VIX1D:** not a VP path.
+
+## Campaign runtime (2026-08-12)
+
+| Item | Value |
+|------|--------|
+| Process | `python -m market_data.raw_campaign --all` |
+| Staging root | `/Users/ernie/data/fattail-market-data` (Pod 1 TCC-blocked from agent shell) |
+| Log | `…/jobs/logs/raw_campaign.log` |
+| P2-3 sample | `p2-conditions-sample.json` (SPY 2024-06-03, all conditions, ~9.3% vs daily bar) |

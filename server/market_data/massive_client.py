@@ -272,9 +272,9 @@ class MassiveClient:
         if not symbol:
             raise MassiveClientError("symbol required")
         timespan = (timespan or "").strip().lower()
-        if timespan not in ("minute", "hour", "day", "week", "month"):
+        if timespan not in ("second", "minute", "hour", "day", "week", "month"):
             raise MassiveClientError(
-                f"timespan must be minute|hour|day|week|month, got {timespan!r}"
+                f"timespan must be second|minute|hour|day|week|month, got {timespan!r}"
             )
         mult = int(multiplier)
         if mult < 1 or mult > 1000:
@@ -302,8 +302,8 @@ class MassiveClient:
         )
         url: str | None = f"{self.base_url}{path}?{qs}"
         out: list[dict[str, Any]] = []
-        # Paginate: multi-year minute/hour ranges often exceed one 50k page
-        max_pages = 40
+        # Second/minute multi-year ranges need deep pagination
+        max_pages = 500 if timespan == "second" else 80
         pages = 0
         while url and pages < max_pages:
             pages += 1
@@ -315,16 +315,25 @@ class MassiveClient:
                 if not isinstance(row, dict) or row.get("c") is None:
                     continue
                 try:
-                    out.append(
-                        {
-                            "t": int(row["t"]) if row.get("t") is not None else None,
-                            "o": float(row["o"]) if row.get("o") is not None else None,
-                            "h": float(row["h"]) if row.get("h") is not None else None,
-                            "l": float(row["l"]) if row.get("l") is not None else None,
-                            "c": float(row["c"]),
-                            "v": float(row["v"]) if row.get("v") is not None else None,
-                        }
-                    )
+                    bar: dict[str, Any] = {
+                        "t": int(row["t"]) if row.get("t") is not None else None,
+                        "o": float(row["o"]) if row.get("o") is not None else None,
+                        "h": float(row["h"]) if row.get("h") is not None else None,
+                        "l": float(row["l"]) if row.get("l") is not None else None,
+                        "c": float(row["c"]),
+                        "v": float(row["v"]) if row.get("v") is not None else None,
+                    }
+                    if row.get("vw") is not None:
+                        try:
+                            bar["vw"] = float(row["vw"])
+                        except (TypeError, ValueError):
+                            pass
+                    if row.get("n") is not None:
+                        try:
+                            bar["n"] = int(row["n"])
+                        except (TypeError, ValueError):
+                            pass
+                    out.append(bar)
                 except (TypeError, ValueError, KeyError):
                     continue
             next_url = data.get("next_url") if isinstance(data, dict) else None
@@ -341,6 +350,92 @@ class MassiveClient:
             if t is not None:
                 by_t[int(t)] = b
         return [by_t[k] for k in sorted(by_t.keys())]
+
+    def fetch_trades_day(
+        self,
+        symbol: str,
+        day: str,
+        *,
+        limit: int = 50000,
+        max_pages: int = 2000,
+        page_pause_s: float = 0.05,
+    ) -> list[dict[str, Any]]:
+        """Paginate GET /v3/trades/{symbol}?timestamp=YYYY-MM-DD (full session)."""
+        symbol = (symbol or "").strip().upper()
+        day = str(day).strip()[:10]
+        if not symbol or len(day) < 10:
+            raise MassiveClientError("symbol and day (YYYY-MM-DD) required")
+        path = f"/v3/trades/{urllib.parse.quote(symbol, safe='')}"
+        qs = urllib.parse.urlencode(
+            {
+                "timestamp": day,
+                "order": "asc",
+                "sort": "timestamp",
+                "limit": str(max(1, min(50000, int(limit)))),
+            }
+        )
+        url: str | None = f"{self.base_url}{path}?{qs}"
+        out: list[dict[str, Any]] = []
+        pages = 0
+        while url and pages < max_pages:
+            pages += 1
+            data = self._get_json(url)
+            results = data.get("results") if isinstance(data, dict) else None
+            if isinstance(results, list):
+                for row in results:
+                    if isinstance(row, dict):
+                        out.append(row)
+            next_url = data.get("next_url") if isinstance(data, dict) else None
+            if not next_url:
+                break
+            nu = str(next_url).strip()
+            url = nu if nu.startswith("http") else f"{self.base_url}{nu}"
+            if page_pause_s > 0 and pages > 1:
+                time.sleep(page_pause_s)
+        return out
+
+    def fetch_quotes_day(
+        self,
+        symbol: str,
+        day: str,
+        *,
+        limit: int = 50000,
+        max_pages: int = 5000,
+        page_pause_s: float = 0.05,
+    ) -> list[dict[str, Any]]:
+        """Paginate GET /v3/quotes/{symbol}?timestamp=YYYY-MM-DD."""
+        symbol = (symbol or "").strip().upper()
+        day = str(day).strip()[:10]
+        if not symbol or len(day) < 10:
+            raise MassiveClientError("symbol and day (YYYY-MM-DD) required")
+        path = f"/v3/quotes/{urllib.parse.quote(symbol, safe='')}"
+        qs = urllib.parse.urlencode(
+            {
+                "timestamp": day,
+                "order": "asc",
+                "sort": "timestamp",
+                "limit": str(max(1, min(50000, int(limit)))),
+            }
+        )
+        url: str | None = f"{self.base_url}{path}?{qs}"
+        out: list[dict[str, Any]] = []
+        pages = 0
+        while url and pages < max_pages:
+            pages += 1
+            data = self._get_json(url)
+            results = data.get("results") if isinstance(data, dict) else None
+            if isinstance(results, list):
+                for row in results:
+                    if isinstance(row, dict):
+                        out.append(row)
+            next_url = data.get("next_url") if isinstance(data, dict) else None
+            if not next_url:
+                break
+            nu = str(next_url).strip()
+            url = nu if nu.startswith("http") else f"{self.base_url}{nu}"
+            if page_pause_s > 0 and pages > 1:
+                time.sleep(page_pause_s)
+        return out
 
     def fetch_daily_closes(
         self,
