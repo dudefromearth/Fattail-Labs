@@ -175,6 +175,7 @@ def process_day(
     day: date,
     *,
     force: bool = False,
+    attempt: int = 0,
 ) -> dict[str, Any]:
     part, ok = day_paths(root, series, kind, day)
     if already_done(ok) and not force:
@@ -194,14 +195,21 @@ def process_day(
             "at": datetime.now(timezone.utc).isoformat(),
         }
         mark_ok(ok, meta)
+        # clear prior fail marker
+        fail_path = part.with_suffix(part.suffix + ".fail.json")
+        if fail_path.is_file():
+            fail_path.unlink()
         return meta
     except MassiveClientError as e:
         msg = str(e)
         code = "403" if "403" in msg else ("429" if "429" in msg else "err")
-        if code == "429":
-            log(f"RATE_LIMIT {series} {kind} {day} — sleep 60s")
-            time.sleep(60)
-            return process_day(client, root, series, kind, day, force=force)
+        if code == "429" or attempt < 4:
+            wait = 60 if code == "429" else min(30, 2 ** attempt)
+            log(f"RETRY {series} {kind} {day} code={code} wait={wait}s attempt={attempt}")
+            time.sleep(wait)
+            return process_day(
+                client, root, series, kind, day, force=force, attempt=attempt + 1
+            )
         meta = {
             "status": "fail",
             "series": series,
@@ -211,12 +219,22 @@ def process_day(
             "error": msg[:500],
             "at": datetime.now(timezone.utc).isoformat(),
         }
-        # Don't write .ok on fail so resume retries
         fail_path = part.with_suffix(part.suffix + ".fail.json")
         fail_path.parent.mkdir(parents=True, exist_ok=True)
         fail_path.write_text(json.dumps(meta, indent=2) + "\n")
         return meta
     except Exception as e:
+        # IncompleteRead / URLError etc. — retry
+        if attempt < 5:
+            wait = min(45, 3 * (attempt + 1))
+            log(
+                f"RETRY {series} {kind} {day} {type(e).__name__} "
+                f"wait={wait}s attempt={attempt}"
+            )
+            time.sleep(wait)
+            return process_day(
+                client, root, series, kind, day, force=force, attempt=attempt + 1
+            )
         meta = {
             "status": "fail",
             "series": series,
