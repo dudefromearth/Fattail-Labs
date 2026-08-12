@@ -514,15 +514,18 @@ def _claim_lesson_slug(
     *,
     exclude_id: int | None = None,
 ) -> str:
-    """Exact lesson slug unique within the module. Full public path is
-    /course/{course}/{module}/{lesson} — uniqueness of the combination."""
+    """Exact lesson slug unique within the whole COURSE (not just the module): the
+    Progress system identifies lessons by (course_slug, lesson_slug) and keys
+    GET /api/me/progress by lesson_slug (Progress-Tracking Spec v1.0), so duplicate
+    slugs across modules break completion + tick display."""
     slug = base or "lesson"
     cur.execute(
         """SELECT l.id, l.title, m.slug AS module_slug, c.slug AS course_slug
            FROM lessons l
            JOIN modules m ON l.module_id = m.id
            JOIN courses c ON m.course_id = c.id
-           WHERE l.module_id = %s AND l.slug = %s""",
+           WHERE c.id = (SELECT course_id FROM modules WHERE id = %s)
+             AND l.slug = %s""",
         (module_id, slug),
     )
     row = cur.fetchone()
@@ -530,9 +533,9 @@ def _claim_lesson_slug(
         exclude_id is None or int(row["id"]) != int(exclude_id)
     ):
         raise _name_conflict(
-            f"Another lesson already uses "
-            f"/course/{row['course_slug']}/{row['module_slug']}/{slug} "
-            f"(“{row['title']}”). Choose a different name.",
+            f"Another lesson in this course already uses the slug “{slug}” "
+            f"(“{row['title']}” in /{row['course_slug']}/{row['module_slug']}). "
+            f"Lesson slugs must be unique across the course — choose a different name.",
             slug=slug,
         )
     return slug
@@ -541,12 +544,15 @@ def _claim_lesson_slug(
 def _unique_lesson_slug(
     cur, module_id: int, base: str, *, exclude_id: int | None = None
 ) -> str:
-    """Allocate free lesson slug within the module (-2, -3… for create defaults)."""
+    """Allocate a free lesson slug unique across the whole COURSE (-2, -3… on
+    collision). Course-scoped for the same reason as _claim_lesson_slug."""
     slug = base or "lesson"
     n = 2
     while True:
         cur.execute(
-            "SELECT id FROM lessons WHERE module_id = %s AND slug = %s",
+            """SELECT l.id FROM lessons l JOIN modules m ON l.module_id = m.id
+               WHERE m.course_id = (SELECT course_id FROM modules WHERE id = %s)
+                 AND l.slug = %s""",
             (module_id, slug),
         )
         row = cur.fetchone()

@@ -508,6 +508,10 @@ def validate(
     free_preview = 0
     quiz_count = 0
     standard_modules = 0
+    # Lesson slugs must be unique across the WHOLE course, not just per module:
+    # the Progress system identifies lessons by (course_slug, lesson_slug) and keys
+    # GET /api/me/progress by lesson_slug. (Progress-Tracking Spec v1.0.)
+    slugs_in_course: dict[str, str] = {}
 
     for mi, mod in enumerate(modules):
         if not isinstance(mod, dict):
@@ -537,7 +541,6 @@ def validate(
             )
         if mkind == "standard":
             standard_modules += 1
-        slugs_in_mod: set[str] = set()
         for li, les in enumerate(mod.get("lessons") or []):
             if not isinstance(les, dict):
                 errors.append(
@@ -577,16 +580,19 @@ def validate(
                 )
             lslug = les.get("slug") or ""
             if lslug:
-                if lslug in slugs_in_mod:
+                if lslug in slugs_in_course:
                     errors.append(
                         _issue(
                             "error",
                             "LESSON_SLUG_DUP",
                             f"{lpath}.slug",
-                            f"duplicate lesson slug {lslug!r} in module",
+                            f"duplicate lesson slug {lslug!r} in course "
+                            f"(also in module {slugs_in_course[lslug]!r}); "
+                            f"lesson slugs must be unique across the course",
                         )
                     )
-                slugs_in_mod.add(lslug)
+                else:
+                    slugs_in_course[lslug] = str(mod.get("slug") or f"module-{mi}")
             if les.get("free_preview"):
                 free_preview += 1
             blocks = les.get("content_blocks")

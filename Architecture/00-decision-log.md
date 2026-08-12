@@ -4,6 +4,32 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-12 — DL-310 Lesson slugs unique per course (campaign completion bug)
+
+**Bug (member ticket):** the "Completed" toggle on
+`/course/campaigns/sigma-drift-5-10-dte/campaign-overview` did nothing — it 422'd and
+snapped back. **Root cause:** an architectural inconsistency. The course editor + routing
+treat a lesson as `(course, module, lesson)` and `_claim_lesson_slug` enforced slug
+uniqueness **per module** — but the **Progress-Tracking Spec v1.0** identifies a lesson by
+`(course_slug, lesson_slug)` and keys `GET /api/me/progress` by `lesson_slug`, i.e. it
+assumes lesson slugs are unique **per course**. The `campaigns` course had 4 lessons
+slugged `campaign-overview` (one per campaign module) + 2 `1-000-run-monte-carlo-report`,
+so `POST /api/progress/complete` matched multiple rows → 422 "module_slug required", and
+the ✓ ticks would collide too.
+
+**Decision:** resolve toward the Progress-spec invariant (lesson slug unique **per
+course**) rather than reworking the platform-wide progress APIs (lower regression risk on
+a live product; matches the course's own authoring convention — it already uses
+`gamma-door-overview`, `0dte-tactical-overview`). (1) Migration `122` renames the 6
+duplicate lessons to unique module-themed slugs (idempotent; `lesson_progress` is keyed by
+`lesson_id`, so member completion is preserved). (2) Tighten uniqueness to course-scoped in
+**both** creation paths so it can't recur: canonical validator `course_model.py`
+(`LESSON_SLUG_DUP` now course-scoped, was per-module) and admin editor
+`_claim_lesson_slug` / `_unique_lesson_slug`. Tests: validator rejects a lesson slug reused
+across modules. The course page is `force-static`, so a web rebuild after the migration
+regenerates its lesson links with the new slugs (lesson pages are `force-dynamic`). Trade-
+off accepted: those 6 lesson URLs change (they were broken for completion anyway).
+
 ## 2026-08-12 — DL-309 OPF Truth & Elegant Failure doctrine (Options Lab positions)
 
 **Decision:** Adopt **OPF Truth + Elegant Failure** as capital-risk doctrine for Options Lab

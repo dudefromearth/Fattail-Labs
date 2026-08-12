@@ -96,6 +96,45 @@ def test_validate_unknown_format():
     assert report["ok"] is False
 
 
+def _second_module(lesson_slug: str) -> dict:
+    return {
+        "id": "mod-2",
+        "title": "Module 2",
+        "description_md": "second module",
+        "order": 1,
+        "kind": "standard",
+        "lessons": [
+            {
+                "id": "les-2-1",
+                "title": "Second lesson",
+                "slug": lesson_slug,
+                "order": 0,
+                "kind": "text",
+                "content_blocks": [
+                    {"id": "blk-x", "type": "notes", "body_md": "body"}
+                ],
+            }
+        ],
+    }
+
+
+def test_validate_rejects_lesson_slug_dup_across_modules():
+    # Same lesson slug in two different modules — now a course-level error, because
+    # Progress identifies lessons by (course_slug, lesson_slug). (This used to pass.)
+    doc = _minimal_doc()
+    doc["course"]["modules"].append(_second_module("why-accounts-die"))
+    report = cm.validate(doc, mode="structural")
+    assert report["ok"] is False
+    assert "LESSON_SLUG_DUP" in {e["code"] for e in report["errors"]}
+
+
+def test_validate_allows_unique_lesson_slugs_across_modules():
+    doc = _minimal_doc()
+    doc["course"]["modules"].append(_second_module("a-distinct-slug"))
+    report = cm.validate(doc, mode="structural")
+    assert "LESSON_SLUG_DUP" not in {e["code"] for e in report["errors"]}
+
+
 def test_placement_plan_adapter():
     plan = {
         "course_title": "Place Me",
