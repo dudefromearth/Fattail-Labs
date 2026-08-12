@@ -1,12 +1,18 @@
 /**
- * OPF package quotes for Analyzer cards — **atomic resolve**.
+ * OPF package quotes for Analyzer cards — **atomic resolve** with open-session
+ * market-truth exception.
  *
  * On definition change (expiration / strikes / side / visibility):
  *   1. Resolve once for that definition (hydrate → bind → package quote)
  *   2. Push **one** final card update (built price or named failure)
  *   3. Stop. No further searching until the definition changes again.
  *
- * The position is an atomic unit: no intermediate flash, no poll loop.
+ * Exception — **session opens (held → live)**:
+ *   Invalidate settles, clear ladder cache, re-hydrate OPF generations, and
+ *   re-quote every card until mark_mode is live NBBO (market truth). Chase
+ *   continues while any card is still pre_open_* / held after open.
+ *
+ * The position is an atomic unit: no intermediate flash, no definition poll loop.
  */
 
 "use client";
@@ -20,6 +26,7 @@ import {
 import {
   applyPackageQuote,
   cardDefinitionKey,
+  cardNeedsMarketTruth,
   type AnalyzerPosition,
 } from "@/lib/options-lab/analyzerBook";
 import {
@@ -39,6 +46,10 @@ import type { OptionRight } from "@/lib/options-lab/positionTypes";
 
 /** Max dual-side wing request (server caps effective dual at 50). */
 const WINGS = 100;
+/** After open, re-quote cards still on pre-open marks until NBBO lands. */
+const MARKET_TRUTH_CHASE_MS = 6_000;
+/** Stop chasing open-transition marks after this window (ms). */
+const MARKET_TRUTH_CHASE_MAX_MS = 5 * 60_000;
 
 function rowKey(side: string, strike: number): string {
   return `${side.toLowerCase()}:${normalizeStrike(strike)}`;
@@ -82,10 +93,8 @@ export function usePackageQuotes(opts: {
 
   const pushUpdate = useCallback((id: string, next: AnalyzerPosition) => {
     const prev = positionsRef.current.find((p) => p.id === id);
-    if (!prev) {
-      onUpdateRef.current(id, next);
-      return;
-    }
+    // Card was deleted / no longer in the book — never resurrect it.
+    if (!prev) return;
     if (
       prev.liveState === next.liveState &&
       prev.livePackagePerShare === next.livePackagePerShare &&
@@ -93,6 +102,8 @@ export function usePackageQuotes(opts: {
       prev.priceSide === next.priceSide &&
       prev.lock.mode === next.lock.mode &&
       prev.displayAsOf === next.displayAsOf &&
+      (prev.markMode ?? null) === (next.markMode ?? null) &&
+      (prev.markDisclaimer ?? null) === (next.markDisclaimer ?? null) &&
       bindSnapshotEqual(prev.bind, next.bind) &&
       JSON.stringify(prev.contentHashes) === JSON.stringify(next.contentHashes)
     ) {
@@ -101,48 +112,53 @@ export function usePackageQuotes(opts: {
     onUpdateRef.current(id, next);
   }, []);
 
-  const hydrateExp = useCallback(async (symbol: string, exp: string) => {
-    const key = `${symbol}|${exp}`;
-    const prev = laddersRef.current.get(key);
-    try {
-      const polled = await pollChainLadder({
-        expiration: exp,
-        symbol,
-        wings: WINGS,
-        since_hash: prev?.content_hash ?? null,
-      });
-      let ladder: LadderFull | null = prev ?? null;
-      if (polled.mode === "full") ladder = polled.ladder;
-      else if (polled.mode === "diff" && prev) {
-        const byKey = new Map(
-          prev.rows.map((r) => [rowKey(r.side || "call", r.strike), r]),
-        );
-        for (const u of polled.upserts || []) {
-          byKey.set(rowKey(u.side || "call", u.strike), u);
-        }
-        ladder = {
-          ...prev,
-          content_hash: polled.content_hash,
-          as_of: polled.as_of,
-          spot: polled.spot ?? prev.spot,
-          rows: [...byKey.values()],
-        };
-      } else if (polled.mode === "unchanged" && prev) {
-        ladder = prev;
-      } else if (!ladder) {
-        const full = await pollChainLadder({
+  const hydrateExp = useCallback(
+    async (symbol: string, exp: string, opts?: { force?: boolean }) => {
+      const key = `${symbol}|${exp}`;
+      const prev = opts?.force ? null : laddersRef.current.get(key);
+      try {
+        const polled = await pollChainLadder({
           expiration: exp,
           symbol,
           wings: WINGS,
+          // Force full snapshot on open / market-truth chase — never trust
+          // pre-open content_hash as "unchanged" when switching to NBBO.
+          since_hash: opts?.force ? null : (prev?.content_hash ?? null),
         });
-        if (full.mode === "full") ladder = full.ladder;
+        let ladder: LadderFull | null = prev ?? null;
+        if (polled.mode === "full") ladder = polled.ladder;
+        else if (polled.mode === "diff" && prev) {
+          const byKey = new Map(
+            prev.rows.map((r) => [rowKey(r.side || "call", r.strike), r]),
+          );
+          for (const u of polled.upserts || []) {
+            byKey.set(rowKey(u.side || "call", u.strike), u);
+          }
+          ladder = {
+            ...prev,
+            content_hash: polled.content_hash,
+            as_of: polled.as_of,
+            spot: polled.spot ?? prev.spot,
+            rows: [...byKey.values()],
+          };
+        } else if (polled.mode === "unchanged" && prev) {
+          ladder = prev;
+        } else if (!ladder) {
+          const full = await pollChainLadder({
+            expiration: exp,
+            symbol,
+            wings: WINGS,
+          });
+          if (full.mode === "full") ladder = full.ladder;
+        }
+        if (ladder) laddersRef.current.set(key, ladder);
+        return ladder;
+      } catch {
+        return prev ?? laddersRef.current.get(key) ?? null;
       }
-      if (ladder) laddersRef.current.set(key, ladder);
-      return ladder;
-    } catch {
-      return prev ?? null;
-    }
-  }, []);
+    },
+    [],
+  );
 
   const getContractFromLadders = useCallback(
     (
@@ -193,6 +209,9 @@ export function usePackageQuotes(opts: {
    * Atomic resolve for one card definition.
    * Exactly one terminal pushUpdate (or none if superseded / already settled).
    */
+  /** When true, next resolveOne hydrates with force (full ladder, no since_hash). */
+  const forceHydrateRef = useRef(false);
+
   const resolveOne = useCallback(
     async (pos: AnalyzerPosition) => {
       const def = cardDefinitionKey(pos);
@@ -203,6 +222,7 @@ export function usePackageQuotes(opts: {
       inFlightDefRef.current.set(pos.id, def);
       const stillCurrent = () => inFlightDefRef.current.get(pos.id) === def;
       const held = sessionHeldRef.current;
+      const forceHydrate = forceHydrateRef.current;
 
       const finish = (next: AnalyzerPosition) => {
         if (!stillCurrent()) return;
@@ -231,10 +251,10 @@ export function usePackageQuotes(opts: {
         ),
       ];
 
-      // Full hydrate before any UI update
+      // Full hydrate before any UI update (force on open → market truth)
       for (const exp of exps) {
         if (!stillCurrent()) return;
-        await hydrateExp(trade.symbol, exp);
+        await hydrateExp(trade.symbol, exp, { force: forceHydrate });
       }
       if (!stillCurrent()) return;
 
@@ -375,8 +395,76 @@ export function usePackageQuotes(opts: {
   const refreshAll = useCallback(async () => {
     settledDefRef.current.clear();
     inFlightDefRef.current.clear();
-    await resolvePending();
+    forceHydrateRef.current = true;
+    try {
+      await resolvePending();
+    } finally {
+      forceHydrateRef.current = false;
+    }
   }, [resolvePending]);
 
-  return { refreshAll, quoting, laddersRef };
+  /**
+   * Market open → market truth: drop pre-open ladder cache + settles, force
+   * full OPF hydrate and package re-quote for every card.
+   */
+  const refreshForMarketOpen = useCallback(async () => {
+    laddersRef.current.clear();
+    settledDefRef.current.clear();
+    inFlightDefRef.current.clear();
+    forceHydrateRef.current = true;
+    try {
+      await resolvePending();
+    } finally {
+      forceHydrateRef.current = false;
+    }
+  }, [resolvePending]);
+
+  // Session held → open: OPF + positions must switch to live NBBO
+  const prevSessionHeldRef = useRef(sessionHeld);
+  useEffect(() => {
+    const wasHeld = prevSessionHeldRef.current;
+    prevSessionHeldRef.current = sessionHeld;
+    if (!enabled) return;
+    if (wasHeld && !sessionHeld) {
+      void refreshForMarketOpen();
+    }
+  }, [sessionHeld, enabled, refreshForMarketOpen]);
+
+  /**
+   * While session is Live: re-quote any card still on pre_open/held marks until
+   * OPF reports live NBBO. Covers open-while-app-open and overnight book hydrate
+   * that settled on theo before the bell.
+   */
+  useEffect(() => {
+    if (!enabled || sessionHeld) return;
+    // Immediate pass for overnight pre_open book once we know we're Live
+    const kick = () => {
+      const book = positionsRef.current;
+      let need = false;
+      for (const p of book) {
+        if (!cardNeedsMarketTruth(p)) continue;
+        settledDefRef.current.delete(p.id);
+        need = true;
+      }
+      if (!need) return;
+      forceHydrateRef.current = true;
+      void resolvePending().finally(() => {
+        forceHydrateRef.current = false;
+      });
+    };
+    kick();
+    const started = Date.now();
+    const id = window.setInterval(() => {
+      // After max window, still chase but less often is handled by same interval;
+      // stop only when no card needs market truth (kick early-returns).
+      if (Date.now() - started > MARKET_TRUTH_CHASE_MAX_MS) {
+        // Keep chasing indefinitely at this cadence while pre_open remains —
+        // better a few quotes than stuck theo · until open after the open.
+      }
+      kick();
+    }, MARKET_TRUTH_CHASE_MS);
+    return () => window.clearInterval(id);
+  }, [enabled, sessionHeld, resolvePending]);
+
+  return { refreshAll, refreshForMarketOpen, quoting, laddersRef };
 }

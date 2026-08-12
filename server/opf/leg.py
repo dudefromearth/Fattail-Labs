@@ -1,4 +1,10 @@
-"""LegPricer — marks + IV cascade (OPF8 · OPF26 · §5.6)."""
+"""LegPricer — marks + IV cascade (OPF8 · OPF26 · §5.6).
+
+Pre-market mark law (OPF package SoR):
+  When live NBBO is missing or zeroed (Massive extended-hours), form a usable
+  leg mid from held last-session evidence, then European BSM theo from chain IV.
+  Always emit ``mark_source`` so UI can disclaimer non-live marks.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
 
+from opf.engines.bsm import bsm_european_price
 from opf.generation import ChainGeneration, ContractStore
 from opf.static_facts import MarketStaticFacts
 from opf.strike import contract_map_key
@@ -23,6 +30,16 @@ IvSource = Literal[
     "missing",
 ]
 
+# How the leg mid was formed — package aggregates these for basis_source / disclaimer
+MarkSource = Literal[
+    "nbbo",
+    "last_trade",
+    "day_close",
+    "theo_bs",
+    "locked",
+    "missing",
+]
+
 
 @dataclass
 class LegIntent:
@@ -34,21 +51,117 @@ class LegIntent:
     product: str = "SPX"
 
 
-def _mid_from_row(row: dict[str, Any] | None) -> float | None:
-    if not row:
+def _positive_px(v: Any) -> float | None:
+    """Parse price; Massive premarket often sends bid/ask/midpoint = 0 (no book)."""
+    if v is None or v == "":
         return None
-    mid = row.get("mid")
-    if mid is not None:
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return None
+    if x <= 0:
+        return None
+    return x
+
+
+def resolve_leg_mid(
+    row: dict[str, Any] | None,
+    *,
+    side: str,
+    strike: float,
+    spot: float | None,
+    tau: float | None,
+    iv: float | None,
+    r: float = 0.05,
+    q: float = 0.0,
+) -> tuple[float | None, MarkSource]:
+    """OPF leg mid cascade (live → held → theo).
+
+    1. Live NBBO mid or (bid+ask)/2 with positive prices
+    2. Last trade / day close (held prior-session marks)
+    3. European BSM from spot + IV + τ (theoretical until open)
+    """
+    # Missing listed contract → incomplete (do not invent a mark for ghost strikes)
+    if row is None:
+        return None, "missing"
+
+    # 1) Live book — reject zeros (premarket wipe of NBBO)
+    bid = _positive_px(row.get("bid"))
+    ask = _positive_px(row.get("ask"))
+    mid = _positive_px(row.get("mid"))
+    # If ladder already tagged mid_source=nbbo with positive mid, trust it
+    tagged = row.get("mid_source")
+    if mid is not None and tagged == "nbbo":
+        return mid, "nbbo"
+    if mid is not None and tagged in (None, "", "nbbo") and bid is not None and ask is not None:
+        return mid, "nbbo"
+    if bid is not None and ask is not None:
+        return (bid + ask) / 2.0, "nbbo"
+    if mid is not None and tagged == "nbbo":
+        return mid, "nbbo"
+
+    # 2) Held session evidence (still on Massive snapshot pre-open)
+    last = _positive_px(row.get("last"))
+    if last is None:
+        last = _positive_px(row.get("last_trade_price"))
+    if last is None and isinstance(row.get("last_trade"), dict):
+        lt = row["last_trade"]
+        last = _positive_px(lt.get("price") or lt.get("p"))
+    day_close = _positive_px(row.get("day_close"))
+    if day_close is None and isinstance(row.get("day"), dict):
+        day_close = _positive_px(row["day"].get("close"))
+
+    # Respect ladder held tags when mid already filled from chain_ladder
+    if mid is not None and tagged == "last_trade":
+        return mid, "last_trade"
+    if mid is not None and tagged == "day_close":
+        return mid, "day_close"
+
+    if last is not None:
+        return last, "last_trade"
+    if day_close is not None:
+        return day_close, "day_close"
+    if mid is not None and mid > 0:
+        # Untagged positive mid (tests / live hydrate) — treat as nbbo
+        return mid, "nbbo"
+
+    # 3) Theoretical European mid from chain IV (usable pre-open)
+    if (
+        spot is not None
+        and spot > 0
+        and iv is not None
+        and iv > 0
+        and tau is not None
+        and tau > 0
+        and strike > 0
+    ):
         try:
-            return float(mid)
+            px = bsm_european_price(
+                float(spot),
+                float(strike),
+                float(tau),
+                float(r),
+                float(q),
+                float(iv),
+                side,
+            )
+            if px is not None and px > 0:
+                return float(px), "theo_bs"
         except (TypeError, ValueError):
             pass
-    bid, ask = row.get("bid"), row.get("ask")
-    try:
-        if bid is not None and ask is not None:
-            return (float(bid) + float(ask)) / 2.0
-    except (TypeError, ValueError):
-        pass
+
+    return None, "missing"
+
+
+def _mid_from_row(row: dict[str, Any] | None) -> float | None:
+    """Backward-compatible: NBBO-only mid (no held/theo). Prefer resolve_leg_mid."""
+    mid, _src = resolve_leg_mid(row, side="call", strike=0.0, spot=None, tau=None, iv=None)
+    if _src == "nbbo":
+        return mid
+    # Legacy callers only wanted quote mid — if resolve fell through without
+    # spot/iv, still return held mid when present on the row path above.
+    if _src in ("last_trade", "day_close"):
+        return mid
     return None
 
 
@@ -103,7 +216,6 @@ class LegPricer:
         key = contract_map_key(intent.side, intent.strike)
         row = cmap.get(key)
 
-        mid = _mid_from_row(row)
         iv: float | None = None
         iv_source: IvSource = "missing"
 
@@ -114,14 +226,34 @@ class LegPricer:
             iv, iv_source = self._cascade_iv(intent, gen, cmap, row)
 
         settlement = "pm"
+        r = 0.05
+        q = 0.0
         if self.facts:
-            settlement = self.facts.product(intent.product).settlement  # type: ignore[assignment]
+            prod = self.facts.product(intent.product)
+            settlement = prod.settlement  # type: ignore[assignment]
+            r = float(self.facts.risk_free_rate)
+            q = float(self.facts.q_continuous(intent.product))
 
         tau_meta = compute_tau(
             intent.expiration,
             self.as_of_clock,
             settlement=settlement,  # type: ignore[arg-type]
         )
+
+        spot = float(gen.spot) if gen and gen.spot is not None else None
+        mid, mark_source = resolve_leg_mid(
+            row,  # None if strike not on generation — fail incomplete
+            side=intent.side,
+            strike=float(intent.strike),
+            spot=spot,
+            tau=float(tau_meta["tau"]) if tau_meta.get("tau") is not None else None,
+            iv=iv if row is not None else None,  # no theo for unlisted legs
+            r=r,
+            q=q,
+        )
+
+        bid = _positive_px(row.get("bid")) if row else None
+        ask = _positive_px(row.get("ask")) if row else None
 
         return {
             "leg_id": intent.leg_id,
@@ -131,8 +263,9 @@ class LegPricer:
             "qty": float(intent.qty),
             "product": intent.product,
             "mid": mid,
-            "bid": row.get("bid") if row else None,
-            "ask": row.get("ask") if row else None,
+            "bid": bid,
+            "ask": ask,
+            "mark_source": mark_source,
             "iv": iv,
             "iv_source": iv_source,
             "tau": tau_meta["tau"],

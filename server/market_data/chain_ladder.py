@@ -291,11 +291,27 @@ def _row_key(side: str, strike: float) -> str:
     return f"{side}:{float(strike)}"
 
 
+def _positive_px(v: Any) -> float | None:
+    """Parse a price; treat missing/non-positive as no market (premarket zeros)."""
+    x = _f(v)
+    if x is None or x <= 0:
+        return None
+    return x
+
+
 def _normalize_contract(row: dict[str, Any]) -> dict[str, Any] | None:
+    """Normalize Massive option snapshot row → ladder contract.
+
+    Premarket / extended-hours: Massive often returns last_quote bid=ask=midpoint=0
+    while still publishing last_trade and day OHLC from the prior session.
+    Live NBBO is preferred; otherwise held marks (last trade → day close) so
+    analysis packages remain usable with an explicit mid_source for UI disclaimer.
+    """
     details = row.get("details") or {}
     quote = row.get("last_quote") or {}
     greeks = row.get("greeks") or {}
     day = row.get("day") or {}
+    last_trade = row.get("last_trade") or {}
 
     if not _is_standard_contract(details, row):
         return None
@@ -310,14 +326,45 @@ def _normalize_contract(row: dict[str, Any]) -> dict[str, Any] | None:
     if not exp:
         return None
 
-    bid = _f(quote.get("bid") if quote else None) or _f(row.get("bid"))
-    ask = _f(quote.get("ask") if quote else None) or _f(row.get("ask"))
-    mid = _f(quote.get("midpoint") or quote.get("mid"))
-    if mid is None and bid is not None and ask is not None:
+    # Live NBBO — zeros mean "no book", not a free option
+    bid = _positive_px(quote.get("bid") if quote else None) or _positive_px(
+        row.get("bid")
+    )
+    ask = _positive_px(quote.get("ask") if quote else None) or _positive_px(
+        row.get("ask")
+    )
+    mid = _positive_px(quote.get("midpoint") if quote else None) or _positive_px(
+        quote.get("mid") if quote else None
+    )
+    mid_source: str | None = None
+    if mid is not None:
+        mid_source = "nbbo"
+    elif bid is not None and ask is not None:
         mid = (bid + ask) / 2.0
-    last = _f(quote.get("last")) or _f(row.get("last"))
-    if mid is None:
+        mid_source = "nbbo"
+
+    # Last trade (Massive: last_trade.price) — prior print still present pre-open
+    last = _positive_px(
+        last_trade.get("price") if isinstance(last_trade, dict) else None
+    ) or _positive_px(
+        last_trade.get("p") if isinstance(last_trade, dict) else None
+    )
+    if last is None:
+        last = _positive_px(quote.get("last") if quote else None) or _positive_px(
+            row.get("last")
+        )
+
+    day_close = (
+        _positive_px(day.get("close")) if isinstance(day, dict) else None
+    )
+
+    # Held / pre-open package mid — not live NBBO (UI must disclaimer)
+    if mid is None and last is not None:
         mid = last
+        mid_source = "last_trade"
+    if mid is None and day_close is not None:
+        mid = day_close
+        mid_source = "day_close"
 
     vol = _i(day.get("volume") if isinstance(day, dict) else None)
     if vol is None:
@@ -332,6 +379,8 @@ def _normalize_contract(row: dict[str, Any]) -> dict[str, Any] | None:
         "bid": bid,
         "ask": ask,
         "last": last,
+        "day_close": day_close,
+        "mid_source": mid_source,
         "volume": vol,
         "open_interest": _i(row.get("open_interest")),
         "delta": _f(greeks.get("delta")),
@@ -418,6 +467,7 @@ def build_ladder(
                     "mid": c.get("mid"),
                     "bid": c.get("bid"),
                     "ask": c.get("ask"),
+                    "mid_source": c.get("mid_source"),
                     "volume": c.get("volume"),
                     "open_interest": c.get("open_interest"),
                     "delta": c.get("delta"),

@@ -168,6 +168,17 @@ export function resolveCardDisplayState(
     opts?.sessionHeld ||
     pos.liveState === "held" ||
     (pos.liveState === "live" && opts?.sessionHeld);
+  const preOpen =
+    typeof pos.markMode === "string" && pos.markMode.startsWith("pre_open");
+  if (preOpen && pos.markDisclaimer) {
+    return {
+      kind: "price",
+      packageLabel: null,
+      chipLabel: "theo · until open",
+      detail: pos.markDisclaimer,
+      expected: true,
+    };
+  }
   return {
     kind: "price",
     packageLabel: null,
@@ -176,5 +187,64 @@ export function resolveCardDisplayState(
       ? "Held package mark from the last good OPF quote while the market is closed."
       : "Live package mark from OPF.",
     expected: true,
+  };
+}
+
+/**
+ * Risk-graph / Surface focus policy (OT-EF · PB-VIEW-6).
+ *
+ * Incomplete or non-representable focus must **never** fabricate a curve and
+ * must **never** replace the viewport with a cryptic internal string
+ * (no "PB-VIEW-6", no "dual-side generations"). Keep scales + grid; optional
+ * centered named state + calm detail.
+ */
+export type ViewportCurveMode =
+  /** Full live + theoretical package curves */
+  | "live"
+  /** At-expiry residual only (expired pointer — MSC-style ghost) */
+  | "expired_ghost"
+  /** Axes + grid only — no position series */
+  | "empty";
+
+export type ViewportFocusPolicy = {
+  curveMode: ViewportCurveMode;
+  /** When set, center over the grid (named Law B state) */
+  notice: { title: string; detail: string } | null;
+  display: CardDisplayState;
+};
+
+export function resolveViewportFocusPolicy(
+  pos: AnalyzerPosition | null | undefined,
+  opts?: {
+    now?: Date;
+    sessionHeld?: boolean;
+  },
+): ViewportFocusPolicy | null {
+  if (!pos || !pos.visible) return null;
+  const display = resolveCardDisplayState(pos, opts);
+
+  if (display.kind === "price") {
+    return { curveMode: "live", notice: null, display };
+  }
+
+  if (display.kind === "expired") {
+    return {
+      curveMode: "expired_ghost",
+      notice: {
+        title: display.packageLabel ?? "EXPIRED",
+        detail: display.detail,
+      },
+      display,
+    };
+  }
+
+  // incomplete · skewed · not traded · check legs · budget · waiting · updating · hidden
+  return {
+    curveMode: "empty",
+    notice: {
+      title: display.packageLabel ?? display.chipLabel.toUpperCase(),
+      detail: display.detail,
+    },
+    display,
   };
 }

@@ -75,6 +75,7 @@ Changing expiration or strikes **rebinds the pointer**. It does not mint a ficti
 | Position card | Display package only when representable + quote/lock allows; otherwise Law B state |
 | Strike ▲/▼ | Step on listed grid; missing market → Law B (**NOT TRADED**), not a fake mid |
 | Analyze / Update | Must not commit a structure that invents non-OPF strikes as if they were real |
+| **Risk graph / Surface viewport** | Same Law B names as cards. **No fabricated package curve** (PB-VIEW-6). Keep **scales + grid**; suppress live series when non-representable; optional centered notice using the **same calm title/detail** as the card — **never** internal codes (`PB-VIEW-6`, “dual-side generations”, “fabricated curve”). Expired focus may show at-expiry residual ghost only, with **EXPIRED** notice. |
 
 ---
 
@@ -154,6 +155,7 @@ Marketing and UI copy remain free of profit claims; **instrument honesty** is se
 | Bind assess (exp then price) | `web/lib/options-lab/optionBind.ts` |
 | Atomic package resolve | `web/lib/options-lab/usePackageQuotes.ts` |
 | Named package display states | `web/lib/options-lab/cardDisplayState.ts` · `AnalyzerPositionsList` |
+| Viewport curve policy + notices | `resolveViewportFocusPolicy` · `OpfRiskAnalyzer` risk viewport |
 | Unit checks | `optionBind.test.ts` · `cardDisplayState.test.ts` · `analyzerBook.pointer.test.ts` |
 | Exp calendar / 0DTE until 16:00 ET | `server/routes/chain_ladder.py` · `OPF_ACTIVE_DTE_HORIZON` |
 

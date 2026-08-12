@@ -7,6 +7,13 @@ export type ValueModeId =
   | "credit"
   | "r2r"
   | "pct_change"
+  | "d_debit"
+  | "d2_debit"
+  | "velocity"
+  | "acceleration"
+  | "slope"
+  | "curvature"
+  | "cp_asym"
   | "gex_all"
   | "gex_net"
   | "gex_call"
@@ -76,6 +83,17 @@ export type TemplateParams = {
    * or furthest from spot. When spot is missing, furthest → upper wing.
    */
   bwWingSide?: BwWingSide;
+  /**
+   * Advanced Fly — client history reader (time derivatives).
+   * Optional; when absent, time modes render invalid.
+   */
+  flyHistory?: import("./flySurfaceHistory").FlySurfaceHistory | null;
+  /** Live generation clocks for pairing (before history push). */
+  flyLiveAsOf?: string | null;
+  flyLiveReceivedAt?: number;
+  /** Descending centers for this grid (slope/curvature). */
+  flyRowStrikes?: readonly number[];
+  flyRowIndex?: number;
 };
 
 export type HeatmapTemplate = {

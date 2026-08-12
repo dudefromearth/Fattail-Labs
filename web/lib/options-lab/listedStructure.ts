@@ -297,6 +297,11 @@ function buildAtSteps(
         },
       ];
     }
+    /**
+     * Iron fly — **debit-native long iron** (buy body, sell wings).
+     * Buy → valley debit. Sell → flipLegs → short iron (sell body, buy wings)
+     * = credit tent. Calls before puts (ToS card order).
+     */
     case "iron_fly": {
       const strikes = need(listed, [
         centerIdx - steps,
@@ -304,37 +309,44 @@ function buildAtSteps(
         centerIdx + steps,
       ]);
       if (!strikes) return null;
+      // strikes: [putWing, body, callWing]
+      // Long IF: long body call/put, short wing call/put
       return [
-        {
-          strike: strikes[0],
-          type: "put",
-          quantity: 1,
-          side: "long",
-          entry_price: 0,
-        },
-        {
-          strike: strikes[1],
-          type: "put",
-          quantity: 1,
-          side: "short",
-          entry_price: 0,
-        },
         {
           strike: strikes[1],
           type: "call",
           quantity: 1,
-          side: "short",
+          side: "long",
           entry_price: 0,
         },
         {
           strike: strikes[2],
           type: "call",
           quantity: 1,
+          side: "short",
+          entry_price: 0,
+        },
+        {
+          strike: strikes[1],
+          type: "put",
+          quantity: 1,
           side: "long",
+          entry_price: 0,
+        },
+        {
+          strike: strikes[0],
+          type: "put",
+          quantity: 1,
+          side: "short",
           entry_price: 0,
         },
       ];
     }
+    /**
+     * Iron condor — **debit-native long iron** (buy inners, sell wings).
+     * Buy → valley debit. Sell → flipLegs → short IC (sell inners, buy wings)
+     * = credit tent. Calls before puts (ToS).
+     */
     case "iron_condor": {
       const strikes = need(listed, [
         centerIdx - steps * 2,
@@ -343,33 +355,35 @@ function buildAtSteps(
         centerIdx + steps * 2,
       ]);
       if (!strikes) return null;
+      // strikes: [putWing, putInner, callInner, callWing]
+      // Long IC: long callInner / short callWing / long putInner / short putWing
       return [
-        {
-          strike: strikes[0],
-          type: "put",
-          quantity: 1,
-          side: "long",
-          entry_price: 0,
-        },
-        {
-          strike: strikes[1],
-          type: "put",
-          quantity: 1,
-          side: "short",
-          entry_price: 0,
-        },
         {
           strike: strikes[2],
           type: "call",
           quantity: 1,
-          side: "short",
+          side: "long",
           entry_price: 0,
         },
         {
           strike: strikes[3],
           type: "call",
           quantity: 1,
+          side: "short",
+          entry_price: 0,
+        },
+        {
+          strike: strikes[1],
+          type: "put",
+          quantity: 1,
           side: "long",
+          entry_price: 0,
+        },
+        {
+          strike: strikes[0],
+          type: "put",
+          quantity: 1,
+          side: "short",
           entry_price: 0,
         },
       ];

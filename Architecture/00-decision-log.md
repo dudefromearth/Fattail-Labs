@@ -4,6 +4,50 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-12 — DL-311 Advanced Fly heatmap — Spec GO + Wave‑1 ship (AF0…AF-Z)
+
+**Coach AF0-0 GO** (after plan v1.1.1 / Spec v0.2.1 fold): implement **Advanced Fly** on board
+`agents/p-options-lab-heatmap/` — **replaces** Symmetric Fly as the member fly surface.
+(Renumbered from local draft DL-310: remote already used **DL-310** for lesson-slug uniqueness.)
+
+| Item | Path / value |
+|------|----------------|
+| Spec | `Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md` (content **v0.2.1**) |
+| Spec sha1 | `1975b96ce9cc6a99d801e380207408937de8bf74` |
+| Plan | `docs/Options-Lab-Heatmap-Advanced-Fly-Full-Agent-Bench-Plan-v1.1.md` (content **v1.1.1**) |
+| Plan sha1 | `85cf168bb5ad38dcf82c3cd92d7bfeef5447e1b1` |
+
+**OD-AF1…11 Accept (Spec recommendations):**
+
+| OD | Accept |
+|----|--------|
+| OD-AF1 | Keep registry id `sym-fly`; label **Advanced flies** |
+| OD-AF2 | History depth **32** |
+| OD-AF3 | Velocity min Δt **0.5 s** |
+| OD-AF4 | Raw second derivatives (no EWMA) |
+| OD-AF5 | \(D_c - D_p\) |
+| OD-AF6 | Wave‑2 \(D/w\) (deferred) |
+| OD-AF7 | SRS **descope** |
+| OD-AF8 | Signed color sticky **25%** |
+| OD-AF9 | Label **Advanced flies** |
+| OD-AF10 | Tick max gap **15 s** |
+| OD-AF11 | \(\lvert D_{t-1}\rvert\) floor **0.05** (or quote tick when known) |
+
+**Already frozen (not OD):** Credit \(C=-D\) mag+CR display · slope FD descending \(K\) · curvature uniform triple · AF17 time honesty · edge never zero.
+
+**As-built (Wave‑1):**
+
+- `web/lib/options-lab/templates/flySurfaceHistory.ts` — ring buffer · AF17 · tick vs velocity pair helpers  
+- `web/lib/options-lab/templates/symFly.ts` — Advanced Fly modes · keep id `sym-fly`  
+- `HeatmapChainPanel.tsx` — history push per generation · seam on symbol/exp/wings + Held→Live  
+- Tests: `flySurfaceHistory.test.ts` · `advancedFly.structure.test.ts`
+
+**Parent S/V redirect:** further Symmetric-only value-mode work on parent heatmap plan is
+**closed/redirected** to Advanced Fly (this DL). GEX / ladder / bw-fly unchanged.
+
+**Rationale:** One OPF-held dual-side chain; pure template; research Value modes with honest
+history; no second Massive path; no profit theater.
+
 ## 2026-08-12 — DL-310 Lesson slugs unique per course (campaign completion bug)
 
 **Bug (member ticket):** the "Completed" toggle on

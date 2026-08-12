@@ -26,8 +26,8 @@ export function symFlyDebit(
   ctx: ChainContext,
   body: number,
   widthPts: number,
+  side: "call" | "put" = ctx.viewSide,
 ): number | null {
-  const side = ctx.viewSide;
   const lo = body - widthPts;
   const hi = body + widthPts;
   const mLo = midAt(ctx, side, lo);
@@ -35,6 +35,18 @@ export function symFlyDebit(
   const mHi = midAt(ctx, side, hi);
   if (mLo == null || mBody == null || mHi == null) return null;
   return mLo + mHi - 2 * mBody;
+}
+
+/** Call fly debit − put fly debit (same K,w generation). */
+export function symFlyCpAsym(
+  ctx: ChainContext,
+  body: number,
+  widthPts: number,
+): number | null {
+  const dc = symFlyDebit(ctx, body, widthPts, "call");
+  const dp = symFlyDebit(ctx, body, widthPts, "put");
+  if (dc == null || dp == null) return null;
+  return dc - dp;
 }
 
 /**

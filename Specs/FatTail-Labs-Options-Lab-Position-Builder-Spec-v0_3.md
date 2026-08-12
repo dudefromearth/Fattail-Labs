@@ -220,7 +220,7 @@ Dual-side generation(s)  ──►  OPF PackageQuote / resolve
 |----|-----|
 | **PB-STREAM-1** | Analyzer chrome shows session posture: **Live · Held · Closed · Error** (Heatmap heritage). |
 | **PB-STREAM-2** | Per-card: when not receiving applied generations for its keys, show **not live** / **Held** as appropriate — never bare number as live. |
-| **PB-VIEW-6** | Focused **incomplete** unlocked definition: viewport shows **loud incomplete** state — **no fabricated curve** from partial legs (A2). |
+| **PB-VIEW-6** | Focused **incomplete** / non-representable definition: viewport keeps **scales + grid**, draws **no fabricated live package curve**, and may center a **Law B named notice** (EXPIRED · UPDATING · NOT TRADED · …) with calm detail — **never** internal codes or engineer jargon (OT-EF). |
 
 ### 1.7 Alerts
 

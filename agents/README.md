@@ -124,6 +124,13 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   **Full multi-agent plan:** `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md`.  
   Board: `agents/p-market-bus/ORCHESTRATOR.md`.  
   **PROGRAM COMPLETE for independent testing (DL-286)** · enable `LABS_MARKET_BUS=1` + Redis.
+- `agents/p-options-lab-heatmap/` — **Options Lab Heatmap** (dual-side pure templates;
+  **Advanced Fly** residual **replaces** Symmetric Fly on the same OPF-held chain).  
+  Spec: `Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md` (v0.2.1).  
+  Parent plan: `docs/Options-Lab-Heatmap-Templates-Full-Agent-Bench-Plan-v1.0.md`.  
+  **Active impl plan v1.1.1:** `docs/Options-Lab-Heatmap-Advanced-Fly-Full-Agent-Bench-Plan-v1.1.md`.  
+  Board: `agents/p-options-lab-heatmap/ORCHESTRATOR.md`.  
+  **Next: AF0 seeds → AF0-G · Coach AF0-0 · no AF-H/M code before GO.**
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,

@@ -65,13 +65,13 @@ export default function StrikeSelect({
   if (!listed.length) {
     return (
       <span
-        className={`${field} ${className} inline-flex items-center text-[var(--color-label-tertiary)]`.trim()}
+        className={`${field} ${className} inline-flex items-center justify-end text-[var(--color-label-tertiary)]`.trim()}
         data-testid={testId}
         data-listed-count={0}
         title={emptyLabel || "Loading OPF chain strikes…"}
         role="status"
       >
-        …
+        {emptyLabel || "…"}
       </span>
     );
   }
@@ -83,6 +83,7 @@ export default function StrikeSelect({
       disabled={disabled}
       data-testid={testId}
       data-listed-count={listed.length}
+      size={1}
       onChange={(e) => {
         const n = normalizeStrike(parseFloat(e.target.value));
         if (Number.isFinite(n)) onChange(n);

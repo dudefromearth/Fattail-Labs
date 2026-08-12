@@ -11,6 +11,7 @@ import LessonPlayer from "@/components/LessonPlayer";
 import Markdown from "@/components/Markdown";
 import QuizBuilder from "@/components/QuizBuilder";
 import QuizPlayer, { type PublicQuestion } from "@/components/QuizPlayer";
+import { IconLock } from "@/components/ui/icons";
 
 // Rendered per-request: sessions see the player; anonymous visitors see the
 // public landing page (SEO spec v1.1) — full HTML for crawlers, video gated.
@@ -308,8 +309,8 @@ function AnonymousLanding({
       </p>
 
       <div className="mt-6 flex aspect-video w-full flex-col items-center justify-center gap-4 rounded-2xl bg-zinc-900 text-white">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-2xl">
-          🔒
+        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
+          <IconLock size={32} tone="light" />
         </span>
         <p className="font-medium">
           {pub.free_preview

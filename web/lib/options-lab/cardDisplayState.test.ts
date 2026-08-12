@@ -5,7 +5,10 @@
  */
 
 import { positionFromInput, type AnalyzerPosition } from "./analyzerBook";
-import { resolveCardDisplayState } from "./cardDisplayState";
+import {
+  resolveCardDisplayState,
+  resolveViewportFocusPolicy,
+} from "./cardDisplayState";
 import type { PositionInput } from "./positionTypes";
 
 function assert(cond: unknown, msg: string): void {
@@ -132,6 +135,39 @@ test("held price → numeric path", () => {
   assert(s.chipLabel === "held", "held chip");
 });
 
+test("pre_open mark → theo until open chip; live mark clears it", () => {
+  let pos = base("2026-08-14");
+  pos = {
+    ...pos,
+    liveState: "held",
+    livePackagePerShare: 1.5,
+    lastNatSigned: -1.5,
+    priceSide: "credit",
+    markMode: "pre_open_held",
+    markDisclaimer: "Theoretical package until the market opens.",
+    bind: {
+      bindable: true,
+      failedCount: 0,
+      summary: "bound",
+      assessedAt: Date.now(),
+      legs: [],
+    },
+  };
+  const pre = resolveCardDisplayState(pos, { now, sessionHeld: true });
+  assert(pre.chipLabel === "theo · until open", "pre-open chip");
+
+  // After open OPF re-quote lands live NBBO
+  pos = {
+    ...pos,
+    liveState: "live",
+    markMode: "live",
+    markDisclaimer: null,
+  };
+  const live = resolveCardDisplayState(pos, { now, sessionHeld: false });
+  assert(live.chipLabel === "live", "live chip after open");
+  assert(live.kind === "price", "price path");
+});
+
 test("never returns empty labels for exceptional states", () => {
   const kinds = ["expired", "not_traded", "budget", "updating"] as const;
   // smoke: each exceptional path has packageLabel + detail
@@ -139,6 +175,54 @@ test("never returns empty labels for exceptional states", () => {
     // covered above — ensure law constant
     assert(k.length > 0, "kind nonempty");
   }
+});
+
+test("viewport: expired → ghost + EXPIRED notice (no cryptic codes)", () => {
+  const p = resolveViewportFocusPolicy(base("2026-08-11"), { now });
+  assert(p != null, "policy");
+  assert(p!.curveMode === "expired_ghost", "ghost mode");
+  assert(p!.notice?.title === "EXPIRED", "title");
+  assert(!/PB-VIEW|dual-side|fabricat/i.test(p!.notice!.detail), "no jargon");
+  assert(!/PB-VIEW|dual-side|fabricat/i.test(p!.notice!.title), "no jargon title");
+});
+
+test("viewport: incomplete → empty curves + UPDATING notice", () => {
+  let pos = base("2026-08-14");
+  pos = {
+    ...pos,
+    liveState: "incomplete",
+    livePackagePerShare: null,
+    bind: {
+      bindable: true,
+      failedCount: 0,
+      summary: "bound",
+      assessedAt: Date.now(),
+      legs: [],
+    },
+  };
+  const p = resolveViewportFocusPolicy(pos, { now });
+  assert(p!.curveMode === "empty", "empty grid only");
+  assert(p!.notice?.title === "UPDATING", "UPDATING");
+  assert(!/PB-VIEW|dual-side|fabricat/i.test(p!.notice!.detail), "friendly");
+});
+
+test("viewport: price → live curves, no notice", () => {
+  let pos = base("2026-08-14");
+  pos = {
+    ...pos,
+    liveState: "live",
+    livePackagePerShare: 1.1,
+    bind: {
+      bindable: true,
+      failedCount: 0,
+      summary: "bound",
+      assessedAt: Date.now(),
+      legs: [],
+    },
+  };
+  const p = resolveViewportFocusPolicy(pos, { now });
+  assert(p!.curveMode === "live", "live");
+  assert(p!.notice === null, "no overlay");
 });
 
 console.log(`\n${n} tests passed`);

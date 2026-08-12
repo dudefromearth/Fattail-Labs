@@ -389,20 +389,38 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
 
     const { xMin, xMax, yMin, yMax } = viewState.current;
 
-    // Read theme colors from CSS custom properties
+    // Read theme colors from CSS custom properties.
+    // Labs tokens use --color-*; MSC-era --bg-* may be unset. Fallbacks must
+    // remain *visible* on dark canvas (old #1a1a1a grid on #0a0a0a looked blank).
     const cs = getComputedStyle(document.documentElement);
-    const themeColors = {
-      bgBase: cs.getPropertyValue('--bg-base').trim() || '#0a0a0a',
-      bgSurface: cs.getPropertyValue('--bg-surface').trim() || '#111',
-      gridLine: cs.getPropertyValue('--border-subtle').trim() || '#1a1a1a',
-      zeroLine: cs.getPropertyValue('--border-default').trim() || '#333',
-      axisText: cs.getPropertyValue('--text-tertiary').trim() || '#555',
-      legendText: cs.getPropertyValue('--text-muted').trim() || '#666',
-      labelBright: cs.getPropertyValue('--text-bright').trim() || '#fff',
-    };
     const isLight = document.documentElement.dataset.theme === 'light';
+    const themeColors = {
+      bgBase:
+        cs.getPropertyValue('--bg-base').trim() ||
+        (isLight ? '#ffffff' : '#0a0a0e'),
+      bgSurface:
+        cs.getPropertyValue('--bg-surface').trim() ||
+        (isLight ? '#f5f5f7' : '#111114'),
+      gridLine:
+        cs.getPropertyValue('--border-subtle').trim() ||
+        (isLight ? 'rgba(60,60,67,0.12)' : 'rgba(255,255,255,0.10)'),
+      zeroLine:
+        cs.getPropertyValue('--border-default').trim() ||
+        (isLight ? 'rgba(60,60,67,0.28)' : 'rgba(255,255,255,0.22)'),
+      axisText:
+        cs.getPropertyValue('--text-tertiary').trim() ||
+        cs.getPropertyValue('--color-label-tertiary').trim() ||
+        (isLight ? '#8e8e93' : 'rgba(255,255,255,0.48)'),
+      legendText:
+        cs.getPropertyValue('--text-muted').trim() ||
+        (isLight ? '#6e6e73' : 'rgba(255,255,255,0.40)'),
+      labelBright:
+        cs.getPropertyValue('--text-bright').trim() ||
+        cs.getPropertyValue('--color-label').trim() ||
+        (isLight ? '#1d1d1f' : '#f5f5f7'),
+    };
     const chartBg = isLight ? '#ffffff' : themeColors.bgBase;
-    const chartBgAlpha = isLight ? 'rgba(255,255,255,0.4)' : 'rgba(10,10,10,0.4)';
+    const chartBgAlpha = isLight ? 'rgba(255,255,255,0.4)' : 'rgba(10,10,14,0.35)';
 
     // Update backdrop props for external render — only when values change
     const chartWidth = width - PADDING.left - PADDING.right;
@@ -1343,26 +1361,39 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
     }
   }, [vpProfile, gexHash, expirationData.length, expiredExpirationData.length, autoFit]);
 
-  // Re-fit when spot price drifts significantly from the last fitted value.
-  // On hard refresh, spotPrice defaults to 5950 until SSE delivers the real
-  // value (~6740). The initial autoFit bakes the stale default into the
-  // viewport, producing a 1200-point-wide X-axis that compresses the curve
-  // into a thin spike. Once the real spot arrives we need one more autoFit.
+  // Re-fit when spot arrives or drifts — including the empty shell (no strikes /
+  // no curves). Scales + grid are the minimal viewport; they must track ATM.
   const lastFitSpotRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (strikes.length === 0) return;
+    if (!(spotPrice > 0) || !Number.isFinite(spotPrice)) return;
     const prev = lastFitSpotRef.current;
     lastFitSpotRef.current = spotPrice;
 
-    if (prev === null) return; // first render — handled by mount/strategyHash effects
+    if (prev === null) {
+      // First real spot (empty book or cold start) — fit ATM window
+      if (!isStrikeDragging.current) autoFit();
+      return;
+    }
     const drift = Math.abs(spotPrice - prev);
-    // Re-fit if spot moved more than 1% or 50 points (whichever is smaller)
-    const threshold = Math.min(prev * 0.01, 50);
+    const threshold = Math.min(Math.max(prev, 1) * 0.01, 50);
     if (drift > threshold && !isStrikeDragging.current) {
       autoFit();
     }
-  }, [spotPrice, strikes, autoFit]);
+  }, [spotPrice, autoFit]);
+
+  // Empty shell (no series): keep axes/grid live when curve mode drops to empty
+  const seriesLen =
+    expirationData.length +
+    theoreticalData.length +
+    expiredExpirationData.length +
+    expiredTheoreticalData.length;
+  const prevSeriesLen = useRef(seriesLen);
+  useEffect(() => {
+    if (seriesLen === prevSeriesLen.current) return;
+    prevSeriesLen.current = seriesLen;
+    if (!isStrikeDragging.current) autoFit();
+  }, [seriesLen, autoFit]);
 
   // Re-fit when expiration BEs arrive/change (OPF curves often land after
   // strikes — without this the ½-viewport BE cap never re-applies).

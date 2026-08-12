@@ -1,5 +1,8 @@
 /** SPX vertical chain ladder — poll API; apply strike-level diffs only. */
 
+/** How mid was formed — live NBBO vs pre-open held marks (disclaimer). */
+export type LadderMidSource = "nbbo" | "last_trade" | "day_close";
+
 export type LadderRow = {
   strike: number;
   /** call | put — dual-side model (HM15) */
@@ -9,6 +12,8 @@ export type LadderRow = {
   mid?: number | null;
   bid?: number | null;
   ask?: number | null;
+  /** nbbo | last_trade | day_close — absent/null when no mid */
+  mid_source?: LadderMidSource | string | null;
   volume?: number | null;
   open_interest?: number | null;
   delta?: number | null;

@@ -1,9 +1,9 @@
 # Options Lab — Heatmap Template Architecture
 
-**Status:** **AS-BUILT (partial)** (2026-08-10) — dual-side generation + template registry + sym-fly + gex_v1 + ladder; vertical/bw-fly deferred  
+**Status:** **AS-BUILT (partial)** (2026-08-12) — dual-side generation + template registry + **Advanced Fly** (id `sym-fly`) + gex_v1 + ladder; vertical/bw-fly deferred  
 **Surface:** Options Lab → **Heatmap** (`/app/options-lab/heatmap`)  
 **Type:** Design + as-built map — live chain **views** (templates) over one shared option-chain model  
-**Product law:** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md)  
+**Product law:** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) · **Advanced Fly** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md) (v0.2.1) · **DL-311**  
 **Not:** MSC convexity heatmap · MarketSwarm code · per-template Massive polling  
 
 **Parents / companions:**
@@ -25,7 +25,7 @@
 | Heatmap route | `web/app/app/options-lab/heatmap/page.tsx` |
 | Workspace chrome | `web/components/options-lab/OptionsLabChrome.tsx` (`workspace`) |
 | Chain panel + template switcher | `web/components/options-lab/HeatmapChainPanel.tsx` |
-| Templates (ladder · sym-fly · gex) | `web/lib/options-lab/templates/*` |
+| Templates (ladder · Advanced Fly/`sym-fly` · gex · history) | `web/lib/options-lab/templates/*` · `flySurfaceHistory.ts` |
 | Dual-side push client | `web/lib/market/useOptionChainBus.ts` · `MarketSocket.ts` · `chainLadderApi.ts` |
 | Dual-side ladder + HM18/19/20 | `server/routes/chain_ladder.py` · `server/market_data/chain_ladder.py` · `massive_client.py` |
 | Stream push (key without side) | `server/routes/market_stream.py` |
@@ -42,7 +42,9 @@
 | Modal strike step | Landed |
 | Diff keys `side:strike` | Landed |
 | Template registry + switcher | Landed |
-| sym-fly debit/credit/pct_change/r2r + RoC sticky color | Landed |
+| Advanced Fly (id `sym-fly`): Debit/Credit mag+CR / tick % / R:R / Δ / Δ² / vel / accel / slope / curvature / C/P + history | Landed (DL-311) |
+| Client flySurfaceHistory + AF10/AF17 | Landed |
+| sym-fly debit/credit/pct_change/r2r + RoC sticky color | Superseded as surface by Advanced Fly modes |
 | gex_v1 call/put/net | Landed |
 | vertical · bw-fly templates | Deferred (phase X) |
 | Full e2e AT-HM1…16 in Playwright | Partial (unit AT pack) |

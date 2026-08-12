@@ -24,6 +24,7 @@ import {
   resolvePackageSide,
   type BlotterBlockKind,
 } from "@/lib/blotterTheme";
+import { IconLock, IconUnlock } from "@/components/ui/icons";
 
 function dteOf(exp: string): number {
   return calendarDteOf(exp);
@@ -58,18 +59,22 @@ function fmtStrike(n: number): string {
 }
 
 /**
- * Traditional display order: ascending strike (butterfly → wing / body / wing
- * = +1 / −2 / +1 for a long fly). Never group all longs first (+1/+1/−2).
+ * ToS-style leg order on the position card: **calls above puts**, then
+ * ascending strike within each right. Case-insensitive type compare.
  */
 function legsInDisplayOrder(legs: readonly LegInput[]): LegInput[] {
+  const rightRank = (t: string) =>
+    String(t).toLowerCase() === "call" ? 0 : 1;
   return [...legs].sort((a, b) => {
+    const ra = rightRank(a.type);
+    const rb = rightRank(b.type);
+    if (ra !== rb) return ra - rb;
     const ds = a.strike - b.strike;
     if (Math.abs(ds) > 1e-9) return ds;
-    // Same strike: put before call (iron fly body)
-    if (a.type !== b.type) return a.type === "put" ? -1 : 1;
-    // Long before short only as last resort (same strike/type rare)
-    if (a.side !== b.side) return a.side === "long" ? -1 : 1;
-    return 0;
+    // short before long at same strike (iron fly body)
+    const sa = String(a.side).toLowerCase() === "short" ? 0 : 1;
+    const sb = String(b.side).toLowerCase() === "short" ? 0 : 1;
+    return sa - sb;
   });
 }
 
@@ -758,19 +763,20 @@ function PosBlock({
                   {locked ? (
                     <button
                       type="button"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded bg-black/20 text-[15px] text-white hover:bg-black/35"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded bg-black/20 hover:bg-black/35"
                       title="Unlock package basis"
                       aria-label="Unlock"
                       data-testid={`analyzer-pos-lock-${pos.id}`}
                       data-locked="1"
                       onClick={() => onUnlock(pos.id)}
                     >
-                      🔒
+                      {/* light tone: white ToS glyph on green/red blotter */}
+                      <IconLock size={15} tone="light" />
                     </button>
                   ) : (
                     <button
                       type="button"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded bg-black/15 text-[15px] text-white/80 hover:bg-black/30"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded bg-black/15 opacity-90 hover:bg-black/30 hover:opacity-100"
                       title="Lock at natural mid (Option-click / right-click for limit)"
                       aria-label="Lock natural"
                       data-testid={`analyzer-pos-lock-${pos.id}`}
@@ -784,7 +790,7 @@ function PosBlock({
                         onLockLimit(pos.id);
                       }}
                     >
-                      🔓
+                      <IconUnlock size={15} tone="light" />
                     </button>
                   )}
                 </div>

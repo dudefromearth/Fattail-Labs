@@ -17,12 +17,15 @@ export default function SurfaceViewport({
   packLabel,
   loading,
   error,
+  notice,
 }: {
   hasTrade: boolean;
   symbol: string;
   packLabel: string;
   loading?: boolean;
   error?: string | null;
+  /** OT-EF Law B notice — never cryptic internal codes */
+  notice?: { title: string; detail: string } | null;
 }) {
   return (
     <div
@@ -37,14 +40,36 @@ export default function SurfaceViewport({
         <span className="text-white/60">{packLabel}</span>
         . Same Positions, Alerts, and OPF data plane — mesh presentation only.
       </p>
-      {!hasTrade ? (
+      {notice ? (
+        <div
+          className="max-w-sm rounded-2xl border border-white/12 bg-black/45 px-5 py-4"
+          data-testid="analyzer-viewport-notice"
+        >
+          <div className="text-[13px] font-semibold tracking-wide text-white/90">
+            {notice.title}
+          </div>
+          <p className="mt-1.5 text-[12px] leading-snug text-white/55">
+            {notice.detail}
+          </p>
+        </div>
+      ) : !hasTrade ? (
         <p className="text-xs text-white/40">
           Focus a position or load a structure to drive the surface.
         </p>
       ) : loading ? (
-        <p className="text-xs text-white/50">OPF samples · preparing mesh…</p>
+        <p className="text-xs text-white/50">
+          Preparing the surface mesh for this structure…
+        </p>
       ) : error ? (
-        <p className="text-xs text-amber-400/90">{error}</p>
+        <div className="max-w-sm rounded-2xl border border-white/12 bg-black/45 px-5 py-4">
+          <div className="text-[13px] font-semibold tracking-wide text-white/90">
+            CHECK LEGS
+          </div>
+          <p className="mt-1.5 text-[12px] leading-snug text-white/55">
+            Could not build a package surface yet. Confirm every leg is listed
+            and try again.
+          </p>
+        </div>
       ) : (
         <p className="text-[11px] text-white/35">
           3D mesh port next (MSC scene · OPF feed). Risk graph remains 2D OPF

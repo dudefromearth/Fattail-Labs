@@ -203,6 +203,8 @@ def pricing_package_quote(request: Request, body: PackageQuoteIn) -> dict[str, A
         "package_debit_per_share": quote.get("package_debit_per_share"),
         "basis_debit_per_share": quote.get("basis_debit_per_share"),
         "basis_source": quote.get("basis_source"),
+        "mark_mode": quote.get("mark_mode"),
+        "mark_disclaimer": quote.get("mark_disclaimer"),
         "leg_marks": quote.get("leg_marks"),
         "max_skew_ms": quote.get("max_skew_ms"),
         "epoch_quality": quote.get("epoch_quality"),

@@ -76,13 +76,102 @@ export function IconChevronRight(p: IconProps) {
   );
 }
 
-export function IconLock(p: IconProps) {
+/**
+ * Lock glyph tone for surfaces where `currentColor` is wrong.
+ * - `inherit` — uses currentColor (preferred in themed chrome)
+ * - `light` — white / near-white (dark bars, green blotter, inverse tiles)
+ * - `dark` — near-black (light cards, white surfaces)
+ *
+ * Geometry matches the Thinkorswim package/interest unlock silhouette
+ * (solid body, open left shackle) — superior to platform emoji.
+ */
+export type IconLockTone = "inherit" | "light" | "dark";
+
+export type IconLockProps = IconProps & { tone?: IconLockTone };
+
+function lockPaint(tone: IconLockTone | undefined): string {
+  if (tone === "light") return "#FFFFFF";
+  if (tone === "dark") return "#1D1D1F";
+  return "currentColor";
+}
+
+/**
+ * Locked padlock — solid body, closed shackle (ToS counterpart of unlock).
+ * Filled silhouette; no keyhole. Use `tone` for light/dark surfaces.
+ */
+export function IconLock(p: IconLockProps) {
+  const { tone = "inherit", size = 20, className, ...rest } = p;
+  const paint = lockPaint(tone);
   return (
-    <svg {...base(p)}>
-      <rect x="5" y="11" width="14" height="10" rx="2" />
-      <path d="M8 11V8a4 4 0 018 0v3" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={paint}
+      className={className}
+      aria-hidden
+      data-lock-tone={tone}
+      data-lock-state="locked"
+      {...rest}
+    >
+      {/* Body — solid rounded rect (ToS has no keyhole cutout) */}
+      <rect x="5" y="11" width="14" height="10.25" rx="2.25" />
+      {/* Closed shackle — both posts into body shoulders */}
+      <path
+        d="M8.25 11.2V8.15a3.9 3.9 0 0 1 7.8 0v3.05"
+        fill="none"
+        stroke={paint}
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
+}
+
+/**
+ * Unlocked padlock — solid body, open-left shackle.
+ * Geometry from Thinkorswim Interest / package unlock (sim.png).
+ * Use `tone="light"` on dark chrome; `tone="dark"` on light cards.
+ */
+export function IconUnlock(p: IconLockProps) {
+  const { tone = "inherit", size = 20, className, ...rest } = p;
+  const paint = lockPaint(tone);
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={paint}
+      className={className}
+      aria-hidden
+      data-lock-tone={tone}
+      data-lock-state="unlocked"
+      {...rest}
+    >
+      <rect x="5" y="11" width="14" height="10.25" rx="2.25" />
+      {/*
+        Open shackle: free left post ends above the body; right post seats
+        into the left-center of the body top (ToS offset, not centered arch).
+      */}
+      <path
+        d="M6.35 9.55V7.85A3.85 3.85 0 0 1 14.1 8.05V11.2"
+        fill="none"
+        stroke={paint}
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Convenience: pick locked / unlocked glyph from a boolean. */
+export function IconLockState({
+  locked,
+  ...rest
+}: IconLockProps & { locked: boolean }) {
+  return locked ? <IconLock {...rest} /> : <IconUnlock {...rest} />;
 }
 
 export function IconPlay(p: IconProps) {

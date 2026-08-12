@@ -26,6 +26,7 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconChevronUp,
+  IconLock,
   IconTrash,
 } from "@/components/ui";
 
@@ -552,10 +553,11 @@ export default function CourseTabs({ course }: { course: CourseDetail }) {
                                   </span>
                                 ) : (
                                   <span
+                                    className="inline-flex text-[var(--color-label-tertiary)]"
                                     aria-label="Members only"
                                     title="Members only"
                                   >
-                                    🔒
+                                    <IconLock size={14} tone="inherit" />
                                   </span>
                                 )}
                               </span>

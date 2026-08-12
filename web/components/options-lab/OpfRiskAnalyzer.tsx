@@ -16,7 +16,10 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useOptionsLab } from "@/lib/optionsLabContext";
-import { loadAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
+import {
+  clearAnalyzerTrade,
+  loadAnalyzerTrade,
+} from "@/lib/options-lab/analyzerTrade";
 import {
   createPriceAlert,
   evaluateAlerts,
@@ -27,7 +30,6 @@ import {
   positionFromInput,
   saveAlerts,
   savePositions,
-  isOptionPointerExpired,
   setCardDirection,
   setCardExpiration,
   shiftCardStrikes,
@@ -65,6 +67,7 @@ import PnLChart, {
   type PriceAlertType,
 } from "@/components/options-lab/risk-graph/PnLChart";
 import { useSmoothNumber } from "@/lib/useSmoothValue";
+import { resolveViewportFocusPolicy } from "@/lib/options-lab/cardDisplayState";
 
 /** Analyzer viewport modes — Surface is in-viewport, not a suite app (AZ-VP-S1). */
 type AnalyzerViewportMode = "risk" | "surface";
@@ -120,6 +123,8 @@ export default function OpfRiskAnalyzer() {
   const [simSpotPct, setSimSpotPct] = useState(0);
 
   const [positions, setPositions] = useState<AnalyzerPosition[]>([]);
+  /** Skip persist until session book is loaded — avoids saving [] over real book. */
+  const [bookHydrated, setBookHydrated] = useState(false);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -131,6 +136,8 @@ export default function OpfRiskAnalyzer() {
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
   positionsRef.current = positions;
+  /** Handoff payloads already applied this session (savedAt) — never re-mint. */
+  const consumedHandoffAt = useRef<Set<number>>(new Set());
 
   /** Draggable book height (px) — viewport takes the rest. */
   const [bookHeightPx, setBookHeightPx] = useState(BOOK_H_DEFAULT);
@@ -207,13 +214,18 @@ export default function OpfRiskAnalyzer() {
   useEffect(() => {
     setPositions(loadPositions());
     setAlerts(loadAlerts());
+    setBookHydrated(true);
   }, []);
   useEffect(() => {
+    // Never persist the pre-hydrate empty default — that wiped the book and
+    // fought the user after delete+reload races with handoff re-ingest.
+    if (!bookHydrated) return;
     savePositions(positions);
-  }, [positions]);
+  }, [positions, bookHydrated]);
   useEffect(() => {
+    if (!bookHydrated) return;
     saveAlerts(alerts);
-  }, [alerts]);
+  }, [alerts, bookHydrated]);
   useEffect(() => {
     let cancelled = false;
     const tick = () => {
@@ -222,7 +234,10 @@ export default function OpfRiskAnalyzer() {
       });
     };
     tick();
-    const id = window.setInterval(tick, 30_000);
+    // Faster while Held/Closed so open → Live is noticed within ~10s of the bell
+    // (not stuck on 30s with pre-open marks). Live can poll slower.
+    const intervalMs = 10_000;
+    const id = window.setInterval(tick, intervalMs);
     return () => {
       cancelled = true;
       window.clearInterval(id);
@@ -231,43 +246,60 @@ export default function OpfRiskAnalyzer() {
 
   const sessionHeld = posture === "Held" || posture === "Closed";
 
-  /** Heatmap handoff → book card (never a ToS paste viewport path). */
-  const ingestHandoffRaw = useCallback((raw: string, source: string) => {
-    const parsed = parseTosScript(raw);
-    if (!parsed) {
-      setBookNotice("Handoff could not be parsed into a position card.");
-      return;
-    }
-    const input = parsedTradeToPositionInput(parsed);
-    const pos = positionFromInput(input);
-    pos.label = buildLabel(input.underlying, input.legs, input.expiration);
-    pos.notation = buildNotation(input.legs);
-    setPositions((prev) => [pos, ...prev]);
-    setFocusedId(pos.id);
-    if (parsed.symbol) {
-      const known = universe.some((u) => u.symbol === parsed.symbol);
-      if (known) setSymbol(parsed.symbol);
-    }
-    setBookNotice(
-      source === "heatmap"
-        ? `Heatmap → book: ${pos.label}`
-        : `Added to book: ${pos.label}`,
-    );
-  }, [universe, setSymbol]);
+  /**
+   * Heatmap / suite handoff → one book card.
+   * Payload is consumed (cleared) so remount / re-nav does not re-create cards
+   * the member already deleted.
+   */
+  const ingestHandoffRaw = useCallback(
+    (raw: string, source: string, savedAt?: number) => {
+      if (savedAt != null && consumedHandoffAt.current.has(savedAt)) {
+        clearAnalyzerTrade();
+        return;
+      }
+      const parsed = parseTosScript(raw);
+      if (!parsed) {
+        setBookNotice("Handoff could not be parsed into a position card.");
+        clearAnalyzerTrade();
+        return;
+      }
+      const input = parsedTradeToPositionInput(parsed);
+      const pos = positionFromInput(input);
+      pos.label = buildLabel(input.underlying, input.legs, input.expiration);
+      pos.notation = buildNotation(input.legs);
+      setPositions((prev) => [pos, ...prev]);
+      setFocusedId(pos.id);
+      if (parsed.symbol) {
+        const known = universe.some((u) => u.symbol === parsed.symbol);
+        if (known) setSymbol(parsed.symbol);
+      }
+      setBookNotice(
+        source === "heatmap"
+          ? `Heatmap → book: ${pos.label}`
+          : `Added to book: ${pos.label}`,
+      );
+      if (savedAt != null) consumedHandoffAt.current.add(savedAt);
+      // One-shot: book is SoR after ingest; pending trade must not respawn cards.
+      clearAnalyzerTrade();
+    },
+    [universe, setSymbol],
+  );
 
   useEffect(() => {
+    if (!bookHydrated) return;
+    // Live handoff events: apply once, then clear storage (see ingestHandoffRaw).
     const onEvt = () => {
       const s = loadAnalyzerTrade();
-      if (s?.raw) ingestHandoffRaw(s.raw, s.source || "handoff");
+      if (s?.raw) ingestHandoffRaw(s.raw, s.source || "handoff", s.savedAt);
     };
-    // Consume any pending handoff once on mount
+    // Mount: only auto-apply pending heatmap sends (not stale paste leftovers).
     const pending = loadAnalyzerTrade();
     if (pending?.raw && pending.source === "heatmap") {
-      ingestHandoffRaw(pending.raw, "heatmap");
+      ingestHandoffRaw(pending.raw, "heatmap", pending.savedAt);
     }
     window.addEventListener("ft-analyzer-trade", onEvt);
     return () => window.removeEventListener("ft-analyzer-trade", onEvt);
-  }, [ingestHandoffRaw]);
+  }, [bookHydrated, ingestHandoffRaw]);
 
   // Viewport = selected visible book card only (no ToS paste definition)
   const focused = useMemo(() => {
@@ -303,7 +335,7 @@ export default function OpfRiskAnalyzer() {
     }
   }, [trade?.symbol, symbol, universe, setSymbol]);
 
-  // Book position exps to keep warm for live package quotes
+  // Keep OPF ladders warm even with an empty book (Create dialog must hydrate)
   const warmExps = useMemo(() => {
     const s = new Set<string>();
     for (const p of positions) {
@@ -312,13 +344,27 @@ export default function OpfRiskAnalyzer() {
         if (l.expiration) s.add(l.expiration);
       }
     }
-    return [...s];
+    // Always warm session calendar when Create may open with no cards
+    const today = new Date().toISOString().slice(0, 10);
+    s.add(today);
+    return [...s].filter(Boolean);
   }, [positions]);
 
   const chain = useBuilderChain(symbol, warmExps, true);
 
+  // When Builder opens, force OPF refresh so Create is never a dead panel
+  useEffect(() => {
+    if (!builderOpen) return;
+    chain.refresh();
+    for (const e of chain.expirations) chain.ensureExpiration(e);
+  }, [builderOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const onPackageUpdate = useCallback((id: string, next: AnalyzerPosition) => {
-    setPositions((prev) => prev.map((p) => (p.id === id ? next : p)));
+    setPositions((prev) => {
+      // Do not re-insert a deleted id (stale quote completions).
+      if (!prev.some((p) => p.id === id)) return prev;
+      return prev.map((p) => (p.id === id ? next : p));
+    });
   }, []);
 
   const spotOverride = useMemo(() => {
@@ -365,7 +411,7 @@ export default function OpfRiskAnalyzer() {
     enabled: !!trade && !(trade && focused && !focused.visible),
   });
 
-  usePackageQuotes({
+  const { refreshForMarketOpen } = usePackageQuotes({
     positions,
     sessionHeld,
     enabled: true,
@@ -374,6 +420,27 @@ export default function OpfRiskAnalyzer() {
     // OPF/chain listed calendar — bind step 1 membership
     listedExpirations: chain.expirations,
   });
+
+  // Stable open-handlers (risk.refresh is recreated each render)
+  const chainRefreshRef = useRef(chain.refresh);
+  chainRefreshRef.current = chain.refresh;
+  const riskRefreshRef = useRef(risk.refresh);
+  riskRefreshRef.current = risk.refresh;
+  const marketOpenRefreshRef = useRef(refreshForMarketOpen);
+  marketOpenRefreshRef.current = refreshForMarketOpen;
+
+  // Plane Held/Closed → Live: rebuild OPF chain + risk graph + package marks
+  const prevPostureRef = useRef(posture);
+  useEffect(() => {
+    const prev = prevPostureRef.current;
+    prevPostureRef.current = posture;
+    if (prev === posture) return;
+    if (posture !== "Live") return;
+    if (prev !== "Held" && prev !== "Closed") return;
+    chainRefreshRef.current();
+    riskRefreshRef.current();
+    void marketOpenRefreshRef.current();
+  }, [posture]);
 
   // Outlook epoch stale when generation moves while pinned
   useEffect(() => {
@@ -422,23 +489,42 @@ export default function OpfRiskAnalyzer() {
   };
 
   const simSpot = displaySpot * (1 + simSpotPct / 100);
-  const incompleteFocus =
-    focused?.visible &&
-    (focused.liveState === "incomplete" || focused.liveState === "skewed");
-  /** MSC: visible + pointer past settlement → ghost (dashed grey at-expiry). */
-  const focusExpiredVisible = useMemo(() => {
-    if (!focused?.visible) return false;
-    const exp =
-      focused.position.expiration ||
-      focused.position.legs[0]?.expiration ||
-      "";
-    return isOptionPointerExpired(exp);
-  }, [focused]);
-  const hasCurves =
-    !!trade &&
-    !incompleteFocus &&
+  /**
+   * OT-EF viewport policy: named state + no fabricated live curve.
+   * Never replace the graph shell with cryptic PB-VIEW-6 copy.
+   */
+  const viewportFocus = useMemo(
+    () =>
+      resolveViewportFocusPolicy(focused, {
+        sessionHeld,
+      }),
+    [focused, sessionHeld],
+  );
+  const curveMode = viewportFocus?.curveMode ?? (trade ? "live" : "empty");
+  const focusExpiredVisible = curveMode === "expired_ghost";
+  /** Live package series only when Law B says price is representable. */
+  const drawLiveCurves = curveMode === "live";
+  /** ATM for empty shell — chain/risk/spot field, never 0 */
+  const axisSpot = useMemo(() => {
+    if (displaySpot > 0) return displaySpot;
+    if (risk.spot != null && risk.spot > 0) return risk.spot;
+    if (chain.spot != null && chain.spot > 0) return chain.spot;
+    const n = Number(spotStr);
+    if (Number.isFinite(n) && n > 0) return n;
+    // Product-ish defaults so grid still paints before first mark
+    const s = (symbol || "SPX").toUpperCase();
+    if (s === "SPX" || s === "XSP") return 6000;
+    if (s === "NDX" || s.startsWith("NQ")) return 21000;
+    if (s === "RUT") return 2200;
+    return 100;
+  }, [displaySpot, risk.spot, chain.spot, spotStr, symbol]);
+  const hasLiveSeries =
+    drawLiveCurves &&
     risk.expirationPoints.length > 0 &&
-    (focusExpiredVisible || risk.theoreticalPoints.length > 0);
+    risk.theoreticalPoints.length > 0;
+  const hasGhostSeries =
+    focusExpiredVisible && risk.expirationPoints.length > 0;
+  const hasCurves = hasLiveSeries || hasGhostSeries;
 
   const alertLines = useMemo(
     () =>
@@ -1018,30 +1104,33 @@ export default function OpfRiskAnalyzer() {
               </>
             )}
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
             {viewportMode === "surface" ? (
               <SurfaceViewport
-                hasTrade={!!trade && !incompleteFocus}
+                hasTrade={!!trade && drawLiveCurves}
                 symbol={trade?.symbol || symbol}
                 packLabel={activeModel.label}
                 loading={risk.loading}
                 error={risk.error}
+                notice={viewportFocus?.notice ?? null}
               />
-            ) : incompleteFocus ? (
-              <div className="flex h-full min-h-[120px] items-center justify-center px-6 text-center text-sm text-amber-400/90">
-                Incomplete or skewed package — no fabricated curve (PB-VIEW-6).
-                Wait for dual-side generations or fix legs.
-              </div>
-            ) : hasCurves ? (
-              <div className="h-full min-h-0 w-full">
+            ) : (
+              <div
+                className="relative h-full min-h-[240px] w-full"
+                data-testid="analyzer-risk-viewport"
+                data-curve-mode={curveMode}
+              >
                 <PnLChart
                   ref={chartRef}
-                  /* MSC expired ghost: live series off; at-expiry dashed grey only */
+                  /*
+                   * OT-EF / PB-VIEW-6: never fabricate a live package curve.
+                   * Minimal state = scales + grid (always). Curves optional.
+                   */
                   expirationData={
-                    focusExpiredVisible ? [] : risk.expirationPoints
+                    drawLiveCurves ? risk.expirationPoints : []
                   }
                   theoreticalData={
-                    focusExpiredVisible ? [] : risk.theoreticalPoints
+                    drawLiveCurves ? risk.theoreticalPoints : []
                   }
                   expiredExpirationData={
                     focusExpiredVisible ? risk.expirationPoints : []
@@ -1050,29 +1139,37 @@ export default function OpfRiskAnalyzer() {
                   theoreticalStroke="#e879f9"
                   theoreticalLegendLabel={
                     focusExpiredVisible
-                      ? "Expired ghost (at-expiry)"
+                      ? "Expired · at-expiry residual"
                       : activeModel.theoLegend +
                         (sessionHeld ? " · held" : "")
                   }
-                  spotPrice={displaySpot > 0 ? displaySpot : 1}
+                  spotPrice={axisSpot}
                   spotIndicatorPrice={
                     timeMachineEnabled && simSpot > 0 ? simSpot : undefined
                   }
                   expirationBreakevens={
-                    focusExpiredVisible ? [] : risk.expirationBreakevens
+                    drawLiveCurves ? risk.expirationBreakevens : []
                   }
                   theoreticalBreakevens={
-                    focusExpiredVisible ? [] : risk.theoreticalBreakevens
+                    drawLiveCurves ? risk.theoreticalBreakevens : []
                   }
-                  strikes={risk.allStrikes}
+                  strikes={
+                    drawLiveCurves || focusExpiredVisible
+                      ? risk.allStrikes
+                      : []
+                  }
                   alertLines={alertLines}
                   onOpenAlertDialog={onOpenAlertDialog}
-                  positionLabels={positions
-                    .filter((p) => p.visible)
-                    .map((p) => ({
-                      id: p.id,
-                      strikesLabel: p.notation,
-                    }))}
+                  positionLabels={
+                    drawLiveCurves || focusExpiredVisible
+                      ? positions
+                          .filter((p) => p.visible)
+                          .map((p) => ({
+                            id: p.id,
+                            strikesLabel: p.notation,
+                          }))
+                      : []
+                  }
                   onPositionAlertSelect={(positionId, price) => {
                     const a = createPriceAlert({
                       type: "price_touch",
@@ -1083,22 +1180,75 @@ export default function OpfRiskAnalyzer() {
                     setAlerts((prev) => [a, ...prev]);
                   }}
                 />
-              </div>
-            ) : (
-              <div className="flex h-full min-h-[120px] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-white/40">
-                {trade && risk.loading ? (
-                  <span>OPF resolve · generation apply…</span>
-                ) : trade && risk.error ? (
-                  <span className="text-amber-400/90">{risk.error}</span>
-                ) : (
-                  <span>
-                    Select a{" "}
-                    <strong className="text-white/60">position</strong> in the
-                    book, or open{" "}
-                    <strong className="text-white/60">Builder</strong>.
-                    Right-click graph for alerts.
-                  </span>
-                )}
+                {/* Centered notice over grid — translucent so scales stay readable */}
+                {viewportFocus?.notice ? (
+                  <div
+                    className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4"
+                    data-testid="analyzer-viewport-notice"
+                    data-notice-kind={viewportFocus.display.kind}
+                  >
+                    <div className="max-w-sm rounded-2xl border border-white/15 bg-black/40 px-5 py-4 text-center shadow-[var(--elevation-2)] backdrop-blur-sm">
+                      <div className="text-[13px] font-semibold tracking-wide text-white/90">
+                        {viewportFocus.notice.title}
+                      </div>
+                      <p className="mt-1.5 text-[12px] leading-snug text-white/60">
+                        {viewportFocus.notice.detail}
+                      </p>
+                    </div>
+                  </div>
+                ) : !hasCurves && trade && risk.loading ? (
+                  <div
+                    className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4"
+                    data-testid="analyzer-viewport-notice"
+                    data-notice-kind="updating"
+                  >
+                    <div className="max-w-sm rounded-2xl border border-white/15 bg-black/40 px-5 py-4 text-center backdrop-blur-sm">
+                      <div className="text-[13px] font-semibold tracking-wide text-white/90">
+                        UPDATING
+                      </div>
+                      <p className="mt-1.5 text-[12px] leading-snug text-white/60">
+                        Building the risk graph for this structure. Scales stay
+                        up while marks settle.
+                      </p>
+                    </div>
+                  </div>
+                ) : !hasCurves && trade && risk.error ? (
+                  <div
+                    className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4"
+                    data-testid="analyzer-viewport-notice"
+                    data-notice-kind="check_legs"
+                  >
+                    <div className="max-w-sm rounded-2xl border border-white/15 bg-black/40 px-5 py-4 text-center backdrop-blur-sm">
+                      <div className="text-[13px] font-semibold tracking-wide text-white/90">
+                        CHECK LEGS
+                      </div>
+                      <p className="mt-1.5 text-[12px] leading-snug text-white/60">
+                        Could not draw a package curve yet. Confirm every leg is
+                        on a listed strike and try again.
+                      </p>
+                    </div>
+                  </div>
+                ) : !focused && !trade ? (
+                  <div
+                    className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4"
+                    data-testid="analyzer-viewport-notice"
+                    data-notice-kind="empty_book"
+                  >
+                    <div className="max-w-sm rounded-2xl border border-white/12 bg-black/35 px-5 py-3.5 text-center backdrop-blur-sm">
+                      <p className="text-[12px] leading-snug text-white/55">
+                        Select a{" "}
+                        <strong className="font-semibold text-white/75">
+                          position
+                        </strong>{" "}
+                        or open{" "}
+                        <strong className="font-semibold text-white/75">
+                          Builder
+                        </strong>
+                        . Right-click the graph for alerts.
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>

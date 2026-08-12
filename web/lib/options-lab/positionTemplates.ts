@@ -35,6 +35,10 @@ export function verticalLegs(
   ];
 }
 
+/**
+ * Long iron condor (debit-native): buy inners, sell wings.
+ * Call legs first (ToS). flipLegs → short iron condor (credit tent).
+ */
 export function ironCondorLegs(
   putLow: number,
   putHigh: number,
@@ -42,10 +46,10 @@ export function ironCondorLegs(
   callHigh: number,
 ): LegInput[] {
   return [
-    { strike: putLow, type: "put", quantity: 1, side: "long", entry_price: 0 },
-    { strike: putHigh, type: "put", quantity: 1, side: "short", entry_price: 0 },
-    { strike: callLow, type: "call", quantity: 1, side: "short", entry_price: 0 },
-    { strike: callHigh, type: "call", quantity: 1, side: "long", entry_price: 0 },
+    { strike: callLow, type: "call", quantity: 1, side: "long", entry_price: 0 },
+    { strike: callHigh, type: "call", quantity: 1, side: "short", entry_price: 0 },
+    { strike: putHigh, type: "put", quantity: 1, side: "long", entry_price: 0 },
+    { strike: putLow, type: "put", quantity: 1, side: "short", entry_price: 0 },
   ];
 }
 
@@ -96,12 +100,16 @@ export function strangleLegs(center: number, width: number): LegInput[] {
   ];
 }
 
+/**
+ * Long iron fly (debit-native): buy body, sell wings.
+ * Call legs first (ToS). flipLegs → short iron fly (credit tent).
+ */
 export function ironFlyLegs(center: number, width: number): LegInput[] {
   return [
-    { strike: center - width, type: "put", quantity: 1, side: "long", entry_price: 0 },
-    { strike: center, type: "put", quantity: 1, side: "short", entry_price: 0 },
-    { strike: center, type: "call", quantity: 1, side: "short", entry_price: 0 },
-    { strike: center + width, type: "call", quantity: 1, side: "long", entry_price: 0 },
+    { strike: center, type: "call", quantity: 1, side: "long", entry_price: 0 },
+    { strike: center + width, type: "call", quantity: 1, side: "short", entry_price: 0 },
+    { strike: center, type: "put", quantity: 1, side: "long", entry_price: 0 },
+    { strike: center - width, type: "put", quantity: 1, side: "short", entry_price: 0 },
   ];
 }
 

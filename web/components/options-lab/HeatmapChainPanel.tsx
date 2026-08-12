@@ -39,6 +39,11 @@ import {
   fmtGexProfile,
   gexProfileScale,
 } from "@/lib/options-lab/templates/gex";
+import { buildDebitCellMap } from "@/lib/options-lab/templates/symFly";
+import {
+  getFlyHistory,
+  seamFlyHistory,
+} from "@/lib/options-lab/templates/flySurfaceHistory";
 import type {
   BwWingSide,
   ChainContext,
@@ -294,6 +299,11 @@ export default function HeatmapChainPanel() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const presentKeyRef = useRef<string>("");
   const centerOnPresentRef = useRef(true);
+  /** AF10 — track market-plane Live transition for history seam */
+  const prevSessionOpenRef = useRef<boolean | null>(null);
+  const lastPushedHashRef = useRef<string | null>(null);
+  /** Bump when fly history mutates so matrix re-reads lag samples */
+  const [flyHistRev, setFlyHistRev] = useState(0);
 
   const bus = useOptionChainBus({
     symbol,
@@ -304,6 +314,25 @@ export default function HeatmapChainPanel() {
   });
 
   const tpl = getTemplate(templateId);
+
+  // AF10 / AF11 — seam history on plane identity
+  useEffect(() => {
+    if (!symbol || !expiration) return;
+    seamFlyHistory(symbol, expiration, wings);
+    lastPushedHashRef.current = null;
+    setFlyHistRev((n) => n + 1);
+  }, [symbol, expiration, wings]);
+
+  useEffect(() => {
+    const open = bus.sessionOpen;
+    const prev = prevSessionOpenRef.current;
+    prevSessionOpenRef.current = open;
+    if (prev === false && open === true && symbol && expiration) {
+      seamFlyHistory(symbol, expiration, wings);
+      lastPushedHashRef.current = null;
+      setFlyHistRev((n) => n + 1);
+    }
+  }, [bus.sessionOpen, symbol, expiration, wings]);
 
   useEffect(() => {
     // Reset value mode when template changes
@@ -473,6 +502,11 @@ export default function HeatmapChainPanel() {
     [profile, chainCtx.strikeStep, bus.strikeStep],
   );
 
+  const flyHistory =
+    templateId === "sym-fly" && symbol && expiration
+      ? getFlyHistory(symbol, expiration, wings)
+      : null;
+
   const templateParams: TemplateParams = useMemo(
     () => ({
       valueMode,
@@ -482,15 +516,63 @@ export default function HeatmapChainPanel() {
       gradientThreshold: DEFAULT_GRADIENT_THRESHOLD,
       bwStrikeCount,
       bwWingSide,
+      flyHistory: flyHistory,
+      flyLiveAsOf: bus.asOf,
+      flyLiveReceivedAt: Date.now(),
     }),
-    [valueMode, stickyScale, bwStrikeCount, bwWingSide, flyWidths],
+    [
+      valueMode,
+      stickyScale,
+      bwStrikeCount,
+      bwWingSide,
+      flyWidths,
+      flyHistory,
+      bus.asOf,
+      flyHistRev,
+    ],
   );
 
   const matrix = useMemo(() => {
     if (tpl.layout !== "matrix") return null;
-    const g = buildGrid(tpl, chainCtx, templateParams);
-    return g;
-  }, [tpl, chainCtx, templateParams]);
+    return buildGrid(tpl, chainCtx, templateParams);
+  }, [tpl, chainCtx, templateParams, flyHistRev]);
+
+  // Push debit grid once per generation (not per value-mode paint)
+  useEffect(() => {
+    if (tpl.id !== "sym-fly" || !flyHistory || !symbol || !expiration) return;
+    if (!bus.hash && !bus.asOf) return;
+    const genKey = `${bus.hash ?? ""}|${bus.asOf ?? ""}`;
+    if (lastPushedHashRef.current === genKey) return;
+    if (tpl.layout !== "matrix") return;
+    const cols = tpl.resolveColumns(chainCtx, templateParams);
+    const rows = tpl.resolveRows(chainCtx, templateParams);
+    if (!rows.length || !cols.length) return;
+    const cells = buildDebitCellMap(chainCtx, rows, cols);
+    const ok = flyHistory.push({
+      asOf: bus.asOf,
+      contentHash: bus.hash,
+      receivedAt: Date.now(),
+      cells,
+    });
+    if (!ok) {
+      flyHistory.seam();
+      lastPushedHashRef.current = null;
+      setFlyHistRev((n) => n + 1);
+    } else {
+      // Do not bump flyHistRev — next generation still sees this snap as lag-0.
+      // Re-paint with history[0]===live would zero-out tick Δ.
+      lastPushedHashRef.current = genKey;
+    }
+  }, [
+    tpl,
+    flyHistory,
+    symbol,
+    expiration,
+    chainCtx,
+    templateParams,
+    bus.hash,
+    bus.asOf,
+  ]);
 
   const gexProfile = useMemo(() => {
     if (tpl.layout !== "profile" || tpl.id !== "gex") return null;

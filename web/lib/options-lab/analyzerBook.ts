@@ -77,6 +77,13 @@ export type AnalyzerPosition = {
   notation: string;
   position: PositionInput;
   status: AnalyzerTradeStatus;
+  /**
+   * OPF package mark mode (pre-open held/theo vs live NBBO).
+   * When set to pre_open_*, UI must show markDisclaimer.
+   */
+  markMode?: string | null;
+  /** OPF member disclaimer — theoretical until market opens */
+  markDisclaimer?: string | null;
   /** From OPF PackageQuote when unlocked live; basis magnitude when locked */
   livePackagePerShare: number | null;
   /** Signed natural from last OPF quote (for lock natural / parity) */
@@ -177,6 +184,12 @@ export function loadPositions(): AnalyzerPosition[] {
 export function savePositions(positions: AnalyzerPosition[]): void {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(POS_KEY, JSON.stringify(positions));
+  // Drop legacy key so an empty book is not re-hydrated from v1 after delete.
+  try {
+    sessionStorage.removeItem("ft_options_lab_analyzer_positions_v1");
+  } catch {
+    /* ignore */
+  }
 }
 
 export function positionFromInput(input: PositionInput): AnalyzerPosition {
@@ -237,8 +250,21 @@ function sameCardPricing(a: AnalyzerPosition, b: AnalyzerPosition): boolean {
     a.displayAsOf === b.displayAsOf &&
     a.maxSkewMs === b.maxSkewMs &&
     a.epochQuality === b.epochQuality &&
+    (a.markMode ?? null) === (b.markMode ?? null) &&
+    (a.markDisclaimer ?? null) === (b.markDisclaimer ?? null) &&
     JSON.stringify(a.contentHashes) === JSON.stringify(b.contentHashes)
   );
+}
+
+/** True when the card is still on pre-open / held marks (not market-truth NBBO). */
+export function cardNeedsMarketTruth(pos: AnalyzerPosition): boolean {
+  if (!pos.visible) return false;
+  if (typeof pos.markMode === "string" && pos.markMode.startsWith("pre_open")) {
+    return true;
+  }
+  if (pos.markMode === "mixed") return true;
+  if (pos.liveState === "held") return true;
+  return false;
 }
 
 /**
@@ -280,6 +306,9 @@ export function applyPackageQuote(
     as_of?: string | null;
     error?: string | null;
     skew_fail?: boolean;
+    mark_mode?: string | null;
+    mark_disclaimer?: string | null;
+    basis_source?: string | null;
   },
   opts?: { sessionHeld?: boolean; interestOk?: boolean },
 ): AnalyzerPosition {
@@ -326,6 +355,8 @@ export function applyPackageQuote(
       displayAsOf: quote.as_of ?? pos.displayAsOf,
       maxSkewMs: quote.max_skew_ms ?? null,
       epochQuality: quote.epoch_quality ?? null,
+      markMode: quote.mark_mode ?? null,
+      markDisclaimer: quote.mark_disclaimer ?? null,
       // keep last bind snapshot if present
     });
   }
@@ -340,6 +371,17 @@ export function applyPackageQuote(
     }
   }
 
+  const markMode = quote.mark_mode ?? null;
+  const markDisclaimer = quote.mark_disclaimer ?? null;
+  // Pre-open OPF marks are held/theo even if wall clock session later opens
+  const preOpen =
+    typeof markMode === "string" && markMode.startsWith("pre_open");
+  const liveState: LiveState = preOpen
+    ? "held"
+    : sessionHeld
+      ? "held"
+      : "live";
+
   if (pos.lock.mode === "locked") {
     const dStar = pos.lock.packageDebitPerShare;
     return finish({
@@ -347,11 +389,13 @@ export function applyPackageQuote(
       lastNatSigned: nat,
       livePackagePerShare: Math.abs(dStar),
       priceSide: dStar > 0 ? "debit" : dStar < 0 ? "credit" : pos.priceSide,
-      liveState: sessionHeld ? "held" : "live",
+      liveState,
       displayAsOf: asOf,
       contentHashes: hashes,
       maxSkewMs: quote.max_skew_ms ?? null,
       epochQuality: quote.epoch_quality ?? null,
+      markMode,
+      markDisclaimer,
       // Successful OPF package implies bindable at quote time
       bind: pos.bind
         ? { ...pos.bind, bindable: true, failedCount: 0, summary: "bound" }
@@ -365,11 +409,13 @@ export function applyPackageQuote(
     livePackagePerShare: Math.abs(nat),
     // OPF package_debit_per_share: +debit / −credit
     priceSide: nat > 0 ? "debit" : nat < 0 ? "credit" : null,
-    liveState: sessionHeld ? "held" : "live",
+    liveState,
     displayAsOf: asOf,
     contentHashes: hashes,
     maxSkewMs: quote.max_skew_ms ?? null,
     epochQuality: quote.epoch_quality ?? null,
+    markMode,
+    markDisclaimer,
     bind: pos.bind
       ? { ...pos.bind, bindable: true, failedCount: 0, summary: "bound" }
       : pos.bind,

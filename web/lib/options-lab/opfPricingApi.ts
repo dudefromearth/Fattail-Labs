@@ -80,6 +80,7 @@ export function ladderToOpfGeneration(
     mid: r.mid ?? null,
     bid: r.bid ?? null,
     ask: r.ask ?? null,
+    mid_source: r.mid_source ?? null,
     iv: r.iv ?? null,
     delta: r.delta ?? null,
     expiration: ladder.expiration,
@@ -189,6 +190,10 @@ export type OpfPackageQuoteResult = {
   package_debit_per_share?: number | null;
   basis_debit_per_share?: number | null;
   basis_source?: string;
+  /** live | pre_open_held | pre_open_theo | pre_open_mixed | mixed | incomplete */
+  mark_mode?: string | null;
+  /** Member disclaimer when marks are not live NBBO */
+  mark_disclaimer?: string | null;
   max_skew_ms?: number | null;
   epoch_quality?: string | null;
   generations_used?: Record<

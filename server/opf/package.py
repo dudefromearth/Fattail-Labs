@@ -111,6 +111,11 @@ class PackagePricer:
             d_basis = lock.package_debit_per_share
             basis_source = lock.lock_source
 
+        # Pre-open / held / theo package labeling (OPF mark SoR)
+        mark_mode, mark_disclaimer, pre_open_basis = _package_mark_mode(leg_marks)
+        if complete and (lock is None or lock.mode != "locked") and pre_open_basis:
+            basis_source = pre_open_basis
+
         packages = float(intent.packages or 1.0)
         mark_dollars = None
         if d_basis is not None and complete:
@@ -124,6 +129,8 @@ class PackagePricer:
             "package_debit_per_share": d_nat if complete else None,
             "basis_debit_per_share": d_basis if (complete or (lock and lock.mode == "locked")) else None,
             "basis_source": basis_source,
+            "mark_mode": mark_mode,
+            "mark_disclaimer": mark_disclaimer,
             "mark_dollars": mark_dollars,
             "packages": packages,
             "leg_marks": leg_marks,
@@ -134,3 +141,60 @@ class PackagePricer:
             "pnl_unit": "usd_per_package_set",
             "error": None if complete else f"incomplete legs: {marks_sum.get('missing_legs')}",
         }
+
+
+def _package_mark_mode(
+    leg_marks: list[dict[str, Any]],
+) -> tuple[str, str | None, str | None]:
+    """Aggregate leg mark_source → package mark_mode + member disclaimer.
+
+    Returns (mark_mode, disclaimer|None, basis_source override|None).
+    """
+    sources = [
+        str(m.get("mark_source") or "missing")
+        for m in leg_marks
+        if m.get("mid") is not None
+    ]
+    if not sources:
+        return "incomplete", None, None
+
+    unique = set(sources)
+    if unique == {"nbbo"}:
+        return "live", None, "natural_mid"
+
+    held = {"last_trade", "day_close"}
+    theo = {"theo_bs"}
+    non_live = unique - {"nbbo"}
+
+    if non_live and not (unique & {"nbbo"}):
+        if non_live <= held:
+            mode = "pre_open_held"
+            basis = "pre_open_held"
+            disclaimer = (
+                "Theoretical package until the market opens — marks are last-session "
+                "held prices (last trade / prior close), not live NBBO."
+            )
+        elif non_live <= theo or (non_live & theo):
+            mode = "pre_open_theo"
+            basis = "pre_open_theo"
+            disclaimer = (
+                "Theoretical package until the market opens — marks use model pricing "
+                "(and/or last-session evidence) because live option quotes are not available."
+            )
+        else:
+            mode = "pre_open_mixed"
+            basis = "pre_open_mixed"
+            disclaimer = (
+                "Theoretical package until the market opens — combination of held and "
+                "model marks; not live NBBO."
+            )
+        return mode, disclaimer, basis
+
+    # Mix of live + held/theo
+    if non_live:
+        return (
+            "mixed",
+            "Some legs use pre-open held/model marks — not a pure live NBBO package.",
+            "pre_open_mixed",
+        )
+    return "live", None, "natural_mid"

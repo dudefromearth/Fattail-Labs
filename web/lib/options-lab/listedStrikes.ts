@@ -36,6 +36,9 @@ export function uniqueListedStrikes(
 /**
  * Snap target to nearest listed strike.
  * Returns null when the ladder is empty (caller must not invent).
+ *
+ * Tie-break: when two listed strikes are equidistant, prefer the **lower**
+ * strike (stable, deterministic — matches common ATM convention on even grids).
  */
 export function snapToListed(
   target: number,
@@ -45,14 +48,30 @@ export function snapToListed(
   const t = normalizeStrike(target);
   let best = listed[0];
   let bestD = Math.abs(best - t);
-  for (const s of listed) {
+  for (let i = 1; i < listed.length; i++) {
+    const s = listed[i];
     const d = Math.abs(s - t);
-    if (d < bestD) {
+    if (d < bestD || (d === bestD && s < best)) {
       best = s;
       bestD = d;
     }
   }
   return best;
+}
+
+/**
+ * Nearest OPF-listed strike to spot (or any mark).
+ * Alias of snapToListed with explicit naming for Builder Center.
+ */
+export function nearestListedToSpot(
+  spot: number,
+  listed: readonly number[],
+): number | null {
+  if (!(spot > 0) || !Number.isFinite(spot)) {
+    if (!listed.length) return null;
+    return listed[Math.floor(listed.length / 2)];
+  }
+  return snapToListed(spot, listed);
 }
 
 export function isListedStrike(
@@ -129,11 +148,21 @@ export function listedWidthPoints(
   return Math.abs(normalizeStrike(wing - c));
 }
 
-/** Common wing widths (points) that land on listed strikes both sides of center. */
+/**
+ * Lawful wing widths (points) that land on OPF-listed strikes.
+ *
+ * Built only from the dual-side ladder around `center` — never arbitrary
+ * integers (no SPX 21/22). Symmetric widths (same listed distance both sides)
+ * are preferred; when the grid is uneven near the edge, still only listed
+ * distances appear.
+ *
+ * Example SPX 5-pt grid at ATM: 5, 10, 15, 20, …  
+ * Example 2.50-pt product: 2.5, 5, 7.5, 10, …
+ */
 export function listedWingChoices(
   center: number,
   listed: readonly number[],
-  maxChoices = 12,
+  maxChoices = 40,
 ): number[] {
   if (listed.length < 3) return [];
   const c = snapToListed(center, listed);
@@ -141,15 +170,51 @@ export function listedWingChoices(
   const idx = listed.findIndex((s) => normalizeStrike(s) === normalizeStrike(c));
   if (idx < 0) return [];
   const out: number[] = [];
-  for (let i = 1; i <= maxChoices; i++) {
+  const limit = Math.min(maxChoices, listed.length);
+  for (let i = 1; i <= limit; i++) {
     const hi = idx + i;
     const lo = idx - i;
-    if (hi >= listed.length || lo < 0) break;
-    const wHi = normalizeStrike(listed[hi] - c);
-    const wLo = normalizeStrike(c - listed[lo]);
-    // Symmetric wing preferred
-    if (wHi === wLo && wHi > 0) out.push(wHi);
-    else if (wHi > 0) out.push(wHi);
+    if (hi >= listed.length && lo < 0) break;
+    if (hi < listed.length && lo >= 0) {
+      const wHi = normalizeStrike(listed[hi] - c);
+      const wLo = normalizeStrike(c - listed[lo]);
+      // Symmetric first (true fly/condor wing)
+      if (wHi === wLo && wHi > 0) {
+        out.push(wHi);
+        continue;
+      }
+      // Both sides listed but uneven spacing — still only listed distances
+      if (wHi > 0) out.push(wHi);
+      if (wLo > 0 && wLo !== wHi) out.push(wLo);
+    } else if (hi < listed.length) {
+      const wHi = normalizeStrike(listed[hi] - c);
+      if (wHi > 0) out.push(wHi);
+    } else if (lo >= 0) {
+      const wLo = normalizeStrike(c - listed[lo]);
+      if (wLo > 0) out.push(wLo);
+    }
   }
-  return [...new Set(out)].sort((a, b) => a - b);
+  return [...new Set(out)].filter((w) => w > 0).sort((a, b) => a - b);
+}
+
+/**
+ * Snap a preferred width onto the OPF listed wing set for this center.
+ * Never returns a non-listed width when the ladder has choices.
+ */
+export function snapWidthToListed(
+  prefer: number,
+  center: number,
+  listed: readonly number[],
+): number | null {
+  const choices = listedWingChoices(center, listed, 60);
+  if (!choices.length) return null;
+  if (prefer > 0 && choices.includes(normalizeStrike(prefer))) {
+    return normalizeStrike(prefer);
+  }
+  if (!(prefer > 0)) return choices[0];
+  const atOrAbove = choices.find((c) => c >= prefer);
+  if (atOrAbove != null) return atOrAbove;
+  return choices.reduce((best, c) =>
+    Math.abs(c - prefer) < Math.abs(best - prefer) ? c : best,
+  );
 }

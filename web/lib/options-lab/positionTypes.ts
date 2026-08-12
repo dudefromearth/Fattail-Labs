@@ -40,6 +40,9 @@ export type PositionInput = {
   direction?: TradeDirection;
 };
 
+/** How contract mid was formed (pre-open held vs live NBBO). */
+export type ChainMidSource = "nbbo" | "last_trade" | "day_close";
+
 export type ChainContract = {
   strike: number;
   type: OptionRight;
@@ -48,6 +51,11 @@ export type ChainContract = {
   ask: number | null;
   iv: number | null;
   expiration: string;
+  /**
+   * nbbo = live book; last_trade / day_close = held pre-open marks.
+   * UI must disclaimer non-nbbo as theoretical until RTH open.
+   */
+  mid_source?: ChainMidSource | null;
 };
 
 export type ChainAccessors = {

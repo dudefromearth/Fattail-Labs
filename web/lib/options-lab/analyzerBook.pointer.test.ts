@@ -11,6 +11,7 @@ import {
   applyPackageQuote,
   calendarDteOf,
   cardDefinitionKey,
+  cardNeedsMarketTruth,
   cardPointerExpiration,
   cardShowsPackageMark,
   isOptionPointerExpired,
@@ -209,6 +210,42 @@ test("applyPackageQuote incomplete does not invent a mark", () => {
   );
   assert(next.liveState === "incomplete", "incomplete");
   assert(next.livePackagePerShare == null, "no invented mark");
+});
+
+test("open session: pre_open quote → live NBBO is market truth", () => {
+  let pos = positionFromInput(fly("2026-08-14"));
+  pos = applyPackageQuote(
+    pos,
+    {
+      complete: true,
+      package_debit_per_share: -16.07,
+      mark_mode: "pre_open_held",
+      mark_disclaimer: "Theoretical package until the market opens.",
+      as_of: "2026-08-12T12:00:00Z",
+    },
+    { sessionHeld: true, interestOk: true },
+  );
+  assert(pos.liveState === "held", "pre-open held");
+  assert(pos.markMode === "pre_open_held", "pre_open mode");
+  assert(cardNeedsMarketTruth(pos), "needs market truth while pre_open");
+
+  // Bell rings — sessionHeld false, OPF returns live NBBO
+  pos = applyPackageQuote(
+    pos,
+    {
+      complete: true,
+      package_debit_per_share: -15.4,
+      mark_mode: "live",
+      mark_disclaimer: null,
+      as_of: "2026-08-12T13:35:00Z",
+    },
+    { sessionHeld: false, interestOk: true },
+  );
+  assert(pos.liveState === "live", "live after open");
+  assert(pos.markMode === "live", "live mark mode");
+  assert(pos.markDisclaimer == null, "disclaimer cleared");
+  assert(!cardNeedsMarketTruth(pos), "no longer needs market truth");
+  assert(pos.livePackagePerShare === 15.4, "live package mag");
 });
 
 console.log(`\n${passed} tests passed`);

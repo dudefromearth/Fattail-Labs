@@ -18,10 +18,15 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import StrikeSelect from "@/components/options-lab/StrikeSelect";
+import Button from "@/components/ui/Button";
+import { IconLock, IconUnlock } from "@/components/ui/icons";
 import {
+  listedStepNear,
   listedWingChoices,
+  nearestListedToSpot,
   normalizeStrike,
   snapToListed,
+  snapWidthToListed,
 } from "@/lib/options-lab/listedStrikes";
 import { buildListedStructure } from "@/lib/options-lab/listedStructure";
 import {
@@ -46,6 +51,24 @@ import {
   buildNotation,
 } from "@/lib/options-lab/positionLabels";
 import { generateTosScript } from "@/lib/options-lab/tosGenerator";
+import {
+  formatShapeSummary,
+  isLabDefaultsActive,
+  labDefaultForStrategy,
+  loadCreateDefaultsStore,
+  MAX_USER_PRESETS,
+  resetToLabDefaults,
+  resolveCreateSeed,
+  saveShapeAsUserPreset,
+  setActiveCreateDefault,
+  shapeFromBuilderState,
+  type CreateDefaultsStore,
+} from "@/lib/options-lab/builderCreateDefault";
+import {
+  builderDefinitionKey,
+  resolveBuilderPlaneState,
+  type BuilderPlaneState,
+} from "@/lib/options-lab/builderAtomicState";
 
 const TEMPLATE_LABELS: Record<TemplateType, string> = {
   single: "Single",
@@ -85,6 +108,12 @@ const TEMPLATE_HAS_SIDE: Record<TemplateType, boolean> = {
   diagonal: true,
 };
 
+/**
+ * Payoff silhouettes (viewBox 0 0 60 24, y-down).
+ * All templates are **debit-native / long** shapes (Buy = green, no flip).
+ * Sell applies scaleY(-1) → short/credit tent for fly · condor · iron.
+ * Iron long = valley (same family as long strangle); Sell flips to tent.
+ */
 const STRATEGY_DIAGRAMS: Record<TemplateType, string> = {
   single: "M2,22 L58,6",
   vertical: "M2,22 L20,22 L40,6 L58,6",
@@ -93,8 +122,10 @@ const STRATEGY_DIAGRAMS: Record<TemplateType, string> = {
   condor: "M2,18 L10,18 L20,6 L40,6 L50,18 L58,18",
   straddle: "M2,6 L30,22 L58,6",
   strangle: "M2,6 L18,18 L42,18 L58,6",
-  iron_fly: "M2,6 L10,18 L30,4 L50,18 L58,6",
-  iron_condor: "M2,6 L15,18 L45,18 L58,6",
+  // Long iron fly = valley at body (debit); Sell flips → short tent
+  iron_fly: "M2,6 L12,6 L30,20 L48,6 L58,6",
+  // Long iron condor = valley plateau (debit); Sell flips → short tent
+  iron_condor: "M2,6 L10,6 L20,18 L40,18 L50,6 L58,6",
   calendar: "M2,16 L20,10 L30,6 L40,10 L58,16",
   diagonal: "M2,18 L20,12 L32,6 L44,10 L58,16",
 };
@@ -191,21 +222,27 @@ export function pickDefaultFrontExpiration(
   return sorted[sorted.length - 1] ?? sorted[0];
 }
 
-/** Snap preferred wing onto listed choices; prefer exact 20 for create. */
+/** Caption for Width row — show inferred OPF step near center. */
+function listedStepNearLabel(
+  listed: readonly number[],
+  center: number,
+): string {
+  const step = listedStepNear(listed, center);
+  if (step == null || !(step > 0)) return "";
+  return ` · step ${step}`;
+}
+
+/** Snap preferred wing onto OPF-listed choices only (symbol/grid aware). */
 function resolveCreateWingWidth(
   center: number,
   listed: number[],
   prefer: number = DEFAULT_CREATE_WING_WIDTH,
 ): number {
   if (!listed.length) return prefer;
-  const choices = listedWingChoices(center, listed, 16);
-  if (!choices.length) return prefer;
-  if (choices.includes(prefer)) return prefer;
-  // Nearest listed wing at or above prefer, else closest
-  const atOrAbove = choices.find((c) => c >= prefer);
-  if (atOrAbove != null) return atOrAbove;
-  return choices.reduce((best, c) =>
-    Math.abs(c - prefer) < Math.abs(best - prefer) ? c : best,
+  return (
+    snapWidthToListed(prefer, center, listed) ??
+    listedWingChoices(center, listed, 40)[0] ??
+    prefer
   );
 }
 
@@ -222,17 +259,29 @@ function defaultDiagonalWidth(symbol: string): number {
   return 5;
 }
 
+/** HIG form control — inset field on grouped surface */
 const field =
-  "w-full rounded-md border border-[var(--color-separator)] bg-[var(--color-surface)] " +
-  "px-2 py-1.5 text-sm text-[var(--color-label)]";
-const labelCls =
-  "mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]";
-const btn =
-  "inline-flex min-h-9 items-center justify-center rounded-full border border-[var(--color-separator)] " +
-  "bg-[var(--color-surface)] px-3 text-sm font-medium text-[var(--color-label)] hover:bg-[var(--color-fill)] disabled:opacity-45";
-const btnPrimary =
-  "inline-flex min-h-9 items-center justify-center rounded-full border border-transparent " +
-  "bg-[var(--color-tint)] px-4 text-sm font-semibold text-white disabled:opacity-45";
+  "w-full min-h-11 rounded-[var(--radius-md)] border-0 bg-transparent " +
+  "px-3 py-2.5 text-[15px] text-[var(--color-label)] outline-none " +
+  "focus-visible:bg-[var(--color-fill)]/60";
+const fieldInset =
+  "w-full min-h-11 rounded-[var(--radius-md)] border border-[var(--color-separator)] " +
+  "bg-[var(--color-surface)] px-3 py-2 text-[15px] text-[var(--color-label)] " +
+  "outline-none focus-visible:outline focus-visible:outline-2 " +
+  "focus-visible:outline-offset-1 focus-visible:outline-[var(--color-tint)]";
+const sectionLabel =
+  "px-1 pb-1.5 text-[13px] font-semibold tracking-tight text-[var(--color-label-secondary)]";
+const rowLabel =
+  "shrink-0 w-[7.5rem] text-[15px] text-[var(--color-label)]";
+const group =
+  "overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-separator)] " +
+  "bg-[var(--color-surface)] shadow-[var(--elevation-1)]";
+const groupRow =
+  "flex items-center gap-3 border-b border-[var(--color-separator)] last:border-b-0 " +
+  "bg-[var(--color-surface)] px-3 min-h-12";
+const footerBar =
+  "flex flex-wrap items-center justify-between gap-2 border-t border-[var(--color-separator)] " +
+  "bg-[var(--color-surface-secondary)]/80 px-4 py-3 backdrop-blur-md";
 
 export type PositionBuilderProps = {
   open: boolean;
@@ -250,7 +299,8 @@ export type PositionBuilderProps = {
   onCancel: () => void;
 };
 
-const PANEL_W = 780;
+/** Wide enough for full Legs table (Qty · Strike · Type · Exp · Mid · ± · IV). */
+const PANEL_W = 720;
 const PANEL_DEFAULT_OFFSET = { x: 48, y: 72 };
 
 export default function PositionBuilder({
@@ -293,11 +343,29 @@ export default function PositionBuilder({
   const [direction, setDirection] = useState<TradeDirection>("buy");
   const [optionSide, setOptionSide] = useState<OptionRight>("call");
   const [centerStrike, setCenterStrike] = useState(0);
+  /** Editable spot for nearest-listed center (defaults to OPF/underlier mark). */
+  const [userSpot, setUserSpot] = useState(0);
+  const [userSpotDirty, setUserSpotDirty] = useState(false);
+  /** True when user picked Center from dropdown (don't auto-snap until spot edits). */
+  const centerPinnedRef = useRef(false);
   const [wingWidth, setWingWidth] = useState(DEFAULT_CREATE_WING_WIDTH);
   const [backExpiration, setBackExpiration] = useState("");
   const [copied, setCopied] = useState(false);
+  /** Defaults menu (lower-left footer) — Lab + up to 3 user presets */
+  const [defaultsMenuOpen, setDefaultsMenuOpen] = useState(false);
+  const [defaultsFlash, setDefaultsFlash] = useState<string | null>(null);
+  const [defaultsStore, setDefaultsStore] = useState<CreateDefaultsStore>(() =>
+    loadCreateDefaultsStore(),
+  );
   /** Status when chain not ready / structure cannot sit on OPF grid */
   const [structureNotice, setStructureNotice] = useState<string | null>(null);
+  /** Atomic resolve — one settle unit per definition (card-parity). */
+  const [atomicResolving, setAtomicResolving] = useState(false);
+  const [unplaceableDetail, setUnplaceableDetail] = useState<string | null>(
+    null,
+  );
+  const settledDefRef = useRef<string | null>(null);
+  const resolveGenRef = useRef(0);
   /** One seed per open — never re-seed over the user's structure. */
   const didSeed = useRef(false);
   /** Last chain rev we applied prices for (reprice only, no structure rewrite). */
@@ -334,24 +402,90 @@ export default function PositionBuilder({
     [chain, position.expiration, chain.rev],
   );
 
-  const atmCenter = useMemo(() => {
-    const listed = frontStrikes;
-    const prefer =
-      chain.spotStrike ??
+  /** Effective spot mark for nearest-listed center (user edit wins). */
+  const effectiveSpot = useMemo(() => {
+    if (userSpot > 0) return userSpot;
+    if (chain.spot != null && chain.spot > 0) return chain.spot;
+    if (spotPrice > 0) return spotPrice;
+    return 0;
+  }, [userSpot, chain.spot, spotPrice]);
+
+  /**
+   * Center MUST be the OPF-listed strike nearest to spot.
+   * Never invent arithmetic strikes; null only while ladder empty.
+   */
+  const nearestCenter = useMemo(() => {
+    if (!frontStrikes.length) return 0;
+    return (
+      nearestListedToSpot(effectiveSpot, frontStrikes) ??
+      frontStrikes[Math.floor(frontStrikes.length / 2)]
+    );
+  }, [frontStrikes, effectiveSpot]);
+
+  const atmCenter = nearestCenter;
+
+  /**
+   * OPF + symbol-aware wing widths only (SPX → 5/10/15/20…, never 21/22).
+   * Built from listed strike distances around Center — not free integers.
+   */
+  const wingChoices = useMemo(
+    () =>
+      listedWingChoices(
+        centerStrike || atmCenter || nearestCenter,
+        frontStrikes,
+        60,
+      ),
+    [centerStrike, atmCenter, nearestCenter, frontStrikes],
+  );
+
+  // Keep wingWidth on the listed set whenever the OPF grid or center moves
+  useEffect(() => {
+    if (!open || !wingChoices.length) return;
+    if (wingChoices.includes(wingWidth)) return;
+    const center = centerStrike || atmCenter || nearestCenter;
+    const snapped =
+      snapWidthToListed(wingWidth || DEFAULT_CREATE_WING_WIDTH, center, frontStrikes) ??
+      wingChoices[0];
+    if (snapped > 0 && snapped !== wingWidth) setWingWidth(snapped);
+  }, [
+    open,
+    wingChoices,
+    wingWidth,
+    centerStrike,
+    atmCenter,
+    nearestCenter,
+    frontStrikes,
+  ]);
+
+  // Track OPF/underlier spot into editable field until the user edits
+  useEffect(() => {
+    if (!open) {
+      setUserSpotDirty(false);
+      centerPinnedRef.current = false;
+      return;
+    }
+    if (userSpotDirty) return;
+    const s =
       (chain.spot != null && chain.spot > 0 ? chain.spot : null) ??
       (spotPrice > 0 ? spotPrice : null);
-    if (prefer != null && listed.length) {
-      return snapToListed(prefer, listed) ?? listed[Math.floor(listed.length / 2)];
-    }
-    if (listed.length) return listed[Math.floor(listed.length / 2)];
-    return prefer != null ? normalizeStrike(prefer) : 0;
-  }, [frontStrikes, chain.spotStrike, chain.spot, spotPrice]);
+    if (s != null && s > 0) setUserSpot(s);
+  }, [open, chain.spot, spotPrice, userSpotDirty, chain.rev]);
 
-  // Full listed wing ladder so any lawful width is selectable (not a short list)
-  const wingChoices = useMemo(
-    () => listedWingChoices(centerStrike || atmCenter, frontStrikes, 60),
-    [centerStrike, atmCenter, frontStrikes],
-  );
+  // When OPF listed strikes arrive / spot drives nearest — Center = nearest listed
+  // unless the user pinned a different strike in the dropdown.
+  useEffect(() => {
+    if (!open || !frontStrikes.length || !(nearestCenter > 0)) return;
+    if (centerPinnedRef.current) {
+      // Pinned strike must still exist on OPF grid
+      setCenterStrike((prev) => {
+        if (prev > 0 && frontStrikes.some((s) => s === prev)) return prev;
+        centerPinnedRef.current = false;
+        return nearestCenter;
+      });
+      return;
+    }
+    setCenterStrike(nearestCenter);
+  }, [open, frontStrikes, nearestCenter]);
 
   // Hydrate every expiration the structure needs so any OPF-listed trade is choosable
   useEffect(() => {
@@ -362,13 +496,68 @@ export default function PositionBuilder({
     for (const leg of position.legs) {
       if (leg.expiration) need.add(leg.expiration.slice(0, 10));
     }
-    for (const e of need) chain.ensureExpiration(e);
+    // Also warm default front + full OPF exp list so Center never stalls
+    for (const e of chain.expirations) need.add(e.slice(0, 10));
+    for (const e of need) {
+      if (e) chain.ensureExpiration(e);
+    }
   }, [
     open,
     position.expiration,
     position.legs,
     backExpiration,
     chain,
+    chain.expirations,
+    chain.rev,
+  ]);
+
+  /** Force OPF reload — calm re-resolve, not an error path. */
+  const retryOpfChain = useCallback(() => {
+    settledDefRef.current = null;
+    setAtomicResolving(true);
+    setUnplaceableDetail(null);
+    setStructureNotice(null);
+    chain.refresh();
+    const front =
+      (position.expiration || "").slice(0, 10) ||
+      pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+      (chain.expirations[0] || "").slice(0, 10);
+    if (front) chain.ensureExpiration(front);
+    for (const e of chain.expirations) chain.ensureExpiration(e);
+  }, [chain, position.expiration, marketLive]);
+
+  // Open Create/Edit → start one atomic plane resolve
+  useEffect(() => {
+    if (!open) {
+      settledDefRef.current = null;
+      setAtomicResolving(false);
+      setUnplaceableDetail(null);
+      return;
+    }
+    setAtomicResolving(true);
+    retryOpfChain();
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- once per open
+
+  // Quiet background hydrate while UPDATING (no user-facing error spam)
+  useEffect(() => {
+    if (!open) return;
+    if (frontStrikes.length > 0 && position.legs.length > 0) {
+      setAtomicResolving(false);
+      return;
+    }
+    setAtomicResolving(true);
+    const id = window.setInterval(() => {
+      const front = (position.expiration || "").slice(0, 10);
+      if (front) chain.ensureExpiration(front);
+      if (!chain.expirations.length) chain.refresh();
+    }, 2500);
+    return () => window.clearInterval(id);
+  }, [
+    open,
+    frontStrikes.length,
+    position.legs.length,
+    chain,
+    position.expiration,
   ]);
 
   useEffect(() => {
@@ -461,11 +650,13 @@ export default function PositionBuilder({
 
       if (!built) {
         pendingBuild.current = null;
-        setStructureNotice(
-          "That structure cannot sit on the OPF chain for this expiration (not enough listed strikes). Pick another strategy or width.",
+        setUnplaceableDetail(
+          "That structure cannot sit on the listed OPF strikes for this expiration. Adjust width, center, or strategy.",
         );
+        setAtomicResolving(false);
         return false;
       }
+      setUnplaceableDetail(null);
 
       let legs = built.legs;
       if (tmpl === "calendar" || tmpl === "diagonal") {
@@ -482,10 +673,15 @@ export default function PositionBuilder({
       }
 
       legs = priceLegs(legs, front);
-      if (dir === "sell") legs = flipLegs(legs);
+      // All templates including iron fly/condor are **debit-native**.
+      // Sell flips every leg → short iron (credit), tent-up R/R.
+      if (dir === "sell") {
+        legs = flipLegs(legs);
+      }
 
       pendingBuild.current = null;
       setStructureNotice(null);
+      setUnplaceableDetail(null);
       setCenterStrike(built.body);
       if (built.width > 0) setWingWidth(built.width);
       setPosition((prev) => ({
@@ -496,16 +692,21 @@ export default function PositionBuilder({
         direction: dir,
         net_debit_override: null,
       }));
+      setAtomicResolving(false);
       return true;
     },
     [chain, priceLegs, symbol, spotPrice],
   );
 
-  // Reset float position + seed flags when dialog opens
+  // Reset seed flags when dialog closes; place panel when it opens
   useEffect(() => {
-    if (!open) return;
-    didSeed.current = false;
-    lastPriceRev.current = -1;
+    if (!open) {
+      didSeed.current = false;
+      pendingBuild.current = null;
+      lastPriceRev.current = -1;
+      return;
+    }
+    setDefaultsStore(loadCreateDefaultsStore());
     userPickedExp.current = mode === "edit";
     const w =
       typeof window !== "undefined" ? window.innerWidth : PANEL_W + 96;
@@ -520,19 +721,17 @@ export default function PositionBuilder({
   }, [open, mode]);
 
   /**
-   * Seed once per open.
-   * Create → always a ready 20-wide ATM butterfly on a valid front exp.
-   * Edit → load the card. Never re-seed after the user starts editing.
+   * Seed once per open — **only after OPF can support a real structure**.
+   * Create must not mark seeded until legs land on the OPF grid (ATM center
+   * listed, priced). Retries on chain.rev / expirations until ready.
    */
   useEffect(() => {
     if (!open || didSeed.current) return;
-    didSeed.current = true;
 
     if (mode === "edit" && initial?.legs.length) {
-      const front = initial.expiration || frontDefault;
+      const front = (initial.expiration || frontDefault).slice(0, 10);
       chain.ensureExpiration(front);
       const listed = chain.getStrikes(front);
-      // Snap existing book legs onto OPF grid when ladder is already warm
       let legs = initial.legs.map((l) => ({ ...l }));
       if (listed.length) {
         legs = legs.map((l) => {
@@ -550,55 +749,134 @@ export default function PositionBuilder({
       if (body > 0) setCenterStrike(body);
       if (!listed.length) {
         setStructureNotice(
-          "Loading OPF chain… strikes will snap to listed when ready.",
+          "Loading OPF chain… center and package update when strikes arrive.",
         );
+        // Keep retrying until ladder exists so Center dropdown is real
+        return;
       }
+      setStructureNotice(null);
+      didSeed.current = true;
       return;
     }
 
-    // Create: only OPF-listed butterfly — wait for ladder if needed
+    // —— Create: wait for OPF, then user default (or factory butterfly) ——
+    if (!chain.expirations.length) {
+      setStructureNotice("Loading OPF expirations…");
+      return;
+    }
     const front =
       pickDefaultFrontExpiration(chain.expirations, marketLive) ||
-      frontDefault ||
-      etYmd();
+      chain.expirations[0] ||
+      frontDefault;
+    chain.ensureExpiration(front);
     const listed = chain.getStrikes(front);
-    const prefer =
-      atmCenter > 0
-        ? atmCenter
-        : spotPrice > 0
-          ? spotPrice
-          : chain.spot != null && chain.spot > 0
-            ? chain.spot
-            : listed[0] ?? 0;
-    const center = listed.length
-      ? snapToListed(
-          chain.spotStrike ?? chain.spot ?? prefer,
-          listed,
-        ) ?? listed[Math.floor(listed.length / 2)]
-      : prefer;
+    if (!listed.length) {
+      setStructureNotice(
+        "Loading OPF strikes for " + front + "… center fills at ATM when ready.",
+      );
+      return;
+    }
+
+    const seed = resolveCreateSeed(symbol);
+    const preferSpot =
+      (chain.spotStrike != null && chain.spotStrike > 0
+        ? chain.spotStrike
+        : null) ??
+      (chain.spot != null && chain.spot > 0 ? chain.spot : null) ??
+      (spotPrice > 0 ? spotPrice : null) ??
+      (atmCenter > 0 ? atmCenter : null) ??
+      listed[Math.floor(listed.length / 2)];
+
+    const atm =
+      snapToListed(preferSpot, listed) ??
+      listed[Math.floor(listed.length / 2)];
+    // Saved default stores center as offset from ATM so it tracks spot
+    const centerIntent = atm + (seed.centerOffsetPts || 0);
+    const center =
+      snapToListed(centerIntent, listed) ?? atm;
     const width = resolveCreateWingWidth(
       center,
       listed,
-      DEFAULT_CREATE_WING_WIDTH,
+      seed.wingWidth > 0 ? seed.wingWidth : DEFAULT_CREATE_WING_WIDTH,
     );
-    setTemplate("butterfly");
-    setDirection("buy");
-    setOptionSide("call");
-    if (center > 0) setCenterStrike(center);
+    const side: OptionRight = TEMPLATE_HAS_SIDE[seed.template]
+      ? seed.optionSide
+      : "call";
+
+    // Multi-exp (calendar / diagonal): front + next listed back
+    let back: string | undefined;
+    if (seed.template === "calendar" || seed.template === "diagonal") {
+      const exps = chain.expirations;
+      const idx = exps.indexOf(front);
+      back =
+        idx >= 0 && idx + 1 < exps.length
+          ? exps[idx + 1]
+          : nextListedBack(front, exps) || undefined;
+      if (back) {
+        setBackExpiration(back);
+        chain.ensureExpiration(back);
+      }
+    } else {
+      setBackExpiration("");
+    }
+
+    setTemplate(seed.template);
+    setDirection(seed.direction);
+    setOptionSide(side);
+    setCenterStrike(center);
     setWingWidth(width > 0 ? width : DEFAULT_CREATE_WING_WIDTH);
-    regenerate("butterfly", center, width, "call", "buy", front);
+    setPosition((prev) => ({
+      ...prev,
+      underlying: symbol,
+      expiration: front,
+      direction: seed.direction,
+      contracts: Math.max(1, seed.contracts || 1),
+      net_debit_override: null,
+    }));
+
+    const ok = regenerate(
+      seed.template,
+      center,
+      width,
+      side,
+      seed.direction,
+      front,
+      back,
+    );
+    if (ok) {
+      didSeed.current = true;
+      setStructureNotice(null);
+    } else {
+      // pendingBuild queued — leave didSeed false until legs exist
+      setStructureNotice(
+        "Building structure on OPF chain… package marks follow.",
+      );
+    }
   }, [
     open,
     mode,
     initial,
     chain,
+    chain.rev,
+    chain.expirations,
     frontDefault,
     spotPrice,
     regenerate,
     priceLegs,
     atmCenter,
     marketLive,
+    symbol,
   ]);
+
+  // Once create seed succeeds (legs on grid), freeze seed even if deps churn
+  useEffect(() => {
+    if (!open || mode !== "create") return;
+    if (didSeed.current) return;
+    if (position.legs.length > 0 && frontStrikes.length > 0) {
+      didSeed.current = true;
+      setStructureNotice(null);
+    }
+  }, [open, mode, position.legs.length, frontStrikes.length]);
 
   /**
    * When OPF ladder arrives: apply pending structure build, or reprice mids.
@@ -616,23 +894,41 @@ export default function PositionBuilder({
     // Pending strategy/create build waiting for OPF strikes
     if (pendingBuild.current) {
       const p = pendingBuild.current;
-      const listed = chain.getStrikes(p.front);
+      let front = p.front;
+      let listed = chain.getStrikes(front);
+      // Front may have been a calendar guess before OPF exp list arrived
+      if (!listed.length && chain.expirations.length) {
+        front =
+          pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+          chain.expirations[0];
+        listed = chain.getStrikes(front);
+        if (listed.length) {
+          pendingBuild.current = { ...p, front };
+        } else {
+          chain.ensureExpiration(front);
+        }
+      }
       if (listed.length) {
         regenerate(
           p.tmpl,
-          p.center,
+          p.center > 0 ? p.center : atmCenter || spotPrice,
           p.width,
           p.side,
           p.dir,
-          p.front,
+          front,
           p.back,
         );
       }
       return;
     }
 
-    // Empty legs: rebuild on real chain only
+    // Empty legs: rebuild on real chain only.
+    // Create seed owns first materialization (correct Lab direction e.g. sell
+    // iron). Do not race with state direction still stuck on default "buy".
     if (position.legs.length === 0) {
+      if (mode === "create" && !didSeed.current) {
+        return;
+      }
       const front =
         pickDefaultFrontExpiration(chain.expirations, marketLive) ||
         position.expiration ||
@@ -708,9 +1004,132 @@ export default function PositionBuilder({
     [position, chain, chain.rev],
   );
 
+  /** Pre-open held/theo marks on any leg → OPF-style disclaimer (not live NBBO). */
+  const preOpenPackage = useMemo(() => {
+    if (!position.legs.length) return false;
+    let anyHeld = false;
+    let anyLive = false;
+    for (const leg of position.legs) {
+      const exp = (leg.expiration || position.expiration).slice(0, 10);
+      const c = chain.getContract(exp, leg.strike, leg.type);
+      if (!c?.mid) continue;
+      const src = c.mid_source;
+      if (src === "nbbo") anyLive = true;
+      else if (src === "last_trade" || src === "day_close") anyHeld = true;
+      else if (!marketLive) anyHeld = true; // untagged mid outside RTH
+    }
+    return anyHeld && !anyLive;
+  }, [position, chain, chain.rev, marketLive]);
+
+  const packageDisclaimer = preOpenPackage
+    ? "Theoretical package until the market opens — last-session held marks (last trade / prior close), not live NBBO."
+    : null;
+
+  /**
+   * Atomic plane state (card-parity): ready | UPDATING | OPF UNAVAILABLE | CHECK STRUCTURE.
+   * Never a blank unusable dialog.
+   */
+  const planeState: BuilderPlaneState = useMemo(
+    () =>
+      resolveBuilderPlaneState({
+        open,
+        hasListedStrikes: frontStrikes.length > 0,
+        hasLegs: position.legs.length > 0,
+        packageComplete: eco.complete,
+        chainError: chain.error,
+        chainLoading: !!chain.loading || atomicResolving,
+        resolving: atomicResolving || !!pendingBuild.current,
+        unplaceable: unplaceableDetail != null,
+        unplaceableDetail,
+      }),
+    [
+      open,
+      frontStrikes.length,
+      position.legs.length,
+      eco.complete,
+      chain.error,
+      chain.loading,
+      atomicResolving,
+      unplaceableDetail,
+      chain.rev,
+    ],
+  );
+
+  // Definition key — any shape change starts a new atomic unit
+  const defKey = useMemo(
+    () =>
+      builderDefinitionKey({
+        mode,
+        symbol,
+        template,
+        direction,
+        optionSide,
+        center: centerStrike || nearestCenter || 0,
+        width: wingWidth || 0,
+        expiration: position.expiration || "",
+        backExpiration,
+        spot: effectiveSpot,
+        contracts: position.contracts,
+      }),
+    [
+      mode,
+      symbol,
+      template,
+      direction,
+      optionSide,
+      centerStrike,
+      nearestCenter,
+      wingWidth,
+      position.expiration,
+      position.contracts,
+      backExpiration,
+      effectiveSpot,
+    ],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    if (settledDefRef.current === defKey && planeState.kind === "ready") return;
+    if (planeState.kind === "ready") {
+      settledDefRef.current = defKey;
+      setAtomicResolving(false);
+      setStructureNotice(null);
+    } else if (planeState.kind === "updating") {
+      setAtomicResolving(true);
+    }
+  }, [open, defKey, planeState.kind]);
+
+  /** Package bid/ask width from OPF legs (closing spread when session held). */
+  const packageSpread = useMemo(() => {
+    if (!eco.legs.length) return null;
+    let width = 0;
+    let ok = 0;
+    for (const leg of eco.legs) {
+      if (
+        leg.bid != null &&
+        leg.ask != null &&
+        Number.isFinite(leg.bid) &&
+        Number.isFinite(leg.ask) &&
+        leg.ask >= leg.bid
+      ) {
+        width += Math.abs(leg.quantity) * (leg.ask - leg.bid);
+        ok += 1;
+      }
+    }
+    if (ok === 0) return null;
+    return width;
+  }, [eco.legs]);
+
   const costLabel = eco.side ?? "—";
   const displayCost = eco.absMid ?? 0;
   const overrideActive = position.net_debit_override != null;
+  const packageSessionLabel = marketLive
+    ? overrideActive
+      ? "Limit"
+      : "Live · unlocked"
+    : overrideActive
+      ? "Limit"
+      : "Close · held";
 
   const previewLabel = useMemo(
     () => buildLabel(position.underlying, position.legs, position.expiration),
@@ -742,14 +1161,61 @@ export default function PositionBuilder({
 
   const handleTemplate = (tmpl: TemplateType) => {
     setTemplate(tmpl);
-    const side = TEMPLATE_HAS_SIDE[tmpl] ? optionSide : "call";
-    let width = wingWidth > 0 ? wingWidth : DEFAULT_CREATE_WING_WIDTH;
-    let back = backExpiration;
     const front =
       position.expiration ||
       pickDefaultFrontExpiration(chain.expirations, marketLive) ||
       frontDefault ||
       etYmd();
+    const listed = chain.getStrikes(front);
+
+    // When Lab defaults are active, strategy change applies that strategy’s
+    // Options Lab recipe (Wave 1: butterfly · vertical · condor · calendar).
+    const useLab = isLabDefaultsActive();
+    const lab = useLab ? labDefaultForStrategy(tmpl, symbol) : null;
+
+    let dir: TradeDirection = direction;
+    let side: OptionRight = TEMPLATE_HAS_SIDE[tmpl] ? optionSide : "call";
+    let width = wingWidth > 0 ? wingWidth : DEFAULT_CREATE_WING_WIDTH;
+    let center = centerStrike || atmCenter || spotPrice;
+
+    if (lab) {
+      dir = lab.direction;
+      side = TEMPLATE_HAS_SIDE[tmpl] ? lab.optionSide : "call";
+      setDirection(dir);
+      setOptionSide(side);
+      const atm =
+        atmCenter > 0
+          ? atmCenter
+          : snapToListed(
+              chain.spotStrike ?? chain.spot ?? spotPrice,
+              listed,
+            ) ?? center;
+      center =
+        snapToListed(atm + (lab.centerOffsetPts || 0), listed) ?? atm;
+      setCenterStrike(center);
+      if (tmpl === "diagonal") {
+        width =
+          diagonalWidthFromLadder(center, listed, 2) ??
+          defaultDiagonalWidth(symbol);
+      } else {
+        width = resolveCreateWingWidth(
+          center,
+          listed,
+          lab.wingWidth > 0 ? lab.wingWidth : DEFAULT_CREATE_WING_WIDTH,
+        );
+      }
+      setWingWidth(width);
+    } else if (tmpl === "diagonal") {
+      width =
+        diagonalWidthFromLadder(
+          centerStrike || atmCenter,
+          listed.length ? listed : frontStrikes,
+          2,
+        ) ?? defaultDiagonalWidth(symbol);
+      setWingWidth(width);
+    }
+
+    let back = backExpiration;
     if (tmpl === "calendar" || tmpl === "diagonal") {
       const exps = chain.expirations;
       const idx = exps.indexOf(front);
@@ -758,48 +1224,30 @@ export default function PositionBuilder({
           ? exps[idx + 1]
           : nextListedBack(front, exps) || "";
       setBackExpiration(back);
+      if (back) chain.ensureExpiration(back);
+    } else {
+      setBackExpiration("");
+      back = "";
     }
-    if (tmpl === "diagonal") {
-      const ladder = frontStrikes;
-      width =
-        diagonalWidthFromLadder(centerStrike || atmCenter, ladder, 2) ??
-        defaultDiagonalWidth(symbol);
-      setWingWidth(width);
-    }
-    // Prefill only from OPF-held listed strikes (waits for ladder if cold)
-    regenerate(
-      tmpl,
-      centerStrike || atmCenter || spotPrice,
-      width,
-      side,
-      direction,
-      front,
-      back,
-    );
+
+    regenerate(tmpl, center, width, side, dir, front, back || undefined);
   };
 
   const handleDirection = (dir: TradeDirection) => {
     if (dir === direction) return;
     setDirection(dir);
-    // Empty legs (or first paint): rebuild structure for the new side
-    if (position.legs.length === 0) {
-      regenerate(
-        template,
-        centerStrike || atmCenter || spotPrice,
-        wingWidth || DEFAULT_CREATE_WING_WIDTH,
-        optionSide,
-        dir,
-        position.expiration || frontDefault,
-        backExpiration,
-      );
-      return;
-    }
-    setPosition((prev) => ({
-      ...prev,
-      direction: dir,
-      legs: flipLegs(prev.legs),
-      net_debit_override: null,
-    }));
+    // Always rebuild from debit-native template + direction.
+    // Do not flipLegs in place — that drifts if legs were already short/long
+    // from a prior seed, race, or edit (Buy/Sell ends up inverted).
+    regenerate(
+      template,
+      centerStrike || atmCenter || spotPrice,
+      wingWidth || DEFAULT_CREATE_WING_WIDTH,
+      optionSide,
+      dir,
+      position.expiration || frontDefault,
+      backExpiration,
+    );
   };
 
   const updateLeg = (index: number, patch: Partial<LegInput>) => {
@@ -916,14 +1364,111 @@ export default function PositionBuilder({
     }
   };
 
+  const handleSave = useCallback(() => {
+    // Save only OPF-held chain structure — never invent strikes
+    let legs = position.legs;
+    let exp = position.expiration;
+    if (!legs.length) {
+      const front =
+        pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+        exp ||
+        frontDefault ||
+        etYmd();
+      const listed = chain.getStrikes(front);
+      if (!listed.length) {
+        setStructureNotice(
+          "OPF chain not loaded for this expiration yet — wait a moment, then Analyze.",
+        );
+        chain.ensureExpiration(front);
+        regenerate(
+          template,
+          centerStrike || atmCenter || spotPrice,
+          wingWidth || DEFAULT_CREATE_WING_WIDTH,
+          optionSide,
+          direction,
+          front,
+          backExpiration,
+        );
+        return;
+      }
+      const built = buildListedStructure({
+        template,
+        listed,
+        preferCenter: centerStrike || atmCenter || spotPrice || listed[0],
+        preferWidth: wingWidth || DEFAULT_CREATE_WING_WIDTH,
+        optionSide,
+      });
+      if (!built) {
+        setStructureNotice(
+          "Cannot place that strategy on the OPF chain. Choose another strategy or expiration.",
+        );
+        return;
+      }
+      exp = front;
+      legs = priceLegs(built.legs, front);
+      // Debit-native templates: sell flips to short iron / short fly / etc.
+      if (direction === "sell") {
+        legs = flipLegs(legs);
+      }
+    } else {
+      const listed = chain.getStrikes(exp);
+      if (listed.length) {
+        legs = legs.map((l) => {
+          const s = snapToListed(l.strike, listed);
+          return s != null ? { ...l, strike: s } : l;
+        });
+      }
+    }
+    const payload = {
+      ...position,
+      expiration: exp,
+      legs,
+      direction,
+      net_debit_override:
+        position.net_debit_override != null &&
+        Number.isFinite(position.net_debit_override)
+          ? position.net_debit_override
+          : null,
+    };
+    onSave(
+      payload,
+      buildLabel(payload.underlying, payload.legs, payload.expiration),
+      buildNotation(payload.legs),
+    );
+  }, [
+    position,
+    chain,
+    marketLive,
+    frontDefault,
+    template,
+    centerStrike,
+    atmCenter,
+    spotPrice,
+    wingWidth,
+    optionSide,
+    direction,
+    backExpiration,
+    priceLegs,
+    regenerate,
+    onSave,
+  ]);
+
+  const timeSpreadBackChoices = useMemo(() => {
+    const after = chain.expirations.filter((e) => e > position.expiration);
+    if (after.length > 0) return after;
+    if (chain.expirations.length) return chain.expirations;
+    return [position.expiration || frontDefault || etYmd()];
+  }, [chain.expirations, position.expiration, frontDefault]);
+
   if (!open) return null;
 
   return (
     <div
       className={
-        "fixed z-50 flex max-h-[min(92vh,820px)] w-[min(780px,calc(100vw-1.5rem))] " +
-        "flex-col overflow-hidden rounded-2xl border border-[var(--color-separator)] " +
-        "bg-[var(--color-surface)] shadow-2xl ring-1 ring-black/20"
+        "fixed z-50 flex max-h-[min(92vh,860px)] w-[min(720px,calc(100vw-1.5rem))] " +
+        "flex-col overflow-hidden rounded-[var(--radius-xl)] " +
+        "border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] " +
+        "shadow-[var(--elevation-3,0_25px_50px_-12px_rgba(0,0,0,0.45))]"
       }
       style={{ left: panelPos.x, top: panelPos.y }}
       role="dialog"
@@ -931,55 +1476,81 @@ export default function PositionBuilder({
       aria-label={mode === "edit" ? "Edit position" : "Create position"}
       data-testid="position-builder"
     >
+      {/* Navigation bar */}
+      <div
+        className={
+          "flex cursor-grab items-center justify-between gap-3 " +
+          "border-b border-[var(--color-separator)] bg-[var(--color-surface)]/90 " +
+          "px-4 py-3 backdrop-blur-md active:cursor-grabbing"
+        }
+        onPointerDown={onPanelPointerDown}
+        onPointerMove={onPanelPointerMove}
+        onPointerUp={onPanelPointerUp}
+        onPointerCancel={onPanelPointerUp}
+        data-testid="position-builder-drag-handle"
+        title="Drag to move"
+      >
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-[17px] font-semibold tracking-tight text-[var(--color-label)]">
+            {mode === "edit" ? "Edit Position" : "Create Position"}
+          </h3>
+          <p className="truncate text-[12px] text-[var(--color-label-tertiary)]">
+            {position.underlying || symbol}
+            {chain.spot != null ? ` · ${chain.spot.toFixed(2)}` : ""}
+            {chain.spotStrike != null ? ` · ATM ${chain.spotStrike}` : ""}
+          </p>
+        </div>
+        <Button variant="plain" className="!min-h-9 !px-2" onClick={onCancel}>
+          Done
+        </Button>
+      </div>
+
+      {planeState.kind !== "ready" ? (
         <div
-          className="flex cursor-grab items-center justify-between border-b border-[var(--color-separator)] px-4 py-3 active:cursor-grabbing"
-          onPointerDown={onPanelPointerDown}
-          onPointerMove={onPanelPointerMove}
-          onPointerUp={onPanelPointerUp}
-          onPointerCancel={onPanelPointerUp}
-          data-testid="position-builder-drag-handle"
-          title="Drag to move"
+          className={
+            "flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5 " +
+            (planeState.kind === "plane_unavailable"
+              ? "border-amber-500/30 bg-amber-500/10"
+              : planeState.kind === "unplaceable"
+                ? "border-[var(--color-separator)] bg-[var(--color-fill)]"
+                : "border-[var(--color-separator)] bg-[var(--color-fill)]/60")
+          }
+          role="status"
+          data-testid="builder-structure-notice"
+          data-plane-kind={planeState.kind}
         >
-          <div>
-            <h3 className="text-base font-semibold text-[var(--color-label)]">
-              {mode === "edit" ? "Edit Position" : "Create Position"}
-            </h3>
-            <p className="text-[11px] text-[var(--color-label-tertiary)]">
-              Prefill from OPF-held chain only · RTH or closed
-              {chain.spot != null ? ` · spot ${chain.spot.toFixed(2)}` : ""}
-              {chain.spotStrike != null
-                ? ` · ATM ${chain.spotStrike}`
-                : ""}
-              {chain.expirations.length
-                ? ` · ${chain.expirations.length} exps`
-                : ""}
+          <div className="min-w-0 flex-1">
+            <div className="text-[12px] font-semibold tracking-wide text-[var(--color-label)]">
+              {planeState.title}
+            </div>
+            <p className="mt-0.5 text-[12px] leading-snug text-[var(--color-label-secondary)]">
+              {structureNotice || planeState.detail}
             </p>
           </div>
-          <button type="button" className={btn} onClick={onCancel}>
-            Close
-          </button>
+          {planeState.kind === "plane_unavailable" ||
+          planeState.kind === "updating" ? (
+            <Button
+              variant="secondary"
+              className="!min-h-8 shrink-0 !px-3 !text-[12px]"
+              data-testid="builder-retry-opf"
+              onClick={() => retryOpfChain()}
+            >
+              Retry
+            </Button>
+          ) : null}
         </div>
+      ) : null}
 
-        {structureNotice ? (
-          <div
-            className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[12px] text-amber-100"
-            role="status"
-            data-testid="builder-structure-notice"
-          >
-            {structureNotice}
-          </div>
-        ) : null}
-
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className={labelCls}>Symbol</span>
-              <input className={field} value={position.underlying} readOnly />
-            </label>
-            <label className="block">
-              <span className={labelCls}>Strategy</span>
+      {/* Grouped content */}
+      <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
+        {/* —— Structure —— */}
+        <section>
+          <h4 className={sectionLabel}>Structure</h4>
+          <div className={group}>
+            <div className={groupRow}>
+              <span className={rowLabel}>Strategy</span>
               <select
-                className={field}
+                className={field + " flex-1 text-right"}
                 value={template}
                 onChange={(e) => handleTemplate(e.target.value as TemplateType)}
               >
@@ -993,120 +1564,225 @@ export default function PositionBuilder({
                   </optgroup>
                 ))}
               </select>
-            </label>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <svg
-              viewBox="0 0 60 24"
-              width={60}
-              height={24}
-              style={
-                direction === "sell" ? { transform: "scaleY(-1)" } : undefined
-              }
-            >
-              <path
-                d={STRATEGY_DIAGRAMS[template]}
-                fill="none"
-                stroke={direction === "buy" ? "#22c55e" : "#ef4444"}
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="inline-flex rounded-full border border-[var(--color-separator)] p-0.5">
-              <button
-                type="button"
-                className={
-                  "rounded-full px-3 py-1 text-xs font-semibold " +
-                  (direction === "buy"
-                    ? "bg-emerald-600 text-white"
-                    : "text-[var(--color-label-secondary)]")
-                }
-                onClick={() => handleDirection("buy")}
-              >
-                Buy
-              </button>
-              <button
-                type="button"
-                className={
-                  "rounded-full px-3 py-1 text-xs font-semibold " +
-                  (direction === "sell"
-                    ? "bg-red-600 text-white"
-                    : "text-[var(--color-label-secondary)]")
-                }
-                onClick={() => handleDirection("sell")}
-              >
-                Sell
-              </button>
             </div>
-            <span className="text-sm text-[var(--color-label-secondary)]">
-              {direction === "buy" ? "Buy" : "Sell"} {TEMPLATE_LABELS[template]}
-            </span>
-            {TEMPLATE_HAS_SIDE[template] && (
-              <select
-                className={field + " w-auto"}
-                value={optionSide}
-                onChange={(e) => {
-                  const s = e.target.value as OptionRight;
-                  setOptionSide(s);
-                  regenerate(
-                    template,
-                    centerStrike || atmCenter,
-                    wingWidth,
-                    s,
-                    direction,
-                    position.expiration,
-                    backExpiration,
-                  );
-                }}
+            <div className={groupRow + " justify-between py-2"}>
+              <span className={rowLabel}>Side</span>
+              <div className="inline-flex rounded-full bg-[var(--color-fill)] p-0.5">
+                <button
+                  type="button"
+                  className={
+                    "min-h-9 rounded-full px-4 text-[13px] font-semibold transition-colors " +
+                    (direction === "buy"
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "text-[var(--color-label-secondary)]")
+                  }
+                  onClick={() => handleDirection("buy")}
+                >
+                  Buy
+                </button>
+                <button
+                  type="button"
+                  className={
+                    "min-h-9 rounded-full px-4 text-[13px] font-semibold transition-colors " +
+                    (direction === "sell"
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "text-[var(--color-label-secondary)]")
+                  }
+                  onClick={() => handleDirection("sell")}
+                >
+                  Sell
+                </button>
+              </div>
+            </div>
+            {TEMPLATE_HAS_SIDE[template] ? (
+              <div className={groupRow}>
+                <span className={rowLabel}>Right</span>
+                <select
+                  className={field + " flex-1 text-right"}
+                  value={optionSide}
+                  onChange={(e) => {
+                    const s = e.target.value as OptionRight;
+                    setOptionSide(s);
+                    regenerate(
+                      template,
+                      centerStrike || atmCenter,
+                      wingWidth,
+                      s,
+                      direction,
+                      position.expiration,
+                      backExpiration,
+                    );
+                  }}
+                >
+                  <option value="call">Call</option>
+                  <option value="put">Put</option>
+                </select>
+              </div>
+            ) : null}
+            <div className={groupRow + " justify-between py-3"}>
+              <div className="min-w-0">
+                <div className="text-[15px] font-medium text-[var(--color-label)]">
+                  {direction === "buy" ? "Long" : "Short"}{" "}
+                  {TEMPLATE_LABELS[template]}
+                </div>
+                <div className="text-[12px] text-[var(--color-label-tertiary)]">
+                  OPF-held chain only
+                </div>
+              </div>
+              <svg
+                viewBox="0 0 60 24"
+                width={72}
+                height={28}
+                className="shrink-0 opacity-90"
+                style={
+                  // Sell = invert long debit silhouette → short/credit payoff.
+                  direction === "sell"
+                    ? { transform: "scaleY(-1)" }
+                    : undefined
+                }
+                aria-hidden
               >
-                <option value="call">Call</option>
-                <option value="put">Put</option>
-              </select>
-            )}
+                <path
+                  d={STRATEGY_DIAGRAMS[template]}
+                  fill="none"
+                  stroke={direction === "buy" ? "#22c55e" : "#ef4444"}
+                  strokeWidth="2.25"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
           </div>
+        </section>
 
-          <div className="grid grid-cols-3 gap-2">
-            <label className="block">
-              <span className={labelCls}>Center (listed)</span>
-              <StrikeSelect
-                listed={frontStrikes}
-                value={centerStrike || atmCenter || spotPrice}
-                center={atmCenter || spotPrice}
-                radiusN={80}
-                testId="builder-center-strike"
-                onChange={(c) => {
-                  setCenterStrike(c);
-                  regenerate(
-                    template,
-                    c,
-                    wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                    optionSide,
-                    direction,
-                    position.expiration,
-                    backExpiration,
-                  );
+        {/* —— Shape —— */}
+        <section>
+          <h4 className={sectionLabel}>Shape</h4>
+          <div className={group}>
+            <div className={groupRow}>
+              <span className={rowLabel}>Spot</span>
+              <input
+                className={field + " flex-1 text-right font-mono tabular-nums"}
+                type="number"
+                step="0.01"
+                inputMode="decimal"
+                data-testid="builder-spot"
+                value={
+                  effectiveSpot > 0
+                    ? Number.isInteger(effectiveSpot)
+                      ? String(effectiveSpot)
+                      : String(Math.round(effectiveSpot * 100) / 100)
+                    : ""
+                }
+                placeholder="OPF mark"
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  const v = parseFloat(raw);
+                  setUserSpotDirty(true);
+                  centerPinnedRef.current = false; // spot edit re-owns Center
+                  if (!Number.isFinite(v) || v <= 0) {
+                    setUserSpot(0);
+                    return;
+                  }
+                  setUserSpot(v);
+                  // Re-snap Center to nearest OPF listed strike at this spot
+                  if (frontStrikes.length) {
+                    const n = nearestListedToSpot(v, frontStrikes);
+                    if (n != null && n > 0) {
+                      setCenterStrike(n);
+                      regenerate(
+                        template,
+                        n,
+                        wingWidth || DEFAULT_CREATE_WING_WIDTH,
+                        optionSide,
+                        direction,
+                        position.expiration,
+                        backExpiration,
+                      );
+                    }
+                  }
                 }}
               />
-            </label>
-            <label className="block">
-              <span className={labelCls}>Width (listed points)</span>
-              <div className="flex gap-1">
+            </div>
+            <div className={groupRow}>
+              <span className={rowLabel}>Center</span>
+              <div className="min-w-0 flex-1">
+                <StrikeSelect
+                  listed={frontStrikes}
+                  value={
+                    centerStrike > 0
+                      ? centerStrike
+                      : nearestCenter > 0
+                        ? nearestCenter
+                        : 0
+                  }
+                  center={nearestCenter > 0 ? nearestCenter : effectiveSpot}
+                  /*
+                   * Full OPF list in the menu (scroll for strikes beyond ±5).
+                   * Selection defaults to nearest-to-spot; radius covers all
+                   * listed so nothing is clipped.
+                   */
+                  radiusN={Math.max(5, frontStrikes.length || 5)}
+                  emptyLabel={
+                    chain.loading
+                      ? "Loading OPF strikes…"
+                      : chain.error
+                        ? "OPF unavailable"
+                        : "Loading OPF strikes…"
+                  }
+                  className="!min-h-11 !border-0 !bg-transparent text-right font-mono"
+                  testId="builder-center-strike"
+                  onChange={(c) => {
+                    centerPinnedRef.current = true;
+                    setCenterStrike(c);
+                    regenerate(
+                      template,
+                      c,
+                      wingWidth || DEFAULT_CREATE_WING_WIDTH,
+                      optionSide,
+                      direction,
+                      position.expiration,
+                      backExpiration,
+                    );
+                  }}
+                />
+              </div>
+            </div>
+            {nearestCenter > 0 && frontStrikes.length > 0 ? (
+              <div className="border-b border-[var(--color-separator)] px-3 py-1.5 last:border-b-0">
+                <p className="text-right text-[11px] text-[var(--color-label-tertiary)]">
+                  Nearest to spot {effectiveSpot > 0 ? effectiveSpot.toFixed(2) : "—"}{" "}
+                  → {nearestCenter}
+                  {frontStrikes.length
+                    ? ` · ${frontStrikes.length} OPF strikes`
+                    : ""}
+                </p>
+              </div>
+            ) : null}
+            <div className={groupRow}>
+              <span className={rowLabel}>Width</span>
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
                 {wingChoices.length > 0 ? (
                   <select
-                    className={field}
-                    value={
+                    className={
+                      field + " max-w-[8rem] text-right font-mono tabular-nums"
+                    }
+                    data-testid="builder-width"
+                    data-listed-count={wingChoices.length}
+                    value={String(
                       wingChoices.includes(wingWidth)
                         ? wingWidth
                         : wingChoices.find((c) => c >= wingWidth) ??
-                          wingChoices[0]
-                    }
+                            wingChoices[0],
+                    )}
                     onChange={(e) => {
-                      const w = Math.max(0, parseFloat(e.target.value) || 0);
+                      const w = normalizeStrike(parseFloat(e.target.value));
+                      // Refuse non-listed widths even if the option list is stale
+                      if (!wingChoices.includes(w)) return;
                       setWingWidth(w);
                       regenerate(
                         template,
-                        centerStrike || atmCenter || spotPrice,
+                        centerStrike || atmCenter || nearestCenter,
                         w,
                         optionSide,
                         direction,
@@ -1116,42 +1792,41 @@ export default function PositionBuilder({
                     }}
                   >
                     {wingChoices.map((w) => (
-                      <option key={w} value={w}>
-                        {w}
+                      <option key={String(w)} value={String(w)}>
+                        {w} pts
                       </option>
                     ))}
                   </select>
-                ) : null}
-                <input
-                  className={field + (wingChoices.length ? " w-24" : "")}
-                  type="number"
-                  min={1}
-                  step={1}
-                  title="Any width — snaps to listed wings on regenerate"
-                  value={wingWidth || ""}
-                  onChange={(e) => {
-                    const w = Math.max(0, parseFloat(e.target.value) || 0);
-                    setWingWidth(w);
-                    regenerate(
-                      template,
-                      centerStrike || atmCenter || spotPrice,
-                      w || DEFAULT_CREATE_WING_WIDTH,
-                      optionSide,
-                      direction,
-                      position.expiration,
-                      backExpiration,
-                    );
-                  }}
-                />
+                ) : (
+                  <span
+                    className={
+                      field +
+                      " max-w-[8rem] text-right text-[var(--color-label-tertiary)]"
+                    }
+                    data-testid="builder-width"
+                    data-listed-count={0}
+                    role="status"
+                    title="Waiting for OPF listed strikes to derive lawful widths"
+                  >
+                    …
+                  </span>
+                )}
               </div>
-            </label>
-            <label className="block">
-              <span className={labelCls}>Front exp</span>
+            </div>
+            {wingChoices.length > 0 ? (
+              <div className="border-b border-[var(--color-separator)] px-3 py-1.5 last:border-b-0">
+                <p className="text-right text-[11px] text-[var(--color-label-tertiary)]">
+                  OPF listed wings only
+                  {listedStepNearLabel(frontStrikes, centerStrike || nearestCenter)}
+                </p>
+              </div>
+            ) : null}
+            <div className={groupRow}>
+              <span className={rowLabel}>Expiration</span>
               {hasExps ? (
                 <select
-                  className={field}
+                  className={field + " flex-1 text-right"}
                   value={
-                    // Always show a listed value if possible (never blank/fault)
                     chain.expirations.includes(position.expiration)
                       ? position.expiration
                       : chain.expirations[0] || position.expiration
@@ -1188,7 +1863,7 @@ export default function PositionBuilder({
                 </select>
               ) : (
                 <input
-                  className={field}
+                  className={field + " flex-1 text-right"}
                   type="date"
                   value={position.expiration}
                   onChange={(e) =>
@@ -1196,277 +1871,339 @@ export default function PositionBuilder({
                   }
                 />
               )}
-            </label>
+            </div>
+            {isTimeSpread ? (
+              <div className={groupRow}>
+                <span className={rowLabel}>Back exp</span>
+                <select
+                  className={field + " flex-1 text-right"}
+                  value={
+                    timeSpreadBackChoices.includes(backExpiration)
+                      ? backExpiration
+                      : timeSpreadBackChoices[0]
+                  }
+                  onChange={(e) => {
+                    const b = e.target.value;
+                    setBackExpiration(b);
+                    setPosition((prev) => ({
+                      ...prev,
+                      legs: prev.legs.map((leg) =>
+                        leg.side === "long" ? { ...leg, expiration: b } : leg,
+                      ),
+                      net_debit_override: null,
+                    }));
+                  }}
+                >
+                  {timeSpreadBackChoices.map((e) => (
+                    <option key={e} value={e}>
+                      {e}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
           </div>
+        </section>
 
-          {isTimeSpread && (
-            <label className="block max-w-xs">
-              <span className={labelCls}>Back exp</span>
-              {(() => {
-                const after = chain.expirations.filter(
-                  (e) => e > position.expiration,
-                );
-                // Always offer something — prefer next after front, else any listed
-                const choices =
-                  after.length > 0
-                    ? after
-                    : chain.expirations.length
-                      ? chain.expirations
-                      : [position.expiration || frontDefault || etYmd()];
-                const value = choices.includes(backExpiration)
-                  ? backExpiration
-                  : choices[0];
-                if (value && value !== backExpiration) {
-                  // keep state coherent without faulting the UI
-                  // (sync on next interaction / regenerate)
-                }
-                return (
-                  <select
-                    className={field}
-                    value={value}
-                    onChange={(e) => {
-                      const b = e.target.value;
-                      setBackExpiration(b);
-                      setPosition((prev) => ({
-                        ...prev,
-                        legs: prev.legs.map((leg) =>
-                          leg.side === "long" ? { ...leg, expiration: b } : leg,
-                        ),
-                        net_debit_override: null,
-                      }));
-                    }}
-                  >
-                    {choices.map((e) => (
-                      <option key={e} value={e}>
-                        {e}
-                      </option>
-                    ))}
-                  </select>
-                );
-              })()}
-            </label>
-          )}
-
-          {/* Live package DEBIT / CREDIT strip — unlocked unless limit override set */}
+        {/* —— Package hero —— */}
+        <section>
+          <h4 className={sectionLabel}>Package</h4>
           <div
-            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-separator)] bg-[var(--color-fill)]/50 px-3 py-2"
+            className={
+              group +
+              " flex flex-col items-center gap-1 px-4 py-5 text-center"
+            }
             data-testid="builder-package-economics"
           >
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                  Package (natural mid)
-                </span>
-                <span
-                  className={
-                    "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide " +
-                    (overrideActive
-                      ? "bg-amber-500/20 text-amber-300"
-                      : "bg-emerald-500/20 text-emerald-300")
-                  }
-                  data-testid="builder-price-lock-state"
-                  data-locked={overrideActive ? "1" : "0"}
-                >
-                  {overrideActive ? "Limit override" : "Live · unlocked"}
-                </span>
-              </div>
-              <div
-                className={
-                  "font-mono text-xl font-semibold tabular-nums " +
-                  (eco.side === "CREDIT"
-                    ? "text-emerald-600"
-                    : eco.side === "DEBIT"
-                      ? "text-rose-600"
-                      : "text-[var(--color-label-tertiary)]")
-                }
-                data-testid="builder-live-package-price"
-              >
-                {overrideActive && position.net_debit_override != null
-                  ? `LIMIT ${Math.abs(position.net_debit_override).toFixed(2)}`
-                  : formatPackageSide(eco)}
-              </div>
-            </div>
-            <div className="text-right text-[11px] text-[var(--color-label-secondary)]">
-              {chain.loading ? (
-                <span>Updating mids…</span>
-              ) : overrideActive ? (
-                <span>Limit set · live tracks when unlocked</span>
-              ) : !eco.complete ? (
-                <span>
-                  Filling mids
-                  {eco.missingMids > 0
-                    ? ` (${eco.missingMids} pending)`
-                    : ""}
-                  · structure ready
-                </span>
-              ) : (
-                <span>
-                  Live · unlocked · tracks mids
-                  {eco.signedNatural != null &&
-                  eco.signedMid != null &&
-                  Math.abs(eco.signedNatural - eco.signedMid) > 0.005
-                    ? ` · nat≈ ${eco.signedNatural >= 0 ? "CREDIT" : "DEBIT"} ${Math.abs(eco.signedNatural).toFixed(2)}`
-                    : ""}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <span className={labelCls}>Legs · live mids · package contrib</span>
-            <div className="overflow-x-auto rounded-lg border border-[var(--color-separator)]">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[var(--color-fill)] text-[10px] uppercase text-[var(--color-label-tertiary)]">
-                  <tr>
-                    <th className="px-2 py-1.5">Qty</th>
-                    <th className="px-2 py-1.5">Strike</th>
-                    <th className="px-2 py-1.5">Type</th>
-                    <th className="px-2 py-1.5">Exp</th>
-                    <th className="px-2 py-1.5">Mid</th>
-                    <th className="px-2 py-1.5">Contrib</th>
-                    <th className="px-2 py-1.5">IV</th>
-                    <th className="px-2 py-1.5" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {position.legs.map((leg, i) => {
-                    const exp = (leg.expiration || position.expiration).slice(
-                      0,
-                      10,
-                    );
-                    const legStrikes = chain.getStrikes(exp);
-                    const legEco = eco.legs[i];
-                    const contrib = legEco?.contribMid;
-                    return (
-                      <tr
-                        key={i}
-                        className="border-t border-[var(--color-separator)]"
-                      >
-                        <td className="px-2 py-1">
-                          <input
-                            className={field + " w-16"}
-                            type="number"
-                            value={
-                              leg.side === "long" ? leg.quantity : -leg.quantity
-                            }
-                            onChange={(e) => {
-                              const v = parseInt(e.target.value, 10) || 1;
-                              updateLeg(i, {
-                                quantity: Math.max(1, Math.abs(v)),
-                                side: v >= 0 ? "long" : "short",
-                              });
-                            }}
-                          />
-                        </td>
-                        <td className="px-2 py-1">
-                          <StrikeSelect
-                            listed={legStrikes}
-                            value={leg.strike}
-                            center={atmCenter || spotPrice}
-                            radiusN={80}
-                            className="min-w-[5.5rem]"
-                            testId={`builder-leg-strike-${i}`}
-                            onChange={(s) => updateLeg(i, { strike: s })}
-                          />
-                        </td>
-                        <td className="px-2 py-1">
-                          <button
-                            type="button"
-                            className={btn + " !min-h-8 !px-2 !text-xs"}
-                            onClick={() =>
-                              updateLeg(i, {
-                                type: leg.type === "call" ? "put" : "call",
-                              })
-                            }
-                          >
-                            {leg.type === "call" ? "Call" : "Put"}
-                          </button>
-                        </td>
-                        <td
-                          className="px-2 py-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {hasExps ? (
-                            <select
-                              className={field + " min-w-[6.5rem] !py-1 !text-[11px]"}
-                              value={
-                                chain.expirations.includes(exp)
-                                  ? exp
-                                  : chain.expirations[0] || exp
-                              }
-                              title="Per-leg expiration (any listed)"
-                              data-testid={`builder-leg-exp-${i}`}
-                              onChange={(e) => {
-                                const nextExp = e.target.value;
-                                chain.ensureExpiration(nextExp);
-                                updateLeg(i, { expiration: nextExp });
-                              }}
-                            >
-                              {chain.expirations.map((e) => (
-                                <option key={e} value={e}>
-                                  {e.slice(5)}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className="font-mono text-[11px]">
-                              {exp.slice(5)}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-2 py-1 font-mono text-emerald-600 dark:text-emerald-400">
-                          {leg.entry_price > 0
-                            ? leg.entry_price.toFixed(2)
-                            : "—"}
-                        </td>
-                        <td
-                          className={
-                            "px-2 py-1 font-mono tabular-nums " +
-                            (contrib == null
-                              ? "text-[var(--color-label-tertiary)]"
-                              : contrib >= 0
-                                ? "text-emerald-600"
-                                : "text-rose-600")
-                          }
-                          title="Contribution to package (long −mid · short +mid)"
-                        >
-                          {contrib == null
-                            ? "—"
-                            : `${contrib >= 0 ? "+" : ""}${contrib.toFixed(2)}`}
-                        </td>
-                        <td className="px-2 py-1 font-mono text-[var(--color-label-tertiary)]">
-                          {leg.volatility != null
-                            ? (leg.volatility * 100).toFixed(1) + "%"
-                            : "—"}
-                        </td>
-                        <td className="px-2 py-1">
-                          <button
-                            type="button"
-                            className="text-red-400"
-                            disabled={position.legs.length <= 1}
-                            onClick={() => removeLeg(i)}
-                          >
-                            ×
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <button type="button" className={btn + " mt-2"} onClick={addLeg}>
-              + Add leg
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className={labelCls}>
-                Limit override (optional — leave empty for live unlocked)
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-medium text-[var(--color-label-tertiary)]">
+                {planeState.kind === "plane_unavailable"
+                  ? "Package"
+                  : planeState.kind === "updating"
+                    ? "Package"
+                    : marketLive
+                      ? "Natural mid"
+                      : "Closing mid"}
               </span>
+              <span
+                className={
+                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold " +
+                  (planeState.kind === "plane_unavailable"
+                    ? "bg-amber-500/15 text-amber-800 dark:text-amber-200"
+                    : planeState.kind === "updating"
+                      ? "bg-[var(--color-fill)] text-[var(--color-label-secondary)]"
+                      : overrideActive
+                        ? "bg-amber-500/15 text-amber-300"
+                        : marketLive
+                          ? "bg-emerald-500/15 text-emerald-300"
+                          : "bg-[var(--color-fill)] text-[var(--color-label-secondary)]")
+                }
+                data-testid="builder-price-lock-state"
+                data-locked={overrideActive ? "1" : "0"}
+                data-plane-kind={planeState.kind}
+              >
+                {planeState.kind === "ready" || overrideActive ? (
+                  overrideActive ? (
+                    <IconLock size={12} tone="inherit" />
+                  ) : (
+                    <IconUnlock size={12} tone="inherit" />
+                  )
+                ) : null}
+                {planeState.kind === "plane_unavailable"
+                  ? planeState.title
+                  : planeState.kind === "updating"
+                    ? planeState.title
+                    : planeState.kind === "unplaceable"
+                      ? planeState.title
+                      : preOpenPackage
+                        ? "Theo · until open"
+                        : packageSessionLabel}
+              </span>
+            </div>
+            <div
+              className={
+                "font-mono text-[34px] font-semibold tabular-nums tracking-tight " +
+                (planeState.kind !== "ready" &&
+                !(overrideActive && position.net_debit_override != null)
+                  ? "text-[var(--color-label-tertiary)]"
+                  : eco.side === "CREDIT"
+                    ? "text-emerald-500"
+                    : eco.side === "DEBIT"
+                      ? "text-rose-500"
+                      : "text-[var(--color-label-tertiary)]")
+              }
+              data-testid="builder-live-package-price"
+            >
+              {overrideActive && position.net_debit_override != null
+                ? Math.abs(position.net_debit_override).toFixed(2)
+                : planeState.kind === "ready" && eco.absMid != null
+                  ? eco.absMid.toFixed(2)
+                  : planeState.kind === "updating"
+                    ? "…"
+                    : planeState.kind === "plane_unavailable"
+                      ? "—"
+                      : eco.absMid != null
+                        ? eco.absMid.toFixed(2)
+                        : "…"}
+            </div>
+            <div className="text-[13px] font-medium text-[var(--color-label-secondary)]">
+              {planeState.kind === "ready" || eco.side
+                ? overrideActive && position.net_debit_override != null
+                  ? "LIMIT"
+                  : eco.side ?? "—"
+                : planeState.title}
+              {position.contracts > 1 && planeState.kind === "ready"
+                ? ` · ×${position.contracts}`
+                : ""}
+              {packageSpread != null &&
+              !overrideActive &&
+              planeState.kind === "ready" ? (
+                <span
+                  className="ml-2 font-mono text-[12px] tabular-nums text-[var(--color-label-tertiary)]"
+                  data-testid="builder-package-spread"
+                >
+                  spread {packageSpread.toFixed(2)}
+                </span>
+              ) : null}
+            </div>
+            <p className="max-w-[18rem] text-[12px] leading-snug text-[var(--color-label-tertiary)]">
+              {planeState.kind !== "ready"
+                ? planeState.detail
+                : packageDisclaimer
+                  ? packageDisclaimer
+                  : overrideActive
+                    ? "Limit override active — clear limit for natural package"
+                    : marketLive
+                      ? "Live package from dual-side OPF mids"
+                      : "Closing package mid and spread from last OPF marks"}
+            </p>
+          </div>
+        </section>
+
+        {packageDisclaimer && planeState.kind === "ready" ? (
+          <div
+            className="rounded-[var(--radius-md)] border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[12px] leading-snug text-[var(--color-label)]"
+            role="note"
+            data-testid="builder-preopen-disclaimer"
+          >
+            <span className="font-semibold">Disclaimer · pre-open marks. </span>
+            {packageDisclaimer}
+          </div>
+        ) : null}
+
+        {/* —— Legs —— */}
+        <section>
+          <div className="mb-1.5 flex items-end justify-between px-1">
+            <h4 className="text-[13px] font-semibold tracking-tight text-[var(--color-label-secondary)]">
+              Legs
+            </h4>
+            <Button
+              variant="plain"
+              className="!min-h-8 !px-2 !text-[13px]"
+              onClick={addLeg}
+            >
+              Add Leg
+            </Button>
+          </div>
+          <div className={group + " overflow-x-auto"}>
+            <table className="w-full min-w-0 table-fixed text-left text-[13px]">
+              <thead>
+                <tr className="border-b border-[var(--color-separator)] text-[11px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                  <th className="px-3 py-2 font-semibold">Qty</th>
+                  <th className="px-2 py-2 font-semibold">Strike</th>
+                  <th className="px-2 py-2 font-semibold">Type</th>
+                  <th className="px-2 py-2 font-semibold">Exp</th>
+                  <th className="px-2 py-2 text-right font-semibold">Mid</th>
+                  <th className="px-2 py-2 text-right font-semibold">±</th>
+                  <th className="px-2 py-2 text-right font-semibold">IV</th>
+                  <th className="w-8 px-2 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {[...position.legs]
+                  .map((leg, origIdx) => ({ leg, origIdx }))
+                  .sort((a, b) => {
+                    // ToS: calls above puts, then ascending strike
+                    if (a.leg.type !== b.leg.type)
+                      return a.leg.type === "call" ? -1 : 1;
+                    return a.leg.strike - b.leg.strike;
+                  })
+                  .map(({ leg, origIdx: i }) => {
+                  const exp = (leg.expiration || position.expiration).slice(
+                    0,
+                    10,
+                  );
+                  const legStrikes = chain.getStrikes(exp);
+                  const contrib = eco.legs[i]?.contribMid;
+                  return (
+                    <tr
+                      key={i}
+                      className="border-b border-[var(--color-separator)] last:border-b-0"
+                    >
+                      <td className="px-2 py-1.5">
+                        <input
+                          className={
+                            fieldInset + " w-14 !min-h-9 !px-2 text-center"
+                          }
+                          type="number"
+                          value={
+                            leg.side === "long" ? leg.quantity : -leg.quantity
+                          }
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10) || 1;
+                            updateLeg(i, {
+                              quantity: Math.max(1, Math.abs(v)),
+                              side: v >= 0 ? "long" : "short",
+                            });
+                          }}
+                        />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <StrikeSelect
+                          listed={legStrikes}
+                          value={leg.strike}
+                          center={atmCenter || spotPrice}
+                          radiusN={80}
+                          className="min-w-[5.5rem] !min-h-9"
+                          testId={`builder-leg-strike-${i}`}
+                          onChange={(s) => updateLeg(i, { strike: s })}
+                        />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <button
+                          type="button"
+                          className={
+                            "min-h-9 rounded-full bg-[var(--color-fill)] px-2.5 " +
+                            "text-[12px] font-semibold text-[var(--color-label)]"
+                          }
+                          onClick={() =>
+                            updateLeg(i, {
+                              type: leg.type === "call" ? "put" : "call",
+                            })
+                          }
+                        >
+                          {leg.type === "call" ? "C" : "P"}
+                        </button>
+                      </td>
+                      <td className="px-1 py-1.5" onClick={(e) => e.stopPropagation()}>
+                        {hasExps ? (
+                          <select
+                            className={fieldInset + " min-w-[5.5rem] !min-h-9 !py-1"}
+                            value={
+                              chain.expirations.includes(exp)
+                                ? exp
+                                : chain.expirations[0] || exp
+                            }
+                            data-testid={`builder-leg-exp-${i}`}
+                            onChange={(e) => {
+                              const nextExp = e.target.value;
+                              chain.ensureExpiration(nextExp);
+                              updateLeg(i, { expiration: nextExp });
+                            }}
+                          >
+                            {chain.expirations.map((e) => (
+                              <option key={e} value={e}>
+                                {e.slice(5)}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="font-mono text-[12px] text-[var(--color-label-tertiary)]">
+                            {exp.slice(5)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-2 py-1.5 text-right font-mono tabular-nums text-emerald-500">
+                        {leg.entry_price > 0
+                          ? leg.entry_price.toFixed(2)
+                          : "—"}
+                      </td>
+                      <td
+                        className={
+                          "px-2 py-1.5 text-right font-mono tabular-nums " +
+                          (contrib == null
+                            ? "text-[var(--color-label-tertiary)]"
+                            : contrib >= 0
+                              ? "text-emerald-500"
+                              : "text-rose-500")
+                        }
+                      >
+                        {contrib == null
+                          ? "—"
+                          : `${contrib >= 0 ? "+" : ""}${contrib.toFixed(2)}`}
+                      </td>
+                      <td className="px-2 py-1.5 text-right font-mono text-[var(--color-label-tertiary)]">
+                        {leg.volatility != null
+                          ? (leg.volatility * 100).toFixed(0) + "%"
+                          : "—"}
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <button
+                          type="button"
+                          className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-destructive)] hover:bg-[var(--color-fill)] disabled:opacity-30"
+                          disabled={position.legs.length <= 1}
+                          onClick={() => removeLeg(i)}
+                          aria-label="Remove leg"
+                        >
+                          ×
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* —— Basis —— */}
+        <section>
+          <h4 className={sectionLabel}>Basis</h4>
+          <div className={group}>
+            <div className={groupRow}>
+              <span className={rowLabel}>Limit</span>
               <input
-                className={field}
+                className={field + " flex-1 text-right"}
                 type="number"
                 step="0.01"
                 value={
@@ -1476,8 +2213,8 @@ export default function PositionBuilder({
                 }
                 placeholder={
                   eco.complete && displayCost > 0
-                    ? `live ${displayCost.toFixed(2)} · unlocked`
-                    : "awaiting mids · unlocked"
+                    ? `Live ${displayCost.toFixed(2)}`
+                    : "Optional"
                 }
                 onChange={(e) => {
                   const raw = e.target.value.trim();
@@ -1492,17 +2229,11 @@ export default function PositionBuilder({
                   }));
                 }}
               />
-              <p className="mt-0.5 text-[10px] text-[var(--color-label-tertiary)]">
-                Live {formatPackageSide(eco)}
-                {overrideActive
-                  ? " · limit override active (locked basis on save)"
-                  : " · unlocked — tracks chain mids"}
-              </p>
-            </label>
-            <label className="block">
-              <span className={labelCls}>Packages</span>
+            </div>
+            <div className={groupRow}>
+              <span className={rowLabel}>Packages</span>
               <input
-                className={field}
+                className={field + " max-w-[5rem] text-right"}
                 type="number"
                 min={1}
                 value={position.contracts}
@@ -1513,14 +2244,28 @@ export default function PositionBuilder({
                   }))
                 }
               />
-            </label>
+            </div>
           </div>
+          <p className="mt-1.5 px-1 text-[12px] text-[var(--color-label-tertiary)]">
+            Leave limit empty for unlocked live package from OPF.
+          </p>
+        </section>
 
-          <div>
-            <span className={labelCls}>ToS script</span>
+        {/* —— Preview —— */}
+        <section>
+          <h4 className={sectionLabel}>Preview</h4>
+          <div className={group + " space-y-3 p-4"}>
+            <div>
+              <div className="text-[15px] font-semibold text-[var(--color-label)]">
+                {previewLabel}
+              </div>
+              <div className="mt-0.5 font-mono text-[12px] text-[var(--color-label-secondary)]">
+                {previewNotation || "—"}
+              </div>
+            </div>
             <button
               type="button"
-              className="block w-full rounded-lg border border-emerald-900/50 bg-black px-3 py-2 text-left font-mono text-[11px] text-emerald-400 hover:bg-zinc-950"
+              className="block w-full rounded-[var(--radius-md)] bg-black px-3 py-2.5 text-left font-mono text-[11px] leading-relaxed text-emerald-400 ring-1 ring-emerald-900/40"
               data-testid="builder-tos-script"
               onClick={() => {
                 if (!tosScript) return;
@@ -1530,124 +2275,291 @@ export default function PositionBuilder({
                 });
               }}
             >
-              {tosScript || "—"}
-              <span className="ml-2 text-[10px] text-emerald-600/80">
-                {copied ? "Copied" : "click to copy"}
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-emerald-600/80">
+                ToS · {copied ? "Copied" : "Tap to copy"}
               </span>
+              {tosScript || "—"}
             </button>
           </div>
+        </section>
+      </div>
 
-          <div className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]/40 p-3 text-sm">
-            <div className="font-semibold text-[var(--color-label)]">
-              {previewLabel}
-            </div>
-            <div className="font-mono text-xs text-[var(--color-label-secondary)]">
-              {previewNotation}
-            </div>
-            <div
-              className={
-                "mt-1 font-mono text-sm font-semibold " +
-                (eco.side === "CREDIT"
-                  ? "text-emerald-600"
-                  : eco.side === "DEBIT"
-                    ? "text-rose-600"
-                    : "text-[var(--color-label-tertiary)]")
-              }
-            >
-              {overrideActive && position.net_debit_override != null
-                ? `LIMIT ${Math.abs(position.net_debit_override).toFixed(2)}`
-                : formatPackageSide(eco)}
-              {position.contracts > 1 ? ` × ${position.contracts}` : ""}
-              <span className="ml-2 text-[10px] font-medium text-[var(--color-label-tertiary)]">
-                {overrideActive ? "override" : "live · unlocked"}
-              </span>
-            </div>
-          </div>
+      <div className={footerBar}>
+        {/* Defaults — Lab active or one of up to 3 user presets */}
+        <div className="relative min-w-0">
+          {mode === "create" ? (
+            <>
+              <Button
+                variant="plain"
+                className="!min-h-9 !px-2.5 !text-[13px]"
+                data-testid="builder-defaults-menu"
+                aria-haspopup="menu"
+                aria-expanded={defaultsMenuOpen}
+                onClick={() => {
+                  setDefaultsStore(loadCreateDefaultsStore());
+                  setDefaultsMenuOpen((o) => !o);
+                }}
+              >
+                Defaults
+                <span className="ml-1 max-w-[7rem] truncate text-[11px] font-normal text-[var(--color-label-tertiary)]">
+                  {defaultsStore.activeId == null
+                    ? "· Lab"
+                    : `· ${
+                        defaultsStore.presets.find(
+                          (p) => p.id === defaultsStore.activeId,
+                        )?.name ?? "Custom"
+                      }`}
+                </span>
+                <span className="text-[10px] opacity-60" aria-hidden>
+                  ▾
+                </span>
+              </Button>
+              {defaultsMenuOpen ? (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-[60] cursor-default bg-transparent"
+                    aria-label="Close defaults menu"
+                    onClick={() => setDefaultsMenuOpen(false)}
+                  />
+                  <div
+                    role="menu"
+                    className={
+                      "absolute bottom-full left-0 z-[61] mb-1 w-[min(20rem,calc(100vw-2rem))] overflow-hidden " +
+                      "rounded-[var(--radius-lg)] border border-[var(--color-separator)] " +
+                      "bg-[var(--color-surface)] py-1 shadow-[var(--elevation-2)]"
+                    }
+                    data-testid="builder-defaults-popover"
+                  >
+                    <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                      Active on Create
+                    </p>
+                    {/* Lab defaults */}
+                    <button
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={defaultsStore.activeId == null}
+                      className={
+                        "flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-[var(--color-fill)] " +
+                        (defaultsStore.activeId == null
+                          ? "bg-[var(--color-tint-soft)]"
+                          : "")
+                      }
+                      data-testid="builder-default-lab"
+                      onClick={() => {
+                        const next = resetToLabDefaults();
+                        setDefaultsStore(next);
+                        setDefaultsFlash("Lab defaults active");
+                        setDefaultsMenuOpen(false);
+                        window.setTimeout(() => setDefaultsFlash(null), 2000);
+                        // Re-apply flagship Lab butterfly now
+                        const lab = labDefaultForStrategy("butterfly", symbol);
+                        handleTemplate(lab.template);
+                      }}
+                    >
+                      <span className="mt-0.5 w-4 shrink-0 text-[var(--color-tint)]">
+                        {defaultsStore.activeId == null ? "●" : "○"}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[14px] font-medium text-[var(--color-label)]">
+                          Options Lab defaults
+                        </span>
+                        <span className="block text-[11px] leading-snug text-[var(--color-label-tertiary)]">
+                          {labDefaultForStrategy("butterfly", symbol).blurb}
+                        </span>
+                      </span>
+                    </button>
+                    {/* Up to 3 user presets */}
+                    {defaultsStore.presets.map((p, i) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={defaultsStore.activeId === p.id}
+                        className={
+                          "flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-[var(--color-fill)] " +
+                          (defaultsStore.activeId === p.id
+                            ? "bg-[var(--color-tint-soft)]"
+                            : "")
+                        }
+                        data-testid={`builder-default-slot-${i}`}
+                        onClick={() => {
+                          const next = setActiveCreateDefault(p.id);
+                          setDefaultsStore(next);
+                          setDefaultsFlash(`Active: ${p.name}`);
+                          setDefaultsMenuOpen(false);
+                          window.setTimeout(() => setDefaultsFlash(null), 2000);
+                          // Apply this preset shape immediately
+                          setTemplate(p.template);
+                          setDirection(p.direction);
+                          setOptionSide(p.optionSide);
+                          setWingWidth(p.wingWidth);
+                          const front =
+                            position.expiration ||
+                            pickDefaultFrontExpiration(
+                              chain.expirations,
+                              marketLive,
+                            ) ||
+                            frontDefault;
+                          const listed = chain.getStrikes(front);
+                          const atm =
+                            atmCenter > 0
+                              ? atmCenter
+                              : snapToListed(
+                                  chain.spotStrike ?? chain.spot ?? spotPrice,
+                                  listed,
+                                ) ?? spotPrice;
+                          const c =
+                            snapToListed(atm + p.centerOffsetPts, listed) ??
+                            atm;
+                          setCenterStrike(c);
+                          let back: string | undefined;
+                          if (
+                            p.template === "calendar" ||
+                            p.template === "diagonal"
+                          ) {
+                            const exps = chain.expirations;
+                            const idx = exps.indexOf(front);
+                            back =
+                              idx >= 0 && idx + 1 < exps.length
+                                ? exps[idx + 1]
+                                : nextListedBack(front, exps) || undefined;
+                            if (back) setBackExpiration(back);
+                          }
+                          regenerate(
+                            p.template,
+                            c,
+                            p.wingWidth,
+                            p.optionSide,
+                            p.direction,
+                            front,
+                            back,
+                          );
+                        }}
+                      >
+                        <span className="mt-0.5 w-4 shrink-0 text-[var(--color-tint)]">
+                          {defaultsStore.activeId === p.id ? "●" : "○"}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[14px] font-medium text-[var(--color-label)]">
+                            {p.name}
+                          </span>
+                          <span className="block font-mono text-[11px] text-[var(--color-label-tertiary)]">
+                            {formatShapeSummary(p)}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                    {defaultsStore.presets.length < MAX_USER_PRESETS ? (
+                      <p className="px-3 py-1.5 text-[11px] text-[var(--color-label-tertiary)]">
+                        {MAX_USER_PRESETS - defaultsStore.presets.length} slot
+                        {MAX_USER_PRESETS - defaultsStore.presets.length === 1
+                          ? ""
+                          : "s"}{" "}
+                        free — Save stores current shape
+                        {defaultsStore.activeId
+                          ? " (overwrites active)"
+                          : " (new slot)"}
+                        .
+                      </p>
+                    ) : (
+                      <p className="px-3 py-1.5 text-[11px] text-[var(--color-label-tertiary)]">
+                        3 presets full — Save overwrites the active slot (or
+                        oldest if Lab is active).
+                      </p>
+                    )}
+                    <div className="my-1 border-t border-[var(--color-separator)]" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center px-3 py-2.5 text-left text-[14px] text-[var(--color-label)] hover:bg-[var(--color-fill)]"
+                      data-testid="builder-save-as-default"
+                      onClick={() => {
+                        const shape = shapeFromBuilderState({
+                          template,
+                          direction,
+                          optionSide,
+                          wingWidth:
+                            wingWidth > 0
+                              ? wingWidth
+                              : DEFAULT_CREATE_WING_WIDTH,
+                          centerStrike:
+                            centerStrike || atmCenter || spotPrice,
+                          atmCenter:
+                            atmCenter ||
+                            chain.spotStrike ||
+                            chain.spot ||
+                            centerStrike ||
+                            spotPrice,
+                          contracts: position.contracts,
+                        });
+                        const next = saveShapeAsUserPreset(
+                          shape,
+                          symbol,
+                          undefined,
+                        );
+                        setDefaultsStore(next);
+                        setDefaultsFlash("Saved · now active");
+                        setDefaultsMenuOpen(false);
+                        window.setTimeout(() => setDefaultsFlash(null), 2200);
+                      }}
+                    >
+                      Save as Default
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center px-3 py-2.5 text-left text-[14px] text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
+                      data-testid="builder-reset-default"
+                      onClick={() => {
+                        const next = resetToLabDefaults();
+                        setDefaultsStore(next);
+                        setDefaultsFlash("Reset to Options Lab defaults");
+                        setDefaultsMenuOpen(false);
+                        window.setTimeout(() => setDefaultsFlash(null), 2200);
+                        handleTemplate("butterfly");
+                      }}
+                    >
+                      Reset to Lab defaults
+                    </button>
+                    <div className="border-t border-[var(--color-separator)] px-3 py-2 text-[11px] leading-snug text-[var(--color-label-tertiary)]">
+                      Wave 1 Lab recipes: Butterfly · Vertical · Condor ·
+                      Calendar (multi-exp). Strategy change while Lab is active
+                      applies that recipe on OPF.
+                    </div>
+                  </div>
+                </>
+              ) : null}
+              {defaultsFlash ? (
+                <span
+                  className="ml-2 text-[12px] text-[var(--color-tint)]"
+                  data-testid="builder-defaults-flash"
+                  role="status"
+                >
+                  {defaultsFlash}
+                </span>
+              ) : null}
+            </>
+          ) : (
+            <span className="text-[12px] text-[var(--color-label-tertiary)]">
+              Edit mode
+            </span>
+          )}
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--color-separator)] px-4 py-3">
-          <button type="button" className={btn} onClick={onCancel}>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button variant="secondary" onClick={onCancel}>
             Cancel
-          </button>
-          <button
-            type="button"
-            className={btnPrimary}
+          </Button>
+          <Button
+            variant="primary"
             data-testid="position-builder-analyze"
-            onClick={() => {
-              // Save only OPF-held chain structure — never invent strikes
-              let legs = position.legs;
-              let exp = position.expiration;
-              if (!legs.length) {
-                const front =
-                  pickDefaultFrontExpiration(chain.expirations, marketLive) ||
-                  exp ||
-                  frontDefault ||
-                  etYmd();
-                const listed = chain.getStrikes(front);
-                if (!listed.length) {
-                  setStructureNotice(
-                    "OPF chain not loaded for this expiration yet — wait a moment, then Analyze.",
-                  );
-                  chain.ensureExpiration(front);
-                  regenerate(
-                    template,
-                    centerStrike || atmCenter || spotPrice,
-                    wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                    optionSide,
-                    direction,
-                    front,
-                    backExpiration,
-                  );
-                  return;
-                }
-                const built = buildListedStructure({
-                  template,
-                  listed,
-                  preferCenter:
-                    centerStrike || atmCenter || spotPrice || listed[0],
-                  preferWidth: wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                  optionSide,
-                });
-                if (!built) {
-                  setStructureNotice(
-                    "Cannot place that strategy on the OPF chain. Choose another strategy or expiration.",
-                  );
-                  return;
-                }
-                exp = front;
-                legs = priceLegs(built.legs, front);
-                if (direction === "sell") legs = flipLegs(legs);
-              } else {
-                // Snap any leg onto listed before save
-                const listed = chain.getStrikes(exp);
-                if (listed.length) {
-                  legs = legs.map((l) => {
-                    const s = snapToListed(l.strike, listed);
-                    return s != null ? { ...l, strike: s } : l;
-                  });
-                }
-              }
-              const payload = {
-                ...position,
-                expiration: exp,
-                legs,
-                direction,
-                net_debit_override:
-                  position.net_debit_override != null &&
-                  Number.isFinite(position.net_debit_override)
-                    ? position.net_debit_override
-                    : null,
-              };
-              onSave(
-                payload,
-                buildLabel(payload.underlying, payload.legs, payload.expiration),
-                buildNotation(payload.legs),
-              );
-            }}
+            onClick={handleSave}
           >
             {mode === "edit" ? "Update" : "Analyze"}
-          </button>
+          </Button>
         </div>
+      </div>
     </div>
   );
 }
