@@ -12,8 +12,12 @@
 | 21:21 | 64 | 35M | SPY trades 2004 |
 | 21:32 | 541 | 541M | SPY trades ~2006-01 |
 | 21:43 | 836 | 796M | SPY trades ~2007-03 |
+| 21:57 | 973 | 969M | restart w/ retries; SPY ~2007-09 |
+| **23:44** | **1782** | **3.4G** | **SPY trades ~2010-10; still running (PID 90553)** |
 
-Monitor: `tail -f …/jobs/logs/raw_campaign.log`
+**Still ahead:** SPY trades 2010→2026 · 15 other symbols trades · all quotes · all 1s.
+
+Monitor: `tail -f /Users/ernie/data/fattail-market-data/jobs/logs/raw_campaign.log`
 
 ## Resume
 
