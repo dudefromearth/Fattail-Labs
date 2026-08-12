@@ -3,11 +3,10 @@
 /**
  * Live Position Builder for Options Lab Analyzer.
  *
- * Client data plane only:
- *  - Listed strikes from dual-side chain ladders (PB6 / OC6a)
- *  - Center on ATM (spot strike) when opening / product hydrates
- *  - Live package DEBIT|CREDIT from chain mids (PB4 incomplete → —)
- *  - Per-leg mid + package contribution while the dialog is open
+ * **Law:** Every prefilled / regenerated strike must exist on the OPF-held
+ * dual-side chain for that expiration. There is no alternate strike book —
+ * RTH or closed, the chain OPF holds is the only universe. If the ladder is
+ * not loaded yet, wait and hydrate; never emit arithmetic “fake” strikes.
  */
 
 import {
@@ -21,10 +20,10 @@ import {
 import StrikeSelect from "@/components/options-lab/StrikeSelect";
 import {
   listedWingChoices,
-  listedWidthPoints,
   normalizeStrike,
   snapToListed,
 } from "@/lib/options-lab/listedStrikes";
+import { buildListedStructure } from "@/lib/options-lab/listedStructure";
 import {
   formatPackageSide,
   packageEconomics,
@@ -39,19 +38,8 @@ import type {
   TradeDirection,
 } from "@/lib/options-lab/positionTypes";
 import {
-  butterflyLegs,
-  bwbLegs,
-  calendarLegs,
-  condorLegs,
-  diagonalLegs,
   diagonalWidthFromLadder,
   flipLegs,
-  ironCondorLegs,
-  ironFlyLegs,
-  singleLeg,
-  straddleLegs,
-  strangleLegs,
-  verticalLegs,
 } from "@/lib/options-lab/positionTemplates";
 import {
   buildLabel,
@@ -308,12 +296,27 @@ export default function PositionBuilder({
   const [wingWidth, setWingWidth] = useState(DEFAULT_CREATE_WING_WIDTH);
   const [backExpiration, setBackExpiration] = useState("");
   const [copied, setCopied] = useState(false);
+  /** Status when chain not ready / structure cannot sit on OPF grid */
+  const [structureNotice, setStructureNotice] = useState<string | null>(null);
   /** One seed per open — never re-seed over the user's structure. */
   const didSeed = useRef(false);
   /** Last chain rev we applied prices for (reprice only, no structure rewrite). */
   const lastPriceRev = useRef(-1);
   /** User explicitly changed front exp — do not auto-roll it. */
   const userPickedExp = useRef(false);
+  /**
+   * Pending quick-build when OPF ladder not yet loaded for front exp.
+   * Applied once strikes arrive — never invent strikes while waiting.
+   */
+  const pendingBuild = useRef<{
+    tmpl: TemplateType;
+    center: number;
+    width: number;
+    side: OptionRight;
+    dir: TradeDirection;
+    front: string;
+    back?: string;
+  } | null>(null);
 
   // Free-floating panel position (viewport coords)
   const [panelPos, setPanelPos] = useState(PANEL_DEFAULT_OFFSET);
@@ -378,17 +381,23 @@ export default function PositionBuilder({
 
   const priceLegs = useCallback(
     (legs: LegInput[], frontExp: string): LegInput[] => {
-      // Always return legs — never strip structure when chain is cold
+      // Only price legs that land on the OPF-held listed grid for each exp.
+      // Never invent a strike when the ladder is empty — leave as-is and
+      // let the caller wait for hydrate.
       return legs.map((leg) => {
         const exp = (leg.expiration || frontExp).slice(0, 10);
         const listed = chain.getStrikes(exp);
-        const strike =
-          snapToListed(leg.strike, listed) ??
-          (listed.length ? listed[0] : normalizeStrike(leg.strike));
+        if (!listed.length) {
+          return { ...leg, entry_price: leg.entry_price ?? 0 };
+        }
+        const strike = snapToListed(leg.strike, listed);
+        if (strike == null) {
+          return { ...leg, entry_price: 0 };
+        }
         const c = chain.getContract(exp, strike, leg.type);
         return {
           ...leg,
-          strike: Number.isFinite(strike) && strike > 0 ? strike : leg.strike,
+          strike,
           entry_price: c?.mid ?? leg.entry_price ?? 0,
           volatility: c?.iv ?? leg.volatility,
         };
@@ -398,9 +407,9 @@ export default function PositionBuilder({
   );
 
   /**
-   * Materialize full leg table from quick-build controls.
-   * Always produces legs. Honors the caller's center/width/exp when valid —
-   * does not yank the structure back to ATM after the user has chosen.
+   * Materialize legs **only** from the OPF-held listed chain for front exp.
+   * If the ladder is not loaded yet: hydrate + queue (pendingBuild) — do not
+   * invent center/width arithmetic strikes.
    */
   const regenerate = useCallback(
     (
@@ -411,14 +420,28 @@ export default function PositionBuilder({
       dir: TradeDirection,
       frontExp: string,
       backExp?: string,
-    ) => {
+    ): boolean => {
       const front = (frontExp || "").slice(0, 10) || etYmd();
-      // Ensure ladder for the chosen exp so any OPF-listed trade can price
       chain.ensureExpiration(front);
       if (backExp) chain.ensureExpiration(backExp.slice(0, 10));
 
       const listed = chain.getStrikes(front);
-      // Prefer explicit user center; only fall back to ATM/spot when unset
+      if (!listed.length) {
+        pendingBuild.current = {
+          tmpl,
+          center,
+          width,
+          side,
+          dir,
+          front,
+          back: backExp,
+        };
+        setStructureNotice(
+          "Loading OPF chain for this expiration… structure will fill when strikes arrive.",
+        );
+        return false;
+      }
+
       const prefer =
         (Number.isFinite(center) && center > 0 ? center : null) ??
         (chain.spotStrike != null && chain.spotStrike > 0
@@ -426,80 +449,25 @@ export default function PositionBuilder({
           : null) ??
         (chain.spot != null && chain.spot > 0 ? chain.spot : null) ??
         (spotPrice > 0 ? spotPrice : null) ??
-        0;
-      // Snap to listed when available; otherwise keep the arithmetic center
-      // so OTM / far structures remain selectable while the ladder hydrates.
-      const c =
-        (listed.length
-          ? snapToListed(prefer, listed)
-          : null) ??
-        (prefer > 0
-          ? normalizeStrike(prefer)
-          : listed.length
-            ? listed[Math.floor(listed.length / 2)]
-            : 0);
-      // Map width onto listed grid so wings land on OPF-listed strikes
-      let w =
-        listed.length && width > 0
-          ? listedWidthPoints(c, width, listed)
-          : width > 0
-            ? width
-            : DEFAULT_CREATE_WING_WIDTH;
-      if (!(w > 0)) w = DEFAULT_CREATE_WING_WIDTH;
+        listed[Math.floor(listed.length / 2)];
 
-      // Guard: still no center — placeholder so the leg table is never empty
-      const body = c > 0 ? c : 100;
+      const built = buildListedStructure({
+        template: tmpl,
+        listed,
+        preferCenter: prefer,
+        preferWidth: width > 0 ? width : DEFAULT_CREATE_WING_WIDTH,
+        optionSide: side,
+      });
 
-      let legs: LegInput[];
-      switch (tmpl) {
-        case "single":
-          legs = singleLeg(body, side);
-          break;
-        case "vertical":
-          legs = verticalLegs(body, body + w, side);
-          break;
-        case "butterfly":
-          legs = butterflyLegs(body, w, side);
-          break;
-        case "bwb":
-          legs = bwbLegs(body, w, side);
-          break;
-        case "condor":
-          legs = condorLegs(body, w, side);
-          break;
-        case "straddle":
-          legs = straddleLegs(body);
-          break;
-        case "strangle":
-          legs = strangleLegs(
-            body,
-            w || defaultWidth(symbol, profileMinWing),
-          );
-          break;
-        case "iron_fly":
-          legs = ironFlyLegs(
-            body,
-            w || defaultWidth(symbol, profileMinWing),
-          );
-          break;
-        case "iron_condor":
-          legs = ironCondorLegs(
-            body - w * 2,
-            body - w,
-            body + w,
-            body + w * 2,
-          );
-          break;
-        case "calendar":
-          legs = calendarLegs(body, side);
-          break;
-        case "diagonal":
-          legs = diagonalLegs(body, w, side);
-          break;
-        default:
-          legs = butterflyLegs(body, w, side);
+      if (!built) {
+        pendingBuild.current = null;
+        setStructureNotice(
+          "That structure cannot sit on the OPF chain for this expiration (not enough listed strikes). Pick another strategy or width.",
+        );
+        return false;
       }
 
+      let legs = built.legs;
       if (tmpl === "calendar" || tmpl === "diagonal") {
         const back =
           (backExp || nextListedBack(front, chain.expirations) || front).slice(
@@ -516,15 +484,10 @@ export default function PositionBuilder({
       legs = priceLegs(legs, front);
       if (dir === "sell") legs = flipLegs(legs);
 
-      // Absolute guarantee: template always yields ≥1 leg
-      if (!legs.length) {
-        legs = butterflyLegs(body, w, side);
-        legs = priceLegs(legs, front);
-        if (dir === "sell") legs = flipLegs(legs);
-      }
-
-      setCenterStrike(body);
-      if (w > 0) setWingWidth(w);
+      pendingBuild.current = null;
+      setStructureNotice(null);
+      setCenterStrike(built.body);
+      if (built.width > 0) setWingWidth(built.width);
       setPosition((prev) => ({
         ...prev,
         underlying: symbol,
@@ -533,8 +496,9 @@ export default function PositionBuilder({
         direction: dir,
         net_debit_override: null,
       }));
+      return true;
     },
-    [chain, priceLegs, symbol, spotPrice, profileMinWing],
+    [chain, priceLegs, symbol, spotPrice],
   );
 
   // Reset float position + seed flags when dialog opens
@@ -566,40 +530,52 @@ export default function PositionBuilder({
 
     if (mode === "edit" && initial?.legs.length) {
       const front = initial.expiration || frontDefault;
-      const priced = priceLegs(
-        initial.legs.map((l) => ({ ...l })),
-        front,
-      );
-      setPosition({ ...initial, legs: priced.length ? priced : initial.legs });
+      chain.ensureExpiration(front);
+      const listed = chain.getStrikes(front);
+      // Snap existing book legs onto OPF grid when ladder is already warm
+      let legs = initial.legs.map((l) => ({ ...l }));
+      if (listed.length) {
+        legs = legs.map((l) => {
+          const s = snapToListed(l.strike, listed);
+          return s != null ? { ...l, strike: s } : l;
+        });
+      }
+      const priced = priceLegs(legs, front);
+      setPosition({ ...initial, legs: priced.length ? priced : legs });
       setDirection(initial.direction || "buy");
       const body =
         priced.find((l) => l.side === "short")?.strike ??
         priced[0]?.strike ??
-        (atmCenter > 0 ? atmCenter : spotPrice > 0 ? spotPrice : 100);
-      setCenterStrike(body > 0 ? body : 100);
+        (atmCenter > 0 ? atmCenter : spotPrice > 0 ? spotPrice : 0);
+      if (body > 0) setCenterStrike(body);
+      if (!listed.length) {
+        setStructureNotice(
+          "Loading OPF chain… strikes will snap to listed when ready.",
+        );
+      }
       return;
     }
 
+    // Create: only OPF-listed butterfly — wait for ladder if needed
     const front =
       pickDefaultFrontExpiration(chain.expirations, marketLive) ||
       frontDefault ||
       etYmd();
     const listed = chain.getStrikes(front);
-    let center =
+    const prefer =
       atmCenter > 0
         ? atmCenter
         : spotPrice > 0
           ? spotPrice
           : chain.spot != null && chain.spot > 0
             ? chain.spot
-            : 100;
-    if (listed.length) {
-      center =
-        snapToListed(
-          chain.spotStrike ?? chain.spot ?? spotPrice ?? center,
+            : listed[0] ?? 0;
+    const center = listed.length
+      ? snapToListed(
+          chain.spotStrike ?? chain.spot ?? prefer,
           listed,
-        ) ?? listed[Math.floor(listed.length / 2)];
-    }
+        ) ?? listed[Math.floor(listed.length / 2)]
+      : prefer;
     const width = resolveCreateWingWidth(
       center,
       listed,
@@ -608,8 +584,8 @@ export default function PositionBuilder({
     setTemplate("butterfly");
     setDirection("buy");
     setOptionSide("call");
-    setCenterStrike(center);
-    setWingWidth(width);
+    if (center > 0) setCenterStrike(center);
+    setWingWidth(width > 0 ? width : DEFAULT_CREATE_WING_WIDTH);
     regenerate("butterfly", center, width, "call", "buy", front);
   }, [
     open,
@@ -625,64 +601,74 @@ export default function PositionBuilder({
   ]);
 
   /**
-   * Chain tick: reprice + snap only. Never rewrite the user's structure.
-   * One exception: create mode + still on expired same-day front (after 4 PM ET)
-   * and user never picked exp → silent roll to next listed.
+   * When OPF ladder arrives: apply pending structure build, or reprice mids.
+   * Never invent strikes — only listed grid from the dual-side chain.
    */
   useEffect(() => {
     if (!open) return;
     const rev = chain.rev ?? 0;
-    if (rev === lastPriceRev.current && position.legs.length > 0) return;
+    if (rev === lastPriceRev.current && !pendingBuild.current) {
+      // Still allow mid refresh when legs exist
+      if (position.legs.length === 0) return;
+    }
     lastPriceRev.current = rev;
 
-    // Empty legs should never stick — rebuild current quick-build once
+    // Pending strategy/create build waiting for OPF strikes
+    if (pendingBuild.current) {
+      const p = pendingBuild.current;
+      const listed = chain.getStrikes(p.front);
+      if (listed.length) {
+        regenerate(
+          p.tmpl,
+          p.center,
+          p.width,
+          p.side,
+          p.dir,
+          p.front,
+          p.back,
+        );
+      }
+      return;
+    }
+
+    // Empty legs: rebuild on real chain only
     if (position.legs.length === 0) {
       const front =
         pickDefaultFrontExpiration(chain.expirations, marketLive) ||
         position.expiration ||
         frontDefault ||
         etYmd();
-      regenerate(
-        template,
-        centerStrike || atmCenter || spotPrice || 100,
-        wingWidth || DEFAULT_CREATE_WING_WIDTH,
-        optionSide,
-        direction,
-        front,
-        backExpiration,
-      );
-      return;
-    }
-
-    // Silent same-day roll only when user has not chosen an expiration
-    if (
-      mode === "create" &&
-      !userPickedExp.current &&
-      position.expiration === etYmd() &&
-      !isSameDayExpirationValid()
-    ) {
-      const nextFront = pickDefaultFrontExpiration(
-        chain.expirations,
-        marketLive,
-      );
-      if (nextFront && nextFront !== position.expiration) {
+      if (chain.getStrikes(front).length) {
         regenerate(
           template,
-          centerStrike || atmCenter || spotPrice || 100,
+          centerStrike || atmCenter || spotPrice,
           wingWidth || DEFAULT_CREATE_WING_WIDTH,
           optionSide,
           direction,
-          nextFront,
+          front,
           backExpiration,
         );
-        return;
+      } else {
+        chain.ensureExpiration(front);
+        setStructureNotice(
+          "Loading OPF chain for this expiration…",
+        );
       }
+      return;
     }
 
-    // Soft reprice only — keep structure, fill mids as they arrive
+    // Soft reprice + snap any drift onto listed (edit seed race)
     setPosition((prev) => {
       if (!prev.legs.length) return prev;
-      const next = priceLegs(prev.legs, prev.expiration);
+      const listed = chain.getStrikes(prev.expiration);
+      let legs = prev.legs;
+      if (listed.length) {
+        legs = legs.map((l) => {
+          const s = snapToListed(l.strike, listed);
+          return s != null && s !== l.strike ? { ...l, strike: s } : l;
+        });
+      }
+      const next = priceLegs(legs, prev.expiration);
       const same = next.every(
         (l, i) =>
           l.strike === prev.legs[i]?.strike &&
@@ -780,7 +766,7 @@ export default function PositionBuilder({
         defaultDiagonalWidth(symbol);
       setWingWidth(width);
     }
-    // Quick-build always fills the full leg table
+    // Prefill only from OPF-held listed strikes (waits for ladder if cold)
     regenerate(
       tmpl,
       centerStrike || atmCenter || spotPrice,
@@ -938,7 +924,7 @@ export default function PositionBuilder({
               {mode === "edit" ? "Edit Position" : "Create Position"}
             </h3>
             <p className="text-[11px] text-[var(--color-label-tertiary)]">
-              Quick-build any OPF-listed structure · live unlocked
+              Prefill from OPF-held chain only · RTH or closed
               {chain.spot != null ? ` · spot ${chain.spot.toFixed(2)}` : ""}
               {chain.spotStrike != null
                 ? ` · ATM ${chain.spotStrike}`
@@ -952,6 +938,16 @@ export default function PositionBuilder({
             Close
           </button>
         </div>
+
+        {structureNotice ? (
+          <div
+            className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[12px] text-amber-100"
+            role="status"
+            data-testid="builder-structure-notice"
+          >
+            {structureNotice}
+          </div>
+        ) : null}
 
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
           <div className="grid grid-cols-2 gap-3">
@@ -1557,7 +1553,7 @@ export default function PositionBuilder({
             className={btnPrimary}
             data-testid="position-builder-analyze"
             onClick={() => {
-              // Never fault — ensure a structure exists, then hand off
+              // Save only OPF-held chain structure — never invent strikes
               let legs = position.legs;
               let exp = position.expiration;
               if (!legs.length) {
@@ -1566,37 +1562,49 @@ export default function PositionBuilder({
                   exp ||
                   frontDefault ||
                   etYmd();
-                exp = front;
-                regenerate(
-                  template,
-                  centerStrike || atmCenter || spotPrice || 100,
-                  wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                  optionSide,
-                  direction,
-                  front,
-                  backExpiration,
-                );
-                // regenerate is async to state — build legs synchronously for save
                 const listed = chain.getStrikes(front);
-                const body =
-                  snapToListed(
-                    centerStrike || atmCenter || spotPrice || 100,
-                    listed,
-                  ) ??
-                  (listed.length
-                    ? listed[Math.floor(listed.length / 2)]
-                    : centerStrike || atmCenter || spotPrice || 100);
-                const w =
-                  listed.length
-                    ? listedWidthPoints(
-                        body,
-                        wingWidth || DEFAULT_CREATE_WING_WIDTH,
-                        listed,
-                      ) || DEFAULT_CREATE_WING_WIDTH
-                    : wingWidth || DEFAULT_CREATE_WING_WIDTH;
-                legs = butterflyLegs(body, w, optionSide);
+                if (!listed.length) {
+                  setStructureNotice(
+                    "OPF chain not loaded for this expiration yet — wait a moment, then Analyze.",
+                  );
+                  chain.ensureExpiration(front);
+                  regenerate(
+                    template,
+                    centerStrike || atmCenter || spotPrice,
+                    wingWidth || DEFAULT_CREATE_WING_WIDTH,
+                    optionSide,
+                    direction,
+                    front,
+                    backExpiration,
+                  );
+                  return;
+                }
+                const built = buildListedStructure({
+                  template,
+                  listed,
+                  preferCenter:
+                    centerStrike || atmCenter || spotPrice || listed[0],
+                  preferWidth: wingWidth || DEFAULT_CREATE_WING_WIDTH,
+                  optionSide,
+                });
+                if (!built) {
+                  setStructureNotice(
+                    "Cannot place that strategy on the OPF chain. Choose another strategy or expiration.",
+                  );
+                  return;
+                }
+                exp = front;
+                legs = priceLegs(built.legs, front);
                 if (direction === "sell") legs = flipLegs(legs);
-                legs = priceLegs(legs, front);
+              } else {
+                // Snap any leg onto listed before save
+                const listed = chain.getStrikes(exp);
+                if (listed.length) {
+                  legs = legs.map((l) => {
+                    const s = snapToListed(l.strike, listed);
+                    return s != null ? { ...l, strike: s } : l;
+                  });
+                }
               }
               const payload = {
                 ...position,

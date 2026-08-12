@@ -61,6 +61,26 @@ ad-hoc polls or WS-only mid tables. See Arch **28** §4.4 and `AGENTS.md` market
   describe the system as it is and as intended, validatable without reading code.
 - **Never hardcode** dates, user IDs, API keys, ports.
 
+### Options Lab — OPF Truth & Elegant Failure (capital-risk · DL-309)
+
+**Normative:** `Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md`
+
+When creating, editing, or displaying **positions** (Builder, cards, package marks):
+
+1. **OPF is the only truth.** Dual-side chain generations OPF holds = sole instrument
+   universe (listed exp + listed strikes + marks). RTH vs closed changes live/held, not
+   what contracts exist. Never invent strikes for prefill/strategy change.
+2. **Representable or named failure.** Either every leg is real on that plane and may
+   show a defendable package mark, or the UI shows a **truthful named state** (EXPIRED ·
+   NOT TRADED · CHECK LEGS · UPDATING · BUDGET LIMIT · WAITING · HIDDEN) — never a silent
+   blank or a lying debit/credit.
+3. **Atomic settle.** Pointer change resolves once; no endless flash/search.
+4. **Severity high** if we invent instruments or false package prices — capital-adjacent
+   judgment surface.
+
+Platform fail-loud (config) and member-facing **fail elegant and truthful** (instruments)
+both reject silent wrongness.
+
 ## Positioning (informs all product copy)
 
 **North star:** help traders become **enlightened** (secular practice: present, aware,
