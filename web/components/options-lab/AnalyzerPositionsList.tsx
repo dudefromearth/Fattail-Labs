@@ -412,18 +412,25 @@ function PosBlock({
    */
   const cellBase = (isLast: boolean): CSSProperties => ({
     backgroundColor: bg,
-    borderBottomWidth: isLast && hasNext ? 1 : 0,
+    // Between-position rule: 2px (was 1)
+    borderBottomWidth: isLast && hasNext ? 2 : 0,
     borderBottomStyle: isLast && hasNext ? "solid" : "none",
     borderBottomColor:
       isLast && hasNext ? BLOTTER_HEX.positionRule : "transparent",
   });
 
-  // Outer edge only — inset ring on the whole block (not between legs)
+  // Outer edge only — inset ring +1px thicker than prior (selected 3, ghost 2, default 2)
+  const edgeColor =
+    kind === "close"
+      ? BLOTTER_HEX.borderClose
+      : kind === "open"
+        ? BLOTTER_HEX.borderOpen
+        : "rgba(255,255,255,0.22)";
   const blockShadow = selected
-    ? "inset 0 0 0 2px rgba(255,255,255,0.38)"
+    ? "inset 0 0 0 3px rgba(255,255,255,0.42)"
     : isGhost
-      ? "inset 0 0 0 1px rgba(156,163,175,0.7)"
-      : undefined;
+      ? "inset 0 0 0 2px rgba(156,163,175,0.75)"
+      : `inset 0 0 0 2px ${edgeColor}`;
 
   return (
     <tbody
