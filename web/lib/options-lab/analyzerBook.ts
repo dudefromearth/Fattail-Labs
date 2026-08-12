@@ -684,13 +684,13 @@ export function cardShowsPackageMark(
 }
 
 /**
- * Shift every leg one listed strike in the arrow direction (↑ higher, ↓ lower).
+ * Shift every leg one **listed** strike in the arrow direction (↑ higher, ↓ lower).
  *
- * Rigid structure: all legs must be able to step one index on their exp's
- * listed grid (or arithmetic fallback). If any leg is at the edge, no-op.
+ * OT-EF / DL-309: OPF-held dual-side grid only. **No arithmetic invent** when
+ * the ladder is cold or a leg cannot step — rigid no-op (position unchanged).
+ * If any leg cannot move one listed step, the whole structure stays put.
  *
- * **Always unlocks** the package so debit/credit can re-find its natural mid
- * — regardless of prior lock / limit override.
+ * **Always unlocks** and clears package so atomic resolve can re-bind.
  */
 export function shiftCardStrikes(
   pos: AnalyzerPosition,
@@ -704,48 +704,37 @@ export function shiftCardStrikes(
     ""
   ).slice(0, 10);
   if (!pos.position.legs.length) return pos;
-
-  // Fallback arithmetic step from structure gaps (or 5)
-  const uniqueStrikes = uniqueListedStrikes(
-    pos.position.legs.map((l) => l.strike),
-  );
-  let fallbackStep = 5;
-  if (uniqueStrikes.length >= 2) {
-    const gaps = uniqueStrikes
-      .slice(1)
-      .map((s, i) => normalizeStrike(s - uniqueStrikes[i]))
-      .filter((g) => g > 0);
-    if (gaps.length) fallbackStep = Math.min(...gaps);
-  }
+  if (!getListedStrikes) return pos; // cannot prove OPF-listed without ladder
 
   const nextLegs = pos.position.legs.map((leg) => {
     const exp = (leg.expiration || front).slice(0, 10);
-    const rawListed = getListedStrikes?.(exp) ?? [];
-    const listed = uniqueListedStrikes(rawListed);
+    const listed = uniqueListedStrikes(getListedStrikes(exp) ?? []);
     const cur = normalizeStrike(leg.strike);
 
-    if (listed.length >= 2) {
-      let idx = listed.findIndex((s) => normalizeStrike(s) === cur);
-      if (idx < 0) {
-        const snapped = snapToListed(cur, listed);
-        idx =
-          snapped != null
-            ? listed.findIndex((s) => normalizeStrike(s) === normalizeStrike(snapped))
-            : -1;
-      }
-      if (idx < 0) return { leg, next: cur, ok: false as const };
-      const j = idx + delta;
-      if (j < 0 || j >= listed.length) return { leg, next: cur, ok: false as const };
-      return { leg, next: listed[j], ok: true as const };
+    // Doctrine: without a real listed grid, refuse to invent steps
+    if (listed.length < 2) {
+      return { leg, next: cur, ok: false as const };
     }
 
-    // No ladder: rigid arithmetic translate
-    const next = normalizeStrike(cur + delta * fallbackStep);
-    if (!(next > 0)) return { leg, next: cur, ok: false as const };
-    return { leg, next, ok: true as const };
+    let idx = listed.findIndex((s) => normalizeStrike(s) === cur);
+    if (idx < 0) {
+      const snapped = snapToListed(cur, listed);
+      idx =
+        snapped != null
+          ? listed.findIndex(
+              (s) => normalizeStrike(s) === normalizeStrike(snapped),
+            )
+          : -1;
+    }
+    if (idx < 0) return { leg, next: cur, ok: false as const };
+    const j = idx + delta;
+    if (j < 0 || j >= listed.length) {
+      return { leg, next: cur, ok: false as const };
+    }
+    return { leg, next: listed[j], ok: true as const };
   });
 
-  // Rigid: every leg must move one step
+  // Rigid: every leg must move one listed step
   if (!nextLegs.every((r) => r.ok && r.next !== normalizeStrike(r.leg.strike))) {
     return pos;
   }
@@ -767,17 +756,14 @@ export function shiftCardStrikes(
     position,
     label: buildLabel(position.underlying, legs, position.expiration),
     notation: buildNotation(legs),
-    // Unlock + clear stale package so natural mid can re-settle
     lock: { mode: "unlocked" },
     lastNatSigned: null,
     livePackagePerShare: null,
     priceSide: null,
-    liveState:
-      pos.liveState === "live" || pos.liveState === "held"
-        ? "not_live"
-        : pos.liveState === "incomplete" || pos.liveState === "skewed"
-          ? pos.liveState
-          : "not_live",
+    bind: null,
+    liveState: "not_live",
+    displayAsOf: null,
+    contentHashes: {},
     updatedAt: Date.now(),
   };
 }

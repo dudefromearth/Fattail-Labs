@@ -810,15 +810,25 @@ export default function PositionBuilder({
         if (patch.strike != null) {
           const exp = (next.expiration || prev.expiration).slice(0, 10);
           const listed = chain.getStrikes(exp);
-          next.strike =
-            snapToListed(next.strike, listed) ?? normalizeStrike(next.strike);
+          // OPF truth: only accept listed strikes; refuse free invent
+          if (!listed.length) {
+            setStructureNotice(
+              "OPF chain not loaded for this expiration — cannot change strike yet.",
+            );
+            return l;
+          }
+          const snapped = snapToListed(next.strike, listed);
+          if (snapped == null) return l;
+          next.strike = snapped;
         }
-        if (hasExps && (patch.strike != null || patch.type != null)) {
+        if (patch.strike != null || patch.type != null) {
           const exp = (next.expiration || prev.expiration).slice(0, 10);
           const c = chain.getContract(exp, next.strike, next.type);
           if (c) {
             next.entry_price = c.mid ?? next.entry_price;
             next.volatility = c.iv ?? next.volatility;
+          } else {
+            next.entry_price = 0;
           }
         }
         return next;
@@ -828,7 +838,18 @@ export default function PositionBuilder({
   };
 
   const addLeg = () => {
-    const strike = centerStrike || atmCenter;
+    const exp = (position.expiration || "").slice(0, 10);
+    const listed = chain.getStrikes(exp);
+    if (!listed.length) {
+      setStructureNotice(
+        "OPF chain not loaded — cannot add a leg until listed strikes arrive.",
+      );
+      chain.ensureExpiration(exp);
+      return;
+    }
+    const prefer = centerStrike || atmCenter || spotPrice;
+    const strike =
+      snapToListed(prefer, listed) ?? listed[Math.floor(listed.length / 2)];
     setPosition((prev) => ({
       ...prev,
       legs: [

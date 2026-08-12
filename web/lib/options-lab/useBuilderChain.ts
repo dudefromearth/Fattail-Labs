@@ -252,7 +252,8 @@ export function useBuilderChain(
     (expiration: string, target: number): number => {
       const strikes = getStrikes(expiration);
       const snapped = snapToListed(target, strikes);
-      // Never invent: if empty, return target but UI must not treat as listed
+      // Prefer listed; if ladder empty return target only as raw intent —
+      // UI must not present it as OPF-confirmed (StrikeSelect shows wait).
       return snapped ?? target;
     },
     [getStrikes],
