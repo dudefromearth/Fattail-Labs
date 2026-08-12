@@ -50,6 +50,89 @@ and `provider_plan_map` FK-reference `plans`, and no code assigns the `observer`
 (the tool gate reads memberships live) — no restart. Observers now correctly show as
 "Paid · Observer" in admin while getting navigator-tier tool access, matching the product.
 
+---
+
+## 2026-08-12 — DL-312 Volume Profile Histogram Spec v0.3 + dual-store plan (process restore)
+
+**Decision:** Restore formal Spec + implementation plan for the multi-year **Volume Profile / market data dual store** before any production-scale download. Prior chart + Spec v0.1/v0.2 work did **not** complete review → plan → Coach GO for the data plane.
+
+| Item | Path |
+|------|------|
+| Spec (authority) | `Specs/FatTail-Labs-Volume-Profile-Histogram-Spec-v0_3.md` (**v0.3.1 DRAFT** until Coach GO) |
+| Plan | `docs/Volume-Profile-Histogram-Full-Agent-Bench-Plan-v1.0.md` (v1.0.1) |
+| Board | `agents/p-volume-profile-histogram/` |
+| Supersedes | Spec v0.2 (trades-first laws retained; dual store + consumers added) |
+
+**Laws locked in Spec (pending GO):** dual SoR (raw on Pod 1 + measured bins); trades-first measurement; 5y window; Strategy Lab reads raw; `LABS_MARKET_DATA_ROOT` fail-loud; ≤50 GB/symbol **trades** budget headroom; **no MSC code**; **TV microbin research-only**.
+
+**Storage intent (Coach):** Blackmagic Pod share **Pod 1** → `/Volumes/Pod 1` when mounted.
+
+**Not decided:** Coach W0-0 GO; OD-VP1…9.
+
+**Rationale:** Coach needs a clear dual path (raw + bins) and capacity/entitlement reality before re-running acquisition; process gap left measurement plane unbuilt while interim OHLC chart existed.
+
+---
+
+## 2026-08-12 — DL-313 VP Spec v0.3.1 — external review fold
+
+**Decision:** Fold 2026-08-12 Spec review into **v0.3.1** (same file). Strengths retained; gaps closed as law or OD.
+
+**Superseded for authority by DL-314 / Spec v0.4** where conflict (collection posture, mounts, budget, pilot ladder). VIX quarantine and proxy-mapping *need* retained in spirit under v0.4 §5.5 / §7.2.
+
+---
+
+## 2026-08-12 — DL-314 VP Spec v0.4 — THE BIG KAHUNA (trumps prior review)
+
+**Decision:** Adopt **Spec v0.4** as data-plane authority. Prior v0.3 pilot-first ladder and 50 GB/symbol budget are **retired**.
+
+| Item | Path |
+|------|------|
+| Spec | `Specs/FatTail-Labs-Volume-Profile-Histogram-Spec-v0_4.md` (**DRAFT** until Coach GO) |
+| Plan | `docs/Volume-Profile-Histogram-Full-Agent-Bench-Plan-v1.0.md` (**v1.1**) |
+| Board | `agents/p-volume-profile-histogram/` |
+
+**Collection posture (VP21):** trades + quotes + 1s · all eligible symbols · full entitled depth. OD-VP1/2 **closed YES**.
+
+**As-built (Coach):** SPY full-history **trades** already collected — acquisition no longer the risk surface. File path/GB/print-count evidence at GO (P2-1/2/5 retired-by-as-built).
+
+**Gate for production bins:** §5 geometry freeze — especially **P2-3** condition filter + recorded AT-R2 tolerance — not collection.
+
+**Storage:** multi-mount map `LABS_MARKET_DATA_MOUNTS` (Pod 1 + 4 TB staged + 8 TB network); VP18 = telemetry not rationing.
+
+**Retained from reviews:** VIX/VIX1D quarantine (no VIXY VP); proxy price_space law (§5.5, default series + labels); ES honesty note; TV research-only.
+
+**Rationale:** Massive is paid for the full book; take delivery. Measurement correctness is the remaining product risk.
+
+**Note (Labs host check 2026-08-12):** `/Volumes/Pod 1` appeared empty from this workstation listing — Coach as-built SPY location must be recorded in evidence (path may be other mount or different machine).
+
+---
+
+## 2026-08-12 — DL-315 VP Plan v1.1.1 bookkeeping (GO polish)
+
+**Decision:** Plan revision **v1.1.1** (filename remains `…-Plan-v1.0.md`; revision field is authority). Fire diagram includes **A**; M2/M3 residual language tied to **VP21** (403 or Coach DL only); C-2 names §5.5 fields; Spec §16 + plan state in-flight campaign is not halted for W0 paperwork alone.
+
+**Rationale:** Reviewer GO-ready checklist; no architecture change.
+
+---
+
+## 2026-08-12 — DL-316 VP Histogram W0-0 Coach GO (Spec v0.4 · Plan v1.1.1)
+
+**Decision:** **GO** for board `agents/p-volume-profile-histogram/`.
+
+| Artifact | sha1 |
+|----------|------|
+| Spec v0.4 | `6ec8bb866d19ce084f090f7fd3ccd0de90e6e397` |
+| Plan (rev v1.1.1) | `3245284aa56b0a456b04f96f64001337b7601b22` |
+
+**OD-VP6:** keep raw forever until purge policy DL.  
+**OD-VP7:** default `price_space=series` + proxy labels; product-space map needs future DL.
+
+**Tracks:** RAW campaign authorized (Spec §16; do not halt for paperwork alone). **Production bin writes** remain gated on P2-3 condition freeze + C-0.
+
+**Gates:** `agents/p-volume-profile-histogram/gate-reports/W0-0-coach-go.md` · W0-1 · W0-2 · **W0-G PASS**.
+
+---
+
 ## 2026-08-12 — DL-311 Advanced Fly heatmap — Spec GO + Wave‑1 ship (AF0…AF-Z)
 
 **Coach AF0-0 GO** (after plan v1.1.1 / Spec v0.2.1 fold): implement **Advanced Fly** on board

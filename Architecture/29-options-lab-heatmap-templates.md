@@ -16,7 +16,7 @@
 | Spec [Options Chain Picker v1.0.2](../Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md) | Universe SoR · OC2 proxy-safe spot · OC6/OC6a fields · **no MSC** (OC13) |
 | Spec [Market Bus v1.0](../Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) | Transport law · one socket per tab |
 | Spec [Human Interface v1.0](../Specs/FatTail-Labs-Human-Interface-Spec-v1.0.md) | Member chrome · tokens · ≥44pt |
-| Spec [Volume Profile Histogram v0.2](../Specs/FatTail-Labs-Volume-Profile-Histogram-Spec-v0_2.md) | Sibling Options Lab app (underlier VP) — **separate** SoR |
+| Spec [Volume Profile Histogram v0.4](../Specs/FatTail-Labs-Volume-Profile-Histogram-Spec-v0_4.md) | Sibling underlier VP + dual multi-mount store — **separate** SoR |
 
 **As-built code (W0 dual-side + templates land):**
 
