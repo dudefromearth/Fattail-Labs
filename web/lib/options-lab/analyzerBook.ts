@@ -115,7 +115,9 @@ function migratePos(raw: unknown): AnalyzerPosition | null {
     status: "ANALYSIS",
     livePackagePerShare: p.livePackagePerShare ?? null,
     lastNatSigned: p.lastNatSigned ?? null,
-    priceSide: p.priceSide === undefined ? "debit" : p.priceSide,
+    // Do not default missing side to debit (painted all cards red)
+    priceSide:
+      p.priceSide === "debit" || p.priceSide === "credit" ? p.priceSide : null,
     visible: p.visible !== false,
     lock: p.lock?.mode === "locked" ? p.lock : { mode: "unlocked" },
     liveState: p.liveState || "not_live",
@@ -149,21 +151,28 @@ export function savePositions(positions: AnalyzerPosition[]): void {
 }
 
 export function positionFromInput(input: PositionInput): AnalyzerPosition {
-  const net = positionNetPremium(input);
+  // positionNetPremium: MSC sign (credit > 0, debit < 0).
+  // Card/OPF lastNatSigned: OPF sign (debit > 0, credit < 0) — must not mix.
+  const netMsc = positionNetPremium(input);
   const override = input.net_debit_override;
-  let signed: number | null = null;
+  let lastNatSigned: number | null = null;
   if (override != null && Number.isFinite(override)) {
     const mag = Math.abs(override);
-    signed = input.direction === "sell" || net > 0 ? -mag : mag;
-  } else if (Number.isFinite(net)) {
-    signed = net;
+    // SELL / natural credit → negative OPF; BUY debit → positive OPF
+    const isCredit =
+      input.direction === "sell" || (Number.isFinite(netMsc) && netMsc > 0);
+    lastNatSigned = isCredit ? -mag : mag;
+  } else if (Number.isFinite(netMsc) && netMsc !== 0) {
+    lastNatSigned = -netMsc; // MSC → OPF
   }
   const priceSide: "debit" | "credit" | null =
-    signed == null
+    lastNatSigned == null
       ? null
-      : signed >= 0
+      : lastNatSigned > 0
         ? "debit"
-        : "credit";
+        : lastNatSigned < 0
+          ? "credit"
+          : null;
   return {
     id: uid("pos"),
     label: buildLabel(input.underlying, input.legs, input.expiration),
@@ -173,8 +182,9 @@ export function positionFromInput(input: PositionInput): AnalyzerPosition {
       legs: input.legs.map((l) => ({ ...l })),
     },
     status: "ANALYSIS",
-    livePackagePerShare: signed != null ? Math.abs(signed) : null,
-    lastNatSigned: signed,
+    livePackagePerShare:
+      lastNatSigned != null ? Math.abs(lastNatSigned) : null,
+    lastNatSigned,
     priceSide,
     visible: true,
     lock: { mode: "unlocked" },
@@ -305,7 +315,7 @@ export function applyPackageQuote(
       ...pos,
       lastNatSigned: nat,
       livePackagePerShare: Math.abs(dStar),
-      priceSide: dStar >= 0 ? "debit" : "credit",
+      priceSide: dStar > 0 ? "debit" : dStar < 0 ? "credit" : pos.priceSide,
       liveState: sessionHeld ? "held" : "live",
       displayAsOf: asOf,
       contentHashes: hashes,
@@ -318,7 +328,8 @@ export function applyPackageQuote(
     ...pos,
     lastNatSigned: nat,
     livePackagePerShare: Math.abs(nat),
-    priceSide: nat >= 0 ? "debit" : "credit",
+    // OPF package_debit_per_share: +debit / −credit
+    priceSide: nat > 0 ? "debit" : nat < 0 ? "credit" : null,
     liveState: sessionHeld ? "held" : "live",
     displayAsOf: asOf,
     contentHashes: hashes,
@@ -352,7 +363,12 @@ export function lockNatural(pos: AnalyzerPosition): AnalyzerPosition {
       generationHashesAtLock: { ...pos.contentHashes },
     },
     livePackagePerShare: Math.abs(pos.lastNatSigned),
-    priceSide: pos.lastNatSigned >= 0 ? "debit" : "credit",
+    priceSide:
+      pos.lastNatSigned > 0
+        ? "debit"
+        : pos.lastNatSigned < 0
+          ? "credit"
+          : null,
     updatedAt: Date.now(),
   };
 }
@@ -392,6 +408,138 @@ export function unlockCard(pos: AnalyzerPosition): AnalyzerPosition {
   return {
     ...pos,
     lock: { mode: "unlocked" },
+    updatedAt: Date.now(),
+  };
+}
+
+/**
+ * ToS-style BUY/SELL flip on the structure header.
+ * Flips every leg side, package direction, and debit↔credit polarity.
+ */
+export function flipCardDirection(pos: AnalyzerPosition): AnalyzerPosition {
+  const nextDir =
+    pos.position.direction === "sell" ? ("buy" as const) : ("sell" as const);
+  const legs = pos.position.legs.map((leg) => ({
+    ...leg,
+    side: (leg.side === "long" ? "short" : "long") as "long" | "short",
+  }));
+  const position = {
+    ...pos.position,
+    legs,
+    direction: nextDir,
+  };
+  const priceSide: "debit" | "credit" | null =
+    pos.priceSide == null
+      ? null
+      : pos.priceSide === "debit"
+        ? "credit"
+        : "debit";
+  const lastNatSigned =
+    pos.lastNatSigned == null ? null : -pos.lastNatSigned;
+  let lock = pos.lock;
+  if (lock.mode === "locked") {
+    lock = {
+      ...lock,
+      packageDebitPerShare: -lock.packageDebitPerShare,
+    };
+  }
+  return {
+    ...pos,
+    position,
+    label: buildLabel(position.underlying, legs, position.expiration),
+    notation: buildNotation(legs),
+    priceSide,
+    lastNatSigned,
+    // magnitude unchanged; side flipped
+    livePackagePerShare: pos.livePackagePerShare,
+    lock,
+    updatedAt: Date.now(),
+  };
+}
+
+/** Set structure direction explicitly (BUY or SELL). No-op if already that side. */
+export function setCardDirection(
+  pos: AnalyzerPosition,
+  direction: "buy" | "sell",
+): AnalyzerPosition {
+  const cur = pos.position.direction === "sell" ? "sell" : "buy";
+  if (cur === direction) return pos;
+  return flipCardDirection(pos);
+}
+
+/**
+ * ToS-style expiration roll — set package front exp from listed expirations.
+ * Single-exp structures: all legs move.
+ * Multi-exp (calendar/diagonal): shift each leg along the listed ladder by the
+ * same step as front → new, when listedExps is provided.
+ */
+export function setCardExpiration(
+  pos: AnalyzerPosition,
+  newExpiration: string,
+  listedExps?: readonly string[],
+): AnalyzerPosition {
+  const newE = newExpiration.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newE)) return pos;
+  const oldFront = (
+    pos.position.expiration ||
+    pos.position.legs[0]?.expiration ||
+    ""
+  ).slice(0, 10);
+  if (oldFront === newE) return pos;
+
+  const sorted = (listedExps || [])
+    .map((e) => e.slice(0, 10))
+    .filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e))
+    .sort();
+  const unique = new Set(
+    pos.position.legs.map((l) =>
+      (l.expiration || oldFront).slice(0, 10),
+    ),
+  );
+
+  let legs = pos.position.legs.map((l) => ({ ...l }));
+  if (unique.size <= 1 || sorted.length < 2) {
+    legs = legs.map((l) => ({
+      ...l,
+      expiration: newE,
+      entry_price: 0, // force live re-mark
+    }));
+  } else {
+    const oldFrontIdx = sorted.indexOf(oldFront);
+    const newIdx = sorted.indexOf(newE);
+    const delta =
+      oldFrontIdx >= 0 && newIdx >= 0 ? newIdx - oldFrontIdx : 0;
+    const mapExp = (raw: string): string => {
+      const ee = raw.slice(0, 10);
+      if (ee === oldFront) return newE;
+      if (delta === 0) return ee;
+      const i = sorted.indexOf(ee);
+      if (i < 0) return ee;
+      const j = Math.min(sorted.length - 1, Math.max(0, i + delta));
+      return sorted[j];
+    };
+    legs = legs.map((l) => ({
+      ...l,
+      expiration: mapExp(l.expiration || oldFront),
+      entry_price: 0,
+    }));
+  }
+
+  const position = {
+    ...pos.position,
+    expiration: newE,
+    legs,
+  };
+  return {
+    ...pos,
+    position,
+    label: buildLabel(position.underlying, legs, newE),
+    notation: buildNotation(legs),
+    // package quote will refresh live mark
+    liveState:
+      pos.liveState === "live" || pos.liveState === "held"
+        ? "not_live"
+        : pos.liveState,
     updatedAt: Date.now(),
   };
 }

@@ -577,8 +577,8 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
     const expAlpha = expiredOpacityRef.current;
     if (expiredExpirationData.length > 1 && expAlpha > 0.01) {
       ctx.globalAlpha = expAlpha;
-      ctx.strokeStyle = '#6b7280'; // grey — no live-series color
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#9ca3af'; // lighter grey ghost (was #6b7280)
+      ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
       ctx.beginPath();
       let started = false;
@@ -914,7 +914,8 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
   // Animate expired curve opacity (500ms fade in/out)
   const hasExpired = expiredExpirationData.length > 0;
   useEffect(() => {
-    const target = hasExpired ? 0.25 : 0;
+    // Ghost must stay readable — was 0.25 (too dim); ≥2× → 0.55
+    const target = hasExpired ? 0.55 : 0;
     const start = expiredOpacityRef.current;
     if (Math.abs(start - target) < 0.005) {
       expiredOpacityRef.current = target;

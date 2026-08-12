@@ -7,14 +7,16 @@
  */
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useOptionsLab } from "@/lib/optionsLabContext";
 import {
-  clearAnalyzerTrade,
-  loadAnalyzerTrade,
-  saveAnalyzerTrade,
-  type StoredAnalyzerTrade,
-} from "@/lib/options-lab/analyzerTrade";
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { useOptionsLab } from "@/lib/optionsLabContext";
+import { loadAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
 import {
   createPriceAlert,
   evaluateAlerts,
@@ -25,6 +27,8 @@ import {
   positionFromInput,
   saveAlerts,
   savePositions,
+  setCardDirection,
+  setCardExpiration,
   unlockCard,
   type AnalyzerPosition,
   type AnalyzerThresholdAlert,
@@ -41,7 +45,11 @@ import {
   type OpfModelOption,
 } from "@/lib/options-lab/opfModels";
 import { parseTosScript } from "@/lib/options-lab/tosParser";
-import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
+import {
+  parsedTradeToPositionInput,
+  positionToParsedTrade,
+} from "@/lib/options-lab/positionToTrade";
+import { buildLabel, buildNotation } from "@/lib/options-lab/positionLabels";
 import type { PositionInput } from "@/lib/options-lab/positionTypes";
 import { useBuilderChain } from "@/lib/options-lab/useBuilderChain";
 import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
@@ -59,12 +67,13 @@ import { useSmoothNumber } from "@/lib/useSmoothValue";
 /** Analyzer viewport modes — Surface is in-viewport, not a suite app (AZ-VP-S1). */
 type AnalyzerViewportMode = "risk" | "surface";
 
+const BOOK_H_KEY = "ft_analyzer_book_height_px";
+const BOOK_H_MIN = 72;
+const BOOK_H_DEFAULT = 200;
+const VIEWPORT_H_MIN = 140;
+
 const fieldLabel =
   "mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-[var(--color-label-tertiary)]";
-const control =
-  "block w-full rounded-md border border-[var(--color-separator)] bg-[var(--color-surface)] " +
-  "px-2 py-1.5 text-sm text-[var(--color-label)] shadow-sm " +
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]";
 const controlSm =
   "rounded-md border border-[var(--color-separator)] bg-[var(--color-surface)] " +
   "px-2 py-1 text-xs text-[var(--color-label)]";
@@ -93,9 +102,7 @@ async function fetchPlanePosture(): Promise<SessionPosture> {
 export default function OpfRiskAnalyzer() {
   const { symbol, setSymbol, universe, loading: universeLoading } =
     useOptionsLab();
-  const [raw, setRaw] = useState("");
-  const [stored, setStored] = useState<StoredAnalyzerTrade | null>(null);
-  const [parseError, setParseError] = useState<string | null>(null);
+  const [bookNotice, setBookNotice] = useState<string | null>(null);
   const [spotStr, setSpotStr] = useState("");
   const [vixStr, setVixStr] = useState("");
   /** Member edited spot/VIX fields (auto-fill is not an override). */
@@ -122,6 +129,78 @@ export default function OpfRiskAnalyzer() {
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
   positionsRef.current = positions;
+
+  /** Draggable book height (px) — viewport takes the rest. */
+  const [bookHeightPx, setBookHeightPx] = useState(BOOK_H_DEFAULT);
+  const splitDragRef = useRef<{
+    startY: number;
+    startH: number;
+  } | null>(null);
+  const mainSplitRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(BOOK_H_KEY);
+      if (!raw) return;
+      const n = parseInt(raw, 10);
+      if (Number.isFinite(n) && n >= BOOK_H_MIN) setBookHeightPx(n);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(BOOK_H_KEY, String(bookHeightPx));
+    } catch {
+      /* ignore */
+    }
+  }, [bookHeightPx]);
+
+  const onSplitPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      splitDragRef.current = { startY: e.clientY, startH: bookHeightPx };
+    },
+    [bookHeightPx],
+  );
+
+  const onSplitPointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      const drag = splitDragRef.current;
+      if (!drag) return;
+      // Drag handle up → more book height; down → less
+      const delta = drag.startY - e.clientY;
+      let next = drag.startH + delta;
+      const main = mainSplitRef.current;
+      if (main) {
+        const maxBook = Math.max(
+          BOOK_H_MIN,
+          main.clientHeight - VIEWPORT_H_MIN - 8,
+        );
+        next = Math.min(maxBook, Math.max(BOOK_H_MIN, next));
+      } else {
+        next = Math.max(BOOK_H_MIN, next);
+      }
+      setBookHeightPx(Math.round(next));
+    },
+    [],
+  );
+
+  const onSplitPointerUp = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (splitDragRef.current) {
+        splitDragRef.current = null;
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     setPositions(loadPositions());
@@ -150,46 +229,70 @@ export default function OpfRiskAnalyzer() {
 
   const sessionHeld = posture === "Held" || posture === "Closed";
 
-  const hydrate = useCallback(() => {
-    const s = loadAnalyzerTrade();
-    setStored(s);
-    if (s?.raw) {
-      setRaw(s.raw);
-      setParseError(null);
+  /** Heatmap handoff → book card (never a ToS paste viewport path). */
+  const ingestHandoffRaw = useCallback((raw: string, source: string) => {
+    const parsed = parseTosScript(raw);
+    if (!parsed) {
+      setBookNotice("Handoff could not be parsed into a position card.");
+      return;
     }
-  }, []);
+    const input = parsedTradeToPositionInput(parsed);
+    const pos = positionFromInput(input);
+    pos.label = buildLabel(input.underlying, input.legs, input.expiration);
+    pos.notation = buildNotation(input.legs);
+    setPositions((prev) => [pos, ...prev]);
+    setFocusedId(pos.id);
+    if (parsed.symbol) {
+      const known = universe.some((u) => u.symbol === parsed.symbol);
+      if (known) setSymbol(parsed.symbol);
+    }
+    setBookNotice(
+      source === "heatmap"
+        ? `Heatmap → book: ${pos.label}`
+        : `Added to book: ${pos.label}`,
+    );
+  }, [universe, setSymbol]);
 
   useEffect(() => {
-    hydrate();
-    const onEvt = () => hydrate();
+    const onEvt = () => {
+      const s = loadAnalyzerTrade();
+      if (s?.raw) ingestHandoffRaw(s.raw, s.source || "handoff");
+    };
+    // Consume any pending handoff once on mount
+    const pending = loadAnalyzerTrade();
+    if (pending?.raw && pending.source === "heatmap") {
+      ingestHandoffRaw(pending.raw, "heatmap");
+    }
     window.addEventListener("ft-analyzer-trade", onEvt);
     return () => window.removeEventListener("ft-analyzer-trade", onEvt);
-  }, [hydrate]);
+  }, [ingestHandoffRaw]);
 
-  const focused = useMemo(
-    () => positions.find((p) => p.id === focusedId) ?? null,
-    [positions, focusedId],
-  );
+  // Viewport = selected visible book card only (no ToS paste definition)
+  const focused = useMemo(() => {
+    if (focusedId) {
+      const hit = positions.find((p) => p.id === focusedId);
+      if (hit) return hit;
+    }
+    return positions.find((p) => p.visible) ?? positions[0] ?? null;
+  }, [positions, focusedId]);
 
-  const tradeFromPaste = useMemo(() => {
-    if (!raw.trim()) return null;
-    return parseTosScript(raw);
-  }, [raw]);
+  // Keep focusedId aligned when list changes
+  useEffect(() => {
+    if (!positions.length) {
+      if (focusedId) setFocusedId(null);
+      return;
+    }
+    if (focusedId && positions.some((p) => p.id === focusedId)) return;
+    const first = positions.find((p) => p.visible) ?? positions[0];
+    if (first) setFocusedId(first.id);
+  }, [positions, focusedId]);
 
   const trade = useMemo(() => {
     if (focused && focused.visible) {
       return positionToParsedTrade(focused.position);
     }
-    return tradeFromPaste;
-  }, [focused, tradeFromPaste]);
-
-  useEffect(() => {
-    if (!raw.trim() || focused) {
-      setParseError(null);
-      return;
-    }
-    setParseError(tradeFromPaste ? null : "Could not parse ToS line");
-  }, [raw, tradeFromPaste, focused]);
+    return null;
+  }, [focused]);
 
   useEffect(() => {
     if (trade?.symbol) {
@@ -206,12 +309,8 @@ export default function OpfRiskAnalyzer() {
         if (l.expiration) s.add(l.expiration);
       }
     }
-    if (trade) {
-      s.add(trade.expiration);
-      for (const l of trade.legs) s.add(l.expiration);
-    }
     return [...s];
-  }, [positions, trade]);
+  }, [positions]);
 
   const chain = useBuilderChain(symbol, warmExps, true);
 
@@ -321,11 +420,22 @@ export default function OpfRiskAnalyzer() {
   const incompleteFocus =
     focused?.visible &&
     (focused.liveState === "incomplete" || focused.liveState === "skewed");
+  /** MSC: visible + past expiry → ghost image (dashed grey at-expiry only). */
+  const focusExpiredVisible = useMemo(() => {
+    if (!focused?.visible) return false;
+    const exp =
+      focused.position.expiration ||
+      focused.position.legs[0]?.expiration ||
+      "";
+    if (!exp) return false;
+    const e = new Date(exp.slice(0, 10) + "T16:00:00Z");
+    return e.getTime() <= Date.now();
+  }, [focused]);
   const hasCurves =
     !!trade &&
     !incompleteFocus &&
     risk.expirationPoints.length > 0 &&
-    risk.theoreticalPoints.length > 0;
+    (focusExpiredVisible || risk.theoreticalPoints.length > 0);
 
   const alertLines = useMemo(
     () =>
@@ -384,12 +494,7 @@ export default function OpfRiskAnalyzer() {
         setPositions((prev) => [pos, ...prev]);
         setFocusedId(pos.id);
       }
-      const t = positionToParsedTrade(input);
-      if (t.raw) {
-        setRaw(t.raw);
-        saveAnalyzerTrade(t.raw, "builder");
-        setStored(loadAnalyzerTrade());
-      }
+      setBookNotice(null);
       setBuilderOpen(false);
       setEditId(null);
       risk.refresh();
@@ -418,6 +523,7 @@ export default function OpfRiskAnalyzer() {
     focusedId,
     sessionHeld,
     sessionSymbol: symbol,
+    expirations: chain.expirations,
     onFocus: (id: string) => {
       setFocusedId(id);
       const p = positionsRef.current.find((x) => x.id === id);
@@ -448,7 +554,7 @@ export default function OpfRiskAnalyzer() {
           try {
             return lockNatural(p);
           } catch (e) {
-            setParseError(
+            setBookNotice(
               e instanceof Error ? e.message : "lock natural failed",
             );
             return p;
@@ -482,83 +588,124 @@ export default function OpfRiskAnalyzer() {
       );
       risk.refresh();
     },
+    onSetDirection: (id: string, direction: "buy" | "sell") => {
+      setPositions((prev) =>
+        prev.map((p) => (p.id === id ? setCardDirection(p, direction) : p)),
+      );
+      risk.refresh();
+    },
+    onSetExpiration: (id: string, expiration: string) => {
+      setPositions((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? setCardExpiration(p, expiration, chain.expirations)
+            : p,
+        ),
+      );
+      risk.refresh();
+    },
   };
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col"
+      className="flex min-h-0 flex-1 flex-row"
       data-testid="options-lab-opf-risk-analyzer"
     >
-      {/* L: top compact Controls strip (OD-AZ1) */}
-      <header
-        className="shrink-0 border-b border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2"
-        data-testid="analyzer-controls-strip"
+      {/* Controls — left column (Coach: not top strip) */}
+      <aside
+        className="flex w-[15.5rem] shrink-0 flex-col gap-2.5 overflow-y-auto border-r border-[var(--color-separator)] bg-[var(--color-surface)] p-2.5"
+        data-testid="analyzer-controls-column"
       >
-        <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
-          <div className="mr-1">
-            <h2 className="text-sm font-semibold text-[var(--color-label)]">
-              Analyzer
-            </h2>
-            <div className="mt-0.5 flex flex-wrap gap-1 text-[10px]">
-              <span
-                className={
-                  "rounded px-1.5 py-0.5 font-semibold uppercase " +
-                  (posture === "Live"
-                    ? "bg-emerald-500/20 text-emerald-600"
-                    : posture === "Held"
-                      ? "bg-amber-500/20 text-amber-700"
-                      : "bg-[var(--color-fill)] text-[var(--color-label-tertiary)]")
-                }
-                data-testid="analyzer-posture-badge"
-              >
-                {posture}
-              </span>
-              <span className="rounded bg-[var(--color-fill)] px-1.5 py-0.5 text-[var(--color-label-secondary)]">
-                {activeModel.useCase}
-              </span>
-            </div>
+        <div>
+          <h2 className="text-sm font-semibold text-[var(--color-label)]">
+            Analyzer
+          </h2>
+          <p className="text-[10px] text-[var(--color-label-tertiary)]">
+            Controls · Models · Time machine
+          </p>
+          <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
+            <span
+              className={
+                "rounded px-1.5 py-0.5 font-semibold uppercase " +
+                (posture === "Live"
+                  ? "bg-emerald-500/20 text-emerald-600"
+                  : posture === "Held"
+                    ? "bg-amber-500/20 text-amber-700"
+                    : "bg-[var(--color-fill)] text-[var(--color-label-tertiary)]")
+              }
+              data-testid="analyzer-posture-badge"
+            >
+              {posture}
+            </span>
+            <span className="rounded bg-[var(--color-fill)] px-1.5 py-0.5 text-[var(--color-label-secondary)]">
+              {activeModel.useCase}
+            </span>
           </div>
+        </div>
 
-          <label className="block min-w-[7rem]">
-            <span className={fieldLabel}>Symbol</span>
-            <select
-              className={controlSm + " w-full"}
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
-              disabled={universeLoading}
-              data-testid="analyzer-symbol-select"
-            >
-              {universe.map((u) => (
-                <option key={u.symbol} value={u.symbol}>
-                  {u.symbol}
-                </option>
-              ))}
-            </select>
-          </label>
+        {(inputOverrideActive || sessionHeld) && (
+          <div
+            className={
+              "rounded-md px-2 py-1.5 text-[10px] font-medium leading-snug " +
+              (inputOverrideActive
+                ? "bg-sky-500/15 text-sky-800 dark:text-sky-200"
+                : "bg-amber-500/15 text-amber-900 dark:text-amber-100")
+            }
+            data-testid="analyzer-override-banner"
+            role="status"
+          >
+            {inputOverrideActive
+              ? "Override active — RECON is override (not live pass/fail)."
+              : posture === "Closed"
+                ? "Session closed — Held; no Live claim."
+                : "Session Held — last generation; not Live."}
+          </div>
+        )}
 
-          <label className="block min-w-[10rem] flex-1">
-            <span className={fieldLabel}>OPF model</span>
-            <select
-              className={controlSm + " w-full"}
-              value={model.packId}
-              onChange={(e) => {
-                const m = findOpfModel(e.target.value);
-                setModel(m);
-                if (m.useCase === "outlook") setEpochPinned(true);
-                else setEpochPinned(false);
-                setEpochStale(false);
-              }}
-              data-testid="opf-model-select"
-            >
-              {OPF_ANALYZER_MODELS.map((m) => (
-                <option key={m.packId} value={m.packId}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </label>
+        <label className="block">
+          <span className={fieldLabel}>Symbol</span>
+          <select
+            className={controlSm + " w-full"}
+            value={symbol}
+            onChange={(e) => setSymbol(e.target.value)}
+            disabled={universeLoading}
+            data-testid="analyzer-symbol-select"
+          >
+            {universe.map((u) => (
+              <option key={u.symbol} value={u.symbol}>
+                {u.symbol}
+              </option>
+            ))}
+          </select>
+        </label>
 
-          <label className="block w-20">
+        <label className="block">
+          <span className={fieldLabel}>OPF model</span>
+          <select
+            className={controlSm + " w-full"}
+            value={model.packId}
+            onChange={(e) => {
+              const m = findOpfModel(e.target.value);
+              setModel(m);
+              if (m.useCase === "outlook") setEpochPinned(true);
+              else setEpochPinned(false);
+              setEpochStale(false);
+            }}
+            data-testid="opf-model-select"
+          >
+            {OPF_ANALYZER_MODELS.map((m) => (
+              <option key={m.packId} value={m.packId}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-0.5 text-[9px] leading-snug text-[var(--color-label-tertiary)]">
+            {model.description}
+          </p>
+        </label>
+
+        <div className="grid grid-cols-2 gap-1.5">
+          <label className="block">
             <span className={fieldLabel}>Spot</span>
             <input
               className={controlSm + " w-full font-mono"}
@@ -570,7 +717,7 @@ export default function OpfRiskAnalyzer() {
               data-testid="analyzer-spot-input"
             />
           </label>
-          <label className="block w-16">
+          <label className="block">
             <span className={fieldLabel}>VIX</span>
             <input
               className={controlSm + " w-full font-mono"}
@@ -582,94 +729,90 @@ export default function OpfRiskAnalyzer() {
               data-testid="analyzer-vix-input"
             />
           </label>
+        </div>
 
-          <div
-            className="flex min-w-[12rem] flex-1 flex-col gap-1 rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-2 py-1.5"
-            data-testid="analyzer-whatif-panel"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-label)]">
-                <input
-                  type="checkbox"
-                  checked={timeMachineEnabled}
-                  onChange={(e) => setTimeMachineEnabled(e.target.checked)}
-                  data-testid="analyzer-whatif-enable"
-                />
-                What-if
-              </label>
-              <button
-                type="button"
-                className="text-[10px] text-[var(--color-tint)]"
-                onClick={resetSim}
-              >
-                Reset
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              <label className="block text-[10px] text-[var(--color-label-tertiary)]">
-                t {simTimeOffsetHours >= 0 ? "+" : ""}
-                {simTimeOffsetHours.toFixed(0)}h
-                <input
-                  type="range"
-                  className="mt-0.5 w-full"
-                  min={0}
-                  max={72}
-                  step={1}
-                  value={simTimeOffsetHours}
-                  disabled={!timeMachineEnabled}
-                  onChange={(e) =>
-                    setSimTimeOffsetHours(Number(e.target.value))
-                  }
-                  data-testid="analyzer-whatif-time"
-                />
-              </label>
-              <label className="block text-[10px] text-[var(--color-label-tertiary)]">
-                σ {simVolatilityOffset >= 0 ? "+" : ""}
-                {simVolatilityOffset.toFixed(0)}
-                <input
-                  type="range"
-                  className="mt-0.5 w-full"
-                  min={-30}
-                  max={30}
-                  step={1}
-                  value={simVolatilityOffset}
-                  disabled={!timeMachineEnabled}
-                  onChange={(e) =>
-                    setSimVolatilityOffset(Number(e.target.value))
-                  }
-                  data-testid="analyzer-whatif-vol"
-                />
-              </label>
-              <label className="block text-[10px] text-[var(--color-label-tertiary)]">
-                S {simSpotPct >= 0 ? "+" : ""}
-                {simSpotPct.toFixed(1)}%
-                <input
-                  type="range"
-                  className="mt-0.5 w-full"
-                  min={-5}
-                  max={5}
-                  step={0.1}
-                  value={simSpotPct}
-                  disabled={!timeMachineEnabled}
-                  onChange={(e) => setSimSpotPct(Number(e.target.value))}
-                  data-testid="analyzer-whatif-spotpct"
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div
+          className="flex flex-col gap-1.5 rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-2 py-2"
+          data-testid="analyzer-whatif-panel"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-label)]">
+              <input
+                type="checkbox"
+                checked={timeMachineEnabled}
+                onChange={(e) => setTimeMachineEnabled(e.target.checked)}
+                data-testid="analyzer-whatif-enable"
+              />
+              What-if
+            </label>
             <button
               type="button"
-              className={btn}
-              onClick={() => {
-                setEditId(null);
-                setBuilderOpen(true);
-              }}
-              data-testid="analyzer-open-builder"
+              className="text-[10px] text-[var(--color-tint)]"
+              onClick={resetSim}
             >
-              Builder
+              Reset
             </button>
+          </div>
+          <label className="block text-[10px] text-[var(--color-label-tertiary)]">
+            Time {simTimeOffsetHours >= 0 ? "+" : ""}
+            {simTimeOffsetHours.toFixed(0)}h
+            <input
+              type="range"
+              className="mt-0.5 w-full"
+              min={0}
+              max={72}
+              step={1}
+              value={simTimeOffsetHours}
+              disabled={!timeMachineEnabled}
+              onChange={(e) => setSimTimeOffsetHours(Number(e.target.value))}
+              data-testid="analyzer-whatif-time"
+            />
+          </label>
+          <label className="block text-[10px] text-[var(--color-label-tertiary)]">
+            Vol {simVolatilityOffset >= 0 ? "+" : ""}
+            {simVolatilityOffset.toFixed(0)} pts
+            <input
+              type="range"
+              className="mt-0.5 w-full"
+              min={-30}
+              max={30}
+              step={1}
+              value={simVolatilityOffset}
+              disabled={!timeMachineEnabled}
+              onChange={(e) => setSimVolatilityOffset(Number(e.target.value))}
+              data-testid="analyzer-whatif-vol"
+            />
+          </label>
+          <label className="block text-[10px] text-[var(--color-label-tertiary)]">
+            Spot {simSpotPct >= 0 ? "+" : ""}
+            {simSpotPct.toFixed(1)}%
+            <input
+              type="range"
+              className="mt-0.5 w-full"
+              min={-5}
+              max={5}
+              step={0.1}
+              value={simSpotPct}
+              disabled={!timeMachineEnabled}
+              onChange={(e) => setSimSpotPct(Number(e.target.value))}
+              data-testid="analyzer-whatif-spotpct"
+            />
+          </label>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <button
+            type="button"
+            className={btn + " w-full"}
+            onClick={() => {
+              setEditId(null);
+              setBuilderOpen(true);
+            }}
+            data-testid="analyzer-open-builder"
+          >
+            Builder
+          </button>
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
               className={btn}
@@ -686,142 +829,99 @@ export default function OpfRiskAnalyzer() {
             >
               Auto-fit
             </button>
-            {model.useCase === "outlook" && (
-              <button
-                type="button"
-                className={btn}
-                onClick={() => {
-                  setEpochPinned(false);
-                  setEpochStale(false);
-                  risk.refresh();
-                  setEpochPinned(true);
-                }}
-              >
-                Re-anchor{epochStale ? " · stale" : ""}
-              </button>
-            )}
-            <Link
-              href="/app/options-lab/heatmap"
-              className={btn + " no-underline"}
-            >
-              Heatmap
-            </Link>
           </div>
+          {model.useCase === "outlook" && (
+            <button
+              type="button"
+              className={btn + " w-full"}
+              onClick={() => {
+                setEpochPinned(false);
+                setEpochStale(false);
+                risk.refresh();
+                setEpochPinned(true);
+              }}
+            >
+              Re-anchor{epochStale ? " · stale" : ""}
+            </button>
+          )}
+          <Link
+            href="/app/options-lab/heatmap"
+            className={btn + " w-full no-underline"}
+          >
+            Heatmap
+          </Link>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-start gap-2">
-          <div className="min-w-[12rem] flex-1">
-            <span className={fieldLabel}>ToS (if no card focus)</span>
-            <textarea
-              className={control + " min-h-[2.25rem] font-mono text-[11px]"}
-              value={raw}
-              onChange={(e) => {
-                setRaw(e.target.value);
-                setFocusedId(null);
-              }}
-              spellCheck={false}
-              placeholder="BUY +1 BUTTERFLY SPX … @1.25 LMT"
-              data-testid="analyzer-tos-input"
-            />
-          </div>
-          <div className="flex flex-wrap gap-1 pt-4">
-            <button
-              type="button"
-              className={btn}
-              onClick={() => {
-                if (!parseTosScript(raw)) {
-                  setParseError("Could not parse ToS line");
-                  return;
-                }
-                saveAnalyzerTrade(raw.trim(), "paste");
-                setStored(loadAnalyzerTrade());
-                setFocusedId(null);
-                setParseError(null);
-                risk.refresh();
-              }}
-            >
-              Load
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => {
-                clearAnalyzerTrade();
-                setRaw("");
-                setStored(null);
-                setFocusedId(null);
-                resetSim();
-              }}
-            >
-              Clear
-            </button>
-          </div>
-          {trade && (
-            <div className="flex flex-wrap items-center gap-2 pt-4 text-[11px] text-[var(--color-label-secondary)]">
-              <span>
-                pkg{" "}
-                <span className="font-mono text-[var(--color-label)]">
-                  {risk.packageDebit != null
-                    ? risk.packageDebit.toFixed(2)
-                    : focused?.livePackagePerShare != null
-                      ? focused.livePackagePerShare.toFixed(2)
-                      : "—"}
-                </span>
-              </span>
-              <span>
-                RECON{" "}
-                <span
-                  className={
-                    "font-mono font-semibold " +
-                    (inputOverrideActive
-                      ? "text-sky-600"
+        {(trade || focused || bookNotice || risk.error) && (
+          <div className="space-y-1 border-t border-[var(--color-separator)] pt-2 text-[11px] text-[var(--color-label-secondary)]">
+            {focused && (
+              <p
+                className="text-[var(--color-tint)]"
+                data-testid="analyzer-viewport-focus"
+              >
+                Viewport · {focused.label}
+                {focused.lock.mode === "locked" ? " · locked" : ""}
+              </p>
+            )}
+            {trade && (
+              <div className="grid grid-cols-2 gap-1 text-center">
+                <div className="rounded bg-[var(--color-fill)] p-1">
+                  <div className="text-[9px] text-[var(--color-label-tertiary)]">
+                    Mark pkg
+                  </div>
+                  <div className="font-mono text-[11px] text-[var(--color-label)]">
+                    {risk.packageDebit != null
+                      ? risk.packageDebit.toFixed(2)
+                      : focused?.livePackagePerShare != null
+                        ? focused.livePackagePerShare.toFixed(2)
+                        : "—"}
+                  </div>
+                </div>
+                <div className="rounded bg-[var(--color-fill)] p-1">
+                  <div className="text-[9px] text-[var(--color-label-tertiary)]">
+                    RECON
+                  </div>
+                  <div
+                    className={
+                      "font-mono text-[11px] font-semibold " +
+                      (inputOverrideActive
+                        ? "text-sky-600"
+                        : sessionHeld
+                          ? "text-[var(--color-label-tertiary)]"
+                          : risk.reconPass === true
+                            ? "text-emerald-600"
+                            : risk.reconPass === false
+                              ? "text-red-500"
+                              : "")
+                    }
+                    data-testid="analyzer-recon-chip"
+                  >
+                    {inputOverrideActive
+                      ? "override"
                       : sessionHeld
-                        ? "text-[var(--color-label-tertiary)]"
+                        ? "n/a held"
                         : risk.reconPass === true
-                          ? "text-emerald-600"
+                          ? "pass"
                           : risk.reconPass === false
-                            ? "text-red-500"
-                            : "")
-                  }
-                  data-testid="analyzer-recon-chip"
-                >
-                  {inputOverrideActive
-                    ? "override"
-                    : sessionHeld
-                      ? "n/a held"
-                      : risk.reconPass === true
-                        ? "pass"
-                        : risk.reconPass === false
-                          ? "fail"
-                          : "—"}
-                </span>
-              </span>
-              <span className="text-[var(--color-label-tertiary)]">
+                            ? "fail"
+                            : "—"}
+                  </div>
+                </div>
+              </div>
+            )}
+            {trade && (
+              <p className="text-[10px] text-[var(--color-label-tertiary)]">
                 {risk.packId ?? model.packId}
                 {risk.fromCache && !risk.loading
                   ? " · cache stale"
                   : risk.loading
                     ? " · live…"
                     : ""}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {(parseError || risk.error || focused || stored?.source === "heatmap") && (
-          <div className="mt-1 space-y-0.5 text-[11px]">
-            {stored?.source === "heatmap" && (
-              <p className="text-emerald-600">From Heatmap Option-click</p>
-            )}
-            {focused && (
-              <p className="text-[var(--color-tint)]">
-                Viewport: {focused.label}
-                {focused.lock.mode === "locked" ? " · locked basis" : ""}
               </p>
             )}
-            {parseError && (
-              <p className="text-red-500" role="alert">
-                {parseError}
+            {bookNotice && (
+              <p className="text-emerald-600" role="status">
+                {bookNotice}
               </p>
             )}
             {risk.error && (
@@ -831,171 +931,202 @@ export default function OpfRiskAnalyzer() {
             )}
           </div>
         )}
-      </header>
+      </aside>
 
-      {/* T: override / Held honesty banner */}
-      {(inputOverrideActive || sessionHeld) && (
-        <div
-          className={
-            "shrink-0 px-3 py-1.5 text-center text-[11px] font-medium " +
-            (inputOverrideActive
-              ? "bg-sky-500/15 text-sky-800 dark:text-sky-200"
-              : "bg-amber-500/15 text-amber-900 dark:text-amber-100")
-          }
-          data-testid="analyzer-override-banner"
-          role="status"
+      {/* Right column: viewport + book (under) + alerts — list never left of viewport */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div
+        ref={mainSplitRef}
+        className="flex min-h-0 min-w-0 flex-1 flex-col"
+        data-testid="analyzer-main-split"
+      >
+        {/* Viewport — fills remaining space above book */}
+        <section
+          className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0a0a0e] p-2"
+          data-testid="analyzer-viewport-region"
         >
-          {inputOverrideActive
-            ? "Override active — RECON is override (not live pass/fail). What-if / spot / VIX scenario."
-            : posture === "Closed"
-              ? "Session closed — package marks Held; no Live integrity claim."
-              : "Session Held — last market generation; not Live."}
-        </div>
-      )}
-
-      {/* Viewport */}
-      <section
-        className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0a0a0e] p-2"
-        data-testid="analyzer-viewport-region"
-      >
-        <div className="mb-2 flex flex-wrap items-center gap-3 px-1 text-xs text-white/50">
-          <div
-            className="inline-flex rounded-full border border-white/15 bg-white/5 p-0.5"
-            role="tablist"
-            aria-label="Analyzer viewport"
-            data-testid="analyzer-viewport-mode"
-          >
-            {(
-              [
-                { id: "risk" as const, label: "Risk graph" },
-                { id: "surface" as const, label: "Surface" },
-              ] as const
-            ).map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                role="tab"
-                aria-selected={viewportMode === m.id}
-                className={
-                  "rounded-full px-3 py-1 text-[11px] font-semibold transition " +
-                  (viewportMode === m.id
-                    ? "bg-white/15 text-white"
-                    : "text-white/45 hover:text-white/70")
-                }
-                onClick={() => setViewportMode(m.id)}
-                data-testid={`analyzer-viewport-${m.id}`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-          <span className="font-semibold text-white/80">
-            {trade
-              ? `${trade.symbol} · ${viewportMode === "surface" ? "Surface" : "OPF risk graph"}`
-              : "No trade"}
-          </span>
-          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80">
-            {activeModel.label}
-          </span>
-          <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60">
-            {timeRefLabel}
-          </span>
-          {viewportMode === "risk" && (
-            <>
-              <span>
-                Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
-              </span>
-              <span className="text-emerald-400/80">Expiration</span>
-              <span className="text-fuchsia-400/80">
-                {activeModel.theoLegend}
-              </span>
-            </>
-          )}
-        </div>
-        <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
-          {viewportMode === "surface" ? (
-            <SurfaceViewport
-              hasTrade={!!trade && !incompleteFocus}
-              symbol={trade?.symbol || symbol}
-              packLabel={activeModel.label}
-              loading={risk.loading}
-              error={risk.error}
-            />
-          ) : incompleteFocus ? (
-            <div className="flex h-full min-h-[280px] items-center justify-center px-6 text-center text-sm text-amber-400/90">
-              Incomplete or skewed package — no fabricated curve (PB-VIEW-6).
-              Wait for dual-side generations or fix legs.
+          <div className="mb-2 flex shrink-0 flex-wrap items-center gap-3 px-1 text-xs text-white/50">
+            <div
+              className="inline-flex rounded-full border border-white/15 bg-white/5 p-0.5"
+              role="tablist"
+              aria-label="Analyzer viewport"
+              data-testid="analyzer-viewport-mode"
+            >
+              {(
+                [
+                  { id: "risk" as const, label: "Risk graph" },
+                  { id: "surface" as const, label: "Surface" },
+                ] as const
+              ).map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={viewportMode === m.id}
+                  className={
+                    "rounded-full px-3 py-1 text-[11px] font-semibold transition " +
+                    (viewportMode === m.id
+                      ? "bg-white/15 text-white"
+                      : "text-white/45 hover:text-white/70")
+                  }
+                  onClick={() => setViewportMode(m.id)}
+                  data-testid={`analyzer-viewport-${m.id}`}
+                >
+                  {m.label}
+                </button>
+              ))}
             </div>
-          ) : hasCurves ? (
-            <div className="h-full min-h-[280px] w-full">
-              <PnLChart
-                ref={chartRef}
-                expirationData={risk.expirationPoints}
-                theoreticalData={risk.theoreticalPoints}
-                theoreticalStroke="#e879f9"
-                theoreticalLegendLabel={
-                  activeModel.theoLegend + (sessionHeld ? " · held" : "")
-                }
-                spotPrice={displaySpot > 0 ? displaySpot : 1}
-                spotIndicatorPrice={
-                  timeMachineEnabled && simSpot > 0 ? simSpot : undefined
-                }
-                expirationBreakevens={risk.expirationBreakevens}
-                theoreticalBreakevens={risk.theoreticalBreakevens}
-                strikes={risk.allStrikes}
-                alertLines={alertLines}
-                onOpenAlertDialog={onOpenAlertDialog}
-                positionLabels={positions
-                  .filter((p) => p.visible)
-                  .map((p) => ({
-                    id: p.id,
-                    strikesLabel: p.notation,
-                  }))}
-                onPositionAlertSelect={(positionId, price) => {
-                  const a = createPriceAlert({
-                    type: "price_touch",
-                    symbol,
-                    targetPrice: price,
-                    positionId,
-                  });
-                  setAlerts((prev) => [a, ...prev]);
-                }}
-              />
-            </div>
-          ) : (
-            <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-white/40">
-              {trade && risk.loading ? (
-                <span>OPF resolve · generation apply…</span>
-              ) : trade && risk.error ? (
-                <span className="text-amber-400/90">{risk.error}</span>
-              ) : (
+            <span className="font-semibold text-white/80">
+              {trade
+                ? `${trade.symbol} · ${viewportMode === "surface" ? "Surface" : "OPF risk graph"}`
+                : "No trade"}
+            </span>
+            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80">
+              {activeModel.label}
+            </span>
+            <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60">
+              {timeRefLabel}
+            </span>
+            {viewportMode === "risk" && (
+              <>
                 <span>
-                  Open <strong className="text-white/60">Builder</strong> for
-                  live OPF package, or paste ToS. Right-click graph for alerts.
+                  Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
                 </span>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
+                <span className="text-emerald-400/80">Expiration</span>
+                <span className="text-fuchsia-400/80">
+                  {activeModel.theoLegend}
+                </span>
+              </>
+            )}
+          </div>
+          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
+            {viewportMode === "surface" ? (
+              <SurfaceViewport
+                hasTrade={!!trade && !incompleteFocus}
+                symbol={trade?.symbol || symbol}
+                packLabel={activeModel.label}
+                loading={risk.loading}
+                error={risk.error}
+              />
+            ) : incompleteFocus ? (
+              <div className="flex h-full min-h-[120px] items-center justify-center px-6 text-center text-sm text-amber-400/90">
+                Incomplete or skewed package — no fabricated curve (PB-VIEW-6).
+                Wait for dual-side generations or fix legs.
+              </div>
+            ) : hasCurves ? (
+              <div className="h-full min-h-0 w-full">
+                <PnLChart
+                  ref={chartRef}
+                  /* MSC expired ghost: live series off; at-expiry dashed grey only */
+                  expirationData={
+                    focusExpiredVisible ? [] : risk.expirationPoints
+                  }
+                  theoreticalData={
+                    focusExpiredVisible ? [] : risk.theoreticalPoints
+                  }
+                  expiredExpirationData={
+                    focusExpiredVisible ? risk.expirationPoints : []
+                  }
+                  expiredTheoreticalData={[]}
+                  theoreticalStroke="#e879f9"
+                  theoreticalLegendLabel={
+                    focusExpiredVisible
+                      ? "Expired ghost (at-expiry)"
+                      : activeModel.theoLegend +
+                        (sessionHeld ? " · held" : "")
+                  }
+                  spotPrice={displaySpot > 0 ? displaySpot : 1}
+                  spotIndicatorPrice={
+                    timeMachineEnabled && simSpot > 0 ? simSpot : undefined
+                  }
+                  expirationBreakevens={
+                    focusExpiredVisible ? [] : risk.expirationBreakevens
+                  }
+                  theoreticalBreakevens={
+                    focusExpiredVisible ? [] : risk.theoreticalBreakevens
+                  }
+                  strikes={risk.allStrikes}
+                  alertLines={alertLines}
+                  onOpenAlertDialog={onOpenAlertDialog}
+                  positionLabels={positions
+                    .filter((p) => p.visible)
+                    .map((p) => ({
+                      id: p.id,
+                      strikesLabel: p.notation,
+                    }))}
+                  onPositionAlertSelect={(positionId, price) => {
+                    const a = createPriceAlert({
+                      type: "price_touch",
+                      symbol,
+                      targetPrice: price,
+                      positionId,
+                    });
+                    setAlerts((prev) => [a, ...prev]);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="flex h-full min-h-[120px] flex-col items-center justify-center gap-2 px-6 text-center text-sm text-white/40">
+                {trade && risk.loading ? (
+                  <span>OPF resolve · generation apply…</span>
+                ) : trade && risk.error ? (
+                  <span className="text-amber-400/90">{risk.error}</span>
+                ) : (
+                  <span>
+                    Select a{" "}
+                    <strong className="text-white/60">position</strong> in the
+                    book, or open{" "}
+                    <strong className="text-white/60">Builder</strong>.
+                    Right-click graph for alerts.
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
 
-      {/* L: divider + Positions under viewport (OD-AZ1) */}
-      <div
-        className="shrink-0 border-t-2 border-[var(--color-separator)] bg-[var(--color-surface)]"
-        data-testid="analyzer-book-divider"
-        role="separator"
-        aria-label="Positions under viewport"
-      />
-      <div
-        className="max-h-[28vh] shrink-0 overflow-y-auto border-b border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2"
-        data-testid="analyzer-positions-region"
-      >
-        <AnalyzerPositionsList {...positionsHandlers} />
+        {/* Draggable divider — drag to resize viewport vs position book */}
+        <div
+          className="group relative z-10 flex h-3 shrink-0 cursor-row-resize touch-none items-center justify-center border-y border-[var(--color-separator)] bg-[var(--color-fill)] hover:bg-[var(--color-tint)]/20 active:bg-[var(--color-tint)]/30"
+          data-testid="analyzer-book-divider"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Drag to resize position book"
+          aria-valuenow={bookHeightPx}
+          tabIndex={0}
+          onPointerDown={onSplitPointerDown}
+          onPointerMove={onSplitPointerMove}
+          onPointerUp={onSplitPointerUp}
+          onPointerCancel={onSplitPointerUp}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setBookHeightPx((h) => h + 16);
+            } else if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setBookHeightPx((h) => Math.max(BOOK_H_MIN, h - 16));
+            }
+          }}
+        >
+          <span
+            className="h-0.5 w-10 rounded-full bg-[var(--color-label-tertiary)] group-hover:bg-[var(--color-tint)]"
+            aria-hidden
+          />
+        </div>
+
+        {/* Positions book — fixed height from drag; scrolls when content overflows */}
+        <div
+          className="flex shrink-0 flex-col overflow-hidden border-b border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1"
+          style={{ height: bookHeightPx }}
+          data-testid="analyzer-positions-region"
+        >
+          <AnalyzerPositionsList {...positionsHandlers} />
+        </div>
       </div>
 
-      {/* L: Alerts under list (OD-AZ2) */}
+      {/* Alerts under book (OD-AZ2) — own scroll, not part of drag split */}
       <div
-        className="max-h-[18vh] shrink-0 overflow-y-auto bg-[var(--color-surface)] px-3 py-2"
+        className="max-h-[16vh] shrink-0 overflow-y-auto bg-[var(--color-surface)] px-3 py-2"
         data-testid="analyzer-alerts-region"
       >
         <AnalyzerAlertsSection
@@ -1019,6 +1150,7 @@ export default function OpfRiskAnalyzer() {
             setAlerts((prev) => prev.filter((a) => a.id !== id))
           }
         />
+      </div>
       </div>
 
       <PositionBuilder

@@ -1,63 +1,88 @@
 "use client";
 
 /**
- * Analyzer position cards — Trade Log blotter color scheme
- * (open green / close red / select blue) via shared blotterTheme.
+ * Analyzer position book — ToS-style dense table + Trade Log blotter colors.
+ * Debit (long/pay) → open green · Credit (short/receive) → close red · Selected blue.
+ * Book = definition SoR.
  */
 
+import { useMemo, type CSSProperties } from "react";
 import type { AnalyzerPosition } from "@/lib/options-lab/analyzerBook";
+import type { LegInput } from "@/lib/options-lab/positionTypes";
+import { detectFamily } from "@/lib/options-lab/positionLabels";
 import {
   BLOTTER_CSS_VARS,
+  BLOTTER_HEX,
   blotterCardBackground,
-  blotterCardBorder,
   blotterKindFromPackageSide,
-  blotterOnFillText,
+  resolvePackageSide,
+  type BlotterBlockKind,
 } from "@/lib/blotterTheme";
 
-const STATUS_CLASS: Record<string, string> = {
-  ANALYSIS: "bg-white/20 text-white",
-  PENDING: "bg-amber-400 text-black",
-  OPEN: "bg-emerald-500/90 text-white",
-  PARTIAL_OPEN: "bg-amber-400 text-black",
-  CLOSED: "bg-white/20 text-white",
-  CANCELLED: "bg-white/15 text-white/80",
-  REJECTED: "bg-amber-400 text-black",
-};
-
-const LIVE_CHIP: Record<string, string> = {
-  live: "text-emerald-200",
-  held: "text-amber-200",
-  not_live: "text-white/45",
-  budget_refused: "text-red-200",
-  incomplete: "text-amber-200",
-  skewed: "text-orange-200",
-};
-
-function dteOf(pos: AnalyzerPosition): number {
-  const exp =
-    pos.position.legs[0]?.expiration || pos.position.expiration || "";
+function dteOf(exp: string): number {
   if (!exp) return 0;
-  const e = new Date(exp + "T16:00:00Z");
+  const e = new Date(exp.slice(0, 10) + "T16:00:00Z");
   return Math.max(
     0,
     Math.ceil((e.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
   );
 }
 
-function formatLeg(leg: AnalyzerPosition["position"]["legs"][0]): string {
-  const sign = leg.side === "long" ? "+" : "-";
-  const t = leg.type === "call" ? "C" : "P";
-  return `${sign}${leg.quantity} ${leg.strike}${t}`;
+function fmtExp(exp: string): string {
+  if (!exp || exp.length < 10) return exp || "—";
+  try {
+    const d = new Date(exp.slice(0, 10) + "T12:00:00Z");
+    return d
+      .toLocaleDateString("en-US", {
+        day: "2-digit",
+        month: "short",
+        year: "2-digit",
+        timeZone: "UTC",
+      })
+      .replace(",", "");
+  } catch {
+    return exp.slice(0, 10);
+  }
 }
 
+function fmtIv(vol: number | undefined): string {
+  if (vol == null || !Number.isFinite(vol)) return "—";
+  const pct = vol > 0 && vol <= 2 ? vol * 100 : vol;
+  return `${pct.toFixed(2)}%`;
+}
+
+function fmtStrike(n: number): string {
+  if (!Number.isFinite(n)) return "—";
+  return n % 1 === 0 ? String(n) : n.toFixed(2);
+}
+
+/**
+ * Traditional display order: ascending strike (butterfly → wing / body / wing
+ * = +1 / −2 / +1 for a long fly). Never group all longs first (+1/+1/−2).
+ */
+function legsInDisplayOrder(legs: readonly LegInput[]): LegInput[] {
+  return [...legs].sort((a, b) => {
+    const ds = a.strike - b.strike;
+    if (Math.abs(ds) > 1e-9) return ds;
+    // Same strike: put before call (iron fly body)
+    if (a.type !== b.type) return a.type === "put" ? -1 : 1;
+    // Long before short only as last resort (same strike/type rare)
+    if (a.side !== b.side) return a.side === "long" ? -1 : 1;
+    return 0;
+  });
+}
+
+// Body ~15px after two +15% steps from 11px; chrome scaled with it
+const th =
+  "px-1.5 py-1 text-left text-[12px] font-semibold uppercase tracking-wide text-white/45 whitespace-nowrap";
+const td = "px-1.5 py-1 text-[15px] tabular-nums whitespace-nowrap";
 const actionBtn =
-  "rounded border border-white/25 bg-black/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-white/90 hover:bg-black/30";
+  "rounded bg-black/25 px-1.5 py-0.5 text-[12px] font-semibold uppercase text-white/90 hover:bg-black/40";
 
 export type AnalyzerPositionsListProps = {
   positions: AnalyzerPosition[];
   focusedId: string | null;
   sessionHeld?: boolean;
-  /** Suite symbol — off-symbol cards get a badge (A5) */
   sessionSymbol?: string;
   onFocus: (id: string) => void;
   onToggleVisibility: (id: string) => void;
@@ -67,6 +92,12 @@ export type AnalyzerPositionsListProps = {
   onLockNatural: (id: string) => void;
   onLockLimit: (id: string) => void;
   onUnlock: (id: string) => void;
+  /** ToS-style structure BUY/SELL flip (debit↔credit). */
+  onSetDirection: (id: string, direction: "buy" | "sell") => void;
+  /** ToS-style expiration roll from listed chain expirations. */
+  onSetExpiration: (id: string, expiration: string) => void;
+  /** Upcoming listed expirations (YYYY-MM-DD) for the suite / product. */
+  expirations?: string[];
 };
 
 export default function AnalyzerPositionsList({
@@ -82,262 +113,648 @@ export default function AnalyzerPositionsList({
   onLockNatural,
   onLockLimit,
   onUnlock,
+  onSetDirection,
+  onSetExpiration,
+  expirations = [],
 }: AnalyzerPositionsListProps) {
-  // A5: show all cards (do not filter by session symbol)
   const list = positions;
+  const expChoices = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const set = new Set<string>();
+    for (const e of expirations) {
+      const d = e.slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today) set.add(d);
+    }
+    // Keep any book dates so current selection always appears
+    for (const p of positions) {
+      const fe = (p.position.expiration || "").slice(0, 10);
+      if (fe) set.add(fe);
+      for (const l of p.position.legs) {
+        const le = (l.expiration || "").slice(0, 10);
+        if (le) set.add(le);
+      }
+    }
+    return [...set].sort();
+  }, [expirations, positions]);
+
   return (
     <div
-      className="space-y-2"
+      className="flex h-full min-h-0 flex-col"
       data-testid="analyzer-positions-list"
       style={BLOTTER_CSS_VARS}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+      <div className="mb-0.5 flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <span className="text-[14px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
           Positions
           {list.length > 0 ? (
-            <span className="ml-1 font-normal normal-case text-[var(--color-label-tertiary)]">
-              ({list.length})
-            </span>
+            <span className="ml-1 font-normal normal-case">({list.length})</span>
           ) : null}
         </span>
-        <button
-          type="button"
-          onClick={onCreate}
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--color-separator)] text-sm font-bold text-[var(--color-tint)] hover:bg-[var(--color-fill)]"
-          aria-label="Create position"
-          data-testid="analyzer-create-position"
-        >
-          +
-        </button>
-      </div>
-
-      {/* Blotter legend — same chips as Trade Log */}
-      <div className="flex flex-wrap items-center gap-2 text-[10px] text-[var(--color-label-tertiary)]">
-        <span className="inline-flex items-center gap-1">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded-sm"
-            style={{ background: "var(--blotter-open-bg)" }}
-          />
-          Credit
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded-sm"
-            style={{ background: "var(--blotter-close-bg)" }}
-          />
-          Debit
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded-sm"
-            style={{ background: "var(--blotter-select-bg)" }}
-          />
-          Focused
-        </span>
+        <div className="flex flex-wrap items-center gap-2 text-[14px] text-[var(--color-label-tertiary)]">
+          {/* Trade Log open/close fills · package economics */}
+          <span className="inline-flex items-center gap-1">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-sm"
+              style={{ background: BLOTTER_HEX.openBg }}
+            />
+            Debit
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-sm"
+              style={{ background: BLOTTER_HEX.closeBg }}
+            />
+            Credit
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-sm"
+              style={{ background: BLOTTER_HEX.selectBg }}
+            />
+            Selected
+          </span>
+          <button
+            type="button"
+            onClick={onCreate}
+            className="flex h-6 w-6 items-center justify-center rounded-full border border-[var(--color-separator)] text-sm font-bold text-[var(--color-tint)] hover:bg-[var(--color-fill)]"
+            aria-label="Create position"
+            data-testid="analyzer-create-position"
+          >
+            +
+          </button>
+        </div>
       </div>
 
       {list.length === 0 ? (
-        <p className="text-[11px] text-[var(--color-label-tertiary)]">
-          No positions — open Builder for live OPF package debit.
+        <p className="text-[15px] text-[var(--color-label-tertiary)]">
+          No positions — open Builder to add a structure to the book.
         </p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {list.map((pos) => {
-            const hidden = !pos.visible;
-            const focused = pos.id === focusedId;
-            const locked = pos.lock.mode === "locked";
-            const dte = dteOf(pos);
-            const price = pos.livePackagePerShare;
-            const side = pos.priceSide;
-            const kind = blotterKindFromPackageSide(side);
-            const tone = blotterOnFillText(focused, kind);
-            const und = (pos.position.underlying || "").toUpperCase();
-            const offSymbol =
-              !!sessionSymbol &&
-              !!und &&
-              und !== sessionSymbol.toUpperCase();
-            const chip =
-              !pos.visible
-                ? "not_live"
-                : sessionHeld && pos.liveState === "live"
-                  ? "held"
-                  : pos.liveState;
-            return (
-              <div
-                key={pos.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => onFocus(pos.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") onFocus(pos.id);
-                }}
-                className={
-                  "cursor-pointer rounded-xl border p-2.5 text-left shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition " +
-                  (hidden ? " opacity-45" : "")
-                }
-                style={{
-                  background: blotterCardBackground(kind, focused),
-                  borderColor: blotterCardBorder(kind, focused),
-                }}
-                data-testid={`analyzer-pos-card-${pos.id}`}
-                data-blotter-kind={kind}
-                data-focused={focused ? "1" : "0"}
-                data-off-symbol={offSymbol ? "1" : "0"}
-              >
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span
-                    className={`text-xs font-semibold ${tone.primary}`}
-                  >
-                    {pos.label}
-                  </span>
-                  <span className={`text-[10px] ${tone.tertiary}`}>
-                    {dte}D
-                  </span>
-                  <span
-                    className={
-                      "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase " +
-                      (STATUS_CLASS[pos.status] || STATUS_CLASS.ANALYSIS)
-                    }
-                  >
-                    {pos.status}
-                  </span>
-                  {offSymbol && (
-                    <span
-                      className="rounded bg-sky-600/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-white"
-                      data-testid="analyzer-pos-off-symbol"
-                      title="Different symbol than suite session — focus syncs suite symbol"
-                    >
-                      {und}
-                    </span>
-                  )}
-                  {locked && (
-                    <span className="rounded bg-violet-500/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-white">
-                      Locked
-                    </span>
-                  )}
-                  <span
-                    className={
-                      "text-[9px] font-semibold uppercase " +
-                      (LIVE_CHIP[chip] || LIVE_CHIP.not_live)
-                    }
-                  >
-                    {chip === "budget_refused"
-                      ? "not live (budget)"
-                      : chip === "not_live"
-                        ? "not live"
-                        : chip}
-                  </span>
-                </div>
-                <div
-                  className={`mt-1 flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[10px] ${tone.secondary}`}
+        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded border border-[var(--color-separator)] bg-[var(--color-surface)]">
+          <table
+            className="w-full min-w-[960px] border-collapse text-left text-[16px] leading-snug"
+            data-testid="analyzer-positions-table"
+          >
+            <thead className="sticky top-0 z-[1] bg-[var(--color-surface)] shadow-[0_1px_0_var(--color-separator)]">
+              <tr className="border-b border-[var(--color-separator)]">
+                <th className={th + " w-4"} aria-label="select" />
+                <th className={th}>Spread</th>
+                <th className={th}>Side</th>
+                <th className={th + " text-right"}>Qty</th>
+                <th className={th}>Symbol</th>
+                <th className={th}>Exp</th>
+                <th className={th + " text-right"}>Strike</th>
+                <th className={th}>Type</th>
+                <th className={th + " text-right"}>Price</th>
+                <th className={th}>Pkg</th>
+                <th className={th}>Live</th>
+                <th className={th + " text-right"}>Vol</th>
+                <th className={th}>DTE</th>
+                <th className={th}>Actions</th>
+              </tr>
+            </thead>
+            {/* One tbody per position — Trade Log block: solid fill, no inter-leg borders */}
+            {list.map((pos, posIdx) => {
+              const hidden = !pos.visible;
+              const selected = pos.id === focusedId;
+              const locked = pos.lock.mode === "locked";
+              const und = (pos.position.underlying || "").toUpperCase();
+              const offSymbol =
+                !!sessionSymbol &&
+                !!und &&
+                und !== sessionSymbol.toUpperCase();
+              // Debit/credit fill: explicit side → OPF sign → BUY/SELL fallback
+              const side = resolvePackageSide(pos);
+              const kind = blotterKindFromPackageSide(side);
+              const family = detectFamily(pos.position.legs).toUpperCase();
+              const pkgDir =
+                pos.position.direction === "sell" ? "SELL" : "BUY";
+              const mult = Math.max(1, pos.position.contracts || 1);
+              const front = pos.position.expiration;
+              const dte = dteOf(front);
+              const expired = dte <= 0;
+              const isGhost = expired && !hidden;
+              const chip =
+                !pos.visible
+                  ? "not_live"
+                  : sessionHeld && pos.liveState === "live"
+                    ? "held"
+                    : pos.liveState;
+
+              const liveMark =
+                !expired &&
+                pos.livePackagePerShare != null &&
+                Number.isFinite(pos.livePackagePerShare) &&
+                (chip === "live" ||
+                  chip === "held" ||
+                  pos.livePackagePerShare > 0);
+              const price = pos.livePackagePerShare;
+              const priceLabel =
+                price != null && Number.isFinite(price)
+                  ? (side === "credit" ? "−" : "") + price.toFixed(2)
+                  : "—";
+
+              // Exact Trade Log blotter fills (hex — always paint)
+              // Ghost keeps debit/credit tint; selected → blue
+              const bg = blotterCardBackground(
+                kind,
+                selected && !isGhost,
+              );
+              const onFill =
+                (!isGhost && selected) || kind === "open" || kind === "close";
+              const textMain = isGhost
+                ? "text-white/90"
+                : onFill
+                  ? "text-white"
+                  : "text-[var(--color-label)]";
+              const textMuted = isGhost
+                ? "text-white/75"
+                : onFill
+                  ? "text-white/80"
+                  : "text-[var(--color-label-secondary)]";
+              const textDim = isGhost
+                ? "text-white/60"
+                : onFill
+                  ? "text-white/55"
+                  : "text-[var(--color-label-tertiary)]";
+
+              const hasNext = posIdx < list.length - 1;
+              const orderedLegs = legsInDisplayOrder(pos.position.legs);
+
+              return (
+                <PosBlock
+                  key={pos.id}
+                  pos={pos}
+                  orderedLegs={orderedLegs}
+                  hidden={hidden}
+                  selected={selected}
+                  locked={locked}
+                  und={und}
+                  offSymbol={offSymbol}
+                  family={family}
+                  pkgDir={pkgDir}
+                  mult={mult}
+                  priceLabel={priceLabel}
+                  liveMark={!!liveMark}
+                  expired={expired}
+                  isGhost={isGhost}
+                  side={side}
+                  kind={kind}
+                  chip={chip}
+                  dte={dte}
+                  front={front}
+                  bg={bg}
+                  textMain={textMain}
+                  textMuted={textMuted}
+                  textDim={textDim}
+                  hasNext={hasNext}
+                  onFocus={onFocus}
+                  onToggleVisibility={onToggleVisibility}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onLockNatural={onLockNatural}
+                  onLockLimit={onLockLimit}
+                  onUnlock={onUnlock}
+                  onSetDirection={onSetDirection}
+                  onSetExpiration={onSetExpiration}
+                  expChoices={expChoices}
+                />
+              );
+            })}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PosBlock({
+  pos,
+  orderedLegs,
+  hidden,
+  selected,
+  locked,
+  und,
+  offSymbol,
+  family,
+  pkgDir,
+  mult,
+  priceLabel,
+  liveMark,
+  expired,
+  isGhost,
+  side,
+  kind,
+  chip,
+  dte,
+  front,
+  bg,
+  textMain,
+  textMuted,
+  textDim,
+  hasNext,
+  onFocus,
+  onToggleVisibility,
+  onEdit,
+  onDelete,
+  onLockNatural,
+  onLockLimit,
+  onUnlock,
+  onSetDirection,
+  onSetExpiration,
+  expChoices,
+}: {
+  pos: AnalyzerPosition;
+  orderedLegs: LegInput[];
+  hidden: boolean;
+  selected: boolean;
+  locked: boolean;
+  und: string;
+  offSymbol: boolean;
+  family: string;
+  pkgDir: string;
+  mult: number;
+  priceLabel: string;
+  liveMark: boolean;
+  expired: boolean;
+  isGhost: boolean;
+  side: "debit" | "credit" | null;
+  kind: BlotterBlockKind;
+  chip: string;
+  dte: number;
+  front: string;
+  bg: string;
+  textMain: string;
+  textMuted: string;
+  textDim: string;
+  hasNext: boolean;
+  onFocus: (id: string) => void;
+  onToggleVisibility: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onLockNatural: (id: string) => void;
+  onLockLimit: (id: string) => void;
+  onUnlock: (id: string) => void;
+  onSetDirection: (id: string, direction: "buy" | "sell") => void;
+  onSetExpiration: (id: string, expiration: string) => void;
+  expChoices: string[];
+}) {
+  const nLegs = orderedLegs.length;
+  const pkgSide =
+    side === "credit" ? "CREDIT" : side === "debit" ? "DEBIT" : "—";
+
+  /**
+   * Trade Log blotter rule:
+   * - Solid fill on every cell (hex)
+   * - No borders between legs
+   * - Position separator only after last leg
+   * - Outer ring on tbody only
+   */
+  const cellBase = (isLast: boolean): CSSProperties => ({
+    backgroundColor: bg,
+    borderBottomWidth: isLast && hasNext ? 1 : 0,
+    borderBottomStyle: isLast && hasNext ? "solid" : "none",
+    borderBottomColor:
+      isLast && hasNext ? BLOTTER_HEX.positionRule : "transparent",
+  });
+
+  // Outer edge only — inset ring on the whole block (not between legs)
+  const blockShadow = selected
+    ? "inset 0 0 0 2px rgba(255,255,255,0.38)"
+    : isGhost
+      ? "inset 0 0 0 1px rgba(156,163,175,0.7)"
+      : undefined;
+
+  return (
+    <tbody
+      data-testid={`analyzer-pos-card-${pos.id}`}
+      data-focused={selected ? "1" : "0"}
+      data-blotter-kind={kind}
+      data-price-side={side ?? ""}
+      data-ghost={isGhost ? "1" : "0"}
+      data-expired={expired ? "1" : "0"}
+      data-off-symbol={offSymbol ? "1" : "0"}
+      className={
+        (hidden ? "opacity-40 " : isGhost ? "opacity-90 " : "") +
+        "transition-[filter] hover:brightness-110"
+      }
+      style={{
+        backgroundColor: bg,
+        boxShadow: blockShadow,
+        filter: isGhost
+          ? "grayscale(0.15) saturate(0.85) brightness(1.15)"
+          : undefined,
+      }}
+    >
+      {orderedLegs.map((leg, i) => {
+        const isTop = i === 0;
+        const isLast = i === nLegs - 1;
+        const exp = (leg.expiration || front).slice(0, 10);
+        const legSide = leg.side === "long" ? "BUY" : "SELL";
+        const q = Math.abs(leg.quantity) * mult;
+        const signedQ = leg.side === "long" ? `+${q}` : `−${q}`;
+        const edge = cellBase(isLast);
+
+        return (
+          <tr
+            key={`${pos.id}-leg-${i}`}
+            className="cursor-pointer tabular-nums"
+            style={{ backgroundColor: bg }}
+            onClick={() => onFocus(pos.id)}
+            data-testid={
+              isTop
+                ? undefined
+                : `analyzer-pos-leg-${pos.id}-${i}`
+            }
+          >
+            <td
+              className={td + " w-4 text-center"}
+              style={edge}
+            >
+              {isTop ? (
+                <span
+                  className={
+                    "inline-block h-2 w-2 rounded-full " +
+                    (selected ? "bg-white" : "bg-white/30")
+                  }
+                  aria-hidden
+                />
+              ) : null}
+            </td>
+            <td
+              className={
+                td +
+                (isTop
+                  ? ` font-semibold uppercase tracking-wide ${textMain}`
+                  : ` ${textDim}`)
+              }
+              style={edge}
+            >
+              {isTop ? family : ""}
+            </td>
+            <td
+              className={td}
+              style={edge}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {isTop ? (
+                <select
+                  className={
+                    "cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[15px] font-semibold uppercase outline-none " +
+                    textMain
+                  }
+                  value={pkgDir === "SELL" ? "sell" : "buy"}
+                  aria-label="Structure side BUY or SELL"
+                  data-testid={`analyzer-pos-direction-${pos.id}`}
+                  title="Flip structure BUY ↔ SELL (debit ↔ credit)"
+                  onChange={(e) => {
+                    const v = e.target.value === "sell" ? "sell" : "buy";
+                    onSetDirection(pos.id, v);
+                  }}
                 >
-                  {pos.position.legs.map((leg, i) => (
-                    <span key={i}>{formatLeg(leg)}</span>
+                  <option value="buy">BUY</option>
+                  <option value="sell">SELL</option>
+                </select>
+              ) : (
+                <span className={`font-semibold ${textMain}`}>{legSide}</span>
+              )}
+            </td>
+            <td
+              className={td + ` text-right font-mono ${textMain}`}
+              style={edge}
+            >
+              {signedQ}
+            </td>
+            <td
+              className={td + ` font-semibold ${textMain}`}
+              style={edge}
+            >
+              {und}
+              {isTop && offSymbol ? (
+                <span
+                  className="ml-1 rounded bg-black/25 px-1 text-[10px] uppercase text-white"
+                  data-testid="analyzer-pos-off-symbol"
+                >
+                  off
+                </span>
+              ) : null}
+            </td>
+            <td
+              className={td}
+              style={edge}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {isTop && expChoices.length > 0 ? (
+                <select
+                  className={
+                    "max-w-[9rem] cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[15px] font-semibold outline-none " +
+                    textMain
+                  }
+                  value={
+                    expChoices.includes(exp)
+                      ? exp
+                      : front.slice(0, 10) || exp
+                  }
+                  aria-label="Structure expiration"
+                  data-testid={`analyzer-pos-expiration-${pos.id}`}
+                  title="Roll structure to listed expiration"
+                  onChange={(e) => onSetExpiration(pos.id, e.target.value)}
+                >
+                  {expChoices.map((e) => (
+                    <option key={e} value={e}>
+                      {fmtExp(e)}
+                    </option>
                   ))}
-                </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                </select>
+              ) : (
+                <span className={textMuted}>{fmtExp(exp)}</span>
+              )}
+            </td>
+            <td
+              className={
+                td + ` text-right font-mono font-semibold ${textMain}`
+              }
+              style={edge}
+            >
+              {fmtStrike(leg.strike)}
+            </td>
+            <td className={td + ` uppercase ${textMain}`} style={edge}>
+              {leg.type === "call" ? "CALL" : "PUT"}
+            </td>
+            <td
+              className={
+                td +
+                ` text-right font-mono font-semibold ` +
+                (isTop && expired ? "text-amber-200" : textMain)
+              }
+              style={edge}
+              title={
+                isTop
+                  ? expired
+                    ? "EXPIRED"
+                    : liveMark
+                      ? "Live OPF package mark"
+                      : "Package mark"
+                  : leg.entry_price > 0
+                    ? "Leg mid"
+                    : undefined
+              }
+              data-testid={isTop ? `analyzer-pos-price-${pos.id}` : undefined}
+              data-live={isTop && liveMark && !expired ? "1" : undefined}
+              data-expired={isTop && expired ? "1" : undefined}
+            >
+              {isTop ? (
+                expired ? (
                   <span
-                    className={`font-mono text-xs font-semibold tabular-nums ${tone.primary}`}
+                    className="text-[14px] font-bold uppercase tracking-wide text-amber-200"
+                    data-testid={`analyzer-pos-expired-${pos.id}`}
                   >
-                    {price != null && Number.isFinite(price)
-                      ? price.toFixed(2)
-                      : "—"}
+                    EXPIRED
                   </span>
+                ) : (
+                  <>
+                    {priceLabel}
+                    {liveMark ? (
+                      <span
+                        className={`ml-1 text-[10px] font-semibold uppercase ${textMuted}`}
+                      >
+                        live
+                      </span>
+                    ) : null}
+                  </>
+                )
+              ) : leg.entry_price > 0 ? (
+                leg.entry_price.toFixed(2)
+              ) : (
+                "—"
+              )}
+            </td>
+            <td
+              className={td}
+              style={edge}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {isTop ? (
+                <div className="flex items-center gap-1">
                   <span
-                    className={`text-[10px] font-semibold uppercase ${tone.secondary}`}
+                    className={`text-[14px] font-semibold uppercase ${textMain}`}
+                    data-testid={`analyzer-pos-pkg-side-${pos.id}`}
                   >
-                    {side ?? "—"}
-                    {locked ? " basis" : ""}
+                    {pkgSide}
                   </span>
-                  {locked && pos.lastNatSigned != null && (
-                    <span className={`text-[10px] ${tone.tertiary}`}>
-                      mkt {Math.abs(pos.lastNatSigned).toFixed(2)}
-                      {sessionHeld ? " · held" : ""}
-                    </span>
-                  )}
-                  {pos.displayAsOf && (
-                    <span
-                      className={`text-[9px] ${tone.tertiary}`}
-                      title={pos.displayAsOf}
+                  {locked ? (
+                    <button
+                      type="button"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded bg-black/20 text-[15px] text-white hover:bg-black/35"
+                      title="Unlock package basis"
+                      aria-label="Unlock"
+                      data-testid={`analyzer-pos-lock-${pos.id}`}
+                      data-locked="1"
+                      onClick={() => onUnlock(pos.id)}
                     >
-                      as_of
-                    </span>
+                      🔒
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded bg-black/15 text-[15px] text-white/80 hover:bg-black/30"
+                      title="Lock at natural mid (Option-click / right-click for limit)"
+                      aria-label="Lock natural"
+                      data-testid={`analyzer-pos-lock-${pos.id}`}
+                      data-locked="0"
+                      onClick={(e) => {
+                        if (e.altKey || e.metaKey) onLockLimit(pos.id);
+                        else onLockNatural(pos.id);
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        onLockLimit(pos.id);
+                      }}
+                    >
+                      🔓
+                    </button>
                   )}
                 </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
+              ) : null}
+            </td>
+            <td
+              className={
+                td +
+                " text-[12px] font-semibold uppercase " +
+                (isTop
+                  ? chip === "live"
+                    ? selected || kind !== "neutral"
+                      ? "text-emerald-200"
+                      : "text-emerald-600"
+                    : chip === "held"
+                      ? "text-amber-200"
+                      : chip === "incomplete" || chip === "skewed"
+                        ? "text-amber-200"
+                        : textDim
+                  : textDim)
+              }
+              style={edge}
+            >
+              {isTop
+                ? chip === "budget_refused"
+                  ? "budget"
+                  : chip === "not_live"
+                    ? "—"
+                    : chip
+                : ""}
+            </td>
+            <td
+              className={td + ` text-right ${textMuted}`}
+              style={edge}
+            >
+              {fmtIv(leg.volatility)}
+            </td>
+            <td
+              className={
+                td +
+                (isTop && expired
+                  ? " font-bold uppercase tracking-wide text-amber-200"
+                  : ` ${textMuted}`)
+              }
+              style={edge}
+              data-testid={isTop ? `analyzer-pos-dte-${pos.id}` : undefined}
+            >
+              {isTop && expired ? "EXPIRED" : `${dteOf(exp)}d`}
+            </td>
+            <td
+              className={td}
+              style={edge}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {isTop ? (
+                <div className="flex flex-nowrap items-center gap-0.5">
                   <button
                     type="button"
                     className={actionBtn}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleVisibility(pos.id);
-                    }}
+                    onClick={() => onToggleVisibility(pos.id)}
                   >
                     {hidden ? "Show" : "Hide"}
                   </button>
                   <button
                     type="button"
                     className={actionBtn}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(pos.id);
-                    }}
+                    onClick={() => onEdit(pos.id)}
                   >
                     Edit
                   </button>
-                  {locked ? (
-                    <button
-                      type="button"
-                      className={actionBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUnlock(pos.id);
-                      }}
-                    >
-                      Unlock
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        className={actionBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onLockNatural(pos.id);
-                        }}
-                      >
-                        Lock mkt
-                      </button>
-                      <button
-                        type="button"
-                        className={actionBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onLockLimit(pos.id);
-                        }}
-                      >
-                        Lock lim
-                      </button>
-                    </>
-                  )}
                   <button
                     type="button"
-                    className={
-                      actionBtn + " border-red-300/40 text-red-100 hover:bg-red-950/40"
-                    }
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(pos.id);
-                    }}
+                    className={actionBtn + " text-red-100"}
+                    onClick={() => onDelete(pos.id)}
                   >
-                    Remove
+                    ×
                   </button>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+              ) : null}
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
   );
 }

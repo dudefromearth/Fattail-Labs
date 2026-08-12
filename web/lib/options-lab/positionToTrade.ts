@@ -1,5 +1,6 @@
 /**
- * Convert Position Builder position → ParsedTosTrade for OPF Analyzer.
+ * Convert Position Builder position ↔ ParsedTosTrade for OPF Analyzer.
+ * Book cards are the definition SoR — ToS paste is handoff only (→ card).
  */
 
 import { generateTosScript } from "@/lib/options-lab/tosGenerator";
@@ -94,5 +95,41 @@ export function positionToParsedTrade(pos: PositionInput): ParsedTosTrade {
     body,
     legs,
     raw: raw || `${buildLabel(pos.underlying, pos.legs, front)} · ${buildNotation(pos.legs)}`,
+  };
+}
+
+/** Heatmap / handoff → book card definition (no paste viewport path). */
+export function parsedTradeToPositionInput(t: ParsedTosTrade): PositionInput {
+  const contracts = 1;
+  const legs = t.legs.map((l) => {
+    const qty = Math.abs(l.quantity) || 1;
+    return {
+      strike: l.strike,
+      type: l.right,
+      quantity: qty,
+      side: (l.quantity >= 0 ? "long" : "short") as "long" | "short",
+      entry_price: 0,
+      expiration: l.expiration.slice(0, 10),
+    };
+  });
+  // Normalize package qty: legs often carry package scale (e.g. +10/-20/+10)
+  const g = legs.reduce((a, l) => Math.min(a, l.quantity), Infinity);
+  const unit = Number.isFinite(g) && g > 0 ? g : 1;
+  const scaled =
+    unit > 1
+      ? legs.map((l) => ({
+          ...l,
+          quantity: Math.max(1, Math.round(l.quantity / unit)),
+        }))
+      : legs;
+
+  return {
+    underlying: t.symbol,
+    expiration: t.expiration.slice(0, 10),
+    contracts: unit > 1 ? unit : contracts,
+    legs: scaled,
+    direction: t.action === "SELL" ? "sell" : "buy",
+    net_debit_override:
+      t.limit != null && Number.isFinite(t.limit) ? Math.abs(t.limit) : null,
   };
 }

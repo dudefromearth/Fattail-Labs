@@ -50,7 +50,8 @@ function daysUntil(expiration: string): number {
   );
 }
 
-function detectFamily(legs: LegInput[]): string {
+/** Spread family label for ToS-style book rows (e.g. Butterfly, Vertical). */
+export function detectFamily(legs: LegInput[]): string {
   if (legs.length === 1) return "Single";
   if (legs.length === 2) {
     const sameStrike = legs[0].strike === legs[1].strike;
