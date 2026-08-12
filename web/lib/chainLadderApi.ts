@@ -84,17 +84,34 @@ export type LadderExpirationContract = {
   label: string;
 };
 
+/**
+ * OPF / Analyzer active option horizon in calendar DTE.
+ * Server default matches; must stay in sync with
+ * `OPF_ACTIVE_DTE_HORIZON` in server/routes/chain_ladder.py.
+ */
+export const OPF_ACTIVE_DTE_HORIZON = 10;
+
 export async function fetchLadderExpirations(
   symbol = "SPX",
-  limit = 3,
+  limit = 30,
+  /**
+   * Look-ahead + max DTE filter (calendar days). Default = OPF active horizon
+   * (10 DTE). Pass a larger value only for admin/overview UIs.
+   */
+  days = OPF_ACTIVE_DTE_HORIZON,
 ): Promise<{
   contracts: LadderExpirationContract[];
   default_expiration: string | null;
   symbol: string;
+  session_open?: boolean;
+  count?: number;
+  max_dte?: number;
 }> {
   const q = new URLSearchParams({
     symbol,
     limit: String(limit),
+    days: String(days),
+    max_dte: String(days),
   });
   const r = await fetch(`/api/me/market/chain-ladder/expirations?${q}`, {
     credentials: "same-origin",
@@ -104,6 +121,9 @@ export async function fetchLadderExpirations(
     expirations?: string[];
     default_expiration?: string | null;
     symbol?: string;
+    session_open?: boolean;
+    count?: number;
+    max_dte?: number;
   }>(r);
   // Prefer rich contracts[]; fall back to flat dates if older server
   let contracts = d.contracts || [];
@@ -128,6 +148,9 @@ export async function fetchLadderExpirations(
     default_expiration:
       d.default_expiration ?? contracts[0]?.expiration ?? null,
     symbol: d.symbol || symbol,
+    session_open: d.session_open,
+    count: d.count ?? contracts.length,
+    max_dte: d.max_dte ?? days,
   };
 }
 

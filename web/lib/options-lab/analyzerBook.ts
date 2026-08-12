@@ -11,6 +11,11 @@ import {
   buildNotation,
 } from "@/lib/options-lab/positionLabels";
 import { positionNetPremium } from "@/lib/options-lab/positionToTrade";
+import {
+  normalizeStrike,
+  snapToListed,
+  uniqueListedStrikes,
+} from "@/lib/options-lab/listedStrikes";
 
 /** Product status — residual book is ANALYSIS-only (PB v0.3 §16.4). */
 export type AnalyzerTradeStatus = "ANALYSIS";
@@ -48,6 +53,24 @@ export type CardLockState =
       generationHashesAtLock?: Record<string, string>;
     };
 
+/** Per-leg bind report (exp first, then price). See optionBind.ts */
+export type PositionBindSnapshot = {
+  bindable: boolean;
+  failedCount: number;
+  summary: string;
+  assessedAt: number;
+  legs: Array<{
+    index: number;
+    expiration: string;
+    strike: number;
+    type: "call" | "put";
+    expOk: boolean;
+    priceOk: boolean;
+    reason: string;
+    mid: number | null;
+  }>;
+};
+
 export type AnalyzerPosition = {
   id: string;
   label: string;
@@ -66,6 +89,11 @@ export type AnalyzerPosition = {
   contentHashes: Record<string, string>;
   maxSkewMs: number | null;
   epochQuality: string | null;
+  /**
+   * Last bind assessment (exp → price, all legs). Card may only show a live
+   * package when bindable && OPF quote complete.
+   */
+  bind?: PositionBindSnapshot | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -125,6 +153,7 @@ function migratePos(raw: unknown): AnalyzerPosition | null {
     contentHashes: p.contentHashes || {},
     maxSkewMs: p.maxSkewMs ?? null,
     epochQuality: p.epochQuality ?? null,
+    bind: p.bind ?? null,
     createdAt: p.createdAt || Date.now(),
     updatedAt: p.updatedAt || Date.now(),
   };
@@ -193,6 +222,7 @@ export function positionFromInput(input: PositionInput): AnalyzerPosition {
     contentHashes: {},
     maxSkewMs: null,
     epochQuality: null,
+    bind: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
@@ -296,6 +326,7 @@ export function applyPackageQuote(
       displayAsOf: quote.as_of ?? pos.displayAsOf,
       maxSkewMs: quote.max_skew_ms ?? null,
       epochQuality: quote.epoch_quality ?? null,
+      // keep last bind snapshot if present
     });
   }
 
@@ -321,6 +352,10 @@ export function applyPackageQuote(
       contentHashes: hashes,
       maxSkewMs: quote.max_skew_ms ?? null,
       epochQuality: quote.epoch_quality ?? null,
+      // Successful OPF package implies bindable at quote time
+      bind: pos.bind
+        ? { ...pos.bind, bindable: true, failedCount: 0, summary: "bound" }
+        : pos.bind,
     });
   }
 
@@ -335,6 +370,9 @@ export function applyPackageQuote(
     contentHashes: hashes,
     maxSkewMs: quote.max_skew_ms ?? null,
     epochQuality: quote.epoch_quality ?? null,
+    bind: pos.bind
+      ? { ...pos.bind, bindable: true, failedCount: 0, summary: "bound" }
+      : pos.bind,
   };
   // B5 invariant — fail loud in dev if drift
   if (
@@ -529,17 +567,217 @@ export function setCardExpiration(
     ...pos.position,
     expiration: newE,
     legs,
+    // Clear any limit that was bound to the old option pointer
+    net_debit_override: null,
   };
+
+  /**
+   * Card = pointer to an option structure, not the option itself.
+   * Rebinding expiration (e.g. EXPIRED → live listed date) must:
+   *  - clear the stale mark from the old option
+   *  - unlock so OPF can re-quote natural debit/credit
+   *  - set not_live until atomic package resolve settles once
+   * UI shows UPDATING then a single final state (price / NOT TRADED / …).
+   */
   return {
     ...pos,
     position,
     label: buildLabel(position.underlying, legs, newE),
     notation: buildNotation(legs),
-    // package quote will refresh live mark
+    lock: { mode: "unlocked" },
+    lastNatSigned: null,
+    livePackagePerShare: null,
+    priceSide: null,
+    liveState: "not_live",
+    displayAsOf: null,
+    contentHashes: {},
+    maxSkewMs: null,
+    epochQuality: null,
+    bind: null, // clear prior bind until atomic resolve completes
+    updatedAt: Date.now(),
+  };
+}
+
+/**
+ * Fingerprint of the option the card points at (definition only).
+ * Used to re-quote when the pointer moves (exp / strikes / sides) without
+ * looping on live mark updates.
+ */
+export function cardDefinitionKey(pos: AnalyzerPosition): string {
+  const p = pos.position;
+  const legs = (p.legs || [])
+    .map(
+      (l) =>
+        `${l.side}:${l.type}:${l.strike}:${l.quantity}:${(l.expiration || p.expiration || "").slice(0, 10)}`,
+    )
+    .join("|");
+  return [
+    pos.id,
+    pos.visible ? "1" : "0",
+    pos.lock.mode,
+    (p.underlying || "").toUpperCase(),
+    (p.expiration || "").slice(0, 10),
+    p.direction || "buy",
+    p.contracts || 1,
+    legs,
+  ].join("::");
+}
+
+/**
+ * Front expiration the card currently points at (definition SoR).
+ */
+export function cardPointerExpiration(pos: AnalyzerPosition): string {
+  return (
+    pos.position.expiration ||
+    pos.position.legs[0]?.expiration ||
+    ""
+  ).slice(0, 10);
+}
+
+/**
+ * Calendar DTE for an option pointer (0 on expiry day until settlement cutoff).
+ * Uses 16:00Z on the expiration calendar date as the “still alive” cutoff —
+ * same law as the position list EXPIRED chip.
+ */
+export function calendarDteOf(
+  expiration: string,
+  now: Date = new Date(),
+): number {
+  if (!expiration) return 0;
+  const e = new Date(expiration.slice(0, 10) + "T16:00:00Z");
+  return Math.max(
+    0,
+    Math.ceil((e.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+  );
+}
+
+/**
+ * True when the pointed-to option is past settlement (card shows EXPIRED).
+ * Independent of liveState / lock — pure calendar on the pointer.
+ */
+export function isOptionPointerExpired(
+  expiration: string,
+  now: Date = new Date(),
+): boolean {
+  if (!expiration || !/^\d{4}-\d{2}-\d{2}/.test(expiration)) return true;
+  const e = new Date(expiration.slice(0, 10) + "T16:00:00Z");
+  return e.getTime() <= now.getTime();
+}
+
+/**
+ * Card display doctrine:
+ *  - Pointer expired → EXPIRED (no package mark row)
+ *  - Pointer not expired + OPF magnitude present (live or held) → show package
+ * Market closed still shows magnitude when liveState is "held".
+ */
+export function cardShowsPackageMark(
+  pos: AnalyzerPosition,
+  now: Date = new Date(),
+): boolean {
+  const exp = cardPointerExpiration(pos);
+  if (isOptionPointerExpired(exp, now)) return false;
+  return (
+    pos.livePackagePerShare != null &&
+    Number.isFinite(pos.livePackagePerShare) &&
+    pos.livePackagePerShare >= 0
+  );
+}
+
+/**
+ * Shift every leg one listed strike in the arrow direction (↑ higher, ↓ lower).
+ *
+ * Rigid structure: all legs must be able to step one index on their exp's
+ * listed grid (or arithmetic fallback). If any leg is at the edge, no-op.
+ *
+ * **Always unlocks** the package so debit/credit can re-find its natural mid
+ * — regardless of prior lock / limit override.
+ */
+export function shiftCardStrikes(
+  pos: AnalyzerPosition,
+  direction: "up" | "down",
+  getListedStrikes?: (expiration: string) => readonly number[],
+): AnalyzerPosition {
+  const delta = direction === "up" ? 1 : -1;
+  const front = (
+    pos.position.expiration ||
+    pos.position.legs[0]?.expiration ||
+    ""
+  ).slice(0, 10);
+  if (!pos.position.legs.length) return pos;
+
+  // Fallback arithmetic step from structure gaps (or 5)
+  const uniqueStrikes = uniqueListedStrikes(
+    pos.position.legs.map((l) => l.strike),
+  );
+  let fallbackStep = 5;
+  if (uniqueStrikes.length >= 2) {
+    const gaps = uniqueStrikes
+      .slice(1)
+      .map((s, i) => normalizeStrike(s - uniqueStrikes[i]))
+      .filter((g) => g > 0);
+    if (gaps.length) fallbackStep = Math.min(...gaps);
+  }
+
+  const nextLegs = pos.position.legs.map((leg) => {
+    const exp = (leg.expiration || front).slice(0, 10);
+    const rawListed = getListedStrikes?.(exp) ?? [];
+    const listed = uniqueListedStrikes(rawListed);
+    const cur = normalizeStrike(leg.strike);
+
+    if (listed.length >= 2) {
+      let idx = listed.findIndex((s) => normalizeStrike(s) === cur);
+      if (idx < 0) {
+        const snapped = snapToListed(cur, listed);
+        idx =
+          snapped != null
+            ? listed.findIndex((s) => normalizeStrike(s) === normalizeStrike(snapped))
+            : -1;
+      }
+      if (idx < 0) return { leg, next: cur, ok: false as const };
+      const j = idx + delta;
+      if (j < 0 || j >= listed.length) return { leg, next: cur, ok: false as const };
+      return { leg, next: listed[j], ok: true as const };
+    }
+
+    // No ladder: rigid arithmetic translate
+    const next = normalizeStrike(cur + delta * fallbackStep);
+    if (!(next > 0)) return { leg, next: cur, ok: false as const };
+    return { leg, next, ok: true as const };
+  });
+
+  // Rigid: every leg must move one step
+  if (!nextLegs.every((r) => r.ok && r.next !== normalizeStrike(r.leg.strike))) {
+    return pos;
+  }
+
+  const legs = nextLegs.map(({ leg, next }) => ({
+    ...leg,
+    strike: next,
+    entry_price: 0, // force live re-mark
+  }));
+
+  const position: PositionInput = {
+    ...pos.position,
+    legs,
+    net_debit_override: null,
+  };
+
+  return {
+    ...pos,
+    position,
+    label: buildLabel(position.underlying, legs, position.expiration),
+    notation: buildNotation(legs),
+    // Unlock + clear stale package so natural mid can re-settle
+    lock: { mode: "unlocked" },
+    lastNatSigned: null,
+    livePackagePerShare: null,
+    priceSide: null,
     liveState:
       pos.liveState === "live" || pos.liveState === "held"
         ? "not_live"
-        : pos.liveState,
+        : pos.liveState === "incomplete" || pos.liveState === "skewed"
+          ? pos.liveState
+          : "not_live",
     updatedAt: Date.now(),
   };
 }

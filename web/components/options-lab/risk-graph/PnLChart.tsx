@@ -16,6 +16,7 @@ import {
   atmCenteredXRange,
   fitPnlYRange,
   AUTOFIT_PAD_FRAC,
+  EXP_BREAKEVEN_MAX_VIEWPORT_FRAC,
   type AutofitProfile,
 } from '@/lib/risk-graph/pricing/autofitView';
 
@@ -264,7 +265,8 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
       return { xMin, xMax, yMin: -100, yMax: 100 };
     }
 
-    const allBreakevens = [...expirationBreakevens, ...theoreticalBreakevens]
+    const expBes = expirationBreakevens.filter(b => Number.isFinite(b));
+    const allBreakevens = [...expBes, ...theoreticalBreakevens]
       .filter(b => Number.isFinite(b));
     const contentPrices = [
       ...strikes.filter(s => Number.isFinite(s)),
@@ -277,6 +279,9 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
       padFrac: AUTOFIT_PAD_FRAC,
       profile: autofitProfile,
       oneSigmaBandWidth,
+      // Labs: exp-line BEs occupy ≤ ½ viewport (+ pad); MSC structure/1σ still floor
+      expBreakevenPrices: expBes,
+      expBreakevenMaxViewportFrac: EXP_BREAKEVEN_MAX_VIEWPORT_FRAC,
     });
 
     // Y from curves in the visible X window
@@ -1358,6 +1363,22 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
       autoFit();
     }
   }, [spotPrice, strikes, autoFit]);
+
+  // Re-fit when expiration BEs arrive/change (OPF curves often land after
+  // strikes — without this the ½-viewport BE cap never re-applies).
+  const expBeHash = expirationBreakevens
+    .filter(Number.isFinite)
+    .map(b => b.toFixed(2))
+    .join(',');
+  const prevExpBeHash = useRef<string | null>(null);
+  useEffect(() => {
+    if (expBeHash === prevExpBeHash.current) return;
+    const had = prevExpBeHash.current;
+    prevExpBeHash.current = expBeHash;
+    if (had === null && expBeHash === '') return; // initial empty — wait for data
+    if (isStrikeDragging.current) return;
+    autoFit();
+  }, [expBeHash, autoFit]);
 
   // Handle resize - both window and container
   // Track if we've done the initial size setup - using ref to persist across re-renders

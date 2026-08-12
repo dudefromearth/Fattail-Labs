@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchLadderExpirations,
+  OPF_ACTIVE_DTE_HORIZON,
   pollChainLadder,
   type LadderFull,
   type LadderRow,
@@ -26,8 +27,17 @@ import type {
   OptionRight,
 } from "@/lib/options-lab/positionTypes";
 
-/** Builder needs room for condors / BWB — max lawful wing choice. */
-const WINGS = 100;
+/**
+ * Builder wing band around ATM (points). Wide enough for condors / far OTM
+ * wings while still a listed OPF ladder request.
+ */
+const WINGS = 250;
+/**
+ * Listed expirations within the OPF active DTE horizon (default 10 DTE).
+ * Limit is a ceiling on count; max_dte filters by calendar DTE.
+ */
+const EXPIRATION_LIMIT = 30;
+const EXPIRATION_DAYS = OPF_ACTIVE_DTE_HORIZON;
 const POLL_MS = 3000;
 
 function rowKey(side: string, strike: number): string {
@@ -51,7 +61,12 @@ export function useBuilderChain(
   const refreshExpirations = useCallback(async () => {
     if (!enabled || !symbol) return;
     try {
-      const r = await fetchLadderExpirations(symbol, 16);
+      const r = await fetchLadderExpirations(
+        symbol,
+        EXPIRATION_LIMIT,
+        EXPIRATION_DAYS,
+      );
+      // All valid listed pointers from market/OPF plane (not a short stub list)
       setExpirations(r.contracts.map((c) => c.expiration));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -133,6 +148,15 @@ export function useBuilderChain(
     [symbol],
   );
 
+  const ensureExpiration = useCallback(
+    (expiration: string) => {
+      const exp = (expiration || "").slice(0, 10);
+      if (!exp || !enabled || !symbol) return;
+      void hydrateExp(exp);
+    },
+    [enabled, symbol, hydrateExp],
+  );
+
   const refresh = useCallback(() => {
     void refreshExpirations();
     const exps = new Set([
@@ -159,16 +183,25 @@ export function useBuilderChain(
     if (!enabled) return;
     setLoading(true);
     const run = async () => {
-      const targets = warmExpirations.filter(Boolean);
-      const list =
-        targets.length > 0 ? targets : expirations.slice(0, 2);
+      // Warm every listed exp in the OPF active DTE set + book/Builder targets
+      const list = [
+        ...new Set([
+          ...expirations,
+          ...warmExpirations.filter(Boolean),
+        ]),
+      ];
       await Promise.all(list.map((e) => hydrateExp(e)));
       setLoading(false);
     };
     void run();
     const id = window.setInterval(() => {
-      const targets = warmExpirations.filter(Boolean);
-      const list = targets.length ? targets : expirations.slice(0, 2);
+      const list = [
+        ...new Set([
+          ...expirations,
+          ...warmExpirations.filter(Boolean),
+          ...laddersRef.current.keys(),
+        ]),
+      ];
       for (const e of list) void hydrateExp(e);
     }, POLL_MS);
     return () => window.clearInterval(id);
@@ -236,6 +269,7 @@ export function useBuilderChain(
       getContract,
       nearestStrike,
       refresh,
+      ensureExpiration,
       /** Ladder revision — consumers can depend for re-snap */
       rev,
     }),
@@ -249,6 +283,7 @@ export function useBuilderChain(
       getContract,
       nearestStrike,
       refresh,
+      ensureExpiration,
       rev,
     ],
   );

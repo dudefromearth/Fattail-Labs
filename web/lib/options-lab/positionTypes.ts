@@ -66,6 +66,12 @@ export type ChainAccessors = {
   ) => ChainContract | undefined;
   nearestStrike: (expiration: string, target: number) => number;
   refresh: () => void;
+  /**
+   * Hydrate a listed expiration on demand (Builder front/back/leg exp).
+   * Required so the user can select any OPF-listed expiration, not only
+   * the pre-warmed near-term set.
+   */
+  ensureExpiration: (expiration: string) => void;
   /** Bumps when ladder rows change — Builder re-snaps illegal strikes. */
   rev?: number;
 };

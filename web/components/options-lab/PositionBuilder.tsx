@@ -16,6 +16,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import StrikeSelect from "@/components/options-lab/StrikeSelect";
 import {
@@ -110,6 +111,9 @@ const STRATEGY_DIAGRAMS: Record<TemplateType, string> = {
   diagonal: "M2,18 L20,12 L32,6 L44,10 L58,16",
 };
 
+/** Create-default wing: always 20 when listed; else profile / product fallback. */
+export const DEFAULT_CREATE_WING_WIDTH = 20;
+
 /** Fallback when profile fly_widths missing (A2/A3 prefer profile.fly_widths[0]). */
 function defaultWidth(symbol: string, profileMin?: number | null): number {
   if (profileMin != null && profileMin > 0) return profileMin;
@@ -117,6 +121,104 @@ function defaultWidth(symbol: string, profileMin?: number | null): number {
   if (s === "NDX" || s.startsWith("NQ")) return 50;
   if (s === "SPX" || s === "XSP" || s === "RUT") return 20;
   return 5;
+}
+
+/** America/New_York calendar date as YYYY-MM-DD (index options). */
+function etYmd(now: Date = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(now);
+    const y = parts.find((p) => p.type === "year")?.value;
+    const m = parts.find((p) => p.type === "month")?.value;
+    const d = parts.find((p) => p.type === "day")?.value;
+    if (y && m && d) return `${y}-${m}-${d}`;
+  } catch {
+    /* fall through */
+  }
+  return now.toISOString().slice(0, 10);
+}
+
+/**
+ * Same-day (0DTE) expiration is valid for Builder default only while the
+ * cash session is still in play for that day: weekdays **before 16:00 ET**.
+ *
+ * After 4:00 PM Eastern the current calendar date is no longer a valid default
+ * — even if the index residual plane still reports Live until ~16:15.
+ */
+export function isSameDayExpirationValid(now: Date = new Date()): boolean {
+  try {
+    const et = new Date(
+      now.toLocaleString("en-US", { timeZone: "America/New_York" }),
+    );
+    const day = et.getDay();
+    if (day === 0 || day === 6) return false;
+    const mins = et.getHours() * 60 + et.getMinutes();
+    // Strict: 16:00 ET and later → today is invalid
+    return mins < 16 * 60;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Default front expiration for Create:
+ *  - Today listed + before 4:00 PM ET + market Live → today
+ *  - After 4:00 PM ET / market not Live / today not listed → **next** listed
+ *    expiration after today (never re-select expired same-day)
+ *  - Fallback: first future listed, else last listed
+ */
+export function pickDefaultFrontExpiration(
+  listed: readonly string[],
+  marketLive: boolean,
+  now: Date = new Date(),
+): string {
+  if (!listed.length) return etYmd(now);
+  const sorted = [...listed].filter(Boolean).sort();
+  if (!sorted.length) return etYmd(now);
+  const today = etYmd(now);
+
+  const todayStillValid =
+    marketLive &&
+    isSameDayExpirationValid(now) &&
+    sorted.includes(today);
+
+  if (todayStillValid) return today;
+
+  // After 4 PM ET (or closed/held): roll to next listed after today
+  const next = sorted.find((e) => e > today);
+  if (next) return next;
+
+  // No future listed — prefer first on-or-after today that is still valid,
+  // never force post-4pm "today" as default when a later date exists (handled above).
+  const onOrAfter = sorted.find((e) => e >= today);
+  if (onOrAfter && onOrAfter !== today) return onOrAfter;
+  if (onOrAfter === today && isSameDayExpirationValid(now) && marketLive) {
+    return today;
+  }
+  // Only past dates left in the ladder
+  return sorted[sorted.length - 1] ?? sorted[0];
+}
+
+/** Snap preferred wing onto listed choices; prefer exact 20 for create. */
+function resolveCreateWingWidth(
+  center: number,
+  listed: number[],
+  prefer: number = DEFAULT_CREATE_WING_WIDTH,
+): number {
+  if (!listed.length) return prefer;
+  const choices = listedWingChoices(center, listed, 16);
+  if (!choices.length) return prefer;
+  if (choices.includes(prefer)) return prefer;
+  // Nearest listed wing at or above prefer, else closest
+  const atOrAbove = choices.find((c) => c >= prefer);
+  if (atOrAbove != null) return atOrAbove;
+  return choices.reduce((best, c) =>
+    Math.abs(c - prefer) < Math.abs(best - prefer) ? c : best,
+  );
 }
 
 /** PB22: next listed only — never synthesize unlisted calendar day. */
@@ -151,9 +253,17 @@ export type PositionBuilderProps = {
   spotPrice: number;
   chain: ChainAccessors;
   initial?: PositionInput | null;
+  /**
+   * True when market session is Live (still in play). Used for create-default
+   * front expiration: today if listed + live, else next listed after today.
+   */
+  marketLive?: boolean;
   onSave: (position: PositionInput, label: string, notation: string) => void;
   onCancel: () => void;
 };
+
+const PANEL_W = 780;
+const PANEL_DEFAULT_OFFSET = { x: 48, y: 72 };
 
 export default function PositionBuilder({
   open,
@@ -162,6 +272,7 @@ export default function PositionBuilder({
   spotPrice,
   chain,
   initial,
+  marketLive = true,
   onSave,
   onCancel,
 }: PositionBuilderProps) {
@@ -174,8 +285,8 @@ export default function PositionBuilder({
   const hasExps = chain.expirations.length > 0;
   const frontDefault =
     initial?.expiration ||
-    chain.expirations[0] ||
-    new Date().toISOString().slice(0, 10);
+    pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+    etYmd();
 
   const [position, setPosition] = useState<PositionInput>(() =>
     initial
@@ -194,13 +305,24 @@ export default function PositionBuilder({
   const [direction, setDirection] = useState<TradeDirection>("buy");
   const [optionSide, setOptionSide] = useState<OptionRight>("call");
   const [centerStrike, setCenterStrike] = useState(0);
-  const [wingWidth, setWingWidth] = useState(() =>
-    defaultWidth(symbol, profileMinWing),
-  );
+  const [wingWidth, setWingWidth] = useState(DEFAULT_CREATE_WING_WIDTH);
   const [backExpiration, setBackExpiration] = useState("");
   const [copied, setCopied] = useState(false);
-  const didInit = useRef(false);
-  const lastSnapRev = useRef(-1);
+  /** One seed per open — never re-seed over the user's structure. */
+  const didSeed = useRef(false);
+  /** Last chain rev we applied prices for (reprice only, no structure rewrite). */
+  const lastPriceRev = useRef(-1);
+  /** User explicitly changed front exp — do not auto-roll it. */
+  const userPickedExp = useRef(false);
+
+  // Free-floating panel position (viewport coords)
+  const [panelPos, setPanelPos] = useState(PANEL_DEFAULT_OFFSET);
+  const dragRef = useRef<{
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+  } | null>(null);
 
   const frontStrikes = useMemo(
     () => chain.getStrikes(position.expiration),
@@ -222,14 +344,29 @@ export default function PositionBuilder({
     return prefer != null ? normalizeStrike(prefer) : 0;
   }, [frontStrikes, chain.spotStrike, chain.spot, spotPrice]);
 
+  // Full listed wing ladder so any lawful width is selectable (not a short list)
   const wingChoices = useMemo(
-    () => listedWingChoices(centerStrike || atmCenter, frontStrikes, 16),
+    () => listedWingChoices(centerStrike || atmCenter, frontStrikes, 60),
     [centerStrike, atmCenter, frontStrikes],
   );
 
+  // Hydrate every expiration the structure needs so any OPF-listed trade is choosable
   useEffect(() => {
-    if (open) didInit.current = false;
-  }, [open]);
+    if (!open) return;
+    const need = new Set<string>();
+    if (position.expiration) need.add(position.expiration.slice(0, 10));
+    if (backExpiration) need.add(backExpiration.slice(0, 10));
+    for (const leg of position.legs) {
+      if (leg.expiration) need.add(leg.expiration.slice(0, 10));
+    }
+    for (const e of need) chain.ensureExpiration(e);
+  }, [
+    open,
+    position.expiration,
+    position.legs,
+    backExpiration,
+    chain,
+  ]);
 
   useEffect(() => {
     setPosition((p) =>
@@ -241,7 +378,7 @@ export default function PositionBuilder({
 
   const priceLegs = useCallback(
     (legs: LegInput[], frontExp: string): LegInput[] => {
-      if (!hasExps) return legs;
+      // Always return legs — never strip structure when chain is cold
       return legs.map((leg) => {
         const exp = (leg.expiration || frontExp).slice(0, 10);
         const listed = chain.getStrikes(exp);
@@ -251,15 +388,20 @@ export default function PositionBuilder({
         const c = chain.getContract(exp, strike, leg.type);
         return {
           ...leg,
-          strike,
+          strike: Number.isFinite(strike) && strike > 0 ? strike : leg.strike,
           entry_price: c?.mid ?? leg.entry_price ?? 0,
           volatility: c?.iv ?? leg.volatility,
         };
       });
     },
-    [chain, hasExps],
+    [chain],
   );
 
+  /**
+   * Materialize full leg table from quick-build controls.
+   * Always produces legs. Honors the caller's center/width/exp when valid —
+   * does not yank the structure back to ATM after the user has chosen.
+   */
   const regenerate = useCallback(
     (
       tmpl: TemplateType,
@@ -270,131 +412,204 @@ export default function PositionBuilder({
       frontExp: string,
       backExp?: string,
     ) => {
-      const listed = chain.getStrikes(frontExp);
+      const front = (frontExp || "").slice(0, 10) || etYmd();
+      // Ensure ladder for the chosen exp so any OPF-listed trade can price
+      chain.ensureExpiration(front);
+      if (backExp) chain.ensureExpiration(backExp.slice(0, 10));
+
+      const listed = chain.getStrikes(front);
+      // Prefer explicit user center; only fall back to ATM/spot when unset
+      const prefer =
+        (Number.isFinite(center) && center > 0 ? center : null) ??
+        (chain.spotStrike != null && chain.spotStrike > 0
+          ? chain.spotStrike
+          : null) ??
+        (chain.spot != null && chain.spot > 0 ? chain.spot : null) ??
+        (spotPrice > 0 ? spotPrice : null) ??
+        0;
+      // Snap to listed when available; otherwise keep the arithmetic center
+      // so OTM / far structures remain selectable while the ladder hydrates.
       const c =
-        snapToListed(center, listed) ??
-        (listed.length ? listed[Math.floor(listed.length / 2)] : center);
-      // Map width onto listed grid so wings never invent strikes
-      const w =
+        (listed.length
+          ? snapToListed(prefer, listed)
+          : null) ??
+        (prefer > 0
+          ? normalizeStrike(prefer)
+          : listed.length
+            ? listed[Math.floor(listed.length / 2)]
+            : 0);
+      // Map width onto listed grid so wings land on OPF-listed strikes
+      let w =
         listed.length && width > 0
           ? listedWidthPoints(c, width, listed)
-          : width;
+          : width > 0
+            ? width
+            : DEFAULT_CREATE_WING_WIDTH;
+      if (!(w > 0)) w = DEFAULT_CREATE_WING_WIDTH;
+
+      // Guard: still no center — placeholder so the leg table is never empty
+      const body = c > 0 ? c : 100;
 
       let legs: LegInput[];
       switch (tmpl) {
         case "single":
-          legs = singleLeg(c, side);
+          legs = singleLeg(body, side);
           break;
         case "vertical":
-          legs = verticalLegs(c, c + w, side);
+          legs = verticalLegs(body, body + w, side);
           break;
         case "butterfly":
-          legs = butterflyLegs(c, w, side);
+          legs = butterflyLegs(body, w, side);
           break;
         case "bwb":
-          legs = bwbLegs(c, w, side);
+          legs = bwbLegs(body, w, side);
           break;
         case "condor":
-          legs = condorLegs(c, w, side);
+          legs = condorLegs(body, w, side);
           break;
         case "straddle":
-          legs = straddleLegs(c);
+          legs = straddleLegs(body);
           break;
         case "strangle":
-          legs = strangleLegs(c, w || defaultWidth(symbol, profileMinWing));
+          legs = strangleLegs(
+            body,
+            w || defaultWidth(symbol, profileMinWing),
+          );
           break;
         case "iron_fly":
-          legs = ironFlyLegs(c, w || defaultWidth(symbol, profileMinWing));
+          legs = ironFlyLegs(
+            body,
+            w || defaultWidth(symbol, profileMinWing),
+          );
           break;
         case "iron_condor":
-          legs = ironCondorLegs(c - w * 2, c - w, c + w, c + w * 2);
+          legs = ironCondorLegs(
+            body - w * 2,
+            body - w,
+            body + w,
+            body + w * 2,
+          );
           break;
         case "calendar":
-          legs = calendarLegs(c, side);
+          legs = calendarLegs(body, side);
           break;
         case "diagonal":
-          legs = diagonalLegs(c, w, side);
+          legs = diagonalLegs(body, w, side);
           break;
         default:
-          legs = butterflyLegs(c, w, side);
+          legs = butterflyLegs(body, w, side);
       }
 
       if (tmpl === "calendar" || tmpl === "diagonal") {
-        const front = frontExp;
-        const back = backExp || front;
+        const back =
+          (backExp || nextListedBack(front, chain.expirations) || front).slice(
+            0,
+            10,
+          );
+        chain.ensureExpiration(back);
         legs = legs.map((leg) => ({
           ...leg,
           expiration: leg.side === "short" ? front : back,
         }));
       }
 
-      legs = priceLegs(legs, frontExp);
+      legs = priceLegs(legs, front);
       if (dir === "sell") legs = flipLegs(legs);
 
-      setCenterStrike(c);
+      // Absolute guarantee: template always yields ≥1 leg
+      if (!legs.length) {
+        legs = butterflyLegs(body, w, side);
+        legs = priceLegs(legs, front);
+        if (dir === "sell") legs = flipLegs(legs);
+      }
+
+      setCenterStrike(body);
       if (w > 0) setWingWidth(w);
       setPosition((prev) => ({
         ...prev,
-        expiration: frontExp,
+        underlying: symbol,
+        expiration: front || prev.expiration,
         legs,
         direction: dir,
         net_debit_override: null,
       }));
     },
-    [chain, priceLegs, symbol],
+    [chain, priceLegs, symbol, spotPrice, profileMinWing],
   );
 
-  // Init create / edit once per open
+  // Reset float position + seed flags when dialog opens
   useEffect(() => {
-    if (!open || didInit.current) return;
-    // Wait for expirations before first paint of structure
-    if (!hasExps && mode === "create") return;
-    didInit.current = true;
+    if (!open) return;
+    didSeed.current = false;
+    lastPriceRev.current = -1;
+    userPickedExp.current = mode === "edit";
+    const w =
+      typeof window !== "undefined" ? window.innerWidth : PANEL_W + 96;
+    const x = Math.max(
+      16,
+      Math.min(w - Math.min(PANEL_W, w - 32) - 16, w - PANEL_W - 40),
+    );
+    setPanelPos({
+      x: Number.isFinite(x) ? x : PANEL_DEFAULT_OFFSET.x,
+      y: PANEL_DEFAULT_OFFSET.y,
+    });
+  }, [open, mode]);
+
+  /**
+   * Seed once per open.
+   * Create → always a ready 20-wide ATM butterfly on a valid front exp.
+   * Edit → load the card. Never re-seed after the user starts editing.
+   */
+  useEffect(() => {
+    if (!open || didSeed.current) return;
+    didSeed.current = true;
+
     if (mode === "edit" && initial?.legs.length) {
       const front = initial.expiration || frontDefault;
       const priced = priceLegs(
         initial.legs.map((l) => ({ ...l })),
         front,
       );
-      setPosition({
-        ...initial,
-        legs: priced,
-      });
+      setPosition({ ...initial, legs: priced.length ? priced : initial.legs });
       setDirection(initial.direction || "buy");
       const body =
         priced.find((l) => l.side === "short")?.strike ??
         priced[0]?.strike ??
-        atmCenter;
-      setCenterStrike(body);
+        (atmCenter > 0 ? atmCenter : spotPrice > 0 ? spotPrice : 100);
+      setCenterStrike(body > 0 ? body : 100);
       return;
     }
-    const front = chain.expirations[0] || frontDefault;
+
+    const front =
+      pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+      frontDefault ||
+      etYmd();
     const listed = chain.getStrikes(front);
-    // If ladder still empty, wait for rev bump (see re-snap effect)
-    let center = atmCenter;
+    let center =
+      atmCenter > 0
+        ? atmCenter
+        : spotPrice > 0
+          ? spotPrice
+          : chain.spot != null && chain.spot > 0
+            ? chain.spot
+            : 100;
     if (listed.length) {
       center =
         snapToListed(
-          chain.spotStrike ?? chain.spot ?? spotPrice ?? atmCenter,
+          chain.spotStrike ?? chain.spot ?? spotPrice ?? center,
           listed,
         ) ?? listed[Math.floor(listed.length / 2)];
     }
-    setCenterStrike(center);
-    setPosition((p) => ({ ...p, expiration: front, underlying: symbol }));
-    // OD-AZ3 · AZ-DEF · A2/A3: butterfly default · ATM · profile min wing
-    let width = defaultWidth(symbol, profileMinWing);
-    if (listed.length) {
-      const choices = listedWingChoices(center, listed, 8);
-      if (choices.length) {
-        // Prefer profile min if listed, else nearest listed wing
-        width = choices.includes(width)
-          ? width
-          : choices.find((c) => c >= width) ??
-            choices[Math.min(0, choices.length - 1)];
-      }
-    }
-    setWingWidth(width);
+    const width = resolveCreateWingWidth(
+      center,
+      listed,
+      DEFAULT_CREATE_WING_WIDTH,
+    );
     setTemplate("butterfly");
+    setDirection("buy");
+    setOptionSide("call");
+    setCenterStrike(center);
+    setWingWidth(width);
     regenerate("butterfly", center, width, "call", "buy", front);
   }, [
     open,
@@ -402,30 +617,69 @@ export default function PositionBuilder({
     initial,
     chain,
     frontDefault,
-    hasExps,
     spotPrice,
-    symbol,
     regenerate,
     priceLegs,
     atmCenter,
+    marketLive,
   ]);
 
-  // When ladder hydrates (rev↑) re-snap center + legs onto listed strikes
+  /**
+   * Chain tick: reprice + snap only. Never rewrite the user's structure.
+   * One exception: create mode + still on expired same-day front (after 4 PM ET)
+   * and user never picked exp → silent roll to next listed.
+   */
   useEffect(() => {
-    if (!open || !hasExps) return;
+    if (!open) return;
     const rev = chain.rev ?? 0;
-    if (rev === lastSnapRev.current) return;
-    const listed = chain.getStrikes(position.expiration);
-    if (!listed.length) return;
-    lastSnapRev.current = rev;
+    if (rev === lastPriceRev.current && position.legs.length > 0) return;
+    lastPriceRev.current = rev;
 
-    const prefer =
-      centerStrike > 0
-        ? centerStrike
-        : chain.spotStrike ?? chain.spot ?? spotPrice ?? atmCenter;
-    const center = snapToListed(prefer, listed) ?? listed[Math.floor(listed.length / 2)];
-    if (center !== centerStrike) setCenterStrike(center);
+    // Empty legs should never stick — rebuild current quick-build once
+    if (position.legs.length === 0) {
+      const front =
+        pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+        position.expiration ||
+        frontDefault ||
+        etYmd();
+      regenerate(
+        template,
+        centerStrike || atmCenter || spotPrice || 100,
+        wingWidth || DEFAULT_CREATE_WING_WIDTH,
+        optionSide,
+        direction,
+        front,
+        backExpiration,
+      );
+      return;
+    }
 
+    // Silent same-day roll only when user has not chosen an expiration
+    if (
+      mode === "create" &&
+      !userPickedExp.current &&
+      position.expiration === etYmd() &&
+      !isSameDayExpirationValid()
+    ) {
+      const nextFront = pickDefaultFrontExpiration(
+        chain.expirations,
+        marketLive,
+      );
+      if (nextFront && nextFront !== position.expiration) {
+        regenerate(
+          template,
+          centerStrike || atmCenter || spotPrice || 100,
+          wingWidth || DEFAULT_CREATE_WING_WIDTH,
+          optionSide,
+          direction,
+          nextFront,
+          backExpiration,
+        );
+        return;
+      }
+    }
+
+    // Soft reprice only — keep structure, fill mids as they arrive
     setPosition((prev) => {
       if (!prev.legs.length) return prev;
       const next = priceLegs(prev.legs, prev.expiration);
@@ -439,30 +693,24 @@ export default function PositionBuilder({
     });
   }, [
     open,
-    hasExps,
     chain.rev,
     chain,
+    position.legs.length,
     position.expiration,
+    mode,
+    template,
     centerStrike,
-    spotPrice,
+    wingWidth,
+    optionSide,
+    direction,
+    backExpiration,
     atmCenter,
+    spotPrice,
+    marketLive,
+    frontDefault,
     priceLegs,
+    regenerate,
   ]);
-
-  // Live reprice mids on chain tick
-  useEffect(() => {
-    if (!open || !hasExps || position.legs.length === 0) return;
-    setPosition((prev) => {
-      const next = priceLegs(prev.legs, prev.expiration);
-      const same = next.every(
-        (l, i) =>
-          l.entry_price === prev.legs[i]?.entry_price &&
-          l.strike === prev.legs[i]?.strike &&
-          l.volatility === prev.legs[i]?.volatility,
-      );
-      return same ? prev : { ...prev, legs: next };
-    });
-  }, [open, hasExps, chain.rev, position.legs.length, position.expiration, priceLegs, chain]);
 
   const eco = useMemo(
     () =>
@@ -509,15 +757,20 @@ export default function PositionBuilder({
   const handleTemplate = (tmpl: TemplateType) => {
     setTemplate(tmpl);
     const side = TEMPLATE_HAS_SIDE[tmpl] ? optionSide : "call";
-    let width = wingWidth;
+    let width = wingWidth > 0 ? wingWidth : DEFAULT_CREATE_WING_WIDTH;
     let back = backExpiration;
+    const front =
+      position.expiration ||
+      pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+      frontDefault ||
+      etYmd();
     if (tmpl === "calendar" || tmpl === "diagonal") {
       const exps = chain.expirations;
-      const idx = exps.indexOf(position.expiration);
+      const idx = exps.indexOf(front);
       back =
         idx >= 0 && idx + 1 < exps.length
           ? exps[idx + 1]
-          : nextListedBack(position.expiration, exps) || "";
+          : nextListedBack(front, exps) || "";
       setBackExpiration(back);
     }
     if (tmpl === "diagonal") {
@@ -527,13 +780,14 @@ export default function PositionBuilder({
         defaultDiagonalWidth(symbol);
       setWingWidth(width);
     }
+    // Quick-build always fills the full leg table
     regenerate(
       tmpl,
-      centerStrike || atmCenter,
+      centerStrike || atmCenter || spotPrice,
       width,
       side,
       direction,
-      position.expiration,
+      front,
       back,
     );
   };
@@ -541,6 +795,19 @@ export default function PositionBuilder({
   const handleDirection = (dir: TradeDirection) => {
     if (dir === direction) return;
     setDirection(dir);
+    // Empty legs (or first paint): rebuild structure for the new side
+    if (position.legs.length === 0) {
+      regenerate(
+        template,
+        centerStrike || atmCenter || spotPrice,
+        wingWidth || DEFAULT_CREATE_WING_WIDTH,
+        optionSide,
+        dir,
+        position.expiration || frontDefault,
+        backExpiration,
+      );
+      return;
+    }
     setPosition((prev) => ({
       ...prev,
       direction: dir,
@@ -600,32 +867,84 @@ export default function PositionBuilder({
     }));
   };
 
+  const onPanelPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    // Drag from title bar only — ignore interactive controls
+    const t = e.target as HTMLElement;
+    if (t.closest("button, input, select, textarea, a, label")) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: panelPos.x,
+      origY: panelPos.y,
+    };
+  };
+
+  const onPanelPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    const maxX =
+      typeof window !== "undefined"
+        ? Math.max(8, window.innerWidth - 120)
+        : 2000;
+    const maxY =
+      typeof window !== "undefined"
+        ? Math.max(8, window.innerHeight - 48)
+        : 1200;
+    setPanelPos({
+      x: Math.min(maxX, Math.max(8, d.origX + dx)),
+      y: Math.min(maxY, Math.max(8, d.origY + dy)),
+    });
+  };
+
+  const onPanelPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  };
+
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-3"
+      className={
+        "fixed z-50 flex max-h-[min(92vh,820px)] w-[min(780px,calc(100vw-1.5rem))] " +
+        "flex-col overflow-hidden rounded-2xl border border-[var(--color-separator)] " +
+        "bg-[var(--color-surface)] shadow-2xl ring-1 ring-black/20"
+      }
+      style={{ left: panelPos.x, top: panelPos.y }}
       role="dialog"
-      aria-modal="true"
+      aria-modal="false"
       aria-label={mode === "edit" ? "Edit position" : "Create position"}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
+      data-testid="position-builder"
     >
-      <div
-        className="flex max-h-[min(92vh,820px)] w-full max-w-[780px] flex-col overflow-hidden rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-2xl"
-        data-testid="position-builder"
-      >
-        <div className="flex items-center justify-between border-b border-[var(--color-separator)] px-4 py-3">
+        <div
+          className="flex cursor-grab items-center justify-between border-b border-[var(--color-separator)] px-4 py-3 active:cursor-grabbing"
+          onPointerDown={onPanelPointerDown}
+          onPointerMove={onPanelPointerMove}
+          onPointerUp={onPanelPointerUp}
+          onPointerCancel={onPanelPointerUp}
+          data-testid="position-builder-drag-handle"
+          title="Drag to move"
+        >
           <div>
             <h3 className="text-base font-semibold text-[var(--color-label)]">
               {mode === "edit" ? "Edit Position" : "Create Position"}
             </h3>
             <p className="text-[11px] text-[var(--color-label-tertiary)]">
-              Listed strikes · live package from chain mids
+              Quick-build any OPF-listed structure · live unlocked
               {chain.spot != null ? ` · spot ${chain.spot.toFixed(2)}` : ""}
               {chain.spotStrike != null
                 ? ` · ATM ${chain.spotStrike}`
+                : ""}
+              {chain.expirations.length
+                ? ` · ${chain.expirations.length} exps`
                 : ""}
             </p>
           </div>
@@ -735,15 +1054,16 @@ export default function PositionBuilder({
               <span className={labelCls}>Center (listed)</span>
               <StrikeSelect
                 listed={frontStrikes}
-                value={centerStrike || atmCenter}
-                center={atmCenter}
+                value={centerStrike || atmCenter || spotPrice}
+                center={atmCenter || spotPrice}
+                radiusN={80}
                 testId="builder-center-strike"
                 onChange={(c) => {
                   setCenterStrike(c);
                   regenerate(
                     template,
                     c,
-                    wingWidth,
+                    wingWidth || DEFAULT_CREATE_WING_WIDTH,
                     optionSide,
                     direction,
                     position.expiration,
@@ -753,47 +1073,52 @@ export default function PositionBuilder({
               />
             </label>
             <label className="block">
-              <span className={labelCls}>Width (listed)</span>
-              {wingChoices.length ? (
-                <select
-                  className={field}
-                  value={
-                    wingChoices.includes(wingWidth)
-                      ? wingWidth
-                      : wingChoices[0]
-                  }
-                  onChange={(e) => {
-                    const w = Math.max(0, parseFloat(e.target.value) || 0);
-                    setWingWidth(w);
-                    regenerate(
-                      template,
-                      centerStrike || atmCenter,
-                      w,
-                      optionSide,
-                      direction,
-                      position.expiration,
-                      backExpiration,
-                    );
-                  }}
-                >
-                  {wingChoices.map((w) => (
-                    <option key={w} value={w}>
-                      {w}
-                    </option>
-                  ))}
-                </select>
-              ) : (
+              <span className={labelCls}>Width (listed points)</span>
+              <div className="flex gap-1">
+                {wingChoices.length > 0 ? (
+                  <select
+                    className={field}
+                    value={
+                      wingChoices.includes(wingWidth)
+                        ? wingWidth
+                        : wingChoices.find((c) => c >= wingWidth) ??
+                          wingChoices[0]
+                    }
+                    onChange={(e) => {
+                      const w = Math.max(0, parseFloat(e.target.value) || 0);
+                      setWingWidth(w);
+                      regenerate(
+                        template,
+                        centerStrike || atmCenter || spotPrice,
+                        w,
+                        optionSide,
+                        direction,
+                        position.expiration,
+                        backExpiration,
+                      );
+                    }}
+                  >
+                    {wingChoices.map((w) => (
+                      <option key={w} value={w}>
+                        {w}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
                 <input
-                  className={field}
+                  className={field + (wingChoices.length ? " w-24" : "")}
                   type="number"
-                  value={wingWidth}
+                  min={1}
+                  step={1}
+                  title="Any width — snaps to listed wings on regenerate"
+                  value={wingWidth || ""}
                   onChange={(e) => {
                     const w = Math.max(0, parseFloat(e.target.value) || 0);
                     setWingWidth(w);
                     regenerate(
                       template,
-                      centerStrike || atmCenter,
-                      w,
+                      centerStrike || atmCenter || spotPrice,
+                      w || DEFAULT_CREATE_WING_WIDTH,
                       optionSide,
                       direction,
                       position.expiration,
@@ -801,16 +1126,22 @@ export default function PositionBuilder({
                     );
                   }}
                 />
-              )}
+              </div>
             </label>
             <label className="block">
               <span className={labelCls}>Front exp</span>
               {hasExps ? (
                 <select
                   className={field}
-                  value={position.expiration}
+                  value={
+                    // Always show a listed value if possible (never blank/fault)
+                    chain.expirations.includes(position.expiration)
+                      ? position.expiration
+                      : chain.expirations[0] || position.expiration
+                  }
                   onChange={(e) => {
                     const exp = e.target.value;
+                    userPickedExp.current = true;
                     let back = backExpiration;
                     if (isTimeSpread) {
                       const exps = chain.expirations;
@@ -818,13 +1149,13 @@ export default function PositionBuilder({
                       back =
                         idx >= 0 && idx + 1 < exps.length
                           ? exps[idx + 1]
-                          : nextListedBack(exp, exps) || "";
+                          : nextListedBack(exp, exps) || exp;
                       setBackExpiration(back);
                     }
                     regenerate(
                       template,
-                      centerStrike || atmCenter,
-                      wingWidth,
+                      centerStrike || atmCenter || spotPrice,
+                      wingWidth || DEFAULT_CREATE_WING_WIDTH,
                       optionSide,
                       direction,
                       exp,
@@ -854,17 +1185,28 @@ export default function PositionBuilder({
           {isTimeSpread && (
             <label className="block max-w-xs">
               <span className={labelCls}>Back exp</span>
-              {hasExps ? (
-                chain.expirations.filter((e) => e > position.expiration)
-                  .length === 0 ? (
-                  <p className="text-xs text-amber-400" role="status">
-                    No back expiration listed after front — pick another front
-                    or product.
-                  </p>
-                ) : (
+              {(() => {
+                const after = chain.expirations.filter(
+                  (e) => e > position.expiration,
+                );
+                // Always offer something — prefer next after front, else any listed
+                const choices =
+                  after.length > 0
+                    ? after
+                    : chain.expirations.length
+                      ? chain.expirations
+                      : [position.expiration || frontDefault || etYmd()];
+                const value = choices.includes(backExpiration)
+                  ? backExpiration
+                  : choices[0];
+                if (value && value !== backExpiration) {
+                  // keep state coherent without faulting the UI
+                  // (sync on next interaction / regenerate)
+                }
+                return (
                   <select
                     className={field}
-                    value={backExpiration}
+                    value={value}
                     onChange={(e) => {
                       const b = e.target.value;
                       setBackExpiration(b);
@@ -877,31 +1219,39 @@ export default function PositionBuilder({
                       }));
                     }}
                   >
-                    {chain.expirations
-                      .filter((e) => e > position.expiration)
-                      .map((e) => (
-                        <option key={e} value={e}>
-                          {e}
-                        </option>
-                      ))}
+                    {choices.map((e) => (
+                      <option key={e} value={e}>
+                        {e}
+                      </option>
+                    ))}
                   </select>
-                )
-              ) : (
-                <p className="text-xs text-amber-400">
-                  Chain unavailable — cannot set listed back expiration.
-                </p>
-              )}
+                );
+              })()}
             </label>
           )}
 
-          {/* Live package DEBIT / CREDIT strip */}
+          {/* Live package DEBIT / CREDIT strip — unlocked unless limit override set */}
           <div
             className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-separator)] bg-[var(--color-fill)]/50 px-3 py-2"
             data-testid="builder-package-economics"
           >
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                Package (natural mid)
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                  Package (natural mid)
+                </span>
+                <span
+                  className={
+                    "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide " +
+                    (overrideActive
+                      ? "bg-amber-500/20 text-amber-300"
+                      : "bg-emerald-500/20 text-emerald-300")
+                  }
+                  data-testid="builder-price-lock-state"
+                  data-locked={overrideActive ? "1" : "0"}
+                >
+                  {overrideActive ? "Limit override" : "Live · unlocked"}
+                </span>
               </div>
               <div
                 className={
@@ -912,21 +1262,29 @@ export default function PositionBuilder({
                       ? "text-rose-600"
                       : "text-[var(--color-label-tertiary)]")
                 }
+                data-testid="builder-live-package-price"
               >
-                {formatPackageSide(eco)}
+                {overrideActive && position.net_debit_override != null
+                  ? `LIMIT ${Math.abs(position.net_debit_override).toFixed(2)}`
+                  : formatPackageSide(eco)}
               </div>
             </div>
             <div className="text-right text-[11px] text-[var(--color-label-secondary)]">
               {chain.loading ? (
-                <span>Refreshing chain…</span>
+                <span>Updating mids…</span>
+              ) : overrideActive ? (
+                <span>Limit set · live tracks when unlocked</span>
               ) : !eco.complete ? (
-                <span className="text-amber-600">
-                  Incomplete mids ({eco.missingMids} leg
-                  {eco.missingMids === 1 ? "" : "s"}) — package —
+                <span>
+                  Filling mids
+                  {eco.missingMids > 0
+                    ? ` (${eco.missingMids} pending)`
+                    : ""}
+                  · structure ready
                 </span>
               ) : (
                 <span>
-                  Live from dual-side ladder
+                  Live · unlocked · tracks mids
                   {eco.signedNatural != null &&
                   eco.signedMid != null &&
                   Math.abs(eco.signedNatural - eco.signedMid) > 0.005
@@ -987,7 +1345,8 @@ export default function PositionBuilder({
                           <StrikeSelect
                             listed={legStrikes}
                             value={leg.strike}
-                            center={atmCenter}
+                            center={atmCenter || spotPrice}
+                            radiusN={80}
                             className="min-w-[5.5rem]"
                             testId={`builder-leg-strike-${i}`}
                             onChange={(s) => updateLeg(i, { strike: s })}
@@ -1006,8 +1365,37 @@ export default function PositionBuilder({
                             {leg.type === "call" ? "Call" : "Put"}
                           </button>
                         </td>
-                        <td className="px-2 py-1 font-mono text-[11px]">
-                          {exp.slice(5)}
+                        <td
+                          className="px-2 py-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {hasExps ? (
+                            <select
+                              className={field + " min-w-[6.5rem] !py-1 !text-[11px]"}
+                              value={
+                                chain.expirations.includes(exp)
+                                  ? exp
+                                  : chain.expirations[0] || exp
+                              }
+                              title="Per-leg expiration (any listed)"
+                              data-testid={`builder-leg-exp-${i}`}
+                              onChange={(e) => {
+                                const nextExp = e.target.value;
+                                chain.ensureExpiration(nextExp);
+                                updateLeg(i, { expiration: nextExp });
+                              }}
+                            >
+                              {chain.expirations.map((e) => (
+                                <option key={e} value={e}>
+                                  {e.slice(5)}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="font-mono text-[11px]">
+                              {exp.slice(5)}
+                            </span>
+                          )}
                         </td>
                         <td className="px-2 py-1 font-mono text-emerald-600 dark:text-emerald-400">
                           {leg.entry_price > 0
@@ -1058,7 +1446,7 @@ export default function PositionBuilder({
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className={labelCls}>
-                Limit override (optional)
+                Limit override (optional — leave empty for live unlocked)
               </span>
               <input
                 className={field}
@@ -1071,11 +1459,16 @@ export default function PositionBuilder({
                 }
                 placeholder={
                   eco.complete && displayCost > 0
-                    ? `live ${displayCost.toFixed(2)}`
-                    : "awaiting mids"
+                    ? `live ${displayCost.toFixed(2)} · unlocked`
+                    : "awaiting mids · unlocked"
                 }
                 onChange={(e) => {
-                  const v = parseFloat(e.target.value);
+                  const raw = e.target.value.trim();
+                  if (raw === "") {
+                    setPosition((p) => ({ ...p, net_debit_override: null }));
+                    return;
+                  }
+                  const v = parseFloat(raw);
                   setPosition((p) => ({
                     ...p,
                     net_debit_override: Number.isFinite(v) ? v : null,
@@ -1083,8 +1476,10 @@ export default function PositionBuilder({
                 }}
               />
               <p className="mt-0.5 text-[10px] text-[var(--color-label-tertiary)]">
-                Natural mid {formatPackageSide(eco)}
-                {overrideActive ? " · override active" : " · edit to lock limit"}
+                Live {formatPackageSide(eco)}
+                {overrideActive
+                  ? " · limit override active (locked basis on save)"
+                  : " · unlocked — tracks chain mids"}
               </p>
             </label>
             <label className="block">
@@ -1108,7 +1503,8 @@ export default function PositionBuilder({
             <span className={labelCls}>ToS script</span>
             <button
               type="button"
-              className="block w-full rounded-lg border border-[var(--color-separator)] bg-black/30 px-3 py-2 text-left font-mono text-[11px] text-white/80"
+              className="block w-full rounded-lg border border-emerald-900/50 bg-black px-3 py-2 text-left font-mono text-[11px] text-emerald-400 hover:bg-zinc-950"
+              data-testid="builder-tos-script"
               onClick={() => {
                 if (!tosScript) return;
                 void navigator.clipboard.writeText(tosScript).then(() => {
@@ -1118,7 +1514,7 @@ export default function PositionBuilder({
               }}
             >
               {tosScript || "—"}
-              <span className="ml-2 text-[10px] text-white/40">
+              <span className="ml-2 text-[10px] text-emerald-600/80">
                 {copied ? "Copied" : "click to copy"}
               </span>
             </button>
@@ -1145,6 +1541,9 @@ export default function PositionBuilder({
                 ? `LIMIT ${Math.abs(position.net_debit_override).toFixed(2)}`
                 : formatPackageSide(eco)}
               {position.contracts > 1 ? ` × ${position.contracts}` : ""}
+              <span className="ml-2 text-[10px] font-medium text-[var(--color-label-tertiary)]">
+                {overrideActive ? "override" : "live · unlocked"}
+              </span>
             </div>
           </div>
         </div>
@@ -1156,29 +1555,70 @@ export default function PositionBuilder({
           <button
             type="button"
             className={btnPrimary}
-            disabled={position.legs.length === 0}
             data-testid="position-builder-analyze"
-            onClick={() =>
-              onSave(
-                {
-                  ...position,
-                  net_debit_override:
-                    position.net_debit_override != null
-                      ? position.net_debit_override
-                      : eco.complete && displayCost > 0
-                        ? Number(displayCost.toFixed(2))
-                        : null,
+            onClick={() => {
+              // Never fault — ensure a structure exists, then hand off
+              let legs = position.legs;
+              let exp = position.expiration;
+              if (!legs.length) {
+                const front =
+                  pickDefaultFrontExpiration(chain.expirations, marketLive) ||
+                  exp ||
+                  frontDefault ||
+                  etYmd();
+                exp = front;
+                regenerate(
+                  template,
+                  centerStrike || atmCenter || spotPrice || 100,
+                  wingWidth || DEFAULT_CREATE_WING_WIDTH,
+                  optionSide,
                   direction,
-                },
-                previewLabel,
-                previewNotation,
-              )
-            }
+                  front,
+                  backExpiration,
+                );
+                // regenerate is async to state — build legs synchronously for save
+                const listed = chain.getStrikes(front);
+                const body =
+                  snapToListed(
+                    centerStrike || atmCenter || spotPrice || 100,
+                    listed,
+                  ) ??
+                  (listed.length
+                    ? listed[Math.floor(listed.length / 2)]
+                    : centerStrike || atmCenter || spotPrice || 100);
+                const w =
+                  listed.length
+                    ? listedWidthPoints(
+                        body,
+                        wingWidth || DEFAULT_CREATE_WING_WIDTH,
+                        listed,
+                      ) || DEFAULT_CREATE_WING_WIDTH
+                    : wingWidth || DEFAULT_CREATE_WING_WIDTH;
+                legs = butterflyLegs(body, w, optionSide);
+                if (direction === "sell") legs = flipLegs(legs);
+                legs = priceLegs(legs, front);
+              }
+              const payload = {
+                ...position,
+                expiration: exp,
+                legs,
+                direction,
+                net_debit_override:
+                  position.net_debit_override != null &&
+                  Number.isFinite(position.net_debit_override)
+                    ? position.net_debit_override
+                    : null,
+              };
+              onSave(
+                payload,
+                buildLabel(payload.underlying, payload.legs, payload.expiration),
+                buildNotation(payload.legs),
+              );
+            }}
           >
             {mode === "edit" ? "Update" : "Analyze"}
           </button>
         </div>
-      </div>
     </div>
   );
 }

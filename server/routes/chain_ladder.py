@@ -549,12 +549,72 @@ def get_chain_ladder(
     }
 
 
-def _contracts_from_dates(dates: list[str], *, today: date, limit: int) -> list[dict]:
-    upcoming = [e for e in sorted({str(d)[:10] for d in dates if d}) if e >= today.isoformat()]
-    upcoming = upcoming[: int(limit)]
-    out = []
+# Analyzer / OPF active option horizon (calendar DTE).
+# Historical default was effectively ~3 *listed dates* (API limit=3), which for
+# SPX daily is only ~0–2 DTE. Active plane now holds through this many DTE.
+OPF_ACTIVE_DTE_HORIZON = 10
+
+
+def _et_now_parts() -> tuple[date, int]:
+    """America/New_York calendar date + minutes since midnight."""
+    try:
+        from zoneinfo import ZoneInfo
+
+        et = datetime.now(ZoneInfo("America/New_York"))
+        return et.date(), et.hour * 60 + et.minute
+    except Exception:
+        # Fallback: UTC (should not be used in prod)
+        n = datetime.now(timezone.utc)
+        return n.date(), n.hour * 60 + n.minute
+
+
+def _same_day_expiration_still_selectable(today: date) -> bool:
+    """
+    Include 0DTE in the exp dropdown until 16:00 ET settlement cutoff.
+
+    RTH may already report closed (equity close / held) while 0DTE index
+    options are still the correct pointer until 4:00 PM Eastern.
+    """
+    et_day, mins = _et_now_parts()
+    if et_day != today:
+        # Server calendar day vs ET day mismatch — prefer ET day for 0DTE
+        if et_day > today:
+            return False
+    return mins < 16 * 60
+
+
+def _contracts_from_dates(
+    dates: list[str],
+    *,
+    today: date,
+    limit: int,
+    session_open: bool | None = None,
+    max_dte: int | None = None,
+) -> list[dict]:
+    """Build listed-expiration contracts for UI/OPF pointer selection.
+
+    Returns upcoming listed dates (valid option pointers) within ``max_dte``
+    calendar days when set.
+
+    0DTE is kept until **16:00 ET** (settlement), not dropped as soon as RTH
+    reports closed — users must still be able to select today while it is live.
+    """
+    # Use ET calendar day so "today" matches the user's market day
+    et_today, _ = _et_now_parts()
+    day = et_today
+    upcoming = [
+        e for e in sorted({str(d)[:10] for d in dates if d}) if e >= day.isoformat()
+    ]
+    horizon = int(max_dte) if max_dte is not None else None
+    keep_0dte = _same_day_expiration_still_selectable(day)
+    out: list[dict] = []
     for e in upcoming:
-        dte = dte_from_expiration(e, today=today)
+        dte = dte_from_expiration(e, today=day)
+        # Drop 0DTE only after 16:00 ET — not merely because session_open is false
+        if dte <= 0 and not keep_0dte:
+            continue
+        if horizon is not None and dte > horizon:
+            continue
         out.append(
             {
                 "expiration": e,
@@ -562,17 +622,15 @@ def _contracts_from_dates(dates: list[str], *, today: date, limit: int) -> list[
                 "label": f"{e} · 0 DTE" if dte == 0 else f"{e} · {dte} DTE",
             }
         )
+        if len(out) >= int(limit):
+            break
     return out
 
 
 def _session_open_for_expiry_default() -> bool:
-    """RTH open? After close, 0DTE is treated as expired for default pick."""
-    try:
-        from routes.market_stream import _session_open_for_chain_push
-
-        return bool(_session_open_for_chain_push())
-    except Exception:
-        return True  # fail open: keep calendar 0DTE as default
+    """True while 0DTE is still a selectable live pointer (before 16:00 ET)."""
+    et_today, _ = _et_now_parts()
+    return _same_day_expiration_still_selectable(et_today)
 
 
 def _pick_default_expiration(
@@ -620,7 +678,8 @@ def _scan_expirations_live(
         expiration_date_gte=gte,
         expiration_date_lte=lte,
         contract_type="call",
-        max_pages=20,
+        # More pages when asking for a long listed calendar (Analyzer selects)
+        max_pages=max(20, min(80, need * 2)),
     )
     return sorted(found)[:need]
 
@@ -631,26 +690,43 @@ def list_chain_ladder_expirations(
     symbol: str | None = Query(default=None),
     underlier: str | None = Query(default=None),
     limit: int = Query(
-        default=3,
+        default=30,
         ge=1,
-        le=10,
-        description="How many next distinct expiration dates (default 3)",
+        le=90,
+        description=(
+            "Max distinct listed expiration dates to return within the DTE "
+            "horizon (default 30, max 90)"
+        ),
     ),
     days: int = Query(
-        default=60,
+        default=OPF_ACTIVE_DTE_HORIZON,
         ge=1,
-        le=120,
-        description="Look-ahead window when scanning the chain for distinct expiries",
+        le=400,
+        description=(
+            f"Look-ahead window in calendar days (default "
+            f"{OPF_ACTIVE_DTE_HORIZON} = OPF active DTE horizon)"
+        ),
+    ),
+    max_dte: int = Query(
+        default=OPF_ACTIVE_DTE_HORIZON,
+        ge=0,
+        le=400,
+        description=(
+            f"Only return listed expirations with calendar DTE ≤ this "
+            f"(default {OPF_ACTIVE_DTE_HORIZON}; OPF active option horizon)"
+        ),
     ),
     refresh: bool = Query(
         default=False,
         description="Force live Massive scan and write-through preform store",
     ),
 ) -> dict:
-    """Next N distinct listed expirations (OC3 · OC11 store-first).
+    """Listed expirations for option-pointer selection (OC3 · OC11 store-first).
 
-    Prefer preformed ``next_expirations_json`` when fresh (same UTC session day).
-    Else live scan + write-through.
+    SoR for Analyzer position-card / Builder expiration dropdowns: every
+    returned date is a valid listed chain expiration within the OPF active
+    DTE horizon (default **10 DTE**). Prefer preformed calendar when fresh;
+    else live scan + write-through. After cash close, 0DTE is omitted.
     """
     claims = require_session(request)
     _require_tool_member(claims, capability="read")
@@ -659,6 +735,9 @@ def list_chain_ladder_expirations(
     product = resolved["product"]
     today = date.today()
     source = "live_scan"
+    session_open = _session_open_for_expiry_default()
+    # Scan at least the DTE horizon so we do not miss listed dates at the edge
+    scan_days = max(int(days), int(max_dte), OPF_ACTIVE_DTE_HORIZON)
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -676,32 +755,76 @@ def list_chain_ladder_expirations(
                     source = "preform"
 
             if source == "preform":
-                contracts = _contracts_from_dates(stored_dates, today=today, limit=limit)
+                contracts = _contracts_from_dates(
+                    stored_dates,
+                    today=today,
+                    limit=limit,
+                    session_open=session_open,
+                    max_dte=max_dte,
+                )
+                # Preform may be short (old 3/10-cap) — top up with live scan
+                if len(contracts) < min(int(limit), 5):
+                    try:
+                        dates = _scan_expirations_live(
+                            ul,
+                            days=scan_days,
+                            limit=max(limit, 10),
+                            today=today,
+                        )
+                        try:
+                            ua.write_chain_calendar(
+                                cur, product, expirations=dates[: max(limit, 40)]
+                            )
+                            source = "preform_topped_up"
+                        except Exception:
+                            source = "preform_plus_live"
+                        contracts = _contracts_from_dates(
+                            dates,
+                            today=today,
+                            limit=limit,
+                            session_open=session_open,
+                            max_dte=max_dte,
+                        )
+                    except MassiveClientError:
+                        pass  # keep preform contracts
             else:
                 try:
                     dates = _scan_expirations_live(
-                        ul, days=days, limit=max(limit, 3), today=today
+                        ul,
+                        days=scan_days,
+                        limit=max(limit, 10),
+                        today=today,
                     )
                 except MassiveClientError as exc:
                     raise HTTPException(status_code=502, detail=str(exc)) from exc
-                # store more than limit for a bit of headroom
                 try:
-                    ua.write_chain_calendar(cur, product, expirations=dates[:10])
+                    ua.write_chain_calendar(
+                        cur, product, expirations=dates[: max(limit, 40)]
+                    )
                     source = "live_scan_write_through"
                 except Exception:
                     source = "live_scan"
-                contracts = _contracts_from_dates(dates, today=today, limit=limit)
+                contracts = _contracts_from_dates(
+                    dates,
+                    today=today,
+                    limit=limit,
+                    session_open=session_open,
+                    max_dte=max_dte,
+                )
 
-    session_open = _session_open_for_expiry_default()
     default_exp = _pick_default_expiration(contracts, session_open=session_open)
     return {
         "symbol": product,
         "underlier": ul,
         "as_of_day": today.isoformat(),
         "limit": int(limit),
+        "days": int(scan_days),
+        "max_dte": int(max_dte),
+        "opf_active_dte_horizon": OPF_ACTIVE_DTE_HORIZON,
         "source": source,
         "session_open": session_open,
         "contracts": contracts,
         "expirations": [c["expiration"] for c in contracts],
         "default_expiration": default_exp,
+        "count": len(contracts),
     }

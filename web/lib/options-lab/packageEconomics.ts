@@ -113,12 +113,51 @@ export function packageEconomicsFromLegs(
     };
   }
 
-  if (!complete) {
+  // Best-effort package always when any mid is known — never blank the strip
+  // just because one wing is still hydrating. `complete` flags full coverage.
+  const priced = outLegs.filter((l) => l.contribMid != null);
+  if (priced.length === 0) {
     return {
       signedMid: null,
       side: null,
       absMid: null,
       signedNatural: null,
+      legs: outLegs,
+      complete: false,
+      missingMids: missing,
+    };
+  }
+
+  // Recompute from known contribs only when incomplete (partial sum)
+  if (!complete) {
+    let partial = 0;
+    let partialNat = 0;
+    let natOk = true;
+    for (const leg of outLegs) {
+      if (leg.contribMid == null) continue;
+      partial += leg.contribMid;
+    }
+    // Natural only when complete enough for nat prices on priced legs
+    for (const leg of legs) {
+      const exp = (leg.expiration || frontExpiration).slice(0, 10);
+      const q = getQuote(exp, normalizeStrike(leg.strike), leg.type);
+      const mid = q?.mid ?? (leg.entry_price > 0 ? leg.entry_price : null);
+      if (mid == null) {
+        natOk = false;
+        continue;
+      }
+      const natPx =
+        leg.side === "long" ? q?.ask ?? mid : q?.bid ?? mid;
+      const c = legContribution(leg.side, leg.quantity, natPx);
+      if (c == null) natOk = false;
+      else partialNat += c;
+    }
+    const side: "DEBIT" | "CREDIT" = partial >= 0 ? "CREDIT" : "DEBIT";
+    return {
+      signedMid: partial,
+      side,
+      absMid: Math.abs(partial),
+      signedNatural: natOk && missing === 0 ? partialNat : null,
       legs: outLegs,
       complete: false,
       missingMids: missing,
@@ -152,6 +191,7 @@ export function packageEconomics(
 export function formatPackageSide(
   eco: PackageEconomics,
 ): string {
-  if (!eco.complete || eco.side == null || eco.absMid == null) return "—";
+  // Show best-effort whenever we have a signed mid (full or partial)
+  if (eco.side == null || eco.absMid == null) return "—";
   return `${eco.side} ${eco.absMid.toFixed(2)}`;
 }

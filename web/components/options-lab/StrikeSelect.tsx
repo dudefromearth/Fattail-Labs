@@ -60,15 +60,25 @@ export default function StrikeSelect({
     return [...options, selected].sort((a, b) => a - b);
   }, [options, selected]);
 
+  // Ladder cold / empty: still let the user pick a strike (numeric) so Builder
+  // never faults — snaps to listed as soon as the exp hydrates.
   if (!listed.length) {
     return (
-      <span
-        className="text-xs text-amber-500"
+      <input
+        className={`${field} ${className}`.trim()}
+        type="number"
+        step="any"
+        disabled={disabled}
         data-testid={testId}
+        data-listed-count={0}
         title={emptyLabel}
-      >
-        —
-      </span>
+        value={Number.isFinite(value) && value > 0 ? value : ""}
+        placeholder="strike"
+        onChange={(e) => {
+          const n = normalizeStrike(parseFloat(e.target.value));
+          if (Number.isFinite(n) && n > 0) onChange(n);
+        }}
+      />
     );
   }
 

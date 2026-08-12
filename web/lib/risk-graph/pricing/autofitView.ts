@@ -10,6 +10,10 @@
  *     (viewport = 3 × 1σ width) — unless the structure is wider, in which
  *     case content wins. This replaced the old 5%-of-spot min half, which
  *     over-widened calendars/diagonals.
+ *  5. **Expiration breakevens ≤ ½ viewport** (Labs): when exp BEs are
+ *     supplied, expand X so their span occupies at most
+ *     {@link EXP_BREAKEVEN_MAX_VIEWPORT_FRAC} of the viewport, then apply
+ *     {@link AUTOFIT_PAD_FRAC} beyond that target so markers sit with pad.
  *
  * Time-spread profile (calendar / diagonal):
  *  - Same X rules (1σ view above).
@@ -28,6 +32,12 @@ export const AUTOFIT_MIN_HALF_PTS = 25;
  * 1/3 ⇒ viewport = 3 × (hi₁σ − lo₁σ); 1σ is never *less* than 1/3 of the view.
  */
 export const ONE_SIGMA_MIN_VIEWPORT_FRAC = 1 / 3;
+
+/**
+ * Max fraction of viewport width occupied by expiration-line breakeven span.
+ * 1/2 ⇒ (maxBE − minBE) / viewport ≤ 0.5 before pad expansion.
+ */
+export const EXP_BREAKEVEN_MAX_VIEWPORT_FRAC = 1 / 2;
 
 /** Milder loss-side share for residual calendars (was 0.20 — over-capped peaks). */
 export const TIME_SPREAD_MIN_LOSS_Y_SHARE = 0.12;
@@ -56,6 +66,17 @@ export interface AtmCenteredXRangeArgs {
    * narrower and only going wider when content requires it.
    */
   oneSigmaBandWidth?: number;
+  /**
+   * Expiration-line breakeven prices only (not T+0 / theoretical BEs).
+   * When ≥2 finite values, expand viewport so their span occupies at most
+   * {@link EXP_BREAKEVEN_MAX_VIEWPORT_FRAC} of the width, then apply pad.
+   */
+  expBreakevenPrices?: readonly number[];
+  /**
+   * Max viewport fraction for exp BE span. Default
+   * {@link EXP_BREAKEVEN_MAX_VIEWPORT_FRAC} (0.5).
+   */
+  expBreakevenMaxViewportFrac?: number;
 }
 
 /**
@@ -80,12 +101,14 @@ export function atmCenteredXRange(args: AtmCenteredXRangeArgs): {
     const mid = (Math.min(...pts) + Math.max(...pts)) / 2;
     let half = Math.max((Math.max(...pts) - Math.min(...pts)) / 2, minHalf) * (1 + padFrac);
     half = applyOneSigmaViewportCap(half, args.oneSigmaBandWidth, minHalf);
+    half = applyExpBreakevenViewportCap(half, args, padFrac);
     return { xMin: mid - half, xMax: mid + half, center: mid };
   }
 
   if (pts.length === 0) {
     let half = Math.max(minHalf * 2, spot * 0.01);
     half = applyOneSigmaViewportCap(half, args.oneSigmaBandWidth, minHalf);
+    half = applyExpBreakevenViewportCap(half, args, padFrac);
     return { xMin: spot - half, xMax: spot + half, center: spot };
   }
 
@@ -110,11 +133,50 @@ export function atmCenteredXRange(args: AtmCenteredXRangeArgs): {
   // 1σ view: band = 1/3 of viewport when structure fits; content wins if wider
   half = applyOneSigmaViewportCap(half, args.oneSigmaBandWidth, contentHalf);
 
+  // Exp BEs ≤ ½ viewport (+ pad) — only expands; never shrinks structure/1σ
+  half = applyExpBreakevenViewportCap(half, args, padFrac);
+
   return {
     xMin: center - half,
     xMax: center + half,
     center,
   };
+}
+
+/**
+ * Expand half so expiration breakeven span ≤ maxFrac of viewport, with pad.
+ *
+ *   beSpan / (2 * half) ≤ maxFrac / (1 + padFrac)
+ *   ⇒ half ≥ beSpan * (1 + padFrac) / (2 * maxFrac)
+ *
+ * Default maxFrac=0.5, pad=0.30 → BEs occupy ~38% of view (≤ ½ with pad).
+ * Only expands; never shrinks an existing half (structure / 1σ win).
+ * Single BE (span 0) is a no-op.
+ */
+function applyExpBreakevenViewportCap(
+  half: number,
+  args: Pick<
+    AtmCenteredXRangeArgs,
+    'expBreakevenPrices' | 'expBreakevenMaxViewportFrac'
+  >,
+  padFrac: number,
+): number {
+  const bes = (args.expBreakevenPrices ?? []).filter(
+    (p): p is number => typeof p === 'number' && Number.isFinite(p),
+  );
+  if (bes.length < 2) return half;
+
+  const beSpan = Math.max(...bes) - Math.min(...bes);
+  if (!(beSpan > 0) || !Number.isFinite(beSpan)) return half;
+
+  const maxFrac =
+    args.expBreakevenMaxViewportFrac ?? EXP_BREAKEVEN_MAX_VIEWPORT_FRAC;
+  if (!(maxFrac > 0) || !(maxFrac <= 1)) return half;
+
+  // Target: BE span is maxFrac of the *content* intent, then pad outside.
+  // half such that 2*half = beSpan/maxFrac * (1+padFrac)
+  const targetHalf = (beSpan * (1 + padFrac)) / (2 * maxFrac);
+  return Math.max(half, targetHalf);
 }
 
 /**

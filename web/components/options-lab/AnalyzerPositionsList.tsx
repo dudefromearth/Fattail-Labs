@@ -7,7 +7,13 @@
  */
 
 import { useMemo, type CSSProperties } from "react";
-import type { AnalyzerPosition } from "@/lib/options-lab/analyzerBook";
+import {
+  calendarDteOf,
+  isOptionPointerExpired,
+  type AnalyzerPosition,
+} from "@/lib/options-lab/analyzerBook";
+import { resolveCardDisplayState } from "@/lib/options-lab/cardDisplayState";
+import { legNotTradedLabel } from "@/lib/options-lab/optionBind";
 import type { LegInput } from "@/lib/options-lab/positionTypes";
 import { detectFamily } from "@/lib/options-lab/positionLabels";
 import {
@@ -20,12 +26,7 @@ import {
 } from "@/lib/blotterTheme";
 
 function dteOf(exp: string): number {
-  if (!exp) return 0;
-  const e = new Date(exp.slice(0, 10) + "T16:00:00Z");
-  return Math.max(
-    0,
-    Math.ceil((e.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
-  );
+  return calendarDteOf(exp);
 }
 
 function fmtExp(exp: string): string {
@@ -96,6 +97,11 @@ export type AnalyzerPositionsListProps = {
   onSetDirection: (id: string, direction: "buy" | "sell") => void;
   /** ToS-style expiration roll from listed chain expirations. */
   onSetExpiration: (id: string, expiration: string) => void;
+  /**
+   * Nudge all strikes one listed step ↑/↓. Caller must unlock package
+   * (shiftCardStrikes always unlocks) so natural mid re-settles.
+   */
+  onShiftStrikes: (id: string, direction: "up" | "down") => void;
   /** Upcoming listed expirations (YYYY-MM-DD) for the suite / product. */
   expirations?: string[];
 };
@@ -115,17 +121,22 @@ export default function AnalyzerPositionsList({
   onUnlock,
   onSetDirection,
   onSetExpiration,
+  onShiftStrikes,
   expirations = [],
 }: AnalyzerPositionsListProps) {
   const list = positions;
+  /**
+   * Expiration select = OPF/chain listed pointers (from props.expirations).
+   * Always includes the card's current pointer even if past (so EXPIRED still
+   * shows), plus every valid listed date so the user can re-point to live.
+   */
   const expChoices = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
     const set = new Set<string>();
     for (const e of expirations) {
       const d = e.slice(0, 10);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d >= today) set.add(d);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) set.add(d);
     }
-    // Keep any book dates so current selection always appears
+    // Keep any book dates so current selection always appears (incl. expired)
     for (const p of positions) {
       const fe = (p.position.expiration || "").slice(0, 10);
       if (fe) set.add(fe);
@@ -203,6 +214,7 @@ export default function AnalyzerPositionsList({
                 <th className={th + " text-right"}>Qty</th>
                 <th className={th}>Symbol</th>
                 <th className={th}>Exp</th>
+                <th className={th + " w-8 text-center"} aria-label="nudge strikes" />
                 <th className={th + " text-right"}>Strike</th>
                 <th className={th}>Type</th>
                 <th className={th + " text-right"}>Price</th>
@@ -232,7 +244,8 @@ export default function AnalyzerPositionsList({
               const mult = Math.max(1, pos.position.contracts || 1);
               const front = pos.position.expiration;
               const dte = dteOf(front);
-              const expired = dte <= 0;
+              // Card = pointer: EXPIRED only when the pointed-to option is past
+              const expired = isOptionPointerExpired(front);
               const isGhost = expired && !hidden;
               const chip =
                 !pos.visible
@@ -241,18 +254,20 @@ export default function AnalyzerPositionsList({
                     ? "held"
                     : pos.liveState;
 
+              // Elegant failure law: every exceptional case → named state
+              const display = resolveCardDisplayState(pos, {
+                sessionHeld,
+                packageSide: side,
+              });
               const liveMark =
-                !expired &&
+                display.kind === "price" &&
                 pos.livePackagePerShare != null &&
-                Number.isFinite(pos.livePackagePerShare) &&
-                (chip === "live" ||
-                  chip === "held" ||
-                  pos.livePackagePerShare > 0);
+                Number.isFinite(pos.livePackagePerShare);
               const price = pos.livePackagePerShare;
               const priceLabel =
-                price != null && Number.isFinite(price)
+                liveMark && price != null
                   ? (side === "credit" ? "−" : "") + price.toFixed(2)
-                  : "—";
+                  : display.packageLabel ?? "UPDATING";
 
               // Exact Trade Log blotter fills (hex — always paint)
               // Ghost keeps debit/credit tint; selected → blue
@@ -301,6 +316,7 @@ export default function AnalyzerPositionsList({
                   side={side}
                   kind={kind}
                   chip={chip}
+                  display={display}
                   dte={dte}
                   front={front}
                   bg={bg}
@@ -317,6 +333,7 @@ export default function AnalyzerPositionsList({
                   onUnlock={onUnlock}
                   onSetDirection={onSetDirection}
                   onSetExpiration={onSetExpiration}
+                  onShiftStrikes={onShiftStrikes}
                   expChoices={expChoices}
                 />
               );
@@ -346,6 +363,7 @@ function PosBlock({
   side,
   kind,
   chip,
+  display,
   dte,
   front,
   bg,
@@ -362,6 +380,7 @@ function PosBlock({
   onUnlock,
   onSetDirection,
   onSetExpiration,
+  onShiftStrikes,
   expChoices,
 }: {
   pos: AnalyzerPosition;
@@ -381,6 +400,7 @@ function PosBlock({
   side: "debit" | "credit" | null;
   kind: BlotterBlockKind;
   chip: string;
+  display: ReturnType<typeof resolveCardDisplayState>;
   dte: number;
   front: string;
   bg: string;
@@ -397,6 +417,7 @@ function PosBlock({
   onUnlock: (id: string) => void;
   onSetDirection: (id: string, direction: "buy" | "sell") => void;
   onSetExpiration: (id: string, expiration: string) => void;
+  onShiftStrikes: (id: string, direction: "up" | "down") => void;
   expChoices: string[];
 }) {
   const nLegs = orderedLegs.length;
@@ -577,6 +598,58 @@ function PosBlock({
                 <span className={textMuted}>{fmtExp(exp)}</span>
               )}
             </td>
+            {/* Strike nudge: one cell spanning all legs, vertically centered */}
+            {isTop ? (
+              <td
+                className={td + " w-8 px-0.5 align-middle"}
+                rowSpan={nLegs}
+                style={{
+                  ...edge,
+                  verticalAlign: "middle",
+                  // Last-row bottom rule is owned by this spanning cell
+                  borderBottomWidth: hasNext ? 2 : 0,
+                  borderBottomStyle: hasNext ? "solid" : "none",
+                  borderBottomColor: hasNext
+                    ? BLOTTER_HEX.positionRule
+                    : "transparent",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  className="flex h-full min-h-full flex-col items-center justify-center gap-0.5 py-0.5"
+                  data-testid={`analyzer-pos-strike-nudge-${pos.id}`}
+                >
+                  <button
+                    type="button"
+                    className={
+                      "inline-flex h-5 w-6 items-center justify-center rounded " +
+                      "bg-black/25 text-[11px] font-bold leading-none text-white " +
+                      "hover:bg-black/45 disabled:opacity-40"
+                    }
+                    title="Shift all strikes up one listed step (unlocks package)"
+                    aria-label="Shift strikes up"
+                    data-testid={`analyzer-pos-strike-up-${pos.id}`}
+                    onClick={() => onShiftStrikes(pos.id, "up")}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      "inline-flex h-5 w-6 items-center justify-center rounded " +
+                      "bg-black/25 text-[11px] font-bold leading-none text-white " +
+                      "hover:bg-black/45 disabled:opacity-40"
+                    }
+                    title="Shift all strikes down one listed step (unlocks package)"
+                    aria-label="Shift strikes down"
+                    data-testid={`analyzer-pos-strike-down-${pos.id}`}
+                    onClick={() => onShiftStrikes(pos.id, "down")}
+                  >
+                    ▼
+                  </button>
+                </div>
+              </td>
+            ) : null}
             <td
               className={
                 td + ` text-right font-mono font-semibold ${textMain}`
@@ -595,46 +668,79 @@ function PosBlock({
                 (isTop && expired ? "text-amber-200" : textMain)
               }
               style={edge}
+              data-testid={isTop ? `analyzer-pos-price-${pos.id}` : undefined}
+              data-display-kind={isTop ? display.kind : undefined}
+              data-live={isTop && display.kind === "price" ? "1" : undefined}
+              data-expired={isTop && display.kind === "expired" ? "1" : undefined}
+              data-bindable={
+                isTop
+                  ? pos.bind == null
+                    ? undefined
+                    : pos.bind.bindable
+                      ? "1"
+                      : "0"
+                  : undefined
+              }
               title={
                 isTop
-                  ? expired
-                    ? "EXPIRED"
-                    : liveMark
-                      ? "Live OPF package mark"
-                      : "Package mark"
+                  ? display.detail
                   : leg.entry_price > 0
                     ? "Leg mid"
                     : undefined
               }
-              data-testid={isTop ? `analyzer-pos-price-${pos.id}` : undefined}
-              data-live={isTop && liveMark && !expired ? "1" : undefined}
-              data-expired={isTop && expired ? "1" : undefined}
             >
               {isTop ? (
-                expired ? (
-                  <span
-                    className="text-[14px] font-bold uppercase tracking-wide text-amber-200"
-                    data-testid={`analyzer-pos-expired-${pos.id}`}
-                  >
-                    EXPIRED
-                  </span>
-                ) : (
+                display.kind === "price" ? (
                   <>
                     {priceLabel}
                     {liveMark ? (
                       <span
                         className={`ml-1 text-[10px] font-semibold uppercase ${textMuted}`}
                       >
-                        live
+                        {display.chipLabel}
                       </span>
                     ) : null}
                   </>
+                ) : (
+                  <span
+                    className={
+                      "text-[12px] font-bold uppercase tracking-wide " +
+                      (display.kind === "updating"
+                        ? textMuted
+                        : "text-amber-200")
+                    }
+                    data-testid={`analyzer-pos-state-${pos.id}`}
+                    data-state={display.kind}
+                  >
+                    {display.packageLabel}
+                  </span>
                 )
-              ) : leg.entry_price > 0 ? (
-                leg.entry_price.toFixed(2)
-              ) : (
-                "—"
-              )}
+              ) : (() => {
+                  // Per-leg: ▲/▼ can land on a strike with no market
+                  // Match by strike/type/exp (display order ≠ definition index)
+                  const legExp = (leg.expiration || front).slice(0, 10);
+                  const br = pos.bind?.legs?.find(
+                    (b) =>
+                      Math.abs(b.strike - leg.strike) < 1e-9 &&
+                      b.type === leg.type &&
+                      (b.expiration || "").slice(0, 10) === legExp,
+                  );
+                  const nt = legNotTradedLabel(br?.reason);
+                  if (nt) {
+                    return (
+                      <span
+                        className="text-[11px] font-bold uppercase tracking-wide text-amber-200"
+                        data-testid={`analyzer-pos-leg-not-traded-${pos.id}-${i}`}
+                        title={`${leg.strike} ${leg.type} — not traded`}
+                      >
+                        NOT TRADED
+                      </span>
+                    );
+                  }
+                  return leg.entry_price > 0
+                    ? leg.entry_price.toFixed(2)
+                    : "—";
+                })()}
             </td>
             <td
               className={td}
@@ -702,13 +808,7 @@ function PosBlock({
               }
               style={edge}
             >
-              {isTop
-                ? chip === "budget_refused"
-                  ? "budget"
-                  : chip === "not_live"
-                    ? "—"
-                    : chip
-                : ""}
+              {isTop ? display.chipLabel : ""}
             </td>
             <td
               className={td + ` text-right ${textMuted}`}

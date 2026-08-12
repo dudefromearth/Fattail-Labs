@@ -27,8 +27,10 @@ import {
   positionFromInput,
   saveAlerts,
   savePositions,
+  isOptionPointerExpired,
   setCardDirection,
   setCardExpiration,
+  shiftCardStrikes,
   unlockCard,
   type AnalyzerPosition,
   type AnalyzerThresholdAlert,
@@ -301,6 +303,7 @@ export default function OpfRiskAnalyzer() {
     }
   }, [trade?.symbol, symbol, universe, setSymbol]);
 
+  // Book position exps to keep warm for live package quotes
   const warmExps = useMemo(() => {
     const s = new Set<string>();
     for (const p of positions) {
@@ -368,6 +371,8 @@ export default function OpfRiskAnalyzer() {
     enabled: true,
     onUpdate: onPackageUpdate,
     generationEpoch: risk.generationEpoch,
+    // OPF/chain listed calendar — bind step 1 membership
+    listedExpirations: chain.expirations,
   });
 
   // Outlook epoch stale when generation moves while pinned
@@ -420,16 +425,14 @@ export default function OpfRiskAnalyzer() {
   const incompleteFocus =
     focused?.visible &&
     (focused.liveState === "incomplete" || focused.liveState === "skewed");
-  /** MSC: visible + past expiry → ghost image (dashed grey at-expiry only). */
+  /** MSC: visible + pointer past settlement → ghost (dashed grey at-expiry). */
   const focusExpiredVisible = useMemo(() => {
     if (!focused?.visible) return false;
     const exp =
       focused.position.expiration ||
       focused.position.legs[0]?.expiration ||
       "";
-    if (!exp) return false;
-    const e = new Date(exp.slice(0, 10) + "T16:00:00Z");
-    return e.getTime() <= Date.now();
+    return isOptionPointerExpired(exp);
   }, [focused]);
   const hasCurves =
     !!trade &&
@@ -595,10 +598,26 @@ export default function OpfRiskAnalyzer() {
       risk.refresh();
     },
     onSetExpiration: (id: string, expiration: string) => {
+      // Atomic pointer rebind: definition changes once; package quote resolves
+      // once to a final state (no continuous re-search / flash).
       setPositions((prev) =>
         prev.map((p) =>
           p.id === id
             ? setCardExpiration(p, expiration, chain.expirations)
+            : p,
+        ),
+      );
+      chain.ensureExpiration(expiration);
+      // Curves refresh is separate; package marks settle via definition epoch
+      risk.refresh();
+    },
+    onShiftStrikes: (id: string, direction: "up" | "down") => {
+      setPositions((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? shiftCardStrikes(p, direction, (exp) =>
+                chain.getStrikes(exp),
+              )
             : p,
         ),
       );
@@ -1160,6 +1179,7 @@ export default function OpfRiskAnalyzer() {
         spotPrice={displaySpot > 0 ? displaySpot : chain.spot || 5000}
         chain={chain}
         initial={editInitial}
+        marketLive={posture === "Live"}
         onCancel={() => {
           setBuilderOpen(false);
           setEditId(null);
