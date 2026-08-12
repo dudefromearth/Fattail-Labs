@@ -1,11 +1,13 @@
 # FatTail Labs — Volume Profile Histogram Spec v0.2
 
-**Status:** **DRAFT** — product / architecture authority for long-horizon tick-resolution volume-by-price  
+**Status:** **SUPERSEDED** by [v0.3](./FatTail-Labs-Volume-Profile-Histogram-Spec-v0_3.md) (2026-08-12)  
 **Date:** 2026-08-10  
-**Current revision:** **v0.2**  
+**Current revision:** **v0.2** (historical)  
 **Supersedes:** [v0.1](./FatTail-Labs-Volume-Profile-Histogram-Spec-v0.1.md) (1m typical-price allocation replaced by **trades-first measurement**)  
 **Canonical filename:** `Specs/FatTail-Labs-Volume-Profile-Histogram-Spec-v0_2.md`  
 **Type:** Product + data-plane Spec — **precomputed raw volume-by-price histograms** for agentic analysis and (staged) chart overlay  
+
+> **Use v0.3 for all new work.** v0.3 adds dual Pod store, Strategy Lab raw consumer, entitlement matrix, as-built honesty, and TV research track.  
 
 **Short name:** **Volume Profile (VP)** / **VP Histogram**
 
