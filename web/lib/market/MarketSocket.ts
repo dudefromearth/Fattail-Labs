@@ -24,6 +24,10 @@ export class MarketSocket {
   private closed = false;
 
   subscribe(fn: Listener): () => void {
+    // Intentional close must not permanently kill the tab singleton —
+    // next subscriber (client nav back to Options Lab, Strict remount)
+    // has to be able to open again without a full page refresh.
+    this.closed = false;
     this.listeners.add(fn);
     this.ensureOpen();
     return () => {
@@ -39,8 +43,10 @@ export class MarketSocket {
   }
 
   setChainInterest(id: string, sub: ChainSub | null): void {
-    if (sub) this.chains.set(id, sub);
-    else this.chains.delete(id);
+    if (sub) {
+      this.closed = false;
+      this.chains.set(id, sub);
+    } else this.chains.delete(id);
     this.flushSubs();
   }
 
@@ -52,6 +58,7 @@ export class MarketSocket {
     if (!syms || !syms.length) {
       this.symbolInterest.delete(id);
     } else {
+      this.closed = false;
       this.symbolInterest.set(
         id,
         new Set(syms.map((s) => s.trim().toUpperCase()).filter(Boolean)),
@@ -80,6 +87,13 @@ export class MarketSocket {
 
   private emit(msg: MarketInbound): void {
     for (const fn of this.listeners) fn(msg);
+  }
+
+  /** Re-open if needed and re-send current interest (one-shot; not a poll). */
+  poke(): void {
+    this.closed = false;
+    this.ensureOpen();
+    this.flushSubs();
   }
 
   private ensureOpen(): void {

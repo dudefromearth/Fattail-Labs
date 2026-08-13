@@ -380,10 +380,11 @@ export default function HeatmapChainPanel() {
     setExpiration("");
     setExpiryContracts([]);
     setLadderDte(null);
-    void (async () => {
+    let cancelled = false;
+    const loadExpiries = async () => {
       try {
         const pack = await fetchLadderExpirations(symbol, EXPIRY_PICK_COUNT);
-        if (!mounted.current) return;
+        if (cancelled || !mounted.current) return;
         setExpiryContracts(pack.contracts);
         // Prefer server default (skips 0DTE after RTH close). Client clock
         // is a safety net if an older API still returns expired 0DTE first.
@@ -402,12 +403,16 @@ export default function HeatmapChainPanel() {
         setLadderDte(dte0 != null ? dte0 : null);
         setLoadError(null);
       } catch (e) {
-        if (mounted.current)
+        if (!cancelled && mounted.current)
           setLoadError(
             e instanceof Error ? e.message : "Could not load expirations",
           );
       }
-    })();
+    };
+    void loadExpiries();
+    return () => {
+      cancelled = true;
+    };
   }, [symbol]);
 
   useEffect(() => {

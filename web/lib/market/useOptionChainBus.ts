@@ -2,6 +2,11 @@
 
 /**
  * Chain ladder — push + dual-side model (HM15) + hydrate-if-empty.
+ *
+ * Live after client nav: MarketSocket is a tab singleton that used to stay
+ * `closed` after the last subscriber left — Heatmap then sat idle until a
+ * full refresh. We revive the socket on subscribe and do a *one-shot*
+ * HTTP refresh on tab visible / bfcache restore (8s throttle). No interval.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -64,16 +69,22 @@ export function useOptionChainBus(opts: {
 
   const hashRef = useRef<string | null>(null);
   const rowCountRef = useRef(0);
+  const asOfRef = useRef<string | null>(null);
   const hydratingRef = useRef(false);
+  const refreshingRef = useRef(false);
   const hydrateKeyRef = useRef<string>("");
+  const lastPokeAtRef = useRef(0);
   // Generation key without side (HM16)
   const interestId = `chain:${symbol}:${expiration}:w${wings}`;
 
   useEffect(() => {
     hashRef.current = null;
     rowCountRef.current = 0;
+    asOfRef.current = null;
     hydratingRef.current = false;
+    refreshingRef.current = false;
     hydrateKeyRef.current = "";
+    lastPokeAtRef.current = 0;
     setHash(null);
     setContracts(new Map());
     setSpot(null);
@@ -116,7 +127,10 @@ export function useOptionChainBus(opts: {
     setHash(h);
     if (L.spot != null) setSpot(Number(L.spot));
     if (L.band != null) setBand(Number(L.band));
-    if (L.as_of) setAsOf(String(L.as_of));
+    if (L.as_of) {
+      asOfRef.current = String(L.as_of);
+      setAsOf(String(L.as_of));
+    }
     if (L.dte != null) setDte(Number(L.dte));
     if (L.strike_step != null) setStrikeStep(Number(L.strike_step));
     if (L.excluded_adjusted_count != null)
@@ -134,7 +148,10 @@ export function useOptionChainBus(opts: {
         setHash(h);
         if (meta?.spot != null) setSpot(Number(meta.spot));
         if (meta?.band != null) setBand(Number(meta.band));
-        if (meta?.as_of) setAsOf(String(meta.as_of));
+        if (meta?.as_of) {
+          asOfRef.current = String(meta.as_of);
+          setAsOf(String(meta.as_of));
+        }
         if (result.mode === "full" && result.ladder.dte != null) {
           setDte(Number(result.ladder.dte));
         }
@@ -195,6 +212,53 @@ export function useOptionChainBus(opts: {
     }
   };
 
+  /** One HTTP pull — even if we already have rows (stale after nav / focus). Not a loop. */
+  const refreshOnce = async (reason: string) => {
+    if (!enabled || !expiration || !symbol) return;
+    if (hydratingRef.current || refreshingRef.current) return;
+    refreshingRef.current = true;
+    try {
+      const result = await pollChainLadder({
+        expiration,
+        symbol,
+        side,
+        wings,
+        since_hash: hashRef.current,
+      });
+      if (result.mode === "full" && result.ladder?.rows?.length) {
+        applyFull(result.ladder);
+        setLastPatch(`refresh · ${reason}`);
+        setTransport((t) => (t === "stream" ? "stream" : "held"));
+      } else if (result.mode === "diff") {
+        applyPushed(result);
+        setLastPatch(`refresh · ${reason}`);
+      } else if (result.mode === "unchanged") {
+        if (result.as_of) {
+          asOfRef.current = String(result.as_of);
+          setAsOf(String(result.as_of));
+        }
+        setLastPatch(`refresh · ${reason} · no change`);
+      }
+    } catch {
+      /* keep last good generation; stream may still recover */
+    } finally {
+      refreshingRef.current = false;
+    }
+  };
+
+  const pokeLive = (reason: string) => {
+    const now = Date.now();
+    if (now - lastPokeAtRef.current < 8_000) return;
+    lastPokeAtRef.current = now;
+    getMarketSocket().poke();
+    if (rowCountRef.current < 1) {
+      hydrateKeyRef.current = "";
+      void hydrateIfEmpty(reason);
+    } else {
+      void refreshOnce(reason);
+    }
+  };
+
   useEffect(() => {
     if (!enabled || !expiration || !symbol) {
       setTransport("idle");
@@ -232,9 +296,11 @@ export function useOptionChainBus(opts: {
             void hydrateIfEmpty("market-closed");
           } else {
             setTransport("stream");
+            if (rowCountRef.current < 1) void hydrateIfEmpty("socket-open");
           }
         } else if (msg.t === "hello" || msg.t === "sub_ok") {
           setTransport((t) => (t === "held" ? "held" : "stream"));
+          if (rowCountRef.current < 1) void hydrateIfEmpty("socket-ready");
         }
         return;
       }
@@ -322,8 +388,21 @@ export function useOptionChainBus(opts: {
       }
     }, 2000);
 
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      pokeLive("visible");
+    };
+    const onPageShow = (ev: PageTransitionEvent) => {
+      // bfcache restore — one poke, not a timer
+      if (ev.persisted) pokeLive("pageshow");
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onPageShow);
+
     return () => {
       window.clearTimeout(t1);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onPageShow);
       sock.setChainInterest(interestId, null);
       unsub();
     };
