@@ -189,6 +189,13 @@ def test_preview_create_gather_complete(client):
 
         prev2 = client.get("/api/me/retrospectives/preview-scope", cookies=cookies)
         assert prev2.json()["is_maiden"] is False
+        ready2 = prev2.json().get("readiness") or {}
+        assert ready2.get("overridable") is True
+        assert ready2.get("min_days") == rd.START_READY_MIN_DAYS
+        assert ready2.get("min_trades") == rd.START_READY_MIN_TRADES
+        # Just completed — thin window; create must still succeed (override is UI).
+        assert ready2.get("recommended") is False
+        assert ready2.get("notice")
 
         created2 = client.post(
             "/api/me/retrospectives",
@@ -198,6 +205,168 @@ def test_preview_create_gather_complete(client):
         assert created2.status_code == 200
         assert created2.json()["is_maiden"] is False
         assert created2.json()["comparison"]["has_prior"] is True
+    finally:
+        _cleanup(iid)
+
+
+def test_start_readiness_or_floors(client):
+    """Recommended when 7 days OR 5 trades; never a create gate."""
+    iid = _member("zztest-retro-ready@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        created = client.post(
+            "/api/me/retrospectives",
+            cookies=cookies,
+            json={"gather": True},
+        )
+        assert created.status_code == 200
+        rid = created.json()["id"]
+        done = client.post(
+            f"/api/me/retrospectives/{rid}/complete",
+            cookies=cookies,
+        )
+        assert done.status_code == 200
+
+        # 5 fills strictly after complete, still inside "now" → trades floor
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """UPDATE member_retrospectives
+                       SET completed_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 2 MINUTE)
+                       WHERE id = %s AND identity_id = %s""",
+                    (rid, iid),
+                )
+                cur.execute(
+                    """SELECT id FROM member_trade_log_accounts
+                       WHERE identity_id = %s ORDER BY id LIMIT 1""",
+                    (iid,),
+                )
+                row = cur.fetchone()
+                if row:
+                    aid = int(row["id"])
+                else:
+                    cur.execute(
+                        """INSERT INTO member_trade_log_accounts
+                             (identity_id, label, broker, status, sort_order)
+                           VALUES (%s, 'Primary', 'unset', 'active', 0)""",
+                        (iid,),
+                    )
+                    aid = int(cur.lastrowid)
+                for i in range(5):
+                    cur.execute(
+                        """INSERT INTO member_trade_log_trades
+                             (identity_id, account_id, exec_at, strategy,
+                              setup_md, plan_md, rules_md, adherence,
+                              deviation_md, lesson_md, pnl_amount)
+                           VALUES (
+                             %s, %s,
+                             DATE_SUB(UTC_TIMESTAMP(), INTERVAL %s SECOND),
+                             'zztest', '', '', '', 'followed', '', '', 1.0
+                           )""",
+                        (iid, aid, i),
+                    )
+        prev = client.get("/api/me/retrospectives/preview-scope", cookies=cookies)
+        body = prev.json()
+        r = body["readiness"]
+        assert r["recommended"] is True
+        assert r["meets_trades"] is True
+        assert r["trades"] >= 5
+        assert r["notice"] is None
+
+        # Wipe fills; backdate complete 8 days → days floor
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM member_trade_log_trades WHERE identity_id = %s",
+                    (iid,),
+                )
+                cur.execute(
+                    """UPDATE member_retrospectives
+                       SET completed_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL 8 DAY)
+                       WHERE id = %s AND identity_id = %s""",
+                    (rid, iid),
+                )
+        prev_d = client.get("/api/me/retrospectives/preview-scope", cookies=cookies)
+        rdn = prev_d.json()["readiness"]
+        assert rdn["recommended"] is True
+        assert rdn["meets_days"] is True
+        assert rdn["days"] >= 7
+        assert rdn["trades"] == 0
+        assert rdn["notice"] is None
+    finally:
+        _cleanup(iid)
+
+
+def test_cadence_history_averages_exclude_maiden(client):
+    """Maiden is stated separately; cadence avg uses later completed cycles only."""
+    iid = _member("zztest-retro-hist@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        prev0 = client.get("/api/me/retrospectives/preview-scope", cookies=cookies)
+        h0 = prev0.json().get("history") or {}
+        assert h0.get("period_count") == 0
+        assert h0.get("avg_days") is None
+        assert h0.get("summary") is None
+
+        created = client.post(
+            "/api/me/retrospectives",
+            cookies=cookies,
+            json={"gather": True},
+        )
+        assert created.status_code == 200
+        maiden_id = created.json()["id"]
+        assert client.post(
+            f"/api/me/retrospectives/{maiden_id}/complete",
+            cookies=cookies,
+        ).status_code == 200
+
+        prev_m = client.get("/api/me/retrospectives/preview-scope", cookies=cookies)
+        hm = prev_m.json()["history"]
+        assert hm["period_count"] == 0
+        assert hm["maiden_days"] is not None
+        assert hm["maiden_trades"] is not None
+        assert hm["summary"]
+        assert "first review" in hm["summary"]
+        assert "average" in hm["summary"].lower()
+
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO member_retrospectives
+                         (identity_id, status, is_maiden, scope_start, scope_end,
+                          title, body_md, report_json, completed_at)
+                       VALUES
+                         (%s, 'complete', 0,
+                          DATE_SUB(UTC_TIMESTAMP(), INTERVAL 14 DAY),
+                          DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY),
+                          'Cycle A', '',
+                          %s,
+                          DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY)),
+                         (%s, 'complete', 0,
+                          DATE_SUB(UTC_TIMESTAMP(), INTERVAL 7 DAY),
+                          UTC_TIMESTAMP(),
+                          'Cycle B', '',
+                          %s,
+                          UTC_TIMESTAMP())""",
+                    (
+                        iid,
+                        '{"meta":{"trade_count":10},"book_performance":{"trade_count":10}}',
+                        iid,
+                        '{"meta":{"trade_count":4},"book_performance":{"trade_count":4}}',
+                    ),
+                )
+
+        prev = client.get("/api/me/retrospectives/preview-scope", cookies=cookies)
+        h = prev.json()["history"]
+        assert h["period_count"] == 2
+        assert h["avg_days"] == 7
+        assert h["avg_trades"] == 7
+        assert h["last_days"] == 7
+        assert h["last_trades"] == 4
+        assert "averaged" in h["summary"]
+        assert "2 reviews" in h["summary"]
+        # Maiden still reported, not folded into avg
+        assert h["maiden_days"] is not None
     finally:
         _cleanup(iid)
 

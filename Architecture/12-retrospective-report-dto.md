@@ -44,6 +44,28 @@ missing sections use honest empty arrays / `null` — never invent scores.
 
 **Render order (UI):** Spec §6 — carry-forward → process → integrity → deviations → what worked → expected vs actual → **book last (collapsed)** → body → agent.
 
+### 1.1 `GET /api/me/retrospectives/preview-scope` — start readiness (DL-322)
+
+In addition to scope dates / maiden label, the payload includes `readiness`:
+
+| Field | Notes |
+|-------|--------|
+| `recommended` | `true` when `days >= 7` **or** `trades >= 5` |
+| `overridable` | Always `true` — never a create gate |
+| `days` / `trades` | Elapsed calendar days; identity-wide fills in the prospective window |
+| `min_days` / `min_trades` | Product floors **7** / **5** |
+| `notice` | Tango copy when not recommended; else `null` |
+
+Also `history` (DL-323) — derived cadence from completed non-maiden retros:
+
+| Field | Notes |
+|-------|--------|
+| `period_count` | Completed non-maiden reviews |
+| `avg_days` / `avg_trades` | Means; `null` until one non-maiden complete |
+| `last_days` / `last_trades` | Most recent non-maiden cycle |
+| `maiden_days` / `maiden_trades` | First review span, excluded from the average |
+| `summary` | Fact sentence for chrome; `null` when no completes |
+
 ---
 
 ## 2. `report` object — target version **0.5**

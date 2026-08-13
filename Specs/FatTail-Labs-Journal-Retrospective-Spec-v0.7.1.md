@@ -135,6 +135,43 @@ indicator, no completeness score.
 Completing a retrospective **closes the journal dates it reviewed** (Journal Session §7). That is
 the audit: the record a review examined cannot be revised afterward.
 
+### 5.1 Start readiness — minimum days or trades (Coach 2026-08-13)
+
+A retrospective is **recommended** when the prospective window (same bounds as §5) has:
+
+- at least **7 calendar days** since `scope_start`, **or**
+- at least **5 trades** (`exec_at` in that window; same half-open rule as gather).
+
+These are **minimums**. Anything over either floor is enough — start the review. Under both floors,
+the library and the start confirm show a **gentle notice** naming the days and trades in hand and
+the recommended floors. The member may **override** and start anyway. Create and gather **must not**
+403 or 409 on a thin window.
+
+This is not cadence (§4) and it does not change Option C. Cadence still says how often to review;
+this only says when there is enough material to make the ceremony worth walking. Trader-selected
+floors (cadence as the day minimum; a chosen trade floor) may replace the 7 / 5 constants later —
+until then the constants are product law.
+
+Copy is invitational, never shame. “This period is still thin” / “Start anyway” — not “too early”
+or “not enough to deserve a review.”
+
+### 5.2 Historical cadence — facts from completed reviews (Coach 2026-08-13)
+
+The start surface also shows the trader’s **own completed-review averages**: mean calendar days
+and mean trade count across **non-maiden** completed retrospectives.
+
+- **Derived on read** from `member_retrospectives` (scope + stamped `report` trade count). No
+  second progress store.
+- **Maiden is excluded** from the average. A first look-back is a baseline, often months long —
+  folding it in would make “your usual cadence” a lie. Maiden span is stated separately until a
+  second review exists.
+- **One completed cycle:** “Your last review was N days and M trades.”
+- **Two or more:** “Your past reviews averaged N days and M trades (K reviews).”
+- Fact only. Never “you are behind your usual,” never a due date, never a new start gate.
+  Averages do not change the §5.1 floors.
+
+*Gate: **Tango**, **India**.*
+
 ---
 
 ## 6. The ceremony — fixed sequence
@@ -590,6 +627,12 @@ book performance is last and collapsed by default.
 not alter adherence for periods already elapsed. A missed period produces the §9 notice naming the
 actual span.
 
+**Start readiness** — Preview reports days and trades in the next window. Recommended when days ≥ 7
+or trades ≥ 5. Below both, notice is present and overridable; create still succeeds.
+
+**Historical cadence** — Preview `history` averages exclude maiden. One cycle states last review
+facts; two or more state the mean and count. No start gate from the average.
+
 **Indicator** — Uses Journey meters; no second score exists. Below the inference threshold it
 declines to grade. "Steady" is reachable and renders on an unchanged period. Grep copy: no string
 attributes a state or a trait to the person.
@@ -689,3 +732,5 @@ version.
 | 2026-07-30 | v0.7 DRAFT — ceremony frame |
 | 2026-07-30 | **v0.7.1** — evaluation + cross-review locks; build order §18 |
 | 2026-07-30 | **BUILD AUTHORITY** Coach GO · DL-163 · board p-retrospective-v07 · §20 locks 1–3,5,9–11 |
+| 2026-08-13 | **§5.1 start readiness** — recommend at 7 days or 5 trades; thin window is a gentle overridable notice, never a create gate. DL-322. |
+| 2026-08-13 | **§5.2 historical cadence** — derived avg days + avg trades from completed non-maiden retros; fact only. DL-323. |

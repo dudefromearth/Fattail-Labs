@@ -4,6 +4,35 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-13 — DL-323 Retrospective historical cadence (avg days / trades)
+
+**Decision:** Preview and start chrome show the trader’s **own** completed-review averages:
+mean calendar days and mean trade count. Derived on read from completed
+`member_retrospectives` (scope span + stamped report trade count). **Maiden excluded** from
+the average (baseline, not a cadence cycle). Fact copy only — never a gate, never “behind
+your usual.”
+
+**As-built:** `build_cadence_history` on `GET /api/me/retrospectives/preview-scope` as
+`history`. Library banner + start confirms.
+
+**Spec:** Journal Retrospective **v0.7.1 §5.2**.
+
+## 2026-08-13 — DL-322 Retrospective start readiness (7 days or 5 trades)
+
+**Decision:** Starting a retrospective is **recommended** when the next window has at least
+**7 calendar days** since `scope_start` **or** **5 trades** in that window. Below both floors,
+show a **gentle, overridable** notice. Create/gather stay allowed.
+
+**Not changed:** Option C (activity between last `scope_end` and `completed_at` stays unowned).
+Cadence (`retro_cadence_days`) still owns “how often,” not this material floor. Trader-selected
+floors may replace the 7 / 5 constants later.
+
+**As-built:** `build_start_readiness` on `GET /api/me/retrospectives/preview-scope` as
+`readiness`. Library banner + start confirm (“Start anyway”). Journal create path uses the
+same guard.
+
+**Spec:** Journal Retrospective **v0.7.1 §5.1**.
+
 ## 2026-08-13 — DL-321 Apps hub card highlight toggle
 
 **Decision:** Each `/app` card has an **admin-only** iOS switch. On → persist

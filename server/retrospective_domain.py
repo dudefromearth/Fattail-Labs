@@ -57,6 +57,11 @@ CARRY_FORWARD_EMPTY_MSG = (
 REPORT_VERSION_ASBUILT = "0.2"
 REPORT_VERSION_TARGET = "0.5"
 
+# Coach 2026-08-13 — start readiness (gentle, overridable). Not Option C.
+# Recommended when elapsed calendar days ≥ 7 OR trades in the next window ≥ 5.
+START_READY_MIN_DAYS = 7
+START_READY_MIN_TRADES = 5
+
 SAMPLE_BANNER = (
     "This is a small sample. It describes what happened; "
     "it does not measure process quality."
@@ -628,6 +633,267 @@ def resolve_scope(
         "scope_end": now_n,
         "prior_id": None,
         "prior_completed_at": None,
+    }
+
+
+def elapsed_calendar_days(scope_start: datetime, scope_end: datetime) -> int:
+    """Whole calendar days from start date to end date (same day = 0)."""
+    d0 = _as_naive_utc(scope_start).date()
+    d1 = _as_naive_utc(scope_end).date()
+    return max(0, (d1 - d0).days)
+
+
+def count_trades_in_scope(
+    cur,
+    identity_id: int,
+    scope_start: datetime,
+    scope_end: datetime,
+    *,
+    is_maiden: bool,
+) -> int:
+    """Identity-wide fills in the prospective window (same half-open as gather)."""
+    start = _as_naive_utc(scope_start)
+    end = _as_naive_utc(scope_end)
+    op = ">=" if is_maiden else ">"
+    cur.execute(
+        f"""SELECT COUNT(*) AS n FROM member_trade_log_trades
+            WHERE identity_id = %s
+              AND exec_at {op} %s AND exec_at <= %s""",
+        (int(identity_id), start, end),
+    )
+    row = cur.fetchone() or {}
+    return int(row.get("n") or 0)
+
+
+def start_readiness_notice(
+    *,
+    days: int,
+    trades: int,
+    min_days: int = START_READY_MIN_DAYS,
+    min_trades: int = START_READY_MIN_TRADES,
+    is_maiden: bool = False,
+) -> str:
+    """Tango — stated, not scolded. Override is always allowed."""
+    day_word = "day" if days == 1 else "days"
+    trade_word = "trade" if trades == 1 else "trades"
+    min_day_word = "day" if min_days == 1 else "days"
+    min_trade_word = "trade" if min_trades == 1 else "trades"
+    if is_maiden:
+        return (
+            f"A recommended retrospective has at least {min_days} {min_day_word} "
+            f"or {min_trades} {min_trade_word} of practice. This look-back has "
+            f"{days} {day_word} and {trades} {trade_word}. You can start anyway "
+            f"— a first review is still valid."
+        )
+    return (
+        f"A recommended retrospective has at least {min_days} {min_day_word} "
+        f"or {min_trades} {min_trade_word} since the last review. This window "
+        f"has {days} {day_word} and {trades} {trade_word}. You can start anyway "
+        f"if this is the look-back you want."
+    )
+
+
+def build_start_readiness(
+    cur,
+    identity_id: int,
+    scope: dict[str, Any],
+    *,
+    now: datetime | None = None,
+    min_days: int = START_READY_MIN_DAYS,
+    min_trades: int = START_READY_MIN_TRADES,
+) -> dict[str, Any]:
+    """Gentle start floors — never a create gate (Coach 2026-08-13).
+
+    Recommended when ``days >= min_days`` OR ``trades >= min_trades``.
+    Create/gather stay allowed when recommended is false.
+    """
+    end = _as_naive_utc(now or scope.get("scope_end") or datetime.now(timezone.utc))
+    start = scope["scope_start"]
+    is_maiden = bool(scope.get("is_maiden"))
+    days = elapsed_calendar_days(start, end)
+    trades = count_trades_in_scope(
+        cur,
+        identity_id,
+        start,
+        end,
+        is_maiden=is_maiden,
+    )
+    days_n = max(1, int(min_days))
+    trades_n = max(1, int(min_trades))
+    meets_days = days >= days_n
+    meets_trades = trades >= trades_n
+    recommended = meets_days or meets_trades
+    return {
+        "recommended": recommended,
+        "overridable": True,
+        "days": days,
+        "trades": trades,
+        "min_days": days_n,
+        "min_trades": trades_n,
+        "meets_days": meets_days,
+        "meets_trades": meets_trades,
+        "notice": (
+            None
+            if recommended
+            else start_readiness_notice(
+                days=days,
+                trades=trades,
+                min_days=days_n,
+                min_trades=trades_n,
+                is_maiden=is_maiden,
+            )
+        ),
+    }
+
+
+def _report_trade_count(report: Any) -> int | None:
+    if not isinstance(report, dict):
+        return None
+    meta = report.get("meta") if isinstance(report.get("meta"), dict) else {}
+    book = report.get("book_performance") if isinstance(
+        report.get("book_performance"), dict
+    ) else {}
+    for src in (meta, book, report):
+        if not isinstance(src, dict):
+            continue
+        raw = src.get("trade_count")
+        if raw is None:
+            continue
+        try:
+            return max(0, int(raw))
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _parse_report_json(raw: Any) -> dict | None:
+    if raw is None:
+        return None
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8")
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    return None
+
+
+def _fmt_avg_number(value: float | int) -> str:
+    n = float(value)
+    if abs(n - round(n)) < 1e-9:
+        return str(int(round(n)))
+    return f"{n:.1f}"
+
+
+def cadence_history_summary(
+    *,
+    period_count: int,
+    avg_days: float | int | None,
+    avg_trades: float | int | None,
+    maiden_days: int | None = None,
+    maiden_trades: int | None = None,
+) -> str | None:
+    """Tango — fact only. Never 'behind your usual' / due-date language."""
+    if period_count >= 2 and avg_days is not None and avg_trades is not None:
+        return (
+            f"Your past reviews averaged {_fmt_avg_number(avg_days)} days and "
+            f"{_fmt_avg_number(avg_trades)} trades ({period_count} reviews)."
+        )
+    if period_count == 1 and avg_days is not None and avg_trades is not None:
+        day_word = "day" if float(avg_days) == 1 else "days"
+        trade_word = "trade" if float(avg_trades) == 1 else "trades"
+        return (
+            f"Your last review was {_fmt_avg_number(avg_days)} {day_word} and "
+            f"{_fmt_avg_number(avg_trades)} {trade_word}."
+        )
+    if maiden_days is not None and maiden_trades is not None:
+        day_word = "day" if maiden_days == 1 else "days"
+        trade_word = "trade" if maiden_trades == 1 else "trades"
+        return (
+            f"Your first review covered {maiden_days} {day_word} and "
+            f"{maiden_trades} {trade_word}. An average starts after the next "
+            f"completed review."
+        )
+    return None
+
+
+def build_cadence_history(cur, identity_id: int) -> dict[str, Any]:
+    """Derived historical cadence — completed retros only. No second store.
+
+    Maiden is reported separately: a long first look-back is not a cadence cycle.
+    """
+    cur.execute(
+        """SELECT id, is_maiden, scope_start, scope_end, report_json
+           FROM member_retrospectives
+           WHERE identity_id = %s
+             AND status = 'complete'
+             AND completed_at IS NOT NULL
+           ORDER BY completed_at ASC, id ASC""",
+        (int(identity_id),),
+    )
+    rows = cur.fetchall() or []
+
+    cadence_days: list[int] = []
+    cadence_trades: list[int] = []
+    maiden_days: int | None = None
+    maiden_trades: int | None = None
+
+    for row in rows:
+        start = row.get("scope_start")
+        end = row.get("scope_end")
+        if start is None or end is None:
+            continue
+        days = elapsed_calendar_days(start, end)
+        report = _parse_report_json(row.get("report_json"))
+        trades = _report_trade_count(report)
+        if trades is None:
+            trades = count_trades_in_scope(
+                cur,
+                identity_id,
+                start,
+                end,
+                is_maiden=bool(row.get("is_maiden")),
+            )
+        if bool(row.get("is_maiden")):
+            maiden_days = days
+            maiden_trades = trades
+            continue
+        cadence_days.append(days)
+        cadence_trades.append(trades)
+
+    n = len(cadence_days)
+    avg_days: float | int | None = None
+    avg_trades: float | int | None = None
+    if n:
+        d_mean = sum(cadence_days) / n
+        t_mean = sum(cadence_trades) / n
+        avg_days = int(round(d_mean)) if abs(d_mean - round(d_mean)) < 1e-9 else round(d_mean, 1)
+        avg_trades = (
+            int(round(t_mean)) if abs(t_mean - round(t_mean)) < 1e-9 else round(t_mean, 1)
+        )
+
+    last_days = cadence_days[-1] if cadence_days else None
+    last_trades = cadence_trades[-1] if cadence_trades else None
+    summary = cadence_history_summary(
+        period_count=n,
+        avg_days=avg_days,
+        avg_trades=avg_trades,
+        maiden_days=maiden_days,
+        maiden_trades=maiden_trades,
+    )
+    return {
+        "period_count": n,
+        "avg_days": avg_days,
+        "avg_trades": avg_trades,
+        "last_days": last_days,
+        "last_trades": last_trades,
+        "maiden_days": maiden_days,
+        "maiden_trades": maiden_trades,
+        "summary": summary,
     }
 
 

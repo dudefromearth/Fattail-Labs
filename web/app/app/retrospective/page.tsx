@@ -196,6 +196,41 @@ export default function RetrospectivePage() {
                   {" — "}
                   journal and trades in this window are included.
                 </p>
+                {scope.readiness && (
+                  <p
+                    className="mt-2 text-sm text-[var(--color-label-secondary)]"
+                    data-testid="retro-scope-readiness"
+                    data-recommended={
+                      scope.readiness.recommended ? "1" : "0"
+                    }
+                  >
+                    This window: {scope.readiness.days} day
+                    {scope.readiness.days === 1 ? "" : "s"} ·{" "}
+                    {scope.readiness.trades} trade
+                    {scope.readiness.trades === 1 ? "" : "s"}
+                    {" — "}
+                    recommended at {scope.readiness.min_days} days or{" "}
+                    {scope.readiness.min_trades} trades.
+                  </p>
+                )}
+                {scope.history?.summary && (
+                  <p
+                    className="mt-2 text-sm text-[var(--color-label-secondary)]"
+                    data-testid="retro-scope-history"
+                    data-period-count={String(scope.history.period_count)}
+                  >
+                    {scope.history.summary}
+                  </p>
+                )}
+                {scope.readiness && !scope.readiness.recommended && (
+                  <p
+                    className="mt-2 text-sm text-[var(--color-label)]"
+                    data-testid="retro-scope-thin-notice"
+                  >
+                    {scope.readiness.notice ||
+                      "This period is still thin. You can start anyway."}
+                  </p>
+                )}
                 <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
                   Once you complete the retrospective, those journal dates
                   close — you will not be able to modify those journal entries

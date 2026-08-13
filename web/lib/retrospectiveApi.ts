@@ -1,5 +1,28 @@
 /** Client for /api/me/retrospectives + habit-plans (Spec v0.5 R4). */
 
+export type RetroStartReadiness = {
+  recommended: boolean;
+  overridable: boolean;
+  days: number;
+  trades: number;
+  min_days: number;
+  min_trades: number;
+  meets_days: boolean;
+  meets_trades: boolean;
+  notice: string | null;
+};
+
+export type RetroCadenceHistory = {
+  period_count: number;
+  avg_days: number | null;
+  avg_trades: number | null;
+  last_days: number | null;
+  last_trades: number | null;
+  maiden_days: number | null;
+  maiden_trades: number | null;
+  summary: string | null;
+};
+
 export type RetroScopePreview = {
   is_maiden: boolean;
   scope_start: string;
@@ -7,6 +30,10 @@ export type RetroScopePreview = {
   prior_id: number | null;
   prior_completed_at: string | null;
   label: string;
+  /** Gentle 7-day / 5-trade floors — never a create gate. */
+  readiness?: RetroStartReadiness | null;
+  /** Derived from completed retros — maiden excluded from the average. */
+  history?: RetroCadenceHistory | null;
 };
 
 export type Retrospective = {

@@ -50,6 +50,8 @@ def preview_scope(request: Request) -> dict:
             iid = _storage_identity_id(cur, claims)
             _require_create_or_gather(cur, claims, iid)
             scope = rd.resolve_scope(cur, iid, now=_now())
+            readiness = rd.build_start_readiness(cur, iid, scope, now=_now())
+            history = rd.build_cadence_history(cur, iid)
     return {
         "is_maiden": scope["is_maiden"],
         "scope_start": rd._iso(scope["scope_start"]),
@@ -61,6 +63,8 @@ def preview_scope(request: Request) -> dict:
             if scope["is_maiden"]
             else "Since your last completed retrospective"
         ),
+        "readiness": readiness,
+        "history": history,
     }
 
 
