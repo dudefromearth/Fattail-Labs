@@ -4,6 +4,27 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-13 — DL-313 Reports starting capital is read-only from the account
+
+**Bug (member ticket, ricaraus@gmail.com):** Reports showed a $50,000 balance vs the
+member's real ~$40,806 starting capital. **Root cause:** Reports had an *editable*
+"Starting capital" field that wrote a **browser-only localStorage override** — a shadow
+value that disagreed with the account's real `starting_balance` (which was unset → the
+$50k placeholder). That violated **Accounts & Capital Spec V16** (starting balance edited
+**only** on Accounts & Capital — sole write path, Capital C9) and **V2** ("nothing typed
+into the view"). The correct fix is the *opposite* of making Reports write the account
+(that would be the forbidden "parallel write chrome"): make Reports **read-only**.
+
+**Decision:** Reports "Starting capital" is now read-only, sourced from the account's
+`starting_balance` (`resolveReportsStartingCapital`); the localStorage override is removed
+from Reports. When unset, it shows the $50k **placeholder** (unchanged intent) plus a "set
+in Accounts & Capital" link. `StatsTable.onCapital` is now **optional**, so Retrospective +
+Strategy Lab keep their intentional editable what-if unchanged (the override helpers remain
+for them). Frontend-only, no migration/API; full typecheck clean; both states verified
+in-browser. Members set their real starting balance on Accounts & Capital and Reports
+reflects it — one source of truth. *(Retrospective shares the same rogue-override pattern;
+left for a follow-up. Strategy Lab's editable capital is a legitimate simulation.)*
+
 ## 2026-08-12 — DL-312 Consolidate to one Observer tier (fix Observer tool access)
 
 **Bug (member ticket, radams@pme360.com):** Observer members couldn't add Journal / Trade

@@ -450,12 +450,34 @@ export function resolveReportsStartingCapital(
   return defaultCap;
 }
 
+/**
+ * True when the relevant account book(s) actually have a starting balance set —
+ * i.e. Reports is showing the member's real capital, not the $50k placeholder.
+ * Mirrors resolveReportsStartingCapital's scoping. Starting balance is edited only
+ * on Accounts & Capital (Capital Spec C9 / Accounts & Capital Spec V16 — sole write
+ * path); Reports reads it, never writes it.
+ */
+export function reportsStartingCapitalConfigured(
+  accounts: Account[],
+  accountId: number | "all" | null | undefined,
+): boolean {
+  const isSet = (a?: Account) =>
+    a?.starting_balance != null &&
+    Number.isFinite(Number(a.starting_balance)) &&
+    Number(a.starting_balance) > 0;
+  if (accountId != null && accountId !== "all") {
+    return isSet(accounts.find((x) => x.id === accountId));
+  }
+  return accounts.some((a) => a.status === "active" && isSet(a));
+}
+
 function capitalOverrideKey(accountId: number | "all" | null | undefined): string {
   if (accountId == null || accountId === "all") return `${CAPITAL_OVERRIDE_PREFIX}all`;
   return `${CAPITAL_OVERRIDE_PREFIX}${accountId}`;
 }
 
-/** Optional per-account what-if override; null = use account starting_balance. */
+/** Per-scope what-if capital override (Retrospective / Strategy Lab simulations).
+ * NOT used by Reports, which is read-only from the account starting balance. */
 export function loadStartingCapitalOverride(
   accountId: number | "all" | null | undefined,
 ): number | null {

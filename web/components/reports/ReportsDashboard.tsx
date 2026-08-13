@@ -9,10 +9,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  loadStartingCapitalOverride,
   reportsBookFromServer,
+  reportsStartingCapitalConfigured,
   resolveReportsStartingCapital,
-  saveStartingCapitalOverride,
   type ReportsBook,
 } from "@/lib/reportsBook";
 import { fetchReportsBook } from "@/lib/tradeLogApi";
@@ -82,13 +81,14 @@ export default function ReportsDashboard() {
   /** Avoid looping if all-time is also empty. */
   const [emptyPeriodRecovered, setEmptyPeriodRecovered] = useState(false);
 
-  // B1 — starting capital from account starting_balance (per-scope override optional)
+  // Starting capital is read-only here: the account's starting_balance from
+  // Accounts & Capital (the sole capital write path — Capital C9 / A&C Spec V16).
+  // Reports never writes it; unset falls back to the $50k placeholder.
   useEffect(() => {
     if (!prefsReady) return;
-    const base = resolveReportsStartingCapital(accounts, accountId);
-    const ov = loadStartingCapitalOverride(accountId);
-    setCapital(ov ?? base);
+    setCapital(resolveReportsStartingCapital(accounts, accountId));
   }, [prefsReady, accountId, accounts]);
+  const capitalConfigured = reportsStartingCapitalConfigured(accounts, accountId);
 
   // New account/campaign scope → allow empty-period recover again
   useEffect(() => {
@@ -186,11 +186,6 @@ export default function ReportsDashboard() {
     void loadBook();
   }, [loadBook]);
 
-  function onCapital(n: number) {
-    setCapital(n);
-    saveStartingCapitalOverride(accountId, n);
-  }
-
   if (state === "loading" && !book) {
     return (
       <p className="mt-8 text-sm text-[var(--color-label-tertiary)]">
@@ -281,7 +276,7 @@ export default function ReportsDashboard() {
         <StatsTable
           stats={book.stats}
           startingCapital={capital}
-          onCapital={onCapital}
+          capitalConfigured={capitalConfigured}
         />
 
         <div className="flex min-h-0 min-w-0 flex-col gap-4">
