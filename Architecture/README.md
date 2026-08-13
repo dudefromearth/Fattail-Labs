@@ -30,6 +30,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [28-massive-market-bus.md](./28-massive-market-bus.md) | **Market Bus:** Massive → feeds → Redis → one WS/tab → shared client (Options Lab, scale) |
 | [29-options-lab-heatmap-templates.md](./29-options-lab-heatmap-templates.md) | **Options Lab Heatmap:** chain template framework (flies, verticals, GEX) over one live model |
 | [30-options-pricing-foundation.md](./30-options-pricing-foundation.md) | **Options Pricing Foundation (design):** multi-exp data plane + use-case model packs · apps wire later |
+| [31-structure-surface-replay.md](./31-structure-surface-replay.md) | **SSR (thesis):** 3D package-surface backtest / forward-walk · one day first · MC distributions |
 | [19-strategy-lab-as-built-map.md](./19-strategy-lab-as-built-map.md) | Code/spec/route map for Curate/Deploy as-built |
 | [20-strategy-lab-curate-board-performance.md](./20-strategy-lab-curate-board-performance.md) | Multi-bot Curate board performance/stability (DL-231) |
 | [21-visualize-ai.md](./21-visualize-ai.md) | Visualize AI system architecture (pre-impl · DL-236) |
@@ -46,6 +47,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Arch **28** | Massive → feed → Redis → API → one WebSocket → shared client · **§4.4 live underlier mids UI standard** |
 | Arch **29** | **Heatmap templates** (design): flies / verticals / GEX over one chain model · diff once · many views |
 | Arch **30** | **Options Pricing Foundation** (design): L0–L4 data plane + day/outlook/backtest packs · foundation before app wiring |
+| Arch **31** | **SSR thesis:** package-surface replay · MC distributions · one day first · Spec `FatTail-Labs-Structure-Surface-Replay-Spec-v0_1.md` |
 | Spec **OPF v0.2.1** | `Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` — normative law (OPF1–33); v0.1 superseded |
 | Bench **OPF** | `docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-pricing-foundation/` |
 | Spec **Position Builder/Book v0.3** | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md` — VIEW-7 + B5; v0.2 SUPERSEDED; **DL-306** |

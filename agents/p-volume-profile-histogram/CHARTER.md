@@ -39,5 +39,5 @@
 ## Status
 
 **W0 GO complete (2026-08-12)** — Spec v0.4 + Plan rev v1.1.1.  
-Campaign may proceed on Coach authority; **bin writes** require P2-3 + C-0.  
+**2026-08-13:** campaign on `/Volumes/sabrant2tb`; A/D/E-1 code landed; **bin writes** still require P2-3 + C-0.  
 Gates: `gate-reports/W0-0-coach-go.md` · `W0-G.md`.

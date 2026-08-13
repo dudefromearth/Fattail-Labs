@@ -231,19 +231,12 @@ function BinsHost({
       style={{ backgroundColor: bg, color: textColor, fontSize: fontPx }}
     >
       <div className="flex shrink-0 flex-wrap gap-3 border-b border-white/10 px-3 py-1.5 text-[11px] opacity-80">
-        <span>
-          Bins only · {windowBars.length} bars · no candles
+        <span data-testid="volume-profile-interim-label">
+          From OHLC window — not measured tick VP
         </span>
-        {profile.poc != null && (
-          <span data-testid="volume-profile-poc">
-            POC {profile.poc.toFixed(2)}
-          </span>
-        )}
-        {profile.val != null && profile.vah != null && (
-          <span>
-            VA {profile.val.toFixed(2)}–{profile.vah.toFixed(2)}
-          </span>
-        )}
+        <span>
+          {windowBars.length} bars · estimate only · no candles
+        </span>
         {liveMid != null && (
           <span className="text-amber-300">Live {liveMid.toFixed(2)}</span>
         )}
@@ -252,15 +245,6 @@ function BinsHost({
         <div className="flex h-full flex-col-reverse justify-between gap-px">
           {profile.bins.map((bin, i) => {
             const w = (bin.volume / maxVol) * 100;
-            const isPoc =
-              profile.poc != null &&
-              Math.abs(bin.mid - profile.poc) <
-                (profile.priceMax - profile.priceMin) / profile.bins.length;
-            const inVa =
-              profile.val != null &&
-              profile.vah != null &&
-              bin.mid >= profile.val &&
-              bin.mid <= profile.vah;
             const nearLive =
               liveMid != null &&
               liveMid >= bin.low &&
@@ -279,11 +263,7 @@ function BinsHost({
                     className="h-full rounded-sm"
                     style={{
                       width: `${Math.max(w, 0.5)}%`,
-                      backgroundColor: isPoc
-                        ? "rgba(251, 191, 36, 0.85)"
-                        : inVa
-                          ? "rgba(56, 189, 248, 0.55)"
-                          : "rgba(148, 163, 184, 0.35)",
+                      backgroundColor: "rgba(148, 163, 184, 0.45)",
                       outline: nearLive
                         ? "1px solid rgba(251,191,36,0.9)"
                         : undefined,
@@ -454,7 +434,7 @@ export default function VolumeProfileChart() {
       <div className="mx-auto w-full max-w-5xl shrink-0 space-y-2 px-3 sm:px-4">
         <div className="flex flex-wrap items-center gap-2">
           <Segmented
-            label="Bar period (bins from OHLC window)"
+            label="Bar period (OHLC estimate — not tick measurement)"
             value={tf}
             options={OHL_C_TIMEFRAMES}
             onChange={setTf}
@@ -476,7 +456,7 @@ export default function VolumeProfileChart() {
                         liveTransport === "stream" ? "" : ` (${liveTransport})`
                       }`
                     : " · live mid —"
-                }${liveAsOf ? " · tip refresh on" : ""} · bins only`
+                }${liveAsOf ? " · tip refresh on" : ""} · OHLC estimate`
               : loading
                 ? "Loading…"
                 : ""}

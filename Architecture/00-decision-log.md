@@ -52,6 +52,44 @@ and `provider_plan_map` FK-reference `plans`, and no code assigns the `observer`
 
 ---
 
+## 2026-08-13 — DL-318 Structure Surface Replay thesis land (not GO)
+
+**Decision:** Land Coach’s locked **Structure Surface Replay (SSR)** method as **DRAFT / THESIS** (not BUILD AUTHORITY).
+
+| Artifact | Path |
+|----------|------|
+| Spec v0.1 | `Specs/FatTail-Labs-Structure-Surface-Replay-Spec-v0_1.md` |
+| Architecture | `Architecture/31-structure-surface-replay.md` |
+
+**Method (Coach lock):** freeze listed legs; precompute \(V(S,\tau;\sigma_i)\) (ISO/RISK sheet); walk the tape on that sheet; touch ≠ fill; seeded Monte Carlo; **distribution + shape** is SoR. Vol rebuild is milliseconds (per-leg). Adaptive refresh near exit contours.
+
+**Sequence (binding):** **one RTH day first** → examine the MC distribution → **several different days** → learn/refine **dial ranges**. Forward walk = **same engine**, holdout days, **after** that sequence. Not a year job first. Not stub metrics as measurement.
+
+**Does not:** authorize `server/ssr/` code, pack registry mutation, stub deletion, or production VP bins (P2-3 still OPEN).
+
+**Rationale:** Coach asked for the method written as Spec + Arch so the bench can execute Slice 0 without another chat reconstruction.
+
+---
+
+## 2026-08-13 — DL-317 VP campaign host + plane APIs (no production bins)
+
+**Decision:** RAW campaign target is **`/Volumes/sabrant2tb/fattail-market-data`** while `/Volumes/Pod 1` remains unwritable from the agent shell (TCC execute-only). Local staging `/Users/ernie/data/fattail-market-data` is **kept** as backup.
+
+**Plane code landed (not a bin GO):**
+
+- `LABS_MARKET_DATA_MOUNTS` fail-loud per mount (VP17) + `LABS_VP_MAX_N_BINS`
+- Parquet kind schemas; Strategy Lab raw-day read contract
+- Member `GET /api/me/market/volume-profile` returns named **WAITING** (not measured)
+- Admin mounts / raw status; HTTP **must not** start a pull (409)
+- VIX/VIX1D quarantine (422); SPX/XSP → SPY labels (`price_space=series`)
+- Interim chart labeled **not measured tick VP**; no POC/VA chrome (VP3 / E-1)
+
+**P2-3 still OPEN:** SPY 2024-06-03 all-prints vs Massive daily **+9.30%**. No `vp_bins_v3` production write.
+
+**Rationale:** Continue estate collection and honesty surfaces without implying measurement SoR.
+
+---
+
 ## 2026-08-12 — DL-312 Volume Profile Histogram Spec v0.3 + dual-store plan (process restore)
 
 **Decision:** Restore formal Spec + implementation plan for the multi-year **Volume Profile / market data dual store** before any production-scale download. Prior chart + Spec v0.1/v0.2 work did **not** complete review → plan → Coach GO for the data plane.

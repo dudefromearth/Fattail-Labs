@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Full-estate RAW market data campaign (VP Spec v0.4 · VP21).
 
-Writes Parquet day partitions under LABS_MARKET_DATA_ROOT (or default local
-staging when Pod mounts are TCC-blocked from the agent host).
+Writes Parquet day partitions under LABS_MARKET_DATA_ROOT
+(default: /Volumes/sabrant2tb/fattail-market-data).
 
   .venv/bin/python -m market_data.raw_campaign --help
   .venv/bin/python -m market_data.raw_campaign --all
@@ -60,8 +60,7 @@ def market_data_root() -> Path:
     raw = (os.environ.get("LABS_MARKET_DATA_ROOT") or "").strip()
     if raw:
         return Path(raw).expanduser().resolve()
-    # Staging when Blackmagic Pod is not writable from this process (macOS TCC)
-    return Path("/Users/ernie/data/fattail-market-data").resolve()
+    return Path("/Volumes/sabrant2tb/fattail-market-data").resolve()
 
 
 def is_weekday(d: date) -> bool:
@@ -91,18 +90,23 @@ def day_paths(root: Path, series: str, kind: str, day: date) -> tuple[Path, Path
     return part, ok
 
 
-def write_parquet(rows: list[dict[str, Any]], path: Path) -> int:
-    import pyarrow as pa
+def write_parquet(rows: list[dict[str, Any]], path: Path, *, kind: str | None = None) -> int:
     import pyarrow.parquet as pq
 
     path.parent.mkdir(parents=True, exist_ok=True)
+    if kind:
+        from market_data.parquet_schema import table_for
+
+        table = table_for(kind, rows)
+        pq.write_table(table, path, compression="zstd")
+        return len(rows)
+    import pyarrow as pa
+
     if not rows:
         # Empty marker day — still write empty table for resume honesty
         table = pa.table({"_empty": pa.array([], type=pa.bool_())})
         pq.write_table(table, path, compression="zstd")
         return 0
-    # Normalize to string JSON for nested/variable fields then expand common cols
-    # Flatten: keep all keys as strings for complex types
     cols: dict[str, list[Any]] = {}
     keys: set[str] = set()
     for r in rows:
@@ -183,7 +187,7 @@ def process_day(
     t0 = time.time()
     try:
         rows = fetch_kind(client, series, kind, day)
-        n = write_parquet(rows, part)
+        n = write_parquet(rows, part, kind=kind)
         meta = {
             "status": "ok",
             "series": series,
@@ -266,16 +270,8 @@ def run_campaign(
     (root / "jobs" / "logs").mkdir(parents=True, exist_ok=True)
     (root / "state").mkdir(exist_ok=True)
 
-    # Note if Pod preferred but unavailable
-    pod = Path("/Volumes/Pod 1")
-    if not os.environ.get("LABS_MARKET_DATA_ROOT"):
-        try:
-            list(pod.iterdir())
-        except Exception:
-            log(
-                f"NOTE: /Volumes/Pod 1 not writable (TCC); staging at {root}. "
-                "Rsync to Pod when unrestricted."
-            )
+    if not root.exists():
+        raise SystemExit(f"LABS_MARKET_DATA_ROOT missing: {root}")
 
     client = MassiveClient()
     log(

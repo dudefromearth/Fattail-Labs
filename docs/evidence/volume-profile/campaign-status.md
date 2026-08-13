@@ -1,24 +1,21 @@
 # RAW campaign status
 
-**Started:** 2026-08-12T21:20:49Z  
-**Command:** `python -m market_data.raw_campaign --all --kinds trades,quotes,aggs_1s --start 2004-01-02`  
-**Root:** `/Users/ernie/data/fattail-market-data`  
-**Why not Pod 1:** agent shell TCC → Operation not permitted on `/Volumes/Pod 1` (mounted, not writable). Rsync later.
+**Target volume:** `/Volumes/sabrant2tb/fattail-market-data`  
+**Config:** `LABS_MARKET_DATA_ROOT` + `LABS_MARKET_DATA_MOUNTS=raw-primary:/Volumes/sabrant2tb`  
+**Local staging kept:** `/Users/ernie/data/fattail-market-data`
 
-## Progress (update by ops)
+## Live processes (2026-08-13T01:31Z)
 
-| Time (UTC) | ok_days | size | note |
-|------------|---------|------|------|
-| 21:21 | 64 | 35M | SPY trades 2004 |
-| 21:32 | 541 | 541M | SPY trades ~2006-01 |
-| 21:43 | 836 | 796M | SPY trades ~2007-03 |
-| 21:57 | 973 | 969M | restart w/ retries; SPY ~2007-09 |
-| **23:44** | **1782** | **3.4G** | **SPY trades ~2010-10; still running (PID 90553)** |
+| PID | Job | Progress |
+|-----|-----|----------|
+| **1883** | SPY trades | ~2014-07 (2,745 days, ~6.2 GB) |
+| **1884** | SPY quotes + 1s | quotes ~2006-07 |
+| **1885** | QQQ…MSFT all kinds | QQQ trades ~2009-05 |
 
-**Still ahead:** SPY trades 2010→2026 · 15 other symbols trades · all quotes · all 1s.
+## Monitor
 
-Monitor: `tail -f /Users/ernie/data/fattail-market-data/jobs/logs/raw_campaign.log`
-
-## Resume
-
-Safe to re-run same command; days with `.ok` skip.
+```bash
+tail -f /Volumes/sabrant2tb/fattail-market-data/jobs/logs/raw_campaign_spy_trades.log
+tail -f /Volumes/sabrant2tb/fattail-market-data/jobs/logs/raw_campaign_spy_quotes.log
+tail -f /Volumes/sabrant2tb/fattail-market-data/jobs/logs/raw_campaign_other.log
+```

@@ -2,24 +2,15 @@
 
 | Probe | File | Status |
 |-------|------|--------|
-| P2-1 Trades depth SPY | `p2-asbuilt-spy-trades.md` | **RETIRED as-built (template open)** — fill path, GB, print counts |
-| P2-2 Flat files | same / `p2-flat-files.md` | **RETIRED as-built** — what SPY pull used |
-| **P2-3 Conditions / volume** | `p2-conditions.md` | **OPEN — production bin gate** |
-| P2-4 Mount smoke | per-mount notes | Re-run as mounts join map |
-| P2-5 SPY size | as-built section | **RETIRED as-built** |
-| P2-6 Index 403 | `p2-index-entitlement.md` | open at campaign start |
-| **P2-7 Rate × kinds** | `p2-rate-isolation.md` | **OPEN** (quotes density) |
-| **P2-8 Quotes/1s depth SPY** | `p2-quotes-1s-depth.md` | **OPEN** |
+| P2-1 Trades depth SPY | `p2-asbuilt-spy-trades.md` | **RETIRED-AS-BUILT** |
+| P2-2 Flat files | same | **RETIRED-AS-BUILT** — REST paginated, not flat-file |
+| **P2-3 Conditions / volume** | `p2-conditions.md` | **OPEN — bin gate** (+9.3% all-prints vs daily, SPY 2024-06-03) |
+| P2-4 Mount smoke | sabrant2tb write + copy verified | **PASS on sabrant2tb**; Pod 1 TCC from agent shell |
+| P2-5 SPY raw size | as-built | **RETIRED-AS-BUILT** (~6.2 GB trades and growing) |
+| P2-6 Index 403 | `p2-index-entitlement.md` | **PASS** — I:SPX/XSP/VIX/VIX1D all 403 (2026-08-11) |
+| **P2-7 Rate × kinds** | `p2-rate-isolation.md` | **OPEN** (3 jobs concurrent; 429 retry path live) |
+| **P2-8 Quotes/1s depth SPY** | `p2-quotes-1s-depth.md` | **OPEN** — quotes at 2004 depth yes; 1s not started |
 
-**Production bin writes:** blocked until P2-3 frozen list + tolerance + Coach GO.  
-**Campaign:** full estate under Coach authority (Spec §16).  
+**Production bin writes:** blocked until P2-3 frozen list + tolerance + C-0.  
+**Campaign:** `/Volumes/sabrant2tb/fattail-market-data` (local staging kept).  
 **VIX/VIX1D:** not a VP path.
-
-## Campaign runtime (2026-08-12)
-
-| Item | Value |
-|------|--------|
-| Process | `python -m market_data.raw_campaign --all` |
-| Staging root | `/Users/ernie/data/fattail-market-data` (Pod 1 TCC-blocked from agent shell) |
-| Log | `…/jobs/logs/raw_campaign.log` |
-| P2-3 sample | `p2-conditions-sample.json` (SPY 2024-06-03, all conditions, ~9.3% vs daily bar) |

@@ -4,7 +4,7 @@ import OptionsLabChrome from "@/components/options-lab/OptionsLabChrome";
 import VolumeProfileChart from "@/components/options-lab/VolumeProfileChart";
 
 /**
- * Volume Profile app — candlesticks now; volume profile bins next.
+ * Volume Profile app — interim OHLC-window bins (not measured tick VP).
  */
 export default function OptionsLabVolumeProfilePage() {
   return (

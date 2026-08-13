@@ -99,6 +99,37 @@ def dense_volumes(
     return lo, out, total
 
 
+def accumulate_bar_spread(
+    bars: Iterable[dict[str, Any]],
+    *,
+    tick_size: float = 0.01,
+    price_origin: float = 0.0,
+    high_key: str = "h",
+    low_key: str = "l",
+    volume_key: str = "v",
+) -> dict[int, float]:
+    """H–L proportional tick spread (VP2b). Forbids single-bin typical when span > 1 tick."""
+    bins: dict[int, float] = {}
+    for b in bars:
+        try:
+            hi = float(b.get(high_key))
+            lo = float(b.get(low_key))
+            vol = float(b.get(volume_key) or 0)
+        except (TypeError, ValueError):
+            continue
+        if not (hi > 0) or not (lo > 0) or not (vol > 0) or hi < lo:
+            continue
+        i0 = bin_index(lo, tick_size, price_origin)
+        i1 = bin_index(hi, tick_size, price_origin)
+        if i1 < i0:
+            i0, i1 = i1, i0
+        n = i1 - i0 + 1
+        share = vol / n
+        for i in range(i0, i1 + 1):
+            bins[i] = bins.get(i, 0.0) + share
+    return bins
+
+
 def build_day_artifact(
     trades: Iterable[dict[str, Any]],
     *,

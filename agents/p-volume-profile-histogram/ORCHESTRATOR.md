@@ -5,7 +5,7 @@
 **Plan:** [`docs/Volume-Profile-Histogram-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Volume-Profile-Histogram-Full-Agent-Bench-Plan-v1.0.md) **revision v1.1.1**  
 **Spec:** [`Specs/FatTail-Labs-Volume-Profile-Histogram-Spec-v0_4.md`](../../Specs/FatTail-Labs-Volume-Profile-Histogram-Spec-v0_4.md)
 
-## Status (2026-08-12)
+## Status (2026-08-13)
 
 | Gate | Verdict |
 |------|---------|
@@ -14,35 +14,35 @@
 | **W0-2 India** | **PASS** — `gate-reports/W0-2-india-parents.md` |
 | **W0-G** | **PASS** — `gate-reports/W0-G.md` |
 
-**Next:** A (multi-mount + schemas) · B // remaining P2 · **C blocked on P2-3**
+**Live root:** `/Volumes/sabrant2tb/fattail-market-data` (`LABS_MARKET_DATA_MOUNTS=raw-primary:/Volumes/sabrant2tb`). Local staging kept. Pod 1 TCC from agent shell.
+
+**Next:** keep B running · **P2-3 freeze + C-0** before any production bin write · A-G / D-G when Coach seats Delta.
 
 ## DAG
 
 ```text
-W0 ✓ ──► A ──┬──► B (full-estate campaign)
-             │         // parallel with remaining P2
-             └──► P2 (remaining) ──► P2-3 FREEZE ──► C ──► D ──► E ──► F ──► Z
-                                                        R optional
+W0 ✓ ──► A (code + sabrant2tb) ──┬──► B (full-estate campaign) IN FLIGHT
+                                 │         // parallel with remaining P2
+                                 └──► P2 (partial) ──► P2-3 FREEZE ──► C ──► D (APIs landed, honest WAITING) ──► E-1 ──► F ──► Z
+                                                                            R optional
 ```
-
-In-flight RAW under Spec §16 is not stopped for W0 paperwork alone.
 
 ## Phase board
 
 | Phase | Status | Gate |
 |-------|--------|------|
 | W0 Coach GO | **DONE** | W0-G **PASS** |
-| A Multi-mount + catalog | **partial** — migration 093 applied; staging root active | A-G |
-| B RAW campaign | **IN FLIGHT** — `raw_campaign` PID on host; staging `/Users/ernie/data/fattail-market-data` | B-G |
-| P2 Remaining | ready | P2-G |
+| A Multi-mount + catalog | **landed** — mounts env, schemas, fail-loud, catalog tables | A-G (Delta not seated this turn) |
+| B RAW campaign | **IN FLIGHT** on sabrant2tb (PIDs 1883/1884/1885) | B-G |
+| P2 Remaining | **partial** — P2-6 PASS; P2-3 OPEN (+9.3%); P2-7/8 OPEN | P2-G |
 | **P2-3 condition freeze** | **OPEN — bin gate** | hard |
 | C BIN tool | blocked on P2-3 | C-G |
-| D APIs | pending | D-G |
-| E Chart honesty | pending | E-G |
+| D APIs | **read-only APIs landed** (WAITING / no pull) | D-G |
+| E Chart honesty | **E-1 landed** (interim OHLC labeled; no POC chrome) | E-G residual overlay |
 | F Daily ops | pending | F-G |
 | R TV research | deferred | Coach DL |
 | Z Close | pending | Z-G |
 
 ## Evidence
 
-`docs/evidence/volume-profile/` — as-built SPY trades template open (`p2-asbuilt-spy-trades.md`).
+`docs/evidence/volume-profile/`
