@@ -43,6 +43,8 @@
 | `089` | Strategy Lab member designs / house mint (DL-235) |
 | **planned ~090** | Visualize AI sessions/messages/artifacts + `apps` seed `visualize-ai` (Spec v0.1 · Arch 21 · DL-236) — **not applied until Spec v1.0** |
 | `090`–`092` | Community app, Discord profiles, community messages (DL-237–242) |
+| `124_apps_catalog_order` | Seed `/app` hub `sort_order` + `practice-log` / `options-lab` rows (DL-319) |
+| `125_apps_highlighted` | `apps.highlighted` admin catalog paint (DL-321) |
 | **planned ~093** | Bot Marketplace: `bot_packages`, `bot_package_shares`, optional `bot_package_purchases` hooks (Spec v0.1 · Arch 23 · DL-243) — **not applied until Spec v1.0** |
 
 **Rule:** never edit applied migrations; always append.

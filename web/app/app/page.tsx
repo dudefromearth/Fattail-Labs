@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import SectionHubShell from "@/components/section-hub/SectionHubShell";
+import AppsGrid from "@/components/apps/AppsGrid";
 import { apiGet } from "@/lib/api";
 import { siteUrl } from "@/lib/catalog";
-import { PRACTICE_NESTED_SLUGS as NESTED_UNDER_PRACTICE } from "@/lib/practiceSuite";
+import {
+  buildTopLevelCatalog,
+  FALLBACK_APPS,
+  type AppRow,
+} from "@/lib/appsCatalog";
 import {
   fetchSitePage,
   metaDescriptionFromMd,
   type SitePage,
 } from "@/lib/sitePage";
 
-export const revalidate = 3600;
+// Admin order/highlight writes must appear on the next load (Catalog-Order v1.1.2).
+export const dynamic = "force-dynamic";
 
 const FALLBACK: SitePage = {
   slug: "labs",
@@ -24,208 +30,15 @@ const FALLBACK: SitePage = {
   faq_items: [],
 };
 
-type AppRow = {
-  id: number;
-  slug: string;
-  title: string;
-  blurb: string;
-  status: string;
-  href: string;
-};
-
-/**
- * Top-level Apps grid (2-col). Practice suite tools are nested under Practice
- * (Trade Log · Reports · Journal · Playbook) — not listed individually here.
- */
-const TOP_LEVEL_ORDER = [
-  "journey",
-  "practice-log",
-  "toughness",
-  "strategy-lab",
-  "options-lab",
-  "community",
-  "wiki",
-] as const;
-
-const FALLBACK_APPS: AppRow[] = [
-  {
-    id: 0,
-    slug: "journey",
-    title: "Journey",
-    blurb:
-      "Your enrollments and lesson progress in one place — process over pace, no leaderboards.",
-    status: "live",
-    href: "/app/journey",
-  },
-  {
-    id: 0,
-    slug: "practice-log",
-    title: "Practice",
-    blurb:
-      "Reports home (equity & drawdown), Trade Log, Journal, and Playbook — process first.",
-    status: "live",
-    href: "/app/practice",
-  },
-  {
-    id: 0,
-    slug: "toughness",
-    title: "Toughness",
-    blurb:
-      "FatTail Hard and True 75 Hard — voluntary capacity training for mental toughness under load (aMCC / willpower).",
-    status: "live",
-    href: "/app/toughness",
-  },
-  {
-    id: 0,
-    slug: "strategy-lab",
-    title: "Strategy Lab",
-    blurb:
-      "Design → Curate → Deploy. Strategies on your account. Validate edges before capital; process over profit claims.",
-    status: "soon",
-    href: "/app/strategy-lab",
-  },
-  {
-    id: 0,
-    slug: "options-lab",
-    title: "Options Lab",
-    blurb:
-      "Chain ladder: pick a name from the shared universe, the next three expiries, and watch strikes update in place — process structure, not P&L theater.",
-    status: "live",
-    href: "/app/options-lab/heatmap",
-  },
-  {
-    id: 0,
-    slug: "community",
-    title: "Community",
-    blurb:
-      "Process peers and FatTail bots — same conversation as Discord, plus shared designs. No P&L theater.",
-    status: "live",
-    href: "/app/community",
-  },
-  {
-    id: 0,
-    slug: "wiki",
-    title: "Wiki",
-    blurb:
-      "The compiled map of everything we teach — courses, live sessions, and videos, cross-linked and searchable.",
-    status: "soon",
-    href: "/app/wiki",
-  },
-];
-
 async function fetchApps(): Promise<AppRow[]> {
   try {
-    const data = await apiGet<{ apps: AppRow[] }>("/api/apps");
+    const data = await apiGet<{ apps: AppRow[] }>("/api/apps", {
+      cache: "no-store",
+    });
     return data.apps?.length ? data.apps : FALLBACK_APPS;
   } catch {
     return FALLBACK_APPS;
   }
-}
-
-/**
- * Build the top-level catalog: drop nested trade-log/journal, inject Practice,
- * Toughness, Strategy Lab, Community cards — even when API has not seeded them yet.
- */
-function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
-  const bySlug = new Map(apiApps.map((a) => [a.slug, a]));
-
-  const practice: AppRow = {
-    id: 0,
-    slug: "practice-log",
-    title: "Practice",
-    blurb:
-      "Reports home (equity & drawdown), Trade Log, Journal, and Playbook — process first.",
-    status: "live",
-    href: "/app/practice",
-  };
-
-  const toughnessFromApi = bySlug.get("toughness");
-  const toughness: AppRow = toughnessFromApi
-    ? {
-        ...toughnessFromApi,
-        title: toughnessFromApi.title || "Toughness",
-        href: toughnessFromApi.href || "/app/toughness",
-        status: "live",
-      }
-    : (FALLBACK_APPS.find((a) => a.slug === "toughness") as AppRow);
-
-  const strategyFromApi = bySlug.get("strategy-lab");
-  const strategy: AppRow = strategyFromApi
-    ? {
-        ...strategyFromApi,
-        title: "Strategy Lab",
-        // Prefer three-step life-cycle blurb if API still has legacy stage lines.
-        blurb:
-          strategyFromApi.blurb &&
-          !/Prove|Paper, Run|Build, Prove|Build, Test|Run bots/i.test(
-            strategyFromApi.blurb,
-          )
-            ? strategyFromApi.blurb
-            : (FALLBACK_APPS.find((a) => a.slug === "strategy-lab") as AppRow)
-                .blurb,
-        href: strategyFromApi.href || "/app/strategy-lab",
-      }
-    : (FALLBACK_APPS.find((a) => a.slug === "strategy-lab") as AppRow);
-
-  const communityFromApi = bySlug.get("community");
-  const community: AppRow = communityFromApi
-    ? {
-        ...communityFromApi,
-        title: communityFromApi.title || "Community",
-        blurb:
-          communityFromApi.blurb ||
-          (FALLBACK_APPS.find((a) => a.slug === "community") as AppRow).blurb,
-        href: communityFromApi.href || "/app/community",
-        status: "live",
-      }
-    : (FALLBACK_APPS.find((a) => a.slug === "community") as AppRow);
-
-  const optionsFromApi = bySlug.get("options-lab");
-  const optionsLab: AppRow = optionsFromApi
-    ? {
-        ...optionsFromApi,
-        title: "Options Lab",
-        blurb:
-          optionsFromApi.blurb ||
-          (FALLBACK_APPS.find((a) => a.slug === "options-lab") as AppRow).blurb,
-        href: optionsFromApi.href || "/app/options-lab/heatmap",
-        status: "live",
-      }
-    : (FALLBACK_APPS.find((a) => a.slug === "options-lab") as AppRow);
-
-  const composed = new Map<string, AppRow>();
-  for (const a of apiApps) {
-    if (NESTED_UNDER_PRACTICE.has(a.slug)) continue;
-    if (a.slug === "strategy-lab") continue; // use composed title below
-    if (a.slug === "toughness") continue; // use composed row below
-    if (a.slug === "community") continue; // use composed row below
-    if (a.slug === "options-lab") continue; // use composed row below
-    composed.set(a.slug, a);
-  }
-  composed.set("practice-log", practice);
-  composed.set("toughness", toughness);
-  composed.set("strategy-lab", strategy);
-  composed.set("options-lab", optionsLab);
-  composed.set("community", community);
-
-  const ordered: AppRow[] = [];
-  for (const slug of TOP_LEVEL_ORDER) {
-    const row = composed.get(slug);
-    if (row) {
-      ordered.push(row);
-      composed.delete(slug);
-    }
-  }
-  // Any other apps (future) append in API order
-  for (const a of apiApps) {
-    if (composed.has(a.slug)) {
-      ordered.push(composed.get(a.slug)!);
-      composed.delete(a.slug);
-    }
-  }
-  for (const row of composed.values()) ordered.push(row);
-
-  return ordered;
 }
 
 function collectionJsonLd(page: SitePage) {
@@ -253,71 +66,6 @@ function normalizeAppsPage(page: SitePage): SitePage {
     };
   }
   return page;
-}
-
-function StatusBadge({ status }: { status: string }) {
-  if (status === "soon") {
-    return (
-      <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
-        Coming soon
-      </span>
-    );
-  }
-  if (status === "live") {
-    return (
-      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-        Live
-      </span>
-    );
-  }
-  return null;
-}
-
-function AppCard({ t }: { t: AppRow }) {
-  // Wiki + Strategy Lab landing: open while workspace is still "soon".
-  // Practice Log hub is live when Trade Log is.
-  const canOpen =
-    t.status === "live" ||
-    t.slug === "wiki" ||
-    t.slug === "practice-log" ||
-    t.slug === "toughness" ||
-    t.slug === "strategy-lab" ||
-    t.slug === "community";
-  const badgeStatus =
-    t.slug === "practice-log" ||
-    t.slug === "toughness" ||
-    t.slug === "community"
-      ? "live"
-      : t.slug === "strategy-lab"
-        ? "soon"
-        : t.slug === "wiki"
-          ? t.status
-          : t.status;
-  return (
-    <div className="surface-card flex h-full flex-col border border-[var(--color-separator)] p-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-lg font-semibold text-[var(--color-label)]">
-          {t.title}
-        </h2>
-        <StatusBadge status={badgeStatus} />
-      </div>
-      <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--color-label-secondary)]">
-        {t.blurb}
-      </p>
-      {canOpen ? (
-        <Link
-          href={t.href || `/app/${t.slug}`}
-          className="mt-4 text-sm font-medium text-[var(--color-tint)] hover:underline"
-        >
-          Open →
-        </Link>
-      ) : (
-        <p className="mt-4 text-xs text-[var(--color-label-tertiary)]">
-          Ships with the practice stack — process-first, not P&L theater.
-        </p>
-      )}
-    </div>
-  );
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -359,13 +107,7 @@ export default async function AppsPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <SectionHubShell page={page}>
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {apps.map((t) => (
-            <li key={t.slug}>
-              <AppCard t={t} />
-            </li>
-          ))}
-        </ul>
+        <AppsGrid apps={apps} />
 
         <p className="mt-10 text-sm text-[var(--color-label-secondary)]">
           Looking for courses?{" "}

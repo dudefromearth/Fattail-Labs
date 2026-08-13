@@ -26,8 +26,11 @@ export function apiUrl(path: string): string {
   return `${base}${path}`;
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(apiUrl(path));
+export async function apiGet<T>(
+  path: string,
+  init?: { cache?: RequestCache },
+): Promise<T> {
+  const res = await fetch(apiUrl(path), init);
   if (!res.ok) {
     throw new Error(`API ${res.status} for ${path}`);
   }

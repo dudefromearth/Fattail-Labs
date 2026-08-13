@@ -4,6 +4,45 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-13 — DL-321 Apps hub card highlight toggle
+
+**Decision:** Each `/app` card has an **admin-only** iOS switch. On → persist
+`apps.highlighted` (migration **125**) and paint the card: very light powder
+blue fill (`#EEF4FB`) and a **thick** darker-blue outline (`3px` `#1B4F8B`).
+Members see the highlight, not the control. Write path is the existing
+`PUT /api/admin/apps/{id}` (`highlighted` added to allowed fields).
+
+**Spec:** Catalog-Order v1.1.2.
+
+## 2026-08-13 — DL-320 Apps hub order walks 2-col reading order
+
+**Decision:** `/app` admin steppers are **← →**, not ↑↓. A card walks the
+2-column **reading order**: top-left → right → first cell of the next row →
+… → bottom-right. The last cell wraps to top-left; the first cell wraps to
+last. Implementation: `walkCatalogOrder` (extract + insert at wrapped dest).
+Still admin-only; write path unchanged (`POST /api/admin/apps/reorder`).
+
+**Why:** ↑↓ on a 2-col grid looked like column-only motion and disabled at
+the ends. Coach: cards must change columns; last goes back to top-left.
+
+**Spec:** Catalog-Order v1.1.1.
+
+## 2026-08-13 — DL-319 Apps hub catalog order (admin-only)
+
+**Decision:** `/app` card order is editorial, same contract as `/course`
+(Catalog-Order Spec **v1.1**). Source of truth is `apps.sort_order`. Admin
+reorders with B4 ↑↓ steppers on the hub cards; write path is
+`POST /api/admin/apps/reorder` `{app_ids}` (×10 rewrite, `require_admin`).
+Members never see steppers and cannot write order.
+
+Migration **124** inserts missing catalog rows (`practice-log`, `options-lab`)
+so every visible card has a real id, and seeds today's hardcoded
+`TOP_LEVEL_ORDER` as 10…70 so first deploy does not reshuffle. Nested Practice
+suite apps stay off the grid. Hub compose still overrides Practice / Options
+Lab title and href.
+
+**Spec:** `Specs/FatTail-Labs-Catalog-Order-Spec-v1.0.md` v1.1.
+
 ## 2026-08-13 — DL-313 Reports starting capital is read-only from the account
 
 **Bug (member ticket, ricaraus@gmail.com):** Reports showed a $50,000 balance vs the

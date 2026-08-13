@@ -929,7 +929,7 @@ export default function HeatmapChainPanel() {
             </span>
           </div>
           <pre
-            className="max-h-40 min-h-[4.5rem] overflow-auto whitespace-pre-wrap break-all rounded-lg border border-emerald-500/25 bg-[#0a0f0a] px-2.5 py-2 font-mono text-[11px] leading-snug text-emerald-400 shadow-inner"
+            className="max-h-40 min-h-[4.5rem] overflow-auto whitespace-pre-wrap break-all rounded-lg border border-emerald-500/25 bg-[#0a0f0a] px-2.5 py-2 font-mono text-[16.5px] leading-snug text-emerald-400 shadow-inner"
             data-testid="heatmap-tos-script"
             title={
               tosScript ||

@@ -86,6 +86,7 @@ Member chrome is suppressed under `/admin` via `AppChrome` + `admin/layout.tsx`
 | Area | Examples |
 |---|---|
 | Catalog / course | `CatalogGrid`, `CourseTabs`, `TrailerHero`, `EnrollCard` |
+| Apps hub | `AppsGrid` — member cards; admin-only ←→ reading-order steppers (`POST /api/admin/apps/reorder`, DL-319–320) |
 | Player | `LessonPlayer`, `LessonBody`, `LessonCourseNav`, `QuizPlayer` |
 | Live | `LiveSessions`, `live/*` admin managers |
 | Member | `MyLearning`, `ContinueLearning`, `Pathway`, `MembershipPlans`, `member-home/*` |

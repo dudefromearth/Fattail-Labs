@@ -12,6 +12,7 @@ from guards import require_admin
 router = APIRouter(tags=["apps"])
 
 VALID_STATUS = frozenset({"soon", "live", "external"})
+APP_COLS = "id, slug, title, blurb, status, sort_order, highlighted"
 
 
 def _slugify(title: str) -> str:
@@ -41,6 +42,12 @@ def _claim_app_slug(cur, base: str, *, exclude_id: int | None = None) -> str:
     return slug
 
 
+def _as_bool(value: object) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "on", "yes"}
+    return bool(value)
+
+
 def _row(r: dict) -> dict:
     return {
         "id": r["id"],
@@ -49,6 +56,7 @@ def _row(r: dict) -> dict:
         "blurb": r["blurb"] or "",
         "status": r["status"],
         "sort_order": r["sort_order"],
+        "highlighted": _as_bool(r.get("highlighted")),
         "href": f"/app/{r['slug']}",
     }
 
@@ -59,7 +67,7 @@ def list_apps() -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT id, slug, title, blurb, status, sort_order
+                f"""SELECT {APP_COLS}
                    FROM apps ORDER BY sort_order, id"""
             )
             rows = cur.fetchall()
@@ -71,7 +79,7 @@ def get_app(slug: str) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT id, slug, title, blurb, status, sort_order
+                f"""SELECT {APP_COLS}
                    FROM apps WHERE slug = %s""",
                 (slug,),
             )
@@ -113,7 +121,7 @@ async def create_app(request: Request) -> dict:
             )
             app_id = int(cur.lastrowid)
             cur.execute(
-                "SELECT id, slug, title, blurb, status, sort_order FROM apps WHERE id = %s",
+                f"SELECT {APP_COLS} FROM apps WHERE id = %s",
                 (app_id,),
             )
             row = cur.fetchone()
@@ -125,7 +133,7 @@ async def update_app(app_id: int, request: Request) -> dict:
     """Update app; title change rewrites slug (409 on conflict)."""
     require_admin(request)
     body = await request.json()
-    allowed = {"title", "blurb", "status", "sort_order"}
+    allowed = {"title", "blurb", "status", "sort_order", "highlighted"}
     unknown = set(body) - allowed
     if unknown:
         raise HTTPException(status_code=422, detail=f"Unknown fields: {sorted(unknown)}")
@@ -151,14 +159,46 @@ async def update_app(app_id: int, request: Request) -> dict:
                 )
             if "sort_order" in body:
                 body["sort_order"] = int(body["sort_order"])
+            if "highlighted" in body:
+                body["highlighted"] = 1 if _as_bool(body["highlighted"]) else 0
             sets = ", ".join(f"{k} = %s" for k in body)
             cur.execute(
                 f"UPDATE apps SET {sets} WHERE id = %s",
                 [*body.values(), app_id],
             )
             cur.execute(
-                "SELECT id, slug, title, blurb, status, sort_order FROM apps WHERE id = %s",
+                f"SELECT {APP_COLS} FROM apps WHERE id = %s",
                 (app_id,),
             )
             row = cur.fetchone()
     return _row(row)
+
+
+@router.post("/api/admin/apps/reorder")
+async def reorder_apps(request: Request) -> dict:
+    """Hub order: body {app_ids: [...]} — rewrites sort_order x10
+    (Catalog-Order Spec v1.1; mirrors POST /api/admin/courses/reorder).
+    Admin only. Ids must exist; need not be the full table (nested Practice
+    suite rows stay hidden from the /app grid and keep their own sort_order)."""
+    require_admin(request)
+    body = await request.json() if int(request.headers.get("content-length") or 0) else {}
+    ids = body.get("app_ids")
+    if not isinstance(ids, list) or not ids or not all(isinstance(i, int) for i in ids):
+        raise HTTPException(
+            status_code=422, detail="app_ids must be a non-empty list of ids"
+        )
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM apps")
+            known = {int(r["id"]) for r in cur.fetchall()}
+            unknown = [i for i in ids if i not in known]
+            if unknown:
+                raise HTTPException(
+                    status_code=422, detail=f"Unknown app ids: {unknown}"
+                )
+            for pos, aid in enumerate(ids, 1):
+                cur.execute(
+                    "UPDATE apps SET sort_order = %s WHERE id = %s",
+                    (pos * 10, aid),
+                )
+    return {"ok": True, "count": len(ids)}
