@@ -93,9 +93,6 @@ def create_app() -> FastAPI:
     from routes.users_admin import router as users_admin_router
     from routes.flow_admin import router as flow_admin_router
     from routes.access_admin import router as access_admin_router
-    import coach_lab_config as clc
-
-    clc.require_lab_boot()
 
     app.include_router(auth_router)
     app.include_router(access_admin_router)
@@ -133,10 +130,6 @@ def create_app() -> FastAPI:
     app.include_router(market_universe_member_router)
     app.include_router(practice_spine_router)
     app.include_router(journal_prompt_admin_router)
-    if clc.lab_enabled():
-        from routes.coach_lab import router as coach_lab_router
-
-        app.include_router(coach_lab_router)
     app.include_router(retro_prompt_admin_router)
     app.include_router(habit_plans_router)
     app.include_router(strategy_lab_router)
