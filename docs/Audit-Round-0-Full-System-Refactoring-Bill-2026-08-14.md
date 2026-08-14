@@ -483,8 +483,13 @@ Coach re-ranks if desired, then issues **`GO: RB-xx`** (or a quadrant) **per ite
 
 After **RB-08** lands, “GO” means a dated artifact that names the ID — not chat text alone. This document still does not authorize execution.
 
-**RB-08 GO issued 2026-08-14.** Token: `agents/go/RB-08.md`. Check: `python3 scripts/require_go.py --id RB-08`. Conversation Lab still has no `agents/go/CL-*.md`.
+**RB-08 GO issued 2026-08-14.** Token: `agents/go/RB-08.md`.
 
-**Suggested next GO if the ranking stands:** `RB-10` if MiniTwo 128 is unknown, else `RB-01` on the **dev** DB only. Each needs its own `agents/go/<ID>.md` — chat alone is not enough.
+**RB-01 GO issued 2026-08-14.** Token: `agents/go/RB-01.md`. StudioTwo only.
+Coach attested MiniTwo head is 125 (never 128). Conversation Lab still has
+no `agents/go/CL-*.md`.
+
+**Suggested next GO if the ranking stands:** `RB-02` or `RB-07`. Each needs
+its own `agents/go/<ID>.md` — chat alone is not enough.
 
 Process-containment pair: **RB-08 (R-1)** + **RB-19 (R-8)**. Identity split remains **RB-11**. Do not treat RB-11 as done process work.

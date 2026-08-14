@@ -31,7 +31,15 @@ def test_rb08_token_authorizes_only_rb08():
     ok = _run("--id", "RB-08")
     assert ok.returncode == 0, ok.stderr
     assert "agents/go/RB-08.md" in ok.stdout
-    assert _run("--id", "RB-01").returncode == 1
+    assert _run("--id", "RB-08").returncode == 0
+    assert _run("--id", "RB-02").returncode == 1
+    assert _run("--id", "CL-1").returncode == 1
+
+
+def test_rb01_token_authorizes_studio_two_backout_only():
+    ok = _run("--id", "RB-01")
+    assert ok.returncode == 0, ok.stderr
+    assert "agents/go/RB-01.md" in ok.stdout
     assert _run("--id", "CL-1").returncode == 1
 
 
