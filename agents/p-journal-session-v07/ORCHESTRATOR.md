@@ -9,11 +9,11 @@
 | Gate | Verdict |
 |------|---------|
 | **J7-0** Lima DLs + spec BUILD | **DONE** — DL-325 · DL-326 |
-| J7-1 Drafts | pending |
-| J7-2 Heat gate | pending (blocks agent change) |
-| J7-3 Guide + extract | pending |
-| J7-4 Notify + presence | pending |
-| **J7-G** Charter | pending |
+| J7-1 Drafts | **landed** (API + composer autosave) |
+| J7-2 Heat gate | **landed** (request-time open book) |
+| J7-3 Guide + extract | **landed** (confirmations + lawful empties) |
+| J7-4 Notify + presence | **landed** (tick + ledger + presence chrome) |
+| **J7-G** Charter | tests green locally — operator env required |
 
 **Not this board’s GO:** J7-5 voice · J7-6 star · J7-7 Portability v1.5.
 

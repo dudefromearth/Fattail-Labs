@@ -30,6 +30,8 @@ CHANNEL_POLICY = {
 }
 
 KIND_RETRO_MATERIAL = "retrospective.material_ready"
+KIND_COACH_DAY_OPEN = "coach_day_open"
+KIND_COACH_DAY_CLOSE = "coach_day_close"
 
 # US cash equity regular session (approx) — America/New_York
 _NY = ZoneInfo("America/New_York")

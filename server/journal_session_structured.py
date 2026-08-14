@@ -148,6 +148,15 @@ def field_keys_for_tag(tag: str) -> frozenset[str]:
     return frozenset(f["key"] for f in specs)
 
 
+def all_field_keys() -> frozenset[str]:
+    """Closed extract set — union of TAG_FIELD_SPECS (v0.7 §6 SoR)."""
+    keys: set[str] = set()
+    for specs in TAG_FIELD_SPECS.values():
+        for f in specs:
+            keys.add(str(f["key"]))
+    return frozenset(keys)
+
+
 def schema_for_tag(tag: str) -> dict[str, Any]:
     """Public schema document for form/UI (JS2-2)."""
     specs = TAG_FIELD_SPECS.get(tag)

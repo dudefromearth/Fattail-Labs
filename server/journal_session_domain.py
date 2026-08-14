@@ -561,6 +561,7 @@ def serialize_session(
         "session_started_at": _iso(row.get("session_started_at")),
         "status": row["status"],
         "structured": sj if isinstance(sj, dict) else sj,
+        "structured_provenance": _parse_structured(row.get("structured_provenance_json")),
         "checklist": jss.checklist_status(
             primary, sj if isinstance(sj, dict) else None
         ),
@@ -761,7 +762,7 @@ def active_prompt_version_id(cur) -> str | None:
 
 
 _SESSION_COLS = """id, identity_id, tag, journal_date, session_started_at, status,
-                  structured_json, export_key, practice_campaign_id,
+                  structured_json, structured_provenance_json, export_key, practice_campaign_id,
                   spawned_retrospective_id, closed_by_retrospective_id, closed_at,
                   absence_keys_raised_json, prompt_version_id,
                   created_at, updated_at"""
@@ -946,35 +947,26 @@ def patch_session(
     """
     row = _load_mutable_row(cur, identity_id, session_id)
     if structured_set:
-        tag = str(row["tag"] or "reflection")
-        try:
-            incoming = jss.normalize_structured(tag, structured)
-        except ValueError as e:
-            raise JournalSessionError(422, str(e)) from e
-        if merge and incoming is not None:
-            existing = row.get("structured_json")
-            if isinstance(existing, str):
-                try:
-                    existing = json.loads(existing)
-                except json.JSONDecodeError:
-                    existing = {}
-            if not isinstance(existing, dict):
-                existing = {}
-            merged = {**existing, **incoming}
-            # Re-normalize to drop empties / unknown
-            try:
-                incoming = jss.normalize_structured(tag, merged)
-            except ValueError as e:
-                raise JournalSessionError(422, str(e)) from e
-        sj = json.dumps(incoming) if incoming is not None else None
-        cur.execute(
-            """UPDATE member_journal_sessions
-               SET structured_json = %s
-               WHERE id = %s AND identity_id = %s AND status IN ('open', 'partial')""",
-            (sj, session_id, identity_id),
-        )
-        if cur.rowcount == 0:
-            raise JournalSessionError(409, CLOSED_SESSION_DETAIL)
+        import journal_confirm as jcf
+
+        if not isinstance(structured, dict) and structured is not None:
+            raise JournalSessionError(422, "structured must be an object or null")
+        fields = structured if isinstance(structured, dict) else {}
+        if merge:
+            jcf.apply_interview_fields(cur, identity_id, session_id, fields)
+        else:
+            for key in list(fields.keys()):
+                jcf.apply_confirmation(
+                    cur,
+                    identity_id,
+                    session_id,
+                    field_key=key,
+                    value=fields.get(key),
+                    present=fields.get(key) not in (None, ""),
+                    source_message_ids=[],
+                    method="interview",
+                )
+        return get_session(cur, identity_id, session_id, include_messages=True)
     if practice_campaign_set:
         if practice_campaign_id in (None, ""):
             camp_id = None

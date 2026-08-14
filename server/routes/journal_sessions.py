@@ -15,8 +15,12 @@ import db
 import journal_day_net_prefs as jdnp
 import journal_session_agent as jsa
 import journal_session_domain as jsd
+import journal_confirm as jcf
+import journal_drafts as jdr
+import journal_heat as jh
 import journal_session_media as jsm
 import journal_session_structured as jss
+import journal_surfacing as jsurf
 from guards import require_session
 from routes.trade_log.common import (
     _load_member_book,
@@ -421,6 +425,166 @@ def journal_session_agent_status(request: Request, session_id: int) -> dict:
         "prompt_constant": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
         "ethos_id": ETHOS_ID,
     }
+
+
+@router.get("/api/me/journal/drafts")
+def journal_draft_get(request: Request, journal_date: str) -> dict:
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    if not journal_date or len(journal_date) < 10:
+        raise HTTPException(status_code=422, detail="journal_date must be YYYY-MM-DD")
+    jd = date.fromisoformat(journal_date[:10])
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            draft = jdr.get_draft(cur, iid, jd)
+    return {"draft": draft}
+
+
+@router.put("/api/me/journal/drafts")
+async def journal_draft_put(request: Request) -> dict:
+    claims = require_session(request)
+    _require_tool_member(claims, capability="write")
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    raw_d = str(body.get("journal_date") or "")
+    if len(raw_d) < 10:
+        raise HTTPException(status_code=422, detail="journal_date must be YYYY-MM-DD")
+    jd = date.fromisoformat(raw_d[:10])
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            try:
+                draft = jdr.put_draft(cur, iid, jd, str(body.get("body_md") or ""))
+            except jsd.JournalSessionError as e:
+                _raise_domain(e)
+    return {"draft": draft}
+
+
+@router.delete("/api/me/journal/drafts")
+def journal_draft_delete(request: Request, journal_date: str) -> dict:
+    claims = require_session(request)
+    _require_tool_member(claims, capability="write")
+    if not journal_date or len(journal_date) < 10:
+        raise HTTPException(status_code=422, detail="journal_date must be YYYY-MM-DD")
+    jd = date.fromisoformat(journal_date[:10])
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            jdr.delete_draft(cur, iid, jd)
+    return {"ok": True}
+
+
+@router.post("/api/me/journal-sessions/{session_id}/confirmations")
+async def journal_confirmation_post(request: Request, session_id: int) -> dict:
+    claims = require_session(request)
+    _require_tool_member(claims, capability="write")
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    field_key = str(body.get("field_key") or "").strip()
+    method = str(body.get("method") or "extraction").strip()
+    present = body.get("present")
+    if present is None:
+        present = body.get("value") not in (None, "")
+    src = body.get("source_message_ids") or []
+    if not isinstance(src, list):
+        raise HTTPException(status_code=422, detail="source_message_ids must be an array")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            try:
+                session = jcf.apply_confirmation(
+                    cur,
+                    iid,
+                    session_id,
+                    field_key=field_key,
+                    value=body.get("value"),
+                    present=bool(present),
+                    source_message_ids=[int(x) for x in src],
+                    method=method,
+                )
+            except jsd.JournalSessionError as e:
+                _raise_domain(e)
+    return {"session": session}
+
+
+@router.get("/api/me/journal/heat")
+def journal_heat_get(request: Request) -> dict:
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            on = jh.identity_has_unmatched_open(cur, iid)
+    return {"heat": bool(on)}
+
+
+@router.post("/api/me/journal/coach/tick")
+async def journal_coach_tick(request: Request) -> dict:
+    """Apply kind × state matrix; optional inbox notify when Journal is not focused."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    raw_d = str(body.get("journal_date") or date.today().isoformat())
+    jd = date.fromisoformat(raw_d[:10])
+    focused = bool(body.get("journal_focused"))
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            heat_on = jh.identity_has_unmatched_open(cur, iid)
+            phase = jsd.derive_phase(jd, jsd._now_utc(), cur=cur)
+            actions: list[str] = []
+            if heat_on:
+                jsurf.consume(cur, iid, jd, jsurf.KIND_DAY_OPEN, channel="heat")
+                if phase == "post_close":
+                    jsurf.consume(cur, iid, jd, jsurf.KIND_DAY_CLOSE, channel="heat")
+                actions.append("heat_consume")
+                return {"heat": True, "phase": phase, "actions": actions}
+
+            kind = None
+            if phase == "pre_open":
+                kind = jsurf.KIND_DAY_OPEN
+            elif phase == "post_close":
+                kind = jsurf.KIND_DAY_CLOSE
+            if kind and jsurf.try_fire(
+                cur, iid, jd, kind, channel="in_thread" if focused else "notify"
+            ):
+                actions.append(f"fire:{kind}")
+                if not focused:
+                    import member_notify as mn
+
+                    title = "Your journal is ready"
+                    body_txt = (
+                        "Open your journal when you have a minute."
+                        if kind == jsurf.KIND_DAY_OPEN
+                        else "Your session journal is ready to close the day."
+                    )
+                    try:
+                        mn.create_in_app(
+                            cur,
+                            identity_id=iid,
+                            kind=kind,
+                            title=title,
+                            body=body_txt,
+                            href=f"/app/journal?date={jd.isoformat()}",
+                            period_key=jd.isoformat(),
+                        )
+                    except mn.MemberNotifyError:
+                        pass
+            return {"heat": False, "phase": phase, "actions": actions}
 
 
 @router.post("/api/me/journal-sessions/{session_id}/agent/turn")

@@ -9,13 +9,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import {
   displayMessageBody,
+  deleteJournalDraft,
   fetchAgentStatus,
   formatMessageTimestamp,
+  getJournalDraft,
   getJournalSession,
   JOURNAL_AGENT_DISPLAY_NAME,
   patchJournalSession,
   postAgentTurn,
+  postJournalConfirmation,
   postJournalMessage,
+  putJournalDraft,
+  tickJournalCoach,
   type AgentDepth,
   type JournalMessage,
   type JournalSession,
@@ -59,6 +64,14 @@ export default function SessionInterviewChat({
   );
   const [statusNote, setStatusNote] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
+  const [draftReady, setDraftReady] = useState(false);
+  const [presenceOn, setPresenceOn] = useState(true);
+  const [pendingExtract, setPendingExtract] = useState<{
+    field_key: string;
+    value: string;
+    source_message_ids: number[];
+    quote: string;
+  } | null>(null);
   const [chatBusy, setChatBusy] = useState(false);
   const [campaigns, setCampaigns] = useState<PracticeCampaign[]>([]);
   const [campBusy, setCampBusy] = useState(false);
@@ -96,11 +109,35 @@ export default function SessionInterviewChat({
 
   useEffect(() => {
     setDraft("");
+    setDraftReady(false);
     setChatBusy(false);
     stickBottom.current = true;
     scrolledToTarget.current = null;
     void refreshStatus();
-  }, [session.id, refreshStatus]);
+    const jd = session.journal_date;
+    if (jd) {
+      void getJournalDraft(jd)
+        .then((d) => {
+          if (d.draft?.body_md) setDraft(d.draft.body_md);
+        })
+        .catch(() => undefined)
+        .finally(() => setDraftReady(true));
+      void tickJournalCoach({
+        journal_date: jd,
+        journal_focused: true,
+      }).catch(() => undefined);
+    } else {
+      setDraftReady(true);
+    }
+  }, [session.id, session.journal_date, refreshStatus]);
+
+  useEffect(() => {
+    if (!draftReady || !mutable || !session.journal_date) return;
+    const t = window.setTimeout(() => {
+      void putJournalDraft(session.journal_date, draft).catch(() => undefined);
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [draft, draftReady, mutable, session.journal_date]);
 
   useEffect(() => {
     void fetchCampaigns()
@@ -211,6 +248,9 @@ export default function SessionInterviewChat({
         try {
           const res = await postAgentTurn(session.id, { body_md: text });
           setDraft("");
+          if (session.journal_date) {
+            void deleteJournalDraft(session.journal_date).catch(() => undefined);
+          }
           onUpdated(res.session);
           if (res.turn.depth) setDepth(res.turn.depth);
           if (
@@ -259,6 +299,81 @@ export default function SessionInterviewChat({
       data-testid="journal-interview-chat"
       style={{ minHeight: "18rem", height: "min(28rem, 50vh)" }}
     >
+      {presenceOn && (
+        <div
+          className="mb-2 flex items-center justify-between rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-1 text-[11px] text-[var(--color-label-secondary)]"
+          data-testid="journal-guide-presence"
+        >
+          <span>Ready when you are.</span>
+          <button
+            type="button"
+            className="text-[var(--color-label-tertiary)] hover:text-[var(--color-label)]"
+            onClick={() => setPresenceOn(false)}
+            aria-label="Dismiss entrance"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {pendingExtract && (
+        <div
+          className="mb-2 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-3 text-xs"
+          data-testid="journal-extract-card"
+        >
+          <p className="mb-1 font-medium text-[var(--color-label)]">
+            File this from what you wrote?
+          </p>
+          <p className="text-[var(--color-label-secondary)]">
+            {pendingExtract.field_key}: {pendingExtract.value}
+          </p>
+          <p className="mt-1 italic text-[var(--color-label-tertiary)]">
+            “{pendingExtract.quote}”
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Button
+              type="button"
+              variant="primary"
+              className="!min-h-7 !px-2 !text-[11px]"
+              onClick={() => {
+                void postJournalConfirmation(session.id, {
+                  field_key: pendingExtract.field_key,
+                  value: pendingExtract.value,
+                  present: true,
+                  source_message_ids: pendingExtract.source_message_ids,
+                })
+                  .then((s) => {
+                    onUpdated(s);
+                    setPendingExtract(null);
+                  })
+                  .catch((e) =>
+                    onError?.(e instanceof Error ? e.message : "Could not file"),
+                  );
+              }}
+            >
+              Confirm
+            </Button>
+            <Button
+              type="button"
+              variant="plain"
+              className="!min-h-7 !px-2 !text-[11px]"
+              onClick={() => {
+                void postJournalConfirmation(session.id, {
+                  field_key: pendingExtract.field_key,
+                  present: false,
+                  source_message_ids: pendingExtract.source_message_ids,
+                })
+                  .then((s) => {
+                    onUpdated(s);
+                    setPendingExtract(null);
+                  })
+                  .catch(() => setPendingExtract(null));
+              }}
+            >
+              Decline
+            </Button>
+          </div>
+        </div>
+      )}
       {/* Campaign stamp + playbook links (journal-primary association) */}
       <div className="mb-2 space-y-2 text-xs" data-testid="journal-practice-links">
         <div

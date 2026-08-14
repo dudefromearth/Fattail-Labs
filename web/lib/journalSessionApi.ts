@@ -171,6 +171,79 @@ export async function patchJournalSession(
   return d.session;
 }
 
+export async function getJournalDraft(journalDate: string): Promise<{
+  draft: {
+    journal_date: string;
+    body_md: string;
+    updated_at: string | null;
+    read_only: boolean;
+  } | null;
+}> {
+  const q = new URLSearchParams({ journal_date: journalDate });
+  const r = await fetch(`/api/me/journal/drafts?${q}`, {
+    credentials: "same-origin",
+  });
+  return parse(r);
+}
+
+export async function putJournalDraft(
+  journalDate: string,
+  body_md: string,
+): Promise<void> {
+  const r = await fetch("/api/me/journal/drafts", {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ journal_date: journalDate, body_md }),
+  });
+  await parse(r);
+}
+
+export async function deleteJournalDraft(journalDate: string): Promise<void> {
+  const q = new URLSearchParams({ journal_date: journalDate });
+  const r = await fetch(`/api/me/journal/drafts?${q}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+  });
+  await parse(r);
+}
+
+export async function postJournalConfirmation(
+  sessionId: number,
+  body: {
+    field_key: string;
+    value?: unknown;
+    present: boolean;
+    source_message_ids: number[];
+    method?: "extraction" | "interview";
+  },
+): Promise<JournalSession> {
+  const r = await fetch(
+    `/api/me/journal-sessions/${sessionId}/confirmations`,
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method: "extraction", ...body }),
+    },
+  );
+  const d = await parse<{ session: JournalSession }>(r);
+  return d.session;
+}
+
+export async function tickJournalCoach(opts: {
+  journal_date: string;
+  journal_focused: boolean;
+}): Promise<{ heat: boolean; phase: string; actions: string[] }> {
+  const r = await fetch("/api/me/journal/coach/tick", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(opts),
+  });
+  return parse(r);
+}
+
 export async function postJournalMessage(
   id: number,
   body_md: string,

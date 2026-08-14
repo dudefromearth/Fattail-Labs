@@ -402,39 +402,118 @@ def run_agent_turn(
             **ethos_stamp(),
         }
 
-    # RTH: no unprompted questions — only ack if member wrote; else quiet
-    if phase == "intraday" and not member_wrote:
+    # v0.7 §5.2 heat gate — request-time open book (replaces RTH-as-silence)
+    import journal_coach_config as jcc
+    import journal_heat as jh
+    import journal_surfacing as jsurf
+
+    try:
+        jcc.require_coach_config()
+    except jcc.CoachConfigError as e:
+        raise AgentTurnError(503, str(e), extra={"detail_code": "coach_config"}) from e
+
+    heat_on = jh.identity_has_unmatched_open(cur, identity_id)
+    if heat_on:
+        jsurf.consume(cur, identity_id, jd, jsurf.KIND_DAY_OPEN, channel="heat")
+        if phase == "post_close":
+            jsurf.consume(cur, identity_id, jd, jsurf.KIND_DAY_CLOSE, channel="heat")
+        if member_wrote:
+            if jh.looks_like_analysis_request(member_body):
+                return {
+                    "message": None,
+                    "kind": "heat_hold",
+                    "phase": phase,
+                    "heat": True,
+                    "depth": build_agent_status(cur, identity_id, session_id, role=role),
+                    "form_fallback": False,
+                    "detail": "Holding risk — analysis waits until the book is flat.",
+                    "prompt_version": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
+                }
+            body = "[silent] Noted."
+            validated = _validate_with_retry(tag=tag, primary=body, kind="silent")
+            if validated.get("form_fallback"):
+                return _form_fallback_payload(
+                    cur, identity_id, session_id, role=role, phase=phase,
+                    reason="validator_double_fail",
+                    violations=validated.get("violations") or [],
+                )
+            msg = jsd.append_agent_message(
+                cur, identity_id, session_id,
+                body_md=validated["body"], phase=phase, now=at,
+            )
+            return {
+                "message": msg,
+                "kind": "silent",
+                "phase": phase,
+                "heat": True,
+                "depth": build_agent_status(cur, identity_id, session_id, role=role),
+                "form_fallback": False,
+                "prompt_version": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
+                "validator": {"ok": True, "attempts": validated.get("attempts", 1)},
+            }
         return {
             "message": None,
             "kind": "quiet",
             "phase": phase,
+            "heat": True,
             "depth": build_agent_status(cur, identity_id, session_id, role=role),
             "form_fallback": False,
-            "detail": "Market hours — agent waits until you write.",
+            "detail": "Holding risk — the guide waits.",
             "prompt_version": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
         }
 
-    if phase == "intraday" and member_wrote:
-        body = "[silent] Noted."
-        validated = _validate_with_retry(tag=tag, primary=body, kind="silent")
-        if validated.get("form_fallback"):
-            return _form_fallback_payload(
-                cur, identity_id, session_id, role=role, phase=phase,
-                reason="validator_double_fail",
-                violations=validated.get("violations") or [],
+    # Heat off: unprompted kinds only at open moments, via shared ledger
+    if not member_wrote:
+        if phase == "off_session":
+            return {
+                "message": None,
+                "kind": "quiet",
+                "phase": phase,
+                "heat": False,
+                "depth": build_agent_status(cur, identity_id, session_id, role=role),
+                "form_fallback": False,
+                "detail": "Off-session — write if you want a reply.",
+                "prompt_version": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
+            }
+        kind = None
+        if phase == "pre_open":
+            kind = jsurf.KIND_DAY_OPEN
+        elif phase == "post_close":
+            kind = jsurf.KIND_DAY_CLOSE
+        if kind and jsurf.try_fire(
+            cur, identity_id, jd, kind, channel="in_thread"
+        ):
+            body = (
+                "What's the plan today?"
+                if kind == jsurf.KIND_DAY_OPEN
+                else "How did the session go — in your words?"
             )
-        msg = jsd.append_agent_message(
-            cur, identity_id, session_id,
-            body_md=validated["body"], phase=phase, now=at,
-        )
+            # Greeting strings are design-intent; speaker label stays placeholder (B-Name)
+            validated = _validate_with_retry(tag=tag, primary=body, kind="absence")
+            if not validated.get("form_fallback"):
+                msg = jsd.append_agent_message(
+                    cur, identity_id, session_id,
+                    body_md=validated["body"], phase=phase, now=at,
+                )
+                return {
+                    "message": msg,
+                    "kind": kind,
+                    "phase": phase,
+                    "heat": False,
+                    "depth": build_agent_status(cur, identity_id, session_id, role=role),
+                    "form_fallback": False,
+                    "prompt_version": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
+                    "validator": {"ok": True, "attempts": validated.get("attempts", 1)},
+                }
         return {
-            "message": msg,
-            "kind": "silent",
+            "message": None,
+            "kind": "quiet",
             "phase": phase,
+            "heat": False,
             "depth": build_agent_status(cur, identity_id, session_id, role=role),
             "form_fallback": False,
+            "detail": "Write when you are ready.",
             "prompt_version": "JOURNAL_SESSION_SYSTEM_PROMPT_V1",
-            "validator": {"ok": True, "attempts": validated.get("attempts", 1)},
         }
 
     # Local probes (also used when llm fails over in future)

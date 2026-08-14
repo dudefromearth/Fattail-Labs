@@ -469,3 +469,30 @@ Content lives in the **lab-wiki repo** (`~/lab-wiki`, GitHub `dudefromearth/lab-
 | **New pages** | Author in Obsidian (or let the lab-wiki bench compile); `[[wikilinks]]` resolve automatically; unresolved links render muted until the target page exists |
 
 Members only ever see `status: published` pages. No wiki content is edited in `/admin`.
+
+---
+
+## Journal Session v0.7 — guide charter (operator)
+
+**Specs:** Journal Session v0.7 · DL-325 / DL-326  
+**Prompt edit:** `/admin` journal prompt versions (unchanged surface). New sessions still stamp `prompt_version_id`.
+
+**Fail-loud env (required when the journal agent runs):**
+
+| Variable | Example |
+|----------|---------|
+| `LABS_COACH_POSTURE_DEFAULT` | `forward` (constant until B-Journey-Feed) |
+| `LABS_COACH_MODEL_PROVIDER` | `xai` |
+| `LABS_COACH_MODEL` | `grok-4` |
+| `LABS_COACH_EFFORT_MAP` | `day_open:low,surface:low,extract:low,mechanical_turn:low` |
+
+Missing or unknown effort keys abort the agent turn (503), not the whole API boot.
+
+**Notify kinds** (in-app, Family B, same channel policy as retro material):
+
+- `coach_day_open`
+- `coach_day_close`
+
+One per kind per date. Heat (open Trade Log book) consumes without sending. Do not add a name string to titles until B-Name.
+
+**Do not** configure a pillar-read fade path. Do not ship speaker label “Coach”.

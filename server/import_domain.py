@@ -2001,6 +2001,30 @@ def purge_practice_data(cur, identity_id: int) -> dict[str, int]:
         "retro_cadence_history",
         "DELETE FROM member_retro_cadence_history WHERE identity_id = %s",
     )
+    try:
+        import journal_drafts as jdr
+
+        counts["journal_drafts"] = jdr.purge_drafts_for_identity(cur, identity_id)
+    except Exception:
+        _del_optional(
+            "journal_drafts",
+            "DELETE FROM member_journal_drafts WHERE identity_id = %s",
+        )
+    try:
+        import journal_confirm as jcf
+
+        counts["journal_confirmations"] = jcf.purge_confirmations_for_identity(
+            cur, identity_id
+        )
+    except Exception:
+        _del_optional(
+            "journal_confirmations",
+            "DELETE FROM member_journal_confirmations WHERE identity_id = %s",
+        )
+    _del(
+        "journal_surfacing",
+        "DELETE FROM member_journal_surfacing WHERE identity_id = %s",
+    )
     # Journal sessions (J1+) — media binaries then rows
     try:
         import journal_session_media as jsm
