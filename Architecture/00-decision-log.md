@@ -4,6 +4,42 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-13 — DL-327 Coach Conversation Lab & ConversationSurface v0.1 BUILD
+
+**Decision:** Coach Conversation Lab Spec **v0.1** is **BUILD AUTHORITY**. Coach GO
+on plan v1.1 (CL-0…CL-4). The lab is an administrator-only test harness. The
+`ConversationSurface` component is built for keeps; persistence is a **host
+contract** (the component never grows a store).
+
+| Item | Path |
+|------|------|
+| Spec | `Specs/FatTail-Labs-Coach-Conversation-Lab-Spec-v0_1.md` |
+| Plan | `docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md` **v1.1** |
+| Board | `agents/p-coach-conversation-lab/` |
+| Visual law | `docs/references/coach-lab-imessage-reference.jpg` |
+
+**Charter GO scope:** ConversationSurface · `/admin/coach-lab` · server proxy ·
+per-admin persist/export · lab controls.  
+**Later, same spec:** CL-V voice.  
+**Fenced:** Journal remount · member ingest of `coach_lab_*` (H4) · B-Name · heat
+gate · B-Journey-Feed · B-Personalize · B-Campaign-bind · Stage 3 instruction set.
+
+**Arrival greeting (B-CL1):** `POST /api/admin/coach-lab/greet` is the only first-turn
+path. Idempotent: zero coach turns → persist greeting; otherwise 200 no-op. Page
+load must not POST empty `/chat` and must not `/reset` to force a greeting.
+
+**Husk-reset:** a conversation with zero trader turns is discarded on reset, not
+archived. Record discipline is for conversations that happened.
+
+**The fake “Read” receipt is lab-only chrome and must not remount onto the member
+Journal without a real meaning.**
+
+**Rationale:** Stage 1–2 of the Coach-directed sequence — get the interface talking
+before a real instruction set exists. G4 is the Coach-supplied iMessage still,
+sized for the interface.
+
+---
+
 ## 2026-08-13 — DL-326 Journal Session v0.7 BUILD AUTHORITY (B-Agent fold)
 
 **Decision:** Journal Session Spec **v0.7** is **BUILD AUTHORITY**. Coach GO on the
