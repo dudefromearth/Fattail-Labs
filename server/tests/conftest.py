@@ -49,10 +49,30 @@ from main import app  # noqa: E402
 COOKIE = get_config().session_cookie
 
 
+class LabsTestClient(TestClient):
+    """Accept cookies= without httpx's per-request deprecation.
+
+    Isolation: an explicit cookies= jar replaces the client cookies for that
+    request only, then is cleared so member A cannot leak into the next call.
+    Requests without cookies= keep the jar (SSO Set-Cookie flows).
+    """
+
+    def request(self, method, url, **kwargs):  # type: ignore[override]
+        cookies = kwargs.pop("cookies", None)
+        if cookies is not None:
+            self.cookies.clear()
+            self.cookies.update(cookies)
+        try:
+            return super().request(method, url, **kwargs)
+        finally:
+            if cookies is not None:
+                self.cookies.clear()
+
+
 @pytest.fixture(scope="session")
 def client():
     # M6: cookie mutations require Origin/Referer; TestClient is same-site as app.
-    with TestClient(app) as c:
+    with LabsTestClient(app) as c:
         c.headers.update({"Origin": "http://testserver"})
         yield c
 

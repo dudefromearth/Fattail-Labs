@@ -1801,7 +1801,7 @@ def test_interruption_notice_copy_stated_not_scolded():
 
 def test_period_was_interrupted_requires_prior(client):
     """Maiden is never interrupted; long span after complete is."""
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     email = "zztest-retro-interrupt@labs.test"
     iid = _member(email)
@@ -1809,8 +1809,9 @@ def test_period_was_interrupted_requires_prior(client):
         with db.transaction() as conn:
             with conn.cursor() as cur:
                 # No prior → not interrupted even if span is long
-                start = datetime.utcnow() - timedelta(days=40)
-                end = datetime.utcnow()
+                now = datetime.now(timezone.utc).replace(tzinfo=None)
+                start = now - timedelta(days=40)
+                end = now
                 assert (
                     rd.period_was_interrupted(cur, iid, start, end, 7) is False
                 )

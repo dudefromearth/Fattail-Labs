@@ -76,7 +76,6 @@ def test_ai_run_bravo_live_via_api(client, admin_cookies):
         "/api/admin/ai/agents/bravo/tasks/research_pack/run",
         cookies=admin_cookies,
         json={"use_fixtures": True, "max_tokens": 1500},
-        timeout=180.0,
     )
     assert r.status_code == 200, r.text
     body = r.json()

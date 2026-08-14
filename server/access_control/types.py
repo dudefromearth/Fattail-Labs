@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal, Optional, Sequence
+
+
+def _utcnow_naive() -> datetime:
+    """Naive UTC. evaluate.py compares this to MySQL-naive opens_at/closes_at."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 PolicyMode = Literal["hard", "soft", "hide", "redirect"]
 DecisionCode = Literal[
@@ -42,7 +47,7 @@ class ViewerContext:
     plan_slugs: tuple[str, ...]
     enrolled_course_ids: tuple[int, ...]
     campaign_tags: tuple[str, ...] = ()
-    now: datetime = field(default_factory=datetime.utcnow)
+    now: datetime = field(default_factory=_utcnow_naive)
     preview_as: Optional[PreviewAs] = None
 
 

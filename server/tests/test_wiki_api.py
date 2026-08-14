@@ -4,14 +4,13 @@ import os
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
 import auth
 import db
 import wiki_store
 from config import get_config
 from main import app
-from tests.conftest import cookie_for
+from tests.conftest import LabsTestClient, cookie_for
 
 COOKIE = get_config().session_cookie
 
@@ -32,7 +31,8 @@ Zzwikitest convexity paragraph with a [[{link}]] wikilink.
 
 @pytest.fixture(scope="module")
 def client():
-    with TestClient(app) as c:
+    with LabsTestClient(app) as c:
+        c.headers.update({"Origin": "http://testserver"})
         yield c
 
 
