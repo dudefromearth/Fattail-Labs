@@ -4,6 +4,23 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-14 — DL-332 Characterization suite uses own probe courses
+
+**Decision:** Characterization tests that need a published/draft course **create and
+delete their own probe rows** (`zztest-*` / helpers in `server/tests/conftest.py`).
+They do **not** depend on the live flagship slug `fattail-foundations` (or any other
+seeded catalog course) having specific lesson flags, duration, or free_preview.
+
+**Why:** On 2026-08-14 the suite went red against production `main` because live
+content no longer matched fixtures the tests assumed. That is characterization
+against the wrong SoR. Probe courses keep the suite honest when Coach edits the
+flagship.
+
+**As-built:** `89f2216` (`test: green characterization suite on production SHA`).
+Number is **DL-332** so it does not collide with pile DL-325–331 (journal/lab/GO).
+
+---
+
 ## 2026-08-13 — DL-323 Retrospective historical cadence (avg days / trades)
 
 **Decision:** Preview and start chrome show the trader’s **own** completed-review averages:
@@ -73,6 +90,8 @@ Lab title and href.
 **Spec:** `Specs/FatTail-Labs-Catalog-Order-Spec-v1.0.md` v1.1.
 
 ## 2026-08-13 — DL-313 Reports starting capital is read-only from the account
+
+**Number lock:** DL-313 is this money decision only. The 2026-08-12 VP Spec v0.3.1 fold was filed under the same number by collision; that entry is now **DL-324**.
 
 **Bug (member ticket, ricaraus@gmail.com):** Reports showed a $50,000 balance vs the
 member's real ~$40,806 starting capital. **Root cause:** Reports had an *editable*
@@ -179,7 +198,9 @@ and `provider_plan_map` FK-reference `plans`, and no code assigns the `observer`
 
 ---
 
-## 2026-08-12 — DL-313 VP Spec v0.3.1 — external review fold
+## 2026-08-12 — DL-324 VP Spec v0.3.1 — external review fold
+
+**Renumbered:** filed as DL-313; collision with Reports starting capital (DL-313, 2026-08-13). This VP fold is **DL-324**. Citations of “DL-313” for volume-profile mean this entry.
 
 **Decision:** Fold 2026-08-12 Spec review into **v0.3.1** (same file). Strengths retained; gaps closed as law or OD.
 
