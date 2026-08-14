@@ -4,6 +4,53 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-14 — DL-329 Standing GO procedure
+
+**Decision:** Coach standing order, effective 2026-08-14. Amends **DL-328**
+(how a chat GO becomes work). Does not waive the file token.
+
+**Coach order (verbatim):**
+
+> Standing order — GO procedure, effective now:
+>
+> When I say "GO: \<ID\>" in chat, you immediately: (1) mint
+> `agents/go/<ID>.md` from the template — scope and basis copied from the
+> bill's row for that ID, issued_by: Coach, dated, quoting my GO message
+> verbatim; (2) run `require_go.py --id <ID>` and show me the passing check
+> plus the file; (3) execute the item to its exit criterion; (4) commit as
+> `"<ID>: <title>"` citing the token; (5) file the evidence in
+> `gate-reports/` and report back.
+>
+> You never mint a token without a chat GO from me. You never start work
+> without a passing token check. If my GO is ambiguous or the bill's scope
+> is unclear, ask — don't guess. MiniTwo stays untouched under every GO
+> unless the GO explicitly names MiniTwo.
+>
+> Log this standing order in the decision log.
+
+**Procedure (binding):**
+
+| Step | Action |
+|------|--------|
+| 1 | Mint `agents/go/<ID>.md` from `TEMPLATE.md`. `issued_by: Coach`. Date today. Scope + basis from the bill row (or the GO text if it narrows the row). Quote the chat GO verbatim. |
+| 2 | `python3 scripts/require_go.py --id <ID>` must exit 0. Show the check **and** the file. |
+| 3 | Execute only that ID to its exit criterion. |
+| 4 | Commit message: `<ID>: <title>` and cite `agents/go/<ID>.md`. |
+| 5 | File evidence: Round 0 bill `RB-*` → `agents/p-round-0/gate-reports/<ID>.md`. Project packets → `agents/<project>/gate-reports/`. Then report back. |
+
+**Hard rules:**
+
+- No token without a chat `GO: <ID>` from Coach.
+- No work without a passing `require_go.py` check.
+- Ambiguous GO or unclear bill scope → **ask**, do not guess.
+- **MiniTwo is untouched** unless the GO text **explicitly names MiniTwo**.
+
+**Not authorized:** Conversation Lab implementation (still no `agents/go/CL-*.md`).
+
+**Paper:** doctrine §10c · `agents/go/README.md` · `agents/go/TEMPLATE.md`.
+
+---
+
 ## 2026-08-14 — DL-328 GO is a file (RB-08)
 
 **Decision:** Chat `GO: <ID>` is not execution authority. A dated artifact is.

@@ -6,15 +6,21 @@
 id: REPLACE-ME
 status: DRAFT
 date: YYYY-MM-DD
-issuer: Coach
+issued_by: Coach
 ```
 
-**Scope:** (one ID, one ship — what this GO authorizes)
+**Coach GO (verbatim):**
 
-**Not in scope:** (everything else, named)
+> (paste the chat `GO: <ID>` message here, verbatim)
 
-Chat `GO: <ID>` is not authority. This file is. Juliet, implementers, and
-deploy kickstart must refuse until `scripts/require_go.py --id <ID>` exits 0.
+**Scope:** (from the bill row for this ID — one ship)
+
+**Basis:** (bill row + any Coach narrowing in the GO)
+
+**Not in scope:** (everything else, named). MiniTwo unless the GO names MiniTwo.
+
+Never mint this file without Coach's chat `GO: <ID>` (DL-329). Chat alone is
+not authority. `scripts/require_go.py --id <ID>` must exit 0 before work.
 
 Conversation Lab implementation stays STOPPED until `agents/go/CL-1.md`
 (and later CL-2…CL-4 / CL-G) exists with `status: GO`.

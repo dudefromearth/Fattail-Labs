@@ -108,18 +108,24 @@ toughness as enabler. Capital expression remains **stop the bleeding**. Spec:
 compose `LABS_MEMBER_AI_ETHOS_V1_2`; surface guardrails and **distress stop-interview**
 (self-target, not trading vernacular) still win over ethos; gate independent of MODE.
 
-### 10c. GO is a file (2026-08-14 · DL-328 · RB-08)
+### 10c. GO is a file (2026-08-14 · DL-328 · DL-329 · RB-08)
 
-Chat `GO: <ID>` is **not** execution authority. Execution authority is a dated
-artifact:
+Chat `GO: <ID>` is **not** execution authority by itself. Execution authority is
+a dated artifact minted **from that chat GO** (DL-329 standing order):
 
-- Canonical: `agents/go/<ID>.md` with `id: <ID>` and `status: GO`
-- Template: `agents/go/TEMPLATE.md` (`GO TOKEN TEMPLATE`)
-- Check: `python3 scripts/require_go.py --id <ID>` (exit 0 or **REFUSE**)
+1. Mint `agents/go/<ID>.md` from `TEMPLATE.md` — scope and basis from the bill
+   row, `issued_by: Coach`, dated, Coach's `GO: <ID>` quoted verbatim.
+2. `python3 scripts/require_go.py --id <ID>` exit 0; show the check and the file.
+3. Execute that ID to its exit criterion.
+4. Commit as `<ID>: <title>` citing the token.
+5. File evidence in `gate-reports/` (`agents/p-round-0/gate-reports/` for `RB-*`;
+   `agents/<project>/gate-reports/` for project packets) and report back.
 
-Juliet does not mark a packet in-progress, specialists do not touch scoped code,
-and Foxtrot does not kickstart (`infra/scripts/deploy-minitwo-auth-hardening.sh --go <ID>`)
-without that exit 0. Missing `--go` aborts **before** `git pull`.
+Never mint a token without Coach's chat `GO: <ID>`. Never start work without a
+passing token check. If the GO is ambiguous or the bill row is unclear: **ask**.
+**MiniTwo stays untouched** unless the GO text explicitly names MiniTwo.
+
+Foxtrot kickstart still requires `--go <ID>` and aborts **before** `git pull`.
 
 Conversation Lab implementation stays **STOPPED** until `agents/go/CL-1.md`
 (and later CL-2…CL-4 / CL-G) exists. Absence of the file is the stop.

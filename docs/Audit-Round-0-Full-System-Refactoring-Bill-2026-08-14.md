@@ -481,6 +481,11 @@ Coach ruling required. Never dropped, never done in this round.
 
 Coach re-ranks if desired, then issues **`GO: RB-xx`** (or a quadrant) **per item**. Until then: read, verify, report. No plan-of-work beyond this bill.
 
+**Standing order (DL-329):** on `GO: <ID>`, mint the token from the bill row,
+pass `require_go.py`, execute, commit `<ID>: <title>`, file
+`agents/p-round-0/gate-reports/<ID>.md`. Never mint without chat GO. MiniTwo
+untouched unless the GO names MiniTwo.
+
 After **RB-08** lands, “GO” means a dated artifact that names the ID — not chat text alone. This document still does not authorize execution.
 
 **RB-08 GO issued 2026-08-14.** Token: `agents/go/RB-08.md`.

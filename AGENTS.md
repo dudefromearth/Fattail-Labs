@@ -201,10 +201,12 @@ to the packet.
 3. **No dev server in staging/production.** Next.js runs built output only.
 4. **Evidence over assertion.** "It should work" is banned.
 5. **Change control.** Declare exact files + changes before touching; only touch what was approved.
-6. **GO is a file (DL-328).** Chat `GO: <ID>` is not execution authority.
-   `python3 scripts/require_go.py --id <ID>` must exit 0 before a packet is
-   in-progress or a deploy kickstart. Conversation Lab stays STOPPED until
-   `agents/go/CL-1.md` exists.
+6. **GO is a file (DL-328 / DL-329).** On chat `GO: <ID>`: mint
+   `agents/go/<ID>.md` from the template, pass `require_go.py --id <ID>`,
+   execute that ID, commit as `<ID>: <title>`, file `gate-reports/`. Never
+   mint without chat GO. Never start work without a passing check. MiniTwo
+   untouched unless the GO names MiniTwo. Conversation Lab stays STOPPED
+   until `agents/go/CL-1.md` exists.
 7. **Stop the bleeding.** Process outcomes in marketing, never profit claims. Pathway
    routes everyone through the flagship first.
 

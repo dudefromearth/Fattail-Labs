@@ -55,9 +55,11 @@ ad-hoc polls or WS-only mid tables. See Arch **28** §4.4 and `AGENTS.md` market
   back, check the UI. "It should work" is banned.
 - **Change control:** declare exact files + changes before touching; only touch what was
   approved.
-- **GO is a file (DL-328):** `python3 scripts/require_go.py --id <ID>` must exit 0
-  before a packet is in-progress or a deploy kickstart. Chat `GO: <ID>` is not
-  authority. Conversation Lab stays STOPPED until `agents/go/CL-1.md` exists.
+- **GO is a file (DL-328 / DL-329):** on chat `GO: <ID>`, mint
+  `agents/go/<ID>.md`, pass `require_go.py --id <ID>`, execute, commit
+  `<ID>: <title>`, file `gate-reports/`. Never mint without chat GO. MiniTwo
+  untouched unless the GO names MiniTwo. Conversation Lab stays STOPPED until
+  `agents/go/CL-1.md` exists.
 - **Documentation parity (nothing hidden):** every feature ships WITH its spec (new or
   versioned in `Specs/`), its decision-log entry, and updates to any affected
   architecture docs — in the same body of work, never "later". `Specs/` must always

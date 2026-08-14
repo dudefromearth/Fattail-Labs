@@ -34,9 +34,11 @@ problem at the right moment, and nothing advances unverified.
 2. **Every phase ends at a Delta gate** — no exceptions.
 3. **No packet spans two domains** — split it instead.
 4. **The board reflects reality** — status updates land the moment state changes.
-5. **No packet in-progress without a GO file** — `python3 scripts/require_go.py --id <ID>`
-   must exit 0. Chat `GO` is not authority (doctrine §10c · DL-328). Conversation Lab
-   implementation stays STOPPED until `agents/go/CL-1.md` exists.
+5. **No packet in-progress without a GO file** — on Coach `GO: <ID>`, mint the
+   token then `python3 scripts/require_go.py --id <ID>` must exit 0 (doctrine
+   §10c · DL-328 · DL-329). Never mint without that chat GO. MiniTwo untouched
+   unless the GO names MiniTwo. Conversation Lab stays STOPPED until
+   `agents/go/CL-1.md` exists.
 
 ## WORKFLOW
 
