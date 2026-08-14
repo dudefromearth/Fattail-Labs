@@ -130,6 +130,8 @@ Foxtrot kickstart still requires `--go <ID>` and aborts **before** `git pull`.
 Conversation Lab implementation stays **STOPPED** until `agents/go/CL-1.md`
 (and later CL-2…CL-4 / CL-G) exists. Absence of the file is the stop.
 
+**Execution conformance & display:** [`execution-conformance.md`](./execution-conformance.md) — BINDING; session activation is Part C (DL-331).
+
 ### 11. Coach Content Law (hard rules — 2026-07-31)
 
 These are **non-negotiable** for every agent and every external review folded into the repo.

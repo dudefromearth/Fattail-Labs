@@ -4,6 +4,27 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-14 — DL-331 Execution conformance doctrine adopted
+
+**Decision:** `agents/bench/execution-conformance.md` **v1.0** is **BINDING**
+on every agent invocation. Coach GO **CONF-1**. Declaration + GO token both
+required. Display law (Part B) is a conformance instrument, not decoration.
+
+**Canonical failure:** 2026-08-13 — one actor executed an entire bench plan,
+ignoring seats, seeds, handoffs, and gates (Conversation Lab solo ship).
+
+| Item | Path |
+|------|------|
+| Doctrine | `agents/bench/execution-conformance.md` (unchanged as provided) |
+| Pointer | `AGENTS.md` Core Doctrine · doctrine §10c |
+| Token | `agents/go/CONF-1.md` |
+
+This entry does **not** open Conversation Lab implementation.
+
+**Rationale:** So 2026-08-13 cannot happen silently again.
+
+---
+
 ## 2026-08-14 — DL-330 Conversation Lab implementation HELD + DL collision index
 
 **Decision:** Coach Conversation Lab Spec **v0.1** remains **BUILD AUTHORITY**

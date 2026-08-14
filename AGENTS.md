@@ -194,6 +194,10 @@ false or reckless trading education in studio content. Victor / Whiskey / Yankee
 lineage misuse (Taleb / Spitznagel / Mandelbrot) when philosophy or strategy is central
 to the packet.
 
+Execution conformance & display:
+`agents/bench/execution-conformance.md` — BINDING on every session; see Part C
+for session activation.
+
 ### Sacred product invariants (from CLAUDE.md + doctrine)
 
 1. **Standalone repo.** No shared code with MarketSwarm-Canonical — API only.
