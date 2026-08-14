@@ -86,7 +86,10 @@ OPEN for a later cycle.
 **Phase 6: Execution Planning (Juliet)**  
 Only now: decomposition into packets, seeds, and gates in `agents/<project>/`.  
 Seeds may only implement **IN-SCOPE** build-authority items. Flagged/deferred ideas
-are **not** deleted from the Ideas inventory or the flag register.
+are **not** deleted from the Ideas inventory or the flag register.  
+Spec BUILD is not an implement/deploy GO. A packet starts only when
+`agents/go/<ID>.md` exists and `scripts/require_go.py --id <ID>` exits 0
+(doctrine §10c · DL-328).
 
 ---
 

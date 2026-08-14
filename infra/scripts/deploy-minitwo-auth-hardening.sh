@@ -14,6 +14,41 @@ set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH:-/usr/bin:/bin}"
 
 REPO="${LABS_REPO:-$HOME/Fattail-Labs}"
+
+GO_ID=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --go)
+      if [[ $# -lt 2 ]]; then
+        echo "REFUSE: --go requires an ID (e.g. --go RB-08)" >&2
+        exit 1
+      fi
+      GO_ID="$2"
+      shift 2
+      ;;
+    *)
+      echo "REFUSE: unknown argument: $1" >&2
+      echo "  deploy requires --go <ID>  (DL-328 / agents/go/README.md)" >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "$GO_ID" ]]; then
+  echo "REFUSE: deploy kickstart requires --go <ID>" >&2
+  echo "  Chat GO is not authority. See agents/go/README.md" >&2
+  echo "  Example: bash infra/scripts/deploy-minitwo-auth-hardening.sh --go RB-08" >&2
+  exit 1
+fi
+
+REQUIRE_GO="$REPO/scripts/require_go.py"
+if [[ ! -f "$REQUIRE_GO" ]]; then
+  echo "REFUSE: missing $REQUIRE_GO" >&2
+  exit 1
+fi
+echo "==> GO check --id $GO_ID"
+python3 "$REQUIRE_GO" --id "$GO_ID" --root "$REPO"
+
 cd "$REPO"
 
 echo "==> git pull"

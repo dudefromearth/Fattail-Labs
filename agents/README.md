@@ -8,6 +8,10 @@ operating model, adapted to FatTail Labs.
 ```
 agents/
 ├── README.md                     ← this file
+├── go/                           ← dated GO tokens (DL-328). Chat GO is not authority.
+│   ├── README.md
+│   ├── TEMPLATE.md
+│   └── <ID>.md                   ← status: GO required before work or deploy
 ├── bench/                        ← the roster: one file per agent + governance
 │   ├── README.md                 ← roster overview
 │   ├── doctrine.md               ← constitution: principles, hierarchy, rhythm
@@ -20,6 +24,9 @@ agents/
     ├── seeds/                    ← pasteable work packets, one per agent-task
     └── gate-reports/             ← Delta's written verdicts with evidence
 ```
+
+**GO check (mandatory):** `python3 scripts/require_go.py --id <ID>` must exit 0
+before a packet is marked in-progress or a deploy kickstart. See `agents/go/README.md`.
 
 ## The process
 

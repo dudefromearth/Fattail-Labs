@@ -24,8 +24,11 @@ cd ~/Fattail-Labs
 # Ensure .env includes (production):
 # LABS_ADMIN_EMAILS=ernie@dudefromearth.com,coach@fattail.ai,conor@fattail.ai
 
-bash infra/scripts/deploy-minitwo-auth-hardening.sh
+bash infra/scripts/deploy-minitwo-auth-hardening.sh --go <ID>
 ```
+
+`<ID>` must have `agents/go/<ID>.md` with `status: GO` (`scripts/require_go.py`).
+Missing `--go` **REFUSE**s before `git pull` (DL-328).
 
 Or manual steps in `infra/deploy.md` § Deploy + § Auth hardening.
 

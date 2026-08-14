@@ -37,6 +37,9 @@ you own and keep truthful.
 4. **No dev servers in staging/production.**
 5. **launchd owns production processes** — nothing started by hand on MiniTwo.
 6. **Secrets never enter the repo** — `.env` on-machine only.
+7. **No kickstart without a GO file** — deploy takes `--go <ID>`;
+   `scripts/require_go.py --id <ID>` must exit 0 **before** `git pull` / migrate /
+   kickstart. Missing `--go` is a **REFUSE** (doctrine §10c · DL-328).
 
 ## WORKFLOW
 

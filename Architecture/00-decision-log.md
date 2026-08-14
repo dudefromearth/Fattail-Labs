@@ -4,6 +4,32 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-14 — DL-328 GO is a file (RB-08)
+
+**Decision:** Chat `GO: <ID>` is not execution authority. A dated artifact is.
+
+| Item | Path |
+|------|------|
+| Tokens | `agents/go/<ID>.md` (`id` + `status: GO`) |
+| Template | `agents/go/TEMPLATE.md` |
+| Check | `scripts/require_go.py --id <ID>` |
+| Deploy | `infra/scripts/deploy-minitwo-auth-hardening.sh --go <ID>` (abort before pull) |
+| Doctrine | `agents/bench/doctrine.md` §10c |
+
+Juliet does not mark a packet in-progress, specialists do not touch scoped code,
+and Foxtrot does not kickstart without exit 0 from the checker.
+
+**Conversation Lab:** implementation remains **STOPPED**. This entry does **not**
+open CL-1…CL-4 / CL-G. Those wait for their own `agents/go/CL-*.md` files.
+
+**Bootstrap:** Coach issued chat `GO: RB-08` on 2026-08-14; `agents/go/RB-08.md`
+is that token. Later items require the file first.
+
+**Rationale:** The 2026-08-13 lab ship was process-shaped — verbal GO treated as
+authority for a solo implementer. Round 0 bill RB-08 (Coach R-1).
+
+---
+
 ## 2026-08-13 — DL-327 Coach Conversation Lab & ConversationSurface v0.1 BUILD
 
 **Decision:** Coach Conversation Lab Spec **v0.1** is **BUILD AUTHORITY**. Coach GO

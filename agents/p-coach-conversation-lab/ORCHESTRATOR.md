@@ -16,7 +16,10 @@
 | CL-4 Lab page | **STOPPED** |
 | **CL-G** Charter | not open |
 
-Charlie/Alpha worktrees **cancelled** 2026-08-14. No second ship until Coach opens implementation.
+Charlie/Alpha worktrees **cancelled** 2026-08-14. No second ship until Coach
+writes `agents/go/CL-1.md` (and later CL-2…CL-4 / CL-G) with `status: GO`.
+Chat GO is not enough (DL-328). `python3 scripts/require_go.py --id CL-1`
+must **REFUSE** today.
 
 **Law:** Juliet does not execute packets. Echo side-by-side vs `docs/references/coach-lab-imessage-reference.jpg` is a hard gate before Charlie. Kilo/Delta before any “landed” claim.
 

@@ -94,9 +94,15 @@ Wire this BEFORE announcing the domain so the first crawl sees one clean host.
 
 ## Deploy (every release)
 
+**GO file required (DL-328).** Chat GO is not authority. Kickstart aborts
+without `--go <ID>` **before** `git pull`.
+
 ```bash
 ssh minitwo
-cd ~/Fattail-Labs && git pull origin main
+cd ~/Fattail-Labs
+python3 scripts/require_go.py --id <ID> || exit 1
+# or: bash infra/scripts/deploy-minitwo-auth-hardening.sh --go <ID>
+git pull origin main
 server/.venv/bin/pip install -r server/requirements.txt   # if requirements changed
 set -a && source .env && set +a
 (cd server && .venv/bin/python migrate.py)                 # migrations BEFORE restart
@@ -294,10 +300,10 @@ host/DB secrets only — never git.
 
 ## Auth hardening (H5 / H2)
 
-**One-shot on MiniTwo** (after `git pull`):
+**One-shot on MiniTwo** (GO file first — aborts before `git pull` if missing):
 
 ```bash
-bash infra/scripts/deploy-minitwo-auth-hardening.sh
+bash infra/scripts/deploy-minitwo-auth-hardening.sh --go <ID>
 ```
 
 Full operator notes: `docs/ops/MiniTwo-Auth-Deploy-Runbook.md`  
