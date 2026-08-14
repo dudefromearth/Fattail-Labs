@@ -55,6 +55,50 @@ def test_coach_config_fail_loud(monkeypatch):
         jcc.require_coach_config()
 
 
+def test_draft_family_b_isolation_404(client):
+    """RB-03 — B must not read or overwrite A's draft."""
+    a = _member("zztest-j07-draft-a@labs.test")
+    b = _member("zztest-j07-draft-b@labs.test")
+    ca = cookie_for("activator", a)
+    cb = cookie_for("activator", b)
+    d = date.today().isoformat()
+    secret = "A-only draft body — must not leak"
+    try:
+        put_a = client.put(
+            "/api/me/journal/drafts",
+            json={"journal_date": d, "body_md": secret},
+            cookies=ca,
+        )
+        assert put_a.status_code == 200, put_a.text
+        get_b = client.get(f"/api/me/journal/drafts?journal_date={d}", cookies=cb)
+        assert get_b.status_code in (200, 404)
+        if get_b.status_code == 200:
+            draft = get_b.json().get("draft")
+            assert draft is None or secret not in str(draft)
+            assert secret not in get_b.text
+        put_b = client.put(
+            "/api/me/journal/drafts",
+            json={"journal_date": d, "body_md": "B overwrite attempt"},
+            cookies=cb,
+        )
+        assert put_b.status_code in (200, 404)
+        get_a = client.get(f"/api/me/journal/drafts?journal_date={d}", cookies=ca)
+        assert get_a.status_code == 200
+        assert get_a.json()["draft"]["body_md"] == secret
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT body_md FROM member_journal_drafts "
+                    "WHERE identity_id = %s AND journal_date = %s",
+                    (a, d),
+                )
+                row = cur.fetchone()
+        assert row and row["body_md"] == secret
+    finally:
+        _cleanup(a)
+        _cleanup(b)
+
+
 def test_draft_roundtrip_and_export_omit(client):
     iid = _member("zztest-j07-draft@labs.test")
     cookies = cookie_for("activator", iid)
@@ -161,6 +205,105 @@ def test_agent_source_cannot_confirm(client):
         assert r.status_code == 422
     finally:
         _cleanup(iid)
+
+
+def _purge_trade_book(iid: int) -> None:
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM member_trade_log_legs WHERE identity_id = %s", (iid,)
+            )
+            cur.execute(
+                "DELETE FROM member_trade_log_trades WHERE identity_id = %s", (iid,)
+            )
+            cur.execute(
+                "DELETE FROM member_trade_log_accounts WHERE identity_id = %s", (iid,)
+            )
+
+
+def test_heat_any_account_unmatched_open_restrains(client):
+    """RB-04 — unmatched open on the *second* active account must restrain.
+
+    If identity_has_unmatched_open is narrowed to the first/default account,
+    this test fails.
+    """
+    import journal_heat as jh
+    from routes.trade_log.common import _load_member_book
+    from trade_log_domain.matching import match_open_close
+
+    iid = _member("zztest-j07-heat-anyacct@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        book = client.get("/api/me/trade-log/trades", cookies=cookies)
+        assert book.status_code == 200, book.text
+        default_id = int(book.json()["default_account_id"])
+        acct2 = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=cookies,
+            json={"label": "zztest-second-book", "broker": "fattail"},
+        )
+        assert acct2.status_code == 200, acct2.text
+        second = acct2.json().get("account") or acct2.json()
+        second_id = int(second["id"])
+        assert second_id != default_id
+        opened = client.post(
+            "/api/me/trade-log/trades",
+            cookies=cookies,
+            json={
+                "account_id": second_id,
+                "exec_at": "2026-08-01T10:00:00",
+                "strategy": "CUSTOM",
+                "asset_class": "equity",
+                "legs": [
+                    {
+                        "side": "BUY",
+                        "quantity": 10,
+                        "underlier": "SPY",
+                        "instrument_type": "equity",
+                        "fill_price": 100.0,
+                        "pos_effect": "TO_OPEN",
+                    }
+                ],
+            },
+        )
+        assert opened.status_code == 200, opened.text
+
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                assert jh.identity_has_unmatched_open(cur, iid) is True
+                trades, accounts = _load_member_book(cur, int(iid), None)
+                first_only = [
+                    t
+                    for t in (trades or [])
+                    if int(t.get("account_id") or 0) == default_id
+                ]
+                matched_first = match_open_close(first_only) if first_only else []
+                first_unmatched = any(
+                    m.get("close") is None for m in matched_first
+                )
+                assert first_unmatched is False, (
+                    "fixture broken: first account should be flat so a "
+                    "one-account helper would miss the heat"
+                )
+
+        s = client.post(
+            "/api/me/journal-sessions",
+            json={"journal_date": date.today().isoformat()},
+            cookies=cookies,
+        )
+        sid = s.json()["session"]["id"]
+        t = client.post(
+            f"/api/me/journal-sessions/{sid}/agent/turn",
+            json={"body_md": "What do you think of this trade?"},
+            cookies=cookies,
+        )
+        assert t.status_code == 200, t.text
+        turn = t.json()["turn"]
+        assert turn["kind"] == "heat_hold"
+        assert turn.get("heat") is True
+    finally:
+        _cleanup(iid)
+        _purge_trade_book(iid)
 
 
 def test_heat_asked_analysis_rejected(client, monkeypatch):
@@ -285,6 +428,81 @@ def test_heat_consume_blocks_late_day_open(client, monkeypatch):
         )
         assert t.json()["turn"]["kind"] == "quiet"
     finally:
+        _cleanup(iid)
+
+
+def test_process_tag_does_not_flip_required_for_complete(client, admin_cookies):
+    """RB-06 — assigning a process tag must not change required_for_complete."""
+    import journal_session_structured as jss
+    import tag_domain as td
+
+    iid = _member("zztest-j07-tag-seal@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        before = client.get(
+            "/api/me/journal-sessions/schema?tag=pre_market",
+            cookies=cookies,
+        )
+        assert before.status_code == 200, before.text
+        req_before = {
+            f["key"]: f["required_for_complete"] for f in before.json()["fields"]
+        }
+        assert req_before.get("invalidation") is True
+
+        s = client.post(
+            "/api/me/journal-sessions",
+            json={"journal_date": date.today().isoformat(), "tag": "pre_market"},
+            cookies=cookies,
+        )
+        assert s.status_code == 200, s.text
+        sid = s.json()["session"]["id"]
+        incomplete = jss.checklist_status("pre_market", {"instrument": "ES"})
+        assert incomplete["complete"] is False
+        assert "invalidation" in incomplete["missing_required"]
+
+        tags = client.get("/api/tags", cookies=admin_cookies).json()["tags"]
+        process = next(
+            (
+                t
+                for t in tags
+                if str((t.get("category") or t.get("category_key") or "")).lower()
+                in ("process",)
+                or "process" in str(t.get("category") or "").lower()
+            ),
+            None,
+        )
+        if process is None:
+            process = next(t for t in tags if t.get("status") == "active")
+        assign = client.post(
+            "/api/tags/assignments",
+            json={
+                "tag_id": process["id"],
+                "object_type": "journal_session",
+                "object_id": sid,
+            },
+            cookies=cookies,
+        )
+        assert assign.status_code == 200, assign.text
+
+        after = client.get(
+            "/api/me/journal-sessions/schema?tag=pre_market",
+            cookies=cookies,
+        )
+        req_after = {
+            f["key"]: f["required_for_complete"] for f in after.json()["fields"]
+        }
+        assert req_after == req_before
+        still = jss.checklist_status("pre_market", {"instrument": "ES"})
+        assert still["complete"] is False
+        assert "invalidation" in still["missing_required"]
+        assert process.get("slug") not in still["missing_required"]
+        assert process.get("label") not in still["missing_required"]
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM tag_assignments WHERE identity_id = %s", (iid,)
+                )
         _cleanup(iid)
 
 
