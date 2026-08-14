@@ -45,6 +45,31 @@ def test_priors_held_not_for_product():
     assert not hasattr(ethos, "WORLD_MODEL_PRIORS") or True
 
 
+def test_ethos_mode_fail_loud(monkeypatch):
+    """Missing or mistyped mode must not silently become on."""
+    import pytest
+    from config import ConfigError, get_config, reset_config_for_tests
+
+    monkeypatch.delenv("LABS_MEMBER_AI_ETHOS_MODE", raising=False)
+    reset_config_for_tests()
+    with pytest.raises(ConfigError, match="LABS_MEMBER_AI_ETHOS_MODE"):
+        get_config()
+    with pytest.raises(ConfigError, match="LABS_MEMBER_AI_ETHOS_MODE"):
+        ethos.ethos_mode()
+
+    monkeypatch.setenv("LABS_MEMBER_AI_ETHOS_MODE", "maybe")
+    reset_config_for_tests()
+    with pytest.raises(ConfigError, match="LABS_MEMBER_AI_ETHOS_MODE"):
+        get_config()
+    with pytest.raises(ConfigError, match="LABS_MEMBER_AI_ETHOS_MODE"):
+        ethos.ethos_mode()
+
+    monkeypatch.setenv("LABS_MEMBER_AI_ETHOS_MODE", "on")
+    reset_config_for_tests()
+    assert get_config().member_ai_ethos_mode == "on"
+    assert ethos.ethos_mode() == "on"
+
+
 def test_compose_mode_off_surface_only(monkeypatch):
     monkeypatch.setenv("LABS_MEMBER_AI_ETHOS_MODE", "off")
     role = "Surface only."

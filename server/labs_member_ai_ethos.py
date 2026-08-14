@@ -4,8 +4,8 @@ Prepend to every member-facing agent system prompt via compose_member_system_pro
 Surface role prompts and code guardrails remain authoritative for bans.
 
 Env:
-  LABS_MEMBER_AI_ETHOS_MODE = on | off
-    on  (default) — compose ethos + surface role
+  LABS_MEMBER_AI_ETHOS_MODE = on | off  (required at boot; no default)
+    on  — compose ethos + surface role
     off — surface role only (production regression fallback)
     Distress gate is INDEPENDENT of this flag and always runs in code.
 """
@@ -169,11 +169,20 @@ _SUICIDE_SPREAD = re.compile(r"\bsuicide\s+spread\b", re.I)
 
 
 def ethos_mode() -> str:
-    """on | off — fail soft to on if unset/invalid."""
-    raw = (os.environ.get("LABS_MEMBER_AI_ETHOS_MODE") or "on").strip().lower()
-    if raw in ("off", "0", "false", "no"):
-        return "off"
-    return "on"
+    """Required env: on | off. Missing or typo must not silently become on."""
+    from config import ConfigError
+
+    raw = os.environ.get("LABS_MEMBER_AI_ETHOS_MODE")
+    if raw is None or not str(raw).strip():
+        raise ConfigError(
+            "Missing required environment variable: LABS_MEMBER_AI_ETHOS_MODE"
+        )
+    mode = str(raw).strip().lower()
+    if mode not in ("on", "off"):
+        raise ConfigError(
+            f"LABS_MEMBER_AI_ETHOS_MODE must be on|off, got {raw!r}"
+        )
+    return mode
 
 
 def compose_member_system_prompt(

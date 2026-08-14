@@ -22,6 +22,31 @@ def _require_int(name: str) -> int:
         raise ConfigError(f"{name} must be an integer, got {raw!r}") from exc
 
 
+def _require_positive_int(name: str) -> int:
+    n = _require_int(name)
+    if n < 1:
+        raise ConfigError(f"{name} must be >= 1, got {n}")
+    return n
+
+
+def _require_choice(name: str, allowed: tuple[str, ...]) -> str:
+    raw = _require(name).lower()
+    if raw not in allowed:
+        raise ConfigError(f"{name} must be {'|'.join(allowed)}, got {raw!r}")
+    return raw
+
+
+def _require_bool(name: str) -> bool:
+    raw = _require(name).lower()
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    if raw in ("0", "false", "no", "off"):
+        return False
+    raise ConfigError(
+        f"{name} must be 0|1|true|false|yes|no|on|off, got {raw!r}"
+    )
+
+
 def _require_secret(name: str) -> str:
     value = _require(name)
     if len(value) < 32:
@@ -106,6 +131,37 @@ class Config:
             )
         # Media dir optional path; empty → server/var/playbook_media
         self.playbook_media_dir = os.environ.get("LABS_PLAYBOOK_MEDIA_DIR", "").strip()
+
+        # Open option position marks (OPF package quote vs labeled at-cost).
+        # Required — a missing or mistyped flag must not silently show live marks.
+        self.positions_opf = _require_bool("LABS_POSITIONS_OPF")
+
+        # Auth rate limits + membership webhook freshness. A typo must not
+        # silently widen login or paid-access windows.
+        self.rl_login_per_min = _require_positive_int("LABS_RL_LOGIN_PER_MIN")
+        self.rl_forgot_per_hour = _require_positive_int("LABS_RL_FORGOT_PER_HOUR")
+        self.rl_register_per_min = _require_positive_int("LABS_RL_REGISTER_PER_MIN")
+        self.rl_sso_per_min = _require_positive_int("LABS_RL_SSO_PER_MIN")
+        self.rl_reset_per_min = _require_positive_int("LABS_RL_RESET_PER_MIN")
+        self.webhook_max_age_seconds = _require_positive_int(
+            "LABS_WEBHOOK_MAX_AGE_SECONDS"
+        )
+        self.webhook_future_skew_seconds = _require_positive_int(
+            "LABS_WEBHOOK_FUTURE_SKEW_SECONDS"
+        )
+
+        # Journal agent. Missing used to mean llm (live model + API spend).
+        self.journal_agent_mode = _require_choice(
+            "LABS_JOURNAL_AGENT_MODE", ("llm", "local", "off")
+        )
+
+        # Member AI ethos preamble. Missing/typo used to mean on.
+        self.member_ai_ethos_mode = _require_choice(
+            "LABS_MEMBER_AI_ETHOS_MODE", ("on", "off")
+        )
+
+        # Help concierge model. Missing used to mean enabled.
+        self.help_ai_enabled = _require_bool("LABS_HELP_AI_ENABLED")
 
 
 _config: Config | None = None

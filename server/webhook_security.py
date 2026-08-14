@@ -3,7 +3,7 @@
 HMAC alone is not enough: a captured signed body could be replayed.
 Require a timestamp *inside the signed JSON body* and reject:
   - missing / malformed timestamps
-  - events older than max age (default 5 minutes)
+  - events older than max age (LABS_WEBHOOK_MAX_AGE_SECONDS, required)
   - events too far in the future (clock skew)
   - exact raw-body replays within the max-age window (in-process cache)
 
@@ -14,7 +14,6 @@ deployments should move receipts to shared store later.
 from __future__ import annotations
 
 import hashlib
-import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -22,22 +21,13 @@ from typing import Any
 
 from fastapi import HTTPException
 
-
-def _env_int(name: str, default: int) -> int:
-    raw = os.environ.get(name, "").strip()
-    if not raw:
-        return default
-    try:
-        v = int(raw)
-    except ValueError:
-        return default
-    return v if v > 0 else default
+from config import get_config
 
 
-# Max age of webhook event (seconds). Default 5 minutes.
-WEBHOOK_MAX_AGE_SEC = _env_int("LABS_WEBHOOK_MAX_AGE_SECONDS", 300)
-# Allow small future skew (seconds).
-WEBHOOK_FUTURE_SKEW_SEC = _env_int("LABS_WEBHOOK_FUTURE_SKEW_SECONDS", 60)
+# Sourced from Config at import (boot already failed if missing/invalid).
+_cfg = get_config()
+WEBHOOK_MAX_AGE_SEC = _cfg.webhook_max_age_seconds
+WEBHOOK_FUTURE_SKEW_SEC = _cfg.webhook_future_skew_seconds
 
 
 class _ReplayCache:

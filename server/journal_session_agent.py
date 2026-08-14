@@ -1,8 +1,8 @@
 """Journal Session agent — Spec v0.4a §7 · §9 · §10.
 
-Config (Coach GO DL-157):
-  LABS_JOURNAL_AGENT_MODE = llm | local | off
-  Product: llm when configured; local = test/offline only; off = fail-loud agent turns.
+Config (Coach GO DL-157; audit item 5):
+  LABS_JOURNAL_AGENT_MODE = llm | local | off  (required at boot; no default)
+  local = test/offline only; off = fail-loud agent turns.
   Member plain-text chat always available (primacy).
 
 Local: once-only absence probes — does not simulate interlocutor dialogue.
@@ -143,11 +143,20 @@ class AgentTurnError(Exception):
 
 
 def agent_mode() -> str:
-    """Product default: llm (v0.4a GO). Tests set local explicitly."""
+    """Required env: llm | local | off. Missing or typo must not become llm."""
+    from config import ConfigError
+
     raw = os.environ.get("LABS_JOURNAL_AGENT_MODE")
     if raw is None or not str(raw).strip():
-        return AGENT_MODE_LLM
-    return str(raw).strip().lower()
+        raise ConfigError(
+            "Missing required environment variable: LABS_JOURNAL_AGENT_MODE"
+        )
+    mode = str(raw).strip().lower()
+    if mode not in (AGENT_MODE_LLM, AGENT_MODE_LOCAL, AGENT_MODE_OFF):
+        raise ConfigError(
+            f"LABS_JOURNAL_AGENT_MODE must be llm|local|off, got {raw!r}"
+        )
+    return mode
 
 
 def require_agent_configured() -> str:

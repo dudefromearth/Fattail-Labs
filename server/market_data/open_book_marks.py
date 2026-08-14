@@ -6,7 +6,6 @@ Option structures: dual-side chain generation + PackagePricer natural debit.
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from opf.generation import ChainGeneration, ContractStore, GenerationKey
@@ -16,9 +15,13 @@ from opf.static_facts import default_static_facts
 
 
 def positions_opf_enabled() -> bool:
-    """Feature flag — default ON. Set LABS_POSITIONS_OPF=0 to force at-cost only."""
-    v = (os.environ.get("LABS_POSITIONS_OPF") or "1").strip().lower()
-    return v not in ("0", "false", "no", "off")
+    """Live OPF package marks for open option positions.
+
+    Sourced from LABS_POSITIONS_OPF via Config — missing or mistyped aborts boot.
+    """
+    from config import get_config
+
+    return get_config().positions_opf
 
 
 def _leg_right(leg: dict[str, Any]) -> str | None:

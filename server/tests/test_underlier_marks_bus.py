@@ -78,8 +78,25 @@ def test_trade_to_strategy_intent_equity_none():
     assert trade_to_strategy_intent(trade) is None
 
 
-def test_positions_opf_flag_default_on(monkeypatch):
+def test_positions_opf_flag_fail_loud(monkeypatch):
+    """Missing or mistyped flag must not silently turn live marks on."""
+    import pytest
+    from config import ConfigError, get_config, reset_config_for_tests
+
     monkeypatch.delenv("LABS_POSITIONS_OPF", raising=False)
-    assert positions_opf_enabled() is True
+    reset_config_for_tests()
+    with pytest.raises(ConfigError, match="LABS_POSITIONS_OPF"):
+        get_config()
+
+    monkeypatch.setenv("LABS_POSITIONS_OPF", "maybe")
+    reset_config_for_tests()
+    with pytest.raises(ConfigError, match="LABS_POSITIONS_OPF"):
+        get_config()
+
     monkeypatch.setenv("LABS_POSITIONS_OPF", "0")
+    reset_config_for_tests()
     assert positions_opf_enabled() is False
+
+    monkeypatch.setenv("LABS_POSITIONS_OPF", "1")
+    reset_config_for_tests()
+    assert positions_opf_enabled() is True

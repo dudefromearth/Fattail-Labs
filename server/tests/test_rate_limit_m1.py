@@ -53,6 +53,38 @@ def test_register_rate_limit(client):
         rl.reset_rate_limiter_for_tests()
 
 
+def test_rl_and_webhook_env_fail_loud(monkeypatch):
+    """Missing or mistyped windows must not silently widen login or webhooks."""
+    import pytest
+    from config import ConfigError, get_config, reset_config_for_tests
+
+    names = (
+        "LABS_RL_LOGIN_PER_MIN",
+        "LABS_RL_FORGOT_PER_HOUR",
+        "LABS_RL_REGISTER_PER_MIN",
+        "LABS_RL_SSO_PER_MIN",
+        "LABS_RL_RESET_PER_MIN",
+        "LABS_WEBHOOK_MAX_AGE_SECONDS",
+        "LABS_WEBHOOK_FUTURE_SKEW_SECONDS",
+    )
+    for name in names:
+        monkeypatch.delenv(name, raising=False)
+        reset_config_for_tests()
+        with pytest.raises(ConfigError, match=name):
+            get_config()
+        monkeypatch.setenv(name, "ten")
+        reset_config_for_tests()
+        with pytest.raises(ConfigError, match=name):
+            get_config()
+        monkeypatch.setenv(name, "0")
+        reset_config_for_tests()
+        with pytest.raises(ConfigError, match=name):
+            get_config()
+        monkeypatch.setenv(name, "1")
+        reset_config_for_tests()
+        get_config()
+
+
 def test_sso_rate_limit(client):
     rl.reset_rate_limiter_for_tests()
     old = rl.SSO_LIMIT

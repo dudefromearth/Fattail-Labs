@@ -1166,37 +1166,30 @@ def test_agent_off_fail_loud(client, monkeypatch):
         _cleanup(iid)
 
 
-def test_agent_default_mode_is_llm(client, monkeypatch):
-    """Unset LABS_JOURNAL_AGENT_MODE → llm (v0.4a product default)."""
-    monkeypatch.delenv("LABS_JOURNAL_AGENT_MODE", raising=False)
+def test_agent_mode_fail_loud_when_unset(monkeypatch):
+    """Missing or mistyped mode must not silently become llm."""
+    import pytest
     import journal_session_agent as jsa
+    from config import ConfigError, get_config, reset_config_for_tests
 
-    import importlib
-    importlib.reload(jsa)
-    assert jsa.agent_mode() in ("llm", "local")  # env may set local in dev
-    iid = _member("zztest-jsession-agent-default@labs.test")
-    cookies = cookie_for("activator", iid)
-    try:
-        d = date(2026, 7, 25)  # Saturday — off_session questions allowed
-        r = client.post(
-            "/api/me/journal-sessions",
-            json={"tag": "pre_market", "journal_date": d.isoformat()},
-            cookies=cookies,
-        )
-        assert r.status_code in (200, 201), r.text
-        sid = r.json()["session"]["id"]
-        st = client.get(
-            f"/api/me/journal-sessions/{sid}/agent",
-            cookies=cookies,
-        )
-        assert st.status_code == 200, st.text
-        agent = st.json().get("agent") or {}
-        # Process may inherit LABS_JOURNAL_AGENT_MODE from env (local in dev)
-        assert agent.get("mode") in ("local", "llm")
-        # configured requires mode+keys for llm; local is always configured
-        assert agent.get("configured") in (True, False)
-    finally:
-        _cleanup(iid)
+    monkeypatch.delenv("LABS_JOURNAL_AGENT_MODE", raising=False)
+    reset_config_for_tests()
+    with pytest.raises(ConfigError, match="LABS_JOURNAL_AGENT_MODE"):
+        get_config()
+    with pytest.raises(ConfigError, match="LABS_JOURNAL_AGENT_MODE"):
+        jsa.agent_mode()
+
+    monkeypatch.setenv("LABS_JOURNAL_AGENT_MODE", "maybe")
+    reset_config_for_tests()
+    with pytest.raises(ConfigError, match="LABS_JOURNAL_AGENT_MODE"):
+        get_config()
+    with pytest.raises(ConfigError, match="LABS_JOURNAL_AGENT_MODE"):
+        jsa.agent_mode()
+
+    monkeypatch.setenv("LABS_JOURNAL_AGENT_MODE", "local")
+    reset_config_for_tests()
+    assert get_config().journal_agent_mode == "local"
+    assert jsa.agent_mode() == "local"
 
 
 def test_agent_local_turn_attribution_and_depth(client, monkeypatch):

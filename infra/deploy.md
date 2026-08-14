@@ -133,8 +133,9 @@ All live underlier mids and open-book option marks should flow through **Market 
 # API env (launchd or .env)
 LABS_MARKET_BUS=1
 REDIS_URL=redis://127.0.0.1:6379/0
-# Open option MTM via OPF (default on). Set 0 only for emergency at-cost fallback:
-# LABS_POSITIONS_OPF=0
+# Required. 1 = live OPF package marks; 0 = emergency at-cost only.
+# Missing or typo aborts boot (no silent default).
+LABS_POSITIONS_OPF=1
 ```
 
 | Process | Role |

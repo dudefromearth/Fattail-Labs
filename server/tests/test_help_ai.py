@@ -12,6 +12,37 @@ from __future__ import annotations
 import help_ai
 
 
+def test_help_ai_enabled_fail_loud(monkeypatch):
+    """Missing or mistyped flag must not silently enable the concierge model."""
+    import pytest
+    from config import ConfigError, get_config, reset_config_for_tests
+
+    monkeypatch.delenv("LABS_HELP_AI_ENABLED", raising=False)
+    reset_config_for_tests()
+    with pytest.raises(ConfigError, match="LABS_HELP_AI_ENABLED"):
+        get_config()
+    with pytest.raises(ConfigError, match="LABS_HELP_AI_ENABLED"):
+        help_ai.help_ai_flag_on()
+
+    monkeypatch.setenv("LABS_HELP_AI_ENABLED", "maybe")
+    reset_config_for_tests()
+    with pytest.raises(ConfigError, match="LABS_HELP_AI_ENABLED"):
+        get_config()
+    with pytest.raises(ConfigError, match="LABS_HELP_AI_ENABLED"):
+        help_ai.help_ai_flag_on()
+
+    monkeypatch.setenv("LABS_HELP_AI_ENABLED", "0")
+    reset_config_for_tests()
+    assert get_config().help_ai_enabled is False
+    assert help_ai.help_ai_flag_on() is False
+    assert help_ai.is_enabled() is False
+
+    monkeypatch.setenv("LABS_HELP_AI_ENABLED", "1")
+    reset_config_for_tests()
+    assert get_config().help_ai_enabled is True
+    assert help_ai.help_ai_flag_on() is True
+
+
 # --- reference library + system prompt (guardrails) --------------------------
 
 

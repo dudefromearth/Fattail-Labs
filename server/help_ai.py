@@ -61,13 +61,33 @@ _STOP = {
 }
 
 
+def help_ai_flag_on() -> bool:
+    """Required env: 0|1|true|false|yes|no|on|off. Missing/typo must not mean on."""
+    from config import ConfigError
+
+    raw = os.environ.get("LABS_HELP_AI_ENABLED")
+    if raw is None or not str(raw).strip():
+        raise ConfigError(
+            "Missing required environment variable: LABS_HELP_AI_ENABLED"
+        )
+    v = str(raw).strip().lower()
+    if v in ("1", "true", "yes", "on"):
+        return True
+    if v in ("0", "false", "no", "off"):
+        return False
+    raise ConfigError(
+        "LABS_HELP_AI_ENABLED must be 0|1|true|false|yes|no|on|off, "
+        f"got {raw!r}"
+    )
+
+
 def is_enabled() -> bool:
     """True when the concierge should attempt an AI answer.
 
-    Off if explicitly disabled, or if xAI isn't configured (no key) — in which case
-    every question escalates straight to a human.
+    Off if LABS_HELP_AI_ENABLED is off, or if xAI isn't configured (no key) —
+    in which case every question escalates straight to a human.
     """
-    if (os.environ.get("LABS_HELP_AI_ENABLED", "1").strip() or "1") == "0":
+    if not help_ai_flag_on():
         return False
     try:
         from ai.config import get_ai_config

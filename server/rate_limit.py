@@ -8,12 +8,13 @@ Limits are intentional product constants; override only via env for tests.
 
 from __future__ import annotations
 
-import os
 import threading
 import time
 from collections import defaultdict, deque
 
 from fastapi import HTTPException, Request
+
+from config import get_config
 
 
 class RateLimitExceeded(Exception):
@@ -22,27 +23,18 @@ class RateLimitExceeded(Exception):
         super().__init__("rate limit exceeded")
 
 
-def _env_int(name: str, default: int) -> int:
-    raw = os.environ.get(name, "").strip()
-    if not raw:
-        return default
-    try:
-        v = int(raw)
-    except ValueError:
-        return default
-    return v if v > 0 else default
-
-
-# Defaults (audit M1): login 10/min, forgot 5/hour, register 5/min, SSO 30/min
-LOGIN_LIMIT = _env_int("LABS_RL_LOGIN_PER_MIN", 10)
+# Sourced from Config at import (boot already failed if missing/invalid).
+# Tests may patch these module attributes.
+_cfg = get_config()
+LOGIN_LIMIT = _cfg.rl_login_per_min
 LOGIN_WINDOW = 60.0
-FORGOT_LIMIT = _env_int("LABS_RL_FORGOT_PER_HOUR", 5)
+FORGOT_LIMIT = _cfg.rl_forgot_per_hour
 FORGOT_WINDOW = 3600.0
-REGISTER_LIMIT = _env_int("LABS_RL_REGISTER_PER_MIN", 5)
+REGISTER_LIMIT = _cfg.rl_register_per_min
 REGISTER_WINDOW = 60.0
-SSO_LIMIT = _env_int("LABS_RL_SSO_PER_MIN", 30)
+SSO_LIMIT = _cfg.rl_sso_per_min
 SSO_WINDOW = 60.0
-RESET_LIMIT = _env_int("LABS_RL_RESET_PER_MIN", 10)
+RESET_LIMIT = _cfg.rl_reset_per_min
 RESET_WINDOW = 60.0
 
 
