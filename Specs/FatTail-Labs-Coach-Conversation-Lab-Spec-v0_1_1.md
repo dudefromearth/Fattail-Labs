@@ -1,7 +1,7 @@
 # FatTail Labs — Coach Conversation Lab & ConversationSurface Spec v0.1 (SUPERSEDED)
 
 **Status:** **SUPERSEDED** by [`FatTail-Labs-Coach-Conversation-Lab-Spec-v0_1.md`](./FatTail-Labs-Coach-Conversation-Lab-Spec-v0_1.md)
-(**BUILD AUTHORITY** · **DL-327**). Kept as the DRAFT rev 2 review snapshot.
+(**BUILD AUTHORITY** · **DL-327** · **implementation HELD DL-330**). Kept as the DRAFT rev 2 review snapshot.
 
 **Prior status:** DRAFT rev 2 — advisor review 2026-08-13 (Grok) folded: H1–H4 + S1–S7.
 Reviewer verdict: GO after these edits. **Not build authority** until Coach GO + Lima

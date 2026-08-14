@@ -1,8 +1,9 @@
 # FatTail Labs — Coach Conversation Lab & ConversationSurface Spec v0.1
 
-**Status:** **BUILD AUTHORITY** — Coach GO 2026-08-13 · **DL-327** · board
-`agents/p-coach-conversation-lab/` · plan
-`docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md` **v1.1**.
+**Status:** **BUILD AUTHORITY** — Coach GO 2026-08-13 · **DL-327**.
+**Implementation HELD** 2026-08-14 · **DL-330** (runtime reverted; no
+`agents/go/CL-*.md`). Board `agents/p-coach-conversation-lab/` · plan
+`docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md` **v1.2** (paper).
 Advisor spec reviews (H1–H4, S1–S7) and plan review (**B-CL1** `POST /greet`,
 husk-reset) are folded. **Repo filename (H1):**
 `Specs/FatTail-Labs-Coach-Conversation-Lab-Spec-v0_1.md`.

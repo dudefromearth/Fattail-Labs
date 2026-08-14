@@ -2,13 +2,13 @@
 
 **Juliet** owns this board. Specialists fire only from seeds.
 
-**Plan:** [`docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md) **v1.2** (unit tests at every slice/gate · Echo/Kilo hard seats). Implementation **STOPPED**.
+**Plan:** [`docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md) **v1.2** (unit tests at every slice/gate · Echo/Kilo hard seats). Implementation **HELD** (**DL-330**). Paper BUILD (**DL-327**) stands.
 
 ## Status (2026-08-13)
 
 | Gate | Verdict |
 |------|---------|
-| **CL-0** Lima DL + spec BUILD | **DONE** — paper only (DL-327) |
+| **CL-0** Lima DL + spec BUILD | **DONE** — paper only (DL-327). Implementation **HELD** (DL-330) |
 | CL-1…CL-4 + CL-G **code** | **REVERTED** (`7864d54`…`00c3f2e`) — solo ship failed G4; product restored |
 | CL-1 ConversationSurface | **STOPPED** — Coach: reset first, do not re-implement |
 | CL-2 Schema + enable flag | **STOPPED** |

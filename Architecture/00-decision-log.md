@@ -4,6 +4,44 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-14 — DL-330 Conversation Lab implementation HELD + DL collision index
+
+**Decision:** Coach Conversation Lab Spec **v0.1** remains **BUILD AUTHORITY**
+(**DL-327** stands). **Implementation is HELD.** Runtime was reverted after the
+2026-08-13 solo ship. No `agents/go/CL-1.md` (or CL-2…CL-4 / CL-G). Do not
+re-implement until Coach mints those tokens under **DL-329**.
+
+This is not a reversal of BUILD. Paper GO stands; code stays gone.
+
+| Item | State |
+|------|--------|
+| Spec | `Specs/FatTail-Labs-Coach-Conversation-Lab-Spec-v0_1.md` — BUILD + **implementation HELD** |
+| Plan | `docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md` **v1.2** (paper) |
+| Board | `agents/p-coach-conversation-lab/` — STOPPED |
+| Local schema backout | **RB-01** / StudioTwo only |
+| MiniTwo | never received 128 (Coach attestation) — not opened by this DL |
+
+**Rationale:** Round 0 bill **RB-15**. Paper said BUILD after revert; that lied
+about runtime. Hold is the truthful neighbor of DL-327.
+
+### DL number collision index (absorbs RB-34)
+
+Append-only. **Do not rewrite** the colliding entries. Same number, two meanings:
+
+| Number | Meaning A | Meaning B |
+|--------|-----------|-----------|
+| **DL-211** | 2026-08-04 — Member Help System (DB-backed help desk) | 2026-08-03 — North star ethos v1.2 (distress vernacular + register) |
+| **DL-212** | 2026-08-05 — Users admin free/paid visibility | 2026-08-03 — Habit Catalog Spec v0.1 + multi-agent plan |
+| **DL-216** | 2026-08-05 — Trade Log manual management (structure entry · close · trash); **DL-216b** is a refinement, not a third collision | 2026-08-06 — Competitive bar: Option Alpha–class host reliability |
+| **DL-307** | 2026-08-11 — Trade Log import batches + Import Manager | 2026-08-11 — Analyzer residual BUILD GO + first residual ship |
+| **DL-312** | 2026-08-12 — Consolidate to one Observer tier (fix Observer tool access) | 2026-08-12 — Volume Profile Histogram Spec v0.3 + dual-store plan |
+| **DL-313** | 2026-08-13 — Reports starting capital is read-only from the account | 2026-08-12 — VP Spec v0.3.1 — external review fold |
+
+Cite both headings when referring to a collided number. New decisions take the
+next unused number (**DL-331+**). Do not reuse 211, 212, 216, 307, 312, 313.
+
+---
+
 ## 2026-08-14 — DL-329 Standing GO procedure
 
 **Decision:** Coach standing order, effective 2026-08-14. Amends **DL-328**
