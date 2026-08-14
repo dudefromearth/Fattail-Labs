@@ -165,7 +165,7 @@ Placement plan: JSON in `placement_proposal` (or `lesson_plan` / single-lesson f
 
 ### 4.7 Health
 
-`GET /api/health` — DB round-trip + env name.
+`GET /api/health` — DB round-trip + env name + running checkout `git_sha`.
 
 ---
 
