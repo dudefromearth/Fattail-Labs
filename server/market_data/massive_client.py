@@ -437,6 +437,58 @@ class MassiveClient:
                 time.sleep(page_pause_s)
         return out
 
+    def fetch_options_contracts(
+        self,
+        underlying: str,
+        *,
+        expired: bool = False,
+        as_of: str | None = None,
+        expiration_date_gte: str | None = None,
+        expiration_date_lte: str | None = None,
+        limit: int = 1000,
+        max_pages: int = 2000,
+        page_pause_s: float = 0.05,
+    ) -> list[dict[str, Any]]:
+        """Paginate GET /v3/reference/options/contracts for one underlying."""
+        underlying = (underlying or "").strip().upper()
+        if not underlying:
+            raise MassiveClientError("underlying is required")
+        if underlying.startswith("I:"):
+            underlying = underlying.split(":", 1)[1]
+        params: dict[str, str] = {
+            "underlying_ticker": underlying,
+            "expired": "true" if expired else "false",
+            "limit": str(max(1, min(1000, int(limit)))),
+            "order": "asc",
+            "sort": "ticker",
+        }
+        if as_of:
+            params["as_of"] = str(as_of).strip()[:10]
+        if expiration_date_gte:
+            params["expiration_date.gte"] = str(expiration_date_gte).strip()[:10]
+        if expiration_date_lte:
+            params["expiration_date.lte"] = str(expiration_date_lte).strip()[:10]
+        qs = urllib.parse.urlencode(params)
+        url: str | None = f"{self.base_url}/v3/reference/options/contracts?{qs}"
+        out: list[dict[str, Any]] = []
+        pages = 0
+        while url and pages < max_pages:
+            pages += 1
+            data = self._get_json(url)
+            results = data.get("results") if isinstance(data, dict) else None
+            if isinstance(results, list):
+                for row in results:
+                    if isinstance(row, dict):
+                        out.append(row)
+            next_url = data.get("next_url") if isinstance(data, dict) else None
+            if not next_url:
+                break
+            nu = str(next_url).strip()
+            url = nu if nu.startswith("http") else f"{self.base_url}{nu}"
+            if page_pause_s > 0:
+                time.sleep(page_pause_s)
+        return out
+
     def fetch_daily_closes(
         self,
         symbol: str,

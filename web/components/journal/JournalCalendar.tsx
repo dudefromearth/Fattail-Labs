@@ -658,7 +658,7 @@ function DayView({
                     value={draft}
                     onChange={(e) => onDraft(e.target.value)}
                     rows={4}
-                    placeholder="Write in your words… (or drop an image above)"
+                    placeholder="What did I say I'd do? What got in the way? One thing for the week."
                     className="w-full resize-y rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-20 text-sm text-[var(--color-label)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
                     aria-label="Journal message"
                     data-testid="journal-composer-empty-draft"

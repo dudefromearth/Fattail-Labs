@@ -100,7 +100,7 @@ def list_retrospectives(
             total = int((cur.fetchone() or {}).get("n") or 0)
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
-                          title, body_md, report_json, comparison_json, agent_json,
+                          title, body_md, one_thing_md, report_json, comparison_json, agent_json,
                           prompt_version_id, cadence_days_at_period, period_index,
                           interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
@@ -174,9 +174,9 @@ async def create_retrospective(request: Request) -> dict:
             cur.execute(
                 """INSERT INTO member_retrospectives
                      (identity_id, status, is_maiden, scope_start, scope_end,
-                      title, body_md, prompt_version_id, cadence_days_at_period,
+                      title, body_md, one_thing_md, prompt_version_id, cadence_days_at_period,
                       period_index, interrupted)
-                   VALUES (%s, 'draft', %s, %s, %s, %s, '', %s, %s, %s, %s)""",
+                   VALUES (%s, 'draft', %s, %s, %s, %s, '', '', %s, %s, %s, %s)""",
                 (
                     iid,
                     1 if is_maiden else 0,
@@ -194,7 +194,7 @@ async def create_retrospective(request: Request) -> dict:
                 _run_gather(cur, claims, iid, rid, account_id=account_id)
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
-                          title, body_md, report_json, comparison_json, agent_json,
+                          title, body_md, one_thing_md, report_json, comparison_json, agent_json,
                           prompt_version_id, cadence_days_at_period, period_index,
                           interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
@@ -336,7 +336,7 @@ async def gather_retrospective(retro_id: int, request: Request) -> dict:
             _run_gather(cur, claims, iid, retro_id, account_id=account_id)
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
-                          title, body_md, report_json, comparison_json, agent_json,
+                          title, body_md, one_thing_md, report_json, comparison_json, agent_json,
                           prompt_version_id, cadence_days_at_period, period_index,
                           interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
@@ -357,7 +357,7 @@ def get_retrospective(retro_id: int, request: Request) -> dict:
             iid = _storage_identity_id(cur, claims)
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
-                          title, body_md, report_json, comparison_json, agent_json,
+                          title, body_md, one_thing_md, report_json, comparison_json, agent_json,
                           prompt_version_id, cadence_days_at_period, period_index,
                           interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
@@ -388,6 +388,9 @@ async def patch_retrospective(retro_id: int, request: Request) -> dict:
     if "body_md" in body:
         updates.append("body_md = %s")
         params.append(str(body.get("body_md") or ""))
+    if "one_thing_md" in body:
+        updates.append("one_thing_md = %s")
+        params.append(str(body.get("one_thing_md") or ""))
     if not updates:
         raise HTTPException(status_code=422, detail="No recognized fields")
 
@@ -406,7 +409,7 @@ async def patch_retrospective(retro_id: int, request: Request) -> dict:
                 raise HTTPException(status_code=404, detail="Not found or not editable")
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
-                          title, body_md, report_json, comparison_json, agent_json,
+                          title, body_md, one_thing_md, report_json, comparison_json, agent_json,
                           prompt_version_id, cadence_days_at_period, period_index,
                           interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
@@ -500,7 +503,7 @@ def complete_retrospective(retro_id: int, request: Request) -> dict:
                 )
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
-                          title, body_md, report_json, comparison_json, agent_json,
+                          title, body_md, one_thing_md, report_json, comparison_json, agent_json,
                           prompt_version_id, cadence_days_at_period, period_index,
                           interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
@@ -559,7 +562,7 @@ async def analyze_retrospective(retro_id: int, request: Request) -> dict:
             _require_create_or_gather(cur, claims, iid)
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
-                          title, body_md, report_json, comparison_json, agent_json,
+                          title, body_md, one_thing_md, report_json, comparison_json, agent_json,
                           prompt_version_id, cadence_days_at_period, period_index,
                           interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives
@@ -627,7 +630,7 @@ async def analyze_retrospective(retro_id: int, request: Request) -> dict:
             )
             cur.execute(
                 """SELECT id, identity_id, status, is_maiden, scope_start, scope_end,
-                          title, body_md, report_json, comparison_json, agent_json,
+                          title, body_md, one_thing_md, report_json, comparison_json, agent_json,
                           prompt_version_id, cadence_days_at_period, period_index,
                           interrupted, completed_at, created_at, updated_at
                    FROM member_retrospectives

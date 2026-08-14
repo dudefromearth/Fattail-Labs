@@ -11,7 +11,7 @@ Report JSON contract (Charlie / Alpha): Architecture/12-retrospective-report-dto
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Literal, NotRequired, TypedDict
 
 import auth
@@ -2601,6 +2601,105 @@ def _expected_vs_actual(
     return out if out else None
 
 
+def _session_day_key(raw: Any) -> str | None:
+    if isinstance(raw, datetime):
+        return raw.date().isoformat()
+    if isinstance(raw, date):
+        return raw.isoformat()
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s[:10] if len(s) >= 10 else None
+
+
+def _structured_dict(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, (bytes, bytearray)):
+        raw = raw.decode("utf-8")
+    if isinstance(raw, str) and raw.strip():
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
+def _clip_text(v: Any, *, limit: int = 400) -> str:
+    s = " ".join(str(v or "").split())
+    if not s:
+        return ""
+    return s if len(s) <= limit else s[: limit - 1] + "…"
+
+
+def build_journal_compile(
+    cur,
+    identity_id: int,
+    scope_start: datetime,
+    scope_end: datetime,
+    *,
+    is_maiden: bool,
+) -> dict[str, Any]:
+    """Compile Journal structured answers for the ceremony — do not re-ask them.
+
+    Buckets map the four questions: said / in the way / worked / next.
+    """
+    start_d = _as_naive_utc(scope_start).date()
+    end_d = _as_naive_utc(scope_end).date()
+    op = ">=" if is_maiden else ">"
+    cur.execute(
+        f"""SELECT id, journal_date, tag, structured_json
+            FROM member_journal_sessions
+            WHERE identity_id = %s
+              AND journal_date {op} %s AND journal_date <= %s
+            ORDER BY journal_date ASC, id ASC""",
+        (int(identity_id), start_d, end_d),
+    )
+    said: list[dict[str, str]] = []
+    in_the_way: list[dict[str, str]] = []
+    worked: list[dict[str, str]] = []
+    next_thing: list[dict[str, str]] = []
+
+    def _add(bucket: list[dict[str, str]], day: str, text: str) -> None:
+        t = _clip_text(text)
+        if not t:
+            return
+        if any(x["text"] == t and x["day"] == day for x in bucket):
+            return
+        bucket.append({"day": day, "text": t})
+
+    for row in cur.fetchall() or []:
+        day = _session_day_key(row.get("journal_date")) or ""
+        st = _structured_dict(row.get("structured_json"))
+        for key in (
+            "thesis_direction",
+            "trigger_level",
+            "watching",
+            "instrument",
+        ):
+            _add(said, day, st.get(key))
+        for key in ("plan_diff", "deviations", "differed_from_plan"):
+            _add(in_the_way, day, st.get(key))
+        _add(worked, day, st.get("what_worked"))
+        _add(next_thing, day, st.get("open_thread"))
+        _add(next_thing, day, st.get("note"))
+
+    suggested_one_thing = next_thing[-1]["text"] if next_thing else ""
+    suggested_cause = in_the_way[-1]["text"] if in_the_way else ""
+    empty = not (said or in_the_way or worked or next_thing)
+    return {
+        "said": said,
+        "in_the_way": in_the_way,
+        "worked": worked,
+        "next": next_thing,
+        "suggested_cause": suggested_cause or None,
+        "suggested_one_thing": suggested_one_thing or None,
+        "empty": empty,
+        "session_count": len(said) + len(in_the_way) + len(worked) + len(next_thing),
+    }
+
+
 def _num(v: Any) -> float | None:
     try:
         return float(v) if v is not None else None
@@ -2984,6 +3083,13 @@ def gather_report(
         "deviations": deviations,
         "what_worked": what_worked,
         "expected_vs_actual": expected_vs_actual,
+        "journal_compile": build_journal_compile(
+            cur,
+            identity_id,
+            scope_start,
+            scope_end,
+            is_maiden=is_maiden,
+        ),
         "book_performance": book,
         # Compat aliases for v0.2 consumers / Charlie fallbacks
         "is_maiden": is_maiden,
@@ -3093,6 +3199,7 @@ def serialize_row(row: dict) -> dict[str, Any]:
         "scope_end": _iso(row.get("scope_end")),
         "title": row.get("title") or "",
         "body_md": row.get("body_md") or "",
+        "one_thing_md": row.get("one_thing_md") or "",
         "report": report,
         "comparison": _json_field(row.get("comparison_json")),
         "agent": _json_field(row.get("agent_json")),

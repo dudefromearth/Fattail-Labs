@@ -172,6 +172,17 @@ and mean trade count across **non-maiden** completed retrospectives.
 
 *Gate: **Tango**, **India**.*
 
+### 5.3 Journal captures; Retrospective compiles (Coach 2026-08-13)
+
+The four questions are asked **in Journal** during the week (pre-market / post-session /
+soft beats). Retrospective **does not re-ask the week**. It compiles what the trader already
+wrote — said, in the way, worked, open threads — then the only required write is **the fix**
+(one checkable thing). Optional note if the journal missed something.
+
+Tiles remain look-up for inventory (patterns, book). They are not a second form.
+
+*Gate: **Tango**.*
+
 ---
 
 ## 6. The ceremony — fixed sequence
@@ -734,3 +745,4 @@ version.
 | 2026-07-30 | **BUILD AUTHORITY** Coach GO · DL-163 · board p-retrospective-v07 · §20 locks 1–3,5,9–11 |
 | 2026-08-13 | **§5.1 start readiness** — recommend at 7 days or 5 trades; thin window is a gentle overridable notice, never a create gate. DL-322. |
 | 2026-08-13 | **§5.2 historical cadence** — derived avg days + avg trades from completed non-maiden retros; fact only. DL-323. |
+| 2026-08-13 | **§5.3 Journal captures / Retro compiles** — ceremony surfaces journal_compile; fix is the write. DL-324. |

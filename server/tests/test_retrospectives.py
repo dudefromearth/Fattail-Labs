@@ -3,6 +3,7 @@
 RT1 entitlement/isolation · RT2 report shape · sample gate · profile expand pref.
 """
 
+import json
 from pathlib import Path
 
 import identity as identity_mod
@@ -367,6 +368,53 @@ def test_cadence_history_averages_exclude_maiden(client):
         assert "2 reviews" in h["summary"]
         # Maiden still reported, not folded into avg
         assert h["maiden_days"] is not None
+    finally:
+        _cleanup(iid)
+
+
+def test_journal_compile_and_one_thing_patch(client):
+    """Retro compiles Journal structured fields; one_thing_md patches."""
+    iid = _member("zztest-retro-compile@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO member_journal_sessions
+                         (identity_id, tag, journal_date, session_started_at,
+                          status, structured_json)
+                       VALUES (%s, 'post_session', CURDATE(), UTC_TIMESTAMP(6),
+                               'open', %s)""",
+                    (
+                        iid,
+                        json.dumps(
+                            {
+                                "thesis_direction": "wait for open fade",
+                                "plan_diff": "chased the first print",
+                                "what_worked": "stood down after 11",
+                                "open_thread": "no entries first 15 minutes",
+                            }
+                        ),
+                    ),
+                )
+        created = client.post(
+            "/api/me/retrospectives",
+            cookies=cookies,
+            json={"gather": True},
+        )
+        assert created.status_code == 200, created.text
+        jc = (created.json().get("report") or {}).get("journal_compile") or {}
+        assert jc.get("empty") is False
+        assert any("chased" in str(x.get("text")) for x in jc.get("in_the_way") or [])
+        assert jc.get("suggested_one_thing") == "no entries first 15 minutes"
+        rid = created.json()["id"]
+        patched = client.patch(
+            f"/api/me/retrospectives/{rid}",
+            cookies=cookies,
+            json={"one_thing_md": "no entries first 15 minutes"},
+        )
+        assert patched.status_code == 200, patched.text
+        assert patched.json().get("one_thing_md") == "no entries first 15 minutes"
     finally:
         _cleanup(iid)
 
@@ -849,10 +897,8 @@ def test_rt24_workspace_section_order_source():
         'testId="retro-process"',
         'testId="retro-deviations"',
         'testId="retro-clustered"',
-        'testId="retro-cause"',
         'testId="retro-what-worked"',
         'testId="retro-expected-vs-actual"',
-        'testId="retro-onething"',
         'testId="retro-book"',
     ]
     positions = []
@@ -888,7 +934,8 @@ def test_rt24_workspace_section_order_source():
     assert "retro-what-worked" in src
     assert "Stated intent" in src
     assert "What executed" in src
-    assert "not a scorecard" in src.lower() or "Process pairing" in src
+    assert "retro-write-answers" in src
+    assert "journal_compile" in src or "retro-compile-said" in src
 
 
 # --- RT3-1: normalized comparison (§7) ------------------------------------------
@@ -1572,7 +1619,8 @@ def test_rt24_emotion_mirror_ui_source():
     )
     src = path.read_text(encoding="utf-8")
     assert "retro-emotion-mirror" in src
-    assert "retro-lexicon-ceremony-map" in src
+    assert "retro-write-answers" in src
+    assert "retro-onething-input" in src
     assert "retro-behavior-tags" in src
     assert "retro-journal-words" in src
     assert 'data-feeds-indicator="false"' in src

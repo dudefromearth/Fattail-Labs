@@ -4,18 +4,24 @@
 **Config:** `LABS_MARKET_DATA_ROOT` + `LABS_MARKET_DATA_MOUNTS=raw-primary:/Volumes/sabrant2tb`  
 **Local staging kept:** `/Users/ernie/data/fattail-market-data`
 
-## Live processes (2026-08-13T01:31Z)
+## Resume (2026-08-13T17:35Z)
 
-| PID | Job | Progress |
-|-----|-----|----------|
-| **1883** | SPY trades | ~2014-07 (2,745 days, ~6.2 GB) |
-| **1884** | SPY quotes + 1s | quotes ~2006-07 |
-| **1885** | QQQ…MSFT all kinds | QQQ trades ~2009-05 |
+After workstation restart: old PIDs 1883/1884/1885 dead. Resume-safe (`.ok` markers; 0 orphan parts).
+
+**Scope now:** SPY **volume** (trades/quotes/1s) + SPY **options** + SPX/SPXW **options only**.  
+No SPX index tape (no native volume; 403 / VP5).
+
+| Stream | Status at resume |
+|--------|------------------|
+| SPY trades | **complete** 2004-01-02 → 2026-08-13 (5,900 days, 32 GB) |
+| SPY quotes | resume from **2019-12-17** (4,162 days already on disk) |
+| SPY 1s | not started (kind-outer after quotes) |
+| SPX volume | **skipped** |
+| Options SPY/SPX/SPXW | new job: contracts catalog + daily OHLCV per contract |
 
 ## Monitor
 
 ```bash
-tail -f /Volumes/sabrant2tb/fattail-market-data/jobs/logs/raw_campaign_spy_trades.log
-tail -f /Volumes/sabrant2tb/fattail-market-data/jobs/logs/raw_campaign_spy_quotes.log
-tail -f /Volumes/sabrant2tb/fattail-market-data/jobs/logs/raw_campaign_other.log
+tail -f /Volumes/sabrant2tb/fattail-market-data/jobs/logs/raw_campaign_spy.log
+tail -f /Volumes/sabrant2tb/fattail-market-data/jobs/logs/options_campaign.log
 ```

@@ -36,19 +36,19 @@ export const JOURNAL_REFLECTION_BEATS: JournalBeat[] = [
   {
     id: "variance",
     phase: "reflection",
-    label: "Variance capture",
-    seed: "Reflection — variance only (do not rewrite today's plan here):\nDid I run the trial as written? (yes / partial / no)\nWhere variance showed up:\nWhat data this day produced:\nWeekly pivot can adjust the charter; EOD only records.\n",
+    label: "Did I do it?",
+    seed: "Did I do what I said?\nYes / partial / no:\nWhat got in the way:\n",
   },
   {
     id: "clean-trial",
     phase: "reflection",
-    label: "Clean trial?",
-    seed: "Clean trial check:\nFollowed plan: \nMoved stops / chased / resized: \nPnL is data, not the grade of the day.\n",
+    label: "What got in the way?",
+    seed: "What got in the way:\nWhat still worked:\n",
   },
   {
     id: "bias",
     phase: "reflection",
-    label: "Bias note",
-    seed: "Bias / process note:\nWhat I notice about myself (not the market):\nOne thing to bring to the weekly pivot:\n",
+    label: "One thing this week",
+    seed: "One thing to bring to the retrospective:\n",
   },
 ];

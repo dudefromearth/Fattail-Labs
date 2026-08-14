@@ -78,7 +78,7 @@ export default function RetroPeriodWindow({
     "loading",
   );
   const [error, setError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const capitalScope: number | "all" =
     accountId != null && Number.isFinite(accountId) ? accountId : "all";
