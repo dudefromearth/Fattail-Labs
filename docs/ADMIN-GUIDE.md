@@ -496,27 +496,3 @@ Missing or unknown effort keys abort the agent turn (503), not the whole API boo
 One per kind per date. Heat (open Trade Log book) consumes without sending. Do not add a name string to titles until B-Name.
 
 **Do not** configure a pillar-read fade path. Do not ship speaker label “Coach”.
-
----
-
-## Coach Conversation Lab (operator)
-
-**Spec:** Conversation Lab v0.1 · **DL-327** · `/admin/coach-lab`
-
-Admin-only harness. The reusable `ConversationSurface` lives under
-`web/components/conversation/`. Persistence is a host contract.
-
-| Variable | Role |
-|----------|------|
-| `LABS_COACH_LAB=1` | Enable lab routes. Unset = no routes; missing `XAI_*` must not abort the API |
-| `XAI_API_KEY` | Required (boot-abort) when the lab is enabled |
-| `XAI_API_BASE` | Required (boot-abort) when the lab is enabled (e.g. `https://api.x.ai/v1`) |
-
-Arrival greeting is `POST /api/admin/coach-lab/greet` (idempotent). Reset discards
-conversations that have no trader turns. Voice toggle stays disabled until voice
-config exists.
-
-The fake “Read” receipt is lab-only chrome and must not remount onto the member
-Journal without a real meaning.
-
-**Do not** point member Journal or member Retro at `coach_lab_*` rows.

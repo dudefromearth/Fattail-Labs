@@ -9,19 +9,19 @@
 | Gate | Verdict |
 |------|---------|
 | **CL-0** Lima DL + spec BUILD | **DONE** — DL-327 · spec `v0_1.md` BUILD |
-| CL-1 ConversationSurface (visual) | **landed** |
-| CL-2 Schema + enable flag | **landed** (migration 128) |
-| CL-3 Proxy + persist + export | **landed** (`POST /greet` · husk-reset · 17 tests) |
-| CL-4 Lab page | **landed** `/admin/coach-lab` |
-| **CL-G** Charter | **NEXT** — Coach feel-test remaining |
+| CL-1 ConversationSurface (visual) | **NEXT** |
+| CL-2 Schema + enable flag | **NEXT** |
+| CL-3 Proxy + persist + export | blocked on CL-2 |
+| CL-4 Lab page | blocked on CL-1 + CL-3 |
+| **CL-G** Charter | not open |
 
 **Not this board’s GO:** CL-V voice · Journal remount.
 
 ## DAG
 
 ```
-CL-0 ✓ ──┬──► CL-1 ✓ ──┐
-            └──► CL-2 ✓ ──► CL-3 ✓ ──┴──► CL-4 ✓ ──► CL-G (feel-test)
+CL-0 ✓ ──┬──► CL-1 surface (visual) ──┐
+            └──► CL-2 schema ──► CL-3 ───┴──► CL-4 lab page ──► CL-G
 ```
 
 ## Sequencing law
