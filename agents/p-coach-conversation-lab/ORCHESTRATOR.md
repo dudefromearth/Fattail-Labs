@@ -10,11 +10,13 @@
 |------|---------|
 | **CL-0** Lima DL + spec BUILD | **DONE** — paper only (DL-327) |
 | CL-1…CL-4 + CL-G **code** | **REVERTED** (`7864d54`…`00c3f2e`) — solo ship failed G4; product restored |
-| CL-1 ConversationSurface | **blocked on Echo token lock** — do not implement until Echo writes it |
-| CL-2 Schema + enable flag | blocked on Echo + India (already signed at CL-0-2) |
-| CL-3 Proxy + persist + export | blocked on CL-2 |
-| CL-4 Lab page | blocked on CL-1 + CL-3 |
+| CL-1 ConversationSurface | **STOPPED** — Coach: reset first, do not re-implement |
+| CL-2 Schema + enable flag | **STOPPED** |
+| CL-3 Proxy + persist + export | **STOPPED** |
+| CL-4 Lab page | **STOPPED** |
 | **CL-G** Charter | not open |
+
+Charlie/Alpha worktrees **cancelled** 2026-08-14. No second ship until Coach opens implementation.
 
 **Law:** Juliet does not execute packets. Echo side-by-side vs `docs/references/coach-lab-imessage-reference.jpg` is a hard gate before Charlie. Kilo/Delta before any “landed” claim.
 
