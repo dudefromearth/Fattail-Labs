@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 import db
 from config import get_config
+from git_sha import resolve_git_sha
 
 
 def create_app() -> FastAPI:
@@ -29,7 +30,7 @@ def create_app() -> FastAPI:
             with conn.cursor() as cur:
                 cur.execute("SELECT 1 AS ok")
                 cur.fetchone()
-        return {"status": "ok", "env": cfg.env}
+        return {"status": "ok", "env": cfg.env, "git_sha": resolve_git_sha()}
 
     from routes.admin import router as admin_router
     from routes.canonical_courses import router as canonical_courses_router
