@@ -2,7 +2,7 @@
 
 **Juliet** owns this board. Specialists fire only from seeds.
 
-**Plan:** [`docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md) **v1.1**
+**Plan:** [`docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md) **v1.2** (unit tests at every slice/gate · Echo/Kilo hard seats). Implementation **STOPPED**.
 
 ## Status (2026-08-13)
 

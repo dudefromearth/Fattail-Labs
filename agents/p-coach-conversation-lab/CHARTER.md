@@ -7,7 +7,7 @@ gated packets.
 
 **Board:** [`ORCHESTRATOR.md`](./ORCHESTRATOR.md)
 **Canonical plan:**
-[`docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md) **v1.1**
+[`docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Coach-Conversation-Lab-Full-Agent-Bench-Plan-v1.0.md) **v1.2**
 **Spec:** [`Specs/FatTail-Labs-Coach-Conversation-Lab-Spec-v0_1.md`](../../Specs/FatTail-Labs-Coach-Conversation-Lab-Spec-v0_1.md)
 (**BUILD AUTHORITY** · **DL-327**)
 **Visual law:** [`docs/references/coach-lab-imessage-reference.jpg`](../../docs/references/coach-lab-imessage-reference.jpg)

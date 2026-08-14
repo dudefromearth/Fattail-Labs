@@ -1,10 +1,11 @@
-# Coach Conversation Lab & ConversationSurface — Full Agent Bench Plan v1.0 (rev **v1.1**)
+# Coach Conversation Lab & ConversationSurface — Full Agent Bench Plan v1.0 (rev **v1.2**)
 
-**Date:** 2026-08-13
+**Date:** 2026-08-14
 **Owner (orchestration):** Juliet
 **Authority:** Coach (GO / ship)
 **Board:** [`agents/p-coach-conversation-lab/`](../agents/p-coach-conversation-lab/)
-**Plan revision:** **v1.1** — folds advisor review of plan v1.0 (B-CL1 `POST /greet` · husk-reset · DL receipt citation)
+**Plan revision:** **v1.2** — extra testing + **real** Echo / Tango / Kilo / Delta gates after the 2026-08-13 solo-ship reset. **Unit tests at every slice and every gate.** v1.1 B-CL1 law unchanged.
+**Reset:** Implementation CL-1…CL-G was **reverted**. Product has no lab route. This revision is paper. **Do not implement until Coach opens the bench.**
 **Spec:** [`Specs/FatTail-Labs-Coach-Conversation-Lab-Spec-v0_1.md`](../Specs/FatTail-Labs-Coach-Conversation-Lab-Spec-v0_1.md) — **BUILD AUTHORITY** · **DL-327**.
 **Advisor reviews:**
 - Spec rev 1: [`docs/Advisor-Review-Coach-Conversation-Lab-Spec-v0.1-2026-08-13.md`](./Advisor-Review-Coach-Conversation-Lab-Spec-v0.1-2026-08-13.md)
@@ -15,8 +16,9 @@
 **Parents:** Defect Artifact 2026-08-13 §2 (G1–G4) · Journal Session v0.6 §1.4 · Human Interface Spec v1.0 (tokens/HIG; messaging pane is a named G4 exception)
 **Governance:** [`agents/bench/doctrine.md`](../agents/bench/doctrine.md) · overrule-not-waive · evidence over assertion
 
-Specialists execute **only** via seeds. Coordination through **Coach** or **Juliet**.
-Delta gates: **PASS / FAIL / BLOCKED** — never waived.
+Specialists execute **only** via seeds, **as distinct agents**. Coordination through **Coach** or **Juliet**.
+Juliet **never** writes `ConversationSurface`, the lab page, or lab routes.
+Delta gates: **PASS / FAIL / BLOCKED** — never waived. A skipped Echo or Kilo seat is **BLOCKED**, not a note.
 
 **Charter scope (this plan):** **CL-0 → CL-4** (component + lab page + proxy + persist/export + controls).
 **Later, same spec, not this critical path:** **CL-V** voice (§7 / S7).
@@ -41,10 +43,35 @@ Success is the Chris-thread test (spec §8 A): open the lab cold → typing indi
 
 ---
 
+## 0a. Bench law — after the 2026-08-13 reset
+
+A single agent wrote a bench plan, then implemented every packet and called it landed. The ship was a Labs zinc card under a wrapping admin nav. Coach rejected it (avatar gone, nav broken, not the still). Code was reverted. **Kilo backout PASS.** Echo wrote CL-1-0 lock. Charlie/Alpha were cancelled. Coach: reset first; do not re-implement until opened.
+
+This revision exists so that shape cannot ship again.
+
+| Law | Meaning |
+|-----|---------|
+| **Distinct seats** | Echo, Charlie, Alpha, Tango, Kilo, Delta are **separate invocations** from seeds. One chat that “is” all of them is a doctrine violation. |
+| **Juliet does not code** | Orchestrator writes seeds and the board. Never `ConversationSurface`, never lab routes. |
+| **Echo before Charlie** | CL-1-0 written **APPROVED** lock citing the still is a hard gate. No surface code without it. Current lock: `agents/p-coach-conversation-lab/gate-reports/CL-1-0-echo-token-lock.md`. |
+| **Echo after Charlie** | CL-1-3 and CL-4-E are **side-by-side + interaction** reviews with screenshots. Semibold, Labs chrome, full-width, missing overlapping header, wrapping admin nav = **FAIL**. |
+| **Tango on copy** | Placeholder, unavailable string, Yogi text, no member leakage — written note, not a shrug. |
+| **Kilo with the feature** | **Unit tests land in the same slice as the code they prove.** No Alpha/Charlie seed is complete without a Kilo unit-test seed in that slice. Interaction tests (keyboard, scroll, greet, send, reset, isolation) are first-class, not “browser later.” |
+| **Every gate is a test gate** | Delta **FAIL**s a phase if that phase’s unit suite is missing, skipped, or red. “We’ll test at CL-G” is banned. |
+| **Delta needs pictures** | CL-1-G / CL-4-G / CL-G **FAIL** without: Echo APPROVED note, still-vs-surface screenshot, **that phase’s Kilo unit pack green**, curl/API evidence. “It should look right” is banned. |
+| **“Landed” is forbidden** | until CL-G PASS including **Coach** feel-test (CL-G-4). Board must not say landed on an Echo-unsigned surface. |
+
+**Echo overrides (overrule-not-waive — already in CL-1-0):**
+
+1. Spec §2.1 “inert” back chevron → **live** `onBack` / `backHref` to `/admin`. Component does not hardcode the path.
+2. Plan v1.1 CL-4-1 “standard admin shell” on the lab route → **superseded**. The wrapping admin nav, brand strip, and operator footer **must not render** on `/admin/coach-lab`. The conversation is the page (G2). Egress is the iMessage back control.
+
+---
+
 ## 1. Authority chain (CL-0)
 
 ```
-Coach GO (this plan v1.1 + spec rev 2)
+Coach GO (this plan **v1.2** + spec v0.1 BUILD · reset complete)
     │
     ▼
 Lima — same day
@@ -58,7 +85,10 @@ Lima — same day
 Juliet — freeze board, fire CL-1 (visual) and CL-2 (schema) in parallel
 ```
 
-Until that DL exists, **no lab routes ship** and `SessionInterviewChat` is untouched.
+Until Coach opens **implementation** against this v1.2 plan, **no lab routes ship**
+and `SessionInterviewChat` is untouched. CL-0 paper (DL-327) already exists; the
+next act is Coach confirmation of **this** revision, then Juliet fires **Echo
+and Kilo seats as separate agents** — not a solo implementer.
 
 ---
 
@@ -143,7 +173,7 @@ Match the still, not a Labs `<Button>` + textarea:
 
 iMessage-style, inside the thread column:
 
-- Inert back chevron, left.
+- **Live** back chevron, left (`onBack` / `backHref` — host wires `/admin`). Not inert (Echo/Coach override).
 - Centered circular avatar: **provided static mark** (lab-page asset path). Never a generated portrait. If the mark is initials, they are host-supplied via `senderIdentity`.
 - Name pill under/overlapping the avatar: host string. Lab passes `"Coach · Lab"` (internal). Component ships **no “Coach” literal** (S2).
 
@@ -165,10 +195,12 @@ Bounded scroll region. Page never grows. Scroll-to-bottom on new messages unless
 
 ```
 messages[]     { id, direction: 'incoming' | 'outgoing', body, at }
-senderIdentity { name, avatarUrl }
+senderIdentity { name, avatarUrl?, initials? }
 onSend(text)
+onBack? / backHref?                    // live egress; host wires /admin
 typing: bool
 onPlusTap()
+onHeaderTap?                           // lab: open receding controls
 sendKey        'enter' | 'mod-enter'   // lab: enter; Journal later: mod-enter
 startedAt?     ISO / Date              // conversation stamp
 appearance?    { incomingBg, incomingText, outgoingBg, outgoingText }
@@ -189,7 +221,7 @@ Host maps roles: lab `coach|trader` → `incoming|outgoing`. Journal later maps 
 
 | Piece | As-built | This program |
 |-------|----------|--------------|
-| `/admin` shell + `NAV` | Shipped | Add **Coach Lab** link; do not invent a second shell |
+| `/admin` shell + `NAV` | Shipped | **Do not** add a wrapping “Coach Lab” nav item on the lab route. Lab page **hides** brand strip / 16-link wrap / footer (Echo override). Other `/admin/*` pages unchanged. Egress = back chevron → `/admin` |
 | `SessionInterviewChat` | Journal v0.7 thread | **Do not touch** |
 | `server/ai` `complete()` / `XaiProvider` | Chat completions, no `reasoning.effort` | Lab proxy **may** call xAI directly or extend the provider **with an explicit effort argument**. Do not silently change Help / Journal / P2 studio calls |
 | `XAI_API_KEY` · `XAI_API_BASE` | Boot-required for primary AI when configured | **`LABS_COACH_LAB` unset → lab routes absent and missing XAI_* must not abort the wider API.** Set → missing XAI_* aborts (S5) |
@@ -217,28 +249,41 @@ Host maps roles: lab `coach|trader` → `incoming|outgoing`. Journal later maps 
 ## 6. Phase graph
 
 ```
-CL-0  Lima DL + spec BUILD + filename land + India contract sign
+CL-0  paper already landed (DL-327) — no re-code
   │
-  ├──► CL-1  ConversationSurface (Echo tokens → Charlie)     ◄── visual critical path
+  ├──► CL-1-0 Echo lock (written APPROVED) ──► CL-1-1/1-2 Charlie (fixture)
+  │                                              │
+  │                                              ▼
+  │                                            CL-1-3 Echo side-by-side + screenshots
+  │                                              │
+  │                                              ▼
+  │                                            CL-1-K Kilo interaction tests (fixture)
+  │                                              │
+  │                                              ▼
+  │                                            CL-1-G Delta (Echo note + pics + Kilo)
   │
-  └──► CL-2  Schema + config + enable flag (Alpha · Mike)
+  └──► CL-2 Alpha/Mike ──► CL-2-K Kilo ──► CL-2-G
            │
            ▼
-         CL-3  Proxy + persist + greet + reset + export (server-held SoR)
+         CL-3 Alpha ──► CL-3-K Kilo ──► CL-3-G
            │
            ▼
-         CL-4  Lab page mounts surface + controls + greeting
+         CL-4 Charlie mounts surface ──► CL-4-E Echo interaction
+                                      ──► CL-4-T Tango copy
+                                      ──► CL-4-K Kilo browser pack
+                                      ──► CL-4-G Delta
            │
            ▼
-         CL-G  Charter Delta gate (CL-0…CL-4)
+         CL-G  Kilo full pack + Lima + India + Coach feel-test + Delta
            │
-           ⋮  later, same spec
+           ⋮  later
          CL-V  Voice (S7)
 ```
 
-**Critical path:** `CL-0 → CL-1` (feel test) and `CL-0 → CL-2 → CL-3 → CL-4` (talk + record).
-**CL-4 needs both CL-1 and CL-3.**
-**CL-1 may proceed with fixture messages** — do not block the visual on the proxy.
+**Critical path:** Echo lock → Charlie fixture → Echo pictures → Kilo interaction → Delta, **in that order**. Backend CL-2/3 may overlap **after** Coach opens implementation, but **must not** be called landed before their Kilo gates.
+**CL-4 needs CL-1-G PASS and CL-3-G PASS.**
+**CL-1 uses fixture messages** — do not block the still on xAI.
+**Juliet fires each seed as a separate agent.** One implementer wearing every hat = stop.
 
 ---
 
@@ -311,94 +356,121 @@ XAI_VOICE_*                      # only if voice_enabled; CL-V
 14. **Husk-reset:** zero trader turns → discard on reset, not store. Record discipline is for conversations that happened. India confirms at CL-0-2.
 15. Evidence over assertion. No waived Delta gates.
 16. Declare exact files before touch.
+17. **Unit tests at every slice and every gate.** A slice with no new/updated unit tests is incomplete. A gate with a red or missing suite is FAIL.
+
+---
+
+## 8a. Test law — unit tests at every slice and every gate
+
+Kilo owns the suite. Alpha/Charlie do not self-certify.
+
+| Rule | Binding |
+|------|---------|
+| **Same slice** | Every implementing seed (Charlie or Alpha) has a **Kilo unit-test seed in that same phase**. Tests merge with the code, not later. |
+| **Every gate** | CL-0-G · CL-1-G · CL-2-G · CL-3-G · CL-4-G · CL-G each require a **named unit suite green** (command + output in the gate report). Missing suite = FAIL. |
+| **No “test at the end”** | CL-G re-runs the **union** of prior suites plus charter extras. It does not invent coverage that earlier gates skipped. |
+| **Deterministic** | No live xAI in unit tests (`complete_lab` mocked). No timing luck. No shared identity_id 0 for FK rows. |
+| **Deny paths first** | 401/403, empty `/chat`, flag-off 404, unknown model, double `/greet`, husk reset — first-class, not afterthoughts. |
+| **Frontend units** | Token helpers (contrast, initials, separator gap), send-key mapping, role→direction map, purity grep as a test. Then Playwright/RTL interaction on the **fixture** (Enter send, Shift+Enter newline, send hidden when empty, scroll-hold, 1 vs 40 height). |
+| **Backend units** | `require_lab_boot`, first-name helper, greet idempotency, chat SoR, husk-reset, isolation, export snapshot — `server/tests/test_coach_lab.py` grown **per slice**. |
+| **Regression** | The 2026-08-13 fail (wrapping admin nav on the lab route; Labs-chrome thread) becomes a **characterization** once the host exists: grep/layout test that `/admin/coach-lab` does not render `data-testid="admin-nav"`. |
 
 ---
 
 ## 9. Seed catalog
 
 Every seed: project · agent · depends · intent · files · invariants · completion · gate.
+**Every implementing slice includes a Kilo unit-test seed. Every `*-G` gate lists the suite it must see green.**
 
 ### PHASE CL-0 — GO lock + DL + contract
 
-| Seed | Agent | Intent | Completion | Gate |
-|------|-------|--------|------------|------|
-| **CL-0-0** | **Lima** | Promote spec to BUILD AUTHORITY. Land filename as `Specs/FatTail-Labs-Coach-Conversation-Lab-Spec-v0_1.md` (or keep `v0_1_1` and fix the header to match). Archive/delete the spaced DRAFT. DL entry: lab v0.1 + host-contract persistence + H4 ban + visual law pointer to the reference still + **B-CL1 `POST /greet`** + husk-reset. **Carry this sentence verbatim:** the fake “Read” receipt is lab-only chrome and must not remount onto the member Journal without a real meaning. | One current spec file; DL number in `Architecture/00-decision-log.md` | pre-impl |
-| **CL-0-1** | **Juliet** | Board freeze; seed index; mark Journal remount / voice / B-* as fenced | `ORCHESTRATOR.md` current | pre-impl |
-| **CL-0-2** | **India** | Sign: component contract §3 · schema §7 · P1 server-held SoR · P2 per-message model/effort · P5 member-path ban · **route list including `POST /greet` (B-CL1)** · husk-reset (zero trader turns → discard). Written APPROVED. | Written APPROVED | CL-0-G |
-| **CL-0-G** | **Delta** | Spec+DL+plan consistency; charter = CL-0…CL-4 only; visual law cited; remount fenced; **B-CL1 `/greet` in the route table** | `CL-0-G` PASS | **CL-0-G** |
+Paper already landed (DL-327). On re-open, Juliet confirms v1.2 board; no re-code.
 
-**CL-0 exit:** BUILD AUTHORITY · DL · CL-1 and CL-2 unblocked.
+| Seed | Agent | Intent | Unit tests this slice | Gate |
+|------|-------|--------|----------------------|------|
+| **CL-0-0** | Lima | Already done (spec BUILD + DL-327). On re-open: point ADMIN-GUIDE / board at plan **v1.2**. Do not rewrite the DL. | — | pre-impl |
+| **CL-0-1** | Juliet | Board freeze to v1.2; seeds; remount/voice/B-* fenced; **implementation STOPPED until Coach opens** | — | pre-impl |
+| **CL-0-2** | India | Already APPROVED (CL-0-2-india.md). Re-affirm on re-open if contract drifted (Echo back/`onBack`, no wrapping nav). | — | CL-0-G |
+| **CL-0-K** | **Kilo** | **Reset characterization (unit/grep):** listed lab runtime files **absent**; `layout.tsx` / `main.py` have no coach-lab; import probe `ModuleNotFoundError` for `coach_lab_*`. Keeps the revert honest until impl starts. After Coach opens impl, this suite is **replaced** by the CL-2+ packs — do not leave “files must be absent” as a forever FAIL. | `server/tests/test_coach_lab_absent.py` **or** documented grep in `CL-BACKOUT-kilo.md` (already PASS 2026-08-14) | CL-0-G |
+| **CL-0-G** | **Delta** | Spec+DL+plan **v1.2** consistency; B-CL1 in route table; remount fenced; **CL-0-K green** | `CL-0-G` PASS | **CL-0-G** |
+
+**CL-0 exit (paper):** BUILD · DL · plan v1.2 confirmed. **CL-1/CL-2 stay STOPPED until Coach opens implementation.**
 
 ---
 
 ### PHASE CL-1 — ConversationSurface (visual critical path)
 
-Depends: CL-0. Does **not** depend on CL-2. Charlie uses fixture `messages[]`.
+Depends: Coach opens impl + CL-1-0 Echo lock (already written). Does **not** depend on CL-2. Charlie uses fixture `messages[]`.
 
-| Seed | Agent | Reviewer | Intent | Files (declare) | Gate |
-|------|-------|----------|--------|-----------------|------|
-| **CL-1-0** | Echo | — | Token lock from the reference still (§2.2–2.6). Written token table + separator-gap rule + “sized for the interface” column width. Side-by-side notes. HIS exception named (messaging pane may be pure white). | `web/components/conversation/conversationTokens.ts` (or CSS variables file) + short `docs/` or seed note | CL-1-G |
-| **CL-1-1** | Charlie | Echo | Build `ConversationSurface` to the token lock. Fixture page or Story **or** a temporary fixture mount is fine. Grep: no `"Coach"`, no fetch/store, no journal/retro imports. | `web/components/conversation/ConversationSurface.tsx` · tokens · (optional) fixture | CL-1-G |
-| **CL-1-2** | Charlie | Echo | Composer, header, typing, entrance, fixed-height §2.6–2.7, `sendKey`, `startedAt`, optional `appearance`. Reduced-motion. Focus rings. | same | CL-1-G |
-| **CL-1-3** | Echo | Tango | Side-by-side review against the still: weight, radius, tails, separators, “Read …”, pill entry. **Sized for the interface** (375–420px column). Semibold bubbles = FAIL. | review note in gate-reports | **CL-1-G** |
-
-**CL-1-G (Delta):** screenshot of the surface next to the reference still; grep purity; 1-message and 40-message height identical in the fixture; composer reachable; reduced-motion.
+| Seed | Agent | Reviewer | Intent | Unit tests this slice | Gate |
+|------|-------|----------|--------|----------------------|------|
+| **CL-1-0** | Echo | — | Token lock (exists). Re-read still if tokens drift. HIS-X-CS-1 named. | Token **unit** tests: `contrastRatio` defaults ≥ 4.5:1; separator-gap constant; column min/max 375–420 | CL-1-G |
+| **CL-1-0-K** | **Kilo** | Echo | Unit tests for `conversationTokens.ts` (contrast, hex parse, appearance fallbacks). Must be green **before** Charlie is called done on tokens. | `web` unit file next to tokens (vitest/jest as repo uses) | CL-1-G |
+| **CL-1-1** | Charlie | Echo | Build `ConversationSurface` to the lock. Fixture mount. Grep: no `"Coach"`, no fetch/store, no journal/retro. | — (tests in CL-1-K) | CL-1-G |
+| **CL-1-2** | Charlie | Echo | Composer, overlapping header, typing, entrance, fixed-height, `sendKey`, `startedAt`, `appearance`, `onBack`. Reduced-motion. Focus rings. | — | CL-1-G |
+| **CL-1-3** | Echo | Tango | **Side-by-side screenshots** vs the still: weight, radius, tails, separators, Read, pill, overlapping avatar. Semibold / Labs chrome / full-width / missing header = FAIL. | Evidence: still + fixture PNG in `gate-reports/` | CL-1-G |
+| **CL-1-K** | **Kilo** | Echo | **Unit + fixture interaction:** purity grep as a test; role→direction helper; Enter sends / Shift+Enter newline; send control hidden when empty; 1-message vs 40-message **same page height**; scroll-hold when reader scrolled up; `prefers-reduced-motion` path invoked. No live network. | `web` tests + fixture | **CL-1-G** |
+| **CL-1-G** | **Delta** | — | Echo APPROVED + screenshots + **CL-1-0-K and CL-1-K green** | FAIL if either suite missing/red | **CL-1-G** |
 
 ---
 
 ### PHASE CL-2 — Schema + config + enable flag
 
-Depends: CL-0.
+Depends: Coach opens impl. Independent of CL-1 visually.
 
-| Seed | Agent | Reviewer | Intent | Files (declare) | Gate |
-|------|-------|----------|--------|-----------------|------|
-| **CL-2-1** | Alpha | India · Mike | Migration `coach_lab_*` (next-free NNN). Seed Yogi instruction + reference colors. `started_by` FK. Effort enum `xhigh`. | `migrations/NNN_coach_lab.sql` | CL-2-G |
-| **CL-2-2** | Alpha | Mike | `LABS_COACH_LAB` gate: unset → no routes registered; set + missing `XAI_*` → boot abort. Do not abort the wider API when unset. | boot / `main.py` / route include | CL-2-G |
-| **CL-2-3** | Alpha | Mike | `GET/PUT /config`. Instruction save bumps version + `updated_by` / `updated_at`. Voice on without voice env → refuse. Closed model list. | `server/routes/coach_lab.py` · domain | CL-2-G |
-| **CL-2-4** | Kilo | — | Flag off: no routes, API boots without XAI_*. Flag on + missing key: abort. PUT bumps version. Non-admin 403. | `server/tests/test_coach_lab.py` | **CL-2-G** |
+| Seed | Agent | Reviewer | Intent | Unit tests this slice | Gate |
+|------|-------|----------|--------|----------------------|------|
+| **CL-2-1** | Alpha | India · Mike | Migration `coach_lab_*` (next-free NNN). Seed Yogi + reference colors. `started_by` FK. Effort `xhigh`. | — | CL-2-G |
+| **CL-2-2** | Alpha | Mike | `LABS_COACH_LAB` gate. Unset → no routes; set + missing XAI_* → boot abort. | — | CL-2-G |
+| **CL-2-3** | Alpha | Mike | GET/PUT `/config`. Version bump. Voice without env → refuse. Closed model list. | — | CL-2-G |
+| **CL-2-K** | **Kilo** | Mike | **Units this slice:** flag off → 404 / not registered; flag on + missing key → `ConfigError`; PUT bumps `instruction_version`; unknown model 400; non-admin 403; voice_enabled without env refused. | `server/tests/test_coach_lab.py` (create; grow later) | **CL-2-G** |
+| **CL-2-G** | **Delta** | — | Migration present + **CL-2-K green** (command + output) | FAIL if no unit file | **CL-2-G** |
 
 ---
 
 ### PHASE CL-3 — Proxy + persist + export
 
-Depends: CL-2.
+Depends: CL-2-G.
 
-| Seed | Agent | Reviewer | Intent | Files (declare) | Gate |
-|------|-------|----------|--------|-----------------|------|
-| **CL-3-1** | Alpha | India | Current conversation = latest open row **for this admin**. Create on first GET if none. Two admins never share a thread. GET does **not** generate a greeting (empty row is lawful until `/greet`). | domain + GET `/conversation` · `/conversations` | CL-3-G |
-| **CL-3-2** | Alpha | Mike | `POST /chat` body `{ text }`. Empty text → 400. Persist trader turn; call xAI with **instruction + server-held history + new text**; persist coach turn with **this call’s** model + effort (P2). Timeout bounded. Model-down → named error, no fake turn, no silent retry. Verify model strings against current xAI docs; fail loud on unknown. Attach `reasoning.effort` = wired `xhigh` etc. Do not change `complete()` callers that do not pass effort. | `server/routes/coach_lab.py` · xAI call path | CL-3-G |
-| **CL-3-3** | Alpha | India | **B-CL1 `POST /greet`:** ensure open conversation; if **zero coach turns**, generate + persist arrival greeting (first-name token or no name; **never invent**); stamp that coach turn with this call’s model + effort. Else 200 no-op. Return conversation + messages. Shared helper — `/reset` must call it, not reimplement. | same | CL-3-G |
-| **CL-3-4** | Alpha | India | `POST /reset`: **husk law** — zero trader turns → discard (delete), do not archive. Else close-and-store. Open new stamped row. Call the greet helper. | same | CL-3-G |
-| **CL-3-5** | Alpha | — | Markdown + JSON export (start snapshot + per-message model/effort, including the greeting turn). Past conversations read-only; never resumed. | export routes | CL-3-G |
-| **CL-3-6** | Kilo | India · Mike | Isolation: two admin fixtures, disjoint histories. Client-supplied history ignored. Empty display name → greeting without a name. Model-down named. Export snapshot + per-turn. **B-CL1:** fresh conversation + two rapid `/greet` → exactly one greeting persisted. `/chat` empty → 400. Reset of greeting-only (or empty) conversation → row discarded, not in past list; new row + one greeting. | tests | **CL-3-G** |
+| Seed | Agent | Reviewer | Intent | Unit tests this slice | Gate |
+|------|-------|----------|--------|----------------------|------|
+| **CL-3-1** | Alpha | India | Current = latest open **for this admin**. GET does not greet. | — | CL-3-G |
+| **CL-3-2** | Alpha | Mike | `POST /chat` `{ text }` only. Empty 400. Server-held SoR. Mock xAI. Fail loud unknown model. Do not change other `complete()` callers. | — | CL-3-G |
+| **CL-3-3** | Alpha | India | `POST /greet` idempotent. Shared helper with reset. | — | CL-3-G |
+| **CL-3-4** | Alpha | India | Reset husk law. | — | CL-3-G |
+| **CL-3-5** | Alpha | — | Markdown + JSON export (start snapshot + per-message model/effort). | — | CL-3-G |
+| **CL-3-K** | **Kilo** | India · Mike | **Units this slice (add to same test module):** two-admin isolation; client history ignored; no-name greet; model-down named; export per-turn; **two rapid `/greet` → one row**; empty `/chat` 400; greeting-only reset discarded. `complete_lab` mocked. | `server/tests/test_coach_lab.py` | **CL-3-G** |
+| **CL-3-G** | **Delta** | — | **CL-2-K ∪ CL-3-K green** | FAIL if CL-3 cases missing | **CL-3-G** |
 
 ---
 
 ### PHASE CL-4 — Lab page
 
-Depends: CL-1 + CL-3.
+Depends: **CL-1-G PASS** + **CL-3-G PASS**.
 
-| Seed | Agent | Reviewer | Intent | Files (declare) | Gate |
-|------|-------|----------|--------|-----------------|------|
-| **CL-4-1** | Charlie | Echo | `/admin/coach-lab` mounts `ConversationSurface`. Thread column 375–420px. Standard admin shell + **Coach Lab** nav item. Header “Coach Lab” + Reset. **On load: `POST /greet` (typing until it returns) then render the conversation.** Do not POST empty `/chat`. Do not `/reset` to force the first greeting. Colors from config via `appearance`. `sendKey='enter'`. Static avatar mark (lab-owned asset). | `web/app/admin/coach-lab/page.tsx` · `web/lib/coachLabApi.ts` · `web/app/admin/layout.tsx` · static mark | CL-4-G |
-| **CL-4-2** | Charlie | Echo | Collapsed-by-default **Lab controls** (remembered per admin locally): instruction editor, model, effort helper text, four color inputs + contrast warning + “Reset to reference”, voice toggle disabled-with-reason. Instruction applies on next Reset; model/effort on next message; colors on next render. | lab page / panel component | CL-4-G |
-| **CL-4-3** | Charlie | — | Past-conversation list (start stamp + first line), read-only view. Markdown + export-all actions. Model-down inline notice (host string). | same | CL-4-G |
-| **CL-4-4** | Tango | — | Grep: no member-facing routes, no journal copy leakage, Yogi instruction stays lab-only. Placeholder ≤ 2 words. | review note | CL-4-G |
-| **CL-4-5** | Kilo | Echo · Tango | Non-admin 403 on page + APIs. Reload lands at latest. Page height 1 vs 40. Contrast defaults ≥ 4.5:1. | tests + browser smoke | **CL-4-G** |
+| Seed | Agent | Reviewer | Intent | Unit tests this slice | Gate |
+|------|-------|----------|--------|----------------------|------|
+| **CL-4-1** | Charlie | Echo | Mount surface. Column 375–420. **No wrapping admin nav / brand / footer** on this route (Echo override). **On load: `POST /greet`** (typing until return). Not empty `/chat`. Not `/reset` to greet. `sendKey='enter'`. Initials or static mark. Back → `/admin`. | — | CL-4-G |
+| **CL-4-2** | Charlie | Echo | Receding lab controls (name-pill sheet or collapsed under column): instruction, model, effort, colors + contrast warning + reset-to-reference, voice disabled-with-reason. | — | CL-4-G |
+| **CL-4-3** | Charlie | — | Past list read-only; exports; model-down host string. | — | CL-4-G |
+| **CL-4-E** | **Echo** | — | **Interaction + still:** greeting bubble, avatar overlapping thread, back works, composer, **admin-nav absent** on the lab URL. Screenshots required. | gate-report + PNGs | CL-4-G |
+| **CL-4-T** | Tango | — | No member leakage; placeholder ≤ 2 words; Yogi lab-only. | review note | CL-4-G |
+| **CL-4-K** | **Kilo** | Echo · Tango | **Units + browser:** non-admin 403 page+API; lab route does **not** render `admin-nav`; reload lands at latest; height 1 vs 40; default contrast ≥ 4.5:1; greet-on-load (mocked); send → trader then coach (mocked). | `server/tests/` + `web` e2e/unit | **CL-4-G** |
+| **CL-4-G** | **Delta** | — | Echo CL-4-E APPROVED + Tango note + **CL-4-K green** + prior CL-1-K / CL-2-K / CL-3-K still green | FAIL if any prior suite went red | **CL-4-G** |
 
 ---
 
 ### PHASE CL-G — Charter close
 
-| Seed | Agent | Intent | Gate |
-|------|-------|--------|------|
-| **CL-G-1** | Kilo | Full fixture pack green (flag, isolation, SoR, export, no-name, model-down, purity grep, **double `/greet` → one greeting**, husk discard) | CL-G |
-| **CL-G-2** | Lima | As-built honesty: spec status, DL pointer, `docs/ADMIN-GUIDE.md` lab page + env | CL-G |
-| **CL-G-3** | India | One-sentence APPROVED: Retrospective can mount `ConversationSurface` without modification | CL-G |
-| **CL-G-4** | **Coach** | Chris-thread feel test (§8 A) against the reference still | CL-G |
-| **CL-G** | **Delta** | Evidence: curl + tests + side-by-side still + grep no journal/retro reads + no remount | **CL-G PASS** |
+| Seed | Agent | Intent | Unit tests this slice | Gate |
+|------|-------|--------|----------------------|------|
+| **CL-G-1** | Kilo | **Re-run the union:** CL-1-0-K · CL-1-K · CL-2-K · CL-3-K · CL-4-K **all green in one command list**. Plus charter extras if any new edge appeared. | One report with every command + exit 0 | CL-G |
+| **CL-G-2** | Lima | As-built honesty: spec, DL, ADMIN-GUIDE | — | CL-G |
+| **CL-G-3** | India | Retrospective can mount `ConversationSurface` without modification | — | CL-G |
+| **CL-G-4** | **Coach** | Chris-thread feel test vs the still | — | CL-G |
+| **CL-G** | **Delta** | Union suite green + Echo pictures + Coach feel-test + no remount grep | **CL-G PASS** | **CL-G** |
 
-**Charter exit:** lab talks, transcripts persist/export per-admin, surface matches the still at interface scale. Voice and Journal remount **not** required.
+**Charter exit:** lab talks, transcripts persist/export per-admin, surface matches the still, **every phase unit suite still green**. Voice and Journal remount **not** required.
 
 ---
 
@@ -406,7 +478,7 @@ Depends: CL-1 + CL-3.
 
 | Slice | Lands | Depends |
 |-------|-------|---------|
-| **CL-V** | Voice. Verify current xAI docs at build (Path A native vs Path B STT→chat→TTS). Transcript always renders as bubbles. Journal v0.7 §8 governs any later member graduation | Mike + xAI docs check |
+| **CL-V** | Voice. Verify current xAI docs at build (Path A native vs Path B STT→chat→TTS). Transcript always renders as bubbles. Journal v0.7 §8 governs any later member graduation. **CL-V-K unit tests required** (toggle disabled without config; transcript still a bubble; text path unaffected) before any voice gate | Mike + xAI docs check + Kilo |
 
 ---
 
@@ -424,6 +496,7 @@ Depends: CL-1 + CL-3.
 10. Voice toggle disabled-with-reason.
 11. No member/journal/retro store read or written. No Journal remount.
 12. India reuse note. Coach feel-test. **CL-G PASS.**
+13. **Every phase unit suite green in one CL-G-1 report** (CL-1-0-K · CL-1-K · CL-2-K · CL-3-K · CL-4-K). A missing file is a FAIL.
 
 ---
 
@@ -441,8 +514,8 @@ Depends: CL-1 + CL-3.
 | **Mike** | Admin gate, enable-flag boot, no key on client, voice-env refuse |
 | **Tango** | No member leakage; placeholder; lab-only Yogi text |
 | **Hotel** | Not seated unless instruction text grows trading claims (Yogi already forbids advice) |
-| **Kilo** | Characterization + isolation + SoR + grep |
-| **Delta** | CL-0-G · CL-1-G · CL-2-G · CL-3-G · CL-4-G · CL-G |
+| **Kilo** | **Unit tests at every slice:** tokens, fixture interaction, boot/config, greet/chat/reset/export, lab-host nav-absent + 403. Re-runs the union at CL-G |
+| **Delta** | CL-0-G · CL-1-G · CL-2-G · CL-3-G · CL-4-G · CL-G — each **FAIL** without that phase’s unit suite green |
 
 Foxtrot only if `LABS_COACH_LAB` must land on MiniTwo for a deploy. Sierra: no public SEO surface.
 
@@ -461,6 +534,8 @@ Foxtrot only if `LABS_COACH_LAB` must land on MiniTwo for a deploy. Sierra: no p
 | Fake “Read” receipt later read as product truth | Lab-only chrome; Lima DL sentence is the citation for the remount packet |
 | First-load greeting husk loop | B-CL1 `POST /greet`; page must not `/reset` or POST empty `/chat` to talk first |
 | Greeting-only resets pollute history | Husk law: zero trader turns discarded |
+| Solo implementer skips tests and Echo | Bench law §0a + unit tests §8a; Delta BLOCKED if seats skipped |
+| “We’ll test at the end” | Every `*-G` requires that slice’s Kilo units; CL-G only re-runs the union |
 
 ---
 
@@ -470,3 +545,4 @@ Foxtrot only if `LABS_COACH_LAB` must land on MiniTwo for a deploy. Sierra: no p
 |-----|------|-------|
 | **v1.0** | 2026-08-13 | Charter CL-0…CL-4 from spec rev 2 + advisor P1–P8. Visual law = `msg.jpg` still (copied to `docs/references/`). Voice and Journal remount fenced. |
 | **v1.1** | 2026-08-13 | Advisor review of plan v1.0 folded: **B-CL1** `POST /greet` (idempotent; greeting stamped P2); `/reset` calls greet after husk-or-store; CL-4-1 loads via `/greet` not empty chat; Kilo double-greet fixture; India signs route + husk-reset at CL-0-2; Lima DL carries fake-Read remount ban verbatim. Advisories 3–4 (NNN / model aliases) unchanged. |
+| **v1.2** | 2026-08-14 | After solo-ship reset: distinct seats; Juliet does not code; Echo lock + side-by-side + CL-4-E interaction; no wrapping admin nav; live back control. **§8a unit tests at every slice and every gate** (CL-0-K · CL-1-0-K · CL-1-K · CL-2-K · CL-3-K · CL-4-K; each `*-G` requires that suite green; CL-G re-runs the union). Implementation remains **STOPPED** until Coach confirms this plan and opens the bench. |
