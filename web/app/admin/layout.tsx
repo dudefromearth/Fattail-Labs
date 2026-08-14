@@ -14,6 +14,7 @@ const NAV: { href: string; label: string }[] = [
   { href: "/admin/tags", label: "Tags" },
   { href: "/admin/market-universe", label: "Market universe" },
   { href: "/admin/journal-prompts", label: "Journal prompts" },
+  { href: "/admin/coach-lab", label: "Coach Lab" },
   { href: "/admin/ai", label: "AI workbench" },
   { href: "/admin/agents", label: "Agent keys" },
   { href: "/admin/appearance", label: "Appearance" },
