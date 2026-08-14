@@ -70,6 +70,11 @@ def test_import_api_replace(client):
                 cur, "zztest-quiz-import@labs.test", "Quiz Import"
             )
             cur.execute(
+                "UPDATE identities SET role_override = 'administrator' "
+                "WHERE identity_id = %s",
+                (iid,),
+            )
+            cur.execute(
                 """SELECT l.id FROM lessons l
                    JOIN modules m ON m.id = l.module_id
                    JOIN courses c ON c.id = m.course_id

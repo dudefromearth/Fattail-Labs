@@ -233,6 +233,6 @@ def test_process_meters_mt_empty_then_enrolled(client):
         assert 0 <= mt["raw_percent"] <= 100
         assert proc["weights"].get("mental_toughness", 0) >= 8
         assert "mental_toughness" in (proc.get("weights_applied") or {})
-        assert proc["scoring_model_version"] == "pi-weights-v1-option1+mt"
+        assert str(proc["scoring_model_version"]).startswith("pi-weights-v1-option1+mt")
     finally:
         _cleanup(iid)

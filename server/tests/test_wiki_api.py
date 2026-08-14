@@ -11,6 +11,7 @@ import db
 import wiki_store
 from config import get_config
 from main import app
+from tests.conftest import cookie_for
 
 COOKIE = get_config().session_cookie
 
@@ -156,9 +157,25 @@ def test_index_payload_shape(client, seeded_index):
 
 
 def test_reindex_admin_only_and_counts(client, seeded_index):
+    import identity as identity_mod
+
     member = client.post("/api/admin/wiki/reindex", cookies=_cookie("observer"))
     assert member.status_code == 403
-    admin = client.post("/api/admin/wiki/reindex", cookies=_cookie("administrator"))
-    assert admin.status_code == 200
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = identity_mod.get_or_create_identity(
+                cur, "zztest-wiki-reindex@labs.test", "Wiki Reindex"
+            )
+            cur.execute(
+                "UPDATE identities SET role_override = 'administrator' "
+                "WHERE identity_id = %s",
+                (iid,),
+            )
+    admin = client.post(
+        "/api/admin/wiki/reindex",
+        cookies=cookie_for("administrator", iid),
+        headers={"Origin": "http://testserver"},
+    )
+    assert admin.status_code == 200, admin.text
     counts = admin.json()
     assert counts["pages"] >= 1 and "unresolved_links" in counts

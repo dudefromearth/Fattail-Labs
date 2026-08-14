@@ -87,13 +87,12 @@ def _seed_multi_bot_book(identity_id: int, n: int = N_BOTS) -> list[str]:
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
-            # Pause prior tickable rows so tick counts stay clean if reused
+            # Isolate: leftover PerfGuard rows fill phase 'curation' (max 100).
             cur.execute(
-                """UPDATE strategy_lab_curate_instances
-                   SET status = 'paused'
-                   WHERE identity_id = %s AND status IN ('armed', 'running', 'draft')""",
+                "DELETE FROM strategy_lab_curate_instances WHERE identity_id = %s",
                 (identity_id,),
             )
+            sld.purge_lab(cur, identity_id)
             for i in range(n):
                 name = f"PerfGuard Bot {i + 1}"
                 strat = sld.create_strategy(

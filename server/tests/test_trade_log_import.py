@@ -172,7 +172,14 @@ def test_export_native_thinkorswim_and_roundtrip(client):
         text = FIXTURE.read_text(encoding="utf-8")
         # Provision + import as ToS so venue is thinkorswim
         listed = client.get("/api/me/trade-log/accounts", cookies=ca)
-        aid = listed.json()["accounts"][0]["id"]
+        assert listed.status_code == 200, listed.text
+        tos = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "ToS book", "broker": "thinkorswim"},
+        )
+        assert tos.status_code == 200, tos.text
+        aid = int((tos.json().get("account") or tos.json())["id"])
         client.post(
             "/api/me/trade-log/import/commit",
             cookies=ca,

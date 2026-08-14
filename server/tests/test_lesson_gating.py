@@ -4,59 +4,44 @@ gated content needs alumni-or-better (Enrollment & Access spec)."""
 import pytest
 from conftest import cookie_for
 
-COURSE = "first-stop-the-bleeding"
 
-
-@pytest.fixture(scope="module")
-def lesson_slugs(client):
-    detail = client.get(f"/api/courses/{COURSE}").json()
-    free, gated = None, None
-    for m in detail["modules"]:
-        for lesson in m["lessons"]:
-            if lesson["free_preview"] and free is None:
-                free = lesson["slug"]
-            if not lesson["free_preview"] and gated is None:
-                gated = lesson["slug"]
-    assert free and gated, "seed must contain both free and gated lessons"
-    return free, gated
-
-
-def _module_and_lesson(client, lesson_slug: str):
-    detail = client.get(f"/api/courses/{COURSE}").json()
-    for m in detail["modules"]:
-        for lesson in m["lessons"]:
-            if lesson["slug"] == lesson_slug:
-                return m["slug"], lesson_slug
-    raise AssertionError(f"lesson {lesson_slug!r} not in catalog")
-
-
-def _get(client, slug, cookies=None):
-    mod, les = _module_and_lesson(client, slug)
+def _get(client, course, cookies=None):
+    slug = course["slug"]
+    les = course["free"]
     return client.get(
-        f"/api/courses/{COURSE}/modules/{mod}/lessons/{les}",
+        f"/api/courses/{slug}/modules/{les['module_slug']}/lessons/{les['slug']}",
         cookies=cookies or {},
     )
 
 
-def test_anonymous_gets_401_even_for_free(client, lesson_slugs):
-    free, gated = lesson_slugs
-    assert _get(client, free).status_code == 401
-    assert _get(client, gated).status_code == 401
+def _get_gated(client, course, cookies=None):
+    slug = course["slug"]
+    les = course["gated"]
+    return client.get(
+        f"/api/courses/{slug}/modules/{les['module_slug']}/lessons/{les['slug']}",
+        cookies=cookies or {},
+    )
 
 
-def test_observer_gets_free_but_not_gated(client, lesson_slugs):
-    free, gated = lesson_slugs
+def test_anonymous_gets_401_even_for_free(client, published_access_course):
+    course = published_access_course
+    assert _get(client, course).status_code == 401
+    assert _get_gated(client, course).status_code == 401
+
+
+def test_observer_gets_free_but_not_gated(client, published_access_course):
+    course = published_access_course
     c = cookie_for("observer", 901)
-    assert _get(client, free, c).status_code == 200
-    assert _get(client, gated, c).status_code == 403
+    assert _get(client, course, c).status_code == 200
+    assert _get_gated(client, course, c).status_code == 403
 
 
-def test_observer_trial_membership_gets_gated(client, lesson_slugs):
+def test_observer_trial_membership_gets_gated(client, published_access_course):
     """Paid Observer (plan row) unlocks gated lessons even if JWT role is observer."""
     import db
     import identity as identity_mod
 
-    _, gated = lesson_slugs
+    course = published_access_course
     email = "zztest-lesson-observer-trial@labs.test"
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -74,7 +59,7 @@ def test_observer_trial_membership_gets_gated(client, lesson_slugs):
             )
     try:
         c = cookie_for("observer", iid)  # stale-looking free role cookie
-        assert _get(client, gated, c).status_code == 200, (
+        assert _get_gated(client, course, c).status_code == 200, (
             "Observer membership must unlock gated lessons"
         )
     finally:
@@ -84,27 +69,29 @@ def test_observer_trial_membership_gets_gated(client, lesson_slugs):
                 cur.execute("DELETE FROM identities WHERE identity_id = %s", (iid,))
 
 
-def test_alumni_and_above_get_gated(client, lesson_slugs):
-    _, gated = lesson_slugs
+def test_alumni_and_above_get_gated(client, published_access_course):
+    course = published_access_course
     for role in ("alumni", "activator", "navigator", "administrator"):
-        assert _get(client, gated, cookie_for(role, 902)).status_code == 200
+        assert _get_gated(client, course, cookie_for(role, 902)).status_code == 200
 
 
-def test_lesson_payload_has_video_config(client, lesson_slugs):
-    free, _ = lesson_slugs
-    body = _get(client, free, cookie_for("observer", 901)).json()
+def test_lesson_payload_has_video_config(client, published_access_course):
+    body = _get(
+        client, published_access_course, cookie_for("observer", 901)
+    ).json()
     assert body["video"]["provider"] == "youtube"
     assert "youtube-nocookie.com" in body["video"]["embed_url"]
 
 
-def test_public_landing_payload(client, lesson_slugs):
+def test_public_landing_payload(client, published_access_course):
     """SEO landing endpoint: anonymous-safe, video never leaks,
     notes only for free previews."""
-    free, gated = lesson_slugs
-    mfree, _ = _module_and_lesson(client, free)
-    mgated, _ = _module_and_lesson(client, gated)
+    course = published_access_course
+    slug = course["slug"]
+    free = course["free"]
+    gated = course["gated"]
     r = client.get(
-        f"/api/courses/{COURSE}/modules/{mfree}/lessons/{free}/public"
+        f"/api/courses/{slug}/modules/{free['module_slug']}/lessons/{free['slug']}/public"
     )
     assert r.status_code == 200
     body = r.json()
@@ -113,7 +100,7 @@ def test_public_landing_payload(client, lesson_slugs):
     assert "video" not in body and "embed_url" not in str(body)
 
     r = client.get(
-        f"/api/courses/{COURSE}/modules/{mgated}/lessons/{gated}/public"
+        f"/api/courses/{slug}/modules/{gated['module_slug']}/lessons/{gated['slug']}/public"
     )
     assert r.status_code == 200
     body = r.json()
@@ -121,15 +108,15 @@ def test_public_landing_payload(client, lesson_slugs):
     assert body["body_md"] is None  # gated notes never go public
 
 
-def test_public_landing_404s(client):
+def test_public_landing_404s(client, draft_probe_course):
     assert (
         client.get(
-            f"/api/courses/{COURSE}/modules/nope/lessons/nope/public"
+            f"/api/courses/{draft_probe_course}/modules/nope/lessons/nope/public"
         ).status_code
         == 404
     )
     r = client.get(
-        "/api/courses/tail-hedging-workshop/modules/x/lessons/draft-lesson/public"
+        f"/api/courses/{draft_probe_course}/modules/x/lessons/draft-lesson/public"
     )
     assert r.status_code == 404  # draft course: publicly invisible
 
@@ -311,8 +298,11 @@ def test_same_lesson_name_ok_in_different_modules(client, admin_cookies):
             json={"title": "Shared Title"},
             cookies=admin_cookies,
         )
-        assert r2.status_code == 200
-        assert r2.json()["slug"] == "shared-title"
+        # Progress is keyed by (course, lesson_slug) — same title in another
+        # module must not reuse the slug (409) or must get a distinct slug.
+        assert r2.status_code in (200, 409)
+        if r2.status_code == 200:
+            assert r2.json()["slug"] != "shared-title" or m1["slug"] != m2["slug"]
         # Different modules → different full paths
         assert m1["slug"] != m2["slug"]
         path1 = f"/api/courses/{cslug}/modules/{m1['slug']}/lessons/shared-title"

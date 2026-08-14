@@ -10,10 +10,10 @@ PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ"
     "AAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
 )
-COURSE = "first-stop-the-bleeding"
-
-
-def test_upload_list_reference_guard_delete(client, admin_cookies):
+def test_upload_list_reference_guard_delete(
+    client, admin_cookies, published_access_course
+):
+    course = published_access_course["slug"]
     r = client.post("/api/admin/media", cookies=admin_cookies,
                     files={"file": ("zztest.png", PNG, "image/png")})
     assert r.status_code == 200
@@ -24,14 +24,14 @@ def test_upload_list_reference_guard_delete(client, admin_cookies):
     assert any(m["name"] == name for m in listed)
 
     # referenced as a course banner -> delete refused with the referrer named
-    client.put(f"/api/admin/courses/{COURSE}", cookies=admin_cookies,
+    client.put(f"/api/admin/courses/{course}", cookies=admin_cookies,
                json={"hero_image_url": url})
     try:
         r = client.delete(f"/api/admin/media/{name}", cookies=admin_cookies)
         assert r.status_code == 409
-        assert COURSE in r.json()["detail"]
+        assert course in r.json()["detail"]
     finally:
-        client.put(f"/api/admin/courses/{COURSE}", cookies=admin_cookies,
+        client.put(f"/api/admin/courses/{course}", cookies=admin_cookies,
                    json={"hero_image_url": None})
 
     # dereferenced -> delete succeeds
@@ -39,9 +39,12 @@ def test_upload_list_reference_guard_delete(client, admin_cookies):
                          cookies=admin_cookies).status_code == 200
 
 
-def test_media_endpoints_are_admin_only(client):
+def test_media_endpoints_are_admin_only(client, probe_identity):
     assert client.get("/api/admin/media").status_code == 401
-    r = client.get("/api/admin/media", cookies=cookie_for("navigator", 902))
+    r = client.get(
+        "/api/admin/media",
+        cookies=cookie_for("navigator", probe_identity),
+    )
     assert r.status_code == 403
 
 

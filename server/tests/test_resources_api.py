@@ -308,7 +308,7 @@ def test_admin_hard_delete_resource(client, admin_cookies):
 def test_members_only_download_403(client, admin_cookies):
     from conftest import cookie_for
 
-    observer = cookie_for("observer", identity_id=2)
+    observer = cookie_for("observer", identity_id=901)
     slug = _uid()
     cr = client.post(
         "/api/admin/resources",

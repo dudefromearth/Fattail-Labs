@@ -171,6 +171,14 @@ async def admin_patch_resource(slug: str, request: Request) -> dict:
                 raise rd.ResourceError("bad type", code="BAD_TYPE")
         except rd.ResourceError as exc:
             raise _http_err(exc) from exc
+    if "emoji" in body:
+        raw_e = body.get("emoji")
+        if raw_e is None or str(raw_e).strip() == "":
+            body["emoji"] = None
+        elif len(str(raw_e)) > 16:
+            raise HTTPException(status_code=422, detail="emoji too long")
+    if "description_md" in body and body["description_md"] == "":
+        body["description_md"] = None
 
     with db.transaction() as conn:
         with conn.cursor() as cur:

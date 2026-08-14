@@ -79,7 +79,8 @@ def test_ask_list_thread_and_ownership(client, probe_identity, monkeypatch):
 def test_missing_fields_rejected(client, probe_identity, monkeypatch):
     monkeypatch.setattr("help.notify_admins_new_question", lambda *a, **k: None)
     cookies = cookie_for("navigator", probe_identity)
-    assert client.post("/api/help/questions", json={"subject": "", "body": "x"}, cookies=cookies).status_code == 422
+    # Subject is optional (derived from body). Empty body is rejected.
+    assert client.post("/api/help/questions", json={"subject": "", "body": "x"}, cookies=cookies).status_code == 200
     assert client.post("/api/help/questions", json={"subject": "x", "body": ""}, cookies=cookies).status_code == 422
 
 

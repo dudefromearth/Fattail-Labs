@@ -95,6 +95,13 @@ def test_admin_read_denied_without_consent_and_allowed_with_grant(client):
     try:
         cm = _mint("activator", member)
         # Session role administrator for admin_id (identity row exists for FK)
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE identities SET role_override = 'administrator' "
+                    "WHERE identity_id = %s",
+                    (admin_id,),
+                )
         ca = _mint("administrator", admin_id)
 
         note = client.post(

@@ -25,7 +25,7 @@ from ai.agents import (
     validate_task_output,
 )
 from ai.config import reset_ai_config
-from ai.types import AiError, CompletionResult
+from ai.types import AiConfigError, AiError, CompletionResult
 
 REPO = Path(__file__).resolve().parents[2]
 BENCH = REPO / "agents" / "bench"
@@ -269,18 +269,21 @@ def test_empty_model_output_fails_validation():
 
 
 @pytest.mark.skipif(
-    not os.environ.get("XAI_API_KEY"),
+    not (os.environ.get("XAI_API_KEY") or "").strip(),
     reason="live Grok smoke requires XAI_API_KEY",
 )
 def test_live_bravo_research_pack_smoke():
     """Optional live call — run with XAI_API_KEY set (not required in CI)."""
     reset_ai_config()
-    result = run_agent_task(
-        "bravo",
-        "research_pack",
-        default_fixture_inputs("bravo", "research_pack"),
-        root=BENCH,
-        max_tokens=1200,
-    )
+    try:
+        result = run_agent_task(
+            "bravo",
+            "research_pack",
+            default_fixture_inputs("bravo", "research_pack"),
+            root=BENCH,
+            max_tokens=1200,
+        )
+    except AiConfigError:
+        pytest.skip("XAI_API_KEY not usable in this environment")
     assert result.provider == "xai"
     assert "## Claims Inventory" in result.text

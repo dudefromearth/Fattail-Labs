@@ -1,16 +1,16 @@
 """Public catalog: published-only, card fields, draft invisibility."""
 
-DRAFT_SLUG = "tail-hedging-workshop"  # seeded draft fixture
+LIVE_PUBLISHED = "fattail-foundations"
 
 
-def test_catalog_lists_published_only(client):
+def test_catalog_lists_published_only(client, draft_probe_course):
     r = client.get("/api/courses")
     assert r.status_code == 200
     courses = r.json()["courses"]
     assert len(courses) >= 5
     slugs = {c["slug"] for c in courses}
-    assert "first-stop-the-bleeding" in slugs
-    assert DRAFT_SLUG not in slugs
+    assert LIVE_PUBLISHED in slugs
+    assert draft_probe_course not in slugs
 
 
 def test_card_payload_shape(client):
@@ -24,36 +24,37 @@ def test_card_payload_shape(client):
     assert "card_blurb_md" not in c
 
 
-def test_draft_detail_is_404_publicly(client):
-    assert client.get(f"/api/courses/{DRAFT_SLUG}").status_code == 404
+def test_draft_detail_is_404_publicly(client, draft_probe_course):
+    assert client.get(f"/api/courses/{draft_probe_course}").status_code == 404
 
 
-def test_draft_visible_via_admin_api(client, admin_cookies):
-    r = client.get(f"/api/admin/courses/{DRAFT_SLUG}", cookies=admin_cookies)
+def test_draft_visible_via_admin_api(client, admin_cookies, draft_probe_course):
+    r = client.get(f"/api/admin/courses/{draft_probe_course}", cookies=admin_cookies)
     assert r.status_code == 200
     assert r.json()["status"] == "draft"
 
 
-def test_admin_catalog_includes_drafts(client, admin_cookies):
+def test_admin_catalog_includes_drafts(client, admin_cookies, draft_probe_course):
     """Admins list drafts on /courses so create/save does not lose them."""
     r = client.get("/api/admin/courses", cookies=admin_cookies)
     assert r.status_code == 200
     courses = r.json()["courses"]
     assert isinstance(courses, list)
     by_slug = {c["slug"]: c for c in courses}
-    assert DRAFT_SLUG in by_slug
-    assert by_slug[DRAFT_SLUG]["status"] == "draft"
-    # Public catalog still published-only
+    assert draft_probe_course in by_slug
+    assert by_slug[draft_probe_course]["status"] == "draft"
     public = {c["slug"] for c in client.get("/api/courses").json()["courses"]}
-    assert DRAFT_SLUG not in public
-    # Anonymous cannot list admin catalog
+    assert draft_probe_course not in public
     assert client.get("/api/admin/courses").status_code == 401
 
 
-def test_admin_course_requires_admin(client):
+def test_admin_course_requires_admin(client, draft_probe_course, probe_identity):
     from conftest import cookie_for
-    assert client.get(f"/api/admin/courses/{DRAFT_SLUG}").status_code == 401
-    r = client.get(f"/api/admin/courses/{DRAFT_SLUG}", cookies=cookie_for("navigator", 902))
+    assert client.get(f"/api/admin/courses/{draft_probe_course}").status_code == 401
+    r = client.get(
+        f"/api/admin/courses/{draft_probe_course}",
+        cookies=cookie_for("navigator", probe_identity),
+    )
     assert r.status_code == 403
 
 

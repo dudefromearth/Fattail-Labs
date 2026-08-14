@@ -72,30 +72,12 @@ def test_normalize_bunny_rejects_youtube():
         video.normalize_video_id("bunny", "https://youtu.be/aqz-KE-bpKQ")
 
 
-def test_admin_put_video_provider_bunny(client, admin_cookies, monkeypatch):
+def test_admin_put_video_provider_bunny(
+    client, admin_cookies, published_access_course, monkeypatch
+):
     monkeypatch.setenv("LABS_BUNNY_LIBRARY_ID", "99")
     monkeypatch.setenv("LABS_BUNNY_TOKEN_KEY", "k" * 16)
-    # find a lesson id from seed course
-    detail = client.get("/api/courses/first-stop-the-bleeding").json()
-    lesson_id = None
-    for m in detail["modules"]:
-        for les in m["lessons"]:
-            # admin get course for ids
-            break
-    admin = client.get(
-        "/api/admin/courses/first-stop-the-bleeding", cookies=admin_cookies
-    )
-    assert admin.status_code == 200
-    body = admin.json()
-    # modules/lessons structure
-    for m in body.get("modules") or []:
-        for les in m.get("lessons") or []:
-            if les.get("id"):
-                lesson_id = les["id"]
-                break
-        if lesson_id:
-            break
-    assert lesson_id, "need a lesson id from admin course payload"
+    lesson_id = published_access_course["free"]["id"]
 
     guid = "11111111-2222-3333-4444-555555555555"
     r = client.put(
