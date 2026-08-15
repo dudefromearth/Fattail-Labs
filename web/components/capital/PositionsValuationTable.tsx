@@ -7,6 +7,7 @@
  */
 
 import Link from "next/link";
+import CampaignBadge from "@/components/practice/CampaignBadge";
 import type { PositionValuationRow, PositionsValuation } from "@/lib/capitalApi";
 import { formatMarksAsOf } from "@/lib/capitalApi";
 
@@ -235,17 +236,17 @@ function PositionRow({
           <span className="font-medium">{p.symbol}</span>
           {/* V9: directed only — undirected is absence */}
           {p.campaign && (
-            <button
-              type="button"
-              className="rounded-full bg-[var(--color-tint)]/15 px-1.5 py-0.5 text-[11px] font-medium text-[var(--color-tint)]"
-              title="Campaign · tap to redirect"
+            <CampaignBadge
+              title={
+                p.campaign.title.length > 16
+                  ? `${p.campaign.title.slice(0, 14)}…`
+                  : p.campaign.title
+              }
+              color={p.campaign.badge_color}
+              titleAttr="Campaign · tap to redirect"
+              testId="position-campaign-chip"
               onClick={() => onDirectCampaign?.(p.trade_id)}
-              data-testid="position-campaign-chip"
-            >
-              {p.campaign.title.length > 16
-                ? `${p.campaign.title.slice(0, 14)}…`
-                : p.campaign.title}
-            </button>
+            />
           )}
           {p.value_label === "at_cost" && (
             <span className="text-[10px] text-[var(--color-label-tertiary)]">

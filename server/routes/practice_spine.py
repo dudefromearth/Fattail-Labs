@@ -755,6 +755,7 @@ async def create_campaign(request: Request) -> dict:
                     strategy_codes=body.get("strategy_codes"),
                     retrospective_id=body.get("retrospective_id"),
                     same_bet=body.get("same_bet"),
+                    badge_color=body.get("badge_color"),
                 )
     except psd.PracticeSpineError as e:
         _raise(e)
@@ -995,6 +996,8 @@ async def patch_campaign(campaign_id: int, request: Request) -> dict:
         kwargs["retrospective_id"] = body.get("retrospective_id")
     if "same_bet" in body:
         kwargs["same_bet"] = body.get("same_bet")
+    if "badge_color" in body:
+        kwargs["badge_color"] = body.get("badge_color")
     if "playbook_entry_ids" in body:
         pids = body.get("playbook_entry_ids")
         if pids is not None and not isinstance(pids, list):

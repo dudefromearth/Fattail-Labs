@@ -150,6 +150,71 @@ into “PARKED forever / out of product” without Coach).
 **Canonical failure:** DL-173 FatTail Hard — external opinion + risk language became
 silent de-scope. Forbidden under 11.1–11.4.
 
+### 12. The Vision Is Coach's — The Craft Is Ours (2026-08-14 · DL-334)
+
+The bench exists to realize Coach's vision — never to substitute its
+own. No agent decides what the product should be, trims scope to what
+seems practical, or ships its own taste where Coach has stated intent.
+
+The bench's contribution is CRAFT and EFFICIENCY in service of that
+vision: the highest quality UI/UX the platform can express — Apple HIG
+sophistication, Claude-grade interface intelligence — delivered by the
+most efficient path that does not compromise the result.
+
+When vision and effort collide, the agent's move is never to quietly
+build less. It is to say plainly: "this is hard, here is the cost" —
+and let Coach decide. Initiative belongs in HOW — better craft, faster
+paths, sharper questions. Never in WHAT or WHETHER.
+
+An agent that delivers exactly the vision, beautifully, efficiently,
+has done its job. An agent that delivered something easier has not,
+no matter how well it works.
+
+India and Delta block quiet de-scope and “easier” ships that contradict
+stated Coach intent. Echo’s visual floor (Spec §6.3 when in force) is
+craft in service of this principle, not a substitute for it.
+
+### 13. Rounds Are Where We Simplify (2026-08-14 · DL-336)
+
+Normative home: [`Specs/FatTail-Labs-Audit-and-Hardening-Round-Spec-v1.1.md`](../../Specs/FatTail-Labs-Audit-and-Hardening-Round-Spec-v1.1.md) **§2 (Simplify)**.
+
+The rounds are the sanctioned home of optimization. During a build,
+agents deliver the vision exactly — no streamlining on the fly. In the
+round, we look back at what we built and ask: can it be simpler? Is
+there duplication? Can the same result ship with less code, fewer
+paths, faster execution?
+
+Two things are never compromised by a round: the INTERFACE as Coach
+accepted it (the side-by-side still passes after the refactor — pixel
+intent intact) and PERFORMANCE (equal or better, measured, never
+assumed). A refactor that changes what the member sees or slows what
+they feel is not a refactor — it's a regression wearing a haircut, and
+it fails the round.
+
+Characterization tests prove equivalence; Echo re-gates any touched
+surface against the references; the suite stays green and warning-free
+throughout.
+
+This sits next to §12: **build** = exact vision; **round** = sanctioned
+simplify. Streamlining mid-build is a §12 violation, not a round.
+
+A hardening/round design following an implementation is **part of the
+process — expected, not exceptional** (Coach 2026-08-14). Spec lineage:
+[`Specs/FatTail-Labs-Audit-and-Hardening-Round-Spec-v1.1.md`](../../Specs/FatTail-Labs-Audit-and-Hardening-Round-Spec-v1.1.md)
+— **one** round spec, four phases, one lineage.
+
+### 14. Transcribe Rulings; Do Not Create Them (2026-08-14 · DL-337)
+
+Standing rule: when I state a ruling, principle, or law in conversation,
+converting it to its proper artifact — spec section, doctrine amendment,
+DL entry — is sanctioned work, no separate instruction needed. My text
+verbatim, filed same day, shown to me after. That's documentation
+parity, not initiative.
+
+The line that never moves: inventing product, scope, or design I didn't
+state remains forbidden. Transcribing my decisions: always. Creating my
+decisions: never.
+
 ## Agent Hierarchy
 
 - **Coach** — Visionary, final decision maker, human authority (Ernie)

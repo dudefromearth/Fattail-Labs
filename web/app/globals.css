@@ -54,6 +54,27 @@ body {
   outline-offset: 2px;
 }
 
+@keyframes journal-bubble-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.journal-bubble-arrive {
+  animation: journal-bubble-arrive var(--motion-normal) var(--motion-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journal-bubble-arrive {
+    animation: none;
+  }
+}
+
 /*
  * Lesson / media players: never paint brand-tint focus rings or translucent
  * layers over embeds — they show up as a colored cast on the video.

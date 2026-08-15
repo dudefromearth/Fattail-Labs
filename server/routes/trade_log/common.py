@@ -250,6 +250,9 @@ def _trade_row(r: dict, legs: list[dict] | None = None) -> dict:
         "journal_entry_id": r.get("journal_entry_id"),
         "external_adapter": r.get("external_adapter"),
         "entry_source": _normalize_entry_source(r.get("entry_source")),
+        "import_id": (
+            int(r["import_id"]) if r.get("import_id") is not None else None
+        ),
         "trash_reason": r.get("trash_reason"),
         "playbook_entry_id": (
             int(r["playbook_entry_id"]) if r.get("playbook_entry_id") is not None else None
@@ -663,19 +666,212 @@ def _adherence_filter_clauses(
     return clauses, args
 
 
+def _criteria_filter_clauses(
+    iid: int,
+    *,
+    strategy: str | None = None,
+    net_side: str | None = None,
+    pos_effect: str | None = None,
+    symbol: str | None = None,
+) -> tuple[list[str], list[Any]]:
+    """AND-combined search criteria for the allocation tool."""
+    clauses: list[str] = []
+    args: list[Any] = []
+    st = (strategy or "").strip()
+    if st:
+        clauses.append("strategy = %s")
+        args.append(st[:40])
+    side = (net_side or "").strip().upper()
+    if side in ("CREDIT", "DEBIT"):
+        clauses.append("UPPER(COALESCE(net_side, '')) = %s")
+        args.append(side)
+    effect = (pos_effect or "").strip().upper()
+    if effect in ("TO_OPEN", "TO_CLOSE"):
+        clauses.append(
+            """id IN (
+                SELECT trade_id FROM member_trade_log_legs
+                 WHERE identity_id = %s AND pos_effect = %s
+            )"""
+        )
+        args.extend([iid, effect])
+    sym = (symbol or "").strip()
+    if sym:
+        like = f"%{sym[:40]}%"
+        clauses.append(
+            """id IN (
+                SELECT trade_id FROM member_trade_log_legs
+                 WHERE identity_id = %s
+                   AND (COALESCE(symbol, '') LIKE %s
+                        OR COALESCE(underlier, '') LIKE %s)
+            )"""
+        )
+        args.extend([iid, like, like])
+    return clauses, args
+
+
+def _csv_values(
+    raw: str | None, *, upper: bool = False, lim: int = 48, cap: int = 80
+) -> list[str]:
+    if not raw:
+        return []
+    out: list[str] = []
+    for part in str(raw).split(","):
+        p = part.strip()
+        if upper:
+            p = p.upper()
+        if p:
+            out.append(p[:lim])
+        if len(out) >= cap:
+            break
+    return out
+
+
+def _find_filter_clauses(
+    iid: int,
+    *,
+    strategies: str | None = None,
+    sides: str | None = None,
+    effects: str | None = None,
+    symbols: str | None = None,
+    years: str | None = None,
+    months: str | None = None,
+    days: str | None = None,
+    campaigns: str | None = None,
+) -> tuple[list[str], list[Any]]:
+    """Multi-value AutoFilter AND-clauses for Find and tag."""
+    clauses: list[str] = []
+    args: list[Any] = []
+    st = _csv_values(strategies)
+    if st:
+        clauses.append("strategy IN (" + ",".join(["%s"] * len(st)) + ")")
+        args.extend(st)
+    sd = [s for s in _csv_values(sides, upper=True) if s in ("CREDIT", "DEBIT", "—")]
+    sd = ["CREDIT" if s == "—" else s for s in sd]
+    # "—" means blank side
+    raw_sides = _csv_values(sides, upper=True)
+    if raw_sides:
+        blanks = "—" in raw_sides or "" in raw_sides
+        named = [s for s in raw_sides if s in ("CREDIT", "DEBIT")]
+        parts: list[str] = []
+        if named:
+            parts.append(
+                "UPPER(COALESCE(net_side, '')) IN ("
+                + ",".join(["%s"] * len(named))
+                + ")"
+            )
+            args.extend(named)
+        if blanks:
+            parts.append("(net_side IS NULL OR net_side = '')")
+        if parts:
+            clauses.append("(" + " OR ".join(parts) + ")")
+    fx = [e for e in _csv_values(effects, upper=True) if e in ("TO_OPEN", "TO_CLOSE")]
+    if fx:
+        clauses.append(
+            """id IN (
+                SELECT trade_id FROM member_trade_log_legs
+                 WHERE identity_id = %s AND pos_effect IN ("""
+            + ",".join(["%s"] * len(fx))
+            + "))"
+        )
+        args.extend([iid, *fx])
+    sy = _csv_values(symbols)
+    if sy:
+        clauses.append(
+            """id IN (
+                SELECT trade_id FROM member_trade_log_legs
+                 WHERE identity_id = %s
+                   AND (COALESCE(symbol, '') IN ("""
+            + ",".join(["%s"] * len(sy))
+            + ") OR COALESCE(underlier, '') IN ("
+            + ",".join(["%s"] * len(sy))
+            + "))"
+        )
+        args.extend([iid, *sy, *sy])
+    date_parts: list[str] = []
+    yr = [y for y in _csv_values(years, lim=4, cap=40) if len(y) == 4 and y.isdigit()]
+    if yr:
+        date_parts.append(
+            "DATE_FORMAT(exec_at, '%%Y') IN (" + ",".join(["%s"] * len(yr)) + ")"
+        )
+        args.extend(yr)
+    mo = [m[:7] for m in _csv_values(months, lim=7, cap=120) if len(m) >= 7]
+    if mo:
+        date_parts.append(
+            "DATE_FORMAT(exec_at, '%%Y-%%m') IN ("
+            + ",".join(["%s"] * len(mo))
+            + ")"
+        )
+        args.extend(mo)
+    dy = [d[:10] for d in _csv_values(days, lim=10, cap=400) if len(d) >= 10]
+    if dy:
+        date_parts.append(
+            "DATE(exec_at) IN (" + ",".join(["%s"] * len(dy)) + ")"
+        )
+        args.extend(dy)
+    if date_parts:
+        clauses.append("(" + " OR ".join(date_parts) + ")")
+    toks = _csv_values(campaigns)
+    if toks:
+        none = any(t.lower() == "none" for t in toks)
+        ids: list[int] = []
+        for t in toks:
+            if t.lower() == "none":
+                continue
+            try:
+                ids.append(int(t))
+            except ValueError:
+                continue
+        parts = []
+        if none:
+            parts.append("practice_campaign_id IS NULL")
+        if ids:
+            parts.append(
+                "practice_campaign_id IN (" + ",".join(["%s"] * len(ids)) + ")"
+            )
+            args.extend(ids)
+        if parts:
+            clauses.append("(" + " OR ".join(parts) + ")")
+    return clauses, args
+
+
+def _search_q_clauses(q: str | None, iid: int) -> tuple[list[str], list[Any]]:
+    """Symbol / underlier / strategy search (allocation manager)."""
+    term = (q or "").strip()
+    if not term:
+        return [], []
+    like = f"%{term[:80]}%"
+    return (
+        [
+            """(strategy LIKE %s OR id IN (
+                  SELECT trade_id FROM member_trade_log_legs
+                   WHERE identity_id = %s
+                     AND (COALESCE(symbol, '') LIKE %s
+                          OR COALESCE(underlier, '') LIKE %s)
+                ))"""
+        ],
+        [like, iid, like, like],
+    )
+
+
 def _campaign_stamp_filter_clauses(
     cur,
     iid: int,
     practice_campaign_id: int | None,
+    *,
+    campaign_mode: str | None = None,
 ) -> tuple[list[str], list[Any]]:
     """Campaign stamp filter.
 
     Named charters: exact stamp match.
+    ``campaign_mode=unallocated``: no campaign stamp (one or none).
     **Ledger / account default** (``is_ledger`` or ``is_default``): no extra
     campaign clause — the account filter already scopes the book. Selecting the
     default campaign means "this account's full blotter," not only rows stamped
     to the ledger id (avoids empty view when fills sit on sibling campaigns).
     """
+    mode = (campaign_mode or "").strip().lower() or None
+    if mode == "unallocated":
+        return ["practice_campaign_id IS NULL"], []
     if practice_campaign_id is None:
         return [], []
     camp_id = int(practice_campaign_id)
@@ -722,11 +918,17 @@ def _load_member_book(
     account_id: int | None = None,
     *,
     practice_campaign_id: int | None = None,
+    campaign_mode: str | None = None,
     playbook_entry_id: int | None = None,
     playbook_mode: str | None = None,
     adherence_mode: str | None = None,
     from_day: str | None = None,
     to_day: str | None = None,
+    q: str | None = None,
+    strategy: str | None = None,
+    net_side: str | None = None,
+    pos_effect: str | None = None,
+    symbol: str | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Batch-load trades+legs and accounts for analytics (identity-scoped).
 
@@ -742,10 +944,22 @@ def _load_member_book(
         clauses.append("account_id = %s")
         args.append(account_id)
     camp_c, camp_a = _campaign_stamp_filter_clauses(
-        cur, iid, practice_campaign_id
+        cur, iid, practice_campaign_id, campaign_mode=campaign_mode
     )
     clauses.extend(camp_c)
     args.extend(camp_a)
+    q_c, q_a = _search_q_clauses(q, iid)
+    clauses.extend(q_c)
+    args.extend(q_a)
+    cr_c, cr_a = _criteria_filter_clauses(
+        iid,
+        strategy=strategy,
+        net_side=net_side,
+        pos_effect=pos_effect,
+        symbol=symbol,
+    )
+    clauses.extend(cr_c)
+    args.extend(cr_a)
     pb_c, pb_a = _playbook_stamp_filter_clauses(
         playbook_entry_id, playbook_mode=playbook_mode
     )
@@ -802,11 +1016,26 @@ def _load_member_book_page(
     limit: int = _TRADE_PAGE_DEFAULT,
     cursor: str | None = None,
     practice_campaign_id: int | None = None,
+    campaign_mode: str | None = None,
     playbook_entry_id: int | None = None,
     playbook_mode: str | None = None,
     adherence_mode: str | None = None,
     from_day: str | None = None,
     to_day: str | None = None,
+    q: str | None = None,
+    strategy: str | None = None,
+    net_side: str | None = None,
+    pos_effect: str | None = None,
+    symbol: str | None = None,
+    strategies: str | None = None,
+    sides: str | None = None,
+    effects: str | None = None,
+    symbols: str | None = None,
+    years: str | None = None,
+    months: str | None = None,
+    days: str | None = None,
+    campaigns: str | None = None,
+    positions_only: bool = False,
 ) -> tuple[list[dict], list[dict], bool, str | None]:
     """Paginated trades for blotter. Newest first. Returns has_more, next_cursor."""
     _ensure_default_account(cur, iid)
@@ -822,10 +1051,35 @@ def _load_member_book_page(
         clauses.append("account_id = %s")
         args.append(account_id)
     camp_c, camp_a = _campaign_stamp_filter_clauses(
-        cur, iid, practice_campaign_id
+        cur, iid, practice_campaign_id, campaign_mode=campaign_mode
     )
     clauses.extend(camp_c)
     args.extend(camp_a)
+    q_c, q_a = _search_q_clauses(q, iid)
+    clauses.extend(q_c)
+    args.extend(q_a)
+    cr_c, cr_a = _criteria_filter_clauses(
+        iid,
+        strategy=strategy,
+        net_side=net_side,
+        pos_effect=pos_effect,
+        symbol=symbol,
+    )
+    clauses.extend(cr_c)
+    args.extend(cr_a)
+    fd_c, fd_a = _find_filter_clauses(
+        iid,
+        strategies=strategies,
+        sides=sides,
+        effects=effects,
+        symbols=symbols,
+        years=years,
+        months=months,
+        days=days,
+        campaigns=campaigns,
+    )
+    clauses.extend(fd_c)
+    args.extend(fd_a)
     pb_c, pb_a = _playbook_stamp_filter_clauses(
         playbook_entry_id, playbook_mode=playbook_mode
     )
@@ -837,8 +1091,30 @@ def _load_member_book_page(
     clauses.extend(extra)
     args.extend(extra_args)
     where = " AND ".join(clauses)
-
-    if before_exec is not None and before_id is not None:
+    if positions_only:
+        join = _position_leg_join_sql().format(alias="t")
+        pred = _position_row_predicate("t")
+        base = f"""SELECT t.* FROM (
+                      SELECT * FROM member_trade_log_trades
+                       WHERE {where}
+                    ) t
+                    {join}
+                   WHERE {pred}"""
+        pos_args = args + [iid]
+        if before_exec is not None and before_id is not None:
+            cur.execute(
+                f"""{base}
+                      AND (t.exec_at < %s OR (t.exec_at = %s AND t.id < %s))
+                    ORDER BY t.exec_at DESC, t.id DESC LIMIT %s""",
+                tuple(pos_args + [before_exec, before_exec, before_id, fetch_n]),
+            )
+        else:
+            cur.execute(
+                f"""{base}
+                    ORDER BY t.exec_at DESC, t.id DESC LIMIT %s""",
+                tuple(pos_args + [fetch_n]),
+            )
+    elif before_exec is not None and before_id is not None:
         cur.execute(
             f"""SELECT * FROM member_trade_log_trades
                 WHERE {where}
@@ -860,4 +1136,206 @@ def _load_member_book_page(
     trades = _rows_to_trades(cur, rows, iid)
     next_cursor = _encode_list_cursor(trades[-1]) if has_more and trades else None
     return trades, _load_accounts(cur, iid), has_more, next_cursor
+
+
+def _position_leg_join_sql() -> str:
+    """Leg aggregates so a close-out is not a second position."""
+    return """
+    LEFT JOIN (
+      SELECT trade_id,
+             SUM(CASE WHEN pos_effect = 'TO_CLOSE' THEN 1 ELSE 0 END) AS n_close,
+             SUM(CASE WHEN pos_effect = 'TO_OPEN' THEN 1 ELSE 0 END) AS n_open
+        FROM member_trade_log_legs
+       WHERE identity_id = %s
+       GROUP BY trade_id
+    ) _posleg ON _posleg.trade_id = {alias}.id
+    """
+
+
+def _position_row_predicate(alias: str = "x") -> str:
+    """A position is a typed structure (single / vertical / butterfly / …).
+
+    Close-out rows (more TO_CLOSE legs than TO_OPEN) are the same position,
+    not another. Notes are not positions. Untyped market rows count as Single.
+    """
+    return (
+        f"COALESCE({alias}.strategy, '') <> 'NOTE' "
+        f"AND COALESCE(_posleg.n_close, 0) <= COALESCE(_posleg.n_open, 0)"
+    )
+
+
+def found_set_stats(
+    cur,
+    iid: int,
+    *,
+    strategies: str | None = None,
+    sides: str | None = None,
+    effects: str | None = None,
+    symbols: str | None = None,
+    years: str | None = None,
+    months: str | None = None,
+    days: str | None = None,
+    campaigns: str | None = None,
+) -> dict:
+    """Date span + position count for the current Find and tag filters."""
+    clauses = ["identity_id = %s", "exec_at IS NOT NULL"]
+    args: list[Any] = [iid]
+    fd_c, fd_a = _find_filter_clauses(
+        iid,
+        strategies=strategies,
+        sides=sides,
+        effects=effects,
+        symbols=symbols,
+        years=years,
+        months=months,
+        days=days,
+        campaigns=campaigns,
+    )
+    clauses.extend(fd_c)
+    args.extend(fd_a)
+    where = " AND ".join(clauses)
+    join = _position_leg_join_sql().format(alias="x")
+    pred = _position_row_predicate("x")
+    cur.execute(
+        f"""SELECT DATE(MIN(x.exec_at)) AS first_day,
+                   DATE(MAX(x.exec_at)) AS last_day,
+                   COUNT(*) AS position_count
+              FROM (
+                    SELECT * FROM member_trade_log_trades
+                     WHERE {where}
+                   ) x
+              {join}
+             WHERE {pred}""",
+        tuple(args + [iid]),
+    )
+    row = cur.fetchone() or {}
+
+    def ymd(v: object) -> str | None:
+        if v is None:
+            return None
+        s = str(v)
+        return s[:10] if len(s) >= 10 else s
+
+    item_join = _position_leg_join_sql().format(alias="t")
+    item_pred = _position_row_predicate("t")
+    cur.execute(
+        f"""SELECT t.id, t.practice_campaign_id, t.exec_at
+              FROM (
+                    SELECT * FROM member_trade_log_trades
+                     WHERE {where}
+                   ) t
+              {item_join}
+             WHERE {item_pred}
+             ORDER BY t.exec_at DESC, t.id DESC
+             LIMIT %s""",
+        tuple(args + [iid, _TRADE_BOOK_LIMIT]),
+    )
+    items = [
+        {
+            "id": int(r["id"]),
+            "practice_campaign_id": (
+                None
+                if r.get("practice_campaign_id") is None
+                else int(r["practice_campaign_id"])
+            ),
+            "exec_at": ymd(r.get("exec_at")),
+        }
+        for r in (cur.fetchall() or [])
+    ]
+    return {
+        "first_day": ymd(row.get("first_day")),
+        "last_day": ymd(row.get("last_day")),
+        "position_count": int(row.get("position_count") or 0),
+        "items": items,
+    }
+
+
+def trade_distincts(cur, iid: int) -> dict:
+    """Unique AutoFilter values from the whole book (not the current page)."""
+    cur.execute(
+        """SELECT DISTINCT DATE(exec_at) AS d
+             FROM member_trade_log_trades
+            WHERE identity_id = %s AND exec_at IS NOT NULL
+            ORDER BY d DESC
+            LIMIT 4000""",
+        (iid,),
+    )
+
+    def _ymd(v: object) -> str | None:
+        if v is None:
+            return None
+        s = str(v)
+        return s[:10] if len(s) >= 10 else s
+
+    days = [x for x in (_ymd(r.get("d")) for r in (cur.fetchall() or [])) if x]
+    months: list[str] = []
+    seen_m: set[str] = set()
+    for d in days:
+        ym = d[:7]
+        if ym not in seen_m:
+            seen_m.add(ym)
+            months.append(ym)
+    cur.execute(
+        """SELECT DISTINCT strategy FROM member_trade_log_trades
+            WHERE identity_id = %s AND strategy IS NOT NULL AND strategy <> ''
+            ORDER BY strategy""",
+        (iid,),
+    )
+    strategies = [str(r["strategy"]) for r in (cur.fetchall() or [])]
+    cur.execute(
+        """SELECT DISTINCT UPPER(net_side) AS s FROM member_trade_log_trades
+            WHERE identity_id = %s AND net_side IS NOT NULL AND net_side <> ''""",
+        (iid,),
+    )
+    sides = sorted({str(r["s"]) for r in (cur.fetchall() or []) if r.get("s")})
+    cur.execute(
+        """SELECT DISTINCT pos_effect FROM member_trade_log_legs
+            WHERE identity_id = %s AND pos_effect IN ('TO_OPEN', 'TO_CLOSE')""",
+        (iid,),
+    )
+    effects = sorted({str(r["pos_effect"]) for r in (cur.fetchall() or [])})
+    cur.execute(
+        """SELECT DISTINCT COALESCE(NULLIF(underlier, ''), NULLIF(symbol, '')) AS sym
+             FROM member_trade_log_legs
+            WHERE identity_id = %s
+              AND COALESCE(NULLIF(underlier, ''), NULLIF(symbol, '')) IS NOT NULL
+            ORDER BY sym
+            LIMIT 400""",
+        (iid,),
+    )
+    symbols = [str(r["sym"]) for r in (cur.fetchall() or []) if r.get("sym")]
+    cur.execute(
+        """SELECT DISTINCT practice_campaign_id FROM member_trade_log_trades
+            WHERE identity_id = %s""",
+        (iid,),
+    )
+    campaigns = []
+    seen_none = False
+    ids: list[int] = []
+    for r in cur.fetchall() or []:
+        cid = r.get("practice_campaign_id")
+        if cid is None:
+            seen_none = True
+        else:
+            ids.append(int(cid))
+    if seen_none:
+        campaigns.append({"id": None, "title": "None"})
+    if ids:
+        cur.execute(
+            f"""SELECT id, title FROM member_practice_campaigns
+                 WHERE identity_id = %s AND id IN ({",".join(["%s"] * len(ids))})""",
+            tuple([iid, *ids]),
+        )
+        titles = {int(r["id"]): str(r["title"] or f"#{r['id']}") for r in (cur.fetchall() or [])}
+        for i in sorted(ids):
+            campaigns.append({"id": i, "title": titles.get(i, f"#{i}")})
+    return {
+        "days": days,
+        "months": months,
+        "strategies": strategies,
+        "sides": sides,
+        "effects": effects,
+        "symbols": symbols,
+        "campaigns": campaigns,
+    }
 

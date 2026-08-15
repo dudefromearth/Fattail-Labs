@@ -33,15 +33,11 @@ import {
   type DayBook,
 } from "@/lib/journalDayBook";
 import { fetchDayBook, fetchDaysInterest } from "@/lib/tradeLogApi";
-import {
-  JOURNAL_HYPOTHESIS_BEATS,
-  JOURNAL_REFLECTION_BEATS,
-} from "@/lib/journalBeats";
 import DayTradesPanel from "./DayTradesPanel";
 import SessionInterviewChat from "./SessionInterviewChat";
+import JournalComposer from "./JournalComposer";
 import SessionMediaHeader from "./SessionMediaHeader";
-import StructuredSessionForm from "./StructuredSessionForm";
-import JournalTagsControl from "./JournalTagsControl";
+import JournalAiInstructionsChrome from "./JournalAiInstructionsOverlay";
 import {
   addDays,
   formatLong,
@@ -492,14 +488,10 @@ function DayView({
     activeSession.status === "open" ||
     activeSession.status === "partial";
   const mediaMutable = mutable && !selectedClosed;
-  const [interviewOpen, setInterviewOpen] = useState(false);
-  useEffect(() => {
-    setInterviewOpen(false);
-  }, [activeSession?.id]);
 
   return (
     <div className="space-y-6" data-testid="journal-day-view">
-      {/* Spec v0.6 §1.1 — date, retro, header (tags+media), thread, composer, interview, trades */}
+      {/* Day card — date, retro, full-width media, thread, composer, trades */}
       <div className="rounded-[var(--radius-xl)] bg-[var(--color-surface-secondary)] px-4 py-6 sm:px-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <p
@@ -545,147 +537,40 @@ function DayView({
               activeSession ? "journal-session-active" : "journal-composer-empty"
             }
           >
-            <div
-              className="flex flex-col gap-2 sm:flex-row sm:items-start"
-              data-testid="journal-session-header"
-            >
-              {activeSession ? (
-                <div className="min-w-0 flex-1">
-                  <JournalTagsControl
-                    sessionId={activeSession.id}
-                    disabled={!mediaMutable || sessionBusy}
-                    onError={onSessionError}
-                  />
-                </div>
-              ) : null}
-              <div
-                className={
-                  activeSession ? "min-w-0 flex-[1.2]" : "min-w-0 w-full"
-                }
-              >
-                <SessionMediaHeader
-                  sessionId={activeSession?.id ?? null}
-                  disabled={!mediaMutable || sessionBusy}
-                  onError={onSessionError}
-                  ensureSession={onEnsureSession}
-                />
-              </div>
+            <div className="w-full" data-testid="journal-session-header">
+              <SessionMediaHeader
+                sessionId={activeSession?.id ?? null}
+                disabled={!mediaMutable || sessionBusy}
+                onError={onSessionError}
+                ensureSession={onEnsureSession}
+              />
             </div>
 
-            {activeSession ? (
-              <>
-                <SessionInterviewChat
-                  session={activeSession}
-                  busy={sessionBusy}
-                  onBusy={onSessionBusy}
-                  onError={onSessionError}
-                  onUpdated={(s) => {
-                    onSessionUpdated?.(s);
-                  }}
-                  scrollToMessageId={scrollToMessageId}
-                />
-
-                <div
-                  className="border-t border-[var(--color-separator)] pt-3"
-                  data-testid="journal-interview-bar"
-                >
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between gap-2 text-left text-sm"
-                    onClick={() => setInterviewOpen((v) => !v)}
-                    aria-expanded={interviewOpen}
-                    data-testid="journal-interview-toggle"
-                  >
-                    <span className="font-semibold text-[var(--color-label)]">
-                      Structured interview
-                    </span>
-                    <span className="text-xs text-[var(--color-label-tertiary)]">
-                      {interviewOpen ? "Hide" : "Show"}
-                    </span>
-                  </button>
-                  {interviewOpen && (
-                    <div className="mt-3">
-                      <StructuredSessionForm
-                        session={activeSession}
-                        busy={sessionBusy}
-                        onBusy={onSessionBusy}
-                        onError={onSessionError}
-                        onUpdated={(s) => {
-                          onSessionUpdated?.(s);
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="space-y-2">
-                <div
-                  className="flex flex-wrap gap-1.5"
-                  data-testid="journal-soft-beats"
-                >
-                  <span className="mr-1 self-center text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                    Soft beats
-                  </span>
-                  {[
-                    ...JOURNAL_HYPOTHESIS_BEATS,
-                    ...JOURNAL_REFLECTION_BEATS,
-                  ].map((b) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      disabled={sessionBusy}
-                      data-testid={`journal-beat-${b.id}`}
-                      className="rounded-full border border-[var(--color-separator)] px-2.5 py-1 text-[11px] font-medium text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)] disabled:opacity-40"
-                      title={
-                        b.phase === "reflection"
-                          ? "Records variance — never adjusts today's plan (weekly pivot does that)"
-                          : "Optional hypothesis scaffold — freeform always works"
-                      }
-                      onClick={() => {
-                        const next = draft.trim()
-                          ? `${draft.trim()}\n\n${b.seed}`
-                          : b.seed;
-                        onDraft(next);
-                      }}
-                    >
-                      {b.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="relative">
-                  <textarea
-                    value={draft}
-                    onChange={(e) => onDraft(e.target.value)}
-                    rows={4}
-                    placeholder="Write in your words… (or drop an image above)"
-                    className="w-full resize-y rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-20 text-sm text-[var(--color-label)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
-                    aria-label="Journal message"
-                    data-testid="journal-composer-empty-draft"
-                    disabled={sessionBusy}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                        e.preventDefault();
-                        if (draft.trim() && !sessionBusy) onFirstSend();
-                      }
+            <JournalAiInstructionsChrome
+              overlayTarget={
+                activeSession ? (
+                  <SessionInterviewChat
+                    session={activeSession}
+                    busy={sessionBusy}
+                    onBusy={onSessionBusy}
+                    onError={onSessionError}
+                    onUpdated={(s) => {
+                      onSessionUpdated?.(s);
                     }}
+                    scrollToMessageId={scrollToMessageId}
                   />
-                  <div className="absolute bottom-3 right-3">
-                    <button
-                      type="button"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] disabled:opacity-40"
-                      title="Send"
-                      aria-label="Send"
-                      disabled={!draft.trim() || sessionBusy}
-                      onClick={onFirstSend}
-                      data-testid="journal-composer-empty-send"
-                    >
-                      <SendIcon />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+                ) : (
+                  <JournalComposer
+                    value={draft}
+                    onChange={onDraft}
+                    onSend={onFirstSend}
+                    disabled={sessionBusy}
+                    draftTestId="journal-composer-empty-draft"
+                    sendTestId="journal-composer-empty-send"
+                  />
+                )
+              }
+            />
           </div>
         )}
 
@@ -695,34 +580,26 @@ function DayView({
             className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-4"
             data-testid="journal-session-active"
           >
-            <div
-              className="flex flex-col gap-2 sm:flex-row sm:items-start"
-              data-testid="journal-session-header"
-            >
-              <div className="min-w-0 flex-1">
-                <JournalTagsControl
-                  sessionId={activeSession.id}
-                  disabled
-                  onError={onSessionError}
-                />
-              </div>
-              <div className="min-w-0 flex-[1.2]">
-                <SessionMediaHeader
-                  sessionId={activeSession.id}
-                  disabled
-                  onError={onSessionError}
-                />
-              </div>
+            <div className="w-full" data-testid="journal-session-header">
+              <SessionMediaHeader
+                sessionId={activeSession.id}
+                disabled
+                onError={onSessionError}
+              />
             </div>
-            <SessionInterviewChat
-              session={activeSession}
-              busy={false}
-              onBusy={onSessionBusy}
-              onError={onSessionError}
-              onUpdated={(s) => {
-                onSessionUpdated?.(s);
-              }}
-              scrollToMessageId={scrollToMessageId}
+            <JournalAiInstructionsChrome
+              overlayTarget={
+                <SessionInterviewChat
+                  session={activeSession}
+                  busy={false}
+                  onBusy={onSessionBusy}
+                  onError={onSessionError}
+                  onUpdated={(s) => {
+                    onSessionUpdated?.(s);
+                  }}
+                  scrollToMessageId={scrollToMessageId}
+                />
+              }
             />
           </div>
         )}
@@ -734,20 +611,6 @@ function DayView({
         onRetry={onRetryTrades}
       />
     </div>
-  );
-}
-
-function SendIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 19V5M12 5l-6 6M12 5l6 6"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 

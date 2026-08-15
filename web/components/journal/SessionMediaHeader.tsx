@@ -175,6 +175,15 @@ export default function SessionMediaHeader({
       window.removeEventListener("journal-paste-images", onPasteImages);
   }, [sessionId, uploadFiles]);
 
+  useEffect(() => {
+    function onOpenAttach() {
+      if (disabled) return;
+      fileRef.current?.click();
+    }
+    window.addEventListener("journal-open-attach", onOpenAttach);
+    return () => window.removeEventListener("journal-open-attach", onOpenAttach);
+  }, [disabled]);
+
   async function peekClipboardForImages(): Promise<boolean> {
     try {
       const nav = navigator as Navigator & {
@@ -275,7 +284,7 @@ export default function SessionMediaHeader({
   return (
     <div
       className={[
-        "rounded-[var(--radius-md)] border border-dashed border-[var(--color-separator)] bg-[var(--color-fill)]/30 p-2 outline-none",
+        "w-full rounded-[var(--radius-md)] border border-dashed border-[var(--color-separator)] bg-[var(--color-fill)]/30 p-2 outline-none",
         dragOver && !disabled
           ? "border-[var(--color-tint)] bg-[var(--color-tint-soft)]"
           : "",

@@ -6,31 +6,19 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui";
+import JournalComposer from "@/components/journal/JournalComposer";
 import {
   displayMessageBody,
   fetchAgentStatus,
   formatMessageTimestamp,
   getJournalSession,
   JOURNAL_AGENT_DISPLAY_NAME,
-  patchJournalSession,
   postAgentTurn,
   postJournalMessage,
   type AgentDepth,
   type JournalMessage,
   type JournalSession,
 } from "@/lib/journalSessionApi";
-import {
-  fetchCampaigns,
-  fetchJournalSessionPlaybooks,
-  linkJournalToPlaybook,
-  unlinkJournalFromPlaybook,
-  type JournalPlaybookBookOption,
-  type JournalPlaybookLink,
-  type PracticeCampaign,
-} from "@/lib/practiceSpineApi";
-import Link from "next/link";
-
 type Props = {
   session: JournalSession;
   busy?: boolean;
@@ -60,11 +48,6 @@ export default function SessionInterviewChat({
   const [statusNote, setStatusNote] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
-  const [campaigns, setCampaigns] = useState<PracticeCampaign[]>([]);
-  const [campBusy, setCampBusy] = useState(false);
-  const [pbBooks, setPbBooks] = useState<JournalPlaybookBookOption[]>([]);
-  const [pbLinked, setPbLinked] = useState<JournalPlaybookLink[]>([]);
-  const [pbBusy, setPbBusy] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
   const stickBottom = useRef(true);
   const scrolledToTarget = useRef<number | null>(null);
@@ -101,67 +84,6 @@ export default function SessionInterviewChat({
     scrolledToTarget.current = null;
     void refreshStatus();
   }, [session.id, refreshStatus]);
-
-  useEffect(() => {
-    void fetchCampaigns()
-      .then((d) => setCampaigns(d.campaigns || []))
-      .catch(() => setCampaigns([]));
-  }, []);
-
-  const loadPlaybookLinks = useCallback(async () => {
-    try {
-      const d = await fetchJournalSessionPlaybooks(session.id);
-      setPbBooks(d.books || []);
-      setPbLinked(d.linked || []);
-    } catch {
-      setPbBooks([]);
-      setPbLinked([]);
-    }
-  }, [session.id]);
-
-  useEffect(() => {
-    void loadPlaybookLinks();
-  }, [loadPlaybookLinks]);
-
-  const campTitle =
-    session.practice_campaign_id != null
-      ? campaigns.find((c) => c.id === session.practice_campaign_id)?.title
-      : null;
-
-  const linkedIds = new Set(pbLinked.map((l) => l.playbook_entry_id));
-
-  async function togglePlaybook(bookId: number, next: boolean) {
-    if (pbBusy || !mutable) return;
-    setPbBusy(true);
-    onError?.(null);
-    try {
-      const linked = next
-        ? await linkJournalToPlaybook(session.id, bookId)
-        : await unlinkJournalFromPlaybook(session.id, bookId);
-      setPbLinked(linked);
-    } catch (e) {
-      onError?.(e instanceof Error ? e.message : "Could not update playbook link");
-    } finally {
-      setPbBusy(false);
-    }
-  }
-
-  async function setCampaignStamp(raw: string) {
-    if (!mutable || campBusy) return;
-    setCampBusy(true);
-    onError?.(null);
-    try {
-      const value = raw === "" ? null : Number(raw);
-      const s = await patchJournalSession(session.id, {
-        practice_campaign_id: value,
-      });
-      onUpdated(s);
-    } catch (e) {
-      onError?.(e instanceof Error ? e.message : "Could not update campaign");
-    } finally {
-      setCampBusy(false);
-    }
-  }
 
   // Scroll: bottom on new msgs unless user scrolled up; reopen → latest
   useEffect(() => {
@@ -257,90 +179,8 @@ export default function SessionInterviewChat({
     <div
       className="flex min-h-0 flex-1 flex-col"
       data-testid="journal-interview-chat"
-      style={{ minHeight: "18rem", height: "min(28rem, 50vh)" }}
+      style={{ minHeight: "28rem", height: "min(42rem, 68vh)" }}
     >
-      {/* Campaign stamp + playbook links (journal-primary association) */}
-      <div className="mb-2 space-y-2 text-xs" data-testid="journal-practice-links">
-        <div
-          className="flex flex-wrap items-center gap-2"
-          data-testid="journal-campaign-stamp"
-        >
-          <span className="text-[var(--color-label-tertiary)]">Campaign</span>
-          {mutable ? (
-            <select
-              value={
-                session.practice_campaign_id != null
-                  ? String(session.practice_campaign_id)
-                  : ""
-              }
-              disabled={campBusy || blocked}
-              onChange={(e) => void setCampaignStamp(e.target.value)}
-              className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
-              aria-label="Practice campaign for this journal"
-            >
-              <option value="">No campaign</option>
-              {campaigns.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                  {c.status === "active" ? " (active)" : ""}
-                </option>
-              ))}
-            </select>
-          ) : campTitle ? (
-            <span className="rounded-full bg-[var(--color-tint-soft)] px-2 py-0.5 font-medium text-[var(--color-label)]">
-              {campTitle}
-            </span>
-          ) : (
-            <span className="text-[var(--color-label-tertiary)]">—</span>
-          )}
-        </div>
-        <div data-testid="journal-playbook-links">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-            Playbooks
-          </p>
-          {pbBooks.length === 0 ? (
-            <p className="text-[11px] text-[var(--color-label-tertiary)]">
-              No playbooks yet.{" "}
-              <Link href="/app/playbook" className="text-[var(--color-tint)] hover:underline">
-                Create one
-              </Link>
-            </p>
-          ) : (
-            <ul className="flex flex-wrap gap-1.5">
-              {pbBooks.map((b) => {
-                const on = linkedIds.has(b.id);
-                return (
-                  <li key={b.id}>
-                    <label
-                      className={[
-                        "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
-                        on
-                          ? "border-[var(--color-tint)] bg-[var(--color-tint-soft)] text-[var(--color-label)]"
-                          : "border-[var(--color-separator)] bg-[var(--color-surface)] text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]",
-                        (!mutable || pbBusy || blocked) && "opacity-60",
-                      ].join(" ")}
-                    >
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={on}
-                        disabled={!mutable || pbBusy || blocked}
-                        onChange={(e) =>
-                          void togglePlaybook(b.id, e.target.checked)
-                        }
-                      />
-                      {b.title}
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <p className="mt-1 text-[10px] text-[var(--color-label-tertiary)]">
-            Link this session to the books you practiced — easier here than on the book.
-          </p>
-        </div>
-      </div>
       {/* Fixed-height thread — page does not grow (Spec §1.4) */}
       <div
         ref={threadRef}
@@ -348,11 +188,6 @@ export default function SessionInterviewChat({
         className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)]/50 p-3"
         data-testid="journal-interview-transcript"
       >
-        {msgs.length === 0 && (
-          <p className="text-sm text-[var(--color-label-tertiary)]">
-            Write below to begin.
-          </p>
-        )}
         {msgs.map((m) => {
           const isAgent = m.author === "agent";
           const body = displayMessageBody(m.body_md, m.author);
@@ -361,65 +196,48 @@ export default function SessionInterviewChat({
             <div
               key={m.id}
               data-message-id={m.id}
-              className={[
-                "rounded-[var(--radius-md)] px-3 py-2 text-sm",
-                isAgent
-                  ? "bg-[var(--color-surface)] text-[var(--color-label)]"
-                  : "bg-[var(--color-tint-soft)] text-[var(--color-label)]",
-              ].join(" ")}
               data-author={m.author}
+              className={[
+                "journal-bubble-arrive flex flex-col",
+                isAgent ? "items-start" : "items-end",
+              ].join(" ")}
             >
-              <p className="mb-0.5 flex flex-wrap items-baseline gap-x-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-                <span>
-                  {isAgent ? JOURNAL_AGENT_DISPLAY_NAME : "You"}
-                </span>
-                {ts && (
-                  <span
-                    className="font-normal normal-case tracking-normal tabular-nums"
-                    data-testid="journal-message-timestamp"
-                  >
-                    {ts}
-                  </span>
-                )}
-              </p>
-              <p className="whitespace-pre-wrap">{body}</p>
+              <div
+                className={[
+                  "max-w-[85%] px-4 py-2.5 text-[length:var(--text-body)] font-semibold leading-[1.35]",
+                  "rounded-[var(--journal-bubble-radius)]",
+                  isAgent
+                    ? "bg-[var(--journal-bubble-in)] text-[var(--journal-bubble-in-label)]"
+                    : "bg-[var(--journal-bubble-out)] text-[var(--journal-bubble-out-label)]",
+                ].join(" ")}
+              >
+                <p className="whitespace-pre-wrap">{body}</p>
+              </div>
+              {ts && (
+                <p
+                  className="mt-1 px-1 text-[length:var(--text-caption)] tabular-nums text-[var(--color-label-tertiary)]"
+                  data-testid="journal-message-timestamp"
+                >
+                  {isAgent ? JOURNAL_AGENT_DISPLAY_NAME + " · " : ""}
+                  {ts}
+                </p>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Composer pinned below thread */}
       {mutable && (
-        <div className="relative mt-2 shrink-0">
-          <textarea
+        <div className="mt-2 shrink-0">
+          <JournalComposer
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={setDraft}
+            onSend={() => void sendTurn()}
             onPaste={onPaste}
-            rows={3}
-            placeholder="Write in your words…"
-            className="w-full resize-none rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 pr-24 text-sm text-[var(--color-label)] placeholder:text-[var(--color-label-tertiary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
-            aria-label="Journal message"
-            data-testid="journal-interview-draft"
             disabled={blocked}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                if (draft.trim() && !blocked) void sendTurn();
-              }
-            }}
+            draftTestId="journal-interview-draft"
+            sendTestId="journal-interview-send"
           />
-          <div className="absolute bottom-3 right-3 flex gap-1.5">
-            <Button
-              type="button"
-              variant="primary"
-              className="!min-h-8 !px-3 !text-xs"
-              disabled={blocked || !draft.trim()}
-              onClick={() => void sendTurn()}
-              data-testid="journal-interview-send"
-            >
-              Send
-            </Button>
-          </div>
         </div>
       )}
 

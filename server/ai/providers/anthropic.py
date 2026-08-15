@@ -27,6 +27,7 @@ class AnthropicProvider:
         model: str,
         temperature: float,
         max_tokens: int,
+        reasoning_effort: str | None = None,
     ) -> CompletionResult:
         system_parts = [m.content for m in messages if m.role == "system"]
         chat = [m for m in messages if m.role != "system"]

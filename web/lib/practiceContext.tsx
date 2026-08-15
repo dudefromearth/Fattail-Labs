@@ -19,6 +19,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import type { Account } from "@/lib/tradeLog";
 import { fetchAccounts } from "@/lib/tradeLogApi";
 import {
@@ -269,6 +270,7 @@ export type PracticeContextValue = {
   campaigns: PracticeCampaign[];
   /** Campaigns for the current account (ledger first). */
   selectableCampaigns: PracticeCampaign[];
+  refreshCampaigns: () => Promise<void>;
   campaignLabel: string;
   selectedDate: Date;
   setSelectedDate: (d: Date) => void;
@@ -313,6 +315,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
   const [accountId, setAccountIdState] = useState<AccountScope>("all");
   const [campaignId, setCampaignIdState] = useState<number | null>(null);
   const [campaigns, setCampaigns] = useState<PracticeCampaign[]>([]);
+  const pathname = usePathname();
   const [selectedDate, setSelectedDateState] = useState<Date>(() =>
     startOfDay(new Date()),
   );
@@ -423,22 +426,29 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Load deliberate campaigns whenever account suite is ready (no ledger furniture).
+  const refreshCampaigns = useCallback(async () => {
+    try {
+      const d = await fetchCampaigns();
+      setCampaigns((d.campaigns || []).filter((c) => !c.is_ledger));
+    } catch {
+      setCampaigns([]);
+    }
+  }, []);
+
+  // Load deliberate campaigns when the suite is ready, the account changes,
+  // or the member moves between Practice apps (rename must appear in Trade Log).
   useEffect(() => {
     if (!hydrated) return;
-    let cancelled = false;
-    void fetchCampaigns()
-      .then((d) => {
-        if (cancelled) return;
-        setCampaigns((d.campaigns || []).filter((c) => !c.is_ledger));
-      })
-      .catch(() => {
-        if (!cancelled) setCampaigns([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [hydrated, accountId]);
+    void refreshCampaigns();
+  }, [hydrated, accountId, pathname, refreshCampaigns]);
+
+  useEffect(() => {
+    function onVis() {
+      if (document.visibilityState === "visible") void refreshCampaigns();
+    }
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [refreshCampaigns]);
 
   // Resolve campaign filter: keep valid pref; else undirected (null).
   useEffect(() => {
@@ -604,10 +614,9 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
   }, [campaigns, accountId]);
 
   const campaignLabel = useMemo(() => {
-    // Placeholder "Campaign" = no filter applied (suite chrome default).
-    if (campaignId == null) return "Campaign";
+    if (campaignId == null) return "All positions";
     const c = campaigns.find((x) => x.id === campaignId);
-    if (!c) return "Campaign";
+    if (!c) return "All positions";
     return c.title;
   }, [campaignId, campaigns]);
 
@@ -654,6 +663,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       setCampaignId,
       campaigns,
       selectableCampaigns,
+      refreshCampaigns,
       campaignLabel,
       selectedDate,
       setSelectedDate,
@@ -684,6 +694,7 @@ export function PracticeContextProvider({ children }: { children: ReactNode }) {
       setCampaignId,
       campaigns,
       selectableCampaigns,
+      refreshCampaigns,
       campaignLabel,
       selectedDate,
       setSelectedDate,

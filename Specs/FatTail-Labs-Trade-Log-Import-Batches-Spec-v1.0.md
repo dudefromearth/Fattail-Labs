@@ -173,6 +173,12 @@ The red trashcan in the Import/Export group opens the **Import Manager** dialog:
 - **No full-wipe footer.** The dialog footer is just **Done**.
 - **Empty state:** "No imports yet — imports you make show up here to preview or remove.
   (Manually-added trades aren't part of an import.)"
+- **Blotter Import chip (as-built 2026-08-15):** on imported fills only, sit the
+  **Import** chip **under Exec time** — dark gray background, light gray text.
+  Tooltip is `Import #<id>`. Click opens **this same dialog** (trashcan host),
+  focused on that batch, via `/app/trade-log?import=<id>` (`?import=open` if the
+  row has no id). **Do not** put Import Manager on the main header — that
+  dedicated surface is a coming feature (Conor). The query param is the seam.
 
 ## 8. HIG compliance (applies to every dialog here)
 

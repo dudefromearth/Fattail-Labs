@@ -337,6 +337,13 @@ Projects:
   3. **Research before questioning** — read sources; no priors as conclusions.  
   4. **Block only** for invariant / law / system breakage. Everything else is an
      **opinion** (labeled). Risk language may not promote disagreement into a constraint.
+- **The Vision Is Coach's — The Craft Is Ours (doctrine §12 · DL-334):** realize Coach’s
+  intent; do not trim it. Craft and efficiency serve the vision. Hard work is named to
+  Coach, never replaced with an easier ship.
+- **Rounds are where we simplify (doctrine §13 · DL-336):** no streamlining mid-build.
+  A round after implementation is expected. Spec v1.1: `Specs/FatTail-Labs-Audit-and-Hardening-Round-Spec-v1.1.md`.
+- **Transcribe rulings; do not create them (doctrine §14 · DL-337):** file Coach’s
+  stated law same day, verbatim, then show it. Do not invent product, scope, or design.
 
 ---
 

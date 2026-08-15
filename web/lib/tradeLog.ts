@@ -68,6 +68,8 @@ export type Trade = {
   pnl_amount: number | null;
   legs: Leg[];
   entry_source?: EntrySource | string | null;
+  /** Batch id when entry_source=import; null for manual/automated. */
+  import_id?: number | null;
   trash_reason?: string | null;
   created_at?: string | null;
   updated_at?: string | null;

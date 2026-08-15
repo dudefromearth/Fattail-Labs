@@ -4,6 +4,395 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-15 — DL-361 Browser Paste chip on ToS clipboard read is accepted
+
+**Decision (Coach):** Safari and Firefox may still show their Paste chip
+when New Trade reads a thinkorswim ticket, **and** they still open the
+drawer with the script. Chrome may ask once (Allow) then stay quiet.
+This is acceptable. Minimal chance it will confuse the member.
+
+**As-built:** Unchanged from DL-360. No extra Labs button. Chip is the
+browser’s grant for `readText`.
+
+---
+
+## 2026-08-15 — DL-360 New Trade chooser: close, ToS script, then open
+
+**Decision (Coach):** New Trade presents ways to log the next opportunity.
+Close unmatched opens first. If more than three opens, the close list
+scrolls. Next: the standard ToS script window **only** when the clipboard
+holds a valid ToS script — no link, no empty window. Tap the script to
+open the trade entry form. Then a HIG **button** (not a link): Create a
+new opening trade.
+
+**As-built:** New Trade reads the OS clipboard on that click
+(`readText`) so a ticket copied in thinkorswim can appear. Cheap look
+then parse. Chrome/Safari may show their Paste chip — that *is* the
+read. Labs copy and ⌘V still fill memory without a second read.
+
+---
+
+## 2026-08-15 — DL-359 Campaign badge color is unique and high-contrast
+
+**Decision (Coach):** Campaign buttons/badges have a unique background
+color selected from a color picker. If the fill is dark the ink is
+bright/white; if the fill is light the ink is dark. Contrast between
+badge background and text must be near maximum.
+
+**As-built:** `member_practice_campaigns.badge_color` (#RRGGBB), unique
+per identity. Not a charter field and not variance/conduct coloring.
+Picker on create + editor. Blotter, Positions, Find and Badge, library,
+and context chrome host the same token.
+
+---
+
+## 2026-08-15 — DL-358 Import chip under Exec time; manager stays off the header
+
+**Decision (Coach):** The blotter Import badge sits under Exec time, dark
+gray on light gray text, tooltip = import ID. Click opens the existing
+Manage imports dialog (trashcan). Import Manager is a coming feature
+(Conor) and is **not** on the main header.
+
+**As-built:** `?import=<id>` / `?import=open` is the seam. Trade DTO
+includes `import_id`. Automated chip stays next to strategy.
+
+---
+
+## 2026-08-15 — DL-357 Campaign names that say “book” confuse
+
+**Decision (Coach):** Naming a campaign “Primary book” was a member naming
+error from not yet knowing that book = account. The product must keep the
+words apart so that error is obvious.
+
+**As-built:** Campaign pickers prefix **Campaign ·**. Title fields witness
+when the name contains “book”. Wiki: [[account]] [[book]] [[campaign]].
+
+---
+
+## 2026-08-15 — DL-356 Book = account (one-for-one) everywhere
+
+**Decision (Coach):** A book is one-for-one the contents of an account. If a
+member becomes confused by this distinction, that is a product failure. UI,
+Guide, and Wiki must say it the same way. A campaign is a badge, not a book.
+
+**As-built:** Practice chrome, Find and Badge, Trade Log scope, Reports
+capital line, Accounts settings, `/guide`, wiki glossary [[account]] [[book]]
+[[campaign]].
+
+---
+
+## 2026-08-15 — DL-355 Campaign filter is the whole book
+
+**Decision (Coach):** A campaign badge is on the **total** trade log. Filtering
+Trade Log or Reports to a campaign shows every position that wears that badge,
+across accounts. Find and Badge and the blotter must agree.
+
+**As-built:** Named campaign selected → list/reports omit `account_id` and
+match the stamp only. Account switcher applies when the scope is **All
+positions**.
+
+---
+
+## 2026-08-15 — DL-354 Records shows campaign or all-positions performance
+
+**Decision (Coach):** In the Records (Reports) view you can easily see the
+performance of a campaign, or the performance of all positions regardless of
+campaign.
+
+**As-built:** Practice chrome scope is **All positions** (default) or a named
+campaign. Reports names that scope and, for a campaign, uses **allocated
+capital**. The book is the same Reports path, filtered by badge.
+
+---
+
+## 2026-08-15 — DL-353 Find and Badge — any set, one badge or none
+
+**Decision (Coach):** Find and Badge is how positions join a campaign or stay
+unassociated. Every instance can be found by any chosen criteria, or by
+campaign. A set of traded positions can take a campaign badge, or wear none.
+
+**As-built:** Campaigns main page · AutoFilter (dates, strategy type, side,
+effect, symbol, campaign) · found set is positions · clear then assign ·
+window-ineligible rows are rejected · one badge or none.
+
+---
+
+## 2026-08-15 — DL-352 Find and Badge (campaign badge, not tag)
+
+**Decision (Coach):** The search title is **Find and Badge**. A position
+**wears a campaign badge**. That is the terminology.
+
+**As-built:** Campaigns main page heading and links say Find and Badge
+(`/app/practice/campaign#find-badge`).
+
+---
+
+## 2026-08-15 — DL-351 Find and tag lives on Campaigns; window rejects stamp
+
+**Decision (Coach):** Search and replace of campaign badges is **exclusive to
+campaigns** and belongs on the **Campaigns main page** — not the Trade Log,
+not inside every campaign. A position that does not fit the campaign
+(fill outside the window) is **rejected**; the badge is not applied. Turning
+on that campaign filter will not show it.
+
+**As-built:** `TradeFindTag` on `/app/practice/campaign#find-badge`.
+`/app/trade-log/find` redirects there. Assign checks the campaign dates
+before PATCH; out-of-window rows stay untagged.
+
+---
+
+## 2026-08-15 — DL-350 Clear/assign refreshes the found set
+
+**Decision (Coach):** After clear or assign on selected found-set rows, the
+found set **reloads under the current filter** and shows the new stamps. A
+March-2023 filter still shows March; the campaign column updates. A campaign
+filter drops rows that no longer wear that badge.
+
+**As-built:** Explicit `PATCH practice_campaign_id: null` is **undirected**
+(does not re-stamp from memory). Find and tag then refetches `/found` + the
+paged list. PATCH no longer 500s on option-right infer.
+
+---
+
+## 2026-08-15 — DL-349 When AutoFilter is a calendar hierarchy
+
+**Decision (Coach):** The date filter is staged on a calendar. Years, then
+months, then days. Days stay collapsed until the month is expanded. If the
+book is one year, open that year and show months. If there are multiple years,
+first open shows collapsed years only.
+
+**As-built:** Find and tag When menu is `DateWhenFilter` (`year → month → day`).
+`GET /distincts` returns unique `days`. Filters compact to `years` / `months` /
+`days` on `/found` and the paged list.
+
+---
+
+## 2026-08-15 — DL-348 Find and tag found set is range + position count
+
+**Decision (Coach):** The found set must be **clear**. Show the **date range**
+and the **number of positions**. Listing the whole book as an endless page is
+unmanageable — thousands of trades would overload the page. The table scrolls
+or pages. Load-range is gone.
+
+**As-built:** `/app/trade-log/find` banners the found set (`GET /found`:
+`first_day` → `last_day` · `position_count`). Rows page at **50**. AutoFilter
+searches the book via server filters + `GET /distincts`, not the visible page.
+
+---
+
+## 2026-08-15 — DL-347 Trade Log display window 20–50 contract rows
+
+**Decision (Coach):** The blotter is a **window** into a lazy-loaded list. The
+trader may lengthen that window from **20** to **50** contract rows in steps of
+**10**. The control does **not** decide how many trades are loaded — the system
+keeps lazy-load page size for memory and performance.
+
+**As-built:** `TradeLogTable` Window select · `ft.tradeLog.blotterWindow.v1`.
+Server `limit` remains 80.
+
+---
+
+## 2026-08-15 — DL-346 Campaign = window on the book; allocate stamps
+
+**Decision (Coach):** A campaign is a **time-based window** on the **total
+trade log**. Only trades tagged with that campaign show; the rest are filtered.
+A trade has **one campaign or none**. Terms (what you can trade, size, max DD)
+are **witnessed** — report and warn, never gate. The member **searches, selects,
+and manages** which campaign a trade is allocated to.
+
+**As-built:** Find and Badge is **one** surface — Campaigns
+`/app/practice/campaign#find-badge`. Campaign pages show **only badge-tagged
+trades**. AutoFilter hidden until toggled. Clear-before-assign. Five undos.
+Window-ineligible assigns are rejected.
+
+---
+
+## 2026-08-15 — DL-345 Retro heading drawdown = current period % of capital
+
+**Decision (Coach):** The heading-card drawdown is the **current drawdown in the
+period under the retrospective**. The denominator base is the trader's **total
+trading capital**. If a **campaign is in place**, use that campaign's
+**allocated capital** and the campaign's stamps. Never a silent $50k or a
+Reports what-if override on this compass. Unset capital is named.
+
+**As-built:** `resolveHeadingCapital` reads **Accounts & Capital**
+(`/api/me/capital/overview` entered starting balances) as total trading
+capital — not the Practice-context book and not a $50k placeholder. Campaign
+in place → allocated capital. Drawdown headline is current period % on that
+base. Shape = full distribution with period trades in contrast. Practice =
+Journey radar with this period overlaid. Spec still **DRAFT**.
+
+---
+
+## 2026-08-15 — DL-344 Retro page headers with Reporting Standards Heading Card
+
+**Decision (Coach):** The retrospective page opens with the **Heading Card** from
+Reporting Standards Spec v0.1 §7a — verdict + Journey score + trajectory chips,
+then shape vs true north, drawdown ribbon, practice balance. That is the header
+idea. Not the old dual-report / maiden-journey explainer.
+
+**As-built:** `RetroHeadingCard` on `/app/retrospective` and
+`/app/retrospective/{id}`. Honest empties: win-band RoD and drawdown conduct
+are not scored; trajectory is process-comparison until evaluation cards exist.
+Period brief stays as evidence under the heading. Nine-step ceremony remains
+as-built below (Reimagined Phase 0 — not replaced here). Spec still **DRAFT**.
+
+**Spec:** [`Specs/FatTail-Labs-Retro-Reporting-Standards-Spec-v0_1.md`](../Specs/FatTail-Labs-Retro-Reporting-Standards-Spec-v0_1.md) §7a as-built preview.
+
+---
+
+## 2026-08-14 — DL-343 Retrospective reimagined — Phase 0
+
+**Decision:** Open Phase 0. Nine-step ceremony is **dead** as chrome **and** as Coach
+conduct. Reimagine from first principles. Data law and the four questions **survive**.
+Experience is otherwise **open**. Coach will state the vision; capture verbatim.
+
+**Spec:** [`Specs/FatTail-Labs-Retrospective-Reimagined-Spec-v0.1.md`](../Specs/FatTail-Labs-Retrospective-Reimagined-Spec-v0.1.md) — THESIS.
+
+**Not yet:** Juliet design, implementation, or a replacement walk.
+
+---
+
+## 2026-08-14 — DL-342 Member AI Memory & Period Brief Spec v1.0 (IN REVIEW)
+
+**Decision:** Land
+[`Specs/FatTail-Labs-Member-AI-Memory-and-Period-Brief-Spec-v1.0.md`](../Specs/FatTail-Labs-Member-AI-Memory-and-Period-Brief-Spec-v1.0.md).
+Captures Coach discovery: personalized assistant (Journey, Trade Log, past
+Journal, retros); compile not a second soul; speed; retro-start standard
+infographic; admin instructions as system-wide law.
+
+**Status:** IN REVIEW. Shipped slices are as-built in the spec. Remaining
+slices (hot brief, visible brief, stream, retrieve) wait GO.
+
+---
+
+## 2026-08-14 — DL-341 Retro start — standard period brief infographic
+
+**Decision (Coach):** When a member starts a retrospective, gather compiles the
+window since the last review into a **standard report + infographic**
+(`period_brief`). Same layout for every member. Process counts and journal
+clips — not a P&L scoreboard. Ceremony map remains below.
+
+**As-built:** `build_period_brief` on gather · `RetroPeriodBrief` on the
+workspace.
+
+---
+
+## 2026-08-14 — DL-340 Journal admin Edit — AI Instructions + reasoning
+
+**Decision (Coach):** Journal follows the Labs lower-left black **Edit** button.
+It opens an **AI Instructions** overlay on the message box: markdown editor,
+**Close** to dismiss, bottom **Reasoning** dropdown (low / medium / high) +
+**Save**. Markdown window matches Playbook / Toughness (`MarkdownEditor`).
+Site-wide app-framework Edit is deferred.
+
+**As-built:** `GET/PATCH /api/admin/journal-prompts` · `reasoning_level` on
+`journal_session_prompt_versions` (mig **128**) · agent passes `reasoning_effort`
+to Grok.
+
+---
+
+## 2026-08-14 — DL-339 Journal day card — no tags, campaign, playbooks, interview
+
+**Decision (Coach, j.png):** On the Journal day view, remove **Tags**, **Campaign**,
+**Playbooks**, and **structured interview** (and interview soft-beats). Image drop
+**full width**. Message thread **taller** into the saved space. Suite nav Playbook /
+Campaigns stay.
+
+**Data model:** session is a conversation (date + messages + attachments + prompt
+version). Create does not write tags, structured_json, or practice_campaign_id.
+Compile reads member messages. Leftover columns may be NULL.
+
+**Spec note:** Journal Session v0.6 header (2026-08-14 Coach day-view ruling).
+
+---
+
+## 2026-08-14 — DL-338 Member Settings page (User menu)
+
+**Decision:** Add **Settings** to the account menu, next to Profile. Route `/settings`.
+Catch-all for application and site-wide prefs on this device.
+
+**v1.0 panes:** **Appearance** (`system` \| `light` \| `dark`) · **Font size**
+(`small` \| `medium` \| `large` \| `larger`) · **Alerts** UI (supported, delivery
+not live; SMS/Email digest Coming soon). Member color scheme overrides published
+site appearance when set.
+
+**Spec:** [`Specs/FatTail-Labs-Member-Settings-Spec-v1.0.md`](../Specs/FatTail-Labs-Member-Settings-Spec-v1.0.md)
+
+**Not in v1.0:** server-synced prefs; live alert delivery; extra sidebar items from
+the Coach Alerts reference (Symbols / Tags / Brokerage / Streaming).
+
+---
+
+## 2026-08-14 — DL-337 Doctrine §14 — Transcribe rulings; do not create them
+
+**Decision:** Add foundational principle **14**. When Coach states a ruling, principle, or
+law in conversation, filing it the same day (spec / doctrine / DL), **verbatim**, and
+showing it after, is **documentation parity — not initiative**. Inventing product, scope,
+or design Coach did not state remains forbidden.
+
+**Also:** a hardening/round after implementation is **expected process**. Audit &
+Hardening Round Spec **v1.1** is the one lineage (four phases; Simplify is the named
+phase). v1.0 §3 (“other phases may be added”) is **withdrawn** — it invented scope.
+
+**Coach text** is in doctrine §14 verbatim.
+
+---
+
+## 2026-08-14 — DL-336 Doctrine §13 — Rounds are where we simplify
+
+**Decision:** Add foundational principle **13** to `agents/bench/doctrine.md`. Land
+[`Specs/FatTail-Labs-Audit-and-Hardening-Round-Spec-v1.1.md`](../Specs/FatTail-Labs-Audit-and-Hardening-Round-Spec-v1.1.md)
+**§2 Simplify** as the sanctioned home of optimization. Builds deliver the vision
+exactly (doctrine §12). Rounds may simplify only if the accepted **interface** still
+passes side-by-side and **performance** is equal or better, **measured**. Echo re-gates
+touched surfaces; characterization proves equivalence; suite stays green and
+warning-free.
+
+**Coach text** is verbatim in doctrine §13 and Spec §2.
+
+---
+
+## 2026-08-14 — DL-335 Journal + Retro interface-floor program GO
+
+**Decision:** Accept Retrospective Spec **v0.7.1 §6.3** (both Coach paragraphs) as law.
+Accept [`docs/Journal-Retro-Interface-Floor-Full-Agent-Bench-Plan-v1.0.md`](../docs/Journal-Retro-Interface-Floor-Full-Agent-Bench-Plan-v1.0.md)
+as the only execution sequence. Board `agents/p-journal-retro-floor/`.
+
+**Locks:** Echo visual-law packet before Charlie. Coach is side-by-side and in-use judge
+(IF6). `journalBeats.ts` never returns as the conversation. Conversation Lab STOPPED.
+StudioTwo only unless a later GO names MiniTwo. Doctrine §12 applies.
+
+---
+
+## 2026-08-14 — DL-334 Doctrine §12 — The Vision Is Coach's — The Craft Is Ours
+
+**Decision:** Add foundational principle **12** to `agents/bench/doctrine.md`. The bench
+realizes Coach’s vision; it does not substitute its own. Contribution is **craft and
+efficiency** (Apple HIG sophistication, Claude-grade interface intelligence, fastest path
+that does not compromise the result). When vision and effort collide: say “this is hard,
+here is the cost” — never quietly build less. Initiative is HOW, never WHAT or WHETHER.
+An easier ship that works is still a failure.
+
+**Coach text** is in doctrine §12 verbatim.
+
+**Related:** Journal Retrospective v0.7.1 §6.3 interface floor (IN REVIEW).
+
+---
+
+## 2026-08-14 — DL-333 Retrospective compiles Journal; does not re-ask the week
+
+**Decision:** The four questions live in **Journal**. Retrospective **compiles** structured
+journal answers (`journal_compile`: said / in the way / worked / next) and asks only for
+**the fix** (`one_thing_md`) plus an optional missed-note. Map tiles are look-up, not a form.
+
+**As-built:** gather emits `journal_compile`; workspace “From your journal”; migration **126**
+`one_thing_md`. Pile filed this as DL-324; that number is the VP Spec v0.3.1 fold on `main`.
+
+**Spec:** Journal Retrospective **v0.7.1 §5.3**.
+
+---
+
 ## 2026-08-14 — DL-332 Characterization suite uses own probe courses
 
 **Decision:** Characterization tests that need a published/draft course **create and

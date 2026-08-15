@@ -785,6 +785,27 @@ def commit_practice_campaign(cur, identity_id: int, doc: dict) -> dict[str, Any]
             ),
         )
         cid = int(cur.lastrowid)
+        try:
+            import practice_spine_domain as psd
+
+            try:
+                color = psd.allocate_badge_color(
+                    cur, identity_id, preferred=e.get("badge_color")
+                )
+            except psd.PracticeSpineError:
+                color = psd.allocate_badge_color(cur, identity_id)
+        except Exception:
+            color = None
+        if color:
+            try:
+                cur.execute(
+                    """UPDATE member_practice_campaigns
+                       SET badge_color = %s
+                       WHERE id = %s AND identity_id = %s""",
+                    (color, cid, identity_id),
+                )
+            except Exception:
+                pass
         counts["new"] += 1
         for pb_key in e.get("playbook_export_keys") or []:
             pk = str(pb_key or "").strip()

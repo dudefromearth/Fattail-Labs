@@ -68,7 +68,9 @@ The contract form is purpose-agnostic — capital, learning, remediation, transi
 | `is_default` | Book-home / prefill hints |
 | `export_key` | Pack / import identity |
 
-Optional later (not required for v1 badge): short code, color token, cover art — still registry-side if added; Trade Log never invents badge definitions.
+Optional later (not required for v1 badge): short code, cover art — still registry-side if added; Trade Log never invents badge definitions.
+
+**Badge color (as-built 2026-08-15 · DL-359):** every campaign has a unique `#RRGGBB` `badge_color` chosen from a color picker. Uniqueness is per identity. This is **identity chrome**, not conduct — it does not encode variance, P&L, or adherence. Trade Log hosts the color on the chip; the registry owns the token. Dark backgrounds get white (or brighter) ink; light backgrounds get near-black ink — the system picks the ink with the higher contrast ratio so badge text stays near-maximum contrast.
 
 **Dispense vs wear:**
 

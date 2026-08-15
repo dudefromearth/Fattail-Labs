@@ -368,18 +368,17 @@ def test_playbook_scrapbook_chapters_save_and_evidence(client):
         _cleanup(iid)
 
 
-def test_journal_campaign_stamp_default_and_clear(client):
-    """OD-1.4 — new sessions default-suggest active campaign; stamp removable."""
+def test_journal_session_is_conversation_only(client):
+    """DL-339 — journal create is a conversation; no campaign stamp."""
     iid = _member("zztest-spine-journal-camp@labs.test")
     cookies = cookie_for("activator", iid)
-    _cleanup(iid)  # prior runs may leave a one-session-per-date row
+    _cleanup(iid)
     try:
-        camp = client.post(
+        client.post(
             "/api/me/practice/campaigns",
             cookies=cookies,
             json={"title": "Journal season", "activate": True, "max_drawdown_pct": 15, "starts_at": "2026-01-01", "starting_capital": 10000},
-        ).json()["campaign"]
-        # Default stamp on fresh create
+        )
         r = client.post(
             "/api/me/journal-sessions",
             cookies=cookies,
@@ -387,15 +386,10 @@ def test_journal_campaign_stamp_default_and_clear(client):
         )
         assert r.status_code == 200, r.text
         sess = r.json()["session"]
-        assert sess.get("practice_campaign_id") == camp["id"], sess
-        # Clear stamp
-        p = client.patch(
-            f"/api/me/journal-sessions/{sess['id']}",
-            cookies=cookies,
-            json={"practice_campaign_id": None},
-        )
-        assert p.status_code == 200, p.text
-        assert p.json()["session"].get("practice_campaign_id") is None
+        assert sess.get("practice_campaign_id") in (None, "")
+        assert sess.get("structured") in (None, {}, [])
+        assert sess.get("tags") in (None, [])
+        assert sess.get("tag") in (None, "")
     finally:
         _cleanup(iid)
 
@@ -793,5 +787,76 @@ def test_campaign_amendments_get_family_b(client):
             "/api/me/practice/campaigns/999999999/amendments", cookies=cookies
         )
         assert miss.status_code == 404
+    finally:
+        _cleanup(iid)
+
+
+def test_campaign_badge_color_unique_and_persisted(client):
+    """Each campaign has a unique #RRGGBB; duplicate is 422 (DL-359)."""
+    iid = _member("zztest-spine-badge-color@labs.test")
+    cookies = cookie_for("activator", iid)
+    try:
+        a = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "Blue season",
+                "activate": True,
+                "max_drawdown_pct": 15,
+                "starts_at": "2026-01-01",
+                "starting_capital": 10000,
+                "badge_color": "#1d4ed8",
+            },
+        )
+        assert a.status_code == 200, a.text
+        camp_a = a.json()["campaign"]
+        assert camp_a["badge_color"] == "#1D4ED8"
+
+        auto = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "Auto color",
+                "activate": True,
+                "max_drawdown_pct": 15,
+                "starts_at": "2026-01-01",
+                "starting_capital": 10000,
+            },
+        )
+        assert auto.status_code == 200, auto.text
+        camp_auto = auto.json()["campaign"]
+        assert camp_auto["badge_color"]
+        assert camp_auto["badge_color"] != camp_a["badge_color"]
+        assert camp_auto["badge_color"].startswith("#")
+        assert len(camp_auto["badge_color"]) == 7
+
+        clash = client.post(
+            "/api/me/practice/campaigns",
+            cookies=cookies,
+            json={
+                "title": "Same blue",
+                "activate": True,
+                "max_drawdown_pct": 15,
+                "starts_at": "2026-01-01",
+                "starting_capital": 10000,
+                "badge_color": "#1D4ED8",
+            },
+        )
+        assert clash.status_code == 422, clash.text
+
+        ok = client.patch(
+            f"/api/me/practice/campaigns/{camp_auto['id']}",
+            cookies=cookies,
+            json={"badge_color": "#be123c"},
+        )
+        assert ok.status_code == 200, ok.text
+        assert ok.json()["campaign"]["badge_color"] == "#BE123C"
+
+        taken = client.patch(
+            f"/api/me/practice/campaigns/{camp_auto['id']}",
+            cookies=cookies,
+            json={"badge_color": "#1D4ED8"},
+        )
+        assert taken.status_code == 422, taken.text
     finally:
         _cleanup(iid)

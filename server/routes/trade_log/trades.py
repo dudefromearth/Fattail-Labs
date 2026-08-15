@@ -9,6 +9,8 @@ import trade_log_catalog as cat
 from guards import require_session
 from routes.trade_log.common import (
     _TRADE_PAGE_DEFAULT,
+    found_set_stats,
+    trade_distincts,
     _dec,
     _ensure_default_account,
     _get_account,
@@ -38,11 +40,26 @@ def list_trades(
     cursor: str | None = None,
     full: bool = False,
     practice_campaign_id: int | None = None,
+    campaign_mode: str | None = None,
     playbook_entry_id: int | None = None,
     playbook_mode: str | None = None,
     adherence_mode: str | None = None,
     from_day: str | None = None,
     to_day: str | None = None,
+    q: str | None = None,
+    strategy: str | None = None,
+    net_side: str | None = None,
+    pos_effect: str | None = None,
+    symbol: str | None = None,
+    strategies: str | None = None,
+    sides: str | None = None,
+    effects: str | None = None,
+    symbols: str | None = None,
+    years: str | None = None,
+    months: str | None = None,
+    days: str | None = None,
+    campaigns: str | None = None,
+    positions_only: bool = False,
 ) -> dict:
     """List trades for the blotter.
 
@@ -55,6 +72,10 @@ def list_trades(
     Spine filters:
     - ``practice_campaign_id`` — named campaign exact stamp; **default book**
       also includes unstamped trades on that account (book is their home).
+    - ``campaign_mode=unallocated`` — no campaign stamp (one or none).
+    - ``q`` — free-text symbol / underlier / strategy.
+    - ``strategy`` · ``net_side`` (CREDIT|DEBIT) · ``pos_effect`` (TO_OPEN|TO_CLOSE)
+      · ``symbol`` — AND-combined structured search.
     - ``playbook_entry_id`` — exact playbook link.
     - ``playbook_mode=unaffiliated`` — no playbook link (named default; not All).
 
@@ -77,6 +98,26 @@ def list_trades(
         )
     if pb_mode == "unaffiliated":
         playbook_entry_id = None  # mode wins over id
+    camp_mode = (campaign_mode or "").strip().lower() or None
+    if camp_mode is not None and camp_mode not in ("unallocated",):
+        raise HTTPException(
+            status_code=422,
+            detail="campaign_mode must be 'unallocated' or omitted",
+        )
+    if camp_mode == "unallocated":
+        practice_campaign_id = None
+    side = (net_side or "").strip().upper() or None
+    if side is not None and side not in ("CREDIT", "DEBIT"):
+        raise HTTPException(
+            status_code=422, detail="net_side must be CREDIT or DEBIT"
+        )
+    effect = (pos_effect or "").strip().upper() or None
+    if effect is not None and effect not in ("TO_OPEN", "TO_CLOSE"):
+        raise HTTPException(
+            status_code=422, detail="pos_effect must be TO_OPEN or TO_CLOSE"
+        )
+    net_side = side
+    pos_effect = effect
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
@@ -88,11 +129,17 @@ def list_trades(
                     iid,
                     account_id,
                     practice_campaign_id=practice_campaign_id,
+                    campaign_mode=camp_mode,
                     playbook_entry_id=playbook_entry_id,
                     playbook_mode=pb_mode,
                     adherence_mode=mode,
                     from_day=from_day,
                     to_day=to_day,
+                    q=q,
+                    strategy=strategy,
+                    net_side=net_side,
+                    pos_effect=pos_effect,
+                    symbol=symbol,
                 )
                 has_more = False
                 next_cursor = None
@@ -105,11 +152,26 @@ def list_trades(
                     limit=page_limit,
                     cursor=cursor,
                     practice_campaign_id=practice_campaign_id,
+                    campaign_mode=camp_mode,
                     playbook_entry_id=playbook_entry_id,
                     playbook_mode=pb_mode,
                     adherence_mode=mode,
                     from_day=from_day,
                     to_day=to_day,
+                    q=q,
+                    strategy=strategy,
+                    net_side=net_side,
+                    pos_effect=pos_effect,
+                    symbol=symbol,
+                    strategies=strategies,
+                    sides=sides,
+                    effects=effects,
+                    symbols=symbols,
+                    years=years,
+                    months=months,
+                    days=days,
+                    campaigns=campaigns,
+                    positions_only=positions_only,
                 )
     # Legacy key for old clients/tests that expect entries (prose-shaped)
     entries = [
@@ -136,6 +198,93 @@ def list_trades(
         "has_more": has_more,
         "next_cursor": next_cursor,
         "page_limit": None if full else (limit if limit is not None else _TRADE_PAGE_DEFAULT),
+    }
+
+
+@router.get("/api/me/trade-log/found")
+def trade_log_found(
+    request: Request,
+    strategies: str | None = None,
+    sides: str | None = None,
+    effects: str | None = None,
+    symbols: str | None = None,
+    years: str | None = None,
+    months: str | None = None,
+    days: str | None = None,
+    campaigns: str | None = None,
+) -> dict:
+    """Found-set header: date range + position count (not a row dump)."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            return found_set_stats(
+                cur,
+                iid,
+                strategies=strategies,
+                sides=sides,
+                effects=effects,
+                symbols=symbols,
+                years=years,
+                months=months,
+                days=days,
+                campaigns=campaigns,
+            )
+
+
+@router.get("/api/me/trade-log/distincts")
+def trade_log_distincts(request: Request) -> dict:
+    """AutoFilter value lists from the whole book."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            return trade_distincts(cur, iid)
+
+
+@router.get("/api/me/trade-log/span")
+def trade_log_span(
+    request: Request,
+    account_id: int | None = None,
+) -> dict:
+    """First/last fill day and trade count — Find and tag book extent."""
+    claims = require_session(request)
+    _require_tool_member(claims, capability="read")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            iid = _storage_identity_id(cur, claims)
+            clauses = ["identity_id = %s", "exec_at IS NOT NULL"]
+            args: list = [iid]
+            if account_id is not None:
+                _get_account(cur, iid, account_id)
+                clauses.append("account_id = %s")
+                args.append(int(account_id))
+            where = " AND ".join(clauses)
+            cur.execute(
+                f"""SELECT DATE(MIN(exec_at)) AS first_day,
+                           DATE(MAX(exec_at)) AS last_day,
+                           COUNT(*) AS trade_count
+                      FROM member_trade_log_trades
+                     WHERE {where}""",
+                tuple(args),
+            )
+            row = cur.fetchone() or {}
+    first = row.get("first_day")
+    last = row.get("last_day")
+    n = int(row.get("trade_count") or 0)
+
+    def ymd(v: object) -> str | None:
+        if v is None:
+            return None
+        s = str(v)
+        return s[:10] if len(s) >= 10 else s
+
+    return {
+        "first_day": ymd(first),
+        "last_day": ymd(last),
+        "trade_count": n,
     }
 
 
@@ -459,30 +608,37 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
                 )
             stamped_by = row.get("stamped_by")
             if "practice_campaign_id" in body:
-                camp_raw = (
-                    int(body["practice_campaign_id"])
-                    if body.get("practice_campaign_id") not in (None, "")
-                    else None
-                )
-                try:
-                    import practice_spine_domain as psd
-
-                    camp_id, stamped_by = psd.resolve_trade_campaign_id(
-                        cur,
-                        iid,
-                        int(account_id),
-                        practice_campaign_id=camp_raw,
-                        update_memory=True,
-                        exec_at=exec_at,
+                # Explicit null = undirected (one or none). Do not re-stamp
+                # from campaign memory — Find and tag clear must stick.
+                if body.get("practice_campaign_id") in (None, ""):
+                    camp_id = None
+                    stamped_by = None
+                    cur.execute(
+                        """DELETE FROM member_practice_campaign_memory
+                           WHERE identity_id = %s AND account_id = %s""",
+                        (iid, account_id),
                     )
-                except Exception as exc:
-                    from practice_spine_domain import PracticeSpineError
+                else:
+                    camp_raw = int(body["practice_campaign_id"])
+                    try:
+                        import practice_spine_domain as psd
 
-                    if isinstance(exc, PracticeSpineError):
-                        raise HTTPException(
-                            status_code=exc.code, detail=exc.detail
-                        ) from exc
-                    raise
+                        camp_id, stamped_by = psd.resolve_trade_campaign_id(
+                            cur,
+                            iid,
+                            int(account_id),
+                            practice_campaign_id=camp_raw,
+                            update_memory=True,
+                            exec_at=exec_at,
+                        )
+                    except Exception as exc:
+                        from practice_spine_domain import PracticeSpineError
+
+                        if isinstance(exc, PracticeSpineError):
+                            raise HTTPException(
+                                status_code=exc.code, detail=exc.detail
+                            ) from exc
+                        raise
             elif body.get("exec_at") is not None and camp_id is not None:
                 # D1-3: fill-time edit re-eval — out-of-window stamp stays until
                 # member redirects; never auto-move (quiet surface only).
@@ -508,7 +664,8 @@ async def patch_trade(trade_id: int, request: Request) -> dict:
                 legs_for_infer = body["legs"]
             else:
                 cur.execute(
-                    """SELECT side, quantity, strike, right, underlier, symbol, expiry
+                    """SELECT side, quantity, strike,
+                              option_right AS `right`, underlier, symbol, expiry
                        FROM member_trade_log_legs
                        WHERE trade_id = %s AND identity_id = %s
                        ORDER BY leg_index""",

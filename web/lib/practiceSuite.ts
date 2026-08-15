@@ -45,7 +45,8 @@ export const PRACTICE_SUITE: PracticeSuiteItem[] = [
     label: "Reports",
     href: "/app/reports",
     slugs: ["reports", "statistics", "records"],
-    blurb: "Book aggregates from experiments: path, drawdown, distributions.",
+    blurb:
+      "Account (book) aggregates from experiments: path, drawdown, distributions.",
     status: "live",
   },
   {

@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import Markdown from "@/components/Markdown";
+import MarkdownEditor from "@/components/ui/MarkdownEditor";
 import ToughnessShell from "@/components/hard/ToughnessShell";
 import SectionHubShell from "@/components/section-hub/SectionHubShell";
 import { useSectionHubEdit } from "@/components/section-hub/SectionHubEditContext";
@@ -123,12 +124,12 @@ function RulesColumn({
         <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-400">
           Markdown — edit freely, then Save
         </p>
-        <textarea
+        <MarkdownEditor
           value={display}
           onChange={(e) => edit.setField(field, e.target.value)}
           rows={Math.max(10, display.split("\n").length + 2)}
           placeholder={"- Daily requirement\n- …"}
-          className="mt-3 w-full resize-y rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]/40 p-3 font-mono text-sm leading-relaxed text-[var(--color-label)] outline-none focus:ring-2 focus:ring-emerald-500"
+          className="mt-3 resize-y"
         />
       </div>
     );

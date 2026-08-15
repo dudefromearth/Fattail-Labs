@@ -34,6 +34,7 @@ import {
   BW_WING_SIDE_DEFAULT,
 } from "@/lib/options-lab/templates/bwFly";
 import { DEFAULT_GRADIENT_THRESHOLD } from "@/lib/options-lab/templates/color";
+import { rememberTosScript } from "@/lib/tradeLogTos";
 import {
   buildGexProfile,
   fmtGexProfile,
@@ -500,6 +501,7 @@ export default function HeatmapChainPanel() {
       setSelectedTile({ strike: body, colId: `w${widthPts}` });
       // Hand off to Analyzer (session) — same line as clipboard
       saveAnalyzerTrade(script, "heatmap");
+      rememberTosScript(script);
       try {
         await navigator.clipboard.writeText(script);
         setTosCopied(true);
@@ -947,6 +949,7 @@ export default function HeatmapChainPanel() {
                 type="button"
                 className={secondaryBtn + " w-full min-h-9 py-1.5 text-xs"}
                 onClick={() => {
+                  rememberTosScript(tosScript);
                   void navigator.clipboard.writeText(tosScript).then(() => {
                     setTosCopied(true);
                     window.setTimeout(() => setTosCopied(false), 1600);

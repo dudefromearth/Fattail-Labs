@@ -27,7 +27,14 @@ async function parseJson<T>(r: Response): Promise<AnalyticsResult<T>> {
   if (r.status === 401) return { ok: false, error: { kind: "anon" } };
   if (r.status === 403) return { ok: false, error: { kind: "forbidden" } };
   if (!r.ok) {
-    const message = await r.text().catch(() => r.statusText);
+    const raw = await r.text().catch(() => r.statusText);
+    let message = raw;
+    try {
+      const j = JSON.parse(raw) as { detail?: unknown };
+      if (typeof j.detail === "string") message = j.detail;
+    } catch {
+      /* keep raw */
+    }
     return { ok: false, error: { kind: "err", message } };
   }
   return { ok: true, data: (await r.json()) as T };
@@ -159,6 +166,88 @@ export async function fetchTradeChart(
   return parseJson(r);
 }
 
+export type TradeLogSpan = {
+  first_day: string | null;
+  last_day: string | null;
+  trade_count: number;
+};
+
+export type FoundSetItem = {
+  id: number;
+  practice_campaign_id: number | null;
+  exec_at?: string | null;
+};
+
+export type FoundSet = {
+  first_day: string | null;
+  last_day: string | null;
+  position_count: number;
+  fill_count?: number;
+  items?: FoundSetItem[];
+};
+
+export type TradeDistincts = {
+  days?: string[];
+  months: string[];
+  strategies: string[];
+  sides: string[];
+  effects: string[];
+  symbols: string[];
+  campaigns: { id: number | null; title: string }[];
+};
+
+export async function fetchFoundSet(opts?: {
+  strategies?: string | null;
+  sides?: string | null;
+  effects?: string | null;
+  symbols?: string | null;
+  years?: string | null;
+  months?: string | null;
+  days?: string | null;
+  campaigns?: string | null;
+}): Promise<AnalyticsResult<FoundSet>> {
+  const q = new URLSearchParams();
+  if (opts?.strategies) q.set("strategies", opts.strategies);
+  if (opts?.sides) q.set("sides", opts.sides);
+  if (opts?.effects) q.set("effects", opts.effects);
+  if (opts?.symbols) q.set("symbols", opts.symbols);
+  if (opts?.years) q.set("years", opts.years);
+  if (opts?.months) q.set("months", opts.months);
+  if (opts?.days) q.set("days", opts.days);
+  if (opts?.campaigns) q.set("campaigns", opts.campaigns);
+  const qs = q.toString();
+  const r = await fetch(
+    `/api/me/trade-log/found${qs ? `?${qs}` : ""}`,
+    { credentials: "same-origin", cache: "no-store" },
+  );
+  return parseJson(r);
+}
+
+export async function fetchTradeDistincts(): Promise<
+  AnalyticsResult<TradeDistincts>
+> {
+  const r = await fetch("/api/me/trade-log/distincts", {
+    credentials: "same-origin",
+    cache: "no-store",
+  });
+  return parseJson(r);
+}
+
+export async function fetchTradeLogSpan(
+  accountId?: number | null,
+): Promise<AnalyticsResult<TradeLogSpan>> {
+  const q = new URLSearchParams();
+  if (accountId != null && accountId > 0) {
+    q.set("account_id", String(accountId));
+  }
+  const qs = q.toString();
+  const r = await fetch(
+    `/api/me/trade-log/span${qs ? `?${qs}` : ""}`,
+    { credentials: "same-origin" },
+  );
+  return parseJson(r);
+}
+
 /** Paginated blotter list (default page size server-side ~80). */
 export async function fetchTrades(
   accountId?: number | null,
@@ -174,13 +263,33 @@ export async function fetchTrades(
     adherence_mode?: "drift" | null;
     from_day?: string | null;
     to_day?: string | null;
+    /** No campaign stamp — one campaign or none. */
+    campaign_mode?: "unallocated" | null;
+    /** Symbol / underlier / strategy. */
+    q?: string | null;
+    strategy?: string | null;
+    net_side?: "CREDIT" | "DEBIT" | null;
+    pos_effect?: "TO_OPEN" | "TO_CLOSE" | null;
+    symbol?: string | null;
+    strategies?: string | null;
+    sides?: string | null;
+    effects?: string | null;
+    symbols?: string | null;
+    years?: string | null;
+    months?: string | null;
+    days?: string | null;
+    campaigns?: string | null;
+    /** Typed positions only (single / vertical / butterfly / …). */
+    positions_only?: boolean;
   },
 ): Promise<AnalyticsResult<TradesPage>> {
   const q = new URLSearchParams();
   if (accountId != null && accountId > 0) {
     q.set("account_id", String(accountId));
   }
-  if (opts?.practice_campaign_id != null && opts.practice_campaign_id > 0) {
+  if (opts?.campaign_mode === "unallocated") {
+    q.set("campaign_mode", "unallocated");
+  } else if (opts?.practice_campaign_id != null && opts.practice_campaign_id > 0) {
     q.set("practice_campaign_id", String(opts.practice_campaign_id));
   }
   if (opts?.playbook_mode === "unaffiliated") {
@@ -193,6 +302,20 @@ export async function fetchTrades(
   }
   if (opts?.from_day) q.set("from_day", opts.from_day);
   if (opts?.to_day) q.set("to_day", opts.to_day);
+  if (opts?.q && opts.q.trim()) q.set("q", opts.q.trim());
+  if (opts?.strategy) q.set("strategy", opts.strategy);
+  if (opts?.net_side) q.set("net_side", opts.net_side);
+  if (opts?.pos_effect) q.set("pos_effect", opts.pos_effect);
+  if (opts?.symbol && opts.symbol.trim()) q.set("symbol", opts.symbol.trim());
+  if (opts?.strategies) q.set("strategies", opts.strategies);
+  if (opts?.sides) q.set("sides", opts.sides);
+  if (opts?.effects) q.set("effects", opts.effects);
+  if (opts?.symbols) q.set("symbols", opts.symbols);
+  if (opts?.years) q.set("years", opts.years);
+  if (opts?.months) q.set("months", opts.months);
+  if (opts?.days) q.set("days", opts.days);
+  if (opts?.campaigns) q.set("campaigns", opts.campaigns);
+  if (opts?.positions_only) q.set("positions_only", "true");
   if (opts?.full) {
     q.set("full", "1");
   } else {
@@ -202,7 +325,7 @@ export async function fetchTrades(
   const qs = q.toString();
   const r = await fetch(
     `/api/me/trade-log/trades${qs ? `?${qs}` : ""}`,
-    { credentials: "same-origin" },
+    { credentials: "same-origin", cache: "no-store" },
   );
   return parseJson(r);
 }
@@ -226,6 +349,19 @@ export async function fetchCatalog(): Promise<
 > {
   const r = await fetch("/api/me/trade-log/venues", {
     credentials: "same-origin",
+  });
+  return parseJson(r);
+}
+
+export async function patchTradeCampaign(
+  tradeId: number,
+  practiceCampaignId: number | null,
+): Promise<AnalyticsResult<Trade>> {
+  const r = await fetch(`/api/me/trade-log/trades/${tradeId}`, {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ practice_campaign_id: practiceCampaignId }),
   });
   return parseJson(r);
 }

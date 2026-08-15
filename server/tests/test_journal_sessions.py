@@ -74,6 +74,9 @@ def _cleanup(iid: int) -> None:
                 "DELETE FROM member_journal_date_closures WHERE identity_id = %s",
                 (iid,),
             )
+            cur.execute(
+                "DELETE FROM member_retrospectives WHERE identity_id = %s", (iid,)
+            )
             cur.execute("DELETE FROM memberships WHERE identity_id = %s", (iid,))
             cur.execute("DELETE FROM identities WHERE identity_id = %s", (iid,))
 
@@ -90,7 +93,7 @@ def test_create_list_get_message_seal(client):
         )
         assert r.status_code == 200, r.text
         session = r.json()["session"]
-        assert session["tag"] == "pre_market"
+        assert session.get("tag") in (None, "")
         assert session["status"] == "open"
         assert session["journal_date"] == today
         sid = session["id"]
@@ -122,7 +125,7 @@ def test_create_list_get_message_seal(client):
             cookies=cookies,
         )
         assert r4.status_code == 200, r4.text
-        assert r4.json()["session"]["structured"]["invalidation"] == "5188"
+        assert r4.json()["session"].get("structured") in (None, {})
 
         r5 = client.post(f"/api/me/journal-sessions/{sid}/seal", cookies=cookies)
         assert r5.status_code == 200, r5.text  # v0.4a: deprecated no-op, stays open
@@ -339,7 +342,7 @@ def test_observer_trial_create_ok(client):
             cookies=cookies,
         )
         assert r.status_code == 200, r.text
-        assert r.json()["session"]["tag"] == "clean_day"
+        assert r.json()["session"]["status"] == "open"
     finally:
         _cleanup(iid)
 
@@ -353,7 +356,8 @@ def test_retrospective_tag_422(client):
             json={"tag": "retrospective", "journal_date": date.today().isoformat()},
             cookies=cookies,
         )
-        assert r.status_code == 422
+        assert r.status_code == 200, r.text
+        assert r.json()["session"]["status"] == "open"
     finally:
         _cleanup(iid)
 
@@ -422,6 +426,91 @@ def test_partial_then_seal(client):
         _cleanup(iid)
 
 
+def test_member_name_context_uses_display_name():
+    import journal_session_agent as jsa
+
+    iid = _member("zztest-jsession-name@labs.test")
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE identities SET display_name = %s WHERE identity_id = %s",
+                    ("Ernie Test", iid),
+                )
+                named = jsa._member_name_context(cur, iid)
+                cur.execute(
+                    "UPDATE identities SET display_name = '' WHERE identity_id = %s",
+                    (iid,),
+                )
+                blank = jsa._member_name_context(cur, iid)
+        assert "Ernie Test" in named
+        assert "not set on Profile" in blank
+        assert "invent" in named.lower()
+    finally:
+        _cleanup(iid)
+
+
+def test_past_retro_context_member_words_only():
+    import journal_session_agent as jsa
+
+    iid = _member("zztest-jsession-retro-ctx@labs.test")
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO member_retrospectives
+                         (identity_id, status, is_maiden, scope_start, scope_end,
+                          title, body_md, one_thing_md, completed_at)
+                       VALUES
+                         (%s, 'complete', 0, '2026-07-26 00:00:00', '2026-08-02 00:00:00',
+                          'Week', 'stood down after 11', 'no entries first 15',
+                          '2026-08-02 18:00:00'),
+                         (%s, 'ready', 0, '2026-08-03 00:00:00', '2026-08-13 00:00:00',
+                          'Open', 'should not appear', NULL, NULL)""",
+                    (iid, iid),
+                )
+                text = jsa._past_retro_context(cur, iid)
+        assert "no entries first 15" in text
+        assert "stood down after 11" in text
+        assert "should not appear" not in text
+        assert "P&L" in text  # prohibition in the header
+    finally:
+        _cleanup(iid)
+
+
+def test_member_context_pack_covers_journey_book_journal_retro():
+    import journal_session_agent as jsa
+
+    iid = _member("zztest-jsession-pack@labs.test")
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO member_journal_sessions
+                         (identity_id, tag, journal_date, session_started_at, status)
+                       VALUES (%s, NULL, '2026-08-10', UTC_TIMESTAMP(6), 'open')""",
+                    (iid,),
+                )
+                sid = int(cur.lastrowid)
+                cur.execute(
+                    """INSERT INTO member_journal_messages
+                         (session_id, identity_id, author, agent_service,
+                          body_md, phase, created_at)
+                       VALUES (%s, %s, 'member', NULL, %s, 'post_close',
+                               UTC_TIMESTAMP(6))""",
+                    (sid, iid, "sized half if unsure"),
+                )
+                pack = jsa._member_context_pack(cur, iid, session_id=0)
+        assert "Journey" in pack
+        assert "Trade Log" in pack
+        assert "sized half if unsure" in pack
+        assert "Past retrospectives" in pack
+        assert "do not recite grades" in pack.lower() or "Do not quote a score" in pack
+        assert "P&L" in pack
+    finally:
+        _cleanup(iid)
+
+
 def test_derive_phase_unit():
     # Monday 2026-07-27 pre-open ET
     jd = date(2026, 7, 27)
@@ -475,7 +564,7 @@ def test_dual_read_expected_vs_actual_from_session(client):
         session_rows = [x for x in eva if x.get("source") == "journal_session"]
         assert session_rows, eva
         assert any(
-            "invalidation: 5188" in (x.get("stated_intent") or "")
+            "Only A+ setups" in (x.get("stated_intent") or "")
             or "A+ setups" in (x.get("stated_intent") or "")
             for x in session_rows
         )
@@ -585,7 +674,7 @@ def test_seal_blocks_patch_and_second_seal(client):
             cookies=cookies,
         )
         assert r2.status_code == 200, r2.text
-        assert r2.json()["session"]["structured"]["instrument"] == "NQ"
+        assert r2.json()["session"].get("structured") in (None, {})
         r3 = client.post(f"/api/me/journal-sessions/{sid}/seal", cookies=cookies)
         assert r3.status_code == 200
         r4 = client.post(
@@ -805,15 +894,15 @@ def test_checklist_incomplete_and_complete_seal(client):
         )
         assert r.status_code == 200, r.text
         sid = r.json()["session"]["id"]
-        assert r.json()["session"]["checklist"]["complete"] is False
+        assert r.json()["session"].get("structured") in (None, {})
 
-        # require_complete seal without invalidation → 422
+        # Conversation model: seal is a no-op; no structured checklist gate.
         r2 = client.post(
             f"/api/me/journal-sessions/{sid}/seal",
             json={"require_complete": True},
             cookies=cookies,
         )
-        assert r2.status_code == 422, r2.text
+        assert r2.status_code == 200, r2.text
 
         # Soft seal still allowed (partial completeness)
         r3 = client.post(
@@ -878,10 +967,7 @@ def test_prefill_from_prior_plan_not_invalidation(client):
             cookies=cookies,
         )
         assert r.status_code == 200, r.text
-        st = r.json()["session"]["structured"] or {}
-        assert st.get("instrument") == "NQ"
-        assert st.get("size_risk") == "1 micro"
-        assert "invalidation" not in st  # Hotel: never invent / never prefill
+        assert r.json()["session"].get("structured") in (None, {})
 
         pref = client.get(
             f"/api/me/journal-sessions/prefill?tag=pre_market&journal_date={today}",
@@ -913,10 +999,7 @@ def test_patch_merges_structured_fields(client):
             cookies=cookies,
         )
         assert r2.status_code == 200, r2.text
-        st = r2.json()["session"]["structured"]
-        assert st.get("instrument") == "ES"
-        assert st.get("invalidation") == "5188"
-        assert r2.json()["session"]["checklist"]["complete"] is True
+        assert r2.json()["session"].get("structured") in (None, {})
     finally:
         _cleanup(iid)
 
@@ -944,10 +1027,7 @@ def test_skipped_fields_remain_absent_on_seal(client):
         )
         assert r.status_code == 200
         sid = r.json()["session"]["id"]
-        st = r.json()["session"]["structured"] or {}
-        assert "thesis_direction" not in st
-        assert "watching" not in st
-        assert st.get("invalidation") == "5188"
+        assert r.json()["session"].get("structured") in (None, {})
 
         sealed = client.post(
             f"/api/me/journal-sessions/{sid}/seal",
@@ -955,14 +1035,7 @@ def test_skipped_fields_remain_absent_on_seal(client):
             cookies=cookies,
         )
         assert sealed.status_code == 200, sealed.text
-        final = sealed.json()["session"]["structured"] or {}
-        assert final.get("instrument") == "ES"
-        assert final.get("invalidation") == "5188"
-        # Still absent — seal must not invent
-        assert "thesis_direction" not in final
-        assert "trigger_level" not in final
-        assert "size_risk" not in final
-        assert "watching" not in final
+        assert sealed.json()["session"].get("structured") in (None, {})
     finally:
         _cleanup(iid)
 
@@ -995,7 +1068,7 @@ def test_confirm_patch_writes_structured_only(client):
         )
         assert r2.status_code == 200, r2.text
         body = r2.json()["session"]
-        assert body["structured"]["instrument"] == "RUT"
+        assert body.get("structured") in (None, {})
         # No messages created by patch
         assert body.get("messages") == [] or len(body.get("messages") or []) == 0
         g = client.get(f"/api/me/journal-sessions/{sid}", cookies=cookies)
@@ -1025,7 +1098,7 @@ def test_complete_seal_with_full_checklist(client):
             cookies=cookies,
         )
         assert r.status_code == 200
-        assert r.json()["session"]["checklist"]["complete"] is True
+        assert r.json()["session"].get("structured") in (None, {})
         sid = r.json()["session"]["id"]
         seal = client.post(
             f"/api/me/journal-sessions/{sid}/seal",
@@ -1033,8 +1106,7 @@ def test_complete_seal_with_full_checklist(client):
             cookies=cookies,
         )
         assert seal.status_code == 200, seal.text
-        assert seal.json()["session"]["status"] == "open"  # v0.4a: seal is no-op close
-        assert seal.json()["session"]["checklist"]["complete"] is True
+        assert seal.json()["session"]["status"] == "open"
     finally:
         _cleanup(iid)
 
@@ -1058,9 +1130,7 @@ def test_empty_string_fields_become_absent(client):
             cookies=cookies,
         )
         assert r.status_code == 200
-        st = r.json()["session"]["structured"] or {}
-        assert "thesis_direction" not in st
-        assert st.get("instrument") == "ES"
+        assert r.json()["session"].get("structured") in (None, {})
     finally:
         _cleanup(iid)
 
@@ -1105,14 +1175,14 @@ def test_require_complete_fails_then_succeeds_after_patch(client):
             json={"require_complete": True},
             cookies=cookies,
         )
-        assert fail.status_code == 422
+        assert fail.status_code == 200
         ok_patch = client.patch(
             f"/api/me/journal-sessions/{sid}",
             json={"structured": {"invalidation": "I don't know"}},
             cookies=cookies,
         )
         assert ok_patch.status_code == 200
-        assert ok_patch.json()["session"]["checklist"]["complete"] is True
+        assert ok_patch.json()["session"].get("structured") in (None, {})
         seal = client.post(
             f"/api/me/journal-sessions/{sid}/seal",
             json={"require_complete": True},
@@ -1450,6 +1520,46 @@ def test_admin_journal_prompt_versions(client):
         _cleanup(iid)
 
 
+def test_admin_journal_prompt_active_and_patch(client):
+    """DL-340 — GET /active and PATCH body + reasoning_level."""
+    iid = _member("zztest-jsession-prompt-patch@labs.test")
+    cookies = cookie_for("administrator", iid)
+    try:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE identities SET role_override = 'administrator' WHERE identity_id = %s",
+                    (iid,),
+                )
+        active = client.get("/api/admin/journal-prompts/active", cookies=cookies)
+        assert active.status_code == 200, active.text
+        ver = active.json()["version"]
+        assert ver.get("id")
+        assert isinstance(ver.get("body_md"), str) and len(ver["body_md"]) >= 40
+        assert ver.get("reasoning_level") in ("low", "medium", "high")
+        vid = ver["id"]
+        body = (
+            ver["body_md"].rstrip()
+            + "\n\nAsk only one process question per turn."
+        )
+        patched = client.patch(
+            f"/api/admin/journal-prompts/{vid}",
+            cookies=cookies,
+            json={"body_md": body, "reasoning_level": "high"},
+        )
+        assert patched.status_code == 200, patched.text
+        assert patched.json()["version"]["reasoning_level"] == "high"
+        assert "one process question" in patched.json()["version"]["body_md"]
+        # restore seed reasoning
+        client.patch(
+            f"/api/admin/journal-prompts/{vid}",
+            cookies=cookies,
+            json={"reasoning_level": "medium"},
+        )
+    finally:
+        _cleanup(iid)
+
+
 def test_validator_retry_then_accept(client, monkeypatch):
     """First candidate fails; safe fallback passes — turn still ships (one retry)."""
     monkeypatch.setenv("LABS_JOURNAL_AGENT_MODE", "local")
@@ -1728,8 +1838,8 @@ def test_agent_form_fallback_done_no_message_insert(client, monkeypatch):
         )
         assert t.status_code == 200, t.text
         turn = t.json()["turn"]
-        # Checklist full → done; chat stays open (no form_fallback required)
-        assert turn["kind"] in ("confirm", "done", "form_fallback")
+        # Conversation model: no structured checklist — absence/confirm/done are valid.
+        assert turn["kind"] in ("absence", "confirm", "done", "form_fallback", "quiet")
         if turn["kind"] == "done":
             assert turn["message"] is None
     finally:

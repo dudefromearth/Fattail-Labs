@@ -296,6 +296,13 @@ def test_import_batch_list_preview_delete(client):
         assert prev.json()["import"]["id"] == imp_id
         assert len(prev.json()["trades"]) == 3
 
+        blotter = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}", cookies=ca
+        ).json()["trades"]
+        assert blotter
+        assert all(t.get("import_id") == imp_id for t in blotter)
+        assert all(t.get("entry_source") == "import" for t in blotter)
+
         # soft-delete: trades leave the live blotter, import moves to "deleted"
         d = client.delete(f"/api/me/trade-log/imports/{imp_id}", cookies=ca)
         assert d.status_code == 200 and d.json()["deleted"] == 3

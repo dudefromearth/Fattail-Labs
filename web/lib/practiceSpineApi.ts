@@ -118,6 +118,8 @@ export type PracticeCampaign = {
     status: string;
   } | null;
   playbook_entry_ids: number[];
+  /** Unique #RRGGBB identity color for badges (not variance). */
+  badge_color?: string | null;
   export_key?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -525,7 +527,7 @@ export async function fetchCampaigns(opts?: {
   const qs = q.toString();
   const r = await fetch(
     `/api/me/practice/campaigns${qs ? `?${qs}` : ""}`,
-    { credentials: "same-origin" },
+    { credentials: "same-origin", cache: "no-store" },
   );
   return parse(r);
 }
@@ -570,6 +572,7 @@ export async function createCampaign(body: {
   same_bet?: Record<string, unknown> | null;
   /** Silent book home for account (requires account_id). */
   is_default?: boolean;
+  badge_color?: string | null;
 }): Promise<PracticeCampaign> {
   const r = await fetch("/api/me/practice/campaigns", {
     method: "POST",
@@ -599,6 +602,7 @@ export async function patchCampaign(
     strategy_codes: string[] | null;
     retrospective_id: number | null;
     same_bet: Record<string, unknown> | null;
+    badge_color: string | null;
   }>,
 ): Promise<PracticeCampaign> {
   const r = await fetch(`/api/me/practice/campaigns/${id}`, {

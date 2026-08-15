@@ -10,6 +10,7 @@
 
 import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { memberColorSchemeOverride } from "@/lib/memberSettings";
 
 type AppearanceDoc = {
   brand?: { tint?: string; display_name?: string };
@@ -44,7 +45,8 @@ function AppearanceApplier() {
 
 function applyAppearance(doc: AppearanceDoc) {
   const root = document.documentElement;
-  const scheme = doc.appearance?.color_scheme || "system";
+  const memberScheme = memberColorSchemeOverride();
+  const scheme = memberScheme || doc.appearance?.color_scheme || "system";
   if (scheme === "system") root.removeAttribute("data-theme");
   else root.setAttribute("data-theme", scheme);
 

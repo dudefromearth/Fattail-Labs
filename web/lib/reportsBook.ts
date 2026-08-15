@@ -28,6 +28,13 @@ export type DistBin = {
   tone: -1 | 0 | 1;
 };
 
+export type OverlayBin = {
+  label: string;
+  fullCount: number;
+  periodCount: number;
+  tone: -1 | 0 | 1;
+};
+
 export type ReportsBook = {
   accountLabel: string;
   startingCapital: number;
@@ -54,6 +61,8 @@ export type ReportsBook = {
   losers: number;
   sharpe: number;
   sharpeSampleSize: number;
+  /** Closed outcome P&Ls — used to overlay a period on the full curve. */
+  outcomePnls: number[];
 };
 
 function money(n: number, parensNeg = false): string {
@@ -137,6 +146,77 @@ export function buildPnlDistribution(pnls: number[]): DistBin[] {
     const label =
       i === 0 || i === n - 1 || i % 10 === 0 ? fmt(edgeLo) : "";
     bins.push({ label, count: counts[i], tone });
+  }
+  return bins;
+}
+
+/**
+ * Full-book histogram with period outcomes counted on the same edges.
+ * Edges come from the full curve (1st/99th winsorize) so the period
+ * sits on the member's total shape, not a second scale.
+ */
+export function buildOverlayDistribution(
+  fullPnls: number[],
+  periodPnls: number[],
+): OverlayBin[] {
+  const n = OUTCOME_BIN_COUNT;
+  if (fullPnls.length === 0) {
+    return Array.from({ length: n }, (_, i) => ({
+      label: String(i),
+      fullCount: 0,
+      periodCount: 0,
+      tone: 0 as const,
+    }));
+  }
+
+  const sorted = [...fullPnls].sort((a, b) => a - b);
+  const atPct = (p: number) => {
+    const i = Math.min(
+      sorted.length - 1,
+      Math.max(0, Math.floor((p / 100) * sorted.length)),
+    );
+    return sorted[i];
+  };
+  let lo = atPct(1);
+  let hi = atPct(99);
+  if (hi <= lo) {
+    lo = sorted[0];
+    hi = sorted[sorted.length - 1];
+  }
+  if (hi <= lo) hi = lo + 1;
+  const width = (hi - lo) / n;
+
+  const binOf = (p: number) => {
+    if (p <= lo) return 0;
+    if (p >= hi) return n - 1;
+    return Math.min(n - 1, Math.floor((p - lo) / width));
+  };
+
+  const fullCounts = new Array(n).fill(0) as number[];
+  const periodCounts = new Array(n).fill(0) as number[];
+  for (const p of fullPnls) fullCounts[binOf(p)] += 1;
+  for (const p of periodPnls) periodCounts[binOf(p)] += 1;
+
+  const fmt = (v: number) => {
+    const a = Math.abs(v);
+    const sign = v < 0 ? "−" : "";
+    if (a >= 1000) return `${sign}${(a / 1000).toFixed(1)}k`;
+    if (a >= 100) return `${sign}${Math.round(a)}`;
+    return `${sign}${a.toFixed(0)}`;
+  };
+
+  const bins: OverlayBin[] = [];
+  for (let i = 0; i < n; i++) {
+    const edgeLo = lo + i * width;
+    const mid = edgeLo + width / 2;
+    const tone: -1 | 0 | 1 = mid < -1e-9 ? -1 : mid > 1e-9 ? 1 : 0;
+    const label = i === 0 || i === n - 1 || i % 10 === 0 ? fmt(edgeLo) : "";
+    bins.push({
+      label,
+      fullCount: fullCounts[i],
+      periodCount: periodCounts[i],
+      tone,
+    });
   }
   return bins;
 }
@@ -398,6 +478,7 @@ export function reportsBookFromServer(raw: ServerReportsBook): ReportsBook {
     losers,
     sharpe,
     sharpeSampleSize: raw.sharpe_sample_size,
+    outcomePnls: pnls,
   };
 }
 
@@ -424,6 +505,27 @@ const CAPITAL_OVERRIDE_PREFIX = "ft_labs_reports_starting_capital_v2:";
  * All accounts → sum of active books with a set starting_balance.
  * Last resort only: 50_000 when nothing is configured.
  */
+/** Campaign reports use allocated capital; all-positions uses trading capital. */
+export function resolveReportsScopeCapital(
+  accounts: Account[],
+  accountId: number | "all" | null | undefined,
+  campaign: { starting_capital?: number | null } | null,
+): { amount: number; configured: boolean; source: "trading" | "allocated" } {
+  if (campaign) {
+    const n = Number(campaign.starting_capital);
+    if (Number.isFinite(n) && n > 0) {
+      return { amount: n, configured: true, source: "allocated" };
+    }
+    return { amount: 0, configured: false, source: "allocated" };
+  }
+  const amount = resolveReportsStartingCapital(accounts, accountId);
+  return {
+    amount,
+    configured: reportsStartingCapitalConfigured(accounts, accountId),
+    source: "trading",
+  };
+}
+
 export function resolveReportsStartingCapital(
   accounts: Account[],
   accountId: number | "all" | null | undefined,

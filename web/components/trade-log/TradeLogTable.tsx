@@ -5,9 +5,18 @@
  */
 
 import type { CSSProperties } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  BLOTTER_WINDOW_DEFAULT,
+  BLOTTER_WINDOW_STEPS,
+  clampBlotterWindow,
+  loadBlotterWindowRows,
+  saveBlotterWindowRows,
+  type BlotterWindowRows,
+} from "@/lib/tradeLogWindow";
 import { BLOTTER_CSS_VARS } from "@/lib/blotterTheme";
 import type { Trade } from "@/lib/tradeLog";
+import CampaignBadge from "@/components/practice/CampaignBadge";
 import {
   entrySourceLabel,
   formatQtyEffect,
@@ -145,6 +154,7 @@ export default function TradeLogTable({
   hasMore,
   loadingMore,
   onLoadMore,
+  onImportBadgeClick,
 }: {
   /** Rows to render (already filtered when Open-only). */
   trades: Trade[];
@@ -169,6 +179,7 @@ export default function TradeLogTable({
     is_default?: boolean;
     is_ledger?: boolean;
     account_id?: number | null;
+    badge_color?: string | null;
   }[];
   /** "" = All campaigns; "unaffiliated" = no playbook; number = linked playbook */
   playbookFilter?: number | "" | "unaffiliated";
@@ -177,6 +188,8 @@ export default function TradeLogTable({
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
+  /** Import chip under Exec time — opens Manage imports (not header chrome). */
+  onImportBadgeClick?: (importId: number | null) => void;
 }) {
   const issueBook = allTradesForIssues ?? trades;
   const unmatched = useMemo(() => listUnmatchedOpens(issueBook), [issueBook]);
@@ -188,11 +201,25 @@ export default function TradeLogTable({
     }
     return new Set(unmatched.map((t) => t.id));
   }, [filterOpenOnly, trades, unmatched]);
+  const [windowRows, setWindowRows] = useState<BlotterWindowRows>(
+    BLOTTER_WINDOW_DEFAULT,
+  );
+  useEffect(() => {
+    setWindowRows(loadBlotterWindowRows());
+  }, []);
   const visible = trades;
+  const viewportPx = 42 + windowRows * 36;
   const campaignTitleById = useMemo(() => {
-    const m = new Map<number, { title: string; is_ledger?: boolean }>();
+    const m = new Map<
+      number,
+      { title: string; is_ledger?: boolean; badge_color?: string | null }
+    >();
     for (const c of campaignOptions || []) {
-      m.set(c.id, { title: c.title, is_ledger: c.is_ledger || c.is_default });
+      m.set(c.id, {
+        title: c.title,
+        is_ledger: c.is_ledger || c.is_default,
+        badge_color: c.badge_color,
+      });
     }
     return m;
   }, [campaignOptions]);
@@ -252,11 +279,11 @@ export default function TradeLogTable({
                 }}
                 className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
                 data-testid="blotter-campaign-filter"
-                title="Named campaign = stamps for that campaign. All campaigns = every trade on this account filter."
+                title="Named campaign = positions wearing that badge, every account. All campaigns = this account."
               >
                 {campaignOptions!.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.title}
+                    Campaign · {c.title}
                     {c.is_ledger || c.is_default ? " · default" : ""}
                   </option>
                 ))}
@@ -294,26 +321,54 @@ export default function TradeLogTable({
             </label>
           )}
         </div>
-        <span className="text-[12px] text-[var(--color-label-secondary)]">
-          <span
-            className="inline-block h-2.5 w-2.5 rounded-sm align-middle"
-            style={{ background: "var(--blotter-open-bg)" }}
-          />{" "}
-          Open{" "}
-          <span
-            className="ml-2 inline-block h-2.5 w-2.5 rounded-sm align-middle"
-            style={{ background: "var(--blotter-close-bg)" }}
-          />{" "}
-          Close{" "}
-          <span
-            className="ml-2 inline-block h-2.5 w-2.5 rounded-sm align-middle"
-            style={{ background: "var(--blotter-select-bg)" }}
-          />{" "}
-          Selected
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-label-secondary)]">
+            <span>Window</span>
+            <select
+              value={windowRows}
+              onChange={(e) => {
+                const n = clampBlotterWindow(Number(e.target.value));
+                setWindowRows(n);
+                saveBlotterWindowRows(n);
+              }}
+              className="rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs tabular-nums text-[var(--color-label)]"
+              data-testid="blotter-window-rows"
+              aria-label="Contract rows visible in the blotter window"
+              title="How many contract rows the window shows. Does not change how many trades the system loads."
+            >
+              {BLOTTER_WINDOW_STEPS.map((n) => (
+                <option key={n} value={n}>
+                  {n} rows
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className="text-[12px] text-[var(--color-label-secondary)]">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-sm align-middle"
+              style={{ background: "var(--blotter-open-bg)" }}
+            />{" "}
+            Open{" "}
+            <span
+              className="ml-2 inline-block h-2.5 w-2.5 rounded-sm align-middle"
+              style={{ background: "var(--blotter-close-bg)" }}
+            />{" "}
+            Close{" "}
+            <span
+              className="ml-2 inline-block h-2.5 w-2.5 rounded-sm align-middle"
+              style={{ background: "var(--blotter-select-bg)" }}
+            />{" "}
+            Selected
+          </span>
+        </div>
       </div>
 
-      <div className="relative max-h-[min(70vh,720px)] overflow-auto">
+      <div
+        className="relative overflow-auto"
+        style={{ maxHeight: viewportPx }}
+        data-testid="blotter-window"
+        data-window-rows={windowRows}
+      >
         <table className="w-full min-w-[1100px] border-collapse text-left text-[13px] leading-snug text-[var(--color-label)]">
           <thead className="sticky top-0 z-[1] bg-[var(--color-surface)] shadow-[0_1px_0_var(--color-separator)]">
             <tr className="border-b border-[var(--color-separator)]">
@@ -409,11 +464,38 @@ export default function TradeLogTable({
                         className={`px-2 py-2 font-medium ${textMain}`}
                         style={{ backgroundColor: bg, ...rule }}
                       >
-                        {i === 0
-                          ? (trade.exec_at || "")
-                              .replace("T", " ")
-                              .slice(0, 16)
-                          : ""}
+                        {i === 0 ? (
+                          <span className="inline-flex flex-col items-start gap-0.5">
+                            <span>
+                              {(trade.exec_at || "")
+                                .replace("T", " ")
+                                .slice(0, 16)}
+                            </span>
+                            {normalizeEntrySource(trade.entry_source) ===
+                            "import" ? (
+                              <button
+                                type="button"
+                                data-testid="blotter-import-badge"
+                                className="rounded px-1 py-px text-[10px] font-bold uppercase tracking-wide bg-[#3a3a3c] text-[#d1d1d6] hover:bg-[#48484a]"
+                                title={
+                                  trade.import_id != null
+                                    ? `Import #${trade.import_id}`
+                                    : "Imported (file or paste)"
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onImportBadgeClick?.(
+                                    trade.import_id ?? null,
+                                  );
+                                }}
+                              >
+                                {entrySourceLabel("import")}
+                              </button>
+                            ) : null}
+                          </span>
+                        ) : (
+                          ""
+                        )}
                       </td>
                       <td
                         className={`px-2 py-2 font-semibold ${textMain}`}
@@ -422,28 +504,15 @@ export default function TradeLogTable({
                         {i === 0 ? (
                           <span className="inline-flex flex-wrap items-center gap-1">
                             {trade.strategy}
-                            {(() => {
-                              const src = normalizeEntrySource(
-                                trade.entry_source,
-                              );
-                              if (src === "manual") return null;
-                              return (
-                                <span
-                                  className={`rounded px-1 text-[10px] font-bold uppercase tracking-wide ${
-                                    src === "import"
-                                      ? "bg-sky-500/90 text-white"
-                                      : "bg-violet-600/90 text-white"
-                                  }`}
-                                  title={
-                                    src === "import"
-                                      ? "Imported (file or paste)"
-                                      : "Automated (Strategy Lab or other automation)"
-                                  }
-                                >
-                                  {entrySourceLabel(src)}
-                                </span>
-                              );
-                            })()}
+                            {normalizeEntrySource(trade.entry_source) ===
+                            "automated" ? (
+                              <span
+                                className="rounded px-1 text-[10px] font-bold uppercase tracking-wide bg-violet-600/90 text-white"
+                                title="Automated (Strategy Lab or other automation)"
+                              >
+                                {entrySourceLabel("automated")}
+                              </span>
+                            ) : null}
                             {(() => {
                               // Spec §9 / Amendment — badge only when stamped;
                               // undirected (null) = empty chrome, not "Ledger".
@@ -464,18 +533,14 @@ export default function TradeLogTable({
                                     ? "Memory"
                                     : "Campaign";
                               return (
-                                <button
-                                  type="button"
-                                  data-testid="blotter-campaign-badge"
-                                  className="max-w-[9rem] truncate rounded-full border border-white/25 bg-white/10 px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-white/95 hover:bg-white/20"
-                                  title={`${tier}: ${meta?.title || `Campaign ${cid}`} — tap to filter`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onCampaignFilter?.(cid);
-                                  }}
-                                >
-                                  {label}
-                                </button>
+                                <CampaignBadge
+                                  title={label}
+                                  color={meta?.badge_color}
+                                  testId="blotter-campaign-badge"
+                                  className="max-w-[9rem]"
+                                  titleAttr={`${tier}: ${meta?.title || `Campaign ${cid}`} — tap to filter`}
+                                  onClick={() => onCampaignFilter?.(cid)}
+                                />
                               );
                             })()}
                           </span>

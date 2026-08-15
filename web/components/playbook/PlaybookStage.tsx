@@ -6,6 +6,7 @@
  */
 
 import Markdown from "@/components/Markdown";
+import MarkdownEditor from "@/components/ui/MarkdownEditor";
 
 export default function PlaybookStage({
   title,
@@ -62,8 +63,8 @@ export default function PlaybookStage({
             </h2>
           )}
           {editing ? (
-            <textarea
-              className="h-[min(50vh,22rem)] w-full resize-y rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-3 py-2 font-mono text-sm text-[var(--color-label)] md:h-[calc(100%-2.5rem)]"
+            <MarkdownEditor
+              className="h-[min(50vh,22rem)] resize-y md:h-[calc(100%-2.5rem)]"
               value={content}
               onChange={(e) => onDraftChange?.(e.target.value)}
               placeholder="Markdown for this page…"

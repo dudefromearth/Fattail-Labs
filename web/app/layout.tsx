@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AppChrome from "@/components/AppChrome";
+import { MEMBER_SETTINGS_BOOT_SCRIPT } from "@/lib/memberSettings";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,6 +28,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased" data-tint="emerald">
       <body className="flex min-h-full flex-col">
+        <script
+          dangerouslySetInnerHTML={{ __html: MEMBER_SETTINGS_BOOT_SCRIPT }}
+        />
         {/* Sitewide entity (SEO spec v1.3) */}
         <script
           type="application/ld+json"

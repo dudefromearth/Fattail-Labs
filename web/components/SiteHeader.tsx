@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { clearLabDeskPlace } from "@/lib/strategyLabPlace";
 
-// Account menu: Continue Learning + Profile + Journey (My Learning / Dashboard retired).
+// Account menu: Continue Learning + Profile + Settings + Accounts (My Learning / Dashboard retired).
 
 type Me = {
   identity_id: number;
@@ -303,6 +303,14 @@ export default function SiteHeader() {
                       onClick={() => setMenuOpen(false)}
                     >
                       Profile
+                    </Link>
+                    <Link
+                      href="/settings"
+                      className="block px-4 py-2 hover:bg-[var(--color-fill)]"
+                      onClick={() => setMenuOpen(false)}
+                      data-testid="nav-settings"
+                    >
+                      Settings
                     </Link>
                     <Link
                       href="/accounts-capital"

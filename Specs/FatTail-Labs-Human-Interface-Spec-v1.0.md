@@ -373,6 +373,7 @@ This is the **Appearance & Chrome Control Plane**.
 
 **Allowlisted member routes (v1):**  
 `/`, `/courses`, `/labs`, `/live`, `/resources`, `/pathway`, `/dashboard`, `/me`,
+`/settings`,
 `/membership`, `/guide`, `/about`, `/login`, `/signup` — plus future entries only
 via spec version bump.
 
@@ -673,6 +674,7 @@ admin power requires a versioned spec update — not a quiet JSON field.
 | Version | Date | Notes |
 |---|---|---|
 | v1.0 | 2026-07-24 | Approved: HIG constitution, tokens, kit, phases, Appearance control plane; §15 locked |
+| v1.0.1 | 2026-08-14 | Allowlisted member route `/settings` (Member Settings Spec v1.0 · DL-338) |
 
 ---
 

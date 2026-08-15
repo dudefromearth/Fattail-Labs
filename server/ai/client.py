@@ -37,6 +37,7 @@ def complete(
     model: str | None = None,
     temperature: float = 0.2,
     max_tokens: int = 4096,
+    reasoning_effort: str | None = None,
     cfg: AIConfig | None = None,
     providers: dict[str, ProviderFactory] | None = None,
 ) -> CompletionResult:
@@ -56,19 +57,41 @@ def complete(
 
     if model is not None:
         ref = get_model_for(model=model, cfg=cfg)
-        return _call(factories, cfg, ref, coerced, temperature, max_tokens)
+        return _call(
+            factories,
+            cfg,
+            ref,
+            coerced,
+            temperature,
+            max_tokens,
+            reasoning_effort,
+        )
 
     if pref == "auto":
         primary = ModelRef(provider="xai", model=cfg.primary_model)
         try:
-            return _call(factories, cfg, primary, coerced, temperature, max_tokens)
+            return _call(
+                factories,
+                cfg,
+                primary,
+                coerced,
+                temperature,
+                max_tokens,
+                reasoning_effort,
+            )
         except (AiConfigError, AiProviderError) as primary_exc:
             if not cfg.secondary_configured:
                 raise
             secondary = ModelRef(provider="anthropic", model=cfg.secondary_model)
             try:
                 return _call(
-                    factories, cfg, secondary, coerced, temperature, max_tokens
+                    factories,
+                    cfg,
+                    secondary,
+                    coerced,
+                    temperature,
+                    max_tokens,
+                    reasoning_effort,
                 )
             except (AiConfigError, AiProviderError) as secondary_exc:
                 raise AiProviderError(
@@ -77,7 +100,9 @@ def complete(
                 ) from secondary_exc
 
     ref = get_model_for(agent=agent, prefer=pref, cfg=cfg)
-    return _call(factories, cfg, ref, coerced, temperature, max_tokens)
+    return _call(
+        factories, cfg, ref, coerced, temperature, max_tokens, reasoning_effort
+    )
 
 
 def _call(
@@ -87,17 +112,20 @@ def _call(
     messages: list[Message],
     temperature: float,
     max_tokens: int,
+    reasoning_effort: str | None = None,
 ) -> CompletionResult:
     factory = factories.get(ref.provider)
     if factory is None:
         raise AiError(f"no provider registered for {ref.provider!r}")
     provider = factory(cfg)
-    return provider.complete(
-        messages,
-        model=ref.model,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
+    kwargs: dict = {
+        "model": ref.model,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    if reasoning_effort:
+        kwargs["reasoning_effort"] = reasoning_effort
+    return provider.complete(messages, **kwargs)
 
 
 def complete_stream(

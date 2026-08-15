@@ -23,6 +23,23 @@ paid six-week trial differing only in term. No role means no product access (Ide
 | Trade Log **v1.1** | Day-book context for the agent |
 | Practice Portability **v1.1** | Export/import/purge (version bump required) |
 | Member Data Privacy **v0.1** | Family B |
+| **Member AI Memory & Period Brief v1.0** | What the Journal agent may know; compile pack; admin Edit |
+
+**2026-08-14 Coach day-view ruling (j.png · DL-339).** On the Journal day card, **remove**
+Tags, Campaign, Playbooks, and **anything to do with structured interviews**. The image
+area **extends the full width**. The message thread **grows** into the room those
+controls occupied. Practice suite nav (Playbook / Campaigns) is unchanged.
+
+**Data model (same ruling):** a Journal session is a **conversation** — date, messages,
+attachments, prompt version. Create does not stamp tags, structured fields, or a
+campaign. Retrospective compile reads member messages, not a form. Leftover columns
+may exist as NULL; they are not product.
+
+**2026-08-14 Coach — admin Edit on Journal (DL-340).** Lower-left black **Edit**
+(Labs convention). Opens an **AI Instructions** window over the message box:
+markdown editor (same window as Playbook / Toughness), **Close** dismisses,
+bottom border **Reasoning** (low / medium / high) + **Save**. Not a site-wide
+framework change yet.
 
 **Prerequisite:** Tag Manager is **BUILD AUTHORITY / as-built** (DL-159 · mig 053 · TM7-G PASS).
 Journal Session **consumes** Tag Manager; it does not define vocabulary or create tags.
@@ -394,6 +411,16 @@ Completion of a retrospective that reviewed dates is the **only** seal.
 - Journey profile (calibrate only; never recite grades/meters/streaks/scores)  
 - Selected **system tag labels** as context only (§5.1)  
 - Transcript so far  
+- **Member context pack** (compile, not a second biography):
+  - Profile display name  
+  - **Journey activity** — courses, completed lessons, live check-ins, habit plans.
+    Never grades, meters, streaks, or scores.  
+  - **Trade Log (last 14 days)** — date, product, strategy, side, adherence.
+    Never P&L as identity.  
+  - **Past journal days (last 21 days, other dates)** — member words.  
+  - **Completed retrospectives** — period, title, body, one-thing.  
+
+  Use as memory. Do not recite the pack unless asked. Do not invent missing text.  
 
 ### 8.2 Behavior
 

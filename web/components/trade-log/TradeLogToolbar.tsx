@@ -50,6 +50,9 @@ export default function TradeLogToolbar({
   onDeleted,
   nativeVenueLabel,
   accountLabel,
+  focusImportId,
+  requestImportManager,
+  onImportManagerDismiss,
 }: {
   onImport: () => void;
   onNewTrade: () => void;
@@ -59,6 +62,9 @@ export default function TradeLogToolbar({
   nativeVenueLabel: string;
   /** Stated account from Practice context (always named). */
   accountLabel: string;
+  focusImportId?: number | null;
+  requestImportManager?: boolean;
+  onImportManagerDismiss?: () => void;
 }) {
   const [exportOpen, setExportOpen] = useState(false);
   const exportWrapRef = useRef<HTMLDivElement>(null);
@@ -115,6 +121,14 @@ export default function TradeLogToolbar({
             className="font-medium text-[var(--color-tint)] hover:underline"
           >
             Marked underliers
+          </Link>
+          {" · "}
+          <Link
+            href="/app/practice/campaign#find-badge"
+            className="font-medium text-[var(--color-tint)] hover:underline"
+            data-testid="trade-log-find-tag"
+          >
+            Campaigns · Find and Badge
           </Link>
         </p>
       </div>
@@ -202,11 +216,21 @@ export default function TradeLogToolbar({
             className="my-1.5 w-px shrink-0 bg-[var(--color-separator)]"
             aria-hidden
           />
-          <ImportManager onChanged={onDeleted} />
+          <ImportManager
+            onChanged={onDeleted}
+            focusImportId={focusImportId}
+            requestOpen={requestImportManager}
+            onDismiss={onImportManagerDismiss}
+          />
         </div>
 
         {/* Primary create — separate group from transfer */}
-        <Button type="button" variant="primary" onClick={onNewTrade}>
+        <Button
+          type="button"
+          variant="primary"
+          onClick={onNewTrade}
+          data-testid="trade-log-new-trade"
+        >
           <IconPlus size={18} />
           New trade
         </Button>

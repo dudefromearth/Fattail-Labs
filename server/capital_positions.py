@@ -180,7 +180,7 @@ def positions_valuation(
     trades, accounts = load_book(cur, identity_id, account_id)
     # Campaign registry titles for chips
     cur.execute(
-        """SELECT id, title, is_ledger FROM member_practice_campaigns
+        """SELECT id, title, is_ledger, badge_color FROM member_practice_campaigns
            WHERE identity_id = %s AND is_ledger = 0""",
         (identity_id,),
     )
@@ -188,6 +188,7 @@ def positions_valuation(
         int(r["id"]): {
             "id": int(r["id"]),
             "title": r.get("title") or f"#{r['id']}",
+            "badge_color": r.get("badge_color") or None,
         }
         for r in (cur.fetchall() or [])
     }
@@ -333,6 +334,7 @@ def positions_valuation(
                 "campaign_id": stamp_i,
                 "title": camp_by_id[stamp_i]["title"],
                 "stamped_by": t.get("stamped_by"),
+                "badge_color": camp_by_id[stamp_i].get("badge_color"),
             }
 
         row = {

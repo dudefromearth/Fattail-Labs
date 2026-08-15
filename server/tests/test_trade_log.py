@@ -97,6 +97,316 @@ def test_trade_log_legacy_prose_and_isolation(client):
         _purge(b)
 
 
+def test_trade_log_span_reports_first_last_day(client):
+    a = _id("zztest-tl-span@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "Span", "broker": "thinkorswim"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = acct.json()["id"]
+        body = {
+            "account_id": aid,
+            "exec_at": "2022-06-15T14:00:00",
+            "strategy": "VERTICAL",
+            "asset_class": "equity_option",
+            "order_type": "LMT",
+            "net_price": 1.0,
+            "net_side": "DEBIT",
+            "adherence": "unknown",
+            "legs": [
+                {
+                    "side": "BUY",
+                    "quantity": 1,
+                    "pos_effect": "TO_OPEN",
+                    "underlier": "SPY",
+                    "expiry": "2022-07-01",
+                    "strike": 400,
+                    "right": "CALL",
+                    "fill_price": 1.0,
+                }
+            ],
+        }
+        assert client.post("/api/me/trade-log/trades", cookies=ca, json=body).status_code == 200
+        body["exec_at"] = "2026-08-01T14:00:00"
+        assert client.post("/api/me/trade-log/trades", cookies=ca, json=body).status_code == 200
+        span = client.get("/api/me/trade-log/span", cookies=ca)
+        assert span.status_code == 200, span.text
+        d = span.json()
+        assert d["first_day"] == "2022-06-15"
+        assert d["last_day"] == "2026-08-01"
+        assert d["trade_count"] >= 2
+    finally:
+        _purge(a)
+
+
+def test_trade_log_found_set_range_and_position_count(client):
+    """Found set is date range + position count; AutoFilter is book-wide."""
+    a = _id("zztest-tl-found@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "Found", "broker": "thinkorswim"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = acct.json()["id"]
+        body = {
+            "account_id": aid,
+            "exec_at": "2022-06-15T14:00:00",
+            "strategy": "VERTICAL",
+            "asset_class": "equity_option",
+            "order_type": "LMT",
+            "net_price": 1.0,
+            "net_side": "DEBIT",
+            "adherence": "unknown",
+            "legs": [
+                {
+                    "side": "BUY",
+                    "quantity": 1,
+                    "pos_effect": "TO_OPEN",
+                    "underlier": "SPY",
+                    "expiry": "2022-07-01",
+                    "strike": 400,
+                    "right": "CALL",
+                    "fill_price": 1.0,
+                }
+            ],
+        }
+        r1 = client.post("/api/me/trade-log/trades", cookies=ca, json=body)
+        assert r1.status_code == 200, r1.text
+        june_id = r1.json()["id"]
+        body["exec_at"] = "2026-08-01T14:00:00"
+        body["net_side"] = "CREDIT"
+        r2 = client.post("/api/me/trade-log/trades", cookies=ca, json=body)
+        assert r2.status_code == 200, r2.text
+
+        whole = client.get("/api/me/trade-log/found", cookies=ca)
+        assert whole.status_code == 200, whole.text
+        w = whole.json()
+        assert w["first_day"] == "2022-06-15"
+        assert w["last_day"] == "2026-08-01"
+        assert w["position_count"] >= 2
+        ids = {i["id"] for i in w.get("items") or []}
+        assert june_id in ids
+
+        june = client.get("/api/me/trade-log/found?months=2022-06", cookies=ca)
+        assert june.status_code == 200, june.text
+        j = june.json()
+        assert j["first_day"] == "2022-06-15"
+        assert j["last_day"] == "2022-06-15"
+        assert j["position_count"] == 1
+        assert [i["id"] for i in j.get("items") or []] == [june_id]
+
+        page = client.get(
+            "/api/me/trade-log/trades?months=2022-06&limit=50",
+            cookies=ca,
+        )
+        assert page.status_code == 200, page.text
+        pt = page.json()["trades"]
+        assert len(pt) == 1
+        assert pt[0]["id"] == june_id
+        assert page.json().get("has_more") is False
+
+        dist = client.get("/api/me/trade-log/distincts", cookies=ca)
+        assert dist.status_code == 200, dist.text
+        months = dist.json().get("months") or []
+        assert "2022-06" in months
+        assert "2026-08" in months
+        days = dist.json().get("days") or []
+        assert "2022-06-15" in days
+        assert "2026-08-01" in days
+
+        by_year = client.get("/api/me/trade-log/found?years=2022", cookies=ca)
+        assert by_year.status_code == 200, by_year.text
+        y = by_year.json()
+        assert y["first_day"] == "2022-06-15"
+        assert y["last_day"] == "2022-06-15"
+        assert y["position_count"] == 1
+
+        by_day = client.get(
+            "/api/me/trade-log/found?days=2022-06-15", cookies=ca
+        )
+        assert by_day.status_code == 200, by_day.text
+        assert by_day.json()["position_count"] == 1
+    finally:
+        _purge(a)
+
+
+def test_found_set_follows_campaign_stamp_change(client):
+    """Clear/assign must change the found set under the current filter."""
+    a = _id("zztest-tl-found-stamp@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "Stamp", "broker": "thinkorswim"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = acct.json()["id"]
+        camp = client.post(
+            "/api/me/practice/campaigns",
+            cookies=ca,
+            json={
+                "title": "Found stamp",
+                "activate": True,
+                "max_drawdown_pct": 15,
+                "starts_at": "2022-01-01",
+                "starting_capital": 10000,
+            },
+        )
+        assert camp.status_code == 200, camp.text
+        cid = int(camp.json()["campaign"]["id"])
+        body = {
+            "account_id": aid,
+            "exec_at": "2023-03-15T14:00:00",
+            "strategy": "VERTICAL",
+            "asset_class": "equity_option",
+            "order_type": "LMT",
+            "net_price": 1.0,
+            "net_side": "DEBIT",
+            "adherence": "unknown",
+            "practice_campaign_id": cid,
+            "legs": [
+                {
+                    "side": "BUY",
+                    "quantity": 1,
+                    "pos_effect": "TO_OPEN",
+                    "underlier": "SPY",
+                    "expiry": "2023-04-01",
+                    "strike": 400,
+                    "right": "CALL",
+                    "fill_price": 1.0,
+                }
+            ],
+        }
+        created = client.post("/api/me/trade-log/trades", cookies=ca, json=body)
+        assert created.status_code == 200, created.text
+        tid = created.json()["id"]
+
+        tagged = client.get(
+            f"/api/me/trade-log/found?campaigns={cid}", cookies=ca
+        )
+        assert tagged.status_code == 200, tagged.text
+        assert tagged.json()["position_count"] == 1
+        assert {i["id"] for i in tagged.json()["items"]} == {tid}
+
+        cleared = client.patch(
+            f"/api/me/trade-log/trades/{tid}",
+            cookies=ca,
+            json={"practice_campaign_id": None},
+        )
+        assert cleared.status_code == 200, cleared.text
+        assert cleared.json().get("practice_campaign_id") in (None, 0)
+
+        after = client.get(
+            f"/api/me/trade-log/found?campaigns={cid}", cookies=ca
+        )
+        assert after.status_code == 200, after.text
+        assert after.json()["position_count"] == 0
+        none = client.get("/api/me/trade-log/found?campaigns=none", cookies=ca)
+        assert none.status_code == 200, none.text
+        assert tid in {i["id"] for i in none.json().get("items") or []}
+
+        month = client.get(
+            "/api/me/trade-log/found?months=2023-03", cookies=ca
+        )
+        assert month.status_code == 200, month.text
+        assert month.json()["position_count"] == 1
+        row = next(i for i in month.json()["items"] if i["id"] == tid)
+        assert row["practice_campaign_id"] is None
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM member_practice_campaigns WHERE identity_id = %s",
+                    (a,),
+                )
+        _purge(a)
+
+
+def test_assign_outside_campaign_window_is_rejected(client):
+    """Find and tag: fill outside campaign dates stays untagged."""
+    a = _id("zztest-tl-window-reject@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "Win", "broker": "thinkorswim"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = acct.json()["id"]
+        camp = client.post(
+            "/api/me/practice/campaigns",
+            cookies=ca,
+            json={
+                "title": "June only",
+                "activate": True,
+                "max_drawdown_pct": 15,
+                "starts_at": "2026-06-01",
+                "ends_at": "2026-06-30",
+                "starting_capital": 10000,
+            },
+        )
+        assert camp.status_code == 200, camp.text
+        cid = int(camp.json()["campaign"]["id"])
+        created = client.post(
+            "/api/me/trade-log/trades",
+            cookies=ca,
+            json={
+                "account_id": aid,
+                "exec_at": "2023-03-15T14:00:00",
+                "strategy": "VERTICAL",
+                "asset_class": "equity_option",
+                "order_type": "LMT",
+                "net_price": 1.0,
+                "net_side": "DEBIT",
+                "adherence": "unknown",
+                "legs": [
+                    {
+                        "side": "BUY",
+                        "quantity": 1,
+                        "pos_effect": "TO_OPEN",
+                        "underlier": "SPY",
+                        "expiry": "2023-04-01",
+                        "strike": 400,
+                        "right": "CALL",
+                        "fill_price": 1.0,
+                    }
+                ],
+            },
+        )
+        assert created.status_code == 200, created.text
+        tid = created.json()["id"]
+        bad = client.patch(
+            f"/api/me/trade-log/trades/{tid}",
+            cookies=ca,
+            json={"practice_campaign_id": cid},
+        )
+        assert bad.status_code == 422, bad.text
+        assert "window" in str(bad.json().get("detail", "")).lower()
+        found = client.get(
+            f"/api/me/trade-log/found?campaigns={cid}", cookies=ca
+        )
+        assert found.status_code == 200, found.text
+        assert found.json()["position_count"] == 0
+        assert tid not in {i["id"] for i in found.json().get("items") or []}
+    finally:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "DELETE FROM member_practice_campaigns WHERE identity_id = %s",
+                    (a,),
+                )
+        _purge(a)
+
+
 def test_observer_trial_plan_trade_log_ok(client):
     """DL-126/128: active Observer plan has Trade Log even if cookie role is observer."""
     a = _id("zztest-tl-observer-trial@labs.test")
@@ -231,6 +541,13 @@ def test_account_trade_count_structure_open_not_close(client):
         assert listed.status_code == 200, listed.text
         row = next(x for x in listed.json()["accounts"] if x["id"] == aid)
         assert int(row.get("trade_count") or 0) == 1
+        found = client.get("/api/me/trade-log/found", cookies=ca)
+        assert found.status_code == 200, found.text
+        fd = found.json()
+        assert int(fd.get("position_count") or 0) == 1
+        ids = {i["id"] for i in fd.get("items") or []}
+        assert open_id in ids
+        assert int(close_tr.json()["id"]) not in ids
     finally:
         _purge(a)
 
@@ -693,5 +1010,33 @@ def test_default_book_filter_includes_unstamped_and_playbook_unaffiliated(client
         assert unaff.status_code == 200, unaff.text
         for t in unaff.json()["trades"]:
             assert t.get("playbook_entry_id") in (None, 0)
+
+        # Allocation manager: unallocated + symbol search
+        none = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}&full=1&campaign_mode=unallocated",
+            cookies=ca,
+        )
+        assert none.status_code == 200, none.text
+        nids = {t["id"] for t in none.json()["trades"]}
+        assert t_null["id"] in nids
+        assert t_book["id"] not in nids
+        spy = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}&full=1&q=SPY",
+            cookies=ca,
+        )
+        assert spy.status_code == 200, spy.text
+        assert {t["id"] for t in spy.json()["trades"]} >= {
+            t_book["id"],
+            t_other["id"],
+            t_null["id"],
+        }
+        combo = client.get(
+            f"/api/me/trade-log/trades?account_id={aid}&full=1"
+            f"&strategy=VERTICAL&net_side=DEBIT&pos_effect=TO_OPEN&symbol=SPY",
+            cookies=ca,
+        )
+        assert combo.status_code == 200, combo.text
+        cids = {t["id"] for t in combo.json()["trades"]}
+        assert t_book["id"] in cids
     finally:
         _purge(a)

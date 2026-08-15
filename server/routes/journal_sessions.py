@@ -241,31 +241,9 @@ async def create_journal_session(request: Request) -> dict:
     # Never trust client identity
     body.pop("identity_id", None)
 
-    tag = str(body.get("tag") or "").strip() or None
-    raw_tags = body.get("tags")
-    tags: list[str] | None = None
-    if isinstance(raw_tags, list):
-        tags = [str(t).strip() for t in raw_tags if str(t).strip()]
     journal_date = body.get("journal_date")
     if not journal_date:
         journal_date = date.today().isoformat()
-    structured = body.get("structured")
-    if structured is not None and not isinstance(structured, dict):
-        raise HTTPException(status_code=422, detail="structured must be an object")
-    prefill = bool(body.get("prefill", False))
-    # OD-1.4: omit key → default-suggest active campaign; null → no stamp
-    camp_kw: dict = {}
-    if "practice_campaign_id" in body:
-        raw_camp = body.get("practice_campaign_id")
-        if raw_camp in (None, ""):
-            camp_kw["practice_campaign_id"] = None
-        else:
-            try:
-                camp_kw["practice_campaign_id"] = int(raw_camp)
-            except (TypeError, ValueError) as e:
-                raise HTTPException(
-                    status_code=422, detail="practice_campaign_id must be an integer"
-                ) from e
 
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -275,12 +253,7 @@ async def create_journal_session(request: Request) -> dict:
                 session = jsd.create_session(
                     cur,
                     iid,
-                    tag=tag,
-                    tags=tags,
                     journal_date=str(journal_date),
-                    structured=structured,
-                    prefill=prefill,
-                    **camp_kw,
                 )
             except jsd.JournalSessionError as e:
                 _raise_domain(e)
@@ -312,11 +285,6 @@ async def patch_journal_session(request: Request, session_id: int) -> dict:
         body = {}
     body.pop("identity_id", None)
 
-    structured_set = "structured" in body
-    structured = body.get("structured") if structured_set else None
-    camp_set = "practice_campaign_id" in body
-    camp_raw = body.get("practice_campaign_id") if camp_set else None
-
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
@@ -325,10 +293,6 @@ async def patch_journal_session(request: Request, session_id: int) -> dict:
                     cur,
                     iid,
                     session_id,
-                    structured=structured,
-                    structured_set=structured_set,
-                    practice_campaign_id=camp_raw,
-                    practice_campaign_set=camp_set,
                 )
             except jsd.JournalSessionError as e:
                 _raise_domain(e)

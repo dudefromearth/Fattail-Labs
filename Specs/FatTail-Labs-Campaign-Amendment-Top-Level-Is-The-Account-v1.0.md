@@ -21,6 +21,39 @@ Trading within an account is whatever they choose. **The Journey** (lifelong pro
 
 **Fungibility principle:** accounts are fungible sources until the user organizes them for specific purposes. Until then, **nothing is imposed**.
 
+### 0.1 Coach restatement — window, stamp, terms, allocate (2026-08-15)
+
+Captured verbatim in spirit; nothing dropped:
+
+> The campaign structure is like a time-based window that provides a view into
+> the total trade log, but only trades tagged with the campaign will show, the
+> rest get filtered. A trade can only be associated with one campaign or no
+> campaigns. This allows us to create a view and do reports of campaigns. We
+> can dictate the terms of a campaign, like what we can trade and position size
+> and max drawdown. The system doesn't apply these as gating factors, it simply
+> reports relative to these factors and warns when you exceed the factors. The
+> trader needs a way to search and select and manage which campaign trades are
+> allocated to.
+
+| Law | Meaning |
+|-----|---------|
+| **Window view** | Campaign = time window + stamp filter on the **total** book |
+| **One or none** | A trade wears **one** campaign or **no** campaign (not many) |
+| **Reports** | Campaign reports are that filtered view |
+| **Terms are witnesses** | Allowed methods, size, max DD — report and **warn**, never gate |
+| **Allocate** | Member searches, selects, and manages the stamp |
+
+**Law (Coach 2026-08-15):** A **book** is one-for-one the contents of an
+**account**. A campaign is a badge, not a book. Confusion here is a product
+failure.
+
+**As-built:** **Find and Badge** lives on the **Campaigns main page**
+(`/app/practice/campaign#find-badge`). AutoFilter off until selected;
+clear-before-assign; five undos. A fill **outside the campaign window is
+rejected** — no badge. The **found set** is named (first day → last day · N
+positions). The table pages 50. A single campaign page lists **only trades
+wearing that badge**. It is not a search surface.
+
 ---
 
 ## 1. What is removed

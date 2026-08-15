@@ -4,6 +4,20 @@
 `agents/p-retrospective-v07/` · **DL-163**.  
 **Revision:** v0.7.1 incorporates evaluation + cross-review locks (entitlement wording, ceremony anti-wizard, indicator contexts, routine day, keep-rate integrity, notification channel, lexicon mapping).
 
+**2026-08-14 interface amendment — ACCEPTED (Coach GO 2026-08-14 · DL-335).** §6.3 is
+Coach text, binding on every seat. Side-by-side vs the two reference images is the
+acceptance test; Coach is the judge.
+
+**2026-08-14 Coach — period brief at start.** Gather compiles the window since the last
+review into a **standard infographic** (`period_brief`) — same tiles for every member
+(journal days, trades, plan-followed, live, lessons, last fix, journal clips). Process
+counts, not a P&L scoreboard. The ceremony map below still walks the nine steps.
+Normative home: [`FatTail-Labs-Member-AI-Memory-and-Period-Brief-Spec-v1.0.md`](./FatTail-Labs-Member-AI-Memory-and-Period-Brief-Spec-v1.0.md) (IN REVIEW).
+
+**2026-08-14 Phase 0 — Retrospective reimagined (DL-343).** The nine-step ceremony is
+**dead** as chrome and as Coach conduct. Data law and the four questions survive.
+Experience is open. Capture: [`FatTail-Labs-Retrospective-Reimagined-Spec-v0.1.md`](./FatTail-Labs-Retrospective-Reimagined-Spec-v0.1.md).
+
 **Supersession, precisely.** v0.7 supersedes the **product frame** of v0.6 — a report that is read
 becomes a ceremony that is walked. **v0.6 remains as-built and authoritative for shipped APIs and
 behavior until the R-phases land** (§18). Its mechanics largely survive: create/list/gather/complete,
@@ -172,6 +186,17 @@ and mean trade count across **non-maiden** completed retrospectives.
 
 *Gate: **Tango**, **India**.*
 
+### 5.3 Journal captures; Retrospective compiles (Coach 2026-08-13)
+
+The four questions are asked **in Journal** during the week (pre-market / post-session /
+soft beats). Retrospective **does not re-ask the week**. It compiles what the trader already
+wrote — said, in the way, worked, open threads — then the only required write is **the fix**
+(one checkable thing). Optional note if the journal missed something.
+
+Tiles remain look-up for inventory (patterns, book). They are not a second form.
+
+*Gate: **Tango**.*
+
 ---
 
 ## 6. The ceremony — fixed sequence
@@ -212,6 +237,60 @@ answered.
 *Gate: **Echo**.*
 
 *Gate: **Tango**, **Echo**.*
+
+### 6.3 Interface floor — binding on every seat (Coach 2026-08-14)
+
+**Status:** **ACCEPTED** (Coach GO 2026-08-14 · DL-335). Coach text below is not shortened,
+paraphrased, or “improved.”
+
+**Applies to:** Journal and Retrospective member surfaces that this spec (and the Journal
+Session parent) own — conversation thread, composer, ceremony chrome. Binding on every
+seat. Echo gates. Coach judges.
+
+**Reference images (floor).** Filed 2026-08-14 from Coach’s Pictures. They are the floor,
+not mood-board inspiration. Echo may not close a visual gate without both files present.
+
+| File | What it is (as-filed, not a rewrite of Coach law) |
+|------|---------------------------------------------------|
+| [`Specs/references/journal-retro-v0.7.1/ref1.png`](./references/journal-retro-v0.7.1/ref1.png) | Composer / entry window (Claude-desktop-grade field, send, attach, voice). |
+| [`Specs/references/journal-retro-v0.7.1/ref2.jpg`](./references/journal-retro-v0.7.1/ref2.jpg) | Thread / bubbles (iMessage-grade incoming and outgoing, type, timestamps). Supplied as `ref2.jpg`, not `.png`. |
+
+> **Coach (verbatim):**
+>
+> The two reference images are the FLOOR, not the inspiration. I will
+> put the built surface next to those screenshots. If it looks like a
+> compromise — thinner bubbles, weaker type, a flatter composer, missing
+> polish — it FAILS, regardless of working code behind it.
+>
+> "Less work" and "more efficient" are never reasons to deviate from the
+> reference. If something in the reference is genuinely hard, you STOP
+> and tell me it's hard — you do not quietly ship the easy version.
+>
+> Every part of this surface must feel inviting, warm, and ready to work:
+> bold bubbles, an entry window to die for, type that speaks, focus
+> states that respond, motion that feels like a message arriving. Echo
+> gates against the screenshots pixel-for-pixel intent. The side-by-side
+> IS the acceptance test, and I am the judge.
+>
+> The standard for these interfaces is Apple sophistication with Apple HIG
+> throughout — craft, restraint, depth, motion — combined with the
+> intelligence of the Claude Desktop UI: surfaces that understand context,
+> anticipate the next action, grow with the input, and put controls where
+> the work is. Echo gates the first against the HIG and the references;
+> the second is judged in use — does the surface feel like it's thinking
+> with you. Both are the floor.
+
+**What this does to seats (if Coach accepts):**
+
+| Seat | Binding |
+|------|---------|
+| **Echo** | Visual gate is a side-by-side vs the two references **and** Apple HIG (craft, restraint, depth, motion). Compromise look = FAIL even if Charlie’s code is correct. Claude Desktop intelligence — context, next action, grow-with-input, controls at the work — is judged **in use**. Both are the floor. |
+| **Charlie** | Implements to the floor. May not thin, flatten, or skip polish to save work. |
+| **Juliet / any executor** | Hard work → **STOP and tell Coach**. Quiet easy version is a doctrine violation. |
+| **Delta** | A visual FAIL from Echo or Coach blocks ship. Working API is not enough. |
+| **Tango** | Warmth and invite are member-psychology, not decoration — still no profit claims. |
+
+**Not a reason to deviate:** “less work,” “more efficient,” “good enough,” “we can polish later.”
 
 ---
 
@@ -686,7 +765,7 @@ version.
 | **Tango** | Every member-facing string, the indicator's tone, return-without-shame, notification copy |
 | **India** | Single instrument, cadence storage and forward-only history, derived period accounting |
 | **Mike** | Family B, prompt-edit authority |
-| **Echo** | Ceremony as a walked sequence rather than a scrolled document |
+| **Echo** | Ceremony as a walked sequence rather than a scrolled document. **§6.3:** side-by-side vs the two reference images **and** Apple HIG; Claude Desktop intelligence judged in use. Both are the floor. Coach is the judge. Compromise look = FAIL. |
 | **Charlie** | Step-by-step surface |
 | **Alpha** | Derivation, comparisons, normalization |
 | **Sierra** | Nothing here reaches marketing surfaces |
@@ -734,3 +813,5 @@ version.
 | 2026-07-30 | **BUILD AUTHORITY** Coach GO · DL-163 · board p-retrospective-v07 · §20 locks 1–3,5,9–11 |
 | 2026-08-13 | **§5.1 start readiness** — recommend at 7 days or 5 trades; thin window is a gentle overridable notice, never a create gate. DL-322. |
 | 2026-08-13 | **§5.2 historical cadence** — derived avg days + avg trades from completed non-maiden retros; fact only. DL-323. |
+| 2026-08-13 | **§5.3 Journal captures / Retro compiles** — ceremony surfaces journal_compile; fix is the write. DL-333 (pile filed this as DL-324; that number is VP fold on main). |
+| 2026-08-14 | **§6.3 interface floor** — Coach amendment IN REVIEW. References are the floor; side-by-side is the acceptance test; Coach is the judge. Images filed: `ref1.png` (composer), `ref2.jpg` (thread). Added: Apple HIG sophistication + Claude Desktop intelligence; both are the floor. |

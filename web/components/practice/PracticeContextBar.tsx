@@ -13,6 +13,7 @@ import {
   isStandingDefaultAccountLabel,
   usePracticeContext,
 } from "@/lib/practiceContext";
+import { campaignBadgeStyle } from "@/lib/campaignBadge";
 
 const MANAGE_ACCOUNTS = "__manage_accounts__";
 
@@ -86,7 +87,7 @@ export default function PracticeContextBar({
               }
               setAccountId(v === "all" ? "all" : Number(v));
             }}
-            aria-label="Active account"
+            aria-label="Account (this book)"
             data-testid="practice-account-select"
           >
             {selectableAccounts.map((a) => (
@@ -140,28 +141,38 @@ export default function PracticeContextBar({
               </button>
             );
           })}
-          {/* Placeholder "Campaign" = no filter; pick a name to filter by that charter */}
           <label className="relative inline-flex min-h-8 items-center">
-            <span className="sr-only">Campaign filter</span>
+            <span className="sr-only">Positions scope</span>
             <select
               className={[
-                "min-h-8 max-w-[12rem] cursor-pointer appearance-none rounded-full border-0 bg-transparent py-1 pl-3 pr-7 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
+                "min-h-8 max-w-[14rem] cursor-pointer appearance-none rounded-full border-0 bg-transparent py-1 pl-3 pr-7 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
                 campaignId != null
-                  ? "bg-[var(--color-tint)] text-[var(--color-on-tint)] shadow-sm"
+                  ? "shadow-sm"
                   : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
               ].join(" ")}
+              style={
+                campaignId != null
+                  ? campaignBadgeStyle(
+                      selectableCampaigns.find((c) => c.id === campaignId)
+                        ?.badge_color,
+                    ) || {
+                      backgroundColor: "var(--color-tint)",
+                      color: "var(--color-on-tint)",
+                    }
+                  : undefined
+              }
               value={campaignId != null ? String(campaignId) : ""}
               onChange={(e) => {
                 const v = e.target.value;
                 setCampaignId(v ? Number(v) : null);
               }}
-              aria-label="Campaign filter"
+              aria-label="All positions or one campaign"
               data-testid="practice-campaign-select"
             >
-              <option value="">Campaign</option>
+              <option value="">All positions</option>
               {selectableCampaigns.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.title}
+                  Campaign · {c.title}
                 </option>
               ))}
             </select>

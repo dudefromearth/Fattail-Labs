@@ -59,7 +59,19 @@ function daysLeft(deletedAt: string | null, recoverableDays: number): number {
   return Math.max(0, Math.ceil(remainingMs / 86400000));
 }
 
-export default function ImportManager({ onChanged }: { onChanged: () => void }) {
+export default function ImportManager({
+  onChanged,
+  focusImportId = null,
+  requestOpen = false,
+  onDismiss,
+}: {
+  onChanged: () => void;
+  /** Expand this batch when the blotter Import chip (or `?import=`) opens us. */
+  focusImportId?: number | null;
+  /** Open the existing dialog — do not add header chrome (Conor owns that). */
+  requestOpen?: boolean;
+  onDismiss?: () => void;
+}) {
   const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [imports, setImports] = useState<ImportRow[] | null>(null);
@@ -69,6 +81,11 @@ export default function ImportManager({ onChanged }: { onChanged: () => void }) 
   const [expanded, setExpanded] = useState<number | null>(null);
   const [preview, setPreview] = useState<Record<number, PreviewTrade[]>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    onDismiss?.();
+  }, [onDismiss]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -86,17 +103,43 @@ export default function ImportManager({ onChanged }: { onChanged: () => void }) 
   }, []);
 
   useEffect(() => {
+    if (requestOpen || (focusImportId != null && focusImportId > 0)) {
+      setOpen(true);
+    }
+  }, [requestOpen, focusImportId]);
+
+  useEffect(() => {
     if (!open) return;
     setImports(null);
     setExpanded(null);
     setPreview({});
     void load();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, load]);
+  }, [open, load, close]);
+
+  useEffect(() => {
+    if (!open || imports == null || focusImportId == null || focusImportId <= 0) {
+      return;
+    }
+    setExpanded(focusImportId);
+    if (preview[focusImportId]) return;
+    let cancelled = false;
+    void (async () => {
+      const r = await fetch(`/api/me/trade-log/imports/${focusImportId}`, {
+        credentials: "same-origin",
+      });
+      if (!r.ok || cancelled) return;
+      const d = await r.json();
+      setPreview((p) => ({ ...p, [focusImportId]: d.trades || [] }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, imports, focusImportId, preview]);
 
   async function togglePreview(id: number) {
     if (expanded === id) { setExpanded(null); return; }
@@ -169,7 +212,7 @@ export default function ImportManager({ onChanged }: { onChanged: () => void }) 
           <div
             className="absolute inset-0 bg-[var(--color-overlay)]"
             aria-hidden
-            onClick={() => setOpen(false)}
+            onClick={close}
           />
           <div
             role="dialog"
@@ -183,7 +226,7 @@ export default function ImportManager({ onChanged }: { onChanged: () => void }) 
               </h2>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={close}
                 aria-label="Close"
                 className="rounded-full px-2 py-1 text-sm text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
               >
@@ -338,7 +381,7 @@ export default function ImportManager({ onChanged }: { onChanged: () => void }) 
             </div>
 
             <footer className="flex items-center justify-end border-t border-[var(--color-separator)] px-5 py-3">
-              <Button variant="secondary" onClick={() => setOpen(false)}>Done</Button>
+              <Button variant="secondary" onClick={close}>Done</Button>
             </footer>
           </div>
         </div>

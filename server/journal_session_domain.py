@@ -542,34 +542,19 @@ def serialize_session(
     messages: list[dict] | None = None,
     tags: list[str] | None = None,
 ) -> dict:
-    sj = row.get("structured_json")
-    if isinstance(sj, str):
-        try:
-            sj = json.loads(sj)
-        except json.JSONDecodeError:
-            sj = None
-    tag = row.get("tag")
-    tag_s = str(tag) if tag else None
-    tag_list = tags if tags is not None else ([tag_s] if tag_s else [])
-    primary = tag_list[0] if tag_list else (tag_s or "reflection")
+    # Conversation model (DL-339): date + messages + attachments + prompt.
+    # Tags, structured interview, and campaign stamp are not product fields.
+    _ = tags
     out: dict[str, Any] = {
         "id": int(row["id"]),
         "identity_id": int(row["identity_id"]),
-        "tag": tag_s,  # legacy single
-        "tags": tag_list,
+        "tag": None,
+        "tags": [],
+        "structured": None,
         "journal_date": _iso(row["journal_date"]) if row.get("journal_date") else None,
         "session_started_at": _iso(row.get("session_started_at")),
         "status": row["status"],
-        "structured": sj if isinstance(sj, dict) else sj,
-        "checklist": jss.checklist_status(
-            primary, sj if isinstance(sj, dict) else None
-        ),
         "export_key": row.get("export_key"),
-        "practice_campaign_id": (
-            int(row["practice_campaign_id"])
-            if row.get("practice_campaign_id") is not None
-            else None
-        ),
         "spawned_retrospective_id": (
             int(row["spawned_retrospective_id"])
             if row.get("spawned_retrospective_id") is not None
@@ -615,52 +600,16 @@ def create_session(
     now: datetime | None = None,
     practice_campaign_id: int | None | object = ...,
 ) -> dict:
-    """Create open conversation. Tags optional (v0.4a). tag= for legacy single-tag create.
+    """Create the day's conversation. One session per date.
 
-    practice_campaign_id (OD-1.4): omit → default-suggest active campaign;
-    pass None to create without a season stamp; pass int for explicit season.
+    Tags, structured interview, and campaign stamp are not written (DL-339).
+    Extra kwargs are accepted so older callers do not break.
     """
-    tag_list: list[str] = []
-    if tags:
-        for t in tags:
-            t = str(t or "").strip()
-            if not t:
-                continue
-            if t in NAVIGATE_ONLY_TAGS:
-                raise JournalSessionError(
-                    422,
-                    "Tag 'retrospective' does not create a journal session — "
-                    "use the retrospective navigate path.",
-                )
-            if t not in VALID_TAGS:
-                raise JournalSessionError(
-                    422,
-                    f"Invalid tag. Allowed: {', '.join(sorted(VALID_TAGS))}",
-                )
-            if t not in tag_list:
-                tag_list.append(t)
-    primary = str(tag or "").strip() if tag else (tag_list[0] if tag_list else "")
-    if primary:
-        if primary in NAVIGATE_ONLY_TAGS:
-            raise JournalSessionError(
-                422,
-                "Tag 'retrospective' does not create a journal session — "
-                "use the retrospective navigate path.",
-            )
-        if primary not in VALID_TAGS:
-            raise JournalSessionError(
-                422,
-                f"Invalid tag. Allowed: {', '.join(sorted(VALID_TAGS))}",
-            )
-        if primary not in tag_list:
-            tag_list.insert(0, primary)
-    # Schema checklist uses primary or reflection default
-    schema_tag = primary or "reflection"
+    _ = (tag, tags, structured, prefill, practice_campaign_id)
 
     jd = _as_date(journal_date)
     assert_date_open(cur, identity_id, jd)
     started = _naive_utc(now or _now_utc())
-    # Warm calendar cache (fail loud if empty)
     load_market_calendar(cur)
 
     # Spec v0.6 §3 — one conversation per date: return existing if present.
@@ -677,47 +626,16 @@ def create_session(
             cur, identity_id, int(existing["id"]), include_messages=True
         )
 
-    merged: dict | None = None
-    if prefill and primary:
-        merged = dict(jss.prefill_structured(cur, identity_id, primary, jd))
-    if structured is not None:
-        try:
-            normalized = jss.normalize_structured(schema_tag, structured)
-        except ValueError as e:
-            raise JournalSessionError(422, str(e)) from e
-        if merged is None:
-            merged = normalized
-        elif normalized:
-            merged = {**merged, **normalized}
-    elif merged is not None:
-        try:
-            merged = jss.normalize_structured(schema_tag, merged)
-        except ValueError as e:
-            raise JournalSessionError(422, str(e)) from e
-
-    sj = json.dumps(merged) if merged else None
-    legacy_tag = primary if primary else None
     prompt_vid = active_prompt_version_id(cur)
-    # OD-1.4 — optional campaign stamp (default-suggest active season)
-    camp_id: int | None
-    if practice_campaign_id is ...:
-        camp_id = _active_campaign_id(cur, identity_id)
-    elif practice_campaign_id is None or practice_campaign_id == "":
-        camp_id = None
-    else:
-        camp_id = int(practice_campaign_id)  # type: ignore[arg-type]
-        _assert_campaign_owned(cur, identity_id, camp_id)
     cur.execute(
         """INSERT INTO member_journal_sessions
              (identity_id, tag, journal_date, session_started_at, status,
               structured_json, export_key, practice_campaign_id,
               spawned_retrospective_id, prompt_version_id)
-           VALUES (%s, %s, %s, %s, 'open', %s, NULL, %s, NULL, %s)""",
-        (identity_id, legacy_tag, jd, started, sj, camp_id, prompt_vid),
+           VALUES (%s, NULL, %s, %s, 'open', NULL, NULL, NULL, NULL, %s)""",
+        (identity_id, jd, started, prompt_vid),
     )
     sid = int(cur.lastrowid)
-    if tag_list:
-        _set_session_tags(cur, sid, tag_list)
     return get_session(cur, identity_id, sid, include_messages=True)
 
 
@@ -758,6 +676,41 @@ def active_prompt_version_id(cur) -> str | None:
     except Exception:
         pass
     return "JOURNAL_SESSION_SYSTEM_PROMPT_V1"
+
+
+REASONING_LEVELS = ("low", "medium", "high")
+DEFAULT_REASONING_LEVEL = "medium"
+
+
+def normalize_reasoning_level(raw: Any) -> str:
+    v = str(raw or "").strip().lower()
+    if v in REASONING_LEVELS:
+        return v
+    return DEFAULT_REASONING_LEVEL
+
+
+def load_prompt_body(cur, version_id: str | None = None) -> tuple[str, str, str]:
+    """Return (version_id, body_md, reasoning_level) for stamped or active prompt."""
+    vid = (version_id or "").strip() or (active_prompt_version_id(cur) or "")
+    if vid:
+        try:
+            cur.execute(
+                """SELECT id, body_md, reasoning_level
+                   FROM journal_session_prompt_versions
+                   WHERE id = %s""",
+                (vid,),
+            )
+            row = cur.fetchone()
+            if row and (row.get("body_md") or "").strip():
+                return (
+                    str(row["id"]),
+                    str(row["body_md"]),
+                    normalize_reasoning_level(row.get("reasoning_level")),
+                )
+        except Exception:
+            pass
+    fallback = active_prompt_version_id(cur) or "JOURNAL_SESSION_SYSTEM_PROMPT_V1"
+    return fallback, "", DEFAULT_REASONING_LEVEL
 
 
 _SESSION_COLS = """id, identity_id, tag, journal_date, session_started_at, status,
@@ -944,51 +897,9 @@ def patch_session(
     merge=False: replace with normalized payload only.
     practice_campaign_id may be set/cleared (OD-1.4 removable stamp).
     """
-    row = _load_mutable_row(cur, identity_id, session_id)
-    if structured_set:
-        tag = str(row["tag"] or "reflection")
-        try:
-            incoming = jss.normalize_structured(tag, structured)
-        except ValueError as e:
-            raise JournalSessionError(422, str(e)) from e
-        if merge and incoming is not None:
-            existing = row.get("structured_json")
-            if isinstance(existing, str):
-                try:
-                    existing = json.loads(existing)
-                except json.JSONDecodeError:
-                    existing = {}
-            if not isinstance(existing, dict):
-                existing = {}
-            merged = {**existing, **incoming}
-            # Re-normalize to drop empties / unknown
-            try:
-                incoming = jss.normalize_structured(tag, merged)
-            except ValueError as e:
-                raise JournalSessionError(422, str(e)) from e
-        sj = json.dumps(incoming) if incoming is not None else None
-        cur.execute(
-            """UPDATE member_journal_sessions
-               SET structured_json = %s
-               WHERE id = %s AND identity_id = %s AND status IN ('open', 'partial')""",
-            (sj, session_id, identity_id),
-        )
-        if cur.rowcount == 0:
-            raise JournalSessionError(409, CLOSED_SESSION_DETAIL)
-    if practice_campaign_set:
-        if practice_campaign_id in (None, ""):
-            camp_id = None
-        else:
-            camp_id = int(practice_campaign_id)
-            _assert_campaign_owned(cur, identity_id, camp_id)
-        cur.execute(
-            """UPDATE member_journal_sessions
-               SET practice_campaign_id = %s
-               WHERE id = %s AND identity_id = %s AND status IN ('open', 'partial')""",
-            (camp_id, session_id, identity_id),
-        )
-        if cur.rowcount == 0:
-            raise JournalSessionError(409, CLOSED_SESSION_DETAIL)
+    _load_mutable_row(cur, identity_id, session_id)
+    _ = (structured, structured_set, merge, practice_campaign_id, practice_campaign_set)
+    # DL-339 — structured interview and campaign stamp are not writable.
     return get_session(cur, identity_id, session_id, include_messages=True)
 
 
@@ -1228,40 +1139,22 @@ def pre_market_intents_from_sessions(
     *,
     is_maiden: bool,
 ) -> list[dict[str, Any]]:
-    """§6.5 dual-read: pre_market sessions (any status) keyed by journal_date.
+    """§6.5 dual-read: conversations in scope (DL-339).
 
-    Intent from structured + pre_open member turns only — never invents fields.
-    Includes open sessions (v0.4a: no member seal required).
+    Intent is member messages. No session tag or structured form.
     """
     start_d = _naive_utc(scope_start).date()
     end_d = _naive_utc(scope_end).date()
-    # Tag via join or legacy column
-    if is_maiden:
-        cur.execute(
-            """SELECT s.id, s.journal_date, s.structured_json, s.status
-               FROM member_journal_sessions s
-               LEFT JOIN member_journal_session_tags t ON t.session_id = s.id
-               WHERE s.identity_id = %s
-                 AND (s.tag = 'pre_market' OR t.tag = 'pre_market')
-                 AND s.status IN ('open', 'closed', 'partial', 'sealed')
-                 AND s.journal_date >= %s AND s.journal_date <= %s
-               GROUP BY s.id
-               ORDER BY s.journal_date ASC, s.id ASC""",
-            (identity_id, start_d, end_d),
-        )
-    else:
-        cur.execute(
-            """SELECT s.id, s.journal_date, s.structured_json, s.status
-               FROM member_journal_sessions s
-               LEFT JOIN member_journal_session_tags t ON t.session_id = s.id
-               WHERE s.identity_id = %s
-                 AND (s.tag = 'pre_market' OR t.tag = 'pre_market')
-                 AND s.status IN ('open', 'closed', 'partial', 'sealed')
-                 AND s.journal_date > %s AND s.journal_date <= %s
-               GROUP BY s.id
-               ORDER BY s.journal_date ASC, s.id ASC""",
-            (identity_id, start_d, end_d),
-        )
+    op = ">=" if is_maiden else ">"
+    cur.execute(
+        f"""SELECT s.id, s.journal_date, s.status
+            FROM member_journal_sessions s
+            WHERE s.identity_id = %s
+              AND s.status IN ('open', 'closed', 'partial', 'sealed')
+              AND s.journal_date {op} %s AND s.journal_date <= %s
+            ORDER BY s.journal_date ASC, s.id ASC""",
+        (identity_id, start_d, end_d),
+    )
     rows = cur.fetchall()
     out: list[dict[str, Any]] = []
     for r in rows:
@@ -1274,16 +1167,12 @@ def pre_market_intents_from_sessions(
         else:
             day = str(jd)[:10]
 
-        structured = _parse_structured(r.get("structured_json"))
         intent_parts: list[str] = []
-        structured_text = format_structured_intent(structured)
-        if structured_text:
-            intent_parts.append(structured_text)
 
         cur.execute(
             """SELECT body_md FROM member_journal_messages
                WHERE session_id = %s AND identity_id = %s
-                 AND author = 'member' AND phase = 'pre_open'
+                 AND author = 'member'
                ORDER BY created_at ASC, id ASC""",
             (sid, identity_id),
         )

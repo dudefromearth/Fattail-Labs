@@ -563,7 +563,11 @@ Live under `/api/me/trade-log/analytics/*` (session + activator+; Family B ident
 |------|----------|
 | Legs on list/export | Batch `IN (...)` via `_load_legs_for_trades` — not N+1 |
 | **Blotter list (default)** | **Paginated** newest-first: `limit` default **80**, max 200; `cursor` + `has_more` / `next_cursor` — **lazy load** keeps browser memory bounded |
-| **Full book** | `?full=1` or analytics routes only (capped 10000 server-side) — **not** default for `/app/trade-log` |
+| **Display window** | Visible contract rows: **20** (default) through **50** in steps of 10. Lengthens the scroll window only — does **not** change how many trades the system loads |
+| **Find and Badge** | Campaigns main page `/app/practice/campaign#find-badge` — book-wide AutoFilter / campaign badge. Found set counts **positions** (single, vertical, butterfly, …). Untyped market rows are **Single**. A close-out of the same structure is not another position. Notes are not positions. Table pages **50**. Window-ineligible assigns are **rejected** |
+| **When filter** | Calendar hierarchy: **year → month → day**. Multiple years open collapsed. One year opens with months visible. Days stay collapsed until the month is expanded |
+| **Stamp refresh** | Clear or assign on the selected found-set rows, then **reload the found set under the current filter**. The banner, page, and campaign column are the new set — not the pre-stamp snapshot |
+| **Full book** | `?full=1` or analytics routes only (capped 10000 server-side) — **not** default for `/app/trade-log` or Find and Badge |
 | **Unmatched opens** | `GET /api/me/trade-log/opens` — server match on full book, returns **opens only** (Open:N filter / create gate) |
 | Identity | Real sessions use claims `identity_id`; storage fallback for internal id `0` is **`LABS_ENV=dev` only** (401 outside dev) |
 | Route layout | Package `server/routes/trade_log/` (`common`, `accounts`, `trades`, `analytics`, `io`) |
@@ -644,7 +648,7 @@ right, width, strategy, units (browser only; not export SoR).
 ┌ Header: Open · STRATEGY · underlier center · exp   |  Close · #id
 │         entry_source · Created … · Edited …
 ├ Actions (section)
-│  · Close / paste ToS / duplicate / trash (opens)
+│  · Close list (scrolls after 3) · ToS script window if clipboard valid · Create opening (button)
 │  · Match preview (closes) · trash close (reopen)
 ├ ══ horizontal rule ══
 ├ Trade details (section)
@@ -664,7 +668,7 @@ right, width, strategy, units (browser only; not export SoR).
 | Action | Behavior |
 |--------|----------|
 | **Enter closing order** | Prefill reverse legs `TO_CLOSE`, flip debit/credit; member sets net + time |
-| **Paste ToS close** | Opens Import panel (adapter parse → commit `entry_source=import`) |
+| **Paste ToS close** | Import panel remains for file/CSV. **New trade chooser (DL-360):** New Trade peeks the OS clipboard on the click (`readText`) and cheap-looks `BUY`/`SELL` + qty, then parses. A ticket copied in thinkorswim can appear. The browser may show its own Paste chip for that read. Tap opens the trade form (or closes the matching open). |
 | **Duplicate as new open** | session template → create with same structure, blank net, `TO_OPEN` |
 | **Delete TO CLOSE** | Allowed anytime on a close fill. After delete, paired TO OPEN becomes unmatched again |
 | **Delete TO OPEN** | **Only if no paired close** (unmatched open). If a TO CLOSE exists, UI blocks delete and requires deleting the close first |
@@ -797,7 +801,7 @@ Trade Log does **not** own a parallel badge table. It **mounts** the registry vi
 
 1. Create a charter in Practice → it appears on the sheet dispense list when fill time is inside its window.  
 2. Every saved trade has `practice_campaign_id` set (ledger if no deliberate pick).  
-3. Blotter shows **one** campaign chip per trade; tap filters; no variance color on chip.  
+3. Blotter shows **one** campaign chip per trade; tap filters; no variance/conduct color on chip. Identity `badge_color` from the registry is the chip fill; ink is auto-contrasted (DL-359).  
 4. End / complete campaign → chip **remains** on historical trades; season no longer offered for **new** fills after `ends_at` / terminal (ledger still offered).  
 5. Redirect moves stamp; no dual membership.  
 6. Charters with `account_id` NULL accept stamps from any of the member’s accounts.  
@@ -820,6 +824,8 @@ Trade Log does **not** own a parallel badge table. It **mounts** the registry vi
 
 | Version | Notes |
 |---------|--------|
+| **v1.1 + new-trade chooser** | New Trade drawer: close opens first (list scrolls after 3); ToS script window only when clipboard is a valid script; tap opens trade form; Create a new opening trade is a HIG button, not a link (2026-08-15) |
+| **v1.1 + import chip** | Import badge under Exec time; dark gray / light gray; tooltip `Import #<id>`; click opens Manage imports via `?import=` (not header). Companion: Import Batches Spec §7 (2026-08-15) |
 | **v1.1 + §17** | Campaign registry & badge passive-participant amend; forever wear; dispense list; chip host. Companion: Member Campaign Spec v1.3 §2.1 / §9 (2026-08-09) |
 | **v1.1 + A-2 retire** | Account **retire = archive** permanence; soft open-campaign gate (A-2a); unstamped not a gate (A-2b); show-retired (A-7); no auto-campaign on Primary (A-3). Concept: Member Campaign Spec §4.9 (2026-08-08) |
 | **v1.1 + §16.1** | `entry_source`: **manual · import · automated** (Strategy Lab ≠ import); UI chips (2026-08-05) |

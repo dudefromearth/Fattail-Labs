@@ -5,7 +5,9 @@ Family B. Fail loud. No P&L. No rule engine.
 
 from __future__ import annotations
 
+import colorsys
 import json
+import re
 import secrets
 from datetime import datetime, timezone
 from typing import Any
@@ -22,6 +24,35 @@ _CAMPAIGN_TRANSITIONS: dict[str, frozenset[str]] = {
 }
 # Campaign Phase Spec — capital allocation modes (funding, not direction)
 CAPITAL_ALLOCATION_MODES = frozenset({"fixed", "wrap", "proportion", "dynamic"})
+
+# Distinct starter colors for campaign badges (identity chrome, not variance).
+CAMPAIGN_BADGE_PALETTE: tuple[str, ...] = (
+    "#1D4ED8",
+    "#0F766E",
+    "#B45309",
+    "#BE123C",
+    "#7C3AED",
+    "#0369A1",
+    "#15803D",
+    "#C2410C",
+    "#A21CAF",
+    "#0E7490",
+    "#4338CA",
+    "#B91C1C",
+    "#047857",
+    "#CA8A04",
+    "#6D28D9",
+    "#1E3A5F",
+    "#9A3412",
+    "#115E59",
+    "#9D174D",
+    "#3F6212",
+    "#1D4E89",
+    "#854D0E",
+    "#4C1D95",
+    "#134E4A",
+)
+_BADGE_HEX_RE = re.compile(r"^#[0-9A-F]{6}$")
 
 
 class PracticeSpineError(Exception):
@@ -61,6 +92,95 @@ def _parse_dt(raw: Any) -> datetime | None:
 
 def _export_key(prefix: str) -> str:
     return f"{prefix}-{secrets.token_hex(8)}"
+
+
+def normalize_badge_color(raw: Any) -> str:
+    """Accept #RGB / #RRGGBB (any case). Store uppercase #RRGGBB."""
+    if raw is None or str(raw).strip() == "":
+        raise PracticeSpineError(422, "badge_color is required")
+    s = str(raw).strip().upper()
+    if not s.startswith("#"):
+        s = f"#{s}"
+    if re.fullmatch(r"#[0-9A-F]{3}", s):
+        s = "#" + "".join(ch * 2 for ch in s[1:])
+    if not _BADGE_HEX_RE.fullmatch(s):
+        raise PracticeSpineError(422, "badge_color must be #RRGGBB")
+    return s
+
+
+def _hsl_to_hex(h_deg: float, sat: float, light: float) -> str:
+    r, g, b = colorsys.hls_to_rgb(h_deg / 360.0, light, sat)
+    return f"#{int(round(r * 255)):02X}{int(round(g * 255)):02X}{int(round(b * 255)):02X}"
+
+
+def _used_badge_colors(
+    cur, identity_id: int, *, except_id: int | None = None
+) -> set[str]:
+    if except_id is None:
+        cur.execute(
+            """SELECT badge_color FROM member_practice_campaigns
+               WHERE identity_id = %s AND badge_color IS NOT NULL
+                 AND badge_color <> ''""",
+            (identity_id,),
+        )
+    else:
+        cur.execute(
+            """SELECT badge_color FROM member_practice_campaigns
+               WHERE identity_id = %s AND id <> %s
+                 AND badge_color IS NOT NULL AND badge_color <> ''""",
+            (identity_id, except_id),
+        )
+    out: set[str] = set()
+    for r in cur.fetchall() or []:
+        raw = r.get("badge_color")
+        if raw:
+            out.add(str(raw).strip().upper())
+    return out
+
+
+def allocate_badge_color(
+    cur,
+    identity_id: int,
+    *,
+    preferred: Any = None,
+    except_id: int | None = None,
+) -> str:
+    used = _used_badge_colors(cur, identity_id, except_id=except_id)
+    if preferred is not None and str(preferred).strip() != "":
+        color = normalize_badge_color(preferred)
+        if color in used:
+            raise PracticeSpineError(
+                422,
+                f"badge_color {color} is already used by another campaign",
+            )
+        return color
+    for p in CAMPAIGN_BADGE_PALETTE:
+        if p not in used:
+            return p
+    for i in range(360):
+        cand = _hsl_to_hex((i * 47) % 360, 0.62, 0.40)
+        if cand not in used:
+            return cand
+    raise PracticeSpineError(422, "no unused badge colors left")
+
+
+def _ensure_badge_color(cur, row: dict) -> str:
+    raw = row.get("badge_color")
+    if raw:
+        s = str(raw).strip().upper()
+        if _BADGE_HEX_RE.fullmatch(s):
+            return s
+    iid = int(row["identity_id"])
+    cid = int(row["id"])
+    color = allocate_badge_color(cur, iid, except_id=cid)
+    cur.execute(
+        """UPDATE member_practice_campaigns
+           SET badge_color = %s
+           WHERE id = %s AND identity_id = %s""",
+        (color, cid, iid),
+    )
+    row["badge_color"] = color
+    return color
 
 
 def _json_loads(raw: Any) -> dict | None:
@@ -251,6 +371,7 @@ def serialize_campaign(cur, row: dict) -> dict:
         "strategy_codes": _parse_json_list(row.get("strategy_codes")),
         "retrospective_id": retrospective_id,
         "same_bet": _parse_json_obj(row.get("same_bet_json")),
+        "badge_color": _ensure_badge_color(cur, row),
         # Account default / ledger (structured practice)
         "is_default": bool(int(row.get("is_default") or 0)),
         "is_ledger": bool(int(row.get("is_ledger") or 0)),
@@ -1253,6 +1374,7 @@ def create_campaign(
     strategy_codes: Any = None,
     retrospective_id: Any = None,
     same_bet: Any = None,
+    badge_color: Any = None,
 ) -> dict:
     title = (title or "").strip()
     if not title:
@@ -1323,15 +1445,16 @@ def create_campaign(
     if is_default and account_id is not None and not is_ledger:
         _clear_default_for_account(cur, identity_id, int(account_id))
     title = _unique_campaign_title(cur, identity_id, title)
+    color = allocate_badge_color(cur, identity_id, preferred=badge_color)
     cur.execute(
         """INSERT INTO member_practice_campaigns
              (identity_id, account_id, title, status, activated_at, starts_at, ends_at,
               starting_capital, goals_md, is_default, is_ledger, export_key,
               charter_version, max_drawdown_pct, strategy_codes,
               capital_allocation_mode, capital_allocation_note, retrospective_id,
-              same_bet_json)
+              same_bet_json, badge_color)
            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                   1, %s, %s, %s, %s, %s, %s)""",
+                   1, %s, %s, %s, %s, %s, %s, %s)""",
         (
             identity_id,
             account_id,
@@ -1351,6 +1474,7 @@ def create_campaign(
             alloc_note,
             retro,
             json.dumps(same) if same is not None else None,
+            color,
         ),
     )
     cid = int(cur.lastrowid)
@@ -1399,6 +1523,7 @@ def patch_campaign(
     strategy_codes: Any = ...,
     retrospective_id: Any = ...,
     same_bet: Any = ...,
+    badge_color: Any = ...,
 ) -> dict:
     cur.execute(
         """SELECT * FROM member_practice_campaigns
@@ -1705,6 +1830,19 @@ def patch_campaign(
         if charter_fields_amended > 0:
             charter_version = charter_version + 1
 
+    if badge_color is ...:
+        existing = row.get("badge_color")
+        if existing and _BADGE_HEX_RE.fullmatch(str(existing).strip().upper()):
+            new_color = str(existing).strip().upper()
+        else:
+            new_color = allocate_badge_color(
+                cur, identity_id, except_id=campaign_id
+            )
+    else:
+        new_color = allocate_badge_color(
+            cur, identity_id, preferred=badge_color, except_id=campaign_id
+        )
+
     if new_default and new_account is not None:
         _clear_default_for_account(
             cur, identity_id, int(new_account), except_id=campaign_id
@@ -1721,7 +1859,8 @@ def patch_campaign(
                capital_allocation_note = %s,
                strategy_codes = %s,
                retrospective_id = %s,
-               same_bet_json = %s
+               same_bet_json = %s,
+               badge_color = %s
            WHERE id = %s AND identity_id = %s""",
         (
             new_title[:255],
@@ -1740,6 +1879,7 @@ def patch_campaign(
             json.dumps(new_strat) if new_strat is not None else None,
             new_retro,
             json.dumps(new_same) if new_same is not None else None,
+            new_color,
             campaign_id,
             identity_id,
         ),

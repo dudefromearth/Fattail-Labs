@@ -11,6 +11,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -28,6 +29,10 @@ import {
 } from "@/lib/retrospectiveApi";
 import { usePracticeContextOptional } from "@/lib/practiceContext";
 import RetroPeriodWindow from "@/components/retrospective/RetroPeriodWindow";
+import RetroPeriodBrief from "@/components/retrospective/RetroPeriodBrief";
+import RetroHeadingCard, {
+  useRetroHeading,
+} from "@/components/retrospective/RetroHeadingCard";
 
 type Dict = Record<string, unknown>;
 
@@ -208,6 +213,103 @@ function NothingHere({
   );
 }
 
+/** Module-level so typing does not remount the focused step (and steal caret). */
+function Step({
+  step,
+  focusedStep,
+  title,
+  children,
+  testId,
+  dashed,
+}: {
+  step: number;
+  focusedStep: number;
+  title: string;
+  children: ReactNode;
+  testId?: string;
+  dashed?: boolean;
+}) {
+  if (focusedStep !== step) return null;
+  return (
+    <CeremonyStep step={step} title={title} testId={testId} dashed={dashed}>
+      {children}
+    </CeremonyStep>
+  );
+}
+
+function CompileList({
+  title,
+  rows,
+  empty,
+  testId,
+}: {
+  title: string;
+  rows: Dict[];
+  empty: string;
+  testId: string;
+}) {
+  return (
+    <div data-testid={testId}>
+      <p className="text-sm font-semibold text-[var(--color-label)]">{title}</p>
+      {rows.length === 0 ? (
+        <p className="mt-1 text-sm text-[var(--color-label-tertiary)]">{empty}</p>
+      ) : (
+        <ul className="mt-1 space-y-1 text-sm text-[var(--color-label)]">
+          {rows.map((row, i) => (
+            <li key={`${str(row.day)}-${i}`}>
+              {row.day ? (
+                <span className="text-[var(--color-label-tertiary)]">
+                  {str(row.day)} ·{" "}
+                </span>
+              ) : null}
+              {str(row.text)}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function WriteField({
+  id,
+  label,
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  inputRef,
+  testId,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+  placeholder: string;
+  inputRef: { current: HTMLTextAreaElement | null };
+  testId: string;
+}) {
+  return (
+    <label htmlFor={id} className="block">
+      <span className="text-base font-semibold text-[var(--color-label)]">
+        {label}
+      </span>
+      <textarea
+        id={id}
+        ref={inputRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        rows={5}
+        placeholder={placeholder}
+        className="mt-2 w-full resize-y rounded-[var(--journal-composer-radius)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3 text-[length:var(--text-body)] leading-[1.45] shadow-[var(--journal-composer-shadow)] outline-none focus:ring-2 focus:ring-[var(--color-tint)] disabled:opacity-70"
+        data-testid={testId}
+      />
+    </label>
+  );
+}
+
 export default function RetrospectiveWorkspace({
   retroId,
   onStatusChange,
@@ -223,7 +325,14 @@ export default function RetrospectiveWorkspace({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [body, setBody] = useState("");
+  const [oneThing, setOneThing] = useState("");
   const [title, setTitle] = useState("");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
+  const skipAutosave = useRef(true);
+  const causeRef = useRef<HTMLTextAreaElement | null>(null);
+  const oneThingRef = useRef<HTMLTextAreaElement | null>(null);
   /** Book section open — default collapsed (false) until profile loads. */
   const [bookExpanded, setBookExpanded] = useState(false);
   const [bookPrefReady, setBookPrefReady] = useState(false);
@@ -239,8 +348,20 @@ export default function RetrospectiveWorkspace({
     getRetrospective(retroId)
       .then((d) => {
         setData(d);
-        setBody(d.body_md || "");
+        const compiled = asDict(asDict(d.report)?.journal_compile);
+        setOneThing(
+          d.one_thing_md ||
+            str(compiled?.suggested_one_thing, "") ||
+            "",
+        );
         setTitle(d.title || "");
+        if (!String(d.body_md || "").trim()) {
+          const hint = str(compiled?.suggested_cause, "");
+          setBody(hint);
+        } else {
+          setBody(d.body_md || "");
+        }
+        skipAutosave.current = true;
         const ag = asDict(d.agent);
         setProposedPlans(asList(ag?.habit_plans));
         setFocusInitialized(false);
@@ -252,6 +373,33 @@ export default function RetrospectiveWorkspace({
   useEffect(() => {
     load();
   }, [load]);
+
+  const notesLocked = data?.status === "complete";
+  const hasRetro = Boolean(data);
+  useEffect(() => {
+    if (!hasRetro || notesLocked) return;
+    if (skipAutosave.current) {
+      skipAutosave.current = false;
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      setSaveState("saving");
+      patchRetrospective(retroId, {
+        title: title.trim(),
+        body_md: body,
+        one_thing_md: oneThing,
+      })
+        .then((d) => {
+          setData(d);
+          setSaveState("saved");
+        })
+        .catch((e) => {
+          setErr(e instanceof Error ? e.message : "Save failed");
+          setSaveState("idle");
+        });
+    }, 600);
+    return () => window.clearTimeout(handle);
+  }, [title, body, oneThing, hasRetro, notesLocked, retroId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -284,8 +432,10 @@ export default function RetrospectiveWorkspace({
       const d = await patchRetrospective(retroId, {
         title: title.trim(),
         body_md: body,
+        one_thing_md: oneThing,
       });
       setData(d);
+      setSaveState("saved");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -343,6 +493,7 @@ export default function RetrospectiveWorkspace({
       await patchRetrospective(retroId, {
         title: title.trim(),
         body_md: body,
+        one_thing_md: oneThing,
       });
       const d = await completeRetrospective(retroId);
       setData(d);
@@ -450,7 +601,6 @@ export default function RetrospectiveWorkspace({
   /** Spec v0.7.1 §8.1 — Behavior tags + member journal words only */
   const emotionMirror = asDict(report?.emotion_mirror);
   /** Spec v0.7.1 §8.1a — category → ceremony step */
-  const lexiconMap = asList(report?.lexicon_ceremony_map);
   /** Spec v0.7.1 §8.2 / §12 / §13 — R5 */
   const clustering = asDict(report?.clustering);
   const trends = asDict(report?.trends);
@@ -473,6 +623,11 @@ export default function RetrospectiveWorkspace({
   const isMaiden = Boolean(
     data?.is_maiden || asDict(report?.meta)?.is_maiden,
   );
+  const journalCompile = asDict(report?.journal_compile);
+  const compiledSaid = asList(journalCompile?.said);
+  const compiledInWay = asList(journalCompile?.in_the_way);
+  const compiledWorked = asList(journalCompile?.worked);
+  const compiledNext = asList(journalCompile?.next);
 
   /** Spec §6.2 — tile state + summary (process/inventory only; no $ / character grades). */
   const ceremonyTiles: TileInfo[] = useMemo(() => {
@@ -485,7 +640,6 @@ export default function RetrospectiveWorkspace({
     const devN = deviations.length;
     const wwN = whatWorked.length + insightTags.length;
     const evaN = asList(expectedVsActual).length;
-    const causeEmpty = !body.trim();
     const complete = data?.status === "complete";
 
     function tile(
@@ -542,9 +696,15 @@ export default function RetrospectiveWorkspace({
       return tile(4, "has_content", `${ctxN} context tag${ctxN === 1 ? "" : "s"}`);
     })();
 
-    const t5: TileInfo = causeEmpty
-      ? tile(5, complete ? "nothing_here" : "needs_you", complete ? "Nothing here" : "Needs you")
-      : tile(5, "has_content", "Named");
+    const t5: TileInfo = (() => {
+      if (body.trim() || compiledInWay.length > 0)
+        return tile(5, "has_content", "Named");
+      return tile(
+        5,
+        complete ? "nothing_here" : "needs_you",
+        complete ? "Nothing here" : "Needs you",
+      );
+    })();
 
     const t6: TileInfo =
       wwN === 0
@@ -556,9 +716,9 @@ export default function RetrospectiveWorkspace({
         ? tile(7, "nothing_here", "Nothing here")
         : tile(7, "has_content", `${evaN} day${evaN === 1 ? "" : "s"}`);
 
-    const t8: TileInfo = complete
-      ? tile(8, "has_content", "Complete")
-      : tile(8, "needs_you", "Needs you");
+    const t8: TileInfo = oneThing.trim()
+      ? tile(8, "has_content", "Named")
+      : tile(8, complete ? "nothing_here" : "needs_you", complete ? "Nothing here" : "Needs you");
 
     const t9: TileInfo = (() => {
       if (!book || Object.keys(book).length === 0)
@@ -572,6 +732,8 @@ export default function RetrospectiveWorkspace({
     return [t1, t2, t3, t4, t5, t6, t7, t8, t9];
   }, [
     body,
+    oneThing,
+    compiledInWay.length,
     book,
     behaviorTags.length,
     carryForward,
@@ -595,26 +757,27 @@ export default function RetrospectiveWorkspace({
     setFocusInitialized(true);
   }, [data, ceremonyTiles, focusInitialized]);
 
-  function Step({
-    step,
-    title,
-    children,
-    testId,
-    dashed,
-  }: {
-    step: number;
-    title: string;
-    children: ReactNode;
-    testId?: string;
-    dashed?: boolean;
-  }) {
-    if (focusedStep !== step) return null;
-    return (
-      <CeremonyStep step={step} title={title} testId={testId} dashed={dashed}>
-        {children}
-      </CeremonyStep>
-    );
-  }
+  const headingAccountId = (() => {
+    const scope = asDict(asDict(data?.report)?.account_scope);
+    const raw = scope?.account_id;
+    if (raw == null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
+  const heading = useRetroHeading({
+    scopeStart: data?.scope_start,
+    scopeEnd: data?.scope_end,
+    accountId: headingAccountId,
+    comparison: data?.comparison,
+    periodBrief: asDict(asDict(data?.report)?.period_brief),
+    periodProcess: asDict(asDict(data?.report)?.process),
+    integrity:
+      asDict(asDict(data?.report)?.integrity_review) ||
+      asDict(asDict(asDict(data?.report)?.process)?.integrity),
+    isMaiden: Boolean(
+      data?.is_maiden || asDict(asDict(data?.report)?.meta)?.is_maiden,
+    ),
+  });
 
   if (err && !data) {
     return (
@@ -641,6 +804,16 @@ export default function RetrospectiveWorkspace({
       data-book-expanded={bookExpanded ? "1" : "0"}
       data-book-pref-ready={bookPrefReady ? "1" : "0"}
     >
+      <RetroHeadingCard
+        model={heading.model}
+        loading={heading.loading}
+        kicker={
+          data.is_maiden
+            ? "Maiden journey · opening reckoning"
+            : "Retrospective · opening reckoning"
+        }
+      />
+
       {/* Header chrome */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -674,7 +847,11 @@ export default function RetrospectiveWorkspace({
                 disabled={busy}
                 onClick={saveNotes}
               >
-                Save notes
+                {saveState === "saving"
+                  ? "Saving…"
+                  : saveState === "saved"
+                    ? "Saved"
+                    : "Save"}
               </Button>
               <Button
                 type="button"
@@ -682,7 +859,7 @@ export default function RetrospectiveWorkspace({
                 disabled={busy}
                 onClick={complete}
               >
-                Mark complete
+                Done
               </Button>
             </>
           )}
@@ -714,21 +891,13 @@ export default function RetrospectiveWorkspace({
           <p className="font-medium">
             {str(
               asDict(data.interruption)?.notice,
-              `Your cadence was interrupted — no review completed for a prior period. This one covers ${fmtDate(data.scope_start)} → ${fmtDate(data.scope_end)}.`,
-            )}
-          </p>
-          <p className="mt-1 text-xs text-[var(--color-label-tertiary)]">
-            Named so unequal windows are not silently compared.
-            {data.cadence_days_at_period != null && (
-              <>
-                {" "}
-                Cadence at this period: {num(data.cadence_days_at_period)}{" "}
-                days (stamped — later setting changes do not rewrite it).
-              </>
+              `Your cadence was interrupted — no review completed for a prior period. This one covers ${fmtDate(data.scope_start)} → ${fmtDate(data.scope_end)}. The window is stamped; it does not rewrite.`,
             )}
           </p>
         </div>
       )}
+
+      <RetroPeriodBrief brief={asDict(report?.period_brief)} />
 
       {/* Period path — graphical window for scope; process detail is the map below */}
       <RetroPeriodWindow
@@ -747,18 +916,6 @@ export default function RetrospectiveWorkspace({
         }
         readOnly={data.status === "complete"}
       />
-
-      <p
-        className="text-xs text-[var(--color-label-tertiary)]"
-        data-testid="retro-detail-leadin"
-      >
-        <span className="font-semibold uppercase tracking-wide text-[var(--color-label-secondary)]">
-          Detailed look
-        </span>
-        {" — "}
-        process ceremony for this window (habits, judgment, commitments). Numbers
-        above are context; they do not replace the steps below.
-      </p>
 
       {/* Spec §6.2 — persistent 3×3 ceremony map; only multi-column chrome */}
       <div
@@ -779,7 +936,17 @@ export default function RetrospectiveWorkspace({
               aria-selected={selected}
               aria-controls={`ceremony-step-${t.id}`}
               id={`ceremony-tab-${t.id}`}
-              onClick={() => setFocusedStep(t.id)}
+              onClick={() => {
+                setFocusedStep(t.id);
+                if (t.id === 5) {
+                  window.requestAnimationFrame(() => causeRef.current?.focus());
+                }
+                if (t.id === 8) {
+                  window.requestAnimationFrame(() =>
+                    oneThingRef.current?.focus(),
+                  );
+                }
+              }}
               data-testid={`ceremony-nav-${t.id}`}
               data-tile-state={t.state}
               data-needs-you={needsYou ? "1" : "0"}
@@ -836,44 +1003,64 @@ export default function RetrospectiveWorkspace({
         })}
       </div>
 
-      {/* Spec §8.1a — lexicon map (compact; not ceremony multi-column) */}
-      {lexiconMap.length > 0 && (
-        <div
-          className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-3 py-2"
-          data-testid="retro-lexicon-ceremony-map"
-        >
-          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-label-tertiary)]">
-            Lexicon → ceremony
-          </p>
-          <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-[var(--color-label-secondary)]">
-            {lexiconMap.map((row, i) => {
-              const steps = Array.isArray(row.ceremony_steps)
-                ? (row.ceremony_steps as unknown[])
-                    .map((n) => String(n))
-                    .join(" · ")
-                : "";
-              return (
-                <li key={`${str(row.system_key)}-${i}`}>
-                  <span className="font-medium text-[var(--color-label)]">
-                    {str(row.label)}
-                  </span>
-                  {steps ? ` → step ${steps}` : ""}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      <div
+        className="space-y-5 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-5 shadow-[var(--elevation-2)]"
+        data-testid="retro-write-answers"
+      >
+        <p className="text-[length:var(--text-title-3)] font-semibold tracking-tight text-[var(--color-label)]">
+          From your journal
+        </p>
+        <CompileList
+          title="What you said you'd do"
+          rows={compiledSaid}
+          empty="Nothing captured this window."
+          testId="retro-compile-said"
+        />
+        <CompileList
+          title="What got in the way"
+          rows={compiledInWay}
+          empty="Nothing named."
+          testId="retro-compile-in-the-way"
+        />
+        <CompileList
+          title="What worked"
+          rows={compiledWorked}
+          empty="Nothing named."
+          testId="retro-compile-worked"
+        />
+        <CompileList
+          title="Open threads"
+          rows={compiledNext}
+          empty="No carry-forward notes."
+          testId="retro-compile-next"
+        />
+        <WriteField
+          id="retro-one-thing"
+          label="The fix"
+          value={oneThing}
+          onChange={setOneThing}
+          disabled={data.status === "complete"}
+          placeholder="One checkable thing for next time"
+          inputRef={oneThingRef}
+          testId="retro-onething-input"
+        />
+        <WriteField
+          id="retro-cause"
+          label="Add anything the journal missed"
+          value={body}
+          onChange={setBody}
+          disabled={data.status === "complete"}
+          placeholder="Optional"
+          inputRef={causeRef}
+          testId="retro-cause-input"
+        />
+      </div>
 
-      {/* Focused step body — one column under the map (§6.2) */}
+      {/* Inventory for the selected tile — look, not a form */}
       <div data-testid="ceremony-step-body" data-focused-step={focusedStep}>
 
       {/* 1. Commitments / carry-forward — always present (§6.1 nothing-here) */}
-      <Step step={1} title="Commitments" testId="retro-carry-forward">
-          <p className="mb-3 text-xs text-[var(--color-label-tertiary)]">
-            Plans you committed to — review the work, not yourself. Set Kept,
-            Partial, or Lapsed for each plan.
-          </p>
+      <Step focusedStep={focusedStep} step={1} title="Commitments" testId="retro-carry-forward">
           {isMaiden ? (
             <NothingHere testId="retro-cf-maiden" />
           ) : carryForward && asList(carryForward.plans).length > 0 ? (
@@ -973,12 +1160,7 @@ export default function RetrospectiveWorkspace({
       </Step>
 
       {/* 2. Practice — period-scoped indicator only (Spec §7; never + rolling) */}
-      <Step step={2} title="Practice" testId="retro-process">
-        <p className="text-xs text-[var(--color-label-tertiary)]">
-          Period readings for this review window only. Journey keeps rolling
-          health separately — never side by side.
-        </p>
-
+      <Step focusedStep={focusedStep} step={2} title="Practice" testId="retro-process">
         {periodIndicator ? (
           <div
             className="mt-3"
@@ -1087,11 +1269,7 @@ export default function RetrospectiveWorkspace({
       </Step>
 
       {/* 3. Obstacles — deviations + emotion mirror (Spec §8.1) */}
-      <Step step={3} title="Obstacles" testId="retro-deviations">
-        <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
-          What you named — tags you applied and words you wrote. Not a diagnosis.
-        </p>
-
+      <Step focusedStep={focusedStep} step={3} title="Obstacles" testId="retro-deviations">
         {/* Emotion mirror — Behavior tags + journal words only */}
         <div
           className="mb-4 space-y-3"
@@ -1199,12 +1377,7 @@ export default function RetrospectiveWorkspace({
       </Step>
 
       {/* 4. Clustering — co-occurrence + context inventory (Spec §8.2 · R5) */}
-      <Step step={4} title="Where it clustered" testId="retro-clustered">
-        <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
-          Co-occurrence only — observations stop here. You name the cause in
-          step 5. No market-regime inference.
-        </p>
-
+      <Step focusedStep={focusedStep} step={4} title="Where it clustered" testId="retro-clustered">
         {clusterStatements.length === 0 && contextTags.length === 0 ? (
           <NothingHere testId="retro-clustered-empty">
             {str(
@@ -1274,11 +1447,7 @@ export default function RetrospectiveWorkspace({
           data-excludes-pnl="true"
         >
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[var(--color-label-tertiary)]">
-            Correlation · process only
-          </p>
-          <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
-            Behavior to process and avoidable damage — never to P&amp;L, win
-            rate, or expectancy.
+            Correlation · process only — never to P&L
           </p>
           {correlationStatements.length === 0 ? (
             <NothingHere testId="retro-correlation-empty">
@@ -1306,28 +1475,8 @@ export default function RetrospectiveWorkspace({
         </div>
       </Step>
 
-      {/* 5. Cause — trader-authored */}
-      <Step step={5} title="What I name as the cause" testId="retro-cause">
-        <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
-          You name the cause. The system does not diagnose.
-        </p>
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          disabled={data.status === "complete"}
-          rows={4}
-          placeholder="In your words — what got in the way?"
-          className="w-full resize-y rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--color-tint)] disabled:opacity-70"
-          data-testid="retro-cause-input"
-        />
-      </Step>
-
       {/* 6. What worked — process strengths + Insight tags you named */}
-      <Step step={6} title="What worked" testId="retro-what-worked">
-        <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
-          Process strengths in this window — not P&amp;L theater. Insight tags
-          you applied are candidates, in your words.
-        </p>
+      <Step focusedStep={focusedStep} step={6} title="What worked" testId="retro-what-worked">
         {whatWorked.length === 0 && insightTags.length === 0 ? (
           <NothingHere testId="retro-what-worked-empty" />
         ) : (
@@ -1371,11 +1520,7 @@ export default function RetrospectiveWorkspace({
       </Step>
 
       {/* 7. Expected vs actual — always present */}
-      <Step step={7} title="Expected versus actual" testId="retro-expected-vs-actual">
-          <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
-            Your pre-open intent (your words) vs what executed that day.
-            Process pairing — not a scorecard.
-          </p>
+      <Step focusedStep={focusedStep} step={7} title="Expected versus actual" testId="retro-expected-vs-actual">
           {expectedVsActual == null || asList(expectedVsActual).length === 0 ? (
             <NothingHere testId="retro-eva-empty" />
           ) : (
@@ -1631,16 +1776,8 @@ export default function RetrospectiveWorkspace({
         </div>
       )}
 
-      {/* 8. The one thing — trader-owned commitment; sequence agent assists only */}
-      <Step step={8} title="The one thing" testId="retro-onething">
-        <p className="mb-2 text-xs text-[var(--color-label-tertiary)]">
-          Your checkable commitment — you own every one. Cause notes are in
-          step 5. The agent does not prescribe.
-        </p>
-      </Step>
-
       {/* 9. The book — last, collapsed by default; account-scoped at gather (§2 / §4) */}
-      <Step step={9} title="The book" testId="retro-book">
+      <Step focusedStep={focusedStep} step={9} title="The book" testId="retro-book">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             {!bookExpanded && (
@@ -1741,19 +1878,14 @@ export default function RetrospectiveWorkspace({
       {/* end ceremony-step-body */}
 
       {/* Sequence agent — outside the nine tiles (Spec §16); not a 10th step */}
-      <div
+      <details
         className="surface-card border border-[var(--color-separator)] p-5"
         data-testid="retro-agent"
         data-role="sequence_keeper"
       >
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-          Sequence agent
-        </h2>
-        <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-          Holds the ceremony order and one focus question for step{" "}
-          {focusedStep}. Assembles inventory — you supply judgment. Never
-          diagnoses or prescribes.
-        </p>
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--color-label-secondary)]">
+          Sequence helper
+        </summary>
         {data.prompt_version_id != null && (
           <p
             className="mt-1 text-[11px] text-[var(--color-label-tertiary)]"
@@ -1893,7 +2025,7 @@ export default function RetrospectiveWorkspace({
             </div>
           );
         })()}
-      </div>
+      </details>
     </div>
   );
 }

@@ -44,6 +44,7 @@ export type Retrospective = {
   scope_end: string;
   title: string;
   body_md: string;
+  one_thing_md?: string;
   report: Record<string, unknown> | null;
   comparison: Record<string, unknown> | null;
   agent: Record<string, unknown> | null;
@@ -246,7 +247,7 @@ export async function abandonRetrospective(id: number): Promise<void> {
 
 export async function patchRetrospective(
   id: number,
-  body: { title?: string; body_md?: string },
+  body: { title?: string; body_md?: string; one_thing_md?: string },
 ): Promise<Retrospective> {
   const r = await fetch(`/api/me/retrospectives/${id}`, {
     method: "PATCH",

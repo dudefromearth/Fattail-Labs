@@ -34,7 +34,12 @@ export type PositionValuationRow = {
   value_label: string;
   unrealized: number | null;
   pct_acct?: number | null;
-  campaign: { campaign_id: number; title: string; stamped_by?: string | null } | null;
+  campaign: {
+    campaign_id: number;
+    title: string;
+    stamped_by?: string | null;
+    badge_color?: string | null;
+  } | null;
   degraded: boolean;
   mark_meta?: {
     engine?: string;

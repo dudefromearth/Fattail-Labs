@@ -13,6 +13,7 @@ import {
   patchCampaign,
   type PracticeCampaign,
 } from "@/lib/practiceSpineApi";
+import { campaignBadgeStyle } from "@/lib/campaignBadge";
 
 export default function CampaignContextBadge() {
   const [active, setActive] = useState<PracticeCampaign | null>(null);
@@ -79,7 +80,13 @@ export default function CampaignContextBadge() {
         <>
           <Link
             href="/app/practice/campaign"
-            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-tint-soft)] px-3 py-1 text-xs font-medium text-[var(--color-label)] hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium hover:opacity-90"
+            style={
+              campaignBadgeStyle(active.badge_color) || {
+                backgroundColor: "var(--color-tint-soft)",
+                color: "var(--color-label)",
+              }
+            }
             title="Manage campaigns"
           >
             Campaign: {active.title}

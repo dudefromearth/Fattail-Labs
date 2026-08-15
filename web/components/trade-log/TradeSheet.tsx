@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Account, Catalog, Leg, Trade } from "@/lib/tradeLog";
+import { Button } from "@/components/ui";
+import TosScriptWindow from "@/components/tos/TosScriptWindow";
+import {
+  detectTosScript,
+  matchOpenForTos,
+  rememberTosScript,
+  tosStrategyCode,
+} from "@/lib/tradeLogTos";
+import type { ParsedTosTrade } from "@/lib/options-lab/tosParser";
 import {
   TRASH_REASONS,
   buildCloseDraftFromOpen,
@@ -42,6 +51,28 @@ import {
 
 const field =
   "mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-1.5 text-sm text-[var(--color-label)]";
+
+function ChooserRule({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="flex items-center gap-3 py-1"
+      role="separator"
+      aria-label={typeof children === "string" ? children : undefined}
+    >
+      <span
+        className="h-px min-w-[1.5rem] flex-1 bg-[var(--color-separator)]"
+        aria-hidden
+      />
+      <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-[var(--color-label-tertiary)]">
+        {children}
+      </span>
+      <span
+        className="h-px min-w-[1.5rem] flex-1 bg-[var(--color-separator)]"
+        aria-hidden
+      />
+    </div>
+  );
+}
 
 type SheetMode = "create" | "edit" | "close";
 /** structure = one-shot strategy fields; legs = advanced; simple_asset = stock/future/crypto */
@@ -211,6 +242,40 @@ function fromTrade(t: Trade): FormState {
   };
 }
 
+function formFromTos(
+  parsed: ParsedTosTrade,
+  accountId: number | "",
+): FormState {
+  const strategy = tosStrategyCode(parsed);
+  const f = emptyForm(accountId, strategy);
+  f.underlier = parsed.symbol;
+  f.expiry = parsed.expiration;
+  f.center_strike = parsed.body != null ? String(parsed.body) : "";
+  f.width = parsed.width != null ? String(parsed.width) : f.width;
+  f.right = parsed.right === "put" ? "PUT" : "CALL";
+  const wingQty = parsed.legs.length
+    ? Math.min(...parsed.legs.map((l) => Math.abs(l.quantity))) || 1
+    : 1;
+  f.units = String(wingQty);
+  f.net_price = parsed.limit != null ? String(parsed.limit) : "";
+  f.net_side = parsed.isCredit ? "CREDIT" : "DEBIT";
+  f.order_type = "LMT";
+  f.asset_class = "equity_option";
+  f.legs = parsed.legs.map((l) => ({
+    side: l.quantity < 0 ? "SELL" : "BUY",
+    quantity: Math.abs(l.quantity),
+    pos_effect: "TO_OPEN",
+    asset_class: "equity_option",
+    underlier: parsed.symbol,
+    symbol: parsed.symbol,
+    expiry: l.expiration,
+    strike: l.strike,
+    right: l.right === "put" ? "PUT" : "CALL",
+    fill_price: parsed.limit ?? 0,
+  }));
+  return f;
+}
+
 function formFromCloseDraft(
   open: Trade,
   accountFallback: number | "",
@@ -290,6 +355,7 @@ export default function TradeSheet({
   onSaved,
   onRequestCloseFromOpen,
   onRequestImport,
+  clipboardText,
   onSelectOpenForClose,
   onTrashed,
   onDuplicateOpen,
@@ -306,6 +372,7 @@ export default function TradeSheet({
   onSaved: () => void;
   onRequestCloseFromOpen: (openTrade: Trade) => void;
   onRequestImport: () => void;
+  clipboardText?: string | null;
   onSelectOpenForClose: (openTrade: Trade) => void;
   /** After hard-delete of an open (or close) fill. */
   onTrashed: () => void;
@@ -326,6 +393,7 @@ export default function TradeSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createContinueNew, setCreateContinueNew] = useState(false);
+  const [tosParsed, setTosParsed] = useState<ParsedTosTrade | null>(null);
   const [playbooks, setPlaybooks] = useState<PlaybookEntry[]>([]);
   /** Active (and current-stamp) campaigns for the sheet account — multi-active §4.7. */
   const [campaignChoices, setCampaignChoices] = useState<PracticeCampaign[]>(
@@ -362,8 +430,27 @@ export default function TradeSheet({
     mode === "edit" && trade
       ? canDeleteTrade(trade, trades)
       : { ok: true as const };
-  const showCreateOpenGate =
-    mode === "create" && unmatchedOpens.length > 0 && !createContinueNew;
+  const showCreateChooser =
+    mode === "create" &&
+    !createContinueNew &&
+    (unmatchedOpens.length > 0 || tosParsed != null);
+  const showCreateOpenGate = showCreateChooser;
+
+  function applyTosClipboard() {
+    if (!tosParsed) return;
+    const matched = matchOpenForTos(unmatchedOpens, tosParsed);
+    if (matched) {
+      onSelectOpenForClose(matched);
+      return;
+    }
+    const account =
+      form.account_id === "" ? (defaultAccountId ?? "") : form.account_id;
+    const next = formFromTos(tosParsed, account);
+    setForm(next);
+    setEntryUi(defaultEntryUi(next.strategy));
+    setLegsTouched(true);
+    setCreateContinueNew(true);
+  }
   /** Manual fills: emphasize full date-time edit / backdate. */
   const manualDatetimeEditable =
     mode === "create" ||
@@ -428,6 +515,7 @@ export default function TradeSheet({
     if (!open) return;
     setError(null);
     setCreateContinueNew(false);
+    if (mode !== "create") setTosParsed(null);
     setShowProcess(false);
     setShowLegsAdvanced(false);
     setLegsTouched(false);
@@ -552,6 +640,24 @@ export default function TradeSheet({
       }
     })();
   }, [open, mode, trade, defaultAccountId, accounts]);
+
+  useEffect(() => {
+    if (!open || mode !== "create") {
+      setTosParsed(null);
+      return;
+    }
+    const fromClip = detectTosScript(clipboardText);
+    if (fromClip) setTosParsed(fromClip);
+    const onPaste = (e: ClipboardEvent) => {
+      const remembered = rememberTosScript(
+        e.clipboardData?.getData("text/plain"),
+      );
+      const parsed = detectTosScript(remembered);
+      if (parsed) setTosParsed(parsed);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [open, mode, clipboardText]);
 
   const selectedAccount = accounts.find(
     (a) => a.id === (form.account_id === "" ? defaultAccountId : form.account_id),
@@ -1063,48 +1169,72 @@ export default function TradeSheet({
               </h3>
               <div className="mt-2 space-y-3">
                 {showCreateOpenGate && (
-                  <div className="rounded-xl border-2 border-[var(--color-tint)] bg-[var(--color-fill)] p-4">
-                    <p className="text-base font-bold leading-snug text-[var(--color-label)]">
-                      You have {unmatchedOpens.length} open position
-                      {unmatchedOpens.length === 1 ? "" : "s"}. Enter a closing
-                      order?
-                    </p>
-                    <p className="mt-2 text-xs text-[var(--color-label-secondary)]">
-                      Closing keeps the structure matched for Reports and
-                      Journal.
-                    </p>
-                    <ul className="mt-3 max-h-40 space-y-1.5 overflow-y-auto">
-                      {unmatchedOpens.map((o) => (
-                        <li key={o.id}>
-                          <button
-                            type="button"
-                            onClick={() => onSelectOpenForClose(o)}
-                            className="w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-2 text-left text-xs font-medium text-[var(--color-label)] hover:border-[var(--color-tint)]"
-                          >
-                            Close: {describeOpenTrade(o)}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="mt-3 flex flex-col gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onRequestImport();
-                        }}
-                        className="rounded-full border border-[var(--color-separator)] px-4 py-2 text-xs font-medium text-[var(--color-label)] hover:bg-[var(--color-canvas)]"
-                      >
-                        Paste closing order from thinkorswim…
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCreateContinueNew(true)}
-                        className="text-xs text-[var(--color-label-secondary)] underline"
-                      >
-                        No — create a new opening trade
-                      </button>
-                    </div>
+                  <div
+                    className="space-y-[1em] rounded-[var(--radius-xl)] border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] p-4"
+                    data-testid="new-trade-chooser"
+                  >
+                    {unmatchedOpens.length > 0 && (
+                      <div>
+                        <p className="text-[length:var(--text-headline)] font-semibold leading-snug text-[var(--color-label)]">
+                          You have {unmatchedOpens.length} open position
+                          {unmatchedOpens.length === 1 ? "" : "s"}. Enter a
+                          closing order?
+                        </p>
+                        <p className="mt-1.5 text-[length:var(--text-footnote)] text-[var(--color-label-secondary)]">
+                          Closing keeps the structure matched for Reports and
+                          Journal.
+                        </p>
+                        <ul
+                          className="mt-3 space-y-[1em] overflow-y-auto overscroll-contain"
+                          data-testid="new-trade-close-list"
+                          data-scrollable={
+                            unmatchedOpens.length > 3 ? "true" : "false"
+                          }
+                          style={
+                            unmatchedOpens.length > 3
+                              ? {
+                                  maxHeight:
+                                    "calc(3 * var(--hit-min) + 2 * 1em)",
+                                }
+                              : undefined
+                          }
+                        >
+                          {unmatchedOpens.map((o) => (
+                            <li key={o.id}>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className="w-full !justify-start !px-3 text-left !text-[13px]"
+                                onClick={() => onSelectOpenForClose(o)}
+                              >
+                                Close: {describeOpenTrade(o)}
+                              </Button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {tosParsed ? (
+                      <>
+                        {unmatchedOpens.length > 0 ? (
+                          <ChooserRule>Or a thinkorswim ticket</ChooserRule>
+                        ) : null}
+                        <TosScriptWindow
+                          script={tosParsed.raw}
+                          onActivate={() => applyTosClipboard()}
+                        />
+                      </>
+                    ) : null}
+                    <ChooserRule>Or a new open</ChooserRule>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      className="w-full"
+                      data-testid="new-trade-create-open"
+                      onClick={() => setCreateContinueNew(true)}
+                    >
+                      Create a new opening trade
+                    </Button>
                   </div>
                 )}
 

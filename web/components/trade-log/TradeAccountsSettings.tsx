@@ -259,13 +259,14 @@ export default function TradeAccountsSettings() {
         Trade accounts
       </h2>
       <p className="mt-1 text-sm text-[var(--color-label-secondary)]">
-        FatTail trade books · max 10 active. A{" "}
-        <strong className="font-medium">Default</strong> book is provisioned
+        Each account is one book — one-for-one. Max 10 active. A{" "}
+        <strong className="font-medium">Default</strong> account is provisioned
         automatically (rename it anytime). CSV imports from any broker land as{" "}
         <strong className="font-medium">canonical FatTail trades</strong> in the
-        book you choose — import source is not the account name. Selection for
-        day-to-day work lives in Practice chrome; here you add, rename, and
-        retire books (archive, never delete).
+        account you choose — import source is not the account name. A campaign
+        is a badge, not a book. Selection for day-to-day work lives in Practice
+        chrome; here you add, rename, and retire accounts (archive, never
+        delete).
       </p>
 
       {error && (

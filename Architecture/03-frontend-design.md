@@ -50,7 +50,7 @@ web/app/
   courses/[slug]/page.tsx          # Course detail (tabs, enroll, admin edit)
   courses/[slug]/lessons/[lessonSlug]/page.tsx
   courses/category/[catSlug]/page.tsx
-  live/  pathway/  resources/  dashboard/  me/
+  live/  pathway/  resources/  dashboard/  me/  settings/
   journal/  retrospective/  retrospective/[id]/  journey/
   login/  signup/  membership/
   guide/  about/

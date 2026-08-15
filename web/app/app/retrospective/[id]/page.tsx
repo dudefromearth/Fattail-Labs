@@ -30,7 +30,7 @@ export default function RetrospectiveDetailPage() {
     <main className="mx-auto w-full max-w-[1100px] px-4 py-6 pb-24 sm:px-6">
       <PracticeSuiteChrome
         active="retrospective"
-        subtitle="Gather since last retrospective — dual report, integrity, progress."
+        subtitle="Opening reckoning — compass, shape, drawdown, practice. Score lives here, not in the journal."
         contextInert={complete}
         contextInertMessage="This completed retrospective is fixed at gather — account and date do not change what is shown. Period was set when you gathered; the book uses the account scope stored then."
       >

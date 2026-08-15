@@ -10,8 +10,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   reportsBookFromServer,
-  reportsStartingCapitalConfigured,
-  resolveReportsStartingCapital,
+  resolveReportsScopeCapital,
   type ReportsBook,
 } from "@/lib/reportsBook";
 import { fetchReportsBook } from "@/lib/tradeLogApi";
@@ -62,6 +61,7 @@ export default function ReportsDashboard() {
     accounts,
     campaignId,
     campaignLabel,
+    campaigns,
     rangeFromYmd,
     rangeToYmd,
     dateFilterActive,
@@ -84,11 +84,16 @@ export default function ReportsDashboard() {
   // Starting capital is read-only here: the account's starting_balance from
   // Accounts & Capital (the sole capital write path — Capital C9 / A&C Spec V16).
   // Reports never writes it; unset falls back to the $50k placeholder.
+  const campaign =
+    campaignId != null
+      ? campaigns.find((c) => c.id === campaignId) ?? null
+      : null;
+  const scopeCap = resolveReportsScopeCapital(accounts, accountId, campaign);
   useEffect(() => {
     if (!prefsReady) return;
-    setCapital(resolveReportsStartingCapital(accounts, accountId));
-  }, [prefsReady, accountId, accounts]);
-  const capitalConfigured = reportsStartingCapitalConfigured(accounts, accountId);
+    setCapital(scopeCap.amount);
+  }, [prefsReady, scopeCap.amount]);
+  const capitalConfigured = scopeCap.configured;
 
   // New account/campaign scope → allow empty-period recover again
   useEffect(() => {
@@ -106,7 +111,7 @@ export default function ReportsDashboard() {
     setError(null);
     try {
       const res = await fetchReportsBook({
-        accountId,
+        accountId: campaignId != null ? "all" : accountId,
         startingCapital: capital,
         fromDay: dateFilterActive ? rangeFromYmd : undefined,
         toDay: dateFilterActive ? rangeToYmd : undefined,
@@ -128,7 +133,7 @@ export default function ReportsDashboard() {
       if (dateFilterActive) {
         try {
           const fullRes = await fetchReportsBook({
-            accountId,
+            accountId: campaignId != null ? "all" : accountId,
             startingCapital: capital,
             practiceCampaignId: campaignId,
           });
@@ -251,7 +256,9 @@ export default function ReportsDashboard() {
         <strong className="font-medium text-[var(--color-label-secondary)]">
           Starting capital
         </strong>{" "}
-        is this book&apos;s starting balance (Accounts &amp; Capital).{" "}
+        {scopeCap.source === "allocated"
+          ? "is this campaign's allocated capital."
+          : "is this account's starting balance (this book — Accounts & Capital)."}{" "}
         <strong className="font-medium text-[var(--color-label-secondary)]">
           Balance / equity
         </strong>{" "}
@@ -261,6 +268,18 @@ export default function ReportsDashboard() {
         </strong>{" "}
         uses live marks (age shown on Positions). Cash balance lives under
         Accounts &amp; Capital.
+      </p>
+      <p
+        className="text-sm text-[var(--color-label)]"
+        data-testid="reports-scope"
+      >
+        Viewing{" "}
+        <span className="font-semibold">
+          {campaignId == null ? "all positions" : campaignLabel}
+        </span>
+        {campaignId == null
+          ? " — every position, regardless of campaign."
+          : " — positions wearing this campaign badge."}
       </p>
       {dateFilterActive && book.tradeCount === 0 && (
         <EmptyPeriodNotice

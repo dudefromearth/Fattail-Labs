@@ -32,11 +32,15 @@ import {
   fetchUnmatchedOpens,
 } from "@/lib/tradeLogApi";
 import {
-  fetchCampaigns,
   fetchPlaybookEntries,
 } from "@/lib/practiceSpineApi";
 import { usePracticeContext } from "@/lib/practiceContext";
 import { saveTradeLogLastUsed } from "@/lib/tradeLogPrefs";
+import {
+  lastRememberedTosScript,
+  peekClipboardForTos,
+  rememberTosScript,
+} from "@/lib/tradeLogTos";
 
 type LoadState = "loading" | "ok" | "anon" | "forbidden" | "err";
 type SheetMode = "create" | "edit" | "close";
@@ -50,6 +54,14 @@ function TradeLogBody() {
   const deepLinkId = Number(searchParams.get("id") || "");
   /** Campaign page → blotter deep-link (`?campaign=N`). */
   const deepLinkCampaign = Number(searchParams.get("campaign") || "");
+  /** Blotter Import chip → existing Manage imports dialog (not header). */
+  const importParam = searchParams.get("import");
+  const deepLinkImportId =
+    importParam && importParam !== "open" && Number(importParam) > 0
+      ? Number(importParam)
+      : null;
+  const importManagerRequested =
+    importParam === "open" || deepLinkImportId != null;
   /** Journey Adhere pillar → meter complement (F2). Not standing chrome. */
   const deepLinkAdherenceMode = searchParams.get("adherence_mode") || "";
   const deepLinkFromDay = searchParams.get("from_day") || "";
@@ -67,6 +79,8 @@ function TradeLogBody() {
     campaignId,
     setCampaignId,
     campaignLabel,
+    campaigns: ctxCampaigns,
+    refreshCampaigns,
     rangeFromYmd,
     rangeToYmd,
   } = usePracticeContext();
@@ -86,6 +100,9 @@ function TradeLogBody() {
   const [sheetMode, setSheetMode] = useState<SheetMode>("create");
   const [selected, setSelected] = useState<Trade | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [newTradeClipboard, setNewTradeClipboard] = useState<string | null>(
+    null,
+  );
   const [deepLinked, setDeepLinked] = useState(false);
   const [filterOpenOnly, setFilterOpenOnly] = useState(false);
   /** Log blotter vs cross-account Positions valuation (Spec v0.2). */
@@ -95,6 +112,8 @@ function TradeLogBody() {
    * Table dropdown writes back via setCampaignId.
    */
   const campaignFilter: number | "" = campaignId != null ? campaignId : "";
+  /** Campaign is a view of the total book (L5). Do not AND the account. */
+  const listAccountId = campaignFilter === "" ? accountIdParam : null;
   const setCampaignFilter = useCallback(
     (v: number | "") => {
       setCampaignId(v === "" ? null : v);
@@ -108,15 +127,18 @@ function TradeLogBody() {
   const [adherenceMode, setAdherenceMode] = useState<"drift" | "">("");
   const [filterFromDay, setFilterFromDay] = useState<string>("");
   const [filterToDay, setFilterToDay] = useState<string>("");
-  const [campaignOptions, setCampaignOptions] = useState<
-    {
-      id: number;
-      title: string;
-      is_default?: boolean;
-      is_ledger?: boolean;
-      account_id?: number | null;
-    }[]
-  >([]);
+  const campaignOptions = useMemo(
+    () =>
+      ctxCampaigns.map((c) => ({
+        id: c.id,
+        title: c.title,
+        is_default: !!c.is_default,
+        is_ledger: !!c.is_ledger,
+        account_id: c.account_id ?? null,
+        badge_color: c.badge_color ?? null,
+      })),
+    [ctxCampaigns],
+  );
   const [playbookOptions, setPlaybookOptions] = useState<
     { id: number; title: string }[]
   >([]);
@@ -129,28 +151,17 @@ function TradeLogBody() {
   }, [ctxAccounts]);
 
   useEffect(() => {
-    void Promise.all([
-      fetchCampaigns().catch(() => null),
-      fetchPlaybookEntries(true).catch(() => null),
-    ]).then(([camps, pbs]) => {
-      if (camps?.campaigns) {
-        setCampaignOptions(
-          camps.campaigns.map((c) => ({
-            id: c.id,
-            title: c.title,
-            is_default: !!c.is_default,
-            is_ledger: !!c.is_ledger,
-            account_id: c.account_id ?? null,
-          })),
-        );
-      }
-      if (pbs?.entries) {
-        setPlaybookOptions(
-          pbs.entries.map((e) => ({ id: e.id, title: e.title })),
-        );
-      }
-    });
-  }, []);
+    void refreshCampaigns();
+    void fetchPlaybookEntries(true)
+      .then((pbs) => {
+        if (pbs?.entries) {
+          setPlaybookOptions(
+            pbs.entries.map((e) => ({ id: e.id, title: e.title })),
+          );
+        }
+      })
+      .catch(() => {});
+  }, [refreshCampaigns]);
 
   // Apply ?campaign= from Practice Campaign → Trade Log deep-link into chrome scope
   useEffect(() => {
@@ -172,6 +183,14 @@ function TradeLogBody() {
     }
   }, [deepLinkAdherenceMode, deepLinkFromDay, deepLinkToDay]);
 
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      rememberTosScript(e.clipboardData?.getData("text/plain"));
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, []);
+
   function clearJourneyAdherenceFilter() {
     setAdherenceMode("");
     setFilterFromDay("");
@@ -182,6 +201,15 @@ function TradeLogBody() {
     next.delete("to_day");
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
+  }
+
+  function setImportQuery(importId: number | null | "open") {
+    const next = new URLSearchParams(searchParams.toString());
+    if (importId === "open") next.set("import", "open");
+    else if (importId != null && importId > 0) next.set("import", String(importId));
+    else next.delete("import");
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
   /** A4 — blotter date = chrome period, unless Journey locate overrides. */
@@ -199,7 +227,7 @@ function TradeLogBody() {
     setNextCursor(null);
     setHasMore(false);
     Promise.all([
-      fetchTrades(accountIdParam, {
+      fetchTrades(listAccountId, {
         limit: PAGE_LIMIT,
         practice_campaign_id:
           campaignFilter === "" ? null : campaignFilter,
@@ -211,7 +239,7 @@ function TradeLogBody() {
         from_day: blotterFromDay,
         to_day: blotterToDay,
       }),
-      fetchUnmatchedOpens(accountIdParam),
+      fetchUnmatchedOpens(listAccountId),
       fetchCatalog(),
     ])
       .then(async ([tr, opens, vn]) => {
@@ -251,7 +279,14 @@ function TradeLogBody() {
         setHasMore(!!tr.data.has_more);
         setNextCursor(tr.data.next_cursor ?? null);
         if (opens.ok) {
-          setOpenTrades(opens.data.trades || []);
+          const rawOpens = opens.data.trades || [];
+          setOpenTrades(
+            campaignFilter === ""
+              ? rawOpens
+              : rawOpens.filter(
+                  (t) => t.practice_campaign_id === campaignFilter,
+                ),
+          );
           if (opens.data.accounts?.length) {
             setAccounts(opens.data.accounts);
           }
@@ -278,6 +313,7 @@ function TradeLogBody() {
       });
   }, [
     accountIdParam,
+    listAccountId,
     prefsReady,
     setAccountId,
     campaignFilter,
@@ -291,7 +327,7 @@ function TradeLogBody() {
     if (!hasMore || !nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const tr = await fetchTrades(accountIdParam, {
+      const tr = await fetchTrades(listAccountId, {
         limit: PAGE_LIMIT,
         cursor: nextCursor,
         practice_campaign_id:
@@ -320,7 +356,7 @@ function TradeLogBody() {
       setLoadingMore(false);
     }
   }, [
-    accountIdParam,
+    listAccountId,
     hasMore,
     nextCursor,
     loadingMore,
@@ -405,8 +441,11 @@ function TradeLogBody() {
   }, [campaignId, campaignLabel, campaignOptions]);
 
   const contextScopeLabel = useMemo(() => {
+    if (campaignId != null) {
+      return `Campaign: ${campaignFilterLabel} · every account`;
+    }
     return `${accountLabel} · ${campaignFilterLabel}`;
-  }, [accountLabel, campaignFilterLabel]);
+  }, [accountLabel, campaignFilterLabel, campaignId]);
 
   /** Prefer server opens for accuracy; fall back to client match on loaded pages. */
   const unmatched = useMemo(() => {
@@ -451,9 +490,16 @@ function TradeLogBody() {
         accountLabel={contextScopeLabel}
         onImport={() => setImportOpen(true)}
         onNewTrade={() => {
+          const peek = peekClipboardForTos();
+          setNewTradeClipboard(lastRememberedTosScript());
           setSheetMode("create");
           setSelected(null);
           setSheetOpen(true);
+          void peek.then((text) => {
+            if (!text) return;
+            rememberTosScript(text);
+            setNewTradeClipboard(text);
+          });
         }}
         onDeleted={() => {
           setSelectedIds(new Set());
@@ -461,6 +507,9 @@ function TradeLogBody() {
           load();
         }}
         nativeVenueLabel={nativeVenueLabel}
+        focusImportId={deepLinkImportId}
+        requestImportManager={importManagerRequested}
+        onImportManagerDismiss={() => setImportQuery(null)}
         onExport={(fmt) => {
           let aid: number | null = accountIdParam;
           if (fmt === "native" && accountId === "all" && standingHome?.id) {
@@ -679,6 +728,7 @@ function TradeLogBody() {
           onFilterOpenOnly={setFilterOpenOnly}
           campaignFilter={campaignFilter}
           onCampaignFilter={setCampaignFilter}
+          onImportBadgeClick={(id) => setImportQuery(id ?? "open")}
           campaignOptions={campaignOptionsForAccount}
           playbookFilter={playbookFilter}
           onPlaybookFilter={setPlaybookFilter}
@@ -727,8 +777,10 @@ function TradeLogBody() {
         accounts={mergedAccounts}
         catalog={catalog}
         defaultAccountId={defaultAcct}
+        clipboardText={newTradeClipboard}
         onClose={() => {
           setSheetOpen(false);
+          setNewTradeClipboard(null);
         }}
         onSaved={() => load()}
         onOpenTrade={(t) => {

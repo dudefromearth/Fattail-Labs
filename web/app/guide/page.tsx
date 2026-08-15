@@ -259,9 +259,10 @@ export default function GuidePage() {
             </p>
             <ul>
               <li>
-                <strong>Account</strong> — which book you&apos;re looking at
-                (broker or sim). Trades and reports follow this account. Journal
-                is still <em>you</em>, not a separate journal per account.
+                <strong>Account = book.</strong> One-for-one. The book is the
+                contents of that account. Trades and reports follow this
+                account. Journal is still <em>you</em>, not a separate journal
+                per account. A campaign is a badge, not a book.
               </li>
               <li>
                 <strong>Date</strong> — year / month / week / day. Journal uses
@@ -290,12 +291,12 @@ export default function GuidePage() {
                 create, edit, or review.
               </li>
               <li>
-                <strong>Accounts:</strong> more than one book; active account
-                from Practice Context.
+                <strong>Accounts:</strong> each account is one book; active
+                account from Practice Context.
               </li>
               <li>
                 <strong>Import &amp; export:</strong> bring fills in (optional
-                default book campaign or another campaign) and export a portable
+                campaign badge or none) and export a portable
                 copy.
               </li>
               <li>
@@ -316,8 +317,8 @@ export default function GuidePage() {
                 link). Named campaigns/playbooks narrow to exact stamps.
               </li>
               <li>
-                <strong>Living book:</strong> log when experience happens; pair
-                meaningful days with Journal on the same date.
+                <strong>Living log:</strong> record when experience happens;
+                pair meaningful days with Journal on the same date.
               </li>
             </ul>
 

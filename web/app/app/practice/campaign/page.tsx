@@ -20,6 +20,11 @@ import {
 } from "@/lib/practiceSpineApi";
 import { fetchAccounts } from "@/lib/tradeLogAnalytics";
 import type { Account } from "@/lib/tradeLog";
+import { campaignTitleLooksLikeBook } from "@/lib/campaignName";
+import TradeFindTag from "@/components/trade-log/TradeFindTag";
+import CampaignBadge from "@/components/practice/CampaignBadge";
+import CampaignColorPicker from "@/components/practice/CampaignColorPicker";
+import { normalizeCampaignHex } from "@/lib/campaignBadge";
 
 function statusLabel(c: PracticeCampaign): string {
   switch (c.status) {
@@ -53,6 +58,7 @@ export default function PracticeCampaignPage() {
   const [startsAt, setStartsAt] = useState(() =>
     new Date().toISOString().slice(0, 10),
   );
+  const [badgeColor, setBadgeColor] = useState("#1D4ED8");
   const [busy, setBusy] = useState(false);
   /** Open = planned|active; Archive = completed|abandoned (status sole authority). */
   const [libraryView, setLibraryView] = useState<"open" | "archive">("open");
@@ -70,6 +76,23 @@ export default function PracticeCampaignPage() {
         setAccounts(
           (acctRes.data.accounts || []).filter((a) => a.status === "active"),
         );
+        const used = new Set(
+          (d.campaigns || [])
+            .map((c) => normalizeCampaignHex(c.badge_color))
+            .filter(Boolean),
+        );
+        const next =
+          [
+            "#1D4ED8",
+            "#0F766E",
+            "#B45309",
+            "#BE123C",
+            "#7C3AED",
+            "#0369A1",
+            "#15803D",
+            "#C2410C",
+          ].find((c) => !used.has(c)) || "#1D4ED8";
+        setBadgeColor(next);
       } else {
         setAccounts([]);
       }
@@ -129,6 +152,7 @@ export default function PracticeCampaignPage() {
         starting_capital: asDefault ? (Number.isFinite(cap) ? cap : null) : cap,
         max_drawdown_pct: asDefault ? (Number.isFinite(mdd) ? mdd : null) : mdd,
         starts_at: startsAt || null,
+        badge_color: badgeColor,
       });
       router.push(`/app/practice/campaign/${camp.id}`);
     } catch (e) {
@@ -151,7 +175,7 @@ export default function PracticeCampaignPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1100px] px-4 py-6 pb-24 sm:px-6">
+    <main className="mx-auto w-full max-w-[1400px] px-4 py-6 pb-24 sm:px-6">
       <PracticeSuiteChrome
         active="campaign"
         hideStoryStrip
@@ -258,7 +282,22 @@ export default function PracticeCampaignPage() {
                   data-testid="campaign-title-input"
                   autoFocus
                 />
+                {campaignTitleLooksLikeBook(title) ? (
+                  <span className="mt-1 block text-[11px] font-normal text-[var(--color-label-secondary)]">
+                    A book is an account. This name is a campaign badge, not a
+                    book.
+                  </span>
+                ) : null}
               </label>
+              <div className="mt-3">
+                <CampaignColorPicker
+                  value={badgeColor}
+                  onChange={setBadgeColor}
+                  taken={campaigns
+                    .map((c) => c.badge_color || "")
+                    .filter(Boolean)}
+                />
+              </div>
               <label className="mt-3 block text-xs font-medium text-[var(--color-label-secondary)]">
                 Trade account
                 <select
@@ -291,7 +330,14 @@ export default function PracticeCampaignPage() {
                 <Button
                   type="button"
                   variant="primary"
-                  disabled={busy}
+                  disabled={
+                    busy ||
+                    campaigns.some(
+                      (c) =>
+                        normalizeCampaignHex(c.badge_color) ===
+                        normalizeCampaignHex(badgeColor),
+                    )
+                  }
                   onClick={() => void createAndOpen()}
                   data-testid="campaign-start"
                 >
@@ -364,7 +410,7 @@ export default function PracticeCampaignPage() {
                 data-testid="campaign-empty-offer"
               >
                 <p className="font-semibold text-[var(--color-label)]">
-                  Setting up your book…
+                  Setting up your account…
                 </p>
                 <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-label-secondary)]">
                   Your default account ledger should appear automatically. If this
@@ -452,7 +498,11 @@ export default function PracticeCampaignPage() {
                     className="flex flex-1 flex-col focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
                   >
                     <h3 className="font-semibold text-[var(--color-label)]">
-                      {c.title}
+                      <CampaignBadge
+                        title={c.title}
+                        color={c.badge_color}
+                        className="max-w-full text-[13px] font-semibold"
+                      />
                     </h3>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       <span className="rounded-full bg-[var(--color-tint-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label)]">
@@ -524,6 +574,26 @@ export default function PracticeCampaignPage() {
                 No archived campaigns yet.
               </p>
             )}
+
+          <div id="find-badge" className="scroll-mt-6">
+            <h2
+              className="font-semibold tracking-tight text-[var(--color-label)]"
+              style={{ fontSize: "var(--text-title-2)", lineHeight: 1.2 }}
+            >
+              Find and Badge
+            </h2>
+            <p
+              className="mt-1 max-w-2xl text-[var(--color-label-secondary)]"
+              style={{ fontSize: "var(--text-subheadline)", lineHeight: 1.4 }}
+            >
+              Search every account (each account is one book) and assign or
+              clear campaign badges. A campaign is not a book. One place — not
+              inside each campaign and not on the Trade Log.
+            </p>
+            <div className="mt-4">
+              <TradeFindTag />
+            </div>
+          </div>
         </div>
       </PracticeSuiteChrome>
     </main>

@@ -34,6 +34,7 @@ import {
   packageEconomics,
 } from "@/lib/options-lab/packageEconomics";
 import { useOptionsLab } from "@/lib/optionsLabContext";
+import { rememberTosScript } from "@/lib/tradeLogTos";
 import type {
   ChainAccessors,
   LegInput,
@@ -2269,6 +2270,7 @@ export default function PositionBuilder({
               data-testid="builder-tos-script"
               onClick={() => {
                 if (!tosScript) return;
+                rememberTosScript(tosScript);
                 void navigator.clipboard.writeText(tosScript).then(() => {
                   setCopied(true);
                   setTimeout(() => setCopied(false), 1200);

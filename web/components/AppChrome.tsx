@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import { ConfirmProvider } from "@/components/ui";
 import AppearanceRoot from "@/components/appearance/AppearanceRoot";
+import MemberSettingsRoot from "@/components/settings/MemberSettingsRoot";
 import PageViewTracker from "@/components/PageViewTracker";
 import IdleSessionGuard from "@/components/IdleSessionGuard";
 import HelpLauncher from "@/components/HelpLauncher";
@@ -23,6 +24,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   return (
     <ConfirmProvider>
       <AppearanceRoot />
+      <MemberSettingsRoot />
       <IdleSessionGuard />
       {!isAdminApp && <PageViewTracker />}
       {!isAdminApp && (

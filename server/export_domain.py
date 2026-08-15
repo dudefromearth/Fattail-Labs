@@ -768,7 +768,7 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                       predecessor_campaign_id,
                       charter_version, max_drawdown_pct, strategy_codes,
                       capital_allocation_mode, capital_allocation_note,
-                      retrospective_id, same_bet_json,
+                      retrospective_id, same_bet_json, badge_color,
                       export_key, created_at, updated_at
                FROM member_practice_campaigns
                WHERE identity_id = %s
@@ -910,6 +910,7 @@ def build_practice_campaign_document(cur, identity_id: int) -> dict[str, Any]:
                         else None
                     ),
                     "same_bet": c.get("same_bet_json"),
+                    "badge_color": c.get("badge_color") or None,
                     "amendments": amendments,
                     "bounds": bounds_out,
                     "playbook_export_keys": pb_export_keys,

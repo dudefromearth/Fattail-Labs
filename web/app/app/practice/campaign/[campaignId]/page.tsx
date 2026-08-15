@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import CampaignPanel from "@/components/practice/CampaignPanel";
+import CampaignTaggedTrades from "@/components/practice/CampaignTaggedTrades";
 import { Button } from "@/components/ui";
 import {
   fetchCampaign,
@@ -25,6 +26,11 @@ import {
 } from "@/lib/practiceSpineApi";
 import { fetchAccounts } from "@/lib/tradeLogAnalytics";
 import type { Account } from "@/lib/tradeLog";
+import { campaignTitleLooksLikeBook } from "@/lib/campaignName";
+import { usePracticeContext } from "@/lib/practiceContext";
+import CampaignBadge from "@/components/practice/CampaignBadge";
+import CampaignColorPicker from "@/components/practice/CampaignColorPicker";
+import { normalizeCampaignHex } from "@/lib/campaignBadge";
 
 function statusLabel(c: PracticeCampaign): string {
   switch (c.status) {
@@ -133,6 +139,7 @@ function signatureChrome(c: PracticeCampaign): {
 export default function CampaignEditorPage() {
   const params = useParams();
   const router = useRouter();
+  const { refreshCampaigns, campaigns: ctxCampaigns } = usePracticeContext();
   const campaignId = Number(params?.campaignId);
 
   const [campaign, setCampaign] = useState<PracticeCampaign | null>(null);
@@ -144,6 +151,7 @@ export default function CampaignEditorPage() {
   const [dirty, setDirty] = useState(false);
 
   const [title, setTitle] = useState("");
+  const [badgeColor, setBadgeColor] = useState("#1D4ED8");
   const [accountId, setAccountId] = useState<number | "">("");
   const [capital, setCapital] = useState("");
   const [maxDdPct, setMaxDdPct] = useState("");
@@ -175,6 +183,7 @@ export default function CampaignEditorPage() {
       setCampaign(c);
       setAmendments(amends);
       setTitle(c.title || "");
+      setBadgeColor(normalizeCampaignHex(c.badge_color) || "#1D4ED8");
       setAccountId(c.account_id ?? "");
       setCapital(
         c.starting_capital != null && Number.isFinite(Number(c.starting_capital))
@@ -282,6 +291,7 @@ export default function CampaignEditorPage() {
         : accountId;
     return {
       title: title.trim(),
+      badge_color: badgeColor,
       account_id: acct as number | null,
       starting_capital: parseCapital(),
       max_drawdown_pct: parseMaxDd(),
@@ -319,6 +329,7 @@ export default function CampaignEditorPage() {
       const updated = await patchCampaign(campaign.id, charterBody());
       setCampaign(updated);
       setDirty(false);
+      await refreshCampaigns();
       await refreshAmendments(updated.id);
       if (!updated.is_ledger) await refreshPhaseReport(updated.id);
     } catch (e) {
@@ -350,6 +361,7 @@ export default function CampaignEditorPage() {
       }
       const updated = await patchCampaign(campaign.id, body);
       setCampaign(updated);
+      await refreshCampaigns();
       await refreshAmendments(updated.id);
       if (!updated.is_ledger) await refreshPhaseReport(updated.id);
     } catch (e) {
@@ -443,8 +455,12 @@ export default function CampaignEditorPage() {
             </Link>
             {campaign && (
               <>
-                <h1 className="text-lg font-semibold text-[var(--color-label)] sm:text-xl">
-                  {campaign.title}
+                <h1 className="text-lg font-semibold sm:text-xl">
+                  <CampaignBadge
+                    title={campaign.title}
+                    color={campaign.badge_color}
+                    className="max-w-[18rem] px-2.5 py-1 text-sm font-semibold"
+                  />
                 </h1>
                 <span className="rounded-full bg-[var(--color-tint-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-label)]">
                   {statusLabel(campaign)}
@@ -491,7 +507,17 @@ export default function CampaignEditorPage() {
                 <Button
                   type="button"
                   variant="primary"
-                  disabled={busy || !dirty || !title.trim()}
+                  disabled={
+                    busy ||
+                    !dirty ||
+                    !title.trim() ||
+                    ctxCampaigns.some(
+                      (c) =>
+                        c.id !== campaign.id &&
+                        normalizeCampaignHex(c.badge_color) ===
+                          normalizeCampaignHex(badgeColor),
+                    )
+                  }
                   onClick={() => void save()}
                   data-testid="campaign-editor-save"
                 >
@@ -500,6 +526,22 @@ export default function CampaignEditorPage() {
               )}
             </div>
           </div>
+
+          {campaign && isOpen && (
+            <div className="max-w-md">
+              <CampaignColorPicker
+                value={badgeColor}
+                onChange={(hex) => {
+                  setBadgeColor(hex);
+                  markDirty();
+                }}
+                taken={ctxCampaigns
+                  .filter((c) => c.id !== campaign.id)
+                  .map((c) => c.badge_color || "")
+                  .filter(Boolean)}
+              />
+            </div>
+          )}
 
           {loading && (
             <p className="text-sm text-[var(--color-label-tertiary)]">
@@ -709,6 +751,12 @@ export default function CampaignEditorPage() {
                           data-testid="campaign-editor-title"
                           disabled={!isOpen || !!campaign.is_ledger}
                         />
+                        {campaignTitleLooksLikeBook(title) ? (
+                          <span className="mt-1 block text-[11px] font-normal text-[var(--color-label-secondary)]">
+                            A book is an account. This name is a campaign badge,
+                            not a book. Rename if you want that to stay obvious.
+                          </span>
+                        ) : null}
                       </label>
                       <div className="flex flex-wrap gap-3">
                         <label className="block min-w-[10rem] flex-1 text-xs font-medium text-[var(--color-label-secondary)]">
@@ -880,6 +928,10 @@ export default function CampaignEditorPage() {
                     </p>
                   </div>
                 </div>
+              )}
+
+              {!campaign.is_ledger && (
+                <CampaignTaggedTrades campaign={campaign} />
               )}
 
               {campaign.is_ledger ? (

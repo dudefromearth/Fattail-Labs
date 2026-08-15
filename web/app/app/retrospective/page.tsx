@@ -11,6 +11,9 @@ import { useRouter } from "next/navigation";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import RetroCadenceNudge from "@/components/RetroCadenceNudge";
 import RetroMaterialNotice from "@/components/RetroMaterialNotice";
+import RetroHeadingCard, {
+  useRetroHeading,
+} from "@/components/retrospective/RetroHeadingCard";
 import { Button } from "@/components/ui";
 import type { ProcessPayload } from "@/components/ProcessMeter";
 import {
@@ -153,32 +156,39 @@ export default function RetrospectivePage() {
   const rangeStart = total === 0 ? 0 : (page - 1) * RETRO_LIST_PAGE_SIZE + 1;
   const rangeEnd = Math.min(page * RETRO_LIST_PAGE_SIZE, total);
   const showPager = total > RETRO_LIST_PAGE_SIZE;
+  const heading = useRetroHeading({
+    scopeStart: scope?.scope_start,
+    scopeEnd: scope?.scope_end,
+    isMaiden: scope?.is_maiden,
+    process,
+    windowHint: scope?.readiness
+      ? { days: scope.readiness.days, trades: scope.readiness.trades }
+      : undefined,
+  });
 
   return (
     <main className="mx-auto w-full max-w-[1100px] px-4 py-6 pb-24 sm:px-6">
-      <PracticeSuiteChrome
-        active="retrospective"
-        subtitle="Periodic look-back: gather since last retrospective, dual report, integrity."
-      >
+      <PracticeSuiteChrome active="retrospective" hideTitle>
         <div className="mt-6 space-y-6" data-testid="retrospective-library">
+          <RetroHeadingCard
+            model={heading.model}
+            loading={heading.loading}
+            kicker="Retrospective · compass"
+          />
           <RetroMaterialNotice />
           {process && <RetroCadenceNudge process={process} />}
           <section className="surface-card border border-[var(--color-separator)] px-5 py-6 sm:px-8">
-            <h1
+            <h2
               className="font-semibold text-[var(--color-label)]"
               style={{ fontSize: "var(--text-headline)" }}
             >
-              Retrospectives
-            </h1>
+              Next review
+            </h2>
             <p className="mt-2 max-w-2xl text-sm text-[var(--color-label-secondary)]">
-              A retrospective is a journal type that tells the system to gather
-              all your work since the last one (or your{" "}
-              <strong className="font-medium text-[var(--color-label)]">
-                maiden journey
-              </strong>{" "}
-              if this is the first). You get a dual report — book performance
-              and process performance — plus Process Flow, and comparison to
-              prior retros when they exist.
+              Gather since the last completed review
+              {scope?.is_maiden ? " — your maiden journey if this is the first" : ""}.
+              The heading above is the opening reckoning. Conversation walks the
+              findings; this page starts the period.
             </p>
             {scope && (
               <div

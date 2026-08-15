@@ -13,9 +13,12 @@ Double-fail → plain-text degrade (session stays open). No depth budgets.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Any
+
+log = logging.getLogger("labs.journal_session_agent")
 
 import auth
 import journal_session_domain as jsd
@@ -459,7 +462,11 @@ def run_agent_turn(
             if llm_body:
                 question, kind, absence_key = llm_body, "absence", None
         except Exception:
-            # Fall through to local if available
+            log.exception(
+                "journal LLM turn failed session_id=%s identity_id=%s",
+                session_id,
+                identity_id,
+            )
             if mode == AGENT_MODE_LLM and kind == "done":
                 pass
 
@@ -509,6 +516,291 @@ def run_agent_turn(
     }
 
 
+def _member_name_context(cur, identity_id: int) -> str:
+    """Profile display name — fact for the model. Never invent from email."""
+    try:
+        cur.execute(
+            """SELECT display_name FROM identities
+               WHERE identity_id = %s""",
+            (identity_id,),
+        )
+        row = cur.fetchone()
+    except Exception:
+        return ""
+    name = ""
+    if row:
+        name = str(row.get("display_name") or "").strip()
+    if name:
+        return (
+            "Member identity (fact, not inference):\n"
+            f"- Display name: {name}\n"
+            "Address them by this name when it is natural. "
+            "If they ask their name, tell them this display name. "
+            "Do not invent a different name."
+        )
+    return (
+        "Member identity (fact, not inference):\n"
+        "- Display name: not set on Profile\n"
+        "If they ask their name, say it is not set on their Profile."
+    )
+
+
+def _clip_ctx(raw: Any, *, limit: int = 240) -> str:
+    s = " ".join(str(raw or "").split())
+    if not s:
+        return ""
+    return s if len(s) <= limit else s[: limit - 1] + "…"
+
+
+def _iso_day(raw: Any) -> str:
+    if raw is None:
+        return ""
+    if hasattr(raw, "date"):
+        try:
+            return raw.date().isoformat()
+        except Exception:
+            pass
+    if hasattr(raw, "isoformat"):
+        s = raw.isoformat()
+        return s[:10]
+    s = str(raw)
+    return s[:10] if len(s) >= 10 else s
+
+
+def _past_retro_context(cur, identity_id: int, *, limit: int = 6) -> str:
+    """Completed retrospectives — member-authored fields only. No P&L, no grades."""
+    try:
+        cur.execute(
+            """SELECT scope_start, scope_end, title, body_md, one_thing_md
+               FROM member_retrospectives
+               WHERE identity_id = %s AND status = 'complete'
+               ORDER BY COALESCE(completed_at, created_at) DESC, id DESC
+               LIMIT %s""",
+            (int(identity_id), int(limit)),
+        )
+        rows = cur.fetchall() or []
+    except Exception:
+        return ""
+    if not rows:
+        return (
+            "Past retrospectives: none completed yet.\n"
+            "Do not invent prior reviews."
+        )
+    lines = [
+        "Past retrospectives (member-authored only — do not invent missing text, "
+        "do not cite P&L or grades, do not name emotions they did not write):"
+    ]
+    for r in rows:
+        start = _iso_day(r.get("scope_start"))
+        end = _iso_day(r.get("scope_end"))
+        title = _clip_ctx(r.get("title"), limit=80)
+        one = _clip_ctx(r.get("one_thing_md"))
+        body = _clip_ctx(r.get("body_md"))
+        bits = [f"- {start} → {end}"]
+        if title:
+            bits.append(f"title: {title}")
+        if one:
+            bits.append(f"one thing: {one}")
+        if body and body != one:
+            bits.append(f"their words: {body}")
+        if not one and not body:
+            bits.append("(no written carry-forward on this review)")
+        lines.append(" · ".join(bits))
+    lines.append(
+        "Use these to remember carry-forward and to notice if today's writing "
+        "continues or breaks a thread they already named. Do not recite the list "
+        "unless they ask."
+    )
+    return "\n".join(lines)
+
+
+def _journey_activity_context(cur, identity_id: int) -> str:
+    """Journey as activity — never grades, meters, streaks, or scores."""
+    lines = [
+        "Journey (activity only — do not recite grades, meters, streaks, or scores):"
+    ]
+    try:
+        cur.execute(
+            """SELECT c.title, e.completed_at
+               FROM enrollments e
+               JOIN courses c ON c.id = e.course_id
+               WHERE e.identity_id = %s
+               ORDER BY e.enrolled_at DESC
+               LIMIT 12""",
+            (int(identity_id),),
+        )
+        rows = cur.fetchall() or []
+    except Exception:
+        rows = []
+    if rows:
+        bits = []
+        for r in rows:
+            title = _clip_ctx(r.get("title"), limit=60) or "Course"
+            bits.append(
+                f"{title} ({'completed' if r.get('completed_at') else 'in progress'})"
+            )
+        lines.append("- Courses: " + "; ".join(bits))
+    else:
+        lines.append("- Courses: none enrolled.")
+    try:
+        cur.execute(
+            """SELECT COUNT(*) AS n FROM lesson_progress
+               WHERE identity_id = %s AND completed_at IS NOT NULL""",
+            (int(identity_id),),
+        )
+        n = int((cur.fetchone() or {}).get("n") or 0)
+        lines.append(f"- Lessons marked complete: {n}.")
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            """SELECT COUNT(*) AS n, MAX(checked_in_at) AS last_at
+               FROM live_session_checkins
+               WHERE identity_id = %s""",
+            (int(identity_id),),
+        )
+        row = cur.fetchone() or {}
+        n = int(row.get("n") or 0)
+        last = _iso_day(row.get("last_at"))
+        if n:
+            lines.append(
+                f"- Live session check-ins: {n}"
+                + (f" (last {last})" if last else "")
+                + "."
+            )
+        else:
+            lines.append("- Live session check-ins: none yet.")
+    except Exception:
+        pass
+    try:
+        cur.execute(
+            """SELECT title, habit, status FROM member_habit_plans
+               WHERE identity_id = %s AND status IN ('active', 'draft')
+               ORDER BY status ASC, id DESC
+               LIMIT 4""",
+            (int(identity_id),),
+        )
+        habits = cur.fetchall() or []
+        if habits:
+            bits = []
+            for h in habits:
+                title = _clip_ctx(h.get("title") or h.get("habit"), limit=80)
+                if title:
+                    bits.append(f"{title} [{h.get('status') or 'active'}]")
+            if bits:
+                lines.append("- Habit plans: " + "; ".join(bits) + ".")
+        else:
+            lines.append("- Habit plans: none active.")
+    except Exception:
+        pass
+    lines.append(
+        "Use this to know where they are on the path. Do not quote a score."
+    )
+    return "\n".join(lines)
+
+
+def _trade_log_context(cur, identity_id: int, *, days: int = 14) -> str:
+    """Recent book as process facts — never P&L, never prices as identity."""
+    try:
+        cur.execute(
+            """SELECT DATE(t.exec_at) AS d, t.strategy, t.adherence, t.net_side,
+                      (SELECT COALESCE(NULLIF(l.underlier, ''), l.symbol)
+                         FROM member_trade_log_legs l
+                        WHERE l.trade_id = t.id
+                        ORDER BY l.leg_index ASC, l.id ASC
+                        LIMIT 1) AS product
+               FROM member_trade_log_trades t
+               WHERE t.identity_id = %s
+                 AND t.exec_at >= (UTC_DATE() - INTERVAL %s DAY)
+               ORDER BY t.exec_at DESC, t.id DESC
+               LIMIT 25""",
+            (int(identity_id), int(days)),
+        )
+        rows = cur.fetchall() or []
+    except Exception:
+        return "Trade Log (last 14 days): unavailable.\nDo not invent fills."
+    if not rows:
+        return (
+            "Trade Log (last 14 days): no fills.\n"
+            "Do not invent trades. Do not state P&L."
+        )
+    lines = [
+        "Trade Log (last 14 days — process only; do not state P&L or treat "
+        "profit/loss as who they are):"
+    ]
+    for r in rows:
+        day = _iso_day(r.get("d"))
+        product = _clip_ctx(r.get("product"), limit=16) or "?"
+        strategy = _clip_ctx(r.get("strategy"), limit=32) or "trade"
+        side = (r.get("net_side") or "").strip().lower()
+        adh = (r.get("adherence") or "unknown").strip() or "unknown"
+        bit = f"- {day} {product} {strategy}"
+        if side:
+            bit += f" {side}"
+        if adh and adh != "unknown":
+            bit += f" · adherence {adh}"
+        lines.append(bit)
+    return "\n".join(lines)
+
+
+def _past_journal_context(
+    cur, identity_id: int, *, session_id: int, days: int = 21
+) -> str:
+    """Other days' member notes — their words. Not this session (that's the transcript)."""
+    try:
+        cur.execute(
+            """SELECT s.journal_date, m.body_md
+               FROM member_journal_messages m
+               JOIN member_journal_sessions s ON s.id = m.session_id
+               WHERE m.identity_id = %s AND m.author = 'member'
+                 AND s.id <> %s
+                 AND s.journal_date >= (UTC_DATE() - INTERVAL %s DAY)
+               ORDER BY s.journal_date DESC, m.created_at ASC, m.id ASC""",
+            (int(identity_id), int(session_id), int(days)),
+        )
+        rows = cur.fetchall() or []
+    except Exception:
+        return ""
+    if not rows:
+        return (
+            "Past journal days (last 21 days, other dates): none.\n"
+            "Do not invent prior journal notes."
+        )
+    by_day: dict[str, list[str]] = {}
+    for r in rows:
+        day = _iso_day(r.get("journal_date"))
+        text = _clip_ctx(r.get("body_md"), limit=200)
+        if not day or not text:
+            continue
+        bucket = by_day.setdefault(day, [])
+        if len(bucket) < 2:
+            bucket.append(text)
+    if not by_day:
+        return (
+            "Past journal days (last 21 days, other dates): none.\n"
+            "Do not invent prior journal notes."
+        )
+    lines = [
+        "Past journal days (last 21 days, other dates — member words only; "
+        "today's thread is in the transcript below):"
+    ]
+    for day in list(by_day.keys())[:10]:
+        lines.append(f"- {day}: " + " / ".join(by_day[day]))
+    return "\n".join(lines)
+
+
+def _member_context_pack(cur, identity_id: int, session_id: int) -> str:
+    """One compile: name + journey activity + book + past journal + retros."""
+    parts = [
+        _member_name_context(cur, identity_id),
+        _journey_activity_context(cur, identity_id),
+        _trade_log_context(cur, identity_id),
+        _past_journal_context(cur, identity_id, session_id=session_id),
+        _past_retro_context(cur, identity_id),
+    ]
+    return "\n\n".join(p for p in parts if p)
+
+
 def _llm_turn(
     cur,
     identity_id: int,
@@ -535,69 +827,32 @@ def _llm_turn(
     for r in rows:
         who = "Member" if r["author"] == "member" else "Agent"
         lines.append(f"{who}: {r['body_md']}")
-    # Trade log day context (best effort)
-    day_ctx = ""
-    try:
-        from trade_log_domain.day_book import day_book_for_identity
+    pack = _member_context_pack(cur, identity_id, session_id)
 
-        jd = None
+    _ = (tag, structured, raised)
+    prompt_vid = None
+    try:
         cur.execute(
-            "SELECT journal_date FROM member_journal_sessions WHERE id=%s",
-            (session_id,),
+            """SELECT prompt_version_id FROM member_journal_sessions
+               WHERE id = %s AND identity_id = %s""",
+            (session_id, identity_id),
         )
-        r = cur.fetchone()
-        if r:
-            jd = jsd._as_date(r["journal_date"])
-        if jd:
-            book = day_book_for_identity(cur, identity_id, jd.isoformat())
-            n = len((book or {}).get("items") or [])
-            day_ctx = f"Trade log items on {jd.isoformat()}: {n}."
+        prow = cur.fetchone()
+        if prow:
+            prompt_vid = prow.get("prompt_version_id")
     except Exception:
-        day_ctx = ""
-
-    # Spec v0.5 §5.1 / §8.1 — Tag Manager labels as description only (never script/gate)
-    tag_labels_ctx = ""
-    try:
-        import tag_domain as td
-
-        assigns = td.list_assignments_for_object(
-            cur,
-            object_type="journal_session",
-            object_id=session_id,
-            identity_id=identity_id,
-        )
-        labels = []
-        for a in assigns:
-            t = a.get("tag") or {}
-            lab = (t.get("label") or "").strip()
-            if lab:
-                labels.append(lab)
-        if labels:
-            tag_labels_ctx = (
-                "Member tagged (context only; do not open interview or change "
-                "behavior based on tags): " + ", ".join(labels) + "."
-            )
-        else:
-            tag_labels_ctx = "Member tagged: (none)."
-    except Exception:
-        tag_labels_ctx = ""
-
-    # Legacy column tag is not SoR — mention only as weak legacy if no TM labels
-    legacy_tag = (tag or "").strip()
-    legacy_bit = (
-        f" Legacy session.tag={legacy_tag}."
-        if legacy_tag and not tag_labels_ctx.startswith("Member tagged:")
-        else ""
-    )
-
-    system = compose_member_system_prompt(JOURNAL_SESSION_SYSTEM_PROMPT_V1)
+        prompt_vid = None
+    stamped_id, stamped_body, reasoning = jsd.load_prompt_body(cur, prompt_vid)
+    instruction = (stamped_body or "").strip() or JOURNAL_SESSION_SYSTEM_PROMPT_V1
+    system = compose_member_system_prompt(instruction)
+    if pack:
+        system = f"{system.rstrip()}\n\n{pack}"
     user = (
-        f"Phase={phase}. {tag_labels_ctx}{legacy_bit} "
-        f"Structured confirmed fields={json.dumps(structured)}. "
-        f"Absence keys already raised={raised}. {day_ctx}\n"
+        f"Phase={phase}.\n"
         f"Transcript:\n" + ("\n".join(lines) if lines else "(empty)")
         + "\n\nRespond with one short process question or brief acknowledgment only."
     )
+    _ = stamped_id
     result = complete(
         [
             {"role": "system", "content": system},
@@ -606,8 +861,9 @@ def _llm_turn(
         agent="journal_session",
         temperature=0.2,
         max_tokens=256,
+        reasoning_effort=reasoning,
     )
-    text = (result.content or "").strip()
+    text = (result.text or "").strip()
     return text or None
 
 

@@ -29,14 +29,17 @@ class XaiProvider:
         model: str,
         temperature: float,
         max_tokens: int,
+        reasoning_effort: str | None = None,
     ) -> CompletionResult:
         url = f"{self._cfg.xai_base_url}/chat/completions"
-        payload = {
+        payload: dict[str, Any] = {
             "model": model,
             "messages": [m.as_dict() for m in messages],
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
+        if reasoning_effort:
+            payload["reasoning_effort"] = reasoning_effort
         headers = {
             "Authorization": f"Bearer {self._cfg.xai_api_key}",
             "Content-Type": "application/json",
