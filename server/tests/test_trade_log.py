@@ -237,6 +237,63 @@ def test_trade_log_found_set_range_and_position_count(client):
         _purge(a)
 
 
+def test_found_set_symbol_autofilter_is_valid_sql(client):
+    """Symbol AutoFilter (SPCX,TSLA) must not 500 — missing ) on IN subquery."""
+    a = _id("zztest-tl-found-sym@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "Sym", "broker": "thinkorswim"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = acct.json()["id"]
+        for under, day in (("SPCX", "2026-08-14"), ("TSLA", "2026-08-09"), ("SPX", "2026-07-29")):
+            r = client.post(
+                "/api/me/trade-log/trades",
+                cookies=ca,
+                json={
+                    "account_id": aid,
+                    "exec_at": f"{day}T14:00:00",
+                    "strategy": "SINGLE",
+                    "asset_class": "equity",
+                    "order_type": "LMT",
+                    "net_price": 1.0,
+                    "net_side": "DEBIT",
+                    "adherence": "unknown",
+                    "legs": [
+                        {
+                            "side": "BUY",
+                            "quantity": 1,
+                            "pos_effect": "TO_OPEN",
+                            "underlier": under,
+                            "symbol": under,
+                            "fill_price": 1.0,
+                        }
+                    ],
+                },
+            )
+            assert r.status_code == 200, r.text
+        found = client.get(
+            "/api/me/trade-log/found?symbols=SPCX,TSLA", cookies=ca
+        )
+        assert found.status_code == 200, found.text
+        assert found.json()["position_count"] == 2
+        page = client.get(
+            "/api/me/trade-log/trades?symbols=SPCX,TSLA&positions_only=true",
+            cookies=ca,
+        )
+        assert page.status_code == 200, page.text
+        unders = {
+            (t.get("legs") or [{}])[0].get("underlier")
+            for t in page.json()["trades"]
+        }
+        assert unders == {"SPCX", "TSLA"}
+    finally:
+        _purge(a)
+
+
 def test_found_set_follows_campaign_stamp_change(client):
     """Clear/assign must change the found set under the current filter."""
     a = _id("zztest-tl-found-stamp@labs.test")

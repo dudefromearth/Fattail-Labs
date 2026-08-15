@@ -785,6 +785,7 @@ def _find_filter_clauses(
             + ") OR COALESCE(underlier, '') IN ("
             + ",".join(["%s"] * len(sy))
             + "))"
+            ")"
         )
         args.extend([iid, *sy, *sy])
     date_parts: list[str] = []
