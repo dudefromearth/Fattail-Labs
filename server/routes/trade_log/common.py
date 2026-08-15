@@ -1153,6 +1153,19 @@ def _position_leg_join_sql() -> str:
     """
 
 
+def _position_book_from_sql(alias: str = "t") -> str:
+    """FROM + WHERE for this identity's position rows (not notes / close-outs).
+
+    Two %s placeholders, both identity_id (leg-join then owner).
+    """
+    join = _position_leg_join_sql().format(alias=alias)
+    pred = _position_row_predicate(alias)
+    return (
+        f"member_trade_log_trades {alias} {join} "
+        f"WHERE {alias}.identity_id = %s AND {pred}"
+    )
+
+
 def _position_row_predicate(alias: str = "x") -> str:
     """A position is a typed structure (single / vertical / butterfly / …).
 
@@ -1252,15 +1265,13 @@ def found_set_stats(
 
 
 def trade_distincts(cur, iid: int) -> dict:
-    """Unique AutoFilter values from the whole book (not the current page)."""
-    cur.execute(
-        """SELECT DISTINCT DATE(exec_at) AS d
-             FROM member_trade_log_trades
-            WHERE identity_id = %s AND exec_at IS NOT NULL
-            ORDER BY d DESC
-            LIMIT 4000""",
-        (iid,),
-    )
+    """AutoFilter choices from the found-set universe (positions only).
+
+    Close-outs and NOTE fills are not listed — selecting a listed value must
+    be able to retrieve at least one position (not a false empty set).
+    """
+    book = _position_book_from_sql("t")
+    pos_args = (iid, iid)
 
     def _ymd(v: object) -> str | None:
         if v is None:
@@ -1268,6 +1279,14 @@ def trade_distincts(cur, iid: int) -> dict:
         s = str(v)
         return s[:10] if len(s) >= 10 else s
 
+    cur.execute(
+        f"""SELECT DISTINCT DATE(t.exec_at) AS d
+              FROM {book}
+               AND t.exec_at IS NOT NULL
+             ORDER BY d DESC
+             LIMIT 4000""",
+        pos_args,
+    )
     days = [x for x in (_ymd(r.get("d")) for r in (cur.fetchall() or [])) if x]
     months: list[str] = []
     seen_m: set[str] = set()
@@ -1277,38 +1296,46 @@ def trade_distincts(cur, iid: int) -> dict:
             seen_m.add(ym)
             months.append(ym)
     cur.execute(
-        """SELECT DISTINCT strategy FROM member_trade_log_trades
-            WHERE identity_id = %s AND strategy IS NOT NULL AND strategy <> ''
-            ORDER BY strategy""",
-        (iid,),
+        f"""SELECT DISTINCT t.strategy AS strategy
+              FROM {book}
+               AND t.strategy IS NOT NULL AND t.strategy <> ''
+             ORDER BY t.strategy""",
+        pos_args,
     )
     strategies = [str(r["strategy"]) for r in (cur.fetchall() or [])]
     cur.execute(
-        """SELECT DISTINCT UPPER(net_side) AS s FROM member_trade_log_trades
-            WHERE identity_id = %s AND net_side IS NOT NULL AND net_side <> ''""",
-        (iid,),
+        f"""SELECT DISTINCT UPPER(t.net_side) AS s
+              FROM {book}
+               AND t.net_side IS NOT NULL AND t.net_side <> ''""",
+        pos_args,
     )
     sides = sorted({str(r["s"]) for r in (cur.fetchall() or []) if r.get("s")})
     cur.execute(
-        """SELECT DISTINCT pos_effect FROM member_trade_log_legs
-            WHERE identity_id = %s AND pos_effect IN ('TO_OPEN', 'TO_CLOSE')""",
-        (iid,),
+        f"""SELECT DISTINCT l.pos_effect AS pos_effect
+              FROM member_trade_log_legs l
+             WHERE l.identity_id = %s
+               AND l.pos_effect IN ('TO_OPEN', 'TO_CLOSE')
+               AND l.trade_id IN (SELECT t.id FROM {book})""",
+        (iid, *pos_args),
     )
-    effects = sorted({str(r["pos_effect"]) for r in (cur.fetchall() or [])})
+    effects = sorted(
+        {str(r["pos_effect"]) for r in (cur.fetchall() or []) if r.get("pos_effect")}
+    )
     cur.execute(
-        """SELECT DISTINCT COALESCE(NULLIF(underlier, ''), NULLIF(symbol, '')) AS sym
-             FROM member_trade_log_legs
-            WHERE identity_id = %s
-              AND COALESCE(NULLIF(underlier, ''), NULLIF(symbol, '')) IS NOT NULL
-            ORDER BY sym
-            LIMIT 400""",
-        (iid,),
+        f"""SELECT DISTINCT COALESCE(NULLIF(l.underlier, ''), NULLIF(l.symbol, '')) AS sym
+              FROM member_trade_log_legs l
+             WHERE l.identity_id = %s
+               AND l.trade_id IN (SELECT t.id FROM {book})
+               AND COALESCE(NULLIF(l.underlier, ''), NULLIF(l.symbol, '')) IS NOT NULL
+             ORDER BY sym
+             LIMIT 400""",
+        (iid, *pos_args),
     )
     symbols = [str(r["sym"]) for r in (cur.fetchall() or []) if r.get("sym")]
     cur.execute(
-        """SELECT DISTINCT practice_campaign_id FROM member_trade_log_trades
-            WHERE identity_id = %s""",
-        (iid,),
+        f"""SELECT DISTINCT t.practice_campaign_id AS practice_campaign_id
+              FROM {book}""",
+        pos_args,
     )
     campaigns = []
     seen_none = False

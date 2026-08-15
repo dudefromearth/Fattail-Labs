@@ -294,6 +294,150 @@ def test_found_set_symbol_autofilter_is_valid_sql(client):
         _purge(a)
 
 
+def test_autofilter_each_listed_choice_retrieves_positions(client):
+    """Every AutoFilter value is a position that exists — select it, get it, no 500."""
+    a = _id("zztest-tl-af-all@labs.test")
+    try:
+        ca = cookie_for("activator", a)
+        acct = client.post(
+            "/api/me/trade-log/accounts",
+            cookies=ca,
+            json={"label": "AF", "broker": "thinkorswim"},
+        )
+        assert acct.status_code == 200, acct.text
+        aid = acct.json()["id"]
+        camp = client.post(
+            "/api/me/practice/campaigns",
+            cookies=ca,
+            json={
+                "title": "AF season",
+                "activate": True,
+                "max_drawdown_pct": 15,
+                "starts_at": "2020-01-01",
+                "starting_capital": 10000,
+            },
+        )
+        assert camp.status_code == 200, camp.text
+        cid = int(camp.json()["campaign"]["id"])
+
+        def _pos(**kw):
+            r = client.post("/api/me/trade-log/trades", cookies=ca, json=kw)
+            assert r.status_code == 200, r.text
+            return r.json()
+
+        def _leg(under, effect="TO_OPEN"):
+            return {
+                "side": "BUY",
+                "quantity": 1,
+                "pos_effect": effect,
+                "underlier": under,
+                "symbol": under,
+                "fill_price": 1.0,
+            }
+
+        _pos(
+            account_id=aid,
+            exec_at="2022-06-15T14:00:00",
+            strategy="VERTICAL",
+            asset_class="equity_option",
+            order_type="LMT",
+            net_price=1.0,
+            net_side="DEBIT",
+            adherence="unknown",
+            legs=[_leg("SPY")],
+        )
+        _pos(
+            account_id=aid,
+            exec_at="2026-08-09T14:00:00",
+            strategy="SINGLE",
+            asset_class="equity",
+            order_type="LMT",
+            net_price=1.0,
+            net_side="CREDIT",
+            adherence="unknown",
+            legs=[_leg("TSLA")],
+        )
+        stamped = _pos(
+            account_id=aid,
+            exec_at="2026-08-14T14:00:00",
+            strategy="BUTTERFLY",
+            asset_class="equity_option",
+            order_type="LMT",
+            net_price=1.0,
+            net_side="DEBIT",
+            adherence="unknown",
+            practice_campaign_id=cid,
+            legs=[_leg("SPCX")],
+        )
+        assert stamped.get("practice_campaign_id") == cid
+        note = client.post(
+            "/api/me/trade-log",
+            cookies=ca,
+            json={"setup_md": "not a position", "adherence": "unknown"},
+        )
+        assert note.status_code == 200, note.text
+        _pos(
+            account_id=aid,
+            exec_at="2020-01-01T12:00:00",
+            strategy="SINGLE",
+            asset_class="equity",
+            order_type="LMT",
+            net_price=1.0,
+            net_side="CREDIT",
+            adherence="unknown",
+            legs=[_leg("DEAD", "TO_CLOSE")],
+        )
+
+        dist = client.get("/api/me/trade-log/distincts", cookies=ca)
+        assert dist.status_code == 200, dist.text
+        d = dist.json()
+        assert "NOTE" not in (d.get("strategies") or [])
+        assert "2020-01-01" not in (d.get("days") or [])
+        assert "DEAD" not in (d.get("symbols") or [])
+        assert "SPCX" in (d.get("symbols") or [])
+        assert "TSLA" in (d.get("symbols") or [])
+        assert "SPY" in (d.get("symbols") or [])
+
+        checks: list[tuple[str, str]] = []
+        for sym in d.get("symbols") or []:
+            checks.append(("symbols", sym))
+        for st in d.get("strategies") or []:
+            checks.append(("strategies", st))
+        for sd in d.get("sides") or []:
+            checks.append(("sides", sd))
+        for fx in d.get("effects") or []:
+            checks.append(("effects", fx))
+        for ym in (d.get("months") or [])[:3]:
+            checks.append(("months", ym))
+        for day in (d.get("days") or [])[:3]:
+            checks.append(("days", day))
+        years = sorted({x[:4] for x in (d.get("days") or [])})
+        for y in years:
+            checks.append(("years", y))
+        for c in d.get("campaigns") or []:
+            key = "none" if c.get("id") is None else str(c["id"])
+            checks.append(("campaigns", key))
+
+        assert checks, "expected AutoFilter choices from seeded positions"
+        for param, value in checks:
+            found = client.get(
+                f"/api/me/trade-log/found?{param}={value}", cookies=ca
+            )
+            assert found.status_code == 200, f"{param}={value} found {found.text}"
+            n = found.json()["position_count"]
+            assert n >= 1, f"{param}={value} listed but found 0 positions"
+            page = client.get(
+                f"/api/me/trade-log/trades?{param}={value}&positions_only=true",
+                cookies=ca,
+            )
+            assert page.status_code == 200, f"{param}={value} list {page.text}"
+            assert len(page.json()["trades"]) >= 1, (
+                f"{param}={value} listed but list empty"
+            )
+    finally:
+        _purge(a)
+
+
 def test_found_set_follows_campaign_stamp_change(client):
     """Clear/assign must change the found set under the current filter."""
     a = _id("zztest-tl-found-stamp@labs.test")
