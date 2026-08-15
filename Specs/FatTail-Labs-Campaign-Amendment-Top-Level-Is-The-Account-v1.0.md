@@ -54,6 +54,10 @@ rejected** — no badge. The **found set** is named (first day → last day · N
 positions). The table pages 50. A single campaign page lists **only trades
 wearing that badge**. It is not a search surface.
 
+**Normative fold:** Member Campaign Spec **§9a** (2026-08-15). That section
+is the campaign-side law for this allocate surface. Coach’s paragraph above
+is unchanged.
+
 ---
 
 ## 1. What is removed

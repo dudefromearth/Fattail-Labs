@@ -474,6 +474,17 @@ export default function GuidePage() {
                 does not boost Journey standing. Cycle count and amendments
                 never feed Journey meters.
               </li>
+              <li>
+                <strong>Find and Badge</strong> (on this same Campaigns page) is
+                the one place to search every account and assign or clear a
+                campaign badge. A campaign is not a book. AutoFilter stays hidden
+                until you turn it on. Select positions, then clear or assign. A
+                fill outside the campaign dates is rejected and stays unbadged.
+                Clear a badge before assigning another. The found set is a date
+                range plus a position count (not raw fills). The table pages 50.
+                Five undos. Search is not inside each campaign and not on the
+                Trade Log.
+              </li>
             </ul>
 
             <H2 id="journey">Journey</H2>

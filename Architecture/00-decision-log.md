@@ -4,6 +4,31 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-15 — DL-362 Campaign spec includes Find and Badge
+
+**Decision (Coach):** Update the campaign spec to include the search and
+manage feature (Find and Badge).
+
+**As-built:** Member Campaign Spec v1.3 **§9a**. Surfaces table + allocate
+dispense #4 + acceptance #26. Amendment v1.0 points at §9a. Coach allocate
+quote in the Amendment is unchanged.
+
+---
+
+## 2026-08-15 — DL-363 Find and Badge chrome is title + tooltip; help owns the copy
+
+**Decision (Coach):** Body copy under the **Find and Badge** title and above
+AutoFilter is unnecessary. Tooltip at most. File the explanation in the
+help system.
+
+**As-built:** Campaigns page has the heading and HIG capsules only; native
+`title` on the heading and AutoFilter. Member copy is in
+`server/help_reference/app-areas.md` (**Campaigns**, **Find and Badge**) and
+the User's Guide Campaigns section. Campaign Spec §9a Home + Help Concierge
+Spec v1.2 section list match.
+
+---
+
 ## 2026-08-15 — DL-361 Browser Paste chip on ToS clipboard read is accepted
 
 **Decision (Coach):** Safari and Firefox may still show their Paste chip

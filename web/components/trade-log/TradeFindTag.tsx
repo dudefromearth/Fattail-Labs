@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui";
+import { IconChevronDown } from "@/components/ui/icons";
 import {
   fetchFoundSet,
   fetchTradeDistincts,
@@ -25,6 +25,14 @@ import { compactWhen } from "@/lib/tradeLogWhenTree";
 
 const UNDO_LIMIT = 5;
 const PAGE_SIZE = 50;
+
+const capsule =
+  "inline-flex items-stretch overflow-hidden rounded-full bg-[var(--color-fill)] p-0.5";
+const capsuleBtn =
+  "inline-flex min-h-9 items-center justify-center gap-1 px-3.5 text-sm font-medium transition-colors " +
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)] " +
+  "disabled:pointer-events-none disabled:opacity-45";
+const capsuleRule = "my-1.5 w-px shrink-0 bg-[var(--color-separator)]";
 
 type ColKey = "when" | "symbol" | "strategy" | "side" | "effect" | "campaign";
 
@@ -719,34 +727,103 @@ export default function TradeFindTag() {
           </>
         )}
       </div>
-      <p className="mt-3 text-sm text-[var(--color-label-secondary)]">
-        AutoFilter hides until you turn it on. Filter every account (each
-        account is one book), select positions, then clear or assign a campaign
-        badge. A campaign is not a book. A position outside the campaign dates
-        is rejected and stays unbadged. The table pages {PAGE_SIZE} at a time.
-        Clear a badge before assigning another. Five undos.
-      </p>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant={filterOn ? "primary" : "secondary"}
-          onClick={() => {
-            const next = !filterOn;
-            setFilterOn(next);
-            setOpenCol(null);
-            resetPaging();
-            if (!next) setFilters({});
-          }}
-          data-testid="campaign-autofilter-toggle"
-          aria-pressed={filterOn}
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <div
+          className={capsule}
+          role="group"
+          aria-label="Find and Badge actions"
+          data-testid="find-tag-action-group"
         >
-          AutoFilter
-        </Button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !filterOn;
+              setFilterOn(next);
+              setOpenCol(null);
+              resetPaging();
+              if (!next) setFilters({});
+            }}
+            className={[
+              capsuleBtn,
+              "rounded-full",
+              filterOn
+                ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
+                : "text-[var(--color-label)] hover:bg-[var(--color-surface)]/80",
+            ].join(" ")}
+            data-testid="campaign-autofilter-toggle"
+            aria-pressed={filterOn}
+            title="Hides until you turn it on. Filter every account, select positions, then clear or assign a campaign badge. A fill outside campaign dates is rejected. Clear a badge before assigning another."
+          >
+            AutoFilter
+          </button>
+          <span className={capsuleRule} aria-hidden />
+          <button
+            type="button"
+            disabled={busy || !canClear}
+            onClick={() => void apply(null, "Cleared campaign")}
+            className={[
+              capsuleBtn,
+              "rounded-full text-[var(--color-label)] hover:bg-[var(--color-surface)]/80",
+            ].join(" ")}
+            data-testid="campaign-alloc-clear"
+          >
+            Clear campaign
+          </button>
+          <span className={capsuleRule} aria-hidden />
+          <button
+            type="button"
+            disabled={busy || !canAssign}
+            onClick={() => {
+              if (assignTo === "") {
+                setErr("Choose a campaign to assign.");
+                return;
+              }
+              void apply(assignTo, "Assigned campaign");
+            }}
+            className={[
+              capsuleBtn,
+              "rounded-full text-[var(--color-label)] hover:bg-[var(--color-surface)]/80",
+            ].join(" ")}
+            data-testid="campaign-alloc-add"
+            title={
+              anyStamped
+                ? "Clear the campaign on these trades first"
+                : undefined
+            }
+          >
+            Assign campaign
+          </button>
+          <span className={capsuleRule} aria-hidden />
+          <label className="relative inline-flex min-h-9 items-center">
+            <span className="sr-only">Choose campaign</span>
+            <select
+              value={assignTo === "" ? "" : String(assignTo)}
+              onChange={(e) =>
+                setAssignTo(e.target.value ? Number(e.target.value) : "")
+              }
+              className="min-h-9 max-w-[12rem] cursor-pointer appearance-none rounded-full border-0 bg-transparent py-1 pl-3.5 pr-8 text-sm font-medium text-[var(--color-label)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
+              data-testid="find-tag-assign-to"
+              aria-label="Choose campaign"
+            >
+              <option value="">Choose campaign</option>
+              {charters.map((c) => (
+                <option key={c.id} value={c.id}>
+                  Campaign · {c.title}
+                </option>
+              ))}
+            </select>
+            <span
+              className="pointer-events-none absolute right-2.5 text-[var(--color-label-secondary)]"
+              aria-hidden
+            >
+              <IconChevronDown size={14} />
+            </span>
+          </label>
+        </div>
         {filterOn ? (
           <button
             type="button"
-            className="text-xs text-[var(--color-tint)] underline"
+            className="text-sm font-medium text-[var(--color-tint)] hover:underline"
             onClick={() => {
               setFilters({});
               setOpenCol(null);
@@ -756,65 +833,15 @@ export default function TradeFindTag() {
             Clear filters
           </button>
         ) : null}
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button
+        <button
           type="button"
-          variant="secondary"
-          disabled={busy || !canClear}
-          onClick={() => void apply(null, "Cleared campaign")}
-          data-testid="campaign-alloc-clear"
-        >
-          Clear campaign
-        </Button>
-        <Button
-          type="button"
-          variant="primary"
-          disabled={busy || !canAssign}
-          onClick={() => {
-            if (assignTo === "") {
-              setErr("Choose a campaign to assign.");
-              return;
-            }
-            void apply(assignTo, "Assigned campaign");
-          }}
-          data-testid="campaign-alloc-add"
-          title={
-            anyStamped
-              ? "Clear the campaign on these trades first"
-              : undefined
-          }
-        >
-          Assign campaign
-        </Button>
-        <label className="text-xs text-[var(--color-label-secondary)]">
-          To
-          <select
-            value={assignTo === "" ? "" : String(assignTo)}
-            onChange={(e) =>
-              setAssignTo(e.target.value ? Number(e.target.value) : "")
-            }
-            className="ml-1 rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
-            data-testid="find-tag-assign-to"
-          >
-            <option value="">Choose campaign</option>
-            {charters.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button
-          type="button"
-          variant="plain"
           disabled={busy || undo.length === 0}
           onClick={() => void undoLast()}
+          className="text-sm font-medium text-[var(--color-tint)] hover:underline disabled:pointer-events-none disabled:opacity-45"
           data-testid="campaign-alloc-undo"
         >
           Undo{undo.length ? ` (${undo.length}/${UNDO_LIMIT})` : ""}
-        </Button>
+        </button>
         <span
           className="text-xs text-[var(--color-label-tertiary)]"
           data-testid="find-tag-showing"
@@ -839,25 +866,39 @@ export default function TradeFindTag() {
         </p>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={pageBusy || page === 0}
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
-          data-testid="find-tag-page-prev"
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <div
+          className={capsule}
+          role="group"
+          aria-label="Found set pages"
+          data-testid="find-tag-page-group"
         >
-          Previous
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={pageBusy || !hasMore}
-          onClick={() => setPage((p) => p + 1)}
-          data-testid="find-tag-page-next"
-        >
-          Next
-        </Button>
+          <button
+            type="button"
+            disabled={pageBusy || page === 0}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            className={[
+              capsuleBtn,
+              "rounded-full text-[var(--color-label)] hover:bg-[var(--color-surface)]/80",
+            ].join(" ")}
+            data-testid="find-tag-page-prev"
+          >
+            Previous
+          </button>
+          <span className={capsuleRule} aria-hidden />
+          <button
+            type="button"
+            disabled={pageBusy || !hasMore}
+            onClick={() => setPage((p) => p + 1)}
+            className={[
+              capsuleBtn,
+              "rounded-full text-[var(--color-label)] hover:bg-[var(--color-surface)]/80",
+            ].join(" ")}
+            data-testid="find-tag-page-next"
+          >
+            Next
+          </button>
+        </div>
         <span className="text-xs tabular-nums text-[var(--color-label-tertiary)]">
           Page {page + 1}
           {pageBusy ? " · loading…" : ""}

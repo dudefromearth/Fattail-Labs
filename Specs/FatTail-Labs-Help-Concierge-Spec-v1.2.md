@@ -20,8 +20,9 @@ the bot to answer those without dumping an ever-growing KB into every request.
 `server/help_reference/*.md`, each split into `## `-headed sections:
 - **overview.md** — what Labs is, membership/tiers, account/sign-in, getting help, limits.
 - **app-areas.md** — one section per area of the app (Home/Hub, Courses, Lessons, Live,
-  Resources, Pathway, Guide, Profile, Trade Log, Journal, Retrospective, Reports, Journey,
-  Strategy Lab, Practice, Toughness, Community, Wiki, Membership, Notifications, Help).
+  Resources, Pathway, Guide, Profile, Trade Log, Campaigns, Find and Badge, Journal,
+  Retrospective, Reports, Journey, Strategy Lab, Practice, Toughness, Community, Wiki,
+  Membership, Notifications, Help).
 - **courses.md** — the published courses distilled from their real descriptions + a
   recommended learning order.
 

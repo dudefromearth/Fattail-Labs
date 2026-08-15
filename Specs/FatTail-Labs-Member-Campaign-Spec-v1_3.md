@@ -1,10 +1,10 @@
 # FatTail Labs — Member Campaign Spec v1.3
 ## Structured practice · the window model · the prescribed panel · the Campaign Journey
 
-**Status:** Product / architecture authority — complete restatement (redo, Coach-directed 2026-08-09) · **registry/badge clarification 2026-08-09**  
+**Status:** Product / architecture authority — complete restatement (redo, Coach-directed 2026-08-09) · **registry/badge clarification 2026-08-09** · **Find and Badge as-built 2026-08-15**  
 **Pending supersession (DRAFT):** [Campaign Amendment — Top Level Is the Account v1.0](./FatTail-Labs-Campaign-Amendment-Top-Level-Is-The-Account-v1.0.md) — **abolishes ledger furniture**; undirected trades; targets Campaign Spec **v1.4**. Until ratified, v1.3 ledger laws remain as-built authority; do not implement reverse without Coach GO.  
 **Supersedes:** Member Campaign Structured Practice Spec v1.2 (and via it v1.0–v1.1); Campaign Amendment — Window, Direction, Badge (folded); UX Directive — Prescribed Panel (folded); Campaign Panel v1 — Six Controls (folded)  
-**Companion:** [Trade Log Spec v1.1](./FatTail-Labs-Trade-Log-Spec-v1.1.md) §17 — **passive participant** (badge host; no campaign logic). [Capital Spec v0.3](./FatTail-Labs-Capital-and-Position-Sizing-Spec-v0.3.md) · [Funding Spec v0.2](./FatTail-Labs-Funding-and-Defunding-Spec-v0.2.md) · [Staleness Spec v0.1](./FatTail-Labs-Staleness-Awareness-Spec-v0.1.md) — capital stack (beside, not inside).  
+**Companion:** [Trade Log Spec v1.1](./FatTail-Labs-Trade-Log-Spec-v1.1.md) §17 — **passive participant** (badge host; no campaign logic). **Find and Badge** (§9a) is the campaign-owned search-and-manage surface (DL-351–353). [Capital Spec v0.3](./FatTail-Labs-Capital-and-Position-Sizing-Spec-v0.3.md) · [Funding Spec v0.2](./FatTail-Labs-Funding-and-Defunding-Spec-v0.2.md) · [Staleness Spec v0.1](./FatTail-Labs-Staleness-Awareness-Spec-v0.1.md) — capital stack (beside, not inside).  
 **Queued, not dropped:** D6 convexity gauge / vol-correlation module — Coach-ratified, blocked on the vol data-source OD.  
 **Type:** Practice Campaign model — concept, laws, lifecycle, panel, journey, surfaces, schema, migration
 
@@ -77,6 +77,7 @@ Optional later (not required for v1 badge): short code, cover art — still regi
 1. **Dispense** — at create/edit of a trade, the sheet offers **only** registry rows that cover fill time (plus the account ledger). That is eligibility, not variance.
 2. **Wear** — once stamped, the trade **wears that badge forever** (until explicit redirect). Window expiry, archive, and End campaign stop *new* dispenses into that season; they do **not** strip badges already worn.
 3. **Display** — blotter resolves title (and provenance tier from `stamped_by`) from the registry by stamp id. A rename changes the chip label; membership remains the same id.
+4. **Allocate (Find and Badge)** — the member **searches, selects, and manages** which positions wear which badge (§9a). This is campaign-owned. It is not a Trade Log search, and it is not repeated inside every campaign page.
 
 **Position language:** as-built the stamp is on the **trade** row (open/close fill). Product may say “position wears the badge” — legs inherit the parent trade’s stamp; there is no separate badge table on legs or a parallel position entity for campaigns.
 
@@ -179,6 +180,7 @@ Seeds are arbitrary starting bands around Coach's reference values — the admin
 | Create | Title + activate remains a valid minimal contract; window fields; frame-pick and custom path arrive with §5.3's deferred items |
 | Trade sheet | Campaign field pre-filled by L3; eligibility-filtered picker (L4); quiet variance line (§7); zero new required keystrokes on the happy path |
 | **Trade Log (passive)** | **The badge** — see §9 |
+| **Find and Badge** | **Search and manage** — see §9a. Campaigns main page. One place to find positions and assign or clear a campaign badge. |
 | Weekly pivot / post-mortem | Variance audit + panel draw + amendments-beside-variances; post-mortem closes on both ledgers: corridors kept, marks reached; leads with process and psychological friction, never P&L |
 | Retirement | Open **charters** surfaced (settle or retire anyway); ledger closes with the book silently |
 
@@ -195,6 +197,57 @@ Seeds are arbitrary starting bands around Coach's reference values — the admin
 5. **Fill-time law:** editing a fill's time re-evaluates eligibility for *new* direction choices; a stamp whose fill time moves outside its campaign's window is **surfaced quietly for redirect, never auto-moved**.
 6. **Schema:** Trade Log columns for campaigns = `practice_campaign_id` + `stamped_by` only. No denormalized title on the trade (live registry lookup for chip label). Journal stamping remains **optional** (OD-1.4).
 7. Trade Log's own doctrine unchanged: options-first blotter, accounts immutable on fills, import per §11, DL-257 untouched (Reports remains objective aggregate; no campaign chrome there beyond optional Practice Context stamp filter, not a P&L hero).
+8. **Search and manage is not on the blotter.** The Trade Log may **filter** to a campaign (whole book, every account — DL-355). It does not host Find and Badge. `/app/trade-log/find` redirects to Campaigns.
+
+## 9a. Find and Badge — search and manage (as-built 2026-08-15)
+
+**Coach allocate law** (Amendment v1.0 §0.1): *“The trader needs a way to search and select and manage which campaign trades are allocated to.”* This section is that surface. Campaign-side law; Trade Log Spec §15.3 is the host/API as-built.
+
+**Home:** Campaigns main page `/app/practice/campaign#find-badge`. Title: **Find and Badge**. No body copy under the title or above AutoFilter — native `title` tooltips only. Full member explanation lives in the Help concierge reference (`server/help_reference/app-areas.md` — **Campaigns**, **Find and Badge**) and the User's Guide Campaigns section. A position **wears a campaign badge**. That is the terminology (DL-352). Exclusive to campaigns — not the Trade Log, not inside every campaign (DL-351). A single campaign page lists **only** trades already wearing that badge. It is not a search surface.
+
+**Book vs campaign:** A **book** is one-for-one the contents of an **account**. A campaign is a **badge**, not a book. Confusion is a product failure (DL-356). Find and Badge searches **every account**. Assigning a badge does not move a fill between books.
+
+**One or none:** A position wears **one** campaign badge or **none**. Find and Badge is how a set of positions joins a campaign or stays unassociated (DL-353). Redirect is a move, never a share (L6).
+
+### 9a.1 Found set
+
+The found set is named first: **date range + position count** (`first_day → last_day` · N positions).
+
+A **position** is a typed structure (single, vertical, butterfly, …). Untyped market rows count as **Single**. A close-out of the same structure is **not** a second position. Notes are not positions. The table never counts raw fills.
+
+The table pages **50**. It does not dump the book.
+
+### 9a.2 AutoFilter
+
+Hidden until the member turns it on. Columns: **When · Symbol · Strategy · Debit/Credit · Effect · Campaign**.
+
+Toolbar is one HIG capsule: **AutoFilter · Clear campaign · Assign campaign · Choose campaign**. Pager is a second capsule: **Previous · Next**.
+
+- **When** is a calendar hierarchy: year → month → day (DL-349). Multiple years stay collapsed; one year opens months; days stay collapsed until the month expands.
+- Choices come from the **found-set universe** (positions only). A listed choice must retrieve at least one position. Close-out-only days/symbols and NOTE are not listed. Selecting a listed value must not 500.
+- After **Clear** or **Assign**, the found set **reloads under the current filter** (DL-350). The banner, page, and campaign column are the new set.
+
+### 9a.3 Assign and clear
+
+- Select rows, then **Clear campaign** or **Assign campaign** to a named charter (or none).
+- **Clear before assign** when a row already wears a badge. Five undos.
+- **Window law (L4):** a fill whose exec day sits outside the campaign `[starts_at, ends_at]` is **rejected**. The badge is not applied. That row will not appear when that campaign is the filter.
+- Explicit clear (`practice_campaign_id: null`) is **undirected**. It does not restamp from memory.
+
+### 9a.4 Other surfaces that must agree
+
+| Surface | Law |
+|---------|-----|
+| Trade Log campaign filter | Same stamp, **every account** (DL-355). Account switcher applies only when scope is All positions. |
+| Reports / Records | **All positions** or one **Campaign ·** title, using allocated capital (DL-354). |
+| Campaign detail | Wearing trades only. No second search. |
+
+### 9a.5 API (indicative)
+
+`GET /api/me/trade-log/found` — date range + position count + item ids.  
+`GET /api/me/trade-log/distincts` — AutoFilter menus (position universe).  
+`GET /api/me/trade-log/trades` — paged list; Find and Badge uses `positions_only` + the same filter query.  
+`PATCH /api/me/trade-log/trades/{id}` — stamp or clear; window reject is 4xx, not a silent skip.
 
 ## 10. Data model (delta summary — India refines)
 
@@ -223,6 +276,7 @@ Platform gating of trades (never — no 4xx on any logging path) · auto-termina
 **Journey:** 16. Radar axes = declared panel only; no radar without deliberate charter; sub-N (custom path) renders bars only. 17. Out-of-band-HIGH reduces extension (win-rate case explicit); goal axes render progress, never variance. 18. **Present-state only** — no time scrub, no as-of-T historical radar (Coach 2026-08-09). 19. Radar derived at render; no stored series; no Journey feed (score-input audit).
 **Witness:** 20. Boundary breach logs + variance + quiet line; no modal/block/4xx. 21. Goal rows never produce variance; critical on goal-role rejects 4xx. 22. Critical breach surfaces once; no auto-status-change. 23. Variance evaluated against bounds in force at fill time; amendment does not rewrite it (regression).
 **Badge / registry (Trade Log side, tested there):** 24. Create campaign → registry row available to dispense list; one chip per blotter row; provenance tiering; no variance styling on chip; tap filters via the one filter system; eligibility picker for new stamps; end season does not strip existing stamps; "Direct to campaign…" honors eligibility when shipped.
+**Find and Badge (Campaigns side):** 26. Lives only on Campaigns `#find-badge`. Found set names date range + position count. AutoFilter lists only position-universe values; each listed choice retrieves ≥1 position (no 500). Assign rejects fills outside the campaign window. Clear is undirected. After clear/assign the found set reloads under the current filter. Trade Log campaign filter and Reports campaign scope agree (whole book).
 **Pack/import:** 25. Round-trip: signature, amendments, lineage (pending-and-reported), bounds+role, provenance; import lands unchosen fills in ledger, memory untouched, colliding names suffixed with note.
 
 ## 14. Gates
@@ -253,6 +307,8 @@ Platform gating of trades (never — no 4xx on any logging path) · auto-termina
 
 | Date | Note |
 |------|------|
+| 2026-08-15 | **§9a chrome** — no body copy under the title or above AutoFilter; tooltips + Help concierge (`help_reference` Campaigns / Find and Badge) + User's Guide. |
+| 2026-08-15 | **§9a Find and Badge** — campaign-owned search and manage (Coach allocate law). Surfaces table + dispense #4 + acceptance #26. DL-349–356. Trade Log remains passive badge host (§9). |
 | 2026-08-09 | **Coach:** Campaign Journey radar = **present-state only**; lifetime scrub / as-of-T history **cut (not deferred)**. §6 restated; acceptance #18. Aligns Amendment §2.1. |
 | 2026-08-09 | **§2.1 Campaign registry + badge** codified (registry = `member_practice_campaigns`; dispense vs forever wear; Trade Log mounts registry, does not own it). §9 expanded; companion → Trade Log Spec §17. Acceptance #24 registry-aware. |
 | 2026-08-09 | **v1.3 — complete restatement.** Window model (L4 membership law; fill-time eligibility); Law-4-of-v1.1 removed (charters account-free; reverses migration 103 NOT NULL — Lima logs against landed work); exclusive membership + badge law; Trade Log passive-participant boundary pre-scoped (§9); prescribed panel + six controls + admin toggle folded as the v1 surface; Campaign Journey + Minimum Shape folded; dispositions 6–8 resolved/mooted. D6 still queued on vol OD. |

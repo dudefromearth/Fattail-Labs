@@ -577,20 +577,13 @@ export default function PracticeCampaignPage() {
 
           <div id="find-badge" className="scroll-mt-6">
             <h2
-              className="font-semibold tracking-tight text-[var(--color-label)]"
+              className="cursor-help font-semibold tracking-tight text-[var(--color-label)]"
               style={{ fontSize: "var(--text-title-2)", lineHeight: 1.2 }}
+              title="Search every account (each account is one book). Assign or clear campaign badges. A campaign is not a book."
             >
               Find and Badge
             </h2>
-            <p
-              className="mt-1 max-w-2xl text-[var(--color-label-secondary)]"
-              style={{ fontSize: "var(--text-subheadline)", lineHeight: 1.4 }}
-            >
-              Search every account (each account is one book) and assign or
-              clear campaign badges. A campaign is not a book. One place — not
-              inside each campaign and not on the Trade Log.
-            </p>
-            <div className="mt-4">
+            <div className="mt-3">
               <TradeFindTag />
             </div>
           </div>

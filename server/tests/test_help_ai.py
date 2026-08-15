@@ -84,6 +84,20 @@ def test_search_matches_relevant_sections():
     assert help_ai._search([]) == ""
 
 
+def test_search_find_and_badge_and_autofilter():
+    """Removed Campaigns UI copy lives in the help reference (concierge)."""
+    help_ai._sections.cache_clear()
+    heads = {s["heading"] for s in help_ai._sections()}
+    assert "Find and Badge" in heads and "Campaigns" in heads
+    found = help_ai._search(["find and badge"]).lower()
+    assert "find and badge" in found
+    assert "campaign" in found and "badge" in found
+    assert "book" in found
+    auto = help_ai._search(["autofilter campaign"]).lower()
+    assert "autofilter" in auto
+    assert "assign" in auto or "badge" in auto
+
+
 # --- output parsing ----------------------------------------------------------
 
 

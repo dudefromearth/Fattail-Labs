@@ -43,7 +43,33 @@ website, not here.
 
 ## Trade Log
 A practice tool for recording your trades and reviewing them over time. It's the book
-of record for your practice — what you did, and how it turned out.
+of record for your practice — what you did, and how it turned out. Each account is one
+book. The blotter can filter to a campaign badge (every account) so you can review what
+already wears that badge. Search-and-assign is not on the Trade Log — that is Find and
+Badge, on the Campaigns page.
+
+## Campaigns
+Optional practice charters. A campaign is a **badge**, not a book. The book is the
+contents of one account; assigning a badge does not move a fill between books. A
+position wears **one** campaign badge or **none**. Open Campaigns from Practice. Each
+campaign page lists only positions already wearing that badge. To search the whole book
+and assign or clear badges, use **Find and Badge** on the Campaigns main page — not
+inside each campaign, and not on the Trade Log.
+
+## Find and Badge
+On the Campaigns main page (`/app/practice/campaign#find-badge`). This is the one place
+to search every account and assign or clear a campaign badge.
+
+Search every account (each account is one book). A campaign is not a book. Select
+positions, then clear or assign a campaign badge. A position already wearing a badge
+must be cleared before you assign another. A fill whose date sits outside the campaign
+window is rejected and stays unbadged. Five undos.
+
+**AutoFilter** is off until you turn it on. Then you can filter the found set by When
+(year → month → day), Symbol, Strategy, Debit/Credit, Effect, and Campaign. The found
+set is a date range plus a **position** count (single, vertical, butterfly, and so on
+— not raw fills; a close-out of the same structure is not a second position). The table
+pages 50 at a time.
 
 ## Journal
 Guided journaling to reflect on your trading and your mindset, session by session. Where
@@ -66,8 +92,10 @@ A space to build and study options strategies — design a structure and examine
 risk/reward before you ever risk capital. Availability can depend on your tier.
 
 ## Practice
-A practice space for putting reps in — rehearsing the routine and decisions in a low-stakes
-way so the process becomes second nature.
+The practice desk: Trade Log, Reports, Journal, Retrospective, Playbook, and optional
+Campaigns. Each account is one book. A campaign is a badge, not a book. Journal is still
+you — not a separate journal per account. Find and Badge (on Campaigns) is how positions
+join a campaign or stay unassociated.
 
 ## Toughness
 Mindset and resilience training — the psychological side of trading discipline that the
