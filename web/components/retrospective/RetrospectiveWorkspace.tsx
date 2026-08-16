@@ -628,6 +628,7 @@ export default function RetrospectiveWorkspace({
   const compiledInWay = asList(journalCompile?.in_the_way);
   const compiledWorked = asList(journalCompile?.worked);
   const compiledNext = asList(journalCompile?.next);
+  const compiledNotes = asList(journalCompile?.notes);
 
   /** Spec §6.2 — tile state + summary (process/inventory only; no $ / character grades). */
   const ceremonyTiles: TileInfo[] = useMemo(() => {
@@ -804,16 +805,6 @@ export default function RetrospectiveWorkspace({
       data-book-expanded={bookExpanded ? "1" : "0"}
       data-book-pref-ready={bookPrefReady ? "1" : "0"}
     >
-      <RetroHeadingCard
-        model={heading.model}
-        loading={heading.loading}
-        kicker={
-          data.is_maiden
-            ? "Maiden journey · opening reckoning"
-            : "Retrospective · opening reckoning"
-        }
-      />
-
       {/* Header chrome */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -897,6 +888,82 @@ export default function RetrospectiveWorkspace({
         </div>
       )}
 
+      <div
+        className="space-y-5 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-5 shadow-[var(--elevation-2)]"
+        data-testid="retro-write-answers"
+      >
+        <p className="text-xl font-semibold text-[var(--color-label)]">
+          This week from your journal
+        </p>
+        <CompileList
+          title="What you said you'd do"
+          rows={compiledSaid}
+          empty="Nothing captured this window."
+          testId="retro-compile-said"
+        />
+        <CompileList
+          title="What got in the way"
+          rows={compiledInWay}
+          empty="Nothing named."
+          testId="retro-compile-in-the-way"
+        />
+        <CompileList
+          title="What worked"
+          rows={compiledWorked}
+          empty="Nothing named."
+          testId="retro-compile-worked"
+        />
+        <CompileList
+          title="Open threads"
+          rows={compiledNext}
+          empty="No carry-forward notes."
+          testId="retro-compile-next"
+        />
+        <CompileList
+          title="Your notes"
+          rows={compiledNotes}
+          empty="No freeform notes this window."
+          testId="retro-compile-notes"
+        />
+        <WriteField
+          id="retro-one-thing"
+          label="The fix"
+          value={oneThing}
+          onChange={setOneThing}
+          disabled={data.status === "complete"}
+          placeholder="One checkable thing for next time"
+          inputRef={oneThingRef}
+          testId="retro-onething-input"
+        />
+        <WriteField
+          id="retro-cause"
+          label="Add anything the journal missed"
+          value={body}
+          onChange={setBody}
+          disabled={data.status === "complete"}
+          placeholder="Optional"
+          inputRef={causeRef}
+          testId="retro-cause-input"
+        />
+      </div>
+
+      <details
+        className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill)]/30 p-4"
+        data-testid="retro-look-closer"
+      >
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--color-label-secondary)]">
+          Look closer
+        </summary>
+        <div className="mt-4 space-y-5">
+      <RetroHeadingCard
+        model={heading.model}
+        loading={heading.loading}
+        kicker={
+          data.is_maiden
+            ? "Maiden journey · opening reckoning"
+            : "Retrospective · opening reckoning"
+        }
+      />
       <RetroPeriodBrief brief={asDict(report?.period_brief)} />
 
       {/* Period path — graphical window for scope; process detail is the map below */}
@@ -1001,59 +1068,6 @@ export default function RetrospectiveWorkspace({
             </button>
           );
         })}
-      </div>
-
-      <div
-        className="space-y-5 rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-5 shadow-[var(--elevation-2)]"
-        data-testid="retro-write-answers"
-      >
-        <p className="text-[length:var(--text-title-3)] font-semibold tracking-tight text-[var(--color-label)]">
-          From your journal
-        </p>
-        <CompileList
-          title="What you said you'd do"
-          rows={compiledSaid}
-          empty="Nothing captured this window."
-          testId="retro-compile-said"
-        />
-        <CompileList
-          title="What got in the way"
-          rows={compiledInWay}
-          empty="Nothing named."
-          testId="retro-compile-in-the-way"
-        />
-        <CompileList
-          title="What worked"
-          rows={compiledWorked}
-          empty="Nothing named."
-          testId="retro-compile-worked"
-        />
-        <CompileList
-          title="Open threads"
-          rows={compiledNext}
-          empty="No carry-forward notes."
-          testId="retro-compile-next"
-        />
-        <WriteField
-          id="retro-one-thing"
-          label="The fix"
-          value={oneThing}
-          onChange={setOneThing}
-          disabled={data.status === "complete"}
-          placeholder="One checkable thing for next time"
-          inputRef={oneThingRef}
-          testId="retro-onething-input"
-        />
-        <WriteField
-          id="retro-cause"
-          label="Add anything the journal missed"
-          value={body}
-          onChange={setBody}
-          disabled={data.status === "complete"}
-          placeholder="Optional"
-          inputRef={causeRef}
-          testId="retro-cause-input"
-        />
       </div>
 
       {/* Inventory for the selected tile — look, not a form */}
@@ -2025,6 +2039,8 @@ export default function RetrospectiveWorkspace({
             </div>
           );
         })()}
+      </details>
+        </div>
       </details>
     </div>
   );

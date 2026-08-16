@@ -365,9 +365,9 @@ def get_retrospective(retro_id: int, request: Request) -> dict:
                 (retro_id, iid),
             )
             row = cur.fetchone()
-    if row is None:
-        raise HTTPException(status_code=404, detail="Retrospective not found")
-    return rd.serialize_row(row)
+            if row is None:
+                raise HTTPException(status_code=404, detail="Retrospective not found")
+            return rd.attach_journal_compile(cur, iid, rd.serialize_row(row))
 
 
 @router.patch("/api/me/retrospectives/{retro_id}")

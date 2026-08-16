@@ -406,7 +406,7 @@ def test_journal_compile_and_one_thing_patch(client):
         assert jc.get("empty") is False
         assert any(
             "no entries first 15 minutes" in str(x.get("text"))
-            for x in jc.get("said") or []
+            for x in (jc.get("notes") or []) + (jc.get("said") or [])
         )
         brief = (created.json().get("report") or {}).get("period_brief") or {}
         assert brief.get("title") == "Since last review"

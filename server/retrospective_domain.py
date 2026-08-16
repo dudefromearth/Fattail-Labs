@@ -2641,15 +2641,12 @@ def build_journal_compile(
     *,
     is_maiden: bool,
 ) -> dict[str, Any]:
-    """Compile Journal conversation for the ceremony — do not re-ask it.
-
-    The day card is a conversation (DL-339). Member messages are the record.
-    """
+    """Compile Journal structured fields + member notes for the ceremony."""
     start_d = _as_naive_utc(scope_start).date()
     end_d = _as_naive_utc(scope_end).date()
     op = ">=" if is_maiden else ">"
     cur.execute(
-        f"""SELECT id, journal_date
+        f"""SELECT id, journal_date, structured_json
             FROM member_journal_sessions
             WHERE identity_id = %s
               AND journal_date {op} %s AND journal_date <= %s
@@ -2660,8 +2657,9 @@ def build_journal_compile(
     in_the_way: list[dict[str, str]] = []
     worked: list[dict[str, str]] = []
     next_thing: list[dict[str, str]] = []
+    notes: list[dict[str, str]] = []
 
-    def _add(bucket: list[dict[str, str]], day: str, text: str) -> None:
+    def _add(bucket: list[dict[str, str]], day: str, text: Any) -> None:
         t = _clip_text(text)
         if not t:
             return
@@ -2671,28 +2669,69 @@ def build_journal_compile(
 
     for row in cur.fetchall() or []:
         day = _session_day_key(row.get("journal_date")) or ""
+        st = _structured_dict(row.get("structured_json"))
+        for key in ("thesis_direction", "trigger_level", "watching", "instrument"):
+            _add(said, day, st.get(key))
+        for key in ("plan_diff", "deviations", "differed_from_plan"):
+            _add(in_the_way, day, st.get(key))
+        _add(worked, day, st.get("what_worked"))
+        _add(next_thing, day, st.get("open_thread"))
+        _add(next_thing, day, st.get("note"))
         cur.execute(
-            """SELECT body_md FROM member_journal_messages
+            """SELECT body_md, phase FROM member_journal_messages
                WHERE session_id = %s AND identity_id = %s AND author = 'member'
                ORDER BY created_at ASC, id ASC""",
             (int(row["id"]), int(identity_id)),
         )
         for msg in cur.fetchall() or []:
-            _add(said, day, msg.get("body_md"))
+            body = msg.get("body_md")
+            phase = str(msg.get("phase") or "")
+            if phase == "pre_open":
+                _add(said, day, body)
+            else:
+                _add(notes, day, body)
 
     suggested_one_thing = next_thing[-1]["text"] if next_thing else ""
-    suggested_cause = in_the_way[-1]["text"] if in_the_way else ""
-    empty = not (said or in_the_way or worked or next_thing)
+    suggested_cause = (
+        in_the_way[-1]["text"] if in_the_way else (notes[-1]["text"] if notes else "")
+    )
+    empty = not (said or in_the_way or worked or next_thing or notes)
     return {
         "said": said,
         "in_the_way": in_the_way,
         "worked": worked,
         "next": next_thing,
+        "notes": notes,
         "suggested_cause": suggested_cause or None,
         "suggested_one_thing": suggested_one_thing or None,
         "empty": empty,
-        "session_count": len(said) + len(in_the_way) + len(worked) + len(next_thing),
     }
+
+
+def attach_journal_compile(cur, identity_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+    """Live-compile on GET so older gathered retros still show the week."""
+    start = payload.get("scope_start")
+    end = payload.get("scope_end")
+    if not start or not end:
+        return payload
+    try:
+        start_dt = datetime.fromisoformat(str(start).replace("Z", "+00:00"))
+        end_dt = datetime.fromisoformat(str(end).replace("Z", "+00:00"))
+    except ValueError:
+        return payload
+    compiled = build_journal_compile(
+        cur,
+        identity_id,
+        start_dt,
+        end_dt,
+        is_maiden=bool(payload.get("is_maiden")),
+    )
+    report = payload.get("report")
+    if not isinstance(report, dict):
+        report = {}
+        payload["report"] = report
+    report["journal_compile"] = compiled
+    return payload
 
 
 def build_period_brief(
@@ -2710,11 +2749,15 @@ def build_period_brief(
     live = process.get("live") or {}
     learning = process.get("learning") or {}
     adherence = process.get("adherence") or {}
-    said = journal_compile.get("said") or []
-    notes = [x for x in said if isinstance(x, dict)]
+    said = [
+        x
+        for x in (journal_compile.get("said") or [])
+        + (journal_compile.get("notes") or [])
+        if isinstance(x, dict)
+    ]
     preview = [
         {"day": str(x.get("day") or ""), "text": str(x.get("text") or "")}
-        for x in notes[:4]
+        for x in said[:4]
         if x.get("text")
     ]
     trade_count = int(book.get("trade_count") or adherence.get("total") or 0)
