@@ -27,6 +27,8 @@ import {
   applyPackageQuote,
   cardDefinitionKey,
   cardNeedsMarketTruth,
+  definedDebitSigned,
+  isOptionPointerExpired,
   type AnalyzerPosition,
 } from "@/lib/options-lab/analyzerBook";
 import {
@@ -42,6 +44,7 @@ import {
 } from "@/lib/options-lab/opfPricingApi";
 import { normalizeStrike } from "@/lib/options-lab/listedStrikes";
 import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
+import { packageEconomicsFromLegs } from "@/lib/options-lab/packageEconomics";
 import type { OptionRight } from "@/lib/options-lab/positionTypes";
 
 /** Max dual-side wing request (server caps effective dual at 50). */
@@ -99,6 +102,8 @@ export function usePackageQuotes(opts: {
       prev.liveState === next.liveState &&
       prev.livePackagePerShare === next.livePackagePerShare &&
       prev.lastNatSigned === next.lastNatSigned &&
+      (prev.definedDebitPerShare ?? null) ===
+        (next.definedDebitPerShare ?? null) &&
       prev.priceSide === next.priceSide &&
       prev.lock.mode === next.lock.mode &&
       prev.displayAsOf === next.displayAsOf &&
@@ -235,6 +240,44 @@ export function usePackageQuotes(opts: {
         finish({
           ...pos,
           liveState: "not_live",
+          updatedAt: Date.now(),
+        });
+        return;
+      }
+
+      if (isOptionPointerExpired(pos.position.expiration)) {
+        // Dead pointer: keep the defined debit. Off market → last print
+        // ladder for that exp, if OPF still holds it, to recover strikes/mids.
+        const trade = positionToParsedTrade(pos.position);
+        const exp = pos.position.expiration.slice(0, 10);
+        if (sessionHeldRef.current) {
+          await hydrateExp(trade.symbol, exp);
+        }
+        if (!stillCurrent()) return;
+        let debit = definedDebitSigned(pos);
+        if (debit == null) {
+          const econ = packageEconomicsFromLegs(
+            pos.position.legs,
+            (e, s, t) =>
+              getContractFromLadders(trade.symbol, e, s, t),
+            exp,
+          );
+          if (econ.complete && econ.signedMid != null) {
+            debit = -econ.signedMid; // MSC credit>0 → OPF debit>0
+          }
+        }
+        finish({
+          ...pos,
+          definedDebitPerShare: debit,
+          lastNatSigned: pos.lastNatSigned ?? debit,
+          livePackagePerShare:
+            debit != null ? Math.abs(debit) : pos.livePackagePerShare,
+          priceSide:
+            debit == null
+              ? pos.priceSide
+              : debit < 0
+                ? "credit"
+                : "debit",
           updatedAt: Date.now(),
         });
         return;

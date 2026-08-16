@@ -88,13 +88,14 @@ On Options Lab Analyzer, members must be able to:
 | Role | Object | Law |
 |------|--------|-----|
 | **Definition** | Position card | Structure + basis/lock; not rewritten by what-if or mode switch (PB-MODE-2) |
-| **Visualization** | Risk graph viewport | OPF output for focused definition under active mode |
+| **Visualization** | Risk graph viewport | OPF output for the **shown book** (additive) under active mode |
 | **Market / archive** | Generations or cold shards | Live, held, or replay — labeled |
 
 **PB-VIEW-1:** Structure edits only via Builder or card controls — not by drawing on the viewport.  
 **PB-VIEW-2:** Changing OPF pack / mode re-visualizes the **same** definition; does not create a new card.  
 **PB-VIEW-3:** What-if does not rewrite the card unless member explicitly saves an edit.  
-**PB-VIEW-4:** v0.1/v0.2: **exactly one focused** definition visualized (no multi-card aggregate).  
+**PB-VIEW-4 (SUPERSEDED 2026-08-16 · DL-394):** v0.1/v0.2 said exactly one focused definition (no multi-card aggregate).  
+**PB-VIEW-4a (Coach 2026-08-16):** Viewport visualizes **every shown card** as **one additive continuous** OPF book curve. Show/Hide is a **checkbox**, independent per card. Highlight (focus) does not un-show siblings.
 **PB-VIEW-5 (B2):** While Analyzer is open and stream is healthy (**day_trade live**), the focused definition **re-resolves on each applied generation update** for any of its legs’ keys (throttled to generation cadence; **client-triggered on diff apply — never an independent `setInterval` HTTP poll loop**). Viewport renders the resolve’s `as_of`; a curve older than the newest applied generation for its keys is **labeled stale**.
 
 **PB-VIEW-7 (outlook epoch re-anchor — OD-PB16 **Accepted** · Analyzer as-built ratifies):** PB-VIEW-5 applies to **day_trade live** only. In **outlook** mode, scenario curves **do not** auto-re-anchor on every generation by default. **Law (normative):** (1) selecting outlook **pins** the scenario epoch; (2) member must **explicitly re-anchor** (button) to pick up newer generations; (3) when generations advance while pinned, show **epoch stale**; (4) scenario curves keep their epoch label. Silent auto-re-anchor is forbidden.
@@ -167,12 +168,12 @@ Dual-side generation(s)  ──►  OPF PackageQuote / resolve
 | ID | Law |
 |----|-----|
 | **PB9** | **Card = definition.** Legs, packages, direction, lock state. |
-| **PB10** | **Viewport = visualization** of focused definition via OPF only. |
-| **PB11** | Analyze/Update: upsert card, focus, close Builder, resolve. |
-| **PB12** | Visualization priority: (1) focused + **visible** card; (2) ToS paste / Heatmap session (always **unlocked-live** — §8); (3) empty CTA. |
-| **PB13** | Hide: remains in list; must not drive viewport. |
-| **PB14** | Focus card → rebind viewport to that definition. |
-| **PB15** | Remove focused → clear focus; fallback PB12. |
+| **PB10** | **Viewport = visualization** of the **shown book** via OPF only (DL-394). *(Was: focused definition only.)* |
+| **PB11** | Analyze/Update: upsert card, highlight, close Builder, resolve. New card defaults **shown**. |
+| **PB12** | Visualization priority: (1) all **shown** drawable cards as one additive book; (2) empty CTA. |
+| **PB13** | Hide: remains in list; that card must not drive viewport. Siblings stay. |
+| **PB14** | Highlight (focus) card does **not** rebind the viewport away from other shown cards. |
+| **PB15** | Remove a card → drop it from the book; highlight fallback independent. |
 | **PB16** | Book scope v0.2 default: session (OD-PB1). Lock evaporation risk noted OD-PB1 / A4. |
 
 ### 1.3 Live package on cards — **single pricing SoR** (B1, B3, B6)
@@ -531,7 +532,7 @@ Create from viewport; list; chart lines; spot evaluation; Held when closed.
 | **OD-PB1** | Session book vs server | Session v0.2; warn or localStorage for lock if tab-close matters (A4) |
 | **OD-PB2** | Default widths SPX/NDX | 20 / 50 |
 | **OD-PB3** | Regenerate clears limit override | Yes |
-| **OD-PB4** | Multi-card aggregate viewport | No |
+| **OD-PB4** | Multi-card aggregate viewport | **Accepted 2026-08-16 (Coach / DL-394):** additive continuous book of all **shown** cards. Prior “No” superseded. |
 | **OD-PB5** | Alerts session vs Center | Session |
 | **OD-PB6** | OMS statuses | ANALYSIS only |
 | **OD-PB7** | Diagonal 2 strikes between | Yes when ladder |
@@ -550,7 +551,7 @@ Create from viewport; list; chart lines; spot evaluation; Held when closed.
 
 ## 13. Non-goals
 
-Broker place/close · multi-tab authoritative sync · MSC alert SSE/AI · client Heston/MC SoR · profit theater · multi-definition stacked P&amp;L · silent dual package math · RECON-as-live after close · **ad-hoc replay controls without OD-PB17 plan**.
+Broker place/close · multi-tab authoritative sync · MSC alert SSE/AI · client Heston/MC SoR · profit theater · radio-style exclusive viewport · silent dual package math · RECON-as-live after close · **ad-hoc replay controls without OD-PB17 plan**.
 
 ---
 

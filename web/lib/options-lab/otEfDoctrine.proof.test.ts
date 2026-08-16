@@ -44,7 +44,7 @@ function test(name: string, fn: () => void) {
 const LISTED = [
   5950, 5960, 5970, 5980, 5990, 6000, 6010, 6020, 6030, 6040, 6050,
 ];
-const NOW = new Date("2026-08-12T18:00:00Z"); // after 16:00Z on 8/12
+const NOW = new Date("2026-08-12T18:00:00Z"); // 14:00 ET — still 8/12 (live through midnight)
 
 function flyInput(exp: string, center = 6000, width = 20): PositionInput {
   return {

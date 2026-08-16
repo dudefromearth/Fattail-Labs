@@ -50,7 +50,9 @@ export function useBuilderChain(
   /** Expirations to keep warm (front + back for time spreads) */
   warmExpirations: string[],
   enabled = true,
+  opts?: { offMarket?: boolean },
 ): ChainAccessors {
+  const offMarket = opts?.offMarket === true;
   const [expirations, setExpirations] = useState<string[]>([]);
   const [spot, setSpot] = useState<number | null>(null);
   const [spotStrike, setSpotStrike] = useState<number | null>(null);
@@ -252,6 +254,12 @@ export function useBuilderChain(
       if (!cancelled) setLoading(false);
     };
     void run();
+    // Off market: last print once. Do not poll live chain.
+    if (offMarket) {
+      return () => {
+        cancelled = true;
+      };
+    }
     const id = window.setInterval(() => {
       const live = [
         ...new Set([
@@ -266,7 +274,7 @@ export function useBuilderChain(
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [enabled, warmExpirations, expirations, hydrateExp]);
+  }, [enabled, warmExpirations, expirations, hydrateExp, offMarket]);
 
   const getStrikes = useCallback(
     (expiration: string): number[] => {

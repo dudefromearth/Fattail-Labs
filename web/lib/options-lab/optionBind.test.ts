@@ -5,10 +5,12 @@
  */
 
 import {
+  applyBindAssessment,
   assessPositionBind,
   bindPackageLabel,
   legNotTradedLabel,
 } from "./optionBind";
+import { positionFromInput } from "./analyzerBook";
 import type { PositionInput } from "./positionTypes";
 
 function assert(cond: unknown, msg: string): void {
@@ -137,6 +139,25 @@ test("exp not in listed calendar → exp_not_listed", () => {
   });
   assert(!r.bindable, "not bindable");
   assert(r.legs.every((l) => l.reason === "exp_not_listed"), "not listed");
+});
+
+test("expired bind keeps the defined debit for ghost", () => {
+  const pos = {
+    ...positionFromInput(fly("2026-08-11")),
+    lastNatSigned: 1.25,
+    livePackagePerShare: 1.25,
+    priceSide: "debit" as const,
+  };
+  const bind = assessPositionBind(pos.position, {
+    now,
+    listedExpirations: listed,
+    getContract: () => ({ mid: 9.9 }),
+  });
+  assert(!bind.bindable, "expired not bindable");
+  const next = applyBindAssessment(pos, bind);
+  assert(next.lastNatSigned === 1.25, "defined debit kept");
+  assert(next.livePackagePerShare === 1.25, "magnitude kept");
+  assert(next.priceSide === "debit", "side kept");
 });
 
 test("without listed calendar, future exp + mid still binds", () => {

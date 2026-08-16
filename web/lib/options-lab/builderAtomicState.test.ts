@@ -53,6 +53,38 @@ test("definition key stable for same shape", () => {
   assert(a === b, "stable");
 });
 
+test("off market is not OPF unavailable", () => {
+  const s = resolveBuilderPlaneState({
+    open: true,
+    hasListedStrikes: false,
+    hasLegs: false,
+    packageComplete: false,
+    chainError: "network down",
+    chainLoading: false,
+    resolving: false,
+    unplaceable: false,
+    offMarket: true,
+  });
+  assert(s.kind === "off_market", "kind");
+  assert(/closed|last print/i.test(s.detail), "last print copy");
+  assert(s.expected === true, "expected");
+});
+
+test("off market with last print is ready, not an outage", () => {
+  const s = resolveBuilderPlaneState({
+    open: true,
+    hasListedStrikes: true,
+    hasLegs: true,
+    packageComplete: true,
+    chainError: "stale",
+    chainLoading: false,
+    resolving: false,
+    unplaceable: false,
+    offMarket: true,
+  });
+  assert(s.kind === "ready", "ready on last print");
+});
+
 test("plane unavailable only when error + no strikes", () => {
   const s = resolveBuilderPlaneState({
     open: true,

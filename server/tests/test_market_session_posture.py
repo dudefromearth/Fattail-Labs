@@ -3,7 +3,10 @@
 Holiday / half-day / extended-hours must not report open=True.
 """
 
-from routes.market_session import _open_from_massive_doc
+from routes.market_session import (
+    _open_from_massive_doc,
+    _printing_from_massive_doc,
+)
 
 
 def test_regular_open_is_true():
@@ -28,3 +31,15 @@ def test_exchange_open_fallback():
 
 def test_exchange_closed_fallback():
     assert _open_from_massive_doc({"exchanges": {"nyse": "closed"}}) is False
+
+
+def test_extended_hours_still_printing():
+    assert _printing_from_massive_doc({"market": "extended-hours"}) is True
+
+
+def test_rth_is_printing():
+    assert _printing_from_massive_doc({"market": "open"}) is True
+
+
+def test_closed_is_not_printing():
+    assert _printing_from_massive_doc({"market": "closed"}) is False

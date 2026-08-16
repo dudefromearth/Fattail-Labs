@@ -4,10 +4,17 @@
  *   npx --yes tsx lib/options-lab/cardDisplayState.test.ts
  */
 
-import { positionFromInput, type AnalyzerPosition } from "./analyzerBook";
 import {
+  definedDebitSigned,
+  positionFromInput,
+  type AnalyzerPosition,
+} from "./analyzerBook";
+import {
+  expiredGhostSeries,
   resolveCardDisplayState,
+  resolveViewportBookPolicy,
   resolveViewportFocusPolicy,
+  visibleBookTrade,
 } from "./cardDisplayState";
 import type { PositionInput } from "./positionTypes";
 
@@ -52,6 +59,24 @@ test("expired pointer → EXPIRED (expected)", () => {
   assert(s.packageLabel === "EXPIRED", "label");
   assert(s.expected === true, "expected");
   assert(s.detail.length > 20, "detail");
+});
+
+test("same calendar day as expiration stays current (not EXPIRED)", () => {
+  const s = resolveCardDisplayState(base("2026-08-12"), { now });
+  assert(s.kind !== "expired", "expiry day is still in play");
+});
+
+test("UTC midnight is still Eastern evening — not EXPIRED", () => {
+  const utcMidnight = new Date("2026-08-13T00:00:00Z"); // 20:00 ET Aug 12
+  const s = resolveCardDisplayState(base("2026-08-12"), { now: utcMidnight });
+  assert(s.kind !== "expired", "UTC midnight ≠ Eastern midnight");
+});
+
+test("00:00 Eastern Time the next day is EXPIRED", () => {
+  const easternMidnight = new Date("2026-08-13T00:00:00-04:00");
+  const s = resolveCardDisplayState(base("2026-08-12"), { now: easternMidnight });
+  assert(s.kind === "expired", "Eastern midnight is the cutoff");
+  assert(s.packageLabel === "EXPIRED", "label");
 });
 
 test("not traded bind → NOT TRADED (expected)", () => {
@@ -181,9 +206,101 @@ test("viewport: expired → ghost + EXPIRED notice (no cryptic codes)", () => {
   const p = resolveViewportFocusPolicy(base("2026-08-11"), { now });
   assert(p != null, "policy");
   assert(p!.curveMode === "expired_ghost", "ghost mode");
+  assert(p!.showExpiredGhost === true, "ghost flag");
   assert(p!.notice?.title === "EXPIRED", "title");
   assert(!/PB-VIEW|dual-side|fabricat/i.test(p!.notice!.detail), "no jargon");
   assert(!/PB-VIEW|dual-side|fabricat/i.test(p!.notice!.title), "no jargon title");
+});
+
+test("viewport book: live + expired keeps ghost residual", () => {
+  const live = {
+    ...base("2026-08-14"),
+    id: "live",
+    visible: true,
+    liveState: "held" as const,
+    livePackagePerShare: 1.25,
+    lastNatSigned: 1.25,
+    priceSide: "debit" as const,
+    bind: {
+      bindable: true,
+      failedCount: 0,
+      summary: "bound",
+      assessedAt: Date.now(),
+      legs: [],
+    },
+  };
+  const expired = { ...base("2026-08-11"), id: "exp", visible: true };
+  const book = resolveViewportBookPolicy([live, expired], {
+    now,
+    sessionHeld: true,
+  });
+  assert(book?.curveMode === "live", "live sibling still draws");
+  assert(book?.showExpiredGhost === true, "expired still ghosts");
+  const split = visibleBookTrade([live, expired], {
+    now,
+    sessionHeld: true,
+    symbol: "SPX",
+  });
+  assert(split.trades.length === 1, "expired is not sent to live OPF");
+  assert(split.expiredTrades.length === 1, "expired is in ghost book");
+  const ghost = expiredGhostSeries([live, expired], { now, symbol: "SPX" });
+  assert(ghost.length > 2, "ghost residual has a curve");
+});
+
+test("defined debit survives expire and is what the ghost uses", () => {
+  const expired: AnalyzerPosition = {
+    ...base("2026-08-11"),
+    id: "exp",
+    visible: true,
+    lastNatSigned: null,
+    livePackagePerShare: null,
+    definedDebitPerShare: 1.4,
+    priceSide: "debit",
+  };
+  assert(definedDebitSigned(expired) === 1.4, "durable debit");
+  const ghost = expiredGhostSeries([expired], { now, symbol: "SPX" });
+  const zeroed: AnalyzerPosition = { ...expired, definedDebitPerShare: 0.4 };
+  const ghost2 = expiredGhostSeries([zeroed], { now, symbol: "SPX" });
+  const mid = ghost[Math.floor(ghost.length / 2)];
+  const mid2 = ghost2.find((p) => Math.abs(p.price - mid.price) < 1e-9);
+  assert(mid2 != null, "aligned");
+  assert(
+    Math.abs(mid.pnl - mid2!.pnl + 100) < 1e-6,
+    "higher defined debit lowers residual $100",
+  );
+});
+
+test("ghost residual keeps the defined debit (not entry-price leftover)", () => {
+  const at = (debit: number): AnalyzerPosition => ({
+    ...base("2026-08-11"),
+    id: `d${debit}`,
+    visible: true,
+    lastNatSigned: debit,
+    definedDebitPerShare: debit,
+    livePackagePerShare: Math.abs(debit),
+    priceSide: debit >= 0 ? "debit" : "credit",
+  });
+  const cheap = expiredGhostSeries([at(1.25)], { now, symbol: "SPX" });
+  const rich = expiredGhostSeries([at(2.25)], { now, symbol: "SPX" });
+  assert(cheap.length === rich.length, "same grid");
+  const mid = cheap[Math.floor(cheap.length / 2)];
+  const midR = rich.find((p) => Math.abs(p.price - mid.price) < 1e-9);
+  assert(midR != null, "aligned");
+  // expiration P&L = (intrinsic − debit) × 100 → Δdebit 1.00 → ΔP&L −100
+  const dPnl = mid.pnl - midR!.pnl;
+  assert(Math.abs(dPnl - 100) < 1e-6, `debit shift should be $100, got ${dPnl}`);
+});
+
+test("viewport book: expired only → ghost series without live OPF", () => {
+  const expired = { ...base("2026-08-11"), id: "exp", visible: true };
+  const book = resolveViewportBookPolicy([expired], { now, sessionHeld: true });
+  assert(book?.curveMode === "expired_ghost", "ghost mode");
+  assert(book?.showExpiredGhost === true, "ghost flag");
+  const split = visibleBookTrade([expired], { now, symbol: "SPX" });
+  assert(split.trades.length === 0, "no live OPF trade");
+  assert(split.expiredTrades.length === 1, "ghost trade");
+  const ghost = expiredGhostSeries([expired], { now, symbol: "SPX" });
+  assert(ghost.length > 2, "intrinsic residual");
 });
 
 test("viewport: incomplete → empty curves + UPDATING notice", () => {
@@ -204,6 +321,72 @@ test("viewport: incomplete → empty curves + UPDATING notice", () => {
   assert(p!.curveMode === "empty", "empty grid only");
   assert(p!.notice?.title === "UPDATING", "UPDATING");
   assert(!/PB-VIEW|dual-side|fabricat/i.test(p!.notice!.detail), "friendly");
+});
+
+test("viewport book: two shown cards stay live — hide is not a radio", () => {
+  const priced = (exp: string, visible: boolean): AnalyzerPosition => {
+    const p = base(exp);
+    return {
+      ...p,
+      visible,
+      liveState: "held",
+      livePackagePerShare: 1.25,
+      lastNatSigned: 1.25,
+      priceSide: "debit",
+      bind: {
+        bindable: true,
+        failedCount: 0,
+        summary: "bound",
+        assessedAt: Date.now(),
+        legs: [],
+      },
+    };
+  };
+  const a = { ...priced("2026-08-14", true), id: "a" };
+  const b = { ...priced("2026-08-21", true), id: "b" };
+  const both = resolveViewportBookPolicy([a, b], { now, sessionHeld: true });
+  assert(both?.curveMode === "live", "both shown → live book");
+  const book = visibleBookTrade([a, b], { now, sessionHeld: true, symbol: "SPX" });
+  assert(book.contributingIds.length === 2, "both contribute");
+  assert(book.trades.length === 2, "each card is its own OPF structure");
+  assert(book.trade != null, "primary trade");
+  assert(book.trades[0].legs.length === 3, "first fly intact");
+  assert(book.trades[1].legs.length === 3, "second fly intact");
+
+  const hideA = resolveViewportBookPolicy(
+    [{ ...a, visible: false }, b],
+    { now, sessionHeld: true },
+  );
+  assert(hideA?.curveMode === "live", "hiding A does not blank B");
+  const bookB = visibleBookTrade([{ ...a, visible: false }, b], {
+    now,
+    sessionHeld: true,
+    symbol: "SPX",
+  });
+  assert(bookB.contributingIds.join() === "b", "only B contributes");
+
+  const updating = {
+    ...base("2026-08-28"),
+    id: "c",
+    visible: true,
+    liveState: "incomplete" as const,
+    livePackagePerShare: null,
+  };
+  const withUpdating = visibleBookTrade([a, updating], {
+    now,
+    sessionHeld: true,
+    symbol: "SPX",
+  });
+  assert(withUpdating.contributingIds.includes("c"), "updating card still resolves");
+
+  const hideBoth = resolveViewportBookPolicy(
+    [
+      { ...a, visible: false },
+      { ...b, visible: false },
+    ],
+    { now, sessionHeld: true },
+  );
+  assert(hideBoth == null, "all hidden → empty viewport");
 });
 
 test("viewport: price → live curves, no notice", () => {

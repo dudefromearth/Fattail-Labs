@@ -111,7 +111,10 @@ marks are **severity: high** (member capital-adjacent judgment).
 4. **Atomic resolve:** on definition change (exp / strikes / template rebuild), settle **once**
    (hydrate → bind all legs → package quote if bindable). No flash loops / endless re-search.
 5. **Card = pointer; OPF = instrument.** Rebind exp/strikes rebinds the pointer; EXPIRED is
-   calendar on the pointer; NOT TRADED is missing market (incl. chain edge).
+   after **midnight Eastern Time** (`00:00:00` America/New_York) on the pointer — not UTC
+   midnight, not the member’s local midnight, not cash close; NOT TRADED is missing market
+   (incl. chain edge). Analyzer **Show** is a checkbox: every shown card is in the viewport
+   as one additive book (DL-394) — selecting one card must not hide another.
 6. **Builder:** strategy/quick-build only via listed-grid placement (`listedStructure` /
    wait for ladder). Analyze must not ship non-listed strikes as if real.
 7. **Tests:** prefer bind + display-state characterization (`optionBind`, `cardDisplayState`,

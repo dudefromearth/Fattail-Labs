@@ -90,12 +90,33 @@ console.log("analyzerBook pointer doctrine");
 
 // --- calendar pointer law (market closed OK) ---
 test("past expiration is expired; future is not", () => {
-  const now = new Date("2026-08-12T18:00:00Z"); // after 16:00Z on 8/12
+  const now = new Date("2026-08-12T18:00:00Z"); // 14:00 ET — still 8/12
   assert(isOptionPointerExpired("2026-08-11", now), "8/11 past");
-  assert(isOptionPointerExpired("2026-08-12", now), "8/12 past settlement");
+  assert(!isOptionPointerExpired("2026-08-12", now), "8/12 live through midnight ET");
   assert(!isOptionPointerExpired("2026-08-13", now), "8/13 still live");
   assert(calendarDteOf("2026-08-13", now) >= 1, "dte >= 1");
+  assert(calendarDteOf("2026-08-12", now) === 0, "expiry day dte is 0");
   assert(calendarDteOf("2026-08-11", now) === 0, "past dte floored to 0");
+});
+
+test("expiry day stays live through midnight ET; ghost after", () => {
+  const afternoon = new Date("2026-08-12T20:00:00-04:00"); // 20:00 ET
+  const late = new Date("2026-08-12T23:59:00-04:00");
+  const utcMidnightNext = new Date("2026-08-13T00:00:00Z"); // 20:00 ET Aug 12 — still live
+  const easternMidnight = new Date("2026-08-13T00:00:00-04:00");
+  const afterMidnight = new Date("2026-08-13T00:00:01-04:00");
+  assert(!isOptionPointerExpired("2026-08-12", afternoon), "afternoon still current");
+  assert(!isOptionPointerExpired("2026-08-12", late), "23:59 ET still current");
+  assert(
+    !isOptionPointerExpired("2026-08-12", utcMidnightNext),
+    "UTC midnight is still Eastern evening — not expired",
+  );
+  assert(
+    isOptionPointerExpired("2026-08-12", easternMidnight),
+    "00:00:00 Eastern Time is expired",
+  );
+  assert(isOptionPointerExpired("2026-08-12", afterMidnight), "after midnight ET expired");
+  assert(calendarDteOf("2026-08-12", afternoon) === 0, "0dte all day");
 });
 
 test("EXPIRED pointer does not show package mark even if mark present", () => {

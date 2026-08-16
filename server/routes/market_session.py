@@ -13,9 +13,13 @@ from routes.trade_log.common import _require_tool_member
 router = APIRouter(tags=["market-session"])
 
 
+def _market_label(doc: dict[str, Any]) -> str:
+    return str(doc.get("market") or "").strip().lower()
+
+
 def _open_from_massive_doc(doc: dict[str, Any]) -> bool:
-    """Only full session 'open' is poll-worthy; extended/closed hold last quotes."""
-    market = str(doc.get("market") or "").strip().lower()
+    """RTH claim only. Extended hours are not Live NBBO (open=False)."""
+    market = _market_label(doc)
     if market == "open":
         return True
     if market in ("closed", "extended-hours", "early-close"):
@@ -27,6 +31,30 @@ def _open_from_massive_doc(doc: dict[str, Any]) -> bool:
             if v == "open":
                 return True
             if v in ("closed", "extended-hours"):
+                return False
+    return False
+
+
+def _printing_from_massive_doc(doc: dict[str, Any]) -> bool:
+    """Massive is still producing prints — RTH or pre/post extended hours.
+
+    Do not hard-stop the chain at the cash close. Premarket and postmarket
+    last_trade / last_quote still land on the bus.
+    """
+    market = _market_label(doc)
+    if market == "open":
+        return True
+    if market == "extended-hours":
+        return True
+    if market in ("closed", "early-close"):
+        return False
+    exchanges = doc.get("exchanges")
+    if isinstance(exchanges, dict):
+        for key in ("nyse", "NYSE", "nasdaq", "NASDAQ"):
+            v = str(exchanges.get(key) or "").strip().lower()
+            if v in ("open", "extended-hours"):
+                return True
+            if v in ("closed", "early-close"):
                 return False
     return False
 
@@ -57,6 +85,7 @@ def get_session_status(request: Request) -> dict[str, Any]:
                     return {
                         "ok": True,
                         "open": _open_from_massive_doc(doc),
+                        "printing": _printing_from_massive_doc(doc),
                         "market": doc.get("market"),
                         "exchanges": doc.get("exchanges"),
                         "serverTime": doc.get("serverTime"),
@@ -93,6 +122,7 @@ def get_session_status(request: Request) -> dict[str, Any]:
         return {
             "ok": True,
             "open": _open_from_massive_doc(data),
+            "printing": _printing_from_massive_doc(data),
             "market": data.get("market"),
             "exchanges": data.get("exchanges"),
             "serverTime": data.get("serverTime"),
@@ -103,6 +133,7 @@ def get_session_status(request: Request) -> dict[str, Any]:
         return {
             "ok": False,
             "open": None,
+            "printing": None,
             "error": str(exc),
             "as_of": time.time(),
             "source": "unavailable",

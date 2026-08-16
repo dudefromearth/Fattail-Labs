@@ -296,6 +296,8 @@ export type PositionBuilderProps = {
    * front expiration: today if listed + live, else next listed after today.
    */
   marketLive?: boolean;
+  /** Massive still printing (RTH or pre/post). False = dark plane, last print only. */
+  planePrinting?: boolean;
   onSave: (position: PositionInput, label: string, notation: string) => void;
   onCancel: () => void;
 };
@@ -312,6 +314,7 @@ export default function PositionBuilder({
   chain,
   initial,
   marketLive = true,
+  planePrinting = marketLive,
   onSave,
   onCancel,
 }: PositionBuilderProps) {
@@ -539,10 +542,15 @@ export default function PositionBuilder({
     retryOpfChain();
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- once per open
 
-  // Quiet background hydrate while UPDATING (no user-facing error spam)
+  // Live session only: quiet hydrate while UPDATING.
+  // Off market: one last-print fetch on open — do not poll OPF.
   useEffect(() => {
     if (!open) return;
     if (frontStrikes.length > 0 && position.legs.length > 0) {
+      setAtomicResolving(false);
+      return;
+    }
+    if (!planePrinting) {
       setAtomicResolving(false);
       return;
     }
@@ -559,6 +567,8 @@ export default function PositionBuilder({
     position.legs.length,
     chain,
     position.expiration,
+    marketLive,
+    planePrinting,
   ]);
 
   useEffect(() => {
@@ -1042,6 +1052,7 @@ export default function PositionBuilder({
         resolving: atomicResolving || !!pendingBuild.current,
         unplaceable: unplaceableDetail != null,
         unplaceableDetail,
+        offMarket: !planePrinting,
       }),
     [
       open,
@@ -1053,6 +1064,8 @@ export default function PositionBuilder({
       atomicResolving,
       unplaceableDetail,
       chain.rev,
+      marketLive,
+      planePrinting,
     ],
   );
 
@@ -1512,9 +1525,11 @@ export default function PositionBuilder({
             "flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5 " +
             (planeState.kind === "plane_unavailable"
               ? "border-amber-500/30 bg-amber-500/10"
-              : planeState.kind === "unplaceable"
-                ? "border-[var(--color-separator)] bg-[var(--color-fill)]"
-                : "border-[var(--color-separator)] bg-[var(--color-fill)]/60")
+              : planeState.kind === "off_market"
+                ? "border-[var(--color-separator)] bg-[var(--color-fill)]/80"
+                : planeState.kind === "unplaceable"
+                  ? "border-[var(--color-separator)] bg-[var(--color-fill)]"
+                  : "border-[var(--color-separator)] bg-[var(--color-fill)]/60")
           }
           role="status"
           data-testid="builder-structure-notice"
@@ -1529,7 +1544,7 @@ export default function PositionBuilder({
             </p>
           </div>
           {planeState.kind === "plane_unavailable" ||
-          planeState.kind === "updating" ? (
+          (planeState.kind === "updating" && marketLive) ? (
             <Button
               variant="secondary"
               className="!min-h-8 shrink-0 !px-3 !text-[12px]"
@@ -1725,11 +1740,13 @@ export default function PositionBuilder({
                    */
                   radiusN={Math.max(5, frontStrikes.length || 5)}
                   emptyLabel={
-                    chain.loading
-                      ? "Loading OPF strikes…"
-                      : chain.error
-                        ? "OPF unavailable"
-                        : "Loading OPF strikes…"
+                    !planePrinting
+                      ? "Off market — last print"
+                      : chain.loading
+                        ? "Loading OPF strikes…"
+                        : chain.error
+                          ? "OPF unavailable"
+                          : "Loading OPF strikes…"
                   }
                   className="!min-h-11 !border-0 !bg-transparent text-right font-mono"
                   testId="builder-center-strike"

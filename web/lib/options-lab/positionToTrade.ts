@@ -133,3 +133,61 @@ export function parsedTradeToPositionInput(t: ParsedTosTrade): PositionInput {
       t.limit != null && Number.isFinite(t.limit) ? Math.abs(t.limit) : null,
   };
 }
+
+function legKey(l: { expiration: string; right: string; strike: number }): string {
+  return `${l.expiration.slice(0, 10)}|${l.right}|${l.strike}`;
+}
+
+/**
+ * Merge independently shown trades into one book definition.
+ * Same contract (exp + right + strike) sums quantity; zeros drop.
+ * One trade is returned unchanged (identity).
+ */
+export function combineParsedTrades(
+  trades: ParsedTosTrade[],
+): ParsedTosTrade | null {
+  const live = trades.filter((t) => t.legs.length > 0);
+  if (live.length === 0) return null;
+  if (live.length === 1) return live[0];
+
+  const symbol = live[0].symbol.toUpperCase();
+  const same = live.filter((t) => t.symbol.toUpperCase() === symbol);
+  const qty = new Map<string, ParsedTosTrade["legs"][number]>();
+  for (const t of same) {
+    for (const l of t.legs) {
+      const k = legKey(l);
+      const prev = qty.get(k);
+      if (prev) {
+        qty.set(k, { ...prev, quantity: prev.quantity + l.quantity });
+      } else {
+        qty.set(k, { ...l, expiration: l.expiration.slice(0, 10) });
+      }
+    }
+  }
+  const legs = [...qty.values()].filter((l) => l.quantity !== 0);
+  if (legs.length === 0) return null;
+
+  const strikes = [...new Set(legs.map((l) => l.strike))].sort((a, b) => a - b);
+  const exps = [...new Set(legs.map((l) => l.expiration))].sort();
+  const types = new Set(legs.map((l) => l.right));
+  const raw = generateTosScript({ symbol, legs });
+  const netQty = legs.reduce((s, l) => s + l.quantity, 0);
+  const action: ParsedTosTrade["action"] = netQty >= 0 ? "BUY" : "SELL";
+
+  return {
+    action,
+    structure: "custom",
+    symbol,
+    expiration: exps[0] ?? "",
+    right: types.size === 1 ? (legs[0].right as ParsedTosTrade["right"]) : "call",
+    limit: null,
+    debit: null,
+    isCredit: action === "SELL",
+    strikes,
+    width:
+      strikes.length >= 2 ? strikes[strikes.length - 1] - strikes[0] : null,
+    body: strikes[Math.floor(strikes.length / 2)] ?? null,
+    legs,
+    raw: raw || same.map((t) => t.raw).join("\n"),
+  };
+}

@@ -341,6 +341,16 @@ export function applyBindAssessment(
       updatedAt: Date.now(),
     };
   }
+  const expired = bind.legs.some((l) => l.reason === "expired");
+  if (expired) {
+    // Freeze the defined debit. Ghost residual must stay that position,
+    // not an unfunded intrinsic after midnight.
+    return {
+      ...pos,
+      bind,
+      updatedAt: Date.now(),
+    };
+  }
   return {
     ...pos,
     bind,

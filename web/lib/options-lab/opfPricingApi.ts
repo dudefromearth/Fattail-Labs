@@ -275,6 +275,51 @@ export function opfCurveToPnLPoints(
   return points.map((p) => ({ price: p.x, pnl: p.y }));
 }
 
+/** Linear interpolate P&L on a sorted price series. */
+export function interpolatePnl(
+  points: { price: number; pnl: number }[],
+  x: number,
+): number {
+  if (!points.length) return 0;
+  if (points.length === 1) return points[0].pnl;
+  if (x <= points[0].price) return points[0].pnl;
+  const last = points[points.length - 1];
+  if (x >= last.price) return last.pnl;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    if (x <= b.price) {
+      const span = b.price - a.price;
+      if (Math.abs(span) < 1e-12) return a.pnl;
+      return a.pnl + ((x - a.price) / span) * (b.pnl - a.pnl);
+    }
+  }
+  return last.pnl;
+}
+
+/**
+ * Sum independent position curves onto one continuous price grid.
+ * Used when several cards are shown — each is OPF-resolved on its own
+ * (held last-print when closed); the viewport adds them.
+ */
+export function sumAlignedPnL(
+  series: { price: number; pnl: number }[][],
+): { price: number; pnl: number }[] {
+  const live = series.filter((s) => s.length > 0);
+  if (live.length === 0) return [];
+  if (live.length === 1) return live[0];
+  const xs = new Set<number>();
+  for (const s of live) {
+    for (const p of s) xs.add(p.price);
+  }
+  return [...xs]
+    .sort((a, b) => a - b)
+    .map((price) => ({
+      price,
+      pnl: live.reduce((sum, s) => sum + interpolatePnl(s, price), 0),
+    }));
+}
+
 /** Simple breakeven scan on sorted price axis */
 export function findBreakevens(
   pts: { price: number; pnl: number }[],

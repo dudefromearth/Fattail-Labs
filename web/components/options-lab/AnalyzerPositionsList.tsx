@@ -9,6 +9,7 @@
 import { useMemo, type CSSProperties } from "react";
 import {
   calendarDteOf,
+  definedDebitSigned,
   isOptionPointerExpired,
   type AnalyzerPosition,
 } from "@/lib/options-lab/analyzerBook";
@@ -213,7 +214,9 @@ export default function AnalyzerPositionsList({
           >
             <thead className="sticky top-0 z-[1] bg-[var(--color-surface)] shadow-[0_1px_0_var(--color-separator)]">
               <tr className="border-b border-[var(--color-separator)]">
-                <th className={th + " w-4"} aria-label="select" />
+                <th className={th + " w-8 text-center"} aria-label="Show on graph">
+                  Show
+                </th>
                 <th className={th}>Spread</th>
                 <th className={th}>Side</th>
                 <th className={th + " text-right"}>Qty</th>
@@ -264,14 +267,26 @@ export default function AnalyzerPositionsList({
                 sessionHeld,
                 packageSide: side,
               });
+              const definedDebit = definedDebitSigned(pos);
               const liveMark =
                 display.kind === "price" &&
                 pos.livePackagePerShare != null &&
                 Number.isFinite(pos.livePackagePerShare);
-              const price = pos.livePackagePerShare;
+              const price =
+                display.kind === "expired"
+                  ? definedDebit != null
+                    ? Math.abs(definedDebit)
+                    : null
+                  : pos.livePackagePerShare;
+              const priceSideShown =
+                display.kind === "expired"
+                  ? definedDebit != null && definedDebit < 0
+                    ? "credit"
+                    : "debit"
+                  : side;
               const priceLabel =
-                liveMark && price != null
-                  ? (side === "credit" ? "−" : "") + price.toFixed(2)
+                price != null && Number.isFinite(price)
+                  ? (priceSideShown === "credit" ? "−" : "") + price.toFixed(2)
                   : display.packageLabel ?? "UPDATING";
 
               // Exact Trade Log blotter fills (hex — always paint)
@@ -462,6 +477,7 @@ function PosBlock({
     <tbody
       data-testid={`analyzer-pos-card-${pos.id}`}
       data-focused={selected ? "1" : "0"}
+      data-visible={hidden ? "0" : "1"}
       data-blotter-kind={kind}
       data-price-side={side ?? ""}
       data-ghost={isGhost ? "1" : "0"}
@@ -501,16 +517,22 @@ function PosBlock({
             }
           >
             <td
-              className={td + " w-4 text-center"}
+              className={td + " w-8 text-center"}
               style={edge}
+              onClick={(e) => e.stopPropagation()}
             >
               {isTop ? (
-                <span
-                  className={
-                    "inline-block h-2 w-2 rounded-full " +
-                    (selected ? "bg-white" : "bg-white/30")
+                <input
+                  type="checkbox"
+                  checked={!hidden}
+                  onChange={() => onToggleVisibility(pos.id)}
+                  aria-label={
+                    hidden
+                      ? `Show ${pos.label} on graph`
+                      : `Hide ${pos.label} from graph`
                   }
-                  aria-hidden
+                  data-testid={`analyzer-pos-show-${pos.id}`}
+                  className="h-4 w-4 cursor-pointer accent-[var(--color-tint)]"
                 />
               ) : null}
             </td>
@@ -695,16 +717,24 @@ function PosBlock({
               }
             >
               {isTop ? (
-                display.kind === "price" ? (
+                display.kind === "price" ||
+                (display.kind === "expired" &&
+                  definedDebitSigned(pos) != null) ? (
                   <>
                     {priceLabel}
-                    {liveMark ? (
-                      <span
-                        className={`ml-1 text-[10px] font-semibold uppercase ${textMuted}`}
-                      >
-                        {display.chipLabel}
-                      </span>
-                    ) : null}
+                    <span
+                      className={`ml-1 text-[10px] font-semibold uppercase ${
+                        display.kind === "expired"
+                          ? "text-amber-200"
+                          : textMuted
+                      }`}
+                    >
+                      {display.kind === "expired"
+                        ? "EXPIRED"
+                        : liveMark
+                          ? display.chipLabel
+                          : null}
+                    </span>
                   </>
                 ) : (
                   <span
@@ -841,13 +871,6 @@ function PosBlock({
             >
               {isTop ? (
                 <div className="flex flex-nowrap items-center gap-0.5">
-                  <button
-                    type="button"
-                    className={actionBtn}
-                    onClick={() => onToggleVisibility(pos.id)}
-                  >
-                    {hidden ? "Show" : "Hide"}
-                  </button>
                   <button
                     type="button"
                     className={actionBtn}

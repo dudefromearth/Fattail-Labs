@@ -39,6 +39,7 @@ import {
 } from "@/lib/options-lab/analyzerBook";
 import {
   clockPostureFallback,
+  planeIsPrinting,
   postureFromSessionStatus,
   type SessionPosture,
 } from "@/lib/options-lab/sessionPosture";
@@ -50,8 +51,8 @@ import {
 } from "@/lib/options-lab/opfModels";
 import { parseTosScript } from "@/lib/options-lab/tosParser";
 import {
+  combineParsedTrades,
   parsedTradeToPositionInput,
-  positionToParsedTrade,
 } from "@/lib/options-lab/positionToTrade";
 import { buildLabel, buildNotation } from "@/lib/options-lab/positionLabels";
 import type { PositionInput } from "@/lib/options-lab/positionTypes";
@@ -67,7 +68,11 @@ import PnLChart, {
   type PriceAlertType,
 } from "@/components/options-lab/risk-graph/PnLChart";
 import { useSmoothNumber } from "@/lib/useSmoothValue";
-import { resolveViewportFocusPolicy } from "@/lib/options-lab/cardDisplayState";
+import {
+  expiredGhostSeries,
+  resolveViewportBookPolicy,
+  visibleBookTrade,
+} from "@/lib/options-lab/cardDisplayState";
 
 /** Analyzer viewport modes — Surface is in-viewport, not a suite app (AZ-VP-S1). */
 type AnalyzerViewportMode = "risk" | "surface";
@@ -95,6 +100,7 @@ async function fetchPlanePosture(): Promise<SessionPosture> {
     if (!r.ok) return clockPostureFallback();
     const d = (await r.json()) as {
       open?: boolean | null;
+      printing?: boolean | null;
       market?: string | null;
       ok?: boolean;
     };
@@ -244,7 +250,8 @@ export default function OpfRiskAnalyzer() {
     };
   }, []);
 
-  const sessionHeld = posture === "Held" || posture === "Closed";
+  const sessionHeld = posture !== "Live";
+  const planePrinting = planeIsPrinting(posture);
 
   /**
    * Heatmap / suite handoff → one book card.
@@ -301,7 +308,7 @@ export default function OpfRiskAnalyzer() {
     return () => window.removeEventListener("ft-analyzer-trade", onEvt);
   }, [bookHydrated, ingestHandoffRaw]);
 
-  // Viewport = selected visible book card only (no ToS paste definition)
+  // Highlight only — does not drive the viewport (show/hide is independent).
   const focused = useMemo(() => {
     if (focusedId) {
       const hit = positions.find((p) => p.id === focusedId);
@@ -321,12 +328,17 @@ export default function OpfRiskAnalyzer() {
     if (first) setFocusedId(first.id);
   }, [positions, focusedId]);
 
-  const trade = useMemo(() => {
-    if (focused && focused.visible) {
-      return positionToParsedTrade(focused.position);
-    }
-    return null;
-  }, [focused]);
+  // Viewport = every shown card, additive. Checkbox, not radio.
+  const bookTrade = useMemo(
+    () =>
+      visibleBookTrade(positions, {
+        sessionHeld,
+        symbol,
+      }),
+    [positions, sessionHeld, symbol],
+  );
+  const trades = bookTrade.trades;
+  const trade = bookTrade.trade;
 
   useEffect(() => {
     if (trade?.symbol) {
@@ -350,7 +362,9 @@ export default function OpfRiskAnalyzer() {
     return [...s].filter(Boolean);
   }, [positions]);
 
-  const chain = useBuilderChain(symbol, warmExps, true);
+  const chain = useBuilderChain(symbol, warmExps, true, {
+    offMarket: !planePrinting,
+  });
 
   // When Builder opens, force OPF refresh so Create is never a dead panel
   useEffect(() => {
@@ -391,6 +405,7 @@ export default function OpfRiskAnalyzer() {
 
   const risk = useOpfRiskGraph({
     trade,
+    trades,
     spotOverride,
     vix,
     useCase: model.useCase,
@@ -408,7 +423,8 @@ export default function OpfRiskAnalyzer() {
     // A6: Enable gates all knobs — vol/spot% ignored unless what-if enabled
     volOffsetPts: timeMachineEnabled ? simVolatilityOffset : 0,
     spotPct: timeMachineEnabled ? simSpotPct : 0,
-    enabled: !!trade && !(trade && focused && !focused.visible),
+    enabled: trades.length > 0,
+    pollLive: planePrinting,
   });
 
   const { refreshForMarketOpen } = usePackageQuotes({
@@ -494,16 +510,24 @@ export default function OpfRiskAnalyzer() {
    * Never replace the graph shell with cryptic PB-VIEW-6 copy.
    */
   const viewportFocus = useMemo(
-    () =>
-      resolveViewportFocusPolicy(focused, {
-        sessionHeld,
-      }),
-    [focused, sessionHeld],
+    () => resolveViewportBookPolicy(positions, { sessionHeld }),
+    [positions, sessionHeld],
   );
-  const curveMode = viewportFocus?.curveMode ?? (trade ? "live" : "empty");
-  const focusExpiredVisible = curveMode === "expired_ghost";
+  const curveMode = viewportFocus?.curveMode ?? (trades.length ? "live" : "empty");
+  const showExpiredGhost = viewportFocus?.showExpiredGhost === true;
   /** Live package series only when Law B says price is representable. */
   const drawLiveCurves = curveMode === "live";
+  const ghostPoints = useMemo(
+    () =>
+      showExpiredGhost
+        ? expiredGhostSeries(positions, {
+            sessionHeld,
+            symbol,
+            spot: displaySpot > 0 ? displaySpot : null,
+          })
+        : [],
+    [showExpiredGhost, positions, sessionHeld, symbol, displaySpot],
+  );
   /** ATM for empty shell — chain/risk/spot field, never 0 */
   const axisSpot = useMemo(() => {
     if (displaySpot > 0) return displaySpot;
@@ -522,8 +546,7 @@ export default function OpfRiskAnalyzer() {
     drawLiveCurves &&
     risk.expirationPoints.length > 0 &&
     risk.theoreticalPoints.length > 0;
-  const hasGhostSeries =
-    focusExpiredVisible && risk.expirationPoints.length > 0;
+  const hasGhostSeries = showExpiredGhost && ghostPoints.length > 0;
   const hasCurves = hasLiveSeries || hasGhostSeries;
 
   const alertLines = useMemo(
@@ -622,7 +645,9 @@ export default function OpfRiskAnalyzer() {
     },
     onToggleVisibility: (id: string) =>
       setPositions((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, visible: !p.visible } : p)),
+        prev.map((p) =>
+          p.id === id ? { ...p, visible: !p.visible } : p,
+        ),
       ),
     onEdit: (id: string) => {
       setEditId(id);
@@ -734,13 +759,17 @@ export default function OpfRiskAnalyzer() {
                 "rounded px-1.5 py-0.5 font-semibold uppercase " +
                 (posture === "Live"
                   ? "bg-emerald-500/20 text-emerald-600"
-                  : posture === "Held"
-                    ? "bg-amber-500/20 text-amber-700"
-                    : "bg-[var(--color-fill)] text-[var(--color-label-tertiary)]")
+                  : posture === "Extended"
+                    ? "bg-sky-500/20 text-sky-800 dark:text-sky-200"
+                    : "bg-amber-500/20 text-amber-800 dark:text-amber-100")
               }
               data-testid="analyzer-posture-badge"
             >
-              {posture}
+              {posture === "Live"
+                ? "Live"
+                : posture === "Extended"
+                  ? "Pre/post"
+                  : "Off market"}
             </span>
             <span className="rounded bg-[var(--color-fill)] px-1.5 py-0.5 text-[var(--color-label-secondary)]">
               {activeModel.useCase}
@@ -761,9 +790,9 @@ export default function OpfRiskAnalyzer() {
           >
             {inputOverrideActive
               ? "Override active — RECON is override (not live pass/fail)."
-              : posture === "Closed"
-                ? "Session closed — Held; no Live claim."
-                : "Session Held — last generation; not Live."}
+              : posture === "Extended"
+                ? "Pre/post session — Massive last print / extended quotes. Not RTH NBBO."
+                : "Off market — last print. Not polling a live chain."}
           </div>
         )}
 
@@ -959,13 +988,24 @@ export default function OpfRiskAnalyzer() {
 
         {(trade || focused || bookNotice || risk.error) && (
           <div className="space-y-1 border-t border-[var(--color-separator)] pt-2 text-[11px] text-[var(--color-label-secondary)]">
-            {focused && (
+            {(bookTrade.contributingIds.length > 0 || focused) && (
               <p
                 className="text-[var(--color-tint)]"
                 data-testid="analyzer-viewport-focus"
               >
-                Viewport · {focused.label}
-                {focused.lock.mode === "locked" ? " · locked" : ""}
+                Viewport ·{" "}
+                {bookTrade.contributingIds.length > 1
+                  ? `${bookTrade.contributingIds.length} positions`
+                  : bookTrade.contributingIds.length === 1
+                    ? (positions.find(
+                        (p) => p.id === bookTrade.contributingIds[0],
+                      )?.label ?? focused?.label)
+                    : focused?.label}
+                {bookTrade.contributingIds.length === 1 &&
+                positions.find((p) => p.id === bookTrade.contributingIds[0])
+                  ?.lock.mode === "locked"
+                  ? " · locked"
+                  : ""}
               </p>
             )}
             {trade && (
@@ -1107,13 +1147,17 @@ export default function OpfRiskAnalyzer() {
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
             {viewportMode === "surface" ? (
               <SurfaceViewport
-                hasTrade={!!trade && drawLiveCurves}
+                hasTrade={trades.length > 0 && drawLiveCurves}
                 symbol={trade?.symbol || symbol}
                 packLabel={activeModel.label}
                 loading={risk.loading}
                 error={risk.error}
                 notice={viewportFocus?.notice ?? null}
-                trade={trade}
+                trade={
+                  trades.length > 1
+                    ? combineParsedTrades(trades)
+                    : trade
+                }
                 spot={risk.spot}
               />
             ) : (
@@ -1134,13 +1178,11 @@ export default function OpfRiskAnalyzer() {
                   theoreticalData={
                     drawLiveCurves ? risk.theoreticalPoints : []
                   }
-                  expiredExpirationData={
-                    focusExpiredVisible ? risk.expirationPoints : []
-                  }
+                  expiredExpirationData={ghostPoints}
                   expiredTheoreticalData={[]}
                   theoreticalStroke="#e879f9"
                   theoreticalLegendLabel={
-                    focusExpiredVisible
+                    showExpiredGhost && !drawLiveCurves
                       ? "Expired · at-expiry residual"
                       : activeModel.theoLegend +
                         (sessionHeld ? " · held" : "")
@@ -1156,14 +1198,18 @@ export default function OpfRiskAnalyzer() {
                     drawLiveCurves ? risk.theoreticalBreakevens : []
                   }
                   strikes={
-                    drawLiveCurves || focusExpiredVisible
+                    drawLiveCurves
                       ? risk.allStrikes
-                      : []
+                      : showExpiredGhost
+                        ? bookTrade.expiredTrades.flatMap((t) =>
+                            t.legs.map((l) => l.strike),
+                          )
+                        : []
                   }
                   alertLines={alertLines}
                   onOpenAlertDialog={onOpenAlertDialog}
                   positionLabels={
-                    drawLiveCurves || focusExpiredVisible
+                    drawLiveCurves || showExpiredGhost
                       ? positions
                           .filter((p) => p.visible)
                           .map((p) => ({
@@ -1230,7 +1276,7 @@ export default function OpfRiskAnalyzer() {
                       </p>
                     </div>
                   </div>
-                ) : !focused && !trade ? (
+                ) : !trade ? (
                   <div
                     className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4"
                     data-testid="analyzer-viewport-notice"
@@ -1238,11 +1284,11 @@ export default function OpfRiskAnalyzer() {
                   >
                     <div className="max-w-sm rounded-2xl border border-white/12 bg-black/35 px-5 py-3.5 text-center backdrop-blur-sm">
                       <p className="text-[12px] leading-snug text-white/55">
-                        Select a{" "}
+                        Check{" "}
                         <strong className="font-semibold text-white/75">
-                          position
+                          Show
                         </strong>{" "}
-                        or open{" "}
+                        on one or more positions, or open{" "}
                         <strong className="font-semibold text-white/75">
                           Builder
                         </strong>
@@ -1332,6 +1378,7 @@ export default function OpfRiskAnalyzer() {
         chain={chain}
         initial={editInitial}
         marketLive={posture === "Live"}
+        planePrinting={planePrinting}
         onCancel={() => {
           setBuilderOpen(false);
           setEditId(null);

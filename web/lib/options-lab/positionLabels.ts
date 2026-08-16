@@ -42,12 +42,17 @@ export function buildNotation(legs: LegInput[]): string {
 }
 
 function daysUntil(expiration: string): number {
-  const exp = new Date(expiration + "T16:00:00Z");
-  const now = new Date();
-  return Math.max(
-    0,
-    Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
-  );
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const exp = expiration.slice(0, 10);
+  if (today > exp) return 0;
+  const a = Date.parse(`${today}T00:00:00Z`);
+  const b = Date.parse(`${exp}T00:00:00Z`);
+  return Math.max(0, Math.round((b - a) / 86_400_000));
 }
 
 /** Spread family label for ToS-style book rows (e.g. Butterfly, Vertical). */

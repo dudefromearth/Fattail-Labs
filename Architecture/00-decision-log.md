@@ -4,6 +4,48 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-16 — DL-394 Show/Hide is a checkbox; viewport is the additive book
+
+**Decision (Coach):** Analyzer Show/Hide is a **checkbox**, not a radio.
+Checking Show on card B **must not** un-show card A. The control is
+independent per card. Clicking a card may highlight it (edit / alerts)
+but **must not** deselect another card from the viewport.
+
+When **two or more** positions are in Show, the Risk graph and Surface
+curves are the **additive, continuous** book: one OPF resolve of the
+merged shown legs (same contract sums quantity). Hidden cards do not
+contribute. Non-representable shown cards do not blank a drawable
+sibling.
+
+**Was (superseded):** AZ-VP-1 / AZ-X-1 / AZ-FOCUS-2 / PB-VIEW-4 /
+OD-PB4 = one focused definition; no multi-card aggregate. Focus selected
+which single card the viewport drew, so selecting a card for display
+deselected the previous one.
+
+**As-built:** `visible` toggle is independent; `visibleBookTrade` +
+`combineParsedTrades` + `resolveViewportBookPolicy`. Focus remains a
+highlight only.
+
+---
+
+## 2026-08-16 — DL-393 Analyzer EXPIRED is after midnight ET
+
+**Decision (Coach):** A position whose expiration date is **today** is
+**not** expired. The card stays current through the cash close and
+**until midnight Eastern Time** (`00:00:00` America/New_York — EST or
+EDT) of that day. Not UTC midnight. Not the member’s local midnight.
+Not cash close / 16:00Z. After that Eastern midnight, if the card is
+still shown, the viewport uses **ghost** residual (EXPIRED).
+
+**Was:** `T16:00:00Z` cutoff, which treated same-calendar-day cards as
+expired from noon ET onward.
+
+**As-built:** `isOptionPointerExpired` / `calendarDteOf` compare NY
+calendar dates. Same-day DTE = 0 and still in play. UTC 00:00 on the
+next civil date is still live while Eastern is still the exp day.
+
+---
+
 ## 2026-08-16 — DL-392 Analyzer Surface viewport from MSC scene
 
 **Decision (Coach):** Options Lab Analyzer **Surface** viewport uses the

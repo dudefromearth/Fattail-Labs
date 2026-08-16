@@ -18,7 +18,9 @@ export type BuilderPlaneKind =
   /** OPF / dual-side plane unreachable — theoretically rare */
   | "plane_unavailable"
   /** Structure cannot sit on listed grid (user/geometry) */
-  | "unplaceable";
+  | "unplaceable"
+  /** Market closed — last print only, not a live OPF outage */
+  | "off_market";
 
 export type BuilderPlaneState = {
   kind: BuilderPlaneKind;
@@ -50,6 +52,21 @@ export const BUILDER_PLANE_READY: BuilderPlaneState = {
   kind: "ready",
   title: "READY",
   detail: "Structure and package marks are live from OPF.",
+  expected: true,
+};
+
+export const BUILDER_PLANE_OFF_MARKET: BuilderPlaneState = {
+  kind: "off_market",
+  title: "OFF MARKET",
+  detail:
+    "Market is closed. Last print is the plane when OPF still holds it. Not polling a live chain.",
+  expected: true,
+};
+
+export const BUILDER_PLANE_OFF_MARKET_READY: BuilderPlaneState = {
+  kind: "ready",
+  title: "OFF MARKET",
+  detail: "Last print — market is closed. Not a live chain.",
   expected: true,
 };
 
@@ -110,11 +127,28 @@ export function resolveBuilderPlaneState(opts: {
   /** True when regenerate could not place on listed grid */
   unplaceable: boolean;
   unplaceableDetail?: string | null;
+  /** Held / Closed — last print, do not treat as OPF outage */
+  offMarket?: boolean;
 }): BuilderPlaneState {
   if (!opts.open) return BUILDER_PLANE_READY;
 
   if (opts.unplaceable) {
     return builderUnplaceable(opts.unplaceableDetail || undefined);
+  }
+
+  if (opts.offMarket) {
+    if (opts.hasListedStrikes && opts.hasLegs) {
+      return BUILDER_PLANE_OFF_MARKET_READY;
+    }
+    if (opts.resolving || opts.chainLoading) {
+      return {
+        kind: "updating",
+        title: "OFF MARKET",
+        detail: "Loading last print. Market is closed — not a live chain.",
+        expected: true,
+      };
+    }
+    return BUILDER_PLANE_OFF_MARKET;
   }
 
   // Plane down only when we have an error and no listed strikes (true outage)

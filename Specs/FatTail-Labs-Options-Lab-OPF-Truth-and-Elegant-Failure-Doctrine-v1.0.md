@@ -63,7 +63,7 @@ If any leg fails (1) or (2), the structure is **not representable** for pricing.
 |--------|-----|
 | **Position card** | Definition of what the member points at (legs, exp, direction, lock) |
 | **OPF + dual-side chain** | Whether those legs are real instruments and what they are worth (natural / held) |
-| **Viewport** | Visualization of the focused definition under OPF resolve — not a second book |
+| **Viewport** | Visualization of **every shown** (visible) definition under one OPF resolve of the additive book — not a second book, not a radio that drops siblings |
 
 Changing expiration or strikes **rebinds the pointer**. It does not mint a fictional option.
 
@@ -75,7 +75,7 @@ Changing expiration or strikes **rebinds the pointer**. It does not mint a ficti
 | Position card | Display package only when representable + quote/lock allows; otherwise Law B state |
 | Strike ▲/▼ | Step on listed grid; missing market → Law B (**NOT TRADED**), not a fake mid |
 | Analyze / Update | Must not commit a structure that invents non-OPF strikes as if they were real |
-| **Risk graph / Surface viewport** | Same Law B names as cards. **No fabricated package curve** (PB-VIEW-6). Keep **scales + grid**; suppress live series when non-representable; optional centered notice using the **same calm title/detail** as the card — **never** internal codes (`PB-VIEW-6`, “dual-side generations”, “fabricated curve”). Expired focus may show at-expiry residual ghost only, with **EXPIRED** notice. |
+| **Risk graph / Surface viewport** | Same Law B names as cards. **No fabricated package curve** (PB-VIEW-6). Keep **scales + grid**; suppress live series when non-representable; optional centered notice using the **same calm title/detail** as the card — **never** internal codes (`PB-VIEW-6`, “dual-side generations”, “fabricated curve”). Expired-only shown book may show at-expiry residual ghost, with **EXPIRED** notice. **Two or more shown positions** draw as **one additive continuous book curve** (DL-394). |
 
 ---
 
@@ -98,7 +98,7 @@ On exception, the package **price cell is replaced** by a **state label** (not a
 
 | State | Meaning (truth) |
 |-------|------------------|
-| **EXPIRED** | Pointer’s expiration is past settlement; no live option residual |
+| **EXPIRED** | Pointer’s expiration **calendar day has ended** after **midnight Eastern Time** (`00:00:00` America/New_York — EST or EDT). Not UTC midnight, not the member’s local midnight, not cash close. Same-day cards stay current through 23:59:59 ET. A still-shown card at/after 00:00 ET the next day uses viewport **ghost**. |
 | **NOT TRADED** | Exp may be valid; one or more legs have no market on the OPF chain (incl. chain edge / sparse strikes) |
 | **CHECK LEGS** | Structure cannot fully bind for other representability reasons |
 | **UPDATING** | Atomic resolve in flight — not yet settled |
@@ -155,9 +155,9 @@ Marketing and UI copy remain free of profit claims; **instrument honesty** is se
 | Bind assess (exp then price) | `web/lib/options-lab/optionBind.ts` |
 | Atomic package resolve | `web/lib/options-lab/usePackageQuotes.ts` |
 | Named package display states | `web/lib/options-lab/cardDisplayState.ts` · `AnalyzerPositionsList` |
-| Viewport curve policy + notices | `resolveViewportFocusPolicy` · `OpfRiskAnalyzer` risk viewport |
+| Viewport curve policy + notices | `resolveViewportBookPolicy` · `visibleBookTrade` · `combineParsedTrades` · `OpfRiskAnalyzer` risk viewport |
 | Unit checks | `optionBind.test.ts` · `cardDisplayState.test.ts` · `analyzerBook.pointer.test.ts` |
-| Exp calendar / 0DTE until 16:00 ET | `server/routes/chain_ladder.py` · `OPF_ACTIVE_DTE_HORIZON` |
+| Card EXPIRED vs current | `isOptionPointerExpired` — live through **23:59:59 Eastern Time** of the exp day; EXPIRED at **00:00:00 ET** the next day; then ghost |
 
 This map may grow; **the laws do not weaken** if a path is unfinished — unfinished paths must still not invent instruments.
 

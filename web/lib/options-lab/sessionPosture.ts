@@ -3,34 +3,48 @@
  * Pure helpers for unit/fixture tests (holiday · half-day · index window).
  */
 
-export type SessionPosture = "Live" | "Held" | "Closed" | "Error";
+export type SessionPosture = "Live" | "Extended" | "Held" | "Closed" | "Error";
 
 export type SessionStatusDoc = {
   open?: boolean | null;
+  /** Massive still producing prints (RTH or pre/post). */
+  printing?: boolean | null;
   market?: string | null;
   ok?: boolean;
   error?: string;
 };
 
+/** True when Massive is printing — RTH or pre/post. Not a cash-bell gate. */
+export function planeIsPrinting(posture: SessionPosture): boolean {
+  return posture === "Live" || posture === "Extended";
+}
+
 /**
  * Map `/api/me/market/session-status` body → Analyzer posture.
- * `open: true` → Live; otherwise Held/Closed from market label.
+ * `open: true` → Live (RTH).
+ * `extended-hours` / printing → Extended (pre/post Massive prints).
+ * `closed` → Closed. Else Held (last print, plane dark).
  * Missing open → null (caller uses clock fallback).
  */
 export function postureFromSessionStatus(
   doc: SessionStatusDoc | null | undefined,
 ): SessionPosture | null {
-  if (!doc || typeof doc.open !== "boolean") return null;
-  if (doc.open) return "Live";
+  if (!doc) return null;
   const m = String(doc.market || "").toLowerCase();
+  if (doc.open === true) return "Live";
+  if (m === "extended-hours" || doc.printing === true) return "Extended";
+  if (typeof doc.open !== "boolean" && doc.printing == null && !m) {
+    return null;
+  }
   if (m === "closed" || m === "early-close") return "Closed";
-  // extended-hours, holidays (closed with open:false), half-day after close → Held
-  return "Held";
+  if (doc.open === false) return "Held";
+  return null;
 }
 
 /**
  * Clock fallback only when plane facts unavailable.
- * Index-friendly: Live 09:30–16:15 ET weekdays (SPX/options often print to 16:15).
+ * Do not hard-cut at 16:00 / 09:30 — Massive prints pre (04:00) and post
+ * (to 20:00 ET). Index RTH window 09:30–16:15.
  */
 export function clockPostureFallback(now: Date = new Date()): SessionPosture {
   try {
@@ -41,6 +55,8 @@ export function clockPostureFallback(now: Date = new Date()): SessionPosture {
     const mins = et.getHours() * 60 + et.getMinutes();
     if (day === 0 || day === 6) return "Closed";
     if (mins >= 9 * 60 + 30 && mins < 16 * 60 + 15) return "Live";
+    if (mins >= 4 * 60 && mins < 9 * 60 + 30) return "Extended";
+    if (mins >= 16 * 60 + 15 && mins < 20 * 60) return "Extended";
     return "Held";
   } catch {
     return "Error";
@@ -67,9 +83,9 @@ export const POSTURE_FIXTURES: {
     expected: "Closed",
   },
   {
-    id: "extended_hours_held",
-    doc: { open: false, market: "extended-hours", ok: true },
-    expected: "Held",
+    id: "extended_hours_pre_post",
+    doc: { open: false, market: "extended-hours", printing: true, ok: true },
+    expected: "Extended",
   },
   {
     id: "regular_open_live",

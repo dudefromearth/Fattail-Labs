@@ -20,6 +20,7 @@ import {
   ladderToOpfGeneration,
   opfCurveToPnLPoints,
   resolveOpfPricing,
+  sumAlignedPnL,
   tradeToOpfStrategy,
   type OpfResolveResult,
 } from "@/lib/options-lab/opfPricingApi";
@@ -71,10 +72,12 @@ const graphCache = new Map<string, GraphCacheEntry>();
 /** Chain ladders by product+exp — shared across trade keys (same underlier). */
 const ladderPool = new Map<string, LadderFull>();
 
-function uniqueExpirations(trade: ParsedTosTrade): string[] {
+function uniqueExpirations(trades: ParsedTosTrade[]): string[] {
   const s = new Set<string>();
-  for (const l of trade.legs) s.add(l.expiration);
-  if (trade.expiration) s.add(trade.expiration);
+  for (const trade of trades) {
+    for (const l of trade.legs) s.add(l.expiration);
+    if (trade.expiration) s.add(trade.expiration);
+  }
   return [...s];
 }
 
@@ -83,7 +86,7 @@ function ladderPoolKey(symbol: string, exp: string): string {
 }
 
 function cacheKey(opts: {
-  trade: ParsedTosTrade;
+  trades: ParsedTosTrade[];
   useCase: string;
   packId: string | null;
   spotOverride: number | null;
@@ -93,8 +96,7 @@ function cacheKey(opts: {
   spotPct: number;
 }): string {
   return [
-    opts.trade.symbol,
-    opts.trade.raw,
+    opts.trades.map((t) => `${t.symbol}:${t.raw}`).join("||"),
     opts.useCase,
     opts.packId ?? "",
     opts.spotOverride ?? "",
@@ -103,6 +105,27 @@ function cacheKey(opts: {
     opts.volOffsetPts,
     opts.spotPct,
   ].join("#");
+}
+
+function basisShiftFor(
+  trade: ParsedTosTrade,
+  result: OpfResolveResult | null,
+): number {
+  if (!trade.limit || trade.limit <= 0) return 0;
+  const dNat = result?.marks?.package_debit_per_share;
+  if (dNat == null || !Number.isFinite(dNat)) return 0;
+  const limitSigned = trade.isCredit
+    ? -Math.abs(trade.limit)
+    : Math.abs(trade.limit);
+  return (dNat - limitSigned) * 100;
+}
+
+function shiftPts(
+  pts: { price: number; pnl: number }[],
+  shift: number,
+): { price: number; pnl: number }[] {
+  if (!shift) return pts;
+  return pts.map((p) => ({ price: p.price, pnl: p.pnl + shift }));
 }
 
 function readCache(key: string): GraphCacheEntry | null {
@@ -133,6 +156,8 @@ function writeCache(key: string, e: GraphCacheEntry): void {
 
 export function useOpfRiskGraph(opts: {
   trade: ParsedTosTrade | null;
+  /** Independently shown structures — each resolves on its own last-print generation. */
+  trades?: ParsedTosTrade[] | null;
   /** Manual spot override; null → use chain spot */
   spotOverride?: number | null;
   vix?: number | null;
@@ -145,9 +170,12 @@ export function useOpfRiskGraph(opts: {
   spotPct?: number;
   /** When false, pause polling */
   enabled?: boolean;
+  /** Massive still printing (RTH or pre/post). False → one resolve, no interval. */
+  pollLive?: boolean;
 }): OpfRiskGraphState {
   const {
     trade,
+    trades: tradesOpt = null,
     spotOverride = null,
     vix = null,
     useCase = "day_trade",
@@ -156,12 +184,18 @@ export function useOpfRiskGraph(opts: {
     volOffsetPts = 0,
     spotPct = 0,
     enabled = true,
+    pollLive = true,
   } = opts;
 
+  const bookTrades = useMemo(() => {
+    if (tradesOpt && tradesOpt.length > 0) return tradesOpt;
+    return trade ? [trade] : [];
+  }, [trade, tradesOpt]);
+
   const key = useMemo(() => {
-    if (!trade) return "";
+    if (!bookTrades.length) return "";
     return cacheKey({
-      trade,
+      trades: bookTrades,
       useCase,
       packId,
       spotOverride,
@@ -171,7 +205,7 @@ export function useOpfRiskGraph(opts: {
       spotPct,
     });
   }, [
-    trade,
+    bookTrades,
     useCase,
     packId,
     spotOverride,
@@ -215,28 +249,29 @@ export function useOpfRiskGraph(opts: {
   }
 
   const run = useCallback(async (opts?: { force?: boolean; soft?: boolean }) => {
-    if (!trade || !enabled) {
+    if (!bookTrades.length || !enabled) {
       setResult(null);
       setError(null);
       setFromCache(false);
       return;
     }
+    const primary = bookTrades[0];
     const tick = ++tickRef.current;
     const hasPaint =
       Boolean(resultRef.current) || Boolean(key && readCache(key)?.result);
     const soft = opts?.soft === true || (hasPaint && opts?.force !== true);
     if (!soft) setLoading(true);
     try {
-      const exps = uniqueExpirations(trade);
+      const exps = uniqueExpirations(bookTrades);
       // Seed ladders from pool if this mount's map is cold
       for (const exp of exps) {
         if (!laddersRef.current.has(exp)) {
-          const pooled = ladderPool.get(ladderPoolKey(trade.symbol, exp));
+          const pooled = ladderPool.get(ladderPoolKey(primary.symbol, exp));
           if (pooled) laddersRef.current.set(exp, pooled);
         }
       }
 
-      const gens = [];
+      const gens: ReturnType<typeof ladderToOpfGeneration>[] = [];
       let chainSpot: number | null = null;
       let chainVix: number | null = vix;
 
@@ -244,7 +279,7 @@ export function useOpfRiskGraph(opts: {
         const prev = laddersRef.current.get(exp);
         const polled = await pollChainLadder({
           expiration: exp,
-          symbol: trade.symbol,
+          symbol: primary.symbol,
           wings: WINGS,
           since_hash: prev?.content_hash ?? null,
         });
@@ -281,7 +316,7 @@ export function useOpfRiskGraph(opts: {
         } else if (!ladder) {
           const full = await pollChainLadder({
             expiration: exp,
-            symbol: trade.symbol,
+            symbol: primary.symbol,
             wings: WINGS,
           });
           if (full.mode === "full") {
@@ -290,12 +325,12 @@ export function useOpfRiskGraph(opts: {
           }
         }
         if (!ladder) {
-          throw new Error(`No chain generation for ${trade.symbol} ${exp}`);
+          throw new Error(`No chain generation for ${primary.symbol} ${exp}`);
         }
-        ladderPool.set(ladderPoolKey(trade.symbol, exp), ladder);
+        ladderPool.set(ladderPoolKey(primary.symbol, exp), ladder);
         if (chainSpot == null && ladder.spot > 0) chainSpot = ladder.spot;
         if (ladder.vix != null) chainVix = ladder.vix;
-        gens.push(ladderToOpfGeneration(ladder, trade.symbol, WINGS));
+        gens.push(ladderToOpfGeneration(ladder, primary.symbol, WINGS));
       }
 
       const spotUse =
@@ -321,7 +356,7 @@ export function useOpfRiskGraph(opts: {
         epochKey,
         useCase,
         packId,
-        trade.raw,
+        bookTrades.map((t) => t.raw).join("||"),
         String(spotUse),
         String(spotPct),
         String(volOffsetPts),
@@ -349,45 +384,126 @@ export function useOpfRiskGraph(opts: {
       }
       lastResolveKey.current = resolveKey;
 
-      const resolved = await resolveOpfPricing({
-        use_case: useCase,
-        pack_id: packId,
-        strategy: tradeToOpfStrategy(trade),
-        generations: gens,
-        spot: spotUse,
-        vix: chainVix,
-        what_if: {
-          spot_pct: spotPct,
-          vol_offset_pts: volOffsetPts,
-          time_offset_hours: timeOffsetHours,
-          curve_steps: 161,
-          curve_range_pct: 8,
-        },
-        scenario:
-          useCase === "outlook"
-            ? {
+      const allStrikes = bookTrades.flatMap((t) => t.legs.map((l) => l.strike));
+      const curveRangePct = (() => {
+        if (!allStrikes.length || !(spotUse > 0)) return 8;
+        const span = Math.max(
+          Math.abs(Math.max(...allStrikes) - spotUse),
+          Math.abs(Math.min(...allStrikes) - spotUse),
+        );
+        return Math.max(8, Math.min(25, (span / spotUse) * 100 + 3));
+      })();
+
+      const settled = await Promise.all(
+        bookTrades.map(async (t) => {
+          try {
+            const resolved = await resolveOpfPricing({
+              use_case: useCase,
+              pack_id: packId,
+              strategy: tradeToOpfStrategy(t),
+              generations: gens,
+              spot: spotUse,
+              vix: chainVix,
+              what_if: {
+                spot_pct: spotPct,
                 vol_offset_pts: volOffsetPts,
                 time_offset_hours: timeOffsetHours,
-                spot_pct: spotPct,
-              }
-            : undefined,
-      });
+                curve_steps: 161,
+                curve_range_pct: curveRangePct,
+              },
+              scenario:
+                useCase === "outlook"
+                  ? {
+                      vol_offset_pts: volOffsetPts,
+                      time_offset_hours: timeOffsetHours,
+                      spot_pct: spotPct,
+                    }
+                  : undefined,
+            });
+            return { trade: t, resolved, error: null as string | null };
+          } catch (e) {
+            return {
+              trade: t,
+              resolved: null as OpfResolveResult | null,
+              error: e instanceof Error ? e.message : String(e),
+            };
+          }
+        }),
+      );
 
       if (tick !== tickRef.current) return;
+
+      const ok = settled.filter((s) => s.resolved);
+      if (ok.length === 0) {
+        const msg = settled[0]?.error || "OPF resolve incomplete";
+        setSpot(spotUse);
+        setError(msg);
+        if (!soft) {
+          setResult(null);
+          resultRef.current = null;
+        }
+        setFromCache(false);
+        return;
+      }
+
+      const expSeries = ok.map((s) =>
+        shiftPts(
+          opfCurveToPnLPoints(s.resolved!.curves?.expiration?.points),
+          basisShiftFor(s.trade, s.resolved),
+        ),
+      );
+      const theoSeries = ok.map((s) =>
+        shiftPts(
+          opfCurveToPnLPoints(s.resolved!.curves?.model_t0?.points),
+          basisShiftFor(s.trade, s.resolved),
+        ),
+      );
+      const expPts = sumAlignedPnL(expSeries);
+      const theoPts = sumAlignedPnL(theoSeries);
+      const pkg = ok.reduce((sum, s) => {
+        const d = s.resolved!.marks?.package_debit_per_share;
+        return sum + (d != null && Number.isFinite(d) ? d : 0);
+      }, 0);
+
+      const head = ok[0].resolved!;
+      const merged: OpfResolveResult = {
+        ...head,
+        complete: true,
+        marks: {
+          ...head.marks,
+          package_debit_per_share: pkg,
+          complete: true,
+        },
+        curves: {
+          expiration: {
+            label: head.curves?.expiration?.label,
+            points: expPts.map((p) => ({ x: p.price, y: p.pnl })),
+          },
+          model_t0: {
+            label: head.curves?.model_t0?.label,
+            points: theoPts.map((p) => ({ x: p.price, y: p.pnl })),
+          },
+        },
+        meta: {
+          ...head.meta,
+          error: null,
+        },
+      };
+
       setSpot(spotUse);
-      setResult(resolved);
-      resultRef.current = resolved;
+      setResult(merged);
+      resultRef.current = merged;
       setFromCache(false);
-      const errMsg = resolved.meta?.error
-        ? String(resolved.meta.error)
-        : resolved.complete === false && !resolved.curves?.model_t0?.points
-          ? "OPF resolve incomplete"
+      const leftover = settled.filter((s) => !s.resolved);
+      const errMsg =
+        leftover.length && ok.length === 0
+          ? leftover[0]?.error ?? "OPF resolve incomplete"
           : null;
       setError(errMsg);
       if (key) {
         writeCache(key, {
           ladders: new Map(laddersRef.current),
-          result: resolved,
+          result: merged,
           spot: spotUse,
           generationEpoch: epochKey,
           contentHashes: hashes,
@@ -410,7 +526,7 @@ export function useOpfRiskGraph(opts: {
       if (tick === tickRef.current) setLoading(false);
     }
   }, [
-    trade,
+    bookTrades,
     enabled,
     spotOverride,
     vix,
@@ -453,43 +569,31 @@ export function useOpfRiskGraph(opts: {
   }, [key]);
 
   useEffect(() => {
-    if (!trade || !enabled) return;
+    if (!bookTrades.length || !enabled) return;
     // Soft refresh when we already have paint; hard only when cold
     const hasPaint = Boolean(readCache(key)?.result || result);
     void run({ soft: hasPaint });
+    if (!pollLive) {
+      return;
+    }
     const id = window.setInterval(() => void run({ soft: true }), POLL_MS);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run, trade, enabled, key]);
+  }, [run, bookTrades, enabled, key, pollLive]);
 
-  /**
-   * ToS Risk Analyzer uses the order limit as cost basis when present.
-   * OPF marks use natural mid; shift curves so basis = limit (debit positive).
-   */
-  const basisShift = useMemo(() => {
-    if (!trade?.limit || trade.limit <= 0) return 0;
-    const dNat = result?.marks?.package_debit_per_share;
-    if (dNat == null || !Number.isFinite(dNat)) return 0;
-    const limitSigned = trade.isCredit
-      ? -Math.abs(trade.limit)
-      : Math.abs(trade.limit);
-    return (dNat - limitSigned) * 100;
-  }, [trade, result]);
-
-  const expirationPoints = useMemo(() => {
-    const pts = opfCurveToPnLPoints(result?.curves?.expiration?.points);
-    if (!basisShift) return pts;
-    return pts.map((p) => ({ price: p.price, pnl: p.pnl + basisShift }));
-  }, [result, basisShift]);
-  const theoreticalPoints = useMemo(() => {
-    const pts = opfCurveToPnLPoints(result?.curves?.model_t0?.points);
-    if (!basisShift) return pts;
-    return pts.map((p) => ({ price: p.price, pnl: p.pnl + basisShift }));
-  }, [result, basisShift]);
+  // Basis is applied per structure before the book sum — do not shift again.
+  const expirationPoints = useMemo(
+    () => opfCurveToPnLPoints(result?.curves?.expiration?.points),
+    [result],
+  );
+  const theoreticalPoints = useMemo(
+    () => opfCurveToPnLPoints(result?.curves?.model_t0?.points),
+    [result],
+  );
 
   const allStrikes = useMemo(
-    () => (trade ? trade.legs.map((l) => l.strike) : []),
-    [trade],
+    () => bookTrades.flatMap((t) => t.legs.map((l) => l.strike)),
+    [bookTrades],
   );
 
   const { maxPnL, minPnL, theoreticalPnLAtSpot } = useMemo(() => {

@@ -38,7 +38,9 @@ Supporting: Market Bus dual-side generations + underlier marks + volume/OHLC dat
 **Capital-risk doctrine (normative parent):**  
 [OPF Truth & Elegant Failure Doctrine v1.0](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md) · **DL-309** — OPF-held chain is sole instrument truth for create/edit/cards; package cell shows defendable mark **or** named state (never silent lie); atomic pointer resolve.
 
-**What this is not:** brokerage OMS; multi-definition stacked P&amp;L; MSC regimes/Heston/MC; silent dual package math; profit claims; invented strikes.
+**What this is not:** brokerage OMS; MSC regimes/Heston/MC; silent dual package math; profit claims; invented strikes.
+
+**Coach 2026-08-16 (DL-394):** Show/Hide is a **checkbox**. Two or more **shown** positions draw as **one additive continuous** book curve. The prior “no multi-definition stacked P&amp;L / one focused definition” line is **superseded** for viewport drive (focus remains highlight-only).
 
 ---
 
@@ -103,7 +105,7 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 
 | ID | Law |
 |----|-----|
-| **AZ-X-1** | **Positions → Analyzer Viewport:** only the **focused visible** definition (or unlocked-live ToS when none) drives structure. |
+| **AZ-X-1** | **Positions → Analyzer Viewport:** every **shown** (`visible`) definition on the session underlier drives structure as **one additive book**. Hidden cards do not contribute. Card click may highlight (focus) but **must not** un-show a sibling. *(Supersedes 2026-08-11 “focused visible only” · DL-394.)* |
 | **AZ-X-2** | **Models + Time machine → Analyzer Viewport:** pack and what-if re-resolve the **same** definition (PB-VIEW-2/3). |
 | **AZ-X-3** | **Alerts ↔ Analyzer Viewport:** create from risk graph; evaluate on underlier mark; draw lines on **Analyzer** graph (not a substitute for VP/GEX). |
 | **AZ-X-4** | **Controls → all:** **symbol** (and posture where relevant) is **shared suite context** for Positions, all viewports, and Alerts. |
@@ -133,8 +135,8 @@ These share **one** Analyzer session: same **Positions**, **Alerts**, **Models**
 
 | Viewport id | Label | Role | Presentation |
 |-------------|-------|------|----------------|
-| **risk** | Risk graph | OPF dual curves for **focused** definition | 2D `PnLChart` (as-built) |
-| **surface** | Surface | **Same definition + same OPF samples** — P&amp;L over e.g. spot × DTE | 3D mesh (MSC RiskGraph3DView heritage; **OPF SoR only**) |
+| **risk** | Risk graph | OPF dual curves for the **shown book** (additive) | 2D `PnLChart` (as-built) |
+| **surface** | Surface | **Same shown book + same OPF samples** — P&amp;L over e.g. spot × DTE | 3D mesh (MSC RiskGraph3DView heritage; **OPF SoR only**) |
 
 | ID | Law |
 |----|-----|
@@ -182,7 +184,7 @@ Same **product symbol**; **not** second Positions books. May live as suite tabs 
 
 | ID | Law |
 |----|-----|
-| **AZ-VP-1** | Analyzer host visualizes **one focused definition** at a time (PB-VIEW-4), whether Risk or Surface mode. |
+| **AZ-VP-1** | Analyzer host visualizes the **shown book** (all `visible` cards) as **one additive continuous** OPF curve, whether Risk or Surface mode. Show/Hide is a **checkbox**, not a radio. *(Supersedes 2026-08-11 “one focused definition” / PB-VIEW-4 · DL-394.)* |
 | **AZ-VP-2** | **Volume Profile**, **GEX**, and **Probability** are **attached** analytics: same symbol; not second position books. |
 | **AZ-VP-3** | Attached viewports **must not** open private Massive sockets or hardcode symbol lists. |
 | **AZ-VP-4** | Leaving Analyzer for VP/Heatmap **must not** destroy Positions/Alerts (sessionStorage). Switching Risk↔Surface must not either. |
@@ -281,8 +283,8 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 
 | Priority | Source | Drives viewport when |
 |----------|--------|----------------------|
-| 1 | **Focused visible card** → `positionToParsedTrade(card.position)` | `focusedId` set and `visible` |
-| 2 | **Parsed ToS paste / handoff** (`raw`) | No focused visible card |
+| 1 | **Shown book** → `visibleBookTrade(positions)` (additive merge of every `visible` drawable card) | One or more cards shown |
+| 2 | Empty CTA | No shown drawable card |
 
 | Feature | As-built |
 |---------|----------|
@@ -334,9 +336,9 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 
 | Element | Behavior |
 |---------|----------|
-| Click / Enter / Space | **Focus** card → viewport rebinds |
-| Focus ring | Tint border + fill when focused |
-| Hide/Show | Toggle `visible`; hidden opacity + liveState not_live |
+| Click / Enter / Space | **Highlight** card (edit / alerts). Does **not** hide siblings. |
+| Focus ring | Tint border + fill when highlighted |
+| Show checkbox | Independent `visible` toggle — **checkbox, not radio**. Hidden opacity + liveState not_live |
 | **Edit** | Opens Position Builder in **edit** mode with that definition |
 | **Lock mkt** | `lockNatural` — freezes D* from last complete natural |
 | **Lock lim** | Prompt magnitude + confirm credit vs debit → `lockLimit` |
@@ -597,7 +599,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 │  symbol · ToS · what-if · actions)            │
 ├─────────────────────────────────────────────┤
 │                                               │
-│   VIEWPORT PANEL — OPF risk graph             │  single focused
+│   VIEWPORT PANEL — OPF risk graph             │  shown book (additive)
 │   (+ alert price lines drawn on graph)        │
 │                                               │
 ├─────────────── divider ─────────────────────┤
@@ -616,8 +618,8 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 |----|-----|
 | **AZ-LAYOUT-1** | Position list lives **under** the viewport (not left of it). **OD-AZ1 Accept.** |
 | **AZ-LAYOUT-2** | A **visible divider** separates viewport and list (single panel with split, or two stacked panels). **OD-AZ1 Accept.** |
-| **AZ-LAYOUT-3** | Viewport is a **single** visualization panel (one focused definition) — Risk graph or Surface mode. |
-| **AZ-LAYOUT-4** | List may hold **multiple** positions; focus selects which definition the viewport shows. |
+| **AZ-LAYOUT-3** | Viewport is a **single** visualization panel (Risk graph or Surface) of the **shown book**. |
+| **AZ-LAYOUT-4** | List may hold **multiple** positions; each Show checkbox independently includes that card in the additive book. Highlight (focus) does not deselect siblings. |
 | **AZ-LAYOUT-5** | **Alerts** sit **under the position list** (default). Dedicated, discoverable Analyzer region — never removed without Coach disposition (AZ-AL-0). **OD-AZ2 Accept.** |
 | **AZ-LAYOUT-6** | Alert **lines** always render on the Risk graph viewport when alerts exist; list placement must not remove graph affordances (right-click create). **OD-AZ5 Accept:** VP/GEX alert draw optional later; Analyzer graph first. |
 | **AZ-LAYOUT-7** | **Controls** after layout residual: **top compact strip** (pack · posture · symbol · ToS · actions · what-if). **OD-AZ1 Accept.** |
@@ -630,12 +632,12 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 
 | ID | Law |
 |----|-----|
-| **AZ-FOCUS-1** | At most **one** focused card at a time. |
-| **AZ-FOCUS-2** | Focused **and** visible definition drives viewport structure. |
-| **AZ-FOCUS-3** | If no focused visible card, viewport may show unlocked-live ToS/handoff trade. |
-| **AZ-FOCUS-4** | Hiding the focused card drops viewport drive for that card (PB13). |
-| **AZ-FOCUS-5** | Removing focused card clears focus; fallback to paste/handoff if any (PB12). |
-| **AZ-FOCUS-6** | Incomplete/skewed focused unlocked → no fabricated curve (PB-VIEW-6). |
+| **AZ-FOCUS-1** | At most **one** highlighted (focused) card at a time — highlight only. |
+| **AZ-FOCUS-2** | **Every shown** (`visible`) card drives the viewport as an additive book. Focus is not required. *(Supersedes “focused and visible only” · DL-394.)* |
+| **AZ-FOCUS-3** | If no shown drawable card, viewport is empty CTA (scales + grid). |
+| **AZ-FOCUS-4** | Hiding a card drops **that card only** from the book (PB13). Siblings stay. |
+| **AZ-FOCUS-5** | Removing a card removes it from the book; highlight fallback is independent. |
+| **AZ-FOCUS-6** | Incomplete/skewed **shown** unlocked cards do not fabricate a curve (PB-VIEW-6); they do not blank a drawable sibling. |
 
 ---
 
@@ -759,7 +761,8 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 - Fabricated curves for incomplete packages.  
 - Unlisted strikes in Builder selects.  
 - Empty Builder open with no default geometry when market data is available.  
-- Multi-card stacked P&amp;L in one viewport.  
+- Radio-style Show/Hide (selecting one card un-shows another).  
+- Fabricating a book curve from non-representable legs.  
 - Silent dual package math (card vs resolve disagree unlabeled).  
 - Live claim when session Held/Closed.  
 - Profit theater.
@@ -775,8 +778,8 @@ Threshold **price** alerts are an Analyzer subsystem: **create · list · evalua
 | **AT-AZ-1** | Open Analyzer → posture badge present |
 | **AT-AZ-2** | Paste valid butterfly ToS → Load → dual curves without card |
 | **AT-AZ-3** | Builder create default → Analyze → card appears + focus + curves |
-| **AT-AZ-4** | Focus card A then B → resolve structure is B only |
-| **AT-AZ-5** | Hide focused → incomplete/empty fallback per focus law |
+| **AT-AZ-4** | Show card A and B → resolve structure is the **additive book** (both). Highlight B does not drop A. |
+| **AT-AZ-5** | Hide A while B is shown → viewport stays on B (checkbox, not radio) |
 | **AT-AZ-6** | Lock mkt freezes basis; unlock restores natural path |
 | **AT-AZ-7** | Heatmap ToS handoff appears in paste with heatmap source flag |
 | **AT-AZ-8** | Right-click chart → create price_above/below/touch → alert appears in **Alerts list** and as chart line |
@@ -864,6 +867,7 @@ All ODs below are **Accepted** as written. Recommendations become **normative la
 | **v0.2** | 2026-08-11 | **Advisor fold** B1–B5 · A1–A8 · P1–P2 (§15) |
 | **v0.2.1** | 2026-08-11 | **Coach Accept OD-AZ1–8** (DL-304) — law locked |
 | **v0.2.1 path** | 2026-08-11 | Filename reconcile → `...Analyzer-Spec-v0_2.md` (P-B1 · DL-306); content still v0.2.1 |
+| **v0.2.2** | 2026-08-16 | **DL-394** Show/Hide checkbox; additive continuous book viewport. Prior one-focus-viewport rows kept as superseded. |
 
 **Reference UX (non-authority):** MSC Risk Graph (2D + 3D) — workflow / scene only. **MSC is not the pricing standard.**
 

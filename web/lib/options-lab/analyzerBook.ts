@@ -88,6 +88,12 @@ export type AnalyzerPosition = {
   livePackagePerShare: number | null;
   /** Signed natural from last OPF quote (for lock natural / parity) */
   lastNatSigned: number | null;
+  /**
+   * Durable defined debit/credit (OPF sign: +debit / −credit).
+   * Written on create / quote / lock. Never cleared by expire or bind fail.
+   * Ghost residual and the expired price cell use this — not a rebuilt mark.
+   */
+  definedDebitPerShare?: number | null;
   priceSide: "debit" | "credit" | null;
   visible: boolean;
   lock: CardLockState;
@@ -150,6 +156,17 @@ function migratePos(raw: unknown): AnalyzerPosition | null {
     status: "ANALYSIS",
     livePackagePerShare: p.livePackagePerShare ?? null,
     lastNatSigned: p.lastNatSigned ?? null,
+    definedDebitPerShare: backfillDefinedDebit({
+      definedDebitPerShare: p.definedDebitPerShare,
+      lock: p.lock?.mode === "locked" ? p.lock : { mode: "unlocked" },
+      lastNatSigned: p.lastNatSigned ?? null,
+      livePackagePerShare: p.livePackagePerShare ?? null,
+      priceSide:
+        p.priceSide === "debit" || p.priceSide === "credit"
+          ? p.priceSide
+          : null,
+      position: p.position,
+    }),
     // Do not default missing side to debit (painted all cards red)
     priceSide:
       p.priceSide === "debit" || p.priceSide === "credit" ? p.priceSide : null,
@@ -227,6 +244,7 @@ export function positionFromInput(input: PositionInput): AnalyzerPosition {
     livePackagePerShare:
       lastNatSigned != null ? Math.abs(lastNatSigned) : null,
     lastNatSigned,
+    definedDebitPerShare: lastNatSigned,
     priceSide,
     visible: true,
     lock: { mode: "unlocked" },
@@ -387,6 +405,7 @@ export function applyPackageQuote(
     return finish({
       ...pos,
       lastNatSigned: nat,
+      definedDebitPerShare: dStar,
       livePackagePerShare: Math.abs(dStar),
       priceSide: dStar > 0 ? "debit" : dStar < 0 ? "credit" : pos.priceSide,
       liveState,
@@ -406,6 +425,7 @@ export function applyPackageQuote(
   const next: AnalyzerPosition = {
     ...pos,
     lastNatSigned: nat,
+    definedDebitPerShare: nat,
     livePackagePerShare: Math.abs(nat),
     // OPF package_debit_per_share: +debit / −credit
     priceSide: nat > 0 ? "debit" : nat < 0 ? "credit" : null,
@@ -447,6 +467,7 @@ export function lockNatural(pos: AnalyzerPosition): AnalyzerPosition {
       generationHashesAtLock: { ...pos.contentHashes },
     },
     livePackagePerShare: Math.abs(pos.lastNatSigned),
+    definedDebitPerShare: pos.lastNatSigned,
     priceSide:
       pos.lastNatSigned > 0
         ? "debit"
@@ -478,6 +499,7 @@ export function lockLimit(
       generationHashesAtLock: { ...pos.contentHashes },
     },
     livePackagePerShare: mag,
+    definedDebitPerShare: signed,
     priceSide: isCredit ? "credit" : "debit",
     position: {
       ...pos.position,
@@ -534,6 +556,8 @@ export function flipCardDirection(pos: AnalyzerPosition): AnalyzerPosition {
     notation: buildNotation(legs),
     priceSide,
     lastNatSigned,
+    definedDebitPerShare:
+      pos.definedDebitPerShare == null ? null : -pos.definedDebitPerShare,
     // magnitude unchanged; side flipped
     livePackagePerShare: pos.livePackagePerShare,
     lock,
@@ -632,6 +656,7 @@ export function setCardExpiration(
     notation: buildNotation(legs),
     lock: { mode: "unlocked" },
     lastNatSigned: null,
+    definedDebitPerShare: null,
     livePackagePerShare: null,
     priceSide: null,
     liveState: "not_live",
@@ -681,33 +706,52 @@ export function cardPointerExpiration(pos: AnalyzerPosition): string {
 }
 
 /**
- * Calendar DTE for an option pointer (0 on expiry day until settlement cutoff).
- * Uses 16:00Z on the expiration calendar date as the “still alive” cutoff —
- * same law as the position list EXPIRED chip.
+ * Eastern Time calendar date (YYYY-MM-DD) for a clock instant.
+ * IANA zone America/New_York — EST or EDT. Analyzer “today vs expiration”
+ * is this Eastern date — not UTC, not the member’s local zone, not 16:00Z.
+ */
+export function newYorkCalendarDate(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+/**
+ * Calendar DTE for an option pointer.
+ * 0 on the entire expiration calendar day in Eastern Time
+ * (through 23:59:59 ET; flips at 00:00:00 Eastern the next day).
  */
 export function calendarDteOf(
   expiration: string,
   now: Date = new Date(),
 ): number {
   if (!expiration) return 0;
-  const e = new Date(expiration.slice(0, 10) + "T16:00:00Z");
-  return Math.max(
-    0,
-    Math.ceil((e.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
-  );
+  const exp = expiration.slice(0, 10);
+  const today = newYorkCalendarDate(now);
+  if (today > exp) return 0;
+  const a = Date.parse(`${today}T00:00:00Z`);
+  const b = Date.parse(`${exp}T00:00:00Z`);
+  return Math.max(0, Math.round((b - a) / 86_400_000));
 }
 
 /**
- * True when the pointed-to option is past settlement (card shows EXPIRED).
- * Independent of liveState / lock — pure calendar on the pointer.
+ * True when the pointed-to option’s expiration **calendar day has ended**
+ * in Eastern Time. Cutoff is **midnight Eastern Time**
+ * (`00:00:00` America/New_York — EST or EDT). Not UTC midnight, not the
+ * member’s local midnight, not cash close / 16:00Z.
+ * The card stays current through 23:59:59 ET of the expiration date.
+ * At 00:00:00 ET the next calendar day a still-shown card is EXPIRED
+ * and the viewport uses ghost residual.
  */
 export function isOptionPointerExpired(
   expiration: string,
   now: Date = new Date(),
 ): boolean {
   if (!expiration || !/^\d{4}-\d{2}-\d{2}/.test(expiration)) return true;
-  const e = new Date(expiration.slice(0, 10) + "T16:00:00Z");
-  return e.getTime() <= now.getTime();
+  return newYorkCalendarDate(now) > expiration.slice(0, 10);
 }
 
 /**
@@ -804,6 +848,7 @@ export function shiftCardStrikes(
     notation: buildNotation(legs),
     lock: { mode: "unlocked" },
     lastNatSigned: null,
+    definedDebitPerShare: null,
     livePackagePerShare: null,
     priceSide: null,
     bind: null,
@@ -896,4 +941,61 @@ export function evaluateAlerts(
 export function basisSigned(pos: AnalyzerPosition): number | null {
   if (pos.lock.mode === "locked") return pos.lock.packageDebitPerShare;
   return pos.lastNatSigned;
+}
+
+/**
+ * Debit/credit that was defined for this pointer (OPF sign).
+ * Survives expire. Used by ghost residual and the expired price cell.
+ */
+export function definedDebitSigned(pos: AnalyzerPosition): number | null {
+  if (
+    pos.definedDebitPerShare != null &&
+    Number.isFinite(pos.definedDebitPerShare)
+  ) {
+    return pos.definedDebitPerShare;
+  }
+  return backfillDefinedDebit(pos);
+}
+
+function backfillDefinedDebit(
+  pos: Pick<
+    AnalyzerPosition,
+    | "definedDebitPerShare"
+    | "lock"
+    | "lastNatSigned"
+    | "livePackagePerShare"
+    | "priceSide"
+    | "position"
+  >,
+): number | null {
+  if (
+    pos.definedDebitPerShare != null &&
+    Number.isFinite(pos.definedDebitPerShare)
+  ) {
+    return pos.definedDebitPerShare;
+  }
+  if (pos.lock?.mode === "locked") {
+    const d = pos.lock.packageDebitPerShare;
+    if (Number.isFinite(d)) return d;
+  }
+  if (pos.lastNatSigned != null && Number.isFinite(pos.lastNatSigned)) {
+    return pos.lastNatSigned;
+  }
+  if (
+    pos.livePackagePerShare != null &&
+    Number.isFinite(pos.livePackagePerShare)
+  ) {
+    if (pos.priceSide === "credit") return -Math.abs(pos.livePackagePerShare);
+    if (pos.priceSide === "debit") return Math.abs(pos.livePackagePerShare);
+  }
+  const override = pos.position?.net_debit_override;
+  if (override != null && Number.isFinite(override) && override !== 0) {
+    const mag = Math.abs(override);
+    return pos.position.direction === "sell" ? -mag : mag;
+  }
+  if (pos.position?.legs?.length) {
+    const netMsc = positionNetPremium(pos.position);
+    if (Number.isFinite(netMsc) && netMsc !== 0) return -netMsc;
+  }
+  return null;
 }
