@@ -95,6 +95,7 @@ def create_app() -> FastAPI:
     from routes.users_admin import router as users_admin_router
     from routes.flow_admin import router as flow_admin_router
     from routes.access_admin import router as access_admin_router
+    from routes.integrations_tradier import router as tradier_integration_router
 
     app.include_router(auth_router)
     app.include_router(access_admin_router)
@@ -108,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(appearance_router)
     app.include_router(auth_dev_router)
     app.include_router(integrations_router)
+    app.include_router(tradier_integration_router)
     app.include_router(admin_router)
     app.include_router(canonical_courses_router)
     app.include_router(ai_admin_router)

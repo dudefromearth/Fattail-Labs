@@ -10,6 +10,8 @@ python-multipart>=0.0.9
 stripe>=11
 httpx>=0.27
 redis>=5.0
+# Broker token encryption at rest (Tradier integration — Fernet)
+cryptography>=42
 
 # dev/test
 pytest>=8
