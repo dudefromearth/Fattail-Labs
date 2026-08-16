@@ -283,6 +283,8 @@ ExitPolicy
   # Structure-agnostic (locked) — do NOT use credit-only field names.
   # Phase 1 flagship packs are debit butterflies; "fraction of credit" is undefined there.
   take_profit_frac_of_max_profit    # e.g. 0.50 — fraction of theoretical max profit if held to ideal exit
+  take_profit_frac_of_debit         # optional — fraction of net debit paid (open potential)
+  tent_relative                     # optional — position on the expiration tent (structure-agnostic)
   stop_multiple_of_premium_risked   # e.g. 2.0 — stop when loss ≥ N × premium risked at open (optional)
   exit_dte                          # days before expiry (may require manage loop if broker cannot hold)
   manage_decisions[]                # optional manage graph (M2/M3)
@@ -294,6 +296,10 @@ ExitPolicy
 |-------|------------------------|
 | **`take_profit_frac_of_max_profit`** | Target close when **realized / mark P&amp;L** reaches `frac × max_profit`, where `max_profit` is the structure’s theoretical maximum profit at open (debit: typically wing width − net debit; credit: typically net credit received). **Not** “fraction of credit.” |
 | **`stop_multiple_of_premium_risked`** | Stop / protect when **loss** reaches `N × premium_risked`. **`premium_risked`** = net **debit paid** (debit structures) or **max capital at risk beyond credit** as pack defines for credit structures — pack matrix must define the number at open. **Not** “fraction of credit.” |
+| **`take_profit_frac_of_debit`** | Close when mark P&amp;L reaches `frac ×` **net debit paid at open**. Potential-denominated (**SL-GD21**). |
+| **`tent_relative`** | Close / manage by **location on the expiration tent** (fraction of width toward body or wing). Same field for every structure. |
+
+**SL-GD21 (DL-383):** every ExitPolicy number is **potential at open** (max profit, debit, tent). **R2R** is **never** computed from result. Mark vs potential is the **trigger**, not a rewrite of entry R2R.
 
 **Forbidden names in schema / API / UI (v1):** `take_profit_frac_of_credit`, `stop_frac_of_credit`, or any field that assumes credit-side vocabulary as the universal language. Industry credit-spread shorthand must not leak into debit-first packs.
 
@@ -1011,8 +1017,9 @@ Default admin view: **ops metadata** only. Full decision_log / pack body only un
 | **O-3** | **Any retry path** (worker redelivery, UI retry, “run again,” network 5xx/timeout) **must reconcile against broker order state by tag** (or broker-native client order id if Tradier supports it) **before** resubmitting. If an open/filled/working order already exists for that tag → **do not** submit a second order; adopt the existing broker order id and log `order_dedupe_hit`. |
 | **O-4** | Manual open/close and M0/M1 paths obey the **same** rules as automated runners. Double-click and spinner retry are first-class failure modes. |
 | **O-5** | Fail loud if broker cannot be queried and local state is “submit unknown”: status `order_uncertain` — never silent second fire. Member sees: “Order state unknown; reconcile before retry.” |
+| **O-6** | **Position atomicity (SL-GD22 · DL-383).** A trade is **one position** regardless of leg count. Tag, log, backtest event, exit, and outcome bucket address the **position**, never a leg. **One idempotency key** per **attempted position fill**; **one** per **attempted position exit**. Retry **resubmits the position** under **that** key. **Log both** the attempt and the broker result (fill / working / reject / `order_dedupe_hit`) on that key. |
 
-**Mapping:** Q-2 = job claim safety. **O-1…O-5 = money safety.** Both are required before paper money paths that can submit multi-leg opens.
+**Mapping:** Q-2 = job claim safety. **O-1…O-6 = money safety.** Both are required before paper money paths that can submit multi-leg opens.
 
 ---
 
@@ -1035,5 +1042,6 @@ Default admin view: **ops metadata** only. Full decision_log / pack body only un
 |------|------|
 | 2026-08-05 | v1.1 — User + broker run first; M0–M3; attestation; export pack; thin/full admin; L4 self-manage |
 | 2026-08-05 | v1.1.1 — Claude review: **ExitPolicy** structure-agnostic (`take_profit_frac_of_max_profit`, `stop_multiple_of_premium_risked`); **O-1…O-5** order-level dedupe; §4.1.1 pause/halt/archive working-order banners; §18.4 attestation Privacy consumer |
+| 2026-08-16 | v1.1.2 — **SL-GD21/22 · DL-383:** ExitPolicy potential-denominated (+ frac-of-debit, tent-relative); **O-6** position-atomic idempotency; log both |
 
 **Checksum discipline (optional):** when uploading for external review, record `shasum -a 256` of this file in the review thread so v1.0 / v1.1 touch-ups cannot be confused by line count alone.

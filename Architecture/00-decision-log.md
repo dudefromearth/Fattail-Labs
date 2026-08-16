@@ -4,6 +4,284 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-16 — DL-392 Analyzer Surface viewport from MSC scene
+
+**Decision (Coach):** Options Lab Analyzer **Surface** viewport uses the
+**MSC 3D scene** (alpha / charlie coords / echo frame + RiskGraph3DView
+mesh/shader), vendored from
+`strategy-lab-proto/msc-risk-graph-ui` into `web/lib/risk-graph/3d/`.
+Presentation only (AZ-VP-S4 / DL-302). **Pricing stays the shared
+Strategy Lab `surfaceModel.ts`** (DL-391). No MSC theo, no MSC Redis,
+no live MSC import.
+
+**As-built:** `SurfaceScene3D` + `SurfaceViewport` in Analyzer mode
+`surface`. Drag to orbit, wheel to zoom. Same session as Risk graph.
+
+---
+
+## 2026-08-16 — DL-391 One P&L surface model across apps
+
+**Decision (Coach):** The 3D P&L surface **calculator lives in
+Strategy Lab** (`web/lib/risk-graph/surfaceModel.ts`, from the
+transplanted `useRiskGraphCalculations` / proto `computeSurface`).
+**The same model is used across apps** — Design Convexity, Options Lab
+Analyzer Surface viewport, and (next) the day-replay harness.
+Do not fork a second grid or a second pricer.
+
+**Locks:** Per-leg IV (DL-380). A single-IV sheet is allowed only when
+labeled `sticky_cli` (Design without a live chain). Analyzer Surface
+is presentation of that sheet (AZ-VP-S3), not a new engine. Harness
+walks `evaluatePnlAtSpot` / `sampleSheet` on the same functions.
+
+**As-built:** `computeSurfaceSheet` + `evaluatePnlAtSpot` +
+`SharedSurfaceView`. Design Convexity hosts the sheet. Analyzer
+`SurfaceViewport` renders the same view. Three.js mesh port remains
+presentation-only later.
+
+**Does not** implement the day-replay runner in this entry — that
+adopts this model next.
+
+---
+
+## 2026-08-16 — DL-389 Entry warrant + dynamic trailing exit
+
+**Decision (Coach):** Timing & Entry is a **wide-range warrant** —
+hence a **pseudo-code** field — not a morning/before_close pulldown.
+**OTM butterflies** use **VP structural levels and price action**.
+**GEX, order flow, etc.** might also be criteria that an entry is
+warranted. Exit rules are **similar** (wide range, pseudo-code) but
+**generally a dynamic trailing stop**, with **time**, **premium decay**,
+and the rest as the dynamic part.
+
+**Locks:** SL-GD37 / SL-GD38. Acceptance #16–17. GEX as an optional
+*entry* warrant does **not** retire GEX as **management** once on
+(SL-GD12). VP trigger grammar (SL-GD29) still applies when VP is a
+criterion. Trail remains required.
+
+**As-built:** `entry_conditions.criteria` ⊂ {`vp_structure`,
+`price_action`, `gex`, `order_flow`} + `pseudocode`. `entry_trigger`
+JSON for the VP row. `exit_rules.drivers` ⊂ {`premium_decay`, `time`}
++ `pseudocode`. Designer: warrant chips + VP selects + pseudo-code;
+exits: trail label + driver chips + pseudo-code. House designs default
+OTM-style criteria to VP + price action; exit drivers to decay + time.
+
+**Does not** implement live order-flow or GEX-as-trigger fire. Encode
+with the classifier / GEX manage-time wave.
+
+---
+
+## 2026-08-16 — DL-388 Convexity RoC change band
+
+**Decision (Coach):** Convexity & Debit already names the **find**
+range (debit-to-width / debit-to-payoff). It now also names the
+**magnitude of convex change**: an optional RoC band on Advanced Flies
+**tick-%** (`pct_change`), expressed as min and/or max percent —
+e.g. >20%, >30%, <40%, 20–40%.
+
+**Locks:** Find band ≠ change band. RoC is **absolute tick-%
+magnitude**, not a dollar debit and not `min_convexity_quality`.
+Omit a side for open-ended. Values ≥ 0; min ≤ max when both set.
+**SL-GD36.** Pack fields `convexity_roc_min_pct` /
+`convexity_roc_max_pct`. Acceptance #15.
+
+**As-built:** Designer one-row RoC control + Choices chip. Rank records
+the band. Phase 1 has no live tick % → `convexityRocPct` is null and
+`convexity_roc_uncomputable` is honest; candidates are **not** silently
+dropped. Live filter when Convexity hosts Advanced Flies.
+
+**Does not** invent a stub RoC from expiry payoff samples.
+
+---
+
+## 2026-08-16 — DL-387 Return distribution shape as primary metric
+
+**Decision (Coach):** Risk & Capital **Primary Optimization Metric**
+gains **return distribution shape** (`distribution_shape`) alongside
+Sharpe / Sortino / Calmar / return÷avg DD.
+
+**Locks:** The Monte Carlo **shape** of returns (right-skewed, long right
+tail, short left tail) is a first-class Design primary — the same law as
+SL-GD17 (MC shape, not one-path winner). Ratios remain allowed. **Win
+rate** and **raw return** stay forbidden (HC-2 / HC-3).
+
+**New law:** SL-GD35. Pack Architecture **HC-2** amended. Acceptance #14.
+
+**As-built:** schema option first in the list; Designer label “Return
+distribution shape”; ranking reads `expectedDistributionShape`. Phase 1
+has no MC distribution — the metric is **uncomputable** and ranks via
+the honest convexity-ratio proxy (`primary_metric_substituted`), same as
+the ratios today. Do not invent a fake shape score from a single path.
+
+**Does not** change house-design defaults (still sortino / calmar) or
+compute a live shape score. Encode the score when Review / SSR MC lands.
+
+---
+
+## 2026-08-16 — DL-386 VP market memory (Yankee lane)
+
+**Decision (Coach):** Fold *VP Structural Analysis* **§7 Market memory**
+(PDF updated 2026-08-16 13:39 with verified peer-reviewed long-memory
+grounding) into Guiding Doctrine Spec v1.0 **§17.7** and Arch **32** §6c.
+Searchable extract and full Coach text updated in
+[`docs/VP-Structural-Analysis-Timing-Entry-Trigger-Grammar.md`](../docs/VP-Structural-Analysis-Timing-Entry-Trigger-Grammar.md)
+and
+[`docs/VP-Structural-Analysis-Trigger-Grammar-Reference_1.md`](../docs/VP-Structural-Analysis-Trigger-Grammar-Reference_1.md).
+Position paper §3 carries the operational claim without the academic
+roster.
+
+**Locks (Coach text kept):** structural analysis does **not** require
+daily updating; nodes remember weeks–decades; mature region refresh as
+little as every **3–4 weeks** (minor edge / shelf / LVN); frequent
+updates only where history is thin (ATH / untraded — **forming**). Long
+memory is the operational face of a **documented statistical property**
+(Mandelbrot lineage + peer-reviewed long-range dependence, especially in
+magnitudes and volatility) — **not one man's claim**. Reception history
+illustrates the thesis: the crowd ignored it because it was inconvenient;
+documented practitioners used it; "we sit there *because* they will not"
+has a forty-year Street precedent.
+
+**New laws:** SL-GD30–34. SL-GD28 amended (`profile_version`,
+`structure_maturity`). Acceptance #12–13. Member-facing one-liner #5:
+*The arrows are the strategy. The structure they point at remembers.*
+
+**Platform laws:** profile = **cumulative composite over the full tape**
+(not a 30-day window); 2004–2026 SPY tape is the foundation; recency is
+one weight among volume mass, confirmation count, and age; VP is a
+**slow layer** (`profile_version` on every trade; never 3–5s beside
+greeks); cadence is a function of memory (`structure_maturity` mature /
+forming); node **age + confirmation count** are trigger filters; VP-AI
+learns **change-detection**, not daily generation.
+
+**Lineage seat:** Yankee (Mandelbrot channel) — first packet. Yankee
+gates framing: fat tails and long memory as documented properties, never
+as a slogan.
+
+**Cite-gate (Coach):** academic names (Lo, Ding–Granger–Engle, ARFIMA /
+FIGARCH, Peters, econophysics) and practitioner names (Taleb, Spitznagel,
+Thorp, Simons, Mandelbrot–Fisher–Calvet) stay **bench-only** until a real
+reference pass. Source list named in Spec §17.7. **Never** as platform
+performance claims.
+
+**Does not implement** the cumulative-composite SoR, `profile_version`
+runtime, maturity flags, or VP-AI. Encode next with Timing & Entry +
+classifier.
+
+---
+
+## 2026-08-16 — DL-385 VP trigger grammar for Timing & Entry
+
+**Decision (Coach):** Fold *VP Structural Analysis — Reference for the Timing
+& Entry Trigger Grammar* (PDF, 2026-08-16) into Guiding Doctrine Spec v1.0
+**§17** and Arch **32** §6c. Searchable extract:
+[`docs/VP-Structural-Analysis-Timing-Entry-Trigger-Grammar.md`](../docs/VP-Structural-Analysis-Timing-Entry-Trigger-Grammar.md).
+Pack field `entry_trigger` documented on butterfly schema.
+
+**Locks:** The cyan arrows **are** the strategy. Trigger =
+`level_class × interaction × session_window → travel_target`. Level classes
+are HVN top / HVN bottom / LVN / intranode / retracement — topology, never a
+stored price. Interactions: test, hold, break, retest, reject. Session
+windows include overnight through T−N to close. **VP levels are 0DTE entry
+events**, not only a 3–5 DTE lens. Classifier is versioned provenance; Coach
+morning ES chart (Aug 12–14 2026) is the reference implementation. SPY tape
+now; **ES when wired**. Resolve: classified VP on surface read; selector
+only after trigger fires.
+
+**New law:** SL-GD29. SL-GD11/12 amended (windows; 0DTE VP entries).
+Acceptance #11.
+
+**Does not implement** the Timing tab UI or the classifier. Encode next with
+Timing & Entry.
+
+---
+
+## 2026-08-16 — DL-384 Config resolution standard folded into SL-GD
+
+**Decision (Coach):** Fold
+[`docs/FatTail-Labs-Strategy-Lab-Config-Resolution-Standard-v0_1.md`](../docs/FatTail-Labs-Strategy-Lab-Config-Resolution-Standard-v0_1.md)
+into Guiding Doctrine Spec v1.0 **§16** and Arch **32** §6b as **normative**.
+Advisor draft said Coach rules; Coach asked the fold.
+
+**Locks (Coach text kept):** a strategy is not a trade — it is a rule that
+resolves against the surface it meets; no absolute in the config that the
+surface will move; surface is a moving 3D per-leg-vol object; fields are
+surface-relative; placement is a selector not a strike; **one selector, two
+callers** (heatmap preview + bot); resolve order regime → window → surface →
+selector → scope → attempt (retry 3–5, abandon out-of-scope) → hold → record;
+same config, different day, different fly, same seat; MC varies fills/retry/
+operator friction, not tape or config; two-curve law inside resolve; two-truth
+(human preview + machine resolve) — designer done when every tab is
+machine-grade; provenance on every resolved trade.
+
+**New laws:** SL-GD23–28. Acceptance #9–10 (no hard strike / dollar-only debit
+as the strategy; no second picker).
+
+**Does not implement** the shared selector module or provenance blob — encode
+next with Convexity host.
+
+---
+
+## 2026-08-16 — DL-383 Strategy Lab engine: potential R2R · atomic position
+
+**Decision (Coach):** Two engine rulings, now **SL-GD21/22** in
+[`FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md`](../Specs/FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md)
+**§15**. Process Runtime v1.1 ExitPolicy + **O-6** amended. Arch **32** §6a.
+
+1. **R2R** is **trade POTENTIAL at design/entry** — max potential payoff vs
+   defined risk of the structure **as placed** — **never** on result.
+   **ExitPolicy** fields are **potential-denominated** (fraction of max
+   profit, fraction of debit, tent-relative) and **structure-agnostic**.
+
+2. A **trade is one atomic position** regardless of leg count. Trade log,
+   backtest events, orders, exits, and outcome buckets address the
+   **position**, never a leg. Order dedup **keys the position**: one
+   idempotency key per attempted **position** fill or exit; the retry
+   loop resubmits the **position** under that key. **Log both.**
+
+**Does not reverse:** O-1…O-5 (tightens them to position tags); Trade Log
+`entry_r2r` (already potential); ExitPolicy structure-agnostic lock
+(v1.1.1). **Does not** implement tent-relative UI or live O-6 in this
+entry — those are encode-next.
+
+---
+
+## 2026-08-16 — DL-382 Strategy Lab guiding doctrine (position, don’t predict)
+
+**Decision (Coach):** The 2026-08-16 process lock is **normative guiding light** for
+every Strategy Lab phase, Design tab, Curate cluster, Deploy book, backtest,
+and forward walk.
+
+**Law:**
+[`Specs/FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md`](../Specs/FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md)
+(SL-GD1–20).
+
+**Architecture map:**
+[`Architecture/32-strategy-lab-guiding-doctrine.md`](./32-strategy-lab-guiding-doctrine.md).
+
+**Position paper:**
+[`docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md`](../docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md).
+
+**Locks (Coach text kept in full in the Spec):** we position, we don’t predict;
+skin in the game to harvest the fruit; enter and embrace the roundabout
+(Mises · Spitznagel · Austrian); curate okay strategies into non-correlated
+clusters then deploy and keep curating; market landing 50 / 37.5 / 10 / 2.5
+(12.5% = analyst EM average; beyond-EM touched more, in clusters; pins more
+in high VIX); 37.5% funds the 50%; frosting = convexity just beyond EM;
+premarket plan (not night-before default; EU-open special); session morning /
+afternoon / close; 1DTE Batman = close at T−N; VP HVN/LVN = structure;
+GEX = management; 0–1 vol-led, 3–5+ structure-led; opportunistic vs last-day
+curves; designed max DD **2–6%**; MC shape not one-path winner; R2R from
+Advanced Flies tile; widths in strikes.
+
+**Does not replace:** life-cycle kernel, pack architecture, Curate/Deploy
+surface, Arch 16/17/26, OPF/DL-309, Advanced Fly spec. **Wins** where those
+are silent on this doctrine. Coach Content Law: later reviews sit beside;
+they do not delete Coach sentences.
+
+**Honesty:** Spec §13 lists as-built vs not-yet (heatmap-in-Convexity, 2–6%
+lock, named exits, cluster correlation).
+
+---
+
 ## 2026-08-15 — DL-362 Campaign spec includes Find and Badge
 
 **Decision (Coach):** Update the campaign spec to include the search and

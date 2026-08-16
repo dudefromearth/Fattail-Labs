@@ -8,7 +8,7 @@
 
 **Decisions:** DL-214–DL-227; especially **DL-216** (OA-class host), **DL-217** (opposite direction), **DL-218/221** (multi-member Curate), **DL-222–224** (marks/universe/VIX), **DL-225–227** (dashboards/reports/correlation).
 
-**How to read:** Unchanged v1.1 sections remain in force. **This v1.2 file overrides** v1.1 §0.1–0.2, §1.4 G-1, §12 delivery priority, and §17 scope notes where they conflict. For Curate sim runtime, symbols, correlation, and Deploy reports, the **Curate & Deploy Surface Spec v1.0 is authoritative**.
+**How to read:** Unchanged v1.1 sections remain in force. **This v1.2 file overrides** v1.1 §0.1–0.2, §1.4 G-1, §12 delivery priority, and §17 scope notes where they conflict. For Curate sim runtime, symbols, correlation, and Deploy reports, the **Curate & Deploy Surface Spec v1.0 is authoritative**. Engine rulings **SL-GD21/22** (R2R on potential; one atomic position; **O-6**) in [`FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md`](./FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md) **§15** and v1.1 §2.7 / §21.4 as amended **DL-383**.
 
 ---
 

@@ -53,6 +53,8 @@ def calculate_metrics(
             "expectedSortino": None,
             "expectedCalmar": None,
             "expectedReturnAvgDd": None,
+            "expectedDistributionShape": None,
+            "convexityRocPct": None,
         }
 
     # Net premium per share: buy positive cost, sell negative cost
@@ -160,4 +162,6 @@ def calculate_metrics(
         "expectedSortino": None,
         "expectedCalmar": None,
         "expectedReturnAvgDd": None,
+        "expectedDistributionShape": None,
+        "convexityRocPct": None,
     }

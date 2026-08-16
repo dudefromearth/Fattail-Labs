@@ -11,6 +11,7 @@
 
 | Document | Role |
 |----------|------|
+| [`FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md`](./FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md) | **Guiding light** (DL-382–386) — MC shape, not one-path winner; VP trigger + market memory |
 | [`Strategy-Lab-Architecture-Design-v1.0.md`](./Strategy-Lab-Architecture-Design-v1.0.md) | Life-cycle spine, bins, promote |
 | [`Strategy-Lab-Life-Cycle-Architecture-v1.0.md`](./Strategy-Lab-Life-Cycle-Architecture-v1.0.md) / [v1.1](./Strategy-Lab-Life-Cycle-Architecture-v1.1.md) | PDF stages D1–D5, plugin path |
 | [`Strategy-Lab-Strategy-Pack-Architecture-v1.0.md`](./Strategy-Lab-Strategy-Pack-Architecture-v1.0.md) | Packs (Butterfly / Batman); config under test |
@@ -259,7 +260,7 @@ Stub is **allowed** for shipping the gate and UX; presenting stub as live market
 - Pack config under test is typically `attributes.butterfly_config@1` / `strategy_pack@1`.  
 - **Batman** = dual fly package (call + put); validated as one strategy product.  
 - Rank structures (construct/metrics) may feed later real engines; Phase 1 stub does not require a prior rank run (recommended: configure pack first).  
-- Pack primary_metric remains risk-adjusted; validation metrics should prefer DD / risk-adjusted proxies over win rate.
+- Pack `primary_metric` is **return distribution shape** or a risk-adjusted ratio; validation metrics should prefer distribution shape / DD / risk-adjusted proxies over win rate.
 
 ---
 

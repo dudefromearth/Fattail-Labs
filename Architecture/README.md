@@ -39,6 +39,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [24-bots-marketplace-design.md](./24-bots-marketplace-design.md) | Bot Marketplace Framework UX (pre-impl · DL-243) |
 | [25-dual-subdomain-practice-labs.md](./25-dual-subdomain-practice-labs.md) | **Future:** practice.fattail.ai vs labs.fattail.ai (DL-248) |
 | [26-strategy-lab-member-timeline.md](./26-strategy-lab-member-timeline.md) | **NOW:** Design+Curate lock; Deploy UX for members; Tradier real-money gated (DL-252) |
+| [32-strategy-lab-guiding-doctrine.md](./32-strategy-lab-guiding-doctrine.md) | **Guiding light:** position don’t predict · book-level shape · VP memory · DL-382–386 |
 
 **Market Bus / Options chain (2026-08-10) — as-built live market plane:**
 
@@ -68,6 +69,8 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 |---|---|
 | Arch **26** | Design+Curate lock; full Deploy except real-broker $; admin Tradier dogfood |
 | Arch **17** | Growth playbook (aligned) |
+| Arch **32** · Spec **SL-GD v1.0** · **DL-382–386** | Guiding doctrine for every phase (position, don’t predict; VP trigger + market memory) |
+| Position paper | [`docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md`](../docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md) |
 | Docs | `docs/Strategy-Lab-Member-Timeline.md` |
 | Decisions | **DL-251** · **DL-252** |
 

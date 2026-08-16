@@ -55,6 +55,7 @@ growth playbook [`Architecture/17-strategy-lab-growth-playbook.md`](./Architectu
 |-------|------------|
 | Course hosting | `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md` |
 | Strategy Lab Curate/Deploy surface | `Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` |
+| **Strategy Lab guiding doctrine** | Spec **v1.0** `FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md` · Arch **32** · paper `docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md` · **DL-382–391** — one **P&L surface model** (`web/lib/risk-graph/surfaceModel.ts`) across Design, Analyzer Surface, and the future harness; Timing warrant; dynamic trail |
 | **Market Bus (live market plane)** | Spec `FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` · Arch **28** · bench `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md` |
 | **Live underlier mids (UI standard)** | Arch **28** §4.4 · `web/lib/market/liveUnderlierPattern.ts` · hook `useLiveUnderlierMarks` · `<LiveMid />` / `LiveUnderliersTable` |
 | **Options Lab Analyzer** | Spec content **v0.2.1** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md` (v0_1 SUPERSEDED) · PB Spec **v0.3** · residual bench plan **v1.0.1** `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-analyzer/` · **DL-301…306** · OD-AZ1–8 Accept · BUILD GO = Coach W0-0 |

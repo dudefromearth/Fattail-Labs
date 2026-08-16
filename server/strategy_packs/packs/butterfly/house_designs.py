@@ -25,6 +25,8 @@ _DEFAULT_EXIT = {
         "mode": "rate",
         "notes": "Trail on premium decay rate — FatTail process exit (required)",
     },
+    "drivers": ["premium_decay", "time"],
+    "pseudocode": "",
     "take_profit": {"enabled": False},
     "time_stop": {"enabled": False},
     "discretionary_notes": "",
@@ -62,6 +64,8 @@ def _entry(**kwargs: Any) -> dict[str, Any]:
     base = {
         "process": "fattail_house",
         "requires_defined_risk": True,
+        "criteria": ["vp_structure", "price_action"],
+        "pseudocode": "",
         "notes": "",
     }
     base.update(kwargs)

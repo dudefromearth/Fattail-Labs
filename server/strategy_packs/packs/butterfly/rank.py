@@ -17,6 +17,7 @@ _QUALITY = {"medium": 40.0, "high": 60.0, "extreme": 80.0}
 def _primary_computable(config: dict[str, Any], metrics: dict[str, Any]) -> bool:
     pm = str(config.get("primary_metric") or "").lower()
     key = {
+        "distribution_shape": "expectedDistributionShape",
         "sharpe": "expectedSharpe",
         "sortino": "expectedSortino",
         "calmar": "expectedCalmar",
@@ -25,6 +26,38 @@ def _primary_computable(config: dict[str, Any], metrics: dict[str, Any]) -> bool
     if not key:
         return False
     return metrics.get(key) is not None
+
+
+def _roc_band(config: dict[str, Any]) -> tuple[float | None, float | None]:
+    def _one(key: str) -> float | None:
+        raw = config.get(key)
+        if raw is None or raw == "":
+            return None
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            return None
+
+    return _one("convexity_roc_min_pct"), _one("convexity_roc_max_pct")
+
+
+def _in_roc_band(metrics: dict[str, Any], config: dict[str, Any]) -> bool | None:
+    """True / False when tick-% is known; None when the band is set but uncomputable."""
+    lo, hi = _roc_band(config)
+    if lo is None and hi is None:
+        return True
+    roc = metrics.get("convexityRocPct")
+    if roc is None:
+        return None
+    try:
+        mag = abs(float(roc))
+    except (TypeError, ValueError):
+        return None
+    if lo is not None and mag < lo:
+        return False
+    if hi is not None and mag > hi:
+        return False
+    return True
 
 
 def _in_ratio_band(
@@ -83,6 +116,9 @@ def rank_structures(
 
     candidates: list[dict[str, Any]] = []
     any_primary = False
+    roc_lo, roc_hi = _roc_band(config)
+    roc_band_set = roc_lo is not None or roc_hi is not None
+    roc_uncomputable = False
     for st in structures:
         m = calculate_metrics(st, config, spot=spot)
         if m["maxLoss"] is None or float(m["maxLoss"]) != float(m["maxLoss"]):
@@ -98,6 +134,11 @@ def rank_structures(
             continue
         if min_score and float(m.get("convexityScore") or 0) < min_score:
             continue
+        roc_ok = _in_roc_band(m, config)
+        if roc_ok is False:
+            continue
+        if roc_ok is None and roc_band_set:
+            roc_uncomputable = True
         if _primary_computable(config, m):
             any_primary = True
         candidates.append({"structure": st, "metrics": m})
@@ -126,6 +167,7 @@ def rank_structures(
         m = item["metrics"]
         if not use_proxy:
             key_map = {
+                "distribution_shape": m.get("expectedDistributionShape") or 0.0,
                 "sharpe": m.get("expectedSharpe") or 0.0,
                 "sortino": m.get("expectedSortino") or 0.0,
                 "calmar": m.get("expectedCalmar") or 0.0,
@@ -151,6 +193,7 @@ def rank_structures(
             score = float(m.get("convexityScore") or 0.0)
         else:
             key_map = {
+                "distribution_shape": m.get("expectedDistributionShape"),
                 "sharpe": m.get("expectedSharpe"),
                 "sortino": m.get("expectedSortino"),
                 "calmar": m.get("expectedCalmar"),
@@ -182,6 +225,10 @@ def rank_structures(
             "ranked_by": ranked_by,
             "primary_metric": pm,
             "primary_metric_substituted": substituted,
+            "convexity_roc_band": (
+                {"min_pct": roc_lo, "max_pct": roc_hi} if roc_band_set else None
+            ),
+            "convexity_roc_uncomputable": bool(roc_band_set and roc_uncomputable),
             "data_provenance": provenance,
             "strict_primary": strict_primary,
         },

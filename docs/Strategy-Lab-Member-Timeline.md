@@ -3,6 +3,7 @@
 **Status:** Coach operating lock (2026-08-07)  
 **Decisions:** DL-251 · **DL-252**  
 **Architecture:** `Architecture/26-strategy-lab-member-timeline.md` · growth playbook Arch 17  
+**Guiding doctrine (DL-382):** [`FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md`](../Specs/FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md) · [position paper](./Strategy-Lab-Position-We-Position-We-Dont-Predict.md)  
 
 ---
 

@@ -65,8 +65,8 @@ Every parameter and ranking choice must maximize **profit opportunity relative t
 2. **Volatility of profits over time**  
 3. **Drawdown** — average and maximum  
 
-Primary optimization metrics are **risk-adjusted** (Sharpe, Sortino, Calmar, Return / average drawdown).  
-**Win rate is never the primary goal.**
+Primary optimization metrics are **return distribution shape** (the Monte Carlo of returns: right-skewed, long right tail, short left tail) or **risk-adjusted** ratios (Sharpe, Sortino, Calmar, Return / average drawdown).  
+**Win rate is never the primary goal. Raw return is never the primary goal.**
 
 ### 1.3 Product contrast (positioning)
 
@@ -82,7 +82,7 @@ Primary optimization metrics are **risk-adjusted** (Sharpe, Sortino, Calmar, Ret
 | ID | Constraint |
 |----|------------|
 | **HC-1** | **Defined risk only** — no undefined-risk structures in any pack |
-| **HC-2** | **Primary optimization metric** ∈ {`sharpe`, `sortino`, `calmar`, `return_avg_dd`} |
+| **HC-2** | **Primary optimization metric** ∈ {`distribution_shape`, `sharpe`, `sortino`, `calmar`, `return_avg_dd`} |
 | **HC-3** | Win rate MUST NOT be the primary ranking metric |
 | **HC-4** | Edge framing: hunt **mispriced convexity** (debit-to-payoff / debit-to-width relationships) |
 | **HC-5** | Packs MUST NOT invent top-level life-cycle phases |
@@ -210,7 +210,7 @@ interface StrategyPack {
 | `buildSearchQuery` | Maps config → chain/scan query (underlying, DTE, rights, …) |
 | `constructStructures` | From config + chain → candidate multi-leg structures (defined risk only) |
 | `calculateMetrics` | Debit/credit, max profit/loss, ratios, convexity score, optional expected risk-adjusted metrics |
-| `rankStructures` | Order by **primary_metric** (risk-adjusted); never by win rate alone |
+| `rankStructures` | Order by **primary_metric** (distribution shape or risk-adjusted); never by win rate alone |
 | `beforePromoteToCuration` | Optional pack gate before foundation promote (Development → Curation) |
 
 ### 3.2 Supporting types
@@ -289,6 +289,8 @@ interface StructureMetrics {
   expectedSortino?: number | null;
   expectedCalmar?: number | null;
   expectedReturnAvgDd?: number | null;
+  expectedDistributionShape?: number | null;
+  convexityRocPct?: number | null;
 }
 
 /**
@@ -296,6 +298,7 @@ interface StructureMetrics {
  * When primary_metric is uncomputable, ranked_by names the proxy sort — never silent.
  */
 type RankedBy =
+  | "distribution_shape"
   | "sharpe"
   | "sortino"
   | "calmar"
@@ -425,8 +428,10 @@ Config field `butterfly_family` ∈ {`batman`, `single`, `broken_wing`} selects 
 | `dte_max` | number | Max DTE | no | 0–10 | `dte_type=custom` |
 | `max_capital_at_risk` | number | Max Capital at Risk | yes | min 0.01 | — |
 | `max_capital_unit` | enum | Capital Unit | yes | `dollars`, `percent_of_capital` (default `dollars`) | — |
-| `primary_metric` | enum | Primary Optimization Metric | yes | `sharpe`, `sortino`, `calmar`, `return_avg_dd` | — |
-| `entry_conditions` | json | Entry Conditions | no | pack-defined JSON | — |
+| `primary_metric` | enum | Primary Optimization Metric | yes | `distribution_shape`, `sharpe`, `sortino`, `calmar`, `return_avg_dd` | — |
+| `convexity_roc_min_pct` | number | Min convexity RoC (%) | no | 0–500; omit = no floor | — |
+| `convexity_roc_max_pct` | number | Max convexity RoC (%) | no | 0–500; omit = no cap | — |
+| `entry_conditions` | json | Entry Conditions | no | `criteria` ⊂ {`vp_structure`, `price_action`, `gex`, `order_flow`}; `pseudocode` string | — |
 | `exit_rules` | json | Exit Rules | yes | MUST include dynamic trailing on premium decay rate | — |
 
 **DTE type resolution (normative):**
@@ -469,7 +474,7 @@ Config field `butterfly_family` ∈ {`batman`, `single`, `broken_wing`} selects 
 #### 4.3.4 Validation rules catalog (human + machine)
 
 1. `max_capital_at_risk` must be > 0  
-2. `primary_metric` must be risk-adjusted (HC-2)  
+2. `primary_metric` must be `distribution_shape` or a risk-adjusted ratio (HC-2)  
 3. `exit_rules` must include dynamic premium-decay trailing  
 4. No undefined-risk structures allowed (HC-1)  
 5. Symmetric regimes must respect debit-to-width min/max (min ≤ max)  
@@ -477,6 +482,7 @@ Config field `butterfly_family` ∈ {`batman`, `single`, `broken_wing`} selects 
 7. When `dte_type=custom`, both `dte_min` and `dte_max` required and `dte_min ≤ dte_max`  
 8. `debit_to_width_min ≤ debit_to_width_max` (symmetric)  
 9. `target_debit_to_payoff_min ≤ target_debit_to_payoff_max` (BWB)  
+10. `convexity_roc_min_pct` / `max_pct` optional; when both set, min ≤ max; values ≥ 0. This is the **change** band (tick-% magnitude), not a debit-to-width substitute.  
 
 `validate()` returns `valid: false` with concrete `errors[]` for any violation; soft advice goes to `warnings[]`.
 

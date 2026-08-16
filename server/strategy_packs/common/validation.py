@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from strategy_packs.types import PRIMARY_METRICS, ValidationResult
+from strategy_packs.types import (
+    ENTRY_CRITERIA,
+    EXIT_DRIVERS,
+    PRIMARY_METRICS,
+    ValidationResult,
+)
 
 
 def empty_result() -> ValidationResult:
@@ -27,9 +32,10 @@ def check_primary_metric(config: dict[str, Any]) -> ValidationResult:
         r["errors"].append("primary_metric is required")
         r["valid"] = False
         return r
-    if pm in ("win_rate", "winrate", "hit_rate"):
+    if pm in ("win_rate", "winrate", "hit_rate", "return", "pnl", "profit"):
         r["errors"].append(
-            "primary_metric must be risk-adjusted (HC-2/HC-3); win rate is forbidden"
+            "primary_metric must be distribution_shape or a risk-adjusted ratio "
+            "(HC-2/HC-3); win rate and raw return are forbidden"
         )
         r["valid"] = False
         return r
@@ -74,6 +80,47 @@ def check_exit_rules(config: dict[str, Any]) -> ValidationResult:
     if not isinstance(trail, dict) or not trail.get("enabled"):
         r["errors"].append(
             "exit_rules.dynamic_premium_decay_trailing.enabled must be true"
+        )
+        r["valid"] = False
+    drivers = rules.get("drivers")
+    if drivers is not None:
+        if not isinstance(drivers, list) or not drivers:
+            r["errors"].append(
+                "exit_rules.drivers must be a non-empty list when set"
+            )
+            r["valid"] = False
+        else:
+            bad = [d for d in drivers if str(d) not in EXIT_DRIVERS]
+            if bad:
+                r["errors"].append(
+                    f"exit_rules.drivers must be subset of {sorted(EXIT_DRIVERS)}; "
+                    f"got {bad}"
+                )
+                r["valid"] = False
+    return r
+
+
+def check_entry_conditions(config: dict[str, Any]) -> ValidationResult:
+    r = empty_result()
+    raw = config.get("entry_conditions")
+    if raw is None or raw == "":
+        return r
+    if not isinstance(raw, dict):
+        r["errors"].append("entry_conditions must be a JSON object")
+        r["valid"] = False
+        return r
+    criteria = raw.get("criteria")
+    if criteria is None:
+        return r
+    if not isinstance(criteria, list):
+        r["errors"].append("entry_conditions.criteria must be a list")
+        r["valid"] = False
+        return r
+    bad = [c for c in criteria if str(c) not in ENTRY_CRITERIA]
+    if bad:
+        r["errors"].append(
+            f"entry_conditions.criteria must be subset of {sorted(ENTRY_CRITERIA)}; "
+            f"got {bad}"
         )
         r["valid"] = False
     return r

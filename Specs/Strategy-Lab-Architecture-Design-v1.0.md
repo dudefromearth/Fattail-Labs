@@ -6,6 +6,8 @@
 **Prototype path:** `strategy-lab-proto/` (Streamlit)  
 **Intended home:** First-class Labs surface under `labs.fattail.ai` (later)  
 **Process source:** `/Users/ernie/LifeCycle.pdf` — *Strategy Life Cycle Big Picture* (1/19/25)  
+**Guiding light (2026-08-16 · DL-382–386):** [`FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md`](./FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md) · Arch [`32-strategy-lab-guiding-doctrine.md`](../Architecture/32-strategy-lab-guiding-doctrine.md) · [`docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md`](../docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md). This v1.0 spine remains the life-cycle map; SL-GD wins where this file is silent on process doctrine.
+
 **Related:** `Strategy-Lab-Life-Cycle-Architecture-v1.0.md`, `v1.1.md` (foundation/plugin path) · **`Strategy-Lab-Portability-Spec-v1.0.md`** (whole-lab import/export pack) · `schemas/strategy-lab-pack-v1.json` · **`Strategy-Lab-Strategy-Pack-Architecture-v1.0.md`** (modular packs · Butterfly Phase 1) · **`Strategy-Lab-Development-Phase-Spec-v1.0.md`** (Design: back test · forward walk · gate to Curate) · **`Strategy-Lab-Navigation-Continuity-Spec-v1.0.md`** (place memory · complexity · path to replay & version restore)  
 **Doctrine:** Capital preservation · process over profit claims · no fantasy fills · fail loud · stop-the-bleeding first  
 

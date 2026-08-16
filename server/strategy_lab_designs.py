@@ -150,7 +150,7 @@ def create_member_bot(
         bot_name = (name or "New bot").strip()[:255] or "New bot"
         bot_desc = (
             (description if description is not None else "")
-            or "Newborn — completely undefined. Start at Strategy Identity & Direction."
+            or "Newborn — completely undefined. Start at Position Builder."
         )[:512]
         bot = sld.create_strategy(
             cur,
@@ -169,7 +169,7 @@ def create_member_bot(
                 "message": "Newborn bot created in Design — completely undefined",
                 "detail": (
                     "Minted blank. No pack config, no house binding. "
-                    "First work: Strategy Identity & Direction."
+                    "First work: Position Builder."
                 ),
             },
         )
@@ -199,7 +199,7 @@ def create_member_bot(
         "next_section": "risk",
         "ready_for_risk": True,
         "note": (
-            "Identity & Structure prefilled from house design. "
+            "Position Builder and Expiration Schedule prefilled from house design. "
             "Continue at Risk & Capital."
         ),
     }
@@ -233,7 +233,7 @@ def create_member_bot(
                 f"v{house['version']} — ready for Risk & Capital"
             ),
             "detail": (
-                "Identity & Structure prefilled from FatTail house design. "
+                "Position Builder and Expiration Schedule prefilled from FatTail house design. "
                 "Next design step: Risk & Capital. Lifecycle state: Model."
             ),
         },

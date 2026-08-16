@@ -10,8 +10,8 @@ def get_ui_definition() -> dict[str, Any]:
         "layout": "tabs",
         "livePreview": True,
         "sections": [
-            {"id": "identity", "title": "Identity\n& Direction"},
-            {"id": "structure", "title": "Structure\n& Style"},
+            {"id": "identity", "title": "Position\nBuilder"},
+            {"id": "structure", "title": "Expiration\nSchedule"},
             {"id": "risk", "title": "Risk\n& Capital"},
             {"id": "edge", "title": "Convexity\n& Debit"},
             {"id": "timing", "title": "Timing\n& Entry"},

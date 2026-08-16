@@ -4,9 +4,23 @@ from __future__ import annotations
 
 from typing import Any, Literal, TypedDict
 
-PRIMARY_METRICS = frozenset({"sharpe", "sortino", "calmar", "return_avg_dd"})
+ENTRY_CRITERIA = frozenset(
+    {"vp_structure", "price_action", "gex", "order_flow"}
+)
+EXIT_DRIVERS = frozenset({"premium_decay", "time"})
+
+PRIMARY_METRICS = frozenset(
+    {
+        "distribution_shape",
+        "sharpe",
+        "sortino",
+        "calmar",
+        "return_avg_dd",
+    }
+)
 
 RankedBy = Literal[
+    "distribution_shape",
     "sharpe",
     "sortino",
     "calmar",
@@ -77,6 +91,8 @@ class StructureMetrics(TypedDict, total=False):
     expectedSortino: float | None
     expectedCalmar: float | None
     expectedReturnAvgDd: float | None
+    expectedDistributionShape: float | None
+    convexityRocPct: float | None
 
 
 class DataProvenance(TypedDict, total=False):

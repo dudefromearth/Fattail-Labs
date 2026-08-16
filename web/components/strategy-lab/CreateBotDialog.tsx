@@ -72,8 +72,7 @@ export default function CreateBotDialog({
         return;
       }
       const notice =
-        `Newborn bot “${res.strategy.name}” minted in Design — completely undefined. ` +
-        `Start at Strategy Identity & Direction. Logged in lifecycle.`;
+        `Newborn “${res.strategy.name}” in Design. Start at Position Builder.`;
       onCreated(res.strategy, notice);
       onClose();
     } catch (e) {
@@ -102,8 +101,8 @@ export default function CreateBotDialog({
         return;
       }
       const notice =
-        `Bot “${res.strategy.name}” created from house “${d.name}” v${d.version}. ` +
-        `Identity & Structure prefilled — ready for Risk & Capital (Model state). Logged.`;
+        `“${res.strategy.name}” from house “${d.name}” v${d.version}. ` +
+        `Position Builder and Expiration Schedule set. Continue at Risk & Capital.`;
       onCreated(res.strategy, notice);
       onClose();
     } catch (e) {
@@ -137,8 +136,8 @@ export default function CreateBotDialog({
             </h2>
             <p className="mt-0.5 text-xs text-[var(--color-label-secondary)]">
               Bots live in the Design → Curate → Deploy bins. Choose a blank
-              newborn or a FatTail house strategy with Identity & Structure
-              already done.
+              newborn or a FatTail house strategy with Position Builder and
+              Expiration Schedule already set.
             </p>
           </div>
           <button
@@ -175,8 +174,7 @@ export default function CreateBotDialog({
           </h3>
           <p className="mt-0.5 text-[0.7rem] text-[var(--color-label-secondary)]">
             A new baby — nothing designed yet. Appears in Design as{" "}
-            <strong>Newborn</strong> at Hypothesis. You define every step from
-            Identity onward.
+            <strong>Newborn</strong>. Start at Position Builder.
           </p>
           <button
             type="button"
@@ -195,7 +193,7 @@ export default function CreateBotDialog({
             FatTail house strategy
           </h3>
           <p className="mt-0.5 mb-2 text-[0.7rem] text-[var(--color-label-secondary)]">
-            Prefilled Identity & Structure. Lands in Design at{" "}
+            Position Builder and Expiration Schedule set. Lands in Design at{" "}
             <strong>Model</strong>, ready for step 3 —{" "}
             <strong>Risk & Capital</strong>.
           </p>

@@ -1113,6 +1113,8 @@ export default function OpfRiskAnalyzer() {
                 loading={risk.loading}
                 error={risk.error}
                 notice={viewportFocus?.notice ?? null}
+                trade={trade}
+                spot={risk.spot}
               />
             ) : (
               <div

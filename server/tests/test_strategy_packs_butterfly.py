@@ -70,7 +70,75 @@ def test_reject_win_rate_primary():
     cfg["primary_metric"] = "win_rate"
     v = bp.validate(cfg)
     assert not v["valid"]
-    assert any("risk-adjusted" in e or "win" in e.lower() for e in v["errors"])
+    assert any("win" in e.lower() or "forbidden" in e.lower() for e in v["errors"])
+
+
+def test_entry_criteria_and_exit_drivers():
+    cfg = dict(bp.get_default_configs()[0])
+    cfg["entry_conditions"] = {
+        "criteria": ["vp_structure", "price_action", "gex", "order_flow"],
+        "pseudocode": "HVN top holds mid-morning → next LVN",
+    }
+    cfg["exit_rules"] = {
+        "dynamic_premium_decay_trailing": {"enabled": True, "mode": "rate"},
+        "drivers": ["premium_decay", "time"],
+        "pseudocode": "trail decay; flatten T-N",
+    }
+    v = bp.validate(cfg)
+    assert v["valid"], v
+    cfg["entry_conditions"] = {"criteria": ["vwap"]}
+    v = bp.validate(cfg)
+    assert not v["valid"]
+    assert any("criteria" in e for e in v["errors"])
+    cfg["entry_conditions"] = {"criteria": ["vp_structure"]}
+    cfg["exit_rules"]["drivers"] = ["gamma"]
+    v = bp.validate(cfg)
+    assert not v["valid"]
+    assert any("drivers" in e for e in v["errors"])
+
+
+def test_convexity_roc_band_optional_and_ordered():
+    cfg = dict(bp.get_default_configs()[0])
+    assert bp.validate(cfg)["valid"]
+    cfg["convexity_roc_min_pct"] = 20
+    cfg["convexity_roc_max_pct"] = 40
+    v = bp.validate(cfg)
+    assert v["valid"], v
+    cfg["convexity_roc_min_pct"] = 40
+    cfg["convexity_roc_max_pct"] = 20
+    v = bp.validate(cfg)
+    assert not v["valid"]
+    assert any("convexity_roc" in e for e in v["errors"])
+    cfg["convexity_roc_min_pct"] = -5
+    cfg["convexity_roc_max_pct"] = 20
+    v = bp.validate(cfg)
+    assert not v["valid"]
+    cfg["convexity_roc_min_pct"] = 30
+    cfg.pop("convexity_roc_max_pct", None)
+    v = bp.validate(cfg)
+    assert v["valid"], v
+    r = bp.rank_structures(cfg, build_stub_chain())
+    assert r["ok"]
+    assert r["summary"]["convexity_roc_band"] == {"min_pct": 30.0, "max_pct": None}
+    assert r["summary"]["convexity_roc_uncomputable"] is True
+    assert r["ranked"][0]["metrics"]["convexityRocPct"] is None
+
+
+def test_distribution_shape_is_valid_primary():
+    d = pack_detail("butterfly")
+    common = {f["name"]: f for f in d["schema"]["common"]}
+    opts = common["primary_metric"]["options"]
+    assert "distribution_shape" in opts
+    assert opts[0] == "distribution_shape"
+    cfg = dict(bp.get_default_configs()[0])
+    cfg["primary_metric"] = "distribution_shape"
+    v = bp.validate(cfg)
+    assert v["valid"], v
+    r = bp.rank_structures(cfg, build_stub_chain())
+    assert r["ok"]
+    assert r["summary"]["primary_metric"] == "distribution_shape"
+    assert r["summary"]["primary_metric_substituted"] is True
+    assert r["ranked"][0]["metrics"]["expectedDistributionShape"] is None
 
 
 def test_reject_missing_decay_trailing():

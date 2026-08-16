@@ -6,6 +6,7 @@ from typing import Any
 
 from strategy_packs.common.validation import (
     check_capital,
+    check_entry_conditions,
     check_exit_rules,
     check_primary_metric,
     empty_result,
@@ -21,6 +22,8 @@ def resolve_dte_window(config: dict[str, Any]) -> tuple[int, int] | None:
         return 0, 0
     if dte_type == "1dte":
         return 1, 1
+    if dte_type == "next":
+        return 0, 10
     if dte_type == "1_2_dte":
         return 1, 2
     if dte_type == "2_4_dte":
@@ -55,6 +58,38 @@ def _check_debit_to_width(config: dict[str, Any], r: dict[str, Any]) -> None:
         )
 
 
+def _optional_pct(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    return float(value)
+
+
+def check_convexity_roc(config: dict[str, Any]) -> ValidationResult:
+    """Optional tick-% magnitude band (SL-GD36). Open-ended sides are allowed."""
+    r = empty_result()
+    try:
+        lo = _optional_pct(config.get("convexity_roc_min_pct"))
+        hi = _optional_pct(config.get("convexity_roc_max_pct"))
+    except (TypeError, ValueError):
+        r["errors"].append(
+            "convexity_roc_min_pct and convexity_roc_max_pct must be numbers when set"
+        )
+        r["valid"] = False
+        return r
+    if lo is not None and lo < 0:
+        r["errors"].append("convexity_roc_min_pct must be ≥ 0")
+        r["valid"] = False
+    if hi is not None and hi < 0:
+        r["errors"].append("convexity_roc_max_pct must be ≥ 0")
+        r["valid"] = False
+    if lo is not None and hi is not None and lo > hi:
+        r["errors"].append(
+            "convexity_roc_min_pct must be ≤ convexity_roc_max_pct"
+        )
+        r["valid"] = False
+    return r
+
+
 def validate(config: dict[str, Any]) -> ValidationResult:
     if not isinstance(config, dict):
         return {
@@ -67,18 +102,26 @@ def validate(config: dict[str, Any]) -> ValidationResult:
         check_primary_metric(config),
         check_capital(config),
         check_exit_rules(config),
+        check_entry_conditions(config),
+        check_convexity_roc(config),
     ]
     r = empty_result()
 
+    tmpl = str(config.get("strategy_template") or "").strip().lower()
+    fly_templates = {"", "batman", "butterfly", "bwb", "single"}
+    is_fly = tmpl in fly_templates
+
     family = normalize_family(config.get("butterfly_family"))
-    if family not in ("batman", "single", "broken_wing"):
+    if is_fly and family not in ("batman", "single", "broken_wing"):
         r["errors"].append(
             "butterfly_family must be batman, single, or broken_wing "
             "(symmetric is accepted as alias for batman)"
         )
 
     direction = str(config.get("direction") or "").lower()
-    if family in ("batman", "symmetric"):
+    if not is_fly:
+        pass
+    elif family in ("batman", "symmetric"):
         # Batman is both sides. Empty is ok (constructor ignores).
         if direction and direction not in ("both", "call", "put"):
             r["errors"].append("direction must be call, put, or both")
@@ -98,7 +141,7 @@ def validate(config: dict[str, Any]) -> ValidationResult:
         if lo < 0 or hi < 0 or lo > hi:
             r["errors"].append("dte window must satisfy 0 ≤ dte_min ≤ dte_max")
 
-    if family in ("batman", "single"):
+    if is_fly and family in ("batman", "single"):
         if family == "batman":
             regime = str(config.get("symmetric_regime") or "")
             if regime not in ("high_vix", "mid_vix", "low_vix", "campaign"):
@@ -141,7 +184,7 @@ def validate(config: dict[str, Any]) -> ValidationResult:
                         "match_side_widths is true — per-side widths are ignored"
                     )
 
-    if family == "broken_wing":
+    if is_fly and family == "broken_wing":
         if str(config.get("bwb_style") or "") not in (
             "A_efficiency",
             "A_plus_scalp",
