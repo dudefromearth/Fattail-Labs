@@ -1,29 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import AdminNotifications from "@/components/admin/AdminNotifications";
+import AdminNav from "@/components/admin/AdminNav";
 
 export const metadata = {
   robots: { index: false, follow: false },
 };
-
-const NAV: { href: string; label: string }[] = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/board", label: "Board" },
-  { href: "/admin/cast", label: "Cast" },
-  { href: "/admin/media", label: "Media" },
-  { href: "/admin/tags", label: "Tags" },
-  { href: "/admin/market-universe", label: "Market universe" },
-  { href: "/admin/journal-prompts", label: "Journal prompts" },
-  { href: "/admin/ai", label: "AI workbench" },
-  { href: "/admin/agents", label: "Agent keys" },
-  { href: "/admin/appearance", label: "Appearance" },
-  { href: "/admin/gates", label: "Gates" },
-  { href: "/admin/access", label: "Access" },
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/flow", label: "Flow" },
-  { href: "/admin/help", label: "Help" },
-  { href: "/admin/community", label: "Community" },
-];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
@@ -37,17 +19,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           >
             FatTail Labs · Admin
           </Link>
-          <nav className="flex flex-wrap gap-3 text-sm" data-testid="admin-nav">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <AdminNav />
           <div className="ml-auto flex items-center gap-3 text-sm">
             <AdminNotifications />
             <Link
