@@ -78,12 +78,15 @@ def validate(config: dict[str, Any]) -> ValidationResult:
         )
 
     direction = str(config.get("direction") or "").lower()
-    if family in ("single", "broken_wing"):
-        if direction not in ("call", "put"):
+    if family in ("batman", "symmetric"):
+        # Batman is both sides. Empty is ok (constructor ignores).
+        if direction and direction not in ("both", "call", "put"):
+            r["errors"].append("direction must be call, put, or both")
+    elif family in ("single", "broken_wing"):
+        if direction not in ("call", "put", "both"):
             r["errors"].append(
-                "direction must be call or put for single-fly / broken_wing"
+                "direction must be call, put, or both for single-fly / broken_wing"
             )
-    # Batman ignores direction for construction (always both sides)
 
     window = resolve_dte_window(config)
     if window is None:

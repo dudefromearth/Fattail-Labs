@@ -4,21 +4,17 @@
  * Schema-driven Butterfly designer (Implementation Plan PR-4/5).
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchPack,
   fieldVisible,
   fieldsForConfig,
-  rankPackConfig,
   savePackConfig,
   validatePackConfig,
+  type FieldDefinition,
   type PackDetail,
-  type RankedStructure,
   type StrategyConfig,
 } from "@/lib/strategyPacks";
-import CurateSymbolPicker from "@/components/strategy-lab/CurateSymbolPicker";
-import DesignHouseLibrary from "@/components/strategy-lab/DesignHouseLibrary";
 
 type Props = {
   strategyId: string;
@@ -26,6 +22,8 @@ type Props = {
   initialConfig?: StrategyConfig | null;
   /** Designer section id to open first (e.g. "risk" for house-started bots). */
   initialSectionId?: string | null;
+  /** Underlying chosen next to the strategy name in the work-area header. */
+  headerUnderlying?: string | null;
   onSaved?: () => void;
   pushNotice?: (
     level: "info" | "success" | "warning" | "error",
@@ -33,11 +31,147 @@ type Props = {
   ) => void;
 };
 
+const controlClass =
+  "mt-0.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-2.5 py-2 text-[var(--text-footnote)] text-[var(--color-label)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-tint)]";
+
+const CARD =
+  "flex h-[32rem] flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-separator)] bg-[var(--color-surface)] shadow-[var(--elevation-2)]";
+
+const TAB_PASTEL: Record<string, string> = {
+  identity: "bg-sky-100 text-sky-950 dark:bg-sky-900 dark:text-sky-50",
+  structure: "bg-violet-100 text-violet-950 dark:bg-violet-900 dark:text-violet-50",
+  risk: "bg-rose-100 text-rose-950 dark:bg-rose-900 dark:text-rose-50",
+  edge: "bg-amber-100 text-amber-950 dark:bg-amber-900 dark:text-amber-50",
+  timing: "bg-teal-100 text-teal-950 dark:bg-teal-900 dark:text-teal-50",
+  exits: "bg-orange-100 text-orange-950 dark:bg-orange-900 dark:text-orange-50",
+  review: "bg-lime-100 text-lime-950 dark:bg-lime-900 dark:text-lime-50",
+};
+
+function FieldGrid({
+  fields,
+  config,
+  setField,
+}: {
+  fields: FieldDefinition[];
+  config: StrategyConfig;
+  setField: (name: string, value: unknown) => void;
+}) {
+  if (fields.length === 0) return null;
+  return (
+    <div className="overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-surface-secondary)]">
+      {fields.map((f, i) => (
+        <label
+          key={f.name}
+          className={
+            "block px-3 py-2 text-[var(--text-caption)] " +
+            (i > 0 ? "border-t border-[var(--color-separator)] " : "") +
+            (f.type === "json" ? "min-w-0" : "")
+          }
+        >
+          <span className="font-medium text-[var(--color-label)]">
+            {f.label}
+            {f.required ? " *" : ""}
+          </span>
+          {f.type === "boolean" ? (
+            <select
+              className={controlClass}
+              value={
+                config[f.name] === false || config[f.name] === "false"
+                  ? "false"
+                  : "true"
+              }
+              onChange={(e) => setField(f.name, e.target.value === "true")}
+            >
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          ) : f.type === "enum" ? (
+            <select
+              className={controlClass}
+              value={String(config[f.name] ?? f.default ?? "")}
+              disabled={
+                f.name === "direction" &&
+                (String(config.butterfly_family) === "batman" ||
+                  String(config.butterfly_family) === "symmetric")
+              }
+              onChange={(e) => setField(f.name, e.target.value)}
+            >
+              <option value="">—</option>
+              {(f.options || []).map((o) => (
+                <option key={String(o)} value={String(o)}>
+                  {f.name === "direction"
+                    ? { call: "Call", put: "Put", both: "Both" }[String(o)] ||
+                      String(o)
+                    : f.name === "butterfly_family"
+                      ? {
+                          batman: "Batman",
+                          single: "Single",
+                          broken_wing: "Broken wing",
+                        }[String(o)] || String(o)
+                      : String(o)}
+                </option>
+              ))}
+            </select>
+          ) : f.type === "number" ? (
+            <input
+              type="number"
+              className={controlClass}
+              value={
+                config[f.name] === undefined || config[f.name] === null
+                  ? ""
+                  : String(config[f.name])
+              }
+              min={f.min}
+              max={f.max}
+              step="any"
+              onChange={(e) =>
+                setField(
+                  f.name,
+                  e.target.value === "" ? undefined : Number(e.target.value),
+                )
+              }
+            />
+          ) : f.type === "json" ? (
+            <div className="mt-0.5 min-w-0 max-w-full overflow-x-auto rounded-[var(--radius-sm)] border border-[var(--color-separator)] bg-[var(--color-surface)]">
+              <textarea
+                className="block h-36 w-full resize-none border-0 bg-transparent px-2 py-1.5 font-mono text-[var(--text-caption)] leading-snug text-[var(--color-label)] outline-none"
+                style={{ whiteSpace: "pre", overflowWrap: "normal" }}
+                spellCheck={false}
+                wrap="off"
+                value={
+                  typeof config[f.name] === "string"
+                    ? String(config[f.name])
+                    : JSON.stringify(config[f.name] ?? {}, null, 2)
+                }
+                onChange={(e) => {
+                  try {
+                    setField(f.name, JSON.parse(e.target.value));
+                  } catch {
+                    setField(f.name, e.target.value);
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <input
+              type="text"
+              className={controlClass}
+              value={String(config[f.name] ?? "")}
+              onChange={(e) => setField(f.name, e.target.value)}
+            />
+          )}
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export default function StrategyDesigner({
   strategyId,
   strategyName,
   initialConfig,
   initialSectionId,
+  headerUnderlying,
   onSaved,
   pushNotice,
 }: Props) {
@@ -46,18 +180,18 @@ export default function StrategyDesigner({
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [ranked, setRanked] = useState<RankedStructure[]>([]);
-  const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [persisted, setPersisted] = useState(
+    () => !!(initialConfig && Object.keys(initialConfig).length > 0),
+  );
+  const lastNotice = useRef<string>("");
 
   useEffect(() => {
     void (async () => {
       const d = await fetchPack("butterfly");
       if (!d) return;
       setPack(d);
-      // House / saved bots: use persisted config.
-      // Newborns (identity next, no pack bag): start empty except name — not house defaults.
       const hasSaved =
         initialConfig && Object.keys(initialConfig).length > 0;
       const newbornEmpty =
@@ -68,8 +202,12 @@ export default function StrategyDesigner({
           ? { name: strategyName }
           : { ...(d.defaults[0] || {}), name: strategyName };
       if (!base.name) base.name = strategyName;
+      const fam = String(base.butterfly_family || "");
+      if (fam === "batman" || fam === "symmetric") {
+        base.direction = "both";
+      }
       setConfig(base);
-      // House-started bots open at Risk & Capital; newborns at identity (0).
+      setPersisted(!!hasSaved);
       const sections = d.ui?.sections || [];
       if (initialSectionId) {
         const idx = sections.findIndex(
@@ -126,73 +264,110 @@ export default function StrategyDesigner({
     [],
   );
 
-  // Map fields to sections heuristically
-  const sectionFields = useMemo(() => {
-    if (!section) return visibleFields;
-    const id = section.id;
+  function fieldsOf(id: string): FieldDefinition[] {
     if (id === "review") return [];
-    const matched = visibleFields.filter(
-      (f) => (fieldToSection[f.name] || "identity") === id,
+    return visibleFields.filter(
+      (f) =>
+        f.name !== "underlying" &&
+        f.name !== "name" &&
+        (fieldToSection[f.name] || "identity") === id,
     );
-    return matched.length ? matched : visibleFields;
-  }, [section, visibleFields, fieldToSection]);
+  }
 
-  /** Live choice list for the sticky summary panel (always-on while building). */
-  const choiceRows = useMemo(() => {
-    const rows: { name: string; label: string; value: string; sectionId: string }[] =
-      [];
-    for (const f of visibleFields) {
-      if (f.name === "entry_conditions" || f.name === "exit_rules") {
-        const v = config[f.name];
-        if (v == null) continue;
-        if (f.name === "exit_rules" && typeof v === "object" && v !== null) {
-          const trail = (v as { dynamic_premium_decay_trailing?: { enabled?: boolean } })
-            .dynamic_premium_decay_trailing;
-          rows.push({
-            name: f.name,
-            label: f.label,
-            value: trail?.enabled
-              ? "Premium decay trailing on"
-              : "Exit rules set",
-            sectionId: fieldToSection[f.name] || "exits",
-          });
-        } else {
-          rows.push({
-            name: f.name,
-            label: f.label,
-            value: "configured",
-            sectionId: fieldToSection[f.name] || "timing",
-          });
+  const featureTiles = useMemo(() => {
+    const dash = (v: unknown): string => {
+      if (v == null || v === "") return "—";
+      return String(v);
+    };
+    const famRaw = String(config.butterfly_family || "");
+    const fam =
+      famRaw === "batman" || famRaw === "symmetric"
+        ? "Batman"
+        : famRaw === "single"
+          ? "Single"
+          : famRaw === "broken_wing"
+            ? "Broken wing"
+            : "—";
+    const dirMap: Record<string, string> = {
+      call: "Call",
+      put: "Put",
+      both: "Both",
+    };
+    const trail =
+      config.exit_rules &&
+      typeof config.exit_rules === "object" &&
+      (
+        config.exit_rules as {
+          dynamic_premium_decay_trailing?: { enabled?: boolean };
         }
-        continue;
-      }
-      const raw = config[f.name];
-      if (raw === undefined || raw === null || raw === "") continue;
-      let value: string;
-      if (typeof raw === "boolean") {
-        value = raw ? "Yes" : "No";
-      } else if (f.name === "match_side_widths") {
-        value = raw === false || raw === "false" ? "No — per-side widths" : "Yes — matched";
-      } else if (f.name === "butterfly_family") {
-        const map: Record<string, string> = {
-          batman: "Batman (call + put fly)",
-          single: "Single fly",
-          broken_wing: "Broken wing",
-          symmetric: "Batman (call + put fly)",
-        };
-        value = map[String(raw)] || String(raw);
-      } else {
-        value = String(raw);
-      }
-      rows.push({
-        name: f.name,
-        label: f.label,
-        value,
-        sectionId: fieldToSection[f.name] || "identity",
-      });
-    }
-    return rows;
-  }, [visibleFields, config, fieldToSection]);
+      ).dynamic_premium_decay_trailing?.enabled;
+    const width =
+      config.match_side_widths === false
+        ? `${dash(config.call_width_points)} / ${dash(config.put_width_points)}`
+        : dash(config.width_points_min || config.width_style);
+    const risk =
+      config.max_capital_at_risk != null
+        ? `${config.max_capital_at_risk} ${dash(config.max_capital_unit)}`
+        : "—";
+    const edge =
+      config.debit_to_width_min != null || config.debit_to_width_max != null
+        ? `${dash(config.debit_to_width_min)}–${dash(config.debit_to_width_max)}`
+        : "—";
+    return [
+      { key: "family", label: "Family", value: fam, sectionId: "identity" },
+      {
+        key: "direction",
+        label: "Direction",
+        value: dirMap[String(config.direction || "")] || "—",
+        sectionId: "identity",
+      },
+      {
+        key: "underlying",
+        label: "Underlying",
+        value: dash(config.underlying || config.symbol),
+        sectionId: "identity",
+      },
+      {
+        key: "dte",
+        label: "DTE",
+        value: dash(config.dte_type),
+        sectionId: "structure",
+      },
+      { key: "width", label: "Width", value: width, sectionId: "structure" },
+      { key: "risk", label: "Risk", value: risk, sectionId: "risk" },
+      {
+        key: "metric",
+        label: "Metric",
+        value: dash(config.primary_metric),
+        sectionId: "risk",
+      },
+      { key: "edge", label: "Edge", value: edge, sectionId: "edge" },
+      {
+        key: "timing",
+        label: "Timing",
+        value: dash(config.timing),
+        sectionId: "timing",
+      },
+      {
+        key: "exits",
+        label: "Exits",
+        value: trail ? "Trail" : config.exit_rules ? "Set" : "—",
+        sectionId: "exits",
+      },
+      {
+        key: "backtest",
+        label: "Back test",
+        value: "—",
+        sectionId: "review",
+      },
+      {
+        key: "walk",
+        label: "Forward walk",
+        value: "—",
+        sectionId: "review",
+      },
+    ];
+  }, [config]);
 
   function goToFieldSection(sectionId: string) {
     const idx = sections.findIndex((s) => s.id === sectionId);
@@ -200,39 +375,57 @@ export default function StrategyDesigner({
   }
 
   const setField = useCallback((name: string, value: unknown) => {
-    setConfig((c) => ({ ...c, [name]: value }));
+    setConfig((c) => {
+      const next: StrategyConfig = { ...c, [name]: value };
+      if (name === "butterfly_family") {
+        const fam = String(value);
+        if (fam === "batman" || fam === "symmetric") {
+          next.direction = "both";
+        }
+      }
+      return next;
+    });
   }, []);
 
-  async function onValidate() {
-    setBusy(true);
-    setMsg(null);
-    const v = await validatePackConfig("butterfly", config);
-    setErrors(v.errors);
-    setWarnings(v.warnings);
-    setBusy(false);
-    if (v.valid) setMsg("Config valid.");
-  }
+  useEffect(() => {
+    const sym = headerUnderlying?.trim();
+    if (!sym) return;
+    setConfig((c) => {
+      if (c.underlying === sym && c.symbol === sym) return c;
+      return { ...c, underlying: sym, symbol: sym };
+    });
+  }, [headerUnderlying]);
 
-  async function onRank() {
-    setBusy(true);
-    setMsg(null);
-    setErrors([]);
-    const v = await validatePackConfig("butterfly", config);
-    setErrors(v.errors);
-    setWarnings(v.warnings);
-    if (!v.valid) {
-      setBusy(false);
-      return;
-    }
-    const res = await rankPackConfig("butterfly", config);
-    setBusy(false);
-    if (res.error) {
-      setErrors([res.error]);
-      return;
-    }
-    setRanked(res.ranked || []);
-    setSummary(res.summary || null);
-  }
+  useEffect(() => {
+    if (!pack) return;
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      void validatePackConfig("butterfly", config).then((v) => {
+        if (cancelled) return;
+        setErrors(v.errors);
+        setWarnings(v.warnings);
+        const line = v.errors[0] || v.warnings[0] || "";
+        if (line && line !== lastNotice.current) {
+          lastNotice.current = line;
+          pushNotice?.(v.errors[0] ? "warning" : "warning", line);
+        }
+      });
+    }, 280);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [pack, config, pushNotice]);
+
+  const stepIssues = useMemo(() => {
+    const names = fieldsOf(section?.id || "identity").map((f) => f.name);
+    const hit = (s: string) =>
+      names.some((n) => s.toLowerCase().includes(n.toLowerCase()));
+    return {
+      errors: errors.filter(hit),
+      warnings: warnings.filter(hit),
+    };
+  }, [errors, warnings, section, visibleFields, fieldToSection]);
 
   async function onSave() {
     setBusy(true);
@@ -240,6 +433,9 @@ export default function StrategyDesigner({
     const v = await validatePackConfig("butterfly", config);
     if (!v.valid) {
       setErrors(v.errors);
+      setWarnings(v.warnings);
+      setMsg(v.errors[0] || "Fix the form before saving.");
+      pushNotice?.("warning", v.errors[0] || "Fix the form before saving.");
       setBusy(false);
       return;
     }
@@ -247,471 +443,132 @@ export default function StrategyDesigner({
     setBusy(false);
     if (res.error) {
       setErrors([res.error]);
+      pushNotice?.("error", res.error);
       return;
     }
-    setMsg("Saved pack config (version bumped).");
+    setPersisted(true);
+    const ok = persisted ? "Updated." : "Saved.";
+    setMsg(ok);
+    pushNotice?.("success", ok);
     onSaved?.();
-  }
-
-  function applyTemplate(t: StrategyConfig) {
-    setConfig({ ...t, name: t.name || strategyName });
-    setRanked([]);
-    setSummary(null);
-    setMsg(`Loaded template: ${String(t.name || "")}`);
   }
 
   if (!pack) {
     return (
-      <p className="text-sm text-[var(--color-label-secondary)]">
-        Loading Butterfly pack…
-      </p>
+      <p className="text-sm text-[var(--color-label-secondary)]">Loading…</p>
     );
   }
 
-  const top = ranked[0];
-  const substituted = !!summary?.primary_metric_substituted;
-  const provenance = (summary?.data_provenance || top?.data_provenance) as
-    | { source?: string; label?: string }
-    | undefined;
-
   return (
-    <div className="mt-4 space-y-4" data-testid="strategy-designer">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-base font-semibold text-[var(--color-label)]">
-          Butterfly designer
-        </h3>
-      </div>
-
-      <DesignHouseLibrary
-        strategyId={strategyId}
-        pushNotice={pushNotice}
-        onApplied={(cfg, mode) => {
-          applyTemplate(cfg);
-          setMsg(
-            mode === "apply"
-              ? `House design applied to “${strategyName}” — form fields updated below.`
-              : `Copy-rebuild loaded onto “${strategyName}” — form fields updated; configure freely.`,
-          );
-          // Refresh board so version / attributes match server (not only local form).
-          onSaved?.();
-        }}
-      />
-
-      {/* Stepper */}
-      <div className="flex flex-wrap gap-1">
-        {sections.map((s, i) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => setStep(i)}
-            className={
-              "rounded-full px-2.5 py-1 text-xs font-medium " +
-              (i === step
-                ? "bg-blue-600 text-white"
-                : "bg-[var(--color-fill)] text-[var(--color-label-secondary)]")
-            }
+    <div className="mt-3 space-y-3" data-testid="strategy-designer">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]">
+        <div className={CARD}>
+          <div
+            role="tablist"
+            aria-label="Strategy design"
+            className="m-2 flex rounded-[var(--radius-full)] bg-[var(--color-fill)] p-1"
           >
-            {i + 1}. {s.title}
-          </button>
-        ))}
-      </div>
-
-      {/* Form + sticky choices panel */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,300px)] lg:items-start">
-        <div className="rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-4">
-          <p className="mb-3 text-sm font-semibold">{section?.title}</p>
-          {section?.id === "review" ? (
-            <div className="space-y-2 text-sm text-[var(--color-label-secondary)]">
-              <p>
-                Review the <strong>Choices</strong> panel — then validate, rank, and
-                save. Save stamps butterfly_config@1 and advances version.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {sectionFields.map((f) => (
-                <label
-                  key={f.name}
-                  className={
-                    "block text-xs " +
-                    (f.type === "json" ? "sm:col-span-2 min-w-0" : "")
-                  }
-                >
-                  <span className="font-medium text-[var(--color-label)]">
-                    {f.label}
-                    {f.required ? " *" : ""}
-                  </span>
-                  {f.description && (
-                    <span className="mt-0.5 block text-[var(--color-label-secondary)]">
-                      {f.description}
-                    </span>
-                  )}
-                  {f.name === "exit_rules" && (
-                    <pre
-                      className="mt-2 max-w-full overflow-x-auto rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] p-3 font-mono text-[0.7rem] leading-relaxed text-[var(--color-label-secondary)]"
-                      style={{ whiteSpace: "pre" }}
-                    >{`// Exit rules — how the position leaves (not entry)
-// Required: dynamic trailing on premium decay
-
-on each mark / bar while position open:
-  premium      = current mark of structure
-  peak_premium = max(peak_premium, premium)   // or peak favorable P&L
-  decay_rate   = how fast premium is collapsing
-                 (mode "rate": Δpremium / Δtime)
-
-  if dynamic_premium_decay_trailing.enabled:
-    // Trail stop rides the decay of premium (FatTail process exit)
-    if decay_rate breaches trail threshold
-       or premium falls too far from peak under trail rules:
-         EXIT market / rules-based close
-
-  if take_profit.enabled and P&L hits target:
-    EXIT take-profit
-
-  if time_stop.enabled and clock / DTE hits stop:
-    EXIT time-stop
-
-  // discretionary_notes: human process notes only (not auto)`}</pre>
-                  )}
-                  {f.name === "underlying" ? (
-                    <div className="mt-1 sm:col-span-2">
-                      <CurateSymbolPicker
-                        id={`design-underlying-${strategyId}`}
-                        value={String(config.underlying ?? config.symbol ?? "SPY")}
-                        onChange={(sym) => {
-                          setField("underlying", sym);
-                          // Keep scan-oriented alias for packs that read symbol
-                          setField("symbol", sym);
-                        }}
-                        tradeableOnly={false}
-                      />
-                      <p className="mt-1 text-[10px] text-[var(--color-label-secondary)]">
-                        Assigned for Design back test / forward walk. Re-select
-                        when you run the bot in{" "}
-                        <Link
-                          href="/app/strategy-lab?phase=curation"
-                          className="text-blue-600 hover:underline"
-                        >
-                          Curate
-                        </Link>
-                        . Catalog:{" "}
-                        <Link
-                          href="/app/strategy-lab/symbols"
-                          className="text-blue-600 hover:underline"
-                        >
-                          Design → Symbols
-                        </Link>
-                        .
-                      </p>
-                    </div>
-                  ) : f.type === "boolean" ? (
-                    <select
-                      className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1.5 text-sm"
-                      value={
-                        config[f.name] === false || config[f.name] === "false"
-                          ? "false"
-                          : "true"
-                      }
-                      onChange={(e) =>
-                        setField(f.name, e.target.value === "true")
-                      }
-                    >
-                      <option value="true">Yes (match both sides)</option>
-                      <option value="false">No (set call & put widths)</option>
-                    </select>
-                  ) : f.type === "enum" ? (
-                    <select
-                      className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1.5 text-sm"
-                      value={String(config[f.name] ?? f.default ?? "")}
-                      onChange={(e) => setField(f.name, e.target.value)}
-                    >
-                      <option value="">—</option>
-                      {(f.options || []).map((o) => (
-                        <option key={String(o)} value={String(o)}>
-                          {String(o)}
-                        </option>
-                      ))}
-                    </select>
-                  ) : f.type === "number" ? (
-                    <input
-                      type="number"
-                      className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1.5 text-sm"
-                      value={
-                        config[f.name] === undefined || config[f.name] === null
-                          ? ""
-                          : String(config[f.name])
-                      }
-                      min={f.min}
-                      max={f.max}
-                      step="any"
-                      onChange={(e) =>
-                        setField(
-                          f.name,
-                          e.target.value === ""
-                            ? undefined
-                            : Number(e.target.value),
-                        )
-                      }
-                    />
-                  ) : f.type === "json" ? (
-                    <div className="mt-1 min-w-0 max-w-full overflow-x-auto rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]">
-                      <textarea
-                        className="block min-h-[12rem] w-full min-w-[36rem] resize-y border-0 bg-transparent px-3 py-2 font-mono text-xs leading-relaxed text-[var(--color-label)] outline-none"
-                        style={{ whiteSpace: "pre", overflowWrap: "normal" }}
-                        rows={f.name === "exit_rules" ? 14 : 10}
-                        spellCheck={false}
-                        wrap="off"
-                        value={
-                          typeof config[f.name] === "string"
-                            ? String(config[f.name])
-                            : JSON.stringify(config[f.name] ?? {}, null, 2)
-                        }
-                        onChange={(e) => {
-                          try {
-                            setField(f.name, JSON.parse(e.target.value));
-                          } catch {
-                            setField(f.name, e.target.value);
-                          }
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <input
-                      type="text"
-                      className="mt-1 w-full rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1.5 text-sm"
-                      value={String(config[f.name] ?? "")}
-                      onChange={(e) => setField(f.name, e.target.value)}
-                    />
-                  )}
-                </label>
-              ))}
-              {sectionFields.length === 0 && (
-                <p className="text-xs text-[var(--color-label-secondary)]">
-                  No fields for this step with current options.
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={step === 0}
-              className="rounded-lg border border-[var(--color-separator)] px-3 py-1.5 text-sm disabled:opacity-40"
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              disabled={step >= sections.length - 1}
-              className="rounded-lg border border-[var(--color-separator)] px-3 py-1.5 text-sm disabled:opacity-40"
-              onClick={() =>
-                setStep((s) => Math.min(sections.length - 1, s + 1))
-              }
-            >
-              Next
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              className="rounded-lg border border-[var(--color-separator)] px-3 py-1.5 text-sm font-semibold"
-              onClick={() => void onValidate()}
-            >
-              Validate
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white"
-              onClick={() => void onRank()}
-            >
-              Rank structures
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              className="rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-semibold text-emerald-700"
-              onClick={() => void onSave()}
-            >
-              Save to strategy
-            </button>
-          </div>
-        </div>
-
-        {/* Choices panel — always visible while building */}
-        <aside
-          className="rounded-xl border border-blue-200 bg-blue-50/80 p-3 shadow-sm dark:border-blue-900 dark:bg-blue-950/40 lg:sticky lg:top-4"
-          data-testid="strategy-choices-panel"
-          aria-label="Choices made so far"
-        >
-          <div className="mb-2 flex items-baseline justify-between gap-2">
-            <h4 className="text-sm font-semibold text-[var(--color-label)]">
-              Choices so far
-            </h4>
-            <span className="text-[0.65rem] tabular-nums text-[var(--color-label-secondary)]">
-              {choiceRows.length} set
-            </span>
-          </div>
-          <p className="mb-2 text-[0.7rem] leading-snug text-[var(--color-label-secondary)]">
-            Stays visible as you step. Click a row to jump back to that section.
-          </p>
-          {choiceRows.length === 0 ? (
-            <p className="text-xs text-[var(--color-label-secondary)]">
-              No choices yet — fill the form or load a template.
-            </p>
-          ) : (
-            <ul className="max-h-[min(420px,55vh)] space-y-1 overflow-y-auto">
-              {choiceRows.map((row) => (
-                <li key={row.name}>
-                  <button
-                    type="button"
-                    onClick={() => goToFieldSection(row.sectionId)}
-                    className="flex w-full flex-col rounded-md border border-transparent bg-[var(--color-surface)] px-2 py-1.5 text-left transition hover:border-blue-400"
-                  >
-                    <span className="text-[0.65rem] font-medium uppercase tracking-wide text-[var(--color-label-secondary)]">
-                      {row.label}
-                    </span>
-                    <span className="truncate text-xs font-semibold text-[var(--color-label)]">
-                      {row.value}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {String(config.butterfly_family) === "batman" ||
-          String(config.butterfly_family) === "symmetric" ? (
-            <p className="mt-2 border-t border-blue-200/80 pt-2 text-[0.7rem] text-[var(--color-label-secondary)] dark:border-blue-800">
-              Batman = call fly + put fly
-              {config.match_side_widths === false
-                ? ` · call w${String(config.call_width_points ?? "—")} / put w${String(config.put_width_points ?? "—")}`
-                : " · matched widths"}
-            </p>
-          ) : null}
-        </aside>
-      </div>
-
-      {/* Honesty banners */}
-      {(substituted || provenance?.source === "stub" || top?.metrics.convexityProvisional) && (
-        <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-          {substituted && (
-            <p>
-              <strong>Ranking proxy:</strong> primary metric{" "}
-              <code>{String(config.primary_metric)}</code> is not computable yet
-              (no backtest distribution). Sorted by{" "}
-              <code>{String(summary?.ranked_by || top?.ranked_by)}</code>.
-            </p>
-          )}
-          {provenance?.source === "stub" && (
-            <p>
-              <strong>Data proxy:</strong>{" "}
-              {provenance.label || "Stub chain — not live market data."}
-            </p>
-          )}
-          {top?.metrics.convexityProvisional && (
-            <p>
-              <strong>Provisional convexity:</strong> scores use a Phase-1 heuristic
-              until calibration.
-            </p>
-          )}
-        </div>
-      )}
-
-      {errors.length > 0 && (
-        <ul className="list-disc pl-5 text-sm text-red-600">
-          {errors.map((e) => (
-            <li key={e}>{e}</li>
-          ))}
-        </ul>
-      )}
-      {warnings.length > 0 && (
-        <ul className="list-disc pl-5 text-sm text-amber-700">
-          {warnings.map((w) => (
-            <li key={w}>{w}</li>
-          ))}
-        </ul>
-      )}
-      {msg && <p className="text-sm text-emerald-700">{msg}</p>}
-
-      {/* Rank results + simple payoff bars */}
-      {ranked.length > 0 && (
-        <div className="rounded-xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-4">
-          <h4 className="text-sm font-semibold">
-            Ranked structures ({ranked.length}) · by{" "}
-            <code className="text-xs">{String(summary?.ranked_by)}</code>
-          </h4>
-          <div className="mt-2 max-h-64 space-y-2 overflow-y-auto">
-            {ranked.slice(0, 12).map((row) => {
-              const comps = row.structure.components as
-                | {
-                    call_fly?: { lo: number; body: number; hi: number; width_points: number };
-                    put_fly?: { lo: number; body: number; hi: number; width_points: number };
-                  }
-                | undefined;
-              const legs = (row.structure.legs || []) as Array<{
-                strike: number;
-                side: string;
-                qty: number;
-              }>;
-              const label =
-                row.structure.structure_kind === "batman" && comps
-                  ? `Batman C ${comps.call_fly?.lo}/${comps.call_fly?.body}/${comps.call_fly?.hi} (w${comps.call_fly?.width_points}) · P ${comps.put_fly?.lo}/${comps.put_fly?.body}/${comps.put_fly?.hi} (w${comps.put_fly?.width_points})`
-                  : legs.map((l) => l.strike).join("/");
+            {sections.map((s, i) => {
+              const selected = i === step;
               return (
-                <div
-                  key={row.rank}
-                  className="rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1.5 text-xs"
+                <button
+                  key={s.id}
+                  type="button"
+                  role="tab"
+                  id={`design-tab-${s.id}`}
+                  aria-selected={selected}
+                  aria-controls="design-tab-panel"
+                  title={s.title.replace(/\n/g, " ")}
+                  onClick={() => setStep(i)}
+                  className={
+                    "min-h-[var(--hit-min)] min-w-0 flex-1 rounded-[var(--radius-full)] px-1 py-1 text-center text-[var(--text-caption)] font-medium leading-tight whitespace-pre-line transition-colors " +
+                    (selected
+                      ? `${TAB_PASTEL[s.id] || "bg-[var(--color-surface)] text-[var(--color-label)]"} shadow-[var(--elevation-1)]`
+                      : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]")
+                  }
                 >
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <span className="font-semibold">
-                      #{row.rank} · {label}
-                    </span>
-                    <span className="tabular-nums">
-                      debit ${row.metrics.debitOrCredit.toFixed(0)} · max loss $
-                      {row.metrics.maxLoss.toFixed(0)} · R/W{" "}
-                      {row.metrics.debitToWidthRatio?.toFixed(3) ?? "—"} · convex{" "}
-                      {row.metrics.convexityScore.toFixed(0)}
-                    </span>
-                  </div>
-                  {/* Mini payoff sketch: max profit vs max loss bars */}
-                  <div className="mt-1 flex h-2 overflow-hidden rounded bg-neutral-200 dark:bg-neutral-700">
-                    <div
-                      className="bg-emerald-500"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          (row.metrics.maxProfit /
-                            Math.max(
-                              row.metrics.maxProfit + row.metrics.maxLoss,
-                              1,
-                            )) *
-                            100,
-                        )}%`,
-                      }}
-                      title={`Max profit $${row.metrics.maxProfit.toFixed(0)}`}
-                    />
-                    <div
-                      className="bg-red-400"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          (row.metrics.maxLoss /
-                            Math.max(
-                              row.metrics.maxProfit + row.metrics.maxLoss,
-                              1,
-                            )) *
-                            100,
-                        )}%`,
-                      }}
-                      title={`Max loss $${row.metrics.maxLoss.toFixed(0)}`}
-                    />
-                  </div>
-                </div>
+                  {s.title}
+                </button>
               );
             })}
           </div>
+          <div
+            id="design-tab-panel"
+            role="tabpanel"
+            aria-labelledby={section ? `design-tab-${section.id}` : undefined}
+            className="min-h-0 flex-1 overflow-y-auto px-3"
+          >
+            <FieldGrid
+              fields={fieldsOf(section?.id || "identity")}
+              config={config}
+              setField={setField}
+            />
+            {stepIssues.errors.length > 0 && (
+              <ul className="mt-2 list-disc pl-4 text-[var(--text-caption)] text-[var(--color-destructive)]">
+                {stepIssues.errors.map((e) => (
+                  <li key={e}>{e}</li>
+                ))}
+              </ul>
+            )}
+            {stepIssues.warnings.length > 0 && (
+              <ul className="mt-1 list-disc pl-4 text-[var(--text-caption)] text-[var(--color-label-secondary)]">
+                {stepIssues.warnings.map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
+
+        <aside className={CARD} data-testid="strategy-choices-panel" aria-label="Choices">
+          <div className="flex items-center justify-between gap-2 px-3 pt-3">
+            <h4 className="text-[var(--text-footnote)] font-semibold text-[var(--color-label)]">
+              Choices
+            </h4>
+            <button
+              type="button"
+              disabled={busy}
+              data-testid="strategy-build"
+              title={persisted ? "Update this configuration" : "Save this configuration"}
+              className="shrink-0 rounded-[var(--radius-full)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 py-1 text-[var(--text-caption)] font-medium text-[var(--color-label)] shadow-[var(--elevation-1)] disabled:opacity-40"
+              onClick={() => void onSave()}
+            >
+              {persisted ? "Update" : "Save"}
+            </button>
+          </div>
+          <div className="m-3 min-h-0 flex-1 overflow-y-auto">
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-separator)]">
+              {featureTiles.map((tile) => (
+                <button
+                  key={tile.key}
+                  type="button"
+                  onClick={() => goToFieldSection(tile.sectionId)}
+                  className="flex min-h-[4.25rem] flex-col justify-center bg-[var(--color-surface)] px-2.5 py-2 text-left hover:bg-[var(--color-surface-secondary)]"
+                >
+                  <span className="text-[var(--text-caption)] text-[var(--color-label-secondary)]">
+                    {tile.label}
+                  </span>
+                  <span
+                    className={
+                      "truncate text-[var(--text-footnote)] font-medium " +
+                      (tile.value === "—"
+                        ? "text-[var(--color-label-tertiary)]"
+                        : "text-[var(--color-label)]")
+                    }
+                  >
+                    {tile.value}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {msg && (
+        <p className="text-[var(--text-caption)] text-[var(--color-label-secondary)]">
+          {msg}
+        </p>
       )}
     </div>
   );

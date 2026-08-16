@@ -2,7 +2,7 @@
 """Full-estate RAW market data campaign (VP Spec v0.4 · VP21).
 
 Writes Parquet day partitions under LABS_MARKET_DATA_ROOT
-(default: /Volumes/sabrant2tb/fattail-market-data).
+(default: /Volumes/FatTail2TB/fattail-market-data).
 
   .venv/bin/python -m market_data.raw_campaign --help
   .venv/bin/python -m market_data.raw_campaign --all
@@ -60,7 +60,7 @@ def market_data_root() -> Path:
     raw = (os.environ.get("LABS_MARKET_DATA_ROOT") or "").strip()
     if raw:
         return Path(raw).expanduser().resolve()
-    return Path("/Volumes/sabrant2tb/fattail-market-data").resolve()
+    return Path("/Volumes/FatTail2TB/fattail-market-data").resolve()
 
 
 def is_weekday(d: date) -> bool:

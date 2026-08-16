@@ -3,7 +3,7 @@
 LABS_MARKET_DATA_MOUNTS is required when the VP plane is *used* (jobs / APIs).
 Format: comma-separated role:path entries, e.g.
 
-    raw-primary:/Volumes/sabrant2tb
+    raw-primary:/Volumes/FatTail2TB
 
 Boot of the main API does not require this env (same posture as MASSIVE_API_KEY).
 """

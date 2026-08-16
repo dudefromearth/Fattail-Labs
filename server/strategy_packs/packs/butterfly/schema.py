@@ -9,12 +9,27 @@ def get_schema() -> dict[str, Any]:
     return {
         "common": [
             {
+                "name": "butterfly_family",
+                "type": "enum",
+                "label": "Butterfly Family",
+                "required": True,
+                "options": ["batman", "single", "broken_wing"],
+                "description": (
+                    "Batman = call fly + put fly package (each wing-symmetric). "
+                    "Single = one call or put fly. Broken wing = BWB. "
+                    "Family can set direction — Batman defaults to both."
+                ),
+            },
+            {
                 "name": "direction",
                 "type": "enum",
-                "label": "Direction (single / BWB only)",
+                "label": "Direction",
                 "required": False,
-                "options": ["call", "put"],
-                "description": "Which side for single-fly or BWB. Batman always uses both call and put flies.",
+                "options": ["call", "put", "both"],
+                "description": (
+                    "Call, put, or both. Batman sets both. "
+                    "Single / BWB may be call, put, or both."
+                ),
             },
             {
                 "name": "dte_type",
@@ -87,17 +102,6 @@ def get_schema() -> dict[str, Any]:
                 "label": "Exit Rules",
                 "required": True,
                 "description": "Must include dynamic trailing based on premium decay rate",
-            },
-            {
-                "name": "butterfly_family",
-                "type": "enum",
-                "label": "Butterfly Family",
-                "required": True,
-                "options": ["batman", "single", "broken_wing"],
-                "description": (
-                    "Batman = call fly + put fly package (each wing-symmetric). "
-                    "Single = one call or put fly. Broken wing = BWB."
-                ),
             },
             {
                 "name": "underlying",

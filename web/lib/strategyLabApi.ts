@@ -450,7 +450,7 @@ export const PHASE_ORDER: PhaseKey[] = [
 ];
 
 export const PHASE_HINTS: Record<BoardPhaseKey, string> = {
-  development: "Hypothesis · Model · Back test · Forward walk · Deployed",
+  development: "",
   curation: "Categorized · Grouped · Sized · Monitored",
   deployment: "Strategy · Capital · Schedule · Run · Prune · Retro",
 };

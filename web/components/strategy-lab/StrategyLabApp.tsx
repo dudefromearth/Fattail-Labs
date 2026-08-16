@@ -13,9 +13,7 @@ import StrategyLabPortability from "@/components/strategy-lab/StrategyLabPortabi
 import {
   BOARD_PHASE_ORDER,
   PHASE_HINTS,
-  advanceState,
   binStrategy,
-  createStrategy,
   listStrategies,
   moveStrategy,
   patchStrategy,
@@ -36,6 +34,9 @@ import {
   type LabDeskPlace,
 } from "@/lib/strategyLabPlace";
 import CreateBotDialog from "@/components/strategy-lab/CreateBotDialog";
+import { Button } from "@/components/ui";
+import CurateSymbolPicker from "@/components/strategy-lab/CurateSymbolPicker";
+import DesignHouseAdminChrome from "@/components/strategy-lab/DesignHouseAdminChrome";
 import BotPhaseMeter, {
   phaseMeterTitle,
   phaseProgressPercent,
@@ -139,6 +140,16 @@ function isHouseStartedBot(s: StrategyLabStrategy): boolean {
   return birth?.kind === "house" || !!s.house_design?.key;
 }
 
+function strategyUnderlying(s: StrategyLabStrategy): string {
+  const cfg = s.attributes?.["butterfly_config@1"] as
+    | Record<string, unknown>
+    | undefined;
+  const raw = cfg?.underlying ?? cfg?.symbol;
+  return typeof raw === "string" && raw.trim()
+    ? raw.trim().toUpperCase()
+    : "SPX";
+}
+
 export default function StrategyLabApp() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -158,6 +169,7 @@ export default function StrategyLabApp() {
   const [error, setError] = useState<string | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [renameName, setRenameName] = useState("");
+  const [headerUnderlying, setHeaderUnderlying] = useState("SPX");
   const [binReason, setBinReason] = useState("Lifecycle complete");
   const [createOpen, setCreateOpen] = useState(false);
   /** Between bins and work area — always scroll into view on new feedback. */
@@ -289,8 +301,10 @@ export default function StrategyLabApp() {
   useEffect(() => {
     if (selected) {
       setRenameName(selected.name);
+      setHeaderUnderlying(strategyUnderlying(selected));
     } else {
       setRenameName("");
+      setHeaderUnderlying("SPX");
     }
   }, [selected]);
 
@@ -504,26 +518,28 @@ export default function StrategyLabApp() {
                   </h3>
                   <div className="flex items-center gap-1.5">
                     {phase === "development" && (
-                      <button
+                      <Button
                         type="button"
+                        variant="secondary"
                         data-testid="create-bot-design-bin"
-                        className="rounded-full bg-blue-600 px-2.5 py-0.5 text-[0.68rem] font-semibold text-white shadow-sm hover:bg-blue-700"
                         onClick={(e) => {
                           e.stopPropagation();
                           setCreateOpen(true);
                         }}
                       >
-                        + Create bot
-                      </button>
+                        Create bot
+                      </Button>
                     )}
                     <span className="rounded-full bg-[var(--color-fill)] px-2 py-0.5 text-[0.7rem] font-semibold tabular-nums text-[var(--color-label-secondary)]">
                       {allInPhase.length}/{maxPer}
                     </span>
                   </div>
                 </div>
-                <p className="mb-2 text-[0.7rem] text-[var(--color-label-secondary)]">
-                  {PHASE_HINTS[phase]}
-                </p>
+                {PHASE_HINTS[phase] ? (
+                  <p className="mb-2 text-[0.7rem] text-[var(--color-label-secondary)]">
+                    {PHASE_HINTS[phase]}
+                  </p>
+                ) : null}
                 <select
                   className="mb-2 cursor-pointer rounded-md border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1 text-xs"
                   value={sort}
@@ -737,7 +753,7 @@ export default function StrategyLabApp() {
         id="strategy-lab-notice-rail"
         data-testid="strategy-lab-notice-rail"
         className={
-          "mt-4 scroll-mt-20 rounded-xl border px-3 py-2 shadow-sm " +
+          "mt-4 scroll-mt-20 rounded-[var(--radius-xl)] border px-3 py-2 shadow-[var(--elevation-2)] " +
           (notices.length === 0
             ? "border-[var(--color-separator)] bg-[var(--color-surface)]"
             : notices[notices.length - 1]?.level === "error"
@@ -757,14 +773,6 @@ export default function StrategyLabApp() {
             <span className="font-semibold text-[var(--color-label)]">
               Notifications
             </span>
-            {" — "}
-            between bins and work area. Create bot, moves, renames, blocks, and
-            errors appear here so you always see what a button did.
-            Archive:{" "}
-            <Link href="/app/strategy-lab/archive" className="underline">
-              Archive
-            </Link>
-            .
           </p>
         ) : (
           <div className="space-y-1">
@@ -817,20 +825,29 @@ export default function StrategyLabApp() {
       />
 
       {/* Work area — Design tools or Curate instance controls */}
-      <section className="mt-4">
+      <section className="relative mt-4 min-h-[28rem]">
+        {navPhase === "development" ? (
+          <DesignHouseAdminChrome
+            strategyId={selected?.id ?? ""}
+            pushNotice={pushNotice}
+            onApplied={() => {
+              void reload();
+            }}
+          />
+        ) : null}
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold text-[var(--color-label)]">
             Work area
           </h2>
           {navPhase === "development" && (
-            <button
+            <Button
               type="button"
-              className="rounded-lg border border-blue-600 bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
+              variant="secondary"
               onClick={() => setCreateOpen(true)}
               data-testid="create-bot-work-area"
             >
-              + Create bot
-            </button>
+              Create bot
+            </Button>
           )}
         </div>
 
@@ -847,8 +864,8 @@ export default function StrategyLabApp() {
             Moves live on the card.
           </p>
         ) : (
-          <div className="rounded-2xl border border-[var(--color-separator)] bg-[var(--color-surface)] p-3 shadow-sm">
-            {/* Line 1: title (in-place) · version counter · phase */}
+          <div className="rounded-[var(--radius-xl)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-3 shadow-[var(--elevation-3)]">
+            {/* Line 1: title · underlier · version */}
             <div className="flex flex-wrap items-center gap-2">
               <input
                 aria-label="Strategy title"
@@ -867,6 +884,15 @@ export default function StrategyLabApp() {
                   if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                 }}
               />
+              {phaseOf(selected) === "development" ? (
+                <CurateSymbolPicker
+                  compact
+                  tradeableOnly={false}
+                  id={`work-underlying-${selected.id}`}
+                  value={headerUnderlying}
+                  onChange={setHeaderUnderlying}
+                />
+              ) : null}
               <div className="flex items-center gap-0.5 rounded-md border border-[var(--color-separator)] bg-[var(--color-fill)] px-1 py-0.5">
                 <button
                   type="button"
@@ -916,113 +942,14 @@ export default function StrategyLabApp() {
                   +
                 </button>
               </div>
-              <select
-                aria-label="Phase"
-                className="rounded-md border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1 text-xs font-semibold"
-                value={phaseOf(selected) === "bin" ? "bin" : phaseOf(selected)}
-                onChange={(e) => {
-                  const p = e.target.value;
-                  if (p === phaseOf(selected)) return;
-                  if (p === "bin") {
-                    void binStrategy(selected.id, {
-                      disposition: "retired",
-                      reason: binReason || "Retired",
-                    }).then(async (res) => {
-                      if (res.error) pushNotice("error", res.error);
-                      else {
-                        setSelectedId(null);
-                        router.push("/app/strategy-lab/archive");
-                      }
-                    });
-                    return;
-                  }
-                  void onMove(selected.id, p);
-                }}
-              >
-                {BOARD_PHASE_ORDER.map((p) => (
-                  <option key={p} value={p}>
-                    {meta.find((m) => m.key === p)?.label || p}
-                  </option>
-                ))}
-                <option value="bin">Archive</option>
-              </select>
-              <span className="hidden font-mono text-[0.65rem] text-[var(--color-label-secondary)] sm:inline">
-                {selected.id}
-              </span>
-            </div>
-
-            {/* Line 2: phase state · advance */}
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <select
-                aria-label="Phase state"
-                className="rounded-md border border-[var(--color-separator)] bg-[var(--color-fill)] px-2 py-1 text-xs"
-                value={selected.phase_state}
-                onChange={async (e) => {
-                  const res = await patchStrategy(selected.id, {
-                    phase_state: e.target.value,
-                  });
-                  if (res.error) pushNotice("error", res.error);
-                  else await reload();
-                }}
-              >
-                {(
-                  meta.find((m) => m.key === phaseOf(selected))?.states || []
-                ).map((st) => (
-                  <option key={st.key} value={st.key}>
-                    {st.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="rounded-md border border-[var(--color-separator)] px-2 py-1 text-xs font-semibold hover:bg-[var(--color-fill)]"
-                onClick={async () => {
-                  const res = await advanceState(selected.id);
-                  if (res.error) pushNotice("warning", res.error);
-                  else await reload();
-                }}
-              >
-                Advance →
-              </button>
-              {phaseOf(selected) === "development" &&
-                selected.phase_state === "deployed" && (
-                  <span className="text-[0.7rem] text-emerald-700">
-                    Ready for Curate (Promote in bin)
-                  </span>
-                )}
             </div>
 
             {phaseOf(selected) === "development" && (
-              <div className="mt-3 space-y-3 border-t border-[var(--color-separator)] pt-3">
-                {isNewbornBot(selected) && (
-                  <div
-                    className="rounded-lg border border-dashed border-blue-400 bg-blue-50 px-3 py-2 text-sm text-blue-950 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-100"
-                    data-testid="newborn-banner"
-                  >
-                    <strong>Newborn bot</strong> — completely undefined. Nothing
-                    has been designed yet. Work through the designer from
-                    Strategy Identity & Direction. Every save and state change
-                    is logged.
-                  </div>
-                )}
-                {isHouseStartedBot(selected) &&
-                  strategyDesignProgress(selected)?.ready_for_risk && (
-                    <div
-                      className="rounded-lg border border-emerald-400 bg-emerald-50 px-3 py-2 text-sm text-emerald-950 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100"
-                      data-testid="house-ready-risk-banner"
-                    >
-                      <strong>House start</strong>
-                      {strategyBirth(selected)?.house_name
-                        ? ` · ${strategyBirth(selected)?.house_name}`
-                        : ""}
-                      {" — "}
-                      Identity & Structure are prefilled. Continue at{" "}
-                      <strong>Risk & Capital</strong> (designer opens there).
-                    </div>
-                  )}
+              <div className="mt-3 space-y-3 rounded-[var(--radius-lg)] bg-[var(--color-surface-secondary)] p-3">
                 <StrategyDesigner
                   strategyId={selected.id}
                   strategyName={selected.name}
+                  headerUnderlying={headerUnderlying}
                   initialConfig={
                     (selected.attributes?.["butterfly_config@1"] as
                       | Record<string, unknown>
@@ -1032,10 +959,12 @@ export default function StrategyLabApp() {
                     strategyDesignProgress(selected)?.next_section ||
                     (isNewbornBot(selected) ? "identity" : undefined)
                   }
+                  pushNotice={pushNotice}
                   onSaved={() => void reload()}
                 />
                 <DevelopmentValidation
                   strategy={selected}
+                  pushNotice={pushNotice}
                   onUpdated={() => void reload()}
                 />
               </div>

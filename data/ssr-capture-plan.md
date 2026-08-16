@@ -3,7 +3,7 @@
 **Date:** 2026-08-14 (Friday)  
 **Status:** **GO — live tap running** (pre-market dump 09:20 ET). This folder is the standing archive; the tap rolls to the next weekday so every market day accumulates from here.  
 **Machine:** this laptop only. Nothing on MiniTwo.  
-**Disk:** write-once under `/Volumes/sabrant2tb/fattail-market-data/ssr/`  
+**Disk:** write-once under `/Volumes/FatTail2TB/fattail-market-data/ssr/` (volume renamed from `sabrant2tb`, DL-367). Never write to `/Volumes/Sabrant 2TB` (other APFS slice).  
 **Provenance (live):** `live_capture`
 
 Goal: enough data by Saturday morning to **place a structure, walk the day, and read a distribution out**. Saturday’s proof day is **today**. Named older days are second.
@@ -35,7 +35,7 @@ The plane is not writing until the existing writers run. On go: start `sym_feed`
 
 ### Folder (immutable)
 
-`/Volumes/sabrant2tb/fattail-market-data/ssr/live_capture/day=2026-08-14/`
+`/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/day=2026-08-14/`
 
 | Path | Rule |
 |---|---|
@@ -131,6 +131,12 @@ End-of-day: one final checklist for `day=2026-08-14`.
 ## Standing archive (from today)
 
 Today’s folder is the first day of the standing archive. The tap process **rolls to the next weekday at 04:00 ET** (`day=YYYY-MM-DD/` write-once). Next week it runs **every market day** automatically as long as this process (or the local launchd wrapper) is up. MiniTwo is not involved.
+
+**Coach (2026-08-15):** collect an **entire week** this coming week (Mon 2026-08-17 → Fri 2026-08-21), **then continue continuously**, **then** turn the archive into a proper testing lab. Do not stop the tap after five days. The lab is after gold is accumulating, not instead of collecting.
+
+**Capture host (Coach 2026-08-15):** **StudioOne** — dedicated, always-on. Not this laptop (StudioTwo), not MiniTwo. One writer. See [`docs/ops/StudioOne-SSR-Live-Capture.md`](../docs/ops/StudioOne-SSR-Live-Capture.md).
+
+StudioOne must be **awake** and **Sabrant mounted** Mon–Fri 04:00–20:00 ET. launchd `ai.fattail.labs.ssr-live-capture` starts the tap at 04:00 weekdays. Feeds (`sym_feed` + `chain_feed`) start from `scripts/ssr-live-capture-run.sh`. Unload the StudioTwo job before the first StudioOne fire.
 
 Writer: `server/market_data/ssr_live_capture.py`  
 Inventory: `data/ssr-historical-inventory.md`

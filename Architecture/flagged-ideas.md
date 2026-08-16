@@ -52,6 +52,8 @@ Do **not** use `DISCARDED` / `REJECTED` as idea status.
 | FI-023 | 2026-07-31 | Coach | aMCC / willpower-muscle education in Hard + agent explainers | Coach | Scientific copy needs Hotel/Tango pass before curriculum ship | `ADOPTED` | **DL-175/177:** Hard Spec v1.0 §4 + `science/aMCC-source-pack-v1.md` · Hotel secondary verify before H2 |
 | FI-024 | 2026-08-02 | Coach | Process Integrity → **Process Flow** (state of being) + EWMA recent-weight on key meters | Coach | “Score” framing mismatches product; flat windows under-weight recency | `ADOPTED` | **DL-190** · repositioning note · Option 1 weights kept; UI/scoring model cutover pending |
 | FI-025 | 2026-08-02 | Coach | Continuous journaling (not EOD) + day-start routine notification | Coach | Habit dies if day starts in broker only | `ADOPTED` | **DL-191** · continuous journaling direction · P0 in-app notify sequenced; Journal v0.6 already phase-ready |
+| FI-026 | 2026-08-15 | Backtest Method v0.2.2 | Named OPF **backtest** pack = Options Lab per-leg modeler on gold archive | India | PB-MODE-0 forbids silent day_trade borrow; `surface_reconstruct` is not Coach’s sheet (DL-364) | `OPEN` | Review `agents/bench/reviews/2026-08-15-backtest-forward-walk-v0_2_2-india.md` |
+| FI-027 | 2026-08-15 | Backtest Method v0.2.2 | One measurement method — fold or supersede SSR thesis for Strategy Lab; stub stays named theater | India | Parallel method docs (SSR v0.1 + this) + `_stub_backtest_metrics` | `OPEN` | Same review |
 
 ---
 

@@ -15,6 +15,236 @@ quote in the Amendment is unchanged.
 
 ---
 
+## 2026-08-15 — DL-381 Primary surface picture is the ISO/RISK 3D P&L sheet
+
+**Decision (Coach):** The primary surface is the **3D real-time P&L**
+sheet in `3d1.png` (filed
+`Specs/references/3d-pnl-surface-primary.png`). Green/cyan mesh = T+0;
+pink = expiration tent; yellow dots = strikes; BE labeled on the sheet.
+Shape from **per-leg vol**. Hold/fold reads this.
+
+---
+
+## 2026-08-15 — DL-380 P&L surface shape is from per-leg volatility
+
+**Decision (Coach):** The 3D real-time P&L surface’s **shape** is created
+**through per-leg volatility**. That is how skew is in the tent.
+
+**As-built:** Method Spec §1a.2 · §2 · DL-364. Not flat vol. Not
+`backtest.surface_reconstruct`.
+
+---
+
+## 2026-08-15 — DL-379 Hold/fold uses the 3D real-time P&L surface + position
+
+**Decision (Coach):** We have the **primary surface** and **our position
+on it** to assess the **risk of losing more than we want**. The surface
+is a **3D model of the real-time P&L surface**.
+
+**As-built:** Method Spec §1a.2 · same Options Lab per-leg sheet (§2 ·
+DL-364). Replay places the attached fly on that sheet at each instance.
+% trail is still a thumb-rule (DL-375).
+
+---
+
+## 2026-08-15 — DL-378 Replay: config hold-or-fold at each instance
+
+**Decision (Coach):** We **replay the day**. The **configuration** makes
+the decision to **hold or fold at each instance** of the day.
+
+**As-built:** Method Spec §1a.2 · config interface Band 4. Instance = gold
+snapshot. Policy is per attached side. First replay computable from clock +
+debit + mark + peak + listed wings. %’s remain a thumb-rule; Trade Feed
+is not required to take the first hold/fold.
+
+---
+
+## 2026-08-15 — DL-377 PM subject is the fly price attached to
+
+**Decision (Coach):** Profit management depends on **which side price
+decides to attach** — the **call fly** or the **put fly** is the
+**subject**. Not the Batman as one blob. The other side may stay dead.
+
+**As-built:** Method Spec v0.2.2 §1a.1. Trade Feed example is the call
+attach. Same grammar if price attaches to the put.
+
+---
+
+## 2026-08-15 — DL-376 Trade Feed paper is the PM nuance proposal
+
+**Decision (Coach):** The Trade Feed paper
+(`/Users/ernie/Documents/TradeFeed.pdf`, filed
+`Specs/references/TradeFeed.pdf`) is the proposal for **nuanced
+management** of the trade, with a worked scenario. Arranged note:
+`docs/Trade-Feed-Nuanced-Management-Proposal.md`.
+
+**As-built:** Method Spec §1a.1 points at it. Does not tell the trader to
+exit. Does not replace 75/60/50 as the mechanical thumb-rule. Example
+trade in the paper is SPX 0DTE 7750/7770/7790 call fly @ $4.85 — not the
+Batman $2 next-expiration lock.
+
+---
+
+## 2026-08-15 — DL-375 Batman PM: % trail is a rule of thumb; curve shape is the risk
+
+**Decision (Coach):** You hope price continues higher and give it room to
+surge and pull back. As the day wears on, premium decay **changes the
+profit-curve shape**: real-time breakevens **converge**, the curve
+**steepens**, a **healthy pullback** can **jump you out**. There is
+**nuance other than the %’s**. The percentages are a **rule of thumb**.
+
+**As-built:** Method Spec v0.2.2 §1a.1. Do not implement 75/60/50 as if
+they were the whole profit-management law.
+
+---
+
+## 2026-08-15 — DL-374 $199 meant $100
+
+**Decision (Coach):** If he said **$199** he meant **$100**. The PM
+set-window remains **> $75 but < $100**.
+
+**As-built:** Spec v0.2.2 §1a.1 — $199 is not a second number.
+
+---
+
+## 2026-08-15 — DL-373 Batman PM: on over $75; 75% trail = 25% of $75–$100
+
+**Decision (Coach):** PM is **turned on** and the trail is set when price
+goes **over $75**. By the time the trail can be set, price will probably
+have run — that is why the window is **> $75 but < $100**. **75% trail**
+= **25% of $75 = $19**, **25% of $100 = $25**. That $19–$25 is the
+minimum profit you should generate if PM was triggered in that band.
+
+**As-built:** Method Spec v0.2.2 §1a.1 restated. Numbers: $75 / $100 /
+$19 / $25. ($199 meant $100 — DL-374.)
+
+---
+
+## 2026-08-15 — DL-372 $19–$25 is minimum profit generated after PM trigger
+
+**Decision (Coach):** If the high never exceeded $100, **$19–$25** is the
+**minimal amount of profit you should generate** if profit management was
+triggered. It is a **floor outcome**, not the running stop mark.
+
+**As-built:** Method Spec v0.2.2 §1a.1 restated. Prior India gloss that
+treated $19–$25 as “where the stop sits” is corrected.
+
+---
+
+## 2026-08-15 — DL-371 Batman profit management (per side, expiration day)
+
+**Decision (Coach):** PM is per side. Trigger at **75% of risk taken**
+(example $1 debit → unrealized **> $75 and < $100**). Trail at **75% of
+top gain** ($19–$25 if the high never exceeded $100) through **9:30–11:00**
+ET. At **11:00** trail drops to **60%** of top gain; at **12:30** to
+**50%**. If price enters the **profit tent**, trail = **tent walls**. Both
+sides may actively close on expiration day; usually none or one side has a
+profit opportunity.
+
+**As-built:** Method Spec v0.2.2 §1a.1. India reading of “75% of top gain”
+= give back 75% / keep 25% (matches Coach’s $19–$25) sits **beside** the
+lock.
+
+---
+
+## 2026-08-15 — DL-370 Batman expiration is the next expiration (Fri = 3 DTE)
+
+**Decision (Coach):** Friday Batman entry is **Monday expiration**, or
+**3 DTE**. The real requirement is the **next expiration**, not a 1-DTE
+label.
+
+**As-built:** Method Spec v0.2.2 §1a restated. Gold tap must hold **next
+expiration** at ~15:45 ET, not only 0DTE.
+
+---
+
+## 2026-08-15 — DL-369 First test strategy is Batman (1 DTE, 3:45 ET)
+
+**Decision (Coach):** Start with the **Batman**, not the single OTM butterfly.
+Entry is time-only (~**3:45 PM Eastern**, Mon–Fri). Expiration is the
+**next session** (Friday → Monday). Find a **20-wide put fly** and a
+**20-wide call fly**. Each fly debit **≤ $1**. Package debit **≤ $2**, with
+slippage fudge to **$210**. Target **$2**.
+
+**As-built:** Method Spec v0.2.2 §1a. 0DTE OTM Butterfly is **parked**
+(teardown doc remains). Aug 14 gold is **0DTE** — this Batman needs
+**1 DTE** on the coming-week tap.
+
+**India reading (not Coach):** $2 = option-dollar package debit; $210 =
+cash with 100-multiplier + $10 slip. Coach may correct.
+
+---
+
+## 2026-08-15 — DL-368 First test strategy is 0DTE OTM Butterfly
+
+**Decision (Coach):** Establish a **single** strategy to test. It is called
+the **0DTE OTM Butterfly**.
+
+**As-built bind:** house design `0dte_otm_classic_butterfly` v1.0.0
+(**0DTE OTM Classic Butterfly**, DL-235). Method Spec §1a. First gold day
+2026-08-14. Not Batman. Not a catalog bake-off until Coach names another.
+
+---
+
+## 2026-08-15 — DL-367 Gold volume renamed sabrant2tb → FatTail2TB
+
+**Decision (Coach):** The data disk that holds `fattail-market-data` is
+named **FatTail2TB**. Path: `/Volumes/FatTail2TB`.
+
+**As-built:** `diskutil rename` on StudioOne (`disk43s1`). Friday
+`live_capture/day=2026-08-14` is intact. `/Volumes/Sabrant 2TB` is the
+other APFS slice on the same enclosure — **do not write gold there**.
+
+Env / defaults: `LABS_MARKET_DATA_ROOT=/Volumes/FatTail2TB/fattail-market-data`.
+
+---
+
+## 2026-08-15 — DL-366 Gold tap host is StudioOne
+
+**Decision (Coach):** Push the live-capture operation onto a dedicated
+machine **StudioOne**. Not StudioTwo (laptop). Not MiniTwo (production web).
+
+**As-built (pending SSH):** `studioone.local` / `192.168.1.111` is on the
+LAN. Agent SSH is not authorized yet. Runbook:
+`docs/ops/StudioOne-SSR-Live-Capture.md`. One writer. Same
+`LABS_MARKET_DATA_ROOT` tree as Friday (Sabrant) unless Coach names a new
+root. Unload StudioTwo `ai.fattail.labs.ssr-live-capture` after StudioOne
+writes the first snap.
+
+---
+
+## 2026-08-15 — DL-365 Gold archive: a week, then continuous, then the lab
+
+**Decision (Coach):** Collect an **entire week** of live chain / marks this
+coming week, **then continue that way continuously**, **then** turn it into
+a proper lab for testing.
+
+**As-built:** Friday 2026-08-14 is day one at
+`/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/day=2026-08-14/`
+(renamed from `sabrant2tb`, DL-367).
+Standing tap: `ssr_live_capture` + launchd
+`ai.fattail.labs.ssr-live-capture` (Mon–Fri 04:00 ET, this laptop, not
+MiniTwo). Method Spec §1 sequence. Capture plan updated.
+
+**Does not:** start the backtester this weekend. Does not rewrite Friday’s
+5-minute chain cadence. GOLD 3–5s chain remains the target as the archive
+tightens.
+
+---
+
+## 2026-08-15 — DL-364 Backtest fill surface is the Options Lab per-leg-vol sheet
+
+**Decision (Coach):** The surface used for **determining fills** in the
+Strategy Lab Backtest & Forward-Walk Method is the surface already in
+**Options Lab**. It is **per-leg volatility** driven, so it **correctly
+builds skew**.
+
+**As-built:** Method Spec v0.2 §2 + §5.1. Options Lab OPF
+`day_trade.mark_hybrid` (OPF14). Not a second engine. Not flat-vol
+`backtest.surface_reconstruct`.
+
+---
+
 ## 2026-08-15 — DL-363 Find and Badge chrome is title + tooltip; help owns the copy
 
 **Decision (Coach):** Body copy under the **Find and Badge** title and above
