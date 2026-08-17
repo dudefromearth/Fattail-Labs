@@ -39,10 +39,12 @@ SAMPLE = [
 
 
 def _leg_key(leg):
+    strike = leg.get("strike")
+    strike_v = float(strike) if strike not in (None, "") else None
     return (
         leg.get("side"),
         int(leg.get("quantity")),
-        str(leg.get("strike") or ""),
+        strike_v,  # compare numerically (550 == 550.0 across int/Decimal)
         (leg.get("right") or None),
         str(leg.get("expiry") or "")[:10],
     )
