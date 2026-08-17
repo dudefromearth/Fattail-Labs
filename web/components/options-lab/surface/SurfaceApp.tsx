@@ -22,7 +22,10 @@ import {
   type OpfLegMarkForSheet,
   type SurfaceSheet,
 } from "@/lib/risk-graph/surfaceModel";
-import { surfaceAutofitWindow } from "@/lib/risk-graph/surfaceAutofit";
+import {
+  surfaceAutofitWindow,
+  unionListedStrikes,
+} from "@/lib/risk-graph/surfaceAutofit";
 import { mountSurfaceScene, type SurfaceSceneHandle } from "@/lib/risk-graph/surfaceScene";
 import { surfaceHostClock } from "./hostLaw";
 import CameraHud from "./CameraHud";
@@ -87,6 +90,12 @@ export default function SurfaceApp() {
   );
   const [saved, setSaved] = useState<SavedView[]>([]);
   const [autofitGen, setAutofitGen] = useState(0);
+  const fitHoldRef = useRef<{
+    key: string;
+    gen: number;
+    sMin: number;
+    sMax: number;
+  } | null>(null);
 
   useEffect(() => {
     void loadSurfaceInspect().then((p) => setSaved(p.views || []));
@@ -108,6 +117,21 @@ export default function SurfaceApp() {
         (p.position.underlying || "").toUpperCase() === sym,
     );
   }, [tick, symbol]);
+
+  const bookFitKey = useMemo(
+    () =>
+      book
+        .map((p) => {
+          const ks = (p.position.legs || [])
+            .map((l) => Number(l.strike))
+            .filter((n) => Number.isFinite(n) && n > 0)
+            .sort((a, b) => a - b);
+          return `${p.id}:${ks.join(",")}`;
+        })
+        .sort()
+        .join("|"),
+    [book],
+  );
 
   const parsedBook = useMemo(() => {
     const trades: ReturnType<typeof positionToParsedTrade>[] = [];
@@ -143,6 +167,7 @@ export default function SurfaceApp() {
     let label = symbol;
     let cadence = "live";
     if (!book.length) {
+      fitHoldRef.current = null;
       law = "WAITING";
       detail = "Nothing shown in Analyzer. Surface is that book in 3D.";
       label = `${symbol} · Analyzer`;
@@ -205,13 +230,30 @@ export default function SurfaceApp() {
             detail = bound.detail;
           } else {
             try {
-              const strikes = allLegs.map((l) => l.strike);
+              const strikes = unionListedStrikes([
+                allLegs.map((l) => l.strike),
+              ]);
               const simSpot = spot * (1 + spotPct / 100);
               const whatIfLegs = bound.legs.map((leg) => ({
                 ...leg,
                 iv: Math.max(1e-8, leg.iv + volOffsetPts / 100),
               }));
-              const fit = surfaceAutofitWindow(whatIfLegs, simSpot, strikes);
+              const hold = fitHoldRef.current;
+              const reuse =
+                hold != null &&
+                hold.key === bookFitKey &&
+                hold.gen === autofitGen;
+              const fit = reuse
+                ? { sMin: hold.sMin, sMax: hold.sMax }
+                : surfaceAutofitWindow(whatIfLegs, simSpot, strikes);
+              if (!reuse) {
+                fitHoldRef.current = {
+                  key: bookFitKey,
+                  gen: autofitGen,
+                  sMin: fit.sMin,
+                  sMax: fit.sMax,
+                };
+              }
               sheet = computeSurfaceSheet(whatIfLegs, {
                 spot: simSpot,
                 sMin: fit.sMin,
@@ -248,6 +290,7 @@ export default function SurfaceApp() {
     volOffsetPts,
     spotPct,
     autofitGen,
+    bookFitKey,
   ]);
 
   sheetRef.current = view.sheet;

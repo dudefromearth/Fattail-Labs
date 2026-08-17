@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-17 — DL-422 Surface Autofit full-agent bench plan v1.0
+
+**Decision:** File
+`docs/Options-Lab-Surface-Autofit-Full-Agent-Bench-Plan-v1.0.md` and
+board `agents/p-options-lab-surface-autofit/`.
+
+**W0 token:** `agents/go/OLSAF-W0.md` (unsigned). Does **not** reopen
+Surface first-ship. AF-n not seeded until Coach amends Autofit Spec §5.
+**DL-421** remains the spec stamp.
+
+---
+
 ## 2026-08-17 — DL-421 Surface Autofit spec v0.1 (default + amendments)
 
 **Decision:** File
@@ -20,6 +32,12 @@ shown** and when the member clicks **Autofit**. Not Analyzer 2D
 profile). One Autofit. No second fitter.
 
 **Code:** `web/lib/risk-graph/surfaceAutofit.ts`.
+
+**v0.1.1 (same DL — Coach stamp):** What-if (App Spec §4.6), not
+Time-machine, on the vol/spot dials. **Drop** Autofit rerun on What-if.
+No auto-refit on live spot drift — button covers it. Content listed Ks
+= union of shown structures. AT-AF-6 / AT-AF-7. App Spec §5.3 pointer.
+Pad-in-points stays until index screenshots.
 
 ---
 

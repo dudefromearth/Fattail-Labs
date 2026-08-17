@@ -325,6 +325,8 @@ Full-bleed 3D tent in the remaining viewport after chrome. Dark workspace
 (same family as Analyzer Surface preview — `#0a0a0e` — tokens where they
 exist).
 
+**Strike Autofit (S window):** [Surface Autofit Spec v0.1.1](./FatTail-Labs-Options-Lab-Surface-Autofit-Spec-v0.1.md) · **DL-421**. Not camera **Fit**. Playhead walk (§5.3c) does not change the S window.
+
 **Must show**
 
 - Sheet (T+0 mesh) colored by signed P&L  

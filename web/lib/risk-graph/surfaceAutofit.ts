@@ -14,6 +14,30 @@ export const SURFACE_AUTOFIT_STRIKE_STEPS = 4;
 
 export type AutofitProfileId = "default";
 
+export type AutofitTrigger =
+  | "book-change"
+  | "autofit-button"
+  | "what-if"
+  | "live-spot"
+  | "playhead"
+  | "camera-fit";
+
+/** AF-L5 / AF-L8 — only book change and the Autofit button recompute the S window. */
+export function autofitShouldRun(trigger: AutofitTrigger): boolean {
+  return trigger === "book-change" || trigger === "autofit-button";
+}
+
+/** Union of listed strikes across every shown structure. */
+export function unionListedStrikes(groups: number[][]): number[] {
+  const out = new Set<number>();
+  for (const g of groups) {
+    for (const k of g) {
+      if (Number.isFinite(k) && k > 0) out.add(k);
+    }
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
 export type AutofitWindow = {
   sMin: number;
   sMax: number;

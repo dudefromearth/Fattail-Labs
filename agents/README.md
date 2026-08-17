@@ -147,6 +147,11 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   Board: `agents/p-options-lab-surface/ORCHESTRATOR.md`.
   **Next: W3-1 (W0-G + W1-G + W2-G PASS). No migration before W3-4.
   Do not seed Backtest here.**
+- `agents/p-options-lab-surface-autofit/` — **Surface Autofit** (Spec
+  **v0.1.1 ACCEPTED** · **DL-421**). Plan
+  `docs/Options-Lab-Surface-Autofit-Full-Agent-Bench-Plan-v1.0.md` · **DL-422**.
+  **W0 token:** `agents/go/OLSAF-W0.md` (GO · W0–W5 PASS).
+  Do not seed AF-n. Do not reopen Surface first-ship.
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,
