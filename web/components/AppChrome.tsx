@@ -11,6 +11,7 @@ import { ConfirmProvider } from "@/components/ui";
 import AppearanceRoot from "@/components/appearance/AppearanceRoot";
 import MemberSettingsRoot from "@/components/settings/MemberSettingsRoot";
 import PageViewTracker from "@/components/PageViewTracker";
+import PresenceTracker from "@/components/PresenceTracker";
 import IdleSessionGuard from "@/components/IdleSessionGuard";
 import HelpLauncher from "@/components/HelpLauncher";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -27,6 +28,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
       <MemberSettingsRoot />
       <IdleSessionGuard />
       {!isAdminApp && <PageViewTracker />}
+      {!isAdminApp && <PresenceTracker />}
       {!isAdminApp && (
         <ErrorBoundary>
           <HelpLauncher />

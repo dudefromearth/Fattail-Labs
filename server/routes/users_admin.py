@@ -26,8 +26,11 @@ from fastapi.responses import PlainTextResponse
 import activity
 import db
 import identity
+import presence
 from auth import ROLE_ORDER
 from guards import require_admin
+
+ONLINE_WINDOW_SECONDS = presence.ONLINE_WINDOW_SECONDS
 
 router = APIRouter(prefix="/api/admin/users", tags=["admin-users"])
 
@@ -150,7 +153,13 @@ def _roster(cur, like: str | None) -> list[dict]:
             (SELECT MAX(lp.updated_at) FROM lesson_progress lp
                 WHERE lp.identity_id = i.identity_id) AS last_lesson_at,
             (SELECT COUNT(*) FROM enrollments e
-                WHERE e.identity_id = i.identity_id) AS courses_enrolled
+                WHERE e.identity_id = i.identity_id) AS courses_enrolled,
+            (SELECT mp.last_seen FROM member_presence mp
+                WHERE mp.identity_id = i.identity_id) AS last_seen,
+            (SELECT CASE WHEN mp.last_seen >= (NOW() - INTERVAL {ONLINE_WINDOW_SECONDS} SECOND)
+                         THEN 1 ELSE 0 END
+                FROM member_presence mp
+                WHERE mp.identity_id = i.identity_id) AS online
             FROM identities i
             {where}
             ORDER BY i.created_at DESC
@@ -186,6 +195,8 @@ def _roster(cur, like: str | None) -> list[dict]:
             "pageview_count": int(r["pageview_count"] or 0),
             "last_pageview": _iso(r["last_pageview"]),
             "last_active": _iso(last_active),
+            "online": bool(r.get("online")),
+            "last_seen": _iso(r.get("last_seen")),
             "watch_seconds": int(r["watch_seconds"] or 0),
             "courses_enrolled": int(r["courses_enrolled"] or 0),
             "_sort_active": _epoch(last_active) or 0,
@@ -242,7 +253,7 @@ def export_csv(request: Request, search: str = "", billing: str = "") -> PlainTe
     if bf:
         users = [u for u in users if u["billing_status"] == bf]
     cols = ["email", "display_name", "role", "billing_status", "plan_tier",
-            "providers", "membership", "login_count", "last_login",
+            "providers", "membership", "status", "login_count", "last_login",
             "pageview_count", "last_active", "watch_seconds", "courses_enrolled",
             "created_at"]
     lines = [",".join(cols)]
@@ -251,6 +262,7 @@ def export_csv(request: Request, search: str = "", billing: str = "") -> PlainTe
             u["email"], u["display_name"], u["role"],
             u["billing_status"], u["plan_tier"],
             " ".join(u["providers"]), u["membership"],
+            "online" if u.get("online") else "offline",
             str(u["login_count"]), u["last_login"] or "",
             str(u["pageview_count"]), u["last_active"] or "",
             str(u["watch_seconds"]), str(u["courses_enrolled"]),

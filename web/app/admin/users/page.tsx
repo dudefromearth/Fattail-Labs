@@ -27,6 +27,8 @@ type UserRow = {
   last_login: string | null;
   pageview_count: number;
   last_active: string | null;
+  online: boolean;
+  last_seen: string | null;
   watch_seconds: number;
   courses_enrolled: number;
 };
@@ -73,6 +75,28 @@ function fmtDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+// Live presence — green when the member's heartbeat was seen within the online
+// window (~2 min), grey otherwise. Hover shows when they were last seen.
+function StatusDot({ online, lastSeen }: { online: boolean; lastSeen: string | null }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs"
+      title={lastSeen ? `Last seen ${fmtDate(lastSeen)}` : "No activity recorded"}
+    >
+      <span
+        className={`inline-block h-2 w-2 rounded-full ${
+          online
+            ? "bg-emerald-500 ring-2 ring-emerald-500/25"
+            : "bg-zinc-300 dark:bg-zinc-600"
+        }`}
+      />
+      <span className={online ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-400"}>
+        {online ? "Online" : "Offline"}
+      </span>
+    </span>
+  );
 }
 
 // Login method / linked provider → human label. "native" is a Labs email+password
@@ -235,6 +259,7 @@ export default function AdminUsersPage() {
                 <th className="px-3 py-2">Plan</th>
                 <th className="px-3 py-2">Role</th>
                 <th className="px-3 py-2">Signed in via</th>
+                <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2 text-right">Logins</th>
                 <th className="px-3 py-2 text-right">Watch</th>
                 <th className="px-3 py-2">Last active</th>
@@ -264,6 +289,9 @@ export default function AdminUsersPage() {
                       ? u.providers.map(providerLabel).join(", ")
                       : "Password"}
                   </td>
+                  <td className="px-3 py-2">
+                    <StatusDot online={u.online} lastSeen={u.last_seen} />
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums">{u.login_count}</td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {fmtDuration(u.watch_seconds)}
@@ -275,7 +303,7 @@ export default function AdminUsersPage() {
               ))}
               {rows && rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-zinc-400">
+                  <td colSpan={8} className="px-3 py-6 text-center text-zinc-400">
                     No users.
                   </td>
                 </tr>
