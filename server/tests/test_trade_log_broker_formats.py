@@ -96,3 +96,33 @@ def test_occ_build_parse_roundtrip():
     assert s == "SPY260815C00550000"
     got = tio._occ_parse(s)
     assert got == {"underlier": "SPY", "expiry": "2026-08-15", "strike": "550", "right": "CALL"}
+
+
+# --- TradeStation ------------------------------------------------------------
+
+def test_tradestation_export_columns_and_symbol():
+    csv_text = tio.export_tradestation(SAMPLE)
+    assert "Date,Symbol,CUSIP,Side,Quantity,Price,Principal,Commission,Other Fees" in csv_text
+    assert "SPY 260815C550" in csv_text     # TradeStation compact option symbol
+    assert "BTO" in csv_text                # buy-to-open Side code preserved
+
+
+def test_tradestation_roundtrip_preserves_legs_and_effect():
+    res = tio.parse("tradestation", tio.export_tradestation(SAMPLE))
+    assert res["errors"] == []
+    assert len(res["trades"]) == 3
+    for orig, rt in zip(SAMPLE, res["trades"]):
+        assert [_leg_key(l) for l in orig["legs"]] == [_leg_key(l) for l in rt["legs"]]
+    # Side codes carry open/close — pos_effect survives the round-trip.
+    fly = res["trades"][2]
+    assert all(l["pos_effect"] == "TO_OPEN" for l in fly["legs"])
+
+
+def test_tradestation_detected():
+    det = tio.detect(tio.export_tradestation(SAMPLE))
+    assert det and det[0]["id"] == "tradestation"
+
+
+def test_ts_option_symbol_parse():
+    got = tio._ts_opt_parse("COIN 261016C287.5")
+    assert got == {"underlier": "COIN", "expiry": "2026-10-16", "strike": "287.5", "right": "CALL"}

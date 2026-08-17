@@ -45,6 +45,12 @@ ADAPTERS = [
         "extensions": [".csv"],
         "direction": "import_export",
     },
+    {
+        "id": "tradestation",
+        "label": "TradeStation Trades CSV",
+        "extensions": [".csv"],
+        "direction": "import_export",
+    },
 ]
 
 # Account venue → preferred "native" export adapter (import origin / platform format)
@@ -53,6 +59,7 @@ VENUE_NATIVE_EXPORT = {
     "schwab": "thinkorswim",
     "thinkorswim_paper": "thinkorswim",
     "tradier": "tradier",
+    "tradestation": "tradestation",
     "fattail": "native",
     "unset": "native",
 }
@@ -73,6 +80,8 @@ def resolve_export_format(fmt: str, account_broker: str | None = None) -> str:
         return "thinkorswim"
     if f in ("tradier",):
         return "tradier"
+    if f in ("tradestation", "ts"):
+        return "tradestation"
     if f in ("csv", "csv_generic", "flat"):
         return "csv_generic"
     if f == "native":
@@ -482,8 +491,20 @@ def detect(sample: str) -> list[dict]:
                 or low_prefix.startswith("account trade history")
             ):
                 scores.append({"id": "thinkorswim", "confidence": 0.93})
-        # Tradier account-history CSV: date + symbol + quantity + commission/amount.
+        # TradeStation Trades CSV: symbol + side + quantity + cusip/principal/other fees.
         if not any(x["id"] == "thinkorswim" for x in scores):
+            for line in lines[:40]:
+                header = _norm_header(line)
+                if (
+                    "symbol" in header
+                    and "side" in header
+                    and "quantity" in header
+                    and ("cusip" in header or "principal" in header or "otherfees" in header)
+                ):
+                    scores.append({"id": "tradestation", "confidence": 0.92})
+                    break
+        # Tradier account-history CSV: date + symbol + quantity + commission/amount.
+        if not any(x["id"] in ("thinkorswim", "tradestation") for x in scores):
             for line in lines[:10]:
                 header = _norm_header(line)
                 if (
@@ -494,7 +515,7 @@ def detect(sample: str) -> list[dict]:
                 ):
                     scores.append({"id": "tradier", "confidence": 0.9})
                     break
-        is_tradier = any(x["id"] == "tradier" for x in scores)
+        is_tradier = any(x["id"] in ("tradier", "tradestation") for x in scores)
         for line in lines[:30]:
             header = _norm_header(line)
             if is_tradier:
@@ -868,6 +889,8 @@ def parse(adapter: str, text: str) -> dict:
         return parse_thinkorswim(text)
     if adapter == "tradier":
         return parse_tradier(text)
+    if adapter == "tradestation":
+        return parse_tradestation(text)
     if adapter in ("csv_generic", "csv"):
         return parse_csv_generic(text)
     # auto
@@ -1417,3 +1440,222 @@ def parse_tradier(text: str) -> dict:
     if not trades:
         warnings.append("no Tradier rows detected — expected date, type, symbol, quantity, price columns")
     return {"adapter": "tradier", "trades": trades, "warnings": warnings, "errors": []}
+
+
+# --- TradeStation ------------------------------------------------------------
+#
+# TradeStation's "Historical Activity Report → Trades" CSV (the trade-history export
+# journaling tools import). Columns: Date, Symbol, CUSIP, Side, Quantity, Price,
+# Principal, ... Commission, Other Fees. Options use a compact symbol like
+# "COIN 261016C287.5" = underlier + YYMMDD + C/P + decimal strike. The Side codes
+# carry open/close (BTO/STC/STO/BTC), which we preserve on round-trip. Extra columns
+# (CUSIP, Principal, account, etc.) are tolerated and ignored on import.
+
+_TS_OPT_RE = re.compile(r"^([A-Z][A-Z.]*)\s+(\d{2})(\d{2})(\d{2})([CP])([0-9]+(?:\.[0-9]+)?)$")
+
+
+def _ts_opt_build(underlier, expiry, strike, right) -> str:
+    root = (str(underlier or "").upper().lstrip("/"))[:6]
+    try:
+        dt = datetime.strptime(str(expiry)[:10], "%Y-%m-%d")
+        k = float(strike)
+    except (TypeError, ValueError):
+        return str(underlier or "")
+    cp = "C" if str(right or "").upper().startswith("C") else "P"
+    return f"{root} {dt:%y%m%d}{cp}{k:g}"
+
+
+def _ts_opt_parse(sym) -> dict | None:
+    m = _TS_OPT_RE.match(str(sym or "").strip().upper())
+    if not m:
+        return None
+    root, yy, mm, dd, cp, strike = m.groups()
+    return {
+        "underlier": root,
+        "expiry": f"20{yy}-{mm}-{dd}",
+        "strike": strike,
+        "right": "CALL" if cp == "C" else "PUT",
+    }
+
+
+def _ts_side(side: str, pos_effect, is_opt: bool) -> str:
+    """FatTail side + pos_effect → TradeStation Side code (BTO/STC/STO/BTC or Buy/Sell)."""
+    s = (side or "BUY").upper()
+    pe = (pos_effect or "").upper()
+    if is_opt and pe in ("TO_OPEN", "TO_CLOSE"):
+        return {
+            ("BUY", "TO_OPEN"): "BTO", ("SELL", "TO_CLOSE"): "STC",
+            ("SELL", "TO_OPEN"): "STO", ("BUY", "TO_CLOSE"): "BTC",
+        }.get((s, pe), "Buy" if s == "BUY" else "Sell")
+    return "Buy" if s == "BUY" else "Sell"
+
+
+def _ts_side_parse(raw: str) -> tuple[str, str]:
+    """TradeStation Side → (BUY|SELL, pos_effect-or-'')."""
+    s = (raw or "").upper().replace(" ", "")
+    mapping = {
+        "BTO": ("BUY", "TO_OPEN"), "STC": ("SELL", "TO_CLOSE"),
+        "STO": ("SELL", "TO_OPEN"), "BTC": ("BUY", "TO_CLOSE"),
+    }
+    if s in mapping:
+        return mapping[s]
+    if s.startswith("B"):
+        return ("BUY", "")
+    if s.startswith("S"):
+        return ("SELL", "")
+    return ("BUY", "")
+
+
+def _fmt_ts_date(exec_at) -> str:
+    """TradeStation MM/DD/YYYY HH:MM:SS (identical per trade so import regroups legs)."""
+    if not exec_at:
+        return ""
+    raw = str(exec_at).replace("T", " ").replace("Z", "")[:19]
+    for fmt, n in (("%Y-%m-%d %H:%M:%S", 19), ("%Y-%m-%d %H:%M", 16), ("%Y-%m-%d", 10)):
+        try:
+            dt = datetime.strptime(raw[:n], fmt)
+            return dt.strftime("%m/%d/%Y %H:%M:%S")
+        except ValueError:
+            continue
+    return str(exec_at)
+
+
+def export_tradestation(trades: list[dict]) -> str:
+    """Serialize as a TradeStation Historical Activity 'Trades' CSV (one row per fill)."""
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(
+        ["Date", "Symbol", "CUSIP", "Side", "Quantity", "Price", "Principal",
+         "Commission", "Other Fees"]
+    )
+    for t in trades:
+        legs = t.get("legs") or []
+        date_s = _fmt_ts_date(t.get("exec_at"))
+        for leg in legs:
+            side = (leg.get("side") or "BUY").upper()
+            qty = abs(int(leg.get("quantity") or 1))
+            ac = (leg.get("asset_class") or "equity_option").lower()
+            is_opt = bool(leg.get("right")) or ac in ("equity_option", "future_option")
+            if is_opt:
+                sym = _ts_opt_build(
+                    leg.get("underlier"), leg.get("expiry"), leg.get("strike"), leg.get("right")
+                )
+                mult = 100
+            else:
+                sym = leg.get("underlier") or leg.get("symbol") or ""
+                mult = 1
+            try:
+                price = float(leg.get("fill_price") or 0)
+            except (TypeError, ValueError):
+                price = 0.0
+            try:
+                commission = float(leg.get("fees") or 0)
+            except (TypeError, ValueError):
+                commission = 0.0
+            principal = price * qty * mult
+            w.writerow([
+                date_s, sym, "", _ts_side(side, leg.get("pos_effect"), is_opt),
+                qty, f"{price:g}", f"{principal:.2f}", f"{commission:g}", "0",
+            ])
+    return buf.getvalue()
+
+
+def parse_tradestation(text: str) -> dict:
+    """Parse a TradeStation 'Trades' CSV → canonical trades.
+
+    Tolerates the leading comment block and extra columns (CUSIP, Principal, …).
+    Options carry the TradeStation compact symbol; Side codes (BTO/STC/…) give
+    open/close. Rows are grouped into trades by shared trade date.
+    """
+    warnings: list[str] = []
+    if text.startswith("﻿"):
+        text = text[1:]
+    try:
+        rows = list(csv.reader(io.StringIO(text)))
+    except csv.Error as exc:
+        return {"adapter": "tradestation", "trades": [], "warnings": warnings, "errors": [str(exc)]}
+    if not rows:
+        return {"adapter": "tradestation", "trades": [], "warnings": warnings, "errors": ["empty CSV"]}
+
+    start = None
+    for i, row in enumerate(rows[:40]):
+        joined = " ".join(row).lower()
+        if "symbol" in joined and "side" in joined and "quantity" in joined and "date" in joined:
+            start = i
+            break
+    if start is None:
+        return {"adapter": "tradestation", "trades": [], "warnings": warnings,
+                "errors": ["no TradeStation header (Date, Symbol, Side, Quantity, …) found"]}
+    norm = [_norm_header(h) for h in rows[start]]
+
+    def _col(r: list[str], *names: str) -> str:
+        for n in names:
+            if n in norm:
+                idx = norm.index(n)
+                if idx < len(r):
+                    return (r[idx] or "").strip()
+        return ""
+
+    mapped: list[dict[str, str]] = []
+    for r in rows[start + 1 :]:
+        if not any((c or "").strip() for c in r):
+            continue
+        raw_sym = _col(r, "symbol")
+        if not raw_sym:
+            continue
+        side, pe = _ts_side_parse(_col(r, "side", "action", "buysell"))
+        occ = _ts_opt_parse(raw_sym)
+        try:
+            comm = float(_col(r, "commission") or 0)
+            other = float(_col(r, "otherfees", "fees", "fee") or 0)
+            fees = f"{comm + other:g}"
+        except ValueError:
+            fees = _col(r, "commission")
+        leg = {
+            "side": side,
+            "quantity": (_col(r, "quantity", "qty") or "1").lstrip("+-") or "1",
+            "pos_effect": pe,
+            "fill_price": _col(r, "price", "fillprice", "avgprice") or "0",
+            "fees": fees,
+            "exec_at": _col(r, "date", "tradedate", "datetime", "time"),
+        }
+        if occ:
+            leg.update({
+                "underlier": occ["underlier"], "symbol": raw_sym, "expiry": occ["expiry"],
+                "strike": occ["strike"], "right": occ["right"], "asset_class": "equity_option",
+            })
+        else:
+            leg.update({"underlier": raw_sym, "symbol": raw_sym, "asset_class": "equity"})
+        mapped.append(leg)
+
+    trades: list[dict] = []
+    current: dict | None = None
+    leg_i = 0
+    for m in mapped:
+        exec_at = _parse_dt(m.get("exec_at") or "") or _now_iso()[:19]
+        if current is None or current["exec_at"] != exec_at:
+            if current:
+                trades.append(current)
+            leg_i = 0
+            current = {
+                "exec_at": exec_at, "strategy": "CUSTOM", "asset_class": "equity_option",
+                "order_type": "LMT", "net_price": None, "net_side": None,
+                "setup_md": "", "plan_md": "", "rules_md": "", "adherence": "unknown",
+                "deviation_md": "", "lesson_md": "", "pnl_amount": None,
+                "legs": [], "external_order_id": None,
+            }
+        current["legs"].append(_leg_from_mapped(m, leg_i))
+        leg_i += 1
+    if current:
+        trades.append(current)
+
+    from trade_log_domain.strategy_infer import refine_strategy_from_legs
+
+    for t in trades:
+        t["strategy"] = refine_strategy_from_legs(t["strategy"], t["legs"])
+        leg_acs = {lg.get("asset_class") for lg in t["legs"]}
+        t["asset_class"] = "equity" if leg_acs == {"equity"} else "equity_option"
+        t["external_order_id"] = _trade_hash(t["exec_at"], t["strategy"], t["legs"])
+    if not trades:
+        warnings.append("no TradeStation rows detected")
+    return {"adapter": "tradestation", "trades": trades, "warnings": warnings, "errors": []}

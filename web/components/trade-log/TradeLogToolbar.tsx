@@ -38,6 +38,11 @@ const EXPORT_FORMATS: { value: string; label: string; hint?: string }[] = [
     hint: "Account history shape",
   },
   {
+    value: "tradestation",
+    label: "TradeStation CSV",
+    hint: "Trades activity shape",
+  },
+  {
     value: "csv",
     label: "Flat legs CSV",
     hint: "One row per leg",
