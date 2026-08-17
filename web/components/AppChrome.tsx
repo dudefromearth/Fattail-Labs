@@ -28,7 +28,7 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
       <MemberSettingsRoot />
       <IdleSessionGuard />
       {!isAdminApp && <PageViewTracker />}
-      {!isAdminApp && <PresenceTracker />}
+      <PresenceTracker /> {/* presence tracks anyone signed in, admin area included */}
       {!isAdminApp && (
         <ErrorBoundary>
           <HelpLauncher />
