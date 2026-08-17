@@ -14,8 +14,8 @@
 
 CREATE TABLE IF NOT EXISTS landing_events (
   id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  visitor_id    CHAR(32)     NULL,      -- first-party random token; unique-visitor count
-  identity_id   BIGINT UNSIGNED NULL,   -- set when logged in; NULL = anonymous
+  visitor_id    CHAR(32)     NULL,      -- first-party random token, unique-visitor count
+  identity_id   BIGINT UNSIGNED NULL,   -- set when logged in, else NULL = anonymous
   path          VARCHAR(512) NOT NULL,  -- pathname only (no query / fragment)
   is_landing    TINYINT(1)   NOT NULL DEFAULT 0,  -- first page of a browsing session
   referrer_host VARCHAR(255) NULL,      -- external referrer host (NULL if same-origin/direct)
