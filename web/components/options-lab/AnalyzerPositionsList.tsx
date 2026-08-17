@@ -7,7 +7,13 @@
  * Book = definition SoR.
  */
 
-import { useMemo, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   calendarDteOf,
   definedDebitSigned,
@@ -18,6 +24,11 @@ import { resolveCardDisplayState } from "@/lib/options-lab/cardDisplayState";
 import { legNotTradedLabel } from "@/lib/options-lab/optionBind";
 import type { LegInput } from "@/lib/options-lab/positionTypes";
 import { detectFamily } from "@/lib/options-lab/positionLabels";
+import {
+  packageUnitScale,
+  positionQty,
+  unitLegQuantity,
+} from "@/lib/options-lab/packageEconomics";
 import {
   BLOTTER_CSS_VARS,
   BLOTTER_HEX,
@@ -61,6 +72,93 @@ function fmtStrike(n: number): string {
 }
 
 /**
+ * Unlocked card: debit/credit is an input. Tab, Enter, or click-away
+ * commits the magnitude and locks. Escape cancels and stays unlocked.
+ */
+function PackagePriceField({
+  id,
+  locked,
+  price,
+  priceLabel,
+  textMain,
+  onCommit,
+}: {
+  id: string;
+  locked: boolean;
+  price: number | null;
+  priceLabel: string;
+  textMain: string;
+  onCommit: (magnitude: number) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const committedRef = useRef(false);
+  const [draft, setDraft] = useState(() =>
+    price != null && Number.isFinite(price) ? price.toFixed(2) : "",
+  );
+
+  useEffect(() => {
+    if (locked) return;
+    committedRef.current = false;
+    setDraft(price != null && Number.isFinite(price) ? price.toFixed(2) : "");
+    const t = window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(t);
+  }, [locked, id]);
+
+  const commit = () => {
+    if (committedRef.current) return;
+    const mag = Math.abs(parseFloat(String(draft).replace(/[−–—]/g, "-")));
+    if (!Number.isFinite(mag) || mag <= 0) {
+      if (price != null && Number.isFinite(price)) setDraft(price.toFixed(2));
+      return;
+    }
+    committedRef.current = true;
+    onCommit(mag);
+  };
+
+  if (locked) return <>{priceLabel}</>;
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      inputMode="decimal"
+      aria-label="Package debit or credit per position"
+      data-testid={`analyzer-pos-price-edit-${id}`}
+      className={
+        "w-[6.75rem] rounded bg-black/25 px-1 py-0.5 text-right font-mono " +
+        "text-[22.5px] font-semibold tabular-nums outline-none ring-1 ring-white/40 " +
+        textMain
+      }
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onClick={(e) => e.stopPropagation()}
+      onBlur={(e) => {
+        const next = e.relatedTarget as HTMLElement | null;
+        if (next?.closest?.(`[data-testid="analyzer-pos-lock-${id}"]`)) {
+          return;
+        }
+        commit();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === "Tab") {
+          if (e.key === "Enter") e.preventDefault();
+          commit();
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        }
+        if (e.key === "Escape") {
+          committedRef.current = true;
+          if (price != null && Number.isFinite(price)) setDraft(price.toFixed(2));
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+    />
+  );
+}
+
+/**
  * ToS-style leg order on the position card: **calls above puts**, then
  * ascending strike within each right. Case-insensitive type compare.
  */
@@ -80,12 +178,15 @@ function legsInDisplayOrder(legs: readonly LegInput[]): LegInput[] {
   });
 }
 
-// Body ~15px after two +15% steps from 11px; chrome scaled with it
+// Body 22.5px = 15px × 1.5; chrome scaled with it
 const th =
-  "px-1.5 py-1 text-left text-[12px] font-semibold uppercase tracking-wide text-white/45 whitespace-nowrap";
-const td = "px-1.5 py-1 text-[15px] tabular-nums whitespace-nowrap";
+  "px-1.5 py-1.5 text-left text-[18px] font-semibold uppercase tracking-wide text-white/45 whitespace-nowrap";
+/** Horizontal pad only — vertical pad is set per card so +24px is shared across legs. */
+const td = "px-1.5 text-[22.5px] tabular-nums whitespace-nowrap";
+const TD_PAD_Y = 6;
+const CARD_EXTRA_Y = 24;
 const actionBtn =
-  "rounded bg-black/25 px-1.5 py-0.5 text-[12px] font-semibold uppercase text-white/90 hover:bg-black/40";
+  "rounded bg-black/25 px-1.5 py-0.5 text-[18px] font-semibold uppercase text-white/90 hover:bg-black/40";
 
 export type AnalyzerPositionsListProps = {
   positions: AnalyzerPosition[];
@@ -98,7 +199,8 @@ export type AnalyzerPositionsListProps = {
   onDelete: (id: string) => void;
   onCreate: () => void;
   onLockNatural: (id: string) => void;
-  onLockLimit: (id: string) => void;
+  /** Commit a per-position debit/credit magnitude and lock it. */
+  onLockLimit: (id: string, magnitude: number) => void;
   onUnlock: (id: string) => void;
   /** ToS-style structure BUY/SELL flip (debit↔credit). */
   onSetDirection: (id: string, direction: "buy" | "sell") => void;
@@ -201,7 +303,7 @@ export default function AnalyzerPositionsList({
       ) : (
         <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded border border-[var(--color-separator)] bg-[var(--color-surface)]">
           <table
-            className="w-full min-w-[960px] border-collapse text-left text-[16px] leading-snug"
+            className="w-full min-w-[1200px] border-collapse text-left text-[24px] leading-snug"
             data-testid="analyzer-positions-table"
           >
             <thead className="sticky top-0 z-[1] bg-[var(--color-surface)] shadow-[0_1px_0_var(--color-separator)]">
@@ -240,7 +342,8 @@ export default function AnalyzerPositionsList({
               const family = detectFamily(pos.position.legs).toUpperCase();
               const pkgDir =
                 pos.position.direction === "sell" ? "SELL" : "BUY";
-              const mult = Math.max(1, pos.position.contracts || 1);
+              const pkgQty = positionQty(pos.position);
+              const unitScale = packageUnitScale(pos.position.legs);
               const front = pos.position.expiration;
               const dte = dteOf(front);
               // Card = pointer: EXPIRED only when the pointed-to option is past
@@ -314,7 +417,9 @@ export default function AnalyzerPositionsList({
                   offSymbol={offSymbol}
                   family={family}
                   pkgDir={pkgDir}
-                  mult={mult}
+                  pkgQty={pkgQty}
+                  unitScale={unitScale}
+                  price={price}
                   priceLabel={priceLabel}
                   liveMark={!!liveMark}
                   expired={expired}
@@ -359,7 +464,9 @@ function PosBlock({
   offSymbol,
   family,
   pkgDir,
-  mult,
+  pkgQty,
+  unitScale,
+  price,
   priceLabel,
   liveMark,
   expired,
@@ -394,7 +501,9 @@ function PosBlock({
   offSymbol: boolean;
   family: string;
   pkgDir: string;
-  mult: number;
+  pkgQty: number;
+  unitScale: number;
+  price: number | null;
   priceLabel: string;
   liveMark: boolean;
   expired: boolean;
@@ -414,7 +523,7 @@ function PosBlock({
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onLockNatural: (id: string) => void;
-  onLockLimit: (id: string) => void;
+  onLockLimit: (id: string, magnitude: number) => void;
   onUnlock: (id: string) => void;
   onSetDirection: (id: string, direction: "buy" | "sell") => void;
   onSetExpiration: (id: string, expiration: string) => void;
@@ -424,6 +533,8 @@ function PosBlock({
   const nLegs = orderedLegs.length;
   const pkgSide =
     side === "credit" ? "CREDIT" : side === "debit" ? "DEBIT" : "—";
+  const rowExtra = CARD_EXTRA_Y / Math.max(1, nLegs);
+  const padY = TD_PAD_Y + rowExtra / 2;
 
   /**
    * Trade Log blotter rule:
@@ -434,6 +545,8 @@ function PosBlock({
    */
   const cellBase = (isLast: boolean): CSSProperties => ({
     backgroundColor: bg,
+    paddingTop: padY,
+    paddingBottom: padY,
     // Between-position rule: 2px (was 1)
     borderBottomWidth: isLast && hasNext ? 2 : 0,
     borderBottomStyle: isLast && hasNext ? "solid" : "none",
@@ -479,8 +592,12 @@ function PosBlock({
         const isLast = i === nLegs - 1;
         const exp = (leg.expiration || front).slice(0, 10);
         const legSide = leg.side === "long" ? "BUY" : "SELL";
-        const q = Math.abs(leg.quantity) * mult;
-        const signedQ = leg.side === "long" ? `+${q}` : `−${q}`;
+        const unitQ = unitLegQuantity(leg.quantity, unitScale);
+        const signedQ = isTop
+          ? String(pkgQty)
+          : leg.side === "long"
+            ? `+${unitQ}`
+            : `−${unitQ}`;
         const edge = cellBase(isLast);
 
         return (
@@ -533,7 +650,7 @@ function PosBlock({
               {isTop ? (
                 <select
                   className={
-                    "cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[15px] font-semibold uppercase outline-none " +
+                    "cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[22.5px] font-semibold uppercase outline-none " +
                     textMain
                   }
                   value={pkgDir === "SELL" ? "sell" : "buy"}
@@ -555,6 +672,12 @@ function PosBlock({
             <td
               className={td + ` text-right font-mono ${textMain}`}
               style={edge}
+              data-testid={isTop ? `analyzer-pos-qty-${pos.id}` : undefined}
+              title={
+                isTop
+                  ? `${pkgQty} × ${leg.side === "long" ? "+" : "−"}${unitQ}`
+                  : undefined
+              }
             >
               {signedQ}
             </td>
@@ -565,7 +688,7 @@ function PosBlock({
               {und}
               {isTop && offSymbol ? (
                 <span
-                  className="ml-1 rounded bg-black/25 px-1 text-[10px] uppercase text-white"
+                  className="ml-1 rounded bg-black/25 px-1 text-[15px] uppercase text-white"
                   data-testid="analyzer-pos-off-symbol"
                 >
                   off
@@ -580,7 +703,7 @@ function PosBlock({
               {isTop && expChoices.length > 0 ? (
                 <select
                   className={
-                    "max-w-[9rem] cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[15px] font-semibold outline-none " +
+                    "max-w-[11rem] cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[22.5px] font-semibold outline-none " +
                     textMain
                   }
                   value={
@@ -627,8 +750,8 @@ function PosBlock({
                   <button
                     type="button"
                     className={
-                      "inline-flex h-5 w-6 items-center justify-center rounded " +
-                      "bg-black/25 text-[11px] font-bold leading-none text-white " +
+                      "inline-flex h-7 w-8 items-center justify-center rounded " +
+                      "bg-black/25 text-[16.5px] font-bold leading-none text-white " +
                       "hover:bg-black/45 disabled:opacity-40"
                     }
                     title="Shift all strikes up one listed step (unlocks package)"
@@ -641,8 +764,8 @@ function PosBlock({
                   <button
                     type="button"
                     className={
-                      "inline-flex h-5 w-6 items-center justify-center rounded " +
-                      "bg-black/25 text-[11px] font-bold leading-none text-white " +
+                      "inline-flex h-7 w-8 items-center justify-center rounded " +
+                      "bg-black/25 text-[16.5px] font-bold leading-none text-white " +
                       "hover:bg-black/45 disabled:opacity-40"
                     }
                     title="Shift all strikes down one listed step (unlocks package)"
@@ -673,6 +796,7 @@ function PosBlock({
                 (isTop && expired ? "text-amber-200" : textMain)
               }
               style={edge}
+              onClick={(e) => e.stopPropagation()}
               data-testid={isTop ? `analyzer-pos-price-${pos.id}` : undefined}
               data-display-kind={isTop ? display.kind : undefined}
               data-live={isTop && display.kind === "price" ? "1" : undefined}
@@ -695,13 +819,22 @@ function PosBlock({
               }
             >
               {isTop ? (
-                display.kind === "price" ||
-                (display.kind === "expired" &&
-                  definedDebitSigned(pos) != null) ? (
+                !locked ? (
+                  <PackagePriceField
+                    id={pos.id}
+                    locked={locked}
+                    price={price}
+                    priceLabel={priceLabel}
+                    textMain={textMain}
+                    onCommit={(mag) => onLockLimit(pos.id, mag)}
+                  />
+                ) : display.kind === "price" ||
+                  (display.kind === "expired" &&
+                    definedDebitSigned(pos) != null) ? (
                   <>
                     {priceLabel}
                     <span
-                      className={`ml-1 text-[10px] font-semibold uppercase ${
+                      className={`ml-1 text-[15px] font-semibold uppercase ${
                         display.kind === "expired"
                           ? "text-amber-200"
                           : textMuted
@@ -717,7 +850,7 @@ function PosBlock({
                 ) : (
                   <span
                     className={
-                      "text-[12px] font-bold uppercase tracking-wide " +
+                      "text-[18px] font-bold uppercase tracking-wide " +
                       (display.kind === "updating"
                         ? textMuted
                         : "text-amber-200")
@@ -742,7 +875,7 @@ function PosBlock({
                   if (nt) {
                     return (
                       <span
-                        className="text-[11px] font-bold uppercase tracking-wide text-amber-200"
+                        className="text-[16.5px] font-bold uppercase tracking-wide text-amber-200"
                         data-testid={`analyzer-pos-leg-not-traded-${pos.id}-${i}`}
                         title={`${leg.strike} ${leg.type} — not traded`}
                       >
@@ -763,7 +896,7 @@ function PosBlock({
               {isTop ? (
                 <div className="flex items-center gap-1">
                   <span
-                    className={`text-[14px] font-semibold uppercase ${textMain}`}
+                    className={`text-[21px] font-semibold uppercase ${textMain}`}
                     data-testid={`analyzer-pos-pkg-side-${pos.id}`}
                   >
                     {pkgSide}
@@ -771,7 +904,7 @@ function PosBlock({
                   {locked ? (
                     <button
                       type="button"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded bg-black/20 hover:bg-black/35"
+                      className="inline-flex h-12 w-12 items-center justify-center rounded bg-black/20 hover:bg-black/35"
                       title="Unlock package basis"
                       aria-label="Unlock"
                       data-testid={`analyzer-pos-lock-${pos.id}`}
@@ -779,26 +912,19 @@ function PosBlock({
                       onClick={() => onUnlock(pos.id)}
                     >
                       {/* light tone: white ToS glyph on green/red blotter */}
-                      <IconLock size={15} tone="light" />
+                      <IconLock size={30} tone="light" />
                     </button>
                   ) : (
                     <button
                       type="button"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded bg-black/15 opacity-90 hover:bg-black/30 hover:opacity-100"
-                      title="Lock at natural mid (Option-click / right-click for limit)"
+                      className="inline-flex h-12 w-12 items-center justify-center rounded bg-black/15 opacity-90 hover:bg-black/30 hover:opacity-100"
+                      title="Lock at natural mid"
                       aria-label="Lock natural"
                       data-testid={`analyzer-pos-lock-${pos.id}`}
                       data-locked="0"
-                      onClick={(e) => {
-                        if (e.altKey || e.metaKey) onLockLimit(pos.id);
-                        else onLockNatural(pos.id);
-                      }}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        onLockLimit(pos.id);
-                      }}
+                      onClick={() => onLockNatural(pos.id)}
                     >
-                      <IconUnlock size={15} tone="light" />
+                      <IconUnlock size={30} tone="light" />
                     </button>
                   )}
                 </div>
@@ -807,7 +933,7 @@ function PosBlock({
             <td
               className={
                 td +
-                " text-[12px] font-semibold uppercase " +
+                " text-[18px] font-semibold uppercase " +
                 (isTop
                   ? chip === "live"
                     ? kind !== "neutral"

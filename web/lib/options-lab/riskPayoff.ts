@@ -4,6 +4,7 @@
  */
 
 import type { ParsedTosLeg, ParsedTosTrade } from "./tosParser";
+import { tradeTotalDebit } from "./packageEconomics";
 
 const MULTIPLIER = 100;
 
@@ -64,14 +65,7 @@ export function buildPayoffCurve(
       : (lo + hi) / 2;
   const xMin = Math.min(lo, mid) - pad;
   const xMax = Math.max(hi, mid) + pad;
-  const debit =
-    trade.debit != null
-      ? trade.debit
-      : trade.limit != null
-        ? trade.isCredit
-          ? -Math.abs(trade.limit)
-          : Math.abs(trade.limit)
-        : 0;
+  const debit = tradeTotalDebit(trade);
 
   const points: PayoffPoint[] = [];
   // Include exact strikes and breakeven candidates

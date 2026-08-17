@@ -15,8 +15,10 @@ import {
   cardPointerExpiration,
   cardShowsPackageMark,
   isOptionPointerExpired,
+  lockLimit,
   positionFromInput,
   setCardExpiration,
+  unlockCard,
   type AnalyzerPosition,
 } from "./analyzerBook";
 import type { PositionInput } from "./positionTypes";
@@ -267,6 +269,29 @@ test("open session: pre_open quote → live NBBO is market truth", () => {
   assert(pos.markDisclaimer == null, "disclaimer cleared");
   assert(!cardNeedsMarketTruth(pos), "no longer needs market truth");
   assert(pos.livePackagePerShare === 15.4, "live package mag");
+});
+
+test("unlock then lockLimit saves per-position debit as user limit", () => {
+  let pos = positionFromInput(fly("2026-08-14"));
+  pos = {
+    ...pos,
+    livePackagePerShare: 1.65,
+    lastNatSigned: 1.65,
+    priceSide: "debit",
+    liveState: "held",
+    lock: { mode: "unlocked" },
+  };
+  pos = lockLimit(pos, 2.1, false);
+  assert(pos.lock.mode === "locked", "locked");
+  if (pos.lock.mode === "locked") {
+    assert(pos.lock.packageDebitPerShare === 2.1, "D*");
+    assert(pos.lock.lockSource === "user_limit", "source");
+  }
+  assert(pos.livePackagePerShare === 2.1, "card mag");
+  assert(pos.position.net_debit_override === 2.1, "override");
+  pos = unlockCard(pos);
+  assert(pos.lock.mode === "unlocked", "unlocked");
+  assert(pos.position.net_debit_override == null, "override cleared");
 });
 
 console.log(`\n${passed} tests passed`);

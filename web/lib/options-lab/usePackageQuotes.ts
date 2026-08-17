@@ -43,7 +43,10 @@ import {
   tradeToOpfStrategy,
 } from "@/lib/options-lab/opfPricingApi";
 import { normalizeStrike } from "@/lib/options-lab/listedStrikes";
-import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
+import {
+  positionToParsedTrade,
+  positionToUnitInput,
+} from "@/lib/options-lab/positionToTrade";
 import { packageEconomicsFromLegs } from "@/lib/options-lab/packageEconomics";
 import type { OptionRight } from "@/lib/options-lab/positionTypes";
 
@@ -261,8 +264,10 @@ export function usePackageQuotes(opts: {
             (e, s, t) =>
               getContractFromLadders(trade.symbol, e, s, t),
             exp,
+            pos.position.contracts,
           );
           if (econ.complete && econ.signedMid != null) {
+            // Per-position debit (OPF sign). Total is Qty × this.
             debit = -econ.signedMid; // MSC credit>0 → OPF debit>0
           }
         }
@@ -357,7 +362,9 @@ export function usePackageQuotes(opts: {
       try {
         const q = await quoteOpfPackage({
           strategy: {
-            ...tradeToOpfStrategy(trade),
+            ...tradeToOpfStrategy(
+              positionToParsedTrade(positionToUnitInput(pos.position)),
+            ),
             strategy_id: pos.id,
           },
           generations: gens,

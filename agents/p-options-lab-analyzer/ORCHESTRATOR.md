@@ -4,7 +4,7 @@
 
 **Plan:** [`docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md) (v1.0.1)
 
-**Top residual packet (not Keep-Warm):** **L** — layout vertical stack (OD-AZ1/2: top strip · viewport · divider · positions under · alerts under). Keep-Warm is its own spec (**v0.1.1 BUILD AUTHORITY** · DL-418) and is **not** folded into L.
+**Top residual packet (not Keep-Warm):** **L** — layout vertical stack (OD-AZ1/2: top strip · viewport · divider · positions under · alerts under). Keep-Warm is its own spec (**v0.1.2 BUILD AUTHORITY** · DL-418 · DL-419 local sheet) and is **not** folded into L.
 
 ## DAG
 

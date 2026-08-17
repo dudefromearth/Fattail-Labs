@@ -28,7 +28,10 @@ import {
   snapToListed,
   snapWidthToListed,
 } from "@/lib/options-lab/listedStrikes";
-import { buildListedStructure } from "@/lib/options-lab/listedStructure";
+import {
+  buildListedStructure,
+  inferStructureCenter,
+} from "@/lib/options-lab/listedStructure";
 import {
   formatPackageSide,
   packageEconomics,
@@ -263,17 +266,17 @@ function defaultDiagonalWidth(symbol: string): number {
 /** HIG form control — inset field on grouped surface */
 const field =
   "w-full min-h-11 rounded-[var(--radius-md)] border-0 bg-transparent " +
-  "px-3 py-2.5 text-[15px] text-[var(--color-label)] outline-none " +
+  "px-3 py-2.5 text-[22.5px] text-[var(--color-label)] outline-none " +
   "focus-visible:bg-[var(--color-fill)]/60";
 const fieldInset =
   "w-full min-h-11 rounded-[var(--radius-md)] border border-[var(--color-separator)] " +
-  "bg-[var(--color-surface)] px-3 py-2 text-[15px] text-[var(--color-label)] " +
+  "bg-[var(--color-surface)] px-3 py-2 text-[22.5px] text-[var(--color-label)] " +
   "outline-none focus-visible:outline focus-visible:outline-2 " +
   "focus-visible:outline-offset-1 focus-visible:outline-[var(--color-tint)]";
 const sectionLabel =
-  "px-1 pb-1.5 text-[13px] font-semibold tracking-tight text-[var(--color-label-secondary)]";
+  "px-1 pb-1.5 text-[19.5px] font-semibold tracking-tight text-[var(--color-label-secondary)]";
 const rowLabel =
-  "shrink-0 w-[7.5rem] text-[15px] text-[var(--color-label)]";
+  "shrink-0 w-[10rem] text-[22.5px] text-[var(--color-label)]";
 const group =
   "overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-separator)] " +
   "bg-[var(--color-surface)] shadow-[var(--elevation-1)]";
@@ -303,7 +306,7 @@ export type PositionBuilderProps = {
 };
 
 /** Wide enough for full Legs table (Qty · Strike · Type · Exp · Mid · ± · IV). */
-const PANEL_W = 720;
+const PANEL_W = 770;
 const PANEL_DEFAULT_OFFSET = { x: 48, y: 72 };
 
 export default function PositionBuilder({
@@ -475,21 +478,32 @@ export default function PositionBuilder({
     if (s != null && s > 0) setUserSpot(s);
   }, [open, chain.spot, spotPrice, userSpotDirty, chain.rev]);
 
-  // When OPF listed strikes arrive / spot drives nearest — Center = nearest listed
-  // unless the user pinned a different strike in the dropdown.
+  // Center follows the structure (card body). Spot only seeds Center
+  // when there are no legs yet. Do not snap a live structure back to ATM.
   useEffect(() => {
-    if (!open || !frontStrikes.length || !(nearestCenter > 0)) return;
+    if (!open) return;
+    if (position.legs.length > 0) {
+      const inferred = inferStructureCenter(position.legs);
+      if (!(inferred > 0)) return;
+      setCenterStrike((prev) =>
+        normalizeStrike(prev) === inferred ? prev : inferred,
+      );
+      return;
+    }
+    if (!frontStrikes.length || !(nearestCenter > 0)) return;
     if (centerPinnedRef.current) {
-      // Pinned strike must still exist on OPF grid
       setCenterStrike((prev) => {
-        if (prev > 0 && frontStrikes.some((s) => s === prev)) return prev;
+        const onGrid = frontStrikes.some(
+          (s) => normalizeStrike(s) === normalizeStrike(prev),
+        );
+        if (prev > 0 && onGrid) return prev;
         centerPinnedRef.current = false;
         return nearestCenter;
       });
       return;
     }
     setCenterStrike(nearestCenter);
-  }, [open, frontStrikes, nearestCenter]);
+  }, [open, frontStrikes, nearestCenter, position.legs]);
 
   // Hydrate every expiration the structure needs so any OPF-listed trade is choosable
   useEffect(() => {
@@ -757,10 +771,13 @@ export default function PositionBuilder({
         priced.find((l) => l.side === "short")?.strike ??
         priced[0]?.strike ??
         (atmCenter > 0 ? atmCenter : spotPrice > 0 ? spotPrice : 0);
-      if (body > 0) setCenterStrike(body);
+      if (body > 0) {
+        setCenterStrike(body);
+        centerPinnedRef.current = true;
+      }
       if (!listed.length) {
         setStructureNotice(
-          "Loading OPF chain… center and package update when strikes arrive.",
+          "Loading OPF chain… center and position update when strikes arrive.",
         );
         // Keep retrying until ladder exists so Center dropdown is real
         return;
@@ -860,7 +877,7 @@ export default function PositionBuilder({
     } else {
       // pendingBuild queued — leave didSeed false until legs exist
       setStructureNotice(
-        "Building structure on OPF chain… package marks follow.",
+        "Building structure on OPF chain… position marks follow.",
       );
     }
   }, [
@@ -1033,7 +1050,7 @@ export default function PositionBuilder({
   }, [position, chain, chain.rev, marketLive]);
 
   const packageDisclaimer = preOpenPackage
-    ? "Theoretical package until the market opens — last-session held marks (last trade / prior close), not live NBBO."
+    ? "Theoretical position until the market opens — last-session held marks (last trade / prior close), not live NBBO."
     : null;
 
   /**
@@ -1113,9 +1130,10 @@ export default function PositionBuilder({
     }
   }, [open, defKey, planeState.kind]);
 
-  /** Package bid/ask width from OPF legs (closing spread when session held). */
+  /** Package bid/ask width for **one** position (unit ratios). */
   const packageSpread = useMemo(() => {
     if (!eco.legs.length) return null;
+    const scale = Math.max(1, eco.packages / Math.max(1, position.contracts || 1));
     let width = 0;
     let ok = 0;
     for (const leg of eco.legs) {
@@ -1126,13 +1144,13 @@ export default function PositionBuilder({
         Number.isFinite(leg.ask) &&
         leg.ask >= leg.bid
       ) {
-        width += Math.abs(leg.quantity) * (leg.ask - leg.bid);
+        width += (Math.abs(leg.quantity) / scale) * (leg.ask - leg.bid);
         ok += 1;
       }
     }
     if (ok === 0) return null;
     return width;
-  }, [eco.legs]);
+  }, [eco.legs, eco.packages, position.contracts]);
 
   const costLabel = eco.side ?? "—";
   const displayCost = eco.absMid ?? 0;
@@ -1156,13 +1174,15 @@ export default function PositionBuilder({
 
   const tosScript = useMemo(() => {
     if (!position.legs.length) return "";
+    const pkgs = Math.max(1, position.contracts || 1);
     return generateTosScript({
       symbol: position.underlying,
       legs: position.legs.map((leg) => ({
         strike: leg.strike,
         expiration: leg.expiration || position.expiration,
         right: leg.type,
-        quantity: leg.side === "long" ? leg.quantity : -leg.quantity,
+        quantity:
+          (leg.side === "long" ? 1 : -1) * Math.abs(leg.quantity) * pkgs,
       })),
       costBasis:
         overrideActive && position.net_debit_override != null
@@ -1479,7 +1499,7 @@ export default function PositionBuilder({
   return (
     <div
       className={
-        "fixed z-50 flex max-h-[min(92vh,860px)] w-[min(720px,calc(100vw-1.5rem))] " +
+        "builder-steppers fixed z-50 flex max-h-[min(92vh,860px)] w-[min(770px,calc(100vw-1.5rem))] " +
         "flex-col overflow-hidden rounded-[var(--radius-xl)] " +
         "border border-[var(--color-separator)] bg-[var(--color-surface-secondary)] " +
         "shadow-[var(--elevation-3,0_25px_50px_-12px_rgba(0,0,0,0.45))]"
@@ -1505,10 +1525,10 @@ export default function PositionBuilder({
         title="Drag to move"
       >
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-[17px] font-semibold tracking-tight text-[var(--color-label)]">
+          <h3 className="truncate text-[25.5px] font-semibold tracking-tight text-[var(--color-label)]">
             {mode === "edit" ? "Edit Position" : "Create Position"}
           </h3>
-          <p className="truncate text-[12px] text-[var(--color-label-tertiary)]">
+          <p className="truncate text-[18px] text-[var(--color-label-tertiary)]">
             {position.underlying || symbol}
             {chain.spot != null ? ` · ${chain.spot.toFixed(2)}` : ""}
             {chain.spotStrike != null ? ` · ATM ${chain.spotStrike}` : ""}
@@ -1536,10 +1556,10 @@ export default function PositionBuilder({
           data-plane-kind={planeState.kind}
         >
           <div className="min-w-0 flex-1">
-            <div className="text-[12px] font-semibold tracking-wide text-[var(--color-label)]">
+            <div className="text-[18px] font-semibold tracking-wide text-[var(--color-label)]">
               {planeState.title}
             </div>
-            <p className="mt-0.5 text-[12px] leading-snug text-[var(--color-label-secondary)]">
+            <p className="mt-0.5 text-[18px] leading-snug text-[var(--color-label-secondary)]">
               {structureNotice || planeState.detail}
             </p>
           </div>
@@ -1547,7 +1567,7 @@ export default function PositionBuilder({
           (planeState.kind === "updating" && marketLive) ? (
             <Button
               variant="secondary"
-              className="!min-h-8 shrink-0 !px-3 !text-[12px]"
+              className="!min-h-8 shrink-0 !px-3 !text-[18px]"
               data-testid="builder-retry-opf"
               onClick={() => retryOpfChain()}
             >
@@ -1587,7 +1607,7 @@ export default function PositionBuilder({
                 <button
                   type="button"
                   className={
-                    "min-h-9 rounded-full px-4 text-[13px] font-semibold transition-colors " +
+                    "min-h-9 rounded-full px-4 text-[19.5px] font-semibold transition-colors " +
                     (direction === "buy"
                       ? "bg-emerald-600 text-white shadow-sm"
                       : "text-[var(--color-label-secondary)]")
@@ -1599,7 +1619,7 @@ export default function PositionBuilder({
                 <button
                   type="button"
                   className={
-                    "min-h-9 rounded-full px-4 text-[13px] font-semibold transition-colors " +
+                    "min-h-9 rounded-full px-4 text-[19.5px] font-semibold transition-colors " +
                     (direction === "sell"
                       ? "bg-red-600 text-white shadow-sm"
                       : "text-[var(--color-label-secondary)]")
@@ -1637,11 +1657,11 @@ export default function PositionBuilder({
             ) : null}
             <div className={groupRow + " justify-between py-3"}>
               <div className="min-w-0">
-                <div className="text-[15px] font-medium text-[var(--color-label)]">
+                <div className="text-[22.5px] font-medium text-[var(--color-label)]">
                   {direction === "buy" ? "Long" : "Short"}{" "}
                   {TEMPLATE_LABELS[template]}
                 </div>
-                <div className="text-[12px] text-[var(--color-label-tertiary)]">
+                <div className="text-[18px] text-[var(--color-label-tertiary)]">
                   OPF-held chain only
                 </div>
               </div>
@@ -1728,11 +1748,16 @@ export default function PositionBuilder({
                   value={
                     centerStrike > 0
                       ? centerStrike
+                      : inferStructureCenter(position.legs) ||
+                        (nearestCenter > 0 ? nearestCenter : 0)
+                  }
+                  center={
+                    centerStrike > 0
+                      ? centerStrike
                       : nearestCenter > 0
                         ? nearestCenter
-                        : 0
+                        : effectiveSpot
                   }
-                  center={nearestCenter > 0 ? nearestCenter : effectiveSpot}
                   /*
                    * Full OPF list in the menu (scroll for strikes beyond ±5).
                    * Selection defaults to nearest-to-spot; radius covers all
@@ -1748,7 +1773,7 @@ export default function PositionBuilder({
                           ? "OPF unavailable"
                           : "Loading OPF strikes…"
                   }
-                  className="!min-h-11 !border-0 !bg-transparent text-right font-mono"
+                  className="!min-h-11 !border-0 bg-transparent text-right font-mono text-[22.5px]"
                   testId="builder-center-strike"
                   onChange={(c) => {
                     centerPinnedRef.current = true;
@@ -1768,7 +1793,7 @@ export default function PositionBuilder({
             </div>
             {nearestCenter > 0 && frontStrikes.length > 0 ? (
               <div className="border-b border-[var(--color-separator)] px-3 py-1.5 last:border-b-0">
-                <p className="text-right text-[11px] text-[var(--color-label-tertiary)]">
+                <p className="text-right text-[16.5px] text-[var(--color-label-tertiary)]">
                   Nearest to spot {effectiveSpot > 0 ? effectiveSpot.toFixed(2) : "—"}{" "}
                   → {nearestCenter}
                   {frontStrikes.length
@@ -1833,7 +1858,7 @@ export default function PositionBuilder({
             </div>
             {wingChoices.length > 0 ? (
               <div className="border-b border-[var(--color-separator)] px-3 py-1.5 last:border-b-0">
-                <p className="text-right text-[11px] text-[var(--color-label-tertiary)]">
+                <p className="text-right text-[16.5px] text-[var(--color-label-tertiary)]">
                   OPF listed wings only
                   {listedStepNearLabel(frontStrikes, centerStrike || nearestCenter)}
                 </p>
@@ -1925,7 +1950,7 @@ export default function PositionBuilder({
 
         {/* —— Package hero —— */}
         <section>
-          <h4 className={sectionLabel}>Package</h4>
+          <h4 className={sectionLabel}>Position</h4>
           <div
             className={
               group +
@@ -1934,18 +1959,18 @@ export default function PositionBuilder({
             data-testid="builder-package-economics"
           >
             <div className="flex items-center gap-2">
-              <span className="text-[12px] font-medium text-[var(--color-label-tertiary)]">
+              <span className="text-[18px] font-medium text-[var(--color-label-tertiary)]">
                 {planeState.kind === "plane_unavailable"
-                  ? "Package"
+                  ? "Position"
                   : planeState.kind === "updating"
-                    ? "Package"
+                    ? "Position"
                     : marketLive
                       ? "Natural mid"
                       : "Closing mid"}
               </span>
               <span
                 className={
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold " +
+                  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[16.5px] font-semibold " +
                   (planeState.kind === "plane_unavailable"
                     ? "bg-amber-500/15 text-amber-800 dark:text-amber-200"
                     : planeState.kind === "updating"
@@ -1980,7 +2005,7 @@ export default function PositionBuilder({
             </div>
             <div
               className={
-                "font-mono text-[34px] font-semibold tabular-nums tracking-tight " +
+                "font-mono text-[51px] font-semibold tabular-nums tracking-tight " +
                 (planeState.kind !== "ready" &&
                 !(overrideActive && position.net_debit_override != null)
                   ? "text-[var(--color-label-tertiary)]"
@@ -2004,43 +2029,51 @@ export default function PositionBuilder({
                         ? eco.absMid.toFixed(2)
                         : "…"}
             </div>
-            <div className="text-[13px] font-medium text-[var(--color-label-secondary)]">
+            <div className="text-[19.5px] font-medium text-[var(--color-label-secondary)]">
               {planeState.kind === "ready" || eco.side
                 ? overrideActive && position.net_debit_override != null
                   ? "LIMIT"
                   : eco.side ?? "—"
                 : planeState.title}
-              {position.contracts > 1 && planeState.kind === "ready"
-                ? ` · ×${position.contracts}`
-                : ""}
+              {eco.packages > 1 &&
+              planeState.kind === "ready" &&
+              eco.absMid != null ? (
+                <span data-testid="builder-package-total">
+                  {` · Qty ${eco.packages} · Total ${(
+                    (overrideActive && position.net_debit_override != null
+                      ? Math.abs(position.net_debit_override)
+                      : eco.absMid) * eco.packages
+                  ).toFixed(2)}`}
+                </span>
+              ) : null}
               {packageSpread != null &&
               !overrideActive &&
               planeState.kind === "ready" ? (
                 <span
-                  className="ml-2 font-mono text-[12px] tabular-nums text-[var(--color-label-tertiary)]"
+                  className="ml-2 font-mono text-[18px] tabular-nums text-[var(--color-label-tertiary)]"
                   data-testid="builder-package-spread"
                 >
                   spread {packageSpread.toFixed(2)}
                 </span>
               ) : null}
             </div>
-            <p className="max-w-[18rem] text-[12px] leading-snug text-[var(--color-label-tertiary)]">
+            <p className="max-w-[18rem] text-[18px] leading-snug text-[var(--color-label-tertiary)]">
               {planeState.kind !== "ready"
                 ? planeState.detail
                 : packageDisclaimer
                   ? packageDisclaimer
                   : overrideActive
-                    ? "Limit override active — clear limit for natural package"
+                    ? "Limit override active — clear limit for natural position"
                     : marketLive
-                      ? "Live package from dual-side OPF mids"
-                      : "Closing package mid and spread from last OPF marks"}
+                      ? "Live position from dual-side OPF mids"
+                      : "Closing position mid and spread from last OPF marks"}
             </p>
           </div>
         </section>
 
         {packageDisclaimer && planeState.kind === "ready" ? (
           <div
-            className="rounded-[var(--radius-md)] border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[12px] leading-snug text-[var(--color-label)]"
+            className="rounded-[var(--radius-md)] border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[18px] leading-snug text-[var(--color-label)]"
             role="note"
             data-testid="builder-preopen-disclaimer"
           >
@@ -2052,21 +2085,21 @@ export default function PositionBuilder({
         {/* —— Legs —— */}
         <section>
           <div className="mb-1.5 flex items-end justify-between px-1">
-            <h4 className="text-[13px] font-semibold tracking-tight text-[var(--color-label-secondary)]">
+            <h4 className="text-[19.5px] font-semibold tracking-tight text-[var(--color-label-secondary)]">
               Legs
             </h4>
             <Button
               variant="plain"
-              className="!min-h-8 !px-2 !text-[13px]"
+              className="!min-h-8 !px-2 !text-[19.5px]"
               onClick={addLeg}
             >
               Add Leg
             </Button>
           </div>
           <div className={group + " overflow-x-auto"}>
-            <table className="w-full min-w-0 table-fixed text-left text-[13px]">
+            <table className="w-full min-w-0 table-fixed text-left text-[19.5px]">
               <thead>
-                <tr className="border-b border-[var(--color-separator)] text-[11px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                <tr className="border-b border-[var(--color-separator)] text-[16.5px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
                   <th className="px-3 py-2 font-semibold">Qty</th>
                   <th className="px-2 py-2 font-semibold">Strike</th>
                   <th className="px-2 py-2 font-semibold">Type</th>
@@ -2101,7 +2134,7 @@ export default function PositionBuilder({
                       <td className="px-2 py-1.5">
                         <input
                           className={
-                            fieldInset + " w-14 !min-h-9 !px-2 text-center"
+                            fieldInset + " w-16 !min-h-9 !px-2 text-center"
                           }
                           type="number"
                           value={
@@ -2122,7 +2155,7 @@ export default function PositionBuilder({
                           value={leg.strike}
                           center={atmCenter || spotPrice}
                           radiusN={80}
-                          className="min-w-[5.5rem] !min-h-9"
+                          className="min-w-[6.75rem] !min-h-9"
                           testId={`builder-leg-strike-${i}`}
                           onChange={(s) => updateLeg(i, { strike: s })}
                         />
@@ -2132,7 +2165,7 @@ export default function PositionBuilder({
                           type="button"
                           className={
                             "min-h-9 rounded-full bg-[var(--color-fill)] px-2.5 " +
-                            "text-[12px] font-semibold text-[var(--color-label)]"
+                            "text-[18px] font-semibold text-[var(--color-label)]"
                           }
                           onClick={() =>
                             updateLeg(i, {
@@ -2146,7 +2179,7 @@ export default function PositionBuilder({
                       <td className="px-1 py-1.5" onClick={(e) => e.stopPropagation()}>
                         {hasExps ? (
                           <select
-                            className={fieldInset + " min-w-[5.5rem] !min-h-9 !py-1"}
+                            className={fieldInset + " min-w-[6.75rem] !min-h-9 !py-1"}
                             value={
                               chain.expirations.includes(exp)
                                 ? exp
@@ -2166,7 +2199,7 @@ export default function PositionBuilder({
                             ))}
                           </select>
                         ) : (
-                          <span className="font-mono text-[12px] text-[var(--color-label-tertiary)]">
+                          <span className="font-mono text-[18px] text-[var(--color-label-tertiary)]">
                             {exp.slice(5)}
                           </span>
                         )}
@@ -2249,7 +2282,7 @@ export default function PositionBuilder({
               />
             </div>
             <div className={groupRow}>
-              <span className={rowLabel}>Packages</span>
+              <span className={rowLabel}>Positions</span>
               <input
                 className={field + " max-w-[5rem] text-right"}
                 type="number"
@@ -2264,8 +2297,9 @@ export default function PositionBuilder({
               />
             </div>
           </div>
-          <p className="mt-1.5 px-1 text-[12px] text-[var(--color-label-tertiary)]">
-            Leave limit empty for unlocked live package from OPF.
+          <p className="mt-1.5 px-1 text-[18px] text-[var(--color-label-tertiary)]">
+            Debit/credit is per position. Total = Qty × debit. Leave limit
+            empty for unlocked live position from OPF.
           </p>
         </section>
 
@@ -2274,16 +2308,16 @@ export default function PositionBuilder({
           <h4 className={sectionLabel}>Preview</h4>
           <div className={group + " space-y-3 p-4"}>
             <div>
-              <div className="text-[15px] font-semibold text-[var(--color-label)]">
+              <div className="text-[22.5px] font-semibold text-[var(--color-label)]">
                 {previewLabel}
               </div>
-              <div className="mt-0.5 font-mono text-[12px] text-[var(--color-label-secondary)]">
+              <div className="mt-0.5 font-mono text-[18px] text-[var(--color-label-secondary)]">
                 {previewNotation || "—"}
               </div>
             </div>
             <button
               type="button"
-              className="block w-full rounded-[var(--radius-md)] bg-black px-3 py-2.5 text-left font-mono text-[11px] leading-relaxed text-emerald-400 ring-1 ring-emerald-900/40"
+              className="block w-full rounded-[var(--radius-md)] bg-black px-3 py-2.5 text-left font-mono text-[16.5px] leading-relaxed text-emerald-400 ring-1 ring-emerald-900/40"
               data-testid="builder-tos-script"
               onClick={() => {
                 if (!tosScript) return;
@@ -2294,7 +2328,7 @@ export default function PositionBuilder({
                 });
               }}
             >
-              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-emerald-600/80">
+              <span className="mb-1 block text-[15px] font-semibold uppercase tracking-wide text-emerald-600/80">
                 ToS · {copied ? "Copied" : "Tap to copy"}
               </span>
               {tosScript || "—"}
@@ -2310,7 +2344,7 @@ export default function PositionBuilder({
             <>
               <Button
                 variant="plain"
-                className="!min-h-9 !px-2.5 !text-[13px]"
+                className="!min-h-9 !px-2.5 !text-[19.5px]"
                 data-testid="builder-defaults-menu"
                 aria-haspopup="menu"
                 aria-expanded={defaultsMenuOpen}
@@ -2320,7 +2354,7 @@ export default function PositionBuilder({
                 }}
               >
                 Defaults
-                <span className="ml-1 max-w-[7rem] truncate text-[11px] font-normal text-[var(--color-label-tertiary)]">
+                <span className="ml-1 max-w-[7rem] truncate text-[16.5px] font-normal text-[var(--color-label-tertiary)]">
                   {defaultsStore.activeId == null
                     ? "· Lab"
                     : `· ${
@@ -2329,7 +2363,7 @@ export default function PositionBuilder({
                         )?.name ?? "Custom"
                       }`}
                 </span>
-                <span className="text-[10px] opacity-60" aria-hidden>
+                <span className="text-[15px] opacity-60" aria-hidden>
                   ▾
                 </span>
               </Button>
@@ -2350,7 +2384,7 @@ export default function PositionBuilder({
                     }
                     data-testid="builder-defaults-popover"
                   >
-                    <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+                    <p className="px-3 pb-1 pt-2 text-[16.5px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
                       Active on Create
                     </p>
                     {/* Lab defaults */}
@@ -2380,10 +2414,10 @@ export default function PositionBuilder({
                         {defaultsStore.activeId == null ? "●" : "○"}
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-[14px] font-medium text-[var(--color-label)]">
+                        <span className="block text-[21px] font-medium text-[var(--color-label)]">
                           Options Lab defaults
                         </span>
-                        <span className="block text-[11px] leading-snug text-[var(--color-label-tertiary)]">
+                        <span className="block text-[16.5px] leading-snug text-[var(--color-label-tertiary)]">
                           {labDefaultForStrategy("butterfly", symbol).blurb}
                         </span>
                       </span>
@@ -2460,17 +2494,17 @@ export default function PositionBuilder({
                           {defaultsStore.activeId === p.id ? "●" : "○"}
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-[14px] font-medium text-[var(--color-label)]">
+                          <span className="block text-[21px] font-medium text-[var(--color-label)]">
                             {p.name}
                           </span>
-                          <span className="block font-mono text-[11px] text-[var(--color-label-tertiary)]">
+                          <span className="block font-mono text-[16.5px] text-[var(--color-label-tertiary)]">
                             {formatShapeSummary(p)}
                           </span>
                         </span>
                       </button>
                     ))}
                     {defaultsStore.presets.length < MAX_USER_PRESETS ? (
-                      <p className="px-3 py-1.5 text-[11px] text-[var(--color-label-tertiary)]">
+                      <p className="px-3 py-1.5 text-[16.5px] text-[var(--color-label-tertiary)]">
                         {MAX_USER_PRESETS - defaultsStore.presets.length} slot
                         {MAX_USER_PRESETS - defaultsStore.presets.length === 1
                           ? ""
@@ -2482,7 +2516,7 @@ export default function PositionBuilder({
                         .
                       </p>
                     ) : (
-                      <p className="px-3 py-1.5 text-[11px] text-[var(--color-label-tertiary)]">
+                      <p className="px-3 py-1.5 text-[16.5px] text-[var(--color-label-tertiary)]">
                         3 presets full — Save overwrites the active slot (or
                         oldest if Lab is active).
                       </p>
@@ -2491,7 +2525,7 @@ export default function PositionBuilder({
                     <button
                       type="button"
                       role="menuitem"
-                      className="flex w-full items-center px-3 py-2.5 text-left text-[14px] text-[var(--color-label)] hover:bg-[var(--color-fill)]"
+                      className="flex w-full items-center px-3 py-2.5 text-left text-[21px] text-[var(--color-label)] hover:bg-[var(--color-fill)]"
                       data-testid="builder-save-as-default"
                       onClick={() => {
                         const shape = shapeFromBuilderState({
@@ -2528,7 +2562,7 @@ export default function PositionBuilder({
                     <button
                       type="button"
                       role="menuitem"
-                      className="flex w-full items-center px-3 py-2.5 text-left text-[14px] text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
+                      className="flex w-full items-center px-3 py-2.5 text-left text-[21px] text-[var(--color-label-secondary)] hover:bg-[var(--color-fill)]"
                       data-testid="builder-reset-default"
                       onClick={() => {
                         const next = resetToLabDefaults();
@@ -2541,7 +2575,7 @@ export default function PositionBuilder({
                     >
                       Reset to Lab defaults
                     </button>
-                    <div className="border-t border-[var(--color-separator)] px-3 py-2 text-[11px] leading-snug text-[var(--color-label-tertiary)]">
+                    <div className="border-t border-[var(--color-separator)] px-3 py-2 text-[16.5px] leading-snug text-[var(--color-label-tertiary)]">
                       Wave 1 Lab recipes: Butterfly · Vertical · Condor ·
                       Calendar (multi-exp). Strategy change while Lab is active
                       applies that recipe on OPF.
@@ -2551,7 +2585,7 @@ export default function PositionBuilder({
               ) : null}
               {defaultsFlash ? (
                 <span
-                  className="ml-2 text-[12px] text-[var(--color-tint)]"
+                  className="ml-2 text-[18px] text-[var(--color-tint)]"
                   data-testid="builder-defaults-flash"
                   role="status"
                 >
@@ -2560,7 +2594,7 @@ export default function PositionBuilder({
               ) : null}
             </>
           ) : (
-            <span className="text-[12px] text-[var(--color-label-tertiary)]">
+            <span className="text-[18px] text-[var(--color-label-tertiary)]">
               Edit mode
             </span>
           )}

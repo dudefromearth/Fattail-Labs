@@ -330,3 +330,38 @@ body {
     scroll-margin-top: calc(var(--header-height-lg) + var(--space-4));
   }
 }
+
+/*
+ * Position Builder pop-up buttons — one HIG chevron for every select.
+ * Apple HIG: trailing chevron.down, secondary label, regular weight,
+ * 20pt accessory (50% above a 13pt native spinner), 44pt min hit target.
+ * Longhands only so Tailwind bg-* cannot wipe the glyph.
+ */
+[data-testid="position-builder"] {
+  --builder-chevron-size: 20px;
+  --builder-chevron-inset: 8px;
+  --builder-chevron: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none' stroke='%238e8e93' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><polyline points='5 7.5 10 12.5 15 7.5'/></svg>");
+}
+
+[data-testid="position-builder"] input[type="number"]::-webkit-inner-spin-button,
+[data-testid="position-builder"] input[type="number"]::-webkit-outer-spin-button {
+  height: 1.85em;
+  width: 1.2em;
+  margin-left: 0.35rem;
+  transform: scale(1.5);
+  transform-origin: right center;
+  opacity: 1;
+  cursor: pointer;
+}
+
+[data-testid="position-builder"] select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: transparent;
+  background-image: var(--builder-chevron);
+  background-repeat: no-repeat;
+  background-position: right var(--builder-chevron-inset) center;
+  background-size: var(--builder-chevron-size) var(--builder-chevron-size);
+  padding-right: calc(var(--builder-chevron-size) + var(--builder-chevron-inset) + 6px);
+  min-height: 44px;
+}

@@ -1,12 +1,12 @@
 # FatTail Labs — Options Lab Analyzer Viewport Keep-Warm Spec v0.1
 
 **Status:** **BUILD AUTHORITY** (Coach 2026-08-17 · **DL-418** promotes **DL-417**)  
-**Content revision:** **v0.1.1** (filename stays `…-Spec-v0.1.md`)  
+**Content revision:** **v0.1.2** (filename stays `…-Spec-v0.1.md`)  
 **Type:** Product Spec — Analyzer viewport poll · last paint · resource law  
 **Short name:** **Analyzer Keep-Warm** · **AZ-KW**  
 **Filename:** `FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md`  
 **Date:** 2026-08-17  
-**DL:** **DL-417** (filed) · **DL-418** (BUILD AUTHORITY · OD-KW Accept · v0.1.1 fold)  
+**DL:** **DL-417** (filed) · **DL-418** (BUILD AUTHORITY · OD-KW Accept · v0.1.1 fold) · **DL-419** (live sheet is local · v0.1.2)  
 **Parent:** [Analyzer Spec v0.2.1](./FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md) · [OT-EF Doctrine v1.1](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md) · [Session/Print Spec v0.1](./FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md) · [OPF Spec v0.2.1](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) · [Market Bus Spec v1.0.1](./FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) · Arch **28** · Arch **30**
 
 **Audience:** Coach · India · Juliet · Charlie · Echo · Delta · Hotel · Foxtrot
@@ -22,6 +22,16 @@
 > That also means that the polling is always going. But if there's no focus if the polling is slowed to only a second or maybe even 3-5 seconds, its resource draw on the entire system should be minimal.
 
 > This way, whenever I open the analyzer, there is a recent rendering of the positions. If there are no positions with visibility on, and polling is still on, it should be at an interval that minimizes resources. The reason for having constant polling is because this will become the main working page, and users will spend a lot of time there, so we need to maximize their experience. Given that, I want to understand the draw on system resources when the page is not in view, and we can develop a strategy that maximizes user experience against system resources.
+
+**Coach 2026-08-17 (local sheet — verbatim, preserved):**
+
+> I want the calculation to be done locally. The scales easily. and releives the server of unecessary work.
+
+> Since we are doing it for keep warm, it should also be done as a general practice whether it is keep warm or normal operations.
+
+> As a general rule, we do not want to go to the server for something that can easily be done in the browser
+
+> This is why we developed the SSE gateway and subscribe to it with the client, so that we can get what we need from the server and do the rest in the client
 
 **Success (Coach):**
 
@@ -100,9 +110,19 @@ Coming back to Analyzer (or switching **Risk ↔ Surface**, AZ-VP-S2):
 
 **Honesty, not chrome (Coach):** quiet `as_of` age **or** a hairline dim that **clears on the first Working tick**. Nothing that reads as a reload. Nothing that asks the member to wait. **Echo gates** the marker against that bar before any chrome ships.
 
-### AZ-KW-6 — One WebSocket, no second Massive
+### AZ-KW-6 — Subscribe for the generation; price in the browser
 
-Keep-warm uses the existing Analyzer path: ladder HTTP + OPF resolve. **No** extra WebSocket. **No** client Massive. Market Bus one-socket law (Arch 28) is unchanged.
+The server’s job on this clock is **the held generation** (listed exp, strikes, mids, IVs). The client already subscribes to that plane (Market Bus one socket · Arch 28 — Coach’s “SSE gateway”). The **161-pt book sheet is local** (`resolveLocalBookCurves` · client BSM on those listed IVs).
+
+**No** `POST /api/me/pricing/resolve` on Working, Away, first paint, or refresh. That endpoint stays for lock / pack / RECON when those packets run — not the live picture.
+
+**No** extra WebSocket. **No** client Massive. One-socket law is unchanged.
+
+**India (as-built, not a Coach deletion):** transport today is Market Bus **WebSocket** (`/api/me/market/stream`) plus ladder HTTP for the generation the OPF holds. Not a second SSE. The doctrine is the same: subscribe for marks; do the rest in the client.
+
+### AZ-KW-10 — Keep-warm is a rate, not a second pricer
+
+Working 2.5s and Away 5s share **one** local-sheet path. Idle still does no sheet. There is no “server when seated, local when away.”
 
 ### AZ-KW-7 — Fail elegant
 
@@ -122,35 +142,35 @@ A **shown** book keep-warm after leaving Analyzer continues at Away 5s until **3
 
 ## 4. What one full tick costs (resource truth)
 
-The **canvas** is cheap. The **OPF resolve** is the bill.
+The **canvas** is cheap. The **generation fetch** is the remaining server bill. The **161-pt sheet is local** (DL-419).
 
 | Piece | Per full tick | Notes |
 |-------|----------------|-------|
 | Chain ladder HTTP | 1 per **distinct expiration** in the shown book | Labs API → Redis generation. Not a new Massive hop from the browser. |
-| OPF resolve | 1 per **shown** structure | 161-point curves, BSM/CRR. Dominates CPU. |
-| React state + canvas | 1 draw | Hidden tab: browser **skips paint**. We still pay HTTP/CPU if we resolve. Visibility throttling may stretch Away past 5s. |
+| Live book sheet | 1 per **shown** structure, **in the browser** | 161-pt BSM on held IVs. **0** `/resolve` POSTs. |
+| React state + canvas | 1 draw | Hidden tab: browser **skips paint**. Visibility throttling may stretch Away past 5s. |
 | Card package quotes | **0** on this loop | Atomic settle (definition change only). Not a poll. |
 | Session posture | Separate ~**10s** | **This is Idle.** Light. Notices Live vs Held. |
-| Market WebSocket | **1 per tab** | Shared. Not started per tick. |
+| Market WebSocket | **1 per tab** | Shared subscribe. Not started per tick. |
 
 **Per member, per shown structure, one expiration:**
 
-| Rate | Ladder HTTP / min | OPF resolve / min |
-|------|-------------------|-------------------|
-| Working 2.5s | 24 | 24 |
-| Away 5s | 12 | 12 |
-| Idle (nothing shown) | 0 | 0 |
+| Rate | Ladder HTTP / min | `/resolve` / min | Local sheets / min |
+|------|-------------------|------------------|--------------------|
+| Working 2.5s | 24 | **0** | 24 |
+| Away 5s | 12 | **0** | 12 |
+| Idle (nothing shown) | 0 | **0** | 0 |
 
 **Aggregate (same assumption — one shown structure, one exp per member):**
 
-| Members | Seated (Working) resolve / min | Away resolve / min | Seated ladder / min | Away ladder / min |
-|---------|--------------------------------|--------------------|---------------------|-------------------|
-| **100** | 2,400 | 1,200 | 2,400 | 1,200 |
-| **500** | 12,000 | 6,000 | 12,000 | 6,000 |
+| Members | Seated `/resolve` / min | Away `/resolve` / min | Seated ladder / min | Away ladder / min | Seated local sheets / min |
+|---------|-------------------------|-----------------------|---------------------|-------------------|---------------------------|
+| **100** | **0** | **0** | 2,400 | 1,200 | 2,400 |
+| **500** | **0** | **0** | 12,000 | 6,000 | 12,000 |
 
-Multiply **resolves** by shown-structure count. Multiply **ladders** by distinct expirations. Away is about **half** of seated. OD-KW-1 (5s vs 3s) is revisited **only after** this row.
+Multiply **local sheets** by shown-structure count (browser CPU). Multiply **ladders** by distinct expirations (server). Away is about **half** of seated on the ladder. OD-KW-1 (5s vs 3s) is revisited **only after** this row.
 
-Away 5s with three shown calendars is still three resolves every 5s. That is why Idle must **not** price a book nobody can see.
+Away 5s with three shown calendars is three **local** sheets every 5s — not three server engines. Idle still must **not** price a book nobody can see.
 
 ---
 
@@ -174,7 +194,8 @@ No profit theater. No “live” claim on a last print (OT-EF A6 · Session/Prin
 | Concern | Location |
 |---------|----------|
 | Three-tier interval | `web/lib/options-lab/useOpfRiskGraph.ts` — `opfPollIntervalMs` · `OPF_POLL_MS` · `OPF_AWAY_POLL_MS` · `OPF_IDLE_POLL_MS` |
-| Module cache + keep-warm after unmount | same file — `graphCache` · `attachKeepWarm` · `resolveAndCache` |
+| Live sheet (Working + Away) | `web/lib/options-lab/localBookCurves.ts` — `resolveLocalBookCurves` · client BSM · **no** `/resolve` |
+| Module cache + keep-warm after unmount | `useOpfRiskGraph.ts` — `graphCache` · `attachKeepWarm` · `resolveAndCache` |
 | Book on first paint | `OpfRiskAnalyzer` — `useState(() => loadPositions())` |
 | Last paint not wiped on remount | `run` / `resolveAndCache` do not `setResult(null)` on a soft miss |
 | Characterization | `web/lib/options-lab/opfPollInterval.test.ts` |
@@ -229,6 +250,9 @@ Blanking the viewport to “save GPU.” MSC as SoR. 1s away poll. Reload/wait c
 | No shown cards → minimize | **IN-SCOPE** — **no heavy resolve** (OD-KW-2 law) |
 | Analyzer is the main working page | **IN-SCOPE** — Working 2.5s |
 | Understand off-view resource draw | **IN-SCOPE** — §4 + aggregate |
+| Calculate the curve locally | **IN-SCOPE** (AZ-KW-6 · AZ-KW-10 · **DL-419**) — Working and Away |
+| Do not go to the server for browser work | **IN-SCOPE** — subscribe for the generation; sheet is local |
+| “SSE gateway” subscribe, rest in client | **IN-SCOPE** as doctrine — as-built transport is Market Bus one WS + ladder |
 | Quiet stale / as_of until first Working tick | **IN-SCOPE** (AZ-KW-5 · AZ-DATA-5a) · Echo gates chrome |
 | Light 30s ladder ping with nothing shown | **OUT** — OD-KW-2 closed: posture only |
 | Tighten away to 3s | **FLAGGED** — only after §4 aggregate |
@@ -255,11 +279,12 @@ Blanking the viewport to “save GPU.” MSC as SoR. 1s away poll. Reload/wait c
 | **AT-KW-2** | Leave Analyzer with ≥1 shown → remount paints from cache **without** waiting for a new resolve (first frame has curves) |
 | **AT-KW-3** | Hidden tab does **not** clear `result` / last series. Canvas never blanks because Visibility fired. |
 | **AT-KW-4** | Soft resolve failure keeps last curves |
-| **AT-KW-5** | All cards hidden → **no** full OPF resolve loop |
+| **AT-KW-5** | All cards hidden → **no** full local-sheet loop |
 | **AT-KW-6** | Show-on after hide uses last cache if that structure was priced |
 | **AT-KW-7** | No extra WebSocket; no client Massive in the keep-warm path |
 | **AT-KW-8** | Away interval is **5s** (target) and **> Working** |
 | **AT-KW-9** | Risk ↔ Surface switch does **not** cold-resolve; last paint + AZ-KW-5 age/stale until the first Working tick |
+| **AT-KW-10** | Working and Away price via `resolveLocalBookCurves`. `useOpfRiskGraph` does **not** call `resolveOpfPricing` |
 
 ---
 
@@ -283,8 +308,9 @@ A reviewer can validate, without reading implementation code:
 2. Last paint survives leave/return and Risk ↔ Surface.  
 3. Three rates exist; 1s away is illegal; Idle is posture only.  
 4. Visibility API is named: Away is the **target**; throttle may lengthen; canvas never blanks.  
-5. §4 states 100- and 500-member seated vs away cost per shown structure.  
-6. Stale on return is honesty, gated by Echo.
+5. §4 states 100- and 500-member seated vs away cost per shown structure. `/resolve` on this clock is **0**.  
+6. Stale on return is honesty, gated by Echo.  
+7. Live sheet is **local** for Working and Away (AZ-KW-6 · AZ-KW-10).
 
 ---
 
@@ -294,5 +320,6 @@ A reviewer can validate, without reading implementation code:
 |---------|------|-------|
 | **v0.1** | 2026-08-17 | Coach working-page keep-warm. DRAFT. DL-417. |
 | **v0.1.1** | 2026-08-17 | **BUILD AUTHORITY.** OD-KW-1…3 Accept. AZ-KW-5 age/stale. Visibility API. §4 aggregate 100/500. AZ-KW-8 Surface inherit. AT-KW-9. Idle = posture only. DL-418. |
+| **v0.1.2** | 2026-08-17 | Live sheet is **local** (Working + Away). AZ-KW-6 subscribe/price. AZ-KW-10 one path. §4 `/resolve` = 0. DL-419. |
 
-**End of Analyzer Viewport Keep-Warm Spec v0.1.1**
+**End of Analyzer Viewport Keep-Warm Spec v0.1.2**

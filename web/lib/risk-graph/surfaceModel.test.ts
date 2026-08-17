@@ -75,6 +75,16 @@ const spot = 100;
     assert.equal(ok.legs[1].iv, 0.16);
   }
 
+  const gen = bindListedSurfaceLegs(
+    listed,
+    [
+      { strike: 100, side: "call", iv: 0.18, iv_source: "generation", mid: 2.1, expiration: "2026-08-17" },
+      { strike: 105, side: "call", iv: 0.16, iv_source: "generation", mid: 0.9, expiration: "2026-08-17" },
+    ],
+    { spot: 100, tauFor: () => 1 / 365.25 },
+  );
+  assert.equal(gen.ok, true, "held-generation IV is lawful for the live sheet");
+
   const vix = bindListedSurfaceLegs(
     listed,
     [

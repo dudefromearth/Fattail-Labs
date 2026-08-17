@@ -19,10 +19,10 @@ import {
   MIN_TAU,
   bindListedSurfaceLegs,
   computeSurfaceSheet,
-  surfaceStrikeWindow,
   type OpfLegMarkForSheet,
   type SurfaceSheet,
 } from "@/lib/risk-graph/surfaceModel";
+import { surfaceAutofitWindow } from "@/lib/risk-graph/surfaceAutofit";
 import { mountSurfaceScene, type SurfaceSceneHandle } from "@/lib/risk-graph/surfaceScene";
 import { surfaceHostClock } from "./hostLaw";
 import CameraHud from "./CameraHud";
@@ -86,6 +86,7 @@ export default function SurfaceApp() {
     "perspective",
   );
   const [saved, setSaved] = useState<SavedView[]>([]);
+  const [autofitGen, setAutofitGen] = useState(0);
 
   useEffect(() => {
     void loadSurfaceInspect().then((p) => setSaved(p.views || []));
@@ -210,9 +211,11 @@ export default function SurfaceApp() {
                 ...leg,
                 iv: Math.max(1e-8, leg.iv + volOffsetPts / 100),
               }));
+              const fit = surfaceAutofitWindow(whatIfLegs, simSpot, strikes);
               sheet = computeSurfaceSheet(whatIfLegs, {
                 spot: simSpot,
-                ...surfaceStrikeWindow(strikes, simSpot),
+                sMin: fit.sMin,
+                sMax: fit.sMax,
                 quality: "per_leg_iv",
                 ivSource: bound.ivSources.join("+"),
                 listedStrikes: strikes,
@@ -244,10 +247,14 @@ export default function SurfaceApp() {
     marksKey,
     volOffsetPts,
     spotPct,
+    autofitGen,
   ]);
 
   sheetRef.current = view.sheet;
-  const sheetKey = sheetFingerprint(view.sheet, `${volOffsetPts}|${spotPct}`);
+  const sheetKey = sheetFingerprint(
+    view.sheet,
+    `${volOffsetPts}|${spotPct}|${autofitGen}`,
+  );
 
   useLayoutEffect(() => {
     const host = hostRef.current;
@@ -446,6 +453,11 @@ export default function SurfaceApp() {
       <CameraHud
         projection={projection}
         onFit={() => {
+          setProjection("perspective");
+          sceneRef.current?.fit();
+        }}
+        onAutofit={() => {
+          setAutofitGen((n) => n + 1);
           setProjection("perspective");
           sceneRef.current?.fit();
         }}

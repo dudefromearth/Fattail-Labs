@@ -42,7 +42,7 @@ Supporting: Market Bus dual-side generations + underlier marks + volume/OHLC dat
 
 **Coach 2026-08-16 (DL-394):** Show/Hide is a **checkbox**. Two or more **shown** positions draw as **one additive continuous** book curve. The prior “no multi-definition stacked P&amp;L / one focused definition” line is **superseded** for viewport drive (focus remains highlight-only).
 
-**Coach 2026-08-17 (DL-417 · DL-418):** Viewport **keep-warm** is **BUILD AUTHORITY** (content **v0.1.1**). [Keep-Warm Spec](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md).
+**Coach 2026-08-17 (DL-417 · DL-418 · DL-419):** Viewport **keep-warm** is **BUILD AUTHORITY** (content **v0.1.2**). Live book sheet is **local** on the held generation — Working and Away. [Keep-Warm Spec](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md).
 
 ---
 
@@ -130,7 +130,7 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 ## 0.3 Viewports (Analyzer host + attached suite)
 
 The **Viewport** bucket is a **family**. **Surface is not a suite app** — it is an **in-Analyzer viewport mode** (3D mirror of the 2D risk graph).  
-**Keep-warm / last paint / poll rates:** [Analyzer Viewport Keep-Warm Spec v0.1.1](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md) · **DL-418**. Risk ↔ Surface inherit last-paint and rate-change (AZ-VP-S2 · AZ-KW-8). Layout residual (vertical stack) is **not** this spec.
+**Keep-warm / last paint / poll rates:** [Analyzer Viewport Keep-Warm Spec v0.1.2](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md) · **DL-418** · **DL-419**. Risk ↔ Surface inherit last-paint and rate-change (AZ-VP-S2 · AZ-KW-8). Live sheet is local (AZ-KW-6 · AZ-KW-10). Layout residual (vertical stack) is **not** this spec.
 
 ### 0.3.0 Analyzer-hosted viewports (same session)
 
@@ -344,8 +344,8 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Show checkbox | Independent `visible` toggle — **checkbox, not radio**. Hidden opacity + liveState not_live |
 | **Edit** | Opens Position Builder in **edit** mode with that definition |
 | **Lock mkt** | `lockNatural` — freezes D* from last complete natural |
-| **Lock lim** | Prompt magnitude + confirm credit vs debit → `lockLimit` |
-| **Unlock** | Clears lock |
+| **Lock lim** | Unlock → debit/credit field is **editable**. Tab, Enter, or click-away saves the per-position magnitude and **locks** (`lockLimit`). DEBIT/CREDIT side stays. No prompt. |
+| **Unlock** | Clears lock; debit/credit field becomes the editor |
 | **Remove** | Deletes card; clears focus if was focused |
 | **+ Create** | Opens Builder in **create** mode |
 | Package display | Magnitude + DEBIT/CREDIT; locked shows “basis” + optional mkt natural |
@@ -373,13 +373,13 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 
 ### 1.9 Viewport — OPF risk graph · **Viewport**
 
-**Keep-warm:** [Analyzer Viewport Keep-Warm Spec v0.1.1](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md) · **DL-418** — last paint · Working 2.5s / Away 5s / Idle = posture only · AZ-DATA-5a stale until first Working tick.
+**Keep-warm:** [Analyzer Viewport Keep-Warm Spec v0.1.2](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md) · **DL-418** · **DL-419** — last paint · Working 2.5s / Away 5s / Idle = posture only · live sheet **local** · AZ-DATA-5a stale until first Working tick.
 
 | Feature | As-built |
 |---------|----------|
 | Hook | `useOpfRiskGraph` |
-| Data plane | Dual-side chain ladder poll (wings 50) per unique leg expiration |
-| Pricing | `resolveOpfPricing` with pack, strategy, generations, spot, vix, what_if |
+| Data plane | Dual-side chain ladder poll (wings 50) per unique leg expiration — subscribe for the generation |
+| Pricing | **Local** `resolveLocalBookCurves` (client BSM on held listed IVs). `/resolve` is not on this clock. |
 | Curves | **Expiration** (emerald) + **theoretical/scenario** (fuchsia / pack legend) |
 | Basis shift | If ToS/limit present, shifts curves so basis = limit vs natural mid |
 | Breakevens | Both curves |

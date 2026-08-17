@@ -54,6 +54,7 @@ Do **not** use `DISCARDED` / `REJECTED` as idea status.
 | FI-025 | 2026-08-02 | Coach | Continuous journaling (not EOD) + day-start routine notification | Coach | Habit dies if day starts in broker only | `ADOPTED` | **DL-191** · continuous journaling direction · P0 in-app notify sequenced; Journal v0.6 already phase-ready |
 | FI-026 | 2026-08-15 | Backtest Method v0.2.2 | Named OPF **backtest** pack = Options Lab per-leg modeler on gold archive | India | PB-MODE-0 forbids silent day_trade borrow; `surface_reconstruct` is not Coach’s sheet (DL-364) | `OPEN` | Review `agents/bench/reviews/2026-08-15-backtest-forward-walk-v0_2_2-india.md` |
 | FI-027 | 2026-08-15 | Backtest Method v0.2.2 | One measurement method — fold or supersede SSR thesis for Strategy Lab; stub stays named theater | India | Parallel method docs (SSR v0.1 + this) + `_stub_backtest_metrics` | `OPEN` | Same review |
+| FI-028 | 2026-08-17 | Coach subscribe-then-price | One in-tab generation store: Analyzer + Builder join MarketSocket (stop ladder HTTP polls) | Audit DL-420 | Heatmap already subscribes; Analyzer/Builder re-fetch the same generation | `OPEN` | Audit v1.0 Phase B · do not add SSE |
 
 ---
 

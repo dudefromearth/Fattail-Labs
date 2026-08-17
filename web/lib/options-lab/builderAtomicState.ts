@@ -36,7 +36,7 @@ export const BUILDER_PLANE_UPDATING: BuilderPlaneState = {
   kind: "updating",
   title: "UPDATING",
   detail:
-    "Resolving this structure on the OPF chain — strikes and package settle together.",
+    "Resolving this structure on the OPF chain — strikes and position settle together.",
   expected: true,
 };
 
@@ -51,7 +51,7 @@ export const BUILDER_PLANE_UNAVAILABLE: BuilderPlaneState = {
 export const BUILDER_PLANE_READY: BuilderPlaneState = {
   kind: "ready",
   title: "READY",
-  detail: "Structure and package marks are live from OPF.",
+  detail: "Structure and position marks are live from OPF.",
   expected: true,
 };
 
@@ -172,7 +172,7 @@ export function resolveBuilderPlaneState(opts: {
       kind: "updating",
       title: "UPDATING",
       detail:
-        "Structure is on the OPF grid. Package marks are settling from dual-side mids.",
+        "Structure is on the OPF grid. Position marks are settling from dual-side mids.",
       expected: true,
     };
   }

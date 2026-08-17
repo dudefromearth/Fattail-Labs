@@ -30,8 +30,12 @@ export type SurfaceLeg = {
 
 export type SurfaceQuality = "per_leg_iv" | "sticky_cli";
 
-/** Product truth: listed contract IV, or a frozen lock snapshot of that IV. */
-export const TRUTH_IV_SOURCES = new Set(["exact", "locked"]);
+/**
+ * Product truth: listed contract IV on the OPF-held generation.
+ * `generation` = the row IV the client already holds (live sheet).
+ * `exact` / `locked` = server PackagePricer tags of that same listed IV.
+ */
+export const TRUTH_IV_SOURCES = new Set(["exact", "locked", "generation"]);
 
 export type SurfaceIvHole = "IV NO" | "CHECK LEGS";
 
@@ -407,8 +411,8 @@ function _sideOf(mark: OpfLegMarkForSheet): "call" | "put" | null {
 
 /**
  * Bind listed TOS/OPF legs to the sheet using **truth IVs only**
- * (`exact` or `locked` on the OPF-held generation). Missing or inferred
- * IV (nearest / ATM / VIX / sticky) → named hole, no sheet.
+ * (`exact`, `locked`, or `generation` on the OPF-held row). Missing or
+ * inferred IV (nearest / ATM / VIX / sticky) → named hole, no sheet.
  */
 export function bindListedSurfaceLegs(
   legs: Array<{

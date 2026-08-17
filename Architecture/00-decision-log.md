@@ -4,6 +4,74 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-17 — DL-421 Surface Autofit spec v0.1 (default + amendments)
+
+**Decision:** File
+`Specs/FatTail-Labs-Options-Lab-Surface-Autofit-Spec-v0.1.md`.
+
+**Default (as-built):** the Surface box shows the shown book from the
+**furthest-out** of T+0 breakevens, expiry breakevens, and listed
+strikes, plus **spot inside**, with **equal pad**. Stretch/compress
+the strike axis to that window. Run when a position is **added /
+shown** and when the member clicks **Autofit**. Not Analyzer 2D
+`autofitView.ts`. Not camera **Fit**.
+
+**Special cases:** later families amend **this spec** (`AF-n` +
+profile). One Autofit. No second fitter.
+
+**Code:** `web/lib/risk-graph/surfaceAutofit.ts`.
+
+---
+
+## 2026-08-17 — DL-420 Subscribe-then-price audit (Options Lab)
+
+**Decision:** File the audit of Coach’s rule — subscribe for the
+generation, price in the browser — at
+`docs/Options-Lab-Subscribe-Then-Price-Audit-v1.0.md`.
+
+**Verdict:** Live Analyzer **sheet** follows (DL-419). **Subscribe** does
+not yet: Analyzer keep-warm, Builder, and package hydrate still
+HTTP-poll `chain-ladder` while Heatmap already uses Market Bus
+WebSocket. Remediation is one in-tab generation store (Phase B). Do
+**not** add a second SSE (Arch 28 / 30).
+
+**Flags:** BR-1…5 in that doc · FI-028.
+
+---
+
+## 2026-08-17 — DL-419 Live Analyzer sheet is local (subscribe, then price)
+
+**Decision (Coach):** The live Analyzer book curve is computed **in the
+browser** from the OPF-held generation the client already has. This is
+**general practice**, not a keep-warm special case. Working 2.5s and
+Away 5s share one path (`resolveLocalBookCurves`). Keep-warm is only
+the **rate**.
+
+**Coach (verbatim):** calculate locally so it scales and relieves the
+server; do not go to the server for what the browser can do; the
+subscribe/gateway exists so the client gets the generation and does
+the rest locally.
+
+**Law:** Keep-Warm **AZ-KW-6** · **AZ-KW-10**. Finite listed IV on the
+held row, or a named hole. Never invent IVs. Engine id
+`local.bsm_european`. SPY American CRR on the live sheet is **labeled
+deferred**.
+
+**`/api/me/pricing/resolve`** stays for lock / pack / RECON when those
+packets run. It is **not** on the live Working/Away clock.
+
+**OD-PF6 (DL-290) scoped:** server remains SoR for lock/pack/RECON and
+named server packs. The **live Analyzer 2D/3D picture** is the client
+sheet on held IVs. Not a second CRR engine.
+
+**As-built transport:** Market Bus one WebSocket
+(`/api/me/market/stream`) + ladder HTTP for the held generation. Coach
+said “SSE gateway”; as-built is that subscribe plane, not a second SSE.
+
+**Spec:** Keep-Warm content **v0.1.2**.
+
+---
+
 ## 2026-08-17 — DL-418 Keep-Warm v0.1.1 BUILD AUTHORITY (promotes DL-417)
 
 **Decision (Coach):** Analyzer Viewport Keep-Warm Spec **v0.1.1** is

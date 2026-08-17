@@ -17,7 +17,10 @@ import {
   type AnalyzerPosition,
 } from "./analyzerBook";
 import { resolveCardDisplayState } from "./cardDisplayState";
-import { buildListedStructure } from "./listedStructure";
+import {
+  buildListedStructure,
+  inferStructureCenter,
+} from "./listedStructure";
 import {
   assessPositionBind,
   bindPackageLabel,
@@ -144,6 +147,31 @@ test("buildListedStructure never invents off-grid arithmetic (e.g. 6001)", () =>
     assert(Number.isInteger(leg.strike / 10) || LISTED.includes(leg.strike), "grid");
     assert(LISTED.includes(leg.strike), `strike ${leg.strike} listed`);
   }
+});
+
+test("inferStructureCenter matches fly body and vertical midpoint", () => {
+  const fly = buildListedStructure({
+    template: "butterfly",
+    listed: LISTED,
+    preferCenter: 6040,
+    preferWidth: 20,
+    optionSide: "call",
+  });
+  assert(fly != null, "fly");
+  assert(
+    inferStructureCenter(fly!.legs) === fly!.body,
+    `fly center ${inferStructureCenter(fly!.legs)} vs body ${fly!.body}`,
+  );
+  const vert = buildListedStructure({
+    template: "vertical",
+    listed: LISTED,
+    preferCenter: 6040,
+    preferWidth: 20,
+    optionSide: "call",
+  });
+  assert(vert != null, "vertical");
+  const mid = inferStructureCenter(vert!.legs);
+  assert(mid === 6040 || mid === 6030 || mid === 6050, `vertical mid ${mid}`);
 });
 
 console.log("\n=== OT-EF proof: shift strikes (card ▲/▼) ===\n");

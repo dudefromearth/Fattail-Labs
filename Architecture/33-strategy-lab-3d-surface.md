@@ -31,6 +31,7 @@ MSC is **design reference only**. No MSC code.
 | Product scene | `web/lib/risk-graph/surfaceScene/` | Labs-owned; no `alpha.js` |
 | Route / nav | `/app/options-lab/surface` · suite pill **Surface** | Landed |
 | Views persist | `identities.surface_inspect_json` (130) · PATCH `/api/me/profile` | Landed |
+| **Autofit** | Spec **v0.1** · `surfaceAutofit.ts` · book change + Autofit button | Special cases via **AF-n** amendments · **DL-421** |
 | Replay / mini graphic | Not wired | Later consumer wave |
 
 **Do not grow** `web/lib/risk-graph/3d/{alpha,charlie,echo}.js`. Those files are

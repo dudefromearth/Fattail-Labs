@@ -477,6 +477,10 @@ export function lockNatural(pos: AnalyzerPosition): AnalyzerPosition {
         : pos.lastNatSigned < 0
           ? "credit"
           : null,
+    position: {
+      ...pos.position,
+      net_debit_override: null,
+    },
     updatedAt: Date.now(),
   };
 }
@@ -517,6 +521,10 @@ export function unlockCard(pos: AnalyzerPosition): AnalyzerPosition {
   return {
     ...pos,
     lock: { mode: "unlocked" },
+    position: {
+      ...pos.position,
+      net_debit_override: null,
+    },
     updatedAt: Date.now(),
   };
 }

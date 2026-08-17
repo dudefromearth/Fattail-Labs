@@ -115,8 +115,14 @@ export LABS_MARKET_BUS=1 REDIS_URL=redis://127.0.0.1:6379/0
 # .venv/bin/python scripts/mb_at_evidence.py
 # .venv/bin/python scripts/mb_scale_smoke.py --n 10
 
-# Frontend
-cd web && npm install && npm run build && npm start
+# Frontend — StudioTwo (this machine)
+# Coach: "rebuild and restart" = **dev** here. Never MiniTwo / labs.fattail.ai
+# unless Coach names production explicitly. All other ops default to development.
+cd web && npm install && npm run dev          # default restart
+# cd web && npm run build && npm start        # only when Coach says production
+
+# Frontend — production host only (MiniTwo; do not run unless directed)
+# cd web && npm run build && npm start
 
 # Tests (characterization suite vs the dev DB — Test Suite spec v1.0)
 cd server && .venv/bin/python -m pytest tests -q

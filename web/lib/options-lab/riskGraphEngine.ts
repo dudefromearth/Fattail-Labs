@@ -11,6 +11,7 @@ import {
   type Greeks,
 } from "./blackScholes";
 import type { ParsedTosLeg, ParsedTosTrade } from "./tosParser";
+import { tradeTotalDebit } from "./packageEconomics";
 
 const MULT = 100;
 
@@ -53,11 +54,8 @@ export type RiskGraphResult = {
 };
 
 function netDebit(trade: ParsedTosTrade): number {
-  if (trade.debit != null) return trade.debit;
-  if (trade.limit != null) {
-    return trade.isCredit ? -Math.abs(trade.limit) : Math.abs(trade.limit);
-  }
-  return 0;
+  // Qty × per-position debit — legs already carry package scale.
+  return tradeTotalDebit(trade);
 }
 
 function legsValueIntrinsic(price: number, legs: ParsedTosLeg[]): number {

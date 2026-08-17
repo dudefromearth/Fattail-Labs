@@ -27,6 +27,31 @@ export type StructureTemplate =
   | "calendar"
   | "diagonal";
 
+/**
+ * Structure center for the Shape panel — same strike the card is built on.
+ * Fly: short body. Iron fly: long body. Vertical / condor: mid listed strike.
+ */
+export function inferStructureCenter(
+  legs: readonly { strike: number; side: string }[],
+): number {
+  if (!legs.length) return 0;
+  const shorts = legs
+    .filter((l) => l.side === "short")
+    .map((l) => normalizeStrike(l.strike));
+  const longs = legs
+    .filter((l) => l.side === "long")
+    .map((l) => normalizeStrike(l.strike));
+  if (shorts.length === 1 && Number.isFinite(shorts[0])) return shorts[0];
+  if (longs.length === 1 && shorts.length >= 2 && Number.isFinite(longs[0])) {
+    return longs[0];
+  }
+  const strikes = [...new Set(legs.map((l) => normalizeStrike(l.strike)))]
+    .filter((s) => Number.isFinite(s) && s > 0)
+    .sort((a, b) => a - b);
+  if (!strikes.length) return 0;
+  return strikes[Math.floor((strikes.length - 1) / 2)];
+}
+
 function idxOf(listed: readonly number[], strike: number): number {
   const t = normalizeStrike(strike);
   return listed.findIndex((s) => normalizeStrike(s) === t);

@@ -40,7 +40,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [25-dual-subdomain-practice-labs.md](./25-dual-subdomain-practice-labs.md) | **Future:** practice.fattail.ai vs labs.fattail.ai (DL-248) |
 | [26-strategy-lab-member-timeline.md](./26-strategy-lab-member-timeline.md) | **NOW:** Design+Curate lock; Deploy UX for members; Tradier real-money gated (DL-252) |
 | [32-strategy-lab-guiding-doctrine.md](./32-strategy-lab-guiding-doctrine.md) | **Guiding light:** position don’t predict · book-level shape · VP memory · DL-382–386 |
-| [33-strategy-lab-3d-surface.md](./33-strategy-lab-3d-surface.md) | **3D Surface first-ship as-built** · `/app/options-lab/surface` · App Spec v0.1.8 · DL-401–416 |
+| [33-strategy-lab-3d-surface.md](./33-strategy-lab-3d-surface.md) | **3D Surface first-ship as-built** · `/app/options-lab/surface` · App Spec v0.1.8 · Autofit v0.1 (**DL-421**) · DL-401–416 |
 
 **Market Bus / Options chain (2026-08-10) — as-built live market plane:**
 
@@ -55,7 +55,8 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Spec **Position Builder/Book v0.3** | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md` — VIEW-7 + B5; v0.2 SUPERSEDED; **DL-306** |
 | Bench **Position Builder** | `docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-position-builder/` · DL-297 |
 | Spec **Analyzer v0.2.1** | `Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md` — six buckets · Risk/Surface · OD-AZ1–8 Accept · advisor fold; v0_1 SUPERSEDED; **DL-301…306** |
-| Spec **Analyzer Keep-Warm v0.1.1** | `Specs/FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md` — **BUILD AUTHORITY** · last paint · Working 2.5s / Away 5s / Idle posture · **DL-418** |
+| Spec **Analyzer Keep-Warm v0.1.2** | `Specs/FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md` — **BUILD AUTHORITY** · last paint · Working 2.5s / Away 5s / Idle posture · live sheet **local** · **DL-418** · **DL-419** |
+| Audit **subscribe-then-price v1.0** | `docs/Options-Lab-Subscribe-Then-Price-Audit-v1.0.md` — generation subscribe vs local sheet · **DL-420** |
 | Bench **Analyzer residual** | `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` (**v1.0.1**) · board `agents/p-options-lab-analyzer/` · **DL-305/306** |
 | Doctrine **OT-EF v1.1** | `Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md` · two clocks · additive book · **DL-396** |
 | Spec **Session/Print v0.1** | `Specs/FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md` — **WHETHER = BUILD** (DL-397) · HOW review still lands · OPF34–36 |

@@ -677,20 +677,12 @@ export default function OpfRiskAnalyzer() {
       );
       risk.refresh();
     },
-    onLockLimit: (id: string) => {
+    onLockLimit: (id: string, magnitude: number) => {
       const pos = positionsRef.current.find((p) => p.id === id);
       if (!pos) return;
-      const rawLim = window.prompt(
-        "Limit package magnitude (per share)",
-        pos.livePackagePerShare != null
-          ? String(pos.livePackagePerShare)
-          : "1.00",
-      );
-      if (rawLim == null) return;
-      const mag = Math.abs(parseFloat(rawLim));
+      const mag = Math.abs(magnitude);
       if (!Number.isFinite(mag) || mag <= 0) return;
-      const isCredit =
-        window.confirm("OK = CREDIT limit, Cancel = DEBIT limit") === true;
+      const isCredit = pos.priceSide === "credit";
       setPositions((prev) =>
         prev.map((p) => (p.id === id ? lockLimit(p, mag, isCredit) : p)),
       );

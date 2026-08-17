@@ -12,10 +12,12 @@ const btn =
 
 export default function CameraHud({
   onFit,
+  onAutofit,
   onIso,
   projection = "perspective",
 }: {
   onFit: () => void;
+  onAutofit: () => void;
   onIso: () => void;
   projection?: "perspective" | "orthographic";
 }) {
@@ -38,6 +40,14 @@ export default function CameraHud({
       </button>
       <button type="button" className={btn} data-testid="surface-fit" onClick={onFit}>
         Fit
+      </button>
+      <button
+        type="button"
+        className={btn}
+        data-testid="surface-autofit"
+        onClick={onAutofit}
+      >
+        Autofit
       </button>
     </div>
   );

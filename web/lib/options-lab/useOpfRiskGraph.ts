@@ -1,10 +1,12 @@
 /**
  * Live OPF risk graph for Options Lab Analyzer.
- * Hydrates dual-side chain generations per leg expiration → resolve day_trade.
+ * Hydrates dual-side chain generations per leg expiration, then prices the
+ * 161-pt book locally (`resolveLocalBookCurves`). Working and Away share
+ * this path — keep-warm is only the rate.
  *
  * Suite keep-warm: results + ladder generations live in a module cache so
  * Heatmap ↔ Analyzer route switches re-paint instantly instead of blanking
- * until OPF resolve finishes again.
+ * until the next local sheet.
  *
  * Polling never stops while the plane is printing: 2.5s in focus, 5s when
  * the tab is hidden or Analyzer is unmounted. Last curves stay; return is
@@ -23,11 +25,11 @@ import {
   findBreakevens,
   ladderToOpfGeneration,
   opfCurveToPnLPoints,
-  resolveOpfPricing,
   sumAlignedPnL,
-  tradeToOpfStrategy,
   type OpfResolveResult,
 } from "@/lib/options-lab/opfPricingApi";
+import { resolveLocalBookCurves } from "@/lib/options-lab/localBookCurves";
+import { packageUnitScale } from "@/lib/options-lab/packageEconomics";
 
 export type OpfRiskGraphState = {
   loading: boolean;
@@ -64,9 +66,9 @@ const WINGS = 50;
  * | No shown cards | 30s | Poll stays on (warm plane) but almost no OPF resolve |
  * | Plane not printing | off | Last print is held; do not invent live |
  *
- * Cost of one *full* tick: 1 ladder HTTP per expiration + 1 OPF resolve
- * per shown structure (161-pt curves). Canvas draw is cheap; resolve is not.
- * Hidden tab: browser already skips paint. We only pay the HTTP/CPU of the tick.
+ * Cost of one *full* tick: 1 ladder HTTP per expiration + one local 161-pt
+ * sheet per shown structure. Canvas draw is cheap. `/resolve` is not on this
+ * clock. Hidden tab: browser already skips paint.
  */
 export const OPF_POLL_MS = 2500;
 export const OPF_AWAY_POLL_MS = 5_000;
@@ -138,16 +140,20 @@ function cacheKey(opts: {
   ].join("#");
 }
 
-function basisShiftFor(
+/**
+ * ToS / card @limit is per position. Local sheet debit is the sum over
+ * already-scaled legs (Qty applied). Shift uses Qty × limit.
+ */
+export function basisShiftFor(
   trade: ParsedTosTrade,
   result: OpfResolveResult | null,
 ): number {
   if (!trade.limit || trade.limit <= 0) return 0;
   const dNat = result?.marks?.package_debit_per_share;
   if (dNat == null || !Number.isFinite(dNat)) return 0;
-  const limitSigned = trade.isCredit
-    ? -Math.abs(trade.limit)
-    : Math.abs(trade.limit);
+  const pkgs = packageUnitScale(trade.legs);
+  const limitSigned =
+    (trade.isCredit ? -Math.abs(trade.limit) : Math.abs(trade.limit)) * pkgs;
   return (dNat - limitSigned) * 100;
 }
 
@@ -287,7 +293,6 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
     bookTrades,
     key,
     spotOverride,
-    vix,
     useCase,
     packId,
     timeOffsetHours,
@@ -306,7 +311,6 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
 
   const gens: ReturnType<typeof ladderToOpfGeneration>[] = [];
   let chainSpot: number | null = null;
-  let chainVix: number | null = vix;
 
   for (const exp of exps) {
     const prev = ladders.get(exp);
@@ -359,7 +363,6 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
     }
     ladderPool.set(ladderPoolKey(primary.symbol, exp), ladder);
     if (chainSpot == null && ladder.spot > 0) chainSpot = ladder.spot;
-    if (ladder.vix != null) chainVix = ladder.vix;
     gens.push(ladderToOpfGeneration(ladder, primary.symbol, WINGS));
   }
 
@@ -415,46 +418,32 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
     return Math.max(8, Math.min(25, (span / spotUse) * 100 + 3));
   })();
 
-  const settled = await Promise.all(
-    bookTrades.map(async (t) => {
-      try {
-        const resolved = await resolveOpfPricing({
-          use_case: useCase,
-          pack_id: packId,
-          strategy: tradeToOpfStrategy(t),
-          generations: gens,
-          spot: spotUse,
-          vix: chainVix,
-          what_if: {
-            spot_pct: spotPct,
-            vol_offset_pts: volOffsetPts,
-            time_offset_hours: timeOffsetHours,
-            curve_steps: 161,
-            curve_range_pct: curveRangePct,
-          },
-          scenario:
-            useCase === "outlook"
-              ? {
-                  vol_offset_pts: volOffsetPts,
-                  time_offset_hours: timeOffsetHours,
-                  spot_pct: spotPct,
-                }
-              : undefined,
-        });
-        return { trade: t, resolved, error: null as string | null };
-      } catch (e) {
-        return {
-          trade: t,
-          resolved: null as OpfResolveResult | null,
-          error: e instanceof Error ? e.message : String(e),
-        };
-      }
-    }),
-  );
+  const settled = bookTrades.map((t) => {
+    const local = resolveLocalBookCurves({
+      trade: t,
+      generations: gens,
+      spot: spotUse,
+      volOffsetPts,
+      timeOffsetHours,
+      spotPct,
+      curveSteps: 161,
+      curveRangePct,
+      useCase,
+      packId,
+    });
+    if (!local.ok) {
+      return {
+        trade: t,
+        resolved: null as OpfResolveResult | null,
+        error: local.detail,
+      };
+    }
+    return { trade: t, resolved: local.result, error: null as string | null };
+  });
 
   const ok = settled.filter((s) => s.resolved);
   if (ok.length === 0) {
-    const msg = settled[0]?.error || "OPF resolve incomplete";
+    const msg = settled[0]?.error || "Local sheet incomplete";
     const entry: GraphCacheEntry = {
       ladders: new Map(ladders),
       result: cached?.result ?? null,
@@ -518,7 +507,7 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
   const leftover = settled.filter((s) => !s.resolved);
   const errMsg =
     leftover.length && ok.length === 0
-      ? leftover[0]?.error ?? "OPF resolve incomplete"
+      ? leftover[0]?.error ?? "Local sheet incomplete"
       : null;
   job.lastResolveKey = resolveKey;
   const entry: GraphCacheEntry = {

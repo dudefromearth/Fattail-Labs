@@ -7,15 +7,34 @@ import { generateTosScript } from "@/lib/options-lab/tosGenerator";
 import type { ParsedTosTrade } from "@/lib/options-lab/tosParser";
 import type { PositionInput } from "@/lib/options-lab/positionTypes";
 import { buildLabel, buildNotation } from "@/lib/options-lab/positionLabels";
+import {
+  packageUnitScale,
+  unitLegQuantity,
+} from "@/lib/options-lab/packageEconomics";
 
 export function positionNetPremium(pos: PositionInput): number {
+  const scale = packageUnitScale(pos.legs);
   let total = 0;
   for (const leg of pos.legs) {
     const sign = leg.side === "long" ? -1 : 1;
-    total += sign * leg.quantity * (leg.entry_price || 0);
+    const unitQ = unitLegQuantity(leg.quantity, scale);
+    total += sign * unitQ * (leg.entry_price || 0);
   }
-  // total: credit > 0, debit < 0 (MSC convention on entry_price * side)
+  // Per-position: credit > 0, debit < 0 (MSC convention on entry_price * side)
   return total;
+}
+
+/** One lot of the structure — for card package quote (debit stays per position). */
+export function positionToUnitInput(pos: PositionInput): PositionInput {
+  const scale = packageUnitScale(pos.legs);
+  return {
+    ...pos,
+    contracts: 1,
+    legs: pos.legs.map((l) => ({
+      ...l,
+      quantity: unitLegQuantity(l.quantity, scale),
+    })),
+  };
 }
 
 export function positionToParsedTrade(pos: PositionInput): ParsedTosTrade {

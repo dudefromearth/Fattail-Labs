@@ -4,7 +4,10 @@
  * Sign convention (aligns with positionNetPremium / OPF D_nat UI):
  *   credit > 0  ·  debit < 0  ·  incomplete → null
  *
- * Per-share package (×1), not ×100 multiplier — same as OPF package_debit_per_share.
+ * Debit/credit is **per position** (one unit of the structure). Leg quantities
+ * that share a common scale (Qty 5 of a single, or +5/−10/+5 of a fly) are
+ * that many positions — they do not inflate the displayed debit.
+ * Total = Qty × debit. Per-share (×1), not ×100.
  */
 
 import type { LegInput, PositionInput } from "@/lib/options-lab/positionTypes";
@@ -18,24 +21,89 @@ export type LegEconomics = {
   mid: number | null;
   bid: number | null;
   ask: number | null;
-  /** Contribution to package: long → −qty·mid, short → +qty·mid */
+  /**
+   * Contribution to **one** position: long → −unitQty·mid, short → +unitQty·mid.
+   * Unit qty is this leg’s ratio after dividing out the common Qty scale.
+   */
   contribMid: number | null;
   complete: boolean;
 };
 
 export type PackageEconomics = {
-  /** Signed natural mid package (credit>0 debit<0); null if any leg incomplete */
+  /** Signed mid of **one** position (credit>0 debit<0) */
   signedMid: number | null;
   /** DEBIT | CREDIT | — */
   side: "DEBIT" | "CREDIT" | null;
-  /** Absolute magnitude for display */
+  /** |signedMid| — per-position magnitude */
   absMid: number | null;
-  /** Conservative fill bound (longs at ask, shorts at bid) — null if incomplete */
+  /** Conservative fill bound for one position */
   signedNatural: number | null;
+  /** How many positions: gcd(leg qty) × packages field */
+  packages: number;
+  /** packages × signedMid */
+  totalSigned: number | null;
+  /** |totalSigned| */
+  totalAbs: number | null;
   legs: LegEconomics[];
   complete: boolean;
   missingMids: number;
 };
+
+function gcd2(a: number, b: number): number {
+  let x = Math.abs(Math.round(a));
+  let y = Math.abs(Math.round(b));
+  while (y) {
+    const t = y;
+    y = x % y;
+    x = t;
+  }
+  return x || 1;
+}
+
+/** Common Qty scale on the legs (1 for a unit fly +1/−2/+1). */
+export function packageUnitScale(
+  legs: readonly { quantity: number }[],
+): number {
+  const qs = legs.map((l) => Math.max(1, Math.abs(Math.round(l.quantity)) || 1));
+  if (!qs.length) return 1;
+  return qs.reduce((g, q) => gcd2(g, q), qs[0]);
+}
+
+/** How many of this position: Packages field × common leg scale. */
+export function positionQty(pos: {
+  contracts?: number;
+  legs: readonly { quantity: number }[];
+}): number {
+  const packs = Math.max(1, Math.floor(Number(pos.contracts) || 1));
+  return packs * packageUnitScale(pos.legs);
+}
+
+/** Structure ratio after dividing out Qty (fly body stays 2). */
+export function unitLegQuantity(quantity: number, scale: number): number {
+  const s = Math.max(1, Math.round(scale) || 1);
+  return Math.max(1, Math.round(Math.abs(quantity) / s) || 1);
+}
+
+/**
+ * ToS @price / card debit is **per position**. Legs on the chart already
+ * carry Qty. Total debit subtracted from the sheet is Qty × per-position.
+ */
+export function tradeTotalDebit(trade: {
+  debit?: number | null;
+  limit?: number | null;
+  isCredit?: boolean;
+  legs: readonly { quantity: number }[];
+}): number {
+  const per =
+    trade.debit != null && Number.isFinite(trade.debit)
+      ? trade.debit
+      : trade.limit != null && Number.isFinite(trade.limit)
+        ? trade.isCredit
+          ? -Math.abs(trade.limit)
+          : Math.abs(trade.limit)
+        : 0;
+  return per * packageUnitScale(trade.legs);
+}
 
 export function legContribution(
   side: "long" | "short",
@@ -56,7 +124,24 @@ export function packageEconomicsFromLegs(
     type: "call" | "put",
   ) => { mid: number | null; bid: number | null; ask: number | null } | undefined,
   frontExpiration: string,
+  contracts = 1,
 ): PackageEconomics {
+  const unitScale = packageUnitScale(legs);
+  const packages = Math.max(1, Math.floor(contracts) || 1) * unitScale;
+  const empty = (over: Partial<PackageEconomics> = {}): PackageEconomics => ({
+    signedMid: null,
+    side: null,
+    absMid: null,
+    signedNatural: null,
+    packages,
+    totalSigned: null,
+    totalAbs: null,
+    legs: [],
+    complete: false,
+    missingMids: 0,
+    ...over,
+  });
+
   const outLegs: LegEconomics[] = [];
   let missing = 0;
   let signedMid = 0;
@@ -70,13 +155,14 @@ export function packageEconomicsFromLegs(
     const mid = q?.mid ?? (leg.entry_price > 0 ? leg.entry_price : null);
     const bid = q?.bid ?? null;
     const ask = q?.ask ?? null;
-    const contribMid = legContribution(leg.side, leg.quantity, mid);
+    const unitQty = (Math.abs(leg.quantity) || 1) / unitScale;
+    const contribMid = legContribution(leg.side, unitQty, mid);
     // Natural: buy at ask, sell at bid
     const natPx =
       leg.side === "long"
         ? ask ?? mid
         : bid ?? mid;
-    const contribNat = legContribution(leg.side, leg.quantity, natPx);
+    const contribNat = legContribution(leg.side, unitQty, natPx);
 
     const legComplete = contribMid != null;
     if (!legComplete) {
@@ -101,31 +187,29 @@ export function packageEconomicsFromLegs(
     });
   }
 
+  const withTotals = (
+    signed: number | null,
+    nat: number | null,
+    rest: Pick<PackageEconomics, "side" | "legs" | "complete" | "missingMids">,
+  ): PackageEconomics => ({
+    signedMid: signed,
+    absMid: signed != null ? Math.abs(signed) : null,
+    signedNatural: nat,
+    packages,
+    totalSigned: signed != null ? signed * packages : null,
+    totalAbs: signed != null ? Math.abs(signed) * packages : null,
+    ...rest,
+  });
+
   if (!legs.length) {
-    return {
-      signedMid: null,
-      side: null,
-      absMid: null,
-      signedNatural: null,
-      legs: outLegs,
-      complete: false,
-      missingMids: 0,
-    };
+    return empty({ legs: outLegs });
   }
 
   // Best-effort package always when any mid is known — never blank the strip
   // just because one wing is still hydrating. `complete` flags full coverage.
   const priced = outLegs.filter((l) => l.contribMid != null);
   if (priced.length === 0) {
-    return {
-      signedMid: null,
-      side: null,
-      absMid: null,
-      signedNatural: null,
-      legs: outLegs,
-      complete: false,
-      missingMids: missing,
-    };
+    return empty({ legs: outLegs, missingMids: missing });
   }
 
   // Recompute from known contribs only when incomplete (partial sum)
@@ -148,33 +232,28 @@ export function packageEconomicsFromLegs(
       }
       const natPx =
         leg.side === "long" ? q?.ask ?? mid : q?.bid ?? mid;
-      const c = legContribution(leg.side, leg.quantity, natPx);
+      const unitQty = (Math.abs(leg.quantity) || 1) / unitScale;
+      const c = legContribution(leg.side, unitQty, natPx);
       if (c == null) natOk = false;
       else partialNat += c;
     }
     const side: "DEBIT" | "CREDIT" = partial >= 0 ? "CREDIT" : "DEBIT";
-    return {
-      signedMid: partial,
+    return withTotals(partial, natOk && missing === 0 ? partialNat : null, {
       side,
-      absMid: Math.abs(partial),
-      signedNatural: natOk && missing === 0 ? partialNat : null,
       legs: outLegs,
       complete: false,
       missingMids: missing,
-    };
+    });
   }
 
   const side: "DEBIT" | "CREDIT" =
     signedMid >= 0 ? "CREDIT" : "DEBIT";
-  return {
-    signedMid,
+  return withTotals(signedMid, signedNat, {
     side,
-    absMid: Math.abs(signedMid),
-    signedNatural: signedNat,
     legs: outLegs,
     complete: true,
     missingMids: 0,
-  };
+  });
 }
 
 export function packageEconomics(
@@ -185,7 +264,12 @@ export function packageEconomics(
     type: "call" | "put",
   ) => { mid: number | null; bid: number | null; ask: number | null } | undefined,
 ): PackageEconomics {
-  return packageEconomicsFromLegs(pos.legs, getQuote, pos.expiration);
+  return packageEconomicsFromLegs(
+    pos.legs,
+    getQuote,
+    pos.expiration,
+    pos.contracts,
+  );
 }
 
 export function formatPackageSide(

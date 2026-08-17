@@ -16,7 +16,7 @@ import {
 
 const field =
   "w-full rounded-md border border-[var(--color-separator)] bg-[var(--color-surface)] " +
-  "px-2 py-1.5 text-sm text-[var(--color-label)]";
+  "px-2 py-1.5 text-[22.5px] text-[var(--color-label)]";
 
 export default function StrikeSelect({
   listed,
