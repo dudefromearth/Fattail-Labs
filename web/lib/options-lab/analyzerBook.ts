@@ -198,6 +198,8 @@ export function loadPositions(): AnalyzerPosition[] {
   }
 }
 
+export const ANALYZER_BOOK_EVENT = "ftl-analyzer-book";
+
 export function savePositions(positions: AnalyzerPosition[]): void {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(POS_KEY, JSON.stringify(positions));
@@ -207,6 +209,7 @@ export function savePositions(positions: AnalyzerPosition[]): void {
   } catch {
     /* ignore */
   }
+  window.dispatchEvent(new Event(ANALYZER_BOOK_EVENT));
 }
 
 export function positionFromInput(input: PositionInput): AnalyzerPosition {

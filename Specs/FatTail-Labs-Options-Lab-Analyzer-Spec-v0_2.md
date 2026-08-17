@@ -36,11 +36,13 @@ Supporting: Market Bus dual-side generations + underlier marks + volume/OHLC dat
 *When looking at a position in the Builder or the position card, if it is unlocked, the correct pricing is displayed and the rendered position in the viewport is correct — as guaranteed for the active use case and session state.*
 
 **Capital-risk doctrine (normative parent):**  
-[OPF Truth & Elegant Failure Doctrine v1.0](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md) · **DL-309** — OPF-held chain is sole instrument truth for create/edit/cards; package cell shows defendable mark **or** named state (never silent lie); atomic pointer resolve.
+[OPF Truth & Elegant Failure Doctrine v1.1](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md) · **DL-309** · **DL-396** — OPF-held chain is sole instrument truth for create/edit/cards; two clocks (τ vs midnight-ET EXPIRED); package cell shows defendable mark **or** named state (never silent lie); atomic pointer resolve. Session/Print Spec v0.1 remains **DRAFT**.
 
 **What this is not:** brokerage OMS; MSC regimes/Heston/MC; silent dual package math; profit claims; invented strikes.
 
 **Coach 2026-08-16 (DL-394):** Show/Hide is a **checkbox**. Two or more **shown** positions draw as **one additive continuous** book curve. The prior “no multi-definition stacked P&amp;L / one focused definition” line is **superseded** for viewport drive (focus remains highlight-only).
+
+**Coach 2026-08-17 (DL-417 · DL-418):** Viewport **keep-warm** is **BUILD AUTHORITY** (content **v0.1.1**). [Keep-Warm Spec](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md).
 
 ---
 
@@ -127,7 +129,8 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 
 ## 0.3 Viewports (Analyzer host + attached suite)
 
-The **Viewport** bucket is a **family**. **Surface is not a suite app** — it is an **in-Analyzer viewport mode** (3D mirror of the 2D risk graph).
+The **Viewport** bucket is a **family**. **Surface is not a suite app** — it is an **in-Analyzer viewport mode** (3D mirror of the 2D risk graph).  
+**Keep-warm / last paint / poll rates:** [Analyzer Viewport Keep-Warm Spec v0.1.1](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md) · **DL-418**. Risk ↔ Surface inherit last-paint and rate-change (AZ-VP-S2 · AZ-KW-8). Layout residual (vertical stack) is **not** this spec.
 
 ### 0.3.0 Analyzer-hosted viewports (same session)
 
@@ -252,8 +255,8 @@ Read with §0.2 buckets: each subsection below tags its bucket.
 | Feature | Law / as-built |
 |---------|----------------|
 | States | `Live` · `Held` · `Closed` · `Error` |
-| **Primary SoR (law)** | **Market-plane session facts** — `GET /api/me/market/session-status` (Redis `mb:session:market_status` / Massive marketstatus). `open:true` → Live; closed/early-close → Closed; extended-hours / open:false → Held |
-| **Fallback (law)** | Wall-clock America/New_York only when plane facts unavailable — **labeled** as clock fallback in meta when needed; **must not** be sole SoR when plane is warm (B2) |
+| **Target SoR (DRAFT · DL-395)** | OPF session/print envelope — [`OPF Session and Print Authority Spec v0.1`](./FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md). **Not BUILD** until that spec is GO. |
+| **As-built (B2, still running)** | `GET /api/me/market/session-status` + labeled clock fallback. Coach named this as the **wrong client SoR** — keep until OPF envelope ships. |
 | Product close | Prefer symbol-profile / product session bounds when available (index options often **16:15 ET** — not equities 16:00). Hardcoded 16:00 alone is residual |
 | Refresh | Interval ~30s re-fetch plane status |
 | UI | Badge on chrome; Held labels on theo legend and alert lines when held |
@@ -369,6 +372,8 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Trigger | Positions change + `generationEpoch` from risk graph |
 
 ### 1.9 Viewport — OPF risk graph · **Viewport**
+
+**Keep-warm:** [Analyzer Viewport Keep-Warm Spec v0.1.1](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md) · **DL-418** — last paint · Working 2.5s / Away 5s / Idle = posture only · AZ-DATA-5a stale until first Working tick.
 
 | Feature | As-built |
 |---------|----------|

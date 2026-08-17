@@ -4,6 +4,7 @@
 **Type:** Design + as-built architecture — shared **data plane + model packs** for accurate real-time and research P&amp;L  
 **Product law:** [`Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) (**v0.2.1** BUILD AUTHORITY · DL-290) · v0.1 historical only  
 **Bench:** [`docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md`](../docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md) · board `agents/p-options-pricing-foundation/`  
+**Session/print (DRAFT):** [`docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md`](../docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md) · board `agents/p-ot-ef-session-print/` · Spec v0.1 **not BUILD** until W3-0  
 **Parents:** [Arch/28 Market Bus](./28-massive-market-bus.md) · [Market Bus Spec](../Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) (content **v1.0.1**) · [Chain Picker Spec v1.0.2](../Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md) · [Heatmap Spec v0_2](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) (HM18/HM19)  
 
 **Not:** MSC as standard · per-app Massive clients · SSE as market transport · “pretty curves” without marks/IV truth · **L5 app wiring (explicit non-claim)**  
@@ -19,6 +20,7 @@
 Build a **Labs-owned Options Pricing Foundation** so that:
 
 1. **One data plane** supplies multi-expiration, dual-side option chain generations, underlier marks, **rates/dividends**, session, and quality metadata.  
+   **DL-395 / OPF34–36:** OPF **owns** that session + print-quality feed to the client (open / extended pre-post / closed · live vs last known print). The client does not invent it.
 2. **One pricing plane** turns structure intents into per-leg marks, per-leg IV, package quotes, and lockable cost basis.  
 3. **Model packs** (default + alternate per use case) consume that plane only — never invent ad-hoc Massive or IV logic.  
 4. **All current and future tools** (Heatmap, Analyzer, GEX, bots, backtest) wire in later by **declaring a use case** and optionally a pack id.  

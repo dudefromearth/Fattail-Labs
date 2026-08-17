@@ -55,11 +55,11 @@ growth playbook [`Architecture/17-strategy-lab-growth-playbook.md`](./Architectu
 |-------|------------|
 | Course hosting | `Specs/FatTail-Labs-Course-Hosting-Spec-v1.0.md` |
 | Strategy Lab Curate/Deploy surface | `Specs/Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md` |
-| **Strategy Lab guiding doctrine** | Spec **v1.0** `FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md` · Arch **32** · paper `docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md` · **DL-382–391** — one **P&L surface model** (`web/lib/risk-graph/surfaceModel.ts`) across Design, Analyzer Surface, and the future harness; Timing warrant; dynamic trail |
+| **Strategy Lab guiding doctrine** | Spec **v1.0** `FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md` · Arch **32** · paper `docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md` · **DL-382–391** · **DL-396** (SL-GD39–41: BT/FW is Law A consumer; atomic position; tier is a state) — one **P&L surface model** (`web/lib/risk-graph/surfaceModel.ts`) across Design, Analyzer Surface, and the future harness; Timing warrant; dynamic trail |
 | **Market Bus (live market plane)** | Spec `FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` · Arch **28** · bench `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md` |
 | **Live underlier mids (UI standard)** | Arch **28** §4.4 · `web/lib/market/liveUnderlierPattern.ts` · hook `useLiveUnderlierMarks` · `<LiveMid />` / `LiveUnderliersTable` |
-| **Options Lab Analyzer** | Spec content **v0.2.1** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md` (v0_1 SUPERSEDED) · PB Spec **v0.3** · residual bench plan **v1.0.1** `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-analyzer/` · **DL-301…306** · OD-AZ1–8 Accept · BUILD GO = Coach W0-0 |
-| **OPF Truth · Elegant Failure (positions)** | **NORMATIVE capital-risk doctrine** `Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md` · **DL-309** — OPF-held chain is sole instrument truth; representable or named state; atomic card resolve; never invent strikes or silent false package prices |
+| **Options Lab Analyzer** | Spec content **v0.2.1** `FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md` (v0_1 SUPERSEDED) · PB Spec **v0.3** · residual bench plan **v1.0.1** `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-analyzer/` · **DL-301…306** · OD-AZ1–8 Accept · **Keep-warm v0.1.1 BUILD AUTHORITY** `FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md` · **DL-418** |
+| **OPF Truth · Elegant Failure (positions)** | **NORMATIVE capital-risk doctrine** `Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md` (v1.0 SUPERSEDED) · **DL-309** · **DL-396** — OPF-held chain is sole instrument truth; two clocks (τ vs midnight-ET EXPIRED); additive book; representable or named state; never invent strikes or silent false package prices. Session/Print Spec v0.1 **DRAFT**. Bench: `docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-ot-ef-session-print/` |
 | **Options chain ladder** | Spec `FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` · route `/app/options-lab` · board `agents/p-market-bus/` + `agents/p-options-chain-picker/` |
 | **Options Lab Heatmap · Advanced Fly** | Spec **v0.2.1** `FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md` · Arch **29** · full-agent plan **v1.1.1** `docs/Options-Lab-Heatmap-Advanced-Fly-Full-Agent-Bench-Plan-v1.1.md` · board `agents/p-options-lab-heatmap/` — replace sym-fly; OPF-held dual-side chain; AF0 GO required |
 | Curate MySQL marks (dual-write / fallback) | Arch **18** · `live_stream` / `sym_feed` → `market_live_marks`; product UI mids still use live underlier pattern |
@@ -80,6 +80,7 @@ Also: `CLAUDE.md` for ops/commands invariants.
 6. **Exact strikes:** display listed values cent-exact (OC6a).  
 7. **No MSC** market code or MSC Redis schemas.  
 8. **Header UI** is not product law until a surface Spec — bus may still publish `session` / `sym` topics.  
+   **OPF session/print (DL-395 · DRAFT spec):** target SoR is OPF (open/closed + live vs last print). Spec `FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md` is **not BUILD** until Coach GO + Juliet plan. Do not invent a third client Massive/clock SoR in the meantime.  
 9. **Live underlier mids (site-wide UI standard — do not invent a third path):**  
    Any surface that shows underlier **mid / last / live price** for symbols in
    `market_symbol_universe` **must** use:
@@ -95,7 +96,7 @@ Full map: [`Architecture/28-massive-market-bus.md`](./Architecture/28-massive-ma
 
 ### Options Lab position invariants (agents — capital-risk, non-negotiable)
 
-**Doctrine:** [`Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md`](./Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md) · **DL-309**
+**Doctrine:** [`Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md`](./Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md) · **DL-309** · **DL-396**
 
 These sit next to market invariants. Violations that invent instruments or silent false
 marks are **severity: high** (member capital-adjacent judgment).
@@ -106,19 +107,23 @@ marks are **severity: high** (member capital-adjacent judgment).
 2. **Representable or not:** every leg must be placeable on that plane, or the structure is
    not package-priceable. Do not invent a debit/credit.
 3. **Elegant failure:** never leave the member believing the app is broken. Package cell shows
-   a **named state** (EXPIRED · NOT TRADED · CHECK LEGS · UPDATING · BUDGET LIMIT · WAITING ·
-   HIDDEN) plus calm truthful detail — not blank, not stale prior pointer mark after rebind.
+   a **named state** (EXPIRED · HELD/RESIDUAL · NOT TRADED · CHECK LEGS · UPDATING ·
+   BUDGET LIMIT · WAITING · HIDDEN) plus calm truthful detail — not blank, not stale prior
+   pointer mark after rebind. Last known print is not an outage.
 4. **Atomic resolve:** on definition change (exp / strikes / template rebuild), settle **once**
    (hydrate → bind all legs → package quote if bindable). No flash loops / endless re-search.
-5. **Card = pointer; OPF = instrument.** Rebind exp/strikes rebinds the pointer; EXPIRED is
-   after **midnight Eastern Time** (`00:00:00` America/New_York) on the pointer — not UTC
-   midnight, not the member’s local midnight, not cash close; NOT TRADED is missing market
-   (incl. chain edge). Analyzer **Show** is a checkbox: every shown card is in the viewport
-   as one additive book (DL-394) — selecting one card must not hide another.
+5. **Two clocks + card = pointer.** τ / settlement = OPF expiry instant (OPF29). EXPIRED =
+   next **midnight Eastern Time** after the exp calendar date (DL-393) — not UTC midnight,
+   not the member’s local midnight, not cash close. Between clocks = **Held / residual,
+   never live**. NOT TRADED is missing market (incl. chain edge). Analyzer **Show** is a
+   checkbox: every shown card is in the viewport as one additive book (DL-394) — selecting
+   one card must not hide another.
 6. **Builder:** strategy/quick-build only via listed-grid placement (`listedStructure` /
    wait for ladder). Analyze must not ship non-listed strikes as if real.
 7. **Tests:** prefer bind + display-state characterization (`optionBind`, `cardDisplayState`,
    pointer tests) when changing these paths.
+8. **No chrome until Echo labels; no code until Delta’s characterization list** on the
+   Session/Print program (`docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md`).
 
 ---
 

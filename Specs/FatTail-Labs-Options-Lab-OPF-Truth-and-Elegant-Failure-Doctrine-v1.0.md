@@ -1,6 +1,8 @@
 # FatTail Labs — Options Lab OPF Truth & Elegant Failure Doctrine v1.0
 
-**Status:** **NORMATIVE · Coach doctrine** (2026-08-12)  
+**Status:** **SUPERSEDED** by [OT-EF v1.1](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md) (2026-08-16 · **DL-396**). Kept as historical text. **Do not implement against v1.0.**
+
+**Status (historical):** **NORMATIVE · Coach doctrine** (2026-08-12)  
 **Type:** Product doctrine — positions, Builder, cards, package marks, capital-risk UX  
 **Short name:** **OPF Truth · Elegant Failure** · **OT-EF**  
 **Filename:** `FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md`  
@@ -64,6 +66,7 @@ If any leg fails (1) or (2), the structure is **not representable** for pricing.
 | **Position card** | Definition of what the member points at (legs, exp, direction, lock) |
 | **OPF + dual-side chain** | Whether those legs are real instruments and what they are worth (natural / held) |
 | **Viewport** | Visualization of **every shown** (visible) definition under one OPF resolve of the additive book — not a second book, not a radio that drops siblings |
+| **Session / print quality** | **Target:** OPF feed (DL-395 · Session/Print Spec v0.1 **DRAFT**). Live vs last known print is what OPF said. **As-built:** Analyzer still uses session-status + clock until that spec is GO. |
 
 Changing expiration or strikes **rebinds the pointer**. It does not mint a fictional option.
 

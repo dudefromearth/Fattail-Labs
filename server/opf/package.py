@@ -11,6 +11,7 @@ from opf.engines.mark_sum import mark_sum_package
 from opf.generation import ContractStore, build_epoch, epoch_quality_for_day_trade
 from opf.leg import LegIntent, LegPricer
 from opf.lock import LockState
+from opf.session import build_opf_session, generation_as_of_from
 from opf.static_facts import MarketStaticFacts
 
 
@@ -85,21 +86,34 @@ class PackagePricer:
             max_skew_ms=opf_config.max_skew_ms(),
             mode=opf_config.skew_mode(),
         )
+
+        def _with_session(payload: dict[str, Any]) -> dict[str, Any]:
+            payload["opf_session"] = _session_for_quote(
+                intent,
+                leg_marks,
+                epoch.get("generations") if isinstance(epoch, dict) else None,
+                facts=self.facts,
+                as_of_clock=self.as_of_clock,
+            )
+            return payload
+
         if quality == "ok" and epoch.get("epoch_quality") == "ok":
             epoch["epoch_quality"] = "ok"
         elif skew_err and require_epoch_ok and opf_config.skew_mode() == "fail_loud":
             if float(epoch.get("max_skew_ms") or 0) > opf_config.max_skew_ms():
-                return {
-                    "complete": False,
-                    "error": skew_err,
-                    "skew_fail": True,
-                    "epoch": epoch,
-                    "leg_marks": leg_marks,
-                    "package_debit_per_share": None,
-                    "max_skew_ms": epoch.get("max_skew_ms"),
-                    "epoch_quality": "skewed_fail",
-                    "generations_used": epoch.get("generations"),
-                }
+                return _with_session(
+                    {
+                        "complete": False,
+                        "error": skew_err,
+                        "skew_fail": True,
+                        "epoch": epoch,
+                        "leg_marks": leg_marks,
+                        "package_debit_per_share": None,
+                        "max_skew_ms": epoch.get("max_skew_ms"),
+                        "epoch_quality": "skewed_fail",
+                        "generations_used": epoch.get("generations"),
+                    }
+                )
 
         marks_sum = mark_sum_package(leg_marks)
         d_nat = marks_sum.get("debit_per_share")
@@ -122,25 +136,27 @@ class PackagePricer:
             # OPF30: dollars per package-set
             mark_dollars = float(d_basis) * 100.0 * packages
 
-        return {
-            "strategy_id": intent.strategy_id,
-            "structure": intent.structure,
-            "complete": complete,
-            "package_debit_per_share": d_nat if complete else None,
-            "basis_debit_per_share": d_basis if (complete or (lock and lock.mode == "locked")) else None,
-            "basis_source": basis_source,
-            "mark_mode": mark_mode,
-            "mark_disclaimer": mark_disclaimer,
-            "mark_dollars": mark_dollars,
-            "packages": packages,
-            "leg_marks": leg_marks,
-            "max_skew_ms": epoch.get("max_skew_ms"),
-            "epoch_quality": epoch.get("epoch_quality"),
-            "generations_used": epoch.get("generations"),
-            "epoch": epoch,
-            "pnl_unit": "usd_per_package_set",
-            "error": None if complete else f"incomplete legs: {marks_sum.get('missing_legs')}",
-        }
+        return _with_session(
+            {
+                "strategy_id": intent.strategy_id,
+                "structure": intent.structure,
+                "complete": complete,
+                "package_debit_per_share": d_nat if complete else None,
+                "basis_debit_per_share": d_basis if (complete or (lock and lock.mode == "locked")) else None,
+                "basis_source": basis_source,
+                "mark_mode": mark_mode,
+                "mark_disclaimer": mark_disclaimer,
+                "mark_dollars": mark_dollars,
+                "packages": packages,
+                "leg_marks": leg_marks,
+                "max_skew_ms": epoch.get("max_skew_ms"),
+                "epoch_quality": epoch.get("epoch_quality"),
+                "generations_used": epoch.get("generations"),
+                "epoch": epoch,
+                "pnl_unit": "usd_per_package_set",
+                "error": None if complete else f"incomplete legs: {marks_sum.get('missing_legs')}",
+            }
+        )
 
 
 def _package_mark_mode(
@@ -198,3 +214,29 @@ def _package_mark_mode(
             "pre_open_mixed",
         )
     return "live", None, "natural_mid"
+
+
+def _session_for_quote(
+    intent: StrategyIntent,
+    leg_marks: list[dict[str, Any]],
+    generations_used: dict[str, Any] | None,
+    *,
+    facts: MarketStaticFacts | None,
+    as_of_clock: datetime | None,
+) -> dict[str, Any]:
+    """Session/print envelope beside mark_mode (H2). Not Law B residual (H4)."""
+    extras = [m.get("as_of") for m in leg_marks if isinstance(m, dict)]
+    gen_as_of = generation_as_of_from(generations_used, extra=extras)
+    sources = [str(m.get("mark_source") or "") for m in leg_marks]
+    expirations = [leg.expiration for leg in intent.legs]
+    settlement = "pm"
+    if facts is not None:
+        settlement = facts.product(intent.product).settlement
+    return build_opf_session(
+        generation_as_of=gen_as_of,
+        mark_sources=sources,
+        expirations=expirations,
+        settlement=settlement,
+        product=intent.product,
+        as_of_clock=as_of_clock,
+    )

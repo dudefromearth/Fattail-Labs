@@ -5,6 +5,8 @@ backtester is built after this and **iterations are expected once results are se
 Supersedes v0.1 (`Options-Backtest-Forward-Walk-Method.md`) where they differ.
 **Provenance:** every principle is Coach's. Advisor arranged; nothing added without
 being marked as such. Nothing may be removed without a Coach ruling.
+**Current revision:** **v0.2.2** — [`FatTail-Labs-Strategy-Lab-Backtest-Forward-Walk-Method-v0_2_2.md`](./FatTail-Labs-Strategy-Lab-Backtest-Forward-Walk-Method-v0_2_2.md) (DL-410 / DL-411 named-consumer fold lives there).
+
 **Sequence:** this method → backtester build + iteration → **FatTail Brokerage**
 (modeled after the MSC Brokerage) → **Broker Adapter** (broker-agnostic, initially
 optimized for **Tradier**). Design here binds those downstream builds' interfaces.
@@ -27,7 +29,7 @@ running. Substrate for building the test = the Aug 14 gold day.
 2. **Then continue that way continuously** — the archive accumulates; it does not stop after the first week.
 3. **Then** turn that archive into a **proper lab for testing** (this method’s backtester / forward-walk). The lab is after the week is on disk, not instead of collecting.
 
-As-built tap: `/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/day=YYYY-MM-DD/` · writer `ssr_live_capture` · **host StudioOne** · launchd `ai.fattail.labs.ssr-live-capture` Mon–Fri 04:00 ET. Friday 2026-08-14 is day one. Friday’s chain files are **5-minute** snaps (marks **5s**); GOLD’s 3–5s **chain** cadence is the target as the standing archive tightens — not a rewrite of Friday.
+As-built tap: `/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/day=YYYY-MM-DD/` · writer `ssr_live_capture` · **host StudioOne** · launchd `ai.fattail.labs.ssr-live-capture` Mon–Fri 04:00 ET. Friday 2026-08-14 is day one and stays **5-minute** chain (labeled, not rewritten). **OD-6 (Coach 2026-08-16):** from Monday **2026-08-17** open, StudioOne **must** capture OPF chain snaps with full greeks at **3–5s**. Prior StudioOne interval is immaterial. This is the gold data plane Strategy Lab bots are tested against.
 
 ## 1a. First strategy to test — Batman (next expiration)
 

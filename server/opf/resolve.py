@@ -9,6 +9,7 @@ from opf.generation import ContractStore
 from opf.lock import LockController, LockState, get_lock_controller
 from opf.package import StrategyIntent
 from opf.packs.registry import get_pack, list_packs, resolve_pack_id
+from opf.session import build_opf_session, generation_as_of_from
 from opf.static_facts import MarketStaticFacts, default_static_facts
 
 
@@ -62,4 +63,48 @@ def resolve_pricing(
     out["pack_id"] = pid
     out["lock"] = lock.to_dict() if lock else {"mode": "unlocked"}
     out["registry"] = list_packs()
+    out["opf_session"] = _session_for_resolve(
+        intent,
+        store,
+        out,
+        facts=facts,
+        as_of_clock=as_of_clock,
+    )
     return out
+
+
+def _session_for_resolve(
+    intent: StrategyIntent,
+    store: ContractStore,
+    out: dict[str, Any],
+    *,
+    facts: MarketStaticFacts | None,
+    as_of_clock: datetime | None,
+) -> dict[str, Any]:
+    marks = out.get("marks") if isinstance(out.get("marks"), dict) else {}
+    leg_marks = marks.get("leg_marks") if isinstance(marks, dict) else None
+    if not isinstance(leg_marks, list):
+        leg_marks = out.get("leg_marks") if isinstance(out.get("leg_marks"), list) else []
+    meta = out.get("meta") if isinstance(out.get("meta"), dict) else {}
+    gens = meta.get("generations_used") or out.get("generations_used")
+    extras: list[str | None] = [m.get("as_of") for m in leg_marks if isinstance(m, dict)]
+    for leg in intent.legs:
+        g = store.get_by_expiration(leg.product, leg.expiration)
+        if g and g.as_of:
+            extras.append(g.as_of)
+    gen_as_of = generation_as_of_from(
+        gens if isinstance(gens, dict) else None,
+        extra=extras,
+    )
+    sources = [str(m.get("mark_source") or "") for m in leg_marks]
+    settlement = "pm"
+    if facts is not None:
+        settlement = facts.product(intent.product).settlement
+    return build_opf_session(
+        generation_as_of=gen_as_of,
+        mark_sources=sources,
+        expirations=[leg.expiration for leg in intent.legs],
+        settlement=settlement,
+        product=intent.product,
+        as_of_clock=as_of_clock,
+    )

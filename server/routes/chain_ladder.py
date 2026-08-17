@@ -46,6 +46,8 @@ from market_data.market_bus import metrics as mb_metrics
 from market_data.market_bus import singleflight as mb_sf
 from market_data.market_bus.config import bus_enabled
 from market_data.market_bus.store import get_store
+from opf.session import build_opf_session
+from opf.static_facts import default_static_facts
 from routes.trade_log.common import _require_tool_member
 
 router = APIRouter(tags=["chain-ladder"])
@@ -522,6 +524,17 @@ def get_chain_ladder(
 
     patch = diff_ladder(prev, nxt)
     mode = patch.get("mode")
+    session = _opf_session_for_ladder(
+        product=resolved["product"],
+        kind=str(resolved.get("kind") or "equity"),
+        expiration=exp,
+        generation_as_of=nxt.get("as_of"),
+        mark_sources=[
+            str(r.get("mid_source") or "")
+            for r in (nxt.get("rows") or [])
+            if isinstance(r, dict)
+        ],
+    )
     if mode == "unchanged":
         return {
             "unchanged": True,
@@ -529,6 +542,7 @@ def get_chain_ladder(
             "content_hash": patch.get("content_hash"),
             "as_of": patch.get("as_of"),
             "product": resolved["product"],
+            "opf_session": session,
             "server_time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
     if mode == "diff":
@@ -537,6 +551,7 @@ def get_chain_ladder(
             "mode": "diff",
             "product": resolved["product"],
             **{k: v for k, v in patch.items() if k != "mode"},
+            "opf_session": session,
             "server_time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
     return {
@@ -545,8 +560,29 @@ def get_chain_ladder(
         "product": resolved["product"],
         "ladder": nxt,
         "content_hash": nxt.get("content_hash"),
+        "opf_session": session,
         "server_time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
+
+
+def _opf_session_for_ladder(
+    *,
+    product: str,
+    kind: str | None,
+    expiration: str,
+    generation_as_of: str | None,
+    mark_sources: list[str],
+) -> dict[str, Any]:
+    """HTTP ladder envelope (H2). Redis L0 read only — no Massive hop."""
+    settlement = default_static_facts().product(product).settlement
+    return build_opf_session(
+        product=product,
+        product_kind=kind,
+        expiration=expiration,
+        settlement=settlement,
+        generation_as_of=generation_as_of,
+        mark_sources=mark_sources,
+    )
 
 
 # Analyzer / OPF active option horizon (calendar DTE).

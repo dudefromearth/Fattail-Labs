@@ -8,55 +8,13 @@ from typing import Any
 from fastapi import APIRouter, Request
 
 from guards import require_session
+from opf.session import (
+    open_from_massive_doc as _open_from_massive_doc,
+    printing_from_massive_doc as _printing_from_massive_doc,
+)
 from routes.trade_log.common import _require_tool_member
 
 router = APIRouter(tags=["market-session"])
-
-
-def _market_label(doc: dict[str, Any]) -> str:
-    return str(doc.get("market") or "").strip().lower()
-
-
-def _open_from_massive_doc(doc: dict[str, Any]) -> bool:
-    """RTH claim only. Extended hours are not Live NBBO (open=False)."""
-    market = _market_label(doc)
-    if market == "open":
-        return True
-    if market in ("closed", "extended-hours", "early-close"):
-        return False
-    exchanges = doc.get("exchanges")
-    if isinstance(exchanges, dict):
-        for key in ("nyse", "NYSE", "nasdaq", "NASDAQ"):
-            v = str(exchanges.get(key) or "").strip().lower()
-            if v == "open":
-                return True
-            if v in ("closed", "extended-hours"):
-                return False
-    return False
-
-
-def _printing_from_massive_doc(doc: dict[str, Any]) -> bool:
-    """Massive is still producing prints — RTH or pre/post extended hours.
-
-    Do not hard-stop the chain at the cash close. Premarket and postmarket
-    last_trade / last_quote still land on the bus.
-    """
-    market = _market_label(doc)
-    if market == "open":
-        return True
-    if market == "extended-hours":
-        return True
-    if market in ("closed", "early-close"):
-        return False
-    exchanges = doc.get("exchanges")
-    if isinstance(exchanges, dict):
-        for key in ("nyse", "NYSE", "nasdaq", "NASDAQ"):
-            v = str(exchanges.get(key) or "").strip().lower()
-            if v in ("open", "extended-hours"):
-                return True
-            if v in ("closed", "early-close"):
-                return False
-    return False
 
 
 @router.get("/api/me/market/session-status")

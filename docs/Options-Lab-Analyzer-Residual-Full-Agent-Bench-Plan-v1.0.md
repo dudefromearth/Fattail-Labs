@@ -121,7 +121,7 @@ Suite symbol + market posture
 | Gap | Law | Phase |
 |-----|-----|--------|
 | W0 GO · hash · board · seeds | Spec · DL | **W0** |
-| Layout: top strip · viewport · divider · positions under · alerts under | OD-AZ1/2 | **L** |
+| **Layout residual (TOP packet):** top strip · viewport · divider · positions under · alerts under. **Not** Keep-Warm. | OD-AZ1/2 | **L** |
 | Builder defaults matrix · butterfly default · profile wings | OD-AZ3 · AZ-DEF · A2/A3 | **B** |
 | What-if Enable gates all knobs · override banner | A6 · B4 | **T** |
 | Alerts: 20 of N · touch profile tick · book multi-symbol badge | A5/A7 · A1 | **A** |

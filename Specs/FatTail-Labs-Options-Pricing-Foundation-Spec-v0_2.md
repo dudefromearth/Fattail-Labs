@@ -1,6 +1,7 @@
 # FatTail Labs — Options Pricing Foundation Spec v0.2
 
 **Status:** **BUILD AUTHORITY** (Coach W0-0 GO 2026-08-11) · **current revision v0.2.1**  
+**Amendment (WHETHER = BUILD · DL-397):** Session/print authority — [`FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md`](./FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md) · OPF34–36 facts · **DL-395** · **DL-397** · plan [`docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md`](../docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md) — envelope **code** waits for W1-G + W2-G + W3-G (HOW). WHETHER is closed.
 **Type:** Foundation product + architecture law — **data plane + model packs**  
 **Short name:** **OPF** (Options Pricing Foundation)  
 **Filename:** `FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` (underscore convention)  
@@ -12,6 +13,7 @@
 **Revisions:**  
 - **v0.2** — OPF21–33, τ, RECON, calendar arb, archive stale, advisories  
 - **v0.2.1** — AM/PM settlement for τ; **1-minute** τ floor + clamp disclosure  
+- **v0.2.2 (DRAFT)** — proposed **OPF34–36** · see Session/Print Authority Spec v0.1 — **not BUILD AUTHORITY** until that spec is GO
 
 **Content integrity:** Landing content hash (sha1 of body excluding this line): `cb5f3cc201d1c4fb257a37dd67ade35fecaa108d`.
 
@@ -94,6 +96,9 @@ Provide a **single foundation** so Labs can:
 | **OPF31** | `vol_offset_pts` = **absolute implied-vol percentage points** (e.g. +5 → 0.18→0.23). |
 | **OPF32** | Contract map keys use **canonical strike strings** (§4.7). |
 | **OPF33** | Archive replay: max staleness per step; beyond → **labeled gap**, never silent stale fill. |
+| **OPF34** | **OPF owns the session/print feed to the client.** The client does not invent open/closed, pre/post, or last-print vs live from a clock or a second Massive path. |
+| **OPF35** | Every OPF envelope the UI consumes (package quote, resolve, chain generation, ladder) **must** say whether the market is **open / extended (pre-post printing) / closed**, and whether the marks are **live** or **last known print** (held). |
+| **OPF36** | Last known print is a **named held fact**, not an outage. Missing generation → named incomplete. The client does not retry-loop OPF as “unavailable” when OPF has already said closed + last print. |
 
 ---
 
@@ -105,7 +110,7 @@ Provide a **single foundation** so Labs can:
 |--------|------|
 | Massive options snapshot | Generation fill |
 | Marks / chain underlying | Spot (**OC2**) |
-| Session status | Open/held |
+| Session status | **OPF-owned** open / extended (pre-post printing) / closed · last print vs live (**OPF34–36** · DL-395) |
 | **MarketStaticFacts** | Continuous \(r\); \(q\) / discrete divs |
 | **Clock** | τ computation (§3.7) |
 
@@ -151,6 +156,42 @@ All model engines use a **single Labs τ function** `τ(expiration, as_of_clock,
 **AT-L0-τ2:** VIX1D selected for 0DTE fallback path when both VIX and VIX1D present.  
 **AT-L0-τ3:** AM-settled product at 10:00 ET on expiry day → τ uses open/SOQ instant, not 16:00.  
 **AT-L0-τ4:** 0DTE at 15:30 ET → τ still decreases vs 15:00 (not clamped to a 1-hour floor).
+
+### 3.8 Session & print authority (**DRAFT** · Coach 2026-08-16 · DL-395)
+
+**Not BUILD AUTHORITY.** Review packet: [`FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md`](./FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md). Laws below are **proposed** until Coach GO.
+
+The problem of “is this live or last print?” and “is the market open?” is **not a client problem**. OPF manages the feed.
+
+| Law | Meaning |
+|-----|---------|
+| **OPF-SESS-1** | OPF tells the client **market state**: open (RTH) · extended (Massive still printing pre or post) · closed (plane dark). Not a client cash-bell 09:30 / 16:00 hard cut. |
+| **OPF-SESS-2** | OPF tells the client **print quality** on every mark it serves: **live** or **last known print** (held last trade / prior close). The member must never have to guess. |
+| **OPF-SESS-3** | Last known print is **valid instrument truth** while OPF holds that generation. It is not “OPF unavailable.” |
+| **OPF-SESS-4** | The client **consumes** this envelope. It must not open a private Massive session poll, invent a clock fallback as SoR, or retry-loop the chain because RTH is closed. |
+| **OPF-SESS-5** | Massive pre/post prints are **in** the feed when they exist. OPF labels them (not live RTH NBBO). Do not drop the feed at cash close if Massive is still printing. |
+
+**As-built (honest, 2026-08-16) — gap, not the law:**
+
+| Surface | What exists | Gap vs OPF34–36 |
+|---------|-------------|-----------------|
+| Package quote / resolve | `mark_mode` + `mark_disclaimer` + per-leg `mark_source` (`nbbo` / `last_trade` / `day_close` / `theo_bs`) | Package-level only; not a session envelope on the feed |
+| Chain ladder HTTP | Local clock `session_open` for 0DTE selectability | Client/clock, not OPF session SoR |
+| Analyzer chrome | `GET /api/me/market/session-status` + clock fallback | **Second path** — Coach rejects this as client SoR (**DL-395**) |
+
+**Target envelope (normative shape; wire in the same program as the OPF session plane):**
+
+```text
+opf_session: {
+  market: "open" | "extended" | "closed",
+  printing: boolean,          // Massive still producing prints
+  print_quality: "live" | "last_print" | "none",
+  as_of: ISO-8601,
+  generation_as_of: ISO-8601 | null
+}
+```
+
+Every ladder, package quote, and resolve **carries or cites** this envelope. BUILD of the envelope is the OPF session-plane packet — not a client patch.
 
 ### 3.3–3.5 Writers, Redis hot keys, fan-out
 

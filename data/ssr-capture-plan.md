@@ -28,10 +28,10 @@ The plane is not writing until the existing writers run. On go: start `sym_feed`
 
 | Stream | Interval | Size (today) | Massive cost |
 |---|---|---|---|
-| 0DTE chain snapshot (quotes + greeks **as the generation already carries them**) | **every 5 minutes** | ~80 snaps × ~100–200 KB ≈ **8–15 MB** | **$0 extra** — feed already refreshes ~2s while interest is held; 5 min is disk only |
+| 0DTE / next-exp chain snapshot (quotes + **full greeks** as the generation already carries them) | **3–5s from 2026-08-17 open (OD-6)**. Friday **2026-08-14** stays **5-min** as captured. | ~720–1200 snaps / RTH hour at 3–5s | **$0 extra** — `chain_feed` already refreshes ~2s; this is disk cadence |
 | SPY / VIX / VIX1D **marks** (last/mid on the bus) | **every 5 seconds** (same as `sym_feed`) | a few MB of JSONL | none (tap is a read) |
 
-5 minutes is enough for Saturday (Slice 0 freezes **opening IV** and walks SPY). Tighter than 5 min only grows disk; it does not buy more Massive data.
+**OD-6 (Coach 2026-08-16):** StudioOne’s prior interval is immaterial. From Monday **2026-08-17** open, StudioOne **must** write OPF chain snaps with full greeks at **3–5s**. Not deferred. Friday 2026-08-14 remains labeled 5-min and is **not** rewritten. This is the gold plane Strategy Lab bots are tested against.
 
 ### Folder (immutable)
 

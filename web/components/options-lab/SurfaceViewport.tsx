@@ -4,12 +4,17 @@
  * Analyzer Surface viewport — AZ-VP-S1…S6.
  *
  * Same session as Risk graph. The **sheet** is the shared Strategy Lab
- * calculator (`surfaceModel.ts`). Presentation only differs (mesh vs 2D).
+ * calculator (`surfaceModel.ts`). Per-leg IV is OPF truth only
+ * (`exact` / `locked`). No sticky smile.
  */
 
 import SurfaceScene3D from "@/components/options-lab/SurfaceScene3D";
 import { fractionalT } from "@/lib/risk-graph/blackScholes";
-import { legsFromTos, type SurfaceLeg } from "@/lib/risk-graph/surfaceModel";
+import {
+  bindListedSurfaceLegs,
+  type OpfLegMarkForSheet,
+  type SurfaceLeg,
+} from "@/lib/risk-graph/surfaceModel";
 import type { ParsedTosTrade } from "@/lib/options-lab/tosParser";
 
 export default function SurfaceViewport({
@@ -21,6 +26,7 @@ export default function SurfaceViewport({
   notice,
   trade,
   spot,
+  legMarks,
 }: {
   hasTrade: boolean;
   symbol: string;
@@ -30,34 +36,43 @@ export default function SurfaceViewport({
   notice?: { title: string; detail: string } | null;
   trade?: ParsedTosTrade | null;
   spot?: number | null;
+  legMarks?: OpfLegMarkForSheet[] | null;
 }) {
   const S = spot && spot > 0 ? spot : 0;
   let legs: SurfaceLeg[] = [];
-  let quality: "per_leg_iv" | "sticky_cli" = "sticky_cli";
+  let ivHole: { title: string; detail: string } | null = null;
+  let ivSource = "per_leg";
   if (hasTrade && trade?.legs?.length && S > 0) {
-    legs = legsFromTos(trade.legs, {
+    const bound = bindListedSurfaceLegs(trade.legs, legMarks, {
       spot: S,
-      ivFor: () => 0.2,
       tauFor: (exp) => fractionalT(exp || trade.expiration),
     });
-    quality = "sticky_cli";
+    if (bound.ok) {
+      legs = bound.legs;
+      ivSource = bound.ivSources.join("+") || "exact";
+    } else {
+      ivHole = { title: bound.hole, detail: bound.detail };
+    }
   }
+
+  const fail = notice || ivHole;
 
   return (
     <div
       className="flex h-full min-h-[420px] flex-col bg-[#0a0a0e]"
       data-testid="analyzer-surface-viewport"
+      data-iv-source={legs.length ? ivSource : fail?.title || "none"}
     >
-      {notice ? (
+      {fail ? (
         <div
           className="m-4 max-w-sm rounded-2xl border border-white/12 bg-black/45 px-5 py-4"
           data-testid="analyzer-viewport-notice"
         >
           <div className="text-[13px] font-semibold tracking-wide text-white/90">
-            {notice.title}
+            {fail.title}
           </div>
           <p className="mt-1.5 text-[12px] leading-snug text-white/55">
-            {notice.detail}
+            {fail.detail}
           </p>
         </div>
       ) : !hasTrade ? (
@@ -82,8 +97,8 @@ export default function SurfaceViewport({
         <SurfaceScene3D
           legs={legs}
           spot={S}
-          quality={quality}
-          ivSource="cli"
+          quality="per_leg_iv"
+          ivSource={ivSource}
           label={`${symbol} · ${packLabel}`}
         />
       )}

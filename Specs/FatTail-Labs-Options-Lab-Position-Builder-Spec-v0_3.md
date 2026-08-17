@@ -24,7 +24,7 @@
 | [Heatmap Templates Spec v0_2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | Dual-side · Live/Held/Closed posture heritage · ToS path |
 | [Human Interface Spec v1.0](./FatTail-Labs-Human-Interface-Spec-v1.0.md) | Dialog · cards · fail-loud |
 | Claude.md / FatTail ethos | No profit claims · fail loud · no MSC |
-| [**OPF Truth & Elegant Failure Doctrine v1.0**](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md) | **Capital-risk:** OPF-held chain sole instrument truth · representable or named state · atomic resolve · **DL-309** |
+| [**OPF Truth & Elegant Failure Doctrine v1.1**](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md) | **Capital-risk:** OPF-held chain sole instrument truth · two clocks · additive book (PB-VIEW-4 retired) · representable or named state · atomic resolve · **DL-309** · **DL-396** |
 
 **DL:** DL-294 (partial as-built) · DL-295 (v0.1 filed) · **DL-296** (this v0.2 fold) · **DL-309** (OPF truth · elegant failure).  
 **Review folded:** External advisor Claude 2026-08-11 (B1–B6, A1–A9) + Coach Addendum 1 (use-case-scoped coherence).

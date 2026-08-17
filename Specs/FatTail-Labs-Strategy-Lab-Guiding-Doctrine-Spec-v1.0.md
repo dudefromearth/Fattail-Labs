@@ -5,7 +5,7 @@
 **Type:** Product Spec — process law for every Strategy Lab phase, surface, and bot  
 **Date:** 2026-08-16  
 **Product:** FatTail Strategy Lab (`/app/strategy-lab`)  
-**Decision:** **DL-382** · engine **DL-383** · resolution **DL-384** · VP trigger grammar **DL-385** · market memory **DL-386** · primary metric shape **DL-387** · convexity RoC **DL-388** · entry warrant + dynamic trail **DL-389**
+**Decision:** **DL-382** · engine **DL-383** · resolution **DL-384** · VP trigger grammar **DL-385** · market memory **DL-386** · primary metric shape **DL-387** · convexity RoC **DL-388** · entry warrant + dynamic trail **DL-389** · OT-EF join **DL-396** (SL-GD39–41)
 
 **This document is the guiding light.** Life-cycle specs, pack schema, Design tabs, Curate, Deploy, backtest, forward walk, and copy **must** be readable as implementations of this law. Where an older spec is silent, this document speaks. Where an older spec **conflicts** with a lock below, **this document wins** and the older file is amended in the same body of work — Coach text is **not** deleted (Coach Content Law).
 
@@ -19,7 +19,7 @@
 | [`Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md`](./Strategy-Lab-Curate-and-Deploy-Surface-Spec-v1.0.md) | Curate / Deploy surface |
 | [`FatTail-Labs-North-Star-Member-Ethos-Spec-v1.2.md`](./FatTail-Labs-North-Star-Member-Ethos-Spec-v1.2.md) | Stop the bleeding · process outcomes |
 | Advanced Fly Spec **v0.2.1** | Heatmap tiles (debit · R:R · curvature) |
-| OPF Truth Doctrine **v1.0** · **DL-309** | Listed chain is instrument truth |
+| OPF Truth Doctrine **v1.1** · **DL-309** · **DL-396** | Listed chain is instrument truth; two clocks; BT/FW is a Law A consumer (SL-GD39–41) |
 | Arch **16** | Same OA-class *service*, opposite *direction* |
 | Arch **32** | As-built map of this doctrine |
 | Position paper | [`docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md`](../docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md) |
@@ -336,6 +336,9 @@ Coach examples (**300%**, **100–400%**, **800%**, **1500%**) stay in **this sp
 | **SL-GD36** | Convexity & Debit names two bands. **Find** = debit-to-width / debit-to-payoff (where the cheap convex ticket lives). **Change** = RoC of the tile as **tick-% magnitude** (Advanced Flies `pct_change`) — min and/or max, e.g. >20%, >30%, <40%, 20–40%. Omit a side for open-ended. Never a dollar debit. Never a substitute for the find band. Uncomputable until the live tile has a tick % — honest, no silent fake. |
 | **SL-GD37** | Timing & Entry is a **warrant**. The range is wide — the **pseudo-code** field holds what the chips cannot. **OTM butterflies** use **VP structural levels and price action**. **GEX**, **order flow**, and the rest **might** also be criteria that an entry is warranted — optional chips, not the lead. VP trigger = `level_class × interaction × session_window → travel_target`. Never a price. Never a clock without a condition. GEX as an *entry* warrant does not retire GEX as **management** once the seat is on (SL-GD12). |
 | **SL-GD38** | Exits are **similar** (wide range, pseudo-code) but **generally a dynamic trailing stop**. The dynamic part is **time**, **premium decay**, and whatever else the pseudo-code names. Trail remains required (`dynamic_premium_decay_trailing.enabled`). Drivers ⊂ {`premium_decay`, `time`}. |
+| **SL-GD39** | Backtest and forward-walk are **Law A consumers** (OT-EF v1.1). Same OPF-held listed universe. No invented strikes on gold or silver. |
+| **SL-GD40** | A trade is **one atomic position** regardless of leg count — restates **SL-GD22** for the OT-EF join. BT/FW events, exits, and buckets address the **position**, never a leg. |
+| **SL-GD41** | **Tier is a state** (gold \| silver), same honesty class as live \| last print \| expired. Never render silver as gold. |
 
 ---
 
@@ -369,7 +372,10 @@ A change to Strategy Lab **fails** this spec if it:
 14. Omits **`distribution_shape`** from the primary-metric set, or ranks Design by **win rate** or **raw return**.  
 15. Treats debit-to-width as if it were the **magnitude of convex change**, or invents a RoC from a single path when tick % is missing.  
 16. Makes Timing a **bare clock**, stores a **price** as the entry, or treats GEX as the only OTM-fly warrant.  
-17. Ships Exit Rules without a **dynamic trailing stop**, or makes the dynamic part a fixed dollar target.
+17. Ships Exit Rules without a **dynamic trailing stop**, or makes the dynamic part a fixed dollar target.  
+18. Invents strikes on a backtest or forward-walk (gold or silver) that the OPF-held listed chain does not have (SL-GD39).  
+19. Treats a **leg** as the BT/FW event, exit, or outcome bucket (SL-GD40 / SL-GD22).  
+20. Draws a **silver** result as **gold**, or a last print / residual as **live** (SL-GD41).
 
 ---
 
@@ -602,6 +608,20 @@ The **classifier** (this is an HVN top vs the LVN between these two nodes) is **
 **Lineage seat:** this subsection is Yankee's lane (Mandelbrot channel) — the first packet in that lane. Yankee gates the framing: fat tails and long memory as **documented properties**, never as a slogan; math matched to the audience.
 
 *The arrows are the strategy. Make the tab able to write what the arrows say. The structure they point at remembers.*
+
+---
+
+## 18. OT-EF join — three amendments (Coach 2026-08-16 · **DL-396**)
+
+Folded so Law A is not Options-Lab-only. Same three lines live in [OT-EF v1.1](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md) §6.
+
+| ID | Amendment |
+|----|-----------|
+| **SL-GD39** | Backtest and forward-walk are **Law A consumers**. Same OPF-held listed universe. No invented strikes on gold or silver. |
+| **SL-GD40** | A trade is **one atomic position** (restates SL-GD22). BT/FW events, exits, and buckets address the position. |
+| **SL-GD41** | **Tier is a state** (gold \| silver), same honesty as live \| last print \| expired. Never render silver as gold. |
+
+**Doctrine only in this fold.** No chrome. No BT/FW engine rewrite in this amendment. Characterization and any later code wait for the OT-EF / Session-Print bench plan gates (Echo labels · Delta characterization list · Session/Print Coach GO).
 
 ---
 

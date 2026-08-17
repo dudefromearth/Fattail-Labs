@@ -40,6 +40,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [25-dual-subdomain-practice-labs.md](./25-dual-subdomain-practice-labs.md) | **Future:** practice.fattail.ai vs labs.fattail.ai (DL-248) |
 | [26-strategy-lab-member-timeline.md](./26-strategy-lab-member-timeline.md) | **NOW:** Design+Curate lock; Deploy UX for members; Tradier real-money gated (DL-252) |
 | [32-strategy-lab-guiding-doctrine.md](./32-strategy-lab-guiding-doctrine.md) | **Guiding light:** position don’t predict · book-level shape · VP memory · DL-382–386 |
+| [33-strategy-lab-3d-surface.md](./33-strategy-lab-3d-surface.md) | **3D Surface first-ship as-built** · `/app/options-lab/surface` · App Spec v0.1.8 · DL-401–416 |
 
 **Market Bus / Options chain (2026-08-10) — as-built live market plane:**
 
@@ -54,7 +55,11 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Spec **Position Builder/Book v0.3** | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md` — VIEW-7 + B5; v0.2 SUPERSEDED; **DL-306** |
 | Bench **Position Builder** | `docs/Options-Lab-Position-Builder-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-position-builder/` · DL-297 |
 | Spec **Analyzer v0.2.1** | `Specs/FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md` — six buckets · Risk/Surface · OD-AZ1–8 Accept · advisor fold; v0_1 SUPERSEDED; **DL-301…306** |
+| Spec **Analyzer Keep-Warm v0.1.1** | `Specs/FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md` — **BUILD AUTHORITY** · last paint · Working 2.5s / Away 5s / Idle posture · **DL-418** |
 | Bench **Analyzer residual** | `docs/Options-Lab-Analyzer-Residual-Full-Agent-Bench-Plan-v1.0.md` (**v1.0.1**) · board `agents/p-options-lab-analyzer/` · **DL-305/306** |
+| Doctrine **OT-EF v1.1** | `Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md` · two clocks · additive book · **DL-396** |
+| Spec **Session/Print v0.1** | `Specs/FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md` — **WHETHER = BUILD** (DL-397) · HOW review still lands · OPF34–36 |
+| Bench **OT-EF / Session-Print** | `docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md` (**v1.0.1**) · board `agents/p-ot-ef-session-print/` — no chrome until Echo labels; no code until Delta list; W4 when W1-G+W2-G+W3-G pass |
 | Spec **Heatmap Templates v0.2** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` — product law (DRAFT); v0.1 superseded |
 | Bench plan | `docs/Options-Lab-Heatmap-Templates-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-heatmap/` |
 | Spec | `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` v1.0.1 |

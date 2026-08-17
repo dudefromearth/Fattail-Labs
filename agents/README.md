@@ -131,6 +131,22 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   **Active impl plan v1.1.1:** `docs/Options-Lab-Heatmap-Advanced-Fly-Full-Agent-Bench-Plan-v1.1.md`.  
   Board: `agents/p-options-lab-heatmap/ORCHESTRATOR.md`.  
   **Next: AF0 seeds → AF0-G · Coach AF0-0 · no AF-H/M code before GO.**
+- `agents/p-ot-ef-session-print/` — **OT-EF v1.1 · Session/Print · two clocks** (doctrine
+  fold; Echo labels; Delta characterization list; then OPF envelope after Coach W3-0).
+  Doctrine: `Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md`.
+  Session/Print: `Specs/FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md` (**DRAFT**).
+  **Full multi-agent plan:** `docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md`.
+  Board: `agents/p-ot-ef-session-print/ORCHESTRATOR.md`.
+  **Next: W0-G → fire W1-1 Echo · W2-1 Delta · W3-1 India in parallel. No chrome until
+  W1. No code until W2. No BUILD until W3-0.**
+- `agents/p-options-lab-surface/` — **Options Lab 3D Surface** (App Spec
+  v0.1.8 accepted · S1–S8 closed · plan **v1.0.1 DRAFT** until W0-G).
+  Spec: `Specs/FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.8.md`.
+  **Plan:** `docs/Options-Lab-3D-Surface-Full-Agent-Bench-Plan-v1.0.md`.
+  **W0 token:** `agents/go/OLS-W0.md` (DL-328 — Delta reads the file).
+  Board: `agents/p-options-lab-surface/ORCHESTRATOR.md`.
+  **Next: W3-1 (W0-G + W1-G + W2-G PASS). No migration before W3-4.
+  Do not seed Backtest here.**
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,

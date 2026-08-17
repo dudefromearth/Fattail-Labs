@@ -27,6 +27,11 @@ AVATAR_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"
 AVATAR_MAX_BYTES = 2 * 1024 * 1024
 AVATAR_DIR = Path(__file__).resolve().parent.parent / "uploads" / "avatars"
 DISPLAY_NAME_MAX = 64
+SURFACE_FACTORY_VIEWS = frozenset(
+    {"iso", "now", "expiry", "spot", "time", "top", "fit"}
+)
+SURFACE_INSPECT_KEYS = frozenset({"defaults", "default_view_id", "views"})
+SURFACE_VIEW_MAX = 12
 
 # Idle timeout preference (minutes) — all roles except administrator
 SESSION_IDLE_MIN_DEFAULT = 30
@@ -74,6 +79,79 @@ def _normalize_journey_ui_prefs(raw) -> dict:
     return {
         "recovery_invite_dismissed": dismissed,
         "recovery_invite_dismissed_at": at,
+    }
+
+
+def _empty_surface_inspect() -> dict:
+    return {"defaults": {}, "default_view_id": None, "views": []}
+
+
+def _parse_surface_inspect_write(raw) -> dict:
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=422, detail="surface_inspect must be an object")
+    extra = set(raw) - SURFACE_INSPECT_KEYS
+    if extra:
+        raise HTTPException(
+            status_code=422,
+            detail="Unknown surface_inspect keys: " + ", ".join(sorted(extra)),
+        )
+    views_in = raw.get("views")
+    if views_in is None:
+        views_in = []
+    if not isinstance(views_in, list):
+        raise HTTPException(status_code=422, detail="surface_inspect.views must be an array")
+    if len(views_in) > SURFACE_VIEW_MAX:
+        raise HTTPException(status_code=422, detail="surface_inspect views cap is 12")
+    views = []
+    for item in views_in:
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=422, detail="each view must be an object")
+        name = str(item.get("name") or "").strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="view name required")
+        if name.lower() in SURFACE_FACTORY_VIEWS:
+            raise HTTPException(status_code=422, detail=f"reserved view name: {name}")
+        vid = str(item.get("id") or "").strip()
+        if not vid:
+            raise HTTPException(status_code=422, detail="view id required")
+        views.append(
+            {
+                "id": vid,
+                "name": name,
+                "inspect": item.get("inspect") if isinstance(item.get("inspect"), dict) else {},
+                "updated_at": str(item.get("updated_at") or ""),
+            }
+        )
+    defaults = raw.get("defaults")
+    if defaults is None:
+        defaults = {}
+    if not isinstance(defaults, dict):
+        raise HTTPException(status_code=422, detail="surface_inspect.defaults must be an object")
+    default_id = raw.get("default_view_id")
+    if default_id is not None:
+        default_id = str(default_id)
+    return {
+        "defaults": defaults,
+        "default_view_id": default_id,
+        "views": views,
+    }
+
+
+def _read_surface_inspect(raw) -> dict:
+    if raw is None or raw == "":
+        return _empty_surface_inspect()
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError:
+            return _empty_surface_inspect()
+    if not isinstance(raw, dict):
+        return _empty_surface_inspect()
+    views = raw.get("views") if isinstance(raw.get("views"), list) else []
+    return {
+        "defaults": raw.get("defaults") if isinstance(raw.get("defaults"), dict) else {},
+        "default_view_id": raw.get("default_view_id"),
+        "views": views[:SURFACE_VIEW_MAX],
     }
 
 
@@ -653,7 +731,7 @@ def _profile_row(cur, identity_id: int) -> dict | None:
                   journey_visible_at, share_reputation, share_personal_growth,
                   share_attendance, session_idle_minutes,
                   retrospective_pnl_expanded, retro_cadence_days,
-                  home_quick_nav_json, journey_ui_prefs_json
+                  home_quick_nav_json, journey_ui_prefs_json, surface_inspect_json
            FROM identities WHERE identity_id = %s""",
         (identity_id,),
     )
@@ -706,6 +784,7 @@ def _profile_payload(row: dict, role: str) -> dict:
             {"id": "courses", "label": "Courses", "required": False},
         ],
         "journey_ui_prefs": journey_ui,
+        "surface_inspect": _read_surface_inspect(row.get("surface_inspect_json")),
         "role": role,
     }
 
@@ -796,6 +875,11 @@ async def patch_profile(request: Request) -> dict:
         nav = _parse_home_quick_nav_write(body["home_quick_nav"])
         updates.append("home_quick_nav_json = %s")
         params.append(json.dumps(nav))
+
+    if "surface_inspect" in body:
+        inspect = _parse_surface_inspect_write(body["surface_inspect"])
+        updates.append("surface_inspect_json = %s")
+        params.append(json.dumps(inspect))
 
     # J3 / F3 — merge journey UI prefs (server-side dismiss, not localStorage)
     journey_prefs_patch = body.get("journey_ui_prefs")

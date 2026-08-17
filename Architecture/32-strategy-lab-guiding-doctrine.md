@@ -1,7 +1,7 @@
 # 32 — Strategy Lab Guiding Doctrine (architecture & design)
 
 **Status:** **AS-BUILT MAP + DESIGN DIRECTION** (2026-08-16)  
-**Normative law:** [`Specs/FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md`](../Specs/FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md) (**SL-GD** · **DL-382–391**)  
+**Normative law:** [`Specs/FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md`](../Specs/FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md) (**SL-GD** · **DL-382–391** · **DL-396** SL-GD39–41)  
 **Position paper:** [`docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md`](../docs/Strategy-Lab-Position-We-Position-We-Dont-Predict.md)  
 **Type:** How the guiding light sits on the life-cycle kernel, Design tabs, Options Lab surfaces, and what is not yet wired.
 
@@ -55,7 +55,7 @@ Route: `/app/strategy-lab` · `StrategyLabApp` · `StrategyDesigner`.
 | `identity` | Position Builder | Fly book dropdown + Other; Long/Short debit/credit icon; widths in **strikes**; definition + **ShapeRiskGraph** | Keep compact. No R2R input. |
 | `structure` | Expiration Schedule | 0DTE / 1DTE / Next; Mon–Fri vs MWF from `options_cadence` | Horizon **changes lead lens** (0–1 vol, 3–5+ HVN/LVN). |
 | `risk` | Risk & Capital | `max_capital_at_risk`, unit, `primary_metric` | **Lock 2–6%** as designed max DD band. |
-| `edge` | Convexity & Debit | RoC band + **shared P&L surface** (`surfaceModel.ts`) + debit-to-width | **One surface model** across Strategy Lab, Analyzer Surface viewport, and the future day-replay harness. Per-leg IV. Design preview may be `sticky_cli` (labeled). |
+| `edge` | Convexity & Debit | RoC band + **shared P&L surface** (`surfaceModel.ts`) + debit-to-width | **One surface model** across Strategy Lab, Analyzer Surface viewport, and the future day-replay harness. Per-leg IV only (`exact` / `locked`). No sticky smile. |
 | `timing` | Timing & Entry | Warrant chips + VP trigger + **pseudo-code** | OTM flies: **VP + price action**. GEX / order flow optional. Wide remainder = pseudo-code. |
 | `exits` | Exit Rules | **Dynamic trailing stop** + drivers (decay, time) + **pseudo-code** | Trail required. Dynamic part = time + premium decay (+ pseudo-code). |
 | `review` | Review | Back test / forward walk cards; MC bars + wireframe | **Shape** of MC only. No hero-path chrome. |
@@ -75,7 +75,7 @@ Route: `/app/strategy-lab` · `StrategyLabApp` · `StrategyDesigner`.
 | Tile / R:R / fly-surface convexity | **Advanced Flies** | `web/lib/options-lab/templates/symFly.ts` · `HeatmapChainPanel.tsx` · `/app/options-lab/heatmap` |
 | Structure (placement) | **Volume Profile** HVN/LVN | `/app/options-lab/volume-profile` · VP Spec v0.4 |
 | Management map | **GEX** | `templates/gex.ts` (same heatmap host) |
-| Instrument truth | **OPF + Market Bus** | Arch **28–30** · DL-309 |
+| Instrument truth | **OPF + Market Bus** | Arch **28–30** · OT-EF v1.1 · DL-309 · DL-396 |
 
 **AF-DP1–2 apply inside Strategy Lab:** tile compute is **pure** on the **shared** dual-side generation. **Zero** new Massive, **zero** extra WebSocket, **zero** package-quote soR for the grid.
 
@@ -96,6 +96,8 @@ Route: `/app/strategy-lab` · `StrategyLabApp` · `StrategyDesigner`.
 | Deploy | Book-level shape while live |
 
 SSR (Arch **31**) is the **thesis** replay plane for structure surfaces — compatible with SL-GD17 when it ships. Do not wait on SSR to refuse one-path ossification in Review UI.
+
+**OT-EF join (SL-GD39–41 · DL-396):** backtest and forward-walk are **Law A consumers** — same OPF-held listed universe; no invented strikes on gold or silver. A trade is **one atomic position**. **Tier is a state** — never draw silver as gold. Doctrine only until the OT-EF / Session-Print bench plan gates.
 
 ---
 

@@ -63,7 +63,7 @@ ad-hoc polls or WS-only mid tables. See Arch **28** §4.4 and `AGENTS.md` market
 
 ### Options Lab — OPF Truth & Elegant Failure (capital-risk · DL-309)
 
-**Normative:** `Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md`
+**Normative:** `Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md` (v1.0 SUPERSEDED · **DL-396**)
 
 When creating, editing, or displaying **positions** (Builder, cards, package marks):
 
@@ -72,10 +72,12 @@ When creating, editing, or displaying **positions** (Builder, cards, package mar
    what contracts exist. Never invent strikes for prefill/strategy change.
 2. **Representable or named failure.** Either every leg is real on that plane and may
    show a defendable package mark, or the UI shows a **truthful named state** (EXPIRED ·
-   NOT TRADED · CHECK LEGS · UPDATING · BUDGET LIMIT · WAITING · HIDDEN) — never a silent
-   blank or a lying debit/credit.
-3. **Atomic settle.** Pointer change resolves once; no endless flash/search.
-4. **Severity high** if we invent instruments or false package prices — capital-adjacent
+   HELD/RESIDUAL · NOT TRADED · CHECK LEGS · UPDATING · BUDGET LIMIT · WAITING · HIDDEN)
+   — never a silent blank or a lying debit/credit. Last known print is not an outage.
+3. **Two clocks.** τ / settlement = OPF expiry instant. Card EXPIRED = next midnight ET.
+   Between them = Held / residual, never live.
+4. **Atomic settle.** Pointer change resolves once; no endless flash/search.
+5. **Severity high** if we invent instruments or false package prices — capital-adjacent
    judgment surface.
 
 Platform fail-loud (config) and member-facing **fail elegant and truthful** (instruments)

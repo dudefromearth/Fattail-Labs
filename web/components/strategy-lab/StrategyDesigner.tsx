@@ -36,13 +36,7 @@ import {
 import {
   asStrikes,
   batmanDefaultShorts,
-  relativeShape,
 } from "@/lib/options-lab/designRelativeShape";
-import SharedSurfaceView from "@/components/risk-graph/SharedSurfaceView";
-import {
-  designTauYears,
-  legsFromRelative,
-} from "@/lib/risk-graph/surfaceModel";
 
 type Props = {
   strategyId: string;
@@ -87,22 +81,16 @@ function formatExitDrivers(config: StrategyConfig, trail: boolean): string {
   return names ? `Trail · ${names}` : "Trail";
 }
 
-function DesignSurface({ config }: { config: StrategyConfig }) {
-  const shape = relativeShape(config);
-  const tau = designTauYears(config.dte_type);
-  const spot = 100;
-  const legs = legsFromRelative(shape.legs, spot, tau, 0.2);
+function DesignSurface() {
   return (
-    <div className="mb-2">
-      <SharedSurfaceView
-        legs={legs}
-        spot={spot}
-        quality="sticky_cli"
-        ivSource="cli"
-        tone="lab"
-        label="P&L surface"
-      />
-    </div>
+    <p
+      className="mb-3 text-[12px] leading-snug text-[var(--color-label-secondary)]"
+      data-testid="design-surface-waiting"
+    >
+      P&amp;L surface uses listed per-leg IV from the OPF-held chain. Open{" "}
+      <span className="font-medium text-[var(--color-label)]">Surface</span> or
+      Analyzer once every leg is on the generation — no sticky smile.
+    </p>
   );
 }
 
@@ -844,7 +832,7 @@ export default function StrategyDesigner({
             ) : section?.id === "edge" ? (
               <>
                 <ConvexityRocRow config={config} setField={setField} />
-                <DesignSurface config={config} />
+                <DesignSurface />
                 <FieldGrid
                   fields={fieldsOf("edge").filter(
                     (f) =>

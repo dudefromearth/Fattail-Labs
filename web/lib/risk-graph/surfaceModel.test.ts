@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import {
+  bindListedSurfaceLegs,
   computeSurfaceSheet,
   evaluatePnlAtSpot,
   legsFromRelative,
   sampleSheet,
+  sliceSheetAtTau,
+  surfaceStrikeWindow,
+  MIN_TAU,
+  DEFAULT_NX,
+  DEFAULT_NT,
 } from "./surfaceModel";
 import { relativeShape, batmanDefaultShorts } from "../options-lab/designRelativeShape";
 
@@ -24,8 +30,8 @@ const spot = 100;
     spot,
     nx: 41,
     nt: 9,
-    quality: "sticky_cli",
-    ivSource: "cli",
+    quality: "per_leg_iv",
+    ivSource: "fixture",
   });
   const nowRow = sheet.pnlGrid[0];
   const mid = nowRow[Math.floor(nowRow.length / 2)];
@@ -48,6 +54,231 @@ const spot = 100;
   const legs = legsFromRelative(shape.legs, spot, tau, iv);
   const z = evaluatePnlAtSpot(legs, spot, tau);
   assert.ok(Math.abs(z) < 50, "T+0 P&L near zero when premium = mark");
+}
+
+{
+  const listed = [
+    { strike: 100, quantity: 1, right: "call" as const, expiration: "2026-08-17" },
+    { strike: 105, quantity: -1, right: "call" as const, expiration: "2026-08-17" },
+  ];
+  const ok = bindListedSurfaceLegs(
+    listed,
+    [
+      { strike: 100, side: "call", iv: 0.18, iv_source: "exact", mid: 2.1, expiration: "2026-08-17" },
+      { strike: 105, side: "call", iv: 0.16, iv_source: "locked", mid: 0.9, expiration: "2026-08-17" },
+    ],
+    { spot: 100, tauFor: () => 1 / 365.25 },
+  );
+  assert.equal(ok.ok, true);
+  if (ok.ok) {
+    assert.equal(ok.legs[0].iv, 0.18);
+    assert.equal(ok.legs[1].iv, 0.16);
+  }
+
+  const vix = bindListedSurfaceLegs(
+    listed,
+    [
+      { strike: 100, side: "call", iv: 0.18, iv_source: "exact", mid: 2.1, expiration: "2026-08-17" },
+      { strike: 105, side: "call", iv: 0.2, iv_source: "vix", mid: 0.9, expiration: "2026-08-17" },
+    ],
+    { spot: 100, tauFor: () => 1 / 365.25 },
+  );
+  assert.equal(vix.ok, false);
+  if (!vix.ok) assert.equal(vix.hole, "IV NO");
+
+  const sticky = bindListedSurfaceLegs(listed, [], {
+    spot: 100,
+    tauFor: () => 1 / 365.25,
+  });
+  assert.equal(sticky.ok, false);
+  if (!sticky.ok) assert.equal(sticky.hole, "IV NO");
+
+  const nearest = bindListedSurfaceLegs(
+    listed,
+    [
+      { strike: 100, side: "call", iv: 0.18, iv_source: "nearest", mid: 2.1, expiration: "2026-08-17" },
+      { strike: 105, side: "call", iv: 0.16, iv_source: "atm_exp", mid: 0.9, expiration: "2026-08-17" },
+    ],
+    { spot: 100, tauFor: () => 1 / 365.25 },
+  );
+  assert.equal(nearest.ok, false);
+  if (!nearest.ok) assert.equal(nearest.hole, "IV NO");
+
+  const keepItm = bindListedSurfaceLegs(
+    [{ strike: 80, quantity: 1, right: "call", expiration: "2026-08-17" }],
+    [{ strike: 80, side: "call", iv: 0.005, iv_source: "exact", mid: 20, expiration: "2026-08-17" }],
+    { spot: 100, tauFor: () => 1 / 365.25 },
+  );
+  assert.equal(keepItm.ok, true);
+  if (keepItm.ok) assert.equal(keepItm.legs[0].iv, 0.005);
+}
+
+{
+  const hour = 1 / 365.25 / 24;
+  assert.ok(MIN_TAU < hour, "T-LM-1: 1-min floor, not 1-hour (OPF29 AT-L0-τ1/τ4)");
+  assert.ok(Math.abs(MIN_TAU - 1 / 365.25 / 24 / 60) < 1e-18);
+  assert.equal(DEFAULT_NX, 80);
+  assert.equal(DEFAULT_NT, 48);
+}
+
+{
+  const legs = legsFromRelative(
+    [{ strike: 100, quantity: 1, right: "call" }],
+    100,
+    10 / 365.25,
+    0.2,
+  );
+  const lo = 1 / 365.25;
+  const hi = 8 / 365.25;
+  const sheet = computeSurfaceSheet(legs, {
+    spot: 100,
+    nx: 16,
+    nt: 7,
+    tauLo: lo,
+    tauHi: hi,
+    quality: "per_leg_iv",
+  });
+  assert.equal(sheet.timeAxis.length, 7);
+  assert.ok(Math.abs(sheet.timeAxis[0] - hi) < 1e-12, "T-WIN-1 timeAxis[0]===tauHi");
+  assert.ok(
+    Math.abs(sheet.timeAxis[sheet.timeAxis.length - 1] - lo) < 1e-12,
+    "T-WIN-1 last===tauLo",
+  );
+  assert.throws(
+    () =>
+      computeSurfaceSheet(legs, {
+        spot: 100,
+        nx: 16,
+        nt: 7,
+        tauLo: 0,
+        tauHi: 20 / 365.25,
+      }),
+    /remaining life/,
+  );
+  assert.throws(
+    () => computeSurfaceSheet(legs, { spot: 100, nx: Infinity, nt: 8 }),
+    /unbounded/,
+  );
+}
+
+{
+  const w = surfaceStrikeWindow([6400, 6450, 6500], 6425);
+  assert.ok(w.sMin < 6400 && w.sMax > 6500, "window pads beyond wings");
+  assert.ok(w.sMax - w.sMin < 400, "ATM fly is not a ±35% SPX window");
+  assert.ok(
+    Math.abs((w.sMin + w.sMax) / 2 - 6425) < 1e-9,
+    "spot is the midpoint of the strike scale",
+  );
+  const sheet = computeSurfaceSheet(
+    legsFromRelative(
+      [
+        { strike: 6400, quantity: 1, right: "call" },
+        { strike: 6450, quantity: -2, right: "call" },
+        { strike: 6500, quantity: 1, right: "call" },
+      ],
+      6425,
+      tau,
+      iv,
+    ),
+    { spot: 6425, ...w, nx: 21, nt: 6, listedStrikes: [6400, 6450, 6500] },
+  );
+  assert.ok(Math.abs(sheet.sMin - w.sMin) < 1e-9);
+  assert.deepEqual(sheet.listedStrikes, [6400, 6450, 6500]);
+  const flyLegs = legsFromRelative(
+    [
+      { strike: 6400, quantity: 1, right: "call" },
+      { strike: 6450, quantity: -2, right: "call" },
+      { strike: 6500, quantity: 1, right: "call" },
+    ],
+    6425,
+    tau,
+    iv,
+  );
+  const tExp = sheet.timeAxis[sheet.timeAxis.length - 1];
+  const peak = Math.abs(evaluatePnlAtSpot(flyLegs, 6450, tExp));
+  assert.ok(sheet.displayAbs + 1e-9 >= peak, "display scale follows the fly");
+  assert.ok(sheet.displayAbs > 1, "fly has a real P&L scale");
+  assert.throws(
+    () => computeSurfaceSheet(legsFromRelative([{ strike: 100, quantity: 1, right: "call" }], 100, tau, iv), {
+      spot: 100,
+      sMin: 120,
+      sMax: 80,
+    }),
+    /sMin/,
+  );
+}
+
+{
+  const short = legsFromRelative(
+    [{ strike: 100, quantity: 1, right: "call" }],
+    100,
+    2 / 365.25,
+    iv,
+  )[0];
+  const long = legsFromRelative(
+    [{ strike: 100, quantity: -1, right: "call" }],
+    100,
+    10 / 365.25,
+    iv,
+  )[0];
+  const both = evaluatePnlAtSpot([short, long], 110, 10 / 365.25);
+  const onlyLong = evaluatePnlAtSpot([long], 110, 10 / 365.25);
+  assert.ok(
+    Math.abs(both - onlyLong) > 1,
+    "T0 prices every listed leg — shorter dated are not dropped",
+  );
+}
+
+{
+  const fly = legsFromRelative(
+    [
+      { strike: 6400, quantity: 1, right: "call" },
+      { strike: 6450, quantity: -2, right: "call" },
+      { strike: 6500, quantity: 1, right: "call" },
+    ],
+    6425,
+    tau,
+    iv,
+  );
+  const debit = -evaluatePnlAtSpot(fly, 5000, 0);
+  const edge = evaluatePnlAtSpot(fly, 5000, 0);
+  const peak = evaluatePnlAtSpot(fly, 6450, 0);
+  assert.ok(edge < 0, "long fly far below wings is residual debit, not a profit wall");
+  assert.ok(peak > edge, "body beats the far-left residual");
+  assert.ok(Math.abs(edge + debit) < 1e-6 || debit > 0);
+}
+
+{
+  const legs = legsFromRelative(
+    [{ strike: 100, quantity: 1, right: "call" }],
+    100,
+    tau,
+    iv,
+  );
+  const sheet = computeSurfaceSheet(legs, {
+    spot: 100,
+    nx: 21,
+    nt: 9,
+    quality: "per_leg_iv",
+    ivSource: "fixture",
+  });
+  const now = sliceSheetAtTau(sheet, sheet.timeAxis[0]);
+  const exp = sliceSheetAtTau(
+    sheet,
+    sheet.timeAxis[sheet.timeAxis.length - 1],
+  );
+  assert.deepEqual(now, sheet.pnlGrid[0], "tn = now is the first row");
+  assert.deepEqual(exp, sheet.pnlGrid[sheet.pnlGrid.length - 1], "tn = expiry is the last row");
+  const midTau =
+    (sheet.timeAxis[0] + sheet.timeAxis[sheet.timeAxis.length - 1]) / 2;
+  const mid = sliceSheetAtTau(sheet, midTau);
+  const i = Math.floor(sheet.spotAxis.length / 2);
+  const sampled = sampleSheet(sheet, sheet.spotAxis[i], midTau);
+  assert.ok(sampled != null);
+  assert.ok(
+    Math.abs(mid[i] - sampled!) < 1e-6,
+    "time-plane cut matches bilinear sample on the strike grid",
+  );
 }
 
 console.log("surfaceModel.test.ts ok");

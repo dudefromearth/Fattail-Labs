@@ -23,6 +23,7 @@ The tap must be **awake Mon–Fri 04:00–20:00 ET** with the write volume mount
 | Same disk | Friday 2026-08-14 lives at `/Volumes/FatTail2TB/fattail-market-data/…`. Never write to `/Volumes/Sabrant 2TB`. |
 | Read-only tap | `ssr_live_capture` does not call Massive. `sym_feed` + `chain_feed` are the writers. |
 | Named holes | Missing day / missing chain = checklist hole. Never interpolate. |
+| **OD-6 chain cadence** | From **2026-08-17 open**: OPF chain snaps with full greeks at **3–5s** (`LABS_SSR_CHAIN_EVERY_S` default 4, fail-loud outside [3, 5]). Friday **2026-08-14** is labeled **5-min** and is not rewritten. **DL-400**. |
 | Not MiniTwo | Production Labs API/web stay on MiniTwo. |
 
 ---
@@ -62,6 +63,7 @@ On StudioOne, as `ernie`:
    LABS_MARKET_BUS=1
    REDIS_URL=redis://127.0.0.1:6379/0
    LABS_MARKET_DATA_ROOT=/Volumes/FatTail2TB/fattail-market-data
+   LABS_SSR_CHAIN_EVERY_S=4
    # MASSIVE_API_KEY=…   # feeds need this; tap does not
    ```
    Fail loud if the root is missing. Do not default to `~/data`.
@@ -74,7 +76,8 @@ On StudioOne, as `ernie`:
    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/ai.fattail.labs.ssr-live-capture.plist
    launchctl enable gui/$(id -u)/ai.fattail.labs.ssr-live-capture
    ```
-   Calendar: Mon–Fri **04:00 ET**. Wrapper: `scripts/ssr-live-capture-run.sh` (starts `sym_feed`, `chain_feed`, then the tap).
+   Calendar: Mon–Fri **04:00 ET**. Wrapper: `scripts/ssr-live-capture-run.sh` (starts `sym_feed`, `chain_feed`, then the tap).  
+OD-6 first-hour proof: `ai.fattail.labs.ssr-od6-first-hour` at Monday **10:35 ET** writes `day=YYYY-MM-DD/FIRST_HOUR_OD6.json` (expect **720–1200** snaps in 09:30–10:30; 5-min would be **12**).
 8. **Smoke** (any weekday, or `--status` if already mid-session):
    ```bash
    launchctl kickstart -k gui/$(id -u)/ai.fattail.labs.ssr-live-capture

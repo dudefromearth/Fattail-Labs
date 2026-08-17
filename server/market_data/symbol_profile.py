@@ -45,6 +45,9 @@ def kind_defaults(kind: str) -> dict[str, Any]:
             "heatmap_default_template": "sym-fly",
             "ohlc_default_tf": "1d",
             "strike_step_default": 5.0,
+            # OD-SESS-3: session class, not τ / OPF29
+            "rth_open": "09:30",
+            "rth_close": "16:15",
         }
     if k == "etf":
         return {
@@ -59,6 +62,8 @@ def kind_defaults(kind: str) -> dict[str, Any]:
             "heatmap_default_template": "sym-fly",
             "ohlc_default_tf": "1d",
             "strike_step_default": 1.0,
+            "rth_open": "09:30",
+            "rth_close": "16:00",
         }
     # equity and other
     return {
@@ -73,6 +78,8 @@ def kind_defaults(kind: str) -> dict[str, Any]:
         "heatmap_default_template": "sym-fly",
         "ohlc_default_tf": "1d",
         "strike_step_default": 1.0,
+        "rth_open": "09:30",
+        "rth_close": "16:00",
     }
 
 
@@ -145,6 +152,12 @@ def resolve_symbol_profile(row: dict[str, Any] | None, *, symbol: str = "SPX") -
 
     floor = _f(overlay.get("fetch_step_floor")) or _f(base["fetch_step_floor"]) or 2.5
 
+    rth_open = str(overlay.get("rth_open") or base.get("rth_open") or "09:30").strip()
+    rth_close_default = "16:15" if kind == "index" else "16:00"
+    rth_close = str(
+        overlay.get("rth_close") or base.get("rth_close") or rth_close_default
+    ).strip()
+
     return {
         "symbol": sym,
         "kind": kind,
@@ -165,6 +178,8 @@ def resolve_symbol_profile(row: dict[str, Any] | None, *, symbol: str = "SPX") -
         "default_view_side": side,
         "heatmap_default_template": tpl,
         "ohlc_default_tf": str(overlay.get("ohlc_default_tf") or base["ohlc_default_tf"]),
+        "rth_open": rth_open,
+        "rth_close": rth_close,
         "source": "market_symbol_universe",
     }
 

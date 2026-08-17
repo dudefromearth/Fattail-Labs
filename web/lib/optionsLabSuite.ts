@@ -1,10 +1,14 @@
 /**
  * Options Lab suite — Market / analyzer parent.
- * Nav: Volume Profile · Heatmap · Analyzer (risk graph).
+ * Nav: Volume Profile · Heatmap · Analyzer · Surface.
  * Shared symbol selection across apps (Admin universe).
  */
 
-export type OptionsLabAppId = "volume-profile" | "heatmap" | "analyzer";
+export type OptionsLabAppId =
+  | "volume-profile"
+  | "heatmap"
+  | "analyzer"
+  | "surface";
 
 export type OptionsLabAppItem = {
   id: OptionsLabAppId;
@@ -37,6 +41,14 @@ export const OPTIONS_LAB_SUITE: OptionsLabAppItem[] = [
     href: "/app/options-lab/analyzer",
     blurb:
       "Exercise OPF model packs on live dual-side chain — expiration + T+0/scenario curves; ToS paste or Heatmap ⌥-click.",
+    status: "live",
+  },
+  {
+    id: "surface",
+    label: "Surface",
+    href: "/app/options-lab/surface",
+    blurb:
+      "3D P&L tent of the shown listed book — exact or locked IV, or a named hole.",
     status: "live",
   },
 ];

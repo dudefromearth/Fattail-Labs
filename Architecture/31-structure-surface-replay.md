@@ -10,6 +10,11 @@ This document is **how Labs would execute** the SSR method in this repo. Product
 
 **Coach sequencing:** single RTH day + Monte Carlo **distribution** first → several named days → learn dial ranges → **then** Development stub replacement and **forward walk** (same engine, holdout days).
 
+**Named consumer (DL-410 / DL-411):** once the Options Lab 3D Surface ships,
+this plane **is** that sheet’s time machine. Mini tape-walk graphic during a
+run is the day walking, never the MC result. Fold into the Backtest bench
+plan when Juliet seeds it. **Not GO.**
+
 ---
 
 # Execution design

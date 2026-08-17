@@ -22,4 +22,5 @@ __all__ = [
     "lock",
     "archive",
     "resolve",
+    "session",
 ]

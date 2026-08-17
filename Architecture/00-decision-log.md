@@ -4,6 +4,469 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-17 — DL-418 Keep-Warm v0.1.1 BUILD AUTHORITY (promotes DL-417)
+
+**Decision (Coach):** Analyzer Viewport Keep-Warm Spec **v0.1.1** is
+**BUILD AUTHORITY**. This entry **records the promotion of DL-417**.
+
+**OD Accept:**
+
+| ID | Accept |
+|----|--------|
+| **OD-KW-1** | Away **5s**. Revisit only after the §4 aggregate row. Never 1s. |
+| **OD-KW-2** | As-built **no-resolve** is law. `OPF_IDLE_POLL_MS` 30s = **posture only**. |
+| **OD-KW-3** | Keep-warm TTL **30 min**. |
+
+**v0.1.1 fold:** AZ-KW-5 last paint carries `generation_as_of` age / stale
+until the first Working tick (restates **AZ-DATA-5a**). Stale marker is
+**honesty, not chrome** — quiet as_of or hairline dim; Echo gates.
+Page Visibility API named: Away 5s is the **target**; hidden-tab
+throttling may lengthen it; canvas never blanks. §4 aggregate at 100 and
+500 members seated vs away per shown structure. Risk ↔ Surface
+(**AZ-VP-S2**) inherits last-paint and rate-change; **AT-KW-9**. Surface
+3D reuses `opfPollIntervalMs` — no fourth rate. Layout residual
+(vertical stack) stays its own packet at the **top of the Analyzer
+residual board**.
+
+**Spec:** `Specs/FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md`
+(content **v0.1.1**).
+
+---
+
+## 2026-08-17 — DL-417 Analyzer viewport keep-warm strategy spec
+
+**Decision:** Capture Coach’s working-page poll law as
+`Specs/FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md`
+(**AZ-KW**). Status **DRAFT** until Coach stamps BUILD AUTHORITY.
+
+Analyzer is the main working page. Last paint survives leave/return.
+Polling stays on while the plane is printing. Three rates: **Working 2.5s**
+(in seat, ≥1 shown) · **Away 5s** (hidden or unmounted, still shown) ·
+**Idle** (nothing shown — no heavy resolve). **1s away is illegal** (faster
+than Working). Soft fail does not blank curves.
+
+**As-built:** `useOpfRiskGraph` `opfPollIntervalMs` · module cache ·
+`loadPositions()` on first paint.
+
+**OD-KW-1…3** (5s vs 3s away · idle ladder ping · 30 min TTL) wait Coach
+Accept.
+
+---
+
+## 2026-08-16 — DL-416 Surface first-ship W3–W5 landed
+
+**Decision:** Options Lab Surface first-ship is **as-built**. W3-1…W3-4,
+W4, W5 **PASS**. Route `/app/options-lab/surface`. Exact/locked or IV NO.
+Camera Slow/ISO/Fit. Playhead sample + Value $0. Planes + 12 views.
+`surface_inspect_json` (migration 130). Time-machine **feed** and mini
+graphic remain later. Arch 33 updated.
+
+---
+
+## 2026-08-16 — DL-415 Surface W0 GO (OLS-W0)
+
+**Decision (Coach):** W0 is **GO** on Surface plan **v1.0.1**. Token
+[`agents/go/OLS-W0.md`](../agents/go/OLS-W0.md) signed Coach 2026-08-16.
+Delta W0-G reads that file (DL-328).
+
+W1 + W2 fire in parallel. W3-1 only after W1-G and W2-G.
+
+---
+
+## 2026-08-16 — DL-414 Surface bench plan v1.0.1 (W0 token minted)
+
+**Decision:** Surface Full Agent Bench Plan is **v1.0.1**. Board stays
+**DRAFT until W0-G**. Coach stamps [`agents/go/OLS-W0.md`](../agents/go/OLS-W0.md)
+(DL-328 — Delta reads the file, not chat).
+
+Amendments vs v1.0: W2 split (first-ship blocks W3; later tests do not);
+T-BOOK-1 named in §6; last-minute LAW now / FEED later; W3-1…4 seeded in
+order; T-GRID-1 (nx=80 · nt=48 · DPR cap 2) because Hotel pin has no
+grid numbers; later proofs SPXW 0DTE fly + SPY Batman Aug 14 5-min.
+No migration before GO. Do not reopen S1–S8. Do not seed Backtest here.
+
+**Does not** GO until OLS-W0 is signed.
+
+---
+
+## 2026-08-16 — DL-413 Surface v0.1.8 accepted; S2–S8 chrome closed
+
+**Decision (Coach):** App Spec **v0.1.8** is accepted. **S2–S8 accepted as
+recommended.** All Surface chrome decisions are **closed**.
+
+| # | Accept |
+|---|--------|
+| S2 | Keep Analyzer in-viewport Surface preview + “Open Surface” |
+| S3 | Camera-complete, structure-static |
+| S4 | Flat σ after Hotel + first gold-minute replay. **Not v0.1** |
+| S5 | Time-range + walk in v0.1 |
+| S6 | Plane HUD in v0.1 |
+| S7 | Configurable views, cap 12, profile persist (after Accept) |
+| S8 | Zoom default Slow |
+
+S1 already closed (DL-411). v0.1.8 file is frozen (no bump).
+
+Method §5.1 item 2 (“reprices from the surface”) is **not** amended in
+the Method spec. One-clause fix lands in the **Backtest bench plan when
+it seeds:** reprice the attempt from the snap’s package NBBO/mark; the
+sheet is not the fill factory.
+
+**Not GO.** Coach reads the Surface bench plan first.
+
+---
+
+## 2026-08-16 — DL-412 Surface App Spec v0.1.8 (review accept)
+
+**Decision:** Accept the Surface / Method review in full. Docs only. **Not GO.**
+
+- App Spec §1 / §4.1 / §5.2: tent is the **shown listed book** (§4.7 /
+  DL-394), not a focused-structure radio. v0.1 may draw one structure as
+  a **named slice**, not as product law.
+- Method v0.2.2 §1: Friday **2026-08-14** is first tape / harness day at
+  **5-min chain**, labeled. Never “gold day” or last-minute gold. Gold
+  minute = Mon **2026-08-17+** at 3–5s (DL-400).
+- Method §2 lead: one sheet; bind exact/locked from the snap;
+  `computeSurfaceSheet`; ticks never paint a refused smile; silver is a
+  later labeled adapter.
+- Method §5.1 restore: fill = atomic package mark/NBBO; hold/fold + P&L
+  path = this sheet. Expiration-day cites App Spec §4.6a (3 DTE Batman
+  walk too). Mini graphic label **day walking · n of N**; no P&L hero.
+- Tech spec: persist comment = Options Lab; Accept gate = **S2–S8**.
+
+**Spec:** `Specs/FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.8.md`
+(v0.1.7 path is SUPERSEDED stub). Hash on the spec.
+
+Does **not** edit DL-409…411. Does not GO build.
+
+---
+
+## 2026-08-16 — DL-411 Surface first home is Options Lab (amends DL-401)
+
+**Decision (Coach):** The 3D Surface **ships in Options Lab first** — home
+beside Analyzer, where the structure is built. Same object, same
+`surfaceModel` sheet, same Labs renderer.
+
+This **supersedes the S1 recommendation** (fifth Strategy Lab pill first).
+**DL-401 is amended by this entry, not edited.**
+
+Strategy Lab is the **second consumer** (DL-410): Method v0.2 backtest
+surface + mini tape-walk graphic. Not a life-cycle phase.
+
+**Route:** `/app/options-lab/surface`. Suite pill sibling of Volume Profile ·
+Heatmap · Analyzer. Analyzer preview tab stays (S2).
+
+**Spec:** App Spec **v0.1.7** §5.1 · §4.8 · S1 CLOSED.
+
+**Does not** GO build.
+
+---
+
+## 2026-08-16 — DL-410 Surface named consumers: backtest + mini tape-walk
+
+**Decision (Coach):** Once shipped, the 3D Surface is the basis for two
+more consumers. PB-MODE-0 is **explicit**.
+
+1. **Backtest surface** — Method v0.2 replay / time machine runs on the
+   **same sheet**. No side-door engine.
+2. **Mini animated graphic** while a backtest runs — tent walks the tape
+   snap by snap. Same `surfaceModel` sheet, same Labs renderer, **reduced
+   grid/DPR**. Run counter **n of N** beside it. Animation is the tape
+   walk (**one real day**, same across MC runs). It is **never the
+   result**. The result is the **distribution** and lands after. Label
+   accordingly.
+
+**Juliet:** fold into the Backtest bench plan **when it seeds**.
+
+**Specs:** App Spec v0.1.7 §4.8 · Method v0.2.2 §2 · Arch 31 · Arch 33.
+
+**Does not** GO build.
+
+---
+
+## 2026-08-16 — DL-409 Surface is mark-honest; time machine is snap rebind
+
+**Decision (Coach):** Strategy Lab 3D Surface uses **per-leg mark IV only**.
+No fallbacks. Fail loud.
+
+- Bind: `iv_source ∈ {exact, locked}` on every listed leg, or named hole.
+  OPF §5.6 steps 2–6 do **not** run on Surface. `sticky_cli` remains forbidden
+  (DL-402). Keep vendor near-zero ITM IV when exact/locked.
+- **IV NO** is a Law B state (listed, no exact/locked IV). Distinct from
+  NOT TRADED. Folded into OT-EF v1.1.
+- **Time machine** = real P&L at \(t\): rebind \(S(t),\tau(t),\sigma_i(t)\)
+  from the snap at \(t\). Last-minute 0DTE is first-class.
+  A frozen-smile τ walk is **What-if**, never labeled Time Machine.
+  Interpolation through a missing last-hour print is forbidden.
+- **τ authority:** OPF Spec v0.2.1 **§3.7 / OPF29** already is the
+  **1-minute** floor (AT-L0-τ1 / AT-L0-τ4). This packet does **not**
+  amend OPF. Surface cites OPF; it does not restate τ math.
+- **Last-minute truth:** final-hour 0DTE P&L is mark-path only.
+  Cite OPF29 / §3.7. Hole → IV NO, no fill. After settlement → residual,
+  never live. Friday 5-min archive cannot claim last-minute gold.
+  Frozen-smile walk is What-if, not last-minute truth.
+- Spot cell = PackagePricer. No unmarked Δσ\*. Model/silver/Flat σ later,
+  labeled, cannot write the debit.
+- Additive book (DL-394) is the tent law. v0.1 may implement one structure
+  as a named slice only.
+- Friday 2026-08-14 stays 5-min provenance. Gold minute = Mon 2026-08-17+
+  3–5s chain (DL-400).
+
+**Specs:** App Spec **v0.1.6** at
+`Specs/FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.6.md`
+(v0.1 path is SUPERSEDED stub) · §1 north star · §4.3, §4.4a, §4.6,
+**§4.6a**, §4.7, §5.3c · Tech Spec bind + T-IV-3/T-TM-*/T-LM-* ·
+Arch 33 modes · OT-EF v1.1 IV NO · OPF Spec v0.2.1 §3.7 (cited, not
+amended).
+
+**Does not** GO build. Does not apply `surface_inspect_json` until Accept.
+
+---
+
+## 2026-08-16 — DL-408 Surface architecture + technical spec landed
+
+**Decision:** Design foundation for Strategy Lab 3D Surface is now three
+docs, still **not BUILD**:
+
+- App / interaction: Spec v0.1 (`…-3D-Surface-App-Spec-v0.1.md`)
+- Architecture: `Architecture/33-strategy-lab-3d-surface.md`
+- Technical contract: `Specs/FatTail-Labs-Strategy-Lab-3D-Surface-Tech-Spec-v0.1.md`
+
+Next: Coach + Hotel/India/Echo **deliberate**. Then a full bench plan.
+No implementation from these files until GO.
+
+---
+
+## 2026-08-16 — DL-407 Surface zoom speed is member-controlled (default Slow)
+
+**Decision (Coach):** Prior Work Pane zoom was too fast. Surface zoom
+in/out speed is a **member control**. Ship default **Slow** (~½ that
+gain). Slider + Shift fine-zoom. Wheel and pinch share the same gain.
+Persist with Surface defaults. Does not reprice.
+
+**Spec:** `Specs/FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.md` §5.3b.
+
+---
+
+## 2026-08-16 — DL-406 Surface configurable views (member-saved)
+
+**Decision (Coach):** Factory named views (ISO, Now, Expiry, Spot, Time,
+Top) stay. Members also **save configurable views**: camera + projection
++ pivot + time window/playhead + strike playhead + plane hide/opacity/
+position. Persist on the **member profile**. Cap 12. Recalling a view
+does not reprice. Not market SoR.
+
+**Spec:** `Specs/FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.md` §5.3b.
+
+---
+
+## 2026-08-16 — DL-405 Surface planes: walk strike & time; opacity all three
+
+**Decision (Coach):** Strike and time are **walk planes** (transparent
+playheads, same grammar). Both can be **hidden**. **Value** plane defaults
+to **$0**; member sets its position. **Opacity is independent on all three.**
+Defaults are settable. Walking a plane does not rebind legs or invent
+strikes. Distinct from camera named views.
+
+**Spec:** `Specs/FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.md` §5.3d.
+
+---
+
+## 2026-08-16 — DL-404 Surface time axis: range fills timeline; walk playhead
+
+**Decision (Coach):** On the 3D Surface the member **selects a τ range**;
+that range **stretches to fill the entire visible timeline** (sheet
+re-sample, not a camera crop). They can **walk** the window with a
+playhead. IVs stay exact/locked truth (DL-402). Distinct from named view
+**Time** (camera) and from later tape replay (same HUD, different mode).
+
+**Spec:** `Specs/FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.md` §5.3c.
+
+---
+
+## 2026-08-16 — DL-403 Surface app is fully responsive + free camera
+
+**Decision (Coach):** Strategy Lab 3D Surface must be **fully responsive**
+(host ResizeObserver, desktop + phone, HUD must not steal the tent) and
+offer **maximum camera/viewport flexibility**: perspective + ortho, orbit,
+pan, zoom, Fit, named views, pivot choice. Camera moves do not reprice.
+No strike invent.
+
+**Spec:** `Specs/FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.md` §5.3a–b.
+
+---
+
+## 2026-08-16 — DL-402 No sticky IV — listed truth only
+
+**Decision (Coach):** No sticky IV. The P&L sheet uses **exact or locked**
+OPF-held per-leg IV only. Missing / inferred (nearest, ATM, VIX, 0.20,
+`sticky_cli`) → named hole **IV NO** or **CHECK LEGS**. Never a silent smile.
+
+**As-built:** `bindListedSurfaceLegs` · Analyzer `SurfaceViewport` · Design
+preview no longer draws a 0.20 tent.
+
+---
+
+## 2026-08-16 — DL-401 Strategy Lab 3D Surface app (design only)
+
+**Decision:** The dedicated **3D P&L Surface** is a **Strategy Lab app**
+(`/app/strategy-lab/surface`) that **complements** Options Lab Analyzer.
+Same per-leg vol engine: `web/lib/risk-graph/surfaceModel.ts` (DL-391).
+**Design port from MSC, not code** (DL-399).
+
+Analyzer builds/inspects (2D risk, builder). Surface is the primary tent
+(DL-381) of the same listed pointer. Not a life-cycle phase.
+
+**Spec:** `Specs/FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.md`
+(**DRAFT** — not BUILD until Coach GO). Open: S1–S4.
+
+---
+
+## 2026-08-16 — DL-400 OD-6 gold chain cadence is 3–5s from 2026-08-17 open
+
+**Decision (Coach):** OD-6 from the MSC 3D surface design-port assessment is
+**Accept — tighten now.** Whatever StudioOne’s chain-snapshot interval was
+before is immaterial. Starting Monday **2026-08-17 at open**, StudioOne
+**must** capture OPF chain snapshots with **full greeks** at **3–5s**.
+Not negotiable. Not deferred.
+
+Friday **2026-08-14** stays as captured, **labeled 5-min**. Do not rewrite
+those files.
+
+From Monday forward this is the **gold data plane** Strategy Lab bots are
+tested against. Confirm on StudioOne (snapshot count in the first RTH hour
+Monday: 720–1200 at 3–5s; 5-min would be ~12).
+
+**As-built:** `ssr_live_capture` `CHAIN_EVERY_S` default **4s**;
+`LABS_SSR_CHAIN_EVERY_S` fail-loud outside [3, 5]. Host StudioOne.
+`chain_feed` stays ~2s (plane). Disk cadence is the gold snap.
+
+**Assessment row:**
+[`docs/Options-Lab-MSC-3D-Surface-Design-Port-Assessment-2026-08-16.md`](../docs/Options-Lab-MSC-3D-Surface-Design-Port-Assessment-2026-08-16.md)
+§6 OD-6.
+
+---
+
+## 2026-08-16 — DL-399 MSC 3D surface design port (assessment)
+
+**Decision:** Port MSC’s **surface-authority design** into Options Lab — not MSC
+code. Same pattern as the 2026-08-06 broker-adapter assessment.
+
+**Keep:** one compute path (2D = 3D); per-leg IV as shape; Mkt vs Theo as
+labeled disagreement; cost basis ≠ model; marks pin the spot cell; VP/GEX
+beside pricing.
+
+**Drop / redesign:** silent 0.20 IV; mid-implied IV on a hole; unmarked
+parallel Δσ\*; hardcoded \(r,q\); single τ clock; proto Heston/regime
+transplant as authority.
+
+**Labs object:** extend `web/lib/risk-graph/surfaceModel.ts` (DL-391) + OPF
+IV/τ. Method v0.2 replay is a **mode** of that object (PB-MODE-0).
+
+**Assessment:**
+[`docs/Options-Lab-MSC-3D-Surface-Design-Port-Assessment-2026-08-16.md`](../docs/Options-Lab-MSC-3D-Surface-Design-Port-Assessment-2026-08-16.md)
+(OD-1…6 for Coach). **Not BUILD** until Surface Spec v1.0.
+
+MSC is named only here and in that assessment.
+
+---
+
+## 2026-08-16 — DL-398 OD-SESS-1…4 Accept as India shaped them
+
+**Decision (Coach):** Accept **OD-SESS-1…4** as India shaped them in
+`gate-reports/W3-1-india.md` (H1–H4). Fire W1-2, W1-3, W2-G, W3-2, W3-3,
+then W1-G / W2-G / W3-G. **W4 fires on the third of those gates passing.**
+
+| ID | Accept |
+|----|--------|
+| **OD-SESS-1** | Both, split by fact class (**H2**): `print_quality` + `generation_as_of` on every mark-bearing payload. Cite-by-hash only for `market` / `printing` after snapshot. No second WS. Keep `mark_mode`. |
+| **OD-SESS-2** | **H1:** `mb:session:market_status` stays the Massive L0 doc (`sym_feed`). OPF computes `opf_session`. Do not overwrite that key. OPF does not call Massive for session. |
+| **OD-SESS-3** | Product table / profile. Index 16:15 vs equity 16:00 is session class, not τ. OPF states it. |
+| **OD-SESS-4** | Keep `/session-status` as labeled shim through W4; drop as member SoR in W5 when the envelope is present. Do not delete the route in W3/W4. |
+
+Also locked for W4: **H3** (no `print_quality=live` after that contract’s OPF29 expiry instant) and **H4** (session last-print ≠ Law C Held/residual).
+
+---
+
+## 2026-08-16 — DL-397 W0 GO · W3-0 WHETHER is BUILD the market-state feed
+
+**Decision (Coach):** W0 is **GO**. Fire W1-1, W2-1, and W3-1 in parallel.
+
+**W3-0 is pre-answered: BUILD** the market-state feed — that is why this
+program exists. India’s review still lands and may shape **HOW** (envelope
+shape, writer, OD-SESS). It does **not** gate **WHETHER**.
+
+W4 proceeds the moment **W1-G, W2-G, and W3-G** pass. Do not wait for a
+second W3-0 stamp.
+
+W7 seed must cite Method **v0.2**
+(`Specs/FatTail-Labs-Strategy-Lab-Backtest-Forward-Walk-Method-v0_2.md`)
+and the Config Resolution Standard
+(`docs/FatTail-Labs-Strategy-Lab-Config-Resolution-Standard-v0_1.md`).
+
+**Plan:** `docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md`
+(content **v1.0.1**). Board: `agents/p-ot-ef-session-print/`.
+
+**Rationale:** The feed-authority program is the work. Review improves the
+envelope; it does not reopen whether OPF owns session and print quality.
+
+---
+
+## 2026-08-16 — DL-396 OT-EF v1.1 · two clocks · additive book fold · Session/Print bench plan
+
+**Decision (Coach):** Fold the 2026-08-16 rulings into **OT-EF v1.1** and execute them
+through a Juliet multi-agent plan. Doctrine only in this body of work.
+
+1. **Two clocks** (Law C). **τ / settlement** = OPF expiry instant (OPF29).
+   **EXPIRED** = next midnight Eastern Time after the expiration calendar date
+   (DL-393). The window between them is **Held / residual, never live**.
+2. **DL-394 stands.** Additive book supersedes **PB-VIEW-4** now. One-line
+   retirement in PB Spec v0.3; viewport = every shown card, independent
+   checkbox, one additive continuous book.
+3. **Three Strategy Lab amendments** (SL-GD39–41): backtest/forward-walk is a
+   **Law A consumer**; a trade is one **atomic position** (SL-GD22 restated as
+   SL-GD40); **tier is a state** (never draw silver as gold).
+4. **Six next-steps** from the Session/Print review packet stay the gate order:
+   two clocks in OT-EF → PB-VIEW-4 retirement → **Echo seeds labels (no chrome)**
+   → **Delta characterization list (no code)** → Session/Print sequential review
+   still DRAFT → Juliet executes BUILD only after those three.
+
+**Spec / plan:**
+- `Specs/FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md`
+  (v1.0 SUPERSEDED)
+- `Specs/FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md` §18
+- `Specs/FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md` remains **DRAFT**
+- Plan: `docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md`
+- Board: `agents/p-ot-ef-session-print/`
+
+**Rationale:** Feed-authority and two-clock honesty are capital-adjacent. Coach
+forbade jumping to infra without a multi-agent plan. Echo labels and Delta’s
+characterization list are hard gates before chrome and code.
+
+---
+
+## 2026-08-16 — DL-395 OPF owns session and last-print to the client
+
+**Decision (Coach):** The open/closed/pre-post problem and the live-vs-last-print
+problem live **in OPF**, not in the Analyzer client. OPF **manages the feed**.
+OPF **tells the client** when the market is open, extended (Massive still
+printing pre or post), or closed. OPF **tells the client** whether the mark is
+**live** or the **last known print**. Last print is held truth, not an outage.
+
+The client must not invent this from a cash-bell clock or a second Massive
+session poll as SoR. Analyzer `session-status` + clock fallback remains
+as-built until a Coach-GO spec and Juliet plan ship the envelope.
+
+**Spec (DRAFT, review next):**
+`Specs/FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md`.
+Proposed parent laws OPF34–36. **Not BUILD AUTHORITY.**
+
+**Rationale:** Flashing “OPF unavailable” and retry loops when RTH is closed
+are a **feed-authority** failure. Massive still prints pre/post; OPF already
+forms held mids (`last_trade` / `day_close`). The missing piece is OPF
+**stating** session + print quality on every envelope the UI consumes.
+
+---
+
 ## 2026-08-16 — DL-394 Show/Hide is a checkbox; viewport is the additive book
 
 **Decision (Coach):** Analyzer Show/Hide is a **checkbox**, not a radio.

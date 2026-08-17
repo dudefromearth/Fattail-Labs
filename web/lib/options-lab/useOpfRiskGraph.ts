@@ -5,6 +5,10 @@
  * Suite keep-warm: results + ladder generations live in a module cache so
  * Heatmap ↔ Analyzer route switches re-paint instantly instead of blanking
  * until OPF resolve finishes again.
+ *
+ * Polling never stops while the plane is printing: 2.5s in focus, 5s when
+ * the tab is hidden or Analyzer is unmounted. Last curves stay; return is
+ * a rate change, not a redraw from empty.
  */
 
 "use client";
@@ -51,9 +55,36 @@ export type OpfRiskGraphState = {
 };
 
 const WINGS = 50;
-const POLL_MS = 2500;
-/** Keep graph warm across app switches for this long without a remount refresh. */
+/**
+ * Three-tier poll (Analyzer is the working page).
+ *
+ * | State | Interval | Why |
+ * | Working, ≥1 shown | 2.5s | Curves stay live while the member is in the seat |
+ * | Away, ≥1 shown | 5s | Last paint stays current; return is not a blank wait |
+ * | No shown cards | 30s | Poll stays on (warm plane) but almost no OPF resolve |
+ * | Plane not printing | off | Last print is held; do not invent live |
+ *
+ * Cost of one *full* tick: 1 ladder HTTP per expiration + 1 OPF resolve
+ * per shown structure (161-pt curves). Canvas draw is cheap; resolve is not.
+ * Hidden tab: browser already skips paint. We only pay the HTTP/CPU of the tick.
+ */
+export const OPF_POLL_MS = 2500;
+export const OPF_AWAY_POLL_MS = 5_000;
+/** No visible positions — keep the process alive, minimize work. */
+export const OPF_IDLE_POLL_MS = 30_000;
 const CACHE_TTL_MS = 30 * 60 * 1000;
+
+export function opfPollIntervalMs(opts: {
+  pollLive: boolean;
+  mounted: boolean;
+  hidden: boolean;
+  hasVisible: boolean;
+}): number | null {
+  if (!opts.pollLive) return null;
+  if (!opts.hasVisible) return OPF_IDLE_POLL_MS;
+  if (!opts.mounted || opts.hidden) return OPF_AWAY_POLL_MS;
+  return OPF_POLL_MS;
+}
 
 type GraphCacheEntry = {
   ladders: Map<string, LadderFull>;
@@ -136,6 +167,372 @@ function readCache(key: string): GraphCacheEntry | null {
     return null;
   }
   return e;
+}
+
+type WarmJob = {
+  bookTrades: ParsedTosTrade[];
+  key: string;
+  spotOverride: number | null;
+  vix: number | null;
+  useCase: "day_trade" | "outlook" | "backtest";
+  packId: string | null;
+  timeOffsetHours: number;
+  volOffsetPts: number;
+  spotPct: number;
+  ladders: Map<string, LadderFull>;
+  lastResolveKey: string;
+};
+
+/**
+ * Survives Analyzer unmount. Slow-polls the last book so a return paints
+ * current curves instead of a blank wait.
+ */
+const keepWarm = {
+  job: null as WarmJob | null,
+  pollLive: false,
+  subscribers: 0,
+  hidden: false,
+  hasVisible: true,
+  intervalId: null as number | null,
+  idleTimer: null as number | null,
+  onTick: null as null | ((entry: GraphCacheEntry) => void),
+};
+
+function keepWarmHidden(): boolean {
+  return typeof document !== "undefined" && document.visibilityState === "hidden";
+}
+
+function syncKeepWarmInterval(): void {
+  if (typeof window === "undefined") return;
+  if (keepWarm.intervalId != null) {
+    window.clearInterval(keepWarm.intervalId);
+    keepWarm.intervalId = null;
+  }
+  keepWarm.hidden = keepWarmHidden();
+  const ms = opfPollIntervalMs({
+    pollLive: keepWarm.pollLive,
+    mounted: keepWarm.subscribers > 0,
+    hidden: keepWarm.hidden,
+    hasVisible: keepWarm.hasVisible,
+  });
+  if (ms == null || !keepWarm.job) return;
+  keepWarm.intervalId = window.setInterval(() => {
+    const job = keepWarm.job;
+    if (!job || !keepWarm.hasVisible) return;
+    void resolveAndCache(job)
+      .then((entry) => keepWarm.onTick?.(entry))
+      .catch(() => {
+        /* last cache entry stays — do not blank */
+      });
+  }, ms);
+}
+
+function stopKeepWarm(): void {
+  keepWarm.job = null;
+  keepWarm.pollLive = false;
+  keepWarm.hasVisible = false;
+  keepWarm.onTick = null;
+  if (keepWarm.idleTimer != null) {
+    window.clearTimeout(keepWarm.idleTimer);
+    keepWarm.idleTimer = null;
+  }
+  syncKeepWarmInterval();
+}
+
+function attachKeepWarm(
+  job: WarmJob,
+  pollLive: boolean,
+  onTick?: (entry: GraphCacheEntry) => void,
+): () => void {
+  keepWarm.job = job;
+  keepWarm.pollLive = pollLive;
+  keepWarm.hasVisible = true;
+  keepWarm.onTick = onTick ?? null;
+  keepWarm.subscribers += 1;
+  if (keepWarm.idleTimer != null) {
+    window.clearTimeout(keepWarm.idleTimer);
+    keepWarm.idleTimer = null;
+  }
+  keepWarm.hidden = keepWarmHidden();
+  const onVis = () => {
+    const wasHidden = keepWarm.hidden;
+    keepWarm.hidden = keepWarmHidden();
+    syncKeepWarmInterval();
+    if (wasHidden && !keepWarm.hidden && keepWarm.job) {
+      void resolveAndCache(keepWarm.job)
+        .then((entry) => keepWarm.onTick?.(entry))
+        .catch(() => undefined);
+    }
+  };
+  document.addEventListener("visibilitychange", onVis);
+  syncKeepWarmInterval();
+  return () => {
+    document.removeEventListener("visibilitychange", onVis);
+    keepWarm.subscribers = Math.max(0, keepWarm.subscribers - 1);
+    if (keepWarm.subscribers === 0) keepWarm.onTick = null;
+    syncKeepWarmInterval();
+    if (keepWarm.subscribers === 0 && keepWarm.pollLive) {
+      if (keepWarm.idleTimer != null) window.clearTimeout(keepWarm.idleTimer);
+      keepWarm.idleTimer = window.setTimeout(() => {
+        keepWarm.job = null;
+        keepWarm.pollLive = false;
+        syncKeepWarmInterval();
+      }, CACHE_TTL_MS);
+    }
+  };
+}
+
+async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
+  const {
+    bookTrades,
+    key,
+    spotOverride,
+    vix,
+    useCase,
+    packId,
+    timeOffsetHours,
+    volOffsetPts,
+    spotPct,
+    ladders,
+  } = job;
+  const primary = bookTrades[0];
+  const exps = uniqueExpirations(bookTrades);
+  for (const exp of exps) {
+    if (!ladders.has(exp)) {
+      const pooled = ladderPool.get(ladderPoolKey(primary.symbol, exp));
+      if (pooled) ladders.set(exp, pooled);
+    }
+  }
+
+  const gens: ReturnType<typeof ladderToOpfGeneration>[] = [];
+  let chainSpot: number | null = null;
+  let chainVix: number | null = vix;
+
+  for (const exp of exps) {
+    const prev = ladders.get(exp);
+    const polled = await pollChainLadder({
+      expiration: exp,
+      symbol: primary.symbol,
+      wings: WINGS,
+      since_hash: prev?.content_hash ?? null,
+    });
+    let ladder: LadderFull | null = prev ?? null;
+    if (polled.mode === "full") {
+      ladder = polled.ladder;
+      ladders.set(exp, ladder);
+    } else if (polled.mode === "diff" && prev) {
+      const byKey = new Map(
+        prev.rows.map((r) => [
+          `${(r.side || "call").toLowerCase()}:${r.strike}`,
+          r,
+        ]),
+      );
+      for (const u of polled.upserts || []) {
+        byKey.set(`${(u.side || "call").toLowerCase()}:${u.strike}`, u);
+      }
+      for (const rem of polled.removes || []) {
+        byKey.delete(String(rem));
+      }
+      ladder = {
+        ...prev,
+        content_hash: polled.content_hash,
+        as_of: polled.as_of,
+        spot: polled.spot ?? prev.spot,
+        rows: [...byKey.values()],
+      };
+      ladders.set(exp, ladder);
+    } else if (polled.mode === "unchanged" && prev) {
+      ladder = prev;
+    } else if (!ladder) {
+      const full = await pollChainLadder({
+        expiration: exp,
+        symbol: primary.symbol,
+        wings: WINGS,
+      });
+      if (full.mode === "full") {
+        ladder = full.ladder;
+        ladders.set(exp, ladder);
+      }
+    }
+    if (!ladder) {
+      throw new Error(`No chain generation for ${primary.symbol} ${exp}`);
+    }
+    ladderPool.set(ladderPoolKey(primary.symbol, exp), ladder);
+    if (chainSpot == null && ladder.spot > 0) chainSpot = ladder.spot;
+    if (ladder.vix != null) chainVix = ladder.vix;
+    gens.push(ladderToOpfGeneration(ladder, primary.symbol, WINGS));
+  }
+
+  const spotUse =
+    spotOverride != null && spotOverride > 0 ? spotOverride : chainSpot;
+  if (spotUse == null || !(spotUse > 0)) {
+    throw new Error("No spot from chain or override");
+  }
+
+  const hashes: Record<string, string> = {};
+  for (const g of gens) {
+    if (g.content_hash) hashes[g.expiration] = g.content_hash;
+  }
+  const epochKey = Object.entries(hashes)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([e, h]) => `${e}:${h}`)
+    .join("|");
+
+  const resolveKey = [
+    epochKey,
+    useCase,
+    packId,
+    bookTrades.map((t) => t.raw).join("||"),
+    String(spotUse),
+    String(spotPct),
+    String(volOffsetPts),
+    String(timeOffsetHours),
+  ].join("#");
+
+  const cached = readCache(key);
+  if (job.lastResolveKey === resolveKey && cached?.result) {
+    const entry: GraphCacheEntry = {
+      ...cached,
+      ladders: new Map(ladders),
+      spot: spotUse,
+      generationEpoch: epochKey,
+      contentHashes: hashes,
+      lastResolveKey: resolveKey,
+      error: null,
+      updatedAt: Date.now(),
+    };
+    writeCache(key, entry);
+    return entry;
+  }
+
+  const allStrikes = bookTrades.flatMap((t) => t.legs.map((l) => l.strike));
+  const curveRangePct = (() => {
+    if (!allStrikes.length || !(spotUse > 0)) return 8;
+    const span = Math.max(
+      Math.abs(Math.max(...allStrikes) - spotUse),
+      Math.abs(Math.min(...allStrikes) - spotUse),
+    );
+    return Math.max(8, Math.min(25, (span / spotUse) * 100 + 3));
+  })();
+
+  const settled = await Promise.all(
+    bookTrades.map(async (t) => {
+      try {
+        const resolved = await resolveOpfPricing({
+          use_case: useCase,
+          pack_id: packId,
+          strategy: tradeToOpfStrategy(t),
+          generations: gens,
+          spot: spotUse,
+          vix: chainVix,
+          what_if: {
+            spot_pct: spotPct,
+            vol_offset_pts: volOffsetPts,
+            time_offset_hours: timeOffsetHours,
+            curve_steps: 161,
+            curve_range_pct: curveRangePct,
+          },
+          scenario:
+            useCase === "outlook"
+              ? {
+                  vol_offset_pts: volOffsetPts,
+                  time_offset_hours: timeOffsetHours,
+                  spot_pct: spotPct,
+                }
+              : undefined,
+        });
+        return { trade: t, resolved, error: null as string | null };
+      } catch (e) {
+        return {
+          trade: t,
+          resolved: null as OpfResolveResult | null,
+          error: e instanceof Error ? e.message : String(e),
+        };
+      }
+    }),
+  );
+
+  const ok = settled.filter((s) => s.resolved);
+  if (ok.length === 0) {
+    const msg = settled[0]?.error || "OPF resolve incomplete";
+    const entry: GraphCacheEntry = {
+      ladders: new Map(ladders),
+      result: cached?.result ?? null,
+      spot: spotUse,
+      generationEpoch: epochKey,
+      contentHashes: hashes,
+      lastResolveKey: job.lastResolveKey,
+      error: msg,
+      updatedAt: Date.now(),
+    };
+    writeCache(key, entry);
+    return entry;
+  }
+
+  const expSeries = ok.map((s) =>
+    shiftPts(
+      opfCurveToPnLPoints(s.resolved!.curves?.expiration?.points),
+      basisShiftFor(s.trade, s.resolved),
+    ),
+  );
+  const theoSeries = ok.map((s) =>
+    shiftPts(
+      opfCurveToPnLPoints(s.resolved!.curves?.model_t0?.points),
+      basisShiftFor(s.trade, s.resolved),
+    ),
+  );
+  const expPts = sumAlignedPnL(expSeries);
+  const theoPts = sumAlignedPnL(theoSeries);
+  const pkg = ok.reduce((sum, s) => {
+    const d = s.resolved!.marks?.package_debit_per_share;
+    return sum + (d != null && Number.isFinite(d) ? d : 0);
+  }, 0);
+
+  const head = ok[0].resolved!;
+  const allLegMarks = ok.flatMap((s) => s.resolved!.marks?.leg_marks || []);
+  const merged: OpfResolveResult = {
+    ...head,
+    complete: true,
+    marks: {
+      ...head.marks,
+      package_debit_per_share: pkg,
+      complete: true,
+      leg_marks: allLegMarks.length ? allLegMarks : head.marks?.leg_marks,
+    },
+    curves: {
+      expiration: {
+        label: head.curves?.expiration?.label,
+        points: expPts.map((p) => ({ x: p.price, y: p.pnl })),
+      },
+      model_t0: {
+        label: head.curves?.model_t0?.label,
+        points: theoPts.map((p) => ({ x: p.price, y: p.pnl })),
+      },
+    },
+    meta: {
+      ...head.meta,
+      error: null,
+    },
+  };
+
+  const leftover = settled.filter((s) => !s.resolved);
+  const errMsg =
+    leftover.length && ok.length === 0
+      ? leftover[0]?.error ?? "OPF resolve incomplete"
+      : null;
+  job.lastResolveKey = resolveKey;
+  const entry: GraphCacheEntry = {
+    ladders: new Map(ladders),
+    result: merged,
+    spot: spotUse,
+    generationEpoch: epochKey,
+    contentHashes: hashes,
+    lastResolveKey: resolveKey,
+    error: errMsg,
+    updatedAt: Date.now(),
+  };
+  writeCache(key, entry);
+  return entry;
 }
 
 function writeCache(key: string, e: GraphCacheEntry): void {
@@ -234,7 +631,6 @@ export function useOpfRiskGraph(opts: {
   const laddersRef = useRef<Map<string, LadderFull>>(
     new Map(warm?.ladders ?? []),
   );
-  const tickRef = useRef(0);
   const lastResolveKey = useRef(warm?.lastResolveKey ?? "");
   const resultRef = useRef<OpfResolveResult | null>(warm?.result ?? null);
   resultRef.current = result;
@@ -248,286 +644,39 @@ export function useOpfRiskGraph(opts: {
     resultRef.current = next?.result ?? null;
   }
 
-  const run = useCallback(async (opts?: { force?: boolean; soft?: boolean }) => {
-    if (!bookTrades.length || !enabled) {
-      setResult(null);
-      setError(null);
-      setFromCache(false);
-      return;
+  const applyEntry = useCallback((entry: GraphCacheEntry) => {
+    setSpot(entry.spot);
+    if (entry.result) {
+      setResult(entry.result);
+      resultRef.current = entry.result;
     }
-    const primary = bookTrades[0];
-    const tick = ++tickRef.current;
-    const hasPaint =
-      Boolean(resultRef.current) || Boolean(key && readCache(key)?.result);
-    const soft = opts?.soft === true || (hasPaint && opts?.force !== true);
-    if (!soft) setLoading(true);
-    try {
-      const exps = uniqueExpirations(bookTrades);
-      // Seed ladders from pool if this mount's map is cold
-      for (const exp of exps) {
-        if (!laddersRef.current.has(exp)) {
-          const pooled = ladderPool.get(ladderPoolKey(primary.symbol, exp));
-          if (pooled) laddersRef.current.set(exp, pooled);
-        }
-      }
+    setGenerationEpoch(entry.generationEpoch);
+    setContentHashes(entry.contentHashes);
+    setError(entry.error);
+    setFromCache(false);
+    setLoading(false);
+    lastResolveKey.current = entry.lastResolveKey;
+    laddersRef.current = new Map(entry.ladders);
+  }, []);
 
-      const gens: ReturnType<typeof ladderToOpfGeneration>[] = [];
-      let chainSpot: number | null = null;
-      let chainVix: number | null = vix;
-
-      for (const exp of exps) {
-        const prev = laddersRef.current.get(exp);
-        const polled = await pollChainLadder({
-          expiration: exp,
-          symbol: primary.symbol,
-          wings: WINGS,
-          since_hash: prev?.content_hash ?? null,
-        });
-        let ladder: LadderFull | null = prev ?? null;
-        if (polled.mode === "full") {
-          ladder = polled.ladder;
-          laddersRef.current.set(exp, ladder);
-        } else if (polled.mode === "diff" && prev) {
-          const byKey = new Map(
-            prev.rows.map((r) => [
-              `${(r.side || "call").toLowerCase()}:${r.strike}`,
-              r,
-            ]),
-          );
-          for (const u of polled.upserts || []) {
-            byKey.set(
-              `${(u.side || "call").toLowerCase()}:${u.strike}`,
-              u,
-            );
-          }
-          for (const rem of polled.removes || []) {
-            byKey.delete(String(rem));
-          }
-          ladder = {
-            ...prev,
-            content_hash: polled.content_hash,
-            as_of: polled.as_of,
-            spot: polled.spot ?? prev.spot,
-            rows: [...byKey.values()],
-          };
-          laddersRef.current.set(exp, ladder);
-        } else if (polled.mode === "unchanged" && prev) {
-          ladder = prev;
-        } else if (!ladder) {
-          const full = await pollChainLadder({
-            expiration: exp,
-            symbol: primary.symbol,
-            wings: WINGS,
-          });
-          if (full.mode === "full") {
-            ladder = full.ladder;
-            laddersRef.current.set(exp, ladder);
-          }
-        }
-        if (!ladder) {
-          throw new Error(`No chain generation for ${primary.symbol} ${exp}`);
-        }
-        ladderPool.set(ladderPoolKey(primary.symbol, exp), ladder);
-        if (chainSpot == null && ladder.spot > 0) chainSpot = ladder.spot;
-        if (ladder.vix != null) chainVix = ladder.vix;
-        gens.push(ladderToOpfGeneration(ladder, primary.symbol, WINGS));
-      }
-
-      const spotUse =
-        spotOverride != null && spotOverride > 0
-          ? spotOverride
-          : chainSpot;
-      if (spotUse == null || !(spotUse > 0)) {
-        throw new Error("No spot from chain or override");
-      }
-
-      const hashes: Record<string, string> = {};
-      for (const g of gens) {
-        if (g.content_hash) hashes[g.expiration] = g.content_hash;
-      }
-      const epochKey = Object.entries(hashes)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([e, h]) => `${e}:${h}`)
-        .join("|");
-      setGenerationEpoch(epochKey);
-      setContentHashes(hashes);
-
-      const resolveKey = [
-        epochKey,
-        useCase,
-        packId,
-        bookTrades.map((t) => t.raw).join("||"),
-        String(spotUse),
-        String(spotPct),
-        String(volOffsetPts),
-        String(timeOffsetHours),
-      ].join("#");
-      if (!opts?.force && lastResolveKey.current === resolveKey) {
-        if (tick !== tickRef.current) return;
-        setSpot(spotUse);
-        setLoading(false);
-        setFromCache(false);
-        // Refresh cache timestamp / ladders even when resolve skipped
-        if (key) {
-          writeCache(key, {
-            ladders: new Map(laddersRef.current),
-            result: resultRef.current,
-            spot: spotUse,
-            generationEpoch: epochKey,
-            contentHashes: hashes,
-            lastResolveKey: resolveKey,
-            error: null,
-            updatedAt: Date.now(),
-          });
-        }
-        return;
-      }
-      lastResolveKey.current = resolveKey;
-
-      const allStrikes = bookTrades.flatMap((t) => t.legs.map((l) => l.strike));
-      const curveRangePct = (() => {
-        if (!allStrikes.length || !(spotUse > 0)) return 8;
-        const span = Math.max(
-          Math.abs(Math.max(...allStrikes) - spotUse),
-          Math.abs(Math.min(...allStrikes) - spotUse),
-        );
-        return Math.max(8, Math.min(25, (span / spotUse) * 100 + 3));
-      })();
-
-      const settled = await Promise.all(
-        bookTrades.map(async (t) => {
-          try {
-            const resolved = await resolveOpfPricing({
-              use_case: useCase,
-              pack_id: packId,
-              strategy: tradeToOpfStrategy(t),
-              generations: gens,
-              spot: spotUse,
-              vix: chainVix,
-              what_if: {
-                spot_pct: spotPct,
-                vol_offset_pts: volOffsetPts,
-                time_offset_hours: timeOffsetHours,
-                curve_steps: 161,
-                curve_range_pct: curveRangePct,
-              },
-              scenario:
-                useCase === "outlook"
-                  ? {
-                      vol_offset_pts: volOffsetPts,
-                      time_offset_hours: timeOffsetHours,
-                      spot_pct: spotPct,
-                    }
-                  : undefined,
-            });
-            return { trade: t, resolved, error: null as string | null };
-          } catch (e) {
-            return {
-              trade: t,
-              resolved: null as OpfResolveResult | null,
-              error: e instanceof Error ? e.message : String(e),
-            };
-          }
-        }),
-      );
-
-      if (tick !== tickRef.current) return;
-
-      const ok = settled.filter((s) => s.resolved);
-      if (ok.length === 0) {
-        const msg = settled[0]?.error || "OPF resolve incomplete";
-        setSpot(spotUse);
-        setError(msg);
-        if (!soft) {
-          setResult(null);
-          resultRef.current = null;
-        }
-        setFromCache(false);
-        return;
-      }
-
-      const expSeries = ok.map((s) =>
-        shiftPts(
-          opfCurveToPnLPoints(s.resolved!.curves?.expiration?.points),
-          basisShiftFor(s.trade, s.resolved),
-        ),
-      );
-      const theoSeries = ok.map((s) =>
-        shiftPts(
-          opfCurveToPnLPoints(s.resolved!.curves?.model_t0?.points),
-          basisShiftFor(s.trade, s.resolved),
-        ),
-      );
-      const expPts = sumAlignedPnL(expSeries);
-      const theoPts = sumAlignedPnL(theoSeries);
-      const pkg = ok.reduce((sum, s) => {
-        const d = s.resolved!.marks?.package_debit_per_share;
-        return sum + (d != null && Number.isFinite(d) ? d : 0);
-      }, 0);
-
-      const head = ok[0].resolved!;
-      const merged: OpfResolveResult = {
-        ...head,
-        complete: true,
-        marks: {
-          ...head.marks,
-          package_debit_per_share: pkg,
-          complete: true,
-        },
-        curves: {
-          expiration: {
-            label: head.curves?.expiration?.label,
-            points: expPts.map((p) => ({ x: p.price, y: p.pnl })),
-          },
-          model_t0: {
-            label: head.curves?.model_t0?.label,
-            points: theoPts.map((p) => ({ x: p.price, y: p.pnl })),
-          },
-        },
-        meta: {
-          ...head.meta,
-          error: null,
-        },
-      };
-
-      setSpot(spotUse);
-      setResult(merged);
-      resultRef.current = merged;
-      setFromCache(false);
-      const leftover = settled.filter((s) => !s.resolved);
-      const errMsg =
-        leftover.length && ok.length === 0
-          ? leftover[0]?.error ?? "OPF resolve incomplete"
-          : null;
-      setError(errMsg);
-      if (key) {
-        writeCache(key, {
-          ladders: new Map(laddersRef.current),
-          result: merged,
-          spot: spotUse,
-          generationEpoch: epochKey,
-          contentHashes: hashes,
-          lastResolveKey: resolveKey,
-          error: errMsg,
-          updatedAt: Date.now(),
-        });
-      }
-    } catch (e) {
-      if (tick !== tickRef.current) return;
-      // Keep last good curves on soft refresh failure
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
-      if (!soft) {
-        setResult(null);
-        resultRef.current = null;
-      }
-      setFromCache(false);
-    } finally {
-      if (tick === tickRef.current) setLoading(false);
-    }
+  const makeJob = useCallback((): WarmJob | null => {
+    if (!bookTrades.length || !key) return null;
+    return {
+      bookTrades,
+      key,
+      spotOverride,
+      vix,
+      useCase,
+      packId,
+      timeOffsetHours,
+      volOffsetPts,
+      spotPct,
+      ladders: laddersRef.current,
+      lastResolveKey: lastResolveKey.current,
+    };
   }, [
     bookTrades,
-    enabled,
+    key,
     spotOverride,
     vix,
     useCase,
@@ -535,19 +684,48 @@ export function useOpfRiskGraph(opts: {
     timeOffsetHours,
     volOffsetPts,
     spotPct,
-    key,
   ]);
+
+  const run = useCallback(async (opts?: { force?: boolean; soft?: boolean }) => {
+    if (!bookTrades.length || !enabled) {
+      return;
+    }
+    const hasPaint =
+      Boolean(resultRef.current) || Boolean(key && readCache(key)?.result);
+    const soft = opts?.soft === true || (hasPaint && opts?.force !== true);
+    if (!soft) setLoading(true);
+    if (opts?.force) lastResolveKey.current = "";
+    const job = makeJob();
+    if (!job) return;
+    try {
+      const entry = await resolveAndCache(job);
+      applyEntry(entry);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+      if (!soft) {
+        setResult(null);
+        resultRef.current = null;
+      }
+      setFromCache(false);
+      setLoading(false);
+    }
+  }, [bookTrades, enabled, key, makeJob, applyEntry]);
 
   // When cache key changes, rehydrate React state from module cache
   useEffect(() => {
     if (!key) {
-      setResult(null);
-      setError(null);
-      setSpot(null);
-      setGenerationEpoch("");
-      setContentHashes({});
-      setFromCache(false);
-      setLoading(false);
+      // Confirmed empty book (no shown trades). Leave last paint only if
+      // nothing was ever resolved this mount; otherwise clear.
+      if (!resultRef.current) {
+        setResult(null);
+        setError(null);
+        setSpot(null);
+        setGenerationEpoch("");
+        setContentHashes({});
+        setFromCache(false);
+        setLoading(false);
+      }
       return;
     }
     const c = readCache(key);
@@ -569,17 +747,27 @@ export function useOpfRiskGraph(opts: {
   }, [key]);
 
   useEffect(() => {
-    if (!bookTrades.length || !enabled) return;
-    // Soft refresh when we already have paint; hard only when cold
-    const hasPaint = Boolean(readCache(key)?.result || result);
-    void run({ soft: hasPaint });
-    if (!pollLive) {
+    if (!bookTrades.length || !enabled) {
+      // Nothing shown — stop the heavy resolve. Session posture still ticks
+      // (~10s). Last cache stays so Show-on again paints immediately.
+      stopKeepWarm();
       return;
     }
-    const id = window.setInterval(() => void run({ soft: true }), POLL_MS);
-    return () => window.clearInterval(id);
+    const job = makeJob();
+    if (!job) return;
+    const hasPaint = Boolean(readCache(key)?.result || resultRef.current);
+    if (!hasPaint) setLoading(true);
+    void resolveAndCache(job)
+      .then(applyEntry)
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : String(e));
+        setLoading(false);
+      });
+    if (!pollLive) return;
+    // Always polling: 2.5s while focused, 5s while away. Last paint is never cleared.
+    return attachKeepWarm(job, true, applyEntry);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run, bookTrades, enabled, key, pollLive]);
+  }, [run, bookTrades, enabled, key, pollLive, makeJob, applyEntry]);
 
   // Basis is applied per structure before the book sum — do not shift again.
   const expirationPoints = useMemo(

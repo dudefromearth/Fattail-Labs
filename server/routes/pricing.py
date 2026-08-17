@@ -213,6 +213,7 @@ def pricing_package_quote(request: Request, body: PackageQuoteIn) -> dict[str, A
         "error": quote.get("error"),
         "skew_fail": bool(quote.get("skew_fail")),
         "pnl_unit": quote.get("pnl_unit"),
+        "opf_session": quote.get("opf_session"),
     }
 
 

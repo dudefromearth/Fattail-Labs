@@ -128,13 +128,18 @@ export default function OpfRiskAnalyzer() {
   const [simVolatilityOffset, setSimVolatilityOffset] = useState(0);
   const [simSpotPct, setSimSpotPct] = useState(0);
 
-  const [positions, setPositions] = useState<AnalyzerPosition[]>([]);
-  /** Skip persist until session book is loaded — avoids saving [] over real book. */
-  const [bookHydrated, setBookHydrated] = useState(false);
+  // Sync hydrate so the first paint already has the book. An empty first
+  // frame used to blank the viewport on every remount (suite nav / tab return).
+  const [positions, setPositions] = useState<AnalyzerPosition[]>(
+    () => loadPositions(),
+  );
+  const bookHydrated = true;
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [alerts, setAlerts] = useState<AnalyzerThresholdAlert[]>([]);
+  const [alerts, setAlerts] = useState<AnalyzerThresholdAlert[]>(
+    () => loadAlerts(),
+  );
   const [posture, setPosture] = useState<SessionPosture>("Held");
   const [viewportMode, setViewportMode] =
     useState<AnalyzerViewportMode>("risk");
@@ -217,11 +222,6 @@ export default function OpfRiskAnalyzer() {
     [],
   );
 
-  useEffect(() => {
-    setPositions(loadPositions());
-    setAlerts(loadAlerts());
-    setBookHydrated(true);
-  }, []);
   useEffect(() => {
     // Never persist the pre-hydrate empty default — that wiped the book and
     // fought the user after delete+reload races with handoff re-ingest.
@@ -1159,6 +1159,7 @@ export default function OpfRiskAnalyzer() {
                     : trade
                 }
                 spot={risk.spot}
+                legMarks={risk.result?.marks?.leg_marks ?? null}
               />
             ) : (
               <div

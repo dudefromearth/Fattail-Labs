@@ -87,6 +87,7 @@ Member chrome is suppressed under `/admin` via `AppChrome` + `admin/layout.tsx`
 |---|---|
 | Catalog / course | `CatalogGrid`, `CourseTabs`, `TrailerHero`, `EnrollCard` |
 | Apps hub | `AppsGrid` — member cards; admin-only ←→ reading-order steppers (`POST /api/admin/apps/reorder`, DL-319–320) |
+| Strategy Lab Surface | Intended: `/app/strategy-lab/surface` — 3D P&L tent; engine `surfaceModel.ts` (Arch **33**, not shipped) |
 | Player | `LessonPlayer`, `LessonBody`, `LessonCourseNav`, `QuizPlayer` |
 | Live | `LiveSessions`, `live/*` admin managers |
 | Member | `MyLearning`, `ContinueLearning`, `Pathway`, `MembershipPlans`, `member-home/*` |

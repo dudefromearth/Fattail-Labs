@@ -2,7 +2,8 @@
 
 /**
  * Analyzer position book — ToS-style dense table + Trade Log blotter colors.
- * Debit (long/pay) → open green · Credit (short/receive) → close red · Selected blue.
+ * Debit (long/pay) → open green · Credit (short/receive) → close red.
+ * No selected/blue state — click does not recolor the card.
  * Book = definition SoR.
  */
 
@@ -114,10 +115,8 @@ export type AnalyzerPositionsListProps = {
 
 export default function AnalyzerPositionsList({
   positions,
-  focusedId,
   sessionHeld = false,
   sessionSymbol,
-  onFocus,
   onToggleVisibility,
   onEdit,
   onDelete,
@@ -183,13 +182,6 @@ export default function AnalyzerPositionsList({
             />
             Credit
           </span>
-          <span className="inline-flex items-center gap-1">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-sm"
-              style={{ background: BLOTTER_HEX.selectBg }}
-            />
-            Selected
-          </span>
           <button
             type="button"
             onClick={onCreate}
@@ -236,7 +228,6 @@ export default function AnalyzerPositionsList({
             {/* One tbody per position — Trade Log block: solid fill, no inter-leg borders */}
             {list.map((pos, posIdx) => {
               const hidden = !pos.visible;
-              const selected = pos.id === focusedId;
               const locked = pos.lock.mode === "locked";
               const und = (pos.position.underlying || "").toUpperCase();
               const offSymbol =
@@ -289,14 +280,10 @@ export default function AnalyzerPositionsList({
                   ? (priceSideShown === "credit" ? "−" : "") + price.toFixed(2)
                   : display.packageLabel ?? "UPDATING";
 
-              // Exact Trade Log blotter fills (hex — always paint)
-              // Ghost keeps debit/credit tint; selected → blue
-              const bg = blotterCardBackground(
-                kind,
-                selected && !isGhost,
-              );
-              const onFill =
-                (!isGhost && selected) || kind === "open" || kind === "close";
+              // Exact Trade Log blotter fills (hex — always paint).
+              // No selected/blue: click does not change card color.
+              const bg = blotterCardBackground(kind, false);
+              const onFill = kind === "open" || kind === "close";
               const textMain = isGhost
                 ? "text-white/90"
                 : onFill
@@ -322,7 +309,6 @@ export default function AnalyzerPositionsList({
                   pos={pos}
                   orderedLegs={orderedLegs}
                   hidden={hidden}
-                  selected={selected}
                   locked={locked}
                   und={und}
                   offSymbol={offSymbol}
@@ -344,7 +330,6 @@ export default function AnalyzerPositionsList({
                   textMuted={textMuted}
                   textDim={textDim}
                   hasNext={hasNext}
-                  onFocus={onFocus}
                   onToggleVisibility={onToggleVisibility}
                   onEdit={onEdit}
                   onDelete={onDelete}
@@ -369,7 +354,6 @@ function PosBlock({
   pos,
   orderedLegs,
   hidden,
-  selected,
   locked,
   und,
   offSymbol,
@@ -391,7 +375,6 @@ function PosBlock({
   textMuted,
   textDim,
   hasNext,
-  onFocus,
   onToggleVisibility,
   onEdit,
   onDelete,
@@ -406,7 +389,6 @@ function PosBlock({
   pos: AnalyzerPosition;
   orderedLegs: LegInput[];
   hidden: boolean;
-  selected: boolean;
   locked: boolean;
   und: string;
   offSymbol: boolean;
@@ -428,7 +410,6 @@ function PosBlock({
   textMuted: string;
   textDim: string;
   hasNext: boolean;
-  onFocus: (id: string) => void;
   onToggleVisibility: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -460,23 +441,21 @@ function PosBlock({
       isLast && hasNext ? BLOTTER_HEX.positionRule : "transparent",
   });
 
-  // Outer edge only — inset ring +1px thicker than prior (selected 3, ghost 2, default 2)
+  // Outer edge only — ghost vs debit/credit ring. No selected/blue ring.
   const edgeColor =
     kind === "close"
       ? BLOTTER_HEX.borderClose
       : kind === "open"
         ? BLOTTER_HEX.borderOpen
         : "rgba(255,255,255,0.22)";
-  const blockShadow = selected
-    ? "inset 0 0 0 3px rgba(255,255,255,0.42)"
-    : isGhost
-      ? "inset 0 0 0 2px rgba(156,163,175,0.75)"
-      : `inset 0 0 0 2px ${edgeColor}`;
+  const blockShadow = isGhost
+    ? "inset 0 0 0 2px rgba(156,163,175,0.75)"
+    : `inset 0 0 0 2px ${edgeColor}`;
 
   return (
     <tbody
       data-testid={`analyzer-pos-card-${pos.id}`}
-      data-focused={selected ? "1" : "0"}
+      data-focused="0"
       data-visible={hidden ? "0" : "1"}
       data-blotter-kind={kind}
       data-price-side={side ?? ""}
@@ -507,9 +486,8 @@ function PosBlock({
         return (
           <tr
             key={`${pos.id}-leg-${i}`}
-            className="cursor-pointer tabular-nums"
+            className="tabular-nums"
             style={{ backgroundColor: bg }}
-            onClick={() => onFocus(pos.id)}
             data-testid={
               isTop
                 ? undefined
@@ -832,7 +810,7 @@ function PosBlock({
                 " text-[12px] font-semibold uppercase " +
                 (isTop
                   ? chip === "live"
-                    ? selected || kind !== "neutral"
+                    ? kind !== "neutral"
                       ? "text-emerald-200"
                       : "text-emerald-600"
                     : chip === "held"

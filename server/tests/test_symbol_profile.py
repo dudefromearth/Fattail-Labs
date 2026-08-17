@@ -40,3 +40,14 @@ def test_tsla_step_multiples():
 def test_kind_defaults_etf():
     d = kind_defaults("etf")
     assert d["fly_width_mode"] == "step_multiples"
+
+
+def test_kind_defaults_session_bounds_od_sess_3():
+    """Index 16:15 vs equity 16:00 — session class, not τ."""
+    assert kind_defaults("index")["rth_close"] == "16:15"
+    assert kind_defaults("equity")["rth_close"] == "16:00"
+    assert kind_defaults("etf")["rth_close"] == "16:00"
+    idx = resolve_symbol_profile({"symbol": "SPX", "kind": "index"})
+    eq = resolve_symbol_profile({"symbol": "AAPL", "kind": "equity"})
+    assert idx["rth_close"] == "16:15"
+    assert eq["rth_close"] == "16:00"

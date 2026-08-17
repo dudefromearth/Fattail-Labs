@@ -39,8 +39,34 @@ PROVENANCE = "live_capture"
 
 INTEREST_EVERY_S = 15.0
 MARK_EVERY_S = 5.0
-CHAIN_EVERY_S = 300.0
+# OD-6 (Coach 2026-08-16): from 2026-08-17 open, chain snaps are 3–5s
+# with full greeks. Friday 2026-08-14 stays 5-min as captured.
+CHAIN_EVERY_S_MIN = 3.0
+CHAIN_EVERY_S_MAX = 5.0
+CHAIN_EVERY_S_DEFAULT = 4.0
 STATUS_EVERY_S = 60.0
+FRIDAY_5MIN_DAY = date(2026, 8, 14)
+
+
+def chain_every_s() -> float:
+    """Disk cadence for OPF chain snaps. Must be in [3, 5]. Fail loud outside."""
+    raw = (os.environ.get("LABS_SSR_CHAIN_EVERY_S") or "").strip()
+    if not raw:
+        return CHAIN_EVERY_S_DEFAULT
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise RuntimeError(
+            "LABS_SSR_CHAIN_EVERY_S must be a float in [3, 5] (OD-6)"
+        ) from exc
+    if value < CHAIN_EVERY_S_MIN or value > CHAIN_EVERY_S_MAX:
+        raise RuntimeError(
+            f"LABS_SSR_CHAIN_EVERY_S={value} outside [3, 5] — OD-6 gold chain cadence"
+        )
+    return value
+
+
+CHAIN_EVERY_S = chain_every_s()
 
 PRE_END = (9, 30)
 RTH_END = (16, 0)
@@ -185,6 +211,23 @@ class LiveTap:
                     }
                 ),
             )
+        cadence = self.root / "CADENCE.json"
+        if not cadence.exists():
+            write_once(
+                cadence,
+                dump_json(
+                    {
+                        "day": self.day.isoformat(),
+                        "chain_cadence": "3-5s",
+                        "chain_every_s": CHAIN_EVERY_S,
+                        "ruling": "OD-6",
+                        "notes": (
+                            "OPF chain snaps with full greeks at 3–5s. "
+                            "Friday 2026-08-14 remains 5-min as captured."
+                        ),
+                    }
+                ),
+            )
 
     def touch_interest(self) -> None:
         topic = self.topic(self.day)
@@ -257,20 +300,30 @@ class LiveTap:
             ) or None
             rows = payload.get("rows") or []
             ivs = 0
+            greeks = 0
             if isinstance(rows, list):
                 for r in rows:
                     if not isinstance(r, dict):
                         continue
                     if r.get("iv") is not None:
                         ivs += 1
+                    if all(r.get(k) is not None for k in ("delta", "gamma", "theta", "vega")):
+                        greeks += 1
                     for side in ("call", "put"):
                         sd = r.get(side)
                         if isinstance(sd, dict) and sd.get("iv") is not None:
                             ivs += 1
+                        if isinstance(sd, dict) and all(
+                            sd.get(k) is not None for k in ("delta", "gamma", "theta", "vega")
+                        ):
+                            greeks += 1
             doc["row_count"] = payload.get("row_count") or (
                 len(rows) if isinstance(rows, list) else None
             )
             doc["iv_count"] = ivs
+            doc["greek_count"] = greeks
+        doc["chain_cadence_s"] = CHAIN_EVERY_S
+        doc["chain_cadence"] = "3-5s"
         name = f"snap-{utc.strftime('%H%M%S')}Z.json"
         dest = write_once(self.root / "chain" / name, dump_json(doc))
         self.snaps += 1

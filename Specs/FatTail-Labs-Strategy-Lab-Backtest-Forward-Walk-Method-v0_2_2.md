@@ -16,19 +16,22 @@ optimized for **Tradier**). Design here binds those downstream builds' interface
 
 | Tier | Source | Role |
 |---|---|---|
-| **GOLD** | Real OPF chain snapshots at **3–5 second** intervals via the OPF interface — actual quotes, actual greeks, package quotes both sides. Aug 14 full day already captured; a full week to follow. Standing archive accumulates every market day. | The gold standard. Backtests that count. |
+| **GOLD** | Real OPF chain snapshots at **3–5 second** intervals via the OPF interface — actual quotes, actual greeks, package quotes both sides. Standing archive accumulates every market day from **Mon 2026-08-17** open. | The gold-minute standard. Backtests that count. |
+| **Friday 2026-08-14** | First tape and first harness day. **5-minute chain**, labeled. Do not rewrite. | Honest at 5-min snaps. **Never** “gold day.” **Never** last-minute gold. |
 | **SILVER** | Reconstructed from Massive **minute bars** + VIX / VIX1D — a cruder synthesized surface built from as much historical download info as possible. | Placeholder for long-running multi-month backtests **until enough gold accumulates.** Explicitly not the standard. |
 
 Rules: every result carries its **tier tag**; gold and silver never render as the same
 kind of evidence. Silver gets no validation ceremony (Coach) — it exists to get us
-running. Substrate for building the test = the Aug 14 gold day.
+running. First tape / first harness day = **Friday 2026-08-14** at **5-min chain**,
+labeled. **Gold minute** = Monday **2026-08-17+** at **3–5s** (DL-400). Do not call
+Friday gold.
 
 **Coach (2026-08-15) — gold archive sequence:**
 1. **This coming week** — collect an **entire week** of live chain / marks (standing tap, every market day).
 2. **Then continue that way continuously** — the archive accumulates; it does not stop after the first week.
 3. **Then** turn that archive into a **proper lab for testing** (this method’s backtester / forward-walk). The lab is after the week is on disk, not instead of collecting.
 
-As-built tap: `/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/day=YYYY-MM-DD/` · writer `ssr_live_capture` · **host StudioOne** · launchd `ai.fattail.labs.ssr-live-capture` Mon–Fri 04:00 ET. Friday 2026-08-14 is day one. Friday’s chain files are **5-minute** snaps (marks **5s**); GOLD’s 3–5s **chain** cadence is the target as the standing archive tightens — not a rewrite of Friday.
+As-built tap: `/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/day=YYYY-MM-DD/` · writer `ssr_live_capture` · **host StudioOne** · launchd `ai.fattail.labs.ssr-live-capture` Mon–Fri 04:00 ET. Friday 2026-08-14 is the **first tape and harness day** and stays **5-minute** chain (labeled, not rewritten, not gold). **OD-6 (Coach 2026-08-16 · DL-400):** from Monday **2026-08-17** open, StudioOne **must** capture OPF chain snaps with full greeks at **3–5s**. That cadence is the **gold-minute** plane. Prior StudioOne interval is immaterial.
 
 ## 1a. First strategy to test — Batman (next expiration)
 
@@ -159,8 +162,9 @@ sit. Overnight from 15:45 entry until expiration 9:30 is not in this lock.
 We **replay the day**. The **configuration** makes the decision to **hold or
 fold at each instance** of the day.
 
-An **instance** is one gold snapshot (chain + marks + clock). Same tape,
-many MC fill worlds (§3–§4). The **strategy config** is not a static
+An **instance** is one archive snapshot (chain + marks + clock). Same tape,
+many MC fill worlds (§3–§4). Friday 2026-08-14 instances are **5-min**,
+labeled — not gold-minute. The **strategy config** is not a static
 charter only — it is the **hold/fold policy** evaluated at every instance
 after entry.
 
@@ -185,7 +189,12 @@ than we want” is giving back past the trail / tent walls / $19–$25 floor
 once PM is on. The %’s remain a rule of thumb; the **sheet** is how you
 see the pullback risk as the curve steepens (DL-375).
 
-At instance *t* (expiration-day clock, per **attached** side):
+At instance *t* (expiration-day clock, per **attached** side). App Spec
+**§4.6a last-minute truth applies** on that expiration day — including
+this Batman once the 3 DTE walk has become 0DTE. Cite OPF §3.7 / OPF29.
+After settlement the sheet is residual, never live. Card EXPIRED does
+not stop the last-minute mark path. Friday 5-min snaps stay labeled
+5-min; they do not wear last-minute gold.
 
 1. If that side is not on — **hold** (flat / no PM).
 2. If PM is not yet on — **hold** unless this instance’s unrealized gain
@@ -199,19 +208,26 @@ At instance *t* (expiration-day clock, per **attached** side):
 The **%’s remain a rule of thumb** (DL-375). Trade Feed is nuance for a
 human (or a later instance that has those metrics). The **first replay**
 must be able to hold/fold from **clock + debit + mark + peak + listed
-wings** on the gold snap. Do not block the first replay on Heatmap/GEX
+wings** on that snap (Friday = 5-min labeled; gold-minute from Mon 08-17+). Do not block the first replay on Heatmap/GEX
 if that instance does not carry them.
 
 Interface: [`docs/Batman-Strategy-Config-Interface.md`](../docs/Batman-Strategy-Config-Interface.md).
 
 ---
 
-## 2. The engine — 3D surface, updated by real ticks
+## 2. The engine — one sheet (App Spec object)
 
-A **3D model determines the entire options surface for the trading day** (strike ×
-time × price/IV), then is **updated with actual data**: every 3–5s with real collected
-greeks on gold; with the synthesized data on silver. Positions mark against the surface.
-Fast and accurate — the model gives continuity and speed, the ticks keep it honest.
+**One sheet.** Bind `iv_source ∈ {exact, locked}` on every listed leg from the
+**snap at \(t\)** (time machine) or the live generation (live now). Then
+`computeSurfaceSheet`. Ticks **never** paint a smile the bind refused.
+Hole → **IV NO**, no tent, no neighbor / ATM / VIX / 0.20 fill.
+
+Silver is a later **labeled adapter** — not the gold path, not a silent
+smile fill, not this first harness.
+
+The object is the Options Lab Surface App Spec (`surfaceModel.ts` ·
+`bindListedSurfaceLegs` · last-minute truth §4.6a). Same sheet in live,
+what-if, and time machine. PB-MODE-0: no side-door engine.
 
 **The surface modeler is the existing per-leg vol options surface modeler from the
 Options Lab Analyzer** (Coach). Not a new engine: the same OPF-backed modeler that
@@ -220,6 +236,20 @@ backtest / forward-walk mode against the captured tape — the historical as-of 
 that was deliberately deferred to Strategy Lab (2026-08-11) lands here, built against
 its real consumer. Per PB-MODE-0: backtest and forward-walk are modes of the same
 surface, mode selects the pack family, no side-door engine.
+
+**Coach 2026-08-16 (DL-410 / DL-411) — named consumers, PB-MODE-0 explicit:**
+The Options Lab 3D Surface (once shipped) is the sheet. Method v0.2 replay /
+time machine **runs on that same sheet**. No side-door engine.
+
+While a backtest runs, a **mini animated graphic** may show the tent walking
+the tape snap by snap — same `surfaceModel` sheet, same Labs renderer, reduced
+grid/DPR. Label: **day walking · n of N**. No P&L hero number. The animation
+is the tape walk (**one real day**, same across MC runs). It is **never the
+result**. The result is the **distribution** and lands after.
+
+Surface first home is Options Lab (`/app/options-lab/surface`). Strategy Lab
+is the second consumer. **Juliet:** fold this block into the Backtest bench
+plan **when that plan seeds**. **Not GO.**
 
 ## 3. Monte Carlo — distributions, never a single run
 
@@ -252,6 +282,13 @@ calibrate market fill friction — that would smear human noise into the market 
 Coach ruled this an unfair comparison.)
 
 ## 5. Fill mechanics — laws
+
+### 5.1 Fill vs sheet (restore)
+
+- **Fill** = atomic **package mark / NBBO** (this section). One complex
+  or no fill. Never a per-leg fill theater.
+- **Hold/fold and the P&L path** = **this sheet** (App Spec object · §2).
+  Rebind exact/locked from the snap; ticks never paint a refused smile.
 
 1. **Butterflies are atomic units.** One complex order: one fill or no fill. **NEVER**
    filled one leg at a time — no partial-leg simulation exists. Friction is
@@ -300,6 +337,8 @@ run #412 blow up" is answerable.
 - MC run counts per tier; convergence criteria.
 - Silver reconstruction recipe (as good as possible, no ceremony).
 - Iterations after first results — expected.
+- Mini tape-walk graphic chrome (Echo) — label **day walking · n of N**; no P&L hero number.
+  Juliet copies App Spec §4.8 + this §2 fold when the Backtest bench plan seeds.
 
 ---
 
