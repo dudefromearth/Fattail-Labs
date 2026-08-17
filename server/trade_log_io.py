@@ -39,6 +39,12 @@ ADAPTERS = [
         "extensions": [".csv"],
         "direction": "import_export",
     },
+    {
+        "id": "tradier",
+        "label": "Tradier Account History CSV",
+        "extensions": [".csv"],
+        "direction": "import_export",
+    },
 ]
 
 # Account venue → preferred "native" export adapter (import origin / platform format)
@@ -46,6 +52,7 @@ VENUE_NATIVE_EXPORT = {
     "thinkorswim": "thinkorswim",
     "schwab": "thinkorswim",
     "thinkorswim_paper": "thinkorswim",
+    "tradier": "tradier",
     "fattail": "native",
     "unset": "native",
 }
@@ -64,6 +71,8 @@ def resolve_export_format(fmt: str, account_broker: str | None = None) -> str:
         return "canonical"
     if f in ("thinkorswim", "tos", "schwab"):
         return "thinkorswim"
+    if f in ("tradier",):
+        return "tradier"
     if f in ("csv", "csv_generic", "flat"):
         return "csv_generic"
     if f == "native":
@@ -473,8 +482,23 @@ def detect(sample: str) -> list[dict]:
                 or low_prefix.startswith("account trade history")
             ):
                 scores.append({"id": "thinkorswim", "confidence": 0.93})
+        # Tradier account-history CSV: date + symbol + quantity + commission/amount.
+        if not any(x["id"] == "thinkorswim" for x in scores):
+            for line in lines[:10]:
+                header = _norm_header(line)
+                if (
+                    "date" in header
+                    and "symbol" in header
+                    and "quantity" in header
+                    and ("commission" in header or "amount" in header)
+                ):
+                    scores.append({"id": "tradier", "confidence": 0.9})
+                    break
+        is_tradier = any(x["id"] == "tradier" for x in scores)
         for line in lines[:30]:
             header = _norm_header(line)
+            if is_tradier:
+                break
             if "strategy" in header and "strike" in header:
                 scores.append({"id": "csv_generic", "confidence": 0.75})
             elif "side" in header and ("qty" in header or "quantity" in header):
@@ -842,6 +866,8 @@ def parse(adapter: str, text: str) -> dict:
         return parse_native(text)
     if adapter == "thinkorswim":
         return parse_thinkorswim(text)
+    if adapter == "tradier":
+        return parse_tradier(text)
     if adapter in ("csv_generic", "csv"):
         return parse_csv_generic(text)
     # auto
@@ -1130,7 +1156,16 @@ def export_thinkorswim(trades: list[dict], *, account_label: str = "") -> str:
             side = (leg.get("side") or "BUY").upper()
             qty = _fmt_tos_qty(side, int(leg.get("quantity") or 1))
             pe = _fmt_tos_pos_effect(leg.get("pos_effect"))
-            symbol = leg.get("symbol") or leg.get("underlier") or ""
+            # Real ToS puts the UNDERLIER in the Symbol column for options (Exp / Strike
+            # / Type carry the rest); only equity/other uses the raw symbol.
+            _is_opt = bool(leg.get("right")) or (leg.get("asset_class") or "").lower() in (
+                "equity_option", "future_option"
+            )
+            symbol = (
+                (leg.get("underlier") or leg.get("symbol"))
+                if _is_opt
+                else (leg.get("symbol") or leg.get("underlier"))
+            ) or ""
             exp = _fmt_tos_expiry(leg.get("expiry"))
             strike = leg.get("strike")
             strike_s = (
@@ -1172,3 +1207,213 @@ def export_thinkorswim(trades: list[dict], *, account_label: str = "") -> str:
                 ]
             )
     return buf.getvalue()
+
+
+# --- Tradier -----------------------------------------------------------------
+#
+# Tradier is API-first; its account history is a flat, per-FILL feed. Fields mirror
+# the Get Account History endpoint (docs.tradier.com): date, type ('trade'|'option'),
+# symbol (OCC for options), quantity, price, amount (signed cash flow), commission,
+# description ("Bought/Sold N SYM @ price"). There is no order id and no open/close
+# effect in Tradier's data — so multi-leg spreads are represented as separate rows
+# and open/close is inferred from side. Round-trip note: our export stamps every leg
+# of a trade with the same `date`, and the importer regroups rows by identical date,
+# so FatTail→Tradier→FatTail reconstructs multi-leg trades; direction (open/close)
+# follows Tradier's own limitation (inferred from buy/sell).
+
+_OCC_RE_IO = re.compile(r"^([A-Z0-9./]{1,6})\s?(\d{2})(\d{2})(\d{2})([CP])(\d{8})$")
+
+
+def _occ_build(underlier, expiry, strike, right) -> str:
+    """underlier + YYMMDD + C/P + strike*1000 (8 digits). Falls back to underlier."""
+    root = (str(underlier or "").upper().lstrip("/"))[:6]
+    try:
+        dt = datetime.strptime(str(expiry)[:10], "%Y-%m-%d")
+        k = int(round(float(strike) * 1000))
+    except (TypeError, ValueError):
+        return str(underlier or "")
+    cp = "C" if str(right or "").upper().startswith("C") else "P"
+    return f"{root}{dt:%y%m%d}{cp}{k:08d}"
+
+
+def _occ_parse(sym) -> dict | None:
+    """Parse an OCC option symbol → {underlier, expiry, strike, right}, else None."""
+    m = _OCC_RE_IO.match(str(sym or "").strip().upper())
+    if not m:
+        return None
+    root, yy, mm, dd, cp, strike8 = m.groups()
+    return {
+        "underlier": root,
+        "expiry": f"20{yy}-{mm}-{dd}",
+        "strike": "%g" % (int(strike8) / 1000.0),
+        "right": "CALL" if cp == "C" else "PUT",
+    }
+
+
+def _fmt_tradier_date(exec_at) -> str:
+    """Tradier ISO-ish stamp, e.g. 2026-08-08T15:10:00Z (identical per trade)."""
+    if not exec_at:
+        return ""
+    raw = str(exec_at).replace("T", " ").replace("Z", "")[:19]
+    for fmt, n in (("%Y-%m-%d %H:%M:%S", 19), ("%Y-%m-%d %H:%M", 16), ("%Y-%m-%d", 10)):
+        try:
+            dt = datetime.strptime(raw[:n], fmt)
+            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            continue
+    return str(exec_at)
+
+
+def export_tradier(trades: list[dict]) -> str:
+    """Serialize trades as a Tradier Account-History CSV (one row per fill)."""
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(
+        ["date", "type", "symbol", "quantity", "price", "amount", "commission", "description"]
+    )
+    for t in trades:
+        legs = t.get("legs") or []
+        date_s = _fmt_tradier_date(t.get("exec_at"))
+        for leg in legs:
+            side = (leg.get("side") or "BUY").upper()
+            qty = abs(int(leg.get("quantity") or 1))
+            ac = (leg.get("asset_class") or "equity_option").lower()
+            is_opt = bool(leg.get("right")) or ac in ("equity_option", "future_option")
+            if is_opt:
+                sym = _occ_build(
+                    leg.get("underlier"), leg.get("expiry"), leg.get("strike"), leg.get("right")
+                )
+                ev_type = "option"
+                mult = 100
+            else:
+                sym = leg.get("underlier") or leg.get("symbol") or ""
+                ev_type = "trade"
+                mult = 1
+            try:
+                price = float(leg.get("fill_price") or 0)
+            except (TypeError, ValueError):
+                price = 0.0
+            gross = price * qty * mult
+            amount = -gross if side == "BUY" else gross  # buy = cash out
+            try:
+                commission = float(leg.get("fees") or 0)
+            except (TypeError, ValueError):
+                commission = 0.0
+            verb = "Bought" if side == "BUY" else "Sold"
+            signed_qty = qty if side == "BUY" else -qty
+            desc = f"{verb} {qty} {sym} @ {price:g}"
+            w.writerow([
+                date_s, ev_type, sym, signed_qty, f"{price:g}",
+                f"{amount:.2f}", f"{commission:g}", desc,
+            ])
+    return buf.getvalue()
+
+
+def parse_tradier(text: str) -> dict:
+    """Parse a Tradier Account-History CSV → canonical trades.
+
+    Per-fill rows (no order id); consecutive rows with the same `date` are grouped
+    into one (multi-leg) trade. Options carry OCC symbols; equity rows are plain.
+    Open/close is inferred from side (Tradier data omits position effect).
+    """
+    warnings: list[str] = []
+    if text.startswith("﻿"):
+        text = text[1:]
+    try:
+        rows = list(csv.reader(io.StringIO(text)))
+    except csv.Error as exc:
+        return {"adapter": "tradier", "trades": [], "warnings": warnings, "errors": [str(exc)]}
+    if not rows:
+        return {"adapter": "tradier", "trades": [], "warnings": warnings, "errors": ["empty CSV"]}
+
+    start = 0
+    for i, row in enumerate(rows[:10]):
+        joined = " ".join(row).lower()
+        if "date" in joined and "symbol" in joined and "quantity" in joined:
+            start = i
+            break
+    # Read Tradier's own columns by header name (its `type` / `date` / `commission`
+    # collide with the shared ToS header map, so map directly here).
+    norm = [_norm_header(h) for h in rows[start]]
+
+    def _col(r: list[str], *names: str) -> str:
+        for n in names:
+            if n in norm:
+                idx = norm.index(n)
+                if idx < len(r):
+                    return (r[idx] or "").strip()
+        return ""
+
+    mapped: list[dict[str, str]] = []
+    for r in rows[start + 1 :]:
+        if not any((c or "").strip() for c in r):
+            continue
+        raw_sym = _col(r, "symbol")
+        desc = _col(r, "description", "memo").lower()
+        qty_raw = _col(r, "quantity", "qty")
+        # Direction: description verb wins, else quantity sign.
+        if desc.startswith("bought") or desc.startswith("buy"):
+            side = "BUY"
+        elif desc.startswith("sold") or desc.startswith("sell"):
+            side = "SELL"
+        elif qty_raw.startswith("-"):
+            side = "SELL"
+        else:
+            side = "BUY"
+        occ = _occ_parse(raw_sym)
+        row_type = _col(r, "type").lower()
+        leg = {
+            "side": side,
+            "quantity": qty_raw.lstrip("+-") or "1",
+            "pos_effect": "",  # Tradier omits open/close — inferred from side downstream
+            "fill_price": _col(r, "price", "fillprice", "avgprice") or "0",
+            "fees": _col(r, "commission", "fees", "fee"),
+            "exec_at": _col(r, "date", "time", "datetime", "tradedate", "transactiondate"),
+        }
+        if occ:
+            leg.update({
+                "underlier": occ["underlier"], "symbol": raw_sym,
+                "expiry": occ["expiry"], "strike": occ["strike"],
+                "right": occ["right"], "asset_class": "equity_option",
+            })
+        else:
+            leg.update({
+                "underlier": raw_sym, "symbol": raw_sym,
+                "asset_class": "equity" if row_type in ("trade", "", "equity") else "equity_option",
+            })
+        if not raw_sym:
+            continue
+        mapped.append(leg)
+
+    # Group consecutive rows by identical exec date into trades.
+    trades: list[dict] = []
+    current: dict | None = None
+    leg_i = 0
+    for m in mapped:
+        exec_at = _parse_dt(m.get("exec_at") or "") or _now_iso()[:19]
+        if current is None or current["exec_at"] != exec_at:
+            if current:
+                trades.append(current)
+            leg_i = 0
+            current = {
+                "exec_at": exec_at, "strategy": "CUSTOM", "asset_class": "equity_option",
+                "order_type": "LMT", "net_price": None, "net_side": None,
+                "setup_md": "", "plan_md": "", "rules_md": "", "adherence": "unknown",
+                "deviation_md": "", "lesson_md": "", "pnl_amount": None,
+                "legs": [], "external_order_id": None,
+            }
+        current["legs"].append(_leg_from_mapped(m, leg_i))
+        leg_i += 1
+    if current:
+        trades.append(current)
+
+    from trade_log_domain.strategy_infer import refine_strategy_from_legs
+
+    for t in trades:
+        t["strategy"] = refine_strategy_from_legs(t["strategy"], t["legs"])
+        leg_acs = {lg.get("asset_class") for lg in t["legs"]}
+        t["asset_class"] = "equity" if leg_acs == {"equity"} else "equity_option"
+        t["external_order_id"] = _trade_hash(t["exec_at"], t["strategy"], t["legs"])
+    if not trades:
+        warnings.append("no Tradier rows detected — expected date, type, symbol, quantity, price columns")
+    return {"adapter": "tradier", "trades": trades, "warnings": warnings, "errors": []}

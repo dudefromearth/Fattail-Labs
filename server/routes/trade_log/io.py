@@ -112,6 +112,14 @@ def export_trades(
                 "Content-Disposition": f'attachment; filename="{slug}-tos-trade-history.csv"'
             },
         )
+    if resolved == "tradier":
+        return Response(
+            content=tio.export_tradier(flat),
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{slug}-tradier-history.csv"'
+            },
+        )
     if resolved == "csv_generic":
         return PlainTextResponse(
             tio.export_csv_flat(flat),
