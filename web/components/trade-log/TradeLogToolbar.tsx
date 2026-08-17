@@ -14,6 +14,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { IconChevronDown, IconPlus } from "@/components/ui/icons";
 import ImportManager from "@/components/trade-log/ImportManager";
+import FilterMenuPortal from "@/components/trade-log/FilterMenuPortal";
 
 const EXPORT_FORMATS: { value: string; label: string; hint?: string }[] = [
   {
@@ -68,17 +69,19 @@ export default function TradeLogToolbar({
 }) {
   const [exportOpen, setExportOpen] = useState(false);
   const exportWrapRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
 
   useEffect(() => {
     if (!exportOpen) return;
     function onDoc(e: MouseEvent) {
-      if (
-        exportWrapRef.current &&
-        !exportWrapRef.current.contains(e.target as Node)
-      ) {
-        setExportOpen(false);
+      const t = e.target as Node;
+      // Menu is portaled to <body> (escapes the toolbar's overflow-hidden), so a
+      // click inside it is NOT inside exportWrapRef — check the menu ref too.
+      if (exportWrapRef.current?.contains(t) || exportMenuRef.current?.contains(t)) {
+        return;
       }
+      setExportOpen(false);
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setExportOpen(false);
@@ -177,12 +180,17 @@ export default function TradeLogToolbar({
               Export
               <IconChevronDown size={16} />
             </button>
-            {exportOpen && (
+            <FilterMenuPortal
+              open={exportOpen}
+              anchorRef={exportWrapRef}
+              menuRef={exportMenuRef}
+              width={264}
+            >
               <div
                 id={menuId}
                 role="menu"
                 aria-label="Export format"
-                className="absolute right-0 z-30 mt-1 w-[min(100vw-2rem,16.5rem)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] py-1 shadow-[var(--elevation-2)]"
+                className="w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-separator)] bg-[var(--color-surface)] py-1 shadow-[var(--elevation-2)]"
               >
                 {EXPORT_FORMATS.map((fmt) => (
                   <button
@@ -210,7 +218,7 @@ export default function TradeLogToolbar({
                   </button>
                 ))}
               </div>
-            )}
+            </FilterMenuPortal>
           </div>
           <span
             className="my-1.5 w-px shrink-0 bg-[var(--color-separator)]"
