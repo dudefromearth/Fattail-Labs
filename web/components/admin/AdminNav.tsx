@@ -34,11 +34,8 @@ const NAV: Entry[] = [
       { href: "/admin/flow", label: "Flow" },
       { href: "/admin/help", label: "Help" },
       { href: "/admin/community", label: "Community" },
+      { href: "/admin/stats", label: "Stats" },
     ],
-  },
-  {
-    label: "Stats",
-    items: [{ href: "/admin/stats", label: "Traffic" }],
   },
 ];
 
