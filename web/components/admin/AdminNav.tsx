@@ -36,6 +36,10 @@ const NAV: Entry[] = [
       { href: "/admin/community", label: "Community" },
     ],
   },
+  {
+    label: "Stats",
+    items: [{ href: "/admin/stats", label: "Traffic" }],
+  },
 ];
 
 function isActive(pathname: string, href: string): boolean {
