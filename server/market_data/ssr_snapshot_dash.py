@@ -70,15 +70,12 @@ def live_cache_root() -> Path:
 
 
 def scan_roots() -> list[Path]:
-    """Local SSD cache first (live), then gold volume (Friday archive)."""
-    out: list[Path] = []
-    cache = live_cache_root()
-    gold = capture_root()
-    if cache.is_dir():
-        out.append(cache)
-    if gold.is_dir() and gold not in out:
-        out.append(gold)
-    return out or [gold]
+    """Live board reads the local SSD cache only.
+
+    The gold volume has been stalling ``stat``/``open`` and must not sit
+    on the HTTP request path. Friday's archive stays on disk for later.
+    """
+    return [live_cache_root()]
 
 
 def list_days(root: Path | None = None) -> list[str]:
