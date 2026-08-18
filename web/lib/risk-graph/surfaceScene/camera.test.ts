@@ -46,6 +46,10 @@ function close(a: number, b: number, label: string) {
   close(back.eye.z, ISO_EYE.z, "Fit restores ISO z");
   const factory = applyFactoryView("iso");
   close(factory.eye.x, ISO_EYE.x, "ISO factory");
+  const tOrtho = applyFactoryView("timeOrtho");
+  assert.equal(tOrtho.projection, "orthographic", "Time Ortho is orthographic");
+  assert.ok(tOrtho.eye.y < 0, "Time Ortho looks from below so Expiry is right");
+  assert.ok(tOrtho.up && tOrtho.up.x === 1, "Time Ortho strike reads up");
 }
 
 {

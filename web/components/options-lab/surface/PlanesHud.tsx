@@ -25,6 +25,8 @@ export default function PlanesHud({
   onHeightPadFrac,
   valueOpacity,
   onValueOpacity,
+  candlesOn,
+  onCandlesOn,
 }: {
   strikeOn: boolean;
   timeOn: boolean;
@@ -40,6 +42,8 @@ export default function PlanesHud({
   onHeightPadFrac: (v: number) => void;
   valueOpacity: number;
   onValueOpacity: (v: number) => void;
+  candlesOn: boolean;
+  onCandlesOn: (v: boolean) => void;
 }) {
   return (
     <div
@@ -65,6 +69,15 @@ export default function PlanesHud({
           data-testid="surface-plane-time"
         />
         Time Show
+      </label>
+      <label className="flex min-h-11 items-center gap-2">
+        <input
+          type="checkbox"
+          checked={candlesOn}
+          onChange={(e) => onCandlesOn(e.target.checked)}
+          data-testid="surface-candles"
+        />
+        Candles
       </label>
       <label className="mt-1 block text-white/55">
         $0 plane {pct(valueOpacity)}%

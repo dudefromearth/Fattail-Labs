@@ -37,7 +37,13 @@ export default function ViewsHud({
             data-testid={`surface-view-${id}`}
             onClick={() => onFactory(id)}
           >
-            {id === "iso" ? "ISO" : id === "fit" ? "Fit" : id[0].toUpperCase() + id.slice(1)}
+            {id === "iso"
+              ? "ISO"
+              : id === "fit"
+                ? "Fit"
+                : id === "timeOrtho"
+                  ? "T Ortho"
+                  : id[0].toUpperCase() + id.slice(1)}
           </button>
         ))}
       </div>

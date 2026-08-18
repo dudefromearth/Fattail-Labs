@@ -148,6 +148,7 @@ export const FACTORY_VIEW_IDS: FactoryViewId[] = [
   "expiry",
   "spot",
   "time",
+  "timeOrtho",
   "top",
   "fit",
 ];

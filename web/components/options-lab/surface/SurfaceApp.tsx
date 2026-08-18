@@ -31,6 +31,12 @@ import {
   unionListedStrikes,
 } from "@/lib/risk-graph/surfaceAutofit";
 import { mountSurfaceScene, type SurfaceSceneHandle } from "@/lib/risk-graph/surfaceScene";
+import { fetchMarketOhlc } from "@/lib/marketOhlcApi";
+import {
+  candleTfForTau,
+  candlesToBoxes,
+  remainingLifeMs,
+} from "@/lib/risk-graph/surfaceCandles";
 import { SLOW_ZOOM_GAIN } from "@/lib/risk-graph/surfaceScene/camera";
 import { surfaceHostClock } from "./hostLaw";
 import CameraHud from "./CameraHud";
@@ -101,6 +107,7 @@ export default function SurfaceApp() {
   const [heightPadFrac, setHeightPadFrac] = useState(SURFACE_PAD_FRAC);
   const [zoomGain, setZoomGain] = useState(SLOW_ZOOM_GAIN);
   const [valueOpacity, setValueOpacity] = useState(0.12);
+  const [candlesOn, setCandlesOn] = useState(true);
   const [spots, setSpots] = useState([
     { on: true, brightness: 0.55 },
     { on: true, brightness: 0.55 },
@@ -363,6 +370,35 @@ export default function SurfaceApp() {
     }
   }, [sheetKey]);
 
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    if (!sheet || !symbol) {
+      sceneRef.current?.setCandles([]);
+      return;
+    }
+    const ac = new AbortController();
+    const tau = sheet.timeAxis[0] ?? sheet.maxTau;
+    const tf = candleTfForTau(tau);
+    const remDays = Math.max(1, tau * 365.25);
+    const lookbackDays =
+      tf === "5m" ? 14 : tf === "1h" ? 45 : Math.max(90, Math.ceil(remDays * 2));
+    void fetchMarketOhlc(symbol, tf, {
+      lookbackDays,
+      signal: ac.signal,
+    })
+      .then((payload) => {
+        if (ac.signal.aborted || !sceneRef.current) return;
+        const { tNow, tExp } = remainingLifeMs(sheet, Date.now());
+        sceneRef.current.setCandles(
+          candlesToBoxes(payload.bars || [], sheet, tNow, tExp, tf),
+        );
+      })
+      .catch(() => {
+        if (!ac.signal.aborted) sceneRef.current?.setCandles([]);
+      });
+    return () => ac.abort();
+  }, [symbol, sheetKey]);
+
   useLayoutEffect(() => {
     return () => {
       sceneRef.current?.dispose();
@@ -415,6 +451,7 @@ export default function SurfaceApp() {
       altered,
       valueWindow: valueWindow ?? undefined,
       zoomGain,
+      candlesOn,
       spots,
       planes: {
         strike: {
@@ -430,7 +467,7 @@ export default function SurfaceApp() {
         value: { visible: valueOpacity > 0, opacity: valueOpacity, position: 0 },
       },
     });
-  }, [sheetKey, tauStar, strikeOn, timeOn, timeWalked, strikeForPlane, altered, valueWindow, sheet, zoomGain, valueOpacity, spots]);
+  }, [sheetKey, tauStar, strikeOn, timeOn, timeWalked, strikeForPlane, altered, valueWindow, sheet, zoomGain, valueOpacity, spots, candlesOn]);
 
   return (
     <div
@@ -490,6 +527,8 @@ export default function SurfaceApp() {
           onHeightPadFrac={setHeightPadFrac}
           valueOpacity={valueOpacity}
           onValueOpacity={setValueOpacity}
+          candlesOn={candlesOn}
+          onCandlesOn={setCandlesOn}
         />
         <TimeHud
           tauLo={sheet ? tauLo : 0}
@@ -512,8 +551,10 @@ export default function SurfaceApp() {
       </div>
       <ViewsHud
         onFactory={(id: FactoryViewId) => {
-          if (id === "now" || id === "time") setProjection("orthographic");
-          else setProjection("perspective");
+          if (id === "now" || id === "time" || id === "timeOrtho") {
+            setProjection("orthographic");
+          } else setProjection("perspective");
+          if (id === "timeOrtho") setCandlesOn(true);
           if (id === "fit") sceneRef.current?.fit();
           else sceneRef.current?.applyFactoryView(id);
         }}
