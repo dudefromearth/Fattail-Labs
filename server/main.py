@@ -80,6 +80,7 @@ def create_app() -> FastAPI:
     )
     from routes.pricing import router as pricing_router
     from routes.hard import router as hard_router
+    from routes.options_lab_session import router as options_lab_session_router
     from routes.pathway import router as pathway_router
     from routes.quizzes import router as quizzes_router
     from routes.resources import router as resources_router
@@ -152,6 +153,7 @@ def create_app() -> FastAPI:
     app.include_router(volume_profile_admin_router)
     app.include_router(pricing_router)
     app.include_router(hard_router)
+    app.include_router(options_lab_session_router)
     app.include_router(community_router)
     app.include_router(community_app_router)
     app.include_router(community_admin_router)

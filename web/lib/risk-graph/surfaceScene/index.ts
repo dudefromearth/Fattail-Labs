@@ -51,6 +51,7 @@ export type SurfaceSceneHandle = {
     candlesOn?: boolean;
   }): void;
   setCandles(boxes: CandleBox[]): void;
+  setSurfaceLocked(locked: boolean): void;
   dispose(): void;
   fit(): void;
   applyFactoryView(id: import("./camera").FactoryViewId): void;
@@ -58,6 +59,14 @@ export type SurfaceSceneHandle = {
   orbitBy(dxPx: number, dyPx: number): void;
   zoomBy(deltaY: number): void;
   getPose(): CameraPose;
+  /** Screen X of the Now (+Z) and Expiry (−Z) walls — Time Ortho left→right. */
+  getTimeAxisScreen(): { nowX: number; expiryX: number };
+  /** Pin Now/Expiry walls to chart X (0DTE: Now walks with the candle). */
+  alignTimeOrtho(span: { nowX: number; expiryX: number } | null): void;
+  /** T Ortho: dashed grey rails at T+0 BEs (live + parked ghosts). */
+  setBeGhosts(strikes: number[]): void;
+  /** Paint now and return the WebGL canvas (same-turn read for capture). */
+  captureCanvas(): HTMLCanvasElement;
 };
 
 const DPR_CAP = 2;
@@ -466,6 +475,13 @@ export function mountSurfaceScene(
   canvas.style.touchAction = "none";
   canvas.style.cursor = "grab";
   canvas.style.zIndex = "1";
+  let surfaceLocked = false;
+  const applySurfaceLock = (locked: boolean) => {
+    surfaceLocked = locked;
+    host.dataset.surfaceLocked = locked ? "1" : "0";
+    canvas.style.pointerEvents = locked ? "none" : "auto";
+    canvas.style.cursor = locked ? "default" : "grab";
+  };
   const chart2d = document.createElement("canvas");
   chart2d.dataset.testid = "surface-time-ortho-chart";
   chart2d.style.cssText =
@@ -806,103 +822,7 @@ export function mountSurfaceScene(
     };
   };
   const drawChart2d = () => {
-    const w = Math.max(host.clientWidth, 1);
-    const h = Math.max(host.clientHeight, 1);
-    const dpr = resolveDpr();
-    if (chart2d.width !== Math.round(w * dpr) || chart2d.height !== Math.round(h * dpr)) {
-      chart2d.width = Math.round(w * dpr);
-      chart2d.height = Math.round(h * dpr);
-    }
-    const ctx = chart2d.getContext("2d");
-    if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    if (!mapOverlay || !lastSheet || !candlesOn) {
-      chart2d.style.display = "none";
-      return;
-    }
-    chart2d.style.display = "block";
-    const nowHi = projectLocal(1, 0, 1);
-    const nowLo = projectLocal(-1, 0, 1);
-    const expHi = projectLocal(1, 0, -1);
-    const expLo = projectLocal(-1, 0, -1);
-    const xs = [nowHi.left, nowLo.left, expHi.left, expLo.left];
-    const ys = [nowHi.top, nowLo.top, expHi.top, expLo.top];
-    const x0 = Math.min(...xs);
-    const y0 = Math.min(...ys);
-    const rw = Math.max(...xs) - x0;
-    const rh = Math.max(...ys) - y0;
-    if (!(rw > 8) || !(rh > 8)) return;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x0, y0, rw, rh);
-    ctx.clip();
-    ctx.fillStyle = "#070709";
-    ctx.fillRect(x0, y0, rw, rh);
-    const lerp = (p: number, q: number, t: number) => p + (q - p) * t;
-    const boxToPx = (bx: number, bz: number) => {
-      const u = (1 - bz) / 2;
-      const v = (1 - bx) / 2;
-      const leftX = lerp(nowHi.left, nowLo.left, v);
-      const rightX = lerp(expHi.left, expLo.left, v);
-      const leftY = lerp(nowHi.top, nowLo.top, v);
-      const rightY = lerp(expHi.top, expLo.top, v);
-      return {
-        x: lerp(leftX, rightX, u),
-        y: lerp(leftY, rightY, u),
-      };
-    };
-    ctx.strokeStyle = "rgba(255,255,255,0.06)";
-    ctx.lineWidth = 1;
-    for (let i = 1; i < 8; i++) {
-      const gx = x0 + (rw * i) / 8;
-      const gy = y0 + (rh * i) / 8;
-      ctx.beginPath();
-      ctx.moveTo(gx, y0);
-      ctx.lineTo(gx, y0 + rh);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(x0, gy);
-      ctx.lineTo(x0 + rw, gy);
-      ctx.stroke();
-    }
-    const ordered = [...candleBoxes].sort((a, b) => a.zMid - b.zMid);
-    const n = ordered.length;
-    ordered.forEach((bar, i) => {
-      const zPlot = n < 2 ? 1 : 1 - (2 * i) / (n - 1);
-      const hi = boxToPx(bar.xHigh, zPlot);
-      const lo = boxToPx(bar.xLow, zPlot);
-      const op = boxToPx(bar.xOpen, zPlot);
-      const cl = boxToPx(bar.xClose, zPlot);
-      const zw = Math.max((rw / Math.max(n, 8)) * 0.35, 1.2);
-      ctx.strokeStyle = bar.up ? "#e2e8f0" : "#94a3b8";
-      ctx.beginPath();
-      ctx.moveTo(hi.x, hi.y);
-      ctx.lineTo(lo.x, lo.y);
-      ctx.stroke();
-      const top = Math.min(op.y, cl.y);
-      const bot = Math.max(op.y, cl.y);
-      ctx.fillStyle = bar.up ? "#e2e8f0" : "#64748b";
-      ctx.fillRect(hi.x - zw, top, zw * 2, Math.max(bot - top, 1));
-    });
-    const spotX = priceToLocalX(lastSheet);
-    if (spotX != null) {
-      const p0 = boxToPx(spotX, 1);
-      const p1 = boxToPx(spotX, -1);
-      ctx.strokeStyle = "rgba(248,250,252,0.65)";
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(p0.x, p0.y);
-      ctx.lineTo(p1.x, p1.y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    ctx.restore();
-    host.style.setProperty("--map-x", `${x0}px`);
-    host.style.setProperty("--map-y", `${y0}px`);
-    host.style.setProperty("--map-w", `${rw}px`);
-    host.style.setProperty("--map-h", `${rh}px`);
-    host.dataset.mapFrame = "1";
+    chart2d.style.display = "none";
   };
   const placeOne = (el: HTMLElement, x: number, y: number, z: number) => {
     const p = projectLocal(x, y, z);
@@ -1098,6 +1018,7 @@ export function mountSurfaceScene(
   let pinch0 = 0;
 
   const onDown = (e: PointerEvent) => {
+    if (surfaceLocked) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 1) {
       dragging = true;
@@ -1112,6 +1033,7 @@ export function mountSurfaceScene(
     canvas.style.cursor = "grabbing";
   };
   const onMove = (e: PointerEvent) => {
+    if (surfaceLocked) return;
     if (pointers.has(e.pointerId)) {
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }
@@ -1139,6 +1061,7 @@ export function mountSurfaceScene(
     }
   };
   const onWheel = (e: WheelEvent) => {
+    if (surfaceLocked) return;
     e.preventDefault();
     setPose(zoomPose(pose, e.deltaY));
   };
@@ -1232,11 +1155,16 @@ export function mountSurfaceScene(
       host.dataset.factoryView = id;
       const egg = id === "timeOrtho";
       applyMapOverlay(egg);
+      applySurfaceLock(egg);
       if (egg) {
-        candlesOn = true;
-        layoutCandles();
+        // Live LWC 5m chart is the tape; keep the 3D candle mesh off.
+        candlesOn = false;
+        clearCandles();
       }
       paint();
+    },
+    setSurfaceLocked(locked) {
+      applySurfaceLock(!!locked);
     },
     orbitBy(dx, dy) {
       setPose(orbitPose(pose, dx, dy));
@@ -1247,10 +1175,78 @@ export function mountSurfaceScene(
     getPose() {
       return pose;
     },
+    getTimeAxisScreen() {
+      const now = projectLocal(0, 0, 1);
+      const exp = projectLocal(0, 0, -1);
+      return { nowX: now.left, expiryX: exp.left };
+    },
+    setBeGhosts(strikes) {
+      const old = world.getObjectByName("be-ghosts");
+      if (old) {
+        world.remove(old);
+        disposeObject(old);
+      }
+      const sheet = lastSheet;
+      if (!sheet || !Array.isArray(strikes) || !strikes.length) {
+        paint();
+        return;
+      }
+      const group = new THREE.Group();
+      group.name = "be-ghosts";
+      const s0 = sheet.sMin;
+      const sSpan = Math.max(sheet.sMax - sheet.sMin, 1e-9);
+      for (const s of strikes) {
+        if (!Number.isFinite(s)) continue;
+        const x = ((s - s0) / sSpan) * 2 - 1;
+        if (x < -1.08 || x > 1.08) continue;
+        const line = fatPolyline(
+          [x, 0, 1, x, 0, -1],
+          0x9ca3af,
+          1.6,
+          0.7,
+          true,
+        );
+        const mat = line.material as LineMaterial;
+        mat.dashed = true;
+        mat.dashSize = 0.06;
+        mat.gapSize = 0.045;
+        mat.depthTest = false;
+        line.computeLineDistances();
+        line.renderOrder = 3;
+        group.add(line);
+      }
+      world.add(group);
+      paint();
+    },
+    alignTimeOrtho(span) {
+      if (!span || !(span.expiryX > span.nowX + 8)) {
+        world.position.z = 0;
+        world.scale.z = 1;
+        paint();
+        return;
+      }
+      world.position.z = 0;
+      world.scale.z = 1;
+      world.updateMatrixWorld(true);
+      camera.updateMatrixWorld(true);
+      const sNow = projectLocal(0, 0, 1).left;
+      const sExp = projectLocal(0, 0, -1).left;
+      const B = (sNow - sExp) / 2;
+      const A = (sNow + sExp) / 2;
+      if (Math.abs(B) < 1e-6) return;
+      world.position.z =
+        (span.nowX + span.expiryX - 2 * A) / (2 * B);
+      world.scale.z = (span.nowX - span.expiryX) / (2 * B);
+      paint();
+    },
     setCandles(boxes) {
       candleBoxes = Array.isArray(boxes) ? boxes : [];
       layoutCandles();
       paint();
+    },
+    captureCanvas() {
+      paint();
+      return canvas;
     },
     dispose() {
       ro.disconnect();

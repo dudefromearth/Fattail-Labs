@@ -20,6 +20,12 @@ import {
   isOptionPointerExpired,
   type AnalyzerPosition,
 } from "@/lib/options-lab/analyzerBook";
+import {
+  applyEtHm,
+  etHmValue,
+  formatEtHm,
+  resolveEntryAt,
+} from "@/lib/options-lab/positionSession";
 import { resolveCardDisplayState } from "@/lib/options-lab/cardDisplayState";
 import { legNotTradedLabel } from "@/lib/options-lab/optionBind";
 import type { LegInput } from "@/lib/options-lab/positionTypes";
@@ -198,6 +204,11 @@ export type AnalyzerPositionsListProps = {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   onCreate: () => void;
+  /** Simulated open fill in Trade Log. */
+  onSendToTradeLog?: (id: string) => void;
+  onSetEntryAt: (id: string, entryAt: number) => void;
+  /** Close transaction — stamps the clock; not a pre-set time. */
+  onClosePosition: (id: string) => void;
   onLockNatural: (id: string) => void;
   /** Commit a per-position debit/credit magnitude and lock it. */
   onLockLimit: (id: string, magnitude: number) => void;
@@ -223,6 +234,9 @@ export default function AnalyzerPositionsList({
   onEdit,
   onDelete,
   onCreate,
+  onSendToTradeLog,
+  onSetEntryAt,
+  onClosePosition,
   onLockNatural,
   onLockLimit,
   onUnlock,
@@ -263,7 +277,7 @@ export default function AnalyzerPositionsList({
     >
       <div className="mb-0.5 flex shrink-0 flex-wrap items-center justify-between gap-2">
         <span className="text-[14px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-          Positions
+          Position List
           {list.length > 0 ? (
             <span className="ml-1 font-normal normal-case">({list.length})</span>
           ) : null}
@@ -438,6 +452,9 @@ export default function AnalyzerPositionsList({
                   onToggleVisibility={onToggleVisibility}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onSendToTradeLog={onSendToTradeLog}
+                  onSetEntryAt={onSetEntryAt}
+                  onClosePosition={onClosePosition}
                   onLockNatural={onLockNatural}
                   onLockLimit={onLockLimit}
                   onUnlock={onUnlock}
@@ -485,6 +502,9 @@ function PosBlock({
   onToggleVisibility,
   onEdit,
   onDelete,
+  onSendToTradeLog,
+  onSetEntryAt,
+  onClosePosition,
   onLockNatural,
   onLockLimit,
   onUnlock,
@@ -522,6 +542,9 @@ function PosBlock({
   onToggleVisibility: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  onSendToTradeLog?: (id: string) => void;
+  onSetEntryAt: (id: string, entryAt: number) => void;
+  onClosePosition: (id: string) => void;
   onLockNatural: (id: string) => void;
   onLockLimit: (id: string, magnitude: number) => void;
   onUnlock: (id: string) => void;
@@ -975,6 +998,53 @@ function PosBlock({
             >
               {isTop ? (
                 <div className="flex flex-nowrap items-center gap-0.5">
+                  <label
+                    className="flex items-center gap-1 text-[14px] uppercase tracking-wide text-white/70"
+                    title="When this position was put on. Default is the cash open."
+                  >
+                    In
+                    <input
+                      type="time"
+                      className="rounded bg-black/25 px-1 py-0.5 text-[16px] text-white"
+                      data-testid={`analyzer-pos-entry-${pos.id}`}
+                      value={etHmValue(resolveEntryAt(pos))}
+                      onChange={(e) =>
+                        onSetEntryAt(
+                          pos.id,
+                          applyEtHm(resolveEntryAt(pos), e.target.value),
+                        )
+                      }
+                    />
+                  </label>
+                  {pos.closedAt != null ? (
+                    <span
+                      className="px-1 text-[14px] uppercase tracking-wide text-white/80"
+                      data-testid={`analyzer-pos-closed-${pos.id}`}
+                    >
+                      Closed {formatEtHm(pos.closedAt)}
+                      {pos.closedPnl != null
+                        ? ` ${pos.closedPnl >= 0 ? "+" : ""}${pos.closedPnl.toFixed(2)}`
+                        : ""}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={actionBtn}
+                      data-testid={`analyzer-pos-close-${pos.id}`}
+                      onClick={() => onClosePosition(pos.id)}
+                    >
+                      Close
+                    </button>
+                  )}
+                  {pos.tradeLogTradeId != null ? (
+                    <span
+                      className="px-1 text-[13px] uppercase tracking-wide text-white/50"
+                      title="Linked to Trade Log. A close there will close this position."
+                      data-testid={`analyzer-pos-tl-${pos.id}`}
+                    >
+                      TL #{pos.tradeLogTradeId}
+                    </span>
+                  ) : null}
                   <button
                     type="button"
                     className={actionBtn}
@@ -982,6 +1052,16 @@ function PosBlock({
                   >
                     Edit
                   </button>
+                  {onSendToTradeLog ? (
+                    <button
+                      type="button"
+                      className={actionBtn}
+                      data-testid={`analyzer-pos-send-log-${pos.id}`}
+                      onClick={() => onSendToTradeLog(pos.id)}
+                    >
+                      To Trade Log
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className={actionBtn + " text-red-100"}

@@ -16,6 +16,7 @@ import {
   snapToListed,
   uniqueListedStrikes,
 } from "@/lib/options-lab/listedStrikes";
+import { defaultSessionEntryAt } from "@/lib/options-lab/positionSession";
 
 /** Product status — residual book is ANALYSIS-only (PB v0.3 §16.4). */
 export type AnalyzerTradeStatus = "ANALYSIS";
@@ -107,6 +108,23 @@ export type AnalyzerPosition = {
    * package when bindable && OPF quote complete.
    */
   bind?: PositionBindSnapshot | null;
+  /**
+   * When the position was put on (session clock). Configurable.
+   * If unset, beginning of the cash session (9:30 AM ET).
+   */
+  entryAt?: number;
+  /**
+   * Close is a transaction, not a pre-set clock. Stamped when the member
+   * closes. Absent while the position is open.
+   */
+  closedAt?: number | null;
+  /** Book mark P&L (OPF sign, per share) frozen at the close transaction. */
+  closedPnl?: number | null;
+  /**
+   * Optional Trade Log TO_OPEN id. Linking is a choice — not required.
+   * If set, a Trade Log close on that open stamps this position closed.
+   */
+  tradeLogTradeId?: number | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -178,6 +196,18 @@ function migratePos(raw: unknown): AnalyzerPosition | null {
     maxSkewMs: p.maxSkewMs ?? null,
     epochQuality: p.epochQuality ?? null,
     bind: p.bind ?? null,
+    entryAt:
+      p.entryAt != null && Number.isFinite(p.entryAt)
+        ? p.entryAt
+        : defaultSessionEntryAt(p.createdAt || Date.now()),
+    closedAt:
+      p.closedAt != null && Number.isFinite(p.closedAt) ? p.closedAt : null,
+    closedPnl:
+      p.closedPnl != null && Number.isFinite(p.closedPnl) ? p.closedPnl : null,
+    tradeLogTradeId:
+      p.tradeLogTradeId != null && Number.isFinite(p.tradeLogTradeId)
+        ? Number(p.tradeLogTradeId)
+        : null,
     createdAt: p.createdAt || Date.now(),
     updatedAt: p.updatedAt || Date.now(),
   };
@@ -273,8 +303,59 @@ export function positionFromInput(input: PositionInput): AnalyzerPosition {
     maxSkewMs: null,
     epochQuality: null,
     bind: null,
+    entryAt: defaultSessionEntryAt(),
+    closedAt: null,
+    closedPnl: null,
+    tradeLogTradeId: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
+  };
+}
+
+/** Live package mark in OPF sign (+debit / −credit). */
+export function liveSignedMark(pos: AnalyzerPosition): number | null {
+  if (pos.lastNatSigned != null && Number.isFinite(pos.lastNatSigned)) {
+    return pos.lastNatSigned;
+  }
+  if (
+    pos.livePackagePerShare != null &&
+    Number.isFinite(pos.livePackagePerShare)
+  ) {
+    if (pos.priceSide === "credit") return -Math.abs(pos.livePackagePerShare);
+    if (pos.priceSide === "debit") return Math.abs(pos.livePackagePerShare);
+  }
+  return definedDebitSigned(pos);
+}
+
+/** Book P&L vs defined debit (a mark, not a broker fill). */
+export function bookPnlSigned(pos: AnalyzerPosition): number | null {
+  if (
+    pos.closedAt != null &&
+    pos.closedPnl != null &&
+    Number.isFinite(pos.closedPnl)
+  ) {
+    return pos.closedPnl;
+  }
+  const entry = definedDebitSigned(pos);
+  const live = liveSignedMark(pos);
+  if (entry == null || live == null) return null;
+  return live - entry;
+}
+
+/**
+ * Close transaction: stamp the clock and freeze the book mark.
+ * A close time cannot exist before this runs.
+ */
+export function closePosition(
+  pos: AnalyzerPosition,
+  nowMs = Date.now(),
+): AnalyzerPosition {
+  if (pos.closedAt != null && Number.isFinite(pos.closedAt)) return pos;
+  return {
+    ...pos,
+    closedAt: nowMs,
+    closedPnl: bookPnlSigned(pos),
+    updatedAt: nowMs,
   };
 }
 

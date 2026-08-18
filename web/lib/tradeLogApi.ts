@@ -353,6 +353,18 @@ export async function fetchCatalog(): Promise<
   return parseJson(r);
 }
 
+export async function createTrade(
+  body: Record<string, unknown>,
+): Promise<AnalyticsResult<Trade>> {
+  const r = await fetch("/api/me/trade-log/trades", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return parseJson(r);
+}
+
 export async function patchTradeCampaign(
   tradeId: number,
   practiceCampaignId: number | null,

@@ -11,8 +11,35 @@ import { usePathname } from "next/navigation";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import {
   ANALYZER_BOOK_EVENT,
+  closePosition,
   loadPositions,
+  savePositions,
 } from "@/lib/options-lab/analyzerBook";
+import { analyzerPositionToOpenTrade } from "@/lib/options-lab/analyzerToTradeLog";
+import {
+  linkTradeLogId,
+  syncBookFromTradeLog,
+} from "@/lib/options-lab/analyzerTradeLogSync";
+import { createTrade, fetchTrades } from "@/lib/tradeLogApi";
+import TimeOrthoLiveChart, {
+  type TimeOrthoTapeHandle,
+} from "./TimeOrthoLiveChart";
+import TimeOrthoEggPanel from "./TimeOrthoEggPanel";
+import {
+  canvasToPngBlob,
+  captureCaption,
+  captureFilename,
+  compositeCanvases,
+  downloadBlob,
+  journalDateYmd,
+  shouldExitTimeOrtho,
+} from "@/lib/options-lab/timeOrthoEgg";
+import {
+  attachCaptureToTodayJournal,
+  JournalCaptureClosedError,
+} from "@/lib/options-lab/timeOrthoJournal";
+import { localSessionNote } from "@/lib/options-lab/timeOrthoNote";
+import { chartWindow } from "@/lib/options-lab/timeOrthoSession";
 import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
 import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
 import { useLiveUnderlierMarks } from "@/lib/market/useLiveUnderlierMarks";
@@ -38,6 +65,11 @@ import {
   remainingLifeMs,
 } from "@/lib/risk-graph/surfaceCandles";
 import { SLOW_ZOOM_GAIN } from "@/lib/risk-graph/surfaceScene/camera";
+import {
+  beGhostEps,
+  parkMovedBreakEvens,
+  t0BreakEvens,
+} from "@/lib/options-lab/t0BreakEvenGhost";
 import { surfaceHostClock } from "./hostLaw";
 import CameraHud from "./CameraHud";
 import TimeHud from "./TimeHud";
@@ -108,6 +140,12 @@ export default function SurfaceApp() {
   const [zoomGain, setZoomGain] = useState(SLOW_ZOOM_GAIN);
   const [valueOpacity, setValueOpacity] = useState(0.12);
   const [candlesOn, setCandlesOn] = useState(false);
+  const [eggOn, setEggOn] = useState(false);
+  const [sendNote, setSendNote] = useState<string | null>(null);
+  const [captureBusy, setCaptureBusy] = useState(false);
+  const [bookReady, setBookReady] = useState(false);
+  const tapeRef = useRef<TimeOrthoTapeHandle | null>(null);
+  const hadBookRef = useRef(false);
   const [spots, setSpots] = useState([
     { on: true, brightness: 0.55 },
     { on: true, brightness: 0.55 },
@@ -128,6 +166,7 @@ export default function SurfaceApp() {
   } | null>(null);
 
   useEffect(() => {
+    setBookReady(true);
     void loadSurfaceInspect().then((p) => setSaved(p.views || []));
     const on = () => setTick((n) => n + 1);
     window.addEventListener("storage", on);
@@ -148,15 +187,39 @@ export default function SurfaceApp() {
     setTick((n) => n + 1);
   }, [pathname]);
 
-  const book = useMemo(() => {
+  useEffect(() => {
+    let alive = true;
+    const pull = async () => {
+      const book = loadPositions();
+      if (!book.some((p) => p.tradeLogTradeId != null && p.closedAt == null)) {
+        return;
+      }
+      const res = await fetchTrades(null, { full: true, limit: 200 });
+      if (!alive || !res.ok) return;
+      const { next, changed } = syncBookFromTradeLog(book, res.data.trades || []);
+      if (!changed) return;
+      savePositions(next);
+      window.dispatchEvent(new Event(ANALYZER_BOOK_EVENT));
+    };
+    void pull();
+    return () => {
+      alive = false;
+    };
+  }, [tick]);
+
+  const allForSymbol = useMemo(() => {
     void tick;
+    if (!bookReady) return [];
     const sym = symbol.toUpperCase();
     return loadPositions().filter(
-      (p) =>
-        p.visible !== false &&
-        (p.position.underlying || "").toUpperCase() === sym,
+      (p) => (p.position.underlying || "").toUpperCase() === sym,
     );
-  }, [tick, symbol]);
+  }, [tick, symbol, bookReady]);
+
+  const book = useMemo(
+    () => allForSymbol.filter((p) => p.visible !== false),
+    [allForSymbol],
+  );
 
   const bookFitKey = useMemo(
     () =>
@@ -346,9 +409,10 @@ export default function SurfaceApp() {
     widthPadFrac,
   ]);
 
-  sheetRef.current = view.sheet;
+  const { law, detail, sheet, label, cadence } = view;
+  sheetRef.current = sheet;
   const sheetKey = sheetFingerprint(
-    view.sheet,
+    sheet,
     `${volOffsetPts}|${spotPct}|${autofitGen}|${bookFitKey}`,
   );
 
@@ -414,7 +478,46 @@ export default function SurfaceApp() {
     );
   }, [sheetKey]);
 
-  const { law, detail, sheet, label, cadence } = view;
+  const beGhostsRef = useRef<number[]>([]);
+  const prevLiveBeRef = useRef<number[]>([]);
+  const [beLevels, setBeLevels] = useState<number[]>([]);
+  useEffect(() => {
+    beGhostsRef.current = [];
+    prevLiveBeRef.current = [];
+    setBeLevels([]);
+  }, [bookFitKey]);
+
+  const leaveEgg = () => {
+    setEggOn(false);
+    beGhostsRef.current = [];
+    prevLiveBeRef.current = [];
+    setBeLevels([]);
+    sceneRef.current?.setBeGhosts([]);
+    sceneRef.current?.applyFactoryView("time");
+  };
+
+  useEffect(() => {
+    const n = allForSymbol.length;
+    if (eggOn && shouldExitTimeOrtho(hadBookRef.current, n)) {
+      leaveEgg();
+    }
+    hadBookRef.current = n > 0;
+  }, [allForSymbol.length, eggOn]);
+  useEffect(() => {
+    const live = t0BreakEvens(sheet);
+    const eps = beGhostEps(sheet?.sMin ?? 0, sheet?.sMax ?? 1);
+    beGhostsRef.current = parkMovedBreakEvens(
+      prevLiveBeRef.current,
+      live,
+      beGhostsRef.current,
+      eps,
+    );
+    prevLiveBeRef.current = live;
+    const all = [...beGhostsRef.current, ...live];
+    setBeLevels(all);
+    sceneRef.current?.setBeGhosts(eggOn ? all : []);
+  }, [sheetKey, sheet, eggOn, bookFitKey]);
+
   const tauHi = sheet?.timeAxis[0] ?? 0;
   const tauLo = sheet?.timeAxis[(sheet?.timeAxis.length || 1) - 1] ?? 0;
   const tauMin = Math.min(tauLo, tauHi);
@@ -477,7 +580,141 @@ export default function SurfaceApp() {
       data-cadence={cadence}
       data-has-sheet={sheet ? "1" : "0"}
       data-altered={altered ? "1" : "0"}
+      data-time-ortho={eggOn ? "1" : "0"}
     >
+      {eggOn ? (
+        <TimeOrthoLiveChart
+          ref={tapeRef}
+          symbol={symbol}
+          book={allForSymbol.map((p) => ({
+            id: p.id,
+            label: p.label || p.notation,
+            entryAt: p.entryAt ?? p.createdAt,
+            closedAt: p.closedAt ?? null,
+            closedPnl: p.closedPnl ?? null,
+          }))}
+          onAxis={(span) => sceneRef.current?.alignTimeOrtho(span)}
+          positionScale={
+            sheet ? { lo: sheet.sMin, hi: sheet.sMax } : null
+          }
+          listedStrikes={sheet?.listedStrikes ?? []}
+          beLevels={beLevels}
+        />
+      ) : null}
+      {eggOn ? (
+        <TimeOrthoEggPanel
+          symbol={symbol}
+          positions={allForSymbol}
+          lastMid={liveSpot}
+          bookPnl={
+            Number.isFinite(risk.theoreticalPnLAtSpot)
+              ? risk.theoreticalPnLAtSpot
+              : risk.packageDebit
+          }
+          bookState={law}
+          onToggleVisibility={(id) => {
+            const next = loadPositions().map((p) =>
+              p.id === id ? { ...p, visible: !p.visible } : p,
+            );
+            savePositions(next);
+            window.dispatchEvent(new Event(ANALYZER_BOOK_EVENT));
+          }}
+          onClosePosition={(id) => {
+            const next = loadPositions().map((p) =>
+              p.id === id ? closePosition(p) : p,
+            );
+            savePositions(next);
+            window.dispatchEvent(new Event(ANALYZER_BOOK_EVENT));
+          }}
+          onRemovePosition={(id) => {
+            const next = loadPositions().filter((p) => p.id !== id);
+            savePositions(next);
+            window.dispatchEvent(new Event(ANALYZER_BOOK_EVENT));
+          }}
+          captureBusy={captureBusy}
+          onCapture={async () => {
+            if (captureBusy) return;
+            setCaptureBusy(true);
+            try {
+              const tape = tapeRef.current?.getCanvas() ?? null;
+              if (!tape) {
+                setSendNote("Nothing to capture yet.");
+                return;
+              }
+              const surface = sceneRef.current?.captureCanvas() ?? null;
+              const composed = compositeCanvases(tape, surface);
+              const blob = await canvasToPngBlob(composed);
+              const dateYmd = journalDateYmd();
+              const filename = captureFilename(symbol, dateYmd);
+              const file = new File([blob], filename, { type: "image/png" });
+              const win = chartWindow(Date.now());
+              const visible = allForSymbol.filter((p) => p.visible !== false);
+              const caption = captureCaption({
+                symbol,
+                dateYmd,
+                positions: visible.map((p) => ({
+                  label: p.label,
+                  notation: p.notation,
+                })),
+                note: localSessionNote({
+                  symbol,
+                  phase: win.prefillsPriorDay ? "pre" : "rth",
+                  positions: visible.map((p) => ({
+                    label: p.label,
+                    notation: p.notation,
+                  })),
+                  lastMid: liveSpot,
+                  bookPnl: Number.isFinite(risk.theoreticalPnLAtSpot)
+                    ? risk.theoreticalPnLAtSpot
+                    : risk.packageDebit,
+                  bookState: law,
+                }),
+              });
+              try {
+                await attachCaptureToTodayJournal(file, caption);
+                setSendNote("Saved to today’s journal.");
+              } catch (err) {
+                downloadBlob(file, filename);
+                setSendNote(
+                  err instanceof JournalCaptureClosedError
+                    ? "Journal is closed for today — saved a picture here instead."
+                    : "Saved a picture here. Journal did not take it.",
+                );
+              }
+            } catch {
+              setSendNote("Could not capture this view.");
+            } finally {
+              setCaptureBusy(false);
+            }
+          }}
+          onSendToTradeLog={async (id) => {
+            const pos = loadPositions().find((p) => p.id === id);
+            if (!pos) return;
+            const res = await createTrade(analyzerPositionToOpenTrade(pos));
+            if (res.ok && res.data?.id != null) {
+              const next = loadPositions().map((p) =>
+                p.id === id ? linkTradeLogId(p, res.data.id) : p,
+              );
+              savePositions(next);
+            }
+            setSendNote(
+              res.ok
+                ? "Sent to Trade Log as an open trade (simulation). Linked — a Trade Log close will close it here too."
+                : res.error.kind === "err"
+                  ? res.error.message
+                  : "Could not send this position to Trade Log.",
+            );
+          }}
+        />
+      ) : null}
+      {sendNote ? (
+        <div
+          className="pointer-events-none absolute bottom-24 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] text-white/80"
+          data-testid="surface-time-ortho-toast"
+        >
+          {sendNote}
+        </div>
+      ) : null}
       <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-sm text-[11px] text-white/55">
         <div className="font-medium text-white/80">{label}</div>
         <div>
@@ -508,7 +745,10 @@ export default function SurfaceApp() {
       <div
         ref={hostRef}
         id="surface-canvas-host"
-        className="relative min-h-0 flex-1 overflow-hidden"
+        className={
+          "relative z-[1] min-h-0 flex-1 overflow-hidden " +
+          (eggOn ? "pointer-events-none bg-transparent" : "")
+        }
         data-testid="surface-canvas"
       />
       <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex w-[min(22rem,calc(100%-6rem))] flex-col gap-2">
@@ -554,7 +794,12 @@ export default function SurfaceApp() {
           if (id === "now" || id === "time" || id === "timeOrtho") {
             setProjection("orthographic");
           } else setProjection("perspective");
-          if (id === "timeOrtho") setCandlesOn(true);
+          if (id === "timeOrtho") {
+            setCandlesOn(false);
+            setEggOn(true);
+          } else {
+            setEggOn(false);
+          }
           if (id === "fit") sceneRef.current?.fit();
           else sceneRef.current?.applyFactoryView(id);
         }}
@@ -603,7 +848,7 @@ export default function SurfaceApp() {
           });
         }}
       />
-      <CameraHud
+      {eggOn ? null : <CameraHud
         projection={projection}
         zoomGain={zoomGain}
         onZoomGain={setZoomGain}
@@ -635,7 +880,7 @@ export default function SurfaceApp() {
           setProjection(next);
           sceneRef.current?.setProjection(next);
         }}
-      />
+      />}
     </div>
   );
 }

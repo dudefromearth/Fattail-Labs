@@ -7,6 +7,7 @@
  */
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -27,6 +28,7 @@ import {
   loadPositions,
   lockLimit,
   lockNatural,
+  closePosition,
   positionFromInput,
   saveAlerts,
   savePositions,
@@ -59,6 +61,12 @@ import type { PositionInput } from "@/lib/options-lab/positionTypes";
 import { useBuilderChain } from "@/lib/options-lab/useBuilderChain";
 import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
 import { usePackageQuotes } from "@/lib/options-lab/usePackageQuotes";
+import { analyzerPositionToOpenTrade } from "@/lib/options-lab/analyzerToTradeLog";
+import {
+  linkTradeLogId,
+  syncBookFromTradeLog,
+} from "@/lib/options-lab/analyzerTradeLogSync";
+import { createTrade, fetchTrades } from "@/lib/tradeLogApi";
 import AnalyzerAlertsSection from "@/components/options-lab/AnalyzerAlertsSection";
 import AnalyzerPositionsList from "@/components/options-lab/AnalyzerPositionsList";
 import PositionBuilder from "@/components/options-lab/PositionBuilder";
@@ -135,6 +143,7 @@ export default function OpfRiskAnalyzer() {
   );
   const bookHydrated = true;
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<AnalyzerThresholdAlert[]>(
@@ -223,6 +232,13 @@ export default function OpfRiskAnalyzer() {
   );
 
   useEffect(() => {
+    if (searchParams.get("builder") === "1") {
+      setEditId(null);
+      setBuilderOpen(true);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     // Never persist the pre-hydrate empty default — that wiped the book and
     // fought the user after delete+reload races with handoff re-ingest.
     if (!bookHydrated) return;
@@ -232,6 +248,33 @@ export default function OpfRiskAnalyzer() {
     if (!bookHydrated) return;
     saveAlerts(alerts);
   }, [alerts, bookHydrated]);
+
+  useEffect(() => {
+    if (!bookHydrated) return;
+    let alive = true;
+    const pull = async () => {
+      const linked = positionsRef.current.some(
+        (p) => p.tradeLogTradeId != null && p.closedAt == null,
+      );
+      if (!linked) return;
+      const res = await fetchTrades(null, { full: true, limit: 200 });
+      if (!alive || !res.ok) return;
+      const { next, changed } = syncBookFromTradeLog(
+        positionsRef.current,
+        res.data.trades || [],
+      );
+      if (changed) setPositions(next);
+    };
+    void pull();
+    const onFocus = () => void pull();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      alive = false;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [bookHydrated, positions]);
   useEffect(() => {
     let cancelled = false;
     const tick = () => {
@@ -593,6 +636,10 @@ export default function OpfRiskAnalyzer() {
                   label,
                   notation,
                   createdAt: p.createdAt,
+                  entryAt: p.entryAt,
+                  closedAt: p.closedAt,
+                  closedPnl: p.closedPnl,
+                  tradeLogTradeId: p.tradeLogTradeId,
                   lock: p.lock,
                 }
               : p,
@@ -660,6 +707,41 @@ export default function OpfRiskAnalyzer() {
     onCreate: () => {
       setEditId(null);
       setBuilderOpen(true);
+    },
+    onSetEntryAt: (id: string, entryAt: number) => {
+      setPositions((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, entryAt, updatedAt: Date.now() } : p,
+        ),
+      );
+    },
+    onClosePosition: (id: string) => {
+      setPositions((prev) =>
+        prev.map((p) => (p.id === id ? closePosition(p) : p)),
+      );
+    },
+    onSendToTradeLog: async (id: string) => {
+      const pos = positionsRef.current.find((p) => p.id === id);
+      if (!pos) return;
+      const draft = analyzerPositionToOpenTrade(pos);
+      const res = await createTrade(draft);
+      if (!res.ok) {
+        setBookNotice(
+          res.error.kind === "err"
+            ? res.error.message
+            : "Could not send this position to Trade Log.",
+        );
+        return;
+      }
+      const tid = res.data?.id;
+      if (tid != null && Number.isFinite(tid)) {
+        setPositions((prev) =>
+          prev.map((p) => (p.id === id ? linkTradeLogId(p, tid) : p)),
+        );
+      }
+      setBookNotice(
+        "Sent to Trade Log as an open trade (simulation). Linked — a Trade Log close will close it here too.",
+      );
     },
     onLockNatural: (id: string) => {
       setPositions((prev) =>
