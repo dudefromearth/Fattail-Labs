@@ -242,14 +242,15 @@ def write_snap(path: Path, text: str) -> Path:
         rel = Path("ssr") / "live_capture" / path.name
     local = cache_root() / rel
     written = _write_text(local, text)
+    # Gold volume has been stalling open(); copy is opt-in after the disk is healthy.
+    if (os.environ.get("LABS_SSR_GOLD_COPY") or "").strip() == "1":
+        def _gold() -> None:
+            try:
+                _write_text(path, text)
+            except OSError as exc:
+                print(f"gold_write_fail {path}: {exc}", flush=True)
 
-    def _gold() -> None:
-        try:
-            _write_text(path, text)
-        except OSError as exc:
-            print(f"gold_write_fail {path}: {exc}", flush=True)
-
-    threading.Thread(target=_gold, daemon=True).start()
+        threading.Thread(target=_gold, daemon=True).start()
     return written
 
 
@@ -270,14 +271,14 @@ def append_jsonl_live(path: Path, doc: dict[str, Any]) -> None:
     except ValueError:
         rel = Path(path.name)
     append_jsonl(cache_root() / rel, doc)
+    if (os.environ.get("LABS_SSR_GOLD_COPY") or "").strip() == "1":
+        def _gold() -> None:
+            try:
+                append_jsonl(path, doc)
+            except OSError as exc:
+                print(f"gold_append_fail {path}: {exc}", flush=True)
 
-    def _gold() -> None:
-        try:
-            append_jsonl(path, doc)
-        except OSError as exc:
-            print(f"gold_append_fail {path}: {exc}", flush=True)
-
-    threading.Thread(target=_gold, daemon=True).start()
+        threading.Thread(target=_gold, daemon=True).start()
 
 
 def dump_json(doc: dict[str, Any]) -> str:
@@ -703,7 +704,7 @@ class LiveTap:
         # Immediate pre-market dump
         self.touch_interest()
         # Wait for the existing feed to publish the first generation.
-        deadline = time.time() + 45.0
+        deadline = time.time() + 8.0
         while time.time() < deadline:
             self.touch_interest()
             if any(self.store.get_json(t) for t in self.all_topics(self.day)):
