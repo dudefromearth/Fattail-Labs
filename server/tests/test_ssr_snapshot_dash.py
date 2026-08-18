@@ -9,6 +9,28 @@ from pathlib import Path
 import pytest
 
 
+def test_quiet_server_binds_without_reverse_dns():
+    import threading
+    from http.client import HTTPConnection
+
+    from market_data.ssr_snapshot_dash import Handler, QuietHTTPServer
+
+    httpd = QuietHTTPServer(("127.0.0.1", 0), Handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        conn = HTTPConnection("127.0.0.1", port, timeout=2)
+        conn.request("GET", "/")
+        res = conn.getresponse()
+        body = res.read()
+        assert res.status == 200
+        assert b"Chain Snapshot" in body
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+
+
 def test_dash_host_localhost_only(monkeypatch):
     monkeypatch.setenv("LABS_SSR_DASH_HOST", "0.0.0.0")
     from market_data.ssr_snapshot_dash import dash_host

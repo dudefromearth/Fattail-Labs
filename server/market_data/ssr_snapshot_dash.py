@@ -420,6 +420,22 @@ setInterval(load, 2000);
 """
 
 
+class QuietHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+    def server_bind(self) -> None:
+        """Bind without getfqdn / mDNS reverse lookup (that hung on StudioOne)."""
+        import socket as _socket
+
+        self.socket.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+        self.socket.bind(self.server_address)
+        self.server_address = self.socket.getsockname()
+        host, port = self.server_address[:2]
+        self.server_name = host
+        self.server_port = port
+
+
 class Handler(BaseHTTPRequestHandler):
     def address_string(self) -> str:
         # Never reverse-DNS 127.0.0.1 — mDNS lookup hung the first bind.
@@ -468,9 +484,7 @@ def main(argv: list[str] | None = None) -> int:
     del argv
     host = dash_host()
     port = dash_port()
-    ThreadingHTTPServer.allow_reuse_address = True
-    httpd = ThreadingHTTPServer((host, port), Handler)
-    httpd.daemon_threads = True
+    httpd = QuietHTTPServer((host, port), Handler)
     print(
         f"chain_snapshot_dash http://{host}:{port} root={capture_root()}",
         flush=True,
