@@ -154,8 +154,8 @@ def today_ny() -> date:
 def data_root() -> Path:
     raw = (os.environ.get("LABS_MARKET_DATA_ROOT") or "").strip()
     if raw:
-        return Path(raw).expanduser().resolve()
-    return Path("/Volumes/FatTail2TB/fattail-market-data").resolve()
+        return Path(raw).expanduser()
+    return Path("/Volumes/FatTail2TB/fattail-market-data")
 
 
 def day_dir(day: date) -> Path:
