@@ -4,7 +4,8 @@
   .venv/bin/python scripts/ssr-chain-cadence-verify.py \\
       --day 2026-08-17 --start 09:30 --end 10:30
 
-Expected at 3–5s: 720–1200 files in one RTH hour.
+Expected at 2–5s: one tick every 2–5s (720–1800 unique snap times / RTH hour).
+Per-symbol files live under chain/{SYMBOL}/snap-*.json.
 Friday 2026-08-14 at 5-min: ~12 files per hour.
 """
 
@@ -39,10 +40,11 @@ def main(argv: list[str] | None = None) -> int:
     start = datetime.combine(day, parse_hhmm(args.start), tzinfo=NY)
     end = datetime.combine(day, parse_hhmm(args.end), tzinfo=NY)
     chain = Path(args.root) / f"day={day.isoformat()}" / "chain"
-    files = sorted(chain.glob("snap-*.json")) if chain.is_dir() else []
+    files = sorted(chain.glob("**/snap-*.json")) if chain.is_dir() else []
     in_window: list[Path] = []
     greeks_ok = 0
     cadence_labels: list[str] = []
+    symbols: set[str] = set()
     for path in files:
         try:
             doc = json.loads(path.read_text(encoding="utf-8"))
@@ -58,6 +60,9 @@ def main(argv: list[str] | None = None) -> int:
         ts = ts.astimezone(NY)
         if start <= ts < end:
             in_window.append(path)
+            sym = str(doc.get("symbol") or path.parent.name or "").upper()
+            if sym:
+                symbols.add(sym)
             if int(doc.get("greek_count") or 0) > 0:
                 greeks_ok += 1
             elif isinstance(doc.get("generation"), dict):
@@ -72,10 +77,12 @@ def main(argv: list[str] | None = None) -> int:
             lab = doc.get("chain_cadence")
             if lab:
                 cadence_labels.append(str(lab))
-    n = len(in_window)
+    ticks = {path.name for path in in_window}
+    n = len(ticks)
+    files_n = len(in_window)
     span_s = (end - start).total_seconds()
     expected_lo = int(span_s / 5.0)
-    expected_hi = int(span_s / 3.0) + 2
+    expected_hi = int(span_s / 2.0) + 2
     verdict = "PASS" if expected_lo <= n <= expected_hi + 30 else "FAIL"
     if n == 0:
         verdict = "MISSING"
@@ -84,9 +91,11 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "day": day.isoformat(),
                 "window_et": f"{args.start}–{args.end}",
-                "snaps_in_window": n,
+                "ticks_in_window": n,
+                "files_in_window": files_n,
+                "symbols": sorted(symbols),
                 "greeks_present": greeks_ok,
-                "expected_3_5s": f"{expected_lo}–{expected_hi}",
+                "expected_2_5s": f"{expected_lo}–{expected_hi}",
                 "legacy_5min_would_be": int(span_s / 300.0),
                 "cadence_labels": sorted(set(cadence_labels)),
                 "verdict": verdict,

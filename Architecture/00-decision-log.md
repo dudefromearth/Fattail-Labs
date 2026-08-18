@@ -4,6 +4,39 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-17 — DL-428 Gold tap is 2–5s, all universe symbols, pre + extended
+
+**Decision (Coach):** StudioOne gold archive writes OPF chain snaps at
+**2–5s** (default **2s**). **5-min is forbidden.** Friday **2026-08-14**
+stays labeled 5-min and is not rewritten.
+
+Collect **every enabled Admin universe symbol** (`market_symbol_universe`).
+Reference-role marks (VIX / VIX1D) stay on the mark tape; they do not get
+a fake options chain.
+
+**Pre- and post-market are in:** weekday phases while the plane publishes:
+
+| Phase | Clock (America/New_York) |
+|---|---|
+| Pre | 04:00–09:30 |
+| RTH | 09:30–16:00 |
+| Extended / post | 16:00–20:00 |
+| Closed | 20:00 → next weekday 04:00 |
+
+Massive often returns a zero NBBO in pre/extended and a held last/close.
+We persist what the plane has, labeled `phase`, and do not invent a live
+quote. Index chains (SPX) may be thinner or **NO CHAIN** outside RTH.
+
+**As-built:** `ssr_live_capture` fail-loud outside [2, 5].
+`LABS_SSR_CHAIN_EVERY_S` default 2. Host StudioOne, one writer.
+Monday **2026-08-17** is a hole (tap never started). Next session is
+Tuesday **2026-08-18** 04:00 ET pre-market.
+
+**Supersedes cadence band in DL-400** (3–5s / default 4). Same gold-plane
+intent; tighter disk cadence.
+
+---
+
 ## 2026-08-17 — DL-427 Multi-DTE expiration face is front-exp residual
 
 **Decision:** Surface sheet + Analyzer 2D expiration curve use

@@ -12,20 +12,17 @@
   <key>WorkingDirectory</key>
   <string>/Users/ernie/Fattail-Labs/server</string>
   <key>RunAtLoad</key>
-  <false/>
+  <true/>
   <key>KeepAlive</key>
-  <false/>
-  <key>StartCalendarInterval</key>
-  <array>
-    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
-    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
-    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
-    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
-    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
-  </array>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+    <key>Crashed</key>
+    <true/>
+  </dict>
   <key>StandardOutPath</key>
-  <string>/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/logs/launchd.out.log</string>
+  <string>/Users/ernie/Library/Logs/fattail-labs/ssr-live-capture.out.log</string>
   <key>StandardErrorPath</key>
-  <string>/Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/logs/launchd.err.log</string>
+  <string>/Users/ernie/Library/Logs/fattail-labs/ssr-live-capture.err.log</string>
 </dict>
 </plist>
