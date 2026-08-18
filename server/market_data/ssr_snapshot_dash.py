@@ -223,10 +223,25 @@ def process_bits() -> dict[str, Any]:
     return found
 
 
+def count_day(day: date, *, root: Path | None = None) -> dict[str, Any]:
+    """Filename counts only — no JSON parse (status poll)."""
+    folder = (root / f"day={day.isoformat()}") if root is not None else day_dir(day)
+    by_sym = _snap_paths_by_symbol(folder / "chain")
+    return {
+        "day": day.isoformat(),
+        "exists": folder.is_dir(),
+        "snaps": sum(len(v) for v in by_sym.values()),
+        "symbols_with_snaps": len(by_sym),
+        "symbols": [
+            {"symbol": sym, "snaps": len(paths), "last": paths[-1].name}
+            for sym, paths in sorted(by_sym.items())
+        ],
+    }
+
+
 def live_status(*, archive_root: Path | None = None) -> dict[str, Any]:
     ts = now_ny()
     day = ts.date()
-    summary = summarize_day(day, root=archive_root)
     wake = next_wake(ts)
     return {
         "now": ts.isoformat(),
@@ -237,7 +252,7 @@ def live_status(*, archive_root: Path | None = None) -> dict[str, Any]:
         "data_root": str(data_root()),
         "days": list_days(archive_root if archive_root is not None else capture_root()),
         "processes": process_bits(),
-        "today": summary,
+        "today": count_day(day, root=archive_root),
     }
 
 
@@ -390,9 +405,9 @@ async function load(){
   const st = await (await fetch('/api/status')).json();
   const day = selected || st.day;
   let dayDoc = st.today;
-  if (day && day !== st.day) {
+  try {
     dayDoc = await (await fetch('/api/day?day=' + encodeURIComponent(day))).json();
-  }
+  } catch (e) { /* keep counts */ }
   paint(st, dayDoc);
 }
 $('day').addEventListener('change', (e) => { selected = e.target.value; load(); });

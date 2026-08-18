@@ -90,6 +90,18 @@ def test_summarize_day_nested_and_flat(tmp_path: Path):
     assert fri_doc["latest_with_iv"] == 1
 
 
+def test_count_day_does_not_need_json_body(tmp_path: Path):
+    from market_data.ssr_snapshot_dash import count_day
+
+    day = date(2026, 8, 17)
+    spy = tmp_path / f"day={day.isoformat()}" / "chain" / "SPY"
+    spy.mkdir(parents=True)
+    (spy / "snap-033238Z.json").write_text("not-json", encoding="utf-8")
+    doc = count_day(day, root=tmp_path)
+    assert doc["snaps"] == 1
+    assert doc["symbols"][0]["symbol"] == "SPY"
+
+
 def test_list_days_newest_first(tmp_path: Path):
     from market_data.ssr_snapshot_dash import list_days
 
