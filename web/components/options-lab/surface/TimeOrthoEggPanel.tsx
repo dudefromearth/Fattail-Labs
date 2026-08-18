@@ -136,7 +136,7 @@ export default function TimeOrthoEggPanel({
 
   return (
     <div
-      className="pointer-events-auto absolute z-20 max-h-[calc(100%-6rem)] w-[min(24rem,calc(100%-1.5rem))] overflow-y-auto rounded-2xl border border-white/12 bg-black/70 px-4 py-3 text-[12px] leading-snug text-white/75"
+      className="pointer-events-auto absolute z-20 max-h-[calc(100%-6rem)] w-[min(24rem,calc(100%-1.5rem))] overflow-y-auto rounded-2xl border border-white/12 bg-black/70 px-4 py-3 text-[18px] leading-snug text-white/75"
       data-testid="surface-time-ortho-copy"
       style={
         floatPos
@@ -145,7 +145,7 @@ export default function TimeOrthoEggPanel({
       }
     >
       <div
-        className="cursor-grab text-[11px] font-semibold uppercase tracking-[0.14em] text-white/90 active:cursor-grabbing"
+        className="cursor-grab text-[16.5px] font-semibold uppercase tracking-[0.14em] text-white/90 active:cursor-grabbing"
         data-testid="surface-time-ortho-drag"
         onPointerDown={(e) => {
           if (e.button !== 0) return;
@@ -206,7 +206,7 @@ export default function TimeOrthoEggPanel({
       </p>
       <div className="mt-3 flex items-center justify-between gap-2">
         <div
-          className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/90"
+          className="text-[16.5px] font-semibold uppercase tracking-[0.14em] text-white/90"
           data-testid="surface-time-ortho-pos-heading"
         >
           Position List
@@ -218,7 +218,7 @@ export default function TimeOrthoEggPanel({
         </div>
         <Link
           href="/app/options-lab/analyzer?builder=1"
-          className="rounded-full border border-white/25 px-2.5 py-0.5 text-[11px] text-white/90"
+          className="rounded-full border border-white/25 px-2.5 py-0.5 text-[16.5px] text-white/90"
           data-testid="surface-time-ortho-add"
         >
           Add position
@@ -246,7 +246,7 @@ export default function TimeOrthoEggPanel({
               </span>
               <button
                 type="button"
-                className="rounded-full border border-white/20 px-2 py-0.5 text-[11px] text-white/85"
+                className="rounded-full border border-white/20 px-2 py-0.5 text-[16.5px] text-white/85"
                 data-testid={`surface-time-ortho-vis-${p.id}`}
                 aria-label={
                   p.visible === false
@@ -260,7 +260,7 @@ export default function TimeOrthoEggPanel({
               {p.closedAt == null ? (
                 <button
                   type="button"
-                  className="rounded-full border border-white/20 px-2 py-0.5 text-[11px] text-white/85"
+                  className="rounded-full border border-white/20 px-2 py-0.5 text-[16.5px] text-white/85"
                   data-testid={`surface-time-ortho-close-${p.id}`}
                   onClick={() => onClosePosition(p.id)}
                 >
@@ -271,7 +271,7 @@ export default function TimeOrthoEggPanel({
               )}
               <button
                 type="button"
-                className="rounded-full border border-white/20 px-2 py-0.5 text-[11px] text-white/85"
+                className="rounded-full border border-white/20 px-2 py-0.5 text-[16.5px] text-white/85"
                 data-testid={`surface-time-ortho-send-${p.id}`}
                 onClick={() => onSendToTradeLog(p.id)}
               >
@@ -279,7 +279,7 @@ export default function TimeOrthoEggPanel({
               </button>
               <button
                 type="button"
-                className="rounded-full border border-white/20 px-2 py-0.5 text-[11px] text-white/85"
+                className="rounded-full border border-white/20 px-2 py-0.5 text-[16.5px] text-white/85"
                 data-testid={`surface-time-ortho-remove-${p.id}`}
                 onClick={() => onRemovePosition(p.id)}
               >
@@ -292,7 +292,7 @@ export default function TimeOrthoEggPanel({
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="rounded-full border border-white/25 px-2.5 py-0.5 text-[11px] text-white/90 disabled:opacity-50"
+          className="rounded-full border border-white/25 px-2.5 py-0.5 text-[16.5px] text-white/90 disabled:opacity-50"
           data-testid="surface-time-ortho-capture"
           title="Save this view to today’s journal"
           disabled={captureBusy}
@@ -302,12 +302,12 @@ export default function TimeOrthoEggPanel({
         </button>
         <Link
           href="/app/options-lab/analyzer"
-          className="rounded-full border border-white/25 px-2.5 py-0.5 text-[11px] text-white/90"
+          className="rounded-full border border-white/25 px-2.5 py-0.5 text-[16.5px] text-white/90"
         >
           Open Analyzer (2D)
         </Link>
       </div>
-      <div className="mt-3 space-y-1.5 border-t border-white/10 pt-2 text-[11px] text-white/70">
+      <div className="mt-3 space-y-1.5 border-t border-white/10 pt-2 text-[16.5px] text-white/70">
         <div className="flex flex-wrap items-center gap-1">
           <span className="uppercase tracking-wider text-white/40">Candles</span>
           {TAPE_CANDLE_KINDS.map((k) => (

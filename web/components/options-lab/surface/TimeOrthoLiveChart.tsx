@@ -1,7 +1,6 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { fetchMarketOhlc } from "@/lib/marketOhlcApi";
 import type { OhlcBar } from "@/lib/marketOhlcApi";
 import {
   dayClockToX,
@@ -29,7 +28,11 @@ import {
   type TapeCandleKind,
   type TapePrefs,
 } from "@/lib/options-lab/timeOrthoTapePrefs";
-import { BAR_MS, chartWindow, filterSessionBars } from "@/lib/options-lab/timeOrthoSession";
+import { BAR_MS, chartWindow } from "@/lib/options-lab/timeOrthoSession";
+import {
+  prefetchTimeOrthoTape,
+  readTapeCache,
+} from "@/lib/options-lab/timeOrthoTapeCache";
 import { formatStrike } from "@/lib/options-lab/listedStrikes";
 
 const POLL_MS = 30_000;
@@ -426,6 +429,8 @@ const TimeOrthoLiveChart = forwardRef<
     listedStrikes?: number[];
     /** T+0 P&L break-evens (live + parked ghosts) — T Ortho view only. */
     beLevels?: number[];
+    /** False while the tape stays warm under an opaque 3D surface. */
+    interactive?: boolean;
   }
 >(function TimeOrthoLiveChart(
   {
@@ -435,6 +440,7 @@ const TimeOrthoLiveChart = forwardRef<
     positionScale = null,
     listedStrikes = [],
     beLevels = [],
+    interactive = true,
   },
   ref,
 ) {
@@ -458,6 +464,16 @@ const TimeOrthoLiveChart = forwardRef<
     nowMs: 0,
     prefillsPriorDay: false,
   });
+  const seeded = readTapeCache(symbol);
+  if (seeded && barsRef.current.length === 0) {
+    barsRef.current = seeded.bars;
+    winRef.current = {
+      fromMs: seeded.fromMs,
+      toMs: seeded.toMs,
+      nowMs: Date.now(),
+      prefillsPriorDay: seeded.prefillsPriorDay,
+    };
+  }
   const priceViewRef = useRef<PriceView | null>(null);
   const userPanRef = useRef(false);
   const axisRef = useRef<DayAxis | null>(null);
@@ -534,6 +550,7 @@ const TimeOrthoLiveChart = forwardRef<
     canvas.dataset.xOpen = String(Math.round(axis.xOpen));
     canvas.dataset.xClose = String(Math.round(axis.xClose));
     canvas.dataset.printed = String(barsRef.current.length);
+    canvas.dataset.cached = barsRef.current.length > 0 ? "1" : "0";
     canvas.dataset.phase = marketWhereWhen(
       nowMs,
       axis.tPre,
@@ -594,20 +611,32 @@ const TimeOrthoLiveChart = forwardRef<
     if (!sym) return;
     let alive = true;
     const ac = new AbortController();
+    const applyCache = () => {
+      const cached = readTapeCache(sym);
+      if (cached && cached.bars.length) {
+        barsRef.current = cached.bars;
+        winRef.current = {
+          fromMs: cached.fromMs,
+          toMs: cached.toMs,
+          nowMs: Date.now(),
+          prefillsPriorDay: cached.prefillsPriorDay,
+        };
+      } else {
+        barsRef.current = [];
+      }
+      draw();
+    };
+    applyCache();
     const paint = async () => {
-      const payload = await fetchMarketOhlc(sym, "5m", {
-        lookbackDays: 5,
-        signal: ac.signal,
-      });
-      if (!alive) return;
-      const now = Date.now();
-      const win = chartWindow(now);
-      barsRef.current = filterSessionBars(payload.bars || [], now);
+      applyCache();
+      const entry = await prefetchTimeOrthoTape(sym, { signal: ac.signal });
+      if (!alive || !entry) return;
+      barsRef.current = entry.bars;
       winRef.current = {
-        fromMs: win.fromMs,
-        toMs: win.toMs,
-        nowMs: now,
-        prefillsPriorDay: win.prefillsPriorDay,
+        fromMs: entry.fromMs,
+        toMs: entry.toMs,
+        nowMs: Date.now(),
+        prefillsPriorDay: entry.prefillsPriorDay,
       };
       draw();
     };
@@ -647,9 +676,13 @@ const TimeOrthoLiveChart = forwardRef<
   return (
     <div
       ref={hostRef}
-      className="absolute inset-0 z-0 pointer-events-auto"
+      className={
+        "absolute inset-0 z-0 " +
+        (interactive ? "pointer-events-auto" : "pointer-events-none")
+      }
       data-testid="surface-time-ortho-live-chart"
       data-symbol={symbol}
+      data-armed={interactive ? "1" : "0"}
     >
       <canvas
         ref={canvasRef}

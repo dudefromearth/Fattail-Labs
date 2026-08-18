@@ -166,3 +166,49 @@ test("T Ortho goes away when the last position is removed", async ({
   }, POS_KEY);
   expect(leftover).toBe(0);
 });
+
+test("T Ortho tape stays cached when leaving and returning", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.goto("/api/auth/dev-login");
+  await page.waitForURL(/\/course|\/admin|\//, { timeout: 30_000 });
+
+  await page.goto("/app/options-lab/surface?symbol=SPX");
+  await page.evaluate(
+    ({ key, pos }) => {
+      localStorage.setItem(key, JSON.stringify([pos]));
+      sessionStorage.setItem(key, JSON.stringify([pos]));
+      sessionStorage.setItem("options-lab-symbol", "SPX");
+    },
+    { key: POS_KEY, pos: seedPos },
+  );
+  await page.reload();
+
+  await expect(page.getByTestId("surface-host")).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId("surface-view-timeOrtho").click();
+  const tape = page.getByTestId("surface-time-ortho-tape");
+  await expect(tape).toHaveAttribute("data-x-open", /\d+/, { timeout: 25_000 });
+
+  await page.getByTestId("surface-view-time").click();
+  await expect(page.getByTestId("surface-host")).toHaveAttribute(
+    "data-time-ortho",
+    "0",
+  );
+  await expect(page.getByTestId("surface-time-ortho-live-chart")).toHaveCount(1);
+  await expect(page.getByTestId("surface-time-ortho-live-chart")).toHaveAttribute(
+    "data-armed",
+    "0",
+  );
+
+  await page.getByTestId("surface-view-timeOrtho").click();
+  await expect(page.getByTestId("surface-host")).toHaveAttribute(
+    "data-time-ortho",
+    "1",
+  );
+  await expect(tape).toHaveAttribute("data-x-open", /\d+/);
+  await expect(page.getByTestId("surface-time-ortho-live-chart")).toHaveAttribute(
+    "data-armed",
+    "1",
+  );
+});

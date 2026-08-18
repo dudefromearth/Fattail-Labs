@@ -38,6 +38,10 @@ import {
   attachCaptureToTodayJournal,
   JournalCaptureClosedError,
 } from "@/lib/options-lab/timeOrthoJournal";
+import {
+  clearTapeCache,
+  useWarmTimeOrthoTape,
+} from "@/lib/options-lab/timeOrthoTapeCache";
 import { localSessionNote } from "@/lib/options-lab/timeOrthoNote";
 import { chartWindow } from "@/lib/options-lab/timeOrthoSession";
 import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
@@ -220,6 +224,8 @@ export default function SurfaceApp() {
     () => allForSymbol.filter((p) => p.visible !== false),
     [allForSymbol],
   );
+  const keepTape = bookReady && allForSymbol.length > 0;
+  useWarmTimeOrthoTape([symbol], keepTape);
 
   const bookFitKey = useMemo(
     () =>
@@ -501,8 +507,9 @@ export default function SurfaceApp() {
     if (eggOn && shouldExitTimeOrtho(hadBookRef.current, n)) {
       leaveEgg();
     }
+    if (hadBookRef.current && n === 0) clearTapeCache(symbol);
     hadBookRef.current = n > 0;
-  }, [allForSymbol.length, eggOn]);
+  }, [allForSymbol.length, eggOn, symbol]);
   useEffect(() => {
     const live = t0BreakEvens(sheet);
     const eps = beGhostEps(sheet?.sMin ?? 0, sheet?.sMax ?? 1);
@@ -582,7 +589,7 @@ export default function SurfaceApp() {
       data-altered={altered ? "1" : "0"}
       data-time-ortho={eggOn ? "1" : "0"}
     >
-      {eggOn ? (
+      {keepTape ? (
         <TimeOrthoLiveChart
           ref={tapeRef}
           symbol={symbol}
@@ -593,12 +600,17 @@ export default function SurfaceApp() {
             closedAt: p.closedAt ?? null,
             closedPnl: p.closedPnl ?? null,
           }))}
-          onAxis={(span) => sceneRef.current?.alignTimeOrtho(span)}
+          onAxis={
+            eggOn
+              ? (span) => sceneRef.current?.alignTimeOrtho(span)
+              : undefined
+          }
           positionScale={
             sheet ? { lo: sheet.sMin, hi: sheet.sMax } : null
           }
           listedStrikes={sheet?.listedStrikes ?? []}
           beLevels={beLevels}
+          interactive={eggOn}
         />
       ) : null}
       {eggOn ? (

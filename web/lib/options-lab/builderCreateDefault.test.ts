@@ -3,10 +3,12 @@
  */
 
 import {
+  DEFAULT_CREATE_WING_WIDTH,
   MAX_USER_PRESETS,
   clearCreateDefault,
   factoryCreateDefault,
   isLabDefaultsActive,
+  labCreateOpenDefault,
   labDefaultForStrategy,
   loadCreateDefaultsStore,
   resolveCreateSeed,
@@ -57,6 +59,20 @@ test("lab butterfly is create-open factory", () => {
   assert(f.centerOffsetPts === 0, "atm");
   const lab = labDefaultForStrategy("butterfly", "SPX");
   assert(lab.wingWidth === f.wingWidth, "wing match");
+  assert(f.wingWidth === DEFAULT_CREATE_WING_WIDTH, "20-wide");
+});
+
+test("create-open default is 20-wide butterfly at spot for any symbol", () => {
+  store.clear();
+  for (const sym of ["SPX", "XSP", "SPY", "QQQ", "IWM", "AAPL", "NDX", "RUT"]) {
+    const s = resolveCreateSeed(sym);
+    const lab = labCreateOpenDefault(sym);
+    assert(s.template === "butterfly", `${sym} template`);
+    assert(s.wingWidth === 20, `${sym} width 20`);
+    assert(s.centerOffsetPts === 0, `${sym} at spot`);
+    assert(lab.wingWidth === 20 && lab.centerOffsetPts === 0, `${sym} lab seed`);
+    assert(labDefaultForStrategy("butterfly", sym).wingWidth === 20, `${sym} recipe`);
+  }
 });
 
 test("lab iron_fly is short credit", () => {

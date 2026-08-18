@@ -56,6 +56,7 @@ import {
 } from "@/lib/options-lab/positionLabels";
 import { generateTosScript } from "@/lib/options-lab/tosGenerator";
 import {
+  DEFAULT_CREATE_WING_WIDTH,
   formatShapeSummary,
   isLabDefaultsActive,
   labDefaultForStrategy,
@@ -73,6 +74,8 @@ import {
   resolveBuilderPlaneState,
   type BuilderPlaneState,
 } from "@/lib/options-lab/builderAtomicState";
+
+export { DEFAULT_CREATE_WING_WIDTH };
 
 const TEMPLATE_LABELS: Record<TemplateType, string> = {
   single: "Single",
@@ -133,9 +136,6 @@ const STRATEGY_DIAGRAMS: Record<TemplateType, string> = {
   calendar: "M2,16 L20,10 L30,6 L40,10 L58,16",
   diagonal: "M2,18 L20,12 L32,6 L44,10 L58,16",
 };
-
-/** Create-default wing: always 20 when listed; else profile / product fallback. */
-export const DEFAULT_CREATE_WING_WIDTH = 20;
 
 /** Fallback when profile fly_widths missing (A2/A3 prefer profile.fly_widths[0]). */
 function defaultWidth(symbol: string, profileMin?: number | null): number {
@@ -1588,6 +1588,7 @@ export default function PositionBuilder({
               <select
                 className={field + " flex-1 text-right"}
                 value={template}
+                data-testid="builder-template"
                 onChange={(e) => handleTemplate(e.target.value as TemplateType)}
               >
                 {STRATEGY_GROUPS.map((g) => (

@@ -2,11 +2,10 @@
 
 /**
  * Options Lab Analyzer — Spec v0.2.1 + PB Spec v0.3 + OPF.
- * Layout OD-AZ1/2: top Controls · viewport · divider · Positions · Alerts.
+ * Layout OD-AZ1/2: left Controls inspector · viewport · divider · Positions · Alerts.
  * Card = definition · viewport = OPF viz · package SoR from OPF quote API.
  */
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   useCallback,
@@ -17,6 +16,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useOptionsLab } from "@/lib/optionsLabContext";
+import { useWarmTimeOrthoTape } from "@/lib/options-lab/timeOrthoTapeCache";
 import {
   clearAnalyzerTrade,
   loadAnalyzerTrade,
@@ -47,7 +47,6 @@ import {
 } from "@/lib/options-lab/sessionPosture";
 import {
   DEFAULT_OPF_MODEL,
-  OPF_ANALYZER_MODELS,
   findOpfModel,
   type OpfModelOption,
 } from "@/lib/options-lab/opfModels";
@@ -69,6 +68,7 @@ import {
 import { createTrade, fetchTrades } from "@/lib/tradeLogApi";
 import AnalyzerAlertsSection from "@/components/options-lab/AnalyzerAlertsSection";
 import AnalyzerPositionsList from "@/components/options-lab/AnalyzerPositionsList";
+import AnalyzerControlsColumn from "@/components/options-lab/AnalyzerControlsColumn";
 import PositionBuilder from "@/components/options-lab/PositionBuilder";
 import SurfaceViewport from "@/components/options-lab/SurfaceViewport";
 import PnLChart, {
@@ -89,16 +89,6 @@ const BOOK_H_KEY = "ft_analyzer_book_height_px";
 const BOOK_H_MIN = 72;
 const BOOK_H_DEFAULT = 200;
 const VIEWPORT_H_MIN = 140;
-
-const fieldLabel =
-  "mb-0.5 block text-[10px] font-medium uppercase tracking-wide text-[var(--color-label-tertiary)]";
-const controlSm =
-  "rounded-md border border-[var(--color-separator)] bg-[var(--color-surface)] " +
-  "px-2 py-1 text-xs text-[var(--color-label)]";
-const btn =
-  "inline-flex min-h-8 items-center justify-center rounded-full border border-[var(--color-separator)] " +
-  "bg-[var(--color-surface)] px-2.5 py-1 text-xs font-medium text-[var(--color-label)] " +
-  "shadow-sm hover:bg-[var(--color-fill)] disabled:opacity-45";
 
 async function fetchPlanePosture(): Promise<SessionPosture> {
   try {
@@ -156,6 +146,18 @@ export default function OpfRiskAnalyzer() {
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
   positionsRef.current = positions;
+  const tapeSymbols = useMemo(
+    () =>
+      [
+        ...new Set(
+          positions
+            .map((p) => (p.position.underlying || "").toUpperCase())
+            .filter(Boolean),
+        ),
+      ],
+    [positions],
+  );
+  useWarmTimeOrthoTape(tapeSymbols, tapeSymbols.length > 0);
   /** Handoff payloads already applied this session (savedAt) — never re-mint. */
   const consumedHandoffAt = useRef<Set<number>>(new Set());
 
@@ -810,347 +812,115 @@ export default function OpfRiskAnalyzer() {
     },
   };
 
+  const contributing = bookTrade.contributingIds;
+  const viewportFocusLabel =
+    contributing.length > 0 || focused
+      ? `Viewport · ${
+          contributing.length > 1
+            ? `${contributing.length} positions`
+            : contributing.length === 1
+              ? (positions.find((p) => p.id === contributing[0])?.label ??
+                focused?.label)
+              : focused?.label
+        }${
+          contributing.length === 1 &&
+          positions.find((p) => p.id === contributing[0])?.lock.mode ===
+            "locked"
+            ? " · locked"
+            : ""
+        }`
+      : null;
+  const markPkg = trade
+    ? risk.packageDebit != null
+      ? risk.packageDebit.toFixed(2)
+      : focused?.livePackagePerShare != null
+        ? focused.livePackagePerShare.toFixed(2)
+        : "—"
+    : null;
+  const reconLabel: "override" | "n/a held" | "pass" | "fail" | "—" =
+    inputOverrideActive
+      ? "override"
+      : sessionHeld
+        ? "n/a held"
+        : risk.reconPass === true
+          ? "pass"
+          : risk.reconPass === false
+            ? "fail"
+            : "—";
+  const packLine = trade
+    ? `${risk.packId ?? model.packId}${
+        risk.fromCache && !risk.loading
+          ? " · cache stale"
+          : risk.loading
+            ? " · live…"
+            : ""
+      }`
+    : null;
+
   return (
     <div
-      className="flex min-h-0 flex-1 flex-row"
+      className="flex min-h-0 flex-1 flex-col md:flex-row"
       data-testid="options-lab-opf-risk-analyzer"
     >
-      {/* Controls — left column (Coach: not top strip) */}
-      <aside
-        className="flex w-[15.5rem] shrink-0 flex-col gap-2.5 overflow-y-auto border-r border-[var(--color-separator)] bg-[var(--color-surface)] p-2.5"
-        data-testid="analyzer-controls-column"
-      >
-        <div>
-          <h2 className="text-sm font-semibold text-[var(--color-label)]">
-            Analyzer
-          </h2>
-          <p className="text-[10px] text-[var(--color-label-tertiary)]">
-            Controls · Models · Time machine
-          </p>
-          <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
-            <span
-              className={
-                "rounded px-1.5 py-0.5 font-semibold uppercase " +
-                (posture === "Live"
-                  ? "bg-emerald-500/20 text-emerald-600"
-                  : posture === "Extended"
-                    ? "bg-sky-500/20 text-sky-800 dark:text-sky-200"
-                    : "bg-amber-500/20 text-amber-800 dark:text-amber-100")
-              }
-              data-testid="analyzer-posture-badge"
-            >
-              {posture === "Live"
-                ? "Live"
-                : posture === "Extended"
-                  ? "Pre/post"
-                  : "Off market"}
-            </span>
-            <span className="rounded bg-[var(--color-fill)] px-1.5 py-0.5 text-[var(--color-label-secondary)]">
-              {activeModel.useCase}
-            </span>
-          </div>
-        </div>
-
-        {(inputOverrideActive || sessionHeld) && (
-          <div
-            className={
-              "rounded-md px-2 py-1.5 text-[10px] font-medium leading-snug " +
-              (inputOverrideActive
-                ? "bg-sky-500/15 text-sky-800 dark:text-sky-200"
-                : "bg-amber-500/15 text-amber-900 dark:text-amber-100")
-            }
-            data-testid="analyzer-override-banner"
-            role="status"
-          >
-            {inputOverrideActive
-              ? "Override active — RECON is override (not live pass/fail)."
-              : posture === "Extended"
-                ? "Pre/post session — Massive last print / extended quotes. Not RTH NBBO."
-                : "Off market — last print. Not polling a live chain."}
-          </div>
-        )}
-
-        <label className="block">
-          <span className={fieldLabel}>Symbol</span>
-          <select
-            className={controlSm + " w-full"}
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            disabled={universeLoading}
-            data-testid="analyzer-symbol-select"
-          >
-            {universe.map((u) => (
-              <option key={u.symbol} value={u.symbol}>
-                {u.symbol}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className={fieldLabel}>OPF model</span>
-          <select
-            className={controlSm + " w-full"}
-            value={model.packId}
-            onChange={(e) => {
-              const m = findOpfModel(e.target.value);
-              setModel(m);
-              if (m.useCase === "outlook") setEpochPinned(true);
-              else setEpochPinned(false);
-              setEpochStale(false);
-            }}
-            data-testid="opf-model-select"
-          >
-            {OPF_ANALYZER_MODELS.map((m) => (
-              <option key={m.packId} value={m.packId}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-          <p className="mt-0.5 text-[9px] leading-snug text-[var(--color-label-tertiary)]">
-            {model.description}
-          </p>
-        </label>
-
-        <div className="grid grid-cols-2 gap-1.5">
-          <label className="block">
-            <span className={fieldLabel}>Spot</span>
-            <input
-              className={controlSm + " w-full font-mono"}
-              value={spotStr}
-              onChange={(e) => {
-                setSpotDirty(true);
-                setSpotStr(e.target.value);
-              }}
-              data-testid="analyzer-spot-input"
-            />
-          </label>
-          <label className="block">
-            <span className={fieldLabel}>VIX</span>
-            <input
-              className={controlSm + " w-full font-mono"}
-              value={vixStr}
-              onChange={(e) => {
-                setVixDirty(true);
-                setVixStr(e.target.value);
-              }}
-              data-testid="analyzer-vix-input"
-            />
-          </label>
-        </div>
-
-        <div
-          className="flex flex-col gap-1.5 rounded-lg border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-2 py-2"
-          data-testid="analyzer-whatif-panel"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--color-label)]">
-              <input
-                type="checkbox"
-                checked={timeMachineEnabled}
-                onChange={(e) => setTimeMachineEnabled(e.target.checked)}
-                data-testid="analyzer-whatif-enable"
-              />
-              What-if
-            </label>
-            <button
-              type="button"
-              className="text-[10px] text-[var(--color-tint)]"
-              onClick={resetSim}
-            >
-              Reset
-            </button>
-          </div>
-          <label className="block text-[10px] text-[var(--color-label-tertiary)]">
-            Time {simTimeOffsetHours >= 0 ? "+" : ""}
-            {simTimeOffsetHours.toFixed(0)}h
-            <input
-              type="range"
-              className="mt-0.5 w-full"
-              min={0}
-              max={72}
-              step={1}
-              value={simTimeOffsetHours}
-              disabled={!timeMachineEnabled}
-              onChange={(e) => setSimTimeOffsetHours(Number(e.target.value))}
-              data-testid="analyzer-whatif-time"
-            />
-          </label>
-          <label className="block text-[10px] text-[var(--color-label-tertiary)]">
-            Vol {simVolatilityOffset >= 0 ? "+" : ""}
-            {simVolatilityOffset.toFixed(0)} pts
-            <input
-              type="range"
-              className="mt-0.5 w-full"
-              min={-30}
-              max={30}
-              step={1}
-              value={simVolatilityOffset}
-              disabled={!timeMachineEnabled}
-              onChange={(e) => setSimVolatilityOffset(Number(e.target.value))}
-              data-testid="analyzer-whatif-vol"
-            />
-          </label>
-          <label className="block text-[10px] text-[var(--color-label-tertiary)]">
-            Spot {simSpotPct >= 0 ? "+" : ""}
-            {simSpotPct.toFixed(1)}%
-            <input
-              type="range"
-              className="mt-0.5 w-full"
-              min={-5}
-              max={5}
-              step={0.1}
-              value={simSpotPct}
-              disabled={!timeMachineEnabled}
-              onChange={(e) => setSimSpotPct(Number(e.target.value))}
-              data-testid="analyzer-whatif-spotpct"
-            />
-          </label>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <button
-            type="button"
-            className={btn + " w-full"}
-            onClick={() => {
-              setEditId(null);
-              setBuilderOpen(true);
-            }}
-            data-testid="analyzer-open-builder"
-          >
-            Builder
-          </button>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              className={btn}
-              onClick={() => risk.refresh()}
-              disabled={!trade || risk.loading}
-            >
-              {risk.loading ? "…" : "Refresh"}
-            </button>
-            <button
-              type="button"
-              className={btn}
-              onClick={() => chartRef.current?.autoFit()}
-              disabled={!hasCurves}
-            >
-              Auto-fit
-            </button>
-          </div>
-          {model.useCase === "outlook" && (
-            <button
-              type="button"
-              className={btn + " w-full"}
-              onClick={() => {
-                setEpochPinned(false);
-                setEpochStale(false);
-                risk.refresh();
-                setEpochPinned(true);
-              }}
-            >
-              Re-anchor{epochStale ? " · stale" : ""}
-            </button>
-          )}
-          <Link
-            href="/app/options-lab/heatmap"
-            className={btn + " w-full no-underline"}
-          >
-            Heatmap
-          </Link>
-        </div>
-
-        {(trade || focused || bookNotice || risk.error) && (
-          <div className="space-y-1 border-t border-[var(--color-separator)] pt-2 text-[11px] text-[var(--color-label-secondary)]">
-            {(bookTrade.contributingIds.length > 0 || focused) && (
-              <p
-                className="text-[var(--color-tint)]"
-                data-testid="analyzer-viewport-focus"
-              >
-                Viewport ·{" "}
-                {bookTrade.contributingIds.length > 1
-                  ? `${bookTrade.contributingIds.length} positions`
-                  : bookTrade.contributingIds.length === 1
-                    ? (positions.find(
-                        (p) => p.id === bookTrade.contributingIds[0],
-                      )?.label ?? focused?.label)
-                    : focused?.label}
-                {bookTrade.contributingIds.length === 1 &&
-                positions.find((p) => p.id === bookTrade.contributingIds[0])
-                  ?.lock.mode === "locked"
-                  ? " · locked"
-                  : ""}
-              </p>
-            )}
-            {trade && (
-              <div className="grid grid-cols-2 gap-1 text-center">
-                <div className="rounded bg-[var(--color-fill)] p-1">
-                  <div className="text-[9px] text-[var(--color-label-tertiary)]">
-                    Mark pkg
-                  </div>
-                  <div className="font-mono text-[11px] text-[var(--color-label)]">
-                    {risk.packageDebit != null
-                      ? risk.packageDebit.toFixed(2)
-                      : focused?.livePackagePerShare != null
-                        ? focused.livePackagePerShare.toFixed(2)
-                        : "—"}
-                  </div>
-                </div>
-                <div className="rounded bg-[var(--color-fill)] p-1">
-                  <div className="text-[9px] text-[var(--color-label-tertiary)]">
-                    RECON
-                  </div>
-                  <div
-                    className={
-                      "font-mono text-[11px] font-semibold " +
-                      (inputOverrideActive
-                        ? "text-sky-600"
-                        : sessionHeld
-                          ? "text-[var(--color-label-tertiary)]"
-                          : risk.reconPass === true
-                            ? "text-emerald-600"
-                            : risk.reconPass === false
-                              ? "text-red-500"
-                              : "")
-                    }
-                    data-testid="analyzer-recon-chip"
-                  >
-                    {inputOverrideActive
-                      ? "override"
-                      : sessionHeld
-                        ? "n/a held"
-                        : risk.reconPass === true
-                          ? "pass"
-                          : risk.reconPass === false
-                            ? "fail"
-                            : "—"}
-                  </div>
-                </div>
-              </div>
-            )}
-            {trade && (
-              <p className="text-[10px] text-[var(--color-label-tertiary)]">
-                {risk.packId ?? model.packId}
-                {risk.fromCache && !risk.loading
-                  ? " · cache stale"
-                  : risk.loading
-                    ? " · live…"
-                    : ""}
-              </p>
-            )}
-            {bookNotice && (
-              <p className="text-emerald-600" role="status">
-                {bookNotice}
-              </p>
-            )}
-            {risk.error && (
-              <p className="text-amber-600" role="status">
-                {risk.error}
-              </p>
-            )}
-          </div>
-        )}
-      </aside>
+      <AnalyzerControlsColumn
+        posture={posture}
+        model={model}
+        inputOverrideActive={inputOverrideActive}
+        sessionHeld={sessionHeld}
+        symbol={symbol}
+        universe={universe}
+        universeLoading={universeLoading}
+        onSymbolChange={setSymbol}
+        onModelChange={(packId) => {
+          const m = findOpfModel(packId);
+          setModel(m);
+          if (m.useCase === "outlook") setEpochPinned(true);
+          else setEpochPinned(false);
+          setEpochStale(false);
+        }}
+        spotStr={spotStr}
+        vixStr={vixStr}
+        onSpotChange={(v) => {
+          setSpotDirty(true);
+          setSpotStr(v);
+        }}
+        onVixChange={(v) => {
+          setVixDirty(true);
+          setVixStr(v);
+        }}
+        timeMachineEnabled={timeMachineEnabled}
+        onTimeMachineEnabled={setTimeMachineEnabled}
+        simTimeOffsetHours={simTimeOffsetHours}
+        onSimTimeOffsetHours={setSimTimeOffsetHours}
+        simVolatilityOffset={simVolatilityOffset}
+        onSimVolatilityOffset={setSimVolatilityOffset}
+        simSpotPct={simSpotPct}
+        onSimSpotPct={setSimSpotPct}
+        onResetSim={resetSim}
+        onCreate={() => {
+          setEditId(null);
+          setBuilderOpen(true);
+        }}
+        onRefresh={() => risk.refresh()}
+        refreshDisabled={!trade || risk.loading}
+        refreshLoading={risk.loading}
+        onAutoFit={() => chartRef.current?.autoFit()}
+        autoFitDisabled={!hasCurves}
+        showReanchor={model.useCase === "outlook"}
+        epochStale={epochStale}
+        onReanchor={() => {
+          setEpochPinned(false);
+          setEpochStale(false);
+          risk.refresh();
+          setEpochPinned(true);
+        }}
+        viewportFocusLabel={viewportFocusLabel}
+        markPkg={markPkg}
+        reconLabel={reconLabel}
+        packLine={packLine}
+        bookNotice={bookNotice}
+        riskError={risk.error}
+      />
 
       {/* Right column: viewport + book (under) + alerts — list never left of viewport */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">

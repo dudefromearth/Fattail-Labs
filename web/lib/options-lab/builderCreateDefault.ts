@@ -21,6 +21,9 @@ const LEGACY_V1_KEY = "ft_options_lab_builder_create_default_v1";
 
 export const MAX_USER_PRESETS = 3;
 
+/** Create-open default: 20-wide butterfly at spot (ATM). Listed grid only. */
+export const DEFAULT_CREATE_WING_WIDTH = 20;
+
 export type ShapeSnapshot = {
   template: TemplateType;
   direction: TradeDirection;
@@ -141,10 +144,11 @@ export function labDefaultForStrategy(
         template: "butterfly",
         direction: "buy",
         optionSide: "call",
-        wingWidth: w,
+        wingWidth: DEFAULT_CREATE_WING_WIDTH,
+        centerOffsetPts: 0,
         label: "ATM call butterfly",
         blurb:
-          "Long wing / short 2× body / long wing at ATM — Labs flagship Create seed (capital-aware fly).",
+          "Long wing / short 2× body / long wing — 20-wide butterfly at spot (Labs Create seed).",
       };
     case "bwb":
       return {
@@ -243,15 +247,15 @@ export function labDefaultForStrategy(
   }
 }
 
-/** Create-open Lab seed (flagship) when no user preset is active. */
+/** Create-open Lab seed: 20-wide butterfly at spot. */
 export function labCreateOpenDefault(symbol: string): ShapeSnapshot {
   const lab = labDefaultForStrategy("butterfly", symbol);
   return {
-    template: lab.template,
+    template: "butterfly",
     direction: lab.direction,
     optionSide: lab.optionSide,
-    wingWidth: lab.wingWidth,
-    centerOffsetPts: lab.centerOffsetPts,
+    wingWidth: DEFAULT_CREATE_WING_WIDTH,
+    centerOffsetPts: 0,
     contracts: lab.contracts,
   };
 }

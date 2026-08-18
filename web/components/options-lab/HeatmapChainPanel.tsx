@@ -63,19 +63,9 @@ import {
   symFlyDebit,
 } from "@/lib/options-lab/templates/pricing";
 import { saveAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
-import Link from "next/link";
+import HeatmapControlsColumn from "@/components/options-lab/HeatmapControlsColumn";
 
 const EXPIRY_PICK_COUNT = 3;
-
-const fieldLabel =
-  "mb-1 block text-xs font-medium text-[var(--color-label-secondary)]";
-
-const selectControl =
-  "block min-h-11 w-full min-w-[8rem] rounded-[var(--radius-md,0.5rem)] border border-[var(--color-separator)] " +
-  "bg-[var(--color-surface)] px-3 py-2 text-sm font-medium text-[var(--color-label)] " +
-  "shadow-[var(--elevation-1)] transition-colors " +
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)] " +
-  "disabled:opacity-45";
 
 const secondaryBtn =
   "inline-flex min-h-11 items-center justify-center rounded-full border border-[var(--color-separator)] " +
@@ -134,52 +124,6 @@ function darkenCssColor(css: string | undefined, factor = 0.55): string {
 }
 
 type MatrixTileKey = { strike: number; colId: string };
-
-function Segmented<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-  testId,
-}: {
-  label: string;
-  value: T;
-  options: { id: T; label: string }[];
-  onChange: (v: T) => void;
-  testId?: string;
-}) {
-  return (
-    <div>
-      <span className={fieldLabel}>{label}</span>
-      <nav
-        className="inline-flex flex-wrap items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-1"
-        aria-label={label}
-        data-testid={testId}
-      >
-        {options.map((item) => {
-          const active = item.id === value;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onChange(item.id)}
-              aria-pressed={active}
-              className={[
-                "inline-flex min-h-9 items-center justify-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
-                active
-                  ? "bg-[var(--color-surface)] text-[var(--color-label)] shadow-[var(--elevation-1)]"
-                  : "text-[var(--color-label-secondary)] hover:text-[var(--color-label)]",
-              ].join(" ")}
-            >
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
-    </div>
-  );
-}
 
 const StrikeRow = memo(function StrikeRow({
   row,
@@ -708,294 +652,65 @@ export default function HeatmapChainPanel() {
       className="flex min-h-0 flex-1 flex-col md:flex-row"
       data-testid="options-lab-heatmap-panel"
     >
-      {/* Left rail ~1/5 — controls, full height */}
-      <aside
-        className="flex w-full shrink-0 flex-col gap-4 overflow-y-auto border-b border-[var(--color-separator)] bg-[var(--color-surface)] p-3 sm:p-4 md:w-[20%] md:min-w-[12.5rem] md:max-w-[20rem] md:border-b-0 md:border-r"
-        aria-label="Chain controls"
-      >
-        <div>
-          <h2
-            className="font-semibold tracking-tight text-[var(--color-label)]"
-            style={{ fontSize: "var(--text-headline, 1.0625rem)" }}
-          >
-            Heatmap
-          </h2>
-          <p className="mt-0.5 text-xs leading-snug text-[var(--color-label-tertiary)]">
-            Dual-side chain · live templates
-          </p>
-        </div>
-
-        {/* Live status */}
-        <div className="flex flex-col gap-1 text-xs text-[var(--color-label-tertiary)]">
-          <span className="inline-flex items-center gap-1.5 font-medium text-[var(--color-label)]">
-            <span
-              className={[
-                "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-                streaming
-                  ? "bg-[var(--color-tint)]"
-                  : held
-                    ? "bg-amber-500"
-                    : "bg-[var(--color-label-tertiary)]",
-              ].join(" ")}
-              aria-hidden
-            />
-            {streaming
-              ? "Live stream"
-              : held
-                ? "Held · market closed"
-                : bus.transport === "error"
-                  ? "Stream error"
-                  : "Connecting…"}
-          </span>
-          {displayDte != null ? <span>{displayDte} DTE</span> : null}
-          {selectedMeta?.feed_symbol ? (
-            <span className="break-all">Feed {selectedMeta.feed_symbol}</span>
-          ) : null}
-          <span className="tabular-nums break-all">{bus.lastPatch}</span>
-        </div>
-
-        <label className="block">
-          <span className={fieldLabel}>Symbol</span>
-          <select
-            className={selectControl}
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            disabled={universeLoading || !universe.length}
-            data-testid="options-lab-symbol"
-          >
-            {universe.map((u) => (
-              <option key={u.symbol} value={u.symbol}>
-                {u.symbol}
-                {u.kind ? ` · ${u.kind}` : ""}
-                {u.profile?.strike_step != null
-                  ? ` · step ${u.profile.strike_step}`
-                  : u.strike_step != null
-                    ? ` · step ${u.strike_step}`
-                    : ""}
-              </option>
-            ))}
-            {!universe.length && !universeLoading && (
-              <option value={symbol}>{symbol}</option>
-            )}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className={fieldLabel}>Template</span>
-          <select
-            className={selectControl}
-            value={templateId}
-            onChange={(e) => setTemplateId(e.target.value)}
-            data-testid="heatmap-template"
-          >
-            {HEATMAP_TEMPLATES.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {tpl.valueModes.length > 1 ? (
-          <label className="block">
-            <span className={fieldLabel}>Value</span>
-            <select
-              className={selectControl}
-              value={valueMode}
-              onChange={(e) => setValueMode(e.target.value as ValueModeId)}
-              data-testid="heatmap-value-mode"
-            >
-              {tpl.valueModes.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-
-        {templateId === "bw-fly" ? (
-          <>
-            <label className="block">
-              <span className={fieldLabel}>Broken wing · strikes from body</span>
-              <select
-                className={selectControl}
-                value={bwStrikeCount}
-                onChange={(e) => setBwStrikeCount(Number(e.target.value))}
-                data-testid="heatmap-bw-strike-count"
-              >
-                {BW_STRIKE_COUNT_CHOICES.map((n) => (
-                  <option key={n} value={n}>
-                    {n} strike{n === 1 ? "" : "s"}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Segmented
-              label="Broken wing side (vs spot)"
-              value={bwWingSide}
-              options={[
-                { id: "closest", label: "Closest" },
-                { id: "furthest", label: "Furthest" },
-              ]}
-              onChange={setBwWingSide}
-              testId="heatmap-bw-wing-side"
-            />
-          </>
-        ) : null}
-
-        <p className="text-[11px] leading-snug text-[var(--color-label-tertiary)]">
-          {tpl.description}
-        </p>
-        <p
-          className="text-[11px] leading-snug text-[var(--color-label-tertiary)]"
-          data-testid="heatmap-symbol-profile"
-        >
-          Profile · wings ±{profile.default_wings}
-          {profile.strike_step != null
-            ? ` · step ${profile.strike_step}`
-            : ""}
-          {` · widths ${flyWidths[0]}–${flyWidths[flyWidths.length - 1]}`}
-          {profile.kind ? ` · ${profile.kind}` : ""}
-        </p>
-
-        <label className="block">
-          <span className={fieldLabel}>
-            Contract (next {EXPIRY_PICK_COUNT})
-          </span>
-          <select
-            className={selectControl}
-            value={expiration}
-            onChange={(e) => {
-              const v = e.target.value;
-              setExpiration(v);
-              const c = expiryContracts.find((x) => x.expiration === v);
-              setLadderDte(c != null ? c.dte : null);
-            }}
-            data-testid="chain-ladder-expiration"
-          >
-            {!expiration && <option value="">Select…</option>}
-            {expiryContracts.map((c) => (
-              <option key={c.expiration} value={c.expiration}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <Segmented
-          label="Side"
-          value={side}
-          options={[
-            { id: "call", label: "Calls" },
-            { id: "put", label: "Puts" },
-          ]}
-          onChange={setSide}
-          testId="chain-ladder-side"
-        />
-
-        <label className="block">
-          <span className={fieldLabel}>Wings</span>
-          <select
-            className={selectControl}
-            value={wings}
-            onChange={(e) => setWings(Number(e.target.value) as StrikeWings)}
-            data-testid="chain-ladder-wings"
-          >
-            {STRIKE_WING_CHOICES.map((n) => (
-              <option key={n} value={n}>
-                ±{n} strikes
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <button
-          type="button"
-          className={secondaryBtn + " w-full"}
-          onClick={() => centerSpot()}
-          disabled={!hasSpotRow}
-          data-testid="chain-ladder-center-spot"
-        >
-          Center spot
-        </button>
-
-        {/* ToS script — Option-click a matrix tile to fill + copy */}
-        <div className="flex flex-col gap-1.5" data-testid="heatmap-tos-panel">
-          <div className="flex items-center justify-between gap-2">
-            <span className={fieldLabel + " mb-0"}>ToS script</span>
-            <span className="text-[10px] text-[var(--color-label-tertiary)]">
-              {tosCopied
-                ? "Copied"
-                : "⌥-click tile"}
-            </span>
-          </div>
-          <pre
-            className="max-h-40 min-h-[4.5rem] overflow-auto whitespace-pre-wrap break-all rounded-lg border border-emerald-500/25 bg-[#0a0f0a] px-2.5 py-2 font-mono text-[16.5px] leading-snug text-emerald-400 shadow-inner"
-            data-testid="heatmap-tos-script"
-            title={
-              tosScript ||
-              (templateId === "bw-fly"
-                ? "Option-click a broken-wing tile"
-                : "Option-click a Symmetric flies tile")
-            }
-          >
-            {tosScript ||
-              "Option-click a fly tile to generate BUY/SELL BUTTERFLY … @debit LMT"}
-          </pre>
-          {tosScript ? (
-            <div className="flex flex-col gap-1.5">
-              <button
-                type="button"
-                className={secondaryBtn + " w-full min-h-9 py-1.5 text-xs"}
-                onClick={() => {
-                  rememberTosScript(tosScript);
-                  void navigator.clipboard.writeText(tosScript).then(() => {
-                    setTosCopied(true);
-                    window.setTimeout(() => setTosCopied(false), 1600);
-                  });
-                }}
-                data-testid="heatmap-tos-copy"
-              >
-                {tosCopied ? "Copied" : "Copy again"}
-              </button>
-              <Link
-                href="/app/options-lab/analyzer"
-                className={
-                  secondaryBtn +
-                  " w-full min-h-9 py-1.5 text-xs no-underline inline-flex"
-                }
-                data-testid="heatmap-open-analyzer"
-                onClick={() => saveAnalyzerTrade(tosScript, "heatmap")}
-              >
-                Open in Analyzer
-              </Link>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="mt-auto border-t border-[var(--color-separator)] pt-4">
-          <span className={fieldLabel}>Spot</span>
-          <div
-            className="font-semibold tabular-nums tracking-tight text-[var(--color-label)]"
-            style={{ fontSize: "var(--text-title-2, 1.375rem)" }}
-          >
-            {smoothSpot != null ? fmt(smoothSpot, 2) : "—"}
-          </div>
-          <div className="mt-1 text-[11px] tabular-nums text-[var(--color-label-tertiary)]">
-            {bus.hash ? `gen ${bus.hash.slice(0, 8)}` : "—"}
-          </div>
-        </div>
-
-        {error && (
-          <div
-            className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
-            role="alert"
-          >
-            {error}
-          </div>
-        )}
-      </aside>
+      <HeatmapControlsColumn
+        streaming={streaming}
+        held={held}
+        transport={bus.transport}
+        error={error}
+        symbol={symbol}
+        universe={universe}
+        universeLoading={universeLoading}
+        onSymbolChange={setSymbol}
+        templateId={templateId}
+        tpl={tpl}
+        onTemplateChange={setTemplateId}
+        valueMode={valueMode}
+        onValueModeChange={setValueMode}
+        bwStrikeCount={bwStrikeCount}
+        onBwStrikeCountChange={setBwStrikeCount}
+        bwWingSide={bwWingSide}
+        onBwWingSideChange={setBwWingSide}
+        profileLine={
+          `Profile · wings ±${profile.default_wings}` +
+          (profile.strike_step != null ? ` · step ${profile.strike_step}` : "") +
+          ` · widths ${flyWidths[0]}–${flyWidths[flyWidths.length - 1]}` +
+          (profile.kind ? ` · ${profile.kind}` : "")
+        }
+        expiration={expiration}
+        expiryContracts={expiryContracts}
+        onExpirationChange={(v) => {
+          setExpiration(v);
+          const c = expiryContracts.find((x) => x.expiration === v);
+          setLadderDte(c != null ? c.dte : null);
+        }}
+        side={side}
+        onSideChange={setSide}
+        wings={wings}
+        onWingsChange={setWings}
+        onCenterSpot={() => {
+          centerSpot();
+        }}
+        hasSpotRow={hasSpotRow}
+        tosScript={tosScript}
+        tosCopied={tosCopied}
+        onCopyTos={() => {
+          rememberTosScript(tosScript);
+          void navigator.clipboard.writeText(tosScript).then(() => {
+            setTosCopied(true);
+            window.setTimeout(() => setTosCopied(false), 1600);
+          });
+        }}
+        onOpenAnalyzer={() => saveAnalyzerTrade(tosScript, "heatmap")}
+        spotLabel={smoothSpot != null ? fmt(smoothSpot, 2) : "—"}
+        genLine={bus.hash ? `gen ${bus.hash.slice(0, 8)}` : null}
+        dteLine={displayDte != null ? `${displayDte} DTE` : null}
+        feedLine={
+          selectedMeta?.feed_symbol ? `Feed ${selectedMeta.feed_symbol}` : null
+        }
+        patchLine={
+          bus.lastPatch && bus.lastPatch !== "—" ? bus.lastPatch : null
+        }
+      />
 
       {/* Right ~4/5 — contained panel with header */}
       <section
