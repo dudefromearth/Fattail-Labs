@@ -507,13 +507,22 @@ function FlowTooltip({
 }) {
   const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
   const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const W = 230;
+  const GAP = 16;
+  // Prefer the LEFT of the cursor (keeps the popup off the paths you're reading);
+  // fall back to the right only when there isn't room near the left edge.
+  const left =
+    hover.x - W - GAP >= 12
+      ? hover.x - W - GAP
+      : Math.min(hover.x + GAP, vw - W - 12);
   const style: React.CSSProperties = {
     position: "fixed",
-    left: Math.min(hover.x + 14, vw - 250),
+    left,
     top: Math.min(hover.y + 14, vh - 160),
     pointerEvents: "none",
     zIndex: 50,
-    maxWidth: 230,
+    width: W,
+    maxWidth: W,
   };
   const box =
     "rounded-lg border border-zinc-200 bg-white/95 px-3 py-2 text-xs shadow-lg backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/95";
