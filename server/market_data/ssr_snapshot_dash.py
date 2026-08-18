@@ -287,6 +287,7 @@ PAGE = """<!DOCTYPE html>
   .chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .chip { padding: 4px 10px; border-radius: 999px; font-size: 12px;
     border: 1px solid var(--line); background: var(--panel); }
+  .chip.gth { color: #c4a5ff; border-color: #4a3870; }
   .chip.pre { color: var(--pre); border-color: #2a4a7a; }
   .chip.rth { color: var(--rth); border-color: #1f5c3d; }
   .chip.extended { color: var(--ext); border-color: #6a5414; }
@@ -340,7 +341,7 @@ PAGE = """<!DOCTYPE html>
 <script>
 const $ = (id) => document.getElementById(id);
 let selected = null;
-function phaseClass(p){ return ['pre','rth','extended','closed','weekend'].includes(p) ? p : ''; }
+function phaseClass(p){ return ['gth','pre','rth','extended','closed','weekend'].includes(p) ? p : ''; }
 function fmt(ts){
   if(!ts) return '—';
   try { return new Date(ts).toLocaleString('en-US', { timeZone:'America/New_York', hour12:false }); }

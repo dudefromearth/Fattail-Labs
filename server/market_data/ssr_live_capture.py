@@ -129,11 +129,16 @@ def chain_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 CHAIN_EVERY_S = chain_every_s()
 WINGS = wings()
 
-# Weekday America/New_York. 08:00 AM pre → 9:30 AM RTH → 4:00 PM close → 8:00 PM end of post.
-PRE_START = (8, 0)
+# Maximum published window (Massive + Cboe), America/New_York:
+#   Massive stocks: pre 4:00 AM–9:30 AM, RTH 9:30 AM–4:00 PM, after 4:00–8:00 PM.
+#   Equity options: RTH; select names GTH 7:30–9:25 AM + Curb 4:00–4:15 PM (from 2026-08-17).
+#   SPX / XSP / VIX / RUT GTH: 8:15 PM–9:25 AM (Sun–Thu nights).
+# Sleep only Friday 8:00 PM → Sunday 8:15 PM. Weeknights stay up for overnight GTH.
+PRE_START = (4, 0)
 PRE_END = (9, 30)
 RTH_END = (16, 0)
 EXT_END = (20, 0)
+GTH_START = (20, 15)
 WAKE_HM = PRE_START
 
 
@@ -158,17 +163,22 @@ def day_dir(day: date) -> Path:
 
 def phase_at(ts: datetime) -> str:
     hm = (ts.hour, ts.minute)
-    if ts.weekday() >= 5:
+    wd = ts.weekday()
+    if wd == 5:
         return "weekend"
+    if wd == 6:
+        return "gth" if hm >= GTH_START else "weekend"
     if hm < PRE_START:
-        return "closed"
+        return "gth"
     if hm < PRE_END:
         return "pre"
     if hm < RTH_END:
         return "rth"
     if hm < EXT_END:
         return "extended"
-    return "closed"
+    if wd == 4:
+        return "closed"
+    return "gth"
 
 
 def next_weekday(d: date) -> date:
@@ -179,16 +189,21 @@ def next_weekday(d: date) -> date:
 
 
 def next_wake(ts: datetime) -> datetime:
-    """Next 8:00 AM ET weekday (today if still before pre-market wake)."""
+    """Next collect start: Sunday 8:15 PM ET GTH, or now if the plane is in session."""
+    if phase_at(ts) not in ("closed", "weekend"):
+        return ts
     d = ts.date()
-    if ts.weekday() < 5:
-        wake = datetime(d.year, d.month, d.day, *WAKE_HM, tzinfo=NY)
-        if ts < wake:
-            return wake
-        if phase_at(ts) != "closed":
-            return ts
-    nxt = next_weekday(d)
-    return datetime(nxt.year, nxt.month, nxt.day, *WAKE_HM, tzinfo=NY)
+    wd = ts.weekday()
+    if wd == 6:
+        return datetime(d.year, d.month, d.day, *GTH_START, tzinfo=NY)
+    if wd == 5:
+        nxt = d + timedelta(days=1)
+        return datetime(nxt.year, nxt.month, nxt.day, *GTH_START, tzinfo=NY)
+    days_to_sunday = (6 - wd) % 7
+    if days_to_sunday == 0:
+        days_to_sunday = 7
+    nxt = d + timedelta(days=days_to_sunday)
+    return datetime(nxt.year, nxt.month, nxt.day, *GTH_START, tzinfo=NY)
 
 
 def write_once(path: Path, text: str) -> Path:
@@ -322,9 +337,10 @@ class LiveTap:
                         "ruling": "OD-6",
                         "notes": (
                             "OPF chain snaps with full greeks at 2–5s for every "
-                            "enabled universe symbol. Weekday ET: pre 8:00–9:30 AM, "
-                            "RTH 9:30 AM–4:00 PM, post/extended 4:00–8:00 PM "
-                            "(while the plane publishes). Friday 2026-08-14 remains 5-min as captured."
+                            "enabled universe symbol. Max published window: Massive "
+                            "4:00 AM–8:00 PM ET plus Cboe overnight GTH 8:15 PM–9:25 AM "
+                            "(weeknights). Sleep only Friday 8:00 PM → Sunday 8:15 PM. "
+                            "Friday 2026-08-14 remains 5-min as captured."
                         ),
                     }
                 ),
@@ -623,7 +639,7 @@ class LiveTap:
         print(f"live_tap root={self.root}", flush=True)
         if self._phase() in ("closed", "weekend"):
             print(
-                f"closed_start phase={self._phase()} — sleep until weekday 8:00 AM ET pre-market",
+                f"closed_start phase={self._phase()} — sleep until next collect window",
                 flush=True,
             )
             while self._phase() in ("closed", "weekend"):

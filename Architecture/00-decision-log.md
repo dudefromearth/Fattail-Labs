@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-17 — DL-431 Gold tap collects the maximum published window
+
+**Decision:** Do not shrink the clock to a guessed 8:00 AM. Collect
+everything Massive / Cboe actually publish.
+
+Evidence:
+- Massive: pre **4:00 AM–9:30 AM ET**, RTH **9:30 AM–4:00 PM**, after
+  **4:00–8:00 PM**. Every trade, including extended. Options snapshot is
+  whatever the exchange prints.
+- Cboe overnight GTH (SPX / XSP / VIX / RUT): **8:15 PM–9:25 AM ET**
+  Sunday–Thursday.
+- Cboe equity GTH for select names (from **2026-08-17**): **7:30–9:25 AM**
+  and Curb **4:00–4:15 PM**.
+
+**As-built:** sleep **only** Friday **8:00 PM → Sunday 8:15 PM**.
+Weeknights stay up (`phase=gth`). Persist what the plane has. Named hole
+if a name has no chain (typical for most equities overnight). Never invent.
+
+**Supersedes the 8:00 AM wake in DL-430.**
+
+---
+
 ## 2026-08-17 — DL-430 Gold tap weekday clock is 8:00 AM–8:00 PM ET
 
 **Decision (Coach):** Premarket for some names is **around 8:00 AM ET**.

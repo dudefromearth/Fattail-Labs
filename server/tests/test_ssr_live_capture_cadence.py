@@ -56,8 +56,8 @@ def test_ladder_topics_include_feed_and_product():
     assert "mb:ladder:I:SPX:2026-08-18:w25:dual" in keys
 
 
-def test_phase_at_collects_pre_and_extended():
-    """Weekday ET: closed until 8:00 AM, pre 8:00–9:30 AM, RTH to 4:00 PM, post to 8:00 PM."""
+def test_phase_at_max_published_window():
+    """Massive 4:00 AM–8:00 PM + Cboe overnight GTH weeknights. Friday night sleeps."""
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
@@ -65,19 +65,23 @@ def test_phase_at_collects_pre_and_extended():
 
     ny = ZoneInfo("America/New_York")
 
-    def ts(hour: int, minute: int) -> datetime:
-        return datetime(2026, 8, 17, hour, minute, tzinfo=ny)
+    def ts(day: int, hour: int, minute: int) -> datetime:
+        return datetime(2026, 8, day, hour, minute, tzinfo=ny)
 
-    assert phase_at(ts(4, 0)) == "closed"
-    assert phase_at(ts(7, 59)) == "closed"
-    assert phase_at(ts(8, 0)) == "pre"
-    assert phase_at(ts(9, 29)) == "pre"
-    assert phase_at(ts(9, 30)) == "rth"
-    assert phase_at(ts(15, 59)) == "rth"
-    assert phase_at(ts(16, 0)) == "extended"
-    assert phase_at(ts(19, 59)) == "extended"
-    assert phase_at(ts(20, 0)) == "closed"
-    assert phase_at(datetime(2026, 8, 16, 12, 0, tzinfo=ny)) == "weekend"
+    # Monday 17
+    assert phase_at(ts(17, 3, 0)) == "gth"
+    assert phase_at(ts(17, 4, 0)) == "pre"
+    assert phase_at(ts(17, 9, 29)) == "pre"
+    assert phase_at(ts(17, 9, 30)) == "rth"
+    assert phase_at(ts(17, 15, 59)) == "rth"
+    assert phase_at(ts(17, 16, 0)) == "extended"
+    assert phase_at(ts(17, 19, 59)) == "extended"
+    assert phase_at(ts(17, 20, 15)) == "gth"
+    # Friday 21 night is the only weekday close
+    assert phase_at(ts(21, 20, 15)) == "closed"
+    assert phase_at(ts(16, 12, 0)) == "weekend"
+    assert phase_at(ts(16, 20, 14)) == "weekend"
+    assert phase_at(ts(16, 20, 15)) == "gth"
 
 
 def test_chain_rows_skip_reference_marks():
@@ -92,14 +96,23 @@ def test_chain_rows_skip_reference_marks():
     assert [r["symbol"] for r in chain_rows(rows)] == ["SPY", "AAPL"]
 
 
-def test_next_wake_after_close_is_next_weekday_8am():
+def test_next_wake_friday_night_is_sunday_gth():
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
     from market_data.ssr_live_capture import next_wake
 
     ny = ZoneInfo("America/New_York")
-    wake = next_wake(datetime(2026, 8, 17, 23, 22, tzinfo=ny))
-    assert wake.hour == 8
-    assert wake.minute == 0
-    assert wake.date().isoformat() == "2026-08-18"
+    wake = next_wake(datetime(2026, 8, 21, 21, 0, tzinfo=ny))
+    assert wake.isoformat() == "2026-08-23T20:15:00-04:00"
+
+
+def test_next_wake_weeknight_stays_in_session():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from market_data.ssr_live_capture import next_wake
+
+    ny = ZoneInfo("America/New_York")
+    ts = datetime(2026, 8, 17, 23, 22, tzinfo=ny)
+    assert next_wake(ts) == ts
