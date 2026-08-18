@@ -4,6 +4,27 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-17 — DL-430 Gold tap weekday clock is 8:00 AM–8:00 PM ET
+
+**Decision (Coach):** Premarket for some names is **around 8:00 AM ET**.
+RTH is **9:30 AM–4:00 PM ET**. Collect pre and post if the plane publishes.
+
+| Phase | Clock (America/New_York) |
+|---|---|
+| Closed | midnight → **8:00 AM** |
+| Pre | **8:00 AM–9:30 AM** |
+| RTH | **9:30 AM–4:00 PM** |
+| Post / extended | **4:00 PM–8:00 PM** |
+| Closed | **8:00 PM** → next weekday **8:00 AM** |
+
+Equity/ETF chains often have a pre/post snapshot (frequently held last /
+zero NBBO — labeled, not invented). Index chains (SPX) are often thin or
+**NO CHAIN** outside RTH.
+
+**Supersedes the 4:00 AM wake in DL-428.** Same 2–5s cadence.
+
+---
+
 ## 2026-08-17 — DL-429 Chain Snapshot dashboard is StudioOne localhost
 
 **Decision (Coach):** After the gold tap is standing, StudioOne hosts a

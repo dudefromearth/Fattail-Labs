@@ -420,6 +420,10 @@ setInterval(load, 2000);
 
 
 class Handler(BaseHTTPRequestHandler):
+    def address_string(self) -> str:
+        # Never reverse-DNS 127.0.0.1 — mDNS lookup hung the first bind.
+        return self.client_address[0]
+
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"dash {self.address_string()} {fmt % args}", flush=True)
 
@@ -463,7 +467,9 @@ def main(argv: list[str] | None = None) -> int:
     del argv
     host = dash_host()
     port = dash_port()
+    ThreadingHTTPServer.allow_reuse_address = True
     httpd = ThreadingHTTPServer((host, port), Handler)
+    httpd.daemon_threads = True
     print(
         f"chain_snapshot_dash http://{host}:{port} root={capture_root()}",
         flush=True,

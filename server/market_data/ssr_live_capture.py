@@ -129,10 +129,12 @@ def chain_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 CHAIN_EVERY_S = chain_every_s()
 WINGS = wings()
 
+# Weekday America/New_York. 08:00 AM pre → 9:30 AM RTH → 4:00 PM close → 8:00 PM end of post.
+PRE_START = (8, 0)
 PRE_END = (9, 30)
 RTH_END = (16, 0)
 EXT_END = (20, 0)
-WAKE_HM = (4, 0)
+WAKE_HM = PRE_START
 
 
 def now_ny() -> datetime:
@@ -158,6 +160,8 @@ def phase_at(ts: datetime) -> str:
     hm = (ts.hour, ts.minute)
     if ts.weekday() >= 5:
         return "weekend"
+    if hm < PRE_START:
+        return "closed"
     if hm < PRE_END:
         return "pre"
     if hm < RTH_END:
@@ -175,7 +179,7 @@ def next_weekday(d: date) -> date:
 
 
 def next_wake(ts: datetime) -> datetime:
-    """Next 04:00 ET weekday (today if still before wake on a weekday)."""
+    """Next 8:00 AM ET weekday (today if still before pre-market wake)."""
     d = ts.date()
     if ts.weekday() < 5:
         wake = datetime(d.year, d.month, d.day, *WAKE_HM, tzinfo=NY)
@@ -318,9 +322,9 @@ class LiveTap:
                         "ruling": "OD-6",
                         "notes": (
                             "OPF chain snaps with full greeks at 2–5s for every "
-                            "enabled universe symbol. Weekday phases: pre 04:00–09:30, "
-                            "RTH 09:30–16:00, extended 16:00–20:00 (while the plane publishes). "
-                            "Friday 2026-08-14 remains 5-min as captured."
+                            "enabled universe symbol. Weekday ET: pre 8:00–9:30 AM, "
+                            "RTH 9:30 AM–4:00 PM, post/extended 4:00–8:00 PM "
+                            "(while the plane publishes). Friday 2026-08-14 remains 5-min as captured."
                         ),
                     }
                 ),
@@ -619,7 +623,7 @@ class LiveTap:
         print(f"live_tap root={self.root}", flush=True)
         if self._phase() in ("closed", "weekend"):
             print(
-                f"closed_start phase={self._phase()} — sleep until weekday 04:00 ET pre-market",
+                f"closed_start phase={self._phase()} — sleep until weekday 8:00 AM ET pre-market",
                 flush=True,
             )
             while self._phase() in ("closed", "weekend"):

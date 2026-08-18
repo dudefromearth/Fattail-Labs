@@ -57,7 +57,7 @@ def test_ladder_topics_include_feed_and_product():
 
 
 def test_phase_at_collects_pre_and_extended():
-    """Weekday plane: pre 04:00–09:30, RTH 09:30–16:00, extended 16:00–20:00."""
+    """Weekday ET: closed until 8:00 AM, pre 8:00–9:30 AM, RTH to 4:00 PM, post to 8:00 PM."""
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
@@ -68,7 +68,9 @@ def test_phase_at_collects_pre_and_extended():
     def ts(hour: int, minute: int) -> datetime:
         return datetime(2026, 8, 17, hour, minute, tzinfo=ny)
 
-    assert phase_at(ts(4, 0)) == "pre"
+    assert phase_at(ts(4, 0)) == "closed"
+    assert phase_at(ts(7, 59)) == "closed"
+    assert phase_at(ts(8, 0)) == "pre"
     assert phase_at(ts(9, 29)) == "pre"
     assert phase_at(ts(9, 30)) == "rth"
     assert phase_at(ts(15, 59)) == "rth"
@@ -90,7 +92,7 @@ def test_chain_rows_skip_reference_marks():
     assert [r["symbol"] for r in chain_rows(rows)] == ["SPY", "AAPL"]
 
 
-def test_next_wake_after_close_is_next_weekday_4am():
+def test_next_wake_after_close_is_next_weekday_8am():
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
@@ -98,6 +100,6 @@ def test_next_wake_after_close_is_next_weekday_4am():
 
     ny = ZoneInfo("America/New_York")
     wake = next_wake(datetime(2026, 8, 17, 23, 22, tzinfo=ny))
-    assert wake.hour == 4
+    assert wake.hour == 8
     assert wake.minute == 0
     assert wake.date().isoformat() == "2026-08-18"
