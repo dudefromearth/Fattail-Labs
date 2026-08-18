@@ -607,6 +607,14 @@ class LiveTap:
     def run(self) -> int:
         self._ensure_dirs()
         print(f"live_tap root={self.root}", flush=True)
+        if self._phase() in ("closed", "weekend"):
+            print(
+                f"closed_start phase={self._phase()} — sleep until weekday 04:00 ET pre-market",
+                flush=True,
+            )
+            while self._phase() in ("closed", "weekend"):
+                self.ensure_day()
+                self.sleep_if_closed()
         # Immediate pre-market dump
         self.touch_interest()
         # Wait for the existing feed to publish the first generation.
