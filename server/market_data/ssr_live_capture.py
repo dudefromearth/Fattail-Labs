@@ -264,6 +264,22 @@ def append_jsonl(path: Path, doc: dict[str, Any]) -> None:
         fh.write(line + "\n")
 
 
+def append_jsonl_live(path: Path, doc: dict[str, Any]) -> None:
+    try:
+        rel = path.relative_to(data_root())
+    except ValueError:
+        rel = Path(path.name)
+    append_jsonl(cache_root() / rel, doc)
+
+    def _gold() -> None:
+        try:
+            append_jsonl(path, doc)
+        except OSError as exc:
+            print(f"gold_append_fail {path}: {exc}", flush=True)
+
+    threading.Thread(target=_gold, daemon=True).start()
+
+
 def dump_json(doc: dict[str, Any]) -> str:
     return json.dumps(doc, default=str, indent=2, sort_keys=False) + "\n"
 
@@ -332,17 +348,21 @@ class LiveTap:
         self.finalized = False
         self._ensure_dirs()
 
+    def cache_day(self) -> Path:
+        return cache_root() / "ssr" / "live_capture" / f"day={self.day.isoformat()}"
+
     def _ensure_dirs(self) -> None:
+        root = self.cache_day()
         for sub in ("chain", "marks", "status"):
-            (self.root / sub).mkdir(parents=True, exist_ok=True)
+            (root / sub).mkdir(parents=True, exist_ok=True)
         for row in chain_rows(self.refresh_universe()):
-            (self.root / "chain" / str(row["symbol"]).upper()).mkdir(
+            (root / "chain" / str(row["symbol"]).upper()).mkdir(
                 parents=True, exist_ok=True
             )
-        readme = self.root / "PROVENANCE.json"
+        readme = root / "PROVENANCE.json"
         if not readme.exists():
-            write_once(
-                readme,
+            write_snap(
+                self.root / "PROVENANCE.json",
                 dump_json(
                     {
                         "provenance": PROVENANCE,
@@ -358,10 +378,10 @@ class LiveTap:
                     }
                 ),
             )
-        cadence = self.root / "CADENCE.json"
+        cadence = root / "CADENCE.json"
         if not cadence.exists():
-            write_once(
-                cadence,
+            write_snap(
+                self.root / "CADENCE.json",
                 dump_json(
                     {
                         "day": self.day.isoformat(),
@@ -409,7 +429,7 @@ class LiveTap:
                 if hole not in self.holes:
                     self.holes.append(hole)
             else:
-                append_jsonl(
+                append_jsonl_live(
                     self.root / "marks" / f"{sym.lower()}.jsonl",
                     {
                         "provenance": PROVENANCE,
@@ -537,7 +557,7 @@ class LiveTap:
                 for s, m in marks.items()
             },
         }
-        append_jsonl(self.root / "status" / "ticks.jsonl", doc)
+        append_jsonl_live(self.root / "status" / "ticks.jsonl", doc)
         self.last_status = time.time()
         return doc
 
@@ -547,7 +567,7 @@ class LiveTap:
         )
         # Latest snap per symbol only — never read the full day (2s × 18 names).
         iv_ok = False
-        chain_dir = self.root / "chain"
+        chain_dir = self.cache_day() / "chain"
         if chain_dir.is_dir():
             latest: list[Path] = []
             for child in chain_dir.iterdir():
@@ -607,17 +627,17 @@ class LiveTap:
     def _finalize_if_needed(self) -> None:
         if self.finalized:
             return
-        dest = self.root / "CHECKLIST.json"
+        dest = self.cache_day() / "CHECKLIST.json"
         if dest.exists():
             self.finalized = True
             return
         bits = self.checklist_bits()
-        chain_dir = self.root / "chain"
+        chain_dir = self.cache_day() / "chain"
         snaps_on_disk = (
             len(list(chain_dir.glob("**/snap-*.json"))) if chain_dir.is_dir() else self.snaps
         )
-        write_once(
-            dest,
+        write_snap(
+            self.root / "CHECKLIST.json",
             dump_json(
                 {
                     "provenance": PROVENANCE,
@@ -631,10 +651,10 @@ class LiveTap:
                 }
             ),
         )
-        manifest = self.root / "MANIFEST.json"
+        manifest = self.cache_day() / "MANIFEST.json"
         if not manifest.exists():
-            write_once(
-                manifest,
+            write_snap(
+                self.root / "MANIFEST.json",
                 dump_json(
                     {
                         "provenance": PROVENANCE,

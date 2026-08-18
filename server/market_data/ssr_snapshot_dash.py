@@ -161,7 +161,7 @@ def summarize_day(day: date, *, root: Path | None = None) -> dict[str, Any]:
                 folder = cand
                 break
         if folder is None:
-            folder = day_dir(day)
+            folder = live_cache_root() / f"day={day.isoformat()}"
     chain_dir = folder / "chain"
     by_sym = _snap_paths_by_symbol(chain_dir)
     symbols: list[dict[str, Any]] = []
