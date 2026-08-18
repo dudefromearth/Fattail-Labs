@@ -487,12 +487,24 @@ class LiveTap:
         return doc
 
     def checklist_bits(self) -> dict[str, str]:
-        chain_ok = self.snaps > 0 and "NO CHAIN" not in self.holes
-        # Opening snap IV: scan chain files for any iv_count > 0
+        chain_ok = self.snaps > 0 and not any(
+            str(h).startswith("NO CHAIN") for h in self.holes
+        )
+        # Latest snap per symbol only — never read the full day (2s × 18 names).
         iv_ok = False
         chain_dir = self.root / "chain"
         if chain_dir.is_dir():
-            for p in sorted(chain_dir.glob("**/snap-*.json")):
+            latest: list[Path] = []
+            for child in chain_dir.iterdir():
+                if child.is_dir():
+                    snaps = list(child.glob("snap-*.json"))
+                    if snaps:
+                        latest.append(max(snaps, key=lambda p: p.name))
+                elif child.name.startswith("snap-") and child.suffix == ".json":
+                    latest.append(child)
+            if latest and all(p.parent == chain_dir for p in latest):
+                latest = [max(latest, key=lambda p: p.name)]
+            for p in latest:
                 try:
                     d = json.loads(p.read_text(encoding="utf-8"))
                 except (OSError, json.JSONDecodeError):
@@ -502,12 +514,10 @@ class LiveTap:
                     break
                 gen = d.get("generation") or {}
                 rows = gen.get("rows") if isinstance(gen, dict) else None
-                if isinstance(rows, list):
-                    for r in rows:
-                        if isinstance(r, dict) and r.get("iv") is not None:
-                            iv_ok = True
-                            break
-                if iv_ok:
+                if isinstance(rows, list) and any(
+                    isinstance(r, dict) and r.get("iv") is not None for r in rows
+                ):
+                    iv_ok = True
                     break
         spy_mark = self.store.get_json("mb:sym:SPY") or {}
         vix = self.store.get_json("mb:sym:VIX")
@@ -592,13 +602,13 @@ class LiveTap:
         ph = self._phase()
         if ph not in ("closed", "weekend"):
             return
-        self._finalize_if_needed()
         wake = next_wake(now_ny())
         sec = max(1.0, (wake - now_ny()).total_seconds())
         print(
             f"session_end phase={ph} sleep_until={wake.isoformat()} ({sec:.0f}s)",
             flush=True,
         )
+        self._finalize_if_needed()
         # Sleep in chunks so SIGTERM is prompt
         end = time.time() + sec
         while time.time() < end:

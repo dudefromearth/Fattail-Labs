@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>ai.fattail.labs.ssr-snapshot-dash</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/Users/ernie/Fattail-Labs/scripts/ssr-snapshot-dash-run.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/ernie/Fattail-Labs/server</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+    <key>Crashed</key>
+    <true/>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/ernie/Library/Logs/fattail-labs/ssr-snapshot-dash.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/ernie/Library/Logs/fattail-labs/ssr-snapshot-dash.err.log</string>
+</dict>
+</plist>

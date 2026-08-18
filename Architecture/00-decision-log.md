@@ -4,6 +4,19 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-17 — DL-429 Chain Snapshot dashboard is StudioOne localhost
+
+**Decision (Coach):** After the gold tap is standing, StudioOne hosts a
+**Chain Snapshot** dashboard on **localhost only** (`127.0.0.1:5055`).
+Read-only view of `live_capture` on disk. Does not call Massive. Not a
+member product surface. Not on MiniTwo.
+
+**As-built:** `python -m market_data.ssr_snapshot_dash` · launchd
+`ai.fattail.labs.ssr-snapshot-dash`. Bind fails loud if host is not
+localhost. From StudioTwo: `ssh -L 5055:127.0.0.1:5055 studioone`.
+
+---
+
 ## 2026-08-17 — DL-428 Gold tap is 2–5s, all universe symbols, pre + extended
 
 **Decision (Coach):** StudioOne gold archive writes OPF chain snaps at
