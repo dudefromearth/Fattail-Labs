@@ -4,6 +4,32 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-17 — DL-427 Multi-DTE expiration face is front-exp residual
+
+**Decision:** Surface sheet + Analyzer 2D expiration curve use
+**OD-PF2**: cyan / “at expiry” is the **first listed settlement**, not
+both-dead.
+
+- Single-DTE: last slice \(\tau = 0\) (every leg intrinsic). Unchanged.
+- Multi-DTE (calendar / diagonal / mixed): default `timeAxis` ends at
+  `expiryFaceTau = max(τ0) − min(τ0)`. Front legs intrinsic; later legs
+  keep residual \(\tau\). Same-strike calendars stay a hump.
+- \(\tau = 0\) on every leg is both-dead ≈ −debit (flat). That is **not**
+  the product expiration curve. T+0 / magenta is unchanged
+  (`evaluatePnlAtSpot` at max \(\tau_0\)).
+
+**Why:** Aug 18 / Aug 19 same-strike calendar showed a correct magenta
+T+0 and a flat cyan line. The elapsed-τ pricer was already right; the
+horizon walked to last expiry.
+
+**Code:** `expiryFaceTau` / `evaluateExpiryPnlAtSpot` in
+`surfaceModel.ts`. `computeSurfaceSheet` default last row. Analyzer
+`localBookCurves` expiration. Autofit expiry BEs. Autofit Spec **v0.1.6**.
+
+**Not:** MSC import. No synthetic residual when dates collapse.
+
+---
+
 ## 2026-08-17 — DL-426 Surface Autofit width pad max 85%
 
 **Decision:** Autofit Spec **v0.1.5**. Width pad slider `0`…`85%`

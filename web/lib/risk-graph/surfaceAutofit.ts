@@ -8,7 +8,12 @@
  * Position-family profiles can adjust later. Do not fork a second pricer.
  */
 
-import { evaluatePnlAtSpot, MIN_TAU, type SurfaceLeg } from "./surfaceModel";
+import {
+  evaluatePnlAtSpot,
+  expiryFaceTau,
+  MIN_TAU,
+  type SurfaceLeg,
+} from "./surfaceModel";
 
 export const SURFACE_AUTOFIT_STRIKE_STEPS = 4;
 /** Analyzer-like air: 15% of content span on each side (≈ 30% of half-width). */
@@ -158,8 +163,9 @@ export function surfaceAutofitWindow(
   );
   const scanHi = Math.max(spot, kMax) + Math.max(structure * 4, spot * 0.2);
   const tau0 = Math.max(...legs.map((l) => l.tauYears0), MIN_TAU);
+  const tauExp = expiryFaceTau(legs);
   const content = [spot, kMin, kMax];
-  for (const tau of [tau0, 0]) {
+  for (const tau of [tau0, tauExp]) {
     content.push(...scanBookBreakevens(legs, tau, scanLo, scanHi));
   }
   const contentLo = Math.min(...content);

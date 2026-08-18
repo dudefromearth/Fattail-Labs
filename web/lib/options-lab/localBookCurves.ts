@@ -14,6 +14,7 @@
 import { fractionalT } from "@/lib/risk-graph/blackScholes";
 import {
   MIN_TAU,
+  evaluateExpiryPnlAtSpot,
   evaluatePnlAtSpot,
   type SurfaceLeg,
 } from "@/lib/risk-graph/surfaceModel";
@@ -217,7 +218,7 @@ export function resolveLocalBookCurves(opts: {
   }));
   const expPts = xs.map((x) => ({
     x,
-    y: evaluatePnlAtSpot(priced, x, 0),
+    y: evaluateExpiryPnlAtSpot(priced, x),
   }));
 
   const pkg = bound.legs.reduce((sum, l) => sum + l.qty * l.premium, 0);

@@ -150,6 +150,57 @@ test("vol offset moves T+0, not expiration intrinsic", () => {
   assert(t1 !== t0, "T+0 moves with vol");
 });
 
+test("same-strike calendar expiry is front-exp residual, not flat −debit", () => {
+  const cal = trade({
+    structure: "custom",
+    expiration: "2027-06-18",
+    strikes: [100],
+    legs: [
+      { strike: 100, quantity: -1, right: "call", expiration: "2027-06-18" },
+      { strike: 100, quantity: 1, right: "call", expiration: "2027-06-19" },
+    ],
+    raw: "BUY +1 SPX 100 19 JUN 27 100 CALL SELL -1 SPX 100 18 JUN 27 100 CALL",
+  });
+  const out = resolveLocalBookCurves({
+    trade: cal,
+    generations: [
+      {
+        ...gen([{ strike: 100, side: "call", iv: 0.2, mid: 2.0 }]),
+        expiration: "2027-06-18",
+      },
+      {
+        product: "SPX",
+        expiration: "2027-06-19",
+        wings: 50,
+        spot: 100,
+        content_hash: "h2",
+        rows: [{ strike: 100, side: "call", iv: 0.2, mid: 2.4 }],
+      },
+    ],
+    spot: 100,
+  });
+  assert(out.ok, "calendar sheet ok");
+  if (!out.ok) return;
+  const exp = out.result.curves?.expiration?.points ?? [];
+  const theo = out.result.curves?.model_t0?.points ?? [];
+  assert(exp.length === LOCAL_CURVE_STEPS, "161 expiry");
+  const ys = exp.map((p) => p.y);
+  const span = Math.max(...ys) - Math.min(...ys);
+  assert(span > 20, `expiry is not a flat −debit line (span ${span})`);
+  const atK = exp.reduce((b, p) =>
+    Math.abs(p.x - 100) < Math.abs(b.x - 100) ? p : b,
+  );
+  const debitFlat = -40;
+  assert(
+    Math.abs(atK.y - debitFlat) > 5,
+    `front-exp at K is residual, not both-dead ${debitFlat}; got ${atK.y}`,
+  );
+  const t0AtK = theo.reduce((b, p) =>
+    Math.abs(p.x - 100) < Math.abs(b.x - 100) ? p : b,
+  );
+  assert(Math.abs(t0AtK.y - atK.y) > 1, "T+0 is not the expiration face");
+});
+
 test("keep-warm hook does not POST /resolve", () => {
   const here = dirname(fileURLToPath(import.meta.url));
   const src = readFileSync(join(here, "useOpfRiskGraph.ts"), "utf8");

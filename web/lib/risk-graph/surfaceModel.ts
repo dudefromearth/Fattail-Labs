@@ -56,7 +56,12 @@ export type BindSurfaceResult =
 
 export type SurfaceSheet = {
   spotAxis: number[];
-  /** Remaining τ in years: index 0 = now (max τ), last = expiry (≈0). */
+  /**
+   * Remaining τ of the longest listed leg, years.
+   * Index 0 = now (max τ). Last = expiration face (`expiryTau`):
+   * 0 when every leg shares one settlement; otherwise max(τ0)−min(τ0)
+   * (OD-PF2 front-exp — front dead, later legs still live).
+   */
   timeAxis: number[];
   /** pnlGrid[time][spot] — dollars, 100-multiplier. */
   pnlGrid: number[][];
@@ -65,6 +70,11 @@ export type SurfaceSheet = {
   sMin: number;
   sMax: number;
   maxTau: number;
+  /**
+   * Remaining-τ coordinate of the cyan expiration face (OD-PF2).
+   * `evaluatePnlAtSpot(legs, S, expiryTau)` — not τ = 0 on a calendar.
+   */
+  expiryTau: number;
   quality: SurfaceQuality;
   ivSource: string;
   spot: number;
@@ -124,9 +134,33 @@ function resolveGrid(
 }
 
 /**
+ * Remaining-τ of the longest leg at the **expiration face** (OD-PF2).
+ *
+ * `tauYears` in `evaluatePnlAtSpot` is the longest-leg clock: now =
+ * max(τ0), both-dead = 0. The product cyan / Analyzer expiration curve
+ * is the first settlement, not both-dead:
+ *
+ * - One listed expiration → 0 (every leg intrinsic).
+ * - Multi-DTE → max(τ0) − min(τ0). Elapsed = front life, so the front
+ *   is intrinsic and later legs keep residual τ. Same-strike calendars
+ *   stay a hump. τ = 0 on every leg is both-dead ≈ −debit (flat).
+ */
+export function expiryFaceTau(legs: SurfaceLeg[]): number {
+  if (!legs.length) return 0;
+  const taus = legs.map((l) => Math.max(0, l.tauYears0));
+  const maxT = Math.max(...taus);
+  const minT = Math.min(...taus);
+  if (!(maxT > minT + MIN_TAU)) return 0;
+  return maxT - minT;
+}
+
+/**
  * P&L of the listed book at one (S, τ). Every grid point uses this.
  * No second structure. Short-dated legs stay in the package (elapsed τ,
  * not "drop if τ0 < slice").
+ *
+ * `tauYears` is remaining life of the **longest** listed leg. The
+ * expiration face is `expiryFaceTau(legs)`, not 0, when DTEs differ.
  */
 export function evaluatePnlAtSpot(
   legs: SurfaceLeg[],
@@ -152,6 +186,15 @@ export function evaluatePnlAtSpot(
     pnl += leg.qty * (mark - leg.premium) * 100;
   }
   return pnl;
+}
+
+/** Cyan / Analyzer expiration: front-exp residual (OD-PF2). */
+export function evaluateExpiryPnlAtSpot(
+  legs: SurfaceLeg[],
+  spot: number,
+  r: number = RISK_FREE_RATE,
+): number {
+  return evaluatePnlAtSpot(legs, spot, expiryFaceTau(legs), r);
 }
 
 export function computeSurfaceSheet(
@@ -202,8 +245,13 @@ export function computeSurfaceSheet(
       throw new Error("computeSurfaceSheet: tauHi exceeds remaining life");
     }
   }
+  const expiryTau = expiryFaceTau(legs);
   const tauHiUse = windowed ? (opts.tauHi as number) : maxTau;
-  const tauLoUse = windowed ? (opts.tauLo as number) : 0;
+  let tauLoUse = windowed ? (opts.tauLo as number) : expiryTau;
+  if (!windowed && !(tauLoUse < tauHiUse)) {
+    // Front already at/past settlement — keep a valid now→face sliver.
+    tauLoUse = Math.max(0, tauHiUse - MIN_TAU);
+  }
 
   const spotAxis = Array.from(
     { length: nx },
@@ -237,6 +285,7 @@ export function computeSurfaceSheet(
     sMin,
     sMax,
     maxTau,
+    expiryTau,
     quality: opts.quality ?? "per_leg_iv",
     ivSource: opts.ivSource ?? "per_leg",
     spot,

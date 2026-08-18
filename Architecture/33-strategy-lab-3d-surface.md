@@ -31,7 +31,8 @@ MSC is **design reference only**. No MSC code.
 | Product scene | `web/lib/risk-graph/surfaceScene/` | Labs-owned; no `alpha.js` |
 | Route / nav | `/app/options-lab/surface` · suite pill **Surface** | Landed |
 | Views persist | `identities.surface_inspect_json` (130) · PATCH `/api/me/profile` | Landed |
-| **Autofit** | Spec **v0.1.1 ACCEPTED** · `surfaceAutofit.ts` · book change + button only | What-if / live spot / playhead do not refit · **AF-n** · **DL-421** |
+| **Autofit** | Spec **v0.1.6** · `surfaceAutofit.ts` · book change + button only · expiry BEs at front-exp face | What-if / live spot / playhead do not refit · **AF-n** · **DL-421** · **DL-427** |
+| Multi-DTE sheet | Default `timeAxis` ends at `expiryFaceTau` (OD-PF2) · cyan last row = front-exp residual | T+0 magenta unchanged · **DL-427** |
 | Replay / mini graphic | Not wired | Later consumer wave |
 
 **Do not grow** `web/lib/risk-graph/3d/{alpha,charlie,echo}.js`. Those files are
@@ -122,8 +123,10 @@ UPDATING · WAITING). No demo smile. No neighbor / ATM / VIX / 0.20 fill.
 - **Do not** rebuild when: camera, plane opacity/hide, playhead move (sample
   only), zoom gain.
 
-Expiry face is intrinsic − \(D^*\) (vol-independent). Optional second mesh
-later; v0.1 may draw expiry as the last τ row if that row is settlement.
+Expiry face is **OD-PF2 / DL-427**: single-DTE all-intrinsic − \(D^*\)
+(vol-independent); multi-DTE **front-exp residual** (front dead, later
+legs still live). Default `timeAxis` ends at that face
+(`expiryFaceTau`), not both-dead. Cyan last row **is** that face.
 
 ---
 

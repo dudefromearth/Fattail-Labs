@@ -69,7 +69,7 @@ No second pricer.
 
 | Piece | State |
 |---|---|
-| Per-leg sheet | **Shipped:** `computeSurfaceSheet` / `evaluatePnlAtSpot` / `sampleSheet` |
+| Per-leg sheet | **Shipped:** `computeSurfaceSheet` / `evaluatePnlAtSpot` / `expiryFaceTau` / `sampleSheet` (multi-DTE last row = front-exp, **DL-427**) |
 | Analyzer 2D risk | **Shipped:** OPF Analyzer |
 | Analyzer in-viewport “Surface” tab | Binds **exact / locked** OPF `leg_marks` IV. Missing truth IV → **IV NO**. No sticky 0.20. |
 | Design canvas sketch | `SharedSurfaceView` — 2D isometric of the same sheet, not the app |
@@ -87,7 +87,14 @@ The 3D object is **underlier \(S\) × remaining \(\tau\) × package P&L**.
 Vol is **not** a displayed axis. Vol is the **parameter that shapes** the
 sheet. Each listed leg keeps \(\sigma_i\).
 
-A second face is **expiry** (intrinsic − cost basis) — vol-independent.
+A second face is **expiry** (cyan back wall):
+
+- **Single-DTE:** every leg intrinsic − cost (vol-independent).
+- **Multi-DTE (OD-PF2 / DL-427):** front legs intrinsic; later legs
+  residual BS at remaining \(\tau\) after the **first** settlement.
+  Same-strike calendars are a hump. \(\tau = 0\) on every leg is
+  both-dead ≈ −debit (flat) — that is **not** the product expiration
+  curve.
 
 Yellow markers = union of **listed strikes** of **shown** structures (§4.7).
 **v0.1 implement slice (named, not product law):** one shown structure is

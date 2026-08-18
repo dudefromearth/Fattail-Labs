@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import {
   bindListedSurfaceLegs,
   computeSurfaceSheet,
+  evaluateExpiryPnlAtSpot,
   evaluatePnlAtSpot,
+  expiryFaceTau,
   legsFromRelative,
   sampleSheet,
   sliceSheetAtTau,
@@ -10,6 +12,7 @@ import {
   MIN_TAU,
   DEFAULT_NX,
   DEFAULT_NT,
+  type SurfaceLeg,
 } from "./surfaceModel";
 import { relativeShape, batmanDefaultShorts } from "../options-lab/designRelativeShape";
 
@@ -289,6 +292,78 @@ const spot = 100;
     Math.abs(mid[i] - sampled!) < 1e-6,
     "time-plane cut matches bilinear sample on the strike grid",
   );
+}
+
+{
+  const day = 1 / 365.25;
+  const front: SurfaceLeg = {
+    strike: 100,
+    right: "call",
+    qty: -1,
+    premium: 2.0,
+    iv: 0.2,
+    tauYears0: day,
+  };
+  const back: SurfaceLeg = {
+    strike: 100,
+    right: "call",
+    qty: 1,
+    premium: 2.4,
+    iv: 0.2,
+    tauYears0: 2 * day,
+  };
+  const cal = [front, back];
+  const face = expiryFaceTau(cal);
+  assert.ok(Math.abs(face - day) < 1e-12, "calendar face is maxτ − minτ (1 DTE left)");
+  assert.equal(expiryFaceTau([front]), 0, "single-DTE face is both-dead / intrinsic");
+
+  const dead80 = evaluatePnlAtSpot(cal, 80, 0);
+  const dead100 = evaluatePnlAtSpot(cal, 100, 0);
+  const dead120 = evaluatePnlAtSpot(cal, 120, 0);
+  assert.ok(
+    Math.abs(dead80 - dead100) < 1e-6 && Math.abs(dead100 - dead120) < 1e-6,
+    "both-dead same-strike calendar is a flat −debit line",
+  );
+
+  const exp80 = evaluateExpiryPnlAtSpot(cal, 80);
+  const exp100 = evaluateExpiryPnlAtSpot(cal, 100);
+  const exp120 = evaluateExpiryPnlAtSpot(cal, 120);
+  const expSpan = Math.max(exp80, exp100, exp120) - Math.min(exp80, exp100, exp120);
+  assert.ok(expSpan > 20, "front-exp calendar is a hump, not flat −debit");
+  assert.ok(exp100 > exp80 && exp100 > exp120, "long calendar peaks near the strike");
+
+  const t0 = evaluatePnlAtSpot(cal, 100, 2 * day);
+  assert.ok(Math.abs(t0 - exp100) > 1, "T+0 magenta is not the cyan face");
+
+  const later: SurfaceLeg = { ...back, tauYears0: 4 * day };
+  const triple = [front, { ...back }, later];
+  const tripleFace = expiryFaceTau(triple);
+  assert.ok(Math.abs(tripleFace - 3 * day) < 1e-12, "3-DTE face is longest remaining at first settlement");
+  const midAtFace = evaluatePnlAtSpot(triple, 110, tripleFace);
+  const midIfJumpedToMin = evaluatePnlAtSpot(triple, 110, day);
+  assert.ok(
+    Math.abs(midAtFace - midIfJumpedToMin) > 1,
+    "front-exp keeps the middle expiration live — does not jump to last expiry",
+  );
+
+  const sheet = computeSurfaceSheet(cal, {
+    spot: 100,
+    nx: 21,
+    nt: 9,
+    quality: "per_leg_iv",
+    ivSource: "fixture",
+  });
+  assert.ok(Math.abs(sheet.expiryTau - day) < 1e-12);
+  assert.ok(
+    Math.abs(sheet.timeAxis[sheet.timeAxis.length - 1] - sheet.expiryTau) < 1e-12,
+    "cyan last row is the front-exp face, not τ = 0",
+  );
+  const last = sheet.pnlGrid[sheet.pnlGrid.length - 1];
+  const mid = last[Math.floor(last.length / 2)];
+  const wing = last[0];
+  assert.ok(mid > wing + 10, "sheet expiry row has calendar shape");
+  const nowMid = sheet.pnlGrid[0][Math.floor(last.length / 2)];
+  assert.ok(Math.abs(nowMid - mid) > 1, "now row is not the expiry row");
 }
 
 console.log("surfaceModel.test.ts ok");

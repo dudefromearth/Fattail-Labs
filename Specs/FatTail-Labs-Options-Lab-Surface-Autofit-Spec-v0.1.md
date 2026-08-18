@@ -2,7 +2,7 @@
 
 **Status:** **ACCEPTED** default (Coach stamp v0.1.1) · special-case amendments land here  
 **Date:** 2026-08-17  
-**Content version:** **v0.1.5**  
+**Content version:** **v0.1.6**  
 **Filename:** `FatTail-Labs-Options-Lab-Surface-Autofit-Spec-v0.1.md`  
 **Home:** Options Lab Surface · `/app/options-lab/surface`  
 **Parents:** App Spec v0.1.8 **§5.3** / **§5.3c** · Tech Spec v0.1 · Arch **33** · OT-EF v1.1 · **DL-421** (stands)  
@@ -79,7 +79,7 @@ Take the **outermost** of:
 |---|---|---|
 | Listed strikes | — | **Union** of every **shown** structure’s listed Ks |
 | T+0 / \(t_n\) breakevens | remaining \(\tau\) at sheet now (`max tauYears0`) | Magenta cut zeros |
-| Expiry breakevens | \(\tau = 0\) | Cyan back-wall zeros |
+| Expiry breakevens | expiration-face \(\tau\) (`expiryFaceTau`: 0 single-DTE; \(\max\tau_0-\min\tau_0\) multi-DTE / OD-PF2) | Cyan back-wall zeros |
 | **Spot** at Autofit time | live mid, or What-if sim spot **if** Autofit is running because the member hit the button | Must stay **inside** the window **when Autofit runs** |
 
 “Whichever is furthest out” = `min` / `max` of that set. Spot is
@@ -259,5 +259,6 @@ Detection stays in one place. Default remains the fallback.
 | **v0.1.3** | 2026-08-17 | Pad slider max **50%** (was 40%; +25%) on both axes. |
 | **v0.1.4** | 2026-08-17 | Pad slider max **65%** (was 50%; +30%) on both axes. |
 | **v0.1.5** | 2026-08-17 | Width pad max **85%** (was 65%; +30%). Height stays 65%. |
+| **v0.1.6** | 2026-08-17 | Expiry BEs scan the **front-exp face** (OD-PF2 / **DL-427**), not \(\tau=0\) on every leg. |
 
 **End of Options Lab Surface Autofit Spec v0.1.1**

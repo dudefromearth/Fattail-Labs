@@ -53,7 +53,12 @@ type ComputeSurfaceOpts = {
 
 Rules:
 
-- If omitted: today’s behavior (`timeAxis` from max remaining τ → ~0).  
+- If omitted: `timeAxis` from max remaining τ (now) → **expiration-face**
+  τ (`expiryFaceTau`: 0 when every listed leg shares one settlement;
+  otherwise `max(τ0)−min(τ0)` — longest-leg clock when the front expires).
+  Cyan last row is that face (OD-PF2 / **DL-427**). Do not default the
+  last row to τ = 0 on a multi-DTE book (both-dead flat −debit).  
+
 - If set: `0 ≤ tauLo < tauHi ≤ τ_now` (live). `timeAxis[0] = tauHi` (nearer
   to now), `timeAxis[nt-1] = tauLo` (nearer settlement). Grid **fills** the
   window.  
