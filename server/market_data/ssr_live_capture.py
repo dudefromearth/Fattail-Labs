@@ -86,21 +86,65 @@ def wings() -> int:
     return v
 
 
-def front_expiration(row: dict[str, Any], day: date) -> str:
-    """Next listed exp on or after `day`, else the calendar day (0DTE)."""
+def listed_expiration_dates(row: dict[str, Any]) -> list[str]:
+    """Listed expirations from the Admin universe calendar. Never invents a day."""
     raw = row.get("next_expirations_json")
     dates: list[str] = []
     if isinstance(raw, list):
-        dates = [str(x)[:10] for x in raw if x]
+        for item in raw:
+            if isinstance(item, str) and item:
+                dates.append(item[:10])
+            elif isinstance(item, dict) and item.get("expiration"):
+                dates.append(str(item["expiration"])[:10])
     elif isinstance(raw, dict):
         inner = raw.get("expirations") or raw.get("dates") or []
         if isinstance(inner, list):
             dates = [str(x)[:10] for x in inner if x]
-    today = day.isoformat()
-    future = [d for d in dates if d >= today]
-    if future:
-        return min(future)
-    return today
+    return sorted({d for d in dates if d})
+
+
+def expires_on(row: dict[str, Any], day: date) -> bool:
+    """True only when `day` is a listed expiration for this symbol."""
+    return day.isoformat() in listed_expiration_dates(row)
+
+
+def front_expiration(row: dict[str, Any], day: date) -> str | None:
+    """Expiry used for today's snap: the session day, and only if it is listed.
+
+    Do not fall back to the calendar day when the name does not expire
+    today (AAPL on a Tuesday). That invented a 0DTE Massive does not have.
+    """
+    key = day.isoformat()
+    return key if key in listed_expiration_dates(row) else None
+
+
+def scan_listed_expirations(row: dict[str, Any], day: date) -> list[str]:
+    """Ask Massive which dates are listed (date scan only, not a full chain)."""
+    product = str(row.get("symbol") or "").strip().upper()
+    underlier = str(row.get("feed_symbol") or product).strip() or product
+    if not underlier:
+        return []
+    try:
+        from routes.chain_ladder import _scan_expirations_live
+    except Exception:
+        return []
+    try:
+        return list(_scan_expirations_live(underlier, days=45, limit=16, today=day))
+    except Exception as exc:
+        print(f"expiry_scan_fail {product}: {exc}", flush=True)
+        return []
+
+
+def persist_listed_calendar(symbol: str, dates: list[str]) -> None:
+    try:
+        import db
+        from market_data import universe_admin as ua
+
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                ua.write_chain_calendar(cur, symbol, expirations=dates)
+    except Exception as exc:
+        print(f"expiry_persist_fail {symbol}: {exc}", flush=True)
 
 
 def ladder_topics(row: dict[str, Any], exp: str, wing: int) -> list[str]:
@@ -322,6 +366,9 @@ class LiveTap:
         self._session_map: SessionMap | None = None
         self._schedule_phase: str | None = None
         self._no_session_logged: set[str] = set()
+        self._calendars_ready: date | None = None
+        self._no_expiry_day: str | None = None
+        self._no_expiry_logged: set[str] = set()
 
     def refresh_universe(self) -> list[dict[str, Any]]:
         now = time.time()
@@ -340,12 +387,18 @@ class LiveTap:
         if row is None:
             row = {"symbol": "SPY"}
         exp = front_expiration(row, day)
+        if not exp:
+            raise RuntimeError(
+                f"{row.get('symbol')} has no listed expiration on {day.isoformat()}"
+            )
         return ladder_topics(row, exp, WINGS)[0]
 
     def all_topics(self, day: date) -> list[str]:
         out: list[str] = []
         for row in self.scheduled_chain_rows():
             exp = front_expiration(row, day)
+            if not exp:
+                continue
             out.extend(ladder_topics(row, exp, WINGS))
         return out
 
@@ -356,6 +409,66 @@ class LiveTap:
             return self._session_map
         self._session_map.maybe_reload(force=force)
         return self._session_map
+
+    def _hydrate_listed_calendars(self) -> None:
+        """Once per NY day: fill empty/stale calendars from the listed tape."""
+        if getattr(self, "_calendars_ready", None) == self.day:
+            return
+        today = self.day.isoformat()
+        changed = False
+        for row in chain_rows(self.refresh_universe()):
+            dates = listed_expiration_dates(row)
+            if any(d >= today for d in dates):
+                continue
+            live = scan_listed_expirations(row, self.day)
+            product = str(row.get("symbol") or "").upper()
+            if live:
+                row["next_expirations_json"] = live
+                persist_listed_calendar(product, live)
+                changed = True
+                print(
+                    f"expiry_calendar {product} {','.join(live[:8])}",
+                    flush=True,
+                )
+            else:
+                print(f"expiry_calendar_empty {product} from={today}", flush=True)
+        if changed:
+            self.last_universe = 0.0
+            self.refresh_universe()
+        self._calendars_ready = self.day
+
+    def _note_no_expiry(self, symbol: str) -> None:
+        day_s = self.day.isoformat()
+        if getattr(self, "_no_expiry_day", None) != day_s:
+            self._no_expiry_day = day_s
+            self._no_expiry_logged: set[str] = set()
+        if symbol in self._no_expiry_logged:
+            return
+        self._no_expiry_logged.add(symbol)
+        print(f"no expiry {symbol} day={day_s}", flush=True)
+        try:
+            from market_data.ssr_snap_counts import record_not_today
+
+            row = next(
+                (
+                    r
+                    for r in self.refresh_universe()
+                    if str(r.get("symbol") or "").upper() == symbol
+                ),
+                None,
+            )
+            dates = listed_expiration_dates(row or {})
+            nxt = min((d for d in dates if d > day_s), default=None)
+            record_not_today(
+                self.day,
+                symbol,
+                next_expiration=nxt,
+                listed=dates,
+                store=getattr(self, "store", None),
+                day_root=self.cache_day(),
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"ssr_counts_not_today_failed {symbol} {exc}", flush=True)
 
     def _note_no_session(self, symbol: str, phase: str) -> None:
         if self._schedule_phase != phase:
@@ -369,23 +482,31 @@ class LiveTap:
         print(f"no session {symbol} phase={phase}", flush=True)
 
     def scheduled_chain_rows(self) -> list[dict[str, Any]]:
+        self._hydrate_listed_calendars()
         rows = chain_rows(self.refresh_universe())
-        if not hardening_on():
-            return rows
-        phase = self._phase()
-        force = self._schedule_phase is not None and self._schedule_phase != phase
-        smap = self._load_session_map(force=force)
-        if self._schedule_phase != phase:
-            self._schedule_phase = phase
-            self._no_session_logged = set()
-            self.no_session = []
+        if hardening_on():
+            phase = self._phase()
+            force = self._schedule_phase is not None and self._schedule_phase != phase
+            smap = self._load_session_map(force=force)
+            if self._schedule_phase != phase:
+                self._schedule_phase = phase
+                self._no_session_logged = set()
+                self.no_session = []
+            filtered: list[dict[str, Any]] = []
+            for row in rows:
+                product = str(row.get("symbol") or "").upper()
+                if smap.in_session(product, phase):
+                    filtered.append(row)
+                else:
+                    self._note_no_session(product, phase)
+            rows = filtered
         scheduled: list[dict[str, Any]] = []
         for row in rows:
             product = str(row.get("symbol") or "").upper()
-            if smap.in_session(product, phase):
+            if expires_on(row, self.day):
                 scheduled.append(row)
             else:
-                self._note_no_session(product, phase)
+                self._note_no_expiry(product)
         return scheduled
 
     def chain_cycle(self) -> dict[str, Any]:
@@ -409,6 +530,9 @@ class LiveTap:
         self.no_session = []
         self._no_session_logged = set()
         self._schedule_phase = None
+        self._calendars_ready = None
+        self._no_expiry_day = None
+        self._no_expiry_logged = set()
         self.finalized = False
         self._ensure_dirs()
 
@@ -549,6 +673,8 @@ class LiveTap:
         for row in self.scheduled_chain_rows():
             product = str(row.get("symbol") or "").upper()
             exp = front_expiration(row, self.day)
+            if not exp:
+                continue
             payload = None
             topic_used = None
             for topic in ladder_topics(row, exp, WINGS):
@@ -586,6 +712,28 @@ class LiveTap:
             )
             self.snaps += 1
             doc["path"] = str(dest)
+            try:
+                from market_data.ssr_snap_counts import record_snap
+
+                record_snap(
+                    self.day,
+                    product,
+                    dest.name,
+                    {
+                        "captured_at": doc.get("captured_at"),
+                        "phase": doc.get("phase"),
+                        "hole": doc.get("hole"),
+                        "row_count": doc.get("row_count"),
+                        "iv_count": doc.get("iv_count"),
+                        "greek_count": doc.get("greek_count"),
+                        "expiration": doc.get("expiration"),
+                        "topic": doc.get("topic"),
+                    },
+                    store=self.store,
+                    day_root=self.cache_day(),
+                )
+            except Exception as exc:  # noqa: BLE001 — board cache must not stop the tap
+                print(f"ssr_counts_write_failed {product} {exc}", flush=True)
             last = doc
             last.setdefault("symbols", [])
         self.last_chain = time.time()
@@ -629,20 +777,20 @@ class LiveTap:
         chain_ok = self.snaps > 0 and not any(
             str(h).startswith("NO CHAIN") for h in self.holes
         )
-        # Latest snap per symbol only — never read the full day (2s × 18 names).
+        # Latest snap per symbol from the count ledger — never glob the day.
         iv_ok = False
-        chain_dir = self.cache_day() / "chain"
-        if chain_dir.is_dir():
+        try:
+            from market_data.ssr_snap_counts import load_counts
+
+            counts = load_counts(
+                self.day, store=self.store, day_root=self.cache_day()
+            ) or {}
             latest: list[Path] = []
-            for child in chain_dir.iterdir():
-                if child.is_dir():
-                    snaps = list(child.glob("snap-*.json"))
-                    if snaps:
-                        latest.append(max(snaps, key=lambda p: p.name))
-                elif child.name.startswith("snap-") and child.suffix == ".json":
-                    latest.append(child)
-            if latest and all(p.parent == chain_dir for p in latest):
-                latest = [max(latest, key=lambda p: p.name)]
+            chain_dir = self.cache_day() / "chain"
+            for sym, row in (counts.get("symbols") or {}).items():
+                last = str((row or {}).get("last") or "")
+                if last:
+                    latest.append(chain_dir / str(sym).upper() / last)
             for p in latest:
                 try:
                     d = json.loads(p.read_text(encoding="utf-8"))
@@ -658,6 +806,8 @@ class LiveTap:
                 ):
                     iv_ok = True
                     break
+        except Exception:  # noqa: BLE001 — checklist is advisory
+            iv_ok = False
         spy_mark = self.store.get_json("mb:sym:SPY") or {}
         vix = self.store.get_json("mb:sym:VIX")
         vix1d = self.store.get_json("mb:sym:VIX1D")

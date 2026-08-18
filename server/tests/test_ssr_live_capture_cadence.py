@@ -37,11 +37,27 @@ def test_friday_5min_day_is_not_rewritten():
     assert FRIDAY_5MIN_DAY.isoformat() == "2026-08-14"
 
 
-def test_front_expiration_picks_next_listed():
+def test_front_expiration_only_same_listed_day():
+    from market_data.ssr_live_capture import expires_on, front_expiration
+
+    row = {
+        "symbol": "AAPL",
+        "next_expirations_json": ["2026-08-10", "2026-08-19", "2026-08-21"],
+    }
+    assert front_expiration(row, date(2026, 8, 18)) is None
+    assert expires_on(row, date(2026, 8, 18)) is False
+    assert front_expiration(row, date(2026, 8, 19)) == "2026-08-19"
+    assert expires_on(row, date(2026, 8, 19)) is True
+
+
+def test_front_expiration_listed_today():
     from market_data.ssr_live_capture import front_expiration
 
-    row = {"symbol": "AAPL", "next_expirations_json": ["2026-08-10", "2026-08-18", "2026-08-21"]}
-    assert front_expiration(row, date(2026, 8, 17)) == "2026-08-18"
+    row = {
+        "symbol": "SPX",
+        "next_expirations_json": ["2026-08-17", "2026-08-18", "2026-08-19"],
+    }
+    assert front_expiration(row, date(2026, 8, 18)) == "2026-08-18"
 
 
 def test_ladder_topics_include_feed_and_product():

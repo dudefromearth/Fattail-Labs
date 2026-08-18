@@ -30,13 +30,14 @@ SHARED_MAP = {
     },
 }
 
+_TODAY_EXPS = ["2026-08-18", "2026-08-19", "2026-08-21"]
 FIXTURE_UNIVERSE = [
-    {"symbol": "SPX", "feed_symbol": "I:SPX", "role": "tradeable"},
-    {"symbol": "XSP", "feed_symbol": "I:XSP", "role": "tradeable"},
-    {"symbol": "IWM", "feed_symbol": None, "role": "tradeable"},
-    {"symbol": "USO", "feed_symbol": None, "role": "tradeable"},
-    {"symbol": "AAPL", "feed_symbol": None, "role": "tradeable"},
-    {"symbol": "SPY", "feed_symbol": None, "role": "tradeable"},
+    {"symbol": "SPX", "feed_symbol": "I:SPX", "role": "tradeable", "next_expirations_json": _TODAY_EXPS},
+    {"symbol": "XSP", "feed_symbol": "I:XSP", "role": "tradeable", "next_expirations_json": _TODAY_EXPS},
+    {"symbol": "IWM", "feed_symbol": None, "role": "tradeable", "next_expirations_json": _TODAY_EXPS},
+    {"symbol": "USO", "feed_symbol": None, "role": "tradeable", "next_expirations_json": ["2026-08-19"]},
+    {"symbol": "AAPL", "feed_symbol": None, "role": "tradeable", "next_expirations_json": _TODAY_EXPS},
+    {"symbol": "SPY", "feed_symbol": None, "role": "tradeable", "next_expirations_json": _TODAY_EXPS},
 ]
 
 
@@ -78,6 +79,7 @@ def _setup(tmp_path: Path, monkeypatch, *, hardening: str | None, ts: datetime) 
     monkeypatch.setenv("LABS_MARKET_DATA_ROOT", str(tmp_path / "gold"))
     monkeypatch.delenv("LABS_SSR_GOLD_COPY", raising=False)
     monkeypatch.delenv("LABS_SSR_SYMBOLS", raising=False)
+    monkeypatch.setattr(tap_mod, "scan_listed_expirations", lambda row, day: [])
     monkeypatch.setenv("LABS_SSR_SESSION_MAP", str(_write_map(tmp_path)))
     if hardening is None:
         monkeypatch.delenv("LABS_SSR_HARDENING", raising=False)
@@ -87,8 +89,13 @@ def _setup(tmp_path: Path, monkeypatch, *, hardening: str | None, ts: datetime) 
 
 
 def _put_spy_generation(store: FakeStore) -> None:
-    row = {"symbol": "SPX", "feed_symbol": "I:SPX"}
+    row = {
+        "symbol": "SPX",
+        "feed_symbol": "I:SPX",
+        "next_expirations_json": _TODAY_EXPS,
+    }
     exp = tap_mod.front_expiration(row, DAY)
+    assert exp
     topic = tap_mod.ladder_topics(row, exp, tap_mod.WINGS)[0]
     store.docs[topic] = {
         "content_hash": "spx-gth",
@@ -101,8 +108,12 @@ def _put_spy_generation(store: FakeStore) -> None:
 
 
 def _topics_for(symbol: str, feed: str | None = None) -> list[str]:
-    row = {"symbol": symbol, "feed_symbol": feed}
-    exp = tap_mod.front_expiration(row, DAY)
+    row = {
+        "symbol": symbol,
+        "feed_symbol": feed,
+        "next_expirations_json": _TODAY_EXPS,
+    }
+    exp = tap_mod.front_expiration(row, DAY) or DAY.isoformat()
     return tap_mod.ladder_topics(row, exp, tap_mod.WINGS)
 
 
@@ -210,3 +221,30 @@ def test_at_ssr_h_e_flag_off_is_poll_all(tmp_path, monkeypatch, hardening):
     assert aapl_rows and aapl_rows[0].get("hole") == "NO CHAIN AAPL"
     assert summary["latest_holes"] >= 1
     assert tap.no_session == []
+
+
+def test_skips_symbol_that_does_not_expire_today(tmp_path, monkeypatch, capsys):
+    """AAPL listed Mon/Wed/Fri is not snapped on Tuesday — not a NO CHAIN hole."""
+    _setup(tmp_path, monkeypatch, hardening="0", ts=PRE)
+    store = FakeStore()
+    _put_spy_generation(store)
+
+    def universe():
+        rows = []
+        for row in FIXTURE_UNIVERSE:
+            item = dict(row)
+            if item["symbol"] == "AAPL":
+                item["next_expirations_json"] = ["2026-08-17", "2026-08-19", "2026-08-21"]
+            rows.append(item)
+        return rows
+
+    monkeypatch.setattr(tap_mod, "load_enabled_universe", universe)
+    tap = tap_mod.LiveTap(store=store)
+    tap.chain_cycle()
+    out = capsys.readouterr().out
+    assert "no expiry AAPL" in out
+    assert not any(":AAPL:" in t for t in store.touched)
+    aapl_dir = _cache_day(tmp_path) / f"day={DAY.isoformat()}" / "chain" / "AAPL"
+    assert list(aapl_dir.glob("snap-*.json")) == []
+    assert not any("AAPL" in str(h) for h in tap.holes)
+    assert any(":SPX:" in t for t in store.touched)

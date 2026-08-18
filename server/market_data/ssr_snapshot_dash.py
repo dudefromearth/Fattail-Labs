@@ -154,17 +154,24 @@ def _read_header(path: Path, fallback_symbol: str) -> dict[str, Any] | None:
 
 
 def summarize_day(day: date, *, root: Path | None = None) -> dict[str, Any]:
-    if root is not None:
-        folder = root / f"day={day.isoformat()}"
-    else:
-        folder = None
-        for base in scan_roots():
-            cand = base / f"day={day.isoformat()}"
-            if cand.is_dir():
-                folder = cand
-                break
-        if folder is None:
-            folder = live_cache_root() / f"day={day.isoformat()}"
+    if root is None:
+        from market_data.ssr_snap_counts import (
+            dash_view,
+            day_folder,
+            ensure_counts,
+        )
+        from market_data.market_bus.store import get_store
+
+        folder = day_folder(day)
+        try:
+            store = get_store()
+        except Exception:
+            store = None
+        doc = ensure_counts(day, store=store, day_root=folder)
+        view = dash_view(doc, root=folder)
+        view["exists"] = folder.is_dir()
+        return view
+    folder = root / f"day={day.isoformat()}"
     chain_dir = folder / "chain"
     by_sym = _snap_paths_by_symbol(chain_dir)
     symbols: list[dict[str, Any]] = []
@@ -253,8 +260,10 @@ def process_bits() -> dict[str, Any]:
 
 
 def count_day(day: date, *, root: Path | None = None) -> dict[str, Any]:
-    """Filename counts only — no JSON parse (status poll)."""
-    folder = (root / f"day={day.isoformat()}") if root is not None else day_dir(day)
+    """Filename counts only — live path uses the count ledger."""
+    if root is None:
+        return summarize_day(day)
+    folder = root / f"day={day.isoformat()}"
     by_sym = _snap_paths_by_symbol(folder / "chain")
     return {
         "day": day.isoformat(),
@@ -342,7 +351,7 @@ PAGE = """<!DOCTYPE html>
 <header>
   <div>
     <h1>Chain Snapshot</h1>
-    <div class="sub">StudioOne gold archive · localhost · read-only</div>
+    <div class="sub">StudioOne live counts · Redis + COUNTS.json · read-only</div>
   </div>
   <div class="chips">
     <span id="phase" class="chip">—</span>
@@ -361,7 +370,7 @@ PAGE = """<!DOCTYPE html>
       <thead>
         <tr>
           <th>Symbol</th><th>Snaps</th><th>Last</th><th>Phase</th>
-          <th>Rows</th><th>IV</th><th>Greeks</th><th>Hole</th>
+          <th>Rows</th><th>IV</th><th>Greeks</th><th>Status</th>
         </tr>
       </thead>
       <tbody id="syms"></tbody>
@@ -409,15 +418,29 @@ function paint(st, dayDoc){
   ].join('');
   const t = dayDoc || {};
   const holeN = t.latest_holes || 0;
+  const skipN = t.not_today || 0;
   $('stats').innerHTML = [
     ['Snaps', t.snaps ?? 0, ''],
-    ['Symbols', t.symbols_with_snaps ?? 0, ''],
-    ['Latest IV', t.latest_with_iv ?? 0, t.latest_with_iv ? 'ok' : 'bad'],
-    ['Latest greeks', t.latest_with_greeks ?? 0, t.latest_with_greeks ? 'ok' : ''],
+    ['On today', t.symbols_with_snaps ?? 0, ''],
+    ['Not today', skipN, skipN ? 'idle' : ''],
+    ['Latest IV', t.latest_with_iv ?? 0, t.latest_with_iv ? 'ok' : (t.symbols_with_snaps ? 'bad' : 'idle')],
     ['Latest holes', holeN, holeN ? 'bad' : 'ok'],
     ['Last snap', age(t.last_captured_at) || '—', '']
   ].map(([k,v,c]) => `<div class="card"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join('');
   const rows = (t.symbols || []).map(s => {
+    if (s.not_today) {
+      const nx = s.next_expiration ? ' · next ' + s.next_expiration : '';
+      return `<tr class="idle">
+      <td>${s.symbol || ''}</td>
+      <td>${s.snaps ?? 0}</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td class="idle">NOT TODAY${nx}</td>
+    </tr>`;
+    }
     const hole = s.hole ? String(s.hole) : '';
     return `<tr>
       <td>${s.symbol || ''}</td>
