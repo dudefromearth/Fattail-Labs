@@ -20,6 +20,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -206,7 +207,14 @@ def next_wake(ts: datetime) -> datetime:
     return datetime(nxt.year, nxt.month, nxt.day, *GTH_START, tzinfo=NY)
 
 
-def write_once(path: Path, text: str) -> Path:
+def cache_root() -> Path:
+    raw = (os.environ.get("LABS_SSR_CACHE_ROOT") or "").strip()
+    if raw:
+        return Path(raw).expanduser().resolve()
+    return (Path.home() / "Library" / "Caches" / "fattail-ssr").resolve()
+
+
+def _write_text(path: Path, text: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     dest = path
     n = 1
@@ -220,6 +228,33 @@ def write_once(path: Path, text: str) -> Path:
         raise FileExistsError(str(dest))
     tmp.rename(dest)
     return dest
+
+
+def write_once(path: Path, text: str) -> Path:
+    return _write_text(path, text)
+
+
+def write_snap(path: Path, text: str) -> Path:
+    """Local SSD first so a stalled gold volume cannot stop the tap."""
+    try:
+        rel = path.relative_to(data_root())
+    except ValueError:
+        rel = Path("ssr") / "live_capture" / path.name
+    local = cache_root() / rel
+    written = _write_text(local, text)
+
+    def _gold() -> None:
+        try:
+            _write_text(path, text)
+        except OSError as exc:
+            print(f"gold_write_fail {path}: {exc}", flush=True)
+
+    threading.Thread(target=_gold, daemon=True).start()
+    return written
+
+
+def dump_snap(doc: dict[str, Any]) -> str:
+    return json.dumps(doc, default=str, separators=(",", ":")) + "\n"
 
 
 def append_jsonl(path: Path, doc: dict[str, Any]) -> None:
@@ -425,7 +460,7 @@ class LiveTap:
     def capture_chain(self) -> dict[str, Any]:
         captured = now_ny()
         utc = captured.astimezone(UTC)
-        name = f"snap-{utc.strftime('%H%M%S')}Z.json"
+        name = f"snap-{utc.strftime('%H%M%S')}{utc.strftime('%f')[:3]}Z.json"
         last: dict[str, Any] = {"hole": "NO CHAIN", "symbols": []}
         for row in chain_rows(self.refresh_universe()):
             product = str(row.get("symbol") or "").upper()
@@ -461,9 +496,9 @@ class LiveTap:
                 doc["row_count"] = payload.get("row_count") or n or None
                 doc["iv_count"] = ivs
                 doc["greek_count"] = greeks
-            dest = write_once(
+            dest = write_snap(
                 self.root / "chain" / product / name,
-                dump_json(doc),
+                dump_snap(doc),
             )
             self.snaps += 1
             doc["path"] = str(dest)

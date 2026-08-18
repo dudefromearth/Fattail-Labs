@@ -63,14 +63,33 @@ def capture_root() -> Path:
     return data_root() / "ssr" / "live_capture"
 
 
+def live_cache_root() -> Path:
+    from market_data.ssr_live_capture import cache_root
+
+    return cache_root() / "ssr" / "live_capture"
+
+
+def scan_roots() -> list[Path]:
+    """Local SSD cache first (live), then gold volume (Friday archive)."""
+    out: list[Path] = []
+    cache = live_cache_root()
+    gold = capture_root()
+    if cache.is_dir():
+        out.append(cache)
+    if gold.is_dir() and gold not in out:
+        out.append(gold)
+    return out or [gold]
+
+
 def list_days(root: Path | None = None) -> list[str]:
-    base = root if root is not None else capture_root()
-    if not base.is_dir():
-        return []
-    days: list[str] = []
-    for child in base.iterdir():
-        if child.is_dir() and child.name.startswith("day="):
-            days.append(child.name.removeprefix("day="))
+    bases = [root] if root is not None else scan_roots()
+    days: set[str] = set()
+    for base in bases:
+        if not base or not base.is_dir():
+            continue
+        for child in base.iterdir():
+            if child.is_dir() and child.name.startswith("day="):
+                days.add(child.name.removeprefix("day="))
     return sorted(days, reverse=True)
 
 
@@ -135,7 +154,17 @@ def _read_header(path: Path, fallback_symbol: str) -> dict[str, Any] | None:
 
 
 def summarize_day(day: date, *, root: Path | None = None) -> dict[str, Any]:
-    folder = (root / f"day={day.isoformat()}") if root is not None else day_dir(day)
+    if root is not None:
+        folder = root / f"day={day.isoformat()}"
+    else:
+        folder = None
+        for base in scan_roots():
+            cand = base / f"day={day.isoformat()}"
+            if cand.is_dir():
+                folder = cand
+                break
+        if folder is None:
+            folder = day_dir(day)
     chain_dir = folder / "chain"
     by_sym = _snap_paths_by_symbol(chain_dir)
     symbols: list[dict[str, Any]] = []
