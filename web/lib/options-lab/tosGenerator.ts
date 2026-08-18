@@ -128,6 +128,23 @@ export function symFlyTosLegs(params: {
   ];
 }
 
+/** Debit vertical: +1 body, −1 far (call +w / put −w). short flips. */
+export function verticalTosLegs(params: {
+  body: number;
+  widthPts: number;
+  expiration: string;
+  side: "call" | "put";
+  short?: boolean;
+}): TosLeg[] {
+  const { body, widthPts, expiration, side, short = false } = params;
+  const far = side === "call" ? body + widthPts : body - widthPts;
+  const s = short ? -1 : 1;
+  return [
+    { strike: body, expiration, right: side, quantity: 1 * s },
+    { strike: far, expiration, right: side, quantity: -1 * s },
+  ];
+}
+
 /** Broken-wing (or any 1-2-1) fly legs at explicit lo / body / hi. */
 export function bwFlyTosLegs(params: {
   lo: number;

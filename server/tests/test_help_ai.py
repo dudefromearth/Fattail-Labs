@@ -84,6 +84,30 @@ def test_search_matches_relevant_sections():
     assert help_ai._search([]) == ""
 
 
+def test_search_heatmap_value_modes():
+    """Heatmap Value formulas live in the help reference (concierge)."""
+    help_ai._sections.cache_clear()
+    heads = {s["heading"] for s in help_ai._sections()}
+    for h in (
+        "Heatmap",
+        "Long/Debit",
+        "Short/Credit",
+        "% Change (debit)",
+        "Risk to Reward",
+        "Delta",
+        "Gamma",
+        "Theta",
+    ):
+        assert h in heads, h
+    found = help_ai._search(["heatmap delta gamma theta"]).lower()
+    assert "delta" in found and "gamma" in found and "theta" in found
+    pct = help_ai._search(["percent change debit heatmap"]).lower()
+    assert "starting" in pct or "inner" in pct or "debit" in pct
+    assert "100" in pct or "percent" in pct or "%" in pct
+    names = help_ai._search(["delta debit r:r credit heatmap"]).lower()
+    assert "delta" in names and "risk to reward" in names
+
+
 def test_search_find_and_badge_and_autofilter():
     """Removed Campaigns UI copy lives in the help reference (concierge)."""
     help_ai._sections.cache_clear()

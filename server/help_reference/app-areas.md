@@ -87,6 +87,21 @@ breakdowns — so you can see your progress and patterns at a glance.
 Tracks your progress and habits across the platform over time, so you can see the arc of
 your development, not just individual sessions.
 
+## Options Lab
+The options inspection suite — Heatmap, Analyzer, Surface, Volume Profile.
+Open it from the apps area (`/app/options-lab`). The Heatmap is a grid of
+listed flies; Analyzer builds a book; Surface shows that book's P&L shape.
+See the Options Lab Heatmap reference for what each Heatmap Value number
+means (Long/Debit, Short/Credit, % Change, Risk to Reward, Delta, Gamma,
+Theta).
+
+## Heatmap
+Options Lab → Heatmap (`/app/options-lab/heatmap`). Rows are body strikes;
+columns are fly widths 10 through 50. The Value menu chooses the number on
+each tile. Colors follow how that number changes to the neighbor; the − / +
+slider under Side only changes color sensitivity. Blank tiles mean the fly
+is not on the listed chain. See Options Lab Heatmap for each Value formula.
+
 ## Strategy Lab
 A space to build and study options strategies — design a structure and examine its
 risk/reward before you ever risk capital. Availability can depend on your tier.

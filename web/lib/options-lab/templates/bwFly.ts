@@ -193,6 +193,8 @@ export const bwFlyTemplate: HeatmapTemplate = {
       params.gradientThreshold ?? DEFAULT_GRADIENT_THRESHOLD;
 
     if (mode === "debit" || mode === "credit") {
+      // |package| — OTM / stub-toward-spot BWBs are often a credit (D < 0).
+      // Treating ≤0 as empty painted every tile above spot black.
       for (let i = 0; i < grid.length; i++) {
         for (let j = 0; j < grid[i].length; j++) {
           const cell = grid[i][j];
@@ -201,25 +203,22 @@ export const bwFlyTemplate: HeatmapTemplate = {
             cell.bgCss = NULL_CELL_COLOR;
             continue;
           }
-          const val =
-            mode === "credit"
-              ? Math.abs(cell.value)
-              : cell.value > 0
-                ? cell.value
-                : null;
+          const val = Math.abs(cell.value);
+          if (!(val > 0)) {
+            cell.colorT = 0;
+            cell.bgCss = debitColor(0.01, 0, threshold);
+            continue;
+          }
 
           let pctChange = 0;
           if (i >= 1) {
             const upper = grid[i - 1][j];
-            const curr = mode === "credit" ? Math.abs(cell.value) : cell.value;
             const prev =
               upper?.valid && upper.value != null
-                ? mode === "credit"
-                  ? Math.abs(upper.value)
-                  : upper.value
+                ? Math.abs(upper.value)
                 : null;
-            if (curr != null && curr > 0 && prev != null && prev > 0) {
-              pctChange = (Math.abs(curr - prev) / prev) * 100;
+            if (prev != null && prev > 0) {
+              pctChange = (Math.abs(val - prev) / prev) * 100;
             }
           }
           cell.colorT = pctChange;

@@ -1,26 +1,29 @@
 /**
- * Advanced Fly surface (registry id `sym-fly`) — Spec AF v0.2.1.
+ * Advanced Fly surface (registry id `sym-fly`) — Spec AF v0.2.2.
  *
- * Geometry: long 1 / short 2 / long 1 · D = m(K−w)+m(K+w)−2m(K).
- * Value modes: Debit · Credit · tick % · R:R · Δ · Δ² · vel · accel · slope · curvature · C/P.
+ * Geometry: Long/Debit +1/−2/+1 · Short/Credit −1/+2/−1.
+ * Value modes: Long/Debit · Short/Credit · tick % · R:R · Δ · Δ² · vel · accel · slope · curvature · C/P.
  * Time modes need flyHistory on TemplateParams (client ring buffer).
  */
 
 import {
   DEFAULT_GRADIENT_THRESHOLD,
   NULL_CELL_COLOR,
-  colorFromT,
   debitColor,
-  p95Abs,
-  updateStickyScale,
 } from "./color";
 import {
-  PCT_CHANGE_D_MIN,
   cellKey,
   type DebitGridSnap,
   type FlySurfaceHistory,
 } from "./flySurfaceHistory";
-import { fmtMoney, symFlyCpAsym, symFlyDebit } from "./pricing";
+import {
+  fmtMoney,
+  symFlyCpAsym,
+  symFlyCredit,
+  symFlyDebit,
+  symFlyDebitPctFromSpot,
+  symFlyGreek,
+} from "./pricing";
 import type {
   ChainContext,
   ColDef,
@@ -31,32 +34,28 @@ import type {
 } from "./types";
 import { contractKey } from "@/lib/chainLadderApi";
 
-/** MSC SPX default widths (center-to-wing points). */
-export const SYM_FLY_WIDTHS_DEFAULT = [20, 25, 30, 35, 40, 45, 50] as const;
+/**
+ * Heatmap fly columns (center-to-wing points).
+ * Coach 2026-08-18: 10…50 by 5 for every Advanced Fly variant (DL-435).
+ */
+export const HEATMAP_FLY_WIDTHS = [
+  10, 15, 20, 25, 30, 35, 40, 45, 50,
+] as const;
+
+/** @deprecated Use HEATMAP_FLY_WIDTHS — same list. */
+export const SYM_FLY_WIDTHS_DEFAULT = HEATMAP_FLY_WIDTHS;
 
 /**
- * Fly column widths for the active chain.
- * SPX-class (step ≥ 5): MSC 20…50.
- * Equity/ETF (finer step): multiples of listed step so cells can form on-chain.
+ * Fly column widths for the heatmap matrix.
+ * Fixed 10…50 × 5 — not profile step-multiples (those started at 5).
  */
 export function heatmapFlyWidths(
-  strikeStep: number | null | undefined,
-  count = 7,
+  _strikeStep?: number | null,
+  _count?: number,
 ): number[] {
-  const step =
-    strikeStep != null && Number.isFinite(strikeStep) && strikeStep > 0
-      ? strikeStep
-      : 5;
-  if (step >= 5) {
-    return [...SYM_FLY_WIDTHS_DEFAULT];
-  }
-  const n = Math.max(1, Math.min(12, count));
-  const out: number[] = [];
-  for (let i = 1; i <= n; i++) {
-    const w = Math.round(step * i * 1000) / 1000;
-    out.push(w);
-  }
-  return out;
+  void _strikeStep;
+  void _count;
+  return [...HEATMAP_FLY_WIDTHS];
 }
 
 function widthList(ctx: ChainContext, params: TemplateParams): number[] {
@@ -73,10 +72,6 @@ function widthList(ctx: ChainContext, params: TemplateParams): number[] {
 
 function formatDebit(n: number): string {
   return n.toFixed(2);
-}
-
-function formatCreditMag(n: number): string {
-  return Math.abs(n).toFixed(2);
 }
 
 function liveSnap(
@@ -124,19 +119,6 @@ function invalid(tooltip: string): Omit<GridCell, "colorT" | "bgCss"> {
   return { display: "—", value: null, valid: false, tooltip };
 }
 
-function signedColorModes(mode: string): boolean {
-  return (
-    mode === "d_debit" ||
-    mode === "d2_debit" ||
-    mode === "velocity" ||
-    mode === "acceleration" ||
-    mode === "slope" ||
-    mode === "curvature" ||
-    mode === "cp_asym" ||
-    mode === "pct_change"
-  );
-}
-
 export const symFlyTemplate: HeatmapTemplate = {
   id: "sym-fly",
   label: "Advanced flies",
@@ -144,14 +126,13 @@ export const symFlyTemplate: HeatmapTemplate = {
     "Fly surface · Debit default · research Value modes over OPF-held chain",
   layout: "matrix",
   valueModes: [
-    { id: "debit", label: "Debit" },
-    { id: "credit", label: "Credit" },
-    { id: "pct_change", label: "% change (tick)" },
-    { id: "r2r", label: "R:R" },
-    { id: "d_debit", label: "Δ Debit" },
-    { id: "d2_debit", label: "Δ² Debit" },
-    { id: "velocity", label: "Velocity" },
-    { id: "acceleration", label: "Acceleration" },
+    { id: "debit", label: "Long/Debit" },
+    { id: "credit", label: "Short/Credit" },
+    { id: "pct_change", label: "% Change (debit)" },
+    { id: "r2r", label: "Risk to Reward" },
+    { id: "d_debit", label: "Delta" },
+    { id: "d2_debit", label: "Gamma" },
+    { id: "theta", label: "Theta" },
     { id: "slope", label: "Slope" },
     { id: "curvature", label: "Curvature" },
     { id: "cp_asym", label: "Call/Put asym" },
@@ -220,25 +201,44 @@ export const symFlyTemplate: HeatmapTemplate = {
         display: formatDebit(d),
         value: d,
         valid: true,
-        tooltip: `Long ${k - w} / short 2×${k} / long ${k + w}\nDebit ${formatDebit(d)} (mid)`,
+        tooltip: `Long fly +1/−2/+1 · ${k - w} / ${k} / ${k + w}\nPackage ${formatDebit(d)} (mid)`,
       };
     }
 
     if (mode === "credit") {
-      // Model C_signed = −D; display magnitude + CR chip text (N2)
-      const cSigned = -d;
-      const mag = formatCreditMag(cSigned);
+      const c = symFlyCredit(ctx, k, w);
+      if (c == null) {
+        return invalid("Missing listed wing or null mid");
+      }
       return {
-        display: `${mag} CR`,
-        value: cSigned,
+        display: formatDebit(c),
+        value: c,
         valid: true,
-        tooltip: `${mag} CR · Short fly credit (mid)`,
+        tooltip: `Short fly −1/+2/−1 · ${k - w} / ${k} / ${k + w}\nPackage ${formatDebit(c)} (mid)`,
+      };
+    }
+
+    if (mode === "pct_change") {
+      const strikes = params.flyRowStrikes;
+      const idx = params.flyRowIndex;
+      if (strikes == null || idx == null || idx < 0) {
+        return invalid("Row order unavailable");
+      }
+      const pct = symFlyDebitPctFromSpot(ctx, strikes, idx, w);
+      if (pct == null) {
+        return invalid("Need debit at this strike and the next toward spot");
+      }
+      return {
+        display: `${pct.toFixed(1)}%`,
+        value: pct,
+        valid: true,
+        tooltip: `% change in debit = |(inner − outer) / inner|`,
       };
     }
 
     if (mode === "r2r") {
       if (d <= 0) {
-        return invalid("R:R needs positive debit");
+        return invalid("Risk to Reward needs a positive debit");
       }
       const maxProfit = w - d;
       if (maxProfit <= 0) {
@@ -249,7 +249,23 @@ export const symFlyTemplate: HeatmapTemplate = {
         display: rr.toFixed(2),
         value: rr,
         valid: true,
-        tooltip: `R:R ≈ (w−D)/D = (${w}−${fmtMoney(d)})/${fmtMoney(d)}`,
+        tooltip: `Risk to Reward = (width − debit) / debit = (${w}−${fmtMoney(d)})/${fmtMoney(d)}`,
+      };
+    }
+
+    if (mode === "d_debit" || mode === "d2_debit" || mode === "theta") {
+      const greek =
+        mode === "d_debit" ? "delta" : mode === "d2_debit" ? "gamma" : "theta";
+      const g = symFlyGreek(ctx, k, w, greek);
+      if (g == null) {
+        return invalid(`Missing listed ${greek} on a fly leg`);
+      }
+      const digits = greek === "gamma" ? 4 : 3;
+      return {
+        display: g.toFixed(digits),
+        value: g,
+        valid: true,
+        tooltip: `Long fly ${greek} = +1/−2/+1 chain ${greek}s`,
       };
     }
 
@@ -286,9 +302,6 @@ export const symFlyTemplate: HeatmapTemplate = {
 
     // Time derivatives need history
     if (
-      mode === "pct_change" ||
-      mode === "d_debit" ||
-      mode === "d2_debit" ||
       mode === "velocity" ||
       mode === "acceleration"
     ) {
@@ -308,97 +321,41 @@ export const symFlyTemplate: HeatmapTemplate = {
   },
 
   assignColors(grid, params) {
-    const mode = params.valueMode;
     const threshold =
       params.gradientThreshold ?? DEFAULT_GRADIENT_THRESHOLD;
-
-    if (mode === "debit" || mode === "credit") {
-      // Color uses |D| magnitude — negative debit mids are real (not null).
-      // Prior path treated value≤0 as empty and painted black → flash/phase-out.
-      for (let i = 0; i < grid.length; i++) {
-        for (let j = 0; j < grid[i].length; j++) {
-          const cell = grid[i][j];
-          if (!cell?.valid || cell.value == null) {
-            cell.colorT = null;
-            cell.bgCss = NULL_CELL_COLOR;
-            continue;
-          }
-          const val = Math.abs(cell.value);
-          if (!(val > 0)) {
-            cell.colorT = 0;
-            cell.bgCss = debitColor(0.01, 0, threshold); // near-zero still visible
-            continue;
-          }
-
-          let pctChange = 0;
-          if (i >= 1) {
-            const upper = grid[i - 1][j];
-            const curr = val;
-            const prev =
-              upper?.valid && upper.value != null
-                ? Math.abs(upper.value)
-                : null;
-            if (curr > 0 && prev != null && prev > 0) {
-              pctChange = (Math.abs(curr - prev) / prev) * 100;
-            }
-          }
-          cell.colorT = pctChange;
-          cell.bgCss = debitColor(val, pctChange, threshold);
+    void params.valueMode;
+    // Neighbor RoC of the displayed |value| (MSC Gradient / DL-435).
+    for (let i = 0; i < grid.length; i++) {
+      for (let j = 0; j < grid[i].length; j++) {
+        const cell = grid[i][j];
+        if (!cell?.valid || cell.value == null) {
+          cell.colorT = null;
+          cell.bgCss = NULL_CELL_COLOR;
+          continue;
         }
+        const val = Math.abs(cell.value);
+        if (!(val > 0)) {
+          cell.colorT = 0;
+          cell.bgCss = debitColor(0.01, 0, threshold);
+          continue;
+        }
+
+        let pctChange = 0;
+        if (i >= 1) {
+          const upper = grid[i - 1][j];
+          const prev =
+            upper?.valid && upper.value != null
+              ? Math.abs(upper.value)
+              : null;
+          if (prev != null && prev > 0) {
+            pctChange = (Math.abs(val - prev) / prev) * 100;
+          }
+        }
+        cell.colorT = pctChange;
+        cell.bgCss = debitColor(val, pctChange, threshold);
       }
-      return { stickyScale: threshold };
     }
-
-    if (mode === "r2r") {
-      const vals: number[] = [];
-      for (const row of grid) {
-        for (const cell of row) {
-          if (cell.valid && cell.value != null) vals.push(cell.value);
-        }
-      }
-      const raw = p95Abs(vals);
-      const sticky = updateStickyScale(params.stickyScale, raw);
-      for (const row of grid) {
-        for (const cell of row) {
-          if (!cell.valid || cell.value == null) {
-            cell.colorT = null;
-            cell.bgCss = NULL_CELL_COLOR;
-            continue;
-          }
-          const t = Math.max(-1, Math.min(1, cell.value / sticky));
-          cell.colorT = t;
-          cell.bgCss = colorFromT(t);
-        }
-      }
-      return { stickyScale: sticky };
-    }
-
-    // Signed research modes — p95 sticky diverging (AT-AF15)
-    if (signedColorModes(mode)) {
-      const vals: number[] = [];
-      for (const row of grid) {
-        for (const cell of row) {
-          if (cell.valid && cell.value != null) vals.push(cell.value);
-        }
-      }
-      const raw = p95Abs(vals);
-      const sticky = updateStickyScale(params.stickyScale, raw > 0 ? raw : 1);
-      for (const row of grid) {
-        for (const cell of row) {
-          if (!cell.valid || cell.value == null) {
-            cell.colorT = null;
-            cell.bgCss = NULL_CELL_COLOR;
-            continue;
-          }
-          const t = Math.max(-1, Math.min(1, cell.value / sticky));
-          cell.colorT = t;
-          cell.bgCss = colorFromT(t);
-        }
-      }
-      return { stickyScale: sticky };
-    }
-
-    return { stickyScale: params.stickyScale ?? threshold };
+    return { stickyScale: threshold };
   },
 };
 
@@ -473,50 +430,6 @@ function computeTimeMode(
   mode: string,
 ): Omit<GridCell, "colorT" | "bgCss"> {
   const live = singleLiveCell(params, side, k, w, d);
-
-  if (mode === "d_debit") {
-    const t = hist.tickDelta(live, side, k, w);
-    if (!t) {
-      return invalid("Needs prior snapshot(s) or gap too large for tick change");
-    }
-    return {
-      display: formatDebit(t.dD),
-      value: t.dD,
-      valid: true,
-      tooltip: `Δ Debit (tick) = ${formatDebit(t.dD)}`,
-    };
-  }
-
-  if (mode === "pct_change") {
-    const t = hist.tickDelta(live, side, k, w);
-    if (!t) {
-      return invalid("Needs prior snapshot(s) or gap too large for tick change");
-    }
-    const dPrev = d - t.dD;
-    if (!(Math.abs(dPrev) >= PCT_CHANGE_D_MIN)) {
-      return invalid("|prior debit| below floor — % change invalid");
-    }
-    const pct = t.dD / Math.abs(dPrev);
-    return {
-      display: `${(pct * 100).toFixed(1)}%`,
-      value: pct,
-      valid: true,
-      tooltip: `% change (tick) = ΔD/|D_prev|`,
-    };
-  }
-
-  if (mode === "d2_debit") {
-    const d2 = hist.d2Debit(live, side, k, w);
-    if (d2 == null) {
-      return invalid("Needs two prior snapshots for Δ²");
-    }
-    return {
-      display: formatDebit(d2),
-      value: d2,
-      valid: true,
-      tooltip: `Δ² Debit (tick)`,
-    };
-  }
 
   if (mode === "velocity") {
     const t = hist.velocityDelta(live, side, k, w);

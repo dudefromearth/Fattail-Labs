@@ -11,6 +11,26 @@
  */
 
 export const DEFAULT_GRADIENT_THRESHOLD = 50;
+/** MSC Gradient slider band (percent RoC). */
+export const ROC_THRESHOLD_MIN = 5;
+export const ROC_THRESHOLD_MAX = 150;
+/** Member slider 0 (− muted) … 100 (+ sensitive). Center 50 = threshold 50. */
+export const DEFAULT_ROC_SENSITIVITY = 50;
+
+/**
+ * Map the −/+ sensitivity slider to debitColor's threshold.
+ * Left (−) = higher threshold = calmer. Right (+) = lower = hotter.
+ */
+export function rocSensitivityToThreshold(slider: number): number {
+  const s = Number.isFinite(slider) ? Math.max(0, Math.min(100, slider)) : DEFAULT_ROC_SENSITIVITY;
+  if (s <= 50) {
+    return ROC_THRESHOLD_MAX - (s / 50) * (ROC_THRESHOLD_MAX - DEFAULT_GRADIENT_THRESHOLD);
+  }
+  return (
+    DEFAULT_GRADIENT_THRESHOLD -
+    ((s - 50) / 50) * (DEFAULT_GRADIENT_THRESHOLD - ROC_THRESHOLD_MIN)
+  );
+}
 
 export const NULL_CELL_COLOR = "#1a1a1a";
 

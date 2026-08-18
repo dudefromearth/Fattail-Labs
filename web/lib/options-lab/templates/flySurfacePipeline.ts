@@ -11,15 +11,19 @@
 
 import { contractKey } from "@/lib/chainLadderApi";
 import {
-  PCT_CHANGE_D_MIN,
   cellKey,
   type DebitGridSnap,
   type FlySurfaceHistory,
   FlySurfaceHistory as FlyHistoryClass,
   FLY_HISTORY_DEFAULT_DEPTH,
 } from "./flySurfaceHistory";
-import { heatmapFlyWidths } from "./symFly";
-import { symFlyCpAsym, symFlyDebit } from "./pricing";
+import { HEATMAP_FLY_WIDTHS, heatmapFlyWidths } from "./symFly";
+import {
+  symFlyCpAsym,
+  symFlyDebit,
+  symFlyDebitPctFromSpot,
+  symFlyGreek,
+} from "./pricing";
 import type {
   ChainContext,
   ColDef,
@@ -30,7 +34,8 @@ import type {
 
 /** Hard caps — SPX ±50 dual-side can be large; fly surface must stay lean. */
 export const FLY_MAX_CENTERS = 80;
-export const FLY_MAX_WIDTHS = 8;
+/** Must cover HEATMAP_FLY_WIDTHS (10…50 by 5 = 9 cols). 8 dropped the 50. */
+export const FLY_MAX_WIDTHS = HEATMAP_FLY_WIDTHS.length;
 /** History depth for time modes (velocity needs ≥2 gens). */
 export const FLY_HISTORY_DEPTH = 4;
 
@@ -61,9 +66,6 @@ export type FlyPipelinePaint = {
 };
 
 const TIME_MODES = new Set<ValueModeId>([
-  "pct_change",
-  "d_debit",
-  "d2_debit",
   "velocity",
   "acceleration",
 ]);
@@ -162,6 +164,26 @@ function computeOne(
   hist: FlySurfaceHistory,
   live: DebitGridSnap,
 ): HeldCell {
+  if (mode === "d_debit" || mode === "d2_debit" || mode === "theta") {
+    const greek =
+      mode === "d_debit" ? "delta" : mode === "d2_debit" ? "gamma" : "theta";
+    const g = symFlyGreek(ctx, k, w, greek);
+    if (g == null) {
+      return {
+        display: "—",
+        value: null,
+        valid: false,
+        tooltip: `Missing listed ${greek} on a fly leg`,
+      };
+    }
+    const digits = greek === "gamma" ? 4 : 3;
+    return {
+      display: g.toFixed(digits),
+      value: g,
+      valid: true,
+      tooltip: `Long fly ${greek} = +1/−2/+1 chain ${greek}s`,
+    };
+  }
   if (d == null || !Number.isFinite(d)) {
     return {
       display: "—",
@@ -180,24 +202,24 @@ function computeOne(
     };
   }
   if (mode === "credit") {
-    const mag = fmt(Math.abs(-d));
+    const c = -d;
     return {
-      display: `${mag} CR`,
-      value: -d,
+      display: fmt(c),
+      value: c,
       valid: true,
-      tooltip: `${mag} CR · Short fly credit (mid)`,
+      tooltip: `Short fly −1/+2/−1 · package ${fmt(c)} (mid)`,
     };
   }
   if (mode === "r2r") {
     if (!(d > 0) || !(w - d > 0)) {
-      return { display: "—", value: null, valid: false, tooltip: "R:R n/a" };
+      return { display: "—", value: null, valid: false, tooltip: "Risk to Reward n/a" };
     }
     const rr = (w - d) / d;
     return {
       display: rr.toFixed(2),
       value: rr,
       valid: true,
-      tooltip: "R:R ≈ (w−D)/D",
+      tooltip: "Risk to Reward = (width − debit) / debit",
     };
   }
   if (mode === "cp_asym") {
@@ -215,6 +237,23 @@ function computeOne(
       value: a,
       valid: true,
       tooltip: "Call − put fly debit (book asymmetry)",
+    };
+  }
+  if (mode === "pct_change") {
+    const pct = symFlyDebitPctFromSpot(ctx, centers, cIdx, w);
+    if (pct == null) {
+      return {
+        display: "—",
+        value: null,
+        valid: false,
+        tooltip: "Need debit at this strike and the next toward spot",
+      };
+    }
+    return {
+      display: `${pct.toFixed(1)}%`,
+      value: pct,
+      valid: true,
+      tooltip: "% change in debit = |(inner − outer) / inner|",
     };
   }
   if (mode === "slope" || mode === "curvature") {
@@ -311,62 +350,6 @@ function timeMode(
 ): HeldCell {
   live.cells.set(cellKey(side, k, w), d);
 
-  if (mode === "d_debit") {
-    const t = hist.tickDelta(live, side, k, w);
-    if (!t) {
-      return {
-        display: "—",
-        value: null,
-        valid: false,
-        tooltip: "Needs prior snapshot",
-      };
-    }
-    return {
-      display: fmt(t.dD),
-      value: t.dD,
-      valid: true,
-      tooltip: `Δ Debit ${fmt(t.dD)}`,
-    };
-  }
-  if (mode === "pct_change") {
-    const t = hist.tickDelta(live, side, k, w);
-    if (!t) {
-      return {
-        display: "—",
-        value: null,
-        valid: false,
-        tooltip: "Needs prior snapshot",
-      };
-    }
-    const dPrev = d - t.dD;
-    if (!(Math.abs(dPrev) >= PCT_CHANGE_D_MIN)) {
-      return {
-        display: "—",
-        value: null,
-        valid: false,
-        tooltip: "|D_prev| floor",
-      };
-    }
-    const pct = t.dD / Math.abs(dPrev);
-    return {
-      display: `${(pct * 100).toFixed(1)}%`,
-      value: pct,
-      valid: true,
-      tooltip: "% change (tick)",
-    };
-  }
-  if (mode === "d2_debit") {
-    const d2 = hist.d2Debit(live, side, k, w);
-    if (d2 == null) {
-      return {
-        display: "—",
-        value: null,
-        valid: false,
-        tooltip: "Needs two priors",
-      };
-    }
-    return { display: fmt(d2), value: d2, valid: true, tooltip: "Δ² Debit" };
-  }
   if (mode === "velocity") {
     const t = hist.velocityDelta(live, side, k, w);
     if (!t) {

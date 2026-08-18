@@ -55,6 +55,8 @@ Do **not** use `DISCARDED` / `REJECTED` as idea status.
 | FI-026 | 2026-08-15 | Backtest Method v0.2.2 | Named OPF **backtest** pack = Options Lab per-leg modeler on gold archive | India | PB-MODE-0 forbids silent day_trade borrow; `surface_reconstruct` is not Coach’s sheet (DL-364) | `OPEN` | Review `agents/bench/reviews/2026-08-15-backtest-forward-walk-v0_2_2-india.md` |
 | FI-027 | 2026-08-15 | Backtest Method v0.2.2 | One measurement method — fold or supersede SSR thesis for Strategy Lab; stub stays named theater | India | Parallel method docs (SSR v0.1 + this) + `_stub_backtest_metrics` | `OPEN` | Same review |
 | FI-028 | 2026-08-17 | Coach subscribe-then-price | One in-tab generation store: Analyzer + Builder join MarketSocket (stop ladder HTTP polls) | Audit DL-420 | Heatmap already subscribes; Analyzer/Builder re-fetch the same generation | `OPEN` | Audit v1.0 Phase B · do not add SSE |
+| FI-029 | 2026-08-18 | Heatmap Value Metrics Proposal | Width Efficiency, Time Decay, Spot Sensitivity, Surface Stability, SRS; Velocity/Acceleration until a series exists | Coach proposal + product walk | Research stack beyond shipped Value menu | `OPEN` | `docs/Options-Lab-Heatmap-Value-Metrics-Proposal.md` · **DL-442** |
+| FI-030 | 2026-08-18 | Coach | Heatmap Condors template (OTM same-side / short-span control) | Coach | Heatmap is a different job than Builder condors; ATM IC rejected | `RESHAPED` | **DL-444:** condors stay in Position Builder only |
 
 ---
 

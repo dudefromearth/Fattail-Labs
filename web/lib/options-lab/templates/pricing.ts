@@ -21,11 +21,18 @@ export function rowAt(
   return ctx.contracts.get(contractKey(side, strike));
 }
 
-/** Symmetric fly debit: long K-w, short 2×K, long K+w (mids). */
-export function symFlyDebit(
+export type FlyDirection = "long" | "short";
+
+/**
+ * Symmetric fly package mid (OPF sign: + pay / − receive).
+ * Long/Debit  = +1 / −2 / +1 at K−w, K, K+w.
+ * Short/Credit = −1 / +2 / −1 at the same strikes.
+ */
+export function symFlyPackage(
   ctx: ChainContext,
   body: number,
   widthPts: number,
+  direction: FlyDirection = "long",
   side: "call" | "put" = ctx.viewSide,
 ): number | null {
   const lo = body - widthPts;
@@ -34,7 +41,131 @@ export function symFlyDebit(
   const mBody = midAt(ctx, side, body);
   const mHi = midAt(ctx, side, hi);
   if (mLo == null || mBody == null || mHi == null) return null;
-  return mLo + mHi - 2 * mBody;
+  const qLo = direction === "long" ? 1 : -1;
+  const qBody = direction === "long" ? -2 : 2;
+  const qHi = direction === "long" ? 1 : -1;
+  return qLo * mLo + qBody * mBody + qHi * mHi;
+}
+
+/** Long fly package: +1 / −2 / +1. */
+export function symFlyDebit(
+  ctx: ChainContext,
+  body: number,
+  widthPts: number,
+  side: "call" | "put" = ctx.viewSide,
+): number | null {
+  return symFlyPackage(ctx, body, widthPts, "long", side);
+}
+
+/** Spot, else nearest listed center to live spot, else the middle row. */
+export function flySpotCenter(
+  ctx: ChainContext,
+  centersDesc: readonly number[],
+): number | null {
+  if (!centersDesc.length) return null;
+  let mark: number | null = null;
+  for (const row of ctx.contracts.values()) {
+    if (row.is_spot && Number.isFinite(Number(row.strike))) {
+      mark = Number(row.strike);
+      break;
+    }
+  }
+  if (mark == null && ctx.spot != null && Number.isFinite(ctx.spot) && ctx.spot > 0) {
+    mark = ctx.spot;
+  }
+  if (mark == null) {
+    return centersDesc[Math.floor(centersDesc.length / 2)] ?? null;
+  }
+  let best = centersDesc[0];
+  let bestD = Math.abs(best - mark);
+  for (const k of centersDesc) {
+    const d = Math.abs(k - mark);
+    if (d < bestD) {
+      best = k;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/**
+ * % change on the outer cell (further from spot).
+ * Starting (inner) 9, next (outer) 7 → |((9 − 7) / 9) × 100|.
+ * Never negative. Spot row is 0.
+ */
+export function debitPctFromSpot(
+  ctx: ChainContext,
+  centersDesc: readonly number[],
+  idx: number,
+  debitAt: (strike: number) => number | null,
+): number | null {
+  if (idx < 0 || idx >= centersDesc.length) return null;
+  const spotK = flySpotCenter(ctx, centersDesc);
+  if (spotK == null) return null;
+  const k = centersDesc[idx];
+  if (k === spotK) return 0;
+  const inIdx = k > spotK ? idx + 1 : idx - 1;
+  if (inIdx < 0 || inIdx >= centersDesc.length) return null;
+  const dOuter = debitAt(k);
+  const dInner = debitAt(centersDesc[inIdx]);
+  if (dOuter == null || dInner == null || dInner === 0) return null;
+  return Math.abs(((dInner - dOuter) / dInner) * 100);
+}
+
+export function symFlyDebitPctFromSpot(
+  ctx: ChainContext,
+  centersDesc: readonly number[],
+  idx: number,
+  widthPts: number,
+): number | null {
+  return debitPctFromSpot(ctx, centersDesc, idx, (strike) =>
+    symFlyDebit(ctx, strike, widthPts),
+  );
+}
+
+export function verticalDebitPctFromSpot(
+  ctx: ChainContext,
+  centersDesc: readonly number[],
+  idx: number,
+  widthPts: number,
+): number | null {
+  return debitPctFromSpot(ctx, centersDesc, idx, (strike) =>
+    verticalPackage(ctx, strike, widthPts, "long"),
+  );
+}
+
+export type FlyGreekName = "delta" | "gamma" | "theta";
+
+/**
+ * Long-fly package greek from listed chain rows: +1/−2/+1.
+ * Missing greek on any leg → null (no invented surface derivative).
+ */
+export function symFlyGreek(
+  ctx: ChainContext,
+  body: number,
+  widthPts: number,
+  greek: FlyGreekName,
+  side: "call" | "put" = ctx.viewSide,
+): number | null {
+  const lo = rowAt(ctx, side, body - widthPts);
+  const mid = rowAt(ctx, side, body);
+  const hi = rowAt(ctx, side, body + widthPts);
+  if (!lo || !mid || !hi) return null;
+  const a = Number(lo[greek]);
+  const b = Number(mid[greek]);
+  const c = Number(hi[greek]);
+  if (![a, b, c].every((n) => Number.isFinite(n))) return null;
+  return a - 2 * b + c;
+}
+
+/** Short fly package: −1 / +2 / −1. */
+export function symFlyCredit(
+  ctx: ChainContext,
+  body: number,
+  widthPts: number,
+  side: "call" | "put" = ctx.viewSide,
+): number | null {
+  return symFlyPackage(ctx, body, widthPts, "short", side);
 }
 
 /** Call fly debit − put fly debit (same K,w generation). */
@@ -154,19 +285,41 @@ export function resolveBwWings(
   return { lo, hi, brokenDir };
 }
 
+/** Far strike of a debit vertical: calls up, puts down. Must be listed. */
+export function verticalFarStrike(
+  side: "call" | "put",
+  body: number,
+  widthPts: number,
+): number {
+  return side === "call" ? body + widthPts : body - widthPts;
+}
+
+/**
+ * Vertical package mid (OPF +pay / −receive).
+ * Long/Debit: +1 body, −1 far (call K+w / put K−w).
+ * Short/Credit: −1 body, +1 far.
+ */
+export function verticalPackage(
+  ctx: ChainContext,
+  body: number,
+  widthPts: number,
+  direction: FlyDirection = "long",
+): number | null {
+  const side = ctx.viewSide;
+  const far = verticalFarStrike(side, body, widthPts);
+  const mBody = midAt(ctx, side, body);
+  const mFar = midAt(ctx, side, far);
+  if (mBody == null || mFar == null) return null;
+  return direction === "long" ? mBody - mFar : mFar - mBody;
+}
+
 /** Long vertical debit: long body, short body+width (calls) or body-width (puts). */
 export function verticalDebit(
   ctx: ChainContext,
   body: number,
   widthPts: number,
 ): number | null {
-  const side = ctx.viewSide;
-  const longK = body;
-  const shortK = side === "call" ? body + widthPts : body - widthPts;
-  const mL = midAt(ctx, side, longK);
-  const mS = midAt(ctx, side, shortK);
-  if (mL == null || mS == null) return null;
-  return mL - mS;
+  return verticalPackage(ctx, body, widthPts, "long");
 }
 
 /**

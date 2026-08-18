@@ -42,11 +42,11 @@
 | Modal strike step | Landed |
 | Diff keys `side:strike` | Landed |
 | Template registry + switcher | Landed |
-| Advanced Fly (id `sym-fly`): Debit/Credit mag+CR / tick % / R:R / Δ / Δ² / vel / accel / slope / curvature / C/P + history | Landed (DL-311) |
+| Advanced Fly (id `sym-fly`): Long/Debit +1/−2/+1 · Short/Credit −1/+2/−1 · columns 10…50×5 · RoC −/+ slider / tick % / R:R / Δ / Δ² / vel / accel / slope / curvature / C/P + history | Landed (DL-311 · **DL-434** · **DL-435**) |
 | Client flySurfaceHistory + AF10/AF17 | Landed |
 | sym-fly debit/credit/pct_change/r2r + RoC sticky color | Superseded as surface by Advanced Fly modes |
 | gex_v1 call/put/net | Landed |
-| vertical · bw-fly templates | Deferred (phase X) |
+| vertical · bw-fly templates | **Verticals** Long/Debit · Short/Credit (DL-443) · bw-fly landed |
 | Full e2e AT-HM1…16 in Playwright | Partial (unit AT pack) |
 
 ---
@@ -369,7 +369,7 @@ Default until matrix templates ship. Columns: mid, bid, ask, vol, OI, delta, IV 
 │  · Symbol    │  · matrix tiles  OR  ladder table         │
 │  · Expiry    │  · full remaining height, scroll inside   │
 │  · Side      │                                           │
-│  · Wings     │                                           │
+│  · RoC −/+   │                                           │
 │  · Template  │  ← switcher                               │
 │  · Value mode│                                           │
 │  · Widths    │                                           │

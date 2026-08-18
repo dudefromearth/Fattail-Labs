@@ -27,20 +27,25 @@ import {
   getTemplate,
   buildGrid,
 } from "@/lib/options-lab/templates/registry";
-import { flyWidthsFromProfile } from "@/lib/market/symbolProfile";
+import {
+  DEFAULT_ROC_SENSITIVITY,
+  rocSensitivityToThreshold,
+} from "@/lib/options-lab/templates/color";
+import {
+  heatmapFlyWidths,
+  symFlyTemplate,
+} from "@/lib/options-lab/templates/symFly";
 import {
   BW_STRIKE_COUNT_CHOICES,
   BW_STRIKE_COUNT_DEFAULT,
   BW_WING_SIDE_DEFAULT,
 } from "@/lib/options-lab/templates/bwFly";
-import { DEFAULT_GRADIENT_THRESHOLD } from "@/lib/options-lab/templates/color";
 import { rememberTosScript } from "@/lib/tradeLogTos";
 import {
   buildGexProfile,
   fmtGexProfile,
   gexProfileScale,
 } from "@/lib/options-lab/templates/gex";
-import { symFlyTemplate } from "@/lib/options-lab/templates/symFly";
 import {
   FlySurfacePipeline,
   type FlyPipelinePaint,
@@ -56,11 +61,13 @@ import {
   generateTosScript,
   bwFlyTosLegs,
   symFlyTosLegs,
+  verticalTosLegs,
 } from "@/lib/options-lab/tosGenerator";
 import {
   bwFlyDebit,
   resolveBwWings,
   symFlyDebit,
+  verticalPackage,
 } from "@/lib/options-lab/templates/pricing";
 import { saveAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
 import HeatmapControlsColumn from "@/components/options-lab/HeatmapControlsColumn";
@@ -208,6 +215,8 @@ export default function HeatmapChainPanel() {
     () => getTemplate(DEFAULT_HEATMAP_TEMPLATE_ID).defaultValueMode,
   );
   const [stickyScale, setStickyScale] = useState<number | undefined>(undefined);
+  const [rocSensitivity, setRocSensitivity] = useState(DEFAULT_ROC_SENSITIVITY);
+  const gradientThreshold = rocSensitivityToThreshold(rocSensitivity);
   /** bw-fly: N listed strikes from body for the broken wing */
   const [bwStrikeCount, setBwStrikeCount] = useState(BW_STRIKE_COUNT_DEFAULT);
   /** bw-fly: place broken wing closest to spot or furthest */
@@ -405,7 +414,18 @@ export default function HeatmapChainPanel() {
       const shortFly = valueMode === "credit";
       let cost: number | null = null;
       let legs;
-      if (templateId === "bw-fly") {
+      if (templateId === "vertical") {
+        const dir = shortFly ? "short" : "long";
+        const d = verticalPackage(chainCtx, body, widthPts, dir);
+        cost = d != null && Number.isFinite(d) ? Math.abs(d) : null;
+        legs = verticalTosLegs({
+          body,
+          widthPts,
+          expiration,
+          side,
+          short: shortFly,
+        });
+      } else if (templateId === "bw-fly") {
         const wings = resolveBwWings(
           chainCtx,
           body,
@@ -466,15 +486,8 @@ export default function HeatmapChainPanel() {
     ],
   );
 
-  /** From Admin/symbol profile; live chain step refines step_multiples. */
-  const flyWidths = useMemo(
-    () =>
-      flyWidthsFromProfile(
-        profile,
-        chainCtx.strikeStep ?? bus.strikeStep ?? profile.strike_step,
-      ),
-    [profile, chainCtx.strikeStep, bus.strikeStep],
-  );
+  /** Coach: 10…50 by 5 for every Advanced Fly variant (DL-435). */
+  const flyWidths = useMemo(() => heatmapFlyWidths(), []);
 
   const genKey = `${bus.hash ?? ""}|${side}|${valueMode}`;
   if (bus.hash && genReceivedAtRef.current.key !== (bus.hash || "")) {
@@ -514,7 +527,7 @@ export default function HeatmapChainPanel() {
         widthMode: "fixed_points",
         fixedPoints: flyWidths,
         stickyScale,
-        gradientThreshold: DEFAULT_GRADIENT_THRESHOLD,
+        gradientThreshold,
       });
       lastIngestKeyRef.current = `${hashAtSchedule}|${side}|${modeAtSchedule}|${flyWidths.join(",")}`;
       setFlyPaint(paint);
@@ -525,7 +538,7 @@ export default function HeatmapChainPanel() {
     };
     // Intentionally NOT depending on full chainCtx identity — hash is the gen gate.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- chainCtx read inside when hash changes
-  }, [templateId, bus.hash, side, valueMode, flyWidths, stickyScale]);
+  }, [templateId, bus.hash, side, valueMode, flyWidths, stickyScale, gradientThreshold]);
 
   const templateParams: TemplateParams = useMemo(
     () => ({
@@ -533,22 +546,24 @@ export default function HeatmapChainPanel() {
       widthMode: "fixed_points",
       fixedPoints: flyWidths,
       stickyScale,
-      gradientThreshold: DEFAULT_GRADIENT_THRESHOLD,
+      gradientThreshold,
       bwStrikeCount,
       bwWingSide,
     }),
-    [valueMode, stickyScale, bwStrikeCount, bwWingSide, flyWidths],
+    [valueMode, stickyScale, bwStrikeCount, bwWingSide, flyWidths, gradientThreshold],
   );
 
   const matrix = useMemo(() => {
     if (tpl.layout !== "matrix") return null;
     if (tpl.id === "sym-fly") {
       if (!flyPaint || flyPaint.mode !== valueMode) return null;
+      const cells = flyPaint.cells.map((row) => row.map((c) => ({ ...c })));
+      const colored = symFlyTemplate.assignColors(cells, templateParams);
       return {
         rows: flyPaint.rows,
         cols: flyPaint.cols,
-        cells: flyPaint.cells,
-        stickyScale: stickyScale ?? DEFAULT_GRADIENT_THRESHOLD,
+        cells,
+        stickyScale: colored.stickyScale,
       };
     }
     return buildGrid(tpl, chainCtx, templateParams);
@@ -671,7 +686,7 @@ export default function HeatmapChainPanel() {
         bwWingSide={bwWingSide}
         onBwWingSideChange={setBwWingSide}
         profileLine={
-          `Profile · wings ±${profile.default_wings}` +
+          `Profile` +
           (profile.strike_step != null ? ` · step ${profile.strike_step}` : "") +
           ` · widths ${flyWidths[0]}–${flyWidths[flyWidths.length - 1]}` +
           (profile.kind ? ` · ${profile.kind}` : "")
@@ -685,8 +700,8 @@ export default function HeatmapChainPanel() {
         }}
         side={side}
         onSideChange={setSide}
-        wings={wings}
-        onWingsChange={setWings}
+        rocSensitivity={rocSensitivity}
+        onRocSensitivityChange={setRocSensitivity}
         onCenterSpot={() => {
           centerSpot();
         }}

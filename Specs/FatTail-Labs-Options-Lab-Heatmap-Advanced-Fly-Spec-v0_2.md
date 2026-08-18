@@ -2,7 +2,7 @@
 
 **Status:** **DRAFT** — product law for the fly heatmap surface (replaces Symmetric Fly)  
 **Date:** 2026-08-12  
-**Current revision:** **v0.2.1** (filename remains `…-v0_2.md`)  
+**Current revision:** **v0.2.3** (filename remains `…-v0_2.md`)  
 **Supersedes:** [v0.1](./FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_1.md)  
 **Supersedes (surface law):** Symmetric Fly section of [Heatmap Templates Spec v0.2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) **§5.2** for member-visible fly matrix behavior (parent HM1–HM20 remain fully in force)  
 **Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md`  
@@ -18,7 +18,9 @@ shasum -a 1 Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md
 
 **External review folded:** Claude advisor 2026-08-12 (B1–B4, A1–A8).  
 **B1–B4 RESOLVED** in v0.2. **A1–A6, A5 AT folded.** A7 process note above. A8: OPF-Truth path verified at parents table.  
-**Post-fold residuals (2026-08-12 verify):** **N1** curvature uniform-triple · **N2** Credit magnitude+chip display — folded in **v0.2.1**.
+**Post-fold residuals (2026-08-12 verify):** **N1** curvature uniform-triple · **N2** Credit magnitude+chip display — folded in **v0.2.1**.  
+**v0.2.2 (Coach 2026-08-18):** N2 **amended** — Credit is the **short fly** (−1/+2/−1), not abs(D)+CR. Labels **Long/Debit** · **Short/Credit**. **DL-434**.  
+**v0.2.3 (Coach 2026-08-18):** Width columns 10…50 × 5. RoC color slider under Side (−/+). **DL-435**.
 
 **Process:** Spec review (Coach + Claude) → OD Accept/Override at AF0 → implementation via Full Agent Bench Plan → code/ATs.  
 **No implementation seed fire** until Coach **AF0-0 GO**.
@@ -168,48 +170,61 @@ Parent **HM1–HM20** apply. Advanced Fly–specific:
 
 ### 3.1 Legs
 
-On **viewSide** book (call or put matrix):
+On **viewSide** book (call or put matrix). Two structures, same strikes:
 
-| Leg | Strike | Qty (signed) |
-|-----|--------|--------------|
+**Long/Debit** (+1 / −2 / +1):
+
+| Leg | Strike | Qty |
+|-----|--------|-----|
 | Wing low | \(K − w\) | +1 |
 | Body | \(K\) | −2 |
 | Wing high | \(K + w\) | +1 |
 
+**Short/Credit** (−1 / +2 / −1):
+
+| Leg | Strike | Qty |
+|-----|--------|-----|
+| Wing low | \(K − w\) | −1 |
+| Body | \(K\) | +2 |
+| Wing high | \(K + w\) | −1 |
+
 ### 3.2 Width columns
 
-Unchanged from parent §5.2:
+**Coach 2026-08-18 · DL-435:** every Advanced Fly variant uses the same
+columns — center-to-wing **10, 15, 20, 25, 30, 35, 40, 45, 50**.
 
-- `widthMode = step_multiples`: \(w = n · \texttt{strikeStep}\), \(n = 1..N\) (default N=7), `strikeStep` = modal (HM20).  
-- `fixed_points` / profile widths: legs must land listed or invalid.  
-- Course **Width** vocabulary (H4).
+Do **not** use profile `step_multiples` starting at one strike step (that
+produced 5…40). Legs must still land listed or the cell is invalid.
 
-### 3.3 Debit (mid) v1
+### 3.3 Long/Debit (mid) v1
+
+Long fly package, OPF sign (+ pay / − receive):
 
 \[
-D(K,w) = m(K-w) + m(K+w) - 2\,m(K)
+D(K,w) = +1\cdot m(K-w) + (-2)\cdot m(K) + +1\cdot m(K+w)
 \]
 
-Incomplete structure or null mid → invalid (AF5).
+Incomplete structure or null mid → invalid (AF5).  
+Cell display is the signed package (`toFixed(2)`). Dropdown label: **Long/Debit**.
 
-### 3.4 Credit (mid) v1 — frozen (B3 · N2)
+### 3.4 Short/Credit (mid) — Coach 2026-08-18 · **DL-434** (amends N2 / B3)
 
-**Long fly debit** \(D\) as §3.3.  
-**Credit mode** is the short-fly presentation of the **same** mid structure:
+Credit mode is the **short fly**, computed from its own quantities — not “negate D and stamp CR”:
 
 \[
-C_{\mathrm{signed}}(K,w) = -D(K,w)
+C(K,w) = -1\cdot m(K-w) + (+2)\cdot m(K) + -1\cdot m(K+w)
 \]
 
 | Rule | Law |
 |------|-----|
-| Valid iff | Debit cell valid |
-| **Model value** | \(C_{\mathrm{signed}}\) (signed; negative when long debit is positive) — for color magnitude and any signed math |
-| **Cell display** | **Suite convention** (align PB cards / Builder): show **magnitude** \(\lvert C_{\mathrm{signed}}\rvert = \lvert D \rvert\) with a **CREDIT** (or CR) chip/label — e.g. member reads “0.85 CR”, **not** “−0.85”. Signed string alone is forbidden as the primary cell text. |
-| Color | Use \(\lvert C_{\mathrm{signed}}\rvert = \lvert D \rvert\) for magnitude coloring (sticky RoC path) |
-| Tooltip | Magnitude + “Short fly credit (mid)” — structure descriptor, not promised fill |
+| Valid iff | All three listed mids present (same completeness as Long/Debit) |
+| **Model value** | \(C\) signed package (OPF: + pay / − receive). Typical short fly is **negative** (credit received). |
+| **Cell display** | Signed package (`toFixed(2)`), same honesty as Long/Debit. **Do not** force a CR chip onto a short fly that is a debit. |
+| Color | \(\lvert C \rvert\) on the sticky RoC path (same as Long/Debit magnitude) |
+| Tooltip | `Short fly −1/+2/−1` + the three strikes + signed package |
+| Dropdown label | **Short/Credit** |
 
-No second formula. No “as-built only” pointer.
+**Was (v0.2.1 N2, superseded):** \(C=-D\) displayed as \(\lvert D \rvert\) + “CR”. That made every short-fly cell look like the long debit with a chip — including inverted books where the short fly **pays**. Coach: compute −1/+2/−1.
 
 ### 3.5 R2R (long fly, mid) — structure descriptor only
 
@@ -225,9 +240,26 @@ Invalid when maxLoss ≤ 0 or structure incomplete.
 
 ## 4. Color
 
-### 4.1 Debit / Credit / RoC (default heritage)
+### 4.1 Tile-to-tile RoC + sensitivity slider (DL-435)
 
-Parent §5.2 RoC color + **§5.2.2 sticky scale** (25% hysteresis) remain the default color path for Debit and Credit (magnitude).
+Color is the **vertical rate of change** of the **displayed** cell
+value versus the tile above (same width):  
+\(\mathrm{pct} = 100 \cdot |v_i - v_{i-1}| / |v_{i-1}|\).
+
+Map through `debitColor(value, pct, threshold)` (MSC Gradient law:
+blue below threshold, red above).
+
+**Slider** sits **immediately under the Side toggle**. Labels **−** left
+and **+** right only (no percent chrome).  
+
+| End | Member | Threshold |
+|-----|--------|-----------|
+| − | Calmer — need a bigger neighbor jump to go red | 150 |
+| Center | Same as prior default | 50 |
+| + | Hotter — small neighbor jumps color | 5 |
+
+Applies to every Advanced Fly value mode (the displayed number, not a
+second debit grid).
 
 ### 4.2 Signed research modes
 
@@ -249,14 +281,15 @@ Optional EWMA on second derivatives: **OD-AF4** (default raw).
 
 | Mode id | Member label | Definition | History |
 |---------|--------------|------------|---------|
-| `debit` | Debit | \(D(K,w)\) §3.3 | No |
-| `credit` | Credit | \(C = -D\) §3.4 | No |
-| `pct_change` | % change (tick) | See §5.1.1 | Yes (1) |
-| `r2r` | R:R | §3.5 | No |
-| `d_debit` | Δ Debit | \(D_t - D_{t-1}\) when pair honest (§5.1.2) | Yes (1) |
-| `d2_debit` | Δ² Debit | \(\Delta D_t - \Delta D_{t-1}\) when both Δ honest | Yes (2) |
-| `velocity` | Velocity | \(\Delta D / \Delta t_{\mathrm{min}}\) — **debit points per minute**; Δt rules AF16–AF17 | Yes (1) + Δt |
-| `acceleration` | Acceleration | \(\Delta v / \Delta t\) with same Δt rules | Yes (2) |
+| `debit` | Long/Debit | \(D(K,w)\) long +1/−2/+1 §3.3 | No |
+| `credit` | Short/Credit | \(C(K,w)\) short −1/+2/−1 §3.4 | No |
+| `pct_change` | % Change (debit) | On the **outer** cell (further from spot): \(\left\lvert (D_{\mathrm{inner}} - D_{\mathrm{outer}}) / D_{\mathrm{inner}} \right\rvert \times 100\). Never negative. Spot row = 0. Example 9 → 7: \(22.2\%\). | No |
+| `r2r` | Risk to Reward | \((w - D) / D\) — fly width minus debit, over debit | No |
+| `d_debit` | Delta | Long-fly package Δ from listed chain: \(+Δ_{K-w} - 2Δ_K + Δ_{K+w}\) | No |
+| `d2_debit` | Gamma | Long-fly package Γ from listed chain: \(+Γ_{K-w} - 2Γ_K + Γ_{K+w}\) | No |
+| `theta` | Theta | Long-fly package θ from listed chain: \(+θ_{K-w} - 2θ_K + θ_{K+w}\) | No |
+| `velocity` | Velocity | **Hidden** until a debit time series exists (Coach 2026-08-18) | Yes |
+| `acceleration` | Acceleration | **Hidden** until a debit time series exists | Yes |
 | `slope` | Slope | §5.1.3 (frozen) | No |
 | `curvature` | Curvature | §5.1.3 | No |
 | `cp_asym` | Call/Put asym | §5.1.4 | No |
@@ -420,7 +453,7 @@ Description may state research Value modes without claiming edge.
 | State | Tooltip intent |
 |-------|----------------|
 | Valid Debit | Legs + formula |
-| Valid Credit | Magnitude + CR chip; short fly credit (mid) §3.4 |
+| Valid Short/Credit | Signed short-fly package §3.4 (no forced CR chip) |
 | Valid Velocity | Value + units: **debit points / min** (A3) |
 | Valid cp_asym | Book asymmetry framing §5.1.4 — not “calls cost more” |
 | Invalid structure | Missing listed wing / null mid |
@@ -493,7 +526,7 @@ Human Interface Spec v1.0: ≥44pt controls, tokens, reduced-motion for flash.
 | **AT-AF13** | Parent non-regression: mode switch still zero-fetch; no-snap still holds |
 | **AT-AF14** | Pre-open history does not continuous-velocity into Live without seam |
 | **AT-AF15** | Signed-mode color: p95 scale, sticky 25% band, fallback \(S=1\) on sparse grids |
-| **AT-AF16** | Credit model \(C_{\mathrm{signed}} = -D\); valid iff Debit valid; **display** = magnitude + CR/CREDIT chip (not primary “−0.85”) |
+| **AT-AF16** | Short/Credit = −1/+2/−1 signed package; display is that number (not abs+CR). Labels Long/Debit · Short/Credit |
 | **AT-AF17** | Non-monotonic `asOf` rejected/seamed; mixed clock basis invalid Δt; tick modes invalid after max-gap |
 
 Evidence: unit fixtures (Hotel/Kilo) + panel smoke; Massive/HTTP counter flat on mode switch.
@@ -546,7 +579,7 @@ Ship with:
 | **A7** | Advisory | Hash-in-DL convention (header) |
 | **A8** | Advisory | OPF-Truth path in §1 parents table |
 | **N1** | Residual (v0.2.1) | Curvature uniform-triple gate §5.1.3; AT-AF5 |
-| **N2** | Residual (v0.2.1) | Credit display = magnitude + CR chip §3.4; AT-AF16 |
+| **N2** | Residual (v0.2.1) | Credit display = magnitude + CR chip — **amended v0.2.2 / DL-434** to short-fly qty |
 
 ---
 
@@ -557,6 +590,8 @@ Ship with:
 | **v0.1** | 2026-08-12 | Initial DRAFT |
 | **v0.2** | 2026-08-12 | Advisor fold B1–B4 + A1–A6/A5; AF17 time honesty; Credit formula; slope freeze; OD-AF10/11; AT-AF15–17 |
 | **v0.2.1** | 2026-08-12 | N1 curvature uniform-triple; N2 Credit magnitude+chip suite display; still AF0-ready |
+| **v0.2.2** | 2026-08-18 | Coach: Long/Debit = +1/−2/+1 · Short/Credit = −1/+2/−1. Drop forced CR chip. **DL-434**. |
+| **v0.2.3** | 2026-08-18 | Columns **10…50 by 5** for every variant. −/+ RoC sensitivity slider under Side. **DL-435**. |
 
 **One-line product law:**  
 **One OPF-held dual-side chain; Advanced Fly is the Symmetric Fly surface with honest Value modes and client generation history — pure template, never a second data path, never a profit claim.**

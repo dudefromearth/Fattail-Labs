@@ -9,6 +9,7 @@ export type ValueModeId =
   | "pct_change"
   | "d_debit"
   | "d2_debit"
+  | "theta"
   | "velocity"
   | "acceleration"
   | "slope"

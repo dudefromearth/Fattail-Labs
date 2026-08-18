@@ -4,6 +4,122 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-18 — DL-444 Condors stay in Position Builder, not Heatmap
+
+**Decision:** Condors and iron condors are **Builder** structures only.
+The Heatmap is a fly / vertical / GEX surface — not a condor scanner.
+ATM short iron condors are antithetical to FatTail methods; do not add
+a Condors heatmap template.
+
+---
+
+## 2026-08-18 — DL-443 Heatmap Verticals template
+
+**Decision:** Heatmap template **Verticals** sits under Broken-wing
+flies. Value modes **Long/Debit** and **Short/Credit** only.
+
+- Calls: long \(K\), short \(K+w\). Puts: long \(K\), short \(K-w\).
+- Short/Credit flips both legs. Exact listed strikes; no snap.
+- Same 10…50 width columns. Color is \|package\| neighbor RoC.
+
+---
+
+## 2026-08-18 — DL-442 Heatmap Value Metrics Proposal filed as source
+
+**Decision:** Coach’s *Expanding the Heatmap Value Metrics for
+Market-Regime Research* is the **research source** for the Value menu.
+PDF + map:
+`docs/Heatmap-Value-Metrics-Proposal.pdf` ·
+`docs/Options-Lab-Heatmap-Value-Metrics-Proposal.md`.
+
+Product amendments (Long/Short, spatial % change, package Δ/Γ/θ) sit
+**beside** the proposal — they do not erase it. Width Efficiency, Time
+Decay, Spot Sensitivity, Surface Stability, and SRS remain **flagged**,
+not shipped.
+
+---
+
+## 2026-08-18 — DL-441 Heatmap Value modes in help reference
+
+**Decision:** Member explainer for Advanced Fly Value modes lives in
+`server/help_reference/options-lab-heatmap.md` (help concierge search)
+and `docs/Options-Lab-Heatmap-Value-Modes.md` (pointer). App-areas
+gains Options Lab / Heatmap sections.
+
+---
+
+## 2026-08-18 — DL-440 Hide Advanced Fly Velocity / Acceleration
+
+**Decision:** Velocity and Acceleration stay out of the Heatmap Value
+menu until a real debit time series exists. They are generation-tick
+math and go blank without history. Slope, Curvature, and Call/Put
+asym remain (current snapshot).
+
+---
+
+## 2026-08-18 — DL-439 Advanced Fly Theta is package chain θ
+
+**Decision:** Value mode **Theta** is the long-fly sum of listed chain
+thetas on the three strikes (\(+1/−2/+1\)). Same law as Delta / Gamma
+(DL-438). Missing θ on a leg → invalid.
+
+---
+
+## 2026-08-18 — DL-438 Advanced Fly Delta / Gamma are package chain greeks
+
+**Decision:** Value modes **Delta** and **Gamma** are the long-fly
+sums of listed chain greeks on the three strikes
+(\(+1/−2/+1\)). Not debit-to-debit slopes and not generation ticks.
+Missing greek on a leg → invalid cell.
+
+---
+
+## 2026-08-18 — DL-437 Advanced Fly % change is debit vs neighbor toward spot
+
+**Decision:** Value mode `% change` is the **percent change in fly
+debit** from the next strike toward spot, same width, walking out both
+ways. Spot row is 0. It is **not** a generation-to-generation tick.
+
+---
+
+## 2026-08-18 — DL-436 Heatmap Wings control removed
+
+**Decision:** Heatmap no longer exposes a Wings (± strikes) picker.
+The OPF-held generation owns the strike window. Fetch still uses the
+profile/default band internally (not a member knob).
+
+---
+
+## 2026-08-18 — DL-435 Advanced Fly widths 10–50 and RoC slider
+
+**Decision:** Heatmap Advanced Fly columns are **10, 15, …, 50**
+(center-to-wing) for every value mode. Do not use profile
+step-multiples that started at 5.
+
+Color is tile-to-tile RoC of the **displayed** value. A **− / +**
+slider sits under the Side toggle and sets MSC Gradient threshold
+(− = 150 calm, center = 50, + = 5 hot). No percent chrome.
+
+Spec AF **v0.2.3** §3.2 / §4.1. `HEATMAP_FLY_WIDTHS` ·
+`rocSensitivityToThreshold`.
+
+---
+
+## 2026-08-18 — DL-434 Advanced Fly Long/Debit and Short/Credit
+
+**Decision:** Heatmap Advanced Fly first two Value modes are the two
+fly directions, not “one formula + a CR chip.”
+
+- **Long/Debit** = +1 / −2 / +1. Unchanged debit math.
+- **Short/Credit** = −1 / +2 / −1, priced from those quantities.
+  Cell shows the signed short-fly package (OPF +pay / −receive).
+  Do not stamp “CR” on a short fly that pays.
+
+Amends Spec AF **v0.2.2** §3.1 / §3.4 (supersedes N2 abs+CR).
+`symFlyPackage` / `symFlyCredit` in `templates/pricing.ts`.
+
+---
+
 ## 2026-08-18 — DL-433 SSR Collector Hardening Spec v1.0 BUILD AUTHORITY
 
 **Decision (Coach auto-GO):** Spec

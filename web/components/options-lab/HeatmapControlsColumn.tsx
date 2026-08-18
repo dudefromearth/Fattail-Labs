@@ -27,11 +27,7 @@ import type {
   HeatmapTemplate,
   ValueModeId,
 } from "@/lib/options-lab/templates/types";
-import {
-  STRIKE_WING_CHOICES,
-  type LadderExpirationContract,
-  type StrikeWings,
-} from "@/lib/chainLadderApi";
+import type { LadderExpirationContract } from "@/lib/chainLadderApi";
 
 const EXPIRY_PICK_COUNT = 3;
 
@@ -66,8 +62,8 @@ export type HeatmapControlsColumnProps = {
   onExpirationChange: (expiration: string) => void;
   side: "call" | "put";
   onSideChange: (side: "call" | "put") => void;
-  wings: StrikeWings;
-  onWingsChange: (w: StrikeWings) => void;
+  rocSensitivity: number;
+  onRocSensitivityChange: (v: number) => void;
   onCenterSpot: () => void;
   hasSpotRow: boolean;
   tosScript: string;
@@ -162,8 +158,8 @@ export default function HeatmapControlsColumn({
   onExpirationChange,
   side,
   onSideChange,
-  wings,
-  onWingsChange,
+  rocSensitivity,
+  onRocSensitivityChange,
   onCenterSpot,
   hasSpotRow,
   tosScript,
@@ -367,22 +363,38 @@ export default function HeatmapControlsColumn({
             onChange={onSideChange}
             testId="chain-ladder-side"
           />
-          <label className={inspectorRow}>
-            <span className={inspectorRowLabel}>Wings</span>
-            <select
-              className={inspectorField}
-              value={wings}
-              onChange={(e) =>
-                onWingsChange(Number(e.target.value) as StrikeWings)
-              }
-              data-testid="chain-ladder-wings"
-            >
-              {STRIKE_WING_CHOICES.map((n) => (
-                <option key={n} value={n}>
-                  ±{n} strikes
-                </option>
-              ))}
-            </select>
+          <label className={inspectorRow + " flex-col items-stretch gap-1 py-2"}>
+            <span className="sr-only">Rate of change color sensitivity</span>
+            <div className="flex items-center gap-2 px-3">
+              <span
+                className="w-4 text-center text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]"
+                aria-hidden
+              >
+                −
+              </span>
+              <input
+                type="range"
+                className="min-h-9 w-full accent-[var(--color-tint)]"
+                min={0}
+                max={100}
+                step={1}
+                value={rocSensitivity}
+                onChange={(e) =>
+                  onRocSensitivityChange(Number(e.target.value))
+                }
+                data-testid="heatmap-roc-sensitivity"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={rocSensitivity}
+                aria-label="Color rate-of-change sensitivity"
+              />
+              <span
+                className="w-4 text-center text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]"
+                aria-hidden
+              >
+                +
+              </span>
+            </div>
           </label>
           <button
             type="button"
@@ -406,13 +418,17 @@ export default function HeatmapControlsColumn({
             data-testid="heatmap-tos-script"
             title={
               tosScript ||
-              (templateId === "bw-fly"
-                ? "Option-click a broken-wing tile"
-                : "Option-click a Symmetric flies tile")
+              (templateId === "vertical"
+                ? "Option-click a vertical tile"
+                : templateId === "bw-fly"
+                  ? "Option-click a broken-wing tile"
+                  : "Option-click a Symmetric flies tile")
             }
           >
             {tosScript ||
-              "Option-click a fly tile to generate BUY/SELL BUTTERFLY … @debit LMT"}
+              (templateId === "vertical"
+                ? "Option-click a tile to generate BUY/SELL VERTICAL … @debit LMT"
+                : "Option-click a fly tile to generate BUY/SELL BUTTERFLY … @debit LMT")}
           </pre>
           {tosScript ? (
             <>
