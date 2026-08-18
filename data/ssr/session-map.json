@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "timezone": "America/New_York",
+  "default_phases": ["premarket", "rth", "postmarket"],
+  "symbols": {
+    "SPX": ["gth", "premarket", "rth", "postmarket"],
+    "XSP": ["gth", "premarket", "rth", "postmarket"],
+    "IWM": ["gth", "premarket", "rth", "postmarket"],
+    "USO": ["gth", "premarket", "rth", "postmarket"],
+    "AAPL": ["premarket", "rth", "postmarket"],
+    "AMZN": ["premarket", "rth", "postmarket"],
+    "NVDA": ["premarket", "rth", "postmarket"],
+    "TSLA": ["premarket", "rth", "postmarket"],
+    "META": ["premarket", "rth", "postmarket"],
+    "MSFT": ["premarket", "rth", "postmarket"],
+    "GOOGL": ["premarket", "rth", "postmarket"],
+    "SPY": ["premarket", "rth", "postmarket"],
+    "QQQ": ["premarket", "rth", "postmarket"],
+    "GLD": ["premarket", "rth", "postmarket"],
+    "TLT": ["premarket", "rth", "postmarket"],
+    "SLV": ["premarket", "rth", "postmarket"],
+    "XLF": ["premarket", "rth", "postmarket"],
+    "UNG": ["premarket", "rth", "postmarket"]
+  }
+}

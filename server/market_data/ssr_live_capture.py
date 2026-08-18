@@ -12,6 +12,9 @@ so the plane stays warm. Disk cadence is 2–5s (default 2).
 
 Write-once under LABS_MARKET_DATA_ROOT/ssr/live_capture/day=YYYY-MM-DD/.
 Rolls to the next weekday so this process is the standing archive.
+
+LABS_SSR_HARDENING default off = poll-all (today). Flag=1 polls only
+in-session symbols from data/ssr/session-map.json (mtime reload).
 """
 
 from __future__ import annotations
@@ -30,6 +33,13 @@ from zoneinfo import ZoneInfo
 _SERVER = Path(__file__).resolve().parents[1]
 if str(_SERVER) not in sys.path:
     sys.path.insert(0, str(_SERVER))
+
+from market_data.ssr_session_map import (  # noqa: E402
+    SessionMap,
+    hardening_on,
+    load_session_map,
+    session_map_path,
+)
 
 NY = ZoneInfo("America/New_York")
 UTC = ZoneInfo("UTC")
@@ -286,12 +296,14 @@ def dump_json(doc: dict[str, Any]) -> str:
 
 
 class LiveTap:
-    def __init__(self) -> None:
-        os.environ.setdefault("LABS_MARKET_BUS", "1")
-        os.environ.setdefault("REDIS_URL", "redis://127.0.0.1:6379/0")
-        from market_data.market_bus.store import BusStore
+    def __init__(self, store: Any | None = None) -> None:
+        if store is None:
+            os.environ.setdefault("LABS_MARKET_BUS", "1")
+            os.environ.setdefault("REDIS_URL", "redis://127.0.0.1:6379/0")
+            from market_data.market_bus.store import BusStore
 
-        self.store = BusStore()
+            store = BusStore()
+        self.store = store
         self.day = today_ny()
         self.root = day_dir(self.day)
         self.last_mark = 0.0
@@ -303,9 +315,13 @@ class LiveTap:
         self.last_chain_hash: str | None = None
         self.last_chain_as_of: str | None = None
         self.holes: list[str] = []
+        self.no_session: list[str] = []
         self.finalized = False
         self.universe: list[dict[str, Any]] = []
         self.last_universe = 0.0
+        self._session_map: SessionMap | None = None
+        self._schedule_phase: str | None = None
+        self._no_session_logged: set[str] = set()
 
     def refresh_universe(self) -> list[dict[str, Any]]:
         now = time.time()
@@ -328,10 +344,54 @@ class LiveTap:
 
     def all_topics(self, day: date) -> list[str]:
         out: list[str] = []
-        for row in chain_rows(self.refresh_universe()):
+        for row in self.scheduled_chain_rows():
             exp = front_expiration(row, day)
             out.extend(ladder_topics(row, exp, WINGS))
         return out
+
+    def _load_session_map(self, *, force: bool = False) -> SessionMap:
+        path = session_map_path()
+        if self._session_map is None or self._session_map.path != path:
+            self._session_map = load_session_map(path, force=True)
+            return self._session_map
+        self._session_map.maybe_reload(force=force)
+        return self._session_map
+
+    def _note_no_session(self, symbol: str, phase: str) -> None:
+        if self._schedule_phase != phase:
+            self._schedule_phase = phase
+            self._no_session_logged = set()
+            self.no_session = []
+        if symbol in self._no_session_logged:
+            return
+        self._no_session_logged.add(symbol)
+        self.no_session.append(symbol)
+        print(f"no session {symbol} phase={phase}", flush=True)
+
+    def scheduled_chain_rows(self) -> list[dict[str, Any]]:
+        rows = chain_rows(self.refresh_universe())
+        if not hardening_on():
+            return rows
+        phase = self._phase()
+        force = self._schedule_phase is not None and self._schedule_phase != phase
+        smap = self._load_session_map(force=force)
+        if self._schedule_phase != phase:
+            self._schedule_phase = phase
+            self._no_session_logged = set()
+            self.no_session = []
+        scheduled: list[dict[str, Any]] = []
+        for row in rows:
+            product = str(row.get("symbol") or "").upper()
+            if smap.in_session(product, phase):
+                scheduled.append(row)
+            else:
+                self._note_no_session(product, phase)
+        return scheduled
+
+    def chain_cycle(self) -> dict[str, Any]:
+        """One poll unit: interest + chain snap for the scheduled set."""
+        self.touch_interest()
+        return self.capture_chain()
 
     def ensure_day(self) -> None:
         d = today_ny()
@@ -346,6 +406,9 @@ class LiveTap:
         self.last_chain_hash = None
         self.last_chain_as_of = None
         self.holes = []
+        self.no_session = []
+        self._no_session_logged = set()
+        self._schedule_phase = None
         self.finalized = False
         self._ensure_dirs()
 
@@ -483,7 +546,7 @@ class LiveTap:
         utc = captured.astimezone(UTC)
         name = f"snap-{utc.strftime('%H%M%S')}{utc.strftime('%f')[:3]}Z.json"
         last: dict[str, Any] = {"hole": "NO CHAIN", "symbols": []}
-        for row in chain_rows(self.refresh_universe()):
+        for row in self.scheduled_chain_rows():
             product = str(row.get("symbol") or "").upper()
             exp = front_expiration(row, self.day)
             payload = None

@@ -4,6 +4,59 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-18 — DL-433 SSR Collector Hardening Spec v1.0 BUILD AUTHORITY
+
+**Decision (Coach auto-GO):** Spec
+`Specs/FatTail-Labs-SSR-Collector-Hardening-Spec-v1.0.md` **v1.0** is
+**BUILD AUTHORITY**. W0-G **PASS** + **GO**
+(`agents/p-ssr-collector-hardening/gate-reports/W0-G.md`). This run:
+auto-GO clean gates.
+
+`LABS_SSR_HARDENING` default **0** (off = today’s poll-all). Land P1
+code behind the flag. Cut over **between phases only** — no mid-`gth`
+kickstart of `ai.fattail.labs.ssr-live-capture`.
+
+Alert channel (**OD-SSR-H-1**) remains **OPEN**. Do not invent
+Slack / email / Discord / PagerDuty. Watchdog **remote** notify stays
+blocked until Coach names the channel.
+
+Friday **2026-08-14** gold stays labeled 5-min and is **not rewritten**.
+
+**Does not** change cadence (see **DL-432**). **Does not** supersede
+DL-428 (band + default), DL-429 (localhost dash), or DL-431 (max
+published window).
+
+**Board:** `agents/p-ssr-collector-hardening/`.
+
+---
+
+## 2026-08-18 — DL-432 Gold tap cadence remains 2s pending Coach pick
+
+**Decision:** After the W0-6 cadence / storage / quota report
+(`agents/p-ssr-collector-hardening/gate-reports/W0-6-lima-cadence-math.md`),
+StudioOne stays at **2s** inside the DL-428 band **[2, 5]**. Coach may
+still pick 3s / 4s / 5s later; that pick is a new DL and a
+between-phase env cutover. **Env not changed.**
+`LABS_SSR_CHAIN_EVERY_S` remains **2**. 5-min remains forbidden.
+
+**W0-6 math (uncompressed JSON, wings=15, ~19.3 KB full snap):** RTH
+**18 names at 2s ≈ 4.06 GB/day** (11,700 cycles × 18 = 210,600 snaps).
+A full published weekday is ~11 GB. Disk is not the reason to move the
+number before open.
+
+**Tap cadence ≠ Massive.** The tap is a Redis **reader**
+(`store.get_json` on `mb:ladder:…`). The quota lever is
+`chain_feed --interval` × live interest topics (20 keys measured
+2026-08-18). Changing `LABS_SSR_CHAIN_EVERY_S` does not change Massive
+calls. Overnight quota drops only if out-of-session interest is
+released (session map, P1).
+
+**Does not supersede** DL-428 (band + default) or DL-431 (max
+published window). Records that the math was done and the live number
+was left at 2s.
+
+---
+
 ## 2026-08-17 — DL-431 Gold tap collects the maximum published window
 
 **Decision:** Do not shrink the clock to a guessed 8:00 AM. Collect
