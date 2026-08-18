@@ -214,7 +214,9 @@ export function layoutTape(
   const plotY = TAPE_PAD.top;
   const plotW = Math.max(1, width - TAPE_PAD.left - TAPE_PAD.right);
   const plotH = Math.max(1, height - TAPE_PAD.top - TAPE_PAD.bottom);
-  const { lo, hi } = priceWindow(candles);
+  const prices = priceWindow(candles);
+  const lo = prices?.lo ?? 0;
+  const hi = prices?.hi ?? 1;
   return {
     width,
     height,

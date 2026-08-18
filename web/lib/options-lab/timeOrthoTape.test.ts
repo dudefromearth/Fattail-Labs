@@ -61,8 +61,10 @@ const noon = nyWallToUtcMs(2026, 8, 18, 12, 0);
 
 {
   const grown = followPriceView({ lo: 100, hi: 110 }, 109, { lo: 100, hi: 106 });
+  assert.ok(grown);
   assert.ok(grown.hi >= 110);
   const followed = followPriceView({ lo: 100, hi: 110 }, 112, { lo: 100, hi: 110 });
+  assert.ok(followed);
   assert.ok(followed.hi > 110);
   const scrolled = scrollPriceView({ lo: 100, hi: 110 }, 50, 200);
   assert.ok(scrolled.lo > 100);
@@ -90,7 +92,7 @@ const noon = nyWallToUtcMs(2026, 8, 18, 12, 0);
 }
 
 {
-  const listed = [];
+  const listed: number[] = [];
   for (let k = 5600; k <= 5800; k += 5) listed.push(k);
   const ks = listedStrikeTicks(listed, 5650, 5750, 400);
   assert.ok(ks.length >= 3);
