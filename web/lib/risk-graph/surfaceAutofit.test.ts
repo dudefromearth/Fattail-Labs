@@ -123,6 +123,27 @@ const tau = 3 / 365.25;
 }
 
 {
+  const fs = require("node:fs") as typeof import("node:fs");
+  const path = require("node:path") as typeof import("node:path");
+  const app = fs.readFileSync(
+    path.join(__dirname, "../../components/options-lab/surface/SurfaceApp.tsx"),
+    "utf8",
+  );
+  const scene = fs.readFileSync(
+    path.join(__dirname, "surfaceScene/index.ts"),
+    "utf8",
+  );
+  assert.ok(
+    /const \[candlesOn, setCandlesOn\] = useState\(false\)/.test(app),
+    "ISO default: 3D candles off",
+  );
+  assert.ok(
+    !scene.includes('group.name = "surface-candles"'),
+    "no 3D candle meshes hanging off the Now wall",
+  );
+}
+
+{
   assert.equal(autofitShouldRun("book-change"), true);
   assert.equal(autofitShouldRun("autofit-button"), true);
   assert.equal(autofitShouldRun("what-if"), false, "AT-AF-7: What-if does not Autofit");

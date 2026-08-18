@@ -107,7 +107,7 @@ export default function SurfaceApp() {
   const [heightPadFrac, setHeightPadFrac] = useState(SURFACE_PAD_FRAC);
   const [zoomGain, setZoomGain] = useState(SLOW_ZOOM_GAIN);
   const [valueOpacity, setValueOpacity] = useState(0.12);
-  const [candlesOn, setCandlesOn] = useState(true);
+  const [candlesOn, setCandlesOn] = useState(false);
   const [spots, setSpots] = useState([
     { on: true, brightness: 0.55 },
     { on: true, brightness: 0.55 },

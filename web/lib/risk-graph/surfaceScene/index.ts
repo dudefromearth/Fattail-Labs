@@ -695,7 +695,7 @@ export function mountSurfaceScene(
     });
   };
   let candleBoxes: CandleBox[] = [];
-  let candlesOn = true;
+  let candlesOn = false;
   let candleGroup: THREE.Group | null = null;
   const clearCandles = () => {
     if (!candleGroup) return;
@@ -712,67 +712,14 @@ export function mountSurfaceScene(
     });
     candleGroup = null;
   };
+  /**
+   * 3D candle meshes were hanging off the Now wall in ISO (history
+   * maps to z > 1). Candles belong only on the T Ortho 2D underlay.
+   */
   const layoutCandles = () => {
     clearCandles();
-    if (mapOverlay) {
-      host.dataset.candles = String(candleBoxes.length);
-      return;
-    }
-    if (!candlesOn || !lastSheet || !candleBoxes.length) {
-      host.dataset.candles = "0";
-      return;
-    }
-    const zeroY = surfaceBoxY(0, valueOf(lastSheet).yMin, valueOf(lastSheet).yMax);
-    const y = mapOverlay ? zeroY : zeroY - 0.04;
-    const bodyY = mapOverlay ? 0.008 : 0.016;
-    const wickY = mapOverlay ? 0.005 : 0.01;
-    const group = new THREE.Group();
-    group.name = "surface-candles";
-    const upMat = new THREE.MeshBasicMaterial({
-      color: 0xe2e8f0,
-      toneMapped: false,
-    });
-    const dnMat = new THREE.MeshBasicMaterial({
-      color: 0x64748b,
-      toneMapped: false,
-    });
-    const wickMat = new THREE.MeshBasicMaterial({
-      color: 0xcbd5e1,
-      toneMapped: false,
-    });
-    const unit = new THREE.BoxGeometry(1, 1, 1);
-    group.userData.mats = [upMat, dnMat, wickMat];
-    group.userData.geo = unit;
-    for (const b of candleBoxes) {
-      const bodyH = Math.max(Math.abs(b.xClose - b.xOpen), 0.006);
-      const body = new THREE.Mesh(unit, b.up ? upMat : dnMat);
-      body.scale.set(bodyH, bodyY, Math.max(b.zHalf * 1.7, 0.005));
-      body.position.set(b.xMid, y, b.zMid);
-      group.add(body);
-      const wickH = Math.max(Math.abs(b.xHigh - b.xLow), 0.004);
-      const wick = new THREE.Mesh(unit, wickMat);
-      wick.scale.set(wickH, wickY, 0.0035);
-      wick.position.set((b.xHigh + b.xLow) / 2, y, b.zMid);
-      group.add(wick);
-    }
-    const spotX = priceToLocalX(lastSheet);
-    if (spotX != null) {
-      const rail = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([
-          new THREE.Vector3(spotX, y, 1.42),
-          new THREE.Vector3(spotX, y, -1.02),
-        ]),
-        new THREE.LineBasicMaterial({
-          color: 0xf8fafc,
-          transparent: true,
-          opacity: 0.55,
-        }),
-      );
-      group.add(rail);
-    }
-    world.add(group);
-    candleGroup = group;
-    host.dataset.candles = String(candleBoxes.length);
+    host.dataset.candles =
+      mapOverlay && candlesOn ? String(candleBoxes.length) : "0";
   };
   const priceToLocalX = (sheet: SurfaceSheet) => {
     if (!(sheet.spot > 0)) return null;
@@ -870,7 +817,7 @@ export function mountSurfaceScene(
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    if (!mapOverlay || !lastSheet) {
+    if (!mapOverlay || !lastSheet || !candlesOn) {
       chart2d.style.display = "none";
       return;
     }
@@ -1248,6 +1195,7 @@ export function mountSurfaceScene(
       if (patch.candlesOn != null && patch.candlesOn !== candlesOn) {
         candlesOn = patch.candlesOn;
         layoutCandles();
+        paint();
       }
       if (patch.planes) {
         for (const id of ["strike", "time", "value"] as const) {
