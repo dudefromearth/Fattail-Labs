@@ -4,7 +4,9 @@ import type { FactoryViewId } from "@/lib/risk-graph/surfaceScene";
 import { FACTORY_VIEW_IDS } from "@/lib/risk-graph/surfaceScene";
 
 const btn =
-  "min-h-11 rounded-full border border-white/15 bg-black/55 px-2.5 text-[12px] text-white/90";
+  "inline-flex h-[66px] min-h-[66px] w-full items-center justify-center rounded-full " +
+  "border border-white/40 bg-black/55 px-2 text-[18px] font-medium text-white/90 " +
+  "shadow-[0_0_10px_2px_rgba(255,255,255,0.55)]";
 
 export default function ViewsHud({
   onFactory,
@@ -21,12 +23,12 @@ export default function ViewsHud({
 }) {
   return (
     <div
-      className="pointer-events-auto absolute left-3 top-24 z-20 max-h-[40%] max-w-[11rem] overflow-auto rounded-2xl border border-white/12 bg-black/55 p-3 text-[11px] text-white/80"
+      className="pointer-events-auto absolute left-3 top-24 z-20 max-h-[42%] w-[min(20rem,calc(100%-6rem))] overflow-auto rounded-2xl border border-white/12 bg-black/55 p-3 text-[11px] text-white/80"
       data-testid="surface-views-hud"
       onPointerDown={(e) => e.stopPropagation()}
     >
       <div className="mb-2 font-medium">Views</div>
-      <div className="flex flex-wrap gap-1">
+      <div className="grid grid-cols-4 gap-2">
         {FACTORY_VIEW_IDS.map((id) => (
           <button
             key={id}

@@ -186,9 +186,17 @@ function migratePos(raw: unknown): AnalyzerPosition | null {
 export function loadPositions(): AnalyzerPosition[] {
   if (typeof window === "undefined") return [];
   try {
-    const s =
+    const sess =
       sessionStorage.getItem(POS_KEY) ||
       sessionStorage.getItem("ft_options_lab_analyzer_positions_v1");
+    let s = localStorage.getItem(POS_KEY) || sess;
+    if (!localStorage.getItem(POS_KEY) && sess) {
+      try {
+        localStorage.setItem(POS_KEY, sess);
+      } catch {
+        /* ignore */
+      }
+    }
     if (!s) return [];
     const arr = JSON.parse(s) as unknown[];
     if (!Array.isArray(arr)) return [];
@@ -199,10 +207,18 @@ export function loadPositions(): AnalyzerPosition[] {
 }
 
 export const ANALYZER_BOOK_EVENT = "ftl-analyzer-book";
+const POS_REV_KEY = "ft_options_lab_analyzer_positions_rev";
 
 export function savePositions(positions: AnalyzerPosition[]): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(POS_KEY, JSON.stringify(positions));
+  const json = JSON.stringify(positions);
+  sessionStorage.setItem(POS_KEY, json);
+  try {
+    localStorage.setItem(POS_KEY, json);
+    localStorage.setItem(POS_REV_KEY, String(Date.now()));
+  } catch {
+    /* quota / private mode */
+  }
   // Drop legacy key so an empty book is not re-hydrated from v1 after delete.
   try {
     sessionStorage.removeItem("ft_options_lab_analyzer_positions_v1");

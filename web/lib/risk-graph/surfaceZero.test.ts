@@ -3,7 +3,12 @@ import {
   computeSurfaceSheet,
   legsFromRelative,
 } from "./surfaceModel";
-import { zeroCrossingsOnSlice, zeroPnlBranches } from "./surfaceZero";
+import {
+  chaikinXYZ,
+  zeroCrossingsOnSlice,
+  zeroPnlBoxPolylines,
+  zeroPnlBranches,
+} from "./surfaceZero";
 
 const iv = 0.2;
 const tau = 3 / 365.25;
@@ -40,8 +45,30 @@ const tau = 3 / 365.25;
   const be = zeroCrossingsOnSlice(sheet.spotAxis, exp);
   assert.ok(be.length >= 2, "expiry fly has two $0 crossings");
   const branches = zeroPnlBranches(sheet);
-  assert.ok(branches.length >= 1, "traced at least one Real Time P&L branch");
+  assert.ok(branches.length >= 1, "traced at least one $0 branch");
   assert.ok(branches.every((b) => b.length >= 2));
+  const lines = zeroPnlBoxPolylines(sheet);
+  assert.ok(lines.length >= 1, "box polylines for the $0 cut");
+  for (const pts of lines) {
+    assert.ok(pts.length >= 6);
+    for (let i = 1; i < pts.length; i += 3) {
+      assert.ok(Math.abs(pts[i]) < 1e-9, "$0 curve sits on y = 0 by default");
+    }
+  }
+  const lifted = zeroPnlBoxPolylines(sheet, 0.25);
+  for (const pts of lifted) {
+    for (let i = 1; i < pts.length; i += 3) {
+      assert.ok(Math.abs(pts[i] - 0.25) < 1e-9, "$0 curve rides the remapped zero");
+    }
+  }
+}
+
+{
+  const raw = [0, 0, 0, 1, 0, 0, 1, 0, 1];
+  const s = chaikinXYZ(raw, 2);
+  assert.ok(s.length > raw.length, "Chaikin densifies the polyline");
+  assert.equal(s[0], 0);
+  assert.equal(s[s.length - 1], 1);
 }
 
 console.log("surfaceZero.test.ts ok");

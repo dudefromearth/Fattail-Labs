@@ -26,7 +26,7 @@ function close(a: number, b: number, label: string) {
   assert.equal(iso.projection, "perspective");
   assert.equal(PERSPECTIVE_FOV, 42);
   assert.equal(iso.zoomGain, SLOW_ZOOM_GAIN);
-  assert.equal(SLOW_ZOOM_GAIN, 0.5);
+  assert.equal(SLOW_ZOOM_GAIN, 0.25);
   close(iso.eye.x, ISO_EYE.x, "ISO eye.x");
   close(iso.eye.y, ISO_EYE.y, "ISO eye.y");
   close(iso.eye.z, ISO_EYE.z, "ISO eye.z");
@@ -54,7 +54,7 @@ function close(a: number, b: number, label: string) {
   close(r0, 2.647168298389809, "ISO radius");
   const z = zoomPose(iso, 100);
   close(eyeRadius(z), r0 * (1 + SLOW_ZOOM_GAIN * ZOOM_STEP), "Slow zoom +100");
-  close(eyeRadius(z), 2.7530550303254016, "Slow zoom known r");
+  close(eyeRadius(z), 2.700111664357605, "Slow zoom known r");
 }
 
 {

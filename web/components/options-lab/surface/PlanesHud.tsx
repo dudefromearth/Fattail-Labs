@@ -1,5 +1,15 @@
 "use client";
 
+import {
+  SURFACE_HEIGHT_PAD_FRAC_MAX,
+  SURFACE_PAD_FRAC_MIN,
+  SURFACE_WIDTH_PAD_FRAC_MAX,
+} from "@/lib/risk-graph/surfaceAutofit";
+
+function pct(frac: number) {
+  return Math.round(frac * 100);
+}
+
 export default function PlanesHud({
   strikeOn,
   timeOn,
@@ -9,6 +19,12 @@ export default function PlanesHud({
   onStrikeOn,
   onTimeOn,
   onStrikePos,
+  widthPadFrac,
+  heightPadFrac,
+  onWidthPadFrac,
+  onHeightPadFrac,
+  valueOpacity,
+  onValueOpacity,
 }: {
   strikeOn: boolean;
   timeOn: boolean;
@@ -18,10 +34,16 @@ export default function PlanesHud({
   onStrikeOn: (v: boolean) => void;
   onTimeOn: (v: boolean) => void;
   onStrikePos: (v: number) => void;
+  widthPadFrac: number;
+  heightPadFrac: number;
+  onWidthPadFrac: (v: number) => void;
+  onHeightPadFrac: (v: number) => void;
+  valueOpacity: number;
+  onValueOpacity: (v: number) => void;
 }) {
   return (
     <div
-      className="pointer-events-auto absolute right-3 top-24 z-20 w-40 rounded-2xl border border-white/12 bg-black/55 p-3 text-[11px] text-white/80"
+      className="pointer-events-auto w-full rounded-2xl border border-white/12 bg-black/55 p-3 text-[11px] text-white/80"
       data-testid="surface-planes-hud"
       onPointerDown={(e) => e.stopPropagation()}
     >
@@ -45,6 +67,19 @@ export default function PlanesHud({
         Time Show
       </label>
       <label className="mt-1 block text-white/55">
+        $0 plane {pct(valueOpacity)}%
+        <input
+          type="range"
+          className="w-full"
+          min={0}
+          max={1}
+          step={0.01}
+          value={valueOpacity}
+          onChange={(e) => onValueOpacity(Number(e.target.value))}
+          data-testid="surface-value-opacity"
+        />
+      </label>
+      <label className="mt-1 block text-white/55">
         Strike
         <input
           type="range"
@@ -54,6 +89,33 @@ export default function PlanesHud({
           step={Math.max((strikeMax - strikeMin) / 200, 0.01)}
           value={strikePos}
           onChange={(e) => onStrikePos(Number(e.target.value))}
+        />
+      </label>
+      <div className="mt-2 font-medium text-white/80">Autofit pad</div>
+      <label className="mt-1 block text-white/55">
+        Width {pct(widthPadFrac)}%
+        <input
+          type="range"
+          className="w-full"
+          min={SURFACE_PAD_FRAC_MIN}
+          max={SURFACE_WIDTH_PAD_FRAC_MAX}
+          step={0.01}
+          value={widthPadFrac}
+          onChange={(e) => onWidthPadFrac(Number(e.target.value))}
+          data-testid="surface-width-pad"
+        />
+      </label>
+      <label className="mt-1 block text-white/55">
+        Height {pct(heightPadFrac)}%
+        <input
+          type="range"
+          className="w-full"
+          min={SURFACE_PAD_FRAC_MIN}
+          max={SURFACE_HEIGHT_PAD_FRAC_MAX}
+          step={0.01}
+          value={heightPadFrac}
+          onChange={(e) => onHeightPadFrac(Number(e.target.value))}
+          data-testid="surface-height-pad"
         />
       </label>
     </div>

@@ -46,3 +46,22 @@ export function frameRadius(
   const need = Math.max(sphere / halfX, sphere / halfY);
   return need * pad;
 }
+
+/**
+ * Ortho frustum that fits the box sphere at zoom=1 (same fit as perspective
+ * frameRadius). zoom = eyeRadius / fitRadius: 1 = full box, <1 closer, >1 farther.
+ */
+export function orthoHalfExtents(
+  box: BoxExtents,
+  aspect: number,
+  zoom = 1,
+  pad = 1.12,
+): { halfW: number; halfH: number } {
+  if (!Number.isFinite(aspect) || aspect <= 0) {
+    throw new Error(`surface box: aspect unbounded or invalid (${String(aspect)})`);
+  }
+  const scale = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  const sphere = Math.hypot(box.hx, box.hy, box.hz);
+  const halfH = Math.max(sphere, 0.1) * pad * scale;
+  return { halfW: halfH * aspect, halfH };
+}

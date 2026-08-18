@@ -7,6 +7,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import {
   ANALYZER_BOOK_EVENT,
@@ -23,10 +24,14 @@ import {
   type SurfaceSheet,
 } from "@/lib/risk-graph/surfaceModel";
 import {
+  SURFACE_PAD_FRAC,
+  applyWidthPad,
   surfaceAutofitWindow,
+  surfaceValueWindow,
   unionListedStrikes,
 } from "@/lib/risk-graph/surfaceAutofit";
 import { mountSurfaceScene, type SurfaceSceneHandle } from "@/lib/risk-graph/surfaceScene";
+import { SLOW_ZOOM_GAIN } from "@/lib/risk-graph/surfaceScene/camera";
 import { surfaceHostClock } from "./hostLaw";
 import CameraHud from "./CameraHud";
 import TimeHud from "./TimeHud";
@@ -35,6 +40,7 @@ import ViewsHud from "./ViewsHud";
 import {
   cadenceClaim,
   isRealityAltered,
+  isTimeAltered,
   samplePlayhead,
 } from "@/lib/risk-graph/surfaceInspect";
 import {
@@ -75,6 +81,7 @@ function sheetFingerprint(sheet: SurfaceSheet | null, extra = ""): string {
 
 export default function SurfaceApp() {
   const { symbol } = useOptionsLab();
+  const pathname = usePathname();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<SurfaceSceneHandle | null>(null);
   const sheetRef = useRef<SurfaceSheet | null>(null);
@@ -90,9 +97,25 @@ export default function SurfaceApp() {
   );
   const [saved, setSaved] = useState<SavedView[]>([]);
   const [autofitGen, setAutofitGen] = useState(0);
+  const [widthPadFrac, setWidthPadFrac] = useState(SURFACE_PAD_FRAC);
+  const [heightPadFrac, setHeightPadFrac] = useState(SURFACE_PAD_FRAC);
+  const [zoomGain, setZoomGain] = useState(SLOW_ZOOM_GAIN);
+  const [valueOpacity, setValueOpacity] = useState(0.12);
+  const [spots, setSpots] = useState([
+    { on: true, brightness: 0.55 },
+    { on: true, brightness: 0.55 },
+    { on: true, brightness: 0.55 },
+    { on: true, brightness: 0.55 },
+    { on: false, brightness: 0.55 },
+    { on: false, brightness: 0.55 },
+    { on: false, brightness: 0.55 },
+    { on: false, brightness: 0.55 },
+  ]);
   const fitHoldRef = useRef<{
     key: string;
     gen: number;
+    contentLo: number;
+    contentHi: number;
     sMin: number;
     sMax: number;
   } | null>(null);
@@ -102,11 +125,21 @@ export default function SurfaceApp() {
     const on = () => setTick((n) => n + 1);
     window.addEventListener("storage", on);
     window.addEventListener(ANALYZER_BOOK_EVENT, on);
+    window.addEventListener("focus", on);
+    window.addEventListener("pageshow", on);
+    document.addEventListener("visibilitychange", on);
     return () => {
       window.removeEventListener("storage", on);
       window.removeEventListener(ANALYZER_BOOK_EVENT, on);
+      window.removeEventListener("focus", on);
+      window.removeEventListener("pageshow", on);
+      document.removeEventListener("visibilitychange", on);
     };
   }, []);
+
+  useEffect(() => {
+    setTick((n) => n + 1);
+  }, [pathname]);
 
   const book = useMemo(() => {
     void tick;
@@ -122,11 +155,14 @@ export default function SurfaceApp() {
     () =>
       book
         .map((p) => {
-          const ks = (p.position.legs || [])
-            .map((l) => Number(l.strike))
-            .filter((n) => Number.isFinite(n) && n > 0)
-            .sort((a, b) => a - b);
-          return `${p.id}:${ks.join(",")}`;
+          const legs = (p.position.legs || [])
+            .map(
+              (l) =>
+                `${l.type}:${Number(l.strike)}:${l.quantity}:${String(l.expiration || p.position.expiration || "").slice(0, 10)}`,
+            )
+            .sort()
+            .join(",");
+          return `${p.id}:${p.visible !== false ? 1 : 0}:${legs}`;
         })
         .sort()
         .join("|"),
@@ -244,16 +280,25 @@ export default function SurfaceApp() {
                 hold.key === bookFitKey &&
                 hold.gen === autofitGen;
               const fit = reuse
-                ? { sMin: hold.sMin, sMax: hold.sMax }
-                : surfaceAutofitWindow(whatIfLegs, simSpot, strikes);
-              if (!reuse) {
-                fitHoldRef.current = {
-                  key: bookFitKey,
-                  gen: autofitGen,
-                  sMin: fit.sMin,
-                  sMax: fit.sMax,
-                };
-              }
+                ? {
+                    ...applyWidthPad(hold.contentLo, hold.contentHi, widthPadFrac),
+                    contentLo: hold.contentLo,
+                    contentHi: hold.contentHi,
+                  }
+                : surfaceAutofitWindow(
+                    whatIfLegs,
+                    simSpot,
+                    strikes,
+                    widthPadFrac,
+                  );
+              fitHoldRef.current = {
+                key: bookFitKey,
+                gen: autofitGen,
+                contentLo: fit.contentLo,
+                contentHi: fit.contentHi,
+                sMin: fit.sMin,
+                sMax: fit.sMax,
+              };
               sheet = computeSurfaceSheet(whatIfLegs, {
                 spot: simSpot,
                 sMin: fit.sMin,
@@ -291,12 +336,13 @@ export default function SurfaceApp() {
     spotPct,
     autofitGen,
     bookFitKey,
+    widthPadFrac,
   ]);
 
   sheetRef.current = view.sheet;
   const sheetKey = sheetFingerprint(
     view.sheet,
-    `${volOffsetPts}|${spotPct}|${autofitGen}`,
+    `${volOffsetPts}|${spotPct}|${autofitGen}|${bookFitKey}`,
   );
 
   useLayoutEffect(() => {
@@ -348,6 +394,10 @@ export default function SurfaceApp() {
   const sample =
     sheet && sheet.spot > 0 ? samplePlayhead(sheet, sheet.spot, tauStar) : null;
   const cad = cadenceClaim(cadence === "5-min" ? "5-min" : "live");
+  const valueWindow = sheet
+    ? surfaceValueWindow(sheet.minPnL, sheet.maxPnL, heightPadFrac)
+    : null;
+  const timeWalked = sheet ? isTimeAltered(tauStar, tauHi, tauLo) : false;
   const altered = sheet
     ? isRealityAltered({
         tau: tauStar,
@@ -359,17 +409,28 @@ export default function SurfaceApp() {
     : false;
 
   useEffect(() => {
-    if (!sceneRef.current || !sheet) return;
+    if (!sceneRef.current) return;
     sceneRef.current.setInspect({
-      timePlayhead: tauStar,
+      timePlayhead: sheet ? tauStar : undefined,
       altered,
+      valueWindow: valueWindow ?? undefined,
+      zoomGain,
+      spots,
       planes: {
-        strike: { visible: strikeOn, opacity: 0.22, position: strikeForPlane },
-        time: { visible: timeOn, opacity: 0.28, position: tauStar },
-        value: { visible: true, opacity: 0.12, position: 0 },
+        strike: {
+          visible: strikeOn,
+          opacity: 0.22,
+          position: strikeForPlane,
+        },
+        time: {
+          visible: !!(sheet && timeOn && timeWalked),
+          opacity: 0.28,
+          position: tauStar,
+        },
+        value: { visible: valueOpacity > 0, opacity: valueOpacity, position: 0 },
       },
     });
-  }, [sheetKey, tauStar, strikeOn, timeOn, strikeForPlane, altered]);
+  }, [sheetKey, tauStar, strikeOn, timeOn, timeWalked, strikeForPlane, altered, valueWindow, sheet, zoomGain, valueOpacity, spots]);
 
   return (
     <div
@@ -413,34 +474,42 @@ export default function SurfaceApp() {
         className="relative min-h-0 flex-1 overflow-hidden"
         data-testid="surface-canvas"
       />
-      <TimeHud
-        tauLo={sheet ? tauLo : 0}
-        tauHi={sheet ? tauHi : 1}
-        playhead={sheet ? tauStar : 0}
-        volOffsetPts={volOffsetPts}
-        spotPct={spotPct}
-        sample={sample}
-        cadenceLabel={cad.label}
-        lastMinuteGold={cad.lastMinuteGold}
-        onPlayhead={setPlayhead}
-        onVol={setVolOffsetPts}
-        onSpotPct={setSpotPct}
-        onReset={() => {
-          setPlayhead(null);
-          setVolOffsetPts(0);
-          setSpotPct(0);
-        }}
-      />
-      <PlanesHud
-        strikeOn={strikeOn}
-        timeOn={timeOn}
-        strikePos={sheet ? strikeForPlane : strikePos}
-        strikeMin={sheet?.sMin ?? 80}
-        strikeMax={sheet?.sMax ?? 120}
-        onStrikeOn={setStrikeOn}
-        onTimeOn={setTimeOn}
-        onStrikePos={setStrikePos}
-      />
+      <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex w-[min(22rem,calc(100%-6rem))] flex-col gap-2">
+        <PlanesHud
+          strikeOn={strikeOn}
+          timeOn={timeOn}
+          strikePos={sheet ? strikeForPlane : strikePos}
+          strikeMin={sheet?.sMin ?? 80}
+          strikeMax={sheet?.sMax ?? 120}
+          onStrikeOn={setStrikeOn}
+          onTimeOn={setTimeOn}
+          onStrikePos={setStrikePos}
+          widthPadFrac={widthPadFrac}
+          heightPadFrac={heightPadFrac}
+          onWidthPadFrac={setWidthPadFrac}
+          onHeightPadFrac={setHeightPadFrac}
+          valueOpacity={valueOpacity}
+          onValueOpacity={setValueOpacity}
+        />
+        <TimeHud
+          tauLo={sheet ? tauLo : 0}
+          tauHi={sheet ? tauHi : 1}
+          playhead={sheet ? tauStar : 0}
+          volOffsetPts={volOffsetPts}
+          spotPct={spotPct}
+          sample={sample}
+          cadenceLabel={cad.label}
+          lastMinuteGold={cad.lastMinuteGold}
+          onPlayhead={setPlayhead}
+          onVol={setVolOffsetPts}
+          onSpotPct={setSpotPct}
+          onReset={() => {
+            setPlayhead(null);
+            setVolOffsetPts(0);
+            setSpotPct(0);
+          }}
+        />
+      </div>
       <ViewsHud
         onFactory={(id: FactoryViewId) => {
           if (id === "now" || id === "time") setProjection("orthographic");
@@ -495,6 +564,17 @@ export default function SurfaceApp() {
       />
       <CameraHud
         projection={projection}
+        zoomGain={zoomGain}
+        onZoomGain={setZoomGain}
+        spots={spots}
+        onSpotOn={(i, on) => {
+          setSpots((prev) => prev.map((s, j) => (j === i ? { ...s, on } : s)));
+        }}
+        onSpotBrightness={(i, brightness) => {
+          setSpots((prev) =>
+            prev.map((s, j) => (j === i ? { ...s, brightness } : s)),
+          );
+        }}
         onFit={() => {
           setProjection("perspective");
           sceneRef.current?.fit();
@@ -507,6 +587,12 @@ export default function SurfaceApp() {
         onIso={() => {
           setProjection("perspective");
           sceneRef.current?.applyFactoryView("iso");
+        }}
+        onProjection={() => {
+          const next =
+            projection === "orthographic" ? "perspective" : "orthographic";
+          setProjection(next);
+          sceneRef.current?.setProjection(next);
         }}
       />
     </div>

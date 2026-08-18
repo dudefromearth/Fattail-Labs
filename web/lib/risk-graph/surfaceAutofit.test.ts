@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { evaluatePnlAtSpot, legsFromRelative } from "./surfaceModel";
 import {
+  applyWidthPad,
   autofitShouldRun,
   surfaceAutofitWindow,
+  surfaceValueWindow,
   unionListedStrikes,
 } from "./surfaceAutofit";
 
@@ -24,8 +26,9 @@ const tau = 3 / 365.25;
   assert.equal(w.profile, "default");
   assert.ok(w.sMin < 6425 && w.sMax > 6425, "spot stays in the box");
   assert.ok(w.sMin < 6400 && w.sMax > 6500, "listed strikes stay in the box");
-  assert.ok(w.pad > 0 && w.sMax - w.contentHi === w.pad);
+  assert.ok(w.pad > 0 && Math.abs(w.sMax - w.contentHi - w.pad) < 1e-9);
   assert.ok(Math.abs(w.contentLo - w.pad - w.sMin) < 1e-9 || w.sMin === 0.01);
+  assert.ok(w.padFrac === 0.15, "default width pad is Analyzer-like 15%");
 
   const expBes: number[] = [];
   let prev = evaluatePnlAtSpot(fly, w.sMin, 0);
@@ -94,6 +97,29 @@ const tau = 3 / 365.25;
   );
   assert.ok(hud.includes('data-testid="surface-autofit"'), "AT-AF-5: Autofit button exists");
   assert.ok(hud.includes('data-testid="surface-fit"'), "AT-AF-5: Fit stays a separate control");
+}
+
+{
+  const tight = applyWidthPad(6400, 6500, 0);
+  const airy = applyWidthPad(6400, 6500, 0.3);
+  assert.ok(tight.sMax - tight.sMin < airy.sMax - airy.sMin, "width pad widens the window");
+  assert.ok(
+    Math.abs(airy.sMax - 6500 - (6400 - airy.sMin)) < 1e-9,
+    "width pad is equal left and right",
+  );
+  const y = surfaceValueWindow(-50, 150, 0.2);
+  assert.ok(Math.abs(y.yMax - 150 - (-50 - y.yMin)) < 1e-9, "height pad is equal top and bottom");
+}
+
+{
+  const fs = require("node:fs") as typeof import("node:fs");
+  const path = require("node:path") as typeof import("node:path");
+  const planes = fs.readFileSync(
+    path.join(__dirname, "../../components/options-lab/surface/PlanesHud.tsx"),
+    "utf8",
+  );
+  assert.ok(planes.includes('data-testid="surface-width-pad"'), "width pad control");
+  assert.ok(planes.includes('data-testid="surface-height-pad"'), "height pad control");
 }
 
 {

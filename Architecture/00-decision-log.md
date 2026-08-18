@@ -4,6 +4,46 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-17 — DL-426 Surface Autofit width pad max 85%
+
+**Decision:** Autofit Spec **v0.1.5**. Width pad slider `0`…`85%`
+(was `65%`, +30%). Height pad stays `0`…`65%`. Default remains 15%.
+
+---
+
+## 2026-08-17 — DL-425 Surface Autofit pad slider max 65%
+
+**Decision:** Autofit Spec **v0.1.4**. Width and Height pad sliders
+run `0`…`65%` (was `50%`, +30%). Default remains 15%.
+
+---
+
+## 2026-08-17 — DL-424 Surface Autofit pad slider max 50%
+
+**Decision:** Autofit Spec **v0.1.3**. Width and Height pad sliders
+run `0`…`50%` (was `40%`, +25%). Default remains 15%.
+
+---
+
+## 2026-08-17 — DL-423 Surface Autofit is pad-then-fill (width + height)
+
+**Decision:** Autofit Spec **v0.1.2**. One algorithm, two axes.
+
+The member sets **pad**. Autofit measures content and **fills the
+remaining box**. Width: listed Ks + T+0/expiry BEs + spot, equal
+left/right pad, stretch S into the leftover width. Height: sheet
+min/max P&L including $0, equal top/bottom pad, stretch P&L into
+the leftover height. Default pad **15%** of content span each side
+(Analyzer-like). Sliders `0`…`40%`. Autofit button / book-change
+rescan width content, then apply current pads.
+
+Not ATM-centered Analyzer `autofitView.ts` (far BEs still set the
+window). Not a 1–10× height gain around $0.
+
+**Code:** `surfaceAutofit.ts` · `timeCut.ts` · `PlanesHud` · `SurfaceApp`.
+
+---
+
 ## 2026-08-17 — DL-422 Surface Autofit full-agent bench plan v1.0
 
 **Decision:** File

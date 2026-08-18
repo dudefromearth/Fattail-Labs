@@ -1,7 +1,6 @@
 /**
  * $0 P&L contour of a SurfaceSheet.
- * Same crossings as Analyzer Risk-detent T+0 (linear interp on a slice).
- * The 3D curve is those crossings through τ. No second pricer.
+ * Linear interp on each S-slice, traced through τ. No second pricer.
  */
 
 import type { SurfaceSheet } from "./surfaceModel";
@@ -69,4 +68,74 @@ export function zeroPnlBranches(
     ids = nextIds;
   }
   return branches.filter((b) => b.length >= 2);
+}
+
+/** Chaikin corner-cut — keeps endpoints, stays in the polyline hull (y stays 0). */
+export function chaikinXYZ(pts: number[], rounds = 2): number[] {
+  let p = pts;
+  for (let r = 0; r < rounds; r++) {
+    const n = p.length / 3;
+    if (n < 2) break;
+    const next: number[] = [p[0], p[1], p[2]];
+    for (let i = 0; i < n - 1; i++) {
+      const ax = p[i * 3];
+      const ay = p[i * 3 + 1];
+      const az = p[i * 3 + 2];
+      const bx = p[i * 3 + 3];
+      const by = p[i * 3 + 4];
+      const bz = p[i * 3 + 5];
+      next.push(
+        0.75 * ax + 0.25 * bx,
+        0.75 * ay + 0.25 * by,
+        0.75 * az + 0.25 * bz,
+        0.25 * ax + 0.75 * bx,
+        0.25 * ay + 0.75 * by,
+        0.25 * az + 0.75 * bz,
+      );
+    }
+    next.push(p[p.length - 3], p[p.length - 2], p[p.length - 1]);
+    p = next;
+  }
+  return p;
+}
+
+/** Box-space xyz polylines for $0 ∩ surface. y = box height of $0. */
+export function zeroPnlBoxPolylines(
+  sheet: SurfaceSheet,
+  yZero = 0,
+  rounds = 2,
+): number[][] {
+  if (!Number.isFinite(yZero)) {
+    throw new Error(
+      `zeroPnlBoxPolylines: yZero unbounded or invalid (${String(yZero)})`,
+    );
+  }
+  const s0 = sheet.sMin;
+  const sSpan = Math.max(sheet.sMax - sheet.sMin, 1e-9);
+  const out: number[][] = [];
+  for (const branch of zeroPnlBranches(sheet)) {
+    const raw: number[] = [];
+    for (const p of branch) {
+      raw.push(
+        ((p.s - s0) / sSpan) * 2 - 1,
+        yZero,
+        tauToBoxZLocal(sheet, p.tau),
+      );
+    }
+    if (raw.length >= 6) out.push(chaikinXYZ(raw, rounds));
+  }
+  return out;
+}
+
+function tauToBoxZLocal(sheet: SurfaceSheet, tau: number): number {
+  const axis = sheet.timeAxis;
+  if (!axis.length) return 1;
+  const t0 = axis[0];
+  const t1 = axis[axis.length - 1];
+  const span = t0 - t1;
+  if (!Number.isFinite(span) || Math.abs(span) < 1e-12) return 1;
+  const lo = Math.min(t0, t1);
+  const hi = Math.max(t0, t1);
+  const t = Number.isFinite(tau) ? Math.min(hi, Math.max(lo, tau)) : t0;
+  return 1 - ((t0 - t) / span) * 2;
 }

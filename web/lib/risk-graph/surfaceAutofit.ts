@@ -11,6 +11,13 @@
 import { evaluatePnlAtSpot, MIN_TAU, type SurfaceLeg } from "./surfaceModel";
 
 export const SURFACE_AUTOFIT_STRIKE_STEPS = 4;
+/** Analyzer-like air: 15% of content span on each side (≈ 30% of half-width). */
+export const SURFACE_PAD_FRAC = 0.15;
+export const SURFACE_PAD_FRAC_MIN = 0;
+export const SURFACE_WIDTH_PAD_FRAC_MAX = 0.845;
+export const SURFACE_HEIGHT_PAD_FRAC_MAX = 0.65;
+export const SURFACE_WIDTH_PAD_MIN_PTS = 10;
+export const SURFACE_VALUE_PAD_MIN = 1;
 
 export type AutofitProfileId = "default";
 
@@ -45,13 +52,89 @@ export type AutofitWindow = {
   contentLo: number;
   contentHi: number;
   pad: number;
+  padFrac: number;
   profile: AutofitProfileId;
 };
+
+export type ValueWindow = {
+  yMin: number;
+  yMax: number;
+  pad: number;
+  padFrac: number;
+};
+
+/** Equal air on both sides; the remaining span is what the model fills. */
+export function applyEqualPad(
+  lo: number,
+  hi: number,
+  padFrac: number,
+  minPad: number,
+): { min: number; max: number; pad: number } {
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) {
+    throw new Error(
+      `applyEqualPad: bounds unbounded or invalid (${String(lo)}…${String(hi)})`,
+    );
+  }
+  if (!Number.isFinite(padFrac) || padFrac < 0 || padFrac > 1) {
+    throw new Error(
+      `applyEqualPad: padFrac unbounded or invalid (${String(padFrac)})`,
+    );
+  }
+  if (!Number.isFinite(minPad) || minPad < 0) {
+    throw new Error(
+      `applyEqualPad: minPad unbounded or invalid (${String(minPad)})`,
+    );
+  }
+  const span = Math.max(hi - lo, 0);
+  const pad = Math.max(span * padFrac, minPad);
+  return { min: lo - pad, max: hi + pad, pad };
+}
+
+/**
+ * P&L → box height. Content includes $0. Equal pad top and bottom;
+ * the tent fills the remaining height.
+ */
+export function surfaceValueWindow(
+  minPnL: number,
+  maxPnL: number,
+  padFrac: number = SURFACE_PAD_FRAC,
+): ValueWindow {
+  if (!Number.isFinite(minPnL) || !Number.isFinite(maxPnL)) {
+    throw new Error(
+      `surfaceValueWindow: P&L unbounded (${String(minPnL)}…${String(maxPnL)})`,
+    );
+  }
+  const lo = Math.min(minPnL, maxPnL, 0);
+  const hi = Math.max(minPnL, maxPnL, 0);
+  const { min, max, pad } = applyEqualPad(lo, hi, padFrac, SURFACE_VALUE_PAD_MIN);
+  return { yMin: min, yMax: max, pad, padFrac };
+}
+
+/** Re-pad a frozen Autofit content span (width slider). */
+export function applyWidthPad(
+  contentLo: number,
+  contentHi: number,
+  padFrac: number = SURFACE_PAD_FRAC,
+): Pick<AutofitWindow, "sMin" | "sMax" | "pad" | "padFrac"> {
+  const { min, max, pad } = applyEqualPad(
+    contentLo,
+    contentHi,
+    padFrac,
+    SURFACE_WIDTH_PAD_MIN_PTS,
+  );
+  return {
+    sMin: Math.max(0.01, min),
+    sMax: max,
+    pad,
+    padFrac,
+  };
+}
 
 export function surfaceAutofitWindow(
   legs: SurfaceLeg[],
   spot: number,
   listedStrikes?: number[],
+  padFrac: number = SURFACE_PAD_FRAC,
   profile: AutofitProfileId = "default",
 ): AutofitWindow {
   if (!Number.isFinite(spot) || spot <= 0) {
@@ -66,7 +149,6 @@ export function surfaceAutofitWindow(
     : legs.map((l) => l.strike)
   ).filter((k) => Number.isFinite(k) && k > 0);
   const step = listedStrikeStep(ks);
-  const pad = Math.max(step * SURFACE_AUTOFIT_STRIKE_STEPS, 10);
   const kMin = ks.length ? Math.min(...ks) : spot;
   const kMax = ks.length ? Math.max(...ks) : spot;
   const structure = Math.max(kMax - kMin, step);
@@ -82,13 +164,15 @@ export function surfaceAutofitWindow(
   }
   const contentLo = Math.min(...content);
   const contentHi = Math.max(...content);
+  const padded = applyWidthPad(contentLo, contentHi, padFrac);
   return {
-    sMin: Math.max(0.01, contentLo - pad),
-    sMax: contentHi + pad,
+    sMin: padded.sMin,
+    sMax: padded.sMax,
     contentLo,
     contentHi,
-    pad,
-    profile: "default",
+    pad: padded.pad,
+    padFrac: padded.padFrac,
+    profile,
   };
 }
 

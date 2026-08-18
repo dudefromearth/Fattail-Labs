@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { boxHalfExtents, frameRadius } from "./box";
+import { boxHalfExtents, frameRadius, orthoHalfExtents } from "./box";
 import { PERSPECTIVE_FOV } from "./camera";
 
 {
@@ -27,6 +27,16 @@ import { PERSPECTIVE_FOV } from "./camera";
   const rWide = frameRadius(boxHalfExtents(1600, 800), 2, PERSPECTIVE_FOV);
   assert.ok(rSq > 0, "fit radius positive");
   assert.ok(rWide >= rSq - 1e-9, "wider box needs at least the square radius");
+}
+
+{
+  const box = boxHalfExtents(1600, 800);
+  const fit = orthoHalfExtents(box, 2, 1);
+  const sphere = Math.hypot(box.hx, box.hy, box.hz);
+  assert.ok(fit.halfH + 1e-9 >= sphere, "ortho fit covers the box sphere");
+  assert.ok(Math.abs(fit.halfW / fit.halfH - 2) < 1e-12, "ortho matches host aspect");
+  const out = orthoHalfExtents(box, 2, 2);
+  assert.ok(Math.abs(out.halfH / fit.halfH - 2) < 1e-12, "zoom 2 doubles the frustum");
 }
 
 {

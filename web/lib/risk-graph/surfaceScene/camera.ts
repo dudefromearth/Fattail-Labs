@@ -6,8 +6,10 @@
 
 export const ISO_EYE = { x: 1.65, y: 1.25, z: 1.65 } as const;
 export const ISO_LOOK = { x: 0, y: 0, z: 0 } as const;
-/** DL-407 — Slow ≈ ½ prior Work Pane. */
-export const SLOW_ZOOM_GAIN = 0.5;
+/** DL-407 Slow, then halved again for Surface orbit (¼ prior Work Pane). */
+export const SLOW_ZOOM_GAIN = 0.25;
+export const ZOOM_GAIN_MIN = 0.1;
+export const ZOOM_GAIN_MAX = 1;
 export const PERSPECTIVE_FOV = 42;
 export const ORBIT_RAD_PER_PX = 0.005;
 export const ZOOM_STEP = 0.08;
@@ -23,6 +25,10 @@ export type CameraPose = {
   eye: Vec3;
   lookAt: Vec3;
   zoomGain: number;
+  /** Camera up. Default (0,1,0). Time Ortho uses +X so strike reads up. */
+  up?: Vec3;
+  /** Mirror the view horizontally (Now on the left in Time Ortho). */
+  flipX?: boolean;
 };
 
 export function isoPose(): CameraPose {
@@ -58,6 +64,7 @@ function fromSpherical(
   phi: number,
   zoomGain: number,
   projection: CameraProjection = "perspective",
+  extras: Pick<CameraPose, "up" | "flipX"> = {},
 ): CameraPose {
   const rr = Math.min(MAX_R, Math.max(MIN_R, r));
   const p = Math.min(Math.PI - 0.08, Math.max(0.08, phi));
@@ -65,6 +72,8 @@ function fromSpherical(
     projection,
     lookAt: { ...lookAt },
     zoomGain,
+    up: extras.up ? { ...extras.up } : undefined,
+    flipX: extras.flipX,
     eye: {
       x: lookAt.x + rr * Math.sin(p) * Math.sin(theta),
       y: lookAt.y + rr * Math.cos(p),
@@ -86,6 +95,7 @@ export function orbitPose(
     s.phi - dyPx * ORBIT_RAD_PER_PX,
     pose.zoomGain,
     pose.projection,
+    { up: pose.up, flipX: pose.flipX },
   );
 }
 
@@ -93,7 +103,15 @@ export function zoomPose(pose: CameraPose, deltaY: number): CameraPose {
   const s = spherical(pose);
   const dir = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;
   const nextR = s.r * (1 + dir * pose.zoomGain * ZOOM_STEP);
-  return fromSpherical(pose.lookAt, nextR, s.theta, s.phi, pose.zoomGain, pose.projection);
+  return fromSpherical(
+    pose.lookAt,
+    nextR,
+    s.theta,
+    s.phi,
+    pose.zoomGain,
+    pose.projection,
+    { up: pose.up, flipX: pose.flipX },
+  );
 }
 
 export function fitPose(pose: CameraPose): CameraPose {
@@ -103,10 +121,26 @@ export function fitPose(pose: CameraPose): CameraPose {
 /** Keep orbit angles; set radius. Used to frame the enclosing box. */
 export function poseWithRadius(pose: CameraPose, r: number): CameraPose {
   const s = spherical(pose);
-  return fromSpherical(pose.lookAt, r, s.theta, s.phi, pose.zoomGain, pose.projection);
+  return fromSpherical(
+    pose.lookAt,
+    r,
+    s.theta,
+    s.phi,
+    pose.zoomGain,
+    pose.projection,
+    { up: pose.up, flipX: pose.flipX },
+  );
 }
 
-export type FactoryViewId = "iso" | "now" | "expiry" | "spot" | "time" | "top" | "fit";
+export type FactoryViewId =
+  | "iso"
+  | "now"
+  | "expiry"
+  | "spot"
+  | "time"
+  | "timeOrtho"
+  | "top"
+  | "fit";
 
 export const FACTORY_VIEW_IDS: FactoryViewId[] = [
   "iso",
@@ -124,6 +158,15 @@ export function applyFactoryView(id: FactoryViewId): CameraPose {
   if (id === "iso" || id === "fit") return isoPose();
   if (id === "now" || id === "time") {
     return { projection: "orthographic", eye: { x: 0, y: 0, z: 2.45 }, lookAt: look, zoomGain: g };
+  }
+  if (id === "timeOrtho") {
+    return {
+      projection: "orthographic",
+      eye: { x: 0, y: -2.8, z: 0 },
+      lookAt: look,
+      zoomGain: g,
+      up: { x: 1, y: 0, z: 0 },
+    };
   }
   if (id === "expiry") {
     return { projection: "perspective", eye: { x: 0, y: 0.85, z: -2.45 }, lookAt: look, zoomGain: g };
@@ -149,5 +192,7 @@ export function applyCameraInspect(
     eye: { ...next.eye },
     lookAt: { ...next.lookAt },
     zoomGain: next.zoomGain,
+    up: next.up ? { ...next.up } : undefined,
+    flipX: next.flipX,
   };
 }

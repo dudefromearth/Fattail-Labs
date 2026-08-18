@@ -2,7 +2,7 @@
 
 **Status:** **ACCEPTED** default (Coach stamp v0.1.1) · special-case amendments land here  
 **Date:** 2026-08-17  
-**Content version:** **v0.1.1**  
+**Content version:** **v0.1.5**  
 **Filename:** `FatTail-Labs-Options-Lab-Surface-Autofit-Spec-v0.1.md`  
 **Home:** Options Lab Surface · `/app/options-lab/surface`  
 **Parents:** App Spec v0.1.8 **§5.3** / **§5.3c** · Tech Spec v0.1 · Arch **33** · OT-EF v1.1 · **DL-421** (stands)  
@@ -99,23 +99,30 @@ interp at each sign change. Same book pricer as the sheet. Missing
 zeros (always debit, always credit) are not invented — listed
 strikes + spot still define content.
 
-### 2.3 Pad
+### 2.3 Pad (member-controlled · both axes)
 
-Equal pad on **both** sides of the content span, **in points**:
+Autofit is **one algorithm on two axes**. Pad is the air; the book
+**fills the remaining box**.
 
-- Pad = `max(median listed-strike step × 4, 10)` points.
-- One listed strike or unknown step → step **5**.
-- `sMin = max(0.01, contentLo − pad)`
-- `sMax = contentHi + pad`
+| Axis | Content | Pad | Fill |
+|---|---|---|---|
+| **Width (S)** | Outermost of listed Ks, T+0 BEs, expiry BEs, spot | Equal **left and right** | `[sMin, sMax] → box X` |
+| **Height (P&L)** | Sheet `minPnL`…`maxPnL` and **$0** | Equal **top and bottom** | `[yMin, yMax] → box Y` |
 
-Pad-in-points **stays** until Coach sees index screenshots. Then
-**AF-n** if the default looks wrong.
+- Pad = `max(contentSpan × padFrac, floor)` on **each** side.
+- Default `padFrac` = **0.15** (Analyzer-like: 15% of span each side ≈ 30% of half-width).
+- Width floor = **10** points. Height floor = **$1**.
+- Member sliders: **Width pad** `0`…`85%` · **Height pad** `0`…`65%`. Same Autofit, new air.
+- Moving a pad slider re-pads **held** content (does not rescan BEs).
+- **Autofit** button / book-change **rescans** width content, then applies the current pads, then camera Fit (button only).
+
+`$0` is not forced to box center. An asymmetric tent sits with matching air above the peak and below the floor.
 
 ### 2.4 Stretch / compress
 
-The box strike width is fixed (host aspect). Mapping
-`[sMin, sMax] → box X` is the stretch/compress. Autofit never
-changes box geometry, P&L scale, or time depth.
+The box size is the camera viewport. Autofit never changes box
+geometry. Mapping `[sMin, sMax] → box X` and `[yMin, yMax] → box Y`
+is the stretch/compress into the remaining space after pad.
 
 ### 2.5 Fail loud
 
@@ -147,6 +154,7 @@ Empty legs or non-finite / non-positive spot → throw. No silent
 | Tests | `web/lib/risk-graph/surfaceAutofit.test.ts` |
 | Invoke on book / button | `SurfaceApp` freezes `sMin`/`sMax` until book key or `autofitGen` |
 | Button | `CameraHud` **Autofit** next to **Fit** |
+| Pad sliders | `PlanesHud` **Width pad** / **Height pad** |
 | Profile hook | `AutofitProfileId = "default"` — unused until an amendment |
 
 ---
@@ -233,7 +241,7 @@ Detection stays in one place. Default remains the fallback.
 
 ## 8. Open (not default)
 
-- P&L (Y) Autofit — box height still uses `displayAbs` from the structure corridor.
+- P&L (Y) special-case profiles (time-spread soft-cap) — default height Autofit is equal pad around the sheet extrema.
 - Time (Z) Autofit — window remains full remaining life unless App Spec §5.3c range is opened.
 - Analyzer 2D sharing this module — **not** this spec; 2D keeps `autofitView.ts` until Coach unifies.
 - First special-case families (vertical, condor, calendar, naked) — wait for a screenshot + AF-n.
@@ -247,5 +255,9 @@ Detection stays in one place. Default remains the fallback.
 |---|---|---|
 | **v0.1** | 2026-08-17 | Default Autofit as-built. Amendment protocol. **DL-421**. |
 | **v0.1.1** | 2026-08-17 | Coach accept. What-if rename (§4.6). **Drop** Autofit on What-if dials. No auto-refit on live spot drift. Union of shown Ks. AT-AF-6/7. App Spec §5.3 pointer. Pad-in-points stays. **DL-421 stands**. |
+| **v0.1.2** | 2026-08-17 | Autofit is pad-then-fill on **width and height**. Equal left/right and top/bottom. Member pad sliders. Default 15% of content span (Analyzer-like). **DL-423**. |
+| **v0.1.3** | 2026-08-17 | Pad slider max **50%** (was 40%; +25%) on both axes. |
+| **v0.1.4** | 2026-08-17 | Pad slider max **65%** (was 50%; +30%) on both axes. |
+| **v0.1.5** | 2026-08-17 | Width pad max **85%** (was 65%; +30%). Height stays 65%. |
 
 **End of Options Lab Surface Autofit Spec v0.1.1**
