@@ -31,11 +31,25 @@ def test_quiet_server_binds_without_reverse_dns():
         httpd.server_close()
 
 
-def test_dash_host_localhost_only(monkeypatch):
-    monkeypatch.setenv("LABS_SSR_DASH_HOST", "0.0.0.0")
+def test_dash_host_lan_default(monkeypatch):
+    monkeypatch.delenv("LABS_SSR_DASH_HOST", raising=False)
     from market_data.ssr_snapshot_dash import dash_host
 
-    with pytest.raises(RuntimeError, match="localhost only"):
+    assert dash_host() == "0.0.0.0"
+
+
+def test_dash_host_allows_localhost(monkeypatch):
+    monkeypatch.setenv("LABS_SSR_DASH_HOST", "127.0.0.1")
+    from market_data.ssr_snapshot_dash import dash_host
+
+    assert dash_host() == "127.0.0.1"
+
+
+def test_dash_host_rejects_public_bind(monkeypatch):
+    monkeypatch.setenv("LABS_SSR_DASH_HOST", "1.2.3.4")
+    from market_data.ssr_snapshot_dash import dash_host
+
+    with pytest.raises(RuntimeError, match="0.0.0.0"):
         dash_host()
 
 

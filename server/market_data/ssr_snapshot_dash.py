@@ -33,17 +33,20 @@ from market_data.ssr_live_capture import (
 )
 
 NY = ZoneInfo("America/New_York")
-DEFAULT_HOST = "127.0.0.1"
+# 0.0.0.0 so http://studioone.local:5055 works from the LAN.
+# 127.0.0.1 is localhost-only. Not MiniTwo. Not the public internet.
+DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 5055
+_ALLOWED_HOSTS = frozenset({"0.0.0.0", "127.0.0.1", "localhost", "::"})
 
 
 def dash_host() -> str:
     raw = (os.environ.get("LABS_SSR_DASH_HOST") or DEFAULT_HOST).strip()
-    if raw not in ("127.0.0.1", "localhost"):
+    if raw not in _ALLOWED_HOSTS:
         raise RuntimeError(
-            f"LABS_SSR_DASH_HOST={raw!r} — dashboard binds localhost only"
+            f"LABS_SSR_DASH_HOST={raw!r} must be 0.0.0.0 (LAN) or 127.0.0.1 (this Mac only)"
         )
-    return "127.0.0.1"
+    return "127.0.0.1" if raw == "localhost" else raw
 
 
 def dash_port() -> int:

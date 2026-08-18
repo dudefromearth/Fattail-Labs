@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Chain Snapshot dashboard — StudioOne localhost only.
+# Chain Snapshot dashboard — StudioOne LAN (http://studioone.local:5055).
 set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 ROOT="${LABS_REPO:-/Users/ernie/Fattail-Labs}"
@@ -8,7 +8,7 @@ set -a
 source "$ROOT/.env"
 set +a
 export LABS_MARKET_DATA_ROOT="${LABS_MARKET_DATA_ROOT:-/Volumes/FatTail2TB/fattail-market-data}"
-export LABS_SSR_DASH_HOST="${LABS_SSR_DASH_HOST:-127.0.0.1}"
+export LABS_SSR_DASH_HOST="${LABS_SSR_DASH_HOST:-0.0.0.0}"
 export LABS_SSR_DASH_PORT="${LABS_SSR_DASH_PORT:-5055}"
 export PYTHONUNBUFFERED=1
 cd "$ROOT/server"
