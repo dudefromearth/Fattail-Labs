@@ -240,19 +240,20 @@ def count_day(day: date, *, root: Path | None = None) -> dict[str, Any]:
 
 
 def live_status(*, archive_root: Path | None = None) -> dict[str, Any]:
+    """Clock + phase only. Disk lists live on /api/days and /api/day."""
+    del archive_root
     ts = now_ny()
-    day = ts.date()
     wake = next_wake(ts)
     return {
         "now": ts.isoformat(),
         "phase": phase_at(ts),
-        "day": day.isoformat(),
+        "day": ts.date().isoformat(),
         "wake": wake.isoformat(),
         "chain_every_s": CHAIN_EVERY_S,
         "data_root": str(data_root()),
-        "days": list_days(archive_root if archive_root is not None else capture_root()),
-        "processes": process_bits(),
-        "today": count_day(day, root=archive_root),
+        "days": [],
+        "processes": {},
+        "today": {},
     }
 
 
@@ -404,6 +405,14 @@ function paint(st, dayDoc){
 }
 async function load(){
   const st = await (await fetch('/api/status')).json();
+  try {
+    const p = await (await fetch('/api/procs')).json();
+    st.processes = p.processes || {};
+  } catch (e) { st.processes = {}; }
+  try {
+    const dd = await (await fetch('/api/days')).json();
+    st.days = dd.days || [];
+  } catch (e) { st.days = st.days || []; }
   const day = selected || st.day;
   let dayDoc = st.today;
   try {
@@ -466,6 +475,9 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if path == "/api/status":
                 self._json(200, live_status())
+                return
+            if path == "/api/procs":
+                self._json(200, {"processes": process_bits()})
                 return
             if path == "/api/days":
                 self._json(200, {"days": list_days()})
