@@ -12,6 +12,7 @@ import {
 } from "./localBookCurves";
 import type { OpfGenerationIn } from "./opfPricingApi";
 import type { ParsedTosTrade } from "./tosParser";
+import { nyDateTimeToUtcMs } from "../risk-graph/surfaceTimeAxis";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -199,6 +200,54 @@ test("same-strike calendar expiry is front-exp residual, not flat −debit", () 
     Math.abs(p.x - 100) < Math.abs(b.x - 100) ? p : b,
   );
   assert(Math.abs(t0AtK.y - atK.y) > 1, "T+0 is not the expiration face");
+});
+
+test("What-if τ uses 1-minute floor, not fractionalT 1-hour min", () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const src = readFileSync(join(here, "localBookCurves.ts"), "utf8");
+  assert(!src.includes('from "@/lib/risk-graph/blackScholes"'), "no fractionalT import");
+  assert(src.includes("tauYearsWhatIfAfterElapsed"), "W1 helper");
+});
+
+test("AT-TM-13 15:30 0DTE elapsed still moves T+0 vs 15:00", () => {
+  const ymd = "2026-08-19";
+  const trade0 = trade({
+    expiration: ymd,
+    legs: [{ strike: 100, quantity: 1, right: "call", expiration: ymd }],
+  });
+  const gens = [
+    {
+      product: "SPX",
+      expiration: ymd,
+      wings: 50,
+      spot: 100,
+      content_hash: "h1",
+      rows: [{ strike: 100, side: "call", iv: 0.2, mid: 2 }],
+    },
+  ];
+  const a = resolveLocalBookCurves({
+    trade: trade0,
+    generations: gens,
+    spot: 100,
+    nowMs: nyDateTimeToUtcMs(ymd, 15, 0),
+  });
+  const b = resolveLocalBookCurves({
+    trade: trade0,
+    generations: gens,
+    spot: 100,
+    nowMs: nyDateTimeToUtcMs(ymd, 15, 30),
+  });
+  assert(a.ok && b.ok, "both ok");
+  if (!a.ok || !b.ok) return;
+  const tauA = Number(a.result.meta?.tau_by_leg?.call_100_2026_08_19 ?? Object.values(a.result.meta?.tau_by_leg ?? {})[0]);
+  const tauB = Number(b.result.meta?.tau_by_leg?.call_100_2026_08_19 ?? Object.values(b.result.meta?.tau_by_leg ?? {})[0]);
+  assert(tauA > tauB, `15:00 τ ${tauA} vs 15:30 ${tauB}`);
+  const hourFloor = 1 / (365 * 24);
+  assert(tauB < hourFloor, `15:30 τ must be below 1-hour floor, got ${tauB}`);
+  const mid = Math.floor(LOCAL_CURVE_STEPS / 2);
+  const t0a = a.result.curves!.model_t0!.points![mid].y;
+  const t0b = b.result.curves!.model_t0!.points![mid].y;
+  assert(t0a !== t0b, "T+0 moves in the last hour");
 });
 
 test("keep-warm hook does not POST /resolve", () => {

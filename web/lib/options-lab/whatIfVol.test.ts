@@ -4,7 +4,9 @@
 
 import type { OpfGenerationIn } from "./opfPricingApi";
 import {
+  formatWhatIfVolReadout,
   impliedVolSliderRange,
+  majorityRight,
   measuredAtmIvPct,
   volOffsetPtsFromScenario,
 } from "./whatIfVol";
@@ -67,6 +69,17 @@ test("V4 range 0.5×–2× measured", () => {
   const r = impliedVolSliderRange(16.2);
   assert(Math.abs(r.min - 8.1) < 1e-9, `min ${r.min}`);
   assert(Math.abs(r.max - 32.4) < 1e-9, `max ${r.max}`);
+});
+
+test("majority right mixed/tie → call", () => {
+  assert(majorityRight([{ right: "put", quantity: 1 }, { right: "put", quantity: -2 }, { right: "put", quantity: 1 }]) === "put", "put fly");
+  assert(majorityRight([{ right: "call", quantity: 1 }, { right: "put", quantity: 1 }]) === "call", "tie");
+});
+
+test("V6 readout measured / scenario / IV NO", () => {
+  assert(formatWhatIfVolReadout(16.2, 19.4, true) === "16.2% measured · 19.4% scenario", "on");
+  assert(formatWhatIfVolReadout(16.2, 19.4, false) === "16.2% measured", "off");
+  assert(formatWhatIfVolReadout(null, 0, true, "IV NO") === "IV NO", "named");
 });
 
 console.log(`\n${n} tests passed`);

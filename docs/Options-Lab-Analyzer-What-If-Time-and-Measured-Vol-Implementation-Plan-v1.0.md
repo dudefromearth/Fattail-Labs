@@ -137,8 +137,8 @@ NX1 τ→16:15 · NX2 ratio wire · NX3 `/resolve` schema · NX4 VIX→IV · NX5
 
 | Packet | State |
 |--------|--------|
-| This impl plan | **Landed · waiting Coach fire** |
-| W1 helpers | Not fired |
-| W2 Analyzer | Not fired |
+| This impl plan | **GO** · DL-451 |
+| W1 helpers | **PASS** |
+| W2 Analyzer | in flight |
 | W3 Surface HUD | Not fired |
 | W4 Kilo · W5 Lima · W-G | Not fired |

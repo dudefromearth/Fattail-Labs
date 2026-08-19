@@ -59,6 +59,20 @@ import { buildLabel, buildNotation } from "@/lib/options-lab/positionLabels";
 import type { PositionInput } from "@/lib/options-lab/positionTypes";
 import { useBuilderChain } from "@/lib/options-lab/useBuilderChain";
 import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
+import {
+  formatWhatIfTimeReadout,
+  remainingLastTradeHours,
+  whatIfTimeStepHours,
+} from "@/lib/options-lab/whatIfClocks";
+import {
+  formatWhatIfVolReadout,
+  impliedVolSliderRange,
+  loadWhatIfSession,
+  majorityRight,
+  measuredAtmIvPct,
+  saveWhatIfSession,
+  volOffsetPtsFromScenario,
+} from "@/lib/options-lab/whatIfVol";
 import { usePackageQuotes } from "@/lib/options-lab/usePackageQuotes";
 import { analyzerPositionToOpenTrade } from "@/lib/options-lab/analyzerToTradeLog";
 import {
@@ -122,9 +136,14 @@ export default function OpfRiskAnalyzer() {
   const [epochStale, setEpochStale] = useState(false);
 
   const [timeMachineEnabled, setTimeMachineEnabled] = useState(false);
-  const [simTimeOffsetHours, setSimTimeOffsetHours] = useState(0);
-  const [simVolatilityOffset, setSimVolatilityOffset] = useState(0);
+  const [simElapsedHours, setSimElapsedHours] = useState(0);
+  const [simIvPct, setSimIvPct] = useState<number | null>(null);
   const [simSpotPct, setSimSpotPct] = useState(0);
+  const [wiredVolPts, setWiredVolPts] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const lastMeasuredRef = useRef<number | null>(null);
+  const sessionVolOffsetRef = useRef(0);
+  const [whatIfHydrated, setWhatIfHydrated] = useState(false);
 
   // Sync hydrate so the first paint already has the book. An empty first
   // frame used to blank the viewport on every remount (suite nav / tab return).
@@ -437,12 +456,36 @@ export default function OpfRiskAnalyzer() {
     return Number.isFinite(n) && n > 0 ? n : null;
   }, [vixStr]);
 
+  const soonestExp = useMemo(() => {
+    const exps: string[] = [];
+    for (const t of trades) {
+      if (t.expiration) exps.push(t.expiration.slice(0, 10));
+      for (const l of t.legs) {
+        if (l.expiration) exps.push(l.expiration.slice(0, 10));
+      }
+    }
+    if (!exps.length) return null;
+    return exps.sort()[0];
+  }, [trades]);
+
+  const remainingHours = useMemo(() => {
+    if (!soonestExp) return 0;
+    return remainingLastTradeHours(soonestExp, symbol, nowMs);
+  }, [soonestExp, symbol, nowMs]);
+
+  const elapsedHours = Math.min(Math.max(0, simElapsedHours), remainingHours);
+
+  const timeOffsetHours =
+    model.useCase === "outlook" && epochPinned
+      ? 0
+      : timeMachineEnabled
+        ? elapsedHours
+        : 0;
+
   /** B4/A6: override when what-if Enable + knobs, or member-edited spot/VIX */
   const whatIfActive =
     timeMachineEnabled &&
-    (simTimeOffsetHours !== 0 ||
-      simVolatilityOffset !== 0 ||
-      simSpotPct !== 0);
+    (elapsedHours !== 0 || wiredVolPts !== 0 || simSpotPct !== 0);
   const memberSpotVixOverride =
     (spotDirty && spotOverride != null && spotOverride > 0) ||
     (vixDirty && vix != null && vix > 0);
@@ -455,18 +498,9 @@ export default function OpfRiskAnalyzer() {
     vix,
     useCase: model.useCase,
     packId: model.packId,
-    timeOffsetHours:
-      model.useCase === "outlook"
-        ? epochPinned
-          ? 0
-          : timeMachineEnabled
-            ? simTimeOffsetHours
-            : 0
-        : timeMachineEnabled
-          ? simTimeOffsetHours
-          : 0,
+    timeOffsetHours,
     // A6: Enable gates all knobs — vol/spot% ignored unless what-if enabled
-    volOffsetPts: timeMachineEnabled ? simVolatilityOffset : 0,
+    volOffsetPts: timeMachineEnabled ? wiredVolPts : 0,
     spotPct: timeMachineEnabled ? simSpotPct : 0,
     enabled: trades.length > 0,
     pollLive: planePrinting,
@@ -544,10 +578,91 @@ export default function OpfRiskAnalyzer() {
 
   const resetSim = () => {
     setTimeMachineEnabled(false);
-    setSimTimeOffsetHours(0);
-    setSimVolatilityOffset(0);
+    setSimElapsedHours(0);
+    setSimIvPct(lastMeasuredRef.current);
+    setWiredVolPts(0);
+    sessionVolOffsetRef.current = 0;
     setSimSpotPct(0);
   };
+
+  useEffect(() => {
+    const saved = loadWhatIfSession();
+    if (saved) {
+      sessionVolOffsetRef.current = saved.volOffsetPts;
+      setTimeMachineEnabled(saved.enabled);
+      setSimElapsedHours(saved.elapsedHours);
+      if (saved.enabled) setWiredVolPts(saved.volOffsetPts);
+    }
+    setWhatIfHydrated(true);
+    const id = window.setInterval(() => setNowMs(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (simElapsedHours > remainingHours) setSimElapsedHours(remainingHours);
+  }, [remainingHours, simElapsedHours]);
+
+  const atmRight = useMemo(
+    () => majorityRight(trade?.legs ?? []),
+    [trade],
+  );
+  const measuredPct = useMemo(() => {
+    if (!soonestExp || !trades.length) return null;
+    const spot =
+      (spotOverride != null && spotOverride > 0 ? spotOverride : null) ??
+      (risk.spot != null && risk.spot > 0 ? risk.spot : null) ??
+      (chain.spot != null && chain.spot > 0 ? chain.spot : null);
+    if (spot == null) return null;
+    if (!risk.generations.length) return null;
+    return measuredAtmIvPct(risk.generations, spot, soonestExp, atmRight);
+  }, [
+    soonestExp,
+    trades.length,
+    spotOverride,
+    risk.spot,
+    risk.generations,
+    chain.spot,
+    atmRight,
+  ]);
+
+  const volRange = measuredPct != null ? impliedVolSliderRange(measuredPct) : { min: 1, max: 2 };
+
+  useEffect(() => {
+    if (measuredPct == null) return;
+    const range = impliedVolSliderRange(measuredPct);
+    setSimIvPct((prev) => {
+      const offset =
+        prev != null && lastMeasuredRef.current != null
+          ? prev - lastMeasuredRef.current
+          : sessionVolOffsetRef.current;
+      lastMeasuredRef.current = measuredPct;
+      const next = measuredPct + offset;
+      return Math.min(range.max, Math.max(range.min, Math.round(next * 10) / 10));
+    });
+  }, [measuredPct]);
+
+  useEffect(() => {
+    if (!timeMachineEnabled) {
+      setWiredVolPts(0);
+      return;
+    }
+    if (measuredPct != null && simIvPct != null) {
+      const pts = volOffsetPtsFromScenario(simIvPct, measuredPct);
+      sessionVolOffsetRef.current = pts;
+      setWiredVolPts(pts);
+      return;
+    }
+    setWiredVolPts(sessionVolOffsetRef.current);
+  }, [timeMachineEnabled, measuredPct, simIvPct]);
+
+  useEffect(() => {
+    if (!whatIfHydrated) return;
+    saveWhatIfSession({
+      elapsedHours,
+      volOffsetPts: sessionVolOffsetRef.current,
+      enabled: timeMachineEnabled,
+    });
+  }, [elapsedHours, wiredVolPts, timeMachineEnabled, whatIfHydrated]);
 
   const simSpot = displaySpot * (1 + simSpotPct / 100);
   /**
@@ -890,10 +1005,37 @@ export default function OpfRiskAnalyzer() {
         }}
         timeMachineEnabled={timeMachineEnabled}
         onTimeMachineEnabled={setTimeMachineEnabled}
-        simTimeOffsetHours={simTimeOffsetHours}
-        onSimTimeOffsetHours={setSimTimeOffsetHours}
-        simVolatilityOffset={simVolatilityOffset}
-        onSimVolatilityOffset={setSimVolatilityOffset}
+        elapsedHours={elapsedHours}
+        onElapsedHours={setSimElapsedHours}
+        remainingHours={remainingHours}
+        timeStepHours={whatIfTimeStepHours(remainingHours)}
+        timeReadout={
+          soonestExp
+            ? formatWhatIfTimeReadout(nowMs, elapsedHours, remainingHours)
+            : "—"
+        }
+        timeDisabled={
+          !timeMachineEnabled || remainingHours <= 0 || trades.length === 0
+        }
+        simIvPct={simIvPct ?? volRange.min}
+        onSimIvPct={setSimIvPct}
+        volMin={volRange.min}
+        volMax={volRange.max}
+        volReadout={formatWhatIfVolReadout(
+          measuredPct,
+          simIvPct ?? measuredPct ?? 0,
+          timeMachineEnabled,
+          trades.length === 0
+            ? "WAITING"
+            : measuredPct == null
+              ? risk.generations.length
+                ? "IV NO"
+                : "WAITING"
+              : null,
+        )}
+        volDisabled={
+          !timeMachineEnabled || measuredPct == null || trades.length === 0
+        }
         simSpotPct={simSpotPct}
         onSimSpotPct={setSimSpotPct}
         onResetSim={resetSim}

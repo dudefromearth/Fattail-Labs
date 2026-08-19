@@ -26,6 +26,7 @@ import {
   ladderToOpfGeneration,
   opfCurveToPnLPoints,
   sumAlignedPnL,
+  type OpfGenerationIn,
   type OpfResolveResult,
 } from "@/lib/options-lab/opfPricingApi";
 import { resolveLocalBookCurves } from "@/lib/options-lab/localBookCurves";
@@ -36,6 +37,8 @@ export type OpfRiskGraphState = {
   error: string | null;
   result: OpfResolveResult | null;
   spot: number | null;
+  /** OPF-held generations used for the last local sheet (What-if σ_m). */
+  generations: OpfGenerationIn[];
   /** Fingerprint of generation content_hashes — VIEW-5 epoch */
   generationEpoch: string;
   contentHashes: Record<string, string>;
@@ -92,6 +95,7 @@ type GraphCacheEntry = {
   ladders: Map<string, LadderFull>;
   result: OpfResolveResult | null;
   spot: number | null;
+  generations: OpfGenerationIn[];
   generationEpoch: string;
   contentHashes: Record<string, string>;
   lastResolveKey: string;
@@ -398,6 +402,7 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
       ...cached,
       ladders: new Map(ladders),
       spot: spotUse,
+      generations: gens,
       generationEpoch: epochKey,
       contentHashes: hashes,
       lastResolveKey: resolveKey,
@@ -430,6 +435,7 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
       curveRangePct,
       useCase,
       packId,
+      nowMs: Date.now(),
     });
     if (!local.ok) {
       return {
@@ -448,6 +454,7 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
       ladders: new Map(ladders),
       result: cached?.result ?? null,
       spot: spotUse,
+      generations: gens,
       generationEpoch: epochKey,
       contentHashes: hashes,
       lastResolveKey: job.lastResolveKey,
@@ -514,6 +521,7 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
     ladders: new Map(ladders),
     result: merged,
     spot: spotUse,
+    generations: gens,
     generationEpoch: epochKey,
     contentHashes: hashes,
     lastResolveKey: resolveKey,
@@ -616,6 +624,9 @@ export function useOpfRiskGraph(opts: {
     () => warm?.contentHashes ?? {},
   );
   const [fromCache, setFromCache] = useState(() => Boolean(warm?.result));
+  const [generations, setGenerations] = useState<OpfGenerationIn[]>(
+    () => warm?.generations ?? [],
+  );
 
   const laddersRef = useRef<Map<string, LadderFull>>(
     new Map(warm?.ladders ?? []),
@@ -639,6 +650,7 @@ export function useOpfRiskGraph(opts: {
       setResult(entry.result);
       resultRef.current = entry.result;
     }
+    setGenerations(entry.generations ?? []);
     setGenerationEpoch(entry.generationEpoch);
     setContentHashes(entry.contentHashes);
     setError(entry.error);
@@ -710,6 +722,7 @@ export function useOpfRiskGraph(opts: {
         setResult(null);
         setError(null);
         setSpot(null);
+        setGenerations([]);
         setGenerationEpoch("");
         setContentHashes({});
         setFromCache(false);
@@ -721,6 +734,7 @@ export function useOpfRiskGraph(opts: {
     if (c?.result) {
       setResult(c.result);
       setSpot(c.spot);
+      setGenerations(c.generations ?? []);
       setGenerationEpoch(c.generationEpoch);
       setContentHashes(c.contentHashes);
       setError(c.error);
@@ -822,6 +836,7 @@ export function useOpfRiskGraph(opts: {
     packId: result?.pack_id ?? null,
     engineId: result?.meta?.engine_id ?? result?.model_t0?.engine_id ?? null,
     fromCache,
+    generations,
     refresh: () => {
       lastResolveKey.current = "";
       void run({ force: true, soft: false });

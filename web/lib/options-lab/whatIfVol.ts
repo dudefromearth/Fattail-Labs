@@ -51,6 +51,38 @@ export function ivDecimalToPct(iv: number): number {
   return Math.round(iv * 1000) / 10;
 }
 
+/** V2: majority right; mixed/tie → call. */
+export function majorityRight(
+  legs: readonly { right?: string; quantity?: number }[],
+): OptionRight {
+  let calls = 0;
+  let puts = 0;
+  for (const l of legs) {
+    const q = Math.abs(Number(l.quantity));
+    const n = Number.isFinite(q) && q > 0 ? q : 1;
+    const r = String(l.right ?? "")
+      .trim()
+      .toLowerCase();
+    if (r === "put" || r === "p") puts += n;
+    else calls += n;
+  }
+  return puts > calls ? "put" : "call";
+}
+
+/** V6: `16.2% measured · 19.4% scenario`. Enable off → measured only. */
+export function formatWhatIfVolReadout(
+  measuredPct: number | null,
+  scenarioPct: number,
+  enabled: boolean,
+  named: "IV NO" | "WAITING" | null = null,
+): string {
+  if (named) return named;
+  if (measuredPct == null) return "IV NO";
+  const m = measuredPct.toFixed(1);
+  if (!enabled) return `${m}% measured`;
+  return `${m}% measured · ${Number(scenarioPct).toFixed(1)}% scenario`;
+}
+
 export function measuredAtmIvPct(
   generations: readonly OpfGenerationIn[],
   spot: number,

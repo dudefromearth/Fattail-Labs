@@ -11,7 +11,6 @@
  * deferred — same formula, honest engine id.
  */
 
-import { fractionalT } from "@/lib/risk-graph/blackScholes";
 import {
   MIN_TAU,
   evaluateExpiryPnlAtSpot,
@@ -23,6 +22,10 @@ import type {
   OpfGenerationIn,
   OpfResolveResult,
 } from "@/lib/options-lab/opfPricingApi";
+import {
+  tauYearsWhatIf,
+  tauYearsWhatIfAfterElapsed,
+} from "@/lib/options-lab/whatIfClocks";
 
 export const LOCAL_CURVE_STEPS = 161;
 export const LOCAL_ENGINE_ID = "local.bsm_european";
@@ -85,6 +88,7 @@ function findHeldRow(
 export function bindGenerationLegs(
   trade: ParsedTosTrade,
   gens: OpfGenerationIn[],
+  nowMs: number = Date.now(),
 ):
   | { ok: true; legs: SurfaceLeg[]; marks: Array<Record<string, unknown>> }
   | { ok: false; hole: LocalSheetHole; detail: string } {
@@ -119,7 +123,7 @@ export function bindGenerationLegs(
         detail: `No listed IV for ${l.right} ${l.strike} ${l.expiration}.`,
       };
     }
-    const tau = Math.max(fractionalT(l.expiration), MIN_TAU);
+    const tau = Math.max(tauYearsWhatIf(l.expiration, nowMs), MIN_TAU);
     const midRaw = hit.row.mid != null ? Number(hit.row.mid) : NaN;
     const premium = Number.isFinite(midRaw) ? midRaw : null;
     if (premium == null) {
@@ -186,23 +190,28 @@ export function resolveLocalBookCurves(opts: {
   curveRangePct?: number;
   useCase?: string;
   packId?: string | null;
+  /** Wall clock for What-if τ (1-minute floor). Do not use fractionalT. */
+  nowMs?: number;
 }): LocalBookCurvesResult {
   const spot = Number(opts.spot);
   if (!Number.isFinite(spot) || spot <= 0) {
     return { ok: false, hole: "CHECK LEGS", detail: "No spot from chain or override." };
   }
-  const bound = bindGenerationLegs(opts.trade, opts.generations);
+  const nowMs = Number.isFinite(opts.nowMs) ? Number(opts.nowMs) : Date.now();
+  const bound = bindGenerationLegs(opts.trade, opts.generations, nowMs);
   if (!bound.ok) return bound;
 
   const volPts = Number(opts.volOffsetPts) || 0;
   const timeH = Number(opts.timeOffsetHours) || 0;
   const spotPct = Number(opts.spotPct) || 0;
-  const offsetYears = timeH / (365.25 * 24);
-  const priced = bound.legs.map((leg) => ({
-    ...leg,
-    iv: Math.max(leg.iv + volPts / 100, 1e-8),
-    tauYears0: Math.max(0, leg.tauYears0 - offsetYears),
-  }));
+  const priced = bound.legs.map((leg, i) => {
+    const exp = String(bound.marks[i]?.expiration || opts.trade.expiration);
+    return {
+      ...leg,
+      iv: Math.max(leg.iv + volPts / 100, 1e-8),
+      tauYears0: tauYearsWhatIfAfterElapsed(exp, nowMs, timeH),
+    };
+  });
   const maxTau = Math.max(...priced.map((l) => l.tauYears0), 0);
   const rangePct = opts.curveRangePct ?? 8;
   const xs = localSpotAxis(

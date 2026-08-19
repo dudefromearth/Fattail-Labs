@@ -62,10 +62,18 @@ export type AnalyzerControlsColumnProps = {
   onVixChange: (value: string) => void;
   timeMachineEnabled: boolean;
   onTimeMachineEnabled: (value: boolean) => void;
-  simTimeOffsetHours: number;
-  onSimTimeOffsetHours: (value: number) => void;
-  simVolatilityOffset: number;
-  onSimVolatilityOffset: (value: number) => void;
+  elapsedHours: number;
+  onElapsedHours: (value: number) => void;
+  remainingHours: number;
+  timeStepHours: number;
+  timeReadout: string;
+  timeDisabled: boolean;
+  simIvPct: number;
+  onSimIvPct: (value: number) => void;
+  volMin: number;
+  volMax: number;
+  volReadout: string;
+  volDisabled: boolean;
   simSpotPct: number;
   onSimSpotPct: (value: number) => void;
   onResetSim: () => void;
@@ -102,10 +110,18 @@ export default function AnalyzerControlsColumn({
   onVixChange,
   timeMachineEnabled,
   onTimeMachineEnabled,
-  simTimeOffsetHours,
-  onSimTimeOffsetHours,
-  simVolatilityOffset,
-  onSimVolatilityOffset,
+  elapsedHours,
+  onElapsedHours,
+  remainingHours,
+  timeStepHours,
+  timeReadout,
+  timeDisabled,
+  simIvPct,
+  onSimIvPct,
+  volMin,
+  volMax,
+  volReadout,
+  volDisabled,
   simSpotPct,
   onSimSpotPct,
   onResetSim,
@@ -126,9 +142,9 @@ export default function AnalyzerControlsColumn({
   riskError,
 }: AnalyzerControlsColumnProps) {
   const simAtRest =
-    simTimeOffsetHours === 0 &&
-    simVolatilityOffset === 0 &&
-    simSpotPct === 0;
+    elapsedHours === 0 &&
+    simSpotPct === 0 &&
+    !timeMachineEnabled;
   const showReadout =
     viewportFocusLabel != null ||
     markPkg != null ||
@@ -298,25 +314,26 @@ export default function AnalyzerControlsColumn({
           </div>
           <SliderRow
             label="Time"
-            value={formatSigned(simTimeOffsetHours, "h")}
+            value={timeReadout}
             min={0}
-            max={72}
-            step={1}
-            disabled={!timeMachineEnabled}
+            max={Math.max(0, remainingHours)}
+            step={timeStepHours}
+            disabled={timeDisabled}
             testId="analyzer-whatif-time"
-            valueNow={simTimeOffsetHours}
-            onChange={onSimTimeOffsetHours}
+            valueNow={elapsedHours}
+            onChange={onElapsedHours}
+            ends={["Now", "Last trade"]}
           />
           <SliderRow
-            label="Vol"
-            value={formatSigned(simVolatilityOffset, " pts")}
-            min={-30}
-            max={30}
-            step={1}
-            disabled={!timeMachineEnabled}
+            label="Implied vol"
+            value={volReadout}
+            min={volMin}
+            max={volMax}
+            step={0.1}
+            disabled={volDisabled}
             testId="analyzer-whatif-vol"
-            valueNow={simVolatilityOffset}
-            onChange={onSimVolatilityOffset}
+            valueNow={simIvPct}
+            onChange={onSimIvPct}
           />
           <SliderRow
             label="Spot %"
@@ -471,6 +488,7 @@ function SliderRow({
   testId,
   valueNow,
   onChange,
+  ends,
 }: {
   label: string;
   value: string;
@@ -481,14 +499,17 @@ function SliderRow({
   testId: string;
   valueNow: number;
   onChange: (n: number) => void;
+  ends?: [string, string];
 }) {
+  const hi = max > min ? max : min + step;
+  const thumb = Math.min(Math.max(valueNow, min), max > min ? max : min);
   return (
     <div className="flex min-h-[var(--hit-min)] flex-col justify-center gap-1 border-b border-[var(--color-separator)] px-3 py-2 last:border-b-0">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[length:var(--text-subheadline)] text-[var(--color-label)]">
           {label}
         </span>
-        <span className="font-mono tabular-nums text-[length:var(--text-subheadline)] text-[var(--color-label)]">
+        <span className="max-w-[15rem] text-right font-mono tabular-nums text-[length:var(--text-caption)] leading-snug text-[var(--color-label)]">
           {value}
         </span>
       </div>
@@ -496,13 +517,19 @@ function SliderRow({
         type="range"
         className="w-full accent-[var(--color-tint)] disabled:opacity-45"
         min={min}
-        max={max}
+        max={hi}
         step={step}
-        value={valueNow}
+        value={thumb}
         disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))}
         data-testid={testId}
       />
+      {ends ? (
+        <div className="flex justify-between text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
+          <span>{ends[0]}</span>
+          <span>{ends[1]}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
