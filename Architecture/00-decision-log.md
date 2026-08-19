@@ -4,6 +4,21 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-458 /apply fields have a thick ink border
+
+**Decision:** Ernie add-on from the same `:3001` walk. Every live field
+(email, Heaven, Hell, the rest) and the in-place Review edit field
+gets a **thick ink border** — 3px, `--color-label`, readable on paper
+and dark canvas. Not a 1px hairline. Focus may strengthen the same
+border with brand hue `#00B478`. Do not invent a second loud color.
+Off: hero lime `#00FF00`, pine `#1A4F40`.
+
+Sits with **DL-457**: Back left / OK right under the field, twins.
+
+**Does not:** merge; MiniTwo; fattail.ai; change the write.
+
+---
+
 ## 2026-08-19 — DL-457 /apply Back and OK are twins under the field
 
 **Decision:** Ernie lock 2026-08-19 after walking `:3001`. **OK and Back
