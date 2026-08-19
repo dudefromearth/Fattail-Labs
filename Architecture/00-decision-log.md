@@ -4,6 +4,155 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-456 /apply Review edits in place
+
+**Decision:** Ernie correction 2026-08-19. Review still lists every asked
+question with its answer. Click / tap a line and **edit in place on that
+line**. The answer becomes a field on the same line. Enter, Tab, or the
+OK control beside that field accept the edit and collapse the line back
+to Q+A. Same accept affordance as the live form (button beside the field).
+Do **not** send them back to the one-question slot to edit.
+
+This supersedes the DL-455 “open that question again in the eye-lock
+slot” edit path. Review itself stays one screen, same slot.
+
+Path-changing edits (6 / 7 / 9) still recompute. Drop answers that no
+longer apply. If new questions appear, ask those one at a time in the
+live-form slot, then return to Review. Review **Accept** is still the
+only `POST /api/apply`. Review is required.
+
+**Does not:** reopen the question screen to edit; auto-submit; merge;
+MiniTwo; fattail.ai.
+
+---
+
+## 2026-08-19 — DL-455 /apply Review before AC submit
+
+**Decision:** Ernie lock 2026-08-19. After the last **live** question on
+that path — not after email, not auto-submit — the invite animates into
+a **Review** screen in the same eye-lock slot (same two-beat motion).
+Review lists every question they were asked, in order, with the answer
+under it. Intro is omitted. Dead-branch questions they never saw are
+omitted.
+
+Each line is tappable. Tapping opens that question again in the same
+slot. They change the answer, accept it the same way (click / tap /
+Enter / Tab), then land back on Review with the new answer shown.
+
+Changing a path key (**6 / 7 / 9**: `COACHING_SKU`, `ELEVEN_AM_ET`,
+`PARTNER_SUPPORT`) recomputes the remaining path. Answers that no
+longer apply are dropped. New questions that appear are asked one at a
+time in the same slot, then Review.
+
+Current skip: **ELEVEN_AM_ET = No** makes `PARTNER_SUPPORT` a dead
+branch. 6 is free text (no invented membership menu). 9 is last.
+`POST /api/apply` runs only from Review **Accept**. Partner is required
+on the write only when 7 is Yes.
+
+**Does not:** auto-submit on the last question; leave Review; add a
+second route; invent dropdowns for 6/7/9; merge; MiniTwo; fattail.ai.
+
+---
+
+## 2026-08-19 — DL-454 /apply accept sits next to the field
+
+**Decision:** Ernie lock on the accept control. Continue / OK / Submit
+sits **next to the field**, not in a distant footer. Click, touch/tap,
+Enter, or Tab accept the current answer **when valid** and present the
+next question/field. Invalid or empty does not advance. Last step still
+`POST /api/apply`. Same two-beat motion. Eyes stay put. On mobile the
+button stays beside the field and thumb-reachable — not a far bottom bar.
+
+---
+
+## 2026-08-19 — DL-453 /apply invite copy and order (Ernie)
+
+**Decision:** Ernie lock on invite wording and order. Desk titles
+(Email, Hell Island, Coaching SKU) are not the invite. Path is a
+conversation:
+
+1. Intro — FatTail application; a few questions, one at a time, so we
+   know if this is a fit. Not a dump of fields.
+2. Email — “Enter your email (we will never share it).”
+3. **HEAVEN before HELL** — “What do you consider your heaven island?”
+   plus 2–3 example answers (defined-risk book, calm in the chair, not
+   hunting win rate).
+4. Hell — what their hell island is, plus examples (violent equity,
+   blow-ups, solving for win rate).
+5. Same shape for the rest of Cole’s seven: spoken question + hint of
+   what an answer sounds like + big field.
+
+AC keys and live ids **3–9** stay. Invite order is email → HEAVEN →
+HELL → MONEY_TIMING → COACHING_SKU → ELEVEN_AM_ET → TRIED →
+PARTNER_SUPPORT. All seven still write. COACHING_SKU stays free text
+(Observer / Activator / Navigator as examples only). Echo owns official
+labels later; Ernie owns this invite wording now.
+
+**Does not:** change the `POST /api/apply` write; invent dropdowns;
+embed Typeform.
+
+---
+
+## 2026-08-19 — DL-452 /apply is one question at a time; two motion beats; eyes stay put
+
+**Decision:** Ernie walked the all-fields `/apply` on StudioTwo and rejected
+it. Native FatTail invite (not a Typeform embed, not a Typeform vendor):
+
+- One question and its field/control at a time. Big type. Big fields.
+- **Two animations, not one fade at the end.** (1) When a question and
+  field are presented, they animate in. (2) When that answer is accepted,
+  that step animates out and the next question/field animate in.
+- **Focal point stays put** on desktop and phone. Same slot. No
+  horizontal shift. No jump to a new scroll position. Do not make the
+  next question appear somewhere else so they have to hunt.
+- Mobile: one column, 44pt targets, thumb-reachable next/accept.
+- Path may depend on the accepted answer. Do not skip Cole keys.
+- Hue `#00B478` only for next action / live / accepted.
+- Write contract unchanged: final submit `POST /api/apply` writes ids
+  **3–9** + tag **18**, fail loud. No fake thank-you.
+
+**Does not:** embed Typeform; invent dropdowns for empty option lists on
+fields 6/7/9; ticket Ernie or Conor; lock host.
+
+---
+
+## 2026-08-19 — DL-451 Native /apply submit writes Cole's seven fields + tag 18
+
+**Decision:** Chair GO 2026-08-19. Ship a native FatTail `/apply` submit
+surface in this repo. A submit writes Cole’s seven ActiveCampaign
+`fieldValues` (live ids **3–9**: `HELL`, `HEAVEN`, `MONEY_TIMING`,
+`COACHING_SKU`, `ELEVEN_AM_ET`, `TRIED`, `PARTNER_SUPPORT`) and tag
+**18 Application Filled**. Fail loud if the seven write or the tag miss.
+Do **not** inherit waitlist `sync_lead()`. Do **not** invent dropdown
+options for fields 6/7/9 (empty option lists → free text). Echo owns
+labels (Coach titles used until Echo replaces them). One brand hue
+`#00B478` for next action / live state only. Host stays open (OQ-1).
+No Juliet seeds. Spec PR 3 remains spec-only.
+
+**Does not:** lock fattail.ai vs Labs vs proxy; rewrite `/signup`; touch
+Strategy Lab / Tradier; add sales fields; ticket Ernie, Conor, CEO, or CTO.
+
+**Ship path:** `docs/Native-Apply-Ship-Path.md`. After deploy,
+`labs.fattail.ai/apply` exists. `https://fattail.ai/apply` stays 404
+until Foxtrot routes it.
+
+---
+
+## 2026-08-19 — DL-450 Native Apply Form Spec v0.1 filed
+
+**Decision:** File Coach / chair Phase 0 as the apply law:
+
+- Path: `Specs/FatTail-Native-Apply-Form-Spec-v0.1.md`
+- Public URL intent: `https://fattail.ai/apply`
+- Job: write Cole’s seven AC handoff fields so Shaw can book and Cole can close
+- Writes: AC `fieldValues` on the contact + tag **18 Application Filled**
+- Fail loud; zero silent success; Typeform replaced as the write source
+- lock.md look in-spec (`#00B478`, tokens.css, one column / labels above / 44pt)
+
+**Does not:** treat spec PR 3 as the implementation PR.
+
+---
+
 ## 2026-08-18 — DL-449 Surface HUD left rail, collapsed except detents
 
 **Decision:** All Surface inspect chrome sits in a **left rail** with a

@@ -50,6 +50,8 @@ uvicorn main:app
 | `board.py` | Content backlog / Kanban domain |
 | `packages.py` | Package checklist, freeze, Labs placement |
 | `notify.py` | Admin in-app + optional SMTP notifications |
+| `activecampaign.py` | Waitlist lead sync (`sync_lead()` — never fails the waitlist) |
+| `apply_ac.py` | Native apply write — seven `fieldValues` (ids 3–9) + tag 18; **fails loud** |
 | `routes/*` | HTTP surface by domain |
 | `retrospective_domain.py` | Scope, gather dual report, comparison, habit helpers, entitlement |
 | `retrospective_agent.py` | Local analyze + anchoring validation (R5) |
@@ -153,6 +155,12 @@ content_items (card + cast_id)
 
 Placement plan: JSON in `placement_proposal` (or `lesson_plan` / single-lesson fallback);
 `video_package` supplies per-slug YouTube ids. Re-place rebuilds **draft** only.
+
+### 4.5a Public apply (Cole handoff)
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/api/apply` | Public. Email + Cole keys. Writes AC ids **3–9** and tag **18**. Partner (id 9) required only when 7 is Yes (**DL-455**). **503** if the on-path write or the tag miss. Does **not** call `sync_lead()`. Spec Native Apply v0.1 · **DL-451**. |
 
 ### 4.6 Billing
 
