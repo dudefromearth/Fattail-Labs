@@ -22,7 +22,7 @@ const FALLBACK: SitePage = {
   slug: "labs",
   title: "Apps",
   description_md:
-    "Member practice tools: Journey, Practice Log, Strategy Lab, and more — process over P&L theater.",
+    "Member practice tools: Journey, Practice Log, and more — process over P&L theater.",
   intro_video_id: null,
   intro_video_title: null,
   faq_title: "Apps FAQ",
@@ -74,7 +74,7 @@ export async function generateMetadata(): Promise<Metadata> {
   );
   const description = metaDescriptionFromMd(
     page.description_md,
-    "Member tools: Journey, Practice suite, Strategy Lab, Wiki, and more.",
+    "Member tools: Journey, Practice suite, Wiki, and more.",
   );
   return {
     title: page.title,

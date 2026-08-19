@@ -241,10 +241,6 @@ export default function GuidePage() {
               <li>
                 <strong>Wiki</strong> — the growing map of what we teach.
               </li>
-              <li>
-                <strong>Strategy Lab</strong> — build, curate, Deploy strategies
-                (automated); separate from Practice Campaigns.
-              </li>
             </ul>
 
             <H2 id="practice">Practice suite</H2>
@@ -443,8 +439,8 @@ export default function GuidePage() {
             <ul>
               <li>
                 Library has <strong>Open</strong> and <strong>Archive</strong>{" "}
-                views (completed and ended-early seasons). The Lab archives
-                strategies; Practice archives seasons.
+                views (completed and ended-early seasons). Practice archives
+                seasons.
               </li>
               <li>
                 Lifecycle: <strong>Active</strong> (in force),{" "}
@@ -597,25 +593,6 @@ export default function GuidePage() {
                 to hold onto outside the video.
               </li>
             </ul>
-
-            <H2 id="strategy-lab">Strategy Lab (coming)</H2>
-            <p>
-              <Link href="/app/strategy-lab" className={link}>
-                Strategy Lab
-              </Link>{" "}
-              will be a large surface for developing edges with discipline:{" "}
-              <strong>Build, Test, Run bots — live and paper</strong>, with
-              process gates (most ideas die; survivors earn a campaign). Execution
-              is aimed at <strong>Tradier</strong>; market data stays separate
-              from the broker so you are not paying twice for the same tape.
-            </p>
-            <p>
-              Today the page is an orientation map and courseware backlog. The
-              full workspace (historical tests, live tests, bot runs, paper then
-              live) ships in later waves. Until then, validate edges with
-              Practice, courses, and honest journaling — not with silent
-              automation.
-            </p>
 
             <H2 id="live-sessions">Live sessions</H2>
             <p>
