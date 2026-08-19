@@ -1,4 +1,4 @@
-/** Cole's seven apply keys. Live AC ids 3–9 stay. Echo owns labels. */
+/** Cole's seven apply keys. Live AC ids 3–9 stay. Ernie owns invite wording. */
 
 export const APPLY_HUE = "#00B478";
 
@@ -14,58 +14,96 @@ export const APPLY_KEYS = [
 
 export type ApplyKey = (typeof APPLY_KEYS)[number];
 
-export type ApplyStepId = "email" | ApplyKey;
+export type ApplyStepId = "intro" | "email" | ApplyKey;
 
-export type ApplyControl = "email" | "text" | "textarea" | "yesno";
+export type ApplyControl = "continue" | "email" | "text" | "textarea" | "yesno";
 
 export type ApplyStep = {
   id: ApplyStepId;
-  label: string;
+  ask: string;
+  hint: string;
   fieldId?: "3" | "4" | "5" | "6" | "7" | "8" | "9";
   control: ApplyControl;
 };
 
-/** Coach titles from the spec. Echo may replace wording; do not rename keys. */
+/** AC key → live id. Do not rename keys. Do not invent ids. */
 export const APPLY_FIELDS: {
   key: ApplyKey;
-  label: string;
   fieldId: "3" | "4" | "5" | "6" | "7" | "8" | "9";
 }[] = [
-  { key: "HELL", label: "Hell Island", fieldId: "3" },
-  { key: "HEAVEN", label: "Heaven Island", fieldId: "4" },
-  { key: "MONEY_TIMING", label: "Money/timing", fieldId: "5" },
-  { key: "COACHING_SKU", label: "Coaching SKU", fieldId: "6" },
-  { key: "ELEVEN_AM_ET", label: "Can make 11am ET", fieldId: "7" },
-  { key: "TRIED", label: "What they tried", fieldId: "8" },
-  { key: "PARTNER_SUPPORT", label: "Partner/support", fieldId: "9" },
+  { key: "HELL", fieldId: "3" },
+  { key: "HEAVEN", fieldId: "4" },
+  { key: "MONEY_TIMING", fieldId: "5" },
+  { key: "COACHING_SKU", fieldId: "6" },
+  { key: "ELEVEN_AM_ET", fieldId: "7" },
+  { key: "TRIED", fieldId: "8" },
+  { key: "PARTNER_SUPPORT", fieldId: "9" },
 ];
 
 /**
- * Invite order. Email is plumbing; then Cole's seven.
- * Fields 6 / 7 / 9: no invented dropdowns (empty AC option lists).
- * 7 is an honest yes/no for the Coach title. 6 and 9 stay free text.
+ * Invite order (Ernie 2026-08-19): intro → email → HEAVEN → HELL → the rest.
+ * Fields 6 / 9: free text. Field 7: honest yes/no. No invented dropdowns.
+ * Observer / Activator / Navigator are examples only.
  */
 export const APPLY_STEPS: ApplyStep[] = [
-  { id: "email", label: "Email", control: "email" },
-  { id: "HELL", label: "Hell Island", fieldId: "3", control: "textarea" },
-  { id: "HEAVEN", label: "Heaven Island", fieldId: "4", control: "textarea" },
-  { id: "MONEY_TIMING", label: "Money/timing", fieldId: "5", control: "textarea" },
+  {
+    id: "intro",
+    ask: "This is the FatTail application.",
+    hint: "A few questions, one at a time, so we know if this is a fit. Not a dump of fields.",
+    control: "continue",
+  },
+  {
+    id: "email",
+    ask: "Enter your email (we will never share it).",
+    hint: "",
+    control: "email",
+  },
+  {
+    id: "HEAVEN",
+    ask: "What do you consider your heaven island?",
+    hint: "The life and trading state you want. For example: a defined-risk book you can compound. Calm in the chair. Not hunting win rate.",
+    fieldId: "4",
+    control: "textarea",
+  },
+  {
+    id: "HELL",
+    ask: "What is your hell island?",
+    hint: "The pain. For example: violent equity. Blow-ups. Solving for win rate.",
+    fieldId: "3",
+    control: "textarea",
+  },
+  {
+    id: "MONEY_TIMING",
+    ask: "Can you invest the time and money now?",
+    hint: "An honest yes, a not-yet, or what has to move first.",
+    fieldId: "5",
+    control: "textarea",
+  },
   {
     id: "COACHING_SKU",
-    label: "Coaching SKU",
+    ask: "Which door do you think you want?",
+    hint: "Say it in your words. Observer, Activator, or Navigator are examples — not a menu.",
     fieldId: "6",
     control: "text",
   },
   {
     id: "ELEVEN_AM_ET",
-    label: "Can make 11am ET",
+    ask: "Can you make an 11am ET call?",
+    hint: "A live conversation at that hour.",
     fieldId: "7",
     control: "yesno",
   },
-  { id: "TRIED", label: "What they tried", fieldId: "8", control: "textarea" },
+  {
+    id: "TRIED",
+    ask: "What have you already tried?",
+    hint: "Courses, rooms, a firm, going it alone — whatever is true.",
+    fieldId: "8",
+    control: "textarea",
+  },
   {
     id: "PARTNER_SUPPORT",
-    label: "Partner/support",
+    ask: "Is home on board?",
+    hint: "Partner, family — whether they support you doing this.",
     fieldId: "9",
     control: "textarea",
   },
@@ -103,8 +141,15 @@ export function isEmailValid(value: string): boolean {
 }
 
 export function stepValueValid(step: ApplyStep, value: string): boolean {
+  if (step.control === "continue") return true;
   const v = value.trim();
   if (step.control === "email") return isEmailValid(v);
   if (step.control === "yesno") return v === "yes" || v === "no";
   return v.length > 0;
+}
+
+export function nextLabel(step: ApplyStep, isLast: boolean): string {
+  if (step.control === "continue") return "Continue";
+  if (isLast) return "Submit";
+  return "OK";
 }

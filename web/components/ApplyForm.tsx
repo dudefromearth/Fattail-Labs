@@ -7,6 +7,7 @@ import {
   APPLY_KEYS,
   APPLY_STEPS,
   nextApplyStep,
+  nextLabel,
   prevApplyStep,
   stepById,
   stepValueValid,
@@ -36,6 +37,21 @@ function valuesOf(
   return { email, ...answers };
 }
 
+function StepAsk({ step }: { step: ApplyStep }) {
+  if (step.control === "yesno" || step.control === "continue") {
+    return <h1 className="apply-question">{step.ask}</h1>;
+  }
+  return (
+    <h1 className="apply-question">
+      <label htmlFor={`apply-${step.id}`}>{step.ask}</label>
+    </h1>
+  );
+}
+
+function StepHint({ step }: { step: ApplyStep }) {
+  return <p className="apply-hint">{step.hint}</p>;
+}
+
 function StepBody({
   step,
   value,
@@ -53,6 +69,7 @@ function StepBody({
   const firstChoiceRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
+    if (step.control === "continue") return;
     const node =
       step.control === "yesno" ? firstChoiceRef.current : inputRef.current;
     if (!node) return;
@@ -69,14 +86,24 @@ function StepBody({
     if (stepValueValid(step, value)) onAccept();
   }
 
-  const described = error ? `apply-${step.id}-error` : undefined;
+  const described = [
+    step.hint ? `apply-${step.id}-hint` : "",
+    error ? `apply-${step.id}-error` : "",
+  ]
+    .filter(Boolean)
+    .join(" ") || undefined;
+
+  if (step.control === "continue") {
+    return <div className="apply-field-spacer" aria-hidden />;
+  }
 
   if (step.control === "yesno") {
     return (
       <div
         className="apply-yesno"
         role="group"
-        aria-label={step.label}
+        aria-label={step.ask}
+        aria-describedby={described}
         onKeyDown={onKeyDown}
       >
         {(["yes", "no"] as const).map((choice, i) => (
@@ -133,21 +160,25 @@ function StepBody({
   );
 }
 
-function SlotPair({
+function SlotTriple({
   stageKey,
   leaving,
   liveLayer,
   question,
+  hint,
   field,
   leavingQuestion,
+  leavingHint,
   leavingField,
 }: {
   stageKey: string;
   leaving: boolean;
   liveLayer: Layer;
   question: React.ReactNode;
+  hint: React.ReactNode;
   field: React.ReactNode;
   leavingQuestion: React.ReactNode;
+  leavingHint: React.ReactNode;
   leavingField: React.ReactNode;
 }) {
   return (
@@ -163,6 +194,19 @@ function SlotPair({
           className={`apply-slot-layer apply-slot-layer--${liveLayer}`}
         >
           {question}
+        </div>
+      </div>
+      <div className="apply-slot apply-slot--hint">
+        {leaving ? (
+          <div className="apply-slot-layer apply-slot-layer--out" aria-hidden>
+            {leavingHint}
+          </div>
+        ) : null}
+        <div
+          key={`h-${stageKey}`}
+          className={`apply-slot-layer apply-slot-layer--${liveLayer}`}
+        >
+          {hint}
         </div>
       </div>
       <div className="apply-slot apply-slot--field">
@@ -183,7 +227,7 @@ function SlotPair({
 }
 
 export default function ApplyForm() {
-  const [stepId, setStepId] = useState<ApplyStepId>("email");
+  const [stepId, setStepId] = useState<ApplyStepId>("intro");
   const [leavingId, setLeavingId] = useState<ApplyStepId | null>(null);
   const [liveLayer, setLiveLayer] = useState<Layer>("present");
   const [email, setEmail] = useState("");
@@ -206,6 +250,7 @@ export default function ApplyForm() {
   }, []);
 
   function valueOf(id: ApplyStepId): string {
+    if (id === "intro") return "";
     return id === "email" ? email : answers[id];
   }
 
@@ -213,11 +258,13 @@ export default function ApplyForm() {
     id: ApplyStepId,
     next: string,
   ): { email: string; answers: Record<ApplyKey, string> } {
+    if (id === "intro") return { email, answers };
     if (id === "email") return { email: next, answers };
     return { email, answers: { ...answers, [id]: next } };
   }
 
   function setValue(id: ApplyStepId, next: string) {
+    if (id === "intro") return;
     if (id === "email") setEmail(next);
     else setAnswers((prev) => ({ ...prev, [id]: next }));
     setError(null);
@@ -236,7 +283,10 @@ export default function ApplyForm() {
     }, SWAP_MS);
   }
 
-  async function writeApply(nextEmail: string, nextAnswers: Record<ApplyKey, string>) {
+  async function writeApply(
+    nextEmail: string,
+    nextAnswers: Record<ApplyKey, string>,
+  ) {
     setBusy(true);
     setFormError(null);
     try {
@@ -303,19 +353,20 @@ export default function ApplyForm() {
   const liveQuestion = done ? (
     <h1 className="apply-received">Application received.</h1>
   ) : (
-    <h1 className="apply-question">
-      {step.control === "yesno" ? (
-        step.label
-      ) : (
-        <label htmlFor={`apply-${step.id}`}>{step.label}</label>
-      )}
-    </h1>
+    <StepAsk step={step} />
+  );
+
+  const liveHint = done ? (
+    <p className="apply-hint">The desk can book from here.</p>
+  ) : (
+    <p className="apply-hint" id={`apply-${step.id}-hint`}>
+      {step.hint}
+    </p>
   );
 
   const liveField = done ? (
     <p className="apply-received-detail">
-      The seven answers and the desk tag are on the contact. The desk can book
-      from here.
+      The seven answers and the desk tag are on the contact.
     </p>
   ) : (
     <StepBody
@@ -328,11 +379,12 @@ export default function ApplyForm() {
   );
 
   const leavingStep = leavingId ? stepById(leavingId) : null;
-  const leavingQuestion = leavingStep ? (
-    <p className="apply-question">{leavingStep.label}</p>
-  ) : null;
+  const leavingQuestion = leavingStep ? <StepAsk step={leavingStep} /> : null;
+  const leavingHint = leavingStep ? <StepHint step={leavingStep} /> : null;
   const leavingField = leavingStep ? (
-    leavingStep.control === "yesno" ? (
+    leavingStep.control === "continue" ? (
+      <div className="apply-field-spacer" />
+    ) : leavingStep.control === "yesno" ? (
       <div className="apply-yesno">
         <span className="apply-choice" aria-hidden>
           Yes
@@ -368,13 +420,15 @@ export default function ApplyForm() {
       </header>
 
       <div className="apply-stage">
-        <SlotPair
+        <SlotTriple
           stageKey={done ? "received" : stepId}
           leaving={leavingId !== null}
           liveLayer={liveLayer}
           question={liveQuestion}
+          hint={liveHint}
           field={liveField}
           leavingQuestion={leavingQuestion}
+          leavingHint={leavingHint}
           leavingField={leavingField}
         />
         <p
@@ -395,7 +449,7 @@ export default function ApplyForm() {
             disabled={busy}
             onClick={() => accept()}
           >
-            {busy ? "Writing…" : isLast ? "Submit" : "OK"}
+            {busy ? "Writing…" : nextLabel(step, isLast)}
           </button>
           {index > 0 ? (
             <button type="button" className="apply-back" onClick={back}>

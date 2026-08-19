@@ -99,12 +99,17 @@
 }
 
 .apply-slot--question {
-  height: 5.75rem;
+  height: 6.75rem;
+}
+
+.apply-slot--hint {
+  height: 4.5rem;
+  margin-top: 0.75rem;
 }
 
 .apply-slot--field {
-  height: 9.5rem;
-  margin-top: 1.25rem;
+  height: 8.25rem;
+  margin-top: 1rem;
 }
 
 .apply-slot-layer {
@@ -135,11 +140,23 @@
 
 .apply-question {
   margin: 0;
-  font-size: clamp(1.75rem, 7vw, 2.5rem);
+  font-size: clamp(1.5rem, 6vw, 2.25rem);
   font-weight: 600;
   line-height: 1.15;
   letter-spacing: -0.03em;
   color: var(--color-label);
+}
+
+.apply-hint {
+  margin: 0;
+  font-size: clamp(0.9375rem, 2.8vw, 1.0625rem);
+  line-height: 1.35;
+  color: var(--color-label-secondary);
+}
+
+.apply-field-spacer {
+  width: 100%;
+  height: 100%;
 }
 
 .apply-field,
@@ -294,10 +311,14 @@
 
 @media (max-width: 40rem) {
   .apply-slot--question {
-    height: 6.25rem;
+    height: 6.5rem;
+  }
+
+  .apply-slot--hint {
+    height: 5rem;
   }
 
   .apply-slot--field {
-    height: 8.75rem;
+    height: 7.5rem;
   }
 }

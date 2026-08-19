@@ -4,6 +4,34 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-453 /apply invite copy and order (Ernie)
+
+**Decision:** Ernie lock on invite wording and order. Desk titles
+(Email, Hell Island, Coaching SKU) are not the invite. Path is a
+conversation:
+
+1. Intro — FatTail application; a few questions, one at a time, so we
+   know if this is a fit. Not a dump of fields.
+2. Email — “Enter your email (we will never share it).”
+3. **HEAVEN before HELL** — “What do you consider your heaven island?”
+   plus 2–3 example answers (defined-risk book, calm in the chair, not
+   hunting win rate).
+4. Hell — what their hell island is, plus examples (violent equity,
+   blow-ups, solving for win rate).
+5. Same shape for the rest of Cole’s seven: spoken question + hint of
+   what an answer sounds like + big field.
+
+AC keys and live ids **3–9** stay. Invite order is email → HEAVEN →
+HELL → MONEY_TIMING → COACHING_SKU → ELEVEN_AM_ET → TRIED →
+PARTNER_SUPPORT. All seven still write. COACHING_SKU stays free text
+(Observer / Activator / Navigator as examples only). Echo owns official
+labels later; Ernie owns this invite wording now.
+
+**Does not:** change the `POST /api/apply` write; invent dropdowns;
+embed Typeform.
+
+---
+
 ## 2026-08-19 — DL-452 /apply is one question at a time; two motion beats; eyes stay put
 
 **Decision:** Ernie walked the all-fields `/apply` on StudioTwo and rejected
