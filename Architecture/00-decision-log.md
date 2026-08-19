@@ -4,6 +4,22 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-450 Native Apply Form Spec v0.1 DRAFT filed
+
+**Decision:** File Coach / chair Phase 0 as a **DRAFT** spec only:
+
+- Path: `Specs/FatTail-Native-Apply-Form-Spec-v0.1.md` (**DRAFT** — not BUILD AUTHORITY, not ACCEPTED)
+- Public URL intent: `https://fattail.ai/apply`
+- Job: write Cole’s seven ActiveCampaign handoff fields (`HELL`, `HEAVEN`, `MONEY_TIMING`, `COACHING_SKU`, `ELEVEN_AM_ET`, `TRIED`, `PARTNER_SUPPORT`) so Shaw can book and Cole can close
+- Writes: AC `fieldValues` on the contact; fail loud; zero silent success
+- Typeform (`go.0-dte.com/application`) to be replaced as the **write source** after GO
+
+**Does not:** lock host (WordPress vs Labs vs proxy), authorize a form implementation, rewrite Labs `/signup`, touch Strategy Lab / Tradier, add sales fields, or treat this entry as Coach BUILD GO.
+
+**Rationale:** The desk cannot set until the seven fields (Bob created 2026-08-19; zero writes today) are written. Spec-first so India can review law vs opinion before any code.
+
+---
+
 ## 2026-08-18 — DL-449 Surface HUD left rail, collapsed except detents
 
 **Decision:** All Surface inspect chrome sits in a **left rail** with a
