@@ -103,6 +103,7 @@ Pattern: **Stripe and AI are optional at boot**; they fail loud when used withou
 | GET | `/api/attachments/{id}/download` | Role/free gate |
 | GET | `/api/live/sessions` | Materialized schedule |
 | GET | `/api/live/sessions/{id}/ics` | Calendar export |
+| POST | `/api/apply` | Public native apply → AC fieldValues 3–9 + tag 18; fail loud; CORS fattail.ai. `routes/apply.py` · `activecampaign.sync_apply`. Spec Native Apply v0.2 · **DL-450**. |
 
 ### 4.3 Member
 

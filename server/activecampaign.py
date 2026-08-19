@@ -1,18 +1,21 @@
-"""ActiveCampaign lead sync — push free waitlist signups to AC as contacts
-tagged "Labs Lead".
+"""ActiveCampaign client — waitlist lead sync + native apply write.
 
-Optional integration, modelled on notify.py (SMTP):
+Waitlist (`sync_lead`):
+  Optional, modelled on notify.py (SMTP):
   - Absent config (LABS_AC_API_URL / LABS_AC_API_TOKEN unset) => disabled;
     sync_lead() returns {"status": "skipped"} and the waitlist still works.
   - Half-configured, or LABS_AC_REQUIRED=1 with no config => fail loud (ACError),
     surfaced as {"status": "failed"} — never raised to the request.
   - sync_lead() NEVER raises: the waitlist write must not fail on AC problems.
+  Scope: FREE leads only. Purchasers are WooCommerce-side.
 
-Scope (v1): FREE leads only. Purchasers are handled WooCommerce-side by the
-WordPress membership-auto-upgrade plugin; Labs does not tag customers here.
+Apply (`sync_apply`):
+  Fail loud. Raises ACError. Unconfigured is an error — never "skipped".
+  Writes Cole's seven fieldValues (IDs 3–9) and tag 18 Application Filled.
+  Spec: FatTail-Native-Apply-Form-Spec-v0.2.md · DL-450.
 
 Account: shared FatTail / 0-DTE ActiveCampaign (e.g. https://0dte.api-us1.com).
-Spec: FatTail-Labs-ActiveCampaign-Lead-Sync-Spec-v1.0.md
+Lead spec: FatTail-Labs-ActiveCampaign-Lead-Sync-Spec-v1.0.md
 """
 
 from __future__ import annotations
@@ -26,6 +29,33 @@ log = logging.getLogger("labs.activecampaign")
 
 DEFAULT_LEAD_TAG = "Labs Lead"
 DEFAULT_TIMEOUT_SECONDS = 15
+
+# Cole handoff fields (Bob 2026-08-19). Do not rename. Do not invent IDs.
+# Coach GO: 3 HELL, 4 HEAVEN, 5 MONEY_TIMING, 6 COACHING_SKU,
+# 7 ELEVEN_AM_ET, 8 TRIED, 9 PARTNER_SUPPORT.
+APPLY_FIELD_IDS: dict[str, str] = {
+    "hell": "3",
+    "heaven": "4",
+    "money_timing": "5",
+    "coaching_sku": "6",
+    "eleven_am_et": "7",
+    "tried": "8",
+    "partner_support": "9",
+}
+APPLY_FIELD_KEYS: tuple[str, ...] = tuple(APPLY_FIELD_IDS.keys())
+APPLY_TAG_ID = "18"  # Application Filled — write by id, do not create
+APPLY_TAG_NAME = "Application Filled"
+
+# Live AC 2026-08-19: fields 6, 7, 9 are dropdowns with empty option arrays.
+# Do not create new AC fields or option rows. Write these exact strings.
+APPLY_SKU_VALUES: tuple[str, ...] = (
+    "Observer $17/wk × 6",
+    "Activator $97/mo",
+    "Navigator $267/mo",
+    "Annual $1,997",
+)
+APPLY_YES_NO: tuple[str, ...] = ("Yes", "No")
+APPLY_YES_NO_KEYS: frozenset[str] = frozenset({"eleven_am_et", "partner_support"})
 
 
 class ACError(Exception):
@@ -201,3 +231,94 @@ def sync_lead(
         return {"status": "failed", "error": str(exc)[:512]}
 
     return {"status": "synced", "contact_id": contact_id, "tag_id": tag_id}
+
+
+def _sync_contact_with_fields(cfg: dict, email: str, answers: dict[str, str]) -> str:
+    """Upsert contact by email and write Cole's seven fieldValues. Return AC id."""
+    field_values = [
+        {"field": APPLY_FIELD_IDS[key], "value": answers[key]}
+        for key in APPLY_FIELD_KEYS
+    ]
+    data = _request(
+        cfg,
+        "POST",
+        "/contact/sync",
+        json={"contact": {"email": email, "fieldValues": field_values}},
+    )
+    contact = data.get("contact") or {}
+    cid = contact.get("id")
+    if not cid:
+        raise ACError("AC contact/sync response missing contact id")
+    return str(cid)
+
+
+def _contact_field_values(cfg: dict, contact_id: str) -> dict[str, str]:
+    """Read-back map of field id → stripped value for APPLY-5 evidence."""
+    data = _request(cfg, "GET", f"/contacts/{contact_id}/fieldValues")
+    out: dict[str, str] = {}
+    for fv in data.get("fieldValues") or []:
+        fid = str(fv.get("field") or "").strip()
+        if not fid:
+            continue
+        out[fid] = str(fv.get("value") or "").strip()
+    return out
+
+
+def _require_apply_fields(held: dict[str, str]) -> None:
+    """Fail loud if any of the seven fieldValues is missing or blank."""
+    missing: list[str] = []
+    for key, fid in APPLY_FIELD_IDS.items():
+        if not (held.get(fid) or "").strip():
+            missing.append(f"{fid}:{key}")
+    if missing:
+        raise ACError(
+            "AC fieldValues empty after write: " + ", ".join(missing)
+        )
+
+
+def sync_apply(email: str, answers: dict[str, str]) -> dict:
+    """Write Cole's seven AC fields + tag 18. Raises ACError. Never silent.
+
+    Unlike sync_lead, unconfigured / half-configured / API miss / empty
+    fieldValues are errors. The public apply route must not return success.
+
+    Returns {"status": "synced", "contact_id": ..., "tag_id": "18"}.
+    """
+    email = (email or "").strip().lower()
+    if not email:
+        raise ACError("empty email")
+
+    cleaned: dict[str, str] = {}
+    missing: list[str] = []
+    for key in APPLY_FIELD_KEYS:
+        val = str((answers or {}).get(key) or "").strip()
+        if not val:
+            missing.append(key)
+            continue
+        if key == "coaching_sku" and val not in APPLY_SKU_VALUES:
+            raise ACError(f"invalid coaching_sku {val!r}")
+        if key in APPLY_YES_NO_KEYS:
+            mapped = {v.lower(): v for v in APPLY_YES_NO}.get(val.lower())
+            if mapped is None:
+                raise ACError(f"invalid {key} {val!r} (Yes/No)")
+            val = mapped
+        cleaned[key] = val
+    if missing:
+        raise ACError("empty apply fields: " + ", ".join(missing))
+
+    cfg = _ac_config()
+    if cfg is None:
+        raise ACError(
+            "ActiveCampaign is not configured: set LABS_AC_API_URL and "
+            "LABS_AC_API_TOKEN"
+        )
+
+    contact_id = _sync_contact_with_fields(cfg, email, cleaned)
+    held = _contact_field_values(cfg, contact_id)
+    _require_apply_fields(held)
+    _add_contact_tag(cfg, contact_id, APPLY_TAG_ID)
+    return {
+        "status": "synced",
+        "contact_id": contact_id,
+        "tag_id": APPLY_TAG_ID,
+    }
