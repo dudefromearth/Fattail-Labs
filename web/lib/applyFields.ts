@@ -16,6 +16,8 @@ export type ApplyKey = (typeof APPLY_KEYS)[number];
 
 export type ApplyStepId = "intro" | "email" | ApplyKey;
 
+export type ApplyScreenId = ApplyStepId | "review";
+
 export type ApplyControl = "continue" | "email" | "text" | "textarea" | "yesno";
 
 export type ApplyStep = {
@@ -109,24 +111,147 @@ export const APPLY_STEPS: ApplyStep[] = [
   },
 ];
 
-/**
- * Next step after an accepted answer. `accepted` is the seam so the path
- * can depend on the answer. Law: do not skip a Cole key — all seven still write.
- */
-export function nextApplyStep(
-  current: ApplyStepId,
-  _accepted: Record<string, string>,
-): ApplyStepId | "submit" {
-  const i = APPLY_STEPS.findIndex((s) => s.id === current);
-  if (i < 0) return "submit";
-  const nxt = APPLY_STEPS[i + 1];
-  return nxt ? nxt.id : "submit";
+/** Field ids 6 / 7 / 9 — a change recomputes the remaining path. */
+export const BRANCH_KEYS: ApplyKey[] = [
+  "COACHING_SKU",
+  "ELEVEN_AM_ET",
+  "PARTNER_SUPPORT",
+];
+
+export function isBranchKey(id: ApplyStepId): boolean {
+  return (BRANCH_KEYS as string[]).includes(id);
 }
 
-export function prevApplyStep(current: ApplyStepId): ApplyStepId | null {
-  const i = APPLY_STEPS.findIndex((s) => s.id === current);
+export function isElevenNo(value: string): boolean {
+  return value.trim().toLowerCase() === "no";
+}
+
+/**
+ * Live path from answers. Branch keys 6/7/9 are the SoR for what stays
+ * on the path. Steps not returned are dead — Review skips them and
+ * recompute drops their answers.
+ *
+ * - 6 (COACHING_SKU): consulted on every accept. Free text — we do not
+ *   parse Observer / Activator / Navigator as a menu, so 6 does not
+ *   skip later questions by itself.
+ * - 7 (ELEVEN_AM_ET): No → PARTNER_SUPPORT is a dead branch. Yes or
+ *   unanswered → home/partner stays on the path.
+ * - 9 (PARTNER_SUPPORT): last live field; recompute still runs.
+ */
+export function computePath(answers: Record<string, string>): ApplyStepId[] {
+  // Branch SoR is always 6 / 7 / 9. 6 is free text (no invented menu skip).
+  // 9 is last. 7 No drops PARTNER_SUPPORT.
+  const sku = (answers.COACHING_SKU || "").trim();
+  const eleven = (answers.ELEVEN_AM_ET || "").trim();
+  const partner = (answers.PARTNER_SUPPORT || "").trim();
+
+  const path: ApplyStepId[] = [
+    "intro",
+    "email",
+    "HEAVEN",
+    "HELL",
+    "MONEY_TIMING",
+    "COACHING_SKU",
+    "ELEVEN_AM_ET",
+    "TRIED",
+  ];
+
+  if (sku !== undefined && partner !== undefined && !isElevenNo(eleven)) {
+    path.push("PARTNER_SUPPORT");
+  }
+  return path;
+}
+
+export function liveSteps(answers: Record<string, string>): ApplyStepId[] {
+  return computePath(answers).filter((id) => id !== "intro");
+}
+
+export function emptyAnswers(): Record<ApplyKey, string> {
+  return {
+    HELL: "",
+    HEAVEN: "",
+    MONEY_TIMING: "",
+    COACHING_SKU: "",
+    ELEVEN_AM_ET: "",
+    TRIED: "",
+    PARTNER_SUPPORT: "",
+  };
+}
+
+/** Recompute path; drop answers that no longer apply. */
+export function recomputePath(
+  email: string,
+  answers: Record<ApplyKey, string>,
+): {
+  email: string;
+  answers: Record<ApplyKey, string>;
+  path: ApplyStepId[];
+} {
+  const path = computePath({ email, ...answers });
+  const next = emptyAnswers();
+  for (const key of APPLY_KEYS) {
+    if (path.includes(key)) next[key] = answers[key];
+  }
+  return { email, answers: next, path };
+}
+
+export function pruneAsked(
+  asked: ApplyStepId[],
+  path: ApplyStepId[],
+): ApplyStepId[] {
+  return asked.filter((id) => path.includes(id));
+}
+
+export function unansweredOnPath(
+  email: string,
+  answers: Record<ApplyKey, string>,
+): ApplyStepId[] {
+  const path = computePath({ email, ...answers });
+  return path.filter((id) => {
+    if (id === "intro") return false;
+    const step = stepById(id);
+    const value = id === "email" ? email : answers[id];
+    return !stepValueValid(step, value || "");
+  });
+}
+
+/** Next live question after `current`, or Review. Never auto-submits. */
+export function nextApplyStep(
+  current: ApplyStepId,
+  accepted: Record<string, string>,
+): ApplyStepId | "review" {
+  const path = computePath(accepted);
+  const i = path.indexOf(current);
+  if (i < 0 || i >= path.length - 1) return "review";
+  return path[i + 1];
+}
+
+export function prevApplyStep(
+  current: ApplyStepId,
+  accepted: Record<string, string>,
+): ApplyStepId | null {
+  const path = computePath(accepted);
+  const i = path.indexOf(current);
   if (i <= 0) return null;
-  return APPLY_STEPS[i - 1].id;
+  return path[i - 1];
+}
+
+export function reviewRows(
+  asked: ApplyStepId[],
+  accepted: Record<string, string>,
+): ApplyStep[] {
+  const path = computePath(accepted);
+  return path
+    .filter((id) => id !== "intro" && asked.includes(id))
+    .map((id) => stepById(id));
+}
+
+export function displayAnswer(step: ApplyStep, value: string): string {
+  if (step.control === "yesno") {
+    if (value === "yes") return "Yes";
+    if (value === "no") return "No";
+  }
+  return value.trim();
 }
 
 export function stepById(id: ApplyStepId): ApplyStep {
@@ -148,8 +273,18 @@ export function stepValueValid(step: ApplyStep, value: string): boolean {
   return v.length > 0;
 }
 
-export function nextLabel(step: ApplyStep, isLast: boolean): string {
+/** Question accept label. Submit lives on Review only. */
+export function nextLabel(step: ApplyStep): string {
   if (step.control === "continue") return "Continue";
-  if (isLast) return "Submit";
   return "OK";
+}
+
+export function submitPayload(
+  email: string,
+  answers: Record<ApplyKey, string>,
+): Record<string, string> {
+  const { answers: next } = recomputePath(email, answers);
+  const body: Record<string, string> = { email: email.trim() };
+  for (const key of APPLY_KEYS) body[key] = next[key].trim();
+  return body;
 }

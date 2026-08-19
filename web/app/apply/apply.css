@@ -112,6 +112,13 @@
   margin-top: 1rem;
 }
 
+/* Review: same top; the slot grows down. List scrolls inside. */
+.apply-slot--field-review {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 8.25rem;
+}
+
 .apply-slot-layer {
   position: absolute;
   inset: 0;
@@ -266,6 +273,56 @@
   font-size: var(--text-callout);
 }
 
+.apply-review-list {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  list-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.apply-review-line {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.85rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-separator);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+li.apply-review-line {
+  cursor: default;
+}
+
+button.apply-review-line {
+  min-height: var(--hit-min);
+}
+
+.apply-review-q {
+  display: block;
+  font-size: clamp(1.125rem, 3.6vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--color-label);
+}
+
+.apply-review-a {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: clamp(1rem, 3.2vw, 1.25rem);
+  line-height: 1.3;
+  color: var(--color-label-secondary);
+  white-space: pre-wrap;
+}
+
 .apply-received {
   margin: 0;
   font-size: clamp(1.75rem, 7vw, 2.5rem);
@@ -326,5 +383,9 @@
 
   .apply-slot--field {
     height: 7.5rem;
+  }
+
+  .apply-slot--field-review {
+    min-height: 7.5rem;
   }
 }

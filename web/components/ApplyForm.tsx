@@ -4,29 +4,26 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
   APPLY_HUE,
-  APPLY_KEYS,
-  APPLY_STEPS,
+  displayAnswer,
+  emptyAnswers,
+  liveSteps,
   nextApplyStep,
   nextLabel,
   prevApplyStep,
+  pruneAsked,
+  recomputePath,
+  reviewRows,
   stepById,
   stepValueValid,
+  submitPayload,
+  unansweredOnPath,
   type ApplyKey,
+  type ApplyScreenId,
   type ApplyStep,
   type ApplyStepId,
 } from "@/lib/applyFields";
 
 type Layer = "present" | "in" | "out" | "settled";
-
-const EMPTY: Record<ApplyKey, string> = {
-  HELL: "",
-  HEAVEN: "",
-  MONEY_TIMING: "",
-  COACHING_SKU: "",
-  ELEVEN_AM_ET: "",
-  TRIED: "",
-  PARTNER_SUPPORT: "",
-};
 
 const SWAP_MS = 400;
 
@@ -35,6 +32,10 @@ function valuesOf(
   answers: Record<ApplyKey, string>,
 ): Record<string, string> {
   return { email, ...answers };
+}
+
+function isQuestionScreen(screen: ApplyScreenId): screen is ApplyStepId {
+  return screen !== "review";
 }
 
 function StepAsk({ step }: { step: ApplyStep }) {
@@ -52,7 +53,7 @@ function StepHint({ step }: { step: ApplyStep }) {
   return <p className="apply-hint">{step.hint}</p>;
 }
 
-function isAcceptKey(e: React.KeyboardEvent, control: ApplyStep["control"]) {
+function isAcceptKey(e: React.KeyboardEvent, control: ApplyStep["control"] | "review") {
   if (e.key === "Tab" && !e.shiftKey) return true;
   if (e.key === "Enter" && !(e.shiftKey && control === "textarea")) return true;
   return false;
@@ -165,10 +166,54 @@ function StepBody({
   );
 }
 
+function ReviewList({
+  rows,
+  email,
+  answers,
+  interactive,
+  onEdit,
+}: {
+  rows: ApplyStep[];
+  email: string;
+  answers: Record<ApplyKey, string>;
+  interactive: boolean;
+  onEdit?: (id: ApplyStepId) => void;
+}) {
+  return (
+    <ul className="apply-review-list">
+      {rows.map((step) => {
+        const raw = step.id === "email" ? email : answers[step.id as ApplyKey];
+        const answer = displayAnswer(step, raw || "");
+        if (!interactive) {
+          return (
+            <li key={step.id} className="apply-review-line">
+              <span className="apply-review-q">{step.ask}</span>
+              <span className="apply-review-a">{answer}</span>
+            </li>
+          );
+        }
+        return (
+          <li key={step.id}>
+            <button
+              type="button"
+              className="apply-review-line"
+              onClick={() => onEdit?.(step.id)}
+            >
+              <span className="apply-review-q">{step.ask}</span>
+              <span className="apply-review-a">{answer || "—"}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function SlotTriple({
   stageKey,
   leaving,
   liveLayer,
+  fieldReview,
   question,
   hint,
   field,
@@ -181,6 +226,7 @@ function SlotTriple({
   stageKey: string;
   leaving: boolean;
   liveLayer: Layer;
+  fieldReview: boolean;
   question: React.ReactNode;
   hint: React.ReactNode;
   field: React.ReactNode;
@@ -218,7 +264,9 @@ function SlotTriple({
           {hint}
         </div>
       </div>
-      <div className="apply-slot apply-slot--field">
+      <div
+        className={`apply-slot apply-slot--field${fieldReview ? " apply-slot--field-review" : ""}`}
+      >
         {leaving ? (
           <div className="apply-slot-layer apply-slot-layer--out" aria-hidden>
             <div className="apply-field-main">{leavingField}</div>
@@ -238,23 +286,25 @@ function SlotTriple({
 }
 
 export default function ApplyForm() {
-  const [stepId, setStepId] = useState<ApplyStepId>("intro");
-  const [leavingId, setLeavingId] = useState<ApplyStepId | null>(null);
+  const [screen, setScreen] = useState<ApplyScreenId>("intro");
+  const [leavingId, setLeavingId] = useState<ApplyScreenId | null>(null);
   const [liveLayer, setLiveLayer] = useState<Layer>("present");
   const [email, setEmail] = useState("");
-  const [answers, setAnswers] = useState<Record<ApplyKey, string>>(EMPTY);
+  const [answers, setAnswers] = useState<Record<ApplyKey, string>>(emptyAnswers);
+  const [asked, setAsked] = useState<ApplyStepId[]>([]);
+  const [fromReview, setFromReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const swapTimer = useRef<number | null>(null);
-
-  const step = stepById(stepId);
-  const index = APPLY_STEPS.findIndex((s) => s.id === stepId);
-  const draft = valuesOf(email, answers);
-  const isLast = nextApplyStep(stepId, draft) === "submit";
-
   const acceptRef = useRef<HTMLButtonElement | null>(null);
+
+  const isReview = screen === "review";
+  const step = isQuestionScreen(screen) ? stepById(screen) : null;
+  const draft = valuesOf(email, answers);
+  const pathLive = liveSteps(draft);
+  const rows = reviewRows(asked, draft);
 
   useEffect(() => {
     return () => {
@@ -263,12 +313,18 @@ export default function ApplyForm() {
   }, []);
 
   useEffect(() => {
-    if (done || step.control !== "continue") return;
+    if (done || isReview || !step || step.id === "intro") return;
+    setAsked((prev) => (prev.includes(step.id) ? prev : [...prev, step.id]));
+  }, [done, isReview, step]);
+
+  useEffect(() => {
+    if (done) return;
+    if (!isReview && step?.control !== "continue") return;
     const t = window.setTimeout(() => {
       acceptRef.current?.focus({ preventScroll: true });
     }, 40);
     return () => window.clearTimeout(t);
-  }, [done, step.control, stepId]);
+  }, [done, isReview, step?.control, screen]);
 
   function valueOf(id: ApplyStepId): string {
     if (id === "intro") return "";
@@ -291,10 +347,10 @@ export default function ApplyForm() {
     setError(null);
   }
 
-  function goTo(next: ApplyStepId) {
+  function goTo(next: ApplyScreenId) {
     if (swapTimer.current) window.clearTimeout(swapTimer.current);
-    setLeavingId(stepId);
-    setStepId(next);
+    setLeavingId(screen);
+    setScreen(next);
     setLiveLayer("in");
     setError(null);
     setFormError(null);
@@ -304,6 +360,17 @@ export default function ApplyForm() {
     }, SWAP_MS);
   }
 
+  function applyRecompute(
+    nextEmail: string,
+    nextAnswers: Record<ApplyKey, string>,
+  ) {
+    const snapped = recomputePath(nextEmail, nextAnswers);
+    setEmail(snapped.email);
+    setAnswers(snapped.answers);
+    setAsked((prev) => pruneAsked(prev, snapped.path));
+    return snapped;
+  }
+
   async function writeApply(
     nextEmail: string,
     nextAnswers: Record<ApplyKey, string>,
@@ -311,8 +378,7 @@ export default function ApplyForm() {
     setBusy(true);
     setFormError(null);
     try {
-      const body: Record<string, string> = { email: nextEmail.trim() };
-      for (const key of APPLY_KEYS) body[key] = nextAnswers[key].trim();
+      const body = submitPayload(nextEmail, nextAnswers);
       const res = await fetch("/api/apply", {
         method: "POST",
         credentials: "same-origin",
@@ -330,7 +396,7 @@ export default function ApplyForm() {
         return;
       }
       if (swapTimer.current) window.clearTimeout(swapTimer.current);
-      setLeavingId(stepId);
+      setLeavingId(screen);
       setDone(true);
       setLiveLayer("in");
       swapTimer.current = window.setTimeout(() => {
@@ -343,10 +409,27 @@ export default function ApplyForm() {
     }
   }
 
+  function acceptReview() {
+    if (busy || done) return;
+    const snapped = applyRecompute(email, answers);
+    const missing = unansweredOnPath(snapped.email, snapped.answers);
+    if (missing.length) {
+      setFromReview(true);
+      goTo(missing[0]);
+      return;
+    }
+    void writeApply(snapped.email, snapped.answers);
+  }
+
   function accept(override?: string) {
     if (busy || done) return;
-    const nextValue = override !== undefined ? override : valueOf(stepId);
-    if (override !== undefined) setValue(stepId, override);
+    if (isReview) {
+      acceptReview();
+      return;
+    }
+    if (!step) return;
+    const nextValue = override !== undefined ? override : valueOf(step.id);
+    if (override !== undefined) setValue(step.id, override);
     if (!stepValueValid(step, nextValue)) {
       setError(
         step.control === "email"
@@ -355,54 +438,109 @@ export default function ApplyForm() {
       );
       return;
     }
-    const snapped = withValue(stepId, nextValue);
-    const next = nextApplyStep(stepId, valuesOf(snapped.email, snapped.answers));
-    if (next === "submit") {
-      void writeApply(snapped.email, snapped.answers);
+    const proposed = withValue(step.id, nextValue);
+    const snapped = applyRecompute(proposed.email, proposed.answers);
+    const accepted = valuesOf(snapped.email, snapped.answers);
+
+    if (fromReview) {
+      const missing = unansweredOnPath(snapped.email, snapped.answers);
+      if (missing.length) {
+        goTo(missing[0]);
+        return;
+      }
+      setFromReview(false);
+      goTo("review");
       return;
     }
+
+    const next = nextApplyStep(step.id, accepted);
     goTo(next);
+  }
+
+  function editFromReview(id: ApplyStepId) {
+    if (busy || done) return;
+    setFromReview(true);
+    goTo(id);
   }
 
   function back() {
     if (busy || done) return;
-    const prev = prevApplyStep(stepId);
+    if (isReview) {
+      const last = [...asked].reverse().find((id) => pathLive.includes(id));
+      if (!last) return;
+      setFromReview(true);
+      goTo(last);
+      return;
+    }
+    if (fromReview) {
+      setFromReview(false);
+      goTo("review");
+      return;
+    }
+    if (!step) return;
+    const prev = prevApplyStep(step.id, draft);
     if (!prev) return;
     goTo(prev);
   }
 
   const liveQuestion = done ? (
     <h1 className="apply-received">Application received.</h1>
+  ) : isReview ? (
+    <h1 className="apply-question">Review</h1>
   ) : (
-    <StepAsk step={step} />
+    <StepAsk step={step!} />
   );
 
   const liveHint = done ? (
     <p className="apply-hint">The desk can book from here.</p>
+  ) : isReview ? (
+    <p className="apply-hint" id="apply-review-hint">
+      Tap a line to change an answer.
+    </p>
   ) : (
-    <p className="apply-hint" id={`apply-${step.id}-hint`}>
-      {step.hint}
+    <p className="apply-hint" id={`apply-${step!.id}-hint`}>
+      {step!.hint}
     </p>
   );
 
   const liveField = done ? (
     <p className="apply-received-detail">
-      The seven answers and the desk tag are on the contact.
+      The answers and the desk tag are on the contact.
     </p>
+  ) : isReview ? (
+    <ReviewList
+      rows={rows}
+      email={email}
+      answers={answers}
+      interactive
+      onEdit={editFromReview}
+    />
   ) : (
     <StepBody
-      step={step}
-      value={valueOf(stepId)}
+      step={step!}
+      value={valueOf(step!.id)}
       error={error}
-      onChange={(v) => setValue(stepId, v)}
+      onChange={(v) => setValue(step!.id, v)}
       onAccept={accept}
     />
   );
 
-  const leavingStep = leavingId ? stepById(leavingId) : null;
-  const leavingQuestion = leavingStep ? <StepAsk step={leavingStep} /> : null;
-  const leavingHint = leavingStep ? <StepHint step={leavingStep} /> : null;
-  const leavingField = leavingStep ? (
+  const leavingIsReview = leavingId === "review";
+  const leavingStep =
+    leavingId && leavingId !== "review" ? stepById(leavingId) : null;
+  const leavingQuestion = leavingIsReview ? (
+    <h1 className="apply-question">Review</h1>
+  ) : leavingStep ? (
+    <StepAsk step={leavingStep} />
+  ) : null;
+  const leavingHint = leavingIsReview ? (
+    <p className="apply-hint">Tap a line to change an answer.</p>
+  ) : leavingStep ? (
+    <StepHint step={leavingStep} />
+  ) : null;
+  const leavingField = leavingIsReview ? (
+    <ReviewList rows={rows} email={email} answers={answers} interactive={false} />
+  ) : leavingStep ? (
     leavingStep.control === "continue" ? (
       <div className="apply-field-spacer" />
     ) : leavingStep.control === "yesno" ? (
@@ -421,8 +559,21 @@ export default function ApplyForm() {
     )
   ) : null;
 
+  const progress = done
+    ? "Done"
+    : isReview
+      ? "Review"
+      : (() => {
+          const pos = pathLive.indexOf(screen as ApplyStepId);
+          return pos >= 0
+            ? `${pos + 1} of ${pathLive.length}`
+            : `${pathLive.length} of ${pathLive.length}`;
+        })();
+
+  const showBack = !done && (isReview || (step && step.id !== "intro"));
+
   return (
-    <div className="apply-root">
+    <div className="apply-root" data-apply-screen={done ? "received" : screen}>
       <header className="apply-chrome">
         <div className="apply-mark">
           <Image
@@ -436,15 +587,16 @@ export default function ApplyForm() {
           <span className="apply-mark-word">fattail</span>
         </div>
         <p className="apply-progress" aria-live="polite">
-          {done ? "Done" : `${index + 1} of ${APPLY_STEPS.length}`}
+          {progress}
         </p>
       </header>
 
       <div className="apply-stage">
         <SlotTriple
-          stageKey={done ? "received" : stepId}
+          stageKey={done ? "received" : screen}
           leaving={leavingId !== null}
           liveLayer={liveLayer}
+          fieldReview={isReview || leavingIsReview}
           question={liveQuestion}
           hint={liveHint}
           field={liveField}
@@ -458,12 +610,12 @@ export default function ApplyForm() {
                 disabled={busy}
                 onClick={() => accept()}
                 onKeyDown={(e) => {
-                  if (!isAcceptKey(e, step.control)) return;
+                  if (!isAcceptKey(e, isReview ? "review" : step!.control)) return;
                   e.preventDefault();
                   accept();
                 }}
               >
-                {busy ? "Writing…" : nextLabel(step, isLast)}
+                {busy ? "Writing…" : isReview ? "Accept" : nextLabel(step!)}
               </button>
             )
           }
@@ -471,21 +623,25 @@ export default function ApplyForm() {
           leavingHint={leavingHint}
           leavingField={leavingField}
           leavingAccept={
-            leavingStep ? (
+            leavingIsReview ? (
               <span className="apply-next" aria-hidden>
-                {nextLabel(leavingStep, false)}
+                Accept
+              </span>
+            ) : leavingStep ? (
+              <span className="apply-next" aria-hidden>
+                {nextLabel(leavingStep)}
               </span>
             ) : null
           }
         />
         <p
-          id={`apply-${step.id}-error`}
+          id={isReview ? "apply-review-error" : `apply-${step?.id ?? "screen"}-error`}
           className="apply-error"
           role={error || formError ? "alert" : undefined}
         >
           {formError || error || ""}
         </p>
-        {!done && index > 0 ? (
+        {showBack ? (
           <button type="button" className="apply-back" onClick={back}>
             Back
           </button>

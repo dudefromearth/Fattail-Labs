@@ -32,11 +32,15 @@ async def submit_apply(request: Request) -> dict:
         raise HTTPException(status_code=422, detail="Valid email required")
 
     answers = {k: body.get(k) for k in APPLY_KEYS}
-    missing = [k for k in APPLY_KEYS if not str(answers.get(k) or "").strip()]
+    eleven = str(answers.get("ELEVEN_AM_ET") or "").strip().lower()
+    required = [k for k in APPLY_KEYS if k != "PARTNER_SUPPORT"]
+    if eleven == "yes":
+        required.append("PARTNER_SUPPORT")
+    missing = [k for k in required if not str(answers.get(k) or "").strip()]
     if missing:
         raise HTTPException(
             status_code=422,
-            detail="All seven answers are required: " + ", ".join(missing),
+            detail="Required answers missing: " + ", ".join(missing),
         )
 
     try:

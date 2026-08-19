@@ -1,8 +1,9 @@
 """Native apply write — Cole's seven ActiveCampaign handoff fields + tag 18.
 
 This is NOT waitlist sync_lead(). Apply submit fails loud if ActiveCampaign
-is unconfigured, if any of the seven fieldValues miss / are empty after
-write, or if tag 18 Application Filled is missing on the contact.
+is unconfigured, if any on-path fieldValues miss / are empty after write,
+or if tag 18 Application Filled is missing on the contact. Partner (id 9)
+is on-path only when 11am ET is Yes.
 
 Live field ids 3–9 stay (do not invent ids). Tag 18 stays (desk routing).
 Spec: FatTail-Native-Apply-Form-Spec-v0.1.md · APPLY-2–5 · APPLY-10
@@ -49,10 +50,17 @@ def _normalize_answers(answers: dict | None) -> dict[str, str]:
     for key in APPLY_KEYS:
         raw = src.get(key)
         value = "" if raw is None else str(raw).strip()
+        out[key] = value
+        if key == "PARTNER_SUPPORT":
+            continue
         if not value:
             missing.append(key)
-        else:
-            out[key] = value
+    eleven = out.get("ELEVEN_AM_ET", "").strip().lower()
+    if eleven == "yes" and not out.get("PARTNER_SUPPORT"):
+        missing.append("PARTNER_SUPPORT")
+    if eleven == "no":
+        # Dead branch — do not keep a stale home/partner write.
+        out["PARTNER_SUPPORT"] = ""
     if missing:
         raise ACError("empty apply field(s): " + ", ".join(missing))
     extra = [k for k in src if k not in APPLY_KEYS and str(k).strip()]
@@ -101,10 +109,12 @@ def _contact_has_tag(cfg: dict, contact_id: str, tag_id: str) -> bool:
     return False
 
 
-def _verify_seven(written: dict[str, str]) -> list[str]:
-    """Law is non-empty on all seven (APPLY-5). Do not invent a value match."""
+def _verify_written(values: dict[str, str], written: dict[str, str]) -> list[str]:
+    """Law is non-empty on every on-path field. Dead-branch keys may be empty."""
     misses: list[str] = []
     for key, fid in APPLY_FIELDS:
+        if not (values.get(key) or "").strip():
+            continue
         got = (written.get(fid) or "").strip()
         if not got:
             misses.append(f"{key}(id {fid}) empty")
@@ -128,7 +138,7 @@ def write_application(email: str, answers: dict | None) -> dict:
     _add_contact_tag(cfg, contact_id, APPLY_TAG_ID)
 
     written = _read_field_values(cfg, contact_id)
-    field_misses = _verify_seven(written)
+    field_misses = _verify_written(values, written)
     if field_misses:
         raise ACError("apply fieldValues miss after write: " + "; ".join(field_misses))
     if not _contact_has_tag(cfg, contact_id, APPLY_TAG_ID):

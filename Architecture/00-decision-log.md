@@ -4,6 +4,34 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-455 /apply Review before AC submit
+
+**Decision:** Ernie lock 2026-08-19. After the last **live** question on
+that path — not after email, not auto-submit — the invite animates into
+a **Review** screen in the same eye-lock slot (same two-beat motion).
+Review lists every question they were asked, in order, with the answer
+under it. Intro is omitted. Dead-branch questions they never saw are
+omitted.
+
+Each line is tappable. Tapping opens that question again in the same
+slot. They change the answer, accept it the same way (click / tap /
+Enter / Tab), then land back on Review with the new answer shown.
+
+Changing a path key (**6 / 7 / 9**: `COACHING_SKU`, `ELEVEN_AM_ET`,
+`PARTNER_SUPPORT`) recomputes the remaining path. Answers that no
+longer apply are dropped. New questions that appear are asked one at a
+time in the same slot, then Review.
+
+Current skip: **ELEVEN_AM_ET = No** makes `PARTNER_SUPPORT` a dead
+branch. 6 is free text (no invented membership menu). 9 is last.
+`POST /api/apply` runs only from Review **Accept**. Partner is required
+on the write only when 7 is Yes.
+
+**Does not:** auto-submit on the last question; leave Review; add a
+second route; invent dropdowns for 6/7/9; merge; MiniTwo; fattail.ai.
+
+---
+
 ## 2026-08-19 — DL-454 /apply accept sits next to the field
 
 **Decision:** Ernie lock on the accept control. Continue / OK / Submit
