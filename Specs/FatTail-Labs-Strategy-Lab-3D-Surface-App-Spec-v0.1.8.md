@@ -531,6 +531,9 @@ trick.
 
 - A playhead \(\tau^\*\) lives in the current window.
 - Default \(\tau^\*\) = window start (live: **now**).
+- The Time slider is **elapsed along the box** (0 = Now wall, 1 =
+  Expiry wall). Right end is expiry. It must not hit the Expiry wall
+  before the thumb is at the right.
 - The member scrubs (slider), steps (keys / buttons), and may later Play.
 - Walking moves the **Now** face / spot slice / readouts to \(\tau^\*\).
 - **Live / What-if:** IVs stay exact/locked from the current bind. Walking \(\tau^*\)

@@ -41,8 +41,17 @@ export function sliderToTau(
   tauNow: number,
   tauExpiry: number,
 ): number {
-  const u = Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0;
+  const u = clampUnit(t);
   return tauNow - u * (tauNow - tauExpiry);
+}
+
+/** Box Z for the Time slider. 0 = Now wall (+1), 1 = Expiry wall (−1). */
+export function elapsedToBoxZ(elapsed: number): number {
+  return 1 - 2 * clampUnit(elapsed);
+}
+
+function clampUnit(t: number): number {
+  return Number.isFinite(t) ? Math.min(1, Math.max(0, t)) : 0;
 }
 
 export function isTimeAltered(

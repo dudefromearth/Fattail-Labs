@@ -22,6 +22,7 @@ import {
 import type { ValueWindow } from "../surfaceAutofit";
 import { surfaceFillEnabled, type SurfaceDrawStyle } from "./style";
 import { clampRelief, RELIEF_DEFAULT, surfaceReliefFromHeights } from "../surfaceRelief";
+import { elapsedToBoxZ } from "../surfaceInspect";
 import { timeToBoxZ } from "../surfaceCandles";
 import {
   formatExpiryClock,
@@ -60,6 +61,8 @@ export type SurfaceSceneHandle = {
   setInspect(patch: {
     camera?: CameraPose;
     timePlayhead?: number;
+    /** 0 = Now wall, 1 = Expiry wall. Locks the cut to the box ticks. */
+    timeElapsed?: number;
     altered?: boolean;
     valueWindow?: ValueWindow;
     zoomGain?: number;
@@ -890,6 +893,7 @@ export function mountSurfaceScene(
   let ghostSurface: THREE.Group | null = null;
   let lastGhostSheet: SurfaceSheet | null = null;
   let lastFrontTau: number | null = null;
+  let lastElapsed: number | null = null;
   const tnLine = makeTnLine();
   world.add(tnLine);
   const paint = () => {
@@ -1032,12 +1036,23 @@ export function mountSurfaceScene(
     if (lastFrontTau != null && Number.isFinite(lastFrontTau)) return lastFrontTau;
     return boxSheet()?.timeAxis[0] ?? 0;
   };
+  const playheadZ = () => {
+    if (lastElapsed != null && Number.isFinite(lastElapsed)) {
+      return elapsedToBoxZ(lastElapsed);
+    }
+    const sheet = boxSheet();
+    if (!sheet) return 1;
+    return tauToBoxZ(sheet, playheadTau());
+  };
   const layoutTnCut = () => {
     if (!lastSheet || lastSheet.spotAxis.length < 2) {
       tnLine.visible = false;
       return;
     }
-    setTnPoints(tnLine, timeCutPoints(lastSheet, playheadTau(), valueOf(lastSheet)));
+    const pts = timeCutPoints(lastSheet, playheadTau(), valueOf(lastSheet));
+    const z = playheadZ();
+    for (let i = 2; i < pts.length; i += 3) pts[i] = z;
+    setTnPoints(tnLine, pts);
   };
   const worldY = (pnl: number) => {
     const sheet = boxSheet();
@@ -1115,7 +1130,7 @@ export function mountSurfaceScene(
     placeOne(labNowOpp, -1.02, -1.02, 1);
     placeOne(labExpiry, 1.02, -1.02, -1);
     placeOne(labExpiryOpp, -1.02, -1.02, -1);
-    const zTn = lastSheet ? tauToBoxZ(lastSheet, playheadTau()) : 1;
+    const zTn = playheadZ();
     placeOne(labTn, 1.08, 0, zTn);
     for (const h of strikeHud) {
       const p = projectLocal(h.x, -1, 1);
@@ -1166,7 +1181,7 @@ export function mountSurfaceScene(
     valueEdge.visible = valueAlpha > 0;
     const clamp = (n: number) => Math.min(1, Math.max(-1, n));
     strikePlane.position.set(clamp(worldX(planes.strike.position)), 0, 0);
-    timePlane.position.set(0, 0, clamp(worldZ(planes.time.position)));
+    timePlane.position.set(0, 0, clamp(playheadZ()));
     valuePlane.position.set(0, clamp(worldY(planes.value.position)), 0);
     paint();
   };
@@ -1375,6 +1390,11 @@ export function mountSurfaceScene(
       if (patch.timePlayhead != null) {
         lastFrontTau = patch.timePlayhead;
         planes.time.position = patch.timePlayhead;
+      }
+      if (patch.timeElapsed != null && Number.isFinite(patch.timeElapsed)) {
+        lastElapsed = Math.min(1, Math.max(0, patch.timeElapsed));
+      }
+      if (patch.timePlayhead != null || patch.timeElapsed != null) {
         layoutTnCut();
       }
       if (patch.altered != null) layoutBoxAltered(patch.altered);

@@ -57,7 +57,7 @@ change the Autofit S window.
 |---|---|
 | Camera **Fit** (ISO framing of the box) | `CameraHud` · `scene.fit()` |
 | Analyzer 2D ATM / 1σ autofit | `autofitView.ts` — **do not reuse** for Surface |
-| **What-if** vol / spot % (App Spec **§4.6**) | Time HUD — rebuilds the sheet, does **not** Autofit |
+| **What-if** vol / spot % (App Spec **§4.6**) | Time HUD — rebuilds the sheet, does **not** Autofit. **Value (P&L) window stays** so the tent grows/shrinks in the box (**DL-450**). |
 | Time-machine snap rebind (App Spec **§4.6**) | Later feed — not these dials |
 | Cropping a fake left wall | Forbidden — fix the field, don’t hide it |
 

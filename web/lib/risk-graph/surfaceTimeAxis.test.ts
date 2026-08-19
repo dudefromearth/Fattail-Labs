@@ -1,13 +1,24 @@
 import assert from "node:assert/strict";
 import {
+  expirationInstantMs,
   formatExpiryClock,
   isRthEt,
   listTimeAxisMarks,
   nyDateTimeToUtcMs,
   openToExpirySpan,
   sheetTimeWindow,
+  tauYearsToPmExpiry,
 } from "./surfaceTimeAxis";
 import { computeSurfaceSheet, legsFromRelative } from "./surfaceModel";
+
+{
+  const ten = nyDateTimeToUtcMs("2026-08-18", 10, 0);
+  const four = expirationInstantMs("2026-08-21");
+  const tau = tauYearsToPmExpiry("2026-08-21", ten);
+  const days = tau * 365.25;
+  assert.ok(days > 3.2 && days < 3.3, `Tue 10:00 → Fri 16:00 is ~3.25d, got ${days}`);
+  assert.equal(expirationInstantMs("2026-08-21"), nyDateTimeToUtcMs("2026-08-21", 16, 0));
+}
 
 {
   const ten = nyDateTimeToUtcMs("2026-08-18", 10, 0);

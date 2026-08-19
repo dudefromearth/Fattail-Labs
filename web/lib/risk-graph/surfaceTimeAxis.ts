@@ -98,7 +98,24 @@ function etWeekday(ymd: string): number {
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(w);
 }
 
-/** Now wall → Expiry face, matching the sheet’s remaining-τ span. */
+/** PM settlement (16:00 America/New_York) on a listed expiration date. */
+export function expirationInstantMs(expiration: string): number {
+  return nyDateTimeToUtcMs(expiration.slice(0, 10), 16, 0);
+}
+
+/** Remaining years to that PM settlement. Floor MIN_TAU when still current. */
+export function tauYearsToPmExpiry(
+  expiration: string,
+  nowMs: number = Date.now(),
+): number {
+  const rem = (expirationInstantMs(expiration) - nowMs) / YEAR_MS;
+  if (!Number.isFinite(rem)) {
+    throw new Error(`tauYearsToPmExpiry: bad remaining (${expiration})`);
+  }
+  return rem > 0 ? Math.max(rem, 1 / 365.25 / 24 / 60) : 0;
+}
+
+/** Now wall → last timeAxis instant (expiration when the sheet ends at τ = 0). */
 export function sheetTimeWindow(
   sheet: SurfaceSheet,
   nowMs: number,

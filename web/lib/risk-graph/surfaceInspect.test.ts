@@ -11,6 +11,7 @@ import {
   isRealityAltered,
   isTimeAltered,
   samplePlayhead,
+  elapsedToBoxZ,
   sliderToTau,
   tauToSlider,
 } from "./surfaceInspect";
@@ -67,6 +68,22 @@ const sheet = computeSurfaceSheet(legs, {
   assert.ok(Math.abs(tauToSlider(exp, now, exp) - 1) < 1e-12, "expiry sits at the right");
   assert.ok(Math.abs(sliderToTau(0, now, exp) - now) < 1e-12);
   assert.ok(Math.abs(sliderToTau(1, now, exp) - exp) < 1e-12);
+  {
+    const back = 5 / 365.25;
+    const frontLife = 1 / 365.25;
+    const face = back - frontLife;
+    assert.ok(
+      Math.abs(tauToSlider(face, back, face) - 1) < 1e-12,
+      "right end is front expiration, not both-dead of the back month",
+    );
+    assert.ok(
+      tauToSlider(face, back, 0) < 0.3,
+      "if the axis wrongly goes to τ=0, front expiry lands near 1/4 — that is the bug",
+    );
+  }
+  assert.equal(elapsedToBoxZ(0), 1, "slider left is the Now wall");
+  assert.equal(elapsedToBoxZ(1), -1, "slider right is the Expiry wall");
+  assert.ok(Math.abs(elapsedToBoxZ(0.5)) < 1e-12);
   assert.equal(isTimeAltered(now, now, exp), false);
   assert.equal(isTimeAltered(exp, now, exp), true);
   assert.equal(
