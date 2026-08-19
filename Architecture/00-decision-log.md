@@ -4,6 +4,26 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-445 Tick Volume page on StudioOne Chain Snapshot dash
+
+**Decision:** The StudioOne Chain Snapshot dashboard (`:5055`) gains a
+read-only **Tick Volume** page at `/volume` plus `GET /api/volume-bins`.
+Home nav links **Chain Snapshot** (`/`) and **Tick Volume** (`/volume`).
+
+Sixteen names only — no cash indexes: SPY QQQ IWM GLD TLT SLV USO XLF
+UNG AAPL AMZN NVDA TSLA GOOGL META MSFT. Per symbol: `_meta.json` from
+`LABS_VP_BINS_ROOT` (default
+`/Users/ernie/FatTail-Intelligence/.cache/vp_bins/vp_bins_v3`), last
+lines / running flag from sibling `pulls/{SYM}/nohup.out`, and a count
+of `part-000.parquet` under `LABS_MARKET_DATA_ROOT/raw/{SYM}/trades`.
+
+**Not** the fly / Monte Carlo thesis. Does not call Massive. Does not
+write gold snap folders. Empty / waiting is a valid state.
+
+**As-built:** `server/market_data/ssr_snapshot_dash.py`.
+
+---
+
 ## 2026-08-18 — DL-444 Condors stay in Position Builder, not Heatmap
 
 **Decision:** Condors and iron condors are **Builder** structures only.
