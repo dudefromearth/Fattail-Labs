@@ -111,6 +111,47 @@ is not on the listed chain. See Options Lab Heatmap for each Value formula.
 A space to build and study options strategies — design a structure and examine its
 risk/reward before you ever risk capital. Availability can depend on your tier.
 
+## Options Lab
+The day-trader risk desk. Its centre is the **Analyzer** (`/app/options-lab/analyzer`),
+where you study a position two ways in one session: the **Risk graph** (2D) and the
+**Surface** (3D) — same positions, alerts, and what-ifs, you just switch the canvas.
+Options Lab also includes the **Heatmap** and **Volume Profile** views. Availability can
+depend on your tier.
+
+## Surface
+The **Surface** is the 3D view inside the Options Lab Analyzer — a landscape (mesh)
+picture of your position's profit-and-loss. It uses the exact same position and pricing
+as the 2D Risk graph; only the presentation differs (a 3D surface instead of lines).
+Drag to orbit, scroll to zoom.
+
+**What it shows / how to read it:**
+- The **height** of the surface at any point is the position's **profit or loss in
+  dollars**.
+- One axis is the **underlying price** (where the market moves).
+- The other axis is **time to expiration** (how the position behaves as days pass).
+- A flat **break-even plane** marks $0 — surface **above** it means the position is in
+  profit at that price and time; **below** it means a loss.
+- A marker shows the **current price (spot)**, so you can see where you stand right now.
+- The **Time machine** knobs (time, volatility, spot %) let you push the scenario forward
+  and watch the whole landscape change.
+
+**How it helps your trading:**
+- See the **shape of your risk at a glance** — where a position makes or loses money
+  across price *and* time, not just at expiration.
+- Understand **time decay**: watch how today's smooth curve collapses toward the hard
+  payoff kinks as expiration nears, so you can tell whether time is working for or
+  against this structure.
+- **Stress-test before you commit**: move price, time, and volatility with the Time
+  machine and see how the P&L landscape responds, so entries and exits are deliberate.
+- It shares one session with the Risk graph, your Positions, Alerts, and what-ifs —
+  switching to Surface never loses your setup.
+
+**Why it matters:** an option's P&L is not a straight line — it curves with price, time,
+and volatility. The Surface makes that curvature visible so you can understand the risk
+before you take it. It is a study-and-planning tool for building intuition and
+disciplined decisions — it does **not** predict profit, give trade signals, or tell you
+what to buy.
+
 ## Practice
 The practice desk: Trade Log, Reports, Journal, Retrospective, Playbook, and optional
 Campaigns. Each account is one book. A campaign is a badge, not a book. Journal is still
