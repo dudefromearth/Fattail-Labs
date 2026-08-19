@@ -341,6 +341,14 @@ export function EditableMarkdown({
   );
 }
 
+function selectOptions(
+  options: Array<string | { value: string; label: string }>,
+): { value: string; label: string }[] {
+  return options.map((o) =>
+    typeof o === "string" ? { value: o, label: o } : o,
+  );
+}
+
 export function EditableSelect({
   field,
   value,
@@ -349,13 +357,16 @@ export function EditableSelect({
 }: {
   field: string;
   value: string;
-  options: string[];
+  options: Array<string | { value: string; label: string }>;
   className?: string;
 }) {
   const edit = useFieldEdit();
   const display = edit?.value(field, value) ?? value;
   const fieldError = edit?.fieldErrors[field] ?? null;
   const selectRef = useRef<HTMLSelectElement>(null);
+  const labeled = selectOptions(options);
+  const shown =
+    labeled.find((o) => o.value === display)?.label ?? display;
 
   // Option+click entry: focus the select once edit mode is on.
   useEffect(() => {
@@ -378,11 +389,11 @@ export function EditableSelect({
             edit.enterEditAtField(field);
           }}
         >
-          {display}
+          {shown}
         </span>
       );
     }
-    return <span className={className}>{display}</span>;
+    return <span className={className}>{shown}</span>;
   }
   return (
     <span className="inline-flex flex-col">
@@ -400,9 +411,9 @@ export function EditableSelect({
             : "outline-dashed outline-1 outline-offset-2 outline-emerald-400/70"
         } ${className}`}
       >
-        {options.map((o) => (
-          <option key={o} value={o} className="text-zinc-900">
-            {o}
+        {labeled.map((o) => (
+          <option key={o.value} value={o.value} className="text-zinc-900">
+            {o.label}
           </option>
         ))}
       </select>

@@ -1,14 +1,14 @@
 "use client";
 
+import ApplyFormEditor from "@/components/edit/ApplyFormEditor";
 import ApplySlotsEditBar from "@/components/edit/ApplySlotsEditBar";
 import { ApplySlotsEditProvider } from "@/components/edit/ApplySlotsEditContext";
-import ApplySlotsEditor from "@/components/edit/ApplySlotsEditor";
 
 export default function ApplySlotsAdminClient() {
   return (
     <ApplySlotsEditProvider startInEdit>
       <ApplySlotsEditBar />
-      <ApplySlotsEditor variant="admin" />
+      <ApplyFormEditor variant="admin" />
     </ApplySlotsEditProvider>
   );
 }

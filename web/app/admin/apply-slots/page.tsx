@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ApplySlotsAdminClient from "./ApplySlotsAdminClient";
 
 export const metadata: Metadata = {
-  title: "Apply conversation times",
+  title: "Apply form",
   robots: { index: false, follow: false },
 };
 

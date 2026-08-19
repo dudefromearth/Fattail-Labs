@@ -35,6 +35,77 @@ def _answers(**overrides):
     return out
 
 
+def _seed_questions():
+    rows = [
+        {
+            "id": 1,
+            "slug": "intro",
+            "ask": "Intro",
+            "hint": "",
+            "qtype": "continue",
+            "options": [],
+            "ac_key": None,
+            "ac_field_id": None,
+            "is_email": False,
+            "sort_order": 10,
+        },
+        {
+            "id": 2,
+            "slug": "email",
+            "ask": "Email",
+            "hint": "",
+            "qtype": "free_text",
+            "options": [],
+            "ac_key": None,
+            "ac_field_id": None,
+            "is_email": True,
+            "sort_order": 20,
+        },
+    ]
+    for i, (key, fid) in enumerate(
+        [
+            ("HEAVEN", "4"),
+            ("HELL", "3"),
+            ("MONEY_TIMING", "5"),
+            ("COACHING_SKU", "6"),
+            ("ELEVEN_AM_ET", "7"),
+            ("TRIED", "8"),
+            ("PARTNER_SUPPORT", "9"),
+        ],
+        start=3,
+    ):
+        rows.append(
+            {
+                "id": i,
+                "slug": key,
+                "ask": key,
+                "hint": "",
+                "qtype": "calendar" if key == "ELEVEN_AM_ET" else "free_text",
+                "options": [],
+                "ac_key": key,
+                "ac_field_id": fid,
+                "is_email": False,
+                "sort_order": i * 10,
+            }
+        )
+    return rows
+
+
+def _form_ok(monkeypatch):
+    monkeypatch.setattr("routes.apply.list_all", _seed_questions)
+    monkeypatch.setattr(
+        "routes.apply.list_live",
+        lambda: [
+            {"id": 1, "starts_et": SEVEN["ELEVEN_AM_ET"], "live": True}
+        ],
+    )
+    monkeypatch.setattr("routes.apply.store_submission", lambda *_a, **_k: 1)
+    monkeypatch.setattr(
+        "routes.apply.is_live_when",
+        lambda when: (when or "").strip() == SEVEN["ELEVEN_AM_ET"],
+    )
+
+
 # --- config gating (apply never skips) ---------------------------------------
 
 
@@ -220,15 +291,25 @@ def _apply_client():
     return TestClient(app)
 
 
-def _listed_slot(monkeypatch):
-    monkeypatch.setattr(
-        "routes.apply.is_live_when",
-        lambda when: (when or "").strip() == SEVEN["ELEVEN_AM_ET"],
-    )
+def test_form_public_returns_questions_and_slots(monkeypatch):
+    _form_ok(monkeypatch)
+    r = _apply_client().get("/api/apply/form")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["ok"] is True
+    slugs = [q["slug"] for q in body["questions"]]
+    assert slugs[0] == "intro"
+    assert "email" in slugs
+    assert "ELEVEN_AM_ET" in slugs
+    assert "ac_field_id" not in body["questions"][0]
+    assert "ac_key" not in body["questions"][0]
+    assert body["slots"] == [
+        {"id": 1, "starts_et": SEVEN["ELEVEN_AM_ET"]}
+    ]
 
 
 def test_api_apply_success(monkeypatch):
-    _listed_slot(monkeypatch)
+    _form_ok(monkeypatch)
     monkeypatch.setattr(
         "routes.apply.write_application",
         lambda email, answers: {
@@ -253,6 +334,7 @@ def test_api_apply_empty_email_is_422_and_does_not_write(monkeypatch):
         called["n"] += 1
         raise AssertionError("no AC write without email")
 
+    _form_ok(monkeypatch)
     monkeypatch.setattr("routes.apply.write_application", boom)
     r = _apply_client().post("/api/apply", json={"email": "", **SEVEN})
     assert r.status_code == 422
@@ -260,6 +342,7 @@ def test_api_apply_empty_email_is_422_and_does_not_write(monkeypatch):
 
 
 def test_api_apply_partner_required(monkeypatch):
+    _form_ok(monkeypatch)
     monkeypatch.setattr(
         "routes.apply.write_application",
         lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no write")),
@@ -274,6 +357,7 @@ def test_api_apply_partner_required(monkeypatch):
 
 
 def test_api_apply_rejects_yesno_eleven(monkeypatch):
+    _form_ok(monkeypatch)
     monkeypatch.setattr(
         "routes.apply.write_application",
         lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no write")),
@@ -289,6 +373,7 @@ def test_api_apply_rejects_yesno_eleven(monkeypatch):
 
 
 def test_api_apply_missing_cole_field_is_422(monkeypatch):
+    _form_ok(monkeypatch)
     monkeypatch.setattr(
         "routes.apply.write_application",
         lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no write")),
@@ -306,7 +391,7 @@ def test_api_apply_ac_miss_is_not_success(monkeypatch):
     def miss(email, answers):
         raise ac.ACError("apply tag 18 Application Filled miss after write")
 
-    _listed_slot(monkeypatch)
+    _form_ok(monkeypatch)
     monkeypatch.setattr("routes.apply.write_application", miss)
     r = _apply_client().post("/api/apply", json={"email": "zztest-apply@labs.test", **SEVEN})
     assert r.status_code == 503
@@ -315,7 +400,7 @@ def test_api_apply_ac_miss_is_not_success(monkeypatch):
 
 
 def test_api_apply_unconfigured_is_not_success(monkeypatch):
-    _listed_slot(monkeypatch)
+    _form_ok(monkeypatch)
     monkeypatch.delenv("LABS_AC_API_URL", raising=False)
     monkeypatch.delenv("LABS_AC_API_TOKEN", raising=False)
     monkeypatch.delenv("LABS_AC_REQUIRED", raising=False)

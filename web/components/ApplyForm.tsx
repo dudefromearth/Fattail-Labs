@@ -2,88 +2,32 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import ApplySlotsEditor from "@/components/edit/ApplySlotsEditor";
+import ApplyFormEditor from "@/components/edit/ApplyFormEditor";
 import { useApplySlotsEdit } from "@/components/edit/ApplySlotsEditContext";
 import {
+  contentCheck,
   displayAnswer,
+  emailFromAnswers,
   emptyAnswers,
-  isListedSlot,
   liveSteps,
   nextApplyStep,
   nextLabel,
   prevApplyStep,
-  pruneAsked,
-  recomputePath,
   reviewRows,
-  stepById,
-  stepValueValid,
   submitPayload,
   unansweredOnPath,
-  type ApplyKey,
-  type ApplyScreenId,
-  type ApplyStep,
-  type ApplyStepId,
+  type ApplyQuestion,
+  type ApplyQType,
 } from "@/lib/applyFields";
 
 type Layer = "present" | "in" | "out" | "settled";
+type Screen = string;
 
 const SWAP_MS = 400;
 
-function valuesOf(
-  email: string,
-  answers: Record<ApplyKey, string>,
-): Record<string, string> {
-  return { email, ...answers };
-}
-
-function isQuestionScreen(screen: ApplyScreenId): screen is ApplyStepId {
-  return screen !== "review";
-}
-
-function StepAsk({ step }: { step: ApplyStep }) {
-  if (
-    step.control === "yesno" ||
-    step.control === "continue" ||
-    step.control === "slot"
-  ) {
-    return (
-      <h1 className="apply-question">
-        {step.control === "slot" ? (
-          <label htmlFor={`apply-${step.id}`}>{step.ask}</label>
-        ) : (
-          step.ask
-        )}
-      </h1>
-    );
-  }
-  return (
-    <h1 className="apply-question">
-      <label htmlFor={`apply-${step.id}`}>{step.ask}</label>
-    </h1>
-  );
-}
-
-function StepHint({ step }: { step: ApplyStep }) {
-  return <p className="apply-hint">{step.hint}</p>;
-}
-
-function slotPickError(
-  value: string,
-  slotsEdit: ReturnType<typeof useApplySlotsEdit>,
-): string {
-  if (slotsEdit?.liveError) return slotsEdit.liveError;
-  if (!slotsEdit || slotsEdit.liveSlots.length === 0) {
-    return "No live conversation times are configured.";
-  }
-  if (!isListedSlot(value, slotsEdit.liveSlots)) {
-    return "Pick one of the listed times.";
-  }
-  return "Pick one of the listed times.";
-}
-
-function isAcceptKey(e: React.KeyboardEvent, control: ApplyStep["control"] | "review") {
+function isAcceptKey(e: React.KeyboardEvent, qtype: ApplyQType | "review") {
   if (e.key === "Tab" && !e.shiftKey) return true;
-  if (e.key === "Enter" && !(e.shiftKey && control === "textarea")) return true;
+  if (e.key === "Enter" && !(e.shiftKey && qtype === "free_text")) return true;
   return false;
 }
 
@@ -105,7 +49,7 @@ function ActionPair({
   okDisabled?: boolean;
   onBack?: () => void;
   onOk?: () => void;
-  okControl: ApplyStep["control"] | "review";
+  okControl: ApplyQType | "review";
   inert?: boolean;
 }) {
   const ok = (
@@ -153,27 +97,93 @@ function ActionPair({
   );
 }
 
+function StepAsk({ step }: { step: ApplyQuestion }) {
+  const labeled =
+    step.qtype === "free_text" ||
+    step.qtype === "calendar" ||
+    step.qtype === "binary" ||
+    step.qtype === "radio";
+  return (
+    <h1 className="apply-question">
+      {labeled ? (
+        <label htmlFor={`apply-${step.slug}`}>{step.ask}</label>
+      ) : (
+        step.ask
+      )}
+    </h1>
+  );
+}
+
+function StepHint({ step }: { step: ApplyQuestion }) {
+  return <p className="apply-hint">{step.hint}</p>;
+}
+
+function ChoiceList({
+  step,
+  value,
+  described,
+  onChange,
+  onKeyDown,
+  firstRef,
+}: {
+  step: ApplyQuestion;
+  value: string;
+  described?: string;
+  onChange: (next: string) => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  firstRef: React.Ref<HTMLButtonElement>;
+}) {
+  return (
+    <div
+      className={step.qtype === "binary" ? "apply-yesno" : "apply-times"}
+      role="listbox"
+      aria-label={step.ask}
+      aria-describedby={described}
+      onKeyDown={onKeyDown}
+    >
+      {step.options.map((choice, i) => (
+        <button
+          key={choice}
+          ref={i === 0 ? firstRef : undefined}
+          type="button"
+          role="option"
+          className={step.qtype === "binary" ? "apply-choice" : "apply-time"}
+          aria-selected={value === choice}
+          onClick={() => onChange(choice)}
+        >
+          {choice}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function StepBody({
   step,
   value,
   error,
+  slots,
+  slotsError,
   onChange,
   onAccept,
 }: {
-  step: ApplyStep;
+  step: ApplyQuestion;
   value: string;
   error: string | null;
+  slots: { starts_et: string }[];
+  slotsError: string | null;
   onChange: (next: string) => void;
   onAccept: (override?: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const firstChoiceRef = useRef<HTMLButtonElement | null>(null);
-  const slotsEdit = useApplySlotsEdit();
 
   useEffect(() => {
-    if (step.control === "continue") return;
+    if (step.qtype === "continue") return;
     const node =
-      step.control === "yesno" || step.control === "slot"
+      step.qtype === "binary" ||
+      step.qtype === "radio" ||
+      step.qtype === "calendar"
         ? firstChoiceRef.current
         : inputRef.current;
     if (!node) return;
@@ -181,57 +191,56 @@ function StepBody({
       node.focus({ preventScroll: true });
     }, 40);
     return () => window.clearTimeout(t);
-  }, [step.id, step.control]);
+  }, [step.slug, step.qtype]);
 
   function onKeyDown(e: React.KeyboardEvent) {
-    if (!isAcceptKey(e, step.control)) return;
+    if (!isAcceptKey(e, step.qtype)) return;
     e.preventDefault();
     onAccept();
   }
 
   const described = [
-    step.hint ? `apply-${step.id}-hint` : "",
-    error ? `apply-${step.id}-error` : "",
+    step.hint ? `apply-${step.slug}-hint` : "",
+    error ? `apply-${step.slug}-error` : "",
   ]
     .filter(Boolean)
     .join(" ") || undefined;
 
-  if (step.control === "continue") {
+  if (step.qtype === "continue") {
     return <div className="apply-field-spacer" aria-hidden />;
   }
 
-  if (step.control === "yesno") {
-    return (
-      <div
-        className="apply-yesno"
-        role="group"
-        aria-label={step.ask}
-        aria-describedby={described}
-        onKeyDown={onKeyDown}
-      >
-        {(["yes", "no"] as const).map((choice, i) => (
-          <button
-            key={choice}
-            ref={i === 0 ? firstChoiceRef : undefined}
-            type="button"
-            className="apply-choice"
-            aria-pressed={value === choice}
-            onClick={() => onAccept(choice)}
-          >
-            {choice === "yes" ? "Yes" : "No"}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  if (step.control === "slot") {
-    const slots = slotsEdit?.liveSlots ?? [];
-    const miss = slotsEdit?.liveError;
+  if (step.qtype === "binary" || step.qtype === "radio") {
+    const miss =
+      step.qtype === "binary" && step.options.length !== 2
+        ? "This question is missing its two choices."
+        : step.qtype === "radio" && step.options.length < 2
+          ? "This question needs two or more choices."
+          : null;
     if (miss) {
       return (
         <p className="apply-error" role="alert">
           {miss}
+        </p>
+      );
+    }
+    return (
+      <ChoiceList
+        step={step}
+        value={value}
+        described={described}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        firstRef={firstChoiceRef}
+      />
+    );
+  }
+
+  if (step.qtype === "calendar") {
+    if (slotsError) {
+      return (
+        <p className="apply-error" role="alert">
+          {slotsError}
         </p>
       );
     }
@@ -252,7 +261,7 @@ function StepBody({
       >
         {slots.map((slot, i) => (
           <button
-            key={slot.id}
+            key={slot.starts_et}
             ref={i === 0 ? firstChoiceRef : undefined}
             type="button"
             role="option"
@@ -267,15 +276,18 @@ function StepBody({
     );
   }
 
-  if (step.control === "textarea") {
+  if (step.is_email) {
     return (
-      <textarea
+      <input
         ref={(el) => {
           inputRef.current = el;
         }}
-        id={`apply-${step.id}`}
-        name={step.id}
-        className="apply-textarea"
+        id={`apply-${step.slug}`}
+        name={step.slug}
+        type="email"
+        autoComplete="email"
+        inputMode="email"
+        className="apply-input"
         aria-invalid={Boolean(error)}
         aria-describedby={described}
         value={value}
@@ -286,16 +298,13 @@ function StepBody({
   }
 
   return (
-    <input
+    <textarea
       ref={(el) => {
         inputRef.current = el;
       }}
-      id={`apply-${step.id}`}
-      name={step.id}
-      type={step.control === "email" ? "email" : "text"}
-      autoComplete={step.control === "email" ? "email" : "off"}
-      inputMode={step.control === "email" ? "email" : "text"}
-      className="apply-input"
+      id={`apply-${step.slug}`}
+      name={step.slug}
+      className="apply-textarea"
       aria-invalid={Boolean(error)}
       aria-describedby={described}
       value={value}
@@ -307,25 +316,27 @@ function StepBody({
 
 function ReviewList({
   rows,
-  email,
   answers,
   interactive,
   editingId,
   editDraft,
   editError,
+  slots,
+  slotsError,
   onStartEdit,
   onDraftChange,
   onAcceptEdit,
   onCancelEdit,
 }: {
-  rows: ApplyStep[];
-  email: string;
-  answers: Record<ApplyKey, string>;
+  rows: ApplyQuestion[];
+  answers: Record<string, string>;
   interactive: boolean;
-  editingId?: ApplyStepId | null;
+  editingId?: string | null;
   editDraft?: string;
   editError?: string | null;
-  onStartEdit?: (id: ApplyStepId) => void;
+  slots: { starts_et: string }[];
+  slotsError: string | null;
+  onStartEdit?: (id: string) => void;
   onDraftChange?: (next: string) => void;
   onAcceptEdit?: (override?: string) => void;
   onCancelEdit?: () => void;
@@ -333,13 +344,13 @@ function ReviewList({
   return (
     <ul className="apply-review-list">
       {rows.map((step) => {
-        const raw = step.id === "email" ? email : answers[step.id as ApplyKey];
-        const answer = displayAnswer(step, raw || "");
-        const editing = interactive && editingId === step.id;
+        const raw = answers[step.slug] || "";
+        const answer = displayAnswer(step, raw);
+        const editing = interactive && editingId === step.slug;
         if (editing) {
           return (
             <li
-              key={step.id}
+              key={step.slug}
               className="apply-review-line apply-review-line--edit"
             >
               <span className="apply-review-q">{step.ask}</span>
@@ -349,6 +360,8 @@ function ReviewList({
                     step={step}
                     value={editDraft ?? ""}
                     error={editError ?? null}
+                    slots={slots}
+                    slotsError={slotsError}
                     onChange={(v) => onDraftChange?.(v)}
                     onAccept={(override) => onAcceptEdit?.(override)}
                   />
@@ -356,14 +369,14 @@ function ReviewList({
                 <ActionPair
                   showBack
                   okLabel="OK"
-                  okControl={step.control}
+                  okControl={step.qtype}
                   onBack={onCancelEdit}
                   onOk={() => onAcceptEdit?.()}
                 />
               </div>
               {editError ? (
                 <p
-                  id={`apply-${step.id}-error`}
+                  id={`apply-${step.slug}-error`}
                   className="apply-error"
                   role="alert"
                 >
@@ -375,18 +388,18 @@ function ReviewList({
         }
         if (!interactive) {
           return (
-            <li key={step.id} className="apply-review-line">
+            <li key={step.slug} className="apply-review-line">
               <span className="apply-review-q">{step.ask}</span>
               <span className="apply-review-a">{answer}</span>
             </li>
           );
         }
         return (
-          <li key={step.id}>
+          <li key={step.slug}>
             <button
               type="button"
               className="apply-review-line"
-              onClick={() => onStartEdit?.(step.id)}
+              onClick={() => onStartEdit?.(step.slug)}
             >
               <span className="apply-review-q">{step.ask}</span>
               <span className="apply-review-a">{answer || "—"}</span>
@@ -474,16 +487,36 @@ function SlotTriple({
   );
 }
 
+function ApplyMark() {
+  return (
+    <div className="apply-mark">
+      <Image
+        src="/brand/fattail-labs-logo.jpg"
+        alt=""
+        width={28}
+        height={28}
+        priority
+        className="apply-mark-img"
+      />
+      <span className="apply-mark-word">fattail</span>
+    </div>
+  );
+}
+
 export default function ApplyForm() {
-  const slotsEdit = useApplySlotsEdit();
-  const [screen, setScreen] = useState<ApplyScreenId>("intro");
-  const [leavingId, setLeavingId] = useState<ApplyScreenId | null>(null);
+  const admin = useApplySlotsEdit();
+  const questions = admin?.questions ?? [];
+  const formMiss = admin?.formError ?? null;
+  const slots = admin?.liveSlots ?? [];
+  const slotsError = admin?.liveError ?? null;
+
+  const [screen, setScreen] = useState<Screen>("");
+  const [leavingId, setLeavingId] = useState<Screen | null>(null);
   const [liveLayer, setLiveLayer] = useState<Layer>("present");
-  const [email, setEmail] = useState("");
-  const [answers, setAnswers] = useState<Record<ApplyKey, string>>(emptyAnswers);
-  const [asked, setAsked] = useState<ApplyStepId[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [asked, setAsked] = useState<string[]>([]);
   const [fromReview, setFromReview] = useState(false);
-  const [editingId, setEditingId] = useState<ApplyStepId | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -493,12 +526,22 @@ export default function ApplyForm() {
   const [done, setDone] = useState(false);
   const swapTimer = useRef<number | null>(null);
   const acceptRef = useRef<HTMLButtonElement | null>(null);
+  const booted = useRef(false);
+
+  useEffect(() => {
+    if (!questions.length || booted.current) return;
+    booted.current = true;
+    setAnswers(emptyAnswers(questions));
+    setScreen(questions[0].slug);
+  }, [questions]);
 
   const isReview = screen === "review";
-  const step = isQuestionScreen(screen) ? stepById(screen) : null;
-  const draft = valuesOf(email, answers);
-  const pathLive = liveSteps(draft);
-  const rows = reviewRows(asked, draft);
+  const step =
+    !isReview && screen
+      ? questions.find((q) => q.slug === screen) ?? null
+      : null;
+  const pathLive = liveSteps(questions);
+  const rows = reviewRows(questions, asked);
 
   useEffect(() => {
     return () => {
@@ -507,41 +550,29 @@ export default function ApplyForm() {
   }, []);
 
   useEffect(() => {
-    if (done || isReview || !step || step.id === "intro") return;
-    setAsked((prev) => (prev.includes(step.id) ? prev : [...prev, step.id]));
+    if (done || isReview || !step || step.qtype === "continue") return;
+    setAsked((prev) => (prev.includes(step.slug) ? prev : [...prev, step.slug]));
   }, [done, isReview, step]);
 
   useEffect(() => {
     if (done || editingId) return;
-    if (!isReview && step?.control !== "continue") return;
+    if (!isReview && step?.qtype !== "continue") return;
     const t = window.setTimeout(() => {
       acceptRef.current?.focus({ preventScroll: true });
     }, 40);
     return () => window.clearTimeout(t);
-  }, [done, isReview, editingId, step?.control, screen]);
+  }, [done, isReview, editingId, step?.qtype, screen]);
 
-  function valueOf(id: ApplyStepId): string {
-    if (id === "intro") return "";
-    return id === "email" ? email : answers[id];
+  function valueOf(slug: string): string {
+    return answers[slug] || "";
   }
 
-  function withValue(
-    id: ApplyStepId,
-    next: string,
-  ): { email: string; answers: Record<ApplyKey, string> } {
-    if (id === "intro") return { email, answers };
-    if (id === "email") return { email: next, answers };
-    return { email, answers: { ...answers, [id]: next } };
-  }
-
-  function setValue(id: ApplyStepId, next: string) {
-    if (id === "intro") return;
-    if (id === "email") setEmail(next);
-    else setAnswers((prev) => ({ ...prev, [id]: next }));
+  function setValue(slug: string, next: string) {
+    setAnswers((prev) => ({ ...prev, [slug]: next }));
     setError(null);
   }
 
-  function goTo(next: ApplyScreenId) {
+  function goTo(next: Screen) {
     if (swapTimer.current) window.clearTimeout(swapTimer.current);
     setEditingId(null);
     setEditDraft("");
@@ -555,17 +586,6 @@ export default function ApplyForm() {
       setLeavingId(null);
       setLiveLayer("settled");
     }, SWAP_MS);
-  }
-
-  function applyRecompute(
-    nextEmail: string,
-    nextAnswers: Record<ApplyKey, string>,
-  ) {
-    const snapped = recomputePath(nextEmail, nextAnswers);
-    setEmail(snapped.email);
-    setAnswers(snapped.answers);
-    setAsked((prev) => pruneAsked(prev, snapped.path));
-    return snapped;
   }
 
   async function sendConversationInvite(
@@ -597,14 +617,11 @@ export default function ApplyForm() {
     }
   }
 
-  async function writeApply(
-    nextEmail: string,
-    nextAnswers: Record<ApplyKey, string>,
-  ) {
+  async function writeApply(nextAnswers: Record<string, string>) {
     setBusy(true);
     setFormError(null);
     try {
-      const body = submitPayload(nextEmail, nextAnswers);
+      const body = submitPayload(questions, nextAnswers);
       const res = await fetch("/api/apply", {
         method: "POST",
         credentials: "same-origin",
@@ -635,19 +652,27 @@ export default function ApplyForm() {
     }
   }
 
+  function checkStep(q: ApplyQuestion, nextValue: string): string | null {
+    const result = contentCheck(q, nextValue, slots);
+    if (result.ok) {
+      if (q.qtype === "calendar" && slotsError) return slotsError;
+      return null;
+    }
+    return result.miss;
+  }
+
   function acceptReview() {
     if (busy || done || editingId) return;
-    const snapped = applyRecompute(email, answers);
-    const missing = unansweredOnPath(snapped.email, snapped.answers);
+    const missing = unansweredOnPath(questions, answers, slots);
     if (missing.length) {
       setFromReview(true);
       goTo(missing[0]);
       return;
     }
-    void writeApply(snapped.email, snapped.answers);
+    void writeApply(answers);
   }
 
-  function startEdit(id: ApplyStepId) {
+  function startEdit(id: string) {
     if (busy || done) return;
     setEditingId(id);
     setEditDraft(valueOf(id));
@@ -656,26 +681,20 @@ export default function ApplyForm() {
     setFormError(null);
   }
 
-  function finishInPlace(
-    snapped: ReturnType<typeof recomputePath>,
-  ) {
+  function finishInPlace() {
     setEditingId(null);
     setEditDraft("");
     setEditError(null);
-    const missing = unansweredOnPath(snapped.email, snapped.answers);
+    const missing = unansweredOnPath(questions, answers, slots);
     if (missing.length) {
       setFromReview(true);
       goTo(missing[0]);
     }
   }
 
-  function finishAccept(
-    stepId: ApplyStepId,
-    snapped: ReturnType<typeof recomputePath>,
-  ) {
-    const accepted = valuesOf(snapped.email, snapped.answers);
+  function finishAccept(stepSlug: string, nextAnswers: Record<string, string>) {
     if (fromReview) {
-      const missing = unansweredOnPath(snapped.email, snapped.answers);
+      const missing = unansweredOnPath(questions, nextAnswers, slots);
       if (missing.length) {
         goTo(missing[0]);
         return;
@@ -684,38 +703,32 @@ export default function ApplyForm() {
       goTo("review");
       return;
     }
-    goTo(nextApplyStep(stepId, accepted));
+    goTo(nextApplyStep(questions, stepSlug));
   }
 
   function acceptInPlace(override?: string) {
     if (busy || done || !editingId) return;
-    const editStep = stepById(editingId);
+    const editStep = questions.find((q) => q.slug === editingId);
+    if (!editStep) return;
     const nextValue = override !== undefined ? override : editDraft;
     if (override !== undefined) setEditDraft(override);
-    const slotOk =
-      editStep.control !== "slot" ||
-      (slotsEdit &&
-        !slotsEdit.liveError &&
-        isListedSlot(nextValue, slotsEdit.liveSlots));
-    if (!stepValueValid(editStep, nextValue) || !slotOk) {
-      setEditError(
-        editStep.control === "email"
-          ? "A valid email is required."
-          : editStep.control === "slot"
-            ? slotPickError(nextValue, slotsEdit)
-            : "This answer is required.",
-      );
+    const miss = checkStep(editStep, nextValue);
+    if (miss) {
+      setEditError(miss);
       return;
     }
-    const proposed = withValue(editingId, nextValue);
-    const snapped = applyRecompute(proposed.email, proposed.answers);
-    if (editStep.id === "ELEVEN_AM_ET") {
-      void sendConversationInvite(snapped.email, nextValue).then(() => {
-        finishInPlace(snapped);
+    const nextAnswers = { ...answers, [editingId]: nextValue };
+    setAnswers(nextAnswers);
+    if (editStep.qtype === "calendar") {
+      void sendConversationInvite(
+        emailFromAnswers(questions, nextAnswers),
+        nextValue,
+      ).then(() => {
+        finishInPlace();
       });
       return;
     }
-    finishInPlace(snapped);
+    finishInPlace();
   }
 
   function accept(override?: string) {
@@ -725,32 +738,25 @@ export default function ApplyForm() {
       return;
     }
     if (!step) return;
-    const nextValue = override !== undefined ? override : valueOf(step.id);
-    if (override !== undefined) setValue(step.id, override);
-    const slotOk =
-      step.control !== "slot" ||
-      (slotsEdit &&
-        !slotsEdit.liveError &&
-        isListedSlot(nextValue, slotsEdit.liveSlots));
-    if (!stepValueValid(step, nextValue) || !slotOk) {
-      setError(
-        step.control === "email"
-          ? "A valid email is required."
-          : step.control === "slot"
-            ? slotPickError(nextValue, slotsEdit)
-            : "This answer is required.",
-      );
+    const nextValue = override !== undefined ? override : valueOf(step.slug);
+    if (override !== undefined) setValue(step.slug, override);
+    const miss = checkStep(step, nextValue);
+    if (miss) {
+      setError(miss);
       return;
     }
-    const proposed = withValue(step.id, nextValue);
-    const snapped = applyRecompute(proposed.email, proposed.answers);
-    if (step.id === "ELEVEN_AM_ET") {
-      void sendConversationInvite(snapped.email, nextValue).then(() => {
-        finishAccept(step.id, snapped);
+    const nextAnswers = { ...answers, [step.slug]: nextValue };
+    setAnswers(nextAnswers);
+    if (step.qtype === "calendar") {
+      void sendConversationInvite(
+        emailFromAnswers(questions, nextAnswers),
+        nextValue,
+      ).then(() => {
+        finishAccept(step.slug, nextAnswers);
       });
       return;
     }
-    finishAccept(step.id, snapped);
+    finishAccept(step.slug, nextAnswers);
   }
 
   function back() {
@@ -774,9 +780,51 @@ export default function ApplyForm() {
       return;
     }
     if (!step) return;
-    const prev = prevApplyStep(step.id, draft);
+    const prev = prevApplyStep(questions, step.slug);
     if (!prev) return;
     goTo(prev);
+  }
+
+  if (admin?.isAdmin && admin.editMode) {
+    return (
+      <div className="apply-root" data-apply-screen="form-edit">
+        <header className="apply-chrome">
+          <ApplyMark />
+          <p className="apply-progress" aria-live="polite">
+            Edit
+          </p>
+        </header>
+        <div className="apply-stage apply-stage--edit">
+          <ApplyFormEditor />
+        </div>
+      </div>
+    );
+  }
+
+  if (formMiss || (!questions.length && admin && !admin.questionsLoading)) {
+    return (
+      <div className="apply-root" data-apply-screen="miss">
+        <header className="apply-chrome">
+          <ApplyMark />
+        </header>
+        <div className="apply-stage">
+          <h1 className="apply-question">Apply is not ready.</h1>
+          <p className="apply-error" role="alert">
+            {formMiss || "Apply questions are not configured."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!step && !isReview && !done) {
+    return (
+      <div className="apply-root" data-apply-screen="load">
+        <header className="apply-chrome">
+          <ApplyMark />
+        </header>
+      </div>
+    );
   }
 
   const liveQuestion = done ? (
@@ -794,7 +842,7 @@ export default function ApplyForm() {
       Tap a line to change an answer.
     </p>
   ) : (
-    <p className="apply-hint" id={`apply-${step!.id}-hint`}>
+    <p className="apply-hint" id={`apply-${step!.slug}-hint`}>
       {step!.hint}
     </p>
   );
@@ -806,12 +854,13 @@ export default function ApplyForm() {
   ) : isReview ? (
     <ReviewList
       rows={rows}
-      email={email}
       answers={answers}
       interactive
       editingId={editingId}
       editDraft={editDraft}
       editError={editError}
+      slots={slots}
+      slotsError={slotsError}
       onStartEdit={startEdit}
       onDraftChange={(v) => {
         setEditDraft(v);
@@ -827,16 +876,20 @@ export default function ApplyForm() {
   ) : (
     <StepBody
       step={step!}
-      value={valueOf(step!.id)}
+      value={valueOf(step!.slug)}
       error={error}
-      onChange={(v) => setValue(step!.id, v)}
+      slots={slots}
+      slotsError={slotsError}
+      onChange={(v) => setValue(step!.slug, v)}
       onAccept={accept}
     />
   );
 
   const leavingIsReview = leavingId === "review";
   const leavingStep =
-    leavingId && leavingId !== "review" ? stepById(leavingId) : null;
+    leavingId && leavingId !== "review"
+      ? questions.find((q) => q.slug === leavingId) ?? null
+      : null;
   const leavingQuestion = leavingIsReview ? (
     <h1 className="apply-question">Review</h1>
   ) : leavingStep ? (
@@ -848,29 +901,38 @@ export default function ApplyForm() {
     <StepHint step={leavingStep} />
   ) : null;
   const leavingField = leavingIsReview ? (
-    <ReviewList rows={rows} email={email} answers={answers} interactive={false} />
+    <ReviewList
+      rows={rows}
+      answers={answers}
+      interactive={false}
+      slots={slots}
+      slotsError={slotsError}
+    />
   ) : leavingStep ? (
-    leavingStep.control === "continue" ? (
+    leavingStep.qtype === "continue" ? (
       <div className="apply-field-spacer" />
-    ) : leavingStep.control === "yesno" ? (
-      <div className="apply-yesno">
-        <span className="apply-choice" aria-hidden>
-          Yes
-        </span>
-        <span className="apply-choice" aria-hidden>
-          No
-        </span>
+    ) : leavingStep.qtype === "binary" || leavingStep.qtype === "radio" ? (
+      <div className={leavingStep.qtype === "binary" ? "apply-yesno" : "apply-times"}>
+        {(leavingStep.options.length ? leavingStep.options : ["—"]).map((c) => (
+          <span
+            key={c}
+            className={leavingStep.qtype === "binary" ? "apply-choice" : "apply-time"}
+            aria-hidden
+          >
+            {c}
+          </span>
+        ))}
       </div>
-    ) : leavingStep.control === "textarea" ? (
-      <div className="apply-textarea">{valueOf(leavingStep.id)}</div>
-    ) : leavingStep.control === "slot" ? (
+    ) : leavingStep.qtype === "calendar" ? (
       <div className="apply-times">
         <span className="apply-time" aria-hidden>
-          {displayAnswer(leavingStep, valueOf(leavingStep.id))}
+          {displayAnswer(leavingStep, valueOf(leavingStep.slug))}
         </span>
       </div>
+    ) : leavingStep.is_email ? (
+      <div className="apply-input">{valueOf(leavingStep.slug)}</div>
     ) : (
-      <div className="apply-input">{valueOf(leavingStep.id)}</div>
+      <div className="apply-textarea">{valueOf(leavingStep.slug)}</div>
     )
   ) : null;
 
@@ -879,56 +941,28 @@ export default function ApplyForm() {
     : isReview
       ? "Review"
       : (() => {
-          const pos = pathLive.indexOf(screen as ApplyStepId);
+          const pos = pathLive.indexOf(screen);
           return pos >= 0
             ? `${pos + 1} of ${pathLive.length}`
             : `${pathLive.length} of ${pathLive.length}`;
         })();
 
+  const firstSlug = questions[0]?.slug;
   const showFieldBack =
-    !done && !isReview && step !== null && step.id !== "intro";
+    !done && !isReview && step !== null && step.slug !== firstSlug;
   const showReviewBack = !done && isReview && !editingId;
-
-  if (slotsEdit?.isAdmin && slotsEdit.editMode) {
-    return (
-      <div className="apply-root" data-apply-screen="slots-edit">
-        <header className="apply-chrome">
-          <div className="apply-mark">
-            <Image
-              src="/brand/fattail-labs-logo.jpg"
-              alt=""
-              width={28}
-              height={28}
-              priority
-              className="apply-mark-img"
-            />
-            <span className="apply-mark-word">fattail</span>
-          </div>
-          <p className="apply-progress" aria-live="polite">
-            Edit
-          </p>
-        </header>
-        <div className="apply-stage apply-stage--edit">
-          <ApplySlotsEditor />
-        </div>
-      </div>
-    );
-  }
+  const growField =
+    isReview ||
+    leavingIsReview ||
+    step?.qtype === "calendar" ||
+    step?.qtype === "radio" ||
+    leavingStep?.qtype === "calendar" ||
+    leavingStep?.qtype === "radio";
 
   return (
     <div className="apply-root" data-apply-screen={done ? "received" : screen}>
       <header className="apply-chrome">
-        <div className="apply-mark">
-          <Image
-            src="/brand/fattail-labs-logo.jpg"
-            alt=""
-            width={28}
-            height={28}
-            priority
-            className="apply-mark-img"
-          />
-          <span className="apply-mark-word">fattail</span>
-        </div>
+        <ApplyMark />
         <p className="apply-progress" aria-live="polite">
           {progress}
         </p>
@@ -939,12 +973,7 @@ export default function ApplyForm() {
           stageKey={done ? "received" : screen}
           leaving={leavingId !== null}
           liveLayer={liveLayer}
-          fieldReview={
-            isReview ||
-            leavingIsReview ||
-            step?.control === "slot" ||
-            leavingStep?.control === "slot"
-          }
+          fieldReview={Boolean(growField)}
           question={liveQuestion}
           hint={liveHint}
           field={liveField}
@@ -956,7 +985,7 @@ export default function ApplyForm() {
                 okRef={acceptRef}
                 okBusy={busy}
                 okDisabled={busy}
-                okControl={isReview ? "review" : step!.control}
+                okControl={isReview ? "review" : step!.qtype}
                 onBack={back}
                 onOk={() => accept()}
               />
@@ -975,16 +1004,16 @@ export default function ApplyForm() {
               />
             ) : leavingStep ? (
               <ActionPair
-                showBack={leavingStep.id !== "intro"}
+                showBack={leavingStep.slug !== firstSlug}
                 okLabel={nextLabel(leavingStep)}
-                okControl={leavingStep.control}
+                okControl={leavingStep.qtype}
                 inert
               />
             ) : null
           }
         />
         <p
-          id={isReview ? "apply-review-error" : `apply-${step?.id ?? "screen"}-error`}
+          id={isReview ? "apply-review-error" : `apply-${step?.slug ?? "screen"}-error`}
           className="apply-error"
           role={error || formError ? "alert" : undefined}
         >

@@ -105,6 +105,40 @@ def test_invite_rejects_unlisted_time(monkeypatch):
 
 
 def test_apply_rejects_unlisted_time(monkeypatch):
+    def questions():
+        return [
+            {
+                "id": 1,
+                "slug": "email",
+                "ask": "Email",
+                "hint": "",
+                "qtype": "free_text",
+                "options": [],
+                "ac_key": None,
+                "ac_field_id": None,
+                "is_email": True,
+                "sort_order": 10,
+            },
+            {
+                "id": 2,
+                "slug": "ELEVEN_AM_ET",
+                "ask": "When",
+                "hint": "",
+                "qtype": "calendar",
+                "options": [],
+                "ac_key": "ELEVEN_AM_ET",
+                "ac_field_id": "7",
+                "is_email": False,
+                "sort_order": 20,
+            },
+        ]
+
+    monkeypatch.setattr("routes.apply.list_all", questions)
+    monkeypatch.setattr(
+        "routes.apply.list_live",
+        lambda: [{"starts_et": "2026-08-25T11:00", "live": True}],
+    )
+    monkeypatch.setattr("routes.apply.store_submission", lambda *_a, **_k: 1)
     monkeypatch.setattr("routes.apply.is_live_when", lambda _w: False)
     monkeypatch.setattr(
         "routes.apply.write_application",

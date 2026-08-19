@@ -31,7 +31,7 @@ export default function ApplySlotsEditBar() {
       <button
         type="button"
         onClick={() => edit.setEditMode(true)}
-        title="Or ⌥-click any conversation time"
+        title="Or ⌥-click any question or time"
         className="fixed bottom-6 left-6 z-50 rounded-full bg-zinc-900 px-5 py-2.5 font-medium text-white shadow-lg transition-colors hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
       >
         Edit
@@ -46,7 +46,7 @@ export default function ApplySlotsEditBar() {
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-6 py-3">
         <span className="text-sm font-semibold">Editing</span>
         <span className="text-xs text-zinc-500">
-          Conversation times save when you leave a field
+          Questions, types, and times save when you leave a field
         </span>
         {edit.error && (
           <span className="max-w-md truncate text-xs text-red-600">

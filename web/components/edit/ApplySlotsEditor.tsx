@@ -9,26 +9,31 @@ import { useApplySlotsEdit } from "./ApplySlotsEditContext";
 
 export default function ApplySlotsEditor({
   variant = "apply",
+  embedded = false,
 }: {
   variant?: "apply" | "admin";
+  embedded?: boolean;
 }) {
   const edit = useApplySlotsEdit();
   if (!edit) return null;
 
   const rows = edit.editMode || edit.isAdmin ? edit.slots : edit.liveSlots;
+  const adminPage = variant === "admin" && !embedded;
 
   return (
     <div
       className={
-        variant === "admin"
+        adminPage
           ? "mx-auto max-w-2xl px-4 py-8"
-          : "apply-slots-editor"
+          : variant === "admin"
+            ? undefined
+            : "apply-slots-editor"
       }
     >
       {variant === "admin" ? (
         <>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Apply conversation times
+            {embedded ? "Conversation times" : "Apply conversation times"}
           </h1>
           <p className="mt-2 text-sm text-zinc-500">
             Same in-place editor as{" "}
@@ -50,9 +55,7 @@ export default function ApplySlotsEditor({
 
       <ul
         className={
-          variant === "admin"
-            ? "mt-6 space-y-3"
-            : "apply-admin-slot-list"
+          variant === "admin" ? "mt-6 space-y-3" : "apply-admin-slot-list"
         }
       >
         {rows.length === 0 ? (

@@ -87,8 +87,8 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
   },
   {
     href: "/apply?edit=1",
-    title: "Apply conversation times",
-    body: "In-place on /apply — same dashed editor as course sections. Applicants pick one live slot.",
+    title: "Apply form",
+    body: "In-place on /apply — questions, types, and conversation times. Same dashed editor as course sections.",
     testId: "admin-card-apply-slots",
   },
 ];

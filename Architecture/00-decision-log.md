@@ -4,6 +4,40 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-462 /apply questions and types are server-owned
+
+**Decision:** Ernie add-on 2026-08-19. Same apply admin. **3001 only.**
+Questions live on our server (`apply_questions`) in the same store family
+as `apply_slots`. Not hardcoded forever in `applyFields.ts`. Seed = today’s
+intro + email + Cole seven so the walk is not empty. Admin then edits
+copy, type, options, order; add / remove.
+
+Four types, each with a real content check. OK / Enter / Tab does **not**
+advance on an invalid answer. The miss shows on the same field.
+
+1. **Free text** — non-empty. Email-valid if the question is the email step.
+2. **Binary** — exactly two admin-set options. Must pick one.
+3. **Radio** — two or more admin-set options. Must pick exactly one.
+4. **Calendar date-times** — exactly one live slot from `apply_slots`.
+   Empty slot list **fails loud** — do not invent times. ICS still sends
+   on accept / Review edit (**DL-460** / **DL-461**).
+
+Admin in-place: the element IS the editor (course `Editable` / field-edit
+API / dashed affordance / blur or Done commits). Primary surface
+`/apply?edit=1`. Thin `/admin/apply-slots` reuses the same components.
+
+Applicant path stays one question at a time, eye-lock, thick border,
+Back / OK twins, Review with in-place answer edit, Accept submits.
+
+AC write: keep field ids **3–9** when a question is mapped to those
+keys. New admin questions without an AC id still live on our server and
+still appear on Review. Do **not** invent new AC dropdown ids. Default
+path is the admin order. No new branching language this pass.
+
+**Does not:** merge; MiniTwo; fattail.ai; Calendly.
+
+---
+
 ## 2026-08-19 — DL-461 /apply field 7 is a server-owned slot pick
 
 **Decision:** Ernie lock 2026-08-19. Do **not** use Calendly, Chili Piper, or

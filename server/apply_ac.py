@@ -50,11 +50,16 @@ def _require_ac_config() -> dict:
     return cfg
 
 
-def _normalize_answers(answers: dict | None) -> dict[str, str]:
+def _normalize_answers(
+    answers: dict | None, mapped_keys: list[str] | None = None
+) -> dict[str, str]:
     src = answers if isinstance(answers, dict) else {}
+    keys = tuple(mapped_keys) if mapped_keys is not None else APPLY_KEYS
     out: dict[str, str] = {}
     missing: list[str] = []
-    for key in APPLY_KEYS:
+    for key in keys:
+        if key not in APPLY_KEYS:
+            continue
         raw = src.get(key)
         value = "" if raw is None else str(raw).strip()
         out[key] = value
@@ -125,16 +130,21 @@ def _verify_written(values: dict[str, str], written: dict[str, str]) -> list[str
     return misses
 
 
-def write_application(email: str, answers: dict | None) -> dict:
-    """Upsert the contact, write ids 3–9, attach tag 18, read back.
+def write_application(
+    email: str,
+    answers: dict | None,
+    mapped_keys: list[str] | None = None,
+) -> dict:
+    """Upsert the contact, write mapped Cole ids, attach tag 18, read back.
 
-    Raises ACError on any miss. Never returns a silent success. Never calls
+    mapped_keys=None writes all seven (seed). A subset writes only those
+    keys — do not invent AC ids. Raises ACError on any miss. Never calls
     sync_lead().
     """
     email = (email or "").strip().lower()
     if not email:
         raise ACError("empty email")
-    values = _normalize_answers(answers)
+    values = _normalize_answers(answers, mapped_keys)
     cfg = _require_ac_config()
 
     contact_id = _sync_contact(cfg, email)
