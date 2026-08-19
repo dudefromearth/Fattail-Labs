@@ -10,7 +10,7 @@ import {
   recomputePath,
   reviewRows,
   unansweredOnPath,
-} from "./applyFields.ts";
+} from "./applyFields";
 
 const filled = {
   HELL: "bleed",
