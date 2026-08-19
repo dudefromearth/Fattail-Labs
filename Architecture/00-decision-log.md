@@ -18,6 +18,8 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 **Rationale:** The desk cannot set until the seven fields (Bob created 2026-08-19; zero writes today) are written. Spec-first so India can review law vs opinion before any code.
 
+**Chair 2026-08-19 (same-day):** accepts this file as the apply law; amendment — submit also writes tag **18 Application Filled** (desk routing / plumbing, not a sales field). Still **not BUILD AUTHORITY**.
+
 ---
 
 ## 2026-08-18 — DL-449 Surface HUD left rail, collapsed except detents
