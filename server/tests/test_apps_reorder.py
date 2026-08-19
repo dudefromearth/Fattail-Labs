@@ -50,6 +50,16 @@ def test_list_apps_includes_sort_order(client):
     assert orders == sorted(orders)
 
 
+def test_strategy_lab_card_is_silent_coming_soon(client):
+    """Public /app card: name only. No catalog product story."""
+    r = client.get("/api/apps")
+    assert r.status_code == 200, r.text
+    lab = next(a for a in r.json()["apps"] if a["slug"] == "strategy-lab")
+    assert lab["title"] == "Strategy Lab"
+    assert lab["status"] == "soon"
+    assert (lab.get("blurb") or "") == ""
+
+
 def test_reorder_requires_admin(client, admin_cookies):
     r = client.post("/api/admin/apps/reorder", json={"app_ids": [1]})
     assert r.status_code in (401, 403)

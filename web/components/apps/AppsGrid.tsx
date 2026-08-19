@@ -118,9 +118,13 @@ function AppCard({
         </h2>
         <StatusBadge status={badgeStatus} />
       </div>
-      <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--color-label-secondary)]">
-        {t.blurb}
-      </p>
+      {t.blurb ? (
+        <p className="mt-2 flex-1 text-sm leading-relaxed text-[var(--color-label-secondary)]">
+          {t.blurb}
+        </p>
+      ) : (
+        <div className="mt-2 flex-1" />
+      )}
       <div className="mt-4 flex items-center justify-between gap-3">
         {canOpen ? (
           <Link
