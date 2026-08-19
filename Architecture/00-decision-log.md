@@ -4,6 +4,23 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-450 Native Apply spec DRAFT (Bob chairs)
+
+**Decision:** `Specs/FatTail-Native-Apply-Form-Spec-v0.1.md` is the lock-draft for
+native apply at `https://fattail.ai/apply`. **Status DRAFT.** Bob chairs.
+Not BUILD AUTHORITY. Not ACCEPTED. Do not send to Ernie. Knox builds after
+Bob approves.
+
+Ernie lock 2026-08-19 (Ash → Hayes → Bob → executives) is quoted verbatim
+in that file: one hue `#00B478`, three jobs, Labs tokens, brush-arch,
+sales word `fattail`, HIG one-column / labels-above / 44pt / one submit
+that writes Cole’s seven fields + tag 18 (Application Filled). Not
+Typeform, ClickFunnels, or Flatsome.
+
+Host implementation stays OPEN for Bob.
+
+---
+
 ## 2026-08-18 — DL-449 Surface HUD left rail, collapsed except detents
 
 **Decision:** All Surface inspect chrome sits in a **left rail** with a
