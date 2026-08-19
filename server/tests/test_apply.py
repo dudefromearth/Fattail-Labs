@@ -23,7 +23,7 @@ SEVEN = {
     "HEAVEN": "keep the book",
     "MONEY_TIMING": "ready this month",
     "COACHING_SKU": "navigator",
-    "ELEVEN_AM_ET": "yes",
+    "ELEVEN_AM_ET": "2026-08-25T11:00",
     "TRIED": "solo youtube",
     "PARTNER_SUPPORT": "spouse is in",
 }
@@ -251,32 +251,7 @@ def test_api_apply_empty_email_is_422_and_does_not_write(monkeypatch):
     assert called["n"] == 0
 
 
-def test_api_apply_partner_optional_when_eleven_no(monkeypatch):
-    captured = {}
-
-    def capture(email, answers):
-        captured["email"] = email
-        captured["answers"] = answers
-        return {
-            "ok": True,
-            "contact_id": "99",
-            "tag_id": "18",
-            "fields": apply_ac.APPLY_FIELD_IDS,
-        }
-
-    monkeypatch.setattr("routes.apply.write_application", capture)
-    payload = dict(SEVEN)
-    payload["ELEVEN_AM_ET"] = "no"
-    payload["PARTNER_SUPPORT"] = ""
-    r = _apply_client().post(
-        "/api/apply", json={"email": "zztest-apply@labs.test", **payload}
-    )
-    assert r.status_code == 200, r.text
-    assert captured["answers"]["ELEVEN_AM_ET"] == "no"
-    assert captured["answers"]["PARTNER_SUPPORT"] == ""
-
-
-def test_api_apply_partner_required_when_eleven_yes(monkeypatch):
+def test_api_apply_partner_required(monkeypatch):
     monkeypatch.setattr(
         "routes.apply.write_application",
         lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no write")),
@@ -290,47 +265,18 @@ def test_api_apply_partner_required_when_eleven_yes(monkeypatch):
     assert "PARTNER_SUPPORT" in r.json()["detail"]
 
 
-def test_write_drops_partner_when_eleven_no(monkeypatch):
-    monkeypatch.setenv("LABS_AC_API_URL", "https://0dte.api-us1.com")
-    monkeypatch.setenv("LABS_AC_API_TOKEN", "tok-123")
-    store = {"fields": {}, "tags": []}
-
-    def fake_request(_cfg, method, path, **kwargs):
-        if method == "GET" and path.endswith("/fieldValues"):
-            return {
-                "fieldValues": [
-                    {"id": fid, "field": fid, "value": store["fields"].get(fid, "")}
-                    for fid in apply_ac.APPLY_FIELD_IDS.values()
-                    if fid in store["fields"]
-                ]
-            }
-        if method == "POST" and path == "/fieldValues":
-            fv = (kwargs.get("json") or {})["fieldValue"]
-            store["fields"][str(fv["field"])] = fv["value"]
-            return {"fieldValue": {"id": fv["field"], **fv}}
-        if method == "PUT" and path.startswith("/fieldValues/"):
-            fv = (kwargs.get("json") or {})["fieldValue"]
-            store["fields"][str(fv["field"])] = fv["value"]
-            return {"fieldValue": fv}
-        if method == "GET" and path.endswith("/contactTags"):
-            return {
-                "contactTags": [
-                    {"tag": tid, "contact": "99"} for tid in store["tags"]
-                ]
-            }
-        raise AssertionError(f"unexpected AC call {method} {path}")
-
-    monkeypatch.setattr(apply_ac, "_sync_contact", lambda *_: "99")
-    monkeypatch.setattr(apply_ac, "_request", fake_request)
-    monkeypatch.setattr(apply_ac, "_add_contact_tag", lambda *_c, **_k: store["tags"].append("18"))
-
-    out = apply_ac.write_application(
-        "zztest-apply@labs.test",
-        _answers(ELEVEN_AM_ET="no", PARTNER_SUPPORT="stale spouse"),
+def test_api_apply_rejects_yesno_eleven(monkeypatch):
+    monkeypatch.setattr(
+        "routes.apply.write_application",
+        lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no write")),
     )
-    assert out["ok"] is True
-    assert store["fields"]["7"] == "no"
-    assert store["fields"]["9"] == ""
+    payload = dict(SEVEN)
+    payload["ELEVEN_AM_ET"] = "yes"
+    r = _apply_client().post(
+        "/api/apply", json={"email": "zztest-apply@labs.test", **payload}
+    )
+    assert r.status_code == 422
+    assert "date-time" in r.json()["detail"]
 
 
 def test_api_apply_missing_cole_field_is_422(monkeypatch):

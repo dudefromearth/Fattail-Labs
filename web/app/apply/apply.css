@@ -100,7 +100,7 @@
 }
 
 .apply-slot--question {
-  height: 6.75rem;
+  height: 8.5rem;
 }
 
 .apply-slot--hint {
@@ -220,6 +220,11 @@
 
 .apply-input {
   min-height: var(--hit-min);
+}
+
+.apply-input--datetime {
+  font-size: clamp(1.0625rem, 3.6vw, 1.5rem);
+  color-scheme: light dark;
 }
 
 .apply-yesno {
@@ -430,7 +435,7 @@ button.apply-review-line {
 
 @media (max-width: 40rem) {
   .apply-slot--question {
-    height: 6.5rem;
+    height: 8.25rem;
   }
 
   .apply-slot--hint {

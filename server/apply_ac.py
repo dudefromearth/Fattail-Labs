@@ -2,8 +2,9 @@
 
 This is NOT waitlist sync_lead(). Apply submit fails loud if ActiveCampaign
 is unconfigured, if any on-path fieldValues miss / are empty after write,
-or if tag 18 Application Filled is missing on the contact. Partner (id 9)
-is on-path only when 11am ET is Yes.
+or if tag 18 Application Filled is missing on the contact. Field 7
+(ELEVEN_AM_ET) is a chosen America/New_York datetime, not yes/no.
+Partner (id 9) stays on the path.
 
 Live field ids 3–9 stay (do not invent ids). Tag 18 stays (desk routing).
 Spec: FatTail-Native-Apply-Form-Spec-v0.1.md · APPLY-2–5 · APPLY-10
@@ -12,6 +13,7 @@ Spec: FatTail-Native-Apply-Form-Spec-v0.1.md · APPLY-2–5 · APPLY-10
 from __future__ import annotations
 
 import logging
+import re
 
 from activecampaign import ACError, _ac_config, _add_contact_tag, _request, _sync_contact
 
@@ -30,6 +32,11 @@ APPLY_FIELDS: tuple[tuple[str, str], ...] = (
 APPLY_KEYS: tuple[str, ...] = tuple(k for k, _ in APPLY_FIELDS)
 APPLY_FIELD_IDS: dict[str, str] = {k: fid for k, fid in APPLY_FIELDS}
 APPLY_TAG_ID = "18"
+WHEN_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$")
+
+
+def _is_when(value: str) -> bool:
+    return bool(WHEN_RE.match((value or "").strip()))
 
 
 def _require_ac_config() -> dict:
@@ -51,16 +58,13 @@ def _normalize_answers(answers: dict | None) -> dict[str, str]:
         raw = src.get(key)
         value = "" if raw is None else str(raw).strip()
         out[key] = value
-        if key == "PARTNER_SUPPORT":
-            continue
         if not value:
             missing.append(key)
-    eleven = out.get("ELEVEN_AM_ET", "").strip().lower()
-    if eleven == "yes" and not out.get("PARTNER_SUPPORT"):
-        missing.append("PARTNER_SUPPORT")
-    if eleven == "no":
-        # Dead branch — do not keep a stale home/partner write.
-        out["PARTNER_SUPPORT"] = ""
+    eleven = out.get("ELEVEN_AM_ET", "")
+    if eleven and not _is_when(eleven):
+        raise ACError(
+            "ELEVEN_AM_ET must be a date-time in America/New_York (YYYY-MM-DDTHH:MM)"
+        )
     if missing:
         raise ACError("empty apply field(s): " + ", ".join(missing))
     extra = [k for k in src if k not in APPLY_KEYS and str(k).strip()]

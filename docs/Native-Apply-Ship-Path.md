@@ -1,7 +1,7 @@
 # Native apply — ship path
 
 **Spec:** `Specs/FatTail-Native-Apply-Form-Spec-v0.1.md`  
-**Decision:** **DL-451** · **DL-452** · **DL-455** · **DL-456** · **DL-457** · **DL-458**  
+**Decision:** **DL-451** · **DL-452** · **DL-455** · **DL-456** · **DL-457** · **DL-458** · **DL-460**  
 **Public URL (Coach):** `https://fattail.ai/apply`  
 **Host:** **open** (OQ-1). This file is a way to ship, not a host lock.
 
@@ -12,7 +12,8 @@
 | Piece | Path | Job |
 |-------|------|-----|
 | Page | `web/app/apply/page.tsx` | Native fattail invite. One question at a time. Quiet canvas. |
-| Form | `web/components/ApplyForm.tsx` | Conversation invite (**DL-453**). **Back left / OK right under the field** — visual twins (**DL-457**). Thick ink field border (**DL-458**). Click / tap / Enter / Tab still accept. Two motion beats. Last live question goes to **Review** (**DL-455**). Edits are **in place on the list** (**DL-456**). POST `/api/apply` only from Review Accept. |
+| Form | `web/components/ApplyForm.tsx` | Conversation invite (**DL-453**). Field 7 is a New York date-time; ICS invite on accept (**DL-460**). **Back left / OK right under the field** — visual twins (**DL-457**). Thick ink field border (**DL-458**). Click / tap / Enter / Tab still accept. Two motion beats. Last live question goes to **Review** (**DL-455**). Edits are **in place on the list** (**DL-456**). POST `/api/apply` only from Review Accept. |
+| Invite | `POST /api/apply/invite` · `server/apply_invite.py` | ICS `METHOD:REQUEST` to the applicant. Same UID on Review edit. Fail loud if `LABS_SMTP_*` unset. |
 | Path selftest | `web/lib/applyFields.selftest.ts` | Characterization only. Excluded from production `next build` (`tsconfig.json`). |
 | Write | `server/apply_ac.py` | Upsert contact → write field ids **3–9** → tag **18** → read back. Raises on any miss. |
 | HTTP | `POST /api/apply` | Public. 422 on missing email / missing Cole field. **503** if AC is unset, half-configured, or the seven write / tag 18 miss. |

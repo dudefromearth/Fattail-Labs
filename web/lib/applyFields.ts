@@ -18,7 +18,13 @@ export type ApplyStepId = "intro" | "email" | ApplyKey;
 
 export type ApplyScreenId = ApplyStepId | "review";
 
-export type ApplyControl = "continue" | "email" | "text" | "textarea" | "yesno";
+export type ApplyControl =
+  | "continue"
+  | "email"
+  | "text"
+  | "textarea"
+  | "yesno"
+  | "datetime";
 
 export type ApplyStep = {
   id: ApplyStepId;
@@ -44,8 +50,8 @@ export const APPLY_FIELDS: {
 
 /**
  * Invite order (Ernie 2026-08-19): intro → email → HEAVEN → HELL → the rest.
- * Fields 6 / 9: free text. Field 7: honest yes/no. No invented dropdowns.
- * Observer / Activator / Navigator are examples only.
+ * Fields 6 / 9: free text. Field 7: America/New_York date-time (calendar
+ * invite). Observer / Activator / Navigator are examples only.
  */
 export const APPLY_STEPS: ApplyStep[] = [
   {
@@ -90,10 +96,10 @@ export const APPLY_STEPS: ApplyStep[] = [
   },
   {
     id: "ELEVEN_AM_ET",
-    ask: "Can you make an 11am ET call?",
-    hint: "A live conversation at that hour.",
+    ask: "Pick a time for a live FatTail conversation. A calendar invite will be sent to the email you entered.",
+    hint: "America/New_York. Thirty minutes. We'll send the link.",
     fieldId: "7",
-    control: "yesno",
+    control: "datetime",
   },
   {
     id: "TRIED",
@@ -122,30 +128,53 @@ export function isBranchKey(id: ApplyStepId): boolean {
   return (BRANCH_KEYS as string[]).includes(id);
 }
 
-export function isElevenNo(value: string): boolean {
-  return value.trim().toLowerCase() === "no";
+export const APPLY_TZ = "America/New_York";
+
+export function isDatetimeValid(value: string): boolean {
+  const v = value.trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(v);
+  if (!m) return false;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const hour = Number(m[4]);
+  const minute = Number(m[5]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  if (hour > 23 || minute > 59) return false;
+  const probe = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  return (
+    probe.getUTCFullYear() === year &&
+    probe.getUTCMonth() === month - 1 &&
+    probe.getUTCDate() === day
+  );
+}
+
+export function displayDatetime(value: string): string {
+  const v = value.trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(v);
+  if (!m) return v;
+  const wall = new Date(
+    Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5])),
+  );
+  const stamp = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  }).format(wall);
+  return `${stamp} ET`;
 }
 
 /**
- * Live path from answers. Branch keys 6/7/9 are the SoR for what stays
- * on the path. Steps not returned are dead — Review skips them and
- * recompute drops their answers.
- *
- * - 6 (COACHING_SKU): consulted on every accept. Free text — we do not
- *   parse Observer / Activator / Navigator as a menu, so 6 does not
- *   skip later questions by itself.
- * - 7 (ELEVEN_AM_ET): No → PARTNER_SUPPORT is a dead branch. Yes or
- *   unanswered → home/partner stays on the path.
- * - 9 (PARTNER_SUPPORT): last live field; recompute still runs.
+ * Live path from answers. Picking a conversation time is the meet yes.
+ * The old 11am No → drop PARTNER_SUPPORT branch is dead. Partner stays.
  */
-export function computePath(answers: Record<string, string>): ApplyStepId[] {
-  // Branch SoR is always 6 / 7 / 9. 6 is free text (no invented menu skip).
-  // 9 is last. 7 No drops PARTNER_SUPPORT.
-  const sku = (answers.COACHING_SKU || "").trim();
-  const eleven = (answers.ELEVEN_AM_ET || "").trim();
-  const partner = (answers.PARTNER_SUPPORT || "").trim();
-
-  const path: ApplyStepId[] = [
+export function computePath(_answers: Record<string, string>): ApplyStepId[] {
+  return [
     "intro",
     "email",
     "HEAVEN",
@@ -154,12 +183,8 @@ export function computePath(answers: Record<string, string>): ApplyStepId[] {
     "COACHING_SKU",
     "ELEVEN_AM_ET",
     "TRIED",
+    "PARTNER_SUPPORT",
   ];
-
-  if (sku !== undefined && partner !== undefined && !isElevenNo(eleven)) {
-    path.push("PARTNER_SUPPORT");
-  }
-  return path;
 }
 
 export function liveSteps(answers: Record<string, string>): ApplyStepId[] {
@@ -251,6 +276,7 @@ export function displayAnswer(step: ApplyStep, value: string): string {
     if (value === "yes") return "Yes";
     if (value === "no") return "No";
   }
+  if (step.control === "datetime") return displayDatetime(value);
   return value.trim();
 }
 
@@ -270,6 +296,7 @@ export function stepValueValid(step: ApplyStep, value: string): boolean {
   const v = value.trim();
   if (step.control === "email") return isEmailValid(v);
   if (step.control === "yesno") return v === "yes" || v === "no";
+  if (step.control === "datetime") return isDatetimeValid(v);
   return v.length > 0;
 }
 

@@ -4,6 +4,27 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-460 /apply field 7 is a calendar invite, not yes/no
+
+**Decision:** Ernie lock 2026-08-19. AC field id **7** / key
+`ELEVEN_AM_ET` stays. The value is a chosen **America/New_York**
+date-time, not yes/no. The question says a **calendar invite will be
+sent** to the email they already entered. Duration 30 minutes.
+Organizer: Cole Merritt / cole@fattail.ai. Title: FatTail conversation.
+Location: “We'll send the link.” — no invented Zoom URL.
+
+In-house ICS (`METHOD:REQUEST`) over `LABS_SMTP_*`. Same UID per
+applicant email; Review edit of the time re-sends. If SMTP is unset,
+send **fails loud** (clear miss) but they may keep the time and
+continue. No Calendly / Chili Piper / booking vendor.
+
+Picking a time is the meet yes. The old “11am No drops PARTNER_SUPPORT”
+branch is dead. Partner stays on the path.
+
+**Does not:** invent a new AC id; merge; MiniTwo; fattail.ai.
+
+---
+
 ## 2026-08-19 — DL-459 apply path selftest is not in the Next build
 
 **Decision:** `web/lib/applyFields.selftest.ts` is characterization only

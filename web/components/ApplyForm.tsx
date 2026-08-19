@@ -38,8 +38,20 @@ function isQuestionScreen(screen: ApplyScreenId): screen is ApplyStepId {
 }
 
 function StepAsk({ step }: { step: ApplyStep }) {
-  if (step.control === "yesno" || step.control === "continue") {
-    return <h1 className="apply-question">{step.ask}</h1>;
+  if (
+    step.control === "yesno" ||
+    step.control === "continue" ||
+    step.control === "datetime"
+  ) {
+    return (
+      <h1 className="apply-question">
+        {step.control === "datetime" ? (
+          <label htmlFor={`apply-${step.id}`}>{step.ask}</label>
+        ) : (
+          step.ask
+        )}
+      </h1>
+    );
   }
   return (
     <h1 className="apply-question">
@@ -190,6 +202,25 @@ function StepBody({
           </button>
         ))}
       </div>
+    );
+  }
+
+  if (step.control === "datetime") {
+    return (
+      <input
+        ref={(el) => {
+          inputRef.current = el;
+        }}
+        id={`apply-${step.id}`}
+        name={step.id}
+        type="datetime-local"
+        className="apply-input apply-input--datetime"
+        aria-invalid={Boolean(error)}
+        aria-describedby={described}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
+      />
     );
   }
 
@@ -413,6 +444,7 @@ export default function ApplyForm() {
   const [editError, setEditError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [inviteMiss, setInviteMiss] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const swapTimer = useRef<number | null>(null);
@@ -492,6 +524,35 @@ export default function ApplyForm() {
     return snapped;
   }
 
+  async function sendConversationInvite(
+    nextEmail: string,
+    when: string,
+  ): Promise<void> {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/apply/invite", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: nextEmail.trim(), when }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || payload?.ok !== true || payload?.sent !== true) {
+        const detail =
+          typeof payload?.detail === "string"
+            ? payload.detail
+            : `The calendar invite did not send (${res.status}).`;
+        setInviteMiss(detail);
+        return;
+      }
+      setInviteMiss(null);
+    } catch {
+      setInviteMiss("The calendar invite did not send. Network error.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function writeApply(
     nextEmail: string,
     nextAnswers: Record<ApplyKey, string>,
@@ -551,6 +612,37 @@ export default function ApplyForm() {
     setFormError(null);
   }
 
+  function finishInPlace(
+    snapped: ReturnType<typeof recomputePath>,
+  ) {
+    setEditingId(null);
+    setEditDraft("");
+    setEditError(null);
+    const missing = unansweredOnPath(snapped.email, snapped.answers);
+    if (missing.length) {
+      setFromReview(true);
+      goTo(missing[0]);
+    }
+  }
+
+  function finishAccept(
+    stepId: ApplyStepId,
+    snapped: ReturnType<typeof recomputePath>,
+  ) {
+    const accepted = valuesOf(snapped.email, snapped.answers);
+    if (fromReview) {
+      const missing = unansweredOnPath(snapped.email, snapped.answers);
+      if (missing.length) {
+        goTo(missing[0]);
+        return;
+      }
+      setFromReview(false);
+      goTo("review");
+      return;
+    }
+    goTo(nextApplyStep(stepId, accepted));
+  }
+
   function acceptInPlace(override?: string) {
     if (busy || done || !editingId) return;
     const editStep = stepById(editingId);
@@ -560,20 +652,21 @@ export default function ApplyForm() {
       setEditError(
         editStep.control === "email"
           ? "A valid email is required."
-          : "This answer is required.",
+          : editStep.control === "datetime"
+            ? "Pick a date and time in America/New_York."
+            : "This answer is required.",
       );
       return;
     }
     const proposed = withValue(editingId, nextValue);
     const snapped = applyRecompute(proposed.email, proposed.answers);
-    setEditingId(null);
-    setEditDraft("");
-    setEditError(null);
-    const missing = unansweredOnPath(snapped.email, snapped.answers);
-    if (missing.length) {
-      setFromReview(true);
-      goTo(missing[0]);
+    if (editStep.id === "ELEVEN_AM_ET") {
+      void sendConversationInvite(snapped.email, nextValue).then(() => {
+        finishInPlace(snapped);
+      });
+      return;
     }
+    finishInPlace(snapped);
   }
 
   function accept(override?: string) {
@@ -589,27 +682,21 @@ export default function ApplyForm() {
       setError(
         step.control === "email"
           ? "A valid email is required."
-          : "This answer is required.",
+          : step.control === "datetime"
+            ? "Pick a date and time in America/New_York."
+            : "This answer is required.",
       );
       return;
     }
     const proposed = withValue(step.id, nextValue);
     const snapped = applyRecompute(proposed.email, proposed.answers);
-    const accepted = valuesOf(snapped.email, snapped.answers);
-
-    if (fromReview) {
-      const missing = unansweredOnPath(snapped.email, snapped.answers);
-      if (missing.length) {
-        goTo(missing[0]);
-        return;
-      }
-      setFromReview(false);
-      goTo("review");
+    if (step.id === "ELEVEN_AM_ET") {
+      void sendConversationInvite(snapped.email, nextValue).then(() => {
+        finishAccept(step.id, snapped);
+      });
       return;
     }
-
-    const next = nextApplyStep(step.id, accepted);
-    goTo(next);
+    finishAccept(step.id, snapped);
   }
 
   function back() {
@@ -722,6 +809,10 @@ export default function ApplyForm() {
       </div>
     ) : leavingStep.control === "textarea" ? (
       <div className="apply-textarea">{valueOf(leavingStep.id)}</div>
+    ) : leavingStep.control === "datetime" ? (
+      <div className="apply-input apply-input--datetime">
+        {valueOf(leavingStep.id)}
+      </div>
     ) : (
       <div className="apply-input">{valueOf(leavingStep.id)}</div>
     )
@@ -810,7 +901,7 @@ export default function ApplyForm() {
           className="apply-error"
           role={error || formError ? "alert" : undefined}
         >
-          {formError || error || ""}
+          {formError || error || inviteMiss || ""}
         </p>
       </div>
     </div>
