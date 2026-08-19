@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-459 apply path selftest is not in the Next build
+
+**Decision:** `web/lib/applyFields.selftest.ts` is characterization only
+(`node --experimental-strip-types`). It is **excluded** from production
+`next build` via `web/tsconfig.json` (`**/*.selftest.ts`). The MiniTwo
+failure after PR 7 was this file’s `from "./applyFields.ts"` import
+under Next’s TypeScript check. Do not compile it as an app module.
+
+**Does not:** MiniTwo from this PR; merge; change the write.
+
+---
+
 ## 2026-08-19 — DL-458 /apply fields have a thick ink border
 
 **Decision:** Ernie add-on from the same `:3001` walk. Every live field
