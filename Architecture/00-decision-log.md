@@ -4,6 +4,28 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-456 /apply Review edits in place
+
+**Decision:** Ernie correction 2026-08-19. Review still lists every asked
+question with its answer. Click / tap a line and **edit in place on that
+line**. The answer becomes a field on the same line. Enter, Tab, or the
+OK control beside that field accept the edit and collapse the line back
+to Q+A. Same accept affordance as the live form (button beside the field).
+Do **not** send them back to the one-question slot to edit.
+
+This supersedes the DL-455 “open that question again in the eye-lock
+slot” edit path. Review itself stays one screen, same slot.
+
+Path-changing edits (6 / 7 / 9) still recompute. Drop answers that no
+longer apply. If new questions appear, ask those one at a time in the
+live-form slot, then return to Review. Review **Accept** is still the
+only `POST /api/apply`. Review is required.
+
+**Does not:** reopen the question screen to edit; auto-submit; merge;
+MiniTwo; fattail.ai.
+
+---
+
 ## 2026-08-19 — DL-455 /apply Review before AC submit
 
 **Decision:** Ernie lock 2026-08-19. After the last **live** question on

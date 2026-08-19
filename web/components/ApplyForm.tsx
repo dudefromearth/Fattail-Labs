@@ -171,19 +171,73 @@ function ReviewList({
   email,
   answers,
   interactive,
-  onEdit,
+  editingId,
+  editDraft,
+  editError,
+  onStartEdit,
+  onDraftChange,
+  onAcceptEdit,
 }: {
   rows: ApplyStep[];
   email: string;
   answers: Record<ApplyKey, string>;
   interactive: boolean;
-  onEdit?: (id: ApplyStepId) => void;
+  editingId?: ApplyStepId | null;
+  editDraft?: string;
+  editError?: string | null;
+  onStartEdit?: (id: ApplyStepId) => void;
+  onDraftChange?: (next: string) => void;
+  onAcceptEdit?: (override?: string) => void;
 }) {
   return (
     <ul className="apply-review-list">
       {rows.map((step) => {
         const raw = step.id === "email" ? email : answers[step.id as ApplyKey];
         const answer = displayAnswer(step, raw || "");
+        const editing = interactive && editingId === step.id;
+        if (editing) {
+          return (
+            <li
+              key={step.id}
+              className="apply-review-line apply-review-line--edit"
+            >
+              <span className="apply-review-q">{step.ask}</span>
+              <div className="apply-review-edit">
+                <div className="apply-review-edit-field">
+                  <StepBody
+                    step={step}
+                    value={editDraft ?? ""}
+                    error={editError ?? null}
+                    onChange={(v) => onDraftChange?.(v)}
+                    onAccept={(override) => onAcceptEdit?.(override)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="apply-next"
+                  style={{ backgroundColor: APPLY_HUE }}
+                  onClick={() => onAcceptEdit?.()}
+                  onKeyDown={(e) => {
+                    if (!isAcceptKey(e, step.control)) return;
+                    e.preventDefault();
+                    onAcceptEdit?.();
+                  }}
+                >
+                  OK
+                </button>
+              </div>
+              {editError ? (
+                <p
+                  id={`apply-${step.id}-error`}
+                  className="apply-error"
+                  role="alert"
+                >
+                  {editError}
+                </p>
+              ) : null}
+            </li>
+          );
+        }
         if (!interactive) {
           return (
             <li key={step.id} className="apply-review-line">
@@ -197,7 +251,7 @@ function ReviewList({
             <button
               type="button"
               className="apply-review-line"
-              onClick={() => onEdit?.(step.id)}
+              onClick={() => onStartEdit?.(step.id)}
             >
               <span className="apply-review-q">{step.ask}</span>
               <span className="apply-review-a">{answer || "—"}</span>
@@ -293,6 +347,9 @@ export default function ApplyForm() {
   const [answers, setAnswers] = useState<Record<ApplyKey, string>>(emptyAnswers);
   const [asked, setAsked] = useState<ApplyStepId[]>([]);
   const [fromReview, setFromReview] = useState(false);
+  const [editingId, setEditingId] = useState<ApplyStepId | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -318,13 +375,13 @@ export default function ApplyForm() {
   }, [done, isReview, step]);
 
   useEffect(() => {
-    if (done) return;
+    if (done || editingId) return;
     if (!isReview && step?.control !== "continue") return;
     const t = window.setTimeout(() => {
       acceptRef.current?.focus({ preventScroll: true });
     }, 40);
     return () => window.clearTimeout(t);
-  }, [done, isReview, step?.control, screen]);
+  }, [done, isReview, editingId, step?.control, screen]);
 
   function valueOf(id: ApplyStepId): string {
     if (id === "intro") return "";
@@ -349,6 +406,9 @@ export default function ApplyForm() {
 
   function goTo(next: ApplyScreenId) {
     if (swapTimer.current) window.clearTimeout(swapTimer.current);
+    setEditingId(null);
+    setEditDraft("");
+    setEditError(null);
     setLeavingId(screen);
     setScreen(next);
     setLiveLayer("in");
@@ -410,7 +470,7 @@ export default function ApplyForm() {
   }
 
   function acceptReview() {
-    if (busy || done) return;
+    if (busy || done || editingId) return;
     const snapped = applyRecompute(email, answers);
     const missing = unansweredOnPath(snapped.email, snapped.answers);
     if (missing.length) {
@@ -419,6 +479,40 @@ export default function ApplyForm() {
       return;
     }
     void writeApply(snapped.email, snapped.answers);
+  }
+
+  function startEdit(id: ApplyStepId) {
+    if (busy || done) return;
+    setEditingId(id);
+    setEditDraft(valueOf(id));
+    setEditError(null);
+    setError(null);
+    setFormError(null);
+  }
+
+  function acceptInPlace(override?: string) {
+    if (busy || done || !editingId) return;
+    const editStep = stepById(editingId);
+    const nextValue = override !== undefined ? override : editDraft;
+    if (override !== undefined) setEditDraft(override);
+    if (!stepValueValid(editStep, nextValue)) {
+      setEditError(
+        editStep.control === "email"
+          ? "A valid email is required."
+          : "This answer is required.",
+      );
+      return;
+    }
+    const proposed = withValue(editingId, nextValue);
+    const snapped = applyRecompute(proposed.email, proposed.answers);
+    setEditingId(null);
+    setEditDraft("");
+    setEditError(null);
+    const missing = unansweredOnPath(snapped.email, snapped.answers);
+    if (missing.length) {
+      setFromReview(true);
+      goTo(missing[0]);
+    }
   }
 
   function accept(override?: string) {
@@ -457,14 +551,14 @@ export default function ApplyForm() {
     goTo(next);
   }
 
-  function editFromReview(id: ApplyStepId) {
-    if (busy || done) return;
-    setFromReview(true);
-    goTo(id);
-  }
-
   function back() {
     if (busy || done) return;
+    if (isReview && editingId) {
+      setEditingId(null);
+      setEditDraft("");
+      setEditError(null);
+      return;
+    }
     if (isReview) {
       const last = [...asked].reverse().find((id) => pathLive.includes(id));
       if (!last) return;
@@ -513,7 +607,15 @@ export default function ApplyForm() {
       email={email}
       answers={answers}
       interactive
-      onEdit={editFromReview}
+      editingId={editingId}
+      editDraft={editDraft}
+      editError={editError}
+      onStartEdit={startEdit}
+      onDraftChange={(v) => {
+        setEditDraft(v);
+        setEditError(null);
+      }}
+      onAcceptEdit={acceptInPlace}
     />
   ) : (
     <StepBody
@@ -601,7 +703,7 @@ export default function ApplyForm() {
           hint={liveHint}
           field={liveField}
           accept={
-            done ? null : (
+            done || (isReview && editingId) ? null : (
               <button
                 ref={acceptRef}
                 type="button"

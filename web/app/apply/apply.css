@@ -323,6 +323,46 @@ button.apply-review-line {
   white-space: pre-wrap;
 }
 
+.apply-review-line--edit {
+  cursor: default;
+}
+
+.apply-review-edit {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.45rem;
+}
+
+.apply-review-edit-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.apply-review-edit-field .apply-input {
+  height: var(--hit-min);
+  font-size: clamp(1rem, 3.2vw, 1.25rem);
+}
+
+.apply-review-edit-field .apply-textarea {
+  height: 6.5rem;
+  font-size: clamp(1rem, 3.2vw, 1.25rem);
+}
+
+.apply-review-edit-field .apply-yesno {
+  height: auto;
+}
+
+.apply-review-edit-field .apply-choice {
+  height: var(--hit-min);
+  font-size: clamp(1rem, 3.2vw, 1.25rem);
+}
+
+.apply-review-line--edit .apply-error {
+  margin-top: 0.45rem;
+}
+
 .apply-received {
   margin: 0;
   font-size: clamp(1.75rem, 7vw, 2.5rem);
