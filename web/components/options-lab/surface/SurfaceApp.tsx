@@ -45,6 +45,8 @@ import {
 import { localSessionNote } from "@/lib/options-lab/timeOrthoNote";
 import { chartWindow } from "@/lib/options-lab/timeOrthoSession";
 import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
+import { visibleBookTrade } from "@/lib/options-lab/cardDisplayState";
+import { computeExpiredGhostSheet } from "@/lib/risk-graph/surfaceGhost";
 import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
 import { useLiveUnderlierMarks } from "@/lib/market/useLiveUnderlierMarks";
 import {
@@ -61,6 +63,7 @@ import {
   surfaceValueWindow,
   unionListedStrikes,
 } from "@/lib/risk-graph/surfaceAutofit";
+import { RELIEF_DEFAULT } from "@/lib/risk-graph/surfaceRelief";
 import { mountSurfaceScene, type SurfaceSceneHandle } from "@/lib/risk-graph/surfaceScene";
 import { fetchMarketOhlc } from "@/lib/marketOhlcApi";
 import {
@@ -74,11 +77,18 @@ import {
   parkMovedBreakEvens,
   t0BreakEvens,
 } from "@/lib/options-lab/t0BreakEvenGhost";
-import { surfaceHostClock } from "./hostLaw";
+import {
+  listedExpirationsOf,
+  surfaceAsOfLabel,
+  surfaceBookClock,
+  surfaceClockBlocksAnalysis,
+  type SurfaceHostClock,
+} from "./hostLaw";
 import CameraHud from "./CameraHud";
 import TimeHud from "./TimeHud";
 import PlanesHud from "./PlanesHud";
 import ViewsHud from "./ViewsHud";
+import HudCollapse from "./HudCollapse";
 import {
   cadenceClaim,
   isRealityAltered,
@@ -143,6 +153,7 @@ export default function SurfaceApp() {
   const [heightPadFrac, setHeightPadFrac] = useState(SURFACE_PAD_FRAC);
   const [zoomGain, setZoomGain] = useState(SLOW_ZOOM_GAIN);
   const [valueOpacity, setValueOpacity] = useState(0.12);
+  const [relief, setRelief] = useState(RELIEF_DEFAULT);
   const [candlesOn, setCandlesOn] = useState(false);
   const [eggOn, setEggOn] = useState(false);
   const [sendNote, setSendNote] = useState<string | null>(null);
@@ -246,18 +257,23 @@ export default function SurfaceApp() {
   );
 
   const parsedBook = useMemo(() => {
-    const trades: ReturnType<typeof positionToParsedTrade>[] = [];
     const errors: string[] = [];
-    for (const p of book) {
-      try {
-        trades.push(positionToParsedTrade(p.position));
-      } catch (err) {
-        errors.push(err instanceof Error ? err.message : String(err));
-      }
+    let split;
+    try {
+      split = visibleBookTrade(book, { symbol });
+    } catch (err) {
+      errors.push(err instanceof Error ? err.message : String(err));
+      split = {
+        trade: null,
+        trades: [] as ReturnType<typeof positionToParsedTrade>[],
+        expiredTrades: [] as ReturnType<typeof positionToParsedTrade>[],
+        contributingIds: [] as string[],
+      };
     }
-    return { trades, errors };
-  }, [book]);
+    return { ...split, errors };
+  }, [book, symbol]);
   const trades = parsedBook.trades;
+  const expiredTrades = parsedBook.expiredTrades;
   const trade = trades[0] ?? null;
   const risk = useOpfRiskGraph({
     trade,
@@ -276,53 +292,57 @@ export default function SurfaceApp() {
     let law: LawB | null = null;
     let detail = "";
     let sheet: SurfaceSheet | null = null;
+    let ghostSheet: SurfaceSheet | null = null;
     let label = symbol;
     let cadence = "live";
+    const liveExps = trades.flatMap((t) =>
+      listedExpirationsOf({
+        expiration: t.expiration,
+        legs: t.legs,
+      }),
+    );
+    const expiredExps = expiredTrades.flatMap((t) =>
+      listedExpirationsOf({
+        expiration: t.expiration,
+        legs: t.legs,
+      }),
+    );
+    const clock: SurfaceHostClock = liveExps.length
+      ? surfaceBookClock(liveExps)
+      : expiredExps.length
+        ? "expired"
+        : "live";
+    void surfaceClockBlocksAnalysis(clock);
     if (!book.length) {
       fitHoldRef.current = null;
       law = "WAITING";
       detail = "Nothing shown in Analyzer. Surface is that book in 3D.";
       label = `${symbol} · Analyzer`;
-    } else if (!trades.length) {
+    } else if (!trades.length && !expiredTrades.length) {
       law = "CHECK LEGS";
       detail = parsedBook.errors[0] || "Could not read the shown structures.";
+    } else if (trades.length > 0 && risk.loading && !risk.result && !expiredTrades.length) {
+      law = "UPDATING";
+      detail = "Resolving the shown Analyzer book.";
+    } else if (trades.length > 0 && risk.error && !risk.result && !expiredTrades.length) {
+      law = "CHECK LEGS";
+      detail = risk.error;
     } else {
-      const clocks = book.map((p) =>
-        surfaceHostClock(
-          (p.position.expiration || p.position.legs[0]?.expiration || "").slice(
-            0,
-            10,
-          ),
-        ),
-      );
-      const clock = clocks.includes("live")
-        ? "live"
-        : clocks.includes("residual")
-          ? "residual"
-          : "expired";
-      if (clock === "expired") {
-        law = "EXPIRED";
-        detail = "Card EXPIRED is midnight ET. Viewport ghost uses the defined debit.";
-      } else if (clock === "residual") {
-        law = "HELD / RESIDUAL";
-        detail = "After OPF settlement instant. Held / residual, never live.";
-      } else if (risk.loading && !risk.result) {
-        law = "UPDATING";
-        detail = "Resolving the shown Analyzer book.";
-      } else if (risk.error && !risk.result) {
-        law = "CHECK LEGS";
-        detail = risk.error;
+      const spot = liveSpot && liveSpot > 0 ? liveSpot : risk.spot;
+      const marks = (risk.result?.marks?.leg_marks ?? null) as
+        | OpfLegMarkForSheet[]
+        | null;
+      if (!spot || spot <= 0) {
+        law = "WAITING";
+        detail = "Waiting for a listed underlier mark.";
       } else {
-        const spot = liveSpot && liveSpot > 0 ? liveSpot : risk.spot;
-        const marks = (risk.result?.marks?.leg_marks ?? null) as
-          | OpfLegMarkForSheet[]
-          | null;
-        if (!spot || spot <= 0) {
-          law = "WAITING";
-          detail = "Waiting for a listed underlier mark.";
-        } else {
-          const allLegs = trades.flatMap((t) => t.legs);
-          const bound = bindListedSurfaceLegs(allLegs, marks, {
+        const liveLegs = trades.flatMap((t) => t.legs);
+        const expiredStrikes = expiredTrades.flatMap((t) =>
+          t.legs.map((l) => l.strike),
+        );
+        const simSpot = spot * (1 + spotPct / 100);
+        if (trades.length > 0) {
+          const bound = bindListedSurfaceLegs(liveLegs, marks, {
             spot,
             tauFor: (exp) => {
               const rows = (marks || []).filter((m) => {
@@ -337,15 +357,15 @@ export default function SurfaceApp() {
               return taus.length ? Math.max(...taus) : MIN_TAU;
             },
           });
-          if (!bound.ok) {
+          if (!bound.ok && !expiredTrades.length) {
             law = bound.hole === "IV NO" ? "IV NO" : "CHECK LEGS";
             detail = bound.detail;
-          } else {
+          } else if (bound.ok) {
             try {
               const strikes = unionListedStrikes([
-                allLegs.map((l) => l.strike),
+                liveLegs.map((l) => l.strike),
+                expiredStrikes,
               ]);
-              const simSpot = spot * (1 + spotPct / 100);
               const whatIfLegs = bound.legs.map((leg) => ({
                 ...leg,
                 iv: Math.max(1e-8, leg.iv + volOffsetPts / 100),
@@ -357,7 +377,11 @@ export default function SurfaceApp() {
                 hold.gen === autofitGen;
               const fit = reuse
                 ? {
-                    ...applyWidthPad(hold.contentLo, hold.contentHi, widthPadFrac),
+                    ...applyWidthPad(
+                      hold.contentLo,
+                      hold.contentHi,
+                      widthPadFrac,
+                    ),
                     contentLo: hold.contentLo,
                     contentHi: hold.contentHi,
                   }
@@ -383,20 +407,73 @@ export default function SurfaceApp() {
                 ivSource: bound.ivSources.join("+"),
                 listedStrikes: strikes,
               });
-              const names = book
-                .map((p) => p.label || p.notation)
-                .filter(Boolean);
-              label = `${symbol} · ${names.join(" + ") || `${book.length} shown`}`;
             } catch (err) {
-              law = "CHECK LEGS";
-              detail =
-                err instanceof Error ? err.message : "Sheet failed to compute.";
+              if (!expiredTrades.length) {
+                law = "CHECK LEGS";
+                detail =
+                  err instanceof Error ? err.message : "Sheet failed to compute.";
+              }
             }
           }
         }
+        if (expiredTrades.length > 0) {
+          try {
+            const hold = fitHoldRef.current;
+            const reuse =
+              hold != null &&
+              hold.key === bookFitKey &&
+              hold.gen === autofitGen &&
+              sheet != null;
+            let sMin: number;
+            let sMax: number;
+            if (sheet) {
+              sMin = sheet.sMin;
+              sMax = sheet.sMax;
+            } else if (reuse && hold) {
+              const fit = applyWidthPad(
+                hold.contentLo,
+                hold.contentHi,
+                widthPadFrac,
+              );
+              sMin = fit.sMin;
+              sMax = fit.sMax;
+            } else {
+              const ks = unionListedStrikes([expiredStrikes]);
+              const contentLo = Math.min(simSpot, ...ks);
+              const contentHi = Math.max(simSpot, ...ks);
+              const fit = applyWidthPad(contentLo, contentHi, widthPadFrac);
+              fitHoldRef.current = {
+                key: bookFitKey,
+                gen: autofitGen,
+                contentLo,
+                contentHi,
+                sMin: fit.sMin,
+                sMax: fit.sMax,
+              };
+              sMin = fit.sMin;
+              sMax = fit.sMax;
+            }
+            ghostSheet = computeExpiredGhostSheet(expiredTrades, {
+              spot: simSpot,
+              sMin,
+              sMax,
+              timeAxis: sheet?.timeAxis,
+            });
+          } catch (err) {
+            if (!sheet) {
+              law = "CHECK LEGS";
+              detail =
+                err instanceof Error
+                  ? err.message
+                  : "Expired ghost failed to compute.";
+            }
+          }
+        }
+        const names = book.map((p) => p.label || p.notation).filter(Boolean);
+        label = `${symbol} · ${names.join(" + ") || `${book.length} shown`}`;
       }
     }
-    return { law, detail, sheet, label, cadence };
+    return { law, detail, sheet, ghostSheet, label, cadence, clock };
   }, [
     book,
     symbol,
@@ -406,6 +483,7 @@ export default function SurfaceApp() {
     risk.error,
     liveSpot,
     trades,
+    expiredTrades,
     parsedBook.errors,
     marksKey,
     volOffsetPts,
@@ -415,16 +493,16 @@ export default function SurfaceApp() {
     widthPadFrac,
   ]);
 
-  const { law, detail, sheet, label, cadence } = view;
-  sheetRef.current = sheet;
+  const { law, detail, sheet, ghostSheet, label, cadence, clock } = view;
+  const hudSheet = sheet ?? ghostSheet;
+  sheetRef.current = hudSheet;
   const sheetKey = sheetFingerprint(
-    sheet,
-    `${volOffsetPts}|${spotPct}|${autofitGen}|${bookFitKey}`,
+    hudSheet,
+    `${volOffsetPts}|${spotPct}|${autofitGen}|${bookFitKey}|${ghostSheet ? "g" : ""}`,
   );
 
   useLayoutEffect(() => {
     const host = hostRef.current;
-    const sheet = sheetRef.current;
     if (!host) return;
     host.dataset.bound = "1";
     try {
@@ -433,12 +511,13 @@ export default function SurfaceApp() {
       } else {
         sceneRef.current.setSheet(sheet);
       }
+      sceneRef.current.setGhostSheet(ghostSheet);
       host.dataset.scene = "ok";
     } catch (err) {
       host.dataset.scene = "fail";
       host.dataset.sceneError = err instanceof Error ? err.message : String(err);
     }
-  }, [sheetKey]);
+  }, [sheetKey, sheet, ghostSheet]);
 
   useEffect(() => {
     const sheet = sheetRef.current;
@@ -511,8 +590,8 @@ export default function SurfaceApp() {
     hadBookRef.current = n > 0;
   }, [allForSymbol.length, eggOn, symbol]);
   useEffect(() => {
-    const live = t0BreakEvens(sheet);
-    const eps = beGhostEps(sheet?.sMin ?? 0, sheet?.sMax ?? 1);
+    const live = t0BreakEvens(hudSheet);
+    const eps = beGhostEps(hudSheet?.sMin ?? 0, hudSheet?.sMax ?? 1);
     beGhostsRef.current = parkMovedBreakEvens(
       prevLiveBeRef.current,
       live,
@@ -523,28 +602,40 @@ export default function SurfaceApp() {
     const all = [...beGhostsRef.current, ...live];
     setBeLevels(all);
     sceneRef.current?.setBeGhosts(eggOn ? all : []);
-  }, [sheetKey, sheet, eggOn, bookFitKey]);
+  }, [sheetKey, hudSheet, eggOn, bookFitKey]);
 
-  const tauHi = sheet?.timeAxis[0] ?? 0;
-  const tauLo = sheet?.timeAxis[(sheet?.timeAxis.length || 1) - 1] ?? 0;
+  const tauHi = hudSheet?.timeAxis[0] ?? 0;
+  const tauLo = hudSheet?.timeAxis[(hudSheet?.timeAxis.length || 1) - 1] ?? 0;
   const tauMin = Math.min(tauLo, tauHi);
   const tauMax = Math.max(tauLo, tauHi);
   const tauStarRaw = playhead ?? tauHi;
   const tauStar =
-    sheet && Number.isFinite(tauStarRaw)
+    hudSheet && Number.isFinite(tauStarRaw)
       ? Math.min(tauMax, Math.max(tauMin, tauStarRaw))
       : tauStarRaw;
-  const strikeForPlane = sheet
-    ? Math.min(sheet.sMax, Math.max(sheet.sMin, strikePos))
+  const strikeForPlane = hudSheet
+    ? Math.min(hudSheet.sMax, Math.max(hudSheet.sMin, strikePos))
     : strikePos;
   const sample =
-    sheet && sheet.spot > 0 ? samplePlayhead(sheet, sheet.spot, tauStar) : null;
+    hudSheet && hudSheet.spot > 0
+      ? samplePlayhead(hudSheet, hudSheet.spot, tauStar)
+      : null;
   const cad = cadenceClaim(cadence === "5-min" ? "5-min" : "live");
-  const valueWindow = sheet
-    ? surfaceValueWindow(sheet.minPnL, sheet.maxPnL, heightPadFrac)
+  const valueWindow = hudSheet
+    ? surfaceValueWindow(
+        Math.min(
+          sheet?.minPnL ?? ghostSheet?.minPnL ?? 0,
+          ghostSheet?.minPnL ?? sheet?.minPnL ?? 0,
+        ),
+        Math.max(
+          sheet?.maxPnL ?? ghostSheet?.maxPnL ?? 0,
+          ghostSheet?.maxPnL ?? sheet?.maxPnL ?? 0,
+        ),
+        heightPadFrac,
+      )
     : null;
-  const timeWalked = sheet ? isTimeAltered(tauStar, tauHi, tauLo) : false;
-  const altered = sheet
+  const timeWalked = hudSheet ? isTimeAltered(tauStar, tauHi, tauLo) : false;
+  const altered = hudSheet
     ? isRealityAltered({
         tau: tauStar,
         tauNow: tauHi,
@@ -557,12 +648,13 @@ export default function SurfaceApp() {
   useEffect(() => {
     if (!sceneRef.current) return;
     sceneRef.current.setInspect({
-      timePlayhead: sheet ? tauStar : undefined,
+      timePlayhead: hudSheet ? tauStar : undefined,
       altered,
       valueWindow: valueWindow ?? undefined,
       zoomGain,
       candlesOn,
       spots,
+      relief,
       planes: {
         strike: {
           visible: strikeOn,
@@ -577,15 +669,17 @@ export default function SurfaceApp() {
         value: { visible: valueOpacity > 0, opacity: valueOpacity, position: 0 },
       },
     });
-  }, [sheetKey, tauStar, strikeOn, timeOn, timeWalked, strikeForPlane, altered, valueWindow, sheet, zoomGain, valueOpacity, spots, candlesOn]);
+  }, [sheetKey, tauStar, strikeOn, timeOn, timeWalked, strikeForPlane, altered, valueWindow, sheet, hudSheet, zoomGain, valueOpacity, spots, candlesOn, relief]);
 
   return (
     <div
       className="relative flex h-full min-h-[50vh] w-full flex-1 flex-col bg-[#0a0a0e]"
       data-testid="surface-host"
       data-law={law || "TENT"}
+      data-clock={clock}
       data-cadence={cadence}
-      data-has-sheet={sheet ? "1" : "0"}
+      data-has-sheet={hudSheet ? "1" : "0"}
+      data-ghost={ghostSheet ? "1" : "0"}
       data-altered={altered ? "1" : "0"}
       data-time-ortho={eggOn ? "1" : "0"}
     >
@@ -606,9 +700,9 @@ export default function SurfaceApp() {
               : undefined
           }
           positionScale={
-            sheet ? { lo: sheet.sMin, hi: sheet.sMax } : null
+            hudSheet ? { lo: hudSheet.sMin, hi: hudSheet.sMax } : null
           }
-          listedStrikes={sheet?.listedStrikes ?? []}
+          listedStrikes={hudSheet?.listedStrikes ?? []}
           beLevels={beLevels}
           interactive={eggOn}
         />
@@ -730,11 +824,22 @@ export default function SurfaceApp() {
       <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-sm text-[11px] text-white/55">
         <div className="font-medium text-white/80">{label}</div>
         <div>
-          as_of {altered ? "time machine" : "live"} · {cadence}
-          {sheet ? ` · ${sheet.ivSource}` : ""}
+          as_of {surfaceAsOfLabel(clock, altered)} · {cadence}
+          {hudSheet ? ` · ${hudSheet.ivSource}` : ""}
         </div>
       </div>
-      {law ? (
+      {hudSheet && (clock === "residual" || clock === "expired") ? (
+        <div
+          className="pointer-events-none absolute left-3 top-12 z-10 max-w-sm text-[11px] text-white/45"
+          data-testid="surface-clock-claim"
+          data-clock={clock}
+        >
+          {clock === "residual"
+            ? "Held residual — not a live market. Analysis stays on."
+            : "Expired — wireframe ghost. Not a live market."}
+        </div>
+      ) : null}
+      {law && !hudSheet ? (
         <div
           className="absolute left-1/2 top-14 z-10 w-[min(28rem,calc(100%-2rem))] -translate-x-1/2 rounded-2xl border border-white/12 bg-black/65 px-5 py-4"
           data-testid="surface-law-b"
@@ -763,136 +868,151 @@ export default function SurfaceApp() {
         }
         data-testid="surface-canvas"
       />
-      <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex w-[min(22rem,calc(100%-6rem))] flex-col gap-2">
-        <PlanesHud
-          strikeOn={strikeOn}
-          timeOn={timeOn}
-          strikePos={sheet ? strikeForPlane : strikePos}
-          strikeMin={sheet?.sMin ?? 80}
-          strikeMax={sheet?.sMax ?? 120}
-          onStrikeOn={setStrikeOn}
-          onTimeOn={setTimeOn}
-          onStrikePos={setStrikePos}
-          widthPadFrac={widthPadFrac}
-          heightPadFrac={heightPadFrac}
-          onWidthPadFrac={setWidthPadFrac}
-          onHeightPadFrac={setHeightPadFrac}
-          valueOpacity={valueOpacity}
-          onValueOpacity={setValueOpacity}
-          candlesOn={candlesOn}
-          onCandlesOn={setCandlesOn}
-        />
-        <TimeHud
-          tauLo={sheet ? tauLo : 0}
-          tauHi={sheet ? tauHi : 1}
-          playhead={sheet ? tauStar : 0}
-          volOffsetPts={volOffsetPts}
-          spotPct={spotPct}
-          sample={sample}
-          cadenceLabel={cad.label}
-          lastMinuteGold={cad.lastMinuteGold}
-          onPlayhead={setPlayhead}
-          onVol={setVolOffsetPts}
-          onSpotPct={setSpotPct}
-          onReset={() => {
-            setPlayhead(null);
-            setVolOffsetPts(0);
-            setSpotPct(0);
+      <div
+        className="pointer-events-none absolute bottom-3 left-3 top-20 z-20 flex w-[min(20rem,calc(100%-1.5rem))] flex-col gap-2 overflow-y-auto pr-1"
+        data-testid="surface-hud-dock"
+      >
+        <ViewsHud
+          onFactory={(id: FactoryViewId) => {
+            if (id === "now" || id === "time" || id === "timeOrtho") {
+              setProjection("orthographic");
+            } else setProjection("perspective");
+            if (id === "timeOrtho") {
+              setCandlesOn(false);
+              setEggOn(true);
+            } else {
+              setEggOn(false);
+            }
+            if (id === "fit") sceneRef.current?.fit();
+            else sceneRef.current?.applyFactoryView(id);
+          }}
+          views={saved}
+          onSave={() => {
+            if (saved.length >= 12) return;
+            const next: SavedView = {
+              id: crypto.randomUUID(),
+              name: `View ${saved.length + 1}`,
+              inspect: {
+                playhead: tauStar,
+                volOffsetPts,
+                spotPct,
+                strikeOn,
+                timeOn,
+                strikePos,
+              },
+              updated_at: new Date().toISOString(),
+            };
+            const views = [...saved, next];
+            setSaved(views);
+            void saveSurfaceInspect({
+              defaults: {},
+              default_view_id: null,
+              views,
+            });
+          }}
+          onRecall={(id) => {
+            const v = saved.find((x) => x.id === id);
+            if (!v) return;
+            const ins = v.inspect || {};
+            if (typeof ins.playhead === "number") setPlayhead(ins.playhead);
+            if (typeof ins.volOffsetPts === "number") setVolOffsetPts(ins.volOffsetPts);
+            if (typeof ins.spotPct === "number") setSpotPct(ins.spotPct);
+            if (typeof ins.strikeOn === "boolean") setStrikeOn(ins.strikeOn);
+            if (typeof ins.timeOn === "boolean") setTimeOn(ins.timeOn);
+            if (typeof ins.strikePos === "number") setStrikePos(ins.strikePos);
+          }}
+          onDelete={(id) => {
+            const views = saved.filter((x) => x.id !== id);
+            setSaved(views);
+            void saveSurfaceInspect({
+              defaults: {},
+              default_view_id: null,
+              views,
+            });
           }}
         />
+        <HudCollapse title="Planes" testId="surface-planes-wrap">
+          <PlanesHud
+            strikeOn={strikeOn}
+            timeOn={timeOn}
+            strikePos={hudSheet ? strikeForPlane : strikePos}
+            strikeMin={hudSheet?.sMin ?? 80}
+            strikeMax={hudSheet?.sMax ?? 120}
+            onStrikeOn={setStrikeOn}
+            onTimeOn={setTimeOn}
+            onStrikePos={setStrikePos}
+            widthPadFrac={widthPadFrac}
+            heightPadFrac={heightPadFrac}
+            onWidthPadFrac={setWidthPadFrac}
+            onHeightPadFrac={setHeightPadFrac}
+            valueOpacity={valueOpacity}
+            onValueOpacity={setValueOpacity}
+            candlesOn={candlesOn}
+            onCandlesOn={setCandlesOn}
+            relief={relief}
+            onRelief={setRelief}
+          />
+        </HudCollapse>
+        <HudCollapse title="Time" testId="surface-time-wrap">
+          <TimeHud
+            tauLo={hudSheet ? tauLo : 0}
+            tauHi={hudSheet ? tauHi : 1}
+            playhead={hudSheet ? tauStar : 0}
+            volOffsetPts={volOffsetPts}
+            spotPct={spotPct}
+            sample={sample}
+            cadenceLabel={cad.label}
+            lastMinuteGold={cad.lastMinuteGold}
+            onPlayhead={setPlayhead}
+            onVol={setVolOffsetPts}
+            onSpotPct={setSpotPct}
+            onReset={() => {
+              setPlayhead(null);
+              setVolOffsetPts(0);
+              setSpotPct(0);
+            }}
+          />
+        </HudCollapse>
+        {eggOn ? null : (
+          <HudCollapse title="Camera" testId="surface-camera-wrap">
+            <CameraHud
+              projection={projection}
+              zoomGain={zoomGain}
+              onZoomGain={setZoomGain}
+              spots={spots}
+              onSpotOn={(i, on) => {
+                setSpots((prev) =>
+                  prev.map((s, j) => (j === i ? { ...s, on } : s)),
+                );
+              }}
+              onSpotBrightness={(i, brightness) => {
+                setSpots((prev) =>
+                  prev.map((s, j) => (j === i ? { ...s, brightness } : s)),
+                );
+              }}
+              onFit={() => {
+                setProjection("perspective");
+                sceneRef.current?.fit();
+              }}
+              onAutofit={() => {
+                setAutofitGen((n) => n + 1);
+                setProjection("perspective");
+                sceneRef.current?.fit();
+              }}
+              onIso={() => {
+                setProjection("perspective");
+                sceneRef.current?.applyFactoryView("iso");
+              }}
+              onProjection={() => {
+                const next =
+                  projection === "orthographic" ? "perspective" : "orthographic";
+                setProjection(next);
+                sceneRef.current?.setProjection(next);
+              }}
+            />
+          </HudCollapse>
+        )}
       </div>
-      <ViewsHud
-        onFactory={(id: FactoryViewId) => {
-          if (id === "now" || id === "time" || id === "timeOrtho") {
-            setProjection("orthographic");
-          } else setProjection("perspective");
-          if (id === "timeOrtho") {
-            setCandlesOn(false);
-            setEggOn(true);
-          } else {
-            setEggOn(false);
-          }
-          if (id === "fit") sceneRef.current?.fit();
-          else sceneRef.current?.applyFactoryView(id);
-        }}
-        views={saved}
-        onSave={() => {
-          if (saved.length >= 12) return;
-          const next: SavedView = {
-            id: crypto.randomUUID(),
-            name: `View ${saved.length + 1}`,
-            inspect: {
-              playhead: tauStar,
-              volOffsetPts,
-              spotPct,
-              strikeOn,
-              timeOn,
-              strikePos,
-            },
-            updated_at: new Date().toISOString(),
-          };
-          const views = [...saved, next];
-          setSaved(views);
-          void saveSurfaceInspect({
-            defaults: {},
-            default_view_id: null,
-            views,
-          });
-        }}
-        onRecall={(id) => {
-          const v = saved.find((x) => x.id === id);
-          if (!v) return;
-          const ins = v.inspect || {};
-          if (typeof ins.playhead === "number") setPlayhead(ins.playhead);
-          if (typeof ins.volOffsetPts === "number") setVolOffsetPts(ins.volOffsetPts);
-          if (typeof ins.spotPct === "number") setSpotPct(ins.spotPct);
-          if (typeof ins.strikeOn === "boolean") setStrikeOn(ins.strikeOn);
-          if (typeof ins.timeOn === "boolean") setTimeOn(ins.timeOn);
-          if (typeof ins.strikePos === "number") setStrikePos(ins.strikePos);
-        }}
-        onDelete={(id) => {
-          const views = saved.filter((x) => x.id !== id);
-          setSaved(views);
-          void saveSurfaceInspect({
-            defaults: {},
-            default_view_id: null,
-            views,
-          });
-        }}
-      />
-      {eggOn ? null : <CameraHud
-        projection={projection}
-        zoomGain={zoomGain}
-        onZoomGain={setZoomGain}
-        spots={spots}
-        onSpotOn={(i, on) => {
-          setSpots((prev) => prev.map((s, j) => (j === i ? { ...s, on } : s)));
-        }}
-        onSpotBrightness={(i, brightness) => {
-          setSpots((prev) =>
-            prev.map((s, j) => (j === i ? { ...s, brightness } : s)),
-          );
-        }}
-        onFit={() => {
-          setProjection("perspective");
-          sceneRef.current?.fit();
-        }}
-        onAutofit={() => {
-          setAutofitGen((n) => n + 1);
-          setProjection("perspective");
-          sceneRef.current?.fit();
-        }}
-        onIso={() => {
-          setProjection("perspective");
-          sceneRef.current?.applyFactoryView("iso");
-        }}
-        onProjection={() => {
-          const next =
-            projection === "orthographic" ? "perspective" : "orthographic";
-          setProjection(next);
-          sceneRef.current?.setProjection(next);
-        }}
-      />}
     </div>
   );
 }

@@ -20,6 +20,19 @@ import {
   valueWindowForSheet,
 } from "./timeCut";
 import type { ValueWindow } from "../surfaceAutofit";
+import { surfaceFillEnabled, type SurfaceDrawStyle } from "./style";
+import { clampRelief, RELIEF_DEFAULT, surfaceReliefFromHeights } from "../surfaceRelief";
+import { timeToBoxZ } from "../surfaceCandles";
+import {
+  formatExpiryClock,
+  isRthEt,
+  listTimeAxisMarks,
+  markBoxZ,
+  openToExpirySpan,
+  sheetTimeWindow,
+  type TimeAxisMark,
+  type TimeAxisWindow,
+} from "../surfaceTimeAxis";
 import {
   PERSPECTIVE_FOV,
   SLOW_ZOOM_GAIN,
@@ -38,8 +51,12 @@ export type PlaneInspect = {
   position: number;
 };
 
+export type { SurfaceDrawStyle } from "./style";
+export { surfaceFillEnabled } from "./style";
+
 export type SurfaceSceneHandle = {
   setSheet(sheet: SurfaceSheet | null): void;
+  setGhostSheet(sheet: SurfaceSheet | null): void;
   setInspect(patch: {
     camera?: CameraPose;
     timePlayhead?: number;
@@ -49,6 +66,8 @@ export type SurfaceSceneHandle = {
     spots?: Array<{ on: boolean; brightness: number }>;
     planes?: Partial<Record<"strike" | "time" | "value", PlaneInspect>>;
     candlesOn?: boolean;
+    /** 0 = flat color, 1 = max slope/crease darkening. */
+    relief?: number;
   }): void;
   setCandles(boxes: CandleBox[]): void;
   setSurfaceLocked(locked: boolean): void;
@@ -102,7 +121,11 @@ function look(cam: THREE.Camera, pose: CameraPose) {
   cam.updateMatrixWorld(true);
 }
 
-function buildSurface(sheet: SurfaceSheet, value: ValueWindow): THREE.Group {
+function buildSurface(
+  sheet: SurfaceSheet,
+  value: ValueWindow,
+  style: SurfaceDrawStyle = "solid",
+): THREE.Group {
   const nx = sheet.spotAxis.length;
   const nVis = sheet.timeAxis.length;
   const geo = new THREE.BufferGeometry();
@@ -133,26 +156,46 @@ function buildSurface(sheet: SurfaceSheet, value: ValueWindow): THREE.Group {
   geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geo.setIndex(indices);
   geo.computeVertexNormals();
+  const heights = new Float32Array(nVis * nx);
+  for (let v = 0; v < heights.length; v++) heights[v] = positions[v * 3 + 1];
+  geo.setAttribute(
+    "relief",
+    new THREE.BufferAttribute(surfaceReliefFromHeights(heights, nx, nVis), 1),
+  );
   const zeroY = surfaceBoxY(0, value.yMin, value.yMax);
-  const mesh = new THREE.Mesh(geo, makeSignedPnlMaterial(zeroY));
+  const ghost = style === "ghost";
+  const group = new THREE.Group();
+  group.name = ghost ? "surface-ghost" : "surface-solid";
+  if (surfaceFillEnabled(style)) {
+    const mesh = new THREE.Mesh(geo, makeSignedPnlMaterial(zeroY));
+    mesh.name = "surface-fill";
+    group.add(mesh);
+  }
   const wire = new THREE.LineSegments(
     new THREE.WireframeGeometry(geo),
     new THREE.LineBasicMaterial({
-      color: 0x6b7c8a,
+      color: ghost ? 0x9ca3af : 0x6b7c8a,
       transparent: true,
-      opacity: 0.28,
+      opacity: ghost ? 0.62 : 0.28,
     }),
   );
-  const group = new THREE.Group();
-  group.add(mesh);
+  wire.name = ghost ? "surface-ghost-wire" : "surface-wire";
   group.add(wire);
   for (let k = 1; k < nVis - 1; k++) {
-    const line = edgeLine(positions, nx, k, 0x64748b);
-    (line.material as THREE.LineBasicMaterial).opacity = 0.32;
+    const line = edgeLine(positions, nx, k, ghost ? 0x9ca3af : 0x64748b);
+    (line.material as THREE.LineBasicMaterial).opacity = ghost ? 0.48 : 0.32;
     group.add(line);
   }
   if (nVis > 0) {
-    group.add(fatLine(positions, nx, nVis - 1, EXPIRY_STROKE, EXPIRY_WIDTH_PX));
+    group.add(
+      fatLine(
+        positions,
+        nx,
+        nVis - 1,
+        ghost ? 0x9ca3af : EXPIRY_STROKE,
+        EXPIRY_WIDTH_PX,
+      ),
+    );
   }
   let zi = 0;
   for (const pts of zeroPnlBoxPolylines(sheet, zeroY)) {
@@ -240,24 +283,26 @@ function makeSignedPnlMaterial(zeroY: number): THREE.MeshPhongMaterial {
   });
   mat.userData.uLossAlpha = { value: 1 };
   mat.userData.uProfitAlpha = { value: 1 };
+  mat.userData.uRelief = { value: RELIEF_DEFAULT };
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uZeroBand = { value: ZERO_BLEND };
     shader.uniforms.uZeroY = { value: zeroY };
     shader.uniforms.uLossAlpha = mat.userData.uLossAlpha;
     shader.uniforms.uProfitAlpha = mat.userData.uProfitAlpha;
+    shader.uniforms.uRelief = mat.userData.uRelief;
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
-        "#include <common>\nvarying float vPnlY;",
+        "#include <common>\nattribute float relief;\nvarying float vPnlY;\nvarying float vRelief;",
       )
       .replace(
         "#include <begin_vertex>",
-        "#include <begin_vertex>\nvPnlY = position.y;",
+        "#include <begin_vertex>\nvPnlY = position.y;\nvRelief = relief;",
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nvarying float vPnlY;\nuniform float uZeroBand;\nuniform float uZeroY;\nuniform float uLossAlpha;\nuniform float uProfitAlpha;",
+        "#include <common>\nvarying float vPnlY;\nvarying float vRelief;\nuniform float uZeroBand;\nuniform float uZeroY;\nuniform float uLossAlpha;\nuniform float uProfitAlpha;\nuniform float uRelief;",
       )
       .replace(
         "#include <color_fragment>",
@@ -270,11 +315,17 @@ function makeSignedPnlMaterial(zeroY: number): THREE.MeshPhongMaterial {
         float mag = 0.35 + 0.65 * min(1.0, abs(signedPnl));
         float overlay = step(0.001, 1.0 - min(uLossAlpha, uProfitAlpha));
         float shade = mix(mag, 1.0, overlay);
+        float fold = clamp(vRelief, 0.0, 1.0);
+        float hi = uRelief * uRelief;
+        fold = mix(fold, pow(fold, 0.32), hi);
+        float gain = mix(0.78, 1.0, hi);
+        shade *= max(0.0, 1.0 - uRelief * fold * gain);
+        shade *= max(0.0, 1.0 - hi * fold * 0.88);
         diffuseColor.rgb = mix(loss, profit, t) * shade;
         diffuseColor.a *= mix(uLossAlpha, uProfitAlpha, t);`,
       );
   };
-  mat.customProgramCacheKey = () => `surface-signed-pnl-${ZERO_BLEND}`;
+  mat.customProgramCacheKey = () => `surface-signed-pnl-${ZERO_BLEND}-relief`;
   return mat;
 }
 
@@ -539,6 +590,48 @@ export function mountSurfaceScene(
   const boxFrame = makeBoxFrame(2, BOX_REALITY, 0.45);
   boxFrame.name = "surface-box-wire";
   world.add(boxFrame);
+  const tickGeo = new THREE.BufferGeometry();
+  const tickMat = new THREE.LineBasicMaterial({
+    color: BOX_REALITY,
+    transparent: true,
+    opacity: 0.45,
+    depthWrite: false,
+  });
+  const tickLines = new THREE.LineSegments(tickGeo, tickMat);
+  tickLines.name = "surface-time-ticks";
+  tickLines.frustumCulled = false;
+  world.add(tickLines);
+  const SESSION_WIDTH_PX = 2.4;
+  const sessionGeo = new LineSegmentsGeometry();
+  const sessionMat = new LineMaterial({
+    color: BOX_REALITY,
+    linewidth: SESSION_WIDTH_PX,
+    worldUnits: false,
+    transparent: true,
+    opacity: 0.72,
+    toneMapped: false,
+    depthTest: true,
+    depthWrite: false,
+  });
+  const sessionRails = new LineSegments2(sessionGeo, sessionMat);
+  sessionRails.name = "surface-session-rail";
+  sessionRails.frustumCulled = false;
+  world.add(sessionRails);
+  const heavyTickGeo = new LineSegmentsGeometry();
+  const heavyTickMat = new LineMaterial({
+    color: BOX_REALITY,
+    linewidth: SESSION_WIDTH_PX,
+    worldUnits: false,
+    transparent: true,
+    opacity: 0.72,
+    toneMapped: false,
+    depthTest: true,
+    depthWrite: false,
+  });
+  const heavyTicks = new LineSegments2(heavyTickGeo, heavyTickMat);
+  heavyTicks.name = "surface-time-ticks-rth";
+  heavyTicks.frustumCulled = false;
+  world.add(heavyTicks);
   const boxGlowA = makeBoxGlow(7, 0.22);
   const boxGlowB = makeBoxGlow(3, 0.55);
   boxGlowA.name = "surface-box-glow-a";
@@ -549,6 +642,12 @@ export function mountSurfaceScene(
     const mat = boxFrame.material as THREE.LineBasicMaterial;
     mat.color.setHex(next ? BOX_ALTERED : BOX_REALITY);
     mat.opacity = next ? 0.95 : 0.45;
+    tickMat.color.setHex(next ? BOX_ALTERED : BOX_REALITY);
+    tickMat.opacity = next ? 0.95 : 0.45;
+    sessionMat.color.setHex(next ? BOX_ALTERED : BOX_REALITY);
+    sessionMat.opacity = next ? 0.95 : 0.72;
+    heavyTickMat.color.setHex(next ? BOX_ALTERED : BOX_REALITY);
+    heavyTickMat.opacity = next ? 0.95 : 0.72;
     boxGlowA.visible = next;
     boxGlowB.visible = next;
     host.dataset.altered = next ? "1" : "0";
@@ -578,9 +677,29 @@ export function mountSurfaceScene(
   };
   const labStrike = mkLab("strike", "Strike");
   const labPnl = mkLab("pnl", "P&L");
-  const labTime = mkLab("time", "Time");
   const labNow = mkLab("now", "Now");
+  const labNowOpp = mkLab("now-opp", "Now");
+  const decorateExpiry = (el: HTMLElement, testId: string) => {
+    el.style.display = "flex";
+    el.style.flexDirection = "column";
+    el.style.alignItems = "center";
+    el.style.gap = "1px";
+    el.style.whiteSpace = "normal";
+    el.replaceChildren();
+    const title = document.createElement("span");
+    title.textContent = "Expiry";
+    const at = document.createElement("span");
+    at.dataset.testid = testId;
+    at.style.cssText =
+      "font-size:10px;letter-spacing:0.04em;text-transform:none;" +
+      "color:rgba(255,255,255,0.40);font-variant-numeric:tabular-nums;";
+    el.append(title, at);
+    return at;
+  };
   const labExpiry = mkLab("expiry", "Expiry");
+  const labExpiryAt = decorateExpiry(labExpiry, "surface-expiry-clock");
+  const labExpiryOpp = mkLab("expiry-opp", "Expiry");
+  const labExpiryAtOpp = decorateExpiry(labExpiryOpp, "surface-expiry-clock-opp");
   const labTn = mkLab("tn", "tn");
   host.appendChild(labels);
 
@@ -651,7 +770,125 @@ export function mountSurfaceScene(
     spotHud = { x, orb };
   };
 
+  const TICK_MINOR = 0.045;
+  const TICK_MAJOR = 0.085;
+  let timeWin: TimeAxisWindow | null = null;
+  let timeMarks: TimeAxisMark[] = [];
+  const hourLabs: HTMLElement[] = [];
+
+  const clearHourLabs = () => {
+    for (const el of hourLabs) el.remove();
+    hourLabs.length = 0;
+  };
+
+  const rebuildTimeAxis = (sheet: SurfaceSheet | null) => {
+    clearHourLabs();
+    if (!sheet) {
+      timeWin = null;
+      timeMarks = [];
+      tickGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(0), 3));
+      tickLines.visible = false;
+      sessionRails.visible = false;
+      heavyTicks.visible = false;
+      labExpiryAt.textContent = "";
+      labExpiryAtOpp.textContent = "";
+      return;
+    }
+    timeWin = sheetTimeWindow(sheet, Date.now());
+    timeMarks = listTimeAxisMarks(timeWin);
+    const clock = formatExpiryClock(timeWin.tExp);
+    labExpiryAt.textContent = clock;
+    labExpiryAtOpp.textContent = clock;
+    for (const m of timeMarks) {
+      if (!m.label) continue;
+      for (const side of ["pos", "neg"] as const) {
+        const s = document.createElement("span");
+        s.dataset.timeTick = m.kind;
+        s.dataset.timeSide = side;
+        s.textContent = m.label;
+        s.style.cssText =
+          "position:absolute;transform:translate(-50%,-50%);color:rgba(255,255,255,0.40);" +
+          "font-size:10px;letter-spacing:0.10em;text-transform:uppercase;white-space:nowrap;";
+        labels.appendChild(s);
+        hourLabs.push(s);
+      }
+    }
+  };
+
+  const layoutSessionRail = () => {
+    if (!timeWin) {
+      sessionRails.visible = false;
+      return;
+    }
+    const span = openToExpirySpan(timeWin, timeMarks);
+    if (!span) {
+      sessionRails.visible = false;
+      return;
+    }
+    const z0 = timeToBoxZ(span.tNow, timeWin.tNow, timeWin.tExp);
+    const z1 = timeToBoxZ(span.tExp, timeWin.tNow, timeWin.tExp);
+    sessionGeo.setPositions([
+      1, -1, z0, 1, -1, z1, -1, -1, z0, -1, -1, z1,
+    ]);
+    sessionMat.resolution.set(
+      Math.max(host.clientWidth, 1),
+      Math.max(host.clientHeight, 1),
+    );
+    sessionRails.visible = true;
+  };
+
+  const layoutTimeTicks = () => {
+    if (!timeWin) {
+      tickLines.visible = false;
+      sessionRails.visible = false;
+      heavyTicks.visible = false;
+      return;
+    }
+    if (!timeMarks.length) {
+      tickLines.visible = false;
+      heavyTicks.visible = false;
+      layoutSessionRail();
+      return;
+    }
+    const light: number[] = [];
+    const heavy: number[] = [];
+    let li = 0;
+    for (const m of timeMarks) {
+      const z = markBoxZ(m, timeWin);
+      const len = m.label ? TICK_MAJOR : TICK_MINOR;
+      const dest = isRthEt(m.tMs) ? heavy : light;
+      for (const x of [1, -1]) {
+        dest.push(x, -1, z, x, -1 + len, z);
+      }
+      if (m.label) {
+        const a = hourLabs[li++];
+        const b = hourLabs[li++];
+        if (a) placeOne(a, 1.02, -1.02, z);
+        if (b) placeOne(b, -1.02, -1.02, z);
+      }
+    }
+    tickGeo.setAttribute(
+      "position",
+      new THREE.BufferAttribute(new Float32Array(light), 3),
+    );
+    tickGeo.computeBoundingSphere();
+    tickLines.visible = light.length > 0;
+    if (heavy.length) {
+      heavyTickGeo.setPositions(heavy);
+      heavyTickMat.resolution.set(
+        Math.max(host.clientWidth, 1),
+        Math.max(host.clientHeight, 1),
+      );
+      heavyTicks.visible = true;
+    } else {
+      heavyTicks.visible = false;
+    }
+    layoutSessionRail();
+  };
+
   let surface: THREE.Group | null = null;
+  let ghostSurface: THREE.Group | null = null;
+  let lastGhostSheet: SurfaceSheet | null = null;
   let lastFrontTau: number | null = null;
   const tnLine = makeTnLine();
   world.add(tnLine);
@@ -668,18 +905,53 @@ export function mountSurfaceScene(
     }
     lastSheet = sheet;
     if (sheet) {
-      surface = buildSurface(sheet, valueOf(sheet));
+      surface = buildSurface(sheet, valueOf(sheet), "solid");
       world.add(surface);
+      paintRelief(reliefAmt);
     }
-    rebuildStrikeHud(sheet);
-    rebuildSpotHud(sheet);
+    rebuildStrikeHud(sheet ?? lastGhostSheet);
+    rebuildSpotHud(sheet ?? lastGhostSheet);
+    rebuildTimeAxis(sheet ?? lastGhostSheet);
     layoutTnCut();
     applyMapOverlay(mapOverlay);
     paint();
   };
+  const applyGhost = (sheet: SurfaceSheet | null) => {
+    if (ghostSurface) {
+      world.remove(ghostSurface);
+      disposeObject(ghostSurface);
+      ghostSurface = null;
+    }
+    lastGhostSheet = sheet;
+    if (sheet) {
+      ghostSurface = buildSurface(sheet, valueOf(sheet), "ghost");
+      world.add(ghostSurface);
+    }
+    host.dataset.ghost = sheet ? "1" : "0";
+    if (!lastSheet) {
+      rebuildStrikeHud(sheet);
+      rebuildSpotHud(sheet);
+      rebuildTimeAxis(sheet);
+      layoutTnCut();
+    }
+    applyMapOverlay(mapOverlay);
+    paint();
+  };
   let lastSheet: SurfaceSheet | null = init.sheet ?? null;
+  const boxSheet = () => lastSheet ?? lastGhostSheet;
   let valueWindow: ValueWindow | null = null;
   let mapOverlay = false;
+  let reliefAmt = RELIEF_DEFAULT;
+  const paintRelief = (amt: number) => {
+    reliefAmt = clampRelief(amt);
+    host.dataset.relief = String(reliefAmt);
+    if (!surface) return;
+    surface.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshPhongMaterial | undefined;
+      if (mat?.userData?.uRelief) mat.userData.uRelief.value = reliefAmt;
+    });
+  };
   const valueOf = (sheet: SurfaceSheet) =>
     valueWindow ?? valueWindowForSheet(sheet);
   const applyMapOverlay = (on: boolean) => {
@@ -746,17 +1018,19 @@ export function mountSurfaceScene(
   };
 
   const worldX = (s: number) => {
-    if (!lastSheet) return 0;
-    const span = Math.max(lastSheet.sMax - lastSheet.sMin, 1e-9);
-    return ((s - lastSheet.sMin) / span) * 2 - 1;
+    const sheet = boxSheet();
+    if (!sheet) return 0;
+    const span = Math.max(sheet.sMax - sheet.sMin, 1e-9);
+    return ((s - sheet.sMin) / span) * 2 - 1;
   };
   const worldZ = (tau: number) => {
-    if (!lastSheet) return 0;
-    return tauToBoxZ(lastSheet, tau);
+    const sheet = boxSheet();
+    if (!sheet) return 0;
+    return tauToBoxZ(sheet, tau);
   };
   const playheadTau = () => {
     if (lastFrontTau != null && Number.isFinite(lastFrontTau)) return lastFrontTau;
-    return lastSheet?.timeAxis[0] ?? 0;
+    return boxSheet()?.timeAxis[0] ?? 0;
   };
   const layoutTnCut = () => {
     if (!lastSheet || lastSheet.spotAxis.length < 2) {
@@ -766,8 +1040,9 @@ export function mountSurfaceScene(
     setTnPoints(tnLine, timeCutPoints(lastSheet, playheadTau(), valueOf(lastSheet)));
   };
   const worldY = (pnl: number) => {
-    if (!lastSheet) return 0;
-    return surfaceBoxY(pnl, valueOf(lastSheet).yMin, valueOf(lastSheet).yMax);
+    const sheet = boxSheet();
+    if (!sheet) return 0;
+    return surfaceBoxY(pnl, valueOf(sheet).yMin, valueOf(sheet).yMax);
   };
 
   const mkPlane = (color: number, opacity: number) => {
@@ -836,9 +1111,10 @@ export function mountSurfaceScene(
       ? surfaceBoxY(0, valueOf(lastSheet).yMin, valueOf(lastSheet).yMax)
       : 0;
     placeOne(labPnl, -1.08, zeroY, -1);
-    placeOne(labTime, 1.08, -1.08, 0);
-    placeOne(labNow, 1.08, -1.08, 1);
-    placeOne(labExpiry, 1.08, -1.08, -1);
+    placeOne(labNow, 1.02, -1.02, 1);
+    placeOne(labNowOpp, -1.02, -1.02, 1);
+    placeOne(labExpiry, 1.02, -1.02, -1);
+    placeOne(labExpiryOpp, -1.02, -1.02, -1);
     const zTn = lastSheet ? tauToBoxZ(lastSheet, playheadTau()) : 1;
     placeOne(labTn, 1.08, 0, zTn);
     for (const h of strikeHud) {
@@ -856,6 +1132,7 @@ export function mountSurfaceScene(
       spotHud.orb.style.top = `${p.top}px`;
       spotHud.orb.style.opacity = p.front ? "1" : "0";
     }
+    layoutTimeTicks();
   };
 
   if (init.sheet) apply(init.sheet);
@@ -990,6 +1267,8 @@ export function mountSurfaceScene(
     const h = Math.max(host.clientHeight, 1);
     renderer.setPixelRatio(resolveDpr());
     renderer.setSize(w, h, true);
+    sessionMat.resolution.set(w, h);
+    heavyTickMat.resolution.set(w, h);
     applyBox(w, h, true);
     paint();
     host.dataset.eyeX = String(pose.eye.x);
@@ -1075,15 +1354,20 @@ export function mountSurfaceScene(
   return {
     setSheet(sheet: SurfaceSheet | null) {
       apply(sheet);
-      if (sheet) {
+      const boxSheet = sheet ?? lastGhostSheet;
+      if (boxSheet) {
         if (
           !Number.isFinite(planes.strike.position) ||
-          planes.strike.position < sheet.sMin ||
-          planes.strike.position > sheet.sMax
+          planes.strike.position < boxSheet.sMin ||
+          planes.strike.position > boxSheet.sMax
         ) {
-          planes.strike.position = sheet.spot;
+          planes.strike.position = boxSheet.spot;
         }
       }
+      layoutPlanes();
+    },
+    setGhostSheet(sheet: SurfaceSheet | null) {
+      applyGhost(sheet);
       layoutPlanes();
     },
     setInspect(patch) {
@@ -1112,6 +1396,7 @@ export function mountSurfaceScene(
           valueWindow = next;
           host.dataset.heightPad = String(next.padFrac);
           apply(lastSheet);
+          applyGhost(lastGhostSheet);
           layoutCandles();
         }
       }
@@ -1125,6 +1410,9 @@ export function mountSurfaceScene(
           const next = patch.planes[id];
           if (next) planes[id] = { ...planes[id], ...next };
         }
+      }
+      if (patch.relief != null && Number.isFinite(patch.relief)) {
+        paintRelief(patch.relief);
       }
       layoutPlanes();
     },
@@ -1258,6 +1546,14 @@ export function mountSurfaceScene(
       host.removeEventListener("wheel", onWheel);
       clearCandles();
       if (surface) disposeObject(surface);
+      if (ghostSurface) disposeObject(ghostSurface);
+      clearHourLabs();
+      tickGeo.dispose();
+      tickMat.dispose();
+      sessionGeo.dispose();
+      sessionMat.dispose();
+      heavyTickGeo.dispose();
+      heavyTickMat.dispose();
       disposeObject(tnLine);
       disposeObject(boxFrame);
       disposeObject(boxGlowA);

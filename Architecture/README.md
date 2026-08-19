@@ -40,7 +40,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [25-dual-subdomain-practice-labs.md](./25-dual-subdomain-practice-labs.md) | **Future:** practice.fattail.ai vs labs.fattail.ai (DL-248) |
 | [26-strategy-lab-member-timeline.md](./26-strategy-lab-member-timeline.md) | **NOW:** Design+Curate lock; Deploy UX for members; Tradier real-money gated (DL-252) |
 | [32-strategy-lab-guiding-doctrine.md](./32-strategy-lab-guiding-doctrine.md) | **Guiding light:** position don’t predict · book-level shape · VP memory · DL-382–386 |
-| [33-strategy-lab-3d-surface.md](./33-strategy-lab-3d-surface.md) | **3D Surface first-ship as-built** · `/app/options-lab/surface` · App Spec v0.1.8 · Autofit v0.1.6 · multi-DTE front-exp (**DL-427**) · DL-401–427 |
+| [33-strategy-lab-3d-surface.md](./33-strategy-lab-3d-surface.md) | **3D Surface first-ship as-built** · `/app/options-lab/surface` · App Spec v0.1.8 · Autofit v0.1.6 · multi-DTE front-exp (**DL-427**) · never clock-blocked (**DL-445**) · DL-401–427 · 445 |
 
 **Market Bus / Options chain (2026-08-10) — as-built live market plane:**
 

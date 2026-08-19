@@ -41,12 +41,12 @@ export default function CameraHud({
   ];
   return (
     <div
-      className="pointer-events-auto absolute bottom-3 right-3 z-20 flex flex-col items-end gap-1.5"
+      className="pointer-events-auto flex w-full flex-col gap-2"
       data-testid="surface-camera-hud"
       onPointerDown={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
     >
-      <label className="w-[14rem] rounded-2xl border border-white/12 bg-black/55 px-3 py-2 text-[11px] text-white/55">
+      <label className="w-full text-[11px] text-white/55">
         Zoom speed
         <input
           type="range"
@@ -64,7 +64,7 @@ export default function CameraHud({
         </div>
       </label>
       <div
-        className="w-[15rem] rounded-2xl border border-white/12 bg-black/55 px-3 py-2 text-[11px] text-white/55"
+        className="w-full text-[11px] text-white/55"
         data-testid="surface-spot-lights"
       >
         <div className="mb-1 text-white/80">Spot lights</div>
@@ -107,7 +107,7 @@ export default function CameraHud({
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap items-center justify-end gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <button
           type="button"
           className={btn}

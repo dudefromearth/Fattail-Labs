@@ -33,6 +33,11 @@ MSC is **design reference only**. No MSC code.
 | Views persist | `identities.surface_inspect_json` (130) · PATCH `/api/me/profile` | Landed |
 | **Autofit** | Spec **v0.1.6** · `surfaceAutofit.ts` · book change + button only · expiry BEs at front-exp face | What-if / live spot / playhead do not refit · **AF-n** · **DL-421** · **DL-427** |
 | Multi-DTE sheet | Default `timeAxis` ends at `expiryFaceTau` (OD-PF2) · cyan last row = front-exp residual | T+0 magenta unchanged · **DL-427** |
+| Host clocks | Remaining listed life (`surfaceBookClock`) · residual/expired are HUD provenance · tent stays | Never clock-block analysis · **DL-445** |
+| Expired ghost | Wireframe, no fill · at-expiry residual (`surfaceGhost.ts`) | Analyzer 2D ghost equivalent · **DL-446** |
+| Box time axis | Both bottom edges · no “Time” word · hourly ticks · Midnight / Noon / Open · Expiry clock · heavier Open→Expiry rail · RTH ticks match that weight | **DL-447** · `surfaceTimeAxis.ts` |
+| Curvature shade | Slope + crease darken non-flat faces · Planes HUD **Curvature** slider | **DL-448** · `surfaceRelief.ts` |
+| HUD rail | Left dock · glow · detents always open · other panels collapsed | Coach 2026-08-18 |
 | Replay / mini graphic | Not wired | Later consumer wave |
 
 **Do not grow** `web/lib/risk-graph/3d/{alpha,charlie,echo}.js`. Those files are
@@ -236,7 +241,7 @@ Time machine **reuses** time-range HUD + playhead. It does not get a second scen
 - Zoom default feels Slow vs prior Work Pane; slider + Shift fine-zoom.  
 - Time window resample fills the τ axis; Live/What-if playhead walks without IV invention.  
 - Time machine rebinds snap IV; hole → **IV NO**; Friday 2026-08-14 not gold-minute / last-minute.  
-- Last-minute 0DTE (App Spec **§4.6a**): cite OPF Spec v0.2.1 §3.7; after settlement residual never live; no last-hour fill.  
+- Last-minute 0DTE (App Spec **§4.6a**): cite OPF Spec v0.2.1 §3.7; after settlement residual never live; no last-hour fill. Residual / EXPIRED **keep the tent** (DL-445) — claim changes, analysis does not lock.  
 - Strike plane walks; both walk planes hide; three opacities; Value parks off $0.  
 - Save 12 views; 13th fails loud; recall does not reprice.  
 - Missing exact IV → **IV NO**, no tent.

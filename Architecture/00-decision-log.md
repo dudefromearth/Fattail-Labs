@@ -4,6 +4,78 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-18 — DL-449 Surface HUD left rail, collapsed except detents
+
+**Decision:** All Surface inspect chrome sits in a **left rail** with a
+slight light glow. **Named-view detents** stay expanded. Planes, Time,
+Camera, and Saved views start **collapsed**.
+
+---
+
+## 2026-08-18 — DL-448 Surface curvature shade + slider
+
+**Decision:** The solid tent darkens **non-flat** regions so curvature
+reads: slope (first difference of box Y) plus crease (discrete
+Laplacian). Flat faces stay bright. A **Curvature** slider (0–100%,
+default 40%) scales that darkening. The **dark end** (100%) takes
+folds near-black; the **light end** stays the original gentle shade.
+Does not reprice. Ghost wireframe is unchanged.
+
+---
+
+## 2026-08-18 — DL-447 Surface box time axis: hours + Midnight / Noon / Open
+
+**Decision:** The viewport box time edge (Now → Expiry) carries:
+
+- **Expiry** corner: the word Expiry, with the face clock
+  (`Mon D · h:mm ET`) under it.
+- **Hourly ticks** on that edge, same weight as the box wire.
+  Major ticks (slightly longer) at **Midnight**, **Noon**, and
+  **Open** (Mon–Fri 9:30 America/New_York). Those three are labeled.
+- Ticks live inside the sheet window only. Now and Expiry stay the
+  corner words.
+
+**Does not:** invent hours past the expiry face, label weekend Open,
+or change τ / settlement law.
+
+---
+
+## 2026-08-18 — DL-446 Surface expired ghost is wireframe, no fill
+
+**Decision:** After the EXPIRED clock (next midnight ET), shown cards stay
+on Surface as Analyzer ghosts do. The 3D equivalent is the **wireframe
+tent with no filled mesh** — grey wires, at-expiry residual from defined
+debit + intrinsic. No live IV required.
+
+- Live / residual cards keep the solid tent.
+- Mixed book: solid live tent + wireframe ghost of expired cards.
+- Expired-only book: wireframe only. HUD `as_of expired` · `ivSource ghost`.
+
+**Does not:** invent IV, claim the ghost is live, or remove Analyzer’s
+2D dashed-grey ghost.
+
+---
+
+## 2026-08-18 — DL-445 Surface is never clock-blocked
+
+**Decision:** Coach: the member must be able to analyze a shown
+position **any time they choose**. Surface clocks name the **claim**
+(live / residual / expired). They do **not** unmount the tent or
+replace it with a blocking **HELD / RESIDUAL** or **EXPIRED** card.
+
+- Book clock = remaining listed life (every shown leg), not the
+  package front pointer alone. A weekly or calendar back-month stays
+  **live** after today’s 0DTE settlement.
+- After settlement / EXPIRED: still-drawn residual or ghost sheet;
+  HUD `as_of residual` / `as_of expired`. Never a live claim.
+- Overlay Law B remains only for holes that prevent a sheet
+  (empty book WAITING · UPDATING · IV NO · CHECK LEGS).
+
+**Does not:** invent IV, claim a settled contract is live, or change
+Analyzer card package-cell law.
+
+---
+
 ## 2026-08-18 — DL-444 Condors stay in Position Builder, not Heatmap
 
 **Decision:** Condors and iron condors are **Builder** structures only.

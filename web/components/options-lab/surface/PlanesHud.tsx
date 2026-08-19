@@ -5,6 +5,7 @@ import {
   SURFACE_PAD_FRAC_MIN,
   SURFACE_WIDTH_PAD_FRAC_MAX,
 } from "@/lib/risk-graph/surfaceAutofit";
+import { RELIEF_MAX, RELIEF_MIN } from "@/lib/risk-graph/surfaceRelief";
 
 function pct(frac: number) {
   return Math.round(frac * 100);
@@ -27,6 +28,8 @@ export default function PlanesHud({
   onValueOpacity,
   candlesOn,
   onCandlesOn,
+  relief,
+  onRelief,
 }: {
   strikeOn: boolean;
   timeOn: boolean;
@@ -44,14 +47,15 @@ export default function PlanesHud({
   onValueOpacity: (v: number) => void;
   candlesOn: boolean;
   onCandlesOn: (v: boolean) => void;
+  relief: number;
+  onRelief: (v: number) => void;
 }) {
   return (
     <div
-      className="pointer-events-auto w-full rounded-2xl border border-white/12 bg-black/55 p-3 text-[11px] text-white/80"
+      className="pointer-events-auto w-full text-[11px] text-white/80"
       data-testid="surface-planes-hud"
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <div className="mb-2 font-medium">Planes</div>
       <label className="flex min-h-11 items-center gap-2">
         <input
           type="checkbox"
@@ -90,6 +94,19 @@ export default function PlanesHud({
           value={valueOpacity}
           onChange={(e) => onValueOpacity(Number(e.target.value))}
           data-testid="surface-value-opacity"
+        />
+      </label>
+      <label className="mt-1 block text-white/55">
+        Curvature {pct(relief)}%
+        <input
+          type="range"
+          className="w-full"
+          min={RELIEF_MIN}
+          max={RELIEF_MAX}
+          step={0.01}
+          value={relief}
+          onChange={(e) => onRelief(Number(e.target.value))}
+          data-testid="surface-relief"
         />
       </label>
       <label className="mt-1 block text-white/55">

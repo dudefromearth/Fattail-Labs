@@ -116,7 +116,8 @@ marks are **severity: high** (member capital-adjacent judgment).
 5. **Two clocks + card = pointer.** τ / settlement = OPF expiry instant (OPF29). EXPIRED =
    next **midnight Eastern Time** after the exp calendar date (DL-393) — not UTC midnight,
    not the member’s local midnight, not cash close. Between clocks = **Held / residual,
-   never live**. NOT TRADED is missing market (incl. chain edge). Analyzer **Show** is a
+   never live**. Surface clocks name the claim — they do **not** unmount the tent
+   (**DL-445**). NOT TRADED is missing market (incl. chain edge). Analyzer **Show** is a
    checkbox: every shown card is in the viewport as one additive book (DL-394) — selecting
    one card must not hide another.
 6. **Builder:** strategy/quick-build only via listed-grid placement (`listedStructure` /

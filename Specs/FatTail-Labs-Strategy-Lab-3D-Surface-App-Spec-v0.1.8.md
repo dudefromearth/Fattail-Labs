@@ -9,7 +9,7 @@
 **Home:** Options Lab · route `/app/options-lab/surface` (DL-411; supersedes S1)  
 **Complements:** Options Lab **Analyzer** (`/app/options-lab/analyzer`)  
 **Engine:** `web/lib/risk-graph/surfaceModel.ts` (DL-391) — per-leg volatility  
-**Parents:** [MSC 3D Surface Design Port Assessment](../docs/Options-Lab-MSC-3D-Surface-Design-Port-Assessment-2026-08-16.md) · **DL-399** · **DL-409** · **DL-410** · **DL-411** · **DL-412** · Method v0.2.2 §2 · OT-EF v1.1 · OPF Spec v0.2.1 §3.7 / **OPF29** · DL-364 / 379–381 / 391  
+**Parents:** [MSC 3D Surface Design Port Assessment](../docs/Options-Lab-MSC-3D-Surface-Design-Port-Assessment-2026-08-16.md) · **DL-399** · **DL-409** · **DL-410** · **DL-411** · **DL-412** · **DL-445** · Method v0.2.2 §2 · OT-EF v1.1 · OPF Spec v0.2.1 §3.7 / **OPF29** · DL-364 / 379–381 / 391  
 **Architecture:** [`Architecture/33-strategy-lab-3d-surface.md`](../Architecture/33-strategy-lab-3d-surface.md)  
 **Technical contract:** [`FatTail-Labs-Strategy-Lab-3D-Surface-Tech-Spec-v0.1.md`](./FatTail-Labs-Strategy-Lab-3D-Surface-Tech-Spec-v0.1.md)  
 **Supersedes path:** [`FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.md`](./FatTail-Labs-Strategy-Lab-3D-Surface-App-Spec-v0.1.md) (stub only)  
@@ -180,6 +180,21 @@ Pin-to-mid remains default **off**; never on the time machine.
 
 One sheet. Two clocks. MSC had only the 16:00 freeze.
 
+**2026-08-18 amendment (Coach · DL-445):** Clocks name the **claim**, not the
+workspace. Residual and EXPIRED **never unmount the tent** and never replace
+it with a blocking card. The member may inspect a held or ghost residual
+sheet at any wall-clock time. HUD `as_of` is `live` · `residual` · `expired`
+(or `time machine`). Book clock is **remaining listed life** (every shown
+leg), not the front pointer alone — a weekly or calendar back-month stays
+analyzable after today’s 0DTE settlement. “Never live” is honesty of the
+mark. It is not a lock on analysis.
+
+**EXPIRED look (Coach 2026-08-18 · DL-446):** after midnight ET the shown
+expired book stays as a **wireframe with no filled surface** — Analyzer’s
+grey ghost in 3D. Same at-expiry residual (defined debit + intrinsic).
+Live / residual books keep the solid tent. Mixed book: solid live +
+wireframe ghost.
+
 ### 4.6 Modes (PB-MODE-0) and the time machine
 
 The surface is **one object**. Mode is a session property.
@@ -336,13 +351,17 @@ exist).
 
 **Must show**
 
-- Sheet (T+0 mesh) colored by signed P&L  
+- Sheet (T+0 mesh) colored by signed P&L. Non-flat faces (slope +
+  crease) are slightly darker so the tent’s shape reads. **Curvature**
+  slider on the Planes HUD scales that shade (0 = off, default 40%,
+  100% = near-black folds). Light end of the scale is unchanged
+  (**DL-448**).  
 - Expiry tent / edge, visually distinct  
 - Spot slice (now)  
 - Zero-P&L plane  
 - Listed structure strikes as markers  
 - Label: symbol · structure · `iv_source` · quality · tier if any  
-- Named failure states (Law B): EXPIRED · NOT TRADED · **IV NO** · CHECK LEGS · UPDATING · WAITING  
+- Named failure states (Law B) that **replace the tent**: NOT TRADED · **IV NO** · CHECK LEGS · UPDATING · WAITING (empty book). **HELD / RESIDUAL** and **EXPIRED** are provenance on a **still-drawn** sheet (DL-445).  
 
 **Must not show (v0.1)**
 
@@ -522,8 +541,31 @@ trick.
 - Camera may stay put while the playhead moves. Named view **Now** faces
   the playhead slice.
 
+**Box time edge (Coach 2026-08-18 · DL-447)**
+
+The enclosing box names the corners **Now** and **Expiry** on **both
+bottom time edges**. There is no axis word “Time”. Labels sit tight
+to the wire. On each of those edges:
+
+- **Expiry** shows the expiration-face clock under the word
+  (America/New_York, e.g. `Aug 18, 4:00 PM ET`).
+- Small ticks every **hour**. **RTH** ticks (Mon–Fri 9:30–16:00 ET) use
+  the same heavier weight as the Open→Expiry rail. Off-hours and weekend
+  ticks stay the light box weight.
+- Longer ticks + labels at **Midnight** (00:00 ET), **Noon** (12:00 ET),
+  and **Open** (Mon–Fri 9:30 ET). No Open on Saturday or Sunday.
+- Ticks sit strictly between the Now and Expiry corners.
+- The **Open → Expiry** stretch (expiry-day session; remaining Now →
+  Expiry if Open is already behind) is a **slightly heavier** rail on
+  both bottom edges. Same family as the box, not a second color.
+
 **HUD (responsive, §5.3a)**
 
+- All inspect chrome lives in a **left rail**. Panels have a slight
+  light glow so they lift off the tent.
+- **Named-view detents** (ISO · Now · Expiry · Spot · Time · T Ortho ·
+  Top · Fit) stay **expanded**.
+- Planes, Time, Camera, and Saved views start **collapsed**.
 - Time-range control + playhead on the canvas HUD or a bottom drawer.
 - Phone: drawer; ≥44pt. Must not block orbit on the mesh.
 - Readout: window in clock time (ET) and remaining, plus playhead clock.

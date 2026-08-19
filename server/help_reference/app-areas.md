@@ -91,6 +91,11 @@ your development, not just individual sessions.
 The options inspection suite — Heatmap, Analyzer, Surface, Volume Profile.
 Open it from the apps area (`/app/options-lab`). The Heatmap is a grid of
 listed flies; Analyzer builds a book; Surface shows that book's P&L shape.
+Surface stays available after the close and after expiration — residual
+or expired is a label, not a lock. After midnight, yesterday’s expired
+positions stay as a grey wireframe (no filled tent), the same idea as
+the Analyzer ghost. You can inspect a weekly or a calendar back-month
+any time.
 See the Options Lab Heatmap reference for what each Heatmap Value number
 means (Long/Debit, Short/Credit, % Change, Risk to Reward, Delta, Gamma,
 Theta).

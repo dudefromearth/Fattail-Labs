@@ -49,7 +49,7 @@ export default function TimeHud({
   const slider = tauToSlider(playhead, tauHi, tauLo);
   return (
     <div
-      className="pointer-events-auto w-full rounded-2xl border border-white/12 bg-black/55 p-3 text-white/80"
+      className="pointer-events-auto w-full text-white/80"
       data-testid="surface-time-hud"
       data-altered={altered ? "1" : "0"}
       onPointerDown={(e) => e.stopPropagation()}

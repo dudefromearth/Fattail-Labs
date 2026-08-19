@@ -75,7 +75,8 @@ When creating, editing, or displaying **positions** (Builder, cards, package mar
    HELD/RESIDUAL · NOT TRADED · CHECK LEGS · UPDATING · BUDGET LIMIT · WAITING · HIDDEN)
    — never a silent blank or a lying debit/credit. Last known print is not an outage.
 3. **Two clocks.** τ / settlement = OPF expiry instant. Card EXPIRED = next midnight ET.
-   Between them = Held / residual, never live.
+   Between them = Held / residual, never live. Clocks name the **claim**;
+   they do **not** unmount Surface analysis (**DL-445**).
 4. **Atomic settle.** Pointer change resolves once; no endless flash/search.
 5. **Severity high** if we invent instruments or false package prices — capital-adjacent
    judgment surface.

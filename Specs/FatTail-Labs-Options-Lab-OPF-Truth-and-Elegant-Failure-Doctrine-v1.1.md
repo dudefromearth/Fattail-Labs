@@ -5,13 +5,21 @@
 **Short name:** **OPF Truth · Elegant Failure** · **OT-EF**  
 **Filename:** `FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md`  
 **Supersedes:** [OT-EF v1.0](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md) (historical; Coach text kept and extended here)  
-**DL:** **DL-309** (origin) · **DL-393** (EXPIRED = midnight ET) · **DL-394** (additive book) · **DL-395** (OPF session/print · DRAFT spec) · **DL-396** (this revision: two clocks + fold) · **DL-409** (IV NO as Law B state)
+**DL:** **DL-309** (origin) · **DL-393** (EXPIRED = midnight ET) · **DL-394** (additive book) · **DL-395** (OPF session/print · DRAFT spec) · **DL-396** (this revision: two clocks + fold) · **DL-409** (IV NO as Law B state) · **DL-445** (Surface never clock-blocked) · **DL-446** (Surface expired wireframe ghost)
 
 **2026-08-16 amendment (DL-409):** **IV NO** is a Law B named state. Listed
 contract on the held generation with no exact/locked usable IV → no mark,
 no sheet. Surface / Analyzer must not invent a fourth hole name. Echo owns
 the member phrase; the token stays `IV NO`. Not a v1.2 fork — dated fold
-into this v1.1.  
+into this v1.1.
+
+**2026-08-18 amendment (Coach · DL-445):** Surface analysis is **never
+clock-blocked**. Law C still forbids claiming a residual or expired book
+is **live**. It does **not** unmount the 3D tent or replace it with a
+blocking **HELD / RESIDUAL** / **EXPIRED** card. Those names are
+provenance on a still-drawn residual / ghost sheet. Book clock uses
+remaining listed life (every shown leg). Holes that still replace the
+tent: **IV NO** · **CHECK LEGS** · **WAITING** · **UPDATING**.  
 **Parents:** [OPF Spec v0.2.1](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) · [PB Spec v0.3](./FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md) · [Analyzer Spec v0.2](./FatTail-Labs-Options-Lab-Analyzer-Spec-v0_2.md) · [Session/Print Authority Spec v0.1](./FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md) (**DRAFT**) · [Strategy Lab Guiding Doctrine v1.0](./FatTail-Labs-Strategy-Lab-Guiding-Doctrine-Spec-v1.0.md) · [Chain Picker OC6a](./FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md) · [Human Interface Spec v1.0](./FatTail-Labs-Human-Interface-Spec-v1.0.md)
 
 **Audience:** Coach · India · Juliet · Alpha/Charlie · Echo · Delta · Hotel · every agent that touches Options Lab positions, Builder, package marks, risk-graph focus, or Strategy Lab backtest / forward-walk.
@@ -87,7 +95,7 @@ Changing expiration or strikes **rebinds the pointer**. It does not mint a ficti
 | Position card | Display package only when representable + quote/lock allows; otherwise Law B state. After settlement, before midnight ET: **held / residual**, never a live claim. |
 | Strike ▲/▼ | Step on listed grid; missing market → Law B (**NOT TRADED**), not a fake mid |
 | Analyze / Update | Must not commit a structure that invents non-OPF strikes as if they were real |
-| **Risk graph / Surface viewport** | Same Law B names as cards. **No fabricated package curve** (PB-VIEW-6). Keep **scales + grid**. **Every shown card** draws as **one additive continuous book curve** (DL-394 · PB-VIEW-4 **retired**). Expired-only book may show at-expiry residual **ghost**. |
+| **Risk graph / Surface viewport** | Same Law B names as cards. **No fabricated package curve** (PB-VIEW-6). Keep **scales + grid**. **Every shown card** draws as **one additive continuous book curve** (DL-394 · PB-VIEW-4 **retired**). Expired-only book may show at-expiry residual **ghost**. **Surface tent stays** after settlement and after EXPIRED — clocks label the claim (`as_of residual` / `as_of expired`); they do not lock analysis (**DL-445**). After EXPIRED: Surface is **wireframe, no fill** (**DL-446**). |
 | **Strategy Lab backtest / forward-walk** | **Law A consumer** (SL-GD39). Same listed universe. No invented strikes on gold or silver. |
 
 ### A5. A trade is one atomic position
