@@ -152,6 +152,14 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   `docs/Options-Lab-Surface-Autofit-Full-Agent-Bench-Plan-v1.0.md` · **DL-422**.
   **W0 token:** `agents/go/OLSAF-W0.md` (GO · W0–W5 PASS).
   Do not seed AF-n. Do not reopen Surface first-ship.
+- `agents/p-az-what-if-tm/` — **Analyzer What-If Time & Measured Vol** (slider remaining
+  = last trade; vol = measured listed IV + OPF31 additive; τ stays OPF 16:00).  
+  Spec: `Specs/FatTail-Labs-Options-Lab-Analyzer-What-If-Time-and-Measured-Vol-Spec-v0.1.md`
+  (**DRAFT · India fold**).  
+  **Plan:** `docs/Options-Lab-Analyzer-What-If-Time-and-Measured-Vol-Full-Agent-Bench-Plan-v1.0.md`.  
+  Board: `agents/p-az-what-if-tm/ORCHESTRATOR.md`.  
+  **Next: Coach stamp impl plan to fire W1, or W0-0 review first.**  
+  Impl: `docs/Options-Lab-Analyzer-What-If-Time-and-Measured-Vol-Implementation-Plan-v1.0.md`.
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,

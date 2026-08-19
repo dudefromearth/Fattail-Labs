@@ -4,6 +4,7 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+<<<<<<< HEAD
 ## 2026-08-19 — DL-456 /apply Review edits in place
 
 **Decision:** Ernie correction 2026-08-19. Review still lists every asked
@@ -150,6 +151,36 @@ until Foxtrot routes it.
 - lock.md look in-spec (`#00B478`, tokens.css, one column / labels above / 44pt)
 
 **Does not:** treat spec PR 3 as the implementation PR.
+
+---
+
+## 2026-08-19 — DL-451 Analyzer What-if T/σ impl GO (W0 review bypassed)
+
+**Decision:** Coach **GO** on
+[`docs/Options-Lab-Analyzer-What-If-Time-and-Measured-Vol-Implementation-Plan-v1.0.md`](../docs/Options-Lab-Analyzer-What-If-Time-and-Measured-Vol-Implementation-Plan-v1.0.md).
+Juliet may fire **W1**.
+
+**W0 packets bypassed** (PL-B2 — overrule on the record, not a waived gate):
+W0-0 plan stamp · W0-1 Lima hash · W0-2 India confirm · W0-3 Echo ·
+W0-4 Tango · W0-5 Hotel · W0-G Delta · W0-BA BUILD AUTHORITY.
+
+**Why:** India fold already landed TM-B1/B2 on the DRAFT. Coach asked for
+the impl plan, then **GO with the plan, continue unless blocked**. Silent
+ODs: **OD-1 B** (additive OPF31) · **OD-2 A** (Surface HUD same scalar) ·
+**OD-3 B** (slider last-trade / τ OPF 16:00).
+
+Spec remains **DRAFT** until Lima W5 / a later BUILD AUTHORITY stamp.
+Surface first-ship W3-1…W3-4 stays closed; this W3 is HUD follow-on only
+(PL-B1).
+
+---
+
+## 2026-08-18 — DL-450 Surface What-if keeps the value window
+
+**Decision:** Vol / spot What-if rebuilds the sheet but **does not
+refit P&L height**. The box Y scale is held (same law as strike
+Autofit: book change + Autofit button only). Otherwise the tent is
+renormalized into the box and the dials look dead.
 
 ---
 
