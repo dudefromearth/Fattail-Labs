@@ -1028,7 +1028,7 @@ export default function HeatmapChainPanel() {
               </div>
             ) : tpl.layout === "matrix" && matrix ? (
               /* Symmetric flies matrix: 2× type vs MSC 12/10px baseline */
-              <table className="w-full min-w-[40rem] border-collapse text-[24px] leading-none">
+              <table className="w-full min-w-[40rem] table-fixed border-collapse text-[24px] leading-none">
                 <thead className="sticky top-0 z-[2] bg-[#0a0a0e]/90 backdrop-blur-sm">
                   <tr className="h-14 border-b border-white/10">
                     <th
@@ -1041,7 +1041,7 @@ export default function HeatmapChainPanel() {
                       <th
                         key={c.id}
                         scope="col"
-                        className="h-14 min-w-[5.5rem] px-1 text-center align-middle text-[24px] font-semibold tabular-nums text-emerald-400"
+                        className="h-14 min-w-0 px-1 text-center align-middle text-[24px] font-semibold tabular-nums text-emerald-400"
                       >
                         {c.label}
                       </th>
@@ -1114,7 +1114,7 @@ export default function HeatmapChainPanel() {
                               }
                             }}
                             className={[
-                              "h-14 min-w-[5.5rem] cursor-pointer px-1 text-center align-middle tabular-nums text-[24px] text-amber-400",
+                              "h-14 min-w-0 cursor-pointer overflow-hidden px-1 text-center align-middle tabular-nums text-[24px] text-amber-400",
                               "[text-shadow:0_0_2px_rgba(0,0,0,0.8)]",
                               "hover:z-[1] hover:ring-1 hover:ring-white/35",
                               selected

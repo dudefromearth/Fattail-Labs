@@ -7,6 +7,9 @@ import { FLY_MAX_WIDTHS } from "./flySurfacePipeline";
 import { buildGrid, heatmapFlyWidths, HEATMAP_FLY_WIDTHS, symFlyTemplate } from "./symFly";
 import { rocSensitivityToThreshold } from "./color";
 import {
+  LISTED_PACKAGE_EPS,
+  isPositiveListedDebit,
+  isUsablePackageDebit,
   symFlyCpAsym,
   symFlyCredit,
   symFlyDebit,
@@ -227,6 +230,44 @@ assert(symFlyTemplate.valueModes[6]?.label === "Theta", "theta label");
   });
   const mid = g.rows.findIndex((r) => r.strike === 100);
   assert(g.cells[mid]?.[0]?.display === "0.0%", `spot cell ${g.cells[mid]?.[0]?.display}`);
+}
+
+{
+  assert(!isUsablePackageDebit(1e-16), "dust is not a listed package");
+  assert(!isPositiveListedDebit(LISTED_PACKAGE_EPS), "half-cent is the floor, not above");
+  assert(isPositiveListedDebit(0.01), "one cent is a real debit");
+  const dust = {
+    ...makeCtx(),
+    contracts: new Map(makeCtx().contracts),
+  };
+  for (const k of [85, 90, 100, 110, 115]) {
+    dust.contracts.set(contractKey("call", k), row("call", k, 5));
+  }
+  // Balanced 10-wide: 5+5−2×5 = 0. Inject IEEE dust as a fake mid remainder.
+  dust.contracts.set(contractKey("call", 90), row("call", 90, 5 + 1e-16));
+  const dDust = symFlyDebit(dust, 100, 10);
+  assert(dDust != null && Math.abs(dDust) < LISTED_PACKAGE_EPS, `dust D=${dDust}`);
+  const rr = buildGrid(symFlyTemplate, dust, {
+    valueMode: "r2r",
+    widthMode: "fixed_points",
+    fixedPoints: [10],
+  });
+  const at100 = rr.rows.findIndex((r) => r.strike === 100);
+  assert(rr.cells[at100]?.[0]?.valid === false, "R:R refuses dust debit");
+  assert(rr.cells[at100]?.[0]?.display === "—", "no 1e18 R:R");
+  const pct = buildGrid(symFlyTemplate, dust, {
+    valueMode: "pct_change",
+    widthMode: "fixed_points",
+    fixedPoints: [10],
+  });
+  for (const rowCells of pct.cells) {
+    const cell = rowCells[0];
+    if (!cell?.valid || cell.display === "0.0%") continue;
+    assert(
+      !cell.display.includes("e") && cell.display.length <= 8,
+      `pct display stayed human ${cell.display}`,
+    );
+  }
 }
 
 {

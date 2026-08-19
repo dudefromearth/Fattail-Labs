@@ -19,6 +19,7 @@ import {
 } from "./flySurfaceHistory";
 import { HEATMAP_FLY_WIDTHS, heatmapFlyWidths } from "./symFly";
 import {
+  isPositiveListedDebit,
   symFlyCpAsym,
   symFlyDebit,
   symFlyDebitPctFromSpot,
@@ -211,7 +212,7 @@ function computeOne(
     };
   }
   if (mode === "r2r") {
-    if (!(d > 0) || !(w - d > 0)) {
+    if (!isPositiveListedDebit(d) || !(w - d > 0)) {
       return { display: "—", value: null, valid: false, tooltip: "Risk to Reward n/a" };
     }
     const rr = (w - d) / d;

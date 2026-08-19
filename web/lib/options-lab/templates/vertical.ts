@@ -12,6 +12,7 @@ import {
 } from "./color";
 import { heatmapFlyWidths } from "./symFly";
 import {
+  isPositiveListedDebit,
   verticalDebitPctFromSpot,
   verticalFarStrike,
   verticalPackage,
@@ -125,7 +126,7 @@ export const verticalTemplate: HeatmapTemplate = {
     }
 
     if (params.valueMode === "r2r") {
-      if (!(dLong > 0)) {
+      if (!isPositiveListedDebit(dLong)) {
         return {
           display: "—",
           value: null,

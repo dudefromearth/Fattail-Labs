@@ -18,6 +18,7 @@ import {
 } from "./flySurfaceHistory";
 import {
   fmtMoney,
+  isPositiveListedDebit,
   symFlyCpAsym,
   symFlyCredit,
   symFlyDebit,
@@ -237,7 +238,7 @@ export const symFlyTemplate: HeatmapTemplate = {
     }
 
     if (mode === "r2r") {
-      if (d <= 0) {
+      if (!isPositiveListedDebit(d)) {
         return invalid("Risk to Reward needs a positive debit");
       }
       const maxProfit = w - d;

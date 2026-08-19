@@ -89,6 +89,21 @@ export function flySpotCenter(
 }
 
 /**
+ * Listed mids are cent-class. A package below a half-cent is float dust
+ * (wings ≈ 2× body), not a ratio denominator.
+ */
+export const LISTED_PACKAGE_EPS = 0.005;
+
+export function isUsablePackageDebit(d: number | null | undefined): d is number {
+  return d != null && Number.isFinite(d) && Math.abs(d) >= LISTED_PACKAGE_EPS;
+}
+
+/** Positive listed debit — R:R denominator. Dust and credits are not. */
+export function isPositiveListedDebit(d: number | null | undefined): d is number {
+  return d != null && Number.isFinite(d) && d > LISTED_PACKAGE_EPS;
+}
+
+/**
  * % change on the outer cell (further from spot).
  * Starting (inner) 9, next (outer) 7 → |((9 − 7) / 9) × 100|.
  * Never negative. Spot row is 0.
@@ -108,7 +123,7 @@ export function debitPctFromSpot(
   if (inIdx < 0 || inIdx >= centersDesc.length) return null;
   const dOuter = debitAt(k);
   const dInner = debitAt(centersDesc[inIdx]);
-  if (dOuter == null || dInner == null || dInner === 0) return null;
+  if (dOuter == null || !isUsablePackageDebit(dInner)) return null;
   return Math.abs(((dInner - dOuter) / dInner) * 100);
 }
 
