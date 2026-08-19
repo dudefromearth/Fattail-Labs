@@ -4,6 +4,9 @@ Spec: FatTail-Native-Apply-Form-Spec-v0.2.md · DL-450.
 
 No live AC calls. No Labs DB boot — the apply router is mounted on a
 minimal FastAPI app so these tests stay isolated from waitlist/MySQL.
+
+Isolated run (no Labs .env / MySQL):
+  python3 -m pytest tests/test_apply.py -q --noconftest
 """
 
 from __future__ import annotations
