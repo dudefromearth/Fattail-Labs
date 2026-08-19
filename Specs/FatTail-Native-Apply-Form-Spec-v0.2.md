@@ -78,11 +78,11 @@ This is **not** Labs `/signup`. This is **not** Woo checkout. This is **not** a 
 | **APPLY-6** | This form **replaces Typeform (`go.0-dte.com/application`) as the write source**. |
 | **APPLY-7** | HIG: visible labels above, one primary CTA, inline errors, ≥ 44pt. `#00B478` only on submit. Brush-arch + word fattail. No insider desk jargon required on the member surface. No profit claims. |
 | **APPLY-8** | If Observer term appears, it is **six weeks** (**DL-128**). SKU string is `Observer $17/wk × 6`. |
-| **APPLY-13** | Do **not** create new AC fields. Fields **6 / 7 / 9** are existing dropdowns (live option arrays were empty). Write the exact strings in §3. |
 | **APPLY-9** | No AI copy. No 0-DTE copy on the apply surface. |
 | **APPLY-10** | Tag **18 Application Filled** on successful write. Do not create a new tag. |
 | **APPLY-11** | CORS allowlist is fattail.ai. Labs same-origin rewrite does not need CORS. |
 | **APPLY-12** | `sync_lead()` waitlist behavior is unchanged. |
+| **APPLY-13** | Do **not** create new AC fields. Fields **6 / 7 / 9** are existing dropdowns (live option arrays were empty). Write the exact strings in §3. |
 
 ---
 
