@@ -134,7 +134,7 @@ Specs: SEO v1.0–v1.3.
 |---|---|
 | `/login` | Native credentials + SSO buttons from `/api/auth/providers` |
 | `/signup` | Registration + membership funnel steps |
-| `/apply` | Native fattail conversation invite — intro, email, Heaven before Hell (**DL-453**). One question at a time, two motion beats, eyes stay put (**DL-452**). Review of asked Q&A; in-place line edit (**DL-455** · **DL-456**). Writes Cole’s on-path AC fields + tag 18. **DL-451**. |
+| `/apply` | Native fattail conversation invite — intro, email, Heaven before Hell (**DL-453**). Field 7 is a New York date-time; a calendar invite is sent (**DL-460**). One question at a time, two motion beats, eyes stay put (**DL-452**). Review of asked Q&A; in-place line edit (**DL-455** · **DL-456**). Back / OK twins under the field (**DL-457**). Thick ink field border (**DL-458**). Writes Cole’s on-path AC fields + tag 18. **DL-451**. |
 | Header | Logged-out CTAs ↔ logged-in avatar menu |
 | Session | HttpOnly `ft_session` via API Set-Cookie; browser uses `credentials: "same-origin"` |
 

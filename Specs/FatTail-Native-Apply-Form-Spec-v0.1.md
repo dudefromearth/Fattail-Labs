@@ -70,6 +70,74 @@ Bob chair 2026-08-19. Transcribed. Nothing invented.
 
 > Ash reviews. Hayes holds the desk. Bob chairs. Conor was not ticketed.
 
+### 0.3 Ernie lock — server slots, not Calendly (2026-08-19 — transcribe, do not create)
+
+Ernie lock 2026-08-19. Transcribed. Sits **beside** the AC title “Can make 11am ET” (key `ELEVEN_AM_ET` is not renamed).
+
+> do NOT use Calendly. Execute the schedule on our server. He manages the slots as an admin with in-place editing, the same language as course sections.
+
+> Applicant still picks ONE slot. A real ICS invite still goes to their email (Cole organizer, 30 min, America/New_York, fail loud if no SMTP).
+
+> No open date-time picker. No Calendly, Chili Piper, or booking vendor.
+
+How it works (Ernie):
+
+1. Slots live on our server. Default four empty or four placeholder New York slots an admin can change. Count is not frozen at four — admin can add/remove. Applicant sees only the live slots.
+2. Applicant step: “Pick a time for a live FatTail conversation. A calendar invite will be sent to the email you entered.” They choose one listed slot (not a free calendar). Back/OK twins under the field. Thick border. Eye-lock.
+3. Admin edit: same in-place model as course sections / In-Place Admin spec (`Editable.tsx`, `EditContext`, `SectionHubShell`). The element IS the editor. Edit → dashed affordance → change the day/time → blur/Done commits. Prefer editing the slot list on the apply page itself when an admin is in edit mode. A thin `/admin` apply-slots page that still uses the same Editable/EditContext components is OK — do not invent a new design language.
+4. AC field 7 stores the chosen slot datetime (ET). No yes/no.
+5. ICS on accept of that step and on Review in-place change of the slot. Same UID per email.
+6. If no live slots are configured, fail loud on the applicant step (do not invent times). Admin can add them in place.
+
+**APPLY-12** (this lock): conversation times are **server-owned slots**. Not Calendly. Not a free calendar. Not yes/no.
+
+### 0.4 Ernie lock — questions and types, in-place (2026-08-19 — transcribe, do not create)
+
+Ernie add-on 2026-08-19. Same apply admin. **3001 only.** Do not merge. Do not MiniTwo. Do not fattail.ai. No Calendly.
+
+> He wants to manage the QUESTIONS and the TYPE of each question, in-place, same language as course sections.
+
+Types (with content check):
+
+1. **Free text** — non-empty (and email-valid if the question is the email step).
+2. **Binary choice** — exactly two options (Yes/No or admin-set pair). Must pick one.
+3. **Radio** — two or more admin-set options. Must pick exactly one of those options.
+4. **Calendar date-times** — pick exactly one live slot from the server slot list. Slot list is admin-edited in place. ICS still sent on accept / Review edit.
+
+How it should work (Ernie):
+
+- Questions live on our server (same store family as the calendar slots). Not hardcoded forever in `applyFields.ts`.
+- Seed the live set from today’s Cole seven + intro + email so the walk does not go empty. Admin can then edit copy, type, options, order, add, remove.
+- Admin in-place: the element IS the editor (course Editable / EditContext / dashed affordance / blur or Done commits). Edit the ask, the hint, the type, and the options/slots.
+- Applicant path stays one question at a time, eye-lock, thick border, Back left / OK right twins, Review with in-place answer edit, Accept submits.
+- Content check is real: OK/Enter/Tab does not advance on an invalid answer. Show the miss on the same field.
+- AC write: keep field ids **3–9** when a question is mapped to those keys. New admin questions without an AC id still live on our server and still appear on Review. Do not invent new AC dropdown ids.
+- Branching: keep a simple admin flag later if needed; do not invent a new path language this pass unless a type change requires it. Default path is the admin order.
+- No slots configured on a calendar question = fail loud, do not invent times.
+
+**APPLY-13** (this lock): apply questions are **server-owned**. Admin edits ask / hint / type / options / order in place. Four types carry real content checks. Cole ids **3–9** stay mapped when present; new questions do not invent AC ids.
+
+### 0.5 Ernie lock — three endings, score map, follow-ons (2026-08-19 — transcribe, do not create)
+
+Ernie lock 2026-08-19. Same apply form. **3001 only.** Do not merge. Do not MiniTwo. Do not fattail.ai. No Calendly.
+
+> The old Typeform scored answers and jumped to follow-on questions. The score decides the ending:
+
+> 1. Meeting with Coach (Ernie) — calendar slots for Coach. ICS to their email.
+> 2. Meeting with Lakesia — calendar slots for Lakesia. ICS to their email.
+> 3. No meeting — do NOT send a calendar invite. Offer the trial instead: Observer $17/wk × 6, CTA https://fattail.ai/try (six weeks, not four). That is the ending screen.
+
+How it should work (Ernie):
+
+- Admin manages questions, types, and answer-specific follow-ons (in-place, course-section language). A given answer can reveal the next question(s).
+- Admin can attach a score / outcome to answers (Coach / Lakesia / trial). Seed a simple, honest default: do not invent a fake Typeform rubric. If we do not have the old score sheet, use a visible admin scoring map the CEO can edit. Default seed: current Cole questions; ending stays Review + Accept until an admin sets outcomes — then Review shows the ending (Coach slots, Lakesia slots, or trial).
+- Content check still binds: free text, binary, radio 2+, calendar slots.
+- Trial ending: big, honest, one action to fattail.ai/try. No fake “you’re booked.”
+- Coach vs Lakesia: two slot lists (or a slot tagged to a host). Applicant only sees slots for the ending they earned.
+- Seed today’s questions so the form is not empty. Ernie edits them.
+
+**APPLY-14** (this lock): three endings — Coach meeting, Lakesia meeting, Observer trial. Score map is admin-visible and empty until tagged. No Typeform rubric was imported. Trial CTA is `https://fattail.ai/try`. Observer term is six weeks. No ICS on trial.
+
 ---
 
 ## 1. Purpose
@@ -124,6 +192,9 @@ Recorded so India can review against reality. **None of this is a BUILD pick.**
 | **APPLY-9** | **Not BUILD** until India **APPROVED** plus chair / Coach GO. Chair accepted the apply law 2026-08-19. This file remains **DRAFT** for implementation — **not** a build packet. **Not BUILD AUTHORITY.** |
 | **APPLY-10** | **Hole 2 · chair 2026-08-19.** Tag **18 Application Filled** is a **required write on submit**. Desk routing, **not** a sales field. Like email: plumbing. IN-11 and OQ-5 are **unflagged**. Fail loud if the seven write or the tag miss. **Not** an eighth Cole field. Seven keys stay the sales write. |
 | **APPLY-11** | **Hole 1 · lock.md in this spec.** One brand hue `#00B478`. Three jobs only (next action, live state, defined-risk cue). Labs `web/styles/tokens.css` is the company look. Not a wash. Not a second accent. Not Typeform. Not ClickFunnels. Not Flatsome. Host stays open. |
+| **APPLY-12** | **Ernie lock 2026-08-19.** Field 7 is **one listed server slot** (America/New_York datetime). No Calendly / Chili Piper / open date-time picker. Admin edits slots in place (same language as course sections). Empty live list **fails loud** — do not invent times. ICS still sends on accept / Review change. |
+| **APPLY-13** | **Ernie lock 2026-08-19.** Questions and types live on the server (`apply_questions`). Admin edits ask / hint / type / options / order in place (same language as course sections). Types: free text · binary (exactly two) · radio (two or more) · calendar (one live slot). Content check is real — OK/Enter/Tab does not advance on a miss. Seed = intro + email + Cole seven. Mapped AC ids **3–9** stay; new questions do not invent AC ids. Default path is admin order. |
+| **APPLY-14** | **Ernie lock 2026-08-19.** Three endings: Coach (Ernie) meeting · Lakesia meeting · Observer trial (`https://fattail.ai/try`, $17/wk, six weeks). Visible admin scoring map. No Typeform sheet imported. Untagged map keeps Review + Accept. Tagged answers use plurality; tie is trial. Slots are tagged coach or lakesia. Trial sends no ICS and does not claim a booking. |
 
 ---
 
@@ -459,6 +530,9 @@ A reviewer can validate, **without reading implementation code**:
 | **v0.1** | 2026-08-19 | **Chair accept** of the apply law + **tag-18 plumbing amendment**. Tag **18 Application Filled** is desk routing / plumbing (IN-11 / OQ-5 → law). Status remains **DRAFT** for implementation. **Not BUILD AUTHORITY.** Host stays open. Echo still owns labels. No form implementation. |
 | **v0.1** | 2026-08-19 | **Two holes only.** Hole 1: lock.md quoted **in this spec** (§0.2 / APPLY-11). Hole 2: tag **18** required write on submit; IN-11 / OQ-5 **unflagged**. Live ids **3–9** stay. Seven keys stay the sales write. Still **DRAFT**. Still **not BUILD**. Host stays open. No extra spec files. |
 | **v0.1** | 2026-08-19 | **Chair GO.** Implementation authorized in a **separate** PR. `/apply` is a real submit that writes ids **3–9** + tag **18**. Fail loud. Do not inherit `sync_lead()`. Do not invent dropdowns for empty option lists on fields 6/7/9. Echo owns labels. Host stays open. No Juliet seeds. Spec PR 3 remains spec-only. |
+| **v0.1** | 2026-08-19 | **Ernie lock (APPLY-12).** Server-owned slots. No Calendly. In-place admin edit. Applicant picks one listed time. AC id 7 stores the ET datetime. ICS unchanged. |
+| **v0.1** | 2026-08-19 | **Ernie lock (APPLY-13).** Server-owned questions and types. In-place ask / hint / type / options. Four content checks. Seed intro + email + Cole seven. Do not invent AC ids. |
+| **v0.1** | 2026-08-19 | **Ernie lock (APPLY-14).** Three endings (Coach / Lakesia / trial). Visible score map. No invented Typeform rubric. Trial CTA fattail.ai/try. Six weeks. |
 
 **Next process step:** ship `/apply` (this implementation) · Foxtrot routes `https://fattail.ai/apply` when the host pick lands (OQ-1 still open) · Echo may replace Coach titles with member labels without renaming AC keys.
 

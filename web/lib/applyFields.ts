@@ -1,4 +1,4 @@
-/** Cole's seven apply keys. Live AC ids 3–9 stay. Ernie owns invite wording. */
+/** Apply questions + content checks. Live copy lives on the server. */
 
 export const APPLY_HUE = "#00B478";
 
@@ -14,250 +14,281 @@ export const APPLY_KEYS = [
 
 export type ApplyKey = (typeof APPLY_KEYS)[number];
 
-export type ApplyStepId = "intro" | "email" | ApplyKey;
+export type ApplyQType =
+  | "continue"
+  | "free_text"
+  | "binary"
+  | "radio"
+  | "calendar";
 
-export type ApplyScreenId = ApplyStepId | "review";
+export type ApplyOutcome = "coach" | "lakesia" | "trial";
 
-export type ApplyControl = "continue" | "email" | "text" | "textarea" | "yesno";
-
-export type ApplyStep = {
-  id: ApplyStepId;
-  ask: string;
-  hint: string;
-  fieldId?: "3" | "4" | "5" | "6" | "7" | "8" | "9";
-  control: ApplyControl;
+export type ApplyOption = {
+  label: string;
+  outcome: ApplyOutcome | "";
+  reveal: string[];
 };
 
-/** AC key → live id. Do not rename keys. Do not invent ids. */
-export const APPLY_FIELDS: {
-  key: ApplyKey;
-  fieldId: "3" | "4" | "5" | "6" | "7" | "8" | "9";
-}[] = [
-  { key: "HELL", fieldId: "3" },
-  { key: "HEAVEN", fieldId: "4" },
-  { key: "MONEY_TIMING", fieldId: "5" },
-  { key: "COACHING_SKU", fieldId: "6" },
-  { key: "ELEVEN_AM_ET", fieldId: "7" },
-  { key: "TRIED", fieldId: "8" },
-  { key: "PARTNER_SUPPORT", fieldId: "9" },
+export type ApplyQuestion = {
+  id: number;
+  slug: string;
+  ask: string;
+  hint: string;
+  qtype: ApplyQType;
+  options: ApplyOption[];
+  ac_key?: string | null;
+  ac_field_id?: string | null;
+  is_email: boolean;
+  on_path: boolean;
+  sort_order: number;
+};
+
+export type ApplyHost = {
+  slug: "coach" | "lakesia";
+  display_name: string;
+  organizer_name?: string;
+  organizer_email?: string;
+};
+
+export type ApplyScore = {
+  endings_live: boolean;
+  tie_ending: ApplyOutcome;
+  trial_url: string;
+  trial_price: string;
+  trial_term: string;
+  hosts: ApplyHost[];
+};
+
+export const DEFAULT_SCORE: ApplyScore = {
+  endings_live: false,
+  tie_ending: "trial",
+  trial_url: "https://fattail.ai/try",
+  trial_price: "$17/wk",
+  trial_term: "six weeks",
+  hosts: [
+    { slug: "coach", display_name: "Coach (Ernie)" },
+    { slug: "lakesia", display_name: "Lakesia" },
+  ],
+};
+
+export const APPLY_OUTCOME_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "No tag" },
+  { value: "coach", label: "Coach (Ernie)" },
+  { value: "lakesia", label: "Lakesia" },
+  { value: "trial", label: "Trial" },
 ];
 
-/**
- * Invite order (Ernie 2026-08-19): intro → email → HEAVEN → HELL → the rest.
- * Fields 6 / 9: free text. Field 7: honest yes/no. No invented dropdowns.
- * Observer / Activator / Navigator are examples only.
- */
-export const APPLY_STEPS: ApplyStep[] = [
+export const APPLY_HOST_OPTIONS: { value: string; label: string }[] = [
+  { value: "coach", label: "Coach (Ernie)" },
+  { value: "lakesia", label: "Lakesia" },
+];
+
+export function asOptions(raw: unknown): ApplyOption[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ApplyOption[] = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      const label = item.trim();
+      if (label) out.push({ label, outcome: "", reveal: [] });
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const label = String(row.label || "").trim();
+    if (!label) continue;
+    const outcomeRaw = String(row.outcome || "").trim();
+    const outcome =
+      outcomeRaw === "coach" ||
+      outcomeRaw === "lakesia" ||
+      outcomeRaw === "trial"
+        ? outcomeRaw
+        : "";
+    const reveal = Array.isArray(row.reveal)
+      ? row.reveal.map((s) => String(s).trim()).filter(Boolean)
+      : [];
+    out.push({ label, outcome, reveal });
+  }
+  return out;
+}
+
+export function optionLabels(question: ApplyQuestion): string[] {
+  return question.options.map((o) => o.label);
+}
+
+export type ApplyScreenId = string;
+
+export const APPLY_TZ = "America/New_York";
+
+export const APPLY_TYPE_OPTIONS: { value: ApplyQType; label: string }[] = [
+  { value: "free_text", label: "Free text" },
+  { value: "binary", label: "Binary choice" },
+  { value: "radio", label: "Radio" },
+  { value: "calendar", label: "Calendar date-times" },
+  { value: "continue", label: "Continue" },
+];
+
+/** Seed copy — characterization / fallback docs. Runtime SoR is the server. */
+export const SEED_QUESTIONS: ApplyQuestion[] = [
   {
-    id: "intro",
+    id: 1,
+    slug: "intro",
     ask: "This is the FatTail application.",
     hint: "A few questions, one at a time, so we know if this is a fit. Not a dump of fields.",
-    control: "continue",
+    qtype: "continue",
+    options: [],
+    is_email: false,
+    on_path: true,
+    sort_order: 10,
   },
   {
-    id: "email",
+    id: 2,
+    slug: "email",
     ask: "Enter your email (we will never share it).",
     hint: "",
-    control: "email",
+    qtype: "free_text",
+    options: [],
+    is_email: true,
+    on_path: true,
+    sort_order: 20,
   },
   {
-    id: "HEAVEN",
+    id: 3,
+    slug: "HEAVEN",
     ask: "What do you consider your heaven island?",
     hint: "The life and trading state you want. For example: a defined-risk book you can compound. Calm in the chair. Not hunting win rate.",
-    fieldId: "4",
-    control: "textarea",
+    qtype: "free_text",
+    options: [],
+    ac_key: "HEAVEN",
+    ac_field_id: "4",
+    is_email: false,
+    on_path: true,
+    sort_order: 30,
   },
   {
-    id: "HELL",
+    id: 4,
+    slug: "HELL",
     ask: "What is your hell island?",
     hint: "The pain. For example: violent equity. Blow-ups. Solving for win rate.",
-    fieldId: "3",
-    control: "textarea",
+    qtype: "free_text",
+    options: [],
+    ac_key: "HELL",
+    ac_field_id: "3",
+    is_email: false,
+    on_path: true,
+    sort_order: 40,
   },
   {
-    id: "MONEY_TIMING",
+    id: 5,
+    slug: "MONEY_TIMING",
     ask: "Can you invest the time and money now?",
     hint: "An honest yes, a not-yet, or what has to move first.",
-    fieldId: "5",
-    control: "textarea",
+    qtype: "free_text",
+    options: [],
+    ac_key: "MONEY_TIMING",
+    ac_field_id: "5",
+    is_email: false,
+    on_path: true,
+    sort_order: 50,
   },
   {
-    id: "COACHING_SKU",
+    id: 6,
+    slug: "COACHING_SKU",
     ask: "Which door do you think you want?",
     hint: "Say it in your words. Observer, Activator, or Navigator are examples — not a menu.",
-    fieldId: "6",
-    control: "text",
+    qtype: "free_text",
+    options: [],
+    ac_key: "COACHING_SKU",
+    ac_field_id: "6",
+    is_email: false,
+    on_path: true,
+    sort_order: 60,
   },
   {
-    id: "ELEVEN_AM_ET",
-    ask: "Can you make an 11am ET call?",
-    hint: "A live conversation at that hour.",
-    fieldId: "7",
-    control: "yesno",
+    id: 7,
+    slug: "ELEVEN_AM_ET",
+    ask: "Pick a time for a live FatTail conversation. A calendar invite will be sent to the email you entered.",
+    hint: "America/New_York. Thirty minutes. We'll send the link. Pick one listed time.",
+    qtype: "calendar",
+    options: [],
+    ac_key: "ELEVEN_AM_ET",
+    ac_field_id: "7",
+    is_email: false,
+    on_path: true,
+    sort_order: 70,
   },
   {
-    id: "TRIED",
+    id: 8,
+    slug: "TRIED",
     ask: "What have you already tried?",
     hint: "Courses, rooms, a firm, going it alone — whatever is true.",
-    fieldId: "8",
-    control: "textarea",
+    qtype: "free_text",
+    options: [],
+    ac_key: "TRIED",
+    ac_field_id: "8",
+    is_email: false,
+    on_path: true,
+    sort_order: 80,
   },
   {
-    id: "PARTNER_SUPPORT",
+    id: 9,
+    slug: "PARTNER_SUPPORT",
     ask: "Is home on board?",
     hint: "Partner, family — whether they support you doing this.",
-    fieldId: "9",
-    control: "textarea",
+    qtype: "free_text",
+    options: [],
+    ac_key: "PARTNER_SUPPORT",
+    ac_field_id: "9",
+    is_email: false,
+    on_path: true,
+    sort_order: 90,
   },
 ];
 
-/** Field ids 6 / 7 / 9 — a change recomputes the remaining path. */
-export const BRANCH_KEYS: ApplyKey[] = [
-  "COACHING_SKU",
-  "ELEVEN_AM_ET",
-  "PARTNER_SUPPORT",
-];
-
-export function isBranchKey(id: ApplyStepId): boolean {
-  return (BRANCH_KEYS as string[]).includes(id);
+export function isListedSlot(
+  value: string,
+  slots: ReadonlyArray<{ starts_et: string }>,
+): boolean {
+  const v = value.trim();
+  return slots.some((s) => s.starts_et === v);
 }
 
-export function isElevenNo(value: string): boolean {
-  return value.trim().toLowerCase() === "no";
+export function isDatetimeValid(value: string): boolean {
+  const v = value.trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(v);
+  if (!m) return false;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const hour = Number(m[4]);
+  const minute = Number(m[5]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  if (hour > 23 || minute > 59) return false;
+  const probe = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  return (
+    probe.getUTCFullYear() === year &&
+    probe.getUTCMonth() === month - 1 &&
+    probe.getUTCDate() === day
+  );
 }
 
-/**
- * Live path from answers. Branch keys 6/7/9 are the SoR for what stays
- * on the path. Steps not returned are dead — Review skips them and
- * recompute drops their answers.
- *
- * - 6 (COACHING_SKU): consulted on every accept. Free text — we do not
- *   parse Observer / Activator / Navigator as a menu, so 6 does not
- *   skip later questions by itself.
- * - 7 (ELEVEN_AM_ET): No → PARTNER_SUPPORT is a dead branch. Yes or
- *   unanswered → home/partner stays on the path.
- * - 9 (PARTNER_SUPPORT): last live field; recompute still runs.
- */
-export function computePath(answers: Record<string, string>): ApplyStepId[] {
-  // Branch SoR is always 6 / 7 / 9. 6 is free text (no invented menu skip).
-  // 9 is last. 7 No drops PARTNER_SUPPORT.
-  const sku = (answers.COACHING_SKU || "").trim();
-  const eleven = (answers.ELEVEN_AM_ET || "").trim();
-  const partner = (answers.PARTNER_SUPPORT || "").trim();
-
-  const path: ApplyStepId[] = [
-    "intro",
-    "email",
-    "HEAVEN",
-    "HELL",
-    "MONEY_TIMING",
-    "COACHING_SKU",
-    "ELEVEN_AM_ET",
-    "TRIED",
-  ];
-
-  if (sku !== undefined && partner !== undefined && !isElevenNo(eleven)) {
-    path.push("PARTNER_SUPPORT");
-  }
-  return path;
-}
-
-export function liveSteps(answers: Record<string, string>): ApplyStepId[] {
-  return computePath(answers).filter((id) => id !== "intro");
-}
-
-export function emptyAnswers(): Record<ApplyKey, string> {
-  return {
-    HELL: "",
-    HEAVEN: "",
-    MONEY_TIMING: "",
-    COACHING_SKU: "",
-    ELEVEN_AM_ET: "",
-    TRIED: "",
-    PARTNER_SUPPORT: "",
-  };
-}
-
-/** Recompute path; drop answers that no longer apply. */
-export function recomputePath(
-  email: string,
-  answers: Record<ApplyKey, string>,
-): {
-  email: string;
-  answers: Record<ApplyKey, string>;
-  path: ApplyStepId[];
-} {
-  const path = computePath({ email, ...answers });
-  const next = emptyAnswers();
-  for (const key of APPLY_KEYS) {
-    if (path.includes(key)) next[key] = answers[key];
-  }
-  return { email, answers: next, path };
-}
-
-export function pruneAsked(
-  asked: ApplyStepId[],
-  path: ApplyStepId[],
-): ApplyStepId[] {
-  return asked.filter((id) => path.includes(id));
-}
-
-export function unansweredOnPath(
-  email: string,
-  answers: Record<ApplyKey, string>,
-): ApplyStepId[] {
-  const path = computePath({ email, ...answers });
-  return path.filter((id) => {
-    if (id === "intro") return false;
-    const step = stepById(id);
-    const value = id === "email" ? email : answers[id];
-    return !stepValueValid(step, value || "");
-  });
-}
-
-/** Next live question after `current`, or Review. Never auto-submits. */
-export function nextApplyStep(
-  current: ApplyStepId,
-  accepted: Record<string, string>,
-): ApplyStepId | "review" {
-  const path = computePath(accepted);
-  const i = path.indexOf(current);
-  if (i < 0 || i >= path.length - 1) return "review";
-  return path[i + 1];
-}
-
-export function prevApplyStep(
-  current: ApplyStepId,
-  accepted: Record<string, string>,
-): ApplyStepId | null {
-  const path = computePath(accepted);
-  const i = path.indexOf(current);
-  if (i <= 0) return null;
-  return path[i - 1];
-}
-
-export function reviewRows(
-  asked: ApplyStepId[],
-  accepted: Record<string, string>,
-): ApplyStep[] {
-  const path = computePath(accepted);
-  return path
-    .filter((id) => id !== "intro" && asked.includes(id))
-    .map((id) => stepById(id));
-}
-
-export function displayAnswer(step: ApplyStep, value: string): string {
-  if (step.control === "yesno") {
-    if (value === "yes") return "Yes";
-    if (value === "no") return "No";
-  }
-  return value.trim();
-}
-
-export function stepById(id: ApplyStepId): ApplyStep {
-  const step = APPLY_STEPS.find((s) => s.id === id);
-  if (!step) throw new Error(`unknown apply step ${id}`);
-  return step;
+export function displayDatetime(value: string): string {
+  const v = value.trim();
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(v);
+  if (!m) return v;
+  const wall = new Date(
+    Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5])),
+  );
+  const stamp = new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  }).format(wall);
+  return `${stamp} ET`;
 }
 
 export function isEmailValid(value: string): boolean {
@@ -265,26 +296,254 @@ export function isEmailValid(value: string): boolean {
   return v.length > 0 && v.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
-export function stepValueValid(step: ApplyStep, value: string): boolean {
-  if (step.control === "continue") return true;
+export type ContentCheck =
+  | { ok: true }
+  | { ok: false; miss: string };
+
+export function contentCheck(
+  question: ApplyQuestion,
+  value: string,
+  slots: ReadonlyArray<{ starts_et: string }> = [],
+): ContentCheck {
+  if (question.qtype === "continue") return { ok: true };
   const v = value.trim();
-  if (step.control === "email") return isEmailValid(v);
-  if (step.control === "yesno") return v === "yes" || v === "no";
-  return v.length > 0;
+  if (question.qtype === "free_text") {
+    if (question.is_email) {
+      return isEmailValid(v)
+        ? { ok: true }
+        : { ok: false, miss: "A valid email is required." };
+    }
+    return v.length > 0
+      ? { ok: true }
+      : { ok: false, miss: "This answer is required." };
+  }
+  if (question.qtype === "binary") {
+    const labels = optionLabels(question);
+    if (labels.length !== 2) {
+      return { ok: false, miss: "This question is missing its two choices." };
+    }
+    return labels.includes(value)
+      ? { ok: true }
+      : { ok: false, miss: "Pick one of the two choices." };
+  }
+  if (question.qtype === "radio") {
+    const labels = optionLabels(question);
+    if (labels.length < 2) {
+      return { ok: false, miss: "This question needs two or more choices." };
+    }
+    return labels.includes(value)
+      ? { ok: true }
+      : { ok: false, miss: "Pick one of the listed choices." };
+  }
+  if (question.qtype === "calendar") {
+    if (slots.length === 0) {
+      return {
+        ok: false,
+        miss: "No live conversation times are configured.",
+      };
+    }
+    return isListedSlot(v, slots)
+      ? { ok: true }
+      : { ok: false, miss: "Pick one of the listed times." };
+  }
+  return { ok: false, miss: "This question cannot be answered." };
 }
 
-/** Question accept label. Submit lives on Review only. */
-export function nextLabel(step: ApplyStep): string {
-  if (step.control === "continue") return "Continue";
+export function matchOption(
+  question: ApplyQuestion,
+  value: string,
+): ApplyOption | null {
+  const raw = value.trim();
+  return question.options.find((o) => o.label === raw) ?? null;
+}
+
+export function endingsLive(questions: ApplyQuestion[]): boolean {
+  return questions.some((q) =>
+    q.options.some(
+      (o) => o.outcome === "coach" || o.outcome === "lakesia" || o.outcome === "trial",
+    ),
+  );
+}
+
+export function walkPath(
+  questions: ApplyQuestion[],
+  answers: Record<string, string> = {},
+  skipCalendar = false,
+): ApplyQuestion[] {
+  const bySlug = new Map(questions.map((q) => [q.slug, q]));
+  const allow = (q: ApplyQuestion) =>
+    !(skipCalendar && q.qtype === "calendar");
+  const queue = questions.filter((q) => q.on_path !== false && allow(q));
+  const seen: ApplyQuestion[] = [];
+  const queued = new Set(queue.map((q) => q.slug));
+  let i = 0;
+  while (i < queue.length) {
+    const q = queue[i];
+    if (seen.some((s) => s.slug === q.slug)) {
+      i += 1;
+      continue;
+    }
+    seen.push(q);
+    const opt = matchOption(q, answers[q.slug] || "");
+    let insertAt = i + 1;
+    if (opt) {
+      for (const slug of opt.reveal) {
+        const nxt = bySlug.get(slug);
+        if (!nxt || !allow(nxt)) continue;
+        if (seen.some((s) => s.slug === nxt.slug)) continue;
+        if (queued.has(nxt.slug)) continue;
+        queue.splice(insertAt, 0, nxt);
+        queued.add(nxt.slug);
+        insertAt += 1;
+      }
+    }
+    i += 1;
+  }
+  return seen;
+}
+
+export function resolveEnding(
+  questions: ApplyQuestion[],
+  answers: Record<string, string>,
+  tieEnding: ApplyOutcome = "trial",
+): ApplyOutcome | null {
+  if (!endingsLive(questions)) return null;
+  const votes: Record<ApplyOutcome, number> = {
+    coach: 0,
+    lakesia: 0,
+    trial: 0,
+  };
+  for (const q of walkPath(questions, answers, true)) {
+    const opt = matchOption(q, answers[q.slug] || "");
+    if (!opt || !opt.outcome) continue;
+    votes[opt.outcome] += 1;
+  }
+  const total = votes.coach + votes.lakesia + votes.trial;
+  if (total === 0) return tieEnding;
+  const best = Math.max(votes.coach, votes.lakesia, votes.trial);
+  const winners = (Object.keys(votes) as ApplyOutcome[]).filter(
+    (k) => votes[k] === best,
+  );
+  if (winners.length !== 1) return tieEnding;
+  return winners[0];
+}
+
+export function hostLabel(score: ApplyScore, slug: ApplyOutcome | string): string {
+  if (slug === "trial") return "Observer trial";
+  const host = score.hosts.find((h) => h.slug === slug);
+  return host?.display_name || slug;
+}
+
+export function pathOf(questions: ApplyQuestion[]): string[] {
+  return questions.map((q) => q.slug);
+}
+
+export function liveSteps(questions: ApplyQuestion[]): string[] {
+  return questions.filter((q) => q.qtype !== "continue").map((q) => q.slug);
+}
+
+export function emptyAnswers(questions: ApplyQuestion[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const q of questions) out[q.slug] = "";
+  return out;
+}
+
+export function questionBySlug(
+  questions: ApplyQuestion[],
+  slug: string,
+): ApplyQuestion {
+  const q = questions.find((row) => row.slug === slug);
+  if (!q) throw new Error(`unknown apply question ${slug}`);
+  return q;
+}
+
+export function emailFromAnswers(
+  questions: ApplyQuestion[],
+  answers: Record<string, string>,
+): string {
+  const q = questions.find((row) => row.is_email);
+  if (q) return (answers[q.slug] || "").trim();
+  return (answers.email || "").trim();
+}
+
+export function unansweredOnPath(
+  questions: ApplyQuestion[],
+  answers: Record<string, string>,
+  slots: ReadonlyArray<{ starts_et: string }>,
+): string[] {
+  return questions
+    .filter((q) => q.qtype !== "continue")
+    .filter((q) => !contentCheck(q, answers[q.slug] || "", slots).ok)
+    .map((q) => q.slug);
+}
+
+export function nextApplyStep(
+  questions: ApplyQuestion[],
+  current: string,
+): string | "review" {
+  const path = pathOf(questions);
+  const i = path.indexOf(current);
+  if (i < 0 || i >= path.length - 1) return "review";
+  return path[i + 1];
+}
+
+export function prevApplyStep(
+  questions: ApplyQuestion[],
+  current: string,
+): string | null {
+  const path = pathOf(questions);
+  const i = path.indexOf(current);
+  if (i <= 0) return null;
+  return path[i - 1];
+}
+
+export function reviewRows(
+  questions: ApplyQuestion[],
+  asked: string[],
+): ApplyQuestion[] {
+  return questions.filter(
+    (q) => q.qtype !== "continue" && asked.includes(q.slug),
+  );
+}
+
+export function displayAnswer(question: ApplyQuestion, value: string): string {
+  if (question.qtype === "calendar") return displayDatetime(value);
+  return value.trim();
+}
+
+export function nextLabel(question: ApplyQuestion): string {
+  if (question.qtype === "continue") return "Continue";
   return "OK";
 }
 
 export function submitPayload(
-  email: string,
-  answers: Record<ApplyKey, string>,
-): Record<string, string> {
-  const { answers: next } = recomputePath(email, answers);
-  const body: Record<string, string> = { email: email.trim() };
-  for (const key of APPLY_KEYS) body[key] = next[key].trim();
+  questions: ApplyQuestion[],
+  answers: Record<string, string>,
+  extra: { when?: string; ending?: ApplyOutcome | null } = {},
+): Record<string, string | Record<string, string>> {
+  const trimmed: Record<string, string> = {};
+  for (const q of questions) {
+    if (q.qtype === "continue") continue;
+    trimmed[q.slug] = (answers[q.slug] || "").trim();
+  }
+  const email = emailFromAnswers(questions, trimmed);
+  const body: Record<string, string | Record<string, string>> = {
+    email,
+    answers: trimmed,
+  };
+  for (const q of questions) {
+    if (q.ac_key && (APPLY_KEYS as readonly string[]).includes(q.ac_key)) {
+      body[q.ac_key] = trimmed[q.slug] || "";
+    }
+  }
+  if (extra.when) body.when = extra.when;
+  if (extra.ending) body.ending = extra.ending;
   return body;
+}
+
+export function isQuestionScreen(
+  screen: ApplyScreenId,
+  questions: ApplyQuestion[],
+): boolean {
+  return screen !== "review" && questions.some((q) => q.slug === screen);
 }

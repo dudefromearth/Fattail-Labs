@@ -9,7 +9,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import Markdown from "@/components/Markdown";
+import { displayDatetime } from "@/lib/applyFields";
+import { useApplySlotsEdit } from "./ApplySlotsEditContext";
 import { useEdit } from "./EditContext";
+import type { FieldEditApi } from "./fieldEdit";
+
+export type { FieldEditApi };
+
+export function useFieldEdit(): FieldEditApi | null {
+  const slots = useApplySlotsEdit();
+  const course = useEdit();
+  if (slots) return slots;
+  if (!course) return null;
+  return course;
+}
 
 const AFFORDANCE =
   "cursor-pointer rounded outline-dashed outline-1 outline-offset-4 outline-emerald-400/70 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30";
@@ -37,7 +50,7 @@ export function EditableText({
   inputClassName?: string;
   placeholder?: string;
 }) {
-  const edit = useEdit();
+  const edit = useFieldEdit();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
@@ -173,7 +186,7 @@ export function EditableMarkdown({
   value: string;
   className?: string;
 }) {
-  const edit = useEdit();
+  const edit = useFieldEdit();
   const [editing, setEditing] = useState(false);
   const [preview, setPreview] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -328,6 +341,14 @@ export function EditableMarkdown({
   );
 }
 
+function selectOptions(
+  options: Array<string | { value: string; label: string }>,
+): { value: string; label: string }[] {
+  return options.map((o) =>
+    typeof o === "string" ? { value: o, label: o } : o,
+  );
+}
+
 export function EditableSelect({
   field,
   value,
@@ -336,13 +357,16 @@ export function EditableSelect({
 }: {
   field: string;
   value: string;
-  options: string[];
+  options: Array<string | { value: string; label: string }>;
   className?: string;
 }) {
-  const edit = useEdit();
+  const edit = useFieldEdit();
   const display = edit?.value(field, value) ?? value;
   const fieldError = edit?.fieldErrors[field] ?? null;
   const selectRef = useRef<HTMLSelectElement>(null);
+  const labeled = selectOptions(options);
+  const shown =
+    labeled.find((o) => o.value === display)?.label ?? display;
 
   // Option+click entry: focus the select once edit mode is on.
   useEffect(() => {
@@ -365,11 +389,11 @@ export function EditableSelect({
             edit.enterEditAtField(field);
           }}
         >
-          {display}
+          {shown}
         </span>
       );
     }
-    return <span className={className}>{display}</span>;
+    return <span className={className}>{shown}</span>;
   }
   return (
     <span className="inline-flex flex-col">
@@ -387,14 +411,149 @@ export function EditableSelect({
             : "outline-dashed outline-1 outline-offset-2 outline-emerald-400/70"
         } ${className}`}
       >
-        {options.map((o) => (
-          <option key={o} value={o} className="text-zinc-900">
-            {o}
+        {labeled.map((o) => (
+          <option key={o.value} value={o.value} className="text-zinc-900">
+            {o.label}
           </option>
         ))}
       </select>
       {fieldError && (
         <span className="mt-0.5 text-xs text-red-600" role="alert">
+          {fieldError}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** Day/time editor — same click / dashed / blur-commit language as EditableText. */
+export function EditableDatetime({
+  field,
+  value,
+  className = "",
+  placeholder = "Click to set time…",
+}: {
+  field: string;
+  value: string;
+  className?: string;
+  placeholder?: string;
+}) {
+  const edit = useFieldEdit();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const display = edit?.value(field, value) ?? value;
+  const fieldError = edit?.fieldErrors[field] ?? null;
+  const label = display.trim() ? displayDatetime(display) : "";
+
+  useEffect(() => {
+    if (editing || fieldError) inputRef.current?.focus();
+  }, [editing, fieldError]);
+
+  useEffect(() => {
+    if (fieldError) {
+      setEditing(true);
+      setDraft(edit?.value(field, value) ?? value);
+    }
+  }, [fieldError, field, value, edit]);
+
+  useEffect(() => {
+    if (!edit?.editMode) return;
+    if (edit.pendingOpenField !== field) return;
+    setDraft(edit.value(field, value));
+    setEditing(true);
+    edit.clearFieldError(field);
+  }, [edit, edit?.editMode, edit?.pendingOpenField, field, value]);
+
+  if (!edit?.editMode) {
+    if (edit?.isAdmin) {
+      return (
+        <span
+          className={`${className} cursor-default`}
+          title="⌥-click (Option/Alt) to edit"
+          onClick={(e: React.MouseEvent) => {
+            if (!isOptionClick(e)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            edit.enterEditAtField(field);
+          }}
+        >
+          {label || placeholder}
+        </span>
+      );
+    }
+    return <span className={className}>{label || placeholder}</span>;
+  }
+
+  if (!editing) {
+    return (
+      <span
+        className={`${className} ${fieldError ? AFFORDANCE_ERROR : AFFORDANCE} min-w-[8rem] inline-block`}
+        title={fieldError || "Click to edit — saves when you leave the field"}
+        onClick={() => {
+          setDraft(display);
+          setEditing(true);
+          edit.clearFieldError(field);
+        }}
+      >
+        {label ? (
+          label
+        ) : (
+          <span className="italic text-zinc-400">{placeholder}</span>
+        )}
+      </span>
+    );
+  }
+
+  const commit = async () => {
+    if (saving) return;
+    setSaving(true);
+    edit.clearFieldError(field);
+    const ok = await edit.commitField(field, draft);
+    setSaving(false);
+    if (ok) setEditing(false);
+  };
+
+  return (
+    <span className="relative inline-block min-w-[8rem] max-w-full">
+      <input
+        ref={inputRef}
+        type="datetime-local"
+        value={draft}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          edit.clearFieldError(field);
+        }}
+        onBlur={() => {
+          void commit();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.target as HTMLInputElement).blur();
+          }
+          if (e.key === "Escape") {
+            setDraft(display);
+            edit.clearFieldError(field);
+            setEditing(false);
+          }
+        }}
+        aria-invalid={!!fieldError}
+        aria-describedby={fieldError ? `${field}-err` : undefined}
+        className={`w-full border-0 bg-transparent p-0 outline-none rounded ${className} ${
+          fieldError
+            ? "ring-2 ring-red-500 outline outline-2 outline-offset-2 outline-red-500"
+            : "ring-2 ring-emerald-500"
+        }`}
+      />
+      {fieldError && (
+        <span
+          id={`${field}-err`}
+          role="alert"
+          className="mt-1 block max-w-md text-xs font-medium text-red-600 dark:text-red-400"
+        >
           {fieldError}
         </span>
       )}

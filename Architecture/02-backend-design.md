@@ -160,7 +160,8 @@ Placement plan: JSON in `placement_proposal` (or `lesson_plan` / single-lesson f
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/api/apply` | Public. Email + Cole keys. Writes AC ids **3–9** and tag **18**. Partner (id 9) required only when 7 is Yes (**DL-455**). **503** if the on-path write or the tag miss. Does **not** call `sync_lead()`. Spec Native Apply v0.1 · **DL-451**. |
+| POST | `/api/apply` | Public. Email + Cole keys. Writes AC ids **3–9** and tag **18**. Field 7 is an America/New_York datetime (**DL-460**). Partner stays on the path. **503** if the write or the tag miss. Does **not** call `sync_lead()`. Spec Native Apply v0.1 · **DL-451**. |
+| POST | `/api/apply/invite` | Public. Email + datetime. Sends in-house ICS `METHOD:REQUEST` over `LABS_SMTP_*`. **503** if SMTP is unset or send misses. Same UID per email. **DL-460**. |
 
 ### 4.6 Billing
 

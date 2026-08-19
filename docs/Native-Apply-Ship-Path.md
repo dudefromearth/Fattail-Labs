@@ -1,7 +1,7 @@
 # Native apply — ship path
 
 **Spec:** `Specs/FatTail-Native-Apply-Form-Spec-v0.1.md`  
-**Decision:** **DL-451** · **DL-452** · **DL-455** · **DL-456**  
+**Decision:** **DL-451** · **DL-452** · **DL-455** · **DL-456** · **DL-457** · **DL-458** · **DL-460** · **DL-461** · **DL-462** · **DL-463**  
 **Public URL (Coach):** `https://fattail.ai/apply`  
 **Host:** **open** (OQ-1). This file is a way to ship, not a host lock.
 
@@ -12,12 +12,20 @@
 | Piece | Path | Job |
 |-------|------|-----|
 | Page | `web/app/apply/page.tsx` | Native fattail invite. One question at a time. Quiet canvas. |
-| Form | `web/components/ApplyForm.tsx` | Conversation invite (**DL-453**). Accept sits **next to the field** (**DL-454**): click / tap / Enter / Tab. Two motion beats. Last live question goes to **Review** (**DL-455**). Edits are **in place on the list** (**DL-456**). POST `/api/apply` only from Review Accept. |
+| Form | `web/components/ApplyForm.tsx` | Conversation invite (**DL-453**). Questions and types come from the server (**DL-462**). Field 7 is **one listed server slot** (**DL-461**); ICS on accept (**DL-460**). **Back left / OK right under the field** — visual twins (**DL-457**). Thick ink field border (**DL-458**). Click / tap / Enter / Tab still accept — and do **not** advance on a content-check miss. Two motion beats. Last live question goes to **Review** (**DL-455**). Edits are **in place on the list** (**DL-456**). POST `/api/apply` only from Review Accept. |
+| Questions | `apply_questions` table · `GET /api/apply/form` | Server-owned ask / hint / type / options / order / follow-ons. Seed = intro + email + Cole seven. New rows have no AC id. |
+| Score map | `apply_score_settings` · option `outcome` / `reveal` | Visible admin map. Empty until tagged. Plurality → Coach / Lakesia / trial. Tie = trial. |
+| Endings | Review | Coach slots · Lakesia slots · Observer trial at `https://fattail.ai/try` ($17/wk, six weeks). No ICS on trial. |
+| Slots | `apply_slots` table (`host` = coach\|lakesia) · `GET /api/apply/slots` | Server-owned times. Applicant sees only the ending they earned. Empty list fails loud. |
+| Hosts | `apply_hosts` | Coach seeds `coach@fattail.ai`. Lakesia email empty until admin sets it. |
+| Admin | `/apply?edit=1` (primary) · `/admin/apply-slots` | In-place `Editable` / Edit bar for ask, hint, type, outcome, follow-ons, and times. Same language as course sections. |
+| Invite | `POST /api/apply/invite` · `server/apply_invite.py` | ICS `METHOD:REQUEST` to the applicant. Same UID on Review edit. Chosen time must be a live slot. Fail loud if `LABS_SMTP_*` unset. |
+| Path selftest | `web/lib/applyFields.selftest.ts` | Characterization only. Excluded from production `next build` (`tsconfig.json`). |
 | Write | `server/apply_ac.py` | Upsert contact → write field ids **3–9** → tag **18** → read back. Raises on any miss. |
 | HTTP | `POST /api/apply` | Public. 422 on missing email / missing Cole field. **503** if AC is unset, half-configured, or the seven write / tag 18 miss. |
 | Waitlist | `server/activecampaign.py` `sync_lead()` | **Not** this path. Leave it alone. |
 
-Live ids **3–9** stay. Keys stay `HELL`, `HEAVEN`, `MONEY_TIMING`, `COACHING_SKU`, `ELEVEN_AM_ET`, `TRIED`, `PARTNER_SUPPORT`. Fields 6/7/9 have empty option lists — the form is free text. Echo owns labels.
+Live ids **3–9** stay when a question is mapped to those keys. Keys stay `HELL`, `HEAVEN`, `MONEY_TIMING`, `COACHING_SKU`, `ELEVEN_AM_ET`, `TRIED`, `PARTNER_SUPPORT`. New admin questions without an AC id stay on our server and still appear on Review. Do not invent AC dropdown ids. Echo owns labels.
 
 ---
 
@@ -31,6 +39,18 @@ LABS_AC_API_TOKEN=<AC Settings → Developer → API Token>
 ```
 
 Half-config fails loud. Unset fails the submit (503). Waitlist behavior is unchanged.
+
+---
+
+## StudioTwo pull (this add-on)
+
+Walk **http://studiotwo.local:3001/apply** (never `:3000`). Apply pending migrations on the API host:
+
+```
+cd server && .venv/bin/python migrate.py
+```
+
+That lands `131_apply_slots.sql`, `132_apply_questions.sql`, and `133_apply_endings.sql`. Admin: `/apply?edit=1`.
 
 ---
 
@@ -90,7 +110,7 @@ curl -sS -X POST https://labs.fattail.ai/api/apply \
     "HEAVEN":"probe heaven",
     "MONEY_TIMING":"probe timing",
     "COACHING_SKU":"probe sku",
-    "ELEVEN_AM_ET":"yes",
+    "ELEVEN_AM_ET":"2026-08-25T11:00",
     "TRIED":"probe tried",
     "PARTNER_SUPPORT":"probe partner"
   }'

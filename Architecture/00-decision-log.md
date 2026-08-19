@@ -4,6 +4,160 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-463 /apply has three endings from an admin score map
+
+**Decision:** Ernie lock 2026-08-19. Same apply form. **3001 only.** The old
+Typeform scored answers and jumped to follow-ons. We do **not** have that
+score sheet in the repo, so we do **not** invent a rubric.
+
+Visible admin scoring map (`apply_score_settings` + per-option `outcome` /
+`reveal` on `apply_questions.options_json`). CEO edits it in place. Seed =
+today’s Cole questions. Until an answer is tagged Coach / Lakesia / trial,
+the ending stays **Review + Accept**.
+
+Once tagged, Review shows the earned ending:
+
+1. **Coach (Ernie)** — live slots tagged `coach`. ICS to the applicant.
+2. **Lakesia** — live slots tagged `lakesia`. ICS to the applicant.
+3. **Trial** — no ICS. One action to **https://fattail.ai/try**. Copy:
+   Observer **$17/wk** for **six weeks** (not four). No fake “you’re booked.”
+
+Plurality of tagged answers wins. A tie, or a live map with no tagged
+answers on this walk, is **trial**. Answer-specific `reveal` slugs insert
+follow-on questions (`on_path = 0`). Applicant sees only the slot list for
+the ending they earned. Empty host list fails loud.
+
+Hosts (`apply_hosts`): Coach seeds `coach@fattail.ai`. Lakesia organizer
+email starts empty — ICS fail loud until admin sets it. Do not invent
+`lakesia@…`.
+
+**Does not:** merge; MiniTwo; fattail.ai host cutover; Calendly; a fake
+Typeform score sheet.
+
+---
+
+## 2026-08-19 — DL-462 /apply questions and types are server-owned
+
+**Decision:** Ernie add-on 2026-08-19. Same apply admin. **3001 only.**
+Questions live on our server (`apply_questions`) in the same store family
+as `apply_slots`. Not hardcoded forever in `applyFields.ts`. Seed = today’s
+intro + email + Cole seven so the walk is not empty. Admin then edits
+copy, type, options, order; add / remove.
+
+Four types, each with a real content check. OK / Enter / Tab does **not**
+advance on an invalid answer. The miss shows on the same field.
+
+1. **Free text** — non-empty. Email-valid if the question is the email step.
+2. **Binary** — exactly two admin-set options. Must pick one.
+3. **Radio** — two or more admin-set options. Must pick exactly one.
+4. **Calendar date-times** — exactly one live slot from `apply_slots`.
+   Empty slot list **fails loud** — do not invent times. ICS still sends
+   on accept / Review edit (**DL-460** / **DL-461**).
+
+Admin in-place: the element IS the editor (course `Editable` / field-edit
+API / dashed affordance / blur or Done commits). Primary surface
+`/apply?edit=1`. Thin `/admin/apply-slots` reuses the same components.
+
+Applicant path stays one question at a time, eye-lock, thick border,
+Back / OK twins, Review with in-place answer edit, Accept submits.
+
+AC write: keep field ids **3–9** when a question is mapped to those
+keys. New admin questions without an AC id still live on our server and
+still appear on Review. Do **not** invent new AC dropdown ids. Default
+path is the admin order. No new branching language this pass.
+
+**Does not:** merge; MiniTwo; fattail.ai; Calendly.
+
+---
+
+## 2026-08-19 — DL-461 /apply field 7 is a server-owned slot pick
+
+**Decision:** Ernie lock 2026-08-19. Do **not** use Calendly, Chili Piper, or
+any booking vendor. Do **not** show an open date-time picker. Conversation
+times live on our server (`apply_slots`). Default four placeholder
+America/New_York times; count is not frozen — admin add/remove.
+
+Applicant picks **one listed live slot**. AC id **7** / `ELEVEN_AM_ET` stores
+that ET datetime (not yes/no). ICS `METHOD:REQUEST` (Cole, 30 min, NY, same
+UID per email, fail loud if no SMTP) still sends on step accept and Review
+in-place change — **DL-460** stands except the free picker is dead.
+
+Admin edits in place, same language as course sections (`Editable.tsx` /
+`EditContext` field API / dashed affordance / blur-commit). Primary surface
+is `/apply?edit=1`. Thin `/admin/apply-slots` reuses the same components.
+Empty live list **fails loud** — do not invent times.
+
+**Does not:** merge; MiniTwo; fattail.ai; Calendly.
+
+---
+
+## 2026-08-19 — DL-460 /apply field 7 is a calendar invite, not yes/no
+
+**Decision:** Ernie lock 2026-08-19. AC field id **7** / key
+`ELEVEN_AM_ET` stays. The value is a chosen **America/New_York**
+date-time, not yes/no. The question says a **calendar invite will be
+sent** to the email they already entered. Duration 30 minutes.
+Organizer: Cole Merritt / cole@fattail.ai. Title: FatTail conversation.
+Location: “We'll send the link.” — no invented Zoom URL.
+
+In-house ICS (`METHOD:REQUEST`) over `LABS_SMTP_*`. Same UID per
+applicant email; Review edit of the time re-sends. If SMTP is unset,
+send **fails loud** (clear miss) but they may keep the time and
+continue. No Calendly / Chili Piper / booking vendor.
+
+Picking a time is the meet yes. The old “11am No drops PARTNER_SUPPORT”
+branch is dead. Partner stays on the path.
+
+**Does not:** invent a new AC id; merge; MiniTwo; fattail.ai.
+
+---
+
+## 2026-08-19 — DL-459 apply path selftest is not in the Next build
+
+**Decision:** `web/lib/applyFields.selftest.ts` is characterization only
+(`node --experimental-strip-types`). It is **excluded** from production
+`next build` via `web/tsconfig.json` (`**/*.selftest.ts`). The MiniTwo
+failure after PR 7 was this file’s `from "./applyFields.ts"` import
+under Next’s TypeScript check. Do not compile it as an app module.
+
+**Does not:** MiniTwo from this PR; merge; change the write.
+
+---
+
+## 2026-08-19 — DL-458 /apply fields have a thick ink border
+
+**Decision:** Ernie add-on from the same `:3001` walk. Every live field
+(email, Heaven, Hell, the rest) and the in-place Review edit field
+gets a **thick ink border** — 3px, `--color-label`, readable on paper
+and dark canvas. Not a 1px hairline. Focus may strengthen the same
+border with brand hue `#00B478`. Do not invent a second loud color.
+Off: hero lime `#00FF00`, pine `#1A4F40`.
+
+Sits with **DL-457**: Back left / OK right under the field, twins.
+
+**Does not:** merge; MiniTwo; fattail.ai; change the write.
+
+---
+
+## 2026-08-19 — DL-457 /apply Back and OK are twins under the field
+
+**Decision:** Ernie lock 2026-08-19 after walking `:3001`. **OK and Back
+must look the same.** One row **under** the field: Back left, OK (or
+Continue / Accept — the same control) right. Same height, type size,
+weight, radius, and padding. Not a text link vs a filled pill. Twins.
+
+This replaces DL-454 “submit next to the field.” The pair lives under
+the field now. Click, touch, Enter, and Tab still accept when valid.
+Eye-lock and two-beat motion stay. Same pair on live questions and on
+in-place Review edits (Back cancels the line edit; OK accepts it).
+Review **Accept** stays the list-level control under the list — not a
+field-line twin.
+
+**Does not:** merge; MiniTwo; fattail.ai; change the write; reopen the
+question screen to edit.
+
+---
+
 ## 2026-08-19 — DL-456 /apply Review edits in place
 
 **Decision:** Ernie correction 2026-08-19. Review still lists every asked

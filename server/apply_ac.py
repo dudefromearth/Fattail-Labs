@@ -2,8 +2,9 @@
 
 This is NOT waitlist sync_lead(). Apply submit fails loud if ActiveCampaign
 is unconfigured, if any on-path fieldValues miss / are empty after write,
-or if tag 18 Application Filled is missing on the contact. Partner (id 9)
-is on-path only when 11am ET is Yes.
+or if tag 18 Application Filled is missing on the contact. Field 7
+(ELEVEN_AM_ET) is a chosen America/New_York datetime, not yes/no.
+Partner (id 9) stays on the path.
 
 Live field ids 3–9 stay (do not invent ids). Tag 18 stays (desk routing).
 Spec: FatTail-Native-Apply-Form-Spec-v0.1.md · APPLY-2–5 · APPLY-10
@@ -12,6 +13,7 @@ Spec: FatTail-Native-Apply-Form-Spec-v0.1.md · APPLY-2–5 · APPLY-10
 from __future__ import annotations
 
 import logging
+import re
 
 from activecampaign import ACError, _ac_config, _add_contact_tag, _request, _sync_contact
 
@@ -30,6 +32,11 @@ APPLY_FIELDS: tuple[tuple[str, str], ...] = (
 APPLY_KEYS: tuple[str, ...] = tuple(k for k, _ in APPLY_FIELDS)
 APPLY_FIELD_IDS: dict[str, str] = {k: fid for k, fid in APPLY_FIELDS}
 APPLY_TAG_ID = "18"
+WHEN_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$")
+
+
+def _is_when(value: str) -> bool:
+    return bool(WHEN_RE.match((value or "").strip()))
 
 
 def _require_ac_config() -> dict:
@@ -43,24 +50,26 @@ def _require_ac_config() -> dict:
     return cfg
 
 
-def _normalize_answers(answers: dict | None) -> dict[str, str]:
+def _normalize_answers(
+    answers: dict | None, mapped_keys: list[str] | None = None
+) -> dict[str, str]:
     src = answers if isinstance(answers, dict) else {}
+    keys = tuple(mapped_keys) if mapped_keys is not None else APPLY_KEYS
     out: dict[str, str] = {}
     missing: list[str] = []
-    for key in APPLY_KEYS:
+    for key in keys:
+        if key not in APPLY_KEYS:
+            continue
         raw = src.get(key)
         value = "" if raw is None else str(raw).strip()
         out[key] = value
-        if key == "PARTNER_SUPPORT":
-            continue
         if not value:
             missing.append(key)
-    eleven = out.get("ELEVEN_AM_ET", "").strip().lower()
-    if eleven == "yes" and not out.get("PARTNER_SUPPORT"):
-        missing.append("PARTNER_SUPPORT")
-    if eleven == "no":
-        # Dead branch — do not keep a stale home/partner write.
-        out["PARTNER_SUPPORT"] = ""
+    eleven = out.get("ELEVEN_AM_ET", "")
+    if eleven and not _is_when(eleven):
+        raise ACError(
+            "ELEVEN_AM_ET must be a date-time in America/New_York (YYYY-MM-DDTHH:MM)"
+        )
     if missing:
         raise ACError("empty apply field(s): " + ", ".join(missing))
     extra = [k for k in src if k not in APPLY_KEYS and str(k).strip()]
@@ -121,16 +130,21 @@ def _verify_written(values: dict[str, str], written: dict[str, str]) -> list[str
     return misses
 
 
-def write_application(email: str, answers: dict | None) -> dict:
-    """Upsert the contact, write ids 3–9, attach tag 18, read back.
+def write_application(
+    email: str,
+    answers: dict | None,
+    mapped_keys: list[str] | None = None,
+) -> dict:
+    """Upsert the contact, write mapped Cole ids, attach tag 18, read back.
 
-    Raises ACError on any miss. Never returns a silent success. Never calls
+    mapped_keys=None writes all seven (seed). A subset writes only those
+    keys — do not invent AC ids. Raises ACError on any miss. Never calls
     sync_lead().
     """
     email = (email or "").strip().lower()
     if not email:
         raise ACError("empty email")
-    values = _normalize_answers(answers)
+    values = _normalize_answers(answers, mapped_keys)
     cfg = _require_ac_config()
 
     contact_id = _sync_contact(cfg, email)
