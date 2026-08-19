@@ -312,7 +312,7 @@ def test_api_apply_success(monkeypatch):
     _form_ok(monkeypatch)
     monkeypatch.setattr(
         "routes.apply.write_application",
-        lambda email, answers: {
+        lambda email, answers, mapped_keys=None: {
             "ok": True,
             "contact_id": "99",
             "tag_id": "18",
@@ -388,7 +388,7 @@ def test_api_apply_missing_cole_field_is_422(monkeypatch):
 
 
 def test_api_apply_ac_miss_is_not_success(monkeypatch):
-    def miss(email, answers):
+    def miss(email, answers, mapped_keys=None):
         raise ac.ACError("apply tag 18 Application Filled miss after write")
 
     _form_ok(monkeypatch)
