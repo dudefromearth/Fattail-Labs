@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Analyzer What-If: Time Range & Measured Vol Spec v0.1
 
-**Status:** **DRAFT · India fold** (2026-08-19). Not BUILD AUTHORITY until Coach Phase 5.  
+**Status:** **DRAFT · India fold** (2026-08-19). Not BUILD AUTHORITY — W0-BA was bypassed (DL-451). As-built follows the impl plan + **DL-452**.  
 **Date:** 2026-08-19  
 **Type:** Product + client math Spec — amends Analyzer **What-if** (§1.11) only  
 **Short name:** **AZ What-If T/σ** · **AZ-TM**  

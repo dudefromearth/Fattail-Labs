@@ -410,16 +410,18 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Legend labels | Pack theo legend + Held suffix |
 | Heritage | MSC Risk Graph UX only — no MSC pricing import (DL-302 / AZ-VP-S4) |
 
-### 1.11 What-if (OPF scenario knobs) · **Time machine** (A6 fold)
+### 1.11 What-if (OPF scenario knobs) · A6 Enable
+
+Member chrome is **What-if** (not Time machine). The suite map may still say Time machine as the historical bucket (AZ-X-2). Law: What-if T/σ spec v0.1 · DL-451 · DL-452.
 
 | Knob | Range | Law |
 |------|-------|-----|
-| Enable | checkbox | **Gates all three** time / vol / spot% (A6) — residual may still gate time-only until code matches |
-| Time offset | 0…72 h | Applied when Enable (outlook respects epoch pin) |
-| Vol offset | −30…+30 pts | Applied when Enable |
+| Enable | switch | **Gates all three** time / implied vol / spot% (A6) |
+| Time | `[0, remaining_last_trade]` | Last trade: index **16:15 ET** · equity **16:00 ET**. Readout clock ET · hours left. τ stays OPF29 **16:00** (1-minute floor). Outlook + epoch pin ignores the time knob. **Supersedes** 0…72 h as the member domain. |
+| Implied vol | `[0.5 σ_m, 2.0 σ_m]` clamp 1–200% | Absolute %; detent = listed ATM IV on the soonest shown expiration. Wire `vol_offset_pts = σ_s − σ_m` (OPF31 additive). **IV NO** / **WAITING** when unmeasured. **Supersedes** −30…+30 pts as the member domain. |
 | Spot % | −5%…+5% | Applied when Enable; sim spot indicator |
-| Active banner | — | Labeled what-if / override state (B4) |
-| Reset | button | Clears all three + disable |
+| Active banner | — | Labeled what-if / override state (B4). Enable + non-zero knobs → RECON `override`. |
+| Reset | button | Clears elapsed / vol offset / spot% + disable |
 
 ### 1.12 Spot & VIX overrides · **Controls → Time machine class (B4)**
 

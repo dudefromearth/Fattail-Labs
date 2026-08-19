@@ -4,7 +4,6 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
-<<<<<<< HEAD
 ## 2026-08-19 — DL-456 /apply Review edits in place
 
 **Decision:** Ernie correction 2026-08-19. Review still lists every asked
@@ -151,6 +150,27 @@ until Foxtrot routes it.
 - lock.md look in-spec (`#00B478`, tokens.css, one column / labels above / 44pt)
 
 **Does not:** treat spec PR 3 as the implementation PR.
+
+---
+
+## 2026-08-19 — DL-452 Analyzer What-if remaining T + measured IV (as-built)
+
+**Decision:** Analyzer and Surface **What-if** Time is remaining to
+**last trade** (index 16:15 ET / equity 16:00 ET). Implied vol is
+absolute % detent at listed ATM IV. Engine wire stays OPF31
+`vol_offset_pts = σ_s − σ_m`. τ stays OPF29 **16:00** with the
+**1-minute** floor (not `fractionalT`'s 1-hour min). Session share:
+`ft_options_lab_whatif_v1`.
+
+**Coach ODs (silent, stamped with DL-451 GO):** **OD-1 B** additive ·
+**OD-2 A** Surface HUD same scalar · **OD-3 B** two clocks (slider
+last-trade ≠ settlement τ).
+
+**Does not:** move OPF settlement to 16:15; smile-sticky ratio;
+`/resolve` schema; VIX→IV.
+
+**Parents:** Analyzer §1.11 (this body) · What-if T/σ spec v0.1 (stays
+**DRAFT** — W0-BA was bypassed, DL-451) · impl plan v1.0.
 
 ---
 
