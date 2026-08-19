@@ -1005,12 +1005,14 @@ export default function OpfRiskAnalyzer() {
         }}
         timeMachineEnabled={timeMachineEnabled}
         onTimeMachineEnabled={setTimeMachineEnabled}
-        elapsedHours={elapsedHours}
+        elapsedHours={whatIfHydrated ? elapsedHours : 0}
         onElapsedHours={setSimElapsedHours}
-        remainingHours={remainingHours}
-        timeStepHours={whatIfTimeStepHours(remainingHours)}
+        remainingHours={whatIfHydrated ? remainingHours : 0}
+        timeStepHours={
+          whatIfHydrated ? whatIfTimeStepHours(remainingHours) : 1
+        }
         timeReadout={
-          soonestExp
+          whatIfHydrated && soonestExp
             ? formatWhatIfTimeReadout(nowMs, elapsedHours, remainingHours)
             : "—"
         }
@@ -1021,18 +1023,22 @@ export default function OpfRiskAnalyzer() {
         onSimIvPct={setSimIvPct}
         volMin={volRange.min}
         volMax={volRange.max}
-        volReadout={formatWhatIfVolReadout(
-          measuredPct,
-          simIvPct ?? measuredPct ?? 0,
-          timeMachineEnabled,
-          trades.length === 0
-            ? "WAITING"
-            : measuredPct == null
-              ? risk.generations.length
-                ? "IV NO"
-                : "WAITING"
-              : null,
-        )}
+        volReadout={
+          whatIfHydrated
+            ? formatWhatIfVolReadout(
+                measuredPct,
+                simIvPct ?? measuredPct ?? 0,
+                timeMachineEnabled,
+                trades.length === 0
+                  ? "WAITING"
+                  : measuredPct == null
+                    ? risk.generations.length
+                      ? "IV NO"
+                      : "WAITING"
+                    : null,
+              )
+            : "WAITING"
+        }
         volDisabled={
           !timeMachineEnabled || measuredPct == null || trades.length === 0
         }

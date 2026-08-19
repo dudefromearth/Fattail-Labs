@@ -1103,11 +1103,13 @@ export default function SurfaceApp() {
         </HudCollapse>
         <HudCollapse title="What-if" testId="surface-time-wrap">
           <TimeHud
-            elapsedHours={elapsedHours}
-            remainingHours={remainingHours}
-            timeStepHours={whatIfTimeStepHours(remainingHours)}
+            elapsedHours={whatIfHydrated ? elapsedHours : 0}
+            remainingHours={whatIfHydrated ? remainingHours : 0}
+            timeStepHours={
+              whatIfHydrated ? whatIfTimeStepHours(remainingHours) : 1
+            }
             timeReadout={
-              soonestExp
+              whatIfHydrated && soonestExp
                 ? formatWhatIfTimeReadout(nowMs, elapsedHours, remainingHours)
                 : "—"
             }
