@@ -32,10 +32,10 @@ VALID = {
     "hell": "Stuck repeating the same drawdown.",
     "heaven": "A process I can keep.",
     "money_timing": "Ready this month.",
-    "coaching_sku": "navigator-coaching",
+    "coaching_sku": "Navigator $267/mo",
     "eleven_am_et": "yes",
     "tried": "Courses and a private Discord.",
-    "partner_support": "Spouse is on board.",
+    "partner_support": "yes",
 }
 
 
@@ -47,7 +47,7 @@ def _answers_from_valid() -> dict[str, str]:
         "coaching_sku": VALID["coaching_sku"],
         "eleven_am_et": "Yes",
         "tried": VALID["tried"],
-        "partner_support": VALID["partner_support"],
+        "partner_support": "Yes",
     }
 
 
@@ -112,7 +112,9 @@ def test_sync_apply_writes_seven_fields_and_tag_18(monkeypatch):
     assert calls["tag"] == ("99", "18")
     ids = {row["field"] for row in calls["field_payload"]}
     assert ids == {"3", "4", "5", "6", "7", "8", "9"}
+    assert calls["answers"]["coaching_sku"] == "Navigator $267/mo"
     assert calls["answers"]["eleven_am_et"] == "Yes"
+    assert calls["answers"]["partner_support"] == "Yes"
 
 
 def test_sync_apply_unconfigured_raises(monkeypatch):
@@ -196,7 +198,9 @@ def test_apply_endpoint_synced(apply_client, monkeypatch):
     assert body["contact_id"] == "42"
     assert body["tag_id"] == "18"
     assert seen["email"] == "zzapply@labs.test"
+    assert seen["answers"]["coaching_sku"] == "Navigator $267/mo"
     assert seen["answers"]["eleven_am_et"] == "Yes"
+    assert seen["answers"]["partner_support"] == "Yes"
     assert set(seen["answers"]) == set(ac.APPLY_FIELD_KEYS)
 
 
@@ -249,6 +253,51 @@ def test_apply_missing_field_400(apply_client, monkeypatch):
     r = apply_client.post("/api/apply", json=payload)
     assert r.status_code == 400, r.text
     assert "tried" in r.json()["detail"]["fields"]
+
+
+def test_apply_sku_rejects_unknown(apply_client, monkeypatch):
+    monkeypatch.setattr(
+        ac,
+        "sync_apply",
+        lambda *a, **k: {"status": "synced", "contact_id": "1", "tag_id": "18"},
+    )
+    payload = dict(VALID)
+    payload["coaching_sku"] = "navigator-coaching"
+    r = apply_client.post("/api/apply", json=payload)
+    assert r.status_code == 400, r.text
+    assert "coaching_sku" in r.json()["detail"]["fields"]
+
+
+def test_apply_partner_rejects_free_text(apply_client, monkeypatch):
+    monkeypatch.setattr(
+        ac,
+        "sync_apply",
+        lambda *a, **k: {"status": "synced", "contact_id": "1", "tag_id": "18"},
+    )
+    payload = dict(VALID)
+    payload["partner_support"] = "Spouse is on board."
+    r = apply_client.post("/api/apply", json=payload)
+    assert r.status_code == 400, r.text
+    assert "partner_support" in r.json()["detail"]["fields"]
+
+
+def test_apply_dropdown_strings_locked():
+    assert ac.APPLY_SKU_VALUES == (
+        "Observer $17/wk × 6",
+        "Activator $97/mo",
+        "Navigator $267/mo",
+        "Annual $1,997",
+    )
+    assert ac.APPLY_YES_NO == ("Yes", "No")
+
+
+def test_sync_apply_rejects_unknown_sku(monkeypatch):
+    monkeypatch.setenv("LABS_AC_API_URL", "https://ac.example.test")
+    monkeypatch.setenv("LABS_AC_API_TOKEN", "tok-apply")
+    answers = _answers_from_valid()
+    answers["coaching_sku"] = "navigator-coaching"
+    with pytest.raises(ac.ACError, match="coaching_sku"):
+        ac.sync_apply("zzapply@labs.test", answers)
 
 
 def test_apply_eleven_am_rejects_maybe(apply_client, monkeypatch):
@@ -323,3 +372,4 @@ def test_apply_field_ids_locked():
     }
     assert ac.APPLY_TAG_ID == "18"
     assert ac.APPLY_TAG_NAME == "Application Filled"
+    assert set(ac.APPLY_FIELD_IDS.values()) == {"3", "4", "5", "6", "7", "8", "9"}

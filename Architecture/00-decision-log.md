@@ -4,6 +4,24 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-451 Apply dropdown strings (fields 6, 7, 9)
+
+**Decision:** Live AC check: fields **6, 7, 9** are dropdowns with **empty
+option arrays**. Do **not** create new AC fields. Write these exact
+strings to the existing ids:
+
+- **6 COACHING_SKU:** `Observer $17/wk × 6` · `Activator $97/mo` ·
+  `Navigator $267/mo` · `Annual $1,997`
+- **7 ELEVEN_AM_ET:** `Yes` · `No`
+- **9 PARTNER_SUPPORT:** `Yes` · `No`
+
+Tag **18** remains Application Filled. Fail loud if any of the seven
+`fieldValues` miss after write.
+
+**Spec:** Native Apply v0.2.1 · **DL-450**.
+
+---
+
 ## 2026-08-19 — DL-450 Native apply write + Labs /apply page
 
 **Decision:** Coach GO. Native apply writes Cole’s seven ActiveCampaign

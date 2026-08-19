@@ -18,7 +18,13 @@ from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 import activecampaign
-from activecampaign import ACError, APPLY_FIELD_KEYS, APPLY_TAG_ID
+from activecampaign import (
+    ACError,
+    APPLY_FIELD_KEYS,
+    APPLY_SKU_VALUES,
+    APPLY_TAG_ID,
+    APPLY_YES_NO,
+)
 
 log = logging.getLogger("labs.apply")
 
@@ -40,10 +46,10 @@ FIELD_MAX: dict[str, int] = {
     "coaching_sku": 200,
     "eleven_am_et": 16,
     "tried": 8000,
-    "partner_support": 4000,
+    "partner_support": 16,
 }
 
-ELEVEN_AM_ET_VALUES = {"yes": "Yes", "no": "No"}
+YES_NO = {v.lower(): v for v in APPLY_YES_NO}
 
 
 def _apply_cors_headers(request: Request, response: Response) -> Response:
@@ -94,8 +100,12 @@ def _validate_body(body: Any) -> tuple[str, dict[str, str]]:
         if len(raw) > FIELD_MAX[key]:
             errors[key] = f"Keep this under {FIELD_MAX[key]} characters."
             continue
-        if key == "eleven_am_et":
-            mapped = ELEVEN_AM_ET_VALUES.get(raw.lower())
+        if key == "coaching_sku":
+            if raw not in APPLY_SKU_VALUES:
+                errors[key] = "Choose a coaching option."
+                continue
+        if key in ("eleven_am_et", "partner_support"):
+            mapped = YES_NO.get(raw.lower())
             if mapped is None:
                 errors[key] = "Choose Yes or No."
                 continue

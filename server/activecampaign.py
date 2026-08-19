@@ -46,6 +46,17 @@ APPLY_FIELD_KEYS: tuple[str, ...] = tuple(APPLY_FIELD_IDS.keys())
 APPLY_TAG_ID = "18"  # Application Filled — write by id, do not create
 APPLY_TAG_NAME = "Application Filled"
 
+# Live AC 2026-08-19: fields 6, 7, 9 are dropdowns with empty option arrays.
+# Do not create new AC fields or option rows. Write these exact strings.
+APPLY_SKU_VALUES: tuple[str, ...] = (
+    "Observer $17/wk × 6",
+    "Activator $97/mo",
+    "Navigator $267/mo",
+    "Annual $1,997",
+)
+APPLY_YES_NO: tuple[str, ...] = ("Yes", "No")
+APPLY_YES_NO_KEYS: frozenset[str] = frozenset({"eleven_am_et", "partner_support"})
+
 
 class ACError(Exception):
     pass
@@ -283,8 +294,15 @@ def sync_apply(email: str, answers: dict[str, str]) -> dict:
         val = str((answers or {}).get(key) or "").strip()
         if not val:
             missing.append(key)
-        else:
-            cleaned[key] = val
+            continue
+        if key == "coaching_sku" and val not in APPLY_SKU_VALUES:
+            raise ACError(f"invalid coaching_sku {val!r}")
+        if key in APPLY_YES_NO_KEYS:
+            mapped = {v.lower(): v for v in APPLY_YES_NO}.get(val.lower())
+            if mapped is None:
+                raise ACError(f"invalid {key} {val!r} (Yes/No)")
+            val = mapped
+        cleaned[key] = val
     if missing:
         raise ACError("empty apply fields: " + ", ".join(missing))
 

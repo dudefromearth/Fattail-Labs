@@ -77,7 +77,8 @@ This is **not** Labs `/signup`. This is **not** Woo checkout. This is **not** a 
 | **APPLY-5** | Evidence of done is **non-empty `fieldValues` on all seven** plus tag 18. The write path read-backs fieldValues before claiming success. |
 | **APPLY-6** | This form **replaces Typeform (`go.0-dte.com/application`) as the write source**. |
 | **APPLY-7** | HIG: visible labels above, one primary CTA, inline errors, ≥ 44pt. `#00B478` only on submit. Brush-arch + word fattail. No insider desk jargon required on the member surface. No profit claims. |
-| **APPLY-8** | If Observer term appears, it is **six weeks** (**DL-128**). This page does not mention Observer. |
+| **APPLY-8** | If Observer term appears, it is **six weeks** (**DL-128**). SKU string is `Observer $17/wk × 6`. |
+| **APPLY-13** | Do **not** create new AC fields. Fields **6 / 7 / 9** are existing dropdowns (live option arrays were empty). Write the exact strings in §3. |
 | **APPLY-9** | No AI copy. No 0-DTE copy on the apply surface. |
 | **APPLY-10** | Tag **18 Application Filled** on successful write. Do not create a new tag. |
 | **APPLY-11** | CORS allowlist is fattail.ai. Labs same-origin rewrite does not need CORS. |
@@ -93,16 +94,22 @@ This is **not** Labs `/signup`. This is **not** Woo checkout. This is **not** a 
 | `hell` | 3 | HELL | textarea | What is hard right now? |
 | `heaven` | 4 | HEAVEN | textarea | What would better look like? |
 | `money_timing` | 5 | MONEY_TIMING | textarea | Money and timing |
-| `coaching_sku` | 6 | COACHING_SKU | text | Which coaching are you applying for? |
-| `eleven_am_et` | 7 | ELEVEN_AM_ET | Yes / No | Can you make 11:00 AM Eastern? |
+| `coaching_sku` | 6 | COACHING_SKU | dropdown (existing AC field) | Which coaching are you applying for? |
+| `eleven_am_et` | 7 | ELEVEN_AM_ET | dropdown · Yes / No | Can you make 11:00 AM Eastern? |
 | `tried` | 8 | TRIED | textarea | What have you already tried? |
-| `partner_support` | 9 | PARTNER_SUPPORT | textarea | Who supports this with you? |
+| `partner_support` | 9 | PARTNER_SUPPORT | dropdown · Yes / No | Does someone support this with you? |
 
 Email is **plumbing** (AC contact key), not a sales qualifier.
 
-`eleven_am_et` stores **Yes** or **No**.
+**Exact strings written to AC** (do not invent option ids; AC option arrays were empty):
 
-A contact with email and six filled fields is a **miss**.
+| Field | Allowed values |
+|-------|----------------|
+| 6 COACHING_SKU | `Observer $17/wk × 6` · `Activator $97/mo` · `Navigator $267/mo` · `Annual $1,997` |
+| 7 ELEVEN_AM_ET | `Yes` · `No` |
+| 9 PARTNER_SUPPORT | `Yes` · `No` |
+
+A contact with email and six filled fields is a **miss**. Any of the seven writes empty after read-back is a **miss**.
 
 ---
 
@@ -165,6 +172,8 @@ No Labs migration. AC is SoR.
 | D5 | CORS `Access-Control-Allow-Origin: https://fattail.ai` | pytest |
 | D6 | Waitlist `sync_lead` still skips when unset | pytest |
 | D7 | Page is one column, labels above, `#00B478` only on submit; no AI / 0-DTE | source review |
+| D8 | SKU / 11am / partner accept only the locked strings; unknown values 400 | pytest |
+| D9 | No new AC field create — writes ids 3–9 only | pytest + source |
 
 Live AC read-back remains the desk evidence after deploy.
 
@@ -188,3 +197,4 @@ Live AC read-back remains the desk evidence after deploy.
 |---------|------|-------|
 | v0.1 | 2026-08-19 | Juliet DRAFT — not BUILD (PR #3) |
 | **v0.2** | 2026-08-19 | Coach GO. Field ids, tag 18, CORS, HIG page. BUILD. |
+| **v0.2.1** | 2026-08-19 | Live AC: 6/7/9 dropdowns, empty options. Exact SKU + Yes/No strings. No new fields. **DL-451**. |

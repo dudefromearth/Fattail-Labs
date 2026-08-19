@@ -25,6 +25,13 @@ const EMPTY: Values = {
   partner_support: "",
 };
 
+const COACHING_SKU = [
+  "Observer $17/wk × 6",
+  "Activator $97/mo",
+  "Navigator $267/mo",
+  "Annual $1,997",
+] as const;
+
 const FIELD =
   "mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4 text-[length:var(--text-body)] text-[var(--color-label)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-label)]";
 
@@ -37,6 +44,49 @@ function FieldError({ message }: { message?: string }) {
     <p className="mt-1 text-[length:var(--text-footnote)] text-[var(--color-destructive)]" role="alert">
       {message}
     </p>
+  );
+}
+
+function YesNo({
+  legend,
+  name,
+  value,
+  error,
+  onChange,
+}: {
+  legend: string;
+  name: FieldKey;
+  value: string;
+  error?: string;
+  onChange: (next: string) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="text-[length:var(--text-subheadline)] font-medium text-[var(--color-label)]">
+        {legend}
+      </legend>
+      <div className="mt-2 flex flex-col gap-2">
+        {(["Yes", "No"] as const).map((opt) => (
+          <label
+            key={opt}
+            className="flex min-h-[44px] items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4"
+          >
+            <input
+              type="radio"
+              name={name}
+              value={opt}
+              checked={value === opt}
+              onChange={() => onChange(opt)}
+              className="h-5 w-5"
+            />
+            <span className="text-[length:var(--text-body)] text-[var(--color-label)]">
+              {opt}
+            </span>
+          </label>
+        ))}
+      </div>
+      <FieldError message={error} />
+    </fieldset>
   );
 }
 
@@ -167,42 +217,29 @@ export default function ApplyForm() {
         <span className="text-[length:var(--text-subheadline)] font-medium text-[var(--color-label)]">
           Which coaching are you applying for?
         </span>
-        <input
-          type="text"
+        <select
           required
           className={INPUT}
           value={values.coaching_sku}
           onChange={(e) => set("coaching_sku", e.target.value)}
-        />
+        >
+          <option value="">Choose one</option>
+          {COACHING_SKU.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
         <FieldError message={fieldErrors.coaching_sku} />
       </label>
 
-      <fieldset>
-        <legend className="text-[length:var(--text-subheadline)] font-medium text-[var(--color-label)]">
-          Can you make 11:00 AM Eastern?
-        </legend>
-        <div className="mt-2 flex flex-col gap-2">
-          {(["Yes", "No"] as const).map((opt) => (
-            <label
-              key={opt}
-              className="flex min-h-[44px] items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-4"
-            >
-              <input
-                type="radio"
-                name="eleven_am_et"
-                value={opt}
-                checked={values.eleven_am_et === opt}
-                onChange={() => set("eleven_am_et", opt)}
-                className="h-5 w-5"
-              />
-              <span className="text-[length:var(--text-body)] text-[var(--color-label)]">
-                {opt}
-              </span>
-            </label>
-          ))}
-        </div>
-        <FieldError message={fieldErrors.eleven_am_et} />
-      </fieldset>
+      <YesNo
+        legend="Can you make 11:00 AM Eastern?"
+        name="eleven_am_et"
+        value={values.eleven_am_et}
+        error={fieldErrors.eleven_am_et}
+        onChange={(v) => set("eleven_am_et", v)}
+      />
 
       <label className="block">
         <span className="text-[length:var(--text-subheadline)] font-medium text-[var(--color-label)]">
@@ -218,19 +255,13 @@ export default function ApplyForm() {
         <FieldError message={fieldErrors.tried} />
       </label>
 
-      <label className="block">
-        <span className="text-[length:var(--text-subheadline)] font-medium text-[var(--color-label)]">
-          Who supports this with you?
-        </span>
-        <textarea
-          required
-          rows={3}
-          className={AREA}
-          value={values.partner_support}
-          onChange={(e) => set("partner_support", e.target.value)}
-        />
-        <FieldError message={fieldErrors.partner_support} />
-      </label>
+      <YesNo
+        legend="Does someone support this with you?"
+        name="partner_support"
+        value={values.partner_support}
+        error={fieldErrors.partner_support}
+        onChange={(v) => set("partner_support", v)}
+      />
 
       {pageError && (
         <p
