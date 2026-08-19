@@ -4,6 +4,38 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-463 /apply has three endings from an admin score map
+
+**Decision:** Ernie lock 2026-08-19. Same apply form. **3001 only.** The old
+Typeform scored answers and jumped to follow-ons. We do **not** have that
+score sheet in the repo, so we do **not** invent a rubric.
+
+Visible admin scoring map (`apply_score_settings` + per-option `outcome` /
+`reveal` on `apply_questions.options_json`). CEO edits it in place. Seed =
+today’s Cole questions. Until an answer is tagged Coach / Lakesia / trial,
+the ending stays **Review + Accept**.
+
+Once tagged, Review shows the earned ending:
+
+1. **Coach (Ernie)** — live slots tagged `coach`. ICS to the applicant.
+2. **Lakesia** — live slots tagged `lakesia`. ICS to the applicant.
+3. **Trial** — no ICS. One action to **https://fattail.ai/try**. Copy:
+   Observer **$17/wk** for **six weeks** (not four). No fake “you’re booked.”
+
+Plurality of tagged answers wins. A tie, or a live map with no tagged
+answers on this walk, is **trial**. Answer-specific `reveal` slugs insert
+follow-on questions (`on_path = 0`). Applicant sees only the slot list for
+the ending they earned. Empty host list fails loud.
+
+Hosts (`apply_hosts`): Coach seeds `coach@fattail.ai`. Lakesia organizer
+email starts empty — ICS fail loud until admin sets it. Do not invent
+`lakesia@…`.
+
+**Does not:** merge; MiniTwo; fattail.ai host cutover; Calendly; a fake
+Typeform score sheet.
+
+---
+
 ## 2026-08-19 — DL-462 /apply questions and types are server-owned
 
 **Decision:** Ernie add-on 2026-08-19. Same apply admin. **3001 only.**

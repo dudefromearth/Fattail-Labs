@@ -3,7 +3,11 @@
 // Apply questions + slots — the element IS the editor.
 
 import { appConfirm } from "@/lib/dialogs";
-import { APPLY_TYPE_OPTIONS } from "@/lib/applyFields";
+import {
+  APPLY_OUTCOME_OPTIONS,
+  APPLY_TYPE_OPTIONS,
+  endingsLive,
+} from "@/lib/applyFields";
 import { EditableSelect, EditableText } from "./Editable";
 import ApplySlotsEditor from "./ApplySlotsEditor";
 import { useApplySlotsEdit } from "./ApplySlotsEditContext";
@@ -35,11 +39,46 @@ export default function ApplyFormEditor({
         <>
           <h1 className="apply-question">Apply questions</h1>
           <p className="apply-hint">
-            Click the ask, hint, type, or choices. Changes save when you leave
-            the field. Applicants see this order.
+            Click the ask, hint, type, outcome, or choices. Changes save when
+            you leave the field. Applicants see this order, plus follow-ons.
           </p>
         </>
       )}
+
+      <div className={admin ? "mt-6 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800" : "apply-admin-question"}>
+        <h2 className={admin ? "text-lg font-semibold" : "apply-admin-slot-time"}>
+          Scoring map
+        </h2>
+        <p className={admin ? "mt-2 text-sm text-zinc-500" : "apply-hint"}>
+          No Typeform sheet was imported. Tag an answer Coach, Lakesia, or
+          Trial. Plurality wins. A tie is Trial — no meeting. Until you tag an
+          answer, Review + Accept stays the ending.
+        </p>
+        <p className={admin ? "mt-2 text-xs text-zinc-400" : "apply-admin-q-ac"}>
+          {endingsLive(rows)
+            ? "Endings are live. Review shows Coach slots, Lakesia slots, or the Observer trial."
+            : "No outcomes tagged yet. Ending stays Review + Accept."}
+        </p>
+        <div className={admin ? "mt-4 space-y-3" : "apply-admin-q-meta"}>
+          {edit.hosts.map((h) => (
+            <div key={h.slug} className={admin ? "flex flex-wrap items-center gap-2" : "apply-admin-q-row"}>
+              <span className={admin ? "text-xs text-zinc-500 w-28" : "apply-admin-q-label"}>
+                {h.display_name}
+              </span>
+              <EditableText
+                field={`host.${h.slug}.organizer_name`}
+                value={h.organizer_name || ""}
+                placeholder="Organizer name"
+              />
+              <EditableText
+                field={`host.${h.slug}.organizer_email`}
+                value={h.organizer_email || ""}
+                placeholder="Organizer email (required for ICS)"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
 
       <ol
         className={
@@ -102,6 +141,17 @@ export default function ApplyFormEditor({
                     />
                   </>
                 ) : null}
+                <span className={admin ? "text-xs text-zinc-500" : "apply-admin-q-label"}>
+                  On path
+                </span>
+                <EditableSelect
+                  field={`question.${q.id}.on_path`}
+                  value={q.on_path ? "yes" : "no"}
+                  options={[
+                    { value: "yes", label: "Default walk" },
+                    { value: "no", label: "Follow-on only" },
+                  ]}
+                />
                 {q.ac_field_id ? (
                   <span className={admin ? "text-xs text-zinc-400" : "apply-admin-q-ac"}>
                     AC {q.ac_field_id} · {q.ac_key}
@@ -116,11 +166,22 @@ export default function ApplyFormEditor({
               {q.qtype === "binary" || q.qtype === "radio" ? (
                 <ul className={admin ? "mt-3 space-y-2" : "apply-admin-options"}>
                   {q.options.map((opt, idx) => (
-                    <li key={`${q.id}-${idx}`} className="flex items-center gap-2">
+                    <li key={`${q.id}-${idx}`} className={admin ? "space-y-1" : "apply-admin-q-row"}>
+                      <div className="flex flex-wrap items-center gap-2">
                       <EditableText
                         field={`question.${q.id}.option.${idx}`}
-                        value={opt}
+                        value={opt.label}
                         placeholder="Choice"
+                      />
+                      <EditableSelect
+                        field={`question.${q.id}.option.${idx}.outcome`}
+                        value={opt.outcome}
+                        options={APPLY_OUTCOME_OPTIONS}
+                      />
+                      <EditableText
+                        field={`question.${q.id}.option.${idx}.reveal`}
+                        value={opt.reveal.join(", ")}
+                        placeholder="Then ask (slugs)"
                       />
                       {edit.editMode && q.qtype === "radio" ? (
                         <button
@@ -135,6 +196,7 @@ export default function ApplyFormEditor({
                           Remove
                         </button>
                       ) : null}
+                      </div>
                     </li>
                   ))}
                   {edit.editMode && q.qtype === "radio" ? (

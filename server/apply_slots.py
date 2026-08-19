@@ -28,11 +28,20 @@ def slot_is_live(starts_et: str) -> bool:
     return is_when_valid((starts_et or "").strip())
 
 
+HOSTS = ("coach", "lakesia")
+
+
+def _host(raw: Any) -> str:
+    key = str(raw or "coach").strip()
+    return key if key in HOSTS else "coach"
+
+
 def _row(raw: dict[str, Any]) -> dict[str, Any]:
     starts = str(raw.get("starts_et") or "").strip()
     return {
         "id": int(raw["id"]),
         "starts_et": starts,
+        "host": _host(raw.get("host")),
         "sort_order": int(raw.get("sort_order") or 0),
         "live": slot_is_live(starts),
     }
@@ -41,7 +50,11 @@ def _row(raw: dict[str, Any]) -> dict[str, Any]:
 def public_payload(slots: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Applicant list — live rows only. Never invent times."""
     return [
-        {"id": int(s["id"]), "starts_et": str(s["starts_et"])}
+        {
+            "id": int(s["id"]),
+            "starts_et": str(s["starts_et"]),
+            "host": _host(s.get("host")),
+        }
         for s in slots
         if s.get("live")
     ]
@@ -51,29 +64,34 @@ def list_all() -> list[dict[str, Any]]:
     with _db().transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, starts_et, sort_order FROM apply_slots "
+                "SELECT id, starts_et, host, sort_order FROM apply_slots "
                 "ORDER BY sort_order ASC, id ASC"
             )
             rows = cur.fetchall()
     return [_row(r) for r in rows]
 
 
-def list_live() -> list[dict[str, Any]]:
-    return [s for s in list_all() if s["live"]]
+def list_live(host: str | None = None) -> list[dict[str, Any]]:
+    rows = [s for s in list_all() if s["live"]]
+    if host:
+        want = _host(host)
+        return [s for s in rows if s["host"] == want]
+    return rows
 
 
-def is_live_when(when: str) -> bool:
+def is_live_when(when: str, host: str | None = None) -> bool:
     raw = (when or "").strip()
     if not slot_is_live(raw):
         return False
-    return any(s["starts_et"] == raw for s in list_live())
+    rows = list_live(host) if host else list_live()
+    return any(s["starts_et"] == raw for s in rows)
 
 
 def get_slot(slot_id: int) -> dict[str, Any] | None:
     with _db().transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, starts_et, sort_order FROM apply_slots WHERE id = %s",
+                "SELECT id, starts_et, host, sort_order FROM apply_slots WHERE id = %s",
                 (int(slot_id),),
             )
             row = cur.fetchone()
@@ -100,16 +118,36 @@ def update_starts(slot_id: int, starts_et: str) -> dict[str, Any]:
     return slot
 
 
-def add_slot() -> dict[str, Any]:
+def update_host(slot_id: int, host: str) -> dict[str, Any]:
+    key = str(host or "").strip()
+    if key not in HOSTS:
+        raise ApplySlotsError("host must be coach or lakesia")
+    with _db().transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE apply_slots SET host = %s WHERE id = %s",
+                (key, int(slot_id)),
+            )
+            if cur.rowcount < 1:
+                raise ApplySlotsError(f"apply slot {slot_id} not found")
+    slot = get_slot(int(slot_id))
+    if slot is None:
+        raise ApplySlotsError(f"apply slot {slot_id} not found after write")
+    return slot
+
+
+def add_slot(host: str = "coach") -> dict[str, Any]:
     """Append an empty (hidden) slot. Count is not frozen."""
+    key = _host(host)
     with _db().transaction() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT COALESCE(MAX(sort_order), 0) AS m FROM apply_slots")
             row = cur.fetchone() or {}
             nxt = int(row.get("m") or 0) + 10
             cur.execute(
-                "INSERT INTO apply_slots (starts_et, sort_order) VALUES (%s, %s)",
-                ("", nxt),
+                "INSERT INTO apply_slots (starts_et, host, sort_order) "
+                "VALUES (%s, %s, %s)",
+                ("", key, nxt),
             )
             new_id = int(cur.lastrowid)
     slot = get_slot(new_id)

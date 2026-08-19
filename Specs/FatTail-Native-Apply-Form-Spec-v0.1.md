@@ -117,6 +117,27 @@ How it should work (Ernie):
 
 **APPLY-13** (this lock): apply questions are **server-owned**. Admin edits ask / hint / type / options / order in place. Four types carry real content checks. Cole ids **3–9** stay mapped when present; new questions do not invent AC ids.
 
+### 0.5 Ernie lock — three endings, score map, follow-ons (2026-08-19 — transcribe, do not create)
+
+Ernie lock 2026-08-19. Same apply form. **3001 only.** Do not merge. Do not MiniTwo. Do not fattail.ai. No Calendly.
+
+> The old Typeform scored answers and jumped to follow-on questions. The score decides the ending:
+
+> 1. Meeting with Coach (Ernie) — calendar slots for Coach. ICS to their email.
+> 2. Meeting with Lakesia — calendar slots for Lakesia. ICS to their email.
+> 3. No meeting — do NOT send a calendar invite. Offer the trial instead: Observer $17/wk × 6, CTA https://fattail.ai/try (six weeks, not four). That is the ending screen.
+
+How it should work (Ernie):
+
+- Admin manages questions, types, and answer-specific follow-ons (in-place, course-section language). A given answer can reveal the next question(s).
+- Admin can attach a score / outcome to answers (Coach / Lakesia / trial). Seed a simple, honest default: do not invent a fake Typeform rubric. If we do not have the old score sheet, use a visible admin scoring map the CEO can edit. Default seed: current Cole questions; ending stays Review + Accept until an admin sets outcomes — then Review shows the ending (Coach slots, Lakesia slots, or trial).
+- Content check still binds: free text, binary, radio 2+, calendar slots.
+- Trial ending: big, honest, one action to fattail.ai/try. No fake “you’re booked.”
+- Coach vs Lakesia: two slot lists (or a slot tagged to a host). Applicant only sees slots for the ending they earned.
+- Seed today’s questions so the form is not empty. Ernie edits them.
+
+**APPLY-14** (this lock): three endings — Coach meeting, Lakesia meeting, Observer trial. Score map is admin-visible and empty until tagged. No Typeform rubric was imported. Trial CTA is `https://fattail.ai/try`. Observer term is six weeks. No ICS on trial.
+
 ---
 
 ## 1. Purpose
@@ -173,6 +194,7 @@ Recorded so India can review against reality. **None of this is a BUILD pick.**
 | **APPLY-11** | **Hole 1 · lock.md in this spec.** One brand hue `#00B478`. Three jobs only (next action, live state, defined-risk cue). Labs `web/styles/tokens.css` is the company look. Not a wash. Not a second accent. Not Typeform. Not ClickFunnels. Not Flatsome. Host stays open. |
 | **APPLY-12** | **Ernie lock 2026-08-19.** Field 7 is **one listed server slot** (America/New_York datetime). No Calendly / Chili Piper / open date-time picker. Admin edits slots in place (same language as course sections). Empty live list **fails loud** — do not invent times. ICS still sends on accept / Review change. |
 | **APPLY-13** | **Ernie lock 2026-08-19.** Questions and types live on the server (`apply_questions`). Admin edits ask / hint / type / options / order in place (same language as course sections). Types: free text · binary (exactly two) · radio (two or more) · calendar (one live slot). Content check is real — OK/Enter/Tab does not advance on a miss. Seed = intro + email + Cole seven. Mapped AC ids **3–9** stay; new questions do not invent AC ids. Default path is admin order. |
+| **APPLY-14** | **Ernie lock 2026-08-19.** Three endings: Coach (Ernie) meeting · Lakesia meeting · Observer trial (`https://fattail.ai/try`, $17/wk, six weeks). Visible admin scoring map. No Typeform sheet imported. Untagged map keeps Review + Accept. Tagged answers use plurality; tie is trial. Slots are tagged coach or lakesia. Trial sends no ICS and does not claim a booking. |
 
 ---
 
@@ -510,6 +532,7 @@ A reviewer can validate, **without reading implementation code**:
 | **v0.1** | 2026-08-19 | **Chair GO.** Implementation authorized in a **separate** PR. `/apply` is a real submit that writes ids **3–9** + tag **18**. Fail loud. Do not inherit `sync_lead()`. Do not invent dropdowns for empty option lists on fields 6/7/9. Echo owns labels. Host stays open. No Juliet seeds. Spec PR 3 remains spec-only. |
 | **v0.1** | 2026-08-19 | **Ernie lock (APPLY-12).** Server-owned slots. No Calendly. In-place admin edit. Applicant picks one listed time. AC id 7 stores the ET datetime. ICS unchanged. |
 | **v0.1** | 2026-08-19 | **Ernie lock (APPLY-13).** Server-owned questions and types. In-place ask / hint / type / options. Four content checks. Seed intro + email + Cole seven. Do not invent AC ids. |
+| **v0.1** | 2026-08-19 | **Ernie lock (APPLY-14).** Three endings (Coach / Lakesia / trial). Visible score map. No invented Typeform rubric. Trial CTA fattail.ai/try. Six weeks. |
 
 **Next process step:** ship `/apply` (this implementation) · Foxtrot routes `https://fattail.ai/apply` when the host pick lands (OQ-1 still open) · Echo may replace Coach titles with member labels without renaming AC keys.
 

@@ -81,7 +81,7 @@ def test_api_invite_unconfigured_is_503(monkeypatch):
     from fastapi.testclient import TestClient
     from routes.apply import router
 
-    monkeypatch.setattr("routes.apply.is_live_when", lambda when: when == WHEN)
+    monkeypatch.setattr("routes.apply.is_live_when", lambda when, host=None: when == WHEN)
     monkeypatch.delenv("LABS_SMTP_HOST", raising=False)
     app = FastAPI()
     app.include_router(router)
@@ -92,6 +92,21 @@ def test_api_invite_unconfigured_is_503(monkeypatch):
     assert r.status_code == 503
     assert r.json().get("ok") is not True
     assert "LABS_SMTP_HOST" in r.json()["detail"]
+
+
+def test_api_invite_rejects_trial():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from routes.apply import router
+
+    app = FastAPI()
+    app.include_router(router)
+    r = TestClient(app).post(
+        "/api/apply/invite",
+        json={"email": EMAIL, "when": WHEN, "host": "trial"},
+    )
+    assert r.status_code == 422
+    assert "trial" in r.json()["detail"].lower()
 
 
 def test_api_invite_rejects_yesno():

@@ -12,6 +12,7 @@ import re
 from typing import Any
 
 from apply_invite import is_when_valid
+from apply_score import option_labels, option_objects
 from apply_slots import list_live
 
 log = logging.getLogger("labs.apply_questions")
@@ -39,11 +40,10 @@ def _db():
     return db
 
 
-def _parse_options(raw: Any) -> list[str]:
+def _parse_options(raw: Any) -> list[dict[str, Any]]:
     if raw is None or raw == "":
         return []
-    if isinstance(raw, list):
-        return [str(x).strip() for x in raw if str(x).strip()]
+    data = raw
     if isinstance(raw, (bytes, bytearray)):
         raw = raw.decode("utf-8")
     if isinstance(raw, str):
@@ -51,8 +51,8 @@ def _parse_options(raw: Any) -> list[str]:
             data = json.loads(raw)
         except json.JSONDecodeError:
             return []
-        if isinstance(data, list):
-            return [str(x).strip() for x in data if str(x).strip()]
+    if isinstance(data, list):
+        return option_objects({"options": data})
     return []
 
 
@@ -69,6 +69,7 @@ def _row(raw: dict[str, Any]) -> dict[str, Any]:
         "ac_key": ac_key,
         "ac_field_id": ac_field_id,
         "is_email": bool(int(raw.get("is_email") or 0)),
+        "on_path": bool(int(raw["on_path"])) if "on_path" in raw else True,
         "sort_order": int(raw.get("sort_order") or 0),
     }
 
@@ -81,8 +82,9 @@ def public_payload(questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "ask": q["ask"],
             "hint": q["hint"],
             "qtype": q["qtype"],
-            "options": list(q["options"]),
+            "options": option_objects(q),
             "is_email": bool(q["is_email"]),
+            "on_path": bool(q.get("on_path", True)),
             "sort_order": q["sort_order"],
         }
         for q in questions
@@ -94,7 +96,7 @@ def list_all() -> list[dict[str, Any]]:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id, slug, ask, hint, qtype, options_json, ac_key, "
-                "ac_field_id, is_email, sort_order FROM apply_questions "
+                "ac_field_id, is_email, on_path, sort_order FROM apply_questions "
                 "ORDER BY sort_order ASC, id ASC"
             )
             rows = cur.fetchall()
@@ -106,7 +108,7 @@ def get_question(question_id: int) -> dict[str, Any] | None:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id, slug, ask, hint, qtype, options_json, ac_key, "
-                "ac_field_id, is_email, sort_order FROM apply_questions "
+                "ac_field_id, is_email, on_path, sort_order FROM apply_questions "
                 "WHERE id = %s",
                 (int(question_id),),
             )
@@ -134,14 +136,14 @@ def content_check(
             return "This answer is required."
         return None
     if qtype == "binary":
-        options = [str(o).strip() for o in (question.get("options") or []) if str(o).strip()]
+        options = option_labels(question)
         if len(options) != 2:
             return "This question is missing its two choices."
         if raw not in options:
             return "Pick one of the two choices."
         return None
     if qtype == "radio":
-        options = [str(o).strip() for o in (question.get("options") or []) if str(o).strip()]
+        options = option_labels(question)
         if len(options) < 2:
             return "This question needs two or more choices."
         if raw not in options:
@@ -187,22 +189,31 @@ def mapped_ac_answers(
     return out
 
 
-def _options_for_type(qtype: str, current: list[str]) -> list[str] | None:
+def _options_for_type(
+    qtype: str, current: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    rows = option_objects({"options": current})
     if qtype == "binary":
-        if len(current) == 2:
-            return current
-        if len(current) > 2:
-            return current[:2]
-        if len(current) == 1:
-            return [current[0], "No"]
-        return ["Yes", "No"]
+        if len(rows) == 2:
+            return rows
+        if len(rows) > 2:
+            return rows[:2]
+        if len(rows) == 1:
+            return rows + [{"label": "No", "outcome": "", "reveal": []}]
+        return [
+            {"label": "Yes", "outcome": "", "reveal": []},
+            {"label": "No", "outcome": "", "reveal": []},
+        ]
     if qtype == "radio":
-        if len(current) >= 2:
-            return current
-        if len(current) == 1:
-            return [current[0], "No"]
-        return ["Yes", "No"]
-    return current
+        if len(rows) >= 2:
+            return rows
+        if len(rows) == 1:
+            return rows + [{"label": "No", "outcome": "", "reveal": []}]
+        return [
+            {"label": "Yes", "outcome": "", "reveal": []},
+            {"label": "No", "outcome": "", "reveal": []},
+        ]
+    return rows
 
 
 def update_question(question_id: int, patch: dict[str, Any]) -> dict[str, Any]:
@@ -213,8 +224,9 @@ def update_question(question_id: int, patch: dict[str, Any]) -> dict[str, Any]:
     ask = current["ask"]
     hint = current["hint"]
     qtype = current["qtype"]
-    options = list(current["options"])
+    options = option_objects(current)
     is_email = bool(current["is_email"])
+    on_path = bool(current.get("on_path", True))
 
     if "ask" in patch:
         ask = str(patch.get("ask") or "").strip()
@@ -229,11 +241,11 @@ def update_question(question_id: int, patch: dict[str, Any]) -> dict[str, Any]:
                 "qtype must be continue|free_text|binary|radio|calendar"
             )
         qtype = nxt
-        options = _options_for_type(qtype, options) or []
+        options = _options_for_type(qtype, options)
         if qtype != "free_text":
             is_email = False
     if "options" in patch:
-        options = [str(x).strip() for x in (patch.get("options") or []) if str(x).strip()]
+        options = option_objects({"options": patch.get("options") or []})
         if qtype == "binary" and len(options) != 2:
             raise ApplyQuestionsError("Binary choice needs exactly two options")
         if qtype == "radio" and len(options) < 2:
@@ -242,6 +254,8 @@ def update_question(question_id: int, patch: dict[str, Any]) -> dict[str, Any]:
         is_email = bool(patch.get("is_email"))
         if is_email and qtype != "free_text":
             raise ApplyQuestionsError("Only free text can be the email step")
+    if "on_path" in patch:
+        on_path = bool(patch.get("on_path"))
 
     options_json = json.dumps(options) if options else None
     with _db().transaction() as conn:
@@ -253,8 +267,16 @@ def update_question(question_id: int, patch: dict[str, Any]) -> dict[str, Any]:
                 )
             cur.execute(
                 "UPDATE apply_questions SET ask = %s, hint = %s, qtype = %s, "
-                "options_json = %s, is_email = %s WHERE id = %s",
-                (ask, hint, qtype, options_json, 1 if is_email else 0, int(question_id)),
+                "options_json = %s, is_email = %s, on_path = %s WHERE id = %s",
+                (
+                    ask,
+                    hint,
+                    qtype,
+                    options_json,
+                    1 if is_email else 0,
+                    1 if on_path else 0,
+                    int(question_id),
+                ),
             )
             if cur.rowcount < 1:
                 raise ApplyQuestionsError(f"apply question {question_id} not found")
@@ -273,7 +295,8 @@ def add_question() -> dict[str, Any]:
             cur.execute(
                 "INSERT INTO apply_questions "
                 "(slug, ask, hint, qtype, options_json, ac_key, ac_field_id, "
-                "is_email, sort_order) VALUES (%s, %s, %s, %s, NULL, NULL, NULL, 0, %s)",
+                "is_email, on_path, sort_order) "
+                "VALUES (%s, %s, %s, %s, NULL, NULL, NULL, 0, 1, %s)",
                 (f"qtmp-{nxt}", "New question", "", "free_text", nxt),
             )
             new_id = int(cur.lastrowid)
@@ -330,12 +353,14 @@ def store_submission(
     answers: dict[str, str],
     *,
     ac_contact_id: str | None,
+    ending: str | None = None,
 ) -> int:
     with _db().transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO apply_submissions (email, ac_contact_id) VALUES (%s, %s)",
-                (email, ac_contact_id),
+                "INSERT INTO apply_submissions (email, ac_contact_id, ending) "
+                "VALUES (%s, %s, %s)",
+                (email, ac_contact_id, ending),
             )
             sub_id = int(cur.lastrowid)
             for q in questions:

@@ -13,8 +13,10 @@ import {
   liveSteps,
   nextApplyStep,
   prevApplyStep,
+  resolveEnding,
   reviewRows,
   unansweredOnPath,
+  walkPath,
 } from "./applyFields.ts";
 
 const slots = [{ starts_et: "2026-08-25T11:00" }];
@@ -56,17 +58,51 @@ assert.equal(contentCheck(cal, "2026-08-25T11:00", []).ok, false);
 assert.equal(contentCheck(cal, "2026-08-25T11:00", slots).ok, true);
 
 assert.equal(contentCheck(
-  { ...heaven, qtype: "binary", options: ["In", "Out"] },
+  { ...heaven, qtype: "binary", options: [
+    { label: "In", outcome: "", reveal: [] },
+    { label: "Out", outcome: "", reveal: [] },
+  ] },
   "In",
 ).ok, true);
 assert.equal(contentCheck(
-  { ...heaven, qtype: "binary", options: ["In", "Out"] },
+  { ...heaven, qtype: "binary", options: [
+    { label: "In", outcome: "", reveal: [] },
+    { label: "Out", outcome: "", reveal: [] },
+  ] },
   "Maybe",
 ).ok, false);
 assert.equal(contentCheck(
-  { ...heaven, qtype: "radio", options: ["A", "B", "C"] },
+  { ...heaven, qtype: "radio", options: [
+    { label: "A", outcome: "", reveal: [] },
+    { label: "B", outcome: "", reveal: [] },
+    { label: "C", outcome: "", reveal: [] },
+  ] },
   "B",
 ).ok, true);
+
+const scoredYes = {
+  ...heaven,
+  slug: "fit",
+  qtype: "binary" as const,
+  options: [
+    { label: "In", outcome: "coach" as const, reveal: ["follow"] },
+    { label: "Out", outcome: "trial" as const, reveal: [] },
+  ],
+};
+const follow = {
+  ...heaven,
+  id: 99,
+  slug: "follow",
+  on_path: false,
+  ask: "Follow-on",
+};
+assert.deepEqual(
+  walkPath([heaven, scoredYes, follow], { fit: "In" }).map((q) => q.slug),
+  ["HEAVEN", "fit", "follow"],
+);
+assert.equal(resolveEnding([scoredYes], { fit: "In" }), "coach");
+assert.equal(resolveEnding([scoredYes], { fit: "Out" }), "trial");
+assert.equal(resolveEnding(SEED_QUESTIONS, filled), null);
 
 assert.deepEqual(
   unansweredOnPath(SEED_QUESTIONS, { ...filled, PARTNER_SUPPORT: "" }, slots),

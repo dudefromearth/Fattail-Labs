@@ -57,8 +57,11 @@ def is_when_valid(value: str) -> bool:
         return False
 
 
-def conversation_uid(email: str) -> str:
+def conversation_uid(email: str, host: str | None = None) -> str:
     digest = hashlib.sha1(email.strip().lower().encode("utf-8")).hexdigest()[:16]
+    key = (host or "").strip()
+    if key in ("coach", "lakesia"):
+        return f"apply-conversation-{key}-{digest}@fattail.ai"
     return f"apply-conversation-{digest}@fattail.ai"
 
 
@@ -98,9 +101,21 @@ def _ics_local(dt: datetime) -> str:
     return dt.strftime("%Y%m%dT%H%M%S")
 
 
-def build_ics(*, email: str, when: datetime, sequence: int) -> str:
+def build_ics(
+    *,
+    email: str,
+    when: datetime,
+    sequence: int,
+    organizer_cn: str | None = None,
+    organizer_mail: str | None = None,
+    summary: str | None = None,
+    host: str | None = None,
+) -> str:
     end = when + timedelta(minutes=DURATION_MINUTES)
-    uid = conversation_uid(email)
+    uid = conversation_uid(email, host)
+    cn = (organizer_cn or ORGANIZER_CN).strip() or ORGANIZER_CN
+    mail = (organizer_mail or ORGANIZER_MAIL).strip() or ORGANIZER_MAIL
+    title = (summary or SUMMARY).strip() or SUMMARY
     desc = (
         "Thirty-minute live FatTail conversation. "
         "We'll send the link. Times are America/New_York."
@@ -133,10 +148,10 @@ def build_ics(*, email: str, when: datetime, sequence: int) -> str:
         f"DTSTAMP:{_ics_stamp(datetime.now(tz=ZoneInfo('UTC')))}",
         f"DTSTART;TZID=America/New_York:{_ics_local(when)}",
         f"DTEND;TZID=America/New_York:{_ics_local(end)}",
-        f"SUMMARY:{_esc(SUMMARY)}",
+        f"SUMMARY:{_esc(title)}",
         f"LOCATION:{_esc(LOCATION)}",
         f"DESCRIPTION:{_esc(desc)}",
-        f"ORGANIZER;CN={_esc(ORGANIZER_CN)}:mailto:{ORGANIZER_MAIL}",
+        f"ORGANIZER;CN={_esc(cn)}:mailto:{mail}",
         "ATTENDEE;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;"
         f"CN={_esc(email)}:mailto:{email}",
         f"SEQUENCE:{int(sequence)}",
@@ -203,14 +218,47 @@ def _send_message(msg: EmailMessage) -> None:
         server.send_message(msg)
 
 
-def send_conversation_invite(email: str, when_value: str) -> dict:
-    """Build METHOD:REQUEST ICS and mail it. Same UID per applicant email."""
+def _host_organizer(host: str | None) -> tuple[str, str, str, str | None]:
+    """Return (cn, mail, summary, host_slug). Empty host email fails loud."""
+    key = (host or "").strip()
+    if not key:
+        return ORGANIZER_CN, ORGANIZER_MAIL, SUMMARY, None
+    from apply_score import ApplyScoreError, get_host
+
+    try:
+        row = get_host(key)
+    except ApplyScoreError as exc:
+        raise ApplyInviteError(str(exc)) from exc
+    mail = (row.get("organizer_email") or "").strip()
+    if not mail or not EMAIL_RE.match(mail):
+        raise ApplyInviteError(
+            f"{row.get('display_name') or key} has no organizer email. "
+            "Set it in apply admin. Do not invent an address."
+        )
+    cn = (row.get("organizer_name") or row.get("display_name") or key).strip()
+    title = f"FatTail conversation with {row.get('display_name') or cn}"
+    return cn, mail, title, key
+
+
+def send_conversation_invite(
+    email: str, when_value: str, host: str | None = None
+) -> dict:
+    """Build METHOD:REQUEST ICS and mail it. Same UID per applicant email + host."""
     addr = (email or "").strip().lower()
     if not addr or not EMAIL_RE.match(addr) or len(addr) > 320:
         raise ApplyInviteError("Valid email required")
     when = parse_when_et(when_value)
+    cn, mail, title, host_key = _host_organizer(host)
     sequence = int(time.time())
-    ics = build_ics(email=addr, when=when, sequence=sequence)
+    ics = build_ics(
+        email=addr,
+        when=when,
+        sequence=sequence,
+        organizer_cn=cn,
+        organizer_mail=mail,
+        summary=title,
+        host=host_key,
+    )
     hour12 = when.strftime("%I:%M %p").lstrip("0")
     day = when.strftime("%A, %B ") + str(when.day) + when.strftime(", %Y")
     body = (
@@ -221,11 +269,11 @@ def send_conversation_invite(email: str, when_value: str) -> dict:
     )
     smtp = _smtp_config()
     msg = EmailMessage()
-    msg["Subject"] = f"Invitation: {SUMMARY}"
+    msg["Subject"] = f"Invitation: {title}"
     msg["From"] = smtp["from_addr"]
     msg["To"] = addr
-    msg["Cc"] = ORGANIZER_MAIL
-    msg["Reply-To"] = f"{ORGANIZER_CN} <{ORGANIZER_MAIL}>"
+    msg["Cc"] = mail
+    msg["Reply-To"] = f"{cn} <{mail}>"
     msg.set_content(body)
     msg.add_attachment(
         ics.encode("utf-8"),
@@ -235,12 +283,14 @@ def send_conversation_invite(email: str, when_value: str) -> dict:
         params={"method": "REQUEST", "charset": "UTF-8"},
     )
     _send_message(msg)
-    log.info("apply invite sent uid=%s when=%s", conversation_uid(addr), when_value)
+    uid = conversation_uid(addr, host_key)
+    log.info("apply invite sent uid=%s when=%s host=%s", uid, when_value, host_key)
     return {
         "ok": True,
         "sent": True,
-        "uid": conversation_uid(addr),
+        "uid": uid,
         "when": when_value.strip(),
         "tz": APPLY_TZ_NAME,
         "duration_minutes": DURATION_MINUTES,
+        "host": host_key,
     }

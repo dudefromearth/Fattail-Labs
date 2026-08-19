@@ -6,18 +6,26 @@ import ApplyFormEditor from "@/components/edit/ApplyFormEditor";
 import { useApplySlotsEdit } from "@/components/edit/ApplySlotsEditContext";
 import {
   contentCheck,
+  DEFAULT_SCORE,
   displayAnswer,
   emailFromAnswers,
   emptyAnswers,
+  endingsLive,
+  hostLabel,
   liveSteps,
   nextApplyStep,
   nextLabel,
+  optionLabels,
   prevApplyStep,
+  resolveEnding,
   reviewRows,
   submitPayload,
   unansweredOnPath,
+  walkPath,
+  type ApplyOutcome,
   type ApplyQuestion,
   type ApplyQType,
+  type ApplyScore,
 } from "@/lib/applyFields";
 
 type Layer = "present" | "in" | "out" | "settled";
@@ -141,7 +149,7 @@ function ChoiceList({
       aria-describedby={described}
       onKeyDown={onKeyDown}
     >
-      {step.options.map((choice, i) => (
+      {optionLabels(step).map((choice, i) => (
         <button
           key={choice}
           ref={i === 0 ? firstRef : undefined}
@@ -211,10 +219,11 @@ function StepBody({
   }
 
   if (step.qtype === "binary" || step.qtype === "radio") {
+    const labels = optionLabels(step);
     const miss =
-      step.qtype === "binary" && step.options.length !== 2
+      step.qtype === "binary" && labels.length !== 2
         ? "This question is missing its two choices."
-        : step.qtype === "radio" && step.options.length < 2
+        : step.qtype === "radio" && labels.length < 2
           ? "This question needs two or more choices."
           : null;
     if (miss) {
@@ -487,6 +496,83 @@ function SlotTriple({
   );
 }
 
+function EndingPanel({
+  ending,
+  score,
+  slots,
+  slotsError,
+  when,
+  onPick,
+}: {
+  ending: ApplyOutcome;
+  score: ApplyScore;
+  slots: { starts_et: string; host?: string }[];
+  slotsError: string | null;
+  when: string;
+  onPick: (next: string) => void;
+}) {
+  if (ending === "trial") {
+    return (
+      <div className="apply-ending apply-ending--trial">
+        <p className="apply-ending-kicker">No meeting this time</p>
+        <h2 className="apply-ending-title">Start Observer.</h2>
+        <p className="apply-ending-copy">
+          {score.trial_price} for {score.trial_term}. One honest door — not a
+          booked conversation.
+        </p>
+      </div>
+    );
+  }
+  const listed = slots.filter((s) => s.host === ending);
+  const name = hostLabel(score, ending);
+  return (
+    <div className="apply-ending">
+      <p className="apply-ending-kicker">Meeting</p>
+      <h2 className="apply-ending-title">Meet with {name}.</h2>
+      <p className="apply-ending-copy">
+        Pick one listed time. A calendar invite goes to the email you entered.
+      </p>
+      {slotsError ? (
+        <p className="apply-error" role="alert">
+          {slotsError}
+        </p>
+      ) : listed.length === 0 ? (
+        <p className="apply-error" role="alert">
+          No live conversation times are configured.
+        </p>
+      ) : (
+        <div className="apply-times" role="listbox" aria-label={`${name} times`}>
+          {listed.map((slot) => (
+            <button
+              key={slot.starts_et}
+              type="button"
+              role="option"
+              className="apply-time"
+              aria-selected={when === slot.starts_et}
+              onClick={() => onPick(slot.starts_et)}
+            >
+              {displayAnswer(
+                {
+                  id: 0,
+                  slug: "ending",
+                  ask: "",
+                  hint: "",
+                  qtype: "calendar",
+                  options: [],
+                  is_email: false,
+                  on_path: false,
+                  sort_order: 0,
+                },
+                slot.starts_et,
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ApplyMark() {
   return (
     <div className="apply-mark">
@@ -509,6 +595,8 @@ export default function ApplyForm() {
   const formMiss = admin?.formError ?? null;
   const slots = admin?.liveSlots ?? [];
   const slotsError = admin?.liveError ?? null;
+  const score: ApplyScore = admin?.score ?? DEFAULT_SCORE;
+  const scored = score.endings_live || endingsLive(questions);
 
   const [screen, setScreen] = useState<Screen>("");
   const [leavingId, setLeavingId] = useState<Screen | null>(null);
@@ -522,26 +610,34 @@ export default function ApplyForm() {
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [inviteMiss, setInviteMiss] = useState<string | null>(null);
+  const [endingWhen, setEndingWhen] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const swapTimer = useRef<number | null>(null);
   const acceptRef = useRef<HTMLButtonElement | null>(null);
   const booted = useRef(false);
+  const walk = walkPath(questions, answers, scored);
+  const ending = scored
+    ? resolveEnding(questions, answers, score.tie_ending)
+    : null;
 
   useEffect(() => {
     if (!questions.length || booted.current) return;
     booted.current = true;
     setAnswers(emptyAnswers(questions));
-    setScreen(questions[0].slug);
-  }, [questions]);
+    const first = walkPath(questions, {}, scored)[0];
+    setScreen(first?.slug || questions[0].slug);
+  }, [questions, scored]);
 
   const isReview = screen === "review";
   const step =
     !isReview && screen
-      ? questions.find((q) => q.slug === screen) ?? null
+      ? walk.find((q) => q.slug === screen) ??
+        questions.find((q) => q.slug === screen) ??
+        null
       : null;
-  const pathLive = liveSteps(questions);
-  const rows = reviewRows(questions, asked);
+  const pathLive = liveSteps(walk);
+  const rows = reviewRows(walk, asked);
 
   useEffect(() => {
     return () => {
@@ -591,14 +687,20 @@ export default function ApplyForm() {
   async function sendConversationInvite(
     nextEmail: string,
     when: string,
+    host?: ApplyOutcome | null,
   ): Promise<void> {
+    if (host === "trial") return;
     setBusy(true);
     try {
       const res = await fetch("/api/apply/invite", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: nextEmail.trim(), when }),
+        body: JSON.stringify({
+          email: nextEmail.trim(),
+          when,
+          ...(host === "coach" || host === "lakesia" ? { host } : {}),
+        }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok || payload?.ok !== true || payload?.sent !== true) {
@@ -617,11 +719,14 @@ export default function ApplyForm() {
     }
   }
 
-  async function writeApply(nextAnswers: Record<string, string>) {
+  async function writeApply(
+    nextAnswers: Record<string, string>,
+    extra: { when?: string; ending?: ApplyOutcome | null } = {},
+  ): Promise<boolean> {
     setBusy(true);
     setFormError(null);
     try {
-      const body = submitPayload(questions, nextAnswers);
+      const body = submitPayload(questions, nextAnswers, extra);
       const res = await fetch("/api/apply", {
         method: "POST",
         credentials: "same-origin",
@@ -636,7 +741,11 @@ export default function ApplyForm() {
             : `The application did not write (${res.status}).`;
         setFormError(detail);
         setBusy(false);
-        return;
+        return false;
+      }
+      if (extra.ending === "trial") {
+        setBusy(false);
+        return true;
       }
       if (swapTimer.current) window.clearTimeout(swapTimer.current);
       setLeavingId(screen);
@@ -646,9 +755,11 @@ export default function ApplyForm() {
         setLeavingId(null);
         setLiveLayer("settled");
       }, SWAP_MS);
+      return true;
     } catch {
       setFormError("The application did not write. Network error — try again.");
       setBusy(false);
+      return false;
     }
   }
 
@@ -661,12 +772,58 @@ export default function ApplyForm() {
     return result.miss;
   }
 
+  function hostSlots(host: ApplyOutcome | null) {
+    if (host === "coach" || host === "lakesia") {
+      return slots.filter((s) => s.host === host);
+    }
+    return slots;
+  }
+
   function acceptReview() {
     if (busy || done || editingId) return;
-    const missing = unansweredOnPath(questions, answers, slots);
+    const missing = unansweredOnPath(walk, answers, slots);
     if (missing.length) {
       setFromReview(true);
       goTo(missing[0]);
+      return;
+    }
+    if (ending === "trial") {
+      void writeApply(answers, { ending: "trial" }).then((ok) => {
+        if (ok && typeof window !== "undefined") {
+          window.location.assign(score.trial_url);
+        }
+      });
+      return;
+    }
+    if (ending === "coach" || ending === "lakesia") {
+      const listed = hostSlots(ending);
+      const when = endingWhen;
+      const miss = contentCheck(
+        {
+          id: 0,
+          slug: "ending",
+          ask: "",
+          hint: "",
+          qtype: "calendar",
+          options: [],
+          is_email: false,
+          on_path: false,
+          sort_order: 0,
+        },
+        when,
+        listed,
+      );
+      if (!miss.ok) {
+        setError(miss.miss);
+        return;
+      }
+      void sendConversationInvite(
+        emailFromAnswers(questions, answers),
+        when,
+        ending,
+      ).then(() => {
+        void writeApply(answers, { when, ending });
+      });
       return;
     }
     void writeApply(answers);
@@ -685,7 +842,7 @@ export default function ApplyForm() {
     setEditingId(null);
     setEditDraft("");
     setEditError(null);
-    const missing = unansweredOnPath(questions, answers, slots);
+    const missing = unansweredOnPath(walk, answers, slots);
     if (missing.length) {
       setFromReview(true);
       goTo(missing[0]);
@@ -694,7 +851,7 @@ export default function ApplyForm() {
 
   function finishAccept(stepSlug: string, nextAnswers: Record<string, string>) {
     if (fromReview) {
-      const missing = unansweredOnPath(questions, nextAnswers, slots);
+      const missing = unansweredOnPath(walkPath(questions, nextAnswers, scored), nextAnswers, slots);
       if (missing.length) {
         goTo(missing[0]);
         return;
@@ -703,7 +860,7 @@ export default function ApplyForm() {
       goTo("review");
       return;
     }
-    goTo(nextApplyStep(questions, stepSlug));
+    goTo(nextApplyStep(walkPath(questions, nextAnswers, scored), stepSlug));
   }
 
   function acceptInPlace(override?: string) {
@@ -780,7 +937,7 @@ export default function ApplyForm() {
       return;
     }
     if (!step) return;
-    const prev = prevApplyStep(questions, step.slug);
+    const prev = prevApplyStep(walk, step.slug);
     if (!prev) return;
     goTo(prev);
   }
@@ -839,7 +996,11 @@ export default function ApplyForm() {
     <p className="apply-hint">The desk can book from here.</p>
   ) : isReview ? (
     <p className="apply-hint" id="apply-review-hint">
-      Tap a line to change an answer.
+      {ending === "trial"
+        ? `Observer is ${score.trial_price} for ${score.trial_term}. Tap a line to change an answer.`
+        : ending
+          ? "Tap a line to change an answer, then pick a time."
+          : "Tap a line to change an answer."}
     </p>
   ) : (
     <p className="apply-hint" id={`apply-${step!.slug}-hint`}>
@@ -852,6 +1013,7 @@ export default function ApplyForm() {
       The answers and the desk tag are on the contact.
     </p>
   ) : isReview ? (
+    <>
     <ReviewList
       rows={rows}
       answers={answers}
@@ -873,6 +1035,20 @@ export default function ApplyForm() {
         setEditError(null);
       }}
     />
+    {ending ? (
+      <EndingPanel
+        ending={ending}
+        score={score}
+        slots={slots}
+        slotsError={slotsError}
+        when={endingWhen}
+        onPick={(next) => {
+          setEndingWhen(next);
+          setError(null);
+        }}
+      />
+    ) : null}
+    </>
   ) : (
     <StepBody
       step={step!}
@@ -913,7 +1089,7 @@ export default function ApplyForm() {
       <div className="apply-field-spacer" />
     ) : leavingStep.qtype === "binary" || leavingStep.qtype === "radio" ? (
       <div className={leavingStep.qtype === "binary" ? "apply-yesno" : "apply-times"}>
-        {(leavingStep.options.length ? leavingStep.options : ["—"]).map((c) => (
+        {(optionLabels(leavingStep).length ? optionLabels(leavingStep) : ["—"]).map((c) => (
           <span
             key={c}
             className={leavingStep.qtype === "binary" ? "apply-choice" : "apply-time"}
@@ -947,7 +1123,7 @@ export default function ApplyForm() {
             : `${pathLive.length} of ${pathLive.length}`;
         })();
 
-  const firstSlug = questions[0]?.slug;
+  const firstSlug = walk[0]?.slug;
   const showFieldBack =
     !done && !isReview && step !== null && step.slug !== firstSlug;
   const showReviewBack = !done && isReview && !editingId;
@@ -956,6 +1132,7 @@ export default function ApplyForm() {
     leavingIsReview ||
     step?.qtype === "calendar" ||
     step?.qtype === "radio" ||
+    Boolean(ending) ||
     leavingStep?.qtype === "calendar" ||
     leavingStep?.qtype === "radio";
 
@@ -981,7 +1158,13 @@ export default function ApplyForm() {
             done || (isReview && editingId) ? null : (
               <ActionPair
                 showBack={isReview ? showReviewBack : showFieldBack}
-                okLabel={isReview ? "Accept" : nextLabel(step!)}
+                okLabel={
+                  isReview
+                    ? ending === "trial"
+                      ? `Observer · ${score.trial_price} · ${score.trial_term}`
+                      : "Accept"
+                    : nextLabel(step!)
+                }
                 okRef={acceptRef}
                 okBusy={busy}
                 okDisabled={busy}

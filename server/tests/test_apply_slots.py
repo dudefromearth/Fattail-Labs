@@ -95,7 +95,7 @@ def test_public_slots_store_miss_is_503(monkeypatch):
 
 
 def test_invite_rejects_unlisted_time(monkeypatch):
-    monkeypatch.setattr("routes.apply.is_live_when", lambda _w: False)
+    monkeypatch.setattr("routes.apply.is_live_when", lambda _w, _h=None: False)
     r = _client().post(
         "/api/apply/invite",
         json={"email": "zztest-apply@labs.test", "when": "2026-08-25T15:00"},
@@ -139,7 +139,7 @@ def test_apply_rejects_unlisted_time(monkeypatch):
         lambda: [{"starts_et": "2026-08-25T11:00", "live": True}],
     )
     monkeypatch.setattr("routes.apply.store_submission", lambda *_a, **_k: 1)
-    monkeypatch.setattr("routes.apply.is_live_when", lambda _w: False)
+    monkeypatch.setattr("routes.apply.is_live_when", lambda _w, _h=None: False)
     monkeypatch.setattr(
         "routes.apply.write_application",
         lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no write")),

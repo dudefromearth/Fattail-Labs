@@ -357,6 +357,13 @@
   background: var(--color-surface);
 }
 
+.apply-admin-q-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .apply-admin-q-hint {
   min-height: 1.25rem;
 }
@@ -541,6 +548,36 @@ button.apply-review-line {
 
 .apply-review-line--edit .apply-error {
   margin-top: 0.45rem;
+}
+
+.apply-ending {
+  margin-top: 1.25rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--color-separator);
+}
+
+.apply-ending-kicker {
+  margin: 0;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-label-tertiary);
+}
+
+.apply-ending-title {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.75rem, 7vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.apply-ending-copy {
+  margin: 0.55rem 0 0.85rem;
+  font-size: clamp(1rem, 3.2vw, 1.25rem);
+  line-height: 1.35;
+  color: var(--color-label-secondary);
 }
 
 .apply-received {

@@ -102,7 +102,7 @@ def _form_ok(monkeypatch):
     monkeypatch.setattr("routes.apply.store_submission", lambda *_a, **_k: 1)
     monkeypatch.setattr(
         "routes.apply.is_live_when",
-        lambda when: (when or "").strip() == SEVEN["ELEVEN_AM_ET"],
+        lambda when, host=None: (when or "").strip() == SEVEN["ELEVEN_AM_ET"],
     )
 
 
@@ -304,8 +304,10 @@ def test_form_public_returns_questions_and_slots(monkeypatch):
     assert "ac_field_id" not in body["questions"][0]
     assert "ac_key" not in body["questions"][0]
     assert body["slots"] == [
-        {"id": 1, "starts_et": SEVEN["ELEVEN_AM_ET"]}
+        {"id": 1, "starts_et": SEVEN["ELEVEN_AM_ET"], "host": "coach"}
     ]
+    assert body["score"]["endings_live"] is False
+    assert body["score"]["trial_url"] == "https://fattail.ai/try"
 
 
 def test_api_apply_success(monkeypatch):

@@ -21,18 +21,99 @@ export type ApplyQType =
   | "radio"
   | "calendar";
 
+export type ApplyOutcome = "coach" | "lakesia" | "trial";
+
+export type ApplyOption = {
+  label: string;
+  outcome: ApplyOutcome | "";
+  reveal: string[];
+};
+
 export type ApplyQuestion = {
   id: number;
   slug: string;
   ask: string;
   hint: string;
   qtype: ApplyQType;
-  options: string[];
+  options: ApplyOption[];
   ac_key?: string | null;
   ac_field_id?: string | null;
   is_email: boolean;
+  on_path: boolean;
   sort_order: number;
 };
+
+export type ApplyHost = {
+  slug: "coach" | "lakesia";
+  display_name: string;
+  organizer_name?: string;
+  organizer_email?: string;
+};
+
+export type ApplyScore = {
+  endings_live: boolean;
+  tie_ending: ApplyOutcome;
+  trial_url: string;
+  trial_price: string;
+  trial_term: string;
+  hosts: ApplyHost[];
+};
+
+export const DEFAULT_SCORE: ApplyScore = {
+  endings_live: false,
+  tie_ending: "trial",
+  trial_url: "https://fattail.ai/try",
+  trial_price: "$17/wk",
+  trial_term: "six weeks",
+  hosts: [
+    { slug: "coach", display_name: "Coach (Ernie)" },
+    { slug: "lakesia", display_name: "Lakesia" },
+  ],
+};
+
+export const APPLY_OUTCOME_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "No tag" },
+  { value: "coach", label: "Coach (Ernie)" },
+  { value: "lakesia", label: "Lakesia" },
+  { value: "trial", label: "Trial" },
+];
+
+export const APPLY_HOST_OPTIONS: { value: string; label: string }[] = [
+  { value: "coach", label: "Coach (Ernie)" },
+  { value: "lakesia", label: "Lakesia" },
+];
+
+export function asOptions(raw: unknown): ApplyOption[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ApplyOption[] = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      const label = item.trim();
+      if (label) out.push({ label, outcome: "", reveal: [] });
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const label = String(row.label || "").trim();
+    if (!label) continue;
+    const outcomeRaw = String(row.outcome || "").trim();
+    const outcome =
+      outcomeRaw === "coach" ||
+      outcomeRaw === "lakesia" ||
+      outcomeRaw === "trial"
+        ? outcomeRaw
+        : "";
+    const reveal = Array.isArray(row.reveal)
+      ? row.reveal.map((s) => String(s).trim()).filter(Boolean)
+      : [];
+    out.push({ label, outcome, reveal });
+  }
+  return out;
+}
+
+export function optionLabels(question: ApplyQuestion): string[] {
+  return question.options.map((o) => o.label);
+}
 
 export type ApplyScreenId = string;
 
@@ -56,6 +137,7 @@ export const SEED_QUESTIONS: ApplyQuestion[] = [
     qtype: "continue",
     options: [],
     is_email: false,
+    on_path: true,
     sort_order: 10,
   },
   {
@@ -66,6 +148,7 @@ export const SEED_QUESTIONS: ApplyQuestion[] = [
     qtype: "free_text",
     options: [],
     is_email: true,
+    on_path: true,
     sort_order: 20,
   },
   {
@@ -78,6 +161,7 @@ export const SEED_QUESTIONS: ApplyQuestion[] = [
     ac_key: "HEAVEN",
     ac_field_id: "4",
     is_email: false,
+    on_path: true,
     sort_order: 30,
   },
   {
@@ -90,6 +174,7 @@ export const SEED_QUESTIONS: ApplyQuestion[] = [
     ac_key: "HELL",
     ac_field_id: "3",
     is_email: false,
+    on_path: true,
     sort_order: 40,
   },
   {
@@ -102,6 +187,7 @@ export const SEED_QUESTIONS: ApplyQuestion[] = [
     ac_key: "MONEY_TIMING",
     ac_field_id: "5",
     is_email: false,
+    on_path: true,
     sort_order: 50,
   },
   {
@@ -114,6 +200,7 @@ export const SEED_QUESTIONS: ApplyQuestion[] = [
     ac_key: "COACHING_SKU",
     ac_field_id: "6",
     is_email: false,
+    on_path: true,
     sort_order: 60,
   },
   {
@@ -126,6 +213,7 @@ export const SEED_QUESTIONS: ApplyQuestion[] = [
     ac_key: "ELEVEN_AM_ET",
     ac_field_id: "7",
     is_email: false,
+    on_path: true,
     sort_order: 70,
   },
   {
@@ -138,6 +226,7 @@ export const SEED_QUESTIONS: ApplyQuestion[] = [
     ac_key: "TRIED",
     ac_field_id: "8",
     is_email: false,
+    on_path: true,
     sort_order: 80,
   },
   {
@@ -150,6 +239,7 @@ export const SEED_QUESTIONS: ApplyQuestion[] = [
     ac_key: "PARTNER_SUPPORT",
     ac_field_id: "9",
     is_email: false,
+    on_path: true,
     sort_order: 90,
   },
 ];
@@ -228,18 +318,20 @@ export function contentCheck(
       : { ok: false, miss: "This answer is required." };
   }
   if (question.qtype === "binary") {
-    if (question.options.length !== 2) {
+    const labels = optionLabels(question);
+    if (labels.length !== 2) {
       return { ok: false, miss: "This question is missing its two choices." };
     }
-    return question.options.includes(value)
+    return labels.includes(value)
       ? { ok: true }
       : { ok: false, miss: "Pick one of the two choices." };
   }
   if (question.qtype === "radio") {
-    if (question.options.length < 2) {
+    const labels = optionLabels(question);
+    if (labels.length < 2) {
       return { ok: false, miss: "This question needs two or more choices." };
     }
-    return question.options.includes(value)
+    return labels.includes(value)
       ? { ok: true }
       : { ok: false, miss: "Pick one of the listed choices." };
   }
@@ -255,6 +347,91 @@ export function contentCheck(
       : { ok: false, miss: "Pick one of the listed times." };
   }
   return { ok: false, miss: "This question cannot be answered." };
+}
+
+export function matchOption(
+  question: ApplyQuestion,
+  value: string,
+): ApplyOption | null {
+  const raw = value.trim();
+  return question.options.find((o) => o.label === raw) ?? null;
+}
+
+export function endingsLive(questions: ApplyQuestion[]): boolean {
+  return questions.some((q) =>
+    q.options.some(
+      (o) => o.outcome === "coach" || o.outcome === "lakesia" || o.outcome === "trial",
+    ),
+  );
+}
+
+export function walkPath(
+  questions: ApplyQuestion[],
+  answers: Record<string, string> = {},
+  skipCalendar = false,
+): ApplyQuestion[] {
+  const bySlug = new Map(questions.map((q) => [q.slug, q]));
+  const allow = (q: ApplyQuestion) =>
+    !(skipCalendar && q.qtype === "calendar");
+  const queue = questions.filter((q) => q.on_path !== false && allow(q));
+  const seen: ApplyQuestion[] = [];
+  const queued = new Set(queue.map((q) => q.slug));
+  let i = 0;
+  while (i < queue.length) {
+    const q = queue[i];
+    if (seen.some((s) => s.slug === q.slug)) {
+      i += 1;
+      continue;
+    }
+    seen.push(q);
+    const opt = matchOption(q, answers[q.slug] || "");
+    let insertAt = i + 1;
+    if (opt) {
+      for (const slug of opt.reveal) {
+        const nxt = bySlug.get(slug);
+        if (!nxt || !allow(nxt)) continue;
+        if (seen.some((s) => s.slug === nxt.slug)) continue;
+        if (queued.has(nxt.slug)) continue;
+        queue.splice(insertAt, 0, nxt);
+        queued.add(nxt.slug);
+        insertAt += 1;
+      }
+    }
+    i += 1;
+  }
+  return seen;
+}
+
+export function resolveEnding(
+  questions: ApplyQuestion[],
+  answers: Record<string, string>,
+  tieEnding: ApplyOutcome = "trial",
+): ApplyOutcome | null {
+  if (!endingsLive(questions)) return null;
+  const votes: Record<ApplyOutcome, number> = {
+    coach: 0,
+    lakesia: 0,
+    trial: 0,
+  };
+  for (const q of walkPath(questions, answers, true)) {
+    const opt = matchOption(q, answers[q.slug] || "");
+    if (!opt || !opt.outcome) continue;
+    votes[opt.outcome] += 1;
+  }
+  const total = votes.coach + votes.lakesia + votes.trial;
+  if (total === 0) return tieEnding;
+  const best = Math.max(votes.coach, votes.lakesia, votes.trial);
+  const winners = (Object.keys(votes) as ApplyOutcome[]).filter(
+    (k) => votes[k] === best,
+  );
+  if (winners.length !== 1) return tieEnding;
+  return winners[0];
+}
+
+export function hostLabel(score: ApplyScore, slug: ApplyOutcome | string): string {
+  if (slug === "trial") return "Observer trial";
+  const host = score.hosts.find((h) => h.slug === slug);
+  return host?.display_name || slug;
 }
 
 export function pathOf(questions: ApplyQuestion[]): string[] {
@@ -342,6 +519,7 @@ export function nextLabel(question: ApplyQuestion): string {
 export function submitPayload(
   questions: ApplyQuestion[],
   answers: Record<string, string>,
+  extra: { when?: string; ending?: ApplyOutcome | null } = {},
 ): Record<string, string | Record<string, string>> {
   const trimmed: Record<string, string> = {};
   for (const q of questions) {
@@ -358,6 +536,8 @@ export function submitPayload(
       body[q.ac_key] = trimmed[q.slug] || "";
     }
   }
+  if (extra.when) body.when = extra.when;
+  if (extra.ending) body.ending = extra.ending;
   return body;
 }
 

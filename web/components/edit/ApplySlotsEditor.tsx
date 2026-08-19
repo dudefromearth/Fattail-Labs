@@ -4,7 +4,8 @@
 // Click the time → dashed affordance → datetime → blur commits.
 
 import { appConfirm } from "@/lib/dialogs";
-import { EditableDatetime } from "./Editable";
+import { APPLY_HOST_OPTIONS } from "@/lib/applyFields";
+import { EditableDatetime, EditableSelect } from "./Editable";
 import { useApplySlotsEdit } from "./ApplySlotsEditContext";
 
 export default function ApplySlotsEditor({
@@ -47,8 +48,8 @@ export default function ApplySlotsEditor({
         <>
           <h1 className="apply-question">Conversation times</h1>
           <p className="apply-hint">
-            Applicants pick one listed time. Empty times stay hidden. Count is
-            not frozen.
+            Coach times and Lakesia times are separate. Applicants only see
+            the list for the ending they earned. Empty times stay hidden.
           </p>
         </>
       )}
@@ -90,6 +91,11 @@ export default function ApplySlotsEditor({
                       : "apply-admin-slot-time"
                   }
                 />
+                <EditableSelect
+                  field={`slot.${slot.id}.host`}
+                  value={slot.host}
+                  options={APPLY_HOST_OPTIONS}
+                />
                 {edit.editMode ? (
                   <button
                     type="button"
@@ -120,18 +126,32 @@ export default function ApplySlotsEditor({
       </ul>
 
       {edit.editMode ? (
-        <button
-          type="button"
-          onClick={() => void edit.addSlot()}
-          disabled={edit.saving}
-          className={
-            variant === "admin"
-              ? "mt-4 w-full rounded-2xl border-2 border-dashed border-emerald-400/40 py-4 font-medium text-emerald-700 hover:bg-emerald-50/50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
-              : "apply-admin-slot-add"
-          }
-        >
-          + Add time
-        </button>
+        <div className={variant === "admin" ? "mt-4 flex gap-3" : "apply-admin-q-ops"}>
+          <button
+            type="button"
+            onClick={() => void edit.addSlot("coach")}
+            disabled={edit.saving}
+            className={
+              variant === "admin"
+                ? "flex-1 rounded-2xl border-2 border-dashed border-emerald-400/40 py-4 font-medium text-emerald-700 hover:bg-emerald-50/50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                : "apply-admin-slot-add"
+            }
+          >
+            + Coach time
+          </button>
+          <button
+            type="button"
+            onClick={() => void edit.addSlot("lakesia")}
+            disabled={edit.saving}
+            className={
+              variant === "admin"
+                ? "flex-1 rounded-2xl border-2 border-dashed border-emerald-400/40 py-4 font-medium text-emerald-700 hover:bg-emerald-50/50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                : "apply-admin-slot-add"
+            }
+          >
+            + Lakesia time
+          </button>
+        </div>
       ) : null}
     </div>
   );
