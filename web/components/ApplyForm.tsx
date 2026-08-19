@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import {
-  APPLY_HUE,
   displayAnswer,
   emptyAnswers,
   liveSteps,
@@ -57,6 +56,72 @@ function isAcceptKey(e: React.KeyboardEvent, control: ApplyStep["control"] | "re
   if (e.key === "Tab" && !e.shiftKey) return true;
   if (e.key === "Enter" && !(e.shiftKey && control === "textarea")) return true;
   return false;
+}
+
+function ActionPair({
+  showBack,
+  okLabel,
+  okRef,
+  okBusy,
+  okDisabled,
+  onBack,
+  onOk,
+  okControl,
+  inert,
+}: {
+  showBack: boolean;
+  okLabel: string;
+  okRef?: React.Ref<HTMLButtonElement>;
+  okBusy?: boolean;
+  okDisabled?: boolean;
+  onBack?: () => void;
+  onOk?: () => void;
+  okControl: ApplyStep["control"] | "review";
+  inert?: boolean;
+}) {
+  const ok = (
+    <button
+      ref={okRef}
+      type="button"
+      className="apply-pair"
+      disabled={okDisabled}
+      onClick={inert ? undefined : onOk}
+      onKeyDown={
+        inert
+          ? undefined
+          : (e) => {
+              if (!isAcceptKey(e, okControl)) return;
+              e.preventDefault();
+              onOk?.();
+            }
+      }
+    >
+      {okBusy ? "Writing…" : okLabel}
+    </button>
+  );
+  const back = showBack ? (
+    <button
+      type="button"
+      className="apply-pair"
+      onClick={inert ? undefined : onBack}
+    >
+      Back
+    </button>
+  ) : null;
+  if (inert) {
+    return (
+      <div className="apply-actions" aria-hidden>
+        {back ? <span className="apply-pair">Back</span> : null}
+        <span className="apply-pair">{okLabel}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="apply-actions">
+      {back}
+      {ok}
+    </div>
+  );
 }
 
 function StepBody({
@@ -177,6 +242,7 @@ function ReviewList({
   onStartEdit,
   onDraftChange,
   onAcceptEdit,
+  onCancelEdit,
 }: {
   rows: ApplyStep[];
   email: string;
@@ -188,6 +254,7 @@ function ReviewList({
   onStartEdit?: (id: ApplyStepId) => void;
   onDraftChange?: (next: string) => void;
   onAcceptEdit?: (override?: string) => void;
+  onCancelEdit?: () => void;
 }) {
   return (
     <ul className="apply-review-list">
@@ -212,19 +279,13 @@ function ReviewList({
                     onAccept={(override) => onAcceptEdit?.(override)}
                   />
                 </div>
-                <button
-                  type="button"
-                  className="apply-next"
-                  style={{ backgroundColor: APPLY_HUE }}
-                  onClick={() => onAcceptEdit?.()}
-                  onKeyDown={(e) => {
-                    if (!isAcceptKey(e, step.control)) return;
-                    e.preventDefault();
-                    onAcceptEdit?.();
-                  }}
-                >
-                  OK
-                </button>
+                <ActionPair
+                  showBack
+                  okLabel="OK"
+                  okControl={step.control}
+                  onBack={onCancelEdit}
+                  onOk={() => onAcceptEdit?.()}
+                />
               </div>
               {editError ? (
                 <p
@@ -271,11 +332,11 @@ function SlotTriple({
   question,
   hint,
   field,
-  accept,
+  actions,
   leavingQuestion,
   leavingHint,
   leavingField,
-  leavingAccept,
+  leavingActions,
 }: {
   stageKey: string;
   leaving: boolean;
@@ -284,11 +345,11 @@ function SlotTriple({
   question: React.ReactNode;
   hint: React.ReactNode;
   field: React.ReactNode;
-  accept: React.ReactNode;
+  actions: React.ReactNode;
   leavingQuestion: React.ReactNode;
   leavingHint: React.ReactNode;
   leavingField: React.ReactNode;
-  leavingAccept: React.ReactNode;
+  leavingActions: React.ReactNode;
 }) {
   return (
     <>
@@ -324,7 +385,7 @@ function SlotTriple({
         {leaving ? (
           <div className="apply-slot-layer apply-slot-layer--out" aria-hidden>
             <div className="apply-field-main">{leavingField}</div>
-            {leavingAccept}
+            {leavingActions}
           </div>
         ) : null}
         <div
@@ -332,7 +393,7 @@ function SlotTriple({
           className={`apply-slot-layer apply-slot-layer--${liveLayer}`}
         >
           <div className="apply-field-main">{field}</div>
-          {accept}
+          {actions}
         </div>
       </div>
     </>
@@ -616,6 +677,11 @@ export default function ApplyForm() {
         setEditError(null);
       }}
       onAcceptEdit={acceptInPlace}
+      onCancelEdit={() => {
+        setEditingId(null);
+        setEditDraft("");
+        setEditError(null);
+      }}
     />
   ) : (
     <StepBody
@@ -672,7 +738,9 @@ export default function ApplyForm() {
             : `${pathLive.length} of ${pathLive.length}`;
         })();
 
-  const showBack = !done && (isReview || (step && step.id !== "intro"));
+  const showFieldBack =
+    !done && !isReview && step !== null && step.id !== "intro";
+  const showReviewBack = !done && isReview && !editingId;
 
   return (
     <div className="apply-root" data-apply-screen={done ? "received" : screen}>
@@ -702,37 +770,38 @@ export default function ApplyForm() {
           question={liveQuestion}
           hint={liveHint}
           field={liveField}
-          accept={
+          actions={
             done || (isReview && editingId) ? null : (
-              <button
-                ref={acceptRef}
-                type="button"
-                className="apply-next"
-                style={{ backgroundColor: APPLY_HUE }}
-                disabled={busy}
-                onClick={() => accept()}
-                onKeyDown={(e) => {
-                  if (!isAcceptKey(e, isReview ? "review" : step!.control)) return;
-                  e.preventDefault();
-                  accept();
-                }}
-              >
-                {busy ? "Writing…" : isReview ? "Accept" : nextLabel(step!)}
-              </button>
+              <ActionPair
+                showBack={isReview ? showReviewBack : showFieldBack}
+                okLabel={isReview ? "Accept" : nextLabel(step!)}
+                okRef={acceptRef}
+                okBusy={busy}
+                okDisabled={busy}
+                okControl={isReview ? "review" : step!.control}
+                onBack={back}
+                onOk={() => accept()}
+              />
             )
           }
           leavingQuestion={leavingQuestion}
           leavingHint={leavingHint}
           leavingField={leavingField}
-          leavingAccept={
+          leavingActions={
             leavingIsReview ? (
-              <span className="apply-next" aria-hidden>
-                Accept
-              </span>
+              <ActionPair
+                showBack
+                okLabel="Accept"
+                okControl="review"
+                inert
+              />
             ) : leavingStep ? (
-              <span className="apply-next" aria-hidden>
-                {nextLabel(leavingStep)}
-              </span>
+              <ActionPair
+                showBack={leavingStep.id !== "intro"}
+                okLabel={nextLabel(leavingStep)}
+                okControl={leavingStep.control}
+                inert
+              />
             ) : null
           }
         />
@@ -743,11 +812,6 @@ export default function ApplyForm() {
         >
           {formError || error || ""}
         </p>
-        {showBack ? (
-          <button type="button" className="apply-back" onClick={back}>
-            Back
-          </button>
-        ) : null}
       </div>
     </div>
   );

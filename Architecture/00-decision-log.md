@@ -4,6 +4,25 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-457 /apply Back and OK are twins under the field
+
+**Decision:** Ernie lock 2026-08-19 after walking `:3001`. **OK and Back
+must look the same.** One row **under** the field: Back left, OK (or
+Continue / Accept — the same control) right. Same height, type size,
+weight, radius, and padding. Not a text link vs a filled pill. Twins.
+
+This replaces DL-454 “submit next to the field.” The pair lives under
+the field now. Click, touch, Enter, and Tab still accept when valid.
+Eye-lock and two-beat motion stay. Same pair on live questions and on
+in-place Review edits (Back cancels the line edit; OK accepts it).
+Review **Accept** stays the list-level control under the list — not a
+field-line twin.
+
+**Does not:** merge; MiniTwo; fattail.ai; change the write; reopen the
+question screen to edit.
+
+---
+
 ## 2026-08-19 — DL-456 /apply Review edits in place
 
 **Decision:** Ernie correction 2026-08-19. Review still lists every asked
