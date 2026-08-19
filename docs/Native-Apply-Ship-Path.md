@@ -12,7 +12,7 @@
 | Piece | Path | Job |
 |-------|------|-----|
 | Page | `web/app/apply/page.tsx` | Native fattail invite. One question at a time. Quiet canvas. |
-| Form | `web/components/ApplyForm.tsx` | Conversation invite (**DL-453**): intro → email → HEAVEN → HELL → the rest. Two motion beats in a **fixed focal slot**. POST `/api/apply` only on the last step. |
+| Form | `web/components/ApplyForm.tsx` | Conversation invite (**DL-453**). Accept sits **next to the field** (**DL-454**): click / tap / Enter / Tab. Two motion beats. POST `/api/apply` on the last step. |
 | Write | `server/apply_ac.py` | Upsert contact → write field ids **3–9** → tag **18** → read back. Raises on any miss. |
 | HTTP | `POST /api/apply` | Public. 422 on missing email / missing Cole field. **503** if AC is unset, half-configured, or the seven write / tag 18 miss. |
 | Waitlist | `server/activecampaign.py` `sync_lead()` | **Not** this path. Leave it alone. |

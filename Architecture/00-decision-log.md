@@ -4,6 +4,17 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-454 /apply accept sits next to the field
+
+**Decision:** Ernie lock on the accept control. Continue / OK / Submit
+sits **next to the field**, not in a distant footer. Click, touch/tap,
+Enter, or Tab accept the current answer **when valid** and present the
+next question/field. Invalid or empty does not advance. Last step still
+`POST /api/apply`. Same two-beat motion. Eyes stay put. On mobile the
+button stays beside the field and thumb-reachable — not a far bottom bar.
+
+---
+
 ## 2026-08-19 — DL-453 /apply invite copy and order (Ernie)
 
 **Decision:** Ernie lock on invite wording and order. Desk titles

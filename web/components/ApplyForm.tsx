@@ -52,6 +52,12 @@ function StepHint({ step }: { step: ApplyStep }) {
   return <p className="apply-hint">{step.hint}</p>;
 }
 
+function isAcceptKey(e: React.KeyboardEvent, control: ApplyStep["control"]) {
+  if (e.key === "Tab" && !e.shiftKey) return true;
+  if (e.key === "Enter" && !(e.shiftKey && control === "textarea")) return true;
+  return false;
+}
+
 function StepBody({
   step,
   value,
@@ -80,10 +86,9 @@ function StepBody({
   }, [step.id, step.control]);
 
   function onKeyDown(e: React.KeyboardEvent) {
-    if (e.key !== "Enter") return;
-    if (e.shiftKey && step.control === "textarea") return;
+    if (!isAcceptKey(e, step.control)) return;
     e.preventDefault();
-    if (stepValueValid(step, value)) onAccept();
+    onAccept();
   }
 
   const described = [
@@ -167,9 +172,11 @@ function SlotTriple({
   question,
   hint,
   field,
+  accept,
   leavingQuestion,
   leavingHint,
   leavingField,
+  leavingAccept,
 }: {
   stageKey: string;
   leaving: boolean;
@@ -177,9 +184,11 @@ function SlotTriple({
   question: React.ReactNode;
   hint: React.ReactNode;
   field: React.ReactNode;
+  accept: React.ReactNode;
   leavingQuestion: React.ReactNode;
   leavingHint: React.ReactNode;
   leavingField: React.ReactNode;
+  leavingAccept: React.ReactNode;
 }) {
   return (
     <>
@@ -212,14 +221,16 @@ function SlotTriple({
       <div className="apply-slot apply-slot--field">
         {leaving ? (
           <div className="apply-slot-layer apply-slot-layer--out" aria-hidden>
-            {leavingField}
+            <div className="apply-field-main">{leavingField}</div>
+            {leavingAccept}
           </div>
         ) : null}
         <div
           key={`f-${stageKey}`}
           className={`apply-slot-layer apply-slot-layer--${liveLayer}`}
         >
-          {field}
+          <div className="apply-field-main">{field}</div>
+          {accept}
         </div>
       </div>
     </>
@@ -243,11 +254,21 @@ export default function ApplyForm() {
   const draft = valuesOf(email, answers);
   const isLast = nextApplyStep(stepId, draft) === "submit";
 
+  const acceptRef = useRef<HTMLButtonElement | null>(null);
+
   useEffect(() => {
     return () => {
       if (swapTimer.current) window.clearTimeout(swapTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (done || step.control !== "continue") return;
+    const t = window.setTimeout(() => {
+      acceptRef.current?.focus({ preventScroll: true });
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, [done, step.control, stepId]);
 
   function valueOf(id: ApplyStepId): string {
     if (id === "intro") return "";
@@ -427,9 +448,35 @@ export default function ApplyForm() {
           question={liveQuestion}
           hint={liveHint}
           field={liveField}
+          accept={
+            done ? null : (
+              <button
+                ref={acceptRef}
+                type="button"
+                className="apply-next"
+                style={{ backgroundColor: APPLY_HUE }}
+                disabled={busy}
+                onClick={() => accept()}
+                onKeyDown={(e) => {
+                  if (!isAcceptKey(e, step.control)) return;
+                  e.preventDefault();
+                  accept();
+                }}
+              >
+                {busy ? "Writing…" : nextLabel(step, isLast)}
+              </button>
+            )
+          }
           leavingQuestion={leavingQuestion}
           leavingHint={leavingHint}
           leavingField={leavingField}
+          leavingAccept={
+            leavingStep ? (
+              <span className="apply-next" aria-hidden>
+                {nextLabel(leavingStep, false)}
+              </span>
+            ) : null
+          }
         />
         <p
           id={`apply-${step.id}-error`}
@@ -438,26 +485,12 @@ export default function ApplyForm() {
         >
           {formError || error || ""}
         </p>
-      </div>
-
-      {!done ? (
-        <footer className="apply-footer">
-          <button
-            type="button"
-            className="apply-next"
-            style={{ backgroundColor: APPLY_HUE }}
-            disabled={busy}
-            onClick={() => accept()}
-          >
-            {busy ? "Writing…" : nextLabel(step, isLast)}
+        {!done && index > 0 ? (
+          <button type="button" className="apply-back" onClick={back}>
+            Back
           </button>
-          {index > 0 ? (
-            <button type="button" className="apply-back" onClick={back}>
-              Back
-            </button>
-          ) : null}
-        </footer>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }
