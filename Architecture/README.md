@@ -87,7 +87,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 |---|---|
 | Spec **v0.1** | `Specs/FatTail-Native-Apply-Form-Spec-v0.1.md` — apply law · lock.md · tag 18 |
 | Ship path | `docs/Native-Apply-Ship-Path.md` — Labs `/apply` exists; fattail.ai host stays open (OQ-1) |
-| Decisions | **DL-450** (spec) · **DL-451** (implementation) |
+| Decisions | **DL-450** (spec) · **DL-451** (write) · **DL-452** (one-at-a-time invite · two beats · eyes stay put) |
 
 **Dual subdomain future (2026-08-07) — INTENT ONLY (architect in anticipation; do not implement split now):**
 

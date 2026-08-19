@@ -134,7 +134,7 @@ Specs: SEO v1.0–v1.3.
 |---|---|
 | `/login` | Native credentials + SSO buttons from `/api/auth/providers` |
 | `/signup` | Registration + membership funnel steps |
-| `/apply` | Native fattail apply (HIG, one column, `#00B478` submit). Writes Cole’s seven AC fields + tag 18. Not `/signup`. **DL-451**. |
+| `/apply` | Native fattail invite — one question at a time, two motion beats, eyes stay put (**DL-452**). Writes Cole’s seven AC fields + tag 18. Not `/signup`. **DL-451**. |
 | Header | Logged-out CTAs ↔ logged-in avatar menu |
 | Session | HttpOnly `ft_session` via API Set-Cookie; browser uses `credentials: "same-origin"` |
 

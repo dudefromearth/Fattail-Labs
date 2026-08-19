@@ -1,9 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { APPLY_FIELDS, APPLY_HUE, APPLY_KEYS, type ApplyKey } from "@/lib/applyFields";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import {
+  APPLY_HUE,
+  APPLY_KEYS,
+  APPLY_STEPS,
+  nextApplyStep,
+  prevApplyStep,
+  stepById,
+  stepValueValid,
+  type ApplyKey,
+  type ApplyStep,
+  type ApplyStepId,
+} from "@/lib/applyFields";
 
-type FieldErrors = Partial<Record<"email" | ApplyKey, string>>;
+type Layer = "present" | "in" | "out" | "settled";
 
 const EMPTY: Record<ApplyKey, string> = {
   HELL: "",
@@ -15,42 +27,221 @@ const EMPTY: Record<ApplyKey, string> = {
   PARTNER_SUPPORT: "",
 };
 
-const fieldClass =
-  "mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-separator)] " +
-  "bg-[var(--color-surface)] px-4 py-3 text-[length:var(--text-body)] " +
-  "text-[var(--color-label)] outline-none min-h-[var(--hit-min)] " +
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+const SWAP_MS = 400;
+
+function valuesOf(
+  email: string,
+  answers: Record<ApplyKey, string>,
+): Record<string, string> {
+  return { email, ...answers };
+}
+
+function StepBody({
+  step,
+  value,
+  error,
+  onChange,
+  onAccept,
+}: {
+  step: ApplyStep;
+  value: string;
+  error: string | null;
+  onChange: (next: string) => void;
+  onAccept: (override?: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const firstChoiceRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    const node =
+      step.control === "yesno" ? firstChoiceRef.current : inputRef.current;
+    if (!node) return;
+    const t = window.setTimeout(() => {
+      node.focus({ preventScroll: true });
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, [step.id, step.control]);
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== "Enter") return;
+    if (e.shiftKey && step.control === "textarea") return;
+    e.preventDefault();
+    if (stepValueValid(step, value)) onAccept();
+  }
+
+  const described = error ? `apply-${step.id}-error` : undefined;
+
+  if (step.control === "yesno") {
+    return (
+      <div
+        className="apply-yesno"
+        role="group"
+        aria-label={step.label}
+        onKeyDown={onKeyDown}
+      >
+        {(["yes", "no"] as const).map((choice, i) => (
+          <button
+            key={choice}
+            ref={i === 0 ? firstChoiceRef : undefined}
+            type="button"
+            className="apply-choice"
+            aria-pressed={value === choice}
+            onClick={() => onAccept(choice)}
+          >
+            {choice === "yes" ? "Yes" : "No"}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (step.control === "textarea") {
+    return (
+      <textarea
+        ref={(el) => {
+          inputRef.current = el;
+        }}
+        id={`apply-${step.id}`}
+        name={step.id}
+        className="apply-textarea"
+        aria-invalid={Boolean(error)}
+        aria-describedby={described}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
+      />
+    );
+  }
+
+  return (
+    <input
+      ref={(el) => {
+        inputRef.current = el;
+      }}
+      id={`apply-${step.id}`}
+      name={step.id}
+      type={step.control === "email" ? "email" : "text"}
+      autoComplete={step.control === "email" ? "email" : "off"}
+      inputMode={step.control === "email" ? "email" : "text"}
+      className="apply-input"
+      aria-invalid={Boolean(error)}
+      aria-describedby={described}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+    />
+  );
+}
+
+function SlotPair({
+  stageKey,
+  leaving,
+  liveLayer,
+  question,
+  field,
+  leavingQuestion,
+  leavingField,
+}: {
+  stageKey: string;
+  leaving: boolean;
+  liveLayer: Layer;
+  question: React.ReactNode;
+  field: React.ReactNode;
+  leavingQuestion: React.ReactNode;
+  leavingField: React.ReactNode;
+}) {
+  return (
+    <>
+      <div className="apply-slot apply-slot--question">
+        {leaving ? (
+          <div className="apply-slot-layer apply-slot-layer--out" aria-hidden>
+            {leavingQuestion}
+          </div>
+        ) : null}
+        <div
+          key={`q-${stageKey}`}
+          className={`apply-slot-layer apply-slot-layer--${liveLayer}`}
+        >
+          {question}
+        </div>
+      </div>
+      <div className="apply-slot apply-slot--field">
+        {leaving ? (
+          <div className="apply-slot-layer apply-slot-layer--out" aria-hidden>
+            {leavingField}
+          </div>
+        ) : null}
+        <div
+          key={`f-${stageKey}`}
+          className={`apply-slot-layer apply-slot-layer--${liveLayer}`}
+        >
+          {field}
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default function ApplyForm() {
+  const [stepId, setStepId] = useState<ApplyStepId>("email");
+  const [leavingId, setLeavingId] = useState<ApplyStepId | null>(null);
+  const [liveLayer, setLiveLayer] = useState<Layer>("present");
   const [email, setEmail] = useState("");
   const [answers, setAnswers] = useState<Record<ApplyKey, string>>(EMPTY);
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const swapTimer = useRef<number | null>(null);
 
-  function validate(): FieldErrors {
-    const next: FieldErrors = {};
-    if (!email.trim()) next.email = "Email is required.";
-    for (const field of APPLY_FIELDS) {
-      if (!answers[field.key].trim()) {
-        next[field.key] = "This answer is required.";
-      }
-    }
-    return next;
+  const step = stepById(stepId);
+  const index = APPLY_STEPS.findIndex((s) => s.id === stepId);
+  const draft = valuesOf(email, answers);
+  const isLast = nextApplyStep(stepId, draft) === "submit";
+
+  useEffect(() => {
+    return () => {
+      if (swapTimer.current) window.clearTimeout(swapTimer.current);
+    };
+  }, []);
+
+  function valueOf(id: ApplyStepId): string {
+    return id === "email" ? email : answers[id];
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const next = validate();
-    setErrors(next);
-    setFormError(null);
-    if (Object.keys(next).length) return;
+  function withValue(
+    id: ApplyStepId,
+    next: string,
+  ): { email: string; answers: Record<ApplyKey, string> } {
+    if (id === "email") return { email: next, answers };
+    return { email, answers: { ...answers, [id]: next } };
+  }
 
+  function setValue(id: ApplyStepId, next: string) {
+    if (id === "email") setEmail(next);
+    else setAnswers((prev) => ({ ...prev, [id]: next }));
+    setError(null);
+  }
+
+  function goTo(next: ApplyStepId) {
+    if (swapTimer.current) window.clearTimeout(swapTimer.current);
+    setLeavingId(stepId);
+    setStepId(next);
+    setLiveLayer("in");
+    setError(null);
+    setFormError(null);
+    swapTimer.current = window.setTimeout(() => {
+      setLeavingId(null);
+      setLiveLayer("settled");
+    }, SWAP_MS);
+  }
+
+  async function writeApply(nextEmail: string, nextAnswers: Record<ApplyKey, string>) {
     setBusy(true);
+    setFormError(null);
     try {
-      const body: Record<string, string> = { email: email.trim() };
-      for (const key of APPLY_KEYS) body[key] = answers[key].trim();
+      const body: Record<string, string> = { email: nextEmail.trim() };
+      for (const key of APPLY_KEYS) body[key] = nextAnswers[key].trim();
       const res = await fetch("/api/apply", {
         method: "POST",
         credentials: "same-origin",
@@ -67,116 +258,152 @@ export default function ApplyForm() {
         setBusy(false);
         return;
       }
+      if (swapTimer.current) window.clearTimeout(swapTimer.current);
+      setLeavingId(stepId);
       setDone(true);
+      setLiveLayer("in");
+      swapTimer.current = window.setTimeout(() => {
+        setLeavingId(null);
+        setLiveLayer("settled");
+      }, SWAP_MS);
     } catch {
       setFormError("The application did not write. Network error — try again.");
       setBusy(false);
     }
   }
 
-  if (done) {
-    return (
-      <div
-        role="status"
-        className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-6"
-      >
-        <p className="text-[length:var(--text-headline)] font-medium text-[var(--color-label)]">
-          Application received.
-        </p>
-        <p className="mt-2 text-[length:var(--text-body)] text-[var(--color-label-secondary)]">
-          The seven answers and the desk tag are on the contact. The desk can
-          book from here.
-        </p>
-      </div>
-    );
+  function accept(override?: string) {
+    if (busy || done) return;
+    const nextValue = override !== undefined ? override : valueOf(stepId);
+    if (override !== undefined) setValue(stepId, override);
+    if (!stepValueValid(step, nextValue)) {
+      setError(
+        step.control === "email"
+          ? "A valid email is required."
+          : "This answer is required.",
+      );
+      return;
+    }
+    const snapped = withValue(stepId, nextValue);
+    const next = nextApplyStep(stepId, valuesOf(snapped.email, snapped.answers));
+    if (next === "submit") {
+      void writeApply(snapped.email, snapped.answers);
+      return;
+    }
+    goTo(next);
   }
 
+  function back() {
+    if (busy || done) return;
+    const prev = prevApplyStep(stepId);
+    if (!prev) return;
+    goTo(prev);
+  }
+
+  const liveQuestion = done ? (
+    <h1 className="apply-received">Application received.</h1>
+  ) : (
+    <h1 className="apply-question">
+      {step.control === "yesno" ? (
+        step.label
+      ) : (
+        <label htmlFor={`apply-${step.id}`}>{step.label}</label>
+      )}
+    </h1>
+  );
+
+  const liveField = done ? (
+    <p className="apply-received-detail">
+      The seven answers and the desk tag are on the contact. The desk can book
+      from here.
+    </p>
+  ) : (
+    <StepBody
+      step={step}
+      value={valueOf(stepId)}
+      error={error}
+      onChange={(v) => setValue(stepId, v)}
+      onAccept={accept}
+    />
+  );
+
+  const leavingStep = leavingId ? stepById(leavingId) : null;
+  const leavingQuestion = leavingStep ? (
+    <p className="apply-question">{leavingStep.label}</p>
+  ) : null;
+  const leavingField = leavingStep ? (
+    leavingStep.control === "yesno" ? (
+      <div className="apply-yesno">
+        <span className="apply-choice" aria-hidden>
+          Yes
+        </span>
+        <span className="apply-choice" aria-hidden>
+          No
+        </span>
+      </div>
+    ) : leavingStep.control === "textarea" ? (
+      <div className="apply-textarea">{valueOf(leavingStep.id)}</div>
+    ) : (
+      <div className="apply-input">{valueOf(leavingStep.id)}</div>
+    )
+  ) : null;
+
   return (
-    <form onSubmit={submit} className="flex w-full max-w-md flex-col gap-5" noValidate>
-      <div className="flex flex-col">
-        <label
-          htmlFor="apply-email"
-          className="text-[length:var(--text-subheadline)] font-medium text-[var(--color-label)]"
-        >
-          Email
-        </label>
-        <input
-          id="apply-email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          aria-invalid={Boolean(errors.email)}
-          aria-describedby={errors.email ? "apply-email-error" : undefined}
-          className={fieldClass}
-          style={{ outlineColor: APPLY_HUE }}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+    <div className="apply-root">
+      <header className="apply-chrome">
+        <div className="apply-mark">
+          <Image
+            src="/brand/fattail-labs-logo.jpg"
+            alt=""
+            width={28}
+            height={28}
+            priority
+            className="apply-mark-img"
+          />
+          <span className="apply-mark-word">fattail</span>
+        </div>
+        <p className="apply-progress" aria-live="polite">
+          {done ? "Done" : `${index + 1} of ${APPLY_STEPS.length}`}
+        </p>
+      </header>
+
+      <div className="apply-stage">
+        <SlotPair
+          stageKey={done ? "received" : stepId}
+          leaving={leavingId !== null}
+          liveLayer={liveLayer}
+          question={liveQuestion}
+          field={liveField}
+          leavingQuestion={leavingQuestion}
+          leavingField={leavingField}
         />
-        {errors.email ? (
-          <p
-            id="apply-email-error"
-            className="mt-1 text-[length:var(--text-footnote)] text-[var(--color-destructive)]"
-          >
-            {errors.email}
-          </p>
-        ) : null}
+        <p
+          id={`apply-${step.id}-error`}
+          className="apply-error"
+          role={error || formError ? "alert" : undefined}
+        >
+          {formError || error || ""}
+        </p>
       </div>
 
-      {APPLY_FIELDS.map((field) => {
-        const err = errors[field.key];
-        const inputId = `apply-${field.key}`;
-        return (
-          <div key={field.key} className="flex flex-col">
-            <label
-              htmlFor={inputId}
-              className="text-[length:var(--text-subheadline)] font-medium text-[var(--color-label)]"
-            >
-              {field.label}
-            </label>
-            <textarea
-              id={inputId}
-              name={field.key}
-              required
-              rows={3}
-              aria-invalid={Boolean(err)}
-              aria-describedby={err ? `${inputId}-error` : undefined}
-              className={`${fieldClass} min-h-[5.5rem] resize-y`}
-              style={{ outlineColor: APPLY_HUE }}
-              value={answers[field.key]}
-              onChange={(e) =>
-                setAnswers((prev) => ({ ...prev, [field.key]: e.target.value }))
-              }
-            />
-            {err ? (
-              <p
-                id={`${inputId}-error`}
-                className="mt-1 text-[length:var(--text-footnote)] text-[var(--color-destructive)]"
-              >
-                {err}
-              </p>
-            ) : null}
-          </div>
-        );
-      })}
-
-      {formError ? (
-        <p
-          role="alert"
-          className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-destructive-soft)] px-4 py-3 text-[length:var(--text-body)] text-[var(--color-destructive)]"
-        >
-          {formError}
-        </p>
+      {!done ? (
+        <footer className="apply-footer">
+          <button
+            type="button"
+            className="apply-next"
+            style={{ backgroundColor: APPLY_HUE }}
+            disabled={busy}
+            onClick={() => accept()}
+          >
+            {busy ? "Writing…" : isLast ? "Submit" : "OK"}
+          </button>
+          {index > 0 ? (
+            <button type="button" className="apply-back" onClick={back}>
+              Back
+            </button>
+          ) : null}
+        </footer>
       ) : null}
-
-      <button
-        type="submit"
-        disabled={busy}
-        className="inline-flex w-full items-center justify-center rounded-[var(--radius-full)] px-4 text-[length:var(--text-headline)] font-medium text-white disabled:opacity-45"
-        style={{ backgroundColor: APPLY_HUE, minHeight: "44px" }}
-      >
-        {busy ? "Writing…" : "Submit"}
-      </button>
-    </form>
+    </div>
   );
 }

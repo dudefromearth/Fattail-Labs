@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-452 /apply is one question at a time; two motion beats; eyes stay put
+
+**Decision:** Ernie walked the all-fields `/apply` on StudioTwo and rejected
+it. Native FatTail invite (not a Typeform embed, not a Typeform vendor):
+
+- One question and its field/control at a time. Big type. Big fields.
+- **Two animations, not one fade at the end.** (1) When a question and
+  field are presented, they animate in. (2) When that answer is accepted,
+  that step animates out and the next question/field animate in.
+- **Focal point stays put** on desktop and phone. Same slot. No
+  horizontal shift. No jump to a new scroll position. Do not make the
+  next question appear somewhere else so they have to hunt.
+- Mobile: one column, 44pt targets, thumb-reachable next/accept.
+- Path may depend on the accepted answer. Do not skip Cole keys.
+- Hue `#00B478` only for next action / live / accepted.
+- Write contract unchanged: final submit `POST /api/apply` writes ids
+  **3–9** + tag **18**, fail loud. No fake thank-you.
+
+**Does not:** embed Typeform; invent dropdowns for empty option lists on
+fields 6/7/9; ticket Ernie or Conor; lock host.
+
+---
+
 ## 2026-08-19 — DL-451 Native /apply submit writes Cole's seven fields + tag 18
 
 **Decision:** Chair GO 2026-08-19. Ship a native FatTail `/apply` submit

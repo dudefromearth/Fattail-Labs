@@ -1,7 +1,7 @@
 # Native apply — ship path
 
 **Spec:** `Specs/FatTail-Native-Apply-Form-Spec-v0.1.md`  
-**Decision:** **DL-451**  
+**Decision:** **DL-451** · **DL-452**  
 **Public URL (Coach):** `https://fattail.ai/apply`  
 **Host:** **open** (OQ-1). This file is a way to ship, not a host lock.
 
@@ -11,8 +11,8 @@
 
 | Piece | Path | Job |
 |-------|------|-----|
-| Page | `web/app/apply/page.tsx` | Native fattail form. One column, labels above, 44pt, one submit. Hue `#00B478` for next action / live focus only. |
-| Form | `web/components/ApplyForm.tsx` | POST `/api/apply`. Inline errors. No thank-you unless the write reports `ok: true`. |
+| Page | `web/app/apply/page.tsx` | Native fattail invite. One question at a time. Quiet canvas. |
+| Form | `web/components/ApplyForm.tsx` | Two motion beats (present-in, accept-out + next-in) in a **fixed focal slot**. Enter accepts when valid. POST `/api/apply` only on the last step. No thank-you unless the write reports `ok: true`. |
 | Write | `server/apply_ac.py` | Upsert contact → write field ids **3–9** → tag **18** → read back. Raises on any miss. |
 | HTTP | `POST /api/apply` | Public. 422 on missing email / missing Cole field. **503** if AC is unset, half-configured, or the seven write / tag 18 miss. |
 | Waitlist | `server/activecampaign.py` `sync_lead()` | **Not** this path. Leave it alone. |
