@@ -13,6 +13,7 @@
 |-------|------|-----|
 | Page | `web/app/apply/page.tsx` | Native fattail invite. One question at a time. Quiet canvas. |
 | Form | `web/components/ApplyForm.tsx` | Conversation invite (**DL-453**). **Back left / OK right under the field** — visual twins (**DL-457**). Thick ink field border (**DL-458**). Click / tap / Enter / Tab still accept. Two motion beats. Last live question goes to **Review** (**DL-455**). Edits are **in place on the list** (**DL-456**). POST `/api/apply` only from Review Accept. |
+| Path selftest | `web/lib/applyFields.selftest.ts` | Characterization only. Excluded from production `next build` (`tsconfig.json`). |
 | Write | `server/apply_ac.py` | Upsert contact → write field ids **3–9** → tag **18** → read back. Raises on any miss. |
 | HTTP | `POST /api/apply` | Public. 422 on missing email / missing Cole field. **503** if AC is unset, half-configured, or the seven write / tag 18 miss. |
 | Waitlist | `server/activecampaign.py` `sync_lead()` | **Not** this path. Leave it alone. |

@@ -1,5 +1,6 @@
 /**
- * Characterization — apply path + Review. Run:
+ * Characterization — apply path + Review. Not part of the Next app.
+ * Excluded from production `next build` (tsconfig). Run:
  *   node --experimental-strip-types web/lib/applyFields.selftest.ts
  */
 import assert from "node:assert/strict";
