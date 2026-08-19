@@ -85,6 +85,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     body: "Edit courses, hub, and live on production URLs — the learner page is the editor.",
     testId: "admin-card-inplace",
   },
+  {
+    href: "/apply?edit=1",
+    title: "Apply conversation times",
+    body: "In-place on /apply — same dashed editor as course sections. Applicants pick one live slot.",
+    testId: "admin-card-apply-slots",
+  },
 ];
 
 export default function AdminPage() {

@@ -24,7 +24,7 @@ export type ApplyControl =
   | "text"
   | "textarea"
   | "yesno"
-  | "datetime";
+  | "slot";
 
 export type ApplyStep = {
   id: ApplyStepId;
@@ -50,8 +50,8 @@ export const APPLY_FIELDS: {
 
 /**
  * Invite order (Ernie 2026-08-19): intro → email → HEAVEN → HELL → the rest.
- * Fields 6 / 9: free text. Field 7: America/New_York date-time (calendar
- * invite). Observer / Activator / Navigator are examples only.
+ * Fields 6 / 9: free text. Field 7: one listed America/New_York slot
+ * (calendar invite). Observer / Activator / Navigator are examples only.
  */
 export const APPLY_STEPS: ApplyStep[] = [
   {
@@ -97,9 +97,9 @@ export const APPLY_STEPS: ApplyStep[] = [
   {
     id: "ELEVEN_AM_ET",
     ask: "Pick a time for a live FatTail conversation. A calendar invite will be sent to the email you entered.",
-    hint: "America/New_York. Thirty minutes. We'll send the link.",
+    hint: "America/New_York. Thirty minutes. We'll send the link. Pick one listed time.",
     fieldId: "7",
-    control: "datetime",
+    control: "slot",
   },
   {
     id: "TRIED",
@@ -129,6 +129,14 @@ export function isBranchKey(id: ApplyStepId): boolean {
 }
 
 export const APPLY_TZ = "America/New_York";
+
+export function isListedSlot(
+  value: string,
+  slots: ReadonlyArray<{ starts_et: string }>,
+): boolean {
+  const v = value.trim();
+  return slots.some((s) => s.starts_et === v);
+}
 
 export function isDatetimeValid(value: string): boolean {
   const v = value.trim();
@@ -276,7 +284,7 @@ export function displayAnswer(step: ApplyStep, value: string): string {
     if (value === "yes") return "Yes";
     if (value === "no") return "No";
   }
-  if (step.control === "datetime") return displayDatetime(value);
+  if (step.control === "slot") return displayDatetime(value);
   return value.trim();
 }
 
@@ -296,7 +304,7 @@ export function stepValueValid(step: ApplyStep, value: string): boolean {
   const v = value.trim();
   if (step.control === "email") return isEmailValid(v);
   if (step.control === "yesno") return v === "yes" || v === "no";
-  if (step.control === "datetime") return isDatetimeValid(v);
+  if (step.control === "slot") return isDatetimeValid(v);
   return v.length > 0;
 }
 

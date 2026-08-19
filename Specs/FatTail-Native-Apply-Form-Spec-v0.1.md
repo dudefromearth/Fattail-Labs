@@ -70,6 +70,27 @@ Bob chair 2026-08-19. Transcribed. Nothing invented.
 
 > Ash reviews. Hayes holds the desk. Bob chairs. Conor was not ticketed.
 
+### 0.3 Ernie lock — server slots, not Calendly (2026-08-19 — transcribe, do not create)
+
+Ernie lock 2026-08-19. Transcribed. Sits **beside** the AC title “Can make 11am ET” (key `ELEVEN_AM_ET` is not renamed).
+
+> do NOT use Calendly. Execute the schedule on our server. He manages the slots as an admin with in-place editing, the same language as course sections.
+
+> Applicant still picks ONE slot. A real ICS invite still goes to their email (Cole organizer, 30 min, America/New_York, fail loud if no SMTP).
+
+> No open date-time picker. No Calendly, Chili Piper, or booking vendor.
+
+How it works (Ernie):
+
+1. Slots live on our server. Default four empty or four placeholder New York slots an admin can change. Count is not frozen at four — admin can add/remove. Applicant sees only the live slots.
+2. Applicant step: “Pick a time for a live FatTail conversation. A calendar invite will be sent to the email you entered.” They choose one listed slot (not a free calendar). Back/OK twins under the field. Thick border. Eye-lock.
+3. Admin edit: same in-place model as course sections / In-Place Admin spec (`Editable.tsx`, `EditContext`, `SectionHubShell`). The element IS the editor. Edit → dashed affordance → change the day/time → blur/Done commits. Prefer editing the slot list on the apply page itself when an admin is in edit mode. A thin `/admin` apply-slots page that still uses the same Editable/EditContext components is OK — do not invent a new design language.
+4. AC field 7 stores the chosen slot datetime (ET). No yes/no.
+5. ICS on accept of that step and on Review in-place change of the slot. Same UID per email.
+6. If no live slots are configured, fail loud on the applicant step (do not invent times). Admin can add them in place.
+
+**APPLY-12** (this lock): conversation times are **server-owned slots**. Not Calendly. Not a free calendar. Not yes/no.
+
 ---
 
 ## 1. Purpose
@@ -124,6 +145,7 @@ Recorded so India can review against reality. **None of this is a BUILD pick.**
 | **APPLY-9** | **Not BUILD** until India **APPROVED** plus chair / Coach GO. Chair accepted the apply law 2026-08-19. This file remains **DRAFT** for implementation — **not** a build packet. **Not BUILD AUTHORITY.** |
 | **APPLY-10** | **Hole 2 · chair 2026-08-19.** Tag **18 Application Filled** is a **required write on submit**. Desk routing, **not** a sales field. Like email: plumbing. IN-11 and OQ-5 are **unflagged**. Fail loud if the seven write or the tag miss. **Not** an eighth Cole field. Seven keys stay the sales write. |
 | **APPLY-11** | **Hole 1 · lock.md in this spec.** One brand hue `#00B478`. Three jobs only (next action, live state, defined-risk cue). Labs `web/styles/tokens.css` is the company look. Not a wash. Not a second accent. Not Typeform. Not ClickFunnels. Not Flatsome. Host stays open. |
+| **APPLY-12** | **Ernie lock 2026-08-19.** Field 7 is **one listed server slot** (America/New_York datetime). No Calendly / Chili Piper / open date-time picker. Admin edits slots in place (same language as course sections). Empty live list **fails loud** — do not invent times. ICS still sends on accept / Review change. |
 
 ---
 
@@ -459,6 +481,7 @@ A reviewer can validate, **without reading implementation code**:
 | **v0.1** | 2026-08-19 | **Chair accept** of the apply law + **tag-18 plumbing amendment**. Tag **18 Application Filled** is desk routing / plumbing (IN-11 / OQ-5 → law). Status remains **DRAFT** for implementation. **Not BUILD AUTHORITY.** Host stays open. Echo still owns labels. No form implementation. |
 | **v0.1** | 2026-08-19 | **Two holes only.** Hole 1: lock.md quoted **in this spec** (§0.2 / APPLY-11). Hole 2: tag **18** required write on submit; IN-11 / OQ-5 **unflagged**. Live ids **3–9** stay. Seven keys stay the sales write. Still **DRAFT**. Still **not BUILD**. Host stays open. No extra spec files. |
 | **v0.1** | 2026-08-19 | **Chair GO.** Implementation authorized in a **separate** PR. `/apply` is a real submit that writes ids **3–9** + tag **18**. Fail loud. Do not inherit `sync_lead()`. Do not invent dropdowns for empty option lists on fields 6/7/9. Echo owns labels. Host stays open. No Juliet seeds. Spec PR 3 remains spec-only. |
+| **v0.1** | 2026-08-19 | **Ernie lock (APPLY-12).** Server-owned slots. No Calendly. In-place admin edit. Applicant picks one listed time. AC id 7 stores the ET datetime. ICS unchanged. |
 
 **Next process step:** ship `/apply` (this implementation) · Foxtrot routes `https://fattail.ai/apply` when the host pick lands (OQ-1 still open) · Echo may replace Coach titles with member labels without renaming AC keys.
 

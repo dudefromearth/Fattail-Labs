@@ -4,6 +4,27 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-461 /apply field 7 is a server-owned slot pick
+
+**Decision:** Ernie lock 2026-08-19. Do **not** use Calendly, Chili Piper, or
+any booking vendor. Do **not** show an open date-time picker. Conversation
+times live on our server (`apply_slots`). Default four placeholder
+America/New_York times; count is not frozen — admin add/remove.
+
+Applicant picks **one listed live slot**. AC id **7** / `ELEVEN_AM_ET` stores
+that ET datetime (not yes/no). ICS `METHOD:REQUEST` (Cole, 30 min, NY, same
+UID per email, fail loud if no SMTP) still sends on step accept and Review
+in-place change — **DL-460** stands except the free picker is dead.
+
+Admin edits in place, same language as course sections (`Editable.tsx` /
+`EditContext` field API / dashed affordance / blur-commit). Primary surface
+is `/apply?edit=1`. Thin `/admin/apply-slots` reuses the same components.
+Empty live list **fails loud** — do not invent times.
+
+**Does not:** merge; MiniTwo; fattail.ai; Calendly.
+
+---
+
 ## 2026-08-19 — DL-460 /apply field 7 is a calendar invite, not yes/no
 
 **Decision:** Ernie lock 2026-08-19. AC field id **7** / key

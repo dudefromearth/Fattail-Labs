@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import ApplyForm from "@/components/ApplyForm";
+import ApplyPageShell from "@/components/ApplyPageShell";
 import "./apply.css";
 
 export const metadata: Metadata = {
@@ -8,9 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function ApplyPage() {
-  return (
-    <main>
-      <ApplyForm />
-    </main>
-  );
+  return <ApplyPageShell />;
 }

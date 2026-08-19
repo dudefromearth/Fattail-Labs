@@ -81,6 +81,7 @@ def test_api_invite_unconfigured_is_503(monkeypatch):
     from fastapi.testclient import TestClient
     from routes.apply import router
 
+    monkeypatch.setattr("routes.apply.is_live_when", lambda when: when == WHEN)
     monkeypatch.delenv("LABS_SMTP_HOST", raising=False)
     app = FastAPI()
     app.include_router(router)

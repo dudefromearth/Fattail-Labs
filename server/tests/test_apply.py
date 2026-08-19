@@ -220,7 +220,15 @@ def _apply_client():
     return TestClient(app)
 
 
+def _listed_slot(monkeypatch):
+    monkeypatch.setattr(
+        "routes.apply.is_live_when",
+        lambda when: (when or "").strip() == SEVEN["ELEVEN_AM_ET"],
+    )
+
+
 def test_api_apply_success(monkeypatch):
+    _listed_slot(monkeypatch)
     monkeypatch.setattr(
         "routes.apply.write_application",
         lambda email, answers: {
@@ -276,7 +284,8 @@ def test_api_apply_rejects_yesno_eleven(monkeypatch):
         "/api/apply", json={"email": "zztest-apply@labs.test", **payload}
     )
     assert r.status_code == 422
-    assert "date-time" in r.json()["detail"]
+    detail = r.json()["detail"].lower()
+    assert "date-time" in detail or "listed" in detail
 
 
 def test_api_apply_missing_cole_field_is_422(monkeypatch):
@@ -297,6 +306,7 @@ def test_api_apply_ac_miss_is_not_success(monkeypatch):
     def miss(email, answers):
         raise ac.ACError("apply tag 18 Application Filled miss after write")
 
+    _listed_slot(monkeypatch)
     monkeypatch.setattr("routes.apply.write_application", miss)
     r = _apply_client().post("/api/apply", json={"email": "zztest-apply@labs.test", **SEVEN})
     assert r.status_code == 503
@@ -305,6 +315,7 @@ def test_api_apply_ac_miss_is_not_success(monkeypatch):
 
 
 def test_api_apply_unconfigured_is_not_success(monkeypatch):
+    _listed_slot(monkeypatch)
     monkeypatch.delenv("LABS_AC_API_URL", raising=False)
     monkeypatch.delenv("LABS_AC_API_TOKEN", raising=False)
     monkeypatch.delenv("LABS_AC_REQUIRED", raising=False)

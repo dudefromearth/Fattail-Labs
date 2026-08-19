@@ -252,6 +252,101 @@
   color: var(--apply-hue);
 }
 
+.apply-times {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.apply-time {
+  min-height: var(--hit-min);
+  padding: 0.85rem 1rem;
+  border: var(--apply-field-border) solid var(--color-label);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-label);
+  font-family: inherit;
+  font-size: clamp(1.0625rem, 3.6vw, 1.35rem);
+  font-weight: 600;
+  text-align: left;
+}
+
+.apply-time:focus,
+.apply-time:focus-visible {
+  border-color: var(--apply-hue);
+  outline: none;
+}
+
+.apply-time[aria-selected="true"] {
+  border-color: var(--apply-hue);
+  color: var(--apply-hue);
+}
+
+.apply-stage--edit {
+  overflow: auto;
+  padding-bottom: 6rem;
+}
+
+.apply-slots-editor .apply-question {
+  margin-bottom: 0.75rem;
+}
+
+.apply-slots-editor .apply-hint {
+  margin-bottom: 1.25rem;
+}
+
+.apply-admin-slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.apply-admin-slot-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--hit-min);
+  padding: 0.85rem 1rem;
+  border: var(--apply-field-border) solid var(--color-label);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.apply-admin-slot-time {
+  flex: 1 1 auto;
+  font-size: clamp(1.0625rem, 3.6vw, 1.35rem);
+  font-weight: 600;
+}
+
+.apply-admin-slot-remove {
+  flex: 0 0 auto;
+  min-height: var(--hit-min);
+  padding: 0 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--color-label-secondary);
+  font: inherit;
+  font-size: var(--text-callout);
+}
+
+.apply-admin-slot-add {
+  width: 100%;
+  margin-top: 0.75rem;
+  min-height: var(--hit-min);
+  border: 2px dashed rgb(52 211 153 / 0.4);
+  border-radius: 1rem;
+  background: transparent;
+  color: #047857;
+  font: inherit;
+  font-weight: 600;
+}
+
 .apply-error {
   margin: 0.75rem 0 0;
   min-height: 1.25rem;
@@ -375,9 +470,15 @@ button.apply-review-line {
   height: auto;
 }
 
-.apply-review-edit-field .apply-choice {
+.apply-review-edit-field .apply-choice,
+.apply-review-edit-field .apply-time {
   height: var(--hit-min);
   font-size: clamp(1rem, 3.2vw, 1.25rem);
+}
+
+.apply-review-edit-field .apply-times {
+  height: auto;
+  max-height: 14rem;
 }
 
 .apply-review-line--edit .apply-error {

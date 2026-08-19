@@ -2,9 +2,12 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import ApplySlotsEditor from "@/components/edit/ApplySlotsEditor";
+import { useApplySlotsEdit } from "@/components/edit/ApplySlotsEditContext";
 import {
   displayAnswer,
   emptyAnswers,
+  isListedSlot,
   liveSteps,
   nextApplyStep,
   nextLabel,
@@ -41,11 +44,11 @@ function StepAsk({ step }: { step: ApplyStep }) {
   if (
     step.control === "yesno" ||
     step.control === "continue" ||
-    step.control === "datetime"
+    step.control === "slot"
   ) {
     return (
       <h1 className="apply-question">
-        {step.control === "datetime" ? (
+        {step.control === "slot" ? (
           <label htmlFor={`apply-${step.id}`}>{step.ask}</label>
         ) : (
           step.ask
@@ -62,6 +65,20 @@ function StepAsk({ step }: { step: ApplyStep }) {
 
 function StepHint({ step }: { step: ApplyStep }) {
   return <p className="apply-hint">{step.hint}</p>;
+}
+
+function slotPickError(
+  value: string,
+  slotsEdit: ReturnType<typeof useApplySlotsEdit>,
+): string {
+  if (slotsEdit?.liveError) return slotsEdit.liveError;
+  if (!slotsEdit || slotsEdit.liveSlots.length === 0) {
+    return "No live conversation times are configured.";
+  }
+  if (!isListedSlot(value, slotsEdit.liveSlots)) {
+    return "Pick one of the listed times.";
+  }
+  return "Pick one of the listed times.";
 }
 
 function isAcceptKey(e: React.KeyboardEvent, control: ApplyStep["control"] | "review") {
@@ -151,11 +168,14 @@ function StepBody({
 }) {
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const firstChoiceRef = useRef<HTMLButtonElement | null>(null);
+  const slotsEdit = useApplySlotsEdit();
 
   useEffect(() => {
     if (step.control === "continue") return;
     const node =
-      step.control === "yesno" ? firstChoiceRef.current : inputRef.current;
+      step.control === "yesno" || step.control === "slot"
+        ? firstChoiceRef.current
+        : inputRef.current;
     if (!node) return;
     const t = window.setTimeout(() => {
       node.focus({ preventScroll: true });
@@ -205,22 +225,45 @@ function StepBody({
     );
   }
 
-  if (step.control === "datetime") {
+  if (step.control === "slot") {
+    const slots = slotsEdit?.liveSlots ?? [];
+    const miss = slotsEdit?.liveError;
+    if (miss) {
+      return (
+        <p className="apply-error" role="alert">
+          {miss}
+        </p>
+      );
+    }
+    if (slots.length === 0) {
+      return (
+        <p className="apply-error" role="alert">
+          No live conversation times are configured.
+        </p>
+      );
+    }
     return (
-      <input
-        ref={(el) => {
-          inputRef.current = el;
-        }}
-        id={`apply-${step.id}`}
-        name={step.id}
-        type="datetime-local"
-        className="apply-input apply-input--datetime"
-        aria-invalid={Boolean(error)}
+      <div
+        className="apply-times"
+        role="listbox"
+        aria-label={step.ask}
         aria-describedby={described}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-      />
+      >
+        {slots.map((slot, i) => (
+          <button
+            key={slot.id}
+            ref={i === 0 ? firstChoiceRef : undefined}
+            type="button"
+            role="option"
+            className="apply-time"
+            aria-selected={value === slot.starts_et}
+            onClick={() => onChange(slot.starts_et)}
+          >
+            {displayAnswer(step, slot.starts_et)}
+          </button>
+        ))}
+      </div>
     );
   }
 
@@ -432,6 +475,7 @@ function SlotTriple({
 }
 
 export default function ApplyForm() {
+  const slotsEdit = useApplySlotsEdit();
   const [screen, setScreen] = useState<ApplyScreenId>("intro");
   const [leavingId, setLeavingId] = useState<ApplyScreenId | null>(null);
   const [liveLayer, setLiveLayer] = useState<Layer>("present");
@@ -648,12 +692,17 @@ export default function ApplyForm() {
     const editStep = stepById(editingId);
     const nextValue = override !== undefined ? override : editDraft;
     if (override !== undefined) setEditDraft(override);
-    if (!stepValueValid(editStep, nextValue)) {
+    const slotOk =
+      editStep.control !== "slot" ||
+      (slotsEdit &&
+        !slotsEdit.liveError &&
+        isListedSlot(nextValue, slotsEdit.liveSlots));
+    if (!stepValueValid(editStep, nextValue) || !slotOk) {
       setEditError(
         editStep.control === "email"
           ? "A valid email is required."
-          : editStep.control === "datetime"
-            ? "Pick a date and time in America/New_York."
+          : editStep.control === "slot"
+            ? slotPickError(nextValue, slotsEdit)
             : "This answer is required.",
       );
       return;
@@ -678,12 +727,17 @@ export default function ApplyForm() {
     if (!step) return;
     const nextValue = override !== undefined ? override : valueOf(step.id);
     if (override !== undefined) setValue(step.id, override);
-    if (!stepValueValid(step, nextValue)) {
+    const slotOk =
+      step.control !== "slot" ||
+      (slotsEdit &&
+        !slotsEdit.liveError &&
+        isListedSlot(nextValue, slotsEdit.liveSlots));
+    if (!stepValueValid(step, nextValue) || !slotOk) {
       setError(
         step.control === "email"
           ? "A valid email is required."
-          : step.control === "datetime"
-            ? "Pick a date and time in America/New_York."
+          : step.control === "slot"
+            ? slotPickError(nextValue, slotsEdit)
             : "This answer is required.",
       );
       return;
@@ -809,9 +863,11 @@ export default function ApplyForm() {
       </div>
     ) : leavingStep.control === "textarea" ? (
       <div className="apply-textarea">{valueOf(leavingStep.id)}</div>
-    ) : leavingStep.control === "datetime" ? (
-      <div className="apply-input apply-input--datetime">
-        {valueOf(leavingStep.id)}
+    ) : leavingStep.control === "slot" ? (
+      <div className="apply-times">
+        <span className="apply-time" aria-hidden>
+          {displayAnswer(leavingStep, valueOf(leavingStep.id))}
+        </span>
       </div>
     ) : (
       <div className="apply-input">{valueOf(leavingStep.id)}</div>
@@ -832,6 +888,32 @@ export default function ApplyForm() {
   const showFieldBack =
     !done && !isReview && step !== null && step.id !== "intro";
   const showReviewBack = !done && isReview && !editingId;
+
+  if (slotsEdit?.isAdmin && slotsEdit.editMode) {
+    return (
+      <div className="apply-root" data-apply-screen="slots-edit">
+        <header className="apply-chrome">
+          <div className="apply-mark">
+            <Image
+              src="/brand/fattail-labs-logo.jpg"
+              alt=""
+              width={28}
+              height={28}
+              priority
+              className="apply-mark-img"
+            />
+            <span className="apply-mark-word">fattail</span>
+          </div>
+          <p className="apply-progress" aria-live="polite">
+            Edit
+          </p>
+        </header>
+        <div className="apply-stage apply-stage--edit">
+          <ApplySlotsEditor />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="apply-root" data-apply-screen={done ? "received" : screen}>
@@ -857,7 +939,12 @@ export default function ApplyForm() {
           stageKey={done ? "received" : screen}
           leaving={leavingId !== null}
           liveLayer={liveLayer}
-          fieldReview={isReview || leavingIsReview}
+          fieldReview={
+            isReview ||
+            leavingIsReview ||
+            step?.control === "slot" ||
+            leavingStep?.control === "slot"
+          }
           question={liveQuestion}
           hint={liveHint}
           field={liveField}

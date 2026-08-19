@@ -8,6 +8,7 @@ import {
   computePath,
   displayDatetime,
   isDatetimeValid,
+  isListedSlot,
   nextApplyStep,
   pruneAsked,
   recomputePath,
@@ -28,6 +29,14 @@ const filled = {
 assert.equal(isDatetimeValid("2026-08-25T11:00"), true);
 assert.equal(isDatetimeValid("yes"), false);
 assert.ok(displayDatetime("2026-08-25T11:00").includes("ET"));
+assert.equal(
+  isListedSlot("2026-08-25T11:00", [{ starts_et: "2026-08-25T11:00" }]),
+  true,
+);
+assert.equal(
+  isListedSlot("2026-08-25T15:00", [{ starts_et: "2026-08-25T11:00" }]),
+  false,
+);
 
 assert.deepEqual(nextApplyStep("PARTNER_SUPPORT", { email: "a@b.co", ...filled }), "review");
 assert.equal(nextApplyStep("TRIED", { email: "a@b.co", ...filled }), "PARTNER_SUPPORT");
