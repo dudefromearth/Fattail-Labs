@@ -21,6 +21,9 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   const isAdminApp = pathname === "/admin" || pathname.startsWith("/admin/");
   // Countdown landing owns the full viewport — keep global nav off it.
   const isLaunchHome = pathname === "/";
+  // Native apply is FatTail brand chrome only (brush-arch + word). No Labs
+  // header, no help concierge.
+  const isApply = pathname === "/apply";
 
   return (
     <ConfirmProvider>
@@ -29,12 +32,12 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
       <IdleSessionGuard />
       {!isAdminApp && <PageViewTracker />}
       <PresenceTracker /> {/* presence tracks anyone signed in, admin area included */}
-      {!isAdminApp && (
+      {!isAdminApp && !isApply && (
         <ErrorBoundary>
           <HelpLauncher />
         </ErrorBoundary>
       )}
-      {isAdminApp || isLaunchHome ? (
+      {isAdminApp || isLaunchHome || isApply ? (
         children
       ) : (
         <>

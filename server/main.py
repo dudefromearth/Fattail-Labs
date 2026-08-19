@@ -19,11 +19,14 @@ def create_app() -> FastAPI:
     resolve_git_sha()  # fail loud at boot if checkout SHA cannot be resolved
     import wiki_store
     from csrf import CsrfOriginMiddleware
+    from routes.apply import ApplyCorsMiddleware
 
     wiki_store.wiki_root()  # fail loud: LABS_WIKI_ROOT must be a lab-wiki checkout (WIK-D4)
     app = FastAPI(title="FatTail Labs API", docs_url=None, redoc_url=None)
     # M6: Origin/Referer check for cookie-authenticated mutations
     app.add_middleware(CsrfOriginMiddleware)
+    # Outer: CORS for POST /api/apply from fattail.ai only
+    app.add_middleware(ApplyCorsMiddleware)
 
     @app.get("/api/health")
     def health() -> dict:
@@ -90,6 +93,7 @@ def create_app() -> FastAPI:
     from routes.appearance import router as appearance_router
     from routes.apps import router as apps_router
     from routes.wiki import router as wiki_router
+    from routes.apply import router as apply_router
     from routes.feature_gates import admin as feature_gates_admin_router
     from routes.feature_gates import public as feature_gates_public_router
     from routes.pageview import router as pageview_router
@@ -105,6 +109,7 @@ def create_app() -> FastAPI:
     app.include_router(access_admin_router)
     app.include_router(apps_router)
     app.include_router(wiki_router)
+    app.include_router(apply_router)
     app.include_router(feature_gates_public_router)
     app.include_router(feature_gates_admin_router)
     app.include_router(pageview_router)

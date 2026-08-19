@@ -57,6 +57,7 @@ Do **not** use `DISCARDED` / `REJECTED` as idea status.
 | FI-028 | 2026-08-17 | Coach subscribe-then-price | One in-tab generation store: Analyzer + Builder join MarketSocket (stop ladder HTTP polls) | Audit DL-420 | Heatmap already subscribes; Analyzer/Builder re-fetch the same generation | `OPEN` | Audit v1.0 Phase B · do not add SSE |
 | FI-029 | 2026-08-18 | Heatmap Value Metrics Proposal | Width Efficiency, Time Decay, Spot Sensitivity, Surface Stability, SRS; Velocity/Acceleration until a series exists | Coach proposal + product walk | Research stack beyond shipped Value menu | `OPEN` | `docs/Options-Lab-Heatmap-Value-Metrics-Proposal.md` · **DL-442** |
 | FI-030 | 2026-08-18 | Coach | Heatmap Condors template (OTM same-side / short-span control) | Coach | Heatmap is a different job than Builder condors; ATM IC rejected | `RESHAPED` | **DL-444:** condors stay in Position Builder only |
+| FI-031 | 2026-08-19 | Native Apply v0.2 | Map `https://fattail.ai/apply` → Labs `/apply` (nginx / MiniThree) | Coach APPLY-1 · Foxtrot | Public URL is law; this build ships Labs page + CORS only. No WP wipe. | `OPEN` | **DL-450** · do not Hostinger-deploy from this packet |
 
 ---
 

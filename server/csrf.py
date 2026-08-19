@@ -88,6 +88,11 @@ def request_origin_allowed(request: Request) -> bool:
 def should_check_csrf(request: Request) -> bool:
     if request.method.upper() in _SAFE:
         return False
+    # Public apply writes AC only — no Labs session mutation.
+    # fattail.ai may POST with a shared .fattail.ai cookie; do not CSRF-block.
+    path = request.url.path.rstrip("/") or "/"
+    if path == "/api/apply":
+        return False
     cfg = get_config()
     if not request.cookies.get(cfg.session_cookie):
         return False

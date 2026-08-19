@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-450 Native apply write + Labs /apply page
+
+**Decision:** Coach GO. Native apply writes Cole’s seven ActiveCampaign
+handoff fields and tag **18 Application Filled**. Fail loud. Reuse
+`server/activecampaign.py` (`sync_apply` raises; do not inherit
+`sync_lead` best-effort). CORS for **fattail.ai**. HIG page at Labs
+`/apply`: one column, labels above, 44pt, `#00B478` only on submit,
+brush-arch + word fattail. No AI, no 0-DTE. No Strategy Lab. No
+Hostinger deploy. No fattail.ai WordPress wipe.
+
+Field ids (do not invent): **3** HELL · **4** HEAVEN · **5** MONEY_TIMING
+· **6** COACHING_SKU · **7** ELEVEN_AM_ET · **8** TRIED · **9**
+PARTNER_SUPPORT. Email is contact-key plumbing. SoR is AC
+`fieldValues` (read-back before success). Public URL
+`https://fattail.ai/apply` remains law; this build ships the Labs page
+and API. Foxtrot proxy is not this packet.
+
+**Spec:** `Specs/FatTail-Native-Apply-Form-Spec-v0.2.md` (v0.1 draft on
+PR #3 superseded as BUILD). Tests: `server/tests/test_apply.py`
+(mocked AC).
+
+---
+
 ## 2026-08-18 — DL-449 Surface HUD left rail, collapsed except detents
 
 **Decision:** All Surface inspect chrome sits in a **left rail** with a

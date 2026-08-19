@@ -52,7 +52,7 @@ web/app/
   courses/category/[catSlug]/page.tsx
   live/  pathway/  resources/  dashboard/  me/  settings/
   journal/  retrospective/  retrospective/[id]/  journey/
-  login/  signup/  membership/
+  login/  signup/  membership/  apply/
   guide/  about/
   admin/                    # control plane layout (no SiteHeader)
   admin/board/              # Kanban production board
