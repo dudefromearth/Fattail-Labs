@@ -8,6 +8,7 @@ import { buildGrid, heatmapFlyWidths, HEATMAP_FLY_WIDTHS, symFlyTemplate } from 
 import { rocSensitivityToThreshold } from "./color";
 import {
   LISTED_PACKAGE_EPS,
+  formatHeatmapTileFace,
   isPositiveListedDebit,
   isUsablePackageDebit,
   symFlyCpAsym,
@@ -268,6 +269,22 @@ assert(symFlyTemplate.valueModes[6]?.label === "Theta", "theta label");
       `pct display stayed human ${cell.display}`,
     );
   }
+}
+
+{
+  const ok = formatHeatmapTileFace("399.00", 399);
+  assert(ok.face === "399.00" && ok.alt === "399.00", "ordinary R:R");
+  const pct = formatHeatmapTileFace("400.0%", 400);
+  assert(pct.face === "400.0%" && pct.alt === "400.00%", "ordinary %");
+  const huge = formatHeatmapTileFace(
+    "1080863910568919040.00",
+    1080863910568919040,
+  );
+  assert(huge.face === "xxx.xx", `masked R:R ${huge.face}`);
+  assert(huge.alt.includes("1080") || huge.alt.includes("e+"), `alt ${huge.alt}`);
+  const hugePct = formatHeatmapTileFace("2814749767106500.0%", 2.8147497671065e15);
+  assert(hugePct.face === "xxx.xx%", `masked % ${hugePct.face}`);
+  assert(hugePct.alt.endsWith("%"), "alt keeps %");
 }
 
 {

@@ -65,6 +65,7 @@ import {
 } from "@/lib/options-lab/tosGenerator";
 import {
   bwFlyDebit,
+  formatHeatmapTileFace,
   resolveBwWings,
   symFlyDebit,
   verticalPackage,
@@ -1070,6 +1071,10 @@ export default function HeatmapChainPanel() {
                       </td>
                       {matrix.cols.map((col, ci) => {
                         const cell = matrix.cells[ri]?.[ci];
+                        const tile = formatHeatmapTileFace(
+                          cell?.display,
+                          cell?.value,
+                        );
                         const selected =
                           selectedTile?.strike === row.strike &&
                           selectedTile?.colId === col.id;
@@ -1082,9 +1087,15 @@ export default function HeatmapChainPanel() {
                             role="button"
                             tabIndex={0}
                             title={
-                              (cell?.tooltip || "") +
-                              "\nOption-click: copy ToS butterfly script"
+                              [
+                                tile.face !== tile.alt ? tile.alt : null,
+                                cell?.tooltip,
+                                "Option-click: copy ToS butterfly script",
+                              ]
+                                .filter(Boolean)
+                                .join("\n")
                             }
+                            aria-label={tile.alt}
                             aria-pressed={selected}
                             data-selected={selected ? "1" : "0"}
                             onClick={(e) => {
@@ -1124,7 +1135,7 @@ export default function HeatmapChainPanel() {
                             ].join(" ")}
                             style={{ backgroundColor: bg }}
                           >
-                            {cell?.display ?? "—"}
+                            {tile.face}
                           </td>
                         );
                       })}

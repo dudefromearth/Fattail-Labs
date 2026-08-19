@@ -104,6 +104,48 @@ export function isPositiveListedDebit(d: number | null | undefined): d is number
 }
 
 /**
+ * Heatmap tile face. A number that will not fit 3 digits + 2 decimals
+ * (5 digits, |n| ≥ 1000) paints as xxx.xx. The honest value is `alt`.
+ */
+export const HEATMAP_TILE_MASK = "xxx.xx";
+export const HEATMAP_TILE_ABS_MAX = 1000;
+
+function heatmapTileSuffix(display: string): string {
+  if (display.endsWith("%")) return "%";
+  if (display.endsWith("¢")) return "¢";
+  return "";
+}
+
+function heatmapTileExact(n: number, suffix: string): string {
+  if (!Number.isFinite(n)) return "—";
+  if (Math.abs(n) >= 1e6 || (n !== 0 && Math.abs(n) < 1e-6)) {
+    return `${n}${suffix}`;
+  }
+  return `${n.toFixed(2)}${suffix}`;
+}
+
+export function formatHeatmapTileFace(
+  display: string | null | undefined,
+  value: number | null | undefined,
+): { face: string; alt: string } {
+  const shown = display == null || display === "" ? "—" : display;
+  if (shown === "—") return { face: "—", alt: "—" };
+  const suffix = heatmapTileSuffix(shown);
+  const alt =
+    value != null && Number.isFinite(value)
+      ? heatmapTileExact(value, suffix)
+      : shown;
+  const digits = shown.replace(/[^\d]/g, "").length;
+  const unusual =
+    (value != null && Number.isFinite(value) && Math.abs(value) >= HEATMAP_TILE_ABS_MAX) ||
+    digits > 5;
+  if (unusual) {
+    return { face: `${HEATMAP_TILE_MASK}${suffix}`, alt };
+  }
+  return { face: shown, alt };
+}
+
+/**
  * % change on the outer cell (further from spot).
  * Starting (inner) 9, next (outer) 7 → |((9 − 7) / 9) × 100|.
  * Never negative. Spot row is 0.
