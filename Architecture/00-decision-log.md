@@ -4,6 +4,43 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-451 Native /apply submit writes Cole's seven fields + tag 18
+
+**Decision:** Chair GO 2026-08-19. Ship a native FatTail `/apply` submit
+surface in this repo. A submit writes Cole’s seven ActiveCampaign
+`fieldValues` (live ids **3–9**: `HELL`, `HEAVEN`, `MONEY_TIMING`,
+`COACHING_SKU`, `ELEVEN_AM_ET`, `TRIED`, `PARTNER_SUPPORT`) and tag
+**18 Application Filled**. Fail loud if the seven write or the tag miss.
+Do **not** inherit waitlist `sync_lead()`. Do **not** invent dropdown
+options for fields 6/7/9 (empty option lists → free text). Echo owns
+labels (Coach titles used until Echo replaces them). One brand hue
+`#00B478` for next action / live state only. Host stays open (OQ-1).
+No Juliet seeds. Spec PR 3 remains spec-only.
+
+**Does not:** lock fattail.ai vs Labs vs proxy; rewrite `/signup`; touch
+Strategy Lab / Tradier; add sales fields; ticket Ernie, Conor, CEO, or CTO.
+
+**Ship path:** `docs/Native-Apply-Ship-Path.md`. After deploy,
+`labs.fattail.ai/apply` exists. `https://fattail.ai/apply` stays 404
+until Foxtrot routes it.
+
+---
+
+## 2026-08-19 — DL-450 Native Apply Form Spec v0.1 filed
+
+**Decision:** File Coach / chair Phase 0 as the apply law:
+
+- Path: `Specs/FatTail-Native-Apply-Form-Spec-v0.1.md`
+- Public URL intent: `https://fattail.ai/apply`
+- Job: write Cole’s seven AC handoff fields so Shaw can book and Cole can close
+- Writes: AC `fieldValues` on the contact + tag **18 Application Filled**
+- Fail loud; zero silent success; Typeform replaced as the write source
+- lock.md look in-spec (`#00B478`, tokens.css, one column / labels above / 44pt)
+
+**Does not:** treat spec PR 3 as the implementation PR.
+
+---
+
 ## 2026-08-18 — DL-449 Surface HUD left rail, collapsed except detents
 
 **Decision:** All Surface inspect chrome sits in a **left rail** with a

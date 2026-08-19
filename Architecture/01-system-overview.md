@@ -87,6 +87,7 @@ Deploy details: `infra/deploy.md`.
 | Pathway | `/pathway` | Member |
 | Dashboard / me | `/dashboard`, `/me` | Member |
 | Membership / signup | `/membership`, `/signup`, `/login` | Public funnel |
+| Native apply | `/apply` | Public desk apply — seven AC fields + tag 18 (**DL-451**) |
 | Guide / about | `/guide`, `/about` | Public docs |
 
 Admin: in-place edit on production pages; control plane at `/admin`, `/admin/board`,

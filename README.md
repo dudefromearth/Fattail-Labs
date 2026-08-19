@@ -24,6 +24,7 @@ One product host and Apps hub. Members use a unified suite under `labs.fattail.a
 | **Visualize AI** | Spec / architecture (not shipped) — tool-backed market-structure charts |
 | **Bot Marketplace** | Spec / architecture (not shipped) — monetize FatTail Lab Bots under Labs product intent |
 | **Admin** | Board, cast/HeyGen, access control, users, packages |
+| **Native apply** | Shipped in-repo — `/apply` writes Cole’s seven AC fields + tag 18. `fattail.ai/apply` still needs Foxtrot routing (host open). **DL-451** |
 
 **Strategy Lab timeline (now):** Design + Curate for entitled members; Deploy UX without live Tradier capital; admin proves Tradier, then designated members get real-broker Deploy.  
 → [docs/Strategy-Lab-Member-Timeline.md](docs/Strategy-Lab-Member-Timeline.md) · [Architecture/26-strategy-lab-member-timeline.md](Architecture/26-strategy-lab-member-timeline.md) · **DL-251 / DL-252**
@@ -66,6 +67,7 @@ Until that program opens: **ship on the single host**; do not strip as-built Nav
 | Full architecture index | [Architecture/README.md](Architecture/README.md) |
 | Operator guide | [docs/ADMIN-GUIDE.md](docs/ADMIN-GUIDE.md) |
 | WooCommerce + SSO | [docs/WooCommerce-SSO-Integration-Guide.md](docs/WooCommerce-SSO-Integration-Guide.md) |
+| Native apply | [Specs/FatTail-Native-Apply-Form-Spec-v0.1.md](Specs/FatTail-Native-Apply-Form-Spec-v0.1.md) · [docs/Native-Apply-Ship-Path.md](docs/Native-Apply-Ship-Path.md) · **DL-451** |
 | Deploy / hosting | [infra/deploy.md](infra/deploy.md) |
 
 ---

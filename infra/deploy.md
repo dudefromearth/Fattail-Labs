@@ -13,6 +13,13 @@ Build happens entirely on the internal network. DNS/cert/vhost wiring is a launc
 two proxied A records in the Cloudflare fattail.ai zone (`labs`, `labs-stage` →
 173.48.54.249), a `*.fattail.ai` Origin CA cert on MiniThree, two nginx server blocks.
 
+**Native apply (`/apply` · DL-451):** the form lives in this repo at
+`web/app/apply` + `POST /api/apply`. Production Labs will serve
+`https://labs.fattail.ai/apply` after deploy. `https://fattail.ai/apply`
+stays 404 until Foxtrot routes it — **host stays open** (OQ-1). See
+`docs/Native-Apply-Ship-Path.md`. Apply **requires** `LABS_AC_API_URL` +
+`LABS_AC_API_TOKEN` on the API process (fail loud if unset).
+
 **Canonical host (SEO spec v1.0):** `https://labs.fattail.ai` is the ONLY
 canonical origin. The MiniThree vhost must 301 every variant (http, any alias)
 to it, and production `NEXT_PUBLIC_SITE_URL=https://labs.fattail.ai` — the

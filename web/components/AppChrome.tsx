@@ -21,20 +21,23 @@ export default function AppChrome({ children }: { children: React.ReactNode }) {
   const isAdminApp = pathname === "/admin" || pathname.startsWith("/admin/");
   // Countdown landing owns the full viewport — keep global nav off it.
   const isLaunchHome = pathname === "/";
+  // Native apply is a fattail sales surface (lock.md) — no Labs nav / 0-DTE.
+  const isApply = pathname === "/apply";
+  const hideMemberChrome = isAdminApp || isLaunchHome || isApply;
 
   return (
     <ConfirmProvider>
       <AppearanceRoot />
       <MemberSettingsRoot />
       <IdleSessionGuard />
-      {!isAdminApp && <PageViewTracker />}
+      {!isAdminApp && !isApply && <PageViewTracker />}
       <PresenceTracker /> {/* presence tracks anyone signed in, admin area included */}
-      {!isAdminApp && (
+      {!isAdminApp && !isApply && (
         <ErrorBoundary>
           <HelpLauncher />
         </ErrorBoundary>
       )}
-      {isAdminApp || isLaunchHome ? (
+      {hideMemberChrome ? (
         children
       ) : (
         <>
