@@ -1,7 +1,7 @@
 # FatTail — Native Apply Form Spec v0.1
 
-**Status:** **DRAFT** (implementation) — **chair accept** of the apply law 2026-08-19 + tag-18 plumbing amendment · **not BUILD AUTHORITY**  
-**Type:** Product Specification (Phase 1 Juliet draft + chair amendment 2026-08-19)  
+**Status:** **DRAFT** (implementation) — **chair accept** of the apply law 2026-08-19 + lock.md in-spec + tag-18 required write · **not BUILD AUTHORITY**  
+**Type:** Product Specification (Phase 1 Juliet draft + chair holes 2026-08-19)  
 **Short name:** **Native Apply**  
 **Filename:** `FatTail-Native-Apply-Form-Spec-v0.1.md`  
 **Public URL (Coach):** `https://fattail.ai/apply`  
@@ -48,6 +48,26 @@ Bob chair 2026-08-19. Transcribed. Nothing invented.
 
 **Chair accept** is accept of the **apply law** plus this amendment. It is **not** BUILD AUTHORITY. It does **not** authorize a Next.js page or an ActiveCampaign implementation.
 
+### 0.2 lock.md — look / chair law (2026-08-19 — transcribe, do not create)
+
+**Hole 1.** The lock goes **in this spec**. Quoted as lock/chair law. No extra spec file. Not a `lock.md` makeover on disk.
+
+> Locked 2026-08-19 by Ernie. Path: Ash → Hayes → Bob → executives.
+
+> Locked hue: `#00B478` is the one brand hue. Sampled from the Labs play button. Ernie: “The 00B478 is good.”
+
+> `#00FF00` is the fattail.ai hero lime. Off. `#1A4F40` is Ash’s pine. Off. `#0d9488` Labs compiled emerald. Off. `#5856d6` live indigo. Off.
+
+> One hue. Three jobs only: next action, live state, defined-risk cue. Strength, health, wealth. Used sparingly to enhance use of the systems.
+
+> Labs `web/styles/tokens.css` is the company look. Canvas is paper / ink / grey. Type is system UI (SF Pro / -apple-system). Mark is the black brush-arch. Product word `labs`. Sales word `fattail`. No `ai`. No 0-DTE mark on this path.
+
+> Not a wash. Not a second accent.
+
+> fattail.ai/apply is the first instance: native FatTail form, Apple HIG, one column, labels above, 44pt, one submit that writes Cole’s handoff and Application Filled. Not Typeform. Not ClickFunnels. Not Flatsome.
+
+> Ash reviews. Hayes holds the desk. Bob chairs. Conor was not ticketed.
+
 ---
 
 ## 1. Purpose
@@ -80,7 +100,7 @@ Recorded so India can review against reality. **None of this is a BUILD pick.**
 | Live join on fattail.ai is **Woo Add to cart**, not an application | Coach Phase 0 |
 | Shared FatTail / 0-DTE ActiveCampaign account already exists | `Specs/FatTail-Labs-ActiveCampaign-Lead-Sync-Spec-v1.0.md` · **DL-064** · `server/activecampaign.py` |
 | Labs AC v1 writes **waitlist leads** (email + `Labs Lead` tag) and is **best-effort** (never fails the waitlist) | Lead Sync Spec §2 / §4 · DL-064. **Custom fields are explicitly out of that spec.** |
-| Bob created Cole’s seven fields in AC on the **2026-08-19 walk**; they exist and have **zero writes** | Coach Phase 0. Draft-time: ActiveCampaign MCP was unavailable — **numeric field IDs are not invented here** |
+| Bob created Cole’s seven fields in AC on the **2026-08-19 walk**; they exist and have **zero writes** | Coach Phase 0. **Do not invent field IDs.** Live ids **3–9** stay. Seven keys stay the sales write |
 | Observer membership term is **six weeks** (product law) | Membership Tiers Spec v1.0 · **DL-128**. Do **not** copy a live PDP “four weeks” contradiction |
 
 **Do not** treat Labs waitlist `sync_lead()` as this form’s write path. That module does not write custom fields, and it is allowed to “succeed” the member while AC fails. This apply form may **not** inherit that pattern.
@@ -94,13 +114,14 @@ Recorded so India can review against reality. **None of this is a BUILD pick.**
 | **APPLY-1** | The public apply URL is **`https://fattail.ai/apply`**. |
 | **APPLY-2** | The form’s job is to write **Cole’s seven** ActiveCampaign handoff fields (this spec §4). Do **not** rename the AC keys. Do **not** add sales qualifier fields. |
 | **APPLY-3** | Writes go to ActiveCampaign **`fieldValues` on the contact**. Contact key is email (this spec §5). |
-| **APPLY-4** | **Fail loud.** If any of the seven writes miss, the submit is **not** success. If the seven write succeeds and tag **18 Application Filled** fails, that is **not** a complete desk route — fail loud (same as a missed field). Zero silent success. No thank-you that implies Shaw can book when AC is empty, incomplete, or missing the pile tag. |
+| **APPLY-4** | **Fail loud** if the **seven write** or the **tag** miss. Either miss → submit is **not** success. Zero silent success. No thank-you that implies Shaw can book when AC is empty, incomplete, or missing the pile tag. Waitlist `sync_lead()` is **not** inherited. |
 | **APPLY-5** | Evidence of done is **non-empty `fieldValues` on all seven fields** for that contact **and** tag **18 Application Filled** on that contact — not a 200, not a thank-you page, not “it should work.” |
 | **APPLY-6** | This form **replaces Typeform (`go.0-dte.com/application`) as the write source** for those seven fields. |
-| **APPLY-7** | Member-facing chrome follows **Apple HIG for Labs web** (Human Interface Spec v1.0): visible **labels**, **one primary CTA**, **inline errors**. No insider jargon. No profit claims (Tango). |
+| **APPLY-7** | Member-facing chrome follows **Apple HIG for Labs web** (Human Interface Spec v1.0) **and** lock.md (§0.2): **one column**, **labels above**, **44pt**, **one submit**. No insider jargon. No profit claims (Tango). |
 | **APPLY-8** | If Observer term appears in apply-adjacent copy, it is **six weeks** (**DL-128**). Do not copy a live PDP “four weeks” contradiction. |
 | **APPLY-9** | **Not BUILD** until India **APPROVED** plus chair / Coach GO. Chair accepted the apply law 2026-08-19. This file remains **DRAFT** for implementation — **not** a build packet. **Not BUILD AUTHORITY.** |
-| **APPLY-10** | **Chair amendment 2026-08-19.** Submit also writes ActiveCampaign tag **18 Application Filled**. **Desk routing / plumbing** (like email) — how Shaw sees the pile. **Not** a sales qualifier. **Not** an eighth Cole field. Do **not** rename the seven keys. |
+| **APPLY-10** | **Hole 2 · chair 2026-08-19.** Tag **18 Application Filled** is a **required write on submit**. Desk routing, **not** a sales field. Like email: plumbing. IN-11 and OQ-5 are **unflagged**. Fail loud if the seven write or the tag miss. **Not** an eighth Cole field. Seven keys stay the sales write. |
+| **APPLY-11** | **Hole 1 · lock.md in this spec.** One brand hue `#00B478`. Three jobs only (next action, live state, defined-risk cue). Labs `web/styles/tokens.css` is the company look. Not a wash. Not a second accent. Not Typeform. Not ClickFunnels. Not Flatsome. Host stays open. |
 
 ---
 
@@ -120,13 +141,16 @@ Bob created these in ActiveCampaign (2026-08-19 walk). **Do not rename. Do not a
 
 **Non-empty** means each of the seven has a stored `fieldValue` that is not blank after submit. A contact with email and six filled fields is a **miss**.
 
+**Live AC field IDs:** **3–9** stay. Do **not** invent field IDs. Do **not** map guessed integers onto the seven keys in this spec. The seven keys stay the **sales write**. Tag **18** is desk routing, not a sales field.
+
 ### 4.1 What this draft does **not** invent
 
 These are **open for Echo / Cole / Bob after GO** — not invented here, not implied by the keys:
 
 - Member-facing question wording (Echo owns labels — Phase 3).
 - Option lists, SKU catalogs, or boolean vs free-text control types.
-- ActiveCampaign numeric field IDs (`field` integers). Implementation (after GO) **resolves IDs from the live account** against Bob’s existing fields. Do not hardcode guessed IDs in a spec.
+
+**Do not invent field IDs.** Live ids **3–9** stay.
 
 **Juliet opinion (not law):** keep AC perma / titles stable as Bob created them; Echo’s member labels may differ from the AC titles so the form does not leak desk jargon (APPLY-7). Cole still reads the seven keys.
 
@@ -143,11 +167,11 @@ ActiveCampaign `fieldValues` attach to a **contact**. The form therefore require
 
 Labeled as **plumbing**, not a new qualifier. Coach forbade adding **sales** fields. Email is the contact key, not a Cole close question. Tag **18** is desk routing so the pile is visible — not an eighth handoff field.
 
-### 5.1 Desk routing — tag 18 Application Filled (chair amendment 2026-08-19)
+### 5.1 Desk routing — tag 18 Application Filled (hole 2 · unflagged)
 
-**Transcribe:** submit also writes tag **Application Filled (18)**. That is how Shaw sees the pile. Put it in the spec as desk routing / plumbing.
+**Required write on submit.** Desk routing, **not** a sales field. Like email: plumbing.
 
-This is **not** IN-11 FLAGGED anymore. It is **law** (APPLY-10). If the seven `fieldValues` write succeeds and tag 18 fails, the desk route is incomplete — **fail loud**, same as a missed field (APPLY-4).
+IN-11 and OQ-5 are **unflagged**. This is **law** (APPLY-10). Fail loud if the seven write or the tag miss (APPLY-4). Waitlist `sync_lead()` is **not** inherited.
 
 ClickFunnels already collects **name, email, phone**. Those may already exist on the AC contact. This form still requires **email** on submit so the write is keyed even if the visitor did not arrive from ClickFunnels.
 
@@ -199,14 +223,19 @@ This draft does **not** name env vars or authorize a new `server/` module. That 
 
 ## 7. Member experience (Echo / HIG + Tango)
 
-Normative **bar**, not pixel art. Echo still owns labels and layout in Phase 3.
+Normative **bar**, not pixel art. Echo still owns **question** labels (wording). Layout / look is lock.md law (§0.2 / APPLY-11): first instance is fattail.ai/apply.
 
 | Rule | Source |
 |------|--------|
+| **One column**; **labels above**; **44pt**; **one submit** that writes Cole’s handoff **and** Application Filled | lock.md · APPLY-7 · APPLY-10 |
+| One brand hue `#00B478` — three jobs only (next action, live state, defined-risk cue). Not a wash. Not a second accent | lock.md · APPLY-11 |
+| Off: `#00FF00` hero lime · `#1A4F40` Ash pine · `#0d9488` compiled emerald · `#5856d6` live indigo | lock.md |
+| Company look: Labs `web/styles/tokens.css`. Canvas paper / ink / grey. Type system UI (SF Pro / `-apple-system`). Mark: black brush-arch. Product word `labs`. Sales word `fattail`. No `ai`. No 0-DTE mark on this path | lock.md |
+| Not Typeform. Not ClickFunnels. Not Flatsome | lock.md |
 | Visible **labels** on every field — never placeholder-only | HIG Spec §6.2 `TextField` |
-| **One primary CTA** per region (submit) | HIG Spec §2.1 Clarity |
+| **One primary CTA** per region (submit) | HIG Spec §2.1 Clarity · lock.md |
 | **Inline errors** on the field that failed; Toast is never the sole carrier of an error the member must act on | HIG Spec §2.1 Feedback · §6.3 |
-| Targets ≥ 44×44 pt; keyboard; associated label; WCAG AA | HIG Spec §2.1 |
+| Targets ≥ 44×44 pt; keyboard; associated label; WCAG AA | HIG Spec §2.1 · lock.md 44pt |
 | No emoji as chrome | HIG Spec §2.1 |
 | **No insider jargon** on the member surface (desk names like Hell Island / Heaven Island are AC titles; Echo may use plain language) | Coach · Tango |
 | **No profit claims** — process / fit / booking, never “you will make” | Tango · North Star v1.2 · doctrine |
@@ -226,7 +255,7 @@ Capacity-over-dependency (Tango): this form qualifies for **booking**, it does n
 - Write tag **18 Application Filled** as **desk routing / plumbing** (chair amendment 2026-08-19).
 - Fail loud on any miss (seven **or** tag 18).
 - Replace Typeform as the **write source**.
-- HIG / Tango bar in §7.
+- HIG / Tango bar in §7 **and** lock.md look (§0.2 / APPLY-11).
 
 ### 8.2 Out of scope (do not expand this draft)
 
@@ -262,7 +291,8 @@ Capacity-over-dependency (Tango): this form qualifies for **booking**, it does n
 | **IN-8** | Host: WordPress vs Labs route vs MiniThree proxy | **FLAGGED** — India + Foxtrot after GO; this draft does not pick |
 | **IN-9** | Echo member-facing labels (plain language vs AC titles) | **FLAGGED** — Phase 3 Echo + Tango; not invented here |
 | **IN-10** | First name / phone on the apply form | **FLAGGED** — plumbing only if required for booking; not a sales field |
-| **IN-11** | AC tag **18 Application Filled** on apply submit | **IN-SCOPE** (law · APPLY-10) — chair amendment 2026-08-19. Desk routing / plumbing. Not a sales field. Was FLAGGED; moved to law. |
+| **IN-11** | AC tag **18 Application Filled** required write on submit | **LAW / UNFLAGGED** — desk routing, not a sales field. Like email. Fail loud if the seven write or the tag miss |
+| **IN-18** | lock.md look in this spec (`#00B478`, tokens.css, first instance `/apply`) | **LAW** (APPLY-11) — hole 1. Transcribed. No extra spec file |
 | **IN-12** | Labs `/signup` rewrite | **DEFERRED** (Coach out) |
 | **IN-13** | Extra sales qualifier fields | **PARKED** (Coach: do not add) |
 | **IN-14** | Discounting | **DEFERRED** (Coach out) |
@@ -276,14 +306,21 @@ Flagged ideas: none erased. Coach disposes flags.
 
 ## 10. Open questions (not law — India / Echo / Coach)
 
+**OQ-5 is not an open question.** **UNFLAGGED.** Tag **18 Application Filled** is a required write on submit (APPLY-10). See §5.1.
+
 | # | Question | Draft note (opinion) |
 |---|---------|----------------------|
-| **OQ-1** | Where does `/apply` **run**? fattail.ai WordPress, Labs Next.js behind nginx, or a thin proxy? | As-built: WP has no slug; Labs has no `/apply`. **Do not pick in this draft.** Foxtrot + India after GO. Public URL stays `https://fattail.ai/apply`. |
-| **OQ-2** | How does implementation bind Bob’s fields (title vs perma vs numeric id)? | Resolve from the **live** AC account. Do not invent IDs in the spec. |
+| **OQ-1** | Where does `/apply` **run**? fattail.ai WordPress, Labs Next.js behind nginx, or a thin proxy? | **Host stays open.** As-built: WP has no slug; Labs has no `/apply`. **Do not pick in this draft.** Foxtrot + India after GO. Public URL stays `https://fattail.ai/apply`. |
+| **OQ-2** | How does implementation bind Bob’s fields (title vs perma vs numeric id)? | **Do not invent field IDs.** Live ids **3–9** stay. Seven keys stay the sales write. |
 | **OQ-3** | Partial-write repair (rollback vs retry)? | Law: not success. HOW is India’s. |
 | **OQ-4** | Is first name required plumbing? | Email + tag **18** are the plumbing this draft requires. First name is still open. |
-| **OQ-5** | Apply tag in AC? | **Closed — law.** Chair amendment 2026-08-19: write tag **18 Application Filled** on successful seven-field write. Desk routing / plumbing. Fail loud if the tag misses. Not a sales field. |
 | **OQ-6** | What happens after success (Shaw calendar, Cole view)? | Out of this draft except: the seven values exist so they **can** book and close. |
+
+### 10.1 Closed (law — not open)
+
+| # | Closed as | Law |
+|---|---------|-----|
+| **OQ-5** | **UNFLAGGED** | Tag **18 Application Filled** is a required write on submit. Desk routing, not a sales field. Like email. Fail loud if the seven write or the tag miss. |
 
 ---
 
@@ -317,12 +354,14 @@ India: **block only** for invariant / law / system breakage. Everything else is 
 | Writes = AC `fieldValues` on the contact; fail loud | **Law** (APPLY-3, APPLY-4, APPLY-5) |
 | Replace Typeform as write source | **Law** (APPLY-6) |
 | Email required as contact key | **Law**, labeled **plumbing** |
-| Tag **18 Application Filled** on submit | **Law** (APPLY-10) — desk routing / plumbing; chair amendment 2026-08-19. Fail loud if the tag misses |
+| Tag **18 Application Filled** required write on submit | **Law** (APPLY-10) — **UNFLAGGED**. Desk routing, not a sales field. Like email. Fail loud if the seven write or the tag miss |
+| lock.md look (`#00B478`, tokens.css, one column / labels above / 44pt / one submit) | **Law** (APPLY-11) — in this spec. Hole 1 |
+| Live AC field IDs **3–9** | **Law** — stay. Do not invent field IDs. Seven keys stay the sales write |
 | HIG labels / one CTA / inline errors; no jargon; no profit claims; Observer = 6 weeks | **Law** (APPLY-7, APPLY-8) |
 | Host (WP vs Labs vs proxy) | **Opinion / open** (OQ-1) — not a lock. Chair: host stays open |
 | Echo’s exact question copy | **Opinion / open** (IN-9). Chair: Echo still owns labels |
 | First name, rollback HOW | **Opinion / open** |
-| Reuse vs do-not-reuse `server/activecampaign.py` | **India HOW** — law is only: do not inherit waitlist best-effort success |
+| Reuse vs do-not-reuse `server/activecampaign.py` | **India HOW** — law is only: do not inherit waitlist `sync_lead()` |
 
 ### 12.2 Checklist
 
@@ -337,7 +376,10 @@ India: **block only** for invariant / law / system breakage. Everything else is 
 - [ ] Coach Phase 0 intact? Any drop listed **up front**?
 - [ ] Ideas inventory complete (IN-SCOPE / FLAGGED / DEFERRED / PARKED — never discarded)?
 - [ ] Status remains **DRAFT** for implementation — chair accept of the apply law recorded; **not BUILD AUTHORITY**?
-- [ ] Tag **18 Application Filled** is law (desk routing / plumbing), not a sales field, not still FLAGGED?
+- [ ] Tag **18 Application Filled** is a **required write on submit** — **UNFLAGGED** (IN-11 / OQ-5 not flagged)?
+- [ ] lock.md look is **in this spec** (§0.2 / APPLY-11) — no extra spec file?
+- [ ] Live ids **3–9** stay; no invented field IDs; seven keys stay the sales write?
+- [ ] Waitlist `sync_lead()` is **not** inherited?
 
 **India verdict shape** (when reviewing):
 
@@ -367,7 +409,8 @@ Delta does **not** gate this draft. When Coach gives GO and Juliet seeds a build
 | **D5** | No extra sales fields on the form or in the AC write | Form inventory + AC payload |
 | **D6** | Labs `/signup`, Strategy Lab, Tradier untouched | Diff scope |
 | **D7** | Observer copy, if any, says six weeks — not four | Copy grep / screenshot |
-| **D8** | Same contact has tag **18 Application Filled**; forced tag miss after a seven write → submit is **not** success | AC tag read-back + walk |
+| **D8** | Same contact has tag **18 Application Filled**; forced tag miss **or** seven miss → submit is **not** success | AC tag / fieldValues read-back + walk |
+| **D9** | Look: one hue `#00B478`; Off hues unused; one column; labels above; 44pt; one submit. Not Typeform / ClickFunnels / Flatsome | Screenshot + token grep |
 
 **“It should work” is FAIL.**
 
@@ -377,12 +420,14 @@ Delta does **not** gate this draft. When Coach gives GO and Juliet seeds a build
 
 | Gate | Agent | Asks |
 |------|-------|------|
-| Spec / architecture | **India** | §12 checklist. SoR, boundary, fail-loud vs waitlist, host left open |
-| Design / member | **Echo + Tango** | Labels, one CTA, inline errors, no jargon, no profit claims, Observer = 6 weeks |
+| Spec / architecture | **India** | §12 checklist. SoR, boundary, fail-loud vs waitlist, host left open, lock.md in-spec |
+| Design / member | **Echo + Tango** | Labels, one CTA, inline errors, no jargon, no profit claims, Observer = 6 weeks. Echo owns question wording |
+| Look | **Ash** | Reviews lock.md look (§0.2). One hue. Not a wash |
+| Desk | **Hayes** | Holds the desk |
 | Auth / secrets | **Mike** (when host + write path are proposed) | AC token handling; no secrets in the client; public form abuse |
-| Infra / host | **Foxtrot** (OQ-1) | fattail.ai routing; no silent 404 |
+| Infra / host | **Foxtrot** (OQ-1) | fattail.ai routing; no silent 404. **Do not pick host in this draft** |
 | Trading honesty | **Hotel** only if apply copy makes trading claims — default: form is fit/booking, not a method lesson |
-| Final | **Coach / chair** | Chair accepted the apply law 2026-08-19. **BUILD** only after India **APPROVED** plus chair GO. This file is still **not** a build packet |
+| Final | **Bob chairs** | Chair accepted the apply law 2026-08-19. **BUILD** only after India **APPROVED** plus chair GO. This file is still **not** a build packet. **Conor was not ticketed** |
 
 **Juliet** does **not** produce `agents/<project>/` seeds or an execution plan in this packet.
 
@@ -396,9 +441,11 @@ A reviewer can validate, **without reading implementation code**:
 2. Which seven keys are law — and that email is plumbing, not a new sales field.
 3. That writes are AC `fieldValues` and success is non-empty on all seven.
 4. That silent success is forbidden.
-5. That tag **18 Application Filled** is desk routing / plumbing law (chair amendment 2026-08-19) — not a sales field — and a tag miss fails loud.
-6. That Strategy Lab, Tradier, `/signup` rewrite, discounting, extra qualifiers, and CEO/CTO tickets are out.
-7. That this file is **DRAFT** for implementation — chair accept of the apply law, **not BUILD AUTHORITY**.
+5. That tag **18 Application Filled** is a **required write on submit** (desk routing, not a sales field; like email) — IN-11 / OQ-5 **unflagged** — fail loud if the seven write or the tag miss.
+6. That lock.md look is **in this spec** (one hue `#00B478`, tokens.css, first instance `/apply`) — not a second file.
+7. That live ids **3–9** stay; field IDs are not invented; seven keys stay the sales write.
+8. That Strategy Lab, Tradier, `/signup` rewrite, discounting, extra qualifiers, and CEO/CTO tickets are out. Conor was not ticketed.
+9. That this file is **DRAFT** for implementation — chair accept of the apply law, **not BUILD AUTHORITY**. Host stays open.
 
 ---
 
@@ -408,9 +455,10 @@ A reviewer can validate, **without reading implementation code**:
 |---------|------|-------|
 | **v0.1** | 2026-08-19 | DRAFT. Juliet Phase 1 from Coach / chair Phase 0. Not BUILD. |
 | **v0.1** | 2026-08-19 | **Chair accept** of the apply law + **tag-18 plumbing amendment**. Tag **18 Application Filled** is desk routing / plumbing (IN-11 / OQ-5 → law). Status remains **DRAFT** for implementation. **Not BUILD AUTHORITY.** Host stays open. Echo still owns labels. No form implementation. |
+| **v0.1** | 2026-08-19 | **Two holes only.** Hole 1: lock.md quoted **in this spec** (§0.2 / APPLY-11). Hole 2: tag **18** required write on submit; IN-11 / OQ-5 **unflagged**. Live ids **3–9** stay. Seven keys stay the sales write. Still **DRAFT**. Still **not BUILD**. Host stays open. No extra spec files. |
 
 **Next process step:** India architecture review (law vs labeled opinion) → Echo + Tango on labels/copy → Mike/Foxtrot only when host + write path are proposed → **BUILD** only after India **APPROVED** plus chair GO → only then Juliet execution plan.
 
 ---
 
-*End of Native Apply Form Spec v0.1 (DRAFT — chair accept + tag-18 plumbing amendment)*
+*End of Native Apply Form Spec v0.1 (DRAFT — chair accept + lock.md in-spec + tag-18 required write)*
