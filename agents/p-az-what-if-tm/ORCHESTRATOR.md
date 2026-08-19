@@ -27,8 +27,8 @@ W-G Delta
 |--------|-----------|-------|
 | W0-0 … W0-BA | Review gauntlet | Landed, not required if Coach stamps impl plan |
 | **W1-1** | Coach fire impl plan | **PASS** (`67c50aa`) |
-| **W2-1** | W1-1 PASS | **in flight** |
-| W3-1 | W1-1 PASS (∥ W2) | NEXT |
+| **W2-1** | W1-1 PASS | **PASS** (`23c2f83`) |
+| **W3-1** | W1-1 PASS (∥ W2) | **in flight** |
 | W4-1 | W2 + W3 | BLOCKED |
 | W5-1 | W2 + W3 | BLOCKED |
 | W-G | W4 + W5 | BLOCKED |
@@ -54,4 +54,5 @@ W-G Delta
 | W0 review board | Landed |
 | Impl plan v1.0 | **GO** · DL-451 named W0 bypass |
 | W1 helpers | **PASS** `67c50aa` |
-| W2 Analyzer | in flight |
+| W2 Analyzer | **PASS** `23c2f83` |
+| W3 Surface HUD | in flight |

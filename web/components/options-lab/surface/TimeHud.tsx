@@ -1,11 +1,5 @@
 "use client";
 
-import {
-  isRealityAltered,
-  sliderToTau,
-  tauToSlider,
-} from "@/lib/risk-graph/surfaceInspect";
-
 const resetBtn =
   "inline-flex min-h-11 items-center justify-center rounded-full " +
   "border border-white/15 bg-black/55 px-3.5 text-[13px] font-medium text-white/90 " +
@@ -13,40 +7,49 @@ const resetBtn =
   "focus-visible:outline-white/70 disabled:opacity-35 disabled:pointer-events-none";
 
 export default function TimeHud({
-  tauLo,
-  tauHi,
-  playhead,
-  volOffsetPts,
+  elapsedHours,
+  remainingHours,
+  timeStepHours,
+  timeReadout,
+  timeDisabled,
+  onElapsedHours,
+  simIvPct,
+  volMin,
+  volMax,
+  volReadout,
+  volDisabled,
+  onSimIvPct,
   spotPct,
   sample,
   cadenceLabel,
   lastMinuteGold,
-  onPlayhead,
-  onVol,
+  altered,
   onSpotPct,
   onReset,
 }: {
-  tauLo: number;
-  tauHi: number;
-  playhead: number;
-  volOffsetPts: number;
+  elapsedHours: number;
+  remainingHours: number;
+  timeStepHours: number;
+  timeReadout: string;
+  timeDisabled: boolean;
+  onElapsedHours: (h: number) => void;
+  simIvPct: number;
+  volMin: number;
+  volMax: number;
+  volReadout: string;
+  volDisabled: boolean;
+  onSimIvPct: (pct: number) => void;
   spotPct: number;
   sample: number | null;
   cadenceLabel: string;
   lastMinuteGold: boolean;
-  onPlayhead: (t: number) => void;
-  onVol: (pts: number) => void;
+  altered: boolean;
   onSpotPct: (pct: number) => void;
   onReset: () => void;
 }) {
-  const altered = isRealityAltered({
-    tau: playhead,
-    tauNow: tauHi,
-    tauExpiry: tauLo,
-    volOffsetPts,
-    spotPct,
-  });
-  const slider = tauToSlider(playhead, tauHi, tauLo);
+  const rem = Math.max(0, remainingHours);
+  const elapsed = Math.min(Math.max(0, elapsedHours), rem);
+  const volHi = volMax > volMin ? volMax : volMin + 0.1;
   return (
     <div
       className="pointer-events-auto w-full text-white/80"
@@ -55,7 +58,7 @@ export default function TimeHud({
       onPointerDown={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between gap-2 text-[11px]">
-        <span>Time machine</span>
+        <span>What-if</span>
         <span
           data-testid="surface-cadence"
           data-last-minute-gold={lastMinuteGold ? "1" : "0"}
@@ -64,33 +67,40 @@ export default function TimeHud({
         </span>
       </div>
       <label className="mt-2 block text-[11px] text-white/55">
-        Time — left is now, right is later
+        Time
+        <span className="ml-2 font-mono tabular-nums text-white/80">
+          {timeReadout}
+        </span>
         <input
           type="range"
           className="mt-1 w-full"
           min={0}
-          max={1}
-          step={0.005}
-          value={slider}
-          onChange={(e) => onPlayhead(sliderToTau(Number(e.target.value), tauHi, tauLo))}
+          max={rem > 0 ? rem : timeStepHours}
+          step={timeStepHours}
+          value={elapsed}
+          disabled={timeDisabled}
+          onChange={(e) => onElapsedHours(Number(e.target.value))}
           data-testid="surface-playhead"
         />
       </label>
       <div className="mt-0.5 flex justify-between text-[10px] uppercase tracking-wide text-white/40">
         <span>Now</span>
-        <span>Expiry</span>
+        <span data-testid="surface-time-end">Last trade</span>
       </div>
       <label className="mt-2 block text-[11px] text-white/55">
-        Vol {volOffsetPts >= 0 ? "+" : ""}
-        {volOffsetPts.toFixed(0)} pts
+        Implied vol
+        <span className="ml-2 font-mono tabular-nums text-white/80">
+          {volReadout}
+        </span>
         <input
           type="range"
           className="mt-1 w-full"
-          min={-30}
-          max={30}
-          step={1}
-          value={volOffsetPts}
-          onChange={(e) => onVol(Number(e.target.value))}
+          min={volMin}
+          max={volHi}
+          step={0.1}
+          value={simIvPct}
+          disabled={volDisabled}
+          onChange={(e) => onSimIvPct(Number(e.target.value))}
           data-testid="surface-vol"
         />
       </label>

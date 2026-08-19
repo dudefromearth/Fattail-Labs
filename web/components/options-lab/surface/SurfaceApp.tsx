@@ -48,11 +48,28 @@ import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
 import { visibleBookTrade } from "@/lib/options-lab/cardDisplayState";
 import { computeExpiredGhostSheet } from "@/lib/risk-graph/surfaceGhost";
 import { useOpfRiskGraph } from "@/lib/options-lab/useOpfRiskGraph";
+import {
+  formatWhatIfTimeReadout,
+  remainingLastTradeHours,
+  tauYearsWhatIf,
+  tauYearsWhatIfAfterElapsed,
+  whatIfTimeStepHours,
+} from "@/lib/options-lab/whatIfClocks";
+import {
+  formatWhatIfVolReadout,
+  impliedVolSliderRange,
+  loadWhatIfSession,
+  majorityRight,
+  measuredAtmIvPct,
+  saveWhatIfSession,
+  volOffsetPtsFromScenario,
+} from "@/lib/options-lab/whatIfVol";
 import { useLiveUnderlierMarks } from "@/lib/market/useLiveUnderlierMarks";
 import {
   MIN_TAU,
   bindListedSurfaceLegs,
   computeSurfaceSheet,
+  expiryFaceTau,
   type OpfLegMarkForSheet,
   type SurfaceSheet,
 } from "@/lib/risk-graph/surfaceModel";
@@ -139,8 +156,12 @@ export default function SurfaceApp() {
   const sheetRef = useRef<SurfaceSheet | null>(null);
   const [tick, setTick] = useState(0);
   const [playhead, setPlayhead] = useState<number | null>(null);
+  const [timeElapsed, setTimeElapsed] = useState(0);
   const [volOffsetPts, setVolOffsetPts] = useState(0);
   const [spotPct, setSpotPct] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [whatIfHydrated, setWhatIfHydrated] = useState(false);
+  const pendingElapsedRef = useRef<number | null>(null);
   const [strikeOn, setStrikeOn] = useState(false);
   const [timeOn, setTimeOn] = useState(true);
   const [strikePos, setStrikePos] = useState(100);
@@ -178,6 +199,12 @@ export default function SurfaceApp() {
     contentHi: number;
     sMin: number;
     sMax: number;
+  } | null>(null);
+  const valueHoldRef = useRef<{
+    key: string;
+    gen: number;
+    contentLo: number;
+    contentHi: number;
   } | null>(null);
 
   useEffect(() => {
@@ -366,10 +393,17 @@ export default function SurfaceApp() {
                 liveLegs.map((l) => l.strike),
                 expiredStrikes,
               ]);
-              const whatIfLegs = bound.legs.map((leg) => ({
-                ...leg,
-                iv: Math.max(1e-8, leg.iv + volOffsetPts / 100),
-              }));
+              const whatIfLegs = bound.legs.map((leg, i) => {
+                const listed = (liveLegs[i]?.expiration || "").slice(0, 10);
+                const tau0 = listed
+                  ? tauYearsWhatIf(listed, nowMs)
+                  : Math.max(leg.tauYears0, MIN_TAU);
+                return {
+                  ...leg,
+                  iv: Math.max(1e-8, leg.iv + volOffsetPts / 100),
+                  tauYears0: tau0,
+                };
+              });
               const hold = fitHoldRef.current;
               const reuse =
                 hold != null &&
@@ -399,10 +433,21 @@ export default function SurfaceApp() {
                 sMin: fit.sMin,
                 sMax: fit.sMax,
               };
+              const tauNow = Math.max(
+                ...whatIfLegs.map((l) => l.tauYears0),
+                MIN_TAU,
+              );
+              const tauFace = expiryFaceTau(whatIfLegs);
+              // Slider / box right end = first listed settlement (OD-PF2).
+              // Never stretch to both-dead τ=0 of a longer back month
+              // (that put expiration at ~1/4 of the thumb).
+              const tauEnd = tauFace < tauNow ? tauFace : 0;
               sheet = computeSurfaceSheet(whatIfLegs, {
                 spot: simSpot,
                 sMin: fit.sMin,
                 sMax: fit.sMax,
+                tauHi: tauNow,
+                tauLo: tauEnd,
                 quality: "per_leg_iv",
                 ivSource: bound.ivSources.join("+"),
                 listedStrikes: strikes,
@@ -491,6 +536,7 @@ export default function SurfaceApp() {
     autofitGen,
     bookFitKey,
     widthPadFrac,
+    nowMs,
   ]);
 
   const { law, detail, sheet, ghostSheet, label, cadence, clock } = view;
@@ -570,7 +616,20 @@ export default function SurfaceApp() {
     beGhostsRef.current = [];
     prevLiveBeRef.current = [];
     setBeLevels([]);
+    setTimeElapsed(0);
+    setPlayhead(null);
   }, [bookFitKey]);
+
+  useEffect(() => {
+    const saved = loadWhatIfSession();
+    if (saved) {
+      setVolOffsetPts(saved.volOffsetPts);
+      pendingElapsedRef.current = saved.elapsedHours;
+    }
+    setWhatIfHydrated(true);
+    const id = window.setInterval(() => setNowMs(Date.now()), 15_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const leaveEgg = () => {
     setEggOn(false);
@@ -606,13 +665,85 @@ export default function SurfaceApp() {
 
   const tauHi = hudSheet?.timeAxis[0] ?? 0;
   const tauLo = hudSheet?.timeAxis[(hudSheet?.timeAxis.length || 1) - 1] ?? 0;
+  const soonestExp = useMemo(() => {
+    const dates = [...trades, ...expiredTrades].flatMap((t) => [
+      t.expiration,
+      ...t.legs.map((l) => l.expiration),
+    ]);
+    return (
+      dates
+        .map((d) => (d || "").slice(0, 10))
+        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+        .sort()[0] ?? null
+    );
+  }, [trades, expiredTrades]);
+  const remainingHours = soonestExp
+    ? remainingLastTradeHours(soonestExp, symbol, nowMs)
+    : 0;
+  const elapsedHours = Math.min(
+    Math.max(0, timeElapsed) * Math.max(0, remainingHours),
+    remainingHours,
+  );
+
+  useEffect(() => {
+    if (pendingElapsedRef.current == null || remainingHours <= 0) return;
+    setTimeElapsed(
+      Math.min(1, Math.max(0, pendingElapsedRef.current / remainingHours)),
+    );
+    pendingElapsedRef.current = null;
+  }, [remainingHours]);
+
+  useEffect(() => {
+    if (!whatIfHydrated) return;
+    saveWhatIfSession({
+      elapsedHours,
+      volOffsetPts,
+      enabled: elapsedHours > 0 || volOffsetPts !== 0,
+    });
+  }, [elapsedHours, volOffsetPts, whatIfHydrated]);
+
+  const measuredSpot =
+    (risk.spot != null && risk.spot > 0 ? risk.spot : null) ??
+    (liveSpot != null && liveSpot > 0 ? liveSpot : null);
+  const measuredPct =
+    soonestExp && measuredSpot != null && risk.generations.length
+      ? measuredAtmIvPct(
+          risk.generations,
+          measuredSpot,
+          soonestExp,
+          majorityRight(trade?.legs ?? []),
+        )
+      : null;
+  const volRange =
+    measuredPct != null ? impliedVolSliderRange(measuredPct) : { min: 1, max: 2 };
+  const simIvPct =
+    measuredPct != null
+      ? Math.min(
+          volRange.max,
+          Math.max(volRange.min, Math.round((measuredPct + volOffsetPts) * 10) / 10),
+        )
+      : volRange.min;
+  const volReadout = formatWhatIfVolReadout(
+    measuredPct,
+    simIvPct,
+    elapsedHours > 0 || volOffsetPts !== 0,
+    trades.length === 0
+      ? "WAITING"
+      : measuredPct == null
+        ? risk.generations.length
+          ? "IV NO"
+          : "WAITING"
+        : null,
+  );
   const tauMin = Math.min(tauLo, tauHi);
   const tauMax = Math.max(tauLo, tauHi);
+  const tauFromWhatIf = soonestExp
+    ? tauYearsWhatIfAfterElapsed(soonestExp, nowMs, elapsedHours)
+    : tauHi;
   const tauStarRaw = playhead ?? tauHi;
-  const tauStar =
-    hudSheet && Number.isFinite(tauStarRaw)
-      ? Math.min(tauMax, Math.max(tauMin, tauStarRaw))
-      : tauStarRaw;
+  const tauStar = hudSheet
+    ? Math.min(tauMax, Math.max(tauMin, tauFromWhatIf))
+    : tauStarRaw;
   const strikeForPlane = hudSheet
     ? Math.min(hudSheet.sMax, Math.max(hudSheet.sMin, strikePos))
     : strikePos;
@@ -621,19 +752,26 @@ export default function SurfaceApp() {
       ? samplePlayhead(hudSheet, hudSheet.spot, tauStar)
       : null;
   const cad = cadenceClaim(cadence === "5-min" ? "5-min" : "live");
-  const valueWindow = hudSheet
-    ? surfaceValueWindow(
-        Math.min(
-          sheet?.minPnL ?? ghostSheet?.minPnL ?? 0,
-          ghostSheet?.minPnL ?? sheet?.minPnL ?? 0,
-        ),
-        Math.max(
-          sheet?.maxPnL ?? ghostSheet?.maxPnL ?? 0,
-          ghostSheet?.maxPnL ?? sheet?.maxPnL ?? 0,
-        ),
-        heightPadFrac,
-      )
-    : null;
+  const valueWindow = useMemo(() => {
+    if (!hudSheet) {
+      valueHoldRef.current = null;
+      return null;
+    }
+    const hold = valueHoldRef.current;
+    const reuse =
+      hold != null && hold.key === bookFitKey && hold.gen === autofitGen;
+    if (!reuse) {
+      valueHoldRef.current = {
+        key: bookFitKey,
+        gen: autofitGen,
+        contentLo: Math.min(hudSheet.minPnL, 0),
+        contentHi: Math.max(hudSheet.maxPnL, 0),
+      };
+    }
+    const next = valueHoldRef.current;
+    if (!next) return null;
+    return surfaceValueWindow(next.contentLo, next.contentHi, heightPadFrac);
+  }, [hudSheet, bookFitKey, autofitGen, heightPadFrac]);
   const timeWalked = hudSheet ? isTimeAltered(tauStar, tauHi, tauLo) : false;
   const altered = hudSheet
     ? isRealityAltered({
@@ -649,6 +787,7 @@ export default function SurfaceApp() {
     if (!sceneRef.current) return;
     sceneRef.current.setInspect({
       timePlayhead: hudSheet ? tauStar : undefined,
+      timeElapsed: hudSheet ? timeElapsed : 0,
       altered,
       valueWindow: valueWindow ?? undefined,
       zoomGain,
@@ -669,7 +808,7 @@ export default function SurfaceApp() {
         value: { visible: valueOpacity > 0, opacity: valueOpacity, position: 0 },
       },
     });
-  }, [sheetKey, tauStar, strikeOn, timeOn, timeWalked, strikeForPlane, altered, valueWindow, sheet, hudSheet, zoomGain, valueOpacity, spots, candlesOn, relief]);
+  }, [sheetKey, tauStar, timeElapsed, strikeOn, timeOn, timeWalked, strikeForPlane, altered, valueWindow, sheet, hudSheet, zoomGain, valueOpacity, spots, candlesOn, relief]);
 
   return (
     <div
@@ -893,7 +1032,7 @@ export default function SurfaceApp() {
               id: crypto.randomUUID(),
               name: `View ${saved.length + 1}`,
               inspect: {
-                playhead: tauStar,
+                playhead: timeElapsed,
                 volOffsetPts,
                 spotPct,
                 strikeOn,
@@ -914,7 +1053,16 @@ export default function SurfaceApp() {
             const v = saved.find((x) => x.id === id);
             if (!v) return;
             const ins = v.inspect || {};
-            if (typeof ins.playhead === "number") setPlayhead(ins.playhead);
+            if (typeof ins.playhead === "number") {
+              if (ins.playhead >= 0 && ins.playhead <= 1) {
+                setTimeElapsed(ins.playhead);
+              } else if (hudSheet) {
+                const span = tauHi - tauLo;
+                setTimeElapsed(
+                  span > 0 ? Math.min(1, Math.max(0, (tauHi - ins.playhead) / span)) : 0,
+                );
+              }
+            }
             if (typeof ins.volOffsetPts === "number") setVolOffsetPts(ins.volOffsetPts);
             if (typeof ins.spotPct === "number") setSpotPct(ins.spotPct);
             if (typeof ins.strikeOn === "boolean") setStrikeOn(ins.strikeOn);
@@ -953,21 +1101,43 @@ export default function SurfaceApp() {
             onRelief={setRelief}
           />
         </HudCollapse>
-        <HudCollapse title="Time" testId="surface-time-wrap">
+        <HudCollapse title="What-if" testId="surface-time-wrap">
           <TimeHud
-            tauLo={hudSheet ? tauLo : 0}
-            tauHi={hudSheet ? tauHi : 1}
-            playhead={hudSheet ? tauStar : 0}
-            volOffsetPts={volOffsetPts}
+            elapsedHours={elapsedHours}
+            remainingHours={remainingHours}
+            timeStepHours={whatIfTimeStepHours(remainingHours)}
+            timeReadout={
+              soonestExp
+                ? formatWhatIfTimeReadout(nowMs, elapsedHours, remainingHours)
+                : "—"
+            }
+            timeDisabled={remainingHours <= 0 || trades.length === 0}
+            onElapsedHours={(h) => {
+              setPlayhead(null);
+              setTimeElapsed(
+                remainingHours > 0
+                  ? Math.min(1, Math.max(0, h / remainingHours))
+                  : 0,
+              );
+            }}
+            simIvPct={simIvPct}
+            volMin={volRange.min}
+            volMax={volRange.max}
+            volReadout={volReadout}
+            volDisabled={measuredPct == null || trades.length === 0}
+            onSimIvPct={(pct) => {
+              if (measuredPct == null) return;
+              setVolOffsetPts(volOffsetPtsFromScenario(pct, measuredPct));
+            }}
             spotPct={spotPct}
             sample={sample}
             cadenceLabel={cad.label}
             lastMinuteGold={cad.lastMinuteGold}
-            onPlayhead={setPlayhead}
-            onVol={setVolOffsetPts}
+            altered={altered}
             onSpotPct={setSpotPct}
             onReset={() => {
               setPlayhead(null);
+              setTimeElapsed(0);
               setVolOffsetPts(0);
               setSpotPct(0);
             }}
