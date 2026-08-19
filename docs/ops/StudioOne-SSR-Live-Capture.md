@@ -121,3 +121,7 @@ tail -f /Volumes/FatTail2TB/fattail-market-data/ssr/live_capture/logs/launchd.er
 ```
 
 Checklist bits stay TAPE / CHAIN / IV / VIX. After 16:00 ET pull today’s prints into `tape/` (`massive_trades_day`) as on Friday — same folder, separate provenance.
+
+**Tick Volume** (same dash, `/volume`): read-only bins + pull logs for the
+16 named symbols. Does not call Massive. `LABS_VP_BINS_ROOT` defaults to
+`/Users/ernie/FatTail-Intelligence/.cache/vp_bins/vp_bins_v3`.

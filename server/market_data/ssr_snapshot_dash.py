@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
-"""Chain Snapshot dashboard — StudioOne localhost only.
+"""Chain Snapshot + Tick Volume dashboard — StudioOne localhost only.
 
-Read-only view of the gold archive on disk. Does not call Massive.
-Does not load Labs boot Config.
+Read-only view of the gold archive and local VP bin cache. Does not call
+Massive. Does not load Labs boot Config. Does not write gold snap folders.
 
   LABS_MARKET_DATA_ROOT=/Volumes/FatTail2TB/fattail-market-data \\
     .venv/bin/python -m market_data.ssr_snapshot_dash
 
-  open http://127.0.0.1:5055
+    open http://127.0.0.1:5055
+    open http://127.0.0.1:5055/volume
+
+Tick Volume reads ``LABS_VP_BINS_ROOT`` (default
+``/Users/ernie/FatTail-Intelligence/.cache/vp_bins/vp_bins_v3``) plus
+sibling ``pulls/{SYM}/nohup.out`` and ``raw/{SYM}/trades`` day counts.
 """
 
 from __future__ import annotations
@@ -15,6 +20,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -38,6 +44,32 @@ NY = ZoneInfo("America/New_York")
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 5055
 _ALLOWED_HOSTS = frozenset({"0.0.0.0", "127.0.0.1", "localhost", "::"})
+
+# Tick Volume page — 16 names only. No cash indexes (SPX / XSP / VIX).
+# Not the fly / Monte Carlo thesis. Bins + pull logs + raw day counts.
+VOLUME_SYMBOLS = (
+    "SPY",
+    "QQQ",
+    "IWM",
+    "GLD",
+    "TLT",
+    "SLV",
+    "USO",
+    "XLF",
+    "UNG",
+    "AAPL",
+    "AMZN",
+    "NVDA",
+    "TSLA",
+    "GOOGL",
+    "META",
+    "MSFT",
+)
+DEFAULT_VP_BINS_ROOT = Path(
+    "/Users/ernie/FatTail-Intelligence/.cache/vp_bins/vp_bins_v3"
+)
+_PULL_TAIL_LINES = 8
+_PULL_RUNNING_AGE_S = 120.0
 
 
 def dash_host() -> str:
@@ -295,6 +327,121 @@ def live_status(*, archive_root: Path | None = None) -> dict[str, Any]:
     }
 
 
+def vp_bins_root() -> Path:
+    raw = (os.environ.get("LABS_VP_BINS_ROOT") or "").strip()
+    if raw:
+        return Path(raw).expanduser()
+    return DEFAULT_VP_BINS_ROOT
+
+
+def vp_pulls_root(bins_root: Path | None = None) -> Path:
+    """Pull logs live next to the algo folder: …/vp_bins/pulls/{SYM}/nohup.out."""
+    return (bins_root or vp_bins_root()).parent / "pulls"
+
+
+def _tail_lines(path: Path, n: int = _PULL_TAIL_LINES) -> list[str]:
+    """Last non-empty lines. Caps the read so a huge nohup.out cannot stall the dash."""
+    try:
+        size = path.stat().st_size
+    except OSError:
+        return []
+    if size <= 0:
+        return []
+    try:
+        with path.open("rb") as fh:
+            if size > 16_384:
+                fh.seek(-16_384, os.SEEK_END)
+            raw = fh.read()
+    except OSError:
+        return []
+    text = raw.decode("utf-8", errors="replace")
+    lines = [ln.rstrip() for ln in text.splitlines() if ln.strip()]
+    return lines[-n:]
+
+
+def _read_bins_meta(path: Path) -> dict[str, Any]:
+    empty = {
+        "status": None,
+        "total_volume": None,
+        "n_bins": None,
+        "last_day": None,
+        "days_ok": None,
+        "present": False,
+    }
+    if not path.is_file():
+        return empty
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {**empty, "present": True, "status": "UNREADABLE"}
+    if not isinstance(doc, dict):
+        return {**empty, "present": True, "status": "UNREADABLE"}
+    return {
+        "status": doc.get("status"),
+        "total_volume": doc.get("total_volume"),
+        "n_bins": doc.get("n_bins"),
+        "last_day": doc.get("last_day"),
+        "days_ok": doc.get("days_ok"),
+        "present": True,
+    }
+
+
+def _pull_state(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {"present": False, "running": False, "tail": [], "mtime": None}
+    try:
+        st = path.stat()
+        mtime = datetime.fromtimestamp(st.st_mtime, tz=NY).isoformat()
+        age_s = max(0.0, time.time() - st.st_mtime)
+    except OSError:
+        return {"present": False, "running": False, "tail": [], "mtime": None}
+    tail = _tail_lines(path)
+    return {
+        "present": True,
+        "running": age_s <= _PULL_RUNNING_AGE_S,
+        "tail": tail,
+        "mtime": mtime,
+    }
+
+
+def _count_raw_trade_days(trades_root: Path) -> int:
+    """Count part-000.parquet files. Do not open or display the tape."""
+    if not trades_root.is_dir():
+        return 0
+    try:
+        return sum(1 for p in trades_root.rglob("part-000.parquet") if p.is_file())
+    except OSError:
+        return 0
+
+
+def volume_bins_payload(
+    *,
+    bins_root: Path | None = None,
+    pulls_root: Path | None = None,
+    market_root: Path | None = None,
+) -> dict[str, Any]:
+    """Read-only Tick Volume board. Never calls Massive. Never writes gold."""
+    bins = bins_root if bins_root is not None else vp_bins_root()
+    pulls = pulls_root if pulls_root is not None else vp_pulls_root(bins)
+    market = market_root if market_root is not None else data_root()
+    rows: list[dict[str, Any]] = []
+    for sym in VOLUME_SYMBOLS:
+        rows.append(
+            {
+                "symbol": sym,
+                "bins": _read_bins_meta(bins / sym / "_meta.json"),
+                "pull": _pull_state(pulls / sym / "nohup.out"),
+                "raw_days": _count_raw_trade_days(market / "raw" / sym / "trades"),
+            }
+        )
+    return {
+        "symbols": rows,
+        "bins_root": str(bins),
+        "pulls_root": str(pulls),
+        "data_root": str(market),
+    }
+
+
 PAGE = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -345,12 +492,23 @@ PAGE = """<!DOCTYPE html>
     border-radius: 8px; padding: 6px 10px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
   .dot.on { background: var(--ok); } .dot.off { background: var(--bad); }
+  nav.tabs { display: flex; gap: 14px; margin-top: 8px; }
+  nav.tabs a { color: var(--muted); text-decoration: none; font-size: 13px; }
+  nav.tabs a:hover { color: var(--text); }
+  nav.tabs a.on { color: var(--text); font-weight: 620; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+    color: var(--muted); max-width: 36em; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; }
 </style>
 </head>
 <body>
 <header>
   <div>
     <h1>Chain Snapshot</h1>
+    <nav class="tabs">
+      <a class="on" href="/">Chain Snapshot</a>
+      <a href="/volume">Tick Volume</a>
+    </nav>
     <div class="sub">StudioOne live counts · Redis + COUNTS.json · read-only</div>
   </div>
   <div class="chips">
@@ -481,6 +639,140 @@ setInterval(load, 2000);
 """
 
 
+VOLUME_PAGE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Tick Volume</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #14181e;
+    --line: #262c36;
+    --text: #e8edf4;
+    --muted: #8b95a5;
+    --ok: #3dd68c;
+    --bad: #ff6b6b;
+    --idle: #8b95a5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  header { padding: 20px 24px 12px; border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  h1 { font-size: 18px; font-weight: 620; margin: 0 0 4px; letter-spacing: .02em; }
+  .sub { color: var(--muted); font-size: 12px; }
+  .chip { padding: 4px 10px; border-radius: 999px; font-size: 12px;
+    border: 1px solid var(--line); background: var(--panel); }
+  main { padding: 16px 24px 40px; display: grid; gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+    font-variant-numeric: tabular-nums; vertical-align: top; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); } .idle { color: var(--idle); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .dot.on { background: var(--ok); } .dot.off { background: var(--idle); }
+  nav.tabs { display: flex; gap: 14px; margin-top: 8px; }
+  nav.tabs a { color: var(--muted); text-decoration: none; font-size: 13px; }
+  nav.tabs a:hover { color: var(--text); }
+  nav.tabs a.on { color: var(--text); font-weight: 620; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+    color: var(--muted); max-width: 36em; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Tick Volume</h1>
+    <nav class="tabs">
+      <a href="/">Chain Snapshot</a>
+      <a class="on" href="/volume">Tick Volume</a>
+    </nav>
+    <div class="sub">Bins + pull logs · 16 names · read-only · no Massive</div>
+  </div>
+  <div>
+    <span id="clock" class="chip">—</span>
+  </div>
+</header>
+<main>
+  <section class="card">
+    <div class="k">Symbols</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>Pull</th>
+          <th>Raw days</th>
+          <th>Bins</th>
+          <th>Total volume</th>
+          <th>Last day</th>
+        </tr>
+      </thead>
+      <tbody id="syms"></tbody>
+    </table>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+function dash(v){ return (v === 0 || v) ? v : '—'; }
+function fmtVol(v){
+  if (v === null || v === undefined || v === '') return '—';
+  const n = Number(v);
+  if (!Number.isFinite(n)) return String(v);
+  return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+function pullCell(p){
+  if (!p || !p.present) return '<span class="idle">waiting</span>';
+  const last = (p.tail && p.tail.length) ? p.tail[p.tail.length - 1] : '';
+  const lab = p.running ? 'running' : 'idle';
+  const cls = p.running ? 'ok' : 'idle';
+  const dot = p.running ? 'on' : 'off';
+  return `<span class="${cls}"><span class="dot ${dot}"></span>${lab}</span>`
+    + (last ? `<div class="mono" title="${last.replace(/"/g, '&quot;')}">${last}</div>` : '');
+}
+function binStatus(b){
+  if (!b || !b.present) return '<span class="idle">waiting</span>';
+  const st = b.status == null || b.status === '' ? 'present' : String(b.status);
+  const cls = /ok|ready|complete|done/i.test(st) ? 'ok'
+    : /fail|error|unread/i.test(st) ? 'bad' : 'idle';
+  return `<span class="${cls}">${st}</span>`;
+}
+function paint(doc){
+  $('clock').textContent = new Date().toLocaleString('en-US', {
+    timeZone:'America/New_York', hour12:false
+  });
+  const rows = (doc.symbols || []).map(s => {
+    const b = s.bins || {};
+    return `<tr>
+      <td>${s.symbol || ''}</td>
+      <td>${pullCell(s.pull)}</td>
+      <td>${dash(s.raw_days)}</td>
+      <td>${binStatus(b)}</td>
+      <td>${fmtVol(b.total_volume)}</td>
+      <td>${dash(b.last_day)}</td>
+    </tr>`;
+  }).join('');
+  $('syms').innerHTML = rows || '<tr><td colspan="6" class="idle">Waiting for bins.</td></tr>';
+}
+async function load(){
+  try {
+    paint(await (await fetch('/api/volume-bins')).json());
+  } catch (e) {
+    $('syms').innerHTML = '<tr><td colspan="6" class="idle">Waiting for bins.</td></tr>';
+  }
+}
+load();
+setInterval(load, 4000);
+</script>
+</body>
+</html>
+"""
+
+
 class QuietHTTPServer(ThreadingHTTPServer):
     allow_reuse_address = True
     daemon_threads = True
@@ -524,6 +816,12 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path in ("/", "/index.html"):
                 self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
+                return
+            if path == "/volume":
+                self._send(200, VOLUME_PAGE.encode("utf-8"), "text/html; charset=utf-8")
+                return
+            if path == "/api/volume-bins":
+                self._json(200, volume_bins_payload())
                 return
             if path == "/api/status":
                 self._json(200, live_status())
