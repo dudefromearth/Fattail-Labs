@@ -186,9 +186,26 @@ function legsInDisplayOrder(legs: readonly LegInput[]): LegInput[] {
 
 // Body 22.5px = 15px × 1.5; chrome scaled with it
 const th =
-  "px-1.5 py-1.5 text-left text-[18px] font-semibold uppercase tracking-wide text-white/45 whitespace-nowrap";
+  "px-1.5 py-2 text-left text-[18px] font-semibold uppercase tracking-wide text-white/55 whitespace-nowrap";
 /** Horizontal pad only — vertical pad is set per card so +24px is shared across legs. */
 const td = "px-1.5 text-[22.5px] tabular-nums whitespace-nowrap";
+const COLS = [
+  "3%",
+  "7%",
+  "8%",
+  "5%",
+  "7%",
+  "11%",
+  "3%",
+  "7%",
+  "6%",
+  "8%",
+  "8%",
+  "6%",
+  "6%",
+  "5%",
+  "10%",
+] as const;
 const TD_PAD_Y = 6;
 const CARD_EXTRA_Y = 24;
 const actionBtn =
@@ -275,54 +292,35 @@ export default function AnalyzerPositionsList({
       data-testid="analyzer-positions-list"
       style={BLOTTER_CSS_VARS}
     >
-      <div className="mb-0.5 flex shrink-0 flex-wrap items-center justify-between gap-2">
-        <span className="text-[14px] font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-          Position List
-          {list.length > 0 ? (
-            <span className="ml-1 font-normal normal-case">({list.length})</span>
-          ) : null}
-        </span>
-        <div className="flex flex-wrap items-center gap-2 text-[14px] text-[var(--color-label-tertiary)]">
-          {/* Trade Log open/close fills · package economics */}
-          <span className="inline-flex items-center gap-1">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-sm"
-              style={{ background: BLOTTER_HEX.openBg }}
-            />
-            Debit
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-sm"
-              style={{ background: BLOTTER_HEX.closeBg }}
-            />
-            Credit
-          </span>
+      {list.length === 0 ? (
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[15px] text-[var(--color-label-tertiary)]">
+            No positions — open Builder to add a structure to the book.
+          </p>
           <button
             type="button"
             onClick={onCreate}
-            className="flex h-6 w-6 items-center justify-center rounded-full border border-[var(--color-separator)] text-sm font-bold text-[var(--color-tint)] hover:bg-[var(--color-fill)]"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--color-separator)] text-sm font-bold text-[var(--color-tint)] hover:bg-[var(--color-fill)]"
             aria-label="Create position"
             data-testid="analyzer-create-position"
           >
             +
           </button>
         </div>
-      </div>
-
-      {list.length === 0 ? (
-        <p className="text-[15px] text-[var(--color-label-tertiary)]">
-          No positions — open Builder to add a structure to the book.
-        </p>
       ) : (
-        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded border border-[var(--color-separator)] bg-[var(--color-surface)]">
+        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded border border-[var(--color-separator)] bg-[#0a0a0e]">
           <table
-            className="w-full min-w-[1200px] border-collapse text-left text-[24px] leading-snug"
+            className="w-full min-w-[1400px] table-fixed border-separate border-spacing-0 text-left text-[24px] leading-snug"
             data-testid="analyzer-positions-table"
           >
-            <thead className="sticky top-0 z-[1] bg-[var(--color-surface)] shadow-[0_1px_0_var(--color-separator)]">
-              <tr className="border-b border-[var(--color-separator)]">
-                <th className={th + " w-8 text-center"} aria-label="Show on graph">
+            <colgroup>
+              {COLS.map((w, i) => (
+                <col key={i} style={{ width: w }} />
+              ))}
+            </colgroup>
+            <thead className="sticky top-0 z-[1] bg-[#0a0a0e] shadow-[0_1px_0_rgba(255,255,255,0.12)]">
+              <tr>
+                <th className={th + " text-center"} aria-label="Show on graph">
                   Show
                 </th>
                 <th className={th}>Spread</th>
@@ -330,7 +328,9 @@ export default function AnalyzerPositionsList({
                 <th className={th + " text-right"}>Qty</th>
                 <th className={th}>Symbol</th>
                 <th className={th}>Exp</th>
-                <th className={th + " w-8 text-center"} aria-label="nudge strikes" />
+                <th className={th + " text-center"} aria-label="Shift strikes">
+                  <span className="sr-only">Strikes</span>
+                </th>
                 <th className={th + " text-right"}>Strike</th>
                 <th className={th}>Type</th>
                 <th className={th + " text-right"}>Price</th>
@@ -338,7 +338,32 @@ export default function AnalyzerPositionsList({
                 <th className={th}>Live</th>
                 <th className={th + " text-right"}>Vol</th>
                 <th className={th}>DTE</th>
-                <th className={th}>Actions</th>
+                <th className={th}>
+                  <span className="inline-flex items-center gap-2">
+                    Actions
+                    <span className="inline-flex items-center gap-1.5 text-[12px] font-medium normal-case tracking-normal text-white/40">
+                      <span
+                        className="inline-block h-2 w-2 rounded-sm"
+                        style={{ background: BLOTTER_HEX.openBg }}
+                      />
+                      Debit
+                      <span
+                        className="inline-block h-2 w-2 rounded-sm"
+                        style={{ background: BLOTTER_HEX.closeBg }}
+                      />
+                      Credit
+                    </span>
+                    <button
+                      type="button"
+                      onClick={onCreate}
+                      className="flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-sm font-bold text-[var(--color-tint)] hover:bg-white/10"
+                      aria-label="Create position"
+                      data-testid="analyzer-create-position"
+                    >
+                      +
+                    </button>
+                  </span>
+                </th>
               </tr>
             </thead>
             {/* One tbody per position — Trade Log block: solid fill, no inter-leg borders */}
@@ -673,7 +698,7 @@ function PosBlock({
               {isTop ? (
                 <select
                   className={
-                    "cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[22.5px] font-semibold uppercase outline-none " +
+                    "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[22.5px] font-semibold uppercase outline-none " +
                     textMain
                   }
                   value={pkgDir === "SELL" ? "sell" : "buy"}
@@ -726,7 +751,7 @@ function PosBlock({
               {isTop && expChoices.length > 0 ? (
                 <select
                   className={
-                    "max-w-[11rem] cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[22.5px] font-semibold outline-none " +
+                    "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[22.5px] font-semibold outline-none " +
                     textMain
                   }
                   value={

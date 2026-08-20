@@ -5,16 +5,14 @@
  * Chrome only. Parent owns OPF / book / Create dialog wiring.
  */
 
-import Link from "next/link";
 import Button from "@/components/ui/Button";
-import { IconChevronRight, IconPlus } from "@/components/ui/icons";
+import { IconPlus } from "@/components/ui/icons";
 import {
   INSPECTOR_W,
   InspectorSection,
   inspectorAside,
   inspectorBody,
   inspectorField,
-  inspectorFooter,
   inspectorListRow,
   inspectorRow,
   inspectorRowLabel,
@@ -88,16 +86,24 @@ export type AnalyzerControlsColumnProps = {
   showReanchor: boolean;
   epochStale: boolean;
   onReanchor: () => void;
-  viewportFocusLabel: string | null;
-  markPkg: string | null;
-  reconLabel: "override" | "n/a held" | "pass" | "fail" | "—";
-  packLine: string | null;
-  bookNotice: string | null;
-  riskError: string | null;
   gexEnabled: boolean;
   onGexEnabled: (value: boolean) => void;
   gexValueMode: ValueModeId;
   onGexValueMode: (value: ValueModeId) => void;
+  gexOpacityPct: number;
+  onGexOpacityPct: (value: number) => void;
+  rangeEnabled: boolean;
+  onRangeEnabled: (value: boolean) => void;
+  rangeHorizon: string;
+  onRangeHorizon: (value: string) => void;
+  rangeExpirations: string[];
+  rangePct1: number;
+  onRangePct1: (value: number) => void;
+  rangeSecondOn: boolean;
+  onRangeSecondOn: (value: boolean) => void;
+  rangePct2: number;
+  onRangePct2: (value: number) => void;
+  rangePctDisabled: boolean;
 };
 
 export default function AnalyzerControlsColumn({
@@ -140,26 +146,29 @@ export default function AnalyzerControlsColumn({
   showReanchor,
   epochStale,
   onReanchor,
-  viewportFocusLabel,
-  markPkg,
-  reconLabel,
-  packLine,
-  bookNotice,
-  riskError,
   gexEnabled,
   onGexEnabled,
   gexValueMode,
   onGexValueMode,
+  gexOpacityPct,
+  onGexOpacityPct,
+  rangeEnabled,
+  onRangeEnabled,
+  rangeHorizon,
+  onRangeHorizon,
+  rangeExpirations,
+  rangePct1,
+  onRangePct1,
+  rangeSecondOn,
+  onRangeSecondOn,
+  rangePct2,
+  onRangePct2,
+  rangePctDisabled,
 }: AnalyzerControlsColumnProps) {
   const simAtRest =
     elapsedHours === 0 &&
     simSpotPct === 0 &&
     !timeMachineEnabled;
-  const showReadout =
-    viewportFocusLabel != null ||
-    markPkg != null ||
-    bookNotice != null ||
-    riskError != null;
 
   return (
     <aside
@@ -271,7 +280,6 @@ export default function AnalyzerControlsColumn({
               ))}
             </select>
           </label>
-          <p className={inspectorFooter}>{model.description}</p>
         </InspectorSection>
 
         <InspectorSection title="Marks">
@@ -340,7 +348,138 @@ export default function AnalyzerControlsColumn({
               ))}
             </select>
           </label>
-          <p className={inspectorFooter}>{gexTemplate.description}</p>
+          <SliderRow
+            label="Opacity"
+            value={`${Math.round(gexOpacityPct)}%`}
+            min={0}
+            max={100}
+            step={1}
+            disabled={!gexEnabled}
+            testId="analyzer-gex-opacity"
+            valueNow={gexOpacityPct}
+            onChange={onGexOpacityPct}
+          />
+        </InspectorSection>
+
+        <InspectorSection title="Range" testId="analyzer-range-panel">
+          <div className={inspectorRow + " justify-between"}>
+            <span className="text-[length:var(--text-subheadline)] text-[var(--color-label)]">
+              Show
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={rangeEnabled}
+              aria-label="Show range"
+              data-testid="analyzer-range-enable"
+              onClick={() => onRangeEnabled(!rangeEnabled)}
+              className={
+                "relative h-7 w-11 shrink-0 rounded-full p-0.5 transition-colors " +
+                (rangeEnabled
+                  ? "bg-[var(--color-tint)]"
+                  : "bg-[var(--color-fill)]")
+              }
+            >
+              <span
+                className={
+                  "block h-6 w-6 rounded-full bg-[var(--color-surface)] shadow-sm transition-transform " +
+                  (rangeEnabled ? "translate-x-4" : "translate-x-0")
+                }
+              />
+            </button>
+          </div>
+          <label className={inspectorRow}>
+            <span className={inspectorRowLabel}>Expiration</span>
+            <select
+              className={inspectorField}
+              value={rangeHorizon}
+              disabled={!rangeEnabled || rangeExpirations.length === 0}
+              onChange={(e) => onRangeHorizon(e.target.value)}
+              data-testid="analyzer-range-horizon"
+            >
+              {rangeExpirations.length === 0 ? (
+                <option value="">—</option>
+              ) : null}
+              {rangeExpirations.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={inspectorRow}>
+            <span className={inspectorRowLabel}>Width</span>
+            <span className="flex min-w-0 flex-1 items-center gap-1">
+              <input
+                className={inspectorField + " font-mono tabular-nums"}
+                type="number"
+                min={0.01}
+                max={99.99}
+                step={0.01}
+                value={
+                  Number.isFinite(rangePct1) ? rangePct1.toFixed(2) : ""
+                }
+                disabled={!rangeEnabled || rangePctDisabled}
+                onChange={(e) => onRangePct1(Number(e.target.value))}
+                data-testid="analyzer-range-pct1"
+                aria-label="Range coverage percent"
+              />
+              <span className="shrink-0 text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]">
+                %
+              </span>
+            </span>
+          </label>
+          <div className={inspectorRow + " justify-between"}>
+            <span className="text-[length:var(--text-subheadline)] text-[var(--color-label)]">
+              Second
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={rangeSecondOn}
+              aria-label="Second range"
+              data-testid="analyzer-range-second"
+              disabled={!rangeEnabled}
+              onClick={() => onRangeSecondOn(!rangeSecondOn)}
+              className={
+                "relative h-7 w-11 shrink-0 rounded-full p-0.5 transition-colors disabled:opacity-45 " +
+                (rangeSecondOn && rangeEnabled
+                  ? "bg-[var(--color-tint)]"
+                  : "bg-[var(--color-fill)]")
+              }
+            >
+              <span
+                className={
+                  "block h-6 w-6 rounded-full bg-[var(--color-surface)] shadow-sm transition-transform " +
+                  (rangeSecondOn && rangeEnabled
+                    ? "translate-x-4"
+                    : "translate-x-0")
+                }
+              />
+            </button>
+          </div>
+          <label className={inspectorRow}>
+            <span className={inspectorRowLabel}>Second</span>
+            <span className="flex min-w-0 flex-1 items-center gap-1">
+              <input
+                className={inspectorField + " font-mono tabular-nums"}
+                type="number"
+                min={0.01}
+                max={99.99}
+                step={0.01}
+                value={
+                  Number.isFinite(rangePct2) ? rangePct2.toFixed(2) : ""
+                }
+                disabled={!rangeEnabled || !rangeSecondOn || rangePctDisabled}
+                onChange={(e) => onRangePct2(Number(e.target.value))}
+                data-testid="analyzer-range-pct2"
+                aria-label="Second range coverage percent"
+              />
+              <span className="shrink-0 text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]">
+                %
+              </span>
+            </span>
+          </label>
         </InspectorSection>
 
         <InspectorSection title="What-if" testId="analyzer-whatif-panel">
@@ -450,87 +589,6 @@ export default function AnalyzerControlsColumn({
             </button>
           ) : null}
         </InspectorSection>
-
-        <InspectorSection title="Go to">
-          <Link
-            href="/app/options-lab/heatmap"
-            className={inspectorListRow + " no-underline"}
-          >
-            <span>Heatmap</span>
-            <IconChevronRight
-              size={20}
-              className="text-[var(--color-tint)]"
-            />
-          </Link>
-        </InspectorSection>
-
-        {showReadout ? (
-          <InspectorSection title="Readout">
-            {viewportFocusLabel ? (
-              <p
-                className="min-h-[var(--hit-min)] px-3 py-2.5 text-[length:var(--text-footnote)] text-[var(--color-tint)]"
-                data-testid="analyzer-viewport-focus"
-              >
-                {viewportFocusLabel}
-              </p>
-            ) : null}
-            {markPkg != null ? (
-              <div className="grid grid-cols-2 divide-x divide-[var(--color-separator)]">
-                <div className="flex min-h-[var(--hit-min)] flex-col justify-center px-3 py-2">
-                  <div className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
-                    Mark pkg
-                  </div>
-                  <div className="font-mono text-[length:var(--text-subheadline)] text-[var(--color-label)]">
-                    {markPkg}
-                  </div>
-                </div>
-                <div className="flex min-h-[var(--hit-min)] flex-col justify-center px-3 py-2">
-                  <div className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
-                    RECON
-                  </div>
-                  <div
-                    className={
-                      "font-mono text-[length:var(--text-subheadline)] font-semibold " +
-                      (reconLabel === "override"
-                        ? "text-[var(--color-tint)]"
-                        : reconLabel === "n/a held"
-                          ? "text-[var(--color-label-tertiary)]"
-                          : reconLabel === "pass"
-                            ? "text-[var(--color-success)]"
-                            : reconLabel === "fail"
-                              ? "text-[var(--color-destructive)]"
-                              : "text-[var(--color-label)]")
-                    }
-                    data-testid="analyzer-recon-chip"
-                  >
-                    {reconLabel}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-            {packLine ? (
-              <p className="px-3 py-2 text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
-                {packLine}
-              </p>
-            ) : null}
-            {bookNotice ? (
-              <p
-                className="px-3 py-2 text-[length:var(--text-footnote)] text-[var(--color-success)]"
-                role="status"
-              >
-                {bookNotice}
-              </p>
-            ) : null}
-            {riskError ? (
-              <p
-                className="px-3 py-2 text-[length:var(--text-footnote)] text-[var(--color-warning)]"
-                role="status"
-              >
-                {riskError}
-              </p>
-            ) : null}
-          </InspectorSection>
-        ) : null}
       </div>
     </aside>
   );

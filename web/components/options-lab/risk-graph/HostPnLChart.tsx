@@ -22,13 +22,24 @@ import {
 import { clampAxisRange } from "@/lib/risk-graph/pnlChartViewPolicy";
 import {
   bindChartHost,
+  CHART_HOST_PAD,
   type HostView,
 } from "@/lib/risk-graph/chartHostBind";
 import type { PnLPoint, PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
-import type { GexProfilePoint } from "@/lib/options-lab/templates/gex";
+import {
+  fmtGexAxis,
+  GEX_DISPLAY_DIV,
+  gexSidePeaks,
+  gexValueToPlotY,
+  type GexProfilePoint,
+} from "@/lib/options-lab/templates/gex";
 import type { ValueModeId } from "@/lib/options-lab/templates/types";
 
-const PAD = { top: 40, right: 20, bottom: 50, left: 60 };
+const PAD = CHART_HOST_PAD;
+const AXIS_FONT = "19.5px ui-monospace, monospace";
+const GEX_CAPTION_FONT = "16.5px ui-monospace, monospace";
+const GEX_CALL_RGB = "14,165,233";
+const GEX_PUT_RGB = "239,68,68";
 
 function niceStep(range: number, target: number): number {
   const rough = range / Math.max(target, 1);
@@ -56,6 +67,9 @@ export type HostPnLChartProps = {
   gexValueMode?: ValueModeId;
   gexPoints?: GexProfilePoint[];
   gexScale?: number;
+  gexOpacityPct?: number;
+  rangeEnabled?: boolean;
+  rangeBands?: { lo: number; hi: number }[];
 };
 
 const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
@@ -75,6 +89,9 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       gexValueMode = "gex_all",
       gexPoints = [],
       gexScale = 1,
+      gexOpacityPct = 40,
+      rangeEnabled = false,
+      rangeBands = [],
     },
     ref,
   ) {
@@ -141,6 +158,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
     useImperativeHandle(ref, () => ({ autoFit }), [autoFit]);
 
     const draw = useCallback(() => {
+      try {
       const canvas = canvasRef.current;
       const host = hostRef.current;
       if (!canvas || !host) return;
@@ -192,12 +210,30 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
 
       ctx.fillStyle = "#0a0a0e";
       ctx.fillRect(0, 0, width, height);
-      ctx.fillStyle = "#0a0a0e";
+      ctx.fillStyle = "#16161c";
       ctx.fillRect(PAD.left, PAD.top, cw, ch);
 
-      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      if (rangeEnabled && rangeBands.length) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(PAD.left, 0, cw, height);
+        ctx.clip();
+        const fills = ["rgba(255,255,255,0.05)", "rgba(255,255,255,0.10)"];
+        rangeBands.forEach((b, i) => {
+          if (!(b.hi > b.lo) || !Number.isFinite(b.lo) || !Number.isFinite(b.hi)) {
+            return;
+          }
+          const x0 = toX(b.lo);
+          const x1 = toX(b.hi);
+          ctx.fillStyle = fills[Math.min(i, fills.length - 1)];
+          ctx.fillRect(x0, 0, Math.max(0, x1 - x0), height);
+        });
+        ctx.restore();
+      }
+
+      ctx.strokeStyle = "rgba(255,255,255,0.14)";
       ctx.lineWidth = 1;
-      ctx.font = "13px ui-monospace, monospace";
+      ctx.font = AXIS_FONT;
       ctx.fillStyle = "rgba(255,255,255,0.48)";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
@@ -226,11 +262,12 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       }
 
       const scale = Math.max(gexScale, 1e-12);
+      const gexA = Math.max(0, Math.min(1, gexOpacityPct / 100));
       const combined =
         gexValueMode === "gex_all" ||
         gexValueMode === "gex_call" ||
         gexValueMode === "gex_put";
-      if (gexEnabled && gexPoints.length) {
+      if (gexEnabled && gexPoints.length && gexA > 0) {
         const inView = gexPoints
           .map((p) => p.strike)
           .filter((k) => k >= xMin && k <= xMax)
@@ -245,8 +282,10 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
             ? ((gaps[Math.floor(gaps.length / 2)] / (xMax - xMin)) * cw)
             : 10;
         const barW = Math.max(2, Math.min(14, gapPx * 0.42));
-        const maxH = ch * 0.42;
         const gexAxisY = PAD.top + ch / 2;
+        const sides = gexSidePeaks(gexPoints);
+        const callPeak = Math.max(sides.call, 1e-12);
+        const putPeak = Math.max(sides.put, 1e-12);
         ctx.save();
         ctx.beginPath();
         ctx.rect(PAD.left, PAD.top, cw, ch);
@@ -254,42 +293,135 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         for (const pt of gexPoints) {
           if (pt.strike < xMin || pt.strike > xMax) continue;
           const cx = toX(pt.strike);
-          const hCall =
-            pt.call != null
-              ? Math.min(1, Math.abs(pt.call) / scale) * maxH
-              : 0;
-          const hPut =
-            pt.put != null
-              ? Math.min(1, Math.abs(pt.put) / scale) * maxH
-              : 0;
           if (combined) {
-            if (hCall > 0.5) {
-              ctx.fillStyle = "rgba(14,165,233,0.38)";
-              ctx.fillRect(cx - barW / 2, gexAxisY - hCall, barW, hCall);
+            if (pt.call != null && sides.hasCall) {
+              const top = gexValueToPlotY(
+                Math.abs(pt.call),
+                callPeak,
+                PAD.top,
+                ch,
+              );
+              const hCall = gexAxisY - top;
+              if (hCall > 0.5) {
+                ctx.fillStyle = `rgba(${GEX_CALL_RGB},${gexA})`;
+                ctx.fillRect(cx - barW / 2, top, barW, hCall);
+              }
             }
-            if (hPut > 0.5) {
-              ctx.fillStyle = "rgba(239,68,68,0.38)";
-              ctx.fillRect(cx - barW / 2, gexAxisY, barW, hPut);
+            if (pt.put != null && sides.hasPut) {
+              const bot = gexValueToPlotY(
+                -Math.abs(pt.put),
+                putPeak,
+                PAD.top,
+                ch,
+              );
+              const hPut = bot - gexAxisY;
+              if (hPut > 0.5) {
+                ctx.fillStyle = `rgba(${GEX_PUT_RGB},${gexA})`;
+                ctx.fillRect(cx - barW / 2, gexAxisY, barW, hPut);
+              }
             }
           } else if (pt.valid && pt.value != null) {
-            const mag = Math.min(1, Math.abs(pt.value) / scale) * maxH;
-            if (mag > 0.5) {
-              const neg = gexValueMode !== "gex_abs" && pt.value < 0;
+            const magY = gexValueToPlotY(
+              gexValueMode === "gex_abs" ? Math.abs(pt.value) : pt.value,
+              scale,
+              PAD.top,
+              ch,
+            );
+            const neg = gexValueMode !== "gex_abs" && pt.value < 0;
+            const h = Math.abs(magY - gexAxisY);
+            if (h > 0.5) {
               ctx.fillStyle = neg
-                ? "rgba(239,68,68,0.38)"
-                : "rgba(14,165,233,0.38)";
-              if (neg) ctx.fillRect(cx - barW / 2, gexAxisY, barW, mag);
-              else ctx.fillRect(cx - barW / 2, gexAxisY - mag, barW, mag);
+                ? `rgba(${GEX_PUT_RGB},${gexA})`
+                : `rgba(${GEX_CALL_RGB},${gexA})`;
+              if (neg) ctx.fillRect(cx - barW / 2, gexAxisY, barW, h);
+              else ctx.fillRect(cx - barW / 2, magY, barW, h);
             }
           }
         }
-        ctx.strokeStyle = "rgba(255,255,255,0.18)";
+        ctx.strokeStyle = `rgba(255,255,255,${0.22 * gexA})`;
         ctx.setLineDash([3, 4]);
         ctx.beginPath();
         ctx.moveTo(PAD.left, gexAxisY);
         ctx.lineTo(width - PAD.right, gexAxisY);
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.restore();
+
+        const xSpine = width - PAD.right;
+        const xLab = xSpine + 6;
+        const paintGexTicks = (
+          peak: number,
+          direction: 1 | -1,
+          rgb: string,
+          includeZero: boolean,
+        ) => {
+          const dispPeak = Math.abs(peak) / GEX_DISPLAY_DIV;
+          if (!(dispPeak > 0)) return;
+          const step = niceStep(Math.max(dispPeak, 1e-9), 4);
+          if (!(step > 0) || !Number.isFinite(step)) return;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.font = AXIS_FONT;
+          const paint = (rawMag: number, isZero: boolean) => {
+            const signed = direction * rawMag;
+            const y = gexValueToPlotY(signed, peak, PAD.top, ch);
+            if (y < PAD.top - 1 || y > PAD.top + ch + 1) return;
+            ctx.strokeStyle = isZero
+              ? "rgba(255,255,255,0.35)"
+              : `rgba(${rgb},0.55)`;
+            ctx.beginPath();
+            ctx.moveTo(xSpine - 4, y);
+            ctx.lineTo(xSpine, y);
+            ctx.stroke();
+            ctx.fillStyle = isZero
+              ? "rgba(255,255,255,0.55)"
+              : `rgba(${rgb},0.92)`;
+            ctx.fillText(fmtGexAxis(signed), xLab, y);
+          };
+          if (includeZero) paint(0, true);
+          for (let u = step; u <= dispPeak + step * 0.001; u += step) {
+            const raw = u * GEX_DISPLAY_DIV;
+            if (raw > Math.abs(peak) * 1.001) break;
+            paint(raw, false);
+          }
+        };
+
+        const caption = (
+          label: string,
+          rgb: string,
+          y: number,
+          baseline: CanvasTextBaseline,
+        ) => {
+          ctx.font = GEX_CAPTION_FONT;
+          ctx.textAlign = "right";
+          ctx.textBaseline = baseline;
+          ctx.fillStyle = rgb.startsWith("rgba") ? rgb : `rgba(${rgb},0.9)`;
+          ctx.fillText(label, width - 8, y);
+        };
+
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,255,255,0.18)";
+        ctx.beginPath();
+        ctx.moveTo(xSpine, PAD.top);
+        ctx.lineTo(xSpine, PAD.top + ch);
+        ctx.stroke();
+        if (combined) {
+          if (sides.hasCall) {
+            caption("Call", GEX_CALL_RGB, PAD.top - 6, "bottom");
+            paintGexTicks(callPeak, 1, GEX_CALL_RGB, !sides.hasPut);
+          }
+          if (sides.hasPut) {
+            caption("Put", GEX_PUT_RGB, PAD.top + ch + 6, "top");
+            paintGexTicks(putPeak, -1, GEX_PUT_RGB, true);
+          }
+        } else if (gexValueMode === "gex_abs") {
+          caption("GEX", GEX_CALL_RGB, PAD.top - 6, "bottom");
+          paintGexTicks(scale, 1, GEX_CALL_RGB, true);
+        } else {
+          caption("Net", "rgba(255,255,255,0.45)", PAD.top - 6, "bottom");
+          paintGexTicks(scale, 1, GEX_CALL_RGB, false);
+          paintGexTicks(scale, -1, GEX_PUT_RGB, true);
+        }
         ctx.restore();
       }
 
@@ -328,16 +460,20 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         ctx.stroke();
       };
       ctx.globalAlpha = 0.45;
-      strokeSeries(expiredExpirationData, "#3b82f6", 1.5);
+      strokeSeries(expiredExpirationData, "#22d3ee", 1.5);
       ctx.globalAlpha = 1;
-      strokeSeries(expirationData, "#3b82f6", 2);
+      strokeSeries(expirationData, "#22d3ee", 2);
       strokeSeries(theoreticalData, theoreticalStroke, 2);
 
-      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.font = "13px ui-monospace, monospace";
+      ctx.fillStyle = "#22d3ee";
       ctx.textAlign = "left";
       ctx.fillText("At expiry", PAD.left + 8, PAD.top + 12);
       ctx.fillStyle = theoreticalStroke;
       ctx.fillText(theoreticalLegendLabel, PAD.left + 8, PAD.top + 28);
+      } catch {
+        /* keep pan/zoom alive */
+      }
     }, [
       expirationData,
       theoreticalData,
@@ -348,6 +484,9 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       gexValueMode,
       gexPoints,
       gexScale,
+      gexOpacityPct,
+      rangeEnabled,
+      rangeBands,
       theoreticalStroke,
       theoreticalLegendLabel,
     ]);
@@ -357,7 +496,12 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
     fitRef.current = fit;
 
     const attach = useCallback((node: HTMLDivElement | null) => {
-      if (unbindRef.current && hostRef.current === node) return;
+      const live =
+        !!node &&
+        hostRef.current === node &&
+        !!unbindRef.current &&
+        node.dataset.wheelBound === "1";
+      if (live) return;
       unbindRef.current?.();
       unbindRef.current = null;
       hostRef.current = node;
@@ -379,12 +523,16 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       drawRef.current();
     }, []);
 
+    const ensureBound = useCallback(() => {
+      const node = hostRef.current;
+      if (!node) return;
+      if (!unbindRef.current || node.dataset.wheelBound !== "1") attach(node);
+    }, [attach]);
+
     useEffect(() => {
       const onShow = () => {
-        const node = hostRef.current;
-        if (!node) return;
-        if (!unbindRef.current) attach(node);
-        else drawRef.current();
+        ensureBound();
+        drawRef.current();
       };
       const onVis = () => {
         if (document.visibilityState === "visible") onShow();
@@ -394,15 +542,14 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       return () => {
         window.removeEventListener("pageshow", onShow);
         document.removeEventListener("visibilitychange", onVis);
-        unbindRef.current?.();
-        unbindRef.current = null;
       };
-    }, [attach]);
+    }, [ensureBound]);
 
     useEffect(() => {
       if (!userAdjustedRef.current) viewRef.current = fit();
+      ensureBound();
       drawRef.current();
-    }, [fit, draw]);
+    }, [fit, draw, ensureBound]);
 
     return (
       <div

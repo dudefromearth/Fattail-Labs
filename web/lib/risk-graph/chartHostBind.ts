@@ -12,7 +12,9 @@ export type HostView = {
   yMax: number;
 };
 
-const PAD = { top: 40, right: 20, bottom: 50, left: 60 };
+/** Plot inset. Right pad is the GEX scale column — keep in lockstep with HostPnLChart. */
+export const CHART_HOST_PAD = { top: 44, right: 92, bottom: 58, left: 90 };
+const PAD = CHART_HOST_PAD;
 
 export function bindChartHost(opts: {
   host: HTMLElement;
@@ -21,6 +23,13 @@ export function bindChartHost(opts: {
   draw: () => void;
 }): () => void {
   const { host, view, userAdjusted, draw } = opts;
+  const safeDraw = () => {
+    try {
+      draw();
+    } catch {
+      /* pan/zoom must survive a paint error */
+    }
+  };
   let dragging = false;
   let pointerId: number | null = null;
   let startX = 0;
@@ -74,7 +83,7 @@ export function bindChartHost(opts: {
       yMax: view0.yMax + (dy / ch) * yRange,
     };
     if (dx !== 0 || dy !== 0) userAdjusted.current = true;
-    draw();
+    safeDraw();
   };
 
   const onUp = (e?: PointerEvent) => {
@@ -115,7 +124,7 @@ export function bindChartHost(opts: {
       view.current.xMax = r.max;
     }
     userAdjusted.current = true;
-    draw();
+    safeDraw();
   };
 
   const onLost = () => onUp();

@@ -51,10 +51,7 @@ import {
   type OpfModelOption,
 } from "@/lib/options-lab/opfModels";
 import { parseTosScript } from "@/lib/options-lab/tosParser";
-import {
-  combineParsedTrades,
-  parsedTradeToPositionInput,
-} from "@/lib/options-lab/positionToTrade";
+import { parsedTradeToPositionInput } from "@/lib/options-lab/positionToTrade";
 import { buildLabel, buildNotation } from "@/lib/options-lab/positionLabels";
 import type { PositionInput } from "@/lib/options-lab/positionTypes";
 import { useBuilderChain } from "@/lib/options-lab/useBuilderChain";
@@ -69,6 +66,7 @@ import {
   impliedVolSliderRange,
   loadWhatIfSession,
   majorityRight,
+  measuredAtmIvDecimal,
   measuredAtmIvPct,
   saveWhatIfSession,
   volOffsetPtsFromScenario,
@@ -84,7 +82,6 @@ import AnalyzerAlertsSection from "@/components/options-lab/AnalyzerAlertsSectio
 import AnalyzerPositionsList from "@/components/options-lab/AnalyzerPositionsList";
 import AnalyzerControlsColumn from "@/components/options-lab/AnalyzerControlsColumn";
 import PositionBuilder from "@/components/options-lab/PositionBuilder";
-import SurfaceViewport from "@/components/options-lab/SurfaceViewport";
 import HostPnLChart from "@/components/options-lab/risk-graph/HostPnLChart";
 import type { PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
 import {
@@ -93,17 +90,21 @@ import {
   gexTemplate,
 } from "@/lib/options-lab/templates/gex";
 import type { ValueModeId } from "@/lib/options-lab/templates/types";
+import {
+  bandFromMassPct,
+  RANGE_MASS_1SIGMA,
+  RANGE_MASS_2SIGMA,
+  tYearsFromRemainingHours,
+} from "@/lib/options-lab/probRange";
 
 const GEX_PREF_KEY = "ft_options_lab_analyzer_gex_v1";
+const RANGE_PREF_KEY = "ft_options_lab_analyzer_range_v1";
 import { useSmoothNumber } from "@/lib/useSmoothValue";
 import {
   expiredGhostSeries,
   resolveViewportBookPolicy,
   visibleBookTrade,
 } from "@/lib/options-lab/cardDisplayState";
-
-/** Analyzer viewport modes — Surface is in-viewport, not a suite app (AZ-VP-S1). */
-type AnalyzerViewportMode = "risk" | "surface";
 
 const BOOK_H_KEY = "ft_analyzer_book_height_px";
 const BOOK_H_MIN = 72;
@@ -131,7 +132,7 @@ async function fetchPlanePosture(): Promise<SessionPosture> {
 export default function OpfRiskAnalyzer() {
   const { symbol, setSymbol, universe, loading: universeLoading } =
     useOptionsLab();
-  const [bookNotice, setBookNotice] = useState<string | null>(null);
+  const [, setBookNotice] = useState<string | null>(null);
   const [spotStr, setSpotStr] = useState("");
   const [vixStr, setVixStr] = useState("");
   /** Member edited spot/VIX fields (auto-fill is not an override). */
@@ -165,13 +166,20 @@ export default function OpfRiskAnalyzer() {
     () => loadAlerts(),
   );
   const [posture, setPosture] = useState<SessionPosture>("Held");
-  const [viewportMode, setViewportMode] =
-    useState<AnalyzerViewportMode>("risk");
   const [gexEnabled, setGexEnabled] = useState(true);
   const [gexValueMode, setGexValueMode] = useState<ValueModeId>(
     gexTemplate.defaultValueMode,
   );
+  const [gexOpacityPct, setGexOpacityPct] = useState(40);
   const [gexPrefReady, setGexPrefReady] = useState(false);
+  const [rangeEnabled, setRangeEnabled] = useState(true);
+  const [rangeHorizon, setRangeHorizon] = useState("");
+  const [rangePct1, setRangePct1] = useState(RANGE_MASS_1SIGMA);
+  const [rangePct2, setRangePct2] = useState(RANGE_MASS_2SIGMA);
+  const [rangeSecondOn, setRangeSecondOn] = useState(true);
+  const [rangePct1Dirty, setRangePct1Dirty] = useState(false);
+  const [rangePct2Dirty, setRangePct2Dirty] = useState(false);
+  const [rangePrefReady, setRangePrefReady] = useState(false);
 
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
@@ -283,11 +291,18 @@ export default function OpfRiskAnalyzer() {
         setGexPrefReady(true);
         return;
       }
-      const p = JSON.parse(raw) as { enabled?: boolean; valueMode?: string };
+      const p = JSON.parse(raw) as {
+        enabled?: boolean;
+        valueMode?: string;
+        opacityPct?: number;
+      };
       if (typeof p.enabled === "boolean") setGexEnabled(p.enabled);
       const modes = new Set(gexTemplate.valueModes.map((m) => m.id));
       if (p.valueMode && modes.has(p.valueMode as ValueModeId)) {
         setGexValueMode(p.valueMode as ValueModeId);
+      }
+      if (typeof p.opacityPct === "number" && Number.isFinite(p.opacityPct)) {
+        setGexOpacityPct(Math.max(0, Math.min(100, p.opacityPct)));
       }
     } catch {
       /* ignore */
@@ -299,12 +314,79 @@ export default function OpfRiskAnalyzer() {
     try {
       sessionStorage.setItem(
         GEX_PREF_KEY,
-        JSON.stringify({ enabled: gexEnabled, valueMode: gexValueMode }),
+        JSON.stringify({
+          enabled: gexEnabled,
+          valueMode: gexValueMode,
+          opacityPct: gexOpacityPct,
+        }),
       );
     } catch {
       /* ignore */
     }
-  }, [gexEnabled, gexValueMode, gexPrefReady]);
+  }, [gexEnabled, gexValueMode, gexOpacityPct, gexPrefReady]);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(RANGE_PREF_KEY);
+      if (!raw) {
+        setRangePrefReady(true);
+        return;
+      }
+      const p = JSON.parse(raw) as {
+        enabled?: boolean;
+        horizon?: string;
+        pct1?: number;
+        pct2?: number;
+        secondOn?: boolean;
+        pct1Dirty?: boolean;
+        pct2Dirty?: boolean;
+      };
+      if (typeof p.enabled === "boolean") setRangeEnabled(p.enabled);
+      if (typeof p.horizon === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.horizon)) {
+        setRangeHorizon(p.horizon);
+      }
+      if (typeof p.pct1 === "number" && Number.isFinite(p.pct1) && p.pct1 >= 50) {
+        setRangePct1(Math.max(0.01, Math.min(99.99, Math.round(p.pct1 * 100) / 100)));
+      }
+      if (typeof p.pct2 === "number" && Number.isFinite(p.pct2) && p.pct2 >= 50) {
+        setRangePct2(Math.max(0.01, Math.min(99.99, Math.round(p.pct2 * 100) / 100)));
+      }
+      if (typeof p.secondOn === "boolean") setRangeSecondOn(p.secondOn);
+      if (typeof p.pct1Dirty === "boolean") setRangePct1Dirty(p.pct1Dirty);
+      if (typeof p.pct2Dirty === "boolean") setRangePct2Dirty(p.pct2Dirty);
+    } catch {
+      /* ignore */
+    }
+    setRangePrefReady(true);
+  }, []);
+  useEffect(() => {
+    if (!rangePrefReady) return;
+    try {
+      sessionStorage.setItem(
+        RANGE_PREF_KEY,
+        JSON.stringify({
+          enabled: rangeEnabled,
+          horizon: rangeHorizon,
+          pct1: rangePct1,
+          pct2: rangePct2,
+          secondOn: rangeSecondOn,
+          pct1Dirty: rangePct1Dirty,
+          pct2Dirty: rangePct2Dirty,
+        }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [
+    rangeEnabled,
+    rangeHorizon,
+    rangePct1,
+    rangePct2,
+    rangeSecondOn,
+    rangePct1Dirty,
+    rangePct2Dirty,
+    rangePrefReady,
+  ]);
 
   useEffect(() => {
     // Never persist the pre-hydrate empty default — that wiped the book and
@@ -672,6 +754,71 @@ export default function OpfRiskAnalyzer() {
     atmRight,
   ]);
 
+  const rangeExpirations = useMemo(
+    () =>
+      [...chain.expirations]
+        .map((e) => e.slice(0, 10))
+        .filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e))
+        .sort(),
+    [chain.expirations],
+  );
+
+  useEffect(() => {
+    if (!rangeExpirations.length) return;
+    setRangeHorizon((prev) => {
+      if (prev && rangeExpirations.includes(prev)) return prev;
+      const fromTrade = (soonestExp || "").slice(0, 10);
+      if (fromTrade && rangeExpirations.includes(fromTrade)) return fromTrade;
+      return rangeExpirations[0];
+    });
+  }, [rangeExpirations, soonestExp]);
+
+  const rangeIvDecimal = useMemo(() => {
+    if (!rangeHorizon) return null;
+    const spot =
+      (spotOverride != null && spotOverride > 0 ? spotOverride : null) ??
+      (risk.spot != null && risk.spot > 0 ? risk.spot : null) ??
+      (chain.spot != null && chain.spot > 0 ? chain.spot : null);
+    if (spot == null) return null;
+    if (!risk.generations.length) return null;
+    const fromGen = measuredAtmIvDecimal(
+      risk.generations,
+      spot,
+      rangeHorizon,
+      atmRight,
+    );
+    if (fromGen != null) return fromGen;
+    const strikes = chain.getStrikes(rangeHorizon);
+    if (!strikes.length) return null;
+    let bestK = strikes[0];
+    let bestD = Math.abs(bestK - spot);
+    for (const k of strikes) {
+      const d = Math.abs(k - spot);
+      if (d < bestD) {
+        bestK = k;
+        bestD = d;
+      }
+    }
+    const c = chain.getContract(rangeHorizon, bestK, atmRight);
+    const iv = c?.iv;
+    if (iv == null || !(iv > 0) || !Number.isFinite(iv)) return null;
+    return iv > 3 ? iv / 100 : iv;
+  }, [
+    rangeHorizon,
+    spotOverride,
+    risk.spot,
+    risk.generations,
+    chain,
+    atmRight,
+  ]);
+
+  const rangeTYears = useMemo(() => {
+    if (!rangeHorizon) return tYearsFromRemainingHours(0);
+    return tYearsFromRemainingHours(
+      remainingLastTradeHours(rangeHorizon, symbol, nowMs),
+    );
+  }, [rangeHorizon, symbol, nowMs]);
+
   const volRange = measuredPct != null ? impliedVolSliderRange(measuredPct) : { min: 1, max: 2 };
 
   useEffect(() => {
@@ -758,6 +905,30 @@ export default function OpfRiskAnalyzer() {
     if (s === "RUT") return 2200;
     return 100;
   }, [displaySpot, risk.spot, chain.spot, spotStr, symbol]);
+
+  const rangeCenterSpot =
+    timeMachineEnabled && simSpot > 0
+      ? simSpot
+      : displaySpot > 0
+        ? displaySpot
+        : axisSpot;
+  const rangeBands = (() => {
+    const out: { lo: number; hi: number }[] = [];
+    if (!rangeEnabled || rangeIvDecimal == null) return out;
+    const args = {
+      spot: rangeCenterSpot,
+      ivDecimal: rangeIvDecimal,
+      tYears: rangeTYears,
+    };
+    if (rangeSecondOn) {
+      const outer = bandFromMassPct({ ...args, massPct: rangePct2 });
+      if (outer) out.push(outer);
+    }
+    const inner = bandFromMassPct({ ...args, massPct: rangePct1 });
+    if (inner) out.push(inner);
+    return out;
+  })();
+
   const hasLiveSeries =
     drawLiveCurves &&
     risk.expirationPoints.length > 0 &&
@@ -970,51 +1141,6 @@ export default function OpfRiskAnalyzer() {
     },
   };
 
-  const contributing = bookTrade.contributingIds;
-  const viewportFocusLabel =
-    contributing.length > 0 || focused
-      ? `Viewport · ${
-          contributing.length > 1
-            ? `${contributing.length} positions`
-            : contributing.length === 1
-              ? (positions.find((p) => p.id === contributing[0])?.label ??
-                focused?.label)
-              : focused?.label
-        }${
-          contributing.length === 1 &&
-          positions.find((p) => p.id === contributing[0])?.lock.mode ===
-            "locked"
-            ? " · locked"
-            : ""
-        }`
-      : null;
-  const markPkg = trade
-    ? risk.packageDebit != null
-      ? risk.packageDebit.toFixed(2)
-      : focused?.livePackagePerShare != null
-        ? focused.livePackagePerShare.toFixed(2)
-        : "—"
-    : null;
-  const reconLabel: "override" | "n/a held" | "pass" | "fail" | "—" =
-    inputOverrideActive
-      ? "override"
-      : sessionHeld
-        ? "n/a held"
-        : risk.reconPass === true
-          ? "pass"
-          : risk.reconPass === false
-            ? "fail"
-            : "—";
-  const packLine = trade
-    ? `${risk.packId ?? model.packId}${
-        risk.fromCache && !risk.loading
-          ? " · cache stale"
-          : risk.loading
-            ? " · live…"
-            : ""
-      }`
-    : null;
-
   return (
     <div
       className="flex min-h-0 flex-1 flex-col md:flex-row"
@@ -1105,16 +1231,32 @@ export default function OpfRiskAnalyzer() {
           risk.refresh();
           setEpochPinned(true);
         }}
-        viewportFocusLabel={viewportFocusLabel}
-        markPkg={markPkg}
-        reconLabel={reconLabel}
-        packLine={packLine}
-        bookNotice={bookNotice}
-        riskError={risk.error}
         gexEnabled={gexEnabled}
         onGexEnabled={setGexEnabled}
         gexValueMode={gexValueMode}
         onGexValueMode={setGexValueMode}
+        gexOpacityPct={gexOpacityPct}
+        onGexOpacityPct={setGexOpacityPct}
+        rangeEnabled={rangeEnabled}
+        onRangeEnabled={setRangeEnabled}
+        rangeHorizon={rangeHorizon}
+        onRangeHorizon={setRangeHorizon}
+        rangeExpirations={rangeExpirations}
+        rangePct1={rangePct1}
+        onRangePct1={(value) => {
+          if (!Number.isFinite(value) || value <= 0) return;
+          setRangePct1Dirty(true);
+          setRangePct1(Math.max(0.01, Math.min(99.99, Math.round(value * 100) / 100)));
+        }}
+        rangeSecondOn={rangeSecondOn}
+        onRangeSecondOn={setRangeSecondOn}
+        rangePct2={rangePct2}
+        onRangePct2={(value) => {
+          if (!Number.isFinite(value) || value <= 0) return;
+          setRangePct2Dirty(true);
+          setRangePct2(Math.max(0.01, Math.min(99.99, Math.round(value * 100) / 100)));
+        }}
+        rangePctDisabled={!rangeHorizon}
       />
 
       {/* Right column: viewport + book (under) + alerts — list never left of viewport */}
@@ -1130,40 +1272,8 @@ export default function OpfRiskAnalyzer() {
           data-testid="analyzer-viewport-region"
         >
           <div className="mb-2 flex shrink-0 flex-wrap items-center gap-3 px-1 text-xs text-white/50">
-            <div
-              className="inline-flex rounded-full border border-white/15 bg-white/5 p-0.5"
-              role="tablist"
-              aria-label="Analyzer viewport"
-              data-testid="analyzer-viewport-mode"
-            >
-              {(
-                [
-                  { id: "risk" as const, label: "Risk graph" },
-                  { id: "surface" as const, label: "Surface" },
-                ] as const
-              ).map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={viewportMode === m.id}
-                  className={
-                    "rounded-full px-3 py-1 text-[11px] font-semibold transition " +
-                    (viewportMode === m.id
-                      ? "bg-white/15 text-white"
-                      : "text-white/45 hover:text-white/70")
-                  }
-                  onClick={() => setViewportMode(m.id)}
-                  data-testid={`analyzer-viewport-${m.id}`}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
             <span className="font-semibold text-white/80">
-              {trade
-                ? `${trade.symbol} · ${viewportMode === "surface" ? "Surface" : "OPF risk graph"}`
-                : "No trade"}
+              {trade ? `${trade.symbol} · OPF risk graph` : "No trade"}
             </span>
             <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80">
               {activeModel.label}
@@ -1171,33 +1281,19 @@ export default function OpfRiskAnalyzer() {
             <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60">
               {timeRefLabel}
             </span>
-            {viewportMode === "risk" && (
-              <>
-                <span>
-                  Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
-                </span>
-                <span className="text-emerald-400/80">Expiration</span>
-                <span className="text-fuchsia-400/80">
-                  {activeModel.theoLegend}
-                </span>
-              </>
-            )}
+            <span>
+              Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
+            </span>
+            <span className="text-cyan-400/80">Expiration</span>
+            <span className="text-fuchsia-400/80">
+              {activeModel.theoLegend}
+            </span>
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
-            {/* 2D stays mounted (hidden) on Surface so return is not a blank
-                remount. Surface unmounts on Risk so its WebGL host cannot
-                steal drag/wheel from the graph. */}
             <div
               className="absolute inset-0"
               data-testid="analyzer-risk-viewport"
               data-curve-mode={curveMode}
-              style={{
-                visibility: viewportMode === "risk" ? "visible" : "hidden",
-                pointerEvents: viewportMode === "risk" ? "auto" : "none",
-                zIndex: viewportMode === "risk" ? 1 : 0,
-              }}
-              aria-hidden={viewportMode !== "risk"}
-              inert={viewportMode !== "risk"}
             >
                 <HostPnLChart
                   ref={chartRef}
@@ -1238,6 +1334,9 @@ export default function OpfRiskAnalyzer() {
                   gexValueMode={gexValueMode}
                   gexPoints={gexProfile.points}
                   gexScale={gexProfile.scale}
+                  gexOpacityPct={gexOpacityPct}
+                  rangeEnabled={rangeEnabled}
+                  rangeBands={rangeBands}
                 />
                 {/* Centered notice over grid — translucent so scales stay readable */}
                 {viewportFocus?.notice ? (
@@ -1309,25 +1408,6 @@ export default function OpfRiskAnalyzer() {
                   </div>
                 ) : null}
             </div>
-            {viewportMode === "surface" ? (
-              <div className="absolute inset-0 z-[1]">
-                <SurfaceViewport
-                  hasTrade={trades.length > 0 && drawLiveCurves}
-                  symbol={trade?.symbol || symbol}
-                  packLabel={activeModel.label}
-                  loading={risk.loading}
-                  error={risk.error}
-                  notice={viewportFocus?.notice ?? null}
-                  trade={
-                    trades.length > 1
-                      ? combineParsedTrades(trades)
-                      : trade
-                  }
-                  spot={risk.spot}
-                  legMarks={risk.result?.marks?.leg_marks ?? null}
-                />
-              </div>
-            ) : null}
           </div>
         </section>
 
@@ -1362,7 +1442,7 @@ export default function OpfRiskAnalyzer() {
 
         {/* Positions book — fixed height from drag; scrolls when content overflows */}
         <div
-          className="flex shrink-0 flex-col overflow-hidden border-b border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1"
+          className="flex shrink-0 flex-col overflow-hidden border-b border-[var(--color-separator)] bg-[#0a0a0e] px-2 py-1"
           style={{ height: bookHeightPx }}
           data-testid="analyzer-positions-region"
         >

@@ -73,7 +73,15 @@ export function buildGexProfile(
   });
 }
 
-/** p95 scale for bar widths — mode-aware */
+function peakOf(vals: number[]): number {
+  let peak = 0;
+  for (const v of vals) {
+    if (v > peak) peak = v;
+  }
+  return peak || 1;
+}
+
+/** Longest-bar scale — mode-aware. Peak magnitude maps to full bar length. */
 export function gexProfileScale(
   points: GexProfilePoint[],
   mode: ValueModeId,
@@ -85,15 +93,32 @@ export function gexProfileScale(
     } else if (mode === "gex_net") {
       if (p.valid && p.value != null) vals.push(Math.abs(p.value));
     } else {
-      // combined: scale from call magnitude and |put|
       if (p.call != null) vals.push(Math.abs(p.call));
       if (p.put != null) vals.push(Math.abs(p.put));
     }
   }
-  if (!vals.length) return 1;
-  vals.sort((a, b) => a - b);
-  const i = Math.min(vals.length - 1, Math.floor(vals.length * 0.95));
-  return vals[i] || 1;
+  return peakOf(vals);
+}
+
+/** Combined Call/Put: each side has its own longest-bar peak. */
+export function gexSidePeaks(points: GexProfilePoint[]): {
+  call: number;
+  put: number;
+  hasCall: boolean;
+  hasPut: boolean;
+} {
+  const calls: number[] = [];
+  const puts: number[] = [];
+  for (const p of points) {
+    if (p.call != null) calls.push(Math.abs(p.call));
+    if (p.put != null) puts.push(Math.abs(p.put));
+  }
+  return {
+    call: peakOf(calls),
+    put: peakOf(puts),
+    hasCall: calls.length > 0,
+    hasPut: puts.length > 0,
+  };
 }
 
 export const GEX_DISPLAY_DIV = 1e9;
@@ -104,6 +129,35 @@ export function fmtGexProfile(n: number): string {
     maximumFractionDigits: 2,
     minimumFractionDigits: 0,
   });
+}
+
+/** Compact right-axis label. Same ÷1e9 units as heatmap GEX. */
+export function fmtGexAxis(raw: number): string {
+  if (!Number.isFinite(raw) || Math.abs(raw) < 1e-18) return "0";
+  const v = raw / GEX_DISPLAY_DIV;
+  const abs = Math.abs(v);
+  const digits = abs >= 100 ? 0 : abs >= 10 ? 1 : 2;
+  const body = abs.toLocaleString(undefined, {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: 0,
+  });
+  return v < 0 ? `−${body}` : body;
+}
+
+/**
+ * GEX value → plot Y. 0 sits at mid-height; +peak at the top edge, −peak at the bottom.
+ * Bars and the right scale must use this same mapping.
+ */
+export function gexValueToPlotY(
+  value: number,
+  peak: number,
+  plotTop: number,
+  plotHeight: number,
+): number {
+  const maxH = Math.max(1, plotHeight / 2);
+  const axisY = plotTop + plotHeight / 2;
+  const p = Math.max(Math.abs(peak), 1e-12);
+  return axisY - (value / p) * maxH;
 }
 
 export const gexTemplate: HeatmapTemplate = {

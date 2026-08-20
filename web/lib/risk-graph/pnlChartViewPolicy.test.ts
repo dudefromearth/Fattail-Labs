@@ -93,8 +93,17 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(bind.includes("setPointerCapture"), "pointer capture on pan");
   assert(bind.includes("passive: false"), "native wheel");
   assert(bind.includes('addEventListener("pointerdown"'), "native pan");
+  assert(bind.includes("safeDraw"), "draw errors must not kill pan");
   assert(host.includes('ref={attach}'), "bind is host node life");
+  assert(host.includes("ensureBound"), "rebind if listeners dropped");
+  assert(host.includes('wheelBound !== "1"'), "heal on missing wheel bind");
+  assert(
+    !/visibilitychange[\s\S]{0,400}unbindRef\.current\?\.\(\)/.test(host),
+    "pageshow/visibility effect must not unbind the host",
+  );
   assert(az.includes("<HostPnLChart"), "live pane is host-contract chart");
+  assert(!az.includes("SurfaceViewport"), "Analyzer is 2D only; Surface is suite page");
+  assert(!az.includes("analyzer-viewport-surface"), "no in-viewport Surface tab");
   assert(!az.includes("onStrikeDrag="), "AT-AZ-WIRE-1 Packet B not shipped");
 });
 

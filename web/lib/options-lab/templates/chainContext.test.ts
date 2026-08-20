@@ -3,7 +3,13 @@
  */
 
 import { chainContextFromLadder } from "./chainContext";
-import { buildGexProfile, gexProfileScale } from "./gex";
+import {
+  buildGexProfile,
+  fmtGexAxis,
+  gexProfileScale,
+  gexSidePeaks,
+  gexValueToPlotY,
+} from "./gex";
 import { contractKey } from "@/lib/chainLadderApi";
 import type { LadderFull } from "@/lib/chainLadderApi";
 
@@ -38,4 +44,53 @@ assert(pts.length === 2, `strikes ${pts.length}`);
 assert(pts.some((p) => p.call != null && p.put != null), "dual sides");
 const scale = gexProfileScale(pts, "gex_all");
 assert(scale > 0, "scale");
-console.log("chainContext GEX 2 tests passed");
+const peak = Math.max(
+  ...pts.flatMap((p) => [p.call, p.put].filter((n): n is number => n != null).map(Math.abs)),
+);
+assert(scale === peak, `longest-bar scale ${scale} vs peak ${peak}`);
+
+const p95Cutoff = gexProfileScale(
+  Array.from({ length: 20 }, (_, i) => ({
+    strike: i,
+    label: String(i),
+    isSpot: false,
+    value: i === 19 ? 100 : 1,
+    valid: true,
+    call: i === 19 ? 100 : 1,
+    put: 1,
+  })),
+  "gex_all",
+);
+assert(p95Cutoff === 100, `outlier is the scale, not p95 cutoff (${p95Cutoff})`);
+
+const dual = gexSidePeaks([
+  {
+    strike: 1,
+    label: "1",
+    isSpot: false,
+    value: 8,
+    valid: true,
+    call: 10,
+    put: -4,
+  },
+  {
+    strike: 2,
+    label: "2",
+    isSpot: false,
+    value: -3,
+    valid: true,
+    call: 2,
+    put: -8,
+  },
+]);
+assert(dual.call === 10, `call peak ${dual.call}`);
+assert(dual.put === 8, `put peak ${dual.put}`);
+assert(dual.hasCall && dual.hasPut, "both sides");
+
+assert(gexValueToPlotY(0, 100, 40, 200) === 140, "GEX 0 at mid");
+assert(gexValueToPlotY(100, 100, 40, 200) === 40, "call peak at plot top");
+assert(gexValueToPlotY(-100, 100, 40, 200) === 240, "put peak at plot bottom");
+assert(fmtGexAxis(0) === "0", "axis zero");
+assert(fmtGexAxis(-2.5e9).startsWith("−"), `neg axis ${fmtGexAxis(-2.5e9)}`);
+
+console.log("chainContext GEX 6 tests passed");

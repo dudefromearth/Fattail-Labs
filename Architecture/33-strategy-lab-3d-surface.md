@@ -27,7 +27,7 @@ MSC is **design reference only**. No MSC code.
 |---|---|---|
 | Sheet math | `surfaceModel.ts` — bind exact/locked · τ-window · sampleSheet | First-ship landed |
 | Analyzer 2D | OPF resolve + `PnLChart` | Unchanged |
-| Analyzer Surface tab | Preview (`SurfaceViewport` / heritage proto) | Unchanged (S2) |
+| Analyzer viewport | 2D `HostPnLChart` only — in-Analyzer Surface tab **removed** (Coach 2026-08-20) | Surface is the suite page |
 | Product scene | `web/lib/risk-graph/surfaceScene/` | Labs-owned; no `alpha.js` |
 | Route / nav | `/app/options-lab/surface` · suite pill **Surface** | Landed |
 | Views persist | `identities.surface_inspect_json` (130) · PATCH `/api/me/profile` | Landed |

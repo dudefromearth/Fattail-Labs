@@ -150,13 +150,6 @@ test("W0-M splitter A–F listed fly (Coach path unnamed)", async ({ page }) => 
   await waitChartReady(page);
   const afterHardRefresh = await gestures(page);
 
-  // A — Surface tab
-  await page.getByTestId("analyzer-viewport-surface").click();
-  await expect(page.getByTestId("analyzer-surface-viewport")).toBeVisible();
-  await page.getByTestId("analyzer-viewport-risk").click();
-  await waitChartReady(page);
-  const pathA = await gestures(page);
-
   // B — suite Heatmap
   await page
     .getByTestId("options-lab-suite-nav")
@@ -205,7 +198,6 @@ test("W0-M splitter A–F listed fly (Coach path unnamed)", async ({ page }) => 
   const report = {
     afterCreate,
     afterHardRefresh,
-    pathA_surfaceTab: pathA,
     pathB_heatmap: pathB,
     pathC_surfacePage: pathC,
     pathD_apps: pathD,

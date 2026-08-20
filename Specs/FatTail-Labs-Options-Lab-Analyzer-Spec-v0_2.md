@@ -101,7 +101,7 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 | **Viewport(s)** | See §0.3 — Analyzer risk graph · VP · GEX canvases | Pricing SoR (OPF owns package/curves for Analyzer) |
 | **Time machine** | What-if time / vol / spot % into **Analyzer** resolve; sim spot indicator | Changing card legs unless Save; not required on VP/GEX |
 | **Models** | Pack id + use case (day_trade · outlook · backtest); epoch re-anchor | Drawing curves (Analyzer viewport consumes packs) |
-| **Controls** | Posture badge, symbol, ToS paste/Load/Clear, Heatmap/VP links, spot/VIX fields, Refresh/Auto-fit/Builder buttons | Replacing any other bucket’s SoR |
+| **Controls** | Posture badge, symbol, OPF model, spot/VIX, GEX, What-if, Refresh/Auto-fit/Builder. Suite nav (not inspector) for Heatmap / other apps | Replacing any other bucket’s SoR |
 
 ### 0.2.1 Cross-bucket laws
 
@@ -129,8 +129,9 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 
 ## 0.3 Viewports (Analyzer host + attached suite)
 
-The **Viewport** bucket is a **family**. **Surface is not a suite app** — it is an **in-Analyzer viewport mode** (3D mirror of the 2D risk graph).  
-**Keep-warm / last paint / poll rates:** [Analyzer Viewport Keep-Warm Spec v0.1.2](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md) · **DL-418** · **DL-419**. Risk ↔ Surface inherit last-paint and rate-change (AZ-VP-S2 · AZ-KW-8). Live sheet is local (AZ-KW-6 · AZ-KW-10). Layout residual (vertical stack) is **not** this spec.
+The **Viewport** bucket is a **family**. **As-built (Coach 2026-08-20):** Analyzer viewport is the **2D risk graph only**. **Surface** is the suite page `/app/options-lab/surface` (T Ortho lives there). The in-Analyzer Surface tab / `SurfaceViewport` embed is **removed**.  
+**Prior law AZ-VP-S1** (Surface as in-Analyzer mode, not a suite app) is **superseded** by that Coach instruction.  
+**Keep-warm / last paint / poll rates:** [Analyzer Viewport Keep-Warm Spec v0.1.2](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md) · **DL-418** · **DL-419**. Live sheet is local (AZ-KW-6 · AZ-KW-10). Layout residual (vertical stack) is **not** this spec.
 
 ### 0.3.0 Analyzer-hosted viewports (same session)
 
@@ -143,7 +144,7 @@ These share **one** Analyzer session: same **Positions**, **Alerts**, **Models**
 
 | ID | Law |
 |----|-----|
-| **AZ-VP-S1** | **Surface lives in the Analyzer viewport** — not Options Lab top nav, not a second route that owns its own book. |
+| **AZ-VP-S1** | **SUPERSEDED (Coach 2026-08-20).** Analyzer viewport is 2D Risk graph only. Surface is the suite page `/app/options-lab/surface`. |
 | **AZ-VP-S2** | Switching **Risk graph ↔ Surface** must **not** clear focus, positions, alerts, pack, or what-if. |
 | **AZ-VP-S3** | Surface uses the **exact same data plane and pricing SoR as Risk graph** (OPF + dual-side generations). Presentation only differs (mesh vs lines). |
 | **AZ-VP-S4** | **MSC port boundary (DL-302 / B1):** MSC **presentation / scene / interaction** code may be ported when **re-typed** to Labs domain types, with a heritage comment (not an MSC import path). MSC **pricing, theo engines, schemas, Redis keys, and runtime remain forbidden** (DL-293). Labs namespace: `risk-graph/` (not `msc-risk/`). |
@@ -156,12 +157,12 @@ These share **one** Analyzer session: same **Positions**, **Alerts**, **Models**
               │
               ▼
      ┌────────┴────────┐
-     │  VIEWPORT MODE  │  ← Risk graph | Surface
+     │  RISK GRAPH 2D  │  ← Analyzer viewport (HostPnLChart)
      └────────┬────────┘
-        ┌─────┴─────┐
-        ▼           ▼
-   Risk graph    Surface
-   (2D OPF)      (3D OPF mesh)
+              │
+              ▼  suite nav (separate page)
+         Surface 3D
+         /app/options-lab/surface
 ```
 
 ### 0.3.1 Suite / attached viewports (complementary)
@@ -177,7 +178,8 @@ Same **product symbol**; **not** second Positions books. May live as suite tabs 
 ```text
   CONTROLS · symbol S
        │
-       ├─► ANALYZER (host) ── Risk | Surface  + Positions + Alerts
+       ├─► ANALYZER (host) ── 2D Risk graph  + Positions + Alerts
+       ├─► Surface (suite page)
        ├─► Volume Profile (bins)
        ├─► GEX (template / attach)
        └─► Probability (TARGET)
@@ -202,7 +204,7 @@ Same **product symbol**; **not** second Positions books. May live as suite tabs 
 | Viewport | As-built | TARGET |
 |----------|----------|--------|
 | **risk** | 2D OPF graph in Analyzer | Primary default mode |
-| **surface** | **In viewport switcher** (scaffold → MSC 3D port on OPF) | Full 3D mesh, same session as Risk |
+| **surface** | **Suite page** `/app/options-lab/surface` (not in Analyzer viewport) | 3D tent / T Ortho on that page |
 | **volume-profile** | Suite app; candles+bins residual | Bins only (AZ-VP-9) |
 | **gex** | Heatmap template | **OD-AZ7 Accept:** keep as Heatmap template (as-built); suite promotion deferred |
 | **probability** | Partial (`oneSigmaBandWidth`) | **OD-AZ8 Accept:** suite-attached panel · labeled IV/VIX basis · structure-relative band when card focused · vol basis own as_of/session |
@@ -246,7 +248,7 @@ Read with §0.2 buckets: each subsection below tags its bucket.
 | Region | **As-built** | **TARGET (Coach)** |
 |--------|--------------|---------------------|
 | Main split | **Left sidebar** (~21rem) + **right viewport** (`lg:flex-row`) | **Vertical stack:** viewport **above**, position list **below**, with **divider**; single panel with divider *or* two stacked panels |
-| Sidebar contents | **Positions list · Alerts list** · OPF pack · Symbol · ToS · actions · Spot/VIX · What-if · mark/RECON chips | **OD-AZ1 Accept:** top compact control strip; **list under viewport**; **OD-AZ2 Accept:** Alerts under position list |
+| Sidebar contents | **HIG inspector:** Instrument · Marks · GEX · What-if · Graph. No Go to / Readout panels. Position list and Alerts sit **under** the viewport | **OD-AZ1 Accept:** top compact control strip; **list under viewport**; **OD-AZ2 Accept:** Alerts under position list |
 | Viewport | Full remaining height · dark canvas · chart panel | Same — **one** focused graph panel |
 | MSC heritage | MSC had list **left** of viewport | Labs: list **under** viewport |
 
@@ -408,7 +410,8 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Context menu alerts | **Not on host pane** — next overlays program |
 | Position-specific alert | **Not on host pane** — next overlays program |
 | Legend labels | Pack theo legend + Held suffix |
-| GEX backdrop | Same heatmap GEX template + dual-side ladder; bars at listed strikes; GEX axis = plot mid-height; pan/zoom with the view (DL-459) |
+| GEX backdrop | Same heatmap GEX template + dual-side ladder; bars at listed strikes; GEX axis = plot mid-height; **Call/Put = two right scales** (sky call up, red put down), each scaled to that side’s longest bar; Net/Abs = one right scale colored to the bars; units ÷1e9 as heatmap; pan/zoom with the view (DL-459) |
+| Range band | Gray column **behind GEX**, full canvas height. Member % is two-sided normal mass **XX.XX%** (1σ = **68.27%**, 2σ = **95.45%**), not a decimal and not % of spot. Geometry is ±z·σ·√τ on a **listed** expiration (ATM IV). Inspector **Range**: Show/Hide · expiration · Width 68.27% · optional second 95.45%. Pan/zoom with the view. |
 | Heritage | MSC Risk Graph UX only — no MSC pricing import (DL-302 / AZ-VP-S4) |
 
 ### 1.11 What-if (OPF scenario knobs) · A6 Enable
@@ -588,7 +591,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 | Feature | As-built | TARGET |
 |---------|----------|--------|
 | Role | Probability framing for the underlier (and optional structure-relative bands) | Dedicated **Probability viewport** |
-| MSC / chart heritage | `PnLChart` prop `oneSigmaBandWidth` — autofit X so **1σ ≈ ⅓ of viewport** (never less); structure wins if wider | Full PROB panel: 1σ band, labeled vol basis, optional PDF/histogram later |
+| MSC / chart heritage | Autofit still knows 1σ window. **As-built overlay:** gray ±% band behind GEX on `HostPnLChart`; Range inspector Show/Hide · listed expiration · Width % (1σ default) · optional second (2σ default). Honest geometry only (AZ-VP-8). | Dedicated Probability viewport later (OD-AZ8) |
 | Suite nav / route | **None** | **OD-AZ8 Accept:** suite-attached panel (e.g. `/app/options-lab/probability`) |
 | Data | — | Live underlier mid · **labeled IV/VIX basis with own as_of/session** (A8); optional OPF meta; **not** package SoR |
 | Focused card | — | Optional **structure-relative** 1σ / band when a position is focused |
