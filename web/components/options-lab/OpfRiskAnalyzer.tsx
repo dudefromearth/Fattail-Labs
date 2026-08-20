@@ -598,6 +598,21 @@ export default function OpfRiskAnalyzer() {
     );
   }, [positions, strikeDrag, chain]);
 
+  const alertBuilderPositions = useMemo(
+    () =>
+      displayPositions
+        .filter((p) => p.visible)
+        .map((p) => ({
+          id: p.id,
+          strikesLabel: positionStrikeAlertLabel(p),
+        })),
+    [displayPositions],
+  );
+
+  const closeAlertBuilder = useCallback(() => {
+    setAlertBuilderOpen(false);
+  }, []);
+
   const graphBook = useMemo(
     () =>
       visibleBookTrade(displayPositions, {
@@ -1696,13 +1711,8 @@ export default function OpfRiskAnalyzer() {
         seed={alertBuilderSeed}
         symbol={symbol}
         spot={displaySpot}
-        positions={displayPositions
-          .filter((p) => p.visible)
-          .map((p) => ({
-            id: p.id,
-            strikesLabel: positionStrikeAlertLabel(p),
-          }))}
-        onClose={() => setAlertBuilderOpen(false)}
+        positions={alertBuilderPositions}
+        onClose={closeAlertBuilder}
         onSave={(draft: AlertsManagerDraft) => {
           const type =
             draft.trigger.condition === "above"

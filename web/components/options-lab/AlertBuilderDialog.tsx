@@ -5,7 +5,7 @@
  * Save goes through the Alerts Manager hook (adapter until Manager GO).
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 import Modal from "@/components/ui/Modal";
@@ -85,22 +85,35 @@ export default function AlertBuilderDialog({
   const [greek, setGreek] = useState<"delta" | "gamma" | "theta">("delta");
   const [noExp, setNoExp] = useState(false);
   const [expiration, setExpiration] = useState("");
+  const seededRef = useRef(false);
+  const spotRef = useRef(spot);
+  const positionsRef = useRef(positions);
+  spotRef.current = spot;
+  positionsRef.current = positions;
 
   useEffect(() => {
-    if (!open) return;
-    const cat = seed?.category ?? (seed?.kind === "position" ? "position" : "price");
+    if (!open) {
+      seededRef.current = false;
+      return;
+    }
+    if (seededRef.current) return;
+    seededRef.current = true;
+    const liveSpot = spotRef.current;
+    const livePositions = positionsRef.current;
+    const cat =
+      seed?.category ?? (seed?.kind === "position" ? "position" : "price");
     setCategory(cat);
     setCondition(seed?.condition ?? "above");
     setTarget(
       seed?.price != null && Number.isFinite(seed.price)
         ? String(Math.round(seed.price))
-        : spot > 0
-          ? String(Math.round(spot))
+        : liveSpot > 0
+          ? String(Math.round(liveSpot))
           : "",
     );
     setBehavior("once_only");
     setTagId("watch");
-    setPositionId(seed?.positionId || positions[0]?.id || "");
+    setPositionId(seed?.positionId || livePositions[0]?.id || "");
     setPosTab("pnl");
     setGreek("delta");
     setNoExp(false);
@@ -108,7 +121,7 @@ export default function AlertBuilderDialog({
       timeZone: "America/New_York",
     });
     setExpiration(`${et}T16:00`);
-  }, [open, seed, spot, positions]);
+  }, [open, seed]);
 
   const bound = positions.find((p) => p.id === positionId) ?? positions[0];
   const title = useMemo(() => {
@@ -138,13 +151,13 @@ export default function AlertBuilderDialog({
   };
 
   const field =
-    "min-h-[var(--hit-min)] flex-1 rounded-[var(--radius-md)] border border-[var(--color-separator)] " +
-    "bg-[var(--color-fill)] px-2.5 text-[length:var(--text-subheadline)] text-[var(--color-label)] " +
+    "min-h-[var(--hit-min)] w-full rounded-[var(--radius-md)] border border-[var(--color-separator)] " +
+    "bg-[var(--color-fill)] px-3 text-[length:var(--text-body)] text-[var(--color-label)] " +
     "outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
     "focus-visible:outline-[var(--color-tint)]";
   const lab =
-    "w-[7rem] shrink-0 text-[length:var(--text-subheadline)] text-[var(--color-label)]";
-  const row = "flex min-h-[var(--hit-min)] items-center gap-3";
+    "mb-1.5 block text-[length:var(--text-footnote)] font-medium text-[var(--color-label-secondary)]";
+  const group = "flex flex-col";
 
   const tag = ALERT_TAG_CHIPS.find((t) => t.id === tagId) ?? ALERT_TAG_CHIPS[0];
 
@@ -202,8 +215,8 @@ export default function AlertBuilderDialog({
         </>
       }
     >
-      <div className="flex flex-col gap-3">
-        <div className={row}>
+      <div className="flex flex-col gap-6">
+        <div className={group}>
           <span className={lab}>Type</span>
           <SegmentedControl
             ariaLabel="Alert type"
@@ -217,9 +230,12 @@ export default function AlertBuilderDialog({
           category === "greeks" ||
           category === "algo") &&
           positions.length > 0 && (
-            <div className={row}>
-              <span className={lab}>Position</span>
+            <div className={group}>
+              <label className={lab} htmlFor="alert-builder-position">
+                Position
+              </label>
               <select
+                id="alert-builder-position"
                 className={field}
                 value={positionId}
                 onChange={(e) => setPositionId(e.target.value)}
@@ -234,7 +250,8 @@ export default function AlertBuilderDialog({
           )}
 
         {category === "position" && (
-          <>
+          <div className={group}>
+            <span className={lab}>Measure</span>
             <SegmentedControl
               ariaLabel="Position alert family"
               value={
@@ -247,39 +264,27 @@ export default function AlertBuilderDialog({
               options={LIVE_POS_TABS}
               onChange={(id) => setPosTab(id)}
             />
-            <div className="flex gap-1">
-              {(
-                [
-                  ["breakeven", "B/E"],
-                  ["trailing", "Trail"],
-                  ["zerodte", "0DTE"],
-                ] as const
-              ).map(([k, l]) => (
-                <Button
-                  key={k}
-                  variant="plain"
-                  aria-pressed={posTab === k}
-                  onClick={() => setPosTab(k)}
-                >
-                  {l}
-                </Button>
-              ))}
-            </div>
-          </>
+            <p className="mt-2 text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
+              Break-even, trailing, and 0DTE — coming soon.
+            </p>
+          </div>
         )}
 
         {placeholder || algo ? (
           <p
-            className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-separator)] px-4 py-6 text-center text-[length:var(--text-footnote)] text-[var(--color-label-tertiary)]"
+            className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-separator)] px-4 py-8 text-center text-[length:var(--text-subheadline)] text-[var(--color-label-tertiary)]"
             data-testid="analyzer-alert-coming-soon"
           >
-            Coming soon — Save is off. Use Price or Position P&amp;L / Greeks.
+            Coming soon — Save is off.
           </p>
         ) : (
           <>
-            <div className={row}>
-              <span className={lab}>Condition</span>
+            <div className={group}>
+              <label className={lab} htmlFor="alert-builder-condition">
+                Condition
+              </label>
               <select
+                id="alert-builder-condition"
                 className={field}
                 value={condition}
                 onChange={(e) =>
@@ -305,23 +310,25 @@ export default function AlertBuilderDialog({
                 )}
               </select>
             </div>
-            <div className={row}>
+            <div className={group}>
               <span className={lab}>Value</span>
-              <IconButton label="Decrease value" onClick={() => bump(-1)}>
-                −
-              </IconButton>
-              <input
-                className={field + " font-mono text-right"}
-                type="number"
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-              />
-              <IconButton label="Increase value" onClick={() => bump(1)}>
-                <IconPlus size={18} />
-              </IconButton>
+              <div className="flex items-center gap-2">
+                <IconButton label="Decrease value" onClick={() => bump(-1)}>
+                  −
+                </IconButton>
+                <input
+                  className={field + " font-mono text-right"}
+                  type="number"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                />
+                <IconButton label="Increase value" onClick={() => bump(1)}>
+                  <IconPlus size={18} />
+                </IconButton>
+              </div>
             </div>
             {(category === "greeks" || posTab === "greeks") && (
-              <div className={row}>
+              <div className={group}>
                 <span className={lab}>Greek</span>
                 <SegmentedControl
                   ariaLabel="Greek"
@@ -335,9 +342,12 @@ export default function AlertBuilderDialog({
                 />
               </div>
             )}
-            <div className={row}>
-              <span className={lab}>Trigger</span>
+            <div className={group}>
+              <label className={lab} htmlFor="alert-builder-trigger">
+                Trigger
+              </label>
               <select
+                id="alert-builder-trigger"
                 className={field}
                 value={behavior}
                 onChange={(e) =>
@@ -352,9 +362,12 @@ export default function AlertBuilderDialog({
           </>
         )}
 
-        <div className={row}>
-          <span className={lab}>Expiration</span>
+        <div className={group}>
+          <label className={lab} htmlFor="alert-builder-expiration">
+            Expiration
+          </label>
           <input
+            id="alert-builder-expiration"
             className={field}
             type="datetime-local"
             disabled={noExp}
@@ -364,19 +377,19 @@ export default function AlertBuilderDialog({
               setNoExp(false);
             }}
           />
+          <label className="mt-3 flex min-h-[var(--hit-min)] items-center gap-3 text-[length:var(--text-subheadline)] text-[var(--color-label)]">
+            <input
+              type="checkbox"
+              className="h-5 w-5"
+              checked={noExp}
+              onChange={(e) => setNoExp(e.target.checked)}
+            />
+            No expiration
+          </label>
         </div>
-        <label className="flex min-h-[var(--hit-min)] items-center justify-end gap-2 text-[length:var(--text-footnote)] text-[var(--color-label-secondary)]">
-          <input
-            type="checkbox"
-            className="h-5 w-5"
-            checked={noExp}
-            onChange={(e) => setNoExp(e.target.checked)}
-          />
-          No expiration
-        </label>
-        <div className={row}>
-          <span className={lab}>Tags</span>
-          <div className="flex min-h-[var(--hit-min)] flex-1 flex-wrap gap-1">
+        <div className={group}>
+          <span className={lab}>Tag</span>
+          <div className="flex flex-wrap gap-2">
             {ALERT_TAG_CHIPS.map((c) => (
               <button
                 key={c.id}

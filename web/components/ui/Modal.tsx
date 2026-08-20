@@ -27,24 +27,26 @@ export default function Modal({
   footer,
   workSurface,
   testId,
-  widthClass = "w-full max-w-[28.75rem]",
+  widthClass = "w-full max-w-[32rem]",
 }: Props) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
     panelRef.current?.querySelector<HTMLElement>("[data-modal-close]")?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
       prev?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -72,7 +74,7 @@ export default function Modal({
           widthClass
         }
       >
-        <div className="flex min-h-[var(--hit-min)] items-center gap-2 border-b border-[var(--color-separator)] px-3">
+        <div className="flex min-h-[var(--hit-min)] items-center gap-2 border-b border-[var(--color-separator)] px-4">
           <IconButton
             label="Close"
             data-modal-close
@@ -88,9 +90,9 @@ export default function Modal({
           </h2>
           <span className="inline-block min-h-[var(--hit-min)] min-w-[var(--hit-min)]" />
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-6 py-6">{children}</div>
         {footer ? (
-          <div className="flex justify-end gap-2 border-t border-[var(--color-separator)] px-5 py-3">
+          <div className="flex justify-end gap-3 border-t border-[var(--color-separator)] px-6 py-4">
             {footer}
           </div>
         ) : null}
