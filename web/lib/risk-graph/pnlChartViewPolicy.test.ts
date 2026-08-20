@@ -106,6 +106,7 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(!az.includes("analyzer-viewport-surface"), "no in-viewport Surface tab");
   assert(az.includes("onStrikeCommit="), "listed strike handles wired");
   assert(host.includes("bindStrikeHandles"), "yellow ticks bind on host");
+  assert(host.includes("strikeHandleHot"), "handle size follows proximity");
 });
 
 console.log(`\n${n} tests passed`);

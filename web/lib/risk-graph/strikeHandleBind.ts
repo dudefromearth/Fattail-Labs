@@ -82,6 +82,33 @@ function sameHandle(a: StrikeHandle | null, b: StrikeHandle | null): boolean {
   return a.positionId === b.positionId && a.strike === b.strike;
 }
 
+/**
+ * Thick (hot) only while the pointer is in a handle's hit box, or while that
+ * handle is the live drag. Leaving proximity — or ending a drag off a handle —
+ * returns idle size. Shift thickens the whole position only while Shift is
+ * held in that proximity / drag.
+ */
+export function strikeHandleHot(
+  hdl: StrikeHandle,
+  state: {
+    preview: StrikeDragPreview;
+    hover: StrikeHandle | null;
+    hoverShift: boolean;
+  },
+): boolean {
+  const { preview, hover, hoverShift } = state;
+  if (preview) {
+    if (preview.positionId !== hdl.positionId) return false;
+    if (preview.shiftAll) return true;
+    const dest = preview.grabbedStrike + preview.offset;
+    return Math.abs(hdl.strike - dest) < 1e-6;
+  }
+  if (!hover) return false;
+  if (hover.positionId !== hdl.positionId) return false;
+  if (hoverShift) return true;
+  return hover.strike === hdl.strike;
+}
+
 export function bindStrikeHandles(opts: {
   host: HTMLElement;
   view: { current: HostView };
@@ -119,8 +146,16 @@ export function bindStrikeHandles(opts: {
   let startDataX = 0;
   let lastShift = false;
 
-  const wholePosition = (positionId: string, shiftKey: boolean) =>
-    shiftKey || group.current === positionId;
+  const wholePosition = (_positionId: string, shiftKey: boolean) => shiftKey;
+
+  const clearProximity = () => {
+    hover.current = null;
+    hoverShift.current = false;
+    group.current = null;
+    delete host.dataset.strikeHover;
+    delete host.dataset.strikeGroup;
+    if (!dragging) host.style.cursor = "grab";
+  };
 
   const setHover = (next: StrikeHandle | null, shiftKey: boolean) => {
     const shiftChanged = hoverShift.current !== shiftKey;
@@ -131,10 +166,9 @@ export function bindStrikeHandles(opts: {
       host.style.cursor = dragging ? "grabbing" : "grab";
       host.dataset.strikeHover = "1";
       if (shiftKey) host.dataset.strikeGroup = next.positionId;
+      else delete host.dataset.strikeGroup;
     } else {
-      delete host.dataset.strikeHover;
-      if (!group.current) delete host.dataset.strikeGroup;
-      if (!dragging) host.style.cursor = "grab";
+      clearProximity();
     }
     if (changed) draw();
   };
@@ -143,9 +177,8 @@ export function bindStrikeHandles(opts: {
     if (e.button !== 0) return;
     const hit = hitStrikeHandle(e, host, view.current, handles.current);
     if (!hit) {
-      if (group.current) {
-        group.current = null;
-        delete host.dataset.strikeGroup;
+      if (hover.current || group.current || hoverShift.current) {
+        clearProximity();
         draw();
       }
       return;
@@ -242,23 +275,41 @@ export function bindStrikeHandles(opts: {
     if (hover.current) setHover(hover.current, e.type === "keydown");
   };
 
+  const releasePtr = (id: number | null) => {
+    if (id == null) return;
+    try {
+      if (host.hasPointerCapture(id)) host.releasePointerCapture(id);
+    } catch {
+      /* already released */
+    }
+  };
+
   const onUp = (e?: PointerEvent) => {
     if (!dragging) return;
     if (e && pointerId != null && e.pointerId !== pointerId) return;
     const g = grabbed;
     const p = preview.current;
+    const captured = pointerId;
     dragging = false;
     pointerId = null;
     grabbed = null;
     preview.current = null;
     delete host.dataset.strikeDrag;
+    releasePtr(captured);
     const still = e
       ? hitStrikeHandle(e, host, view.current, handles.current)
       : null;
-    hover.current = still;
-    host.style.cursor = still ? "grab" : "grab";
-    if (still) host.dataset.strikeHover = "1";
-    else delete host.dataset.strikeHover;
+    if (still) {
+      hover.current = still;
+      hoverShift.current = !!(e && e.shiftKey);
+      group.current = null;
+      host.style.cursor = "grab";
+      host.dataset.strikeHover = "1";
+      if (e?.shiftKey) host.dataset.strikeGroup = still.positionId;
+      else delete host.dataset.strikeGroup;
+    } else {
+      clearProximity();
+    }
     onPreview?.(null);
     if (g && p && Number.isFinite(p.offset) && p.offset !== 0) {
       const target = snapTarget
@@ -271,16 +322,14 @@ export function bindStrikeHandles(opts: {
           targetStrike: target,
           shiftKey: lastShift,
         });
-      } else {
-        draw();
       }
-    } else {
-      draw();
     }
+    draw();
   };
 
   const onLeave = () => {
     if (dragging) return;
+    if (!hover.current && !group.current && !hoverShift.current) return;
     setHover(null, false);
   };
 
@@ -288,6 +337,7 @@ export function bindStrikeHandles(opts: {
   host.addEventListener("pointermove", onMove, { capture: true });
   host.addEventListener("pointerup", onUp, { capture: true });
   host.addEventListener("pointercancel", onUp, { capture: true });
+  host.addEventListener("lostpointercapture", onUp);
   host.addEventListener("pointerleave", onLeave);
   window.addEventListener("pointerup", onUp);
   window.addEventListener("keydown", onKey);
@@ -295,18 +345,16 @@ export function bindStrikeHandles(opts: {
 
   return () => {
     if (dragging) onUp();
-    hover.current = null;
-    hoverShift.current = false;
+    clearProximity();
     host.removeEventListener("pointerdown", onDown, { capture: true });
     host.removeEventListener("pointermove", onMove, { capture: true });
     host.removeEventListener("pointerup", onUp, { capture: true });
     host.removeEventListener("pointercancel", onUp, { capture: true });
+    host.removeEventListener("lostpointercapture", onUp);
     host.removeEventListener("pointerleave", onLeave);
     window.removeEventListener("pointerup", onUp);
     window.removeEventListener("keydown", onKey);
     window.removeEventListener("keyup", onKey);
     delete host.dataset.strikeDrag;
-    delete host.dataset.strikeHover;
-    delete host.dataset.strikeGroup;
   };
 }

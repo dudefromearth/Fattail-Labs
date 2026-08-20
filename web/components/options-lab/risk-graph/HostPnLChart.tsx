@@ -28,6 +28,7 @@ import {
 import {
   bindStrikeHandles,
   hitStrikeHandle,
+  strikeHandleHot,
   type StrikeHandle,
   type StrikeDragInfo,
   type StrikeDragPreview,
@@ -545,27 +546,15 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         }
         const prev = previewRef.current;
         const hover = hoverRef.current;
-        const groupId =
-          groupRef.current ??
-          (hoverShiftRef.current && hover ? hover.positionId : null);
         for (const hdl of handlesRef.current) {
           const k = hdl.strike;
           if (!Number.isFinite(k) || k < xMin || k > xMax) continue;
           const cx = toX(k);
-          const groupAll =
-            (prev != null && prev.shiftAll && prev.positionId === hdl.positionId) ||
-            (groupId != null && hdl.positionId === groupId);
-          const dest =
-            prev && !prev.shiftAll && prev.positionId === hdl.positionId
-              ? prev.grabbedStrike + prev.offset
-              : null;
-          const hot =
-            groupAll ||
-            (dest != null && Math.abs(hdl.strike - dest) < 1e-6) ||
-            (hover != null &&
-              !groupAll &&
-              hover.positionId === hdl.positionId &&
-              hover.strike === hdl.strike);
+          const hot = strikeHandleHot(hdl, {
+            preview: prev,
+            hover,
+            hoverShift: hoverShiftRef.current,
+          });
           ctx.strokeStyle = hot ? "#fbbf24" : "#f59e0b";
           ctx.lineWidth = hot ? 3 : 1;
           const ht = hot ? 28 : 16;
