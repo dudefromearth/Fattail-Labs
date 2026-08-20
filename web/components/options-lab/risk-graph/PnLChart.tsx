@@ -19,6 +19,11 @@ import {
   EXP_BREAKEVEN_MAX_VIEWPORT_FRAC,
   type AutofitProfile,
 } from '@/lib/risk-graph/pricing/autofitView';
+import {
+  autofitShouldRun2d,
+  clampAxisRange,
+  expBeHashOf,
+} from '@/lib/risk-graph/pnlChartViewPolicy';
 
 export interface PnLPoint {
   price: number;
@@ -133,6 +138,9 @@ interface ViewState {
 const PADDING = { top: 40, right: 20, bottom: 50, left: 60 };
 const CURVE_HIT_DISTANCE = 8; // px
 
+/** Survive Risk ↔ Surface remount (Packet A — chart file only). */
+let stickyView: { view: ViewState; userAdjusted: boolean } | null = null;
+
 /** Linearly interpolate P&L at a given price from sorted PnLPoint array. */
 function findPnLAtPrice(data: PnLPoint[], price: number): number | null {
   if (data.length < 2) return null;
@@ -191,7 +199,10 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
   const expiredAnimFrameRef = useRef<number>(0);
 
   // View state (what portion of data is visible)
-  const viewState = useRef<ViewState>({ xMin: 0, xMax: 100, yMin: -100, yMax: 100 });
+  const viewState = useRef<ViewState>(
+    stickyView?.view ?? { xMin: 0, xMax: 100, yMin: -100, yMax: 100 },
+  );
+  const userAdjustedViewRef = useRef(stickyView?.userAdjusted === true);
 
   // Curve hover state (ref — no rerender on mousemove, drives draw via scheduleDraw)
   const hoveredCurveRef = useRef<'expiration' | 'theoretical' | null>(null);
@@ -329,11 +340,49 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
     gexByStrike, vpProfile, autofitProfile, oneSigmaBandWidth,
   ]);
 
-  // Auto-fit view to data
-  const autoFit = useCallback(() => {
+  const applyFit = useCallback(() => {
     viewState.current = calculateFitBounds();
-    draw();
+    stickyView = {
+      view: { ...viewState.current },
+      userAdjusted: userAdjustedViewRef.current,
+    };
+    drawRef.current();
   }, [calculateFitBounds]);
+
+  // Auto-fit view to data — toolbar / first paint. Clears member lock.
+  const autoFit = useCallback(() => {
+    userAdjustedViewRef.current = false;
+    applyFit();
+  }, [applyFit]);
+
+  const maybeAutofit = useCallback(
+    (trigger: Parameters<typeof autofitShouldRun2d>[0]) => {
+      const run = autofitShouldRun2d(trigger, {
+        userAdjusted: userAdjustedViewRef.current,
+        dragging: isDragging.current,
+        strikeDragging: isStrikeDragging.current,
+      });
+      if (!run) {
+        if (!rafRef.current) {
+          rafRef.current = requestAnimationFrame(() => {
+            rafRef.current = 0;
+            drawRef.current();
+          });
+        }
+        return;
+      }
+      applyFit();
+    },
+    [applyFit],
+  );
+
+  const markUserAdjusted = useCallback(() => {
+    userAdjustedViewRef.current = true;
+    stickyView = {
+      view: { ...viewState.current },
+      userAdjusted: true,
+    };
+  }, []);
 
   // Expose autoFit to parent
   useImperativeHandle(ref, () => ({ autoFit }));
@@ -1075,10 +1124,11 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
       const zoomFactor = 1 - (dx / chartWidth) * 0.5;
       const xCenter = (xMin + xMax) / 2;
       const newXRange = xRange * zoomFactor;
+      const x = clampAxisRange(xCenter - newXRange / 2, xCenter + newXRange / 2);
       viewState.current = {
         ...viewAtDragStart.current,
-        xMin: xCenter - newXRange / 2,
-        xMax: xCenter + newXRange / 2,
+        xMin: x.min,
+        xMax: x.max,
       };
     } else if (isYAxisDrag.current) {
       // Dragging on Y-axis: zoom Y
@@ -1086,10 +1136,11 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
       const zoomFactor = 1 + (dy / chartHeight) * 0.5;
       const yCenter = (yMin + yMax) / 2;
       const newYRange = yRange * zoomFactor;
+      const y = clampAxisRange(yCenter - newYRange / 2, yCenter + newYRange / 2);
       viewState.current = {
         ...viewAtDragStart.current,
-        yMin: yCenter - newYRange / 2,
-        yMax: yCenter + newYRange / 2,
+        yMin: y.min,
+        yMax: y.max,
       };
     } else {
       // Normal drag: pan
@@ -1104,8 +1155,9 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
       };
     }
 
+    if (dx !== 0 || dy !== 0) markUserAdjusted();
     scheduleDraw();
-  }, [scheduleDraw]);
+  }, [scheduleDraw, markUserAdjusted]);
 
   const handleMouseUp = useCallback(() => {
     // Commit strike drag — parent handles snap-to-nearest
@@ -1267,7 +1319,7 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
           hoveredCurveRef.current = newHover;
           scheduleDraw();
         }
-        setCursorStyle(newHover ? 'pointer' : 'crosshair');
+        setCursorStyle('grab');
       } else {
         if (hoveredCurveRef.current !== null) {
           hoveredCurveRef.current = null;
@@ -1278,45 +1330,46 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
     }
   }, [toCanvasX, toCanvasY, toDataX, scheduleDraw]);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
+  const applyWheelZoom = useCallback(
+    (e: { clientX: number; clientY: number; deltaY: number; shiftKey: boolean }) => {
+      const container = containerRef.current;
+      if (!container) return;
 
-    const container = containerRef.current;
-    if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-    const rect = container.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
 
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+      const zoomFactor = e.deltaY > 0 ? 1.03 : 0.97;
 
-    // Zoom factor
-    const zoomFactor = e.deltaY > 0 ? 1.03 : 0.97;
+      const dataX = toDataX(mouseX, width);
+      const dataY = toDataY(mouseY, height);
 
-    // Get mouse position in data coordinates
-    const dataX = toDataX(mouseX, width);
-    const dataY = toDataY(mouseY, height);
+      const { xMin, xMax, yMin, yMax } = viewState.current;
 
-    const { xMin, xMax, yMin, yMax } = viewState.current;
+      if (e.shiftKey) {
+        const y = clampAxisRange(
+          dataY - (dataY - yMin) * zoomFactor,
+          dataY + (yMax - dataY) * zoomFactor,
+        );
+        viewState.current.yMin = y.min;
+        viewState.current.yMax = y.max;
+      } else {
+        const x = clampAxisRange(
+          dataX - (dataX - xMin) * zoomFactor,
+          dataX + (xMax - dataX) * zoomFactor,
+        );
+        viewState.current.xMin = x.min;
+        viewState.current.xMax = x.max;
+      }
 
-    // Zoom around mouse position
-    if (e.shiftKey) {
-      // Shift+scroll: zoom Y only
-      const newYMin = dataY - (dataY - yMin) * zoomFactor;
-      const newYMax = dataY + (yMax - dataY) * zoomFactor;
-      viewState.current.yMin = newYMin;
-      viewState.current.yMax = newYMax;
-    } else {
-      // Normal scroll: zoom X only
-      const newXMin = dataX - (dataX - xMin) * zoomFactor;
-      const newXMax = dataX + (xMax - dataX) * zoomFactor;
-      viewState.current.xMin = newXMin;
-      viewState.current.xMax = newXMax;
-    }
-
-    scheduleDraw();
-  }, [scheduleDraw, toDataX, toDataY]);
+      markUserAdjusted();
+      scheduleDraw();
+    },
+    [scheduleDraw, toDataX, toDataY, markUserAdjusted],
+  );
 
   // Auto-fit when strategies change (strikes array changes), not on every price tick
   const strategyHash = strikes.join(',');
@@ -1325,17 +1378,9 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
   useEffect(() => {
     if (strategyHash !== prevStrategyHash.current) {
       prevStrategyHash.current = strategyHash;
-      if (isStrikeDragging.current) {
-        // During drag, redraw without resetting view bounds
-        draw();
-      } else {
-        autoFit();
-        // Also trigger a delayed autoFit in case container wasn't measured yet
-        const timer = setTimeout(() => autoFit(), 50);
-        return () => clearTimeout(timer);
-      }
+      maybeAutofit("book-change");
     }
-  }, [strategyHash, autoFit, draw]);
+  }, [strategyHash, maybeAutofit]);
 
   // GEX-only auto-fit (priority 2): when GEX data arrives/changes and no positions
   // are loaded, re-fit so the full strike range fills the chart width.
@@ -1345,9 +1390,9 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
     if (gexHash === gexHashRef.current) return;
     gexHashRef.current = gexHash;
     if (gexHash && expirationData.length === 0 && expiredExpirationData.length === 0) {
-      autoFit();
+      maybeAutofit("gex");
     }
-  }, [gexHash, expirationData.length, expiredExpirationData.length, autoFit]);
+  }, [gexHash, expirationData.length, expiredExpirationData.length, maybeAutofit]);
 
   // VP-only auto-fit (priority 3): when VP profile arrives/changes and no positions
   // or GEX are loaded, re-fit to the full VP price range.
@@ -1357,9 +1402,9 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
     if (binCount === vpBinCountRef.current) return;
     vpBinCountRef.current = binCount;
     if (binCount > 0 && !gexHash && expirationData.length === 0 && expiredExpirationData.length === 0) {
-      autoFit();
+      maybeAutofit("vp");
     }
-  }, [vpProfile, gexHash, expirationData.length, expiredExpirationData.length, autoFit]);
+  }, [vpProfile, gexHash, expirationData.length, expiredExpirationData.length, maybeAutofit]);
 
   // Re-fit when spot arrives or drifts — including the empty shell (no strikes /
   // no curves). Scales + grid are the minimal viewport; they must track ATM.
@@ -1371,16 +1416,15 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
     lastFitSpotRef.current = spotPrice;
 
     if (prev === null) {
-      // First real spot (empty book or cold start) — fit ATM window
-      if (!isStrikeDragging.current) autoFit();
+      maybeAutofit("first-paint");
       return;
     }
     const drift = Math.abs(spotPrice - prev);
     const threshold = Math.min(Math.max(prev, 1) * 0.01, 50);
-    if (drift > threshold && !isStrikeDragging.current) {
-      autoFit();
+    if (drift > threshold) {
+      maybeAutofit("live-spot");
     }
-  }, [spotPrice, autoFit]);
+  }, [spotPrice, maybeAutofit]);
 
   // Empty shell (no series): keep axes/grid live when curve mode drops to empty
   const seriesLen =
@@ -1392,24 +1436,19 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
   useEffect(() => {
     if (seriesLen === prevSeriesLen.current) return;
     prevSeriesLen.current = seriesLen;
-    if (!isStrikeDragging.current) autoFit();
-  }, [seriesLen, autoFit]);
+    maybeAutofit("series-len");
+  }, [seriesLen, maybeAutofit]);
 
-  // Re-fit when expiration BEs arrive/change (OPF curves often land after
-  // strikes — without this the ½-viewport BE cap never re-applies).
-  const expBeHash = expirationBreakevens
-    .filter(Number.isFinite)
-    .map(b => b.toFixed(2))
-    .join(',');
+  // Expiration BEs: first land may fit; live jitter must not steal the view.
+  const expBeHash = expBeHashOf(expirationBreakevens);
   const prevExpBeHash = useRef<string | null>(null);
   useEffect(() => {
     if (expBeHash === prevExpBeHash.current) return;
     const had = prevExpBeHash.current;
     prevExpBeHash.current = expBeHash;
-    if (had === null && expBeHash === '') return; // initial empty — wait for data
-    if (isStrikeDragging.current) return;
-    autoFit();
-  }, [expBeHash, autoFit]);
+    if (had === null && expBeHash === '') return;
+    maybeAutofit("exp-be");
+  }, [expBeHash, maybeAutofit]);
 
   // Handle resize - both window and container
   // Track if we've done the initial size setup - using ref to persist across re-renders
@@ -1429,7 +1468,7 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
           if (!hasInitialSizeRef.current) {
             // First time we have valid dimensions - do full autoFit
             hasInitialSizeRef.current = true;
-            autoFit();
+            maybeAutofit("first-paint");
           } else {
             scheduleDraw();
           }
@@ -1450,11 +1489,32 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
   // Initial draw - only on mount, with a small delay to ensure container is measured
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    autoFit();
-    // Redraw after a short delay to ensure layout is complete
-    const timer = setTimeout(() => autoFit(), 100);
+    maybeAutofit("first-paint");
+    const timer = setTimeout(() => maybeAutofit("first-paint"), 100);
     return () => clearTimeout(timer);
-  }, []); // Intentionally empty - only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const host = containerRef.current;
+    if (!host) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      applyWheelZoom(e);
+    };
+    host.addEventListener("wheel", onWheel, { passive: false });
+    const onUp = () => handleMouseUp();
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      host.removeEventListener("wheel", onWheel);
+      window.removeEventListener("mouseup", onUp);
+      stickyView = {
+        view: { ...viewState.current },
+        userAdjusted: userAdjustedViewRef.current,
+      };
+    };
+  }, [applyWheelZoom, handleMouseUp]);
 
   return (
     <div
@@ -1483,29 +1543,17 @@ const PnLChart = forwardRef<PnLChartHandle, PnLChartProps>(({
         onMouseDown={(e) => {
           closeContextMenu();
           if (e.button === 0) {
-            // Left-click on highlighted curve → show position-only popup
-            if (hoveredCurveRef.current) {
-              const container = containerRef.current;
-              if (container) {
-                const rect = container.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-                const width = container.clientWidth;
-                const price = toDataX(mouseX, width);
-                const curveType = hoveredCurveRef.current;
-                const data = curveType === 'expiration' ? expirationDataRef.current : theoreticalDataRef.current;
-                const pnl = findPnLAtPrice(data, price) ?? 0;
-                setContextMenu({ x: mouseX, y: mouseY, price, nearCurve: { pnl, curveType } });
-                return; // Don't start drag
-              }
-            }
-            handleMouseDown(e); setCursorStyle('grabbing');
+            handleMouseDown(e);
+            setCursorStyle('grabbing');
           }
         }}
         onMouseMove={(e) => { handleMouseMove(e); if (!isDragging.current) handleMouseHover(e); }}
         onMouseUp={handleMouseUp}
-        onMouseLeave={() => { handleMouseUp(); setCrosshair(null); }}
-        onWheel={handleWheel}
+        onMouseLeave={() => {
+          if (!isDragging.current && !isStrikeDragging.current) {
+            setCrosshair(null);
+          }
+        }}
         onContextMenu={handleContextMenu}
       />
       {/* Temporary preview line when context menu is open */}

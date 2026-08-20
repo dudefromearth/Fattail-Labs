@@ -160,6 +160,13 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   Board: `agents/p-az-what-if-tm/ORCHESTRATOR.md`.  
   **Next: Coach stamp impl plan to fire W1, or W0-0 review first.**  
   Impl: `docs/Options-Lab-Analyzer-What-If-Time-and-Measured-Vol-Implementation-Plan-v1.0.md`.
+- `agents/p-az-viewport-2d/` — **Analyzer 2D viewport drag & scroll** (sticky view;
+  left-drag pans; right-click alerts; live BE / What-if must not Autofit).  
+  Law: `docs/Options-Lab-Analyzer-Viewport-Drag-Scroll-Analysis-2026-08-19.md`.  
+  **Plan:** `docs/Options-Lab-Analyzer-Viewport-Drag-Scroll-Full-Agent-Bench-Plan-v1.0.md`.  
+  Board: `agents/p-az-viewport-2d/ORCHESTRATOR.md`.  
+  **Next: W0-0 Coach stamp · no PnLChart code before W0-BA (or impl+DL).**  
+  Impl: `docs/Options-Lab-Analyzer-Viewport-Drag-Scroll-Implementation-Plan-v1.0.md`.
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,

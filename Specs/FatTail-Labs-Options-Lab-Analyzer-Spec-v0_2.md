@@ -483,6 +483,9 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 | **Viewport context menu** | Right-click chart → **Price Alert at {price}** → above / below / touch → `createPriceAlert` · `onOpenAlertDialog` |
 | **Position-scoped** | Context near curve with `positionLabels` → pick position notation → alert with `positionId` + price (`onPositionAlertSelect`) |
 | **Focused card default** | Global chart create may attach `focusedId` when present |
+| **Left-click / drag** | **Pan** the plot, including on the tent. **Not** a menu. (As-built left-click-on-curve menu was a deviation — closed DL-457.) |
+| **Wheel** | Zoom strike (X) about the pointer; Shift+wheel = Y. Native non-passive listener. |
+| **Autofit** | First paint · structure change only if the member has **not** taken the view · **Auto-fit** control. **Not** live tick, BE jitter, smoothed spot, or What-if rebuild. Same law as Surface AT-AF-7 (**DL-457**). |
 
 #### 1.14.4 Evaluate (runtime)
 

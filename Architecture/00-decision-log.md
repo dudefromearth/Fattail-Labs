@@ -4,6 +4,31 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-457 Analyzer 2D sticky view (Packet A)
+
+**Decision:** Coach **GO Packet A** on
+[`docs/Options-Lab-Analyzer-Viewport-Drag-Scroll-Implementation-Plan-v1.0.md`](../docs/Options-Lab-Analyzer-Viewport-Drag-Scroll-Implementation-Plan-v1.0.md).
+Left-drag pans (including the tent). Alerts stay **right-click** (Analyzer
+§1.14.3 conformance). After the member moves the view, live BE jitter,
+smoothed spot, series-length ticks, and What-if sheet rebuilds **must
+not Autofit**. Same law as Surface **AT-AF-7** — one law, two surfaces.
+Native `{ passive: false }` wheel on the chart host. View survives
+Risk ↔ Surface remount via an in-module sticky cache.
+
+**W0 packets bypassed** (PL-B2 / same shape as DL-451 What-If impl GO):
+W0-2 India · W0-3 Echo · W0-4 Tango · W0-5 Hotel · W0-G Delta ·
+W0-BA BUILD AUTHORITY.
+
+W0-0 STAMP and W0-1 Lima hash already **PASS**. Echo **VP-A1** silent
+default: Show/Hide = redraw only; lock clears on Auto-fit and structure.
+**VP-A2:** 3% wheel step unchanged. **VP-B1:** `PnLChart.tsx` only.
+Packet B needs its **own** Coach BA.
+
+**Does not:** wire strike-handle drag; reopen What-If W2 /
+`OpfRiskAnalyzer.tsx`; `/resolve`; invent strikes.
+
+---
+
 ## 2026-08-19 — DL-456 /apply Review edits in place
 
 **Decision:** Ernie correction 2026-08-19. Review still lists every asked

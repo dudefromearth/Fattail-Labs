@@ -143,3 +143,5 @@ NX1 τ→16:15 · NX2 ratio wire · NX3 `/resolve` schema · NX4 VIX→IV · NX5
 | W3 Surface HUD | **PASS** |
 | W4 Kilo · W5 Lima | **PASS** |
 | W-G | Not fired (Coach did not ask MiniTwo) |
+
+**Coordination (Analyzer 2D viewport · VP-B1):** What-If **W2 is closed.** A follow-on Analyzer 2D sticky-view packet (`docs/Options-Lab-Analyzer-Viewport-Drag-Scroll-Analysis-2026-08-19.md` Packet A) owns `PnLChart.tsx` only and asserts **AT-2D-AF-7** (What-if sheet rebuild must not Autofit). Do not reopen W2 or share `OpfRiskAnalyzer.tsx` with that packet. Packet B (strike handles) is after A.
