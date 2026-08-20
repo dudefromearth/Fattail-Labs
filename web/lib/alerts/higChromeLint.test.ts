@@ -14,6 +14,8 @@ const FILES = [
   "components/options-lab/AnalyzerControlsColumn.tsx",
   "components/ui/Modal.tsx",
   "components/ui/SegmentedControl.tsx",
+  "app/app/alerts/page.tsx",
+  "components/settings/AlertsPane.tsx",
 ];
 
 const BANNED = [

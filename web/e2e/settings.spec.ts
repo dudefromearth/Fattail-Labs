@@ -48,8 +48,6 @@ test.describe("Member Settings", () => {
     await expect(page.getByTestId("settings-dest-sms")).toBeDisabled();
     await expect(page.getByTestId("settings-dest-email_digest")).toBeDisabled();
     await expect(page.getByText("Coming soon").first()).toBeVisible();
-
-    await page.getByTestId("settings-add-rule").click();
-    await expect(page.getByTestId("settings-alert-rule")).toHaveCount(1);
+    await expect(page.getByTestId("settings-add-rule")).toHaveCount(0);
   });
 });

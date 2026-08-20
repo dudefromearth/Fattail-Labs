@@ -136,6 +136,8 @@ def create_app() -> FastAPI:
     app.include_router(capital_router)
     app.include_router(retrospectives_router)
     app.include_router(member_notifications_router)
+    from routes.alerts import router as alerts_router
+    app.include_router(alerts_router)
     app.include_router(journal_sessions_router)
     app.include_router(tags_router)
     app.include_router(tags_admin_router)

@@ -31,8 +31,8 @@ Packet S              adapter swap                   after M-G + C1-G
 | W0-G | After W0-2…6 | **PASS** (reachable · local tree) |
 | W0-BA | After W0-G | **M + C1** · accept-as-built **DL-466** |
 | D0-1 | **Only if** W0-BA chose keep-dark | **NOT FIRED** |
-| M1…M-G | W0-BA names **M** | **NEXT** |
-| C1-1…C1-G | W0-BA names **C1** (C1-4 Lima §1.14 before C1-G) | **NEXT** (∥ M) |
+| M1…M-G | W0-BA names **M** | **PASS** (`M-G.md`) |
+| C1-1…C1-G | W0-BA names **C1** | **PASS** (`C1-G.md`) |
 | C2-0 | Both viewport W-G PASS | BLOCKED (W-G unfiled on both boards) |
 | C2-BA | After C2-0 | BLOCKED |
 | C2-1…C2-G | After C2-BA | BLOCKED |
@@ -59,7 +59,7 @@ Packet S              adapter swap                   after M-G + C1-G
 | Specs | v1.0.3 |
 | This plan | **v1.0.3 · W0-0 STAMP · W0-BA M+C1** |
 | W0 | **PASS** |
-| Packet M | **in flight** |
-| Packet C1 | **in flight** (HIG conversion required) |
+| Packet M | **PASS** |
+| Packet C1 | **PASS** |
 | Packet C2 | Blocked on viewport W-G |
 | Packet S | Blocked on M-G + C1-G |

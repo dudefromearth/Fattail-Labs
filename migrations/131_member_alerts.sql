@@ -1,0 +1,25 @@
+-- 131 — Labs Alerts Manager records (ALM v1.0)
+CREATE TABLE member_alerts (
+  alert_id VARCHAR(40) NOT NULL,
+  identity_id BIGINT UNSIGNED NOT NULL,
+  suite VARCHAR(64) NOT NULL,
+  source_system VARCHAR(64) NOT NULL,
+  domain VARCHAR(64) NOT NULL,
+  alert_class VARCHAR(32) NOT NULL,
+  surface_type VARCHAR(64) NOT NULL,
+  symbol VARCHAR(32) NULL,
+  title VARCHAR(255) NOT NULL,
+  severity VARCHAR(16) NOT NULL,
+  color VARCHAR(32) NULL,
+  behavior VARCHAR(32) NOT NULL,
+  enabled TINYINT(1) NOT NULL DEFAULT 1,
+  unbound TINYINT(1) NOT NULL DEFAULT 0,
+  local_ref_json JSON NULL,
+  trigger_json JSON NOT NULL,
+  expires_at DATETIME NULL,
+  deep_link VARCHAR(512) NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  PRIMARY KEY (alert_id),
+  KEY idx_member_alerts_identity (identity_id, suite)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

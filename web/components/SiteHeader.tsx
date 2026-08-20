@@ -305,6 +305,14 @@ export default function SiteHeader() {
                       Profile
                     </Link>
                     <Link
+                      href="/app/alerts"
+                      className="block px-4 py-2 hover:bg-[var(--color-fill)]"
+                      onClick={() => setMenuOpen(false)}
+                      data-testid="nav-alerts"
+                    >
+                      Alerts
+                    </Link>
+                    <Link
                       href="/settings"
                       className="block px-4 py-2 hover:bg-[var(--color-fill)]"
                       onClick={() => setMenuOpen(false)}

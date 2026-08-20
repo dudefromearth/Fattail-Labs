@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Banner from "@/components/ui/Banner";
 import {
   ALERT_CLASSES,
   ALERT_CLASS_LABELS,
@@ -123,28 +124,6 @@ export default function AlertsPane({
     onChange(next);
   }
 
-  function addRule() {
-    const id =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `rule-${Date.now()}`;
-    patch({
-      ...value,
-      rules: [...value.rules, { id, title: "New rule" }],
-    });
-  }
-
-  function removeRule(id: string) {
-    patch({ ...value, rules: value.rules.filter((r) => r.id !== id) });
-  }
-
-  function renameRule(id: string, title: string) {
-    patch({
-      ...value,
-      rules: value.rules.map((r) => (r.id === id ? { ...r, title } : r)),
-    });
-  }
-
   const severityOptions = ALERT_SEVERITIES.map((s) => ({
     value: s,
     label: SEVERITY_LABEL[s],
@@ -152,57 +131,12 @@ export default function AlertsPane({
 
   return (
     <div className="space-y-8" data-testid="settings-alerts">
-      <p
-        className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-fill)]/40 px-4 py-3 text-sm text-[var(--color-label-secondary)]"
-        data-testid="settings-alerts-not-live"
-      >
-        Alert delivery is not live yet. These settings are saved on this device
-        and will apply when alerts ship.
-      </p>
-
-      <Section
-        title="Threshold Rules"
-        hint="Trigger alerts when position metrics cross defined thresholds."
-      >
-        {value.rules.length === 0 ? (
-          <p className="text-sm text-[var(--color-label-tertiary)]">
-            No rules defined.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {value.rules.map((rule) => (
-              <li
-                key={rule.id}
-                className="flex items-center gap-2"
-                data-testid="settings-alert-rule"
-              >
-                <input
-                  type="text"
-                  value={rule.title}
-                  onChange={(e) => renameRule(rule.id, e.target.value)}
-                  className="min-h-[var(--hit-min)] flex-1 rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] px-3 text-sm"
-                  aria-label="Rule name"
-                />
-                <button
-                  type="button"
-                  className="text-sm text-[var(--color-label-secondary)] hover:text-[var(--color-destructive)]"
-                  onClick={() => removeRule(rule.id)}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <button
-          type="button"
-          data-testid="settings-add-rule"
-          onClick={addRule}
-          className="mt-3 inline-flex min-h-[var(--hit-min)] items-center rounded-[var(--radius-md)] border border-[var(--color-separator)] px-3 text-sm font-medium hover:bg-[var(--color-fill)]"
-        >
-          + Add Rule
-        </button>
-      </Section>
+      <div data-testid="settings-alerts-not-live">
+        <Banner tone="info">
+          Destinations are saved. Delivery is not live yet. Author rules in the
+          originating app — Settings is configuration only.
+        </Banner>
+      </div>
 
       <Section title="Alert Delivery">
         <p className="mb-2 text-sm font-medium">Destinations</p>
