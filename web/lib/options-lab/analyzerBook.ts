@@ -137,12 +137,20 @@ export type ThresholdAlertStatus =
   | "triggered";
 export type ThresholdSeverity = "info" | "low" | "medium" | "high" | "critical";
 
+/** Canvas = price on the plot. Position = bound to one Shown card. */
+export type AnalyzerAlertKind = "canvas" | "position";
+
 export type AnalyzerThresholdAlert = {
   id: string;
+  kind: AnalyzerAlertKind;
   type: ThresholdAlertType;
   symbol: string;
   targetPrice: number;
   positionId?: string;
+  /** Strike notation for Position alerts, e.g. 6700C/6720C/6740C */
+  positionLabel?: string;
+  /** False for P&L / greek thresholds — do not draw an underlier vertical. */
+  targetIsUnderlier?: boolean;
   title: string;
   severity: ThresholdSeverity;
   status: ThresholdAlertStatus;
@@ -991,7 +999,11 @@ export function loadAlerts(): AnalyzerThresholdAlert[] {
     const s = sessionStorage.getItem(ALERT_KEY);
     if (!s) return [];
     const arr = JSON.parse(s) as AnalyzerThresholdAlert[];
-    return Array.isArray(arr) ? arr : [];
+    if (!Array.isArray(arr)) return [];
+    return arr.map((a) => ({
+      ...a,
+      kind: a.kind ?? (a.positionId ? "position" : "canvas"),
+    }));
   } catch {
     return [];
   }
@@ -1002,31 +1014,72 @@ export function saveAlerts(alerts: AnalyzerThresholdAlert[]): void {
   sessionStorage.setItem(ALERT_KEY, JSON.stringify(alerts));
 }
 
+export function alertVerb(type: ThresholdAlertType): string {
+  if (type === "price_above") return "rises above";
+  if (type === "price_below") return "falls below";
+  return "touches";
+}
+
+export function alertConditionMet(
+  alert: AnalyzerThresholdAlert,
+  spot: number,
+  symbol: string,
+): boolean {
+  if (!alert.enabled || alert.status === "dismissed") return false;
+  if (alert.kind === "position" && !alert.positionId) return false;
+  if (!(spot > 0)) return false;
+  if (alert.symbol && alert.symbol !== symbol.toUpperCase()) return false;
+  if (alert.type === "price_above") return spot >= alert.targetPrice;
+  if (alert.type === "price_below") return spot <= alert.targetPrice;
+  return Math.abs(spot - alert.targetPrice) <= 0.5;
+}
+
+export function positionStrikeAlertLabel(pos: AnalyzerPosition): string {
+  const legs = [...(pos.position.legs || [])].sort(
+    (a, b) => a.strike - b.strike,
+  );
+  if (!legs.length) return pos.notation || pos.label;
+  return legs
+    .map((l) => `${l.strike}${l.type === "call" ? "C" : "P"}`)
+    .join("/");
+}
+
 export function createPriceAlert(opts: {
   type: ThresholdAlertType;
   symbol: string;
   targetPrice: number;
+  kind?: AnalyzerAlertKind;
   positionId?: string;
+  positionLabel?: string;
+  targetIsUnderlier?: boolean;
+  color?: string;
+  id?: string;
 }): AnalyzerThresholdAlert {
-  const verb =
-    opts.type === "price_above"
-      ? "rises above"
-      : opts.type === "price_below"
-        ? "falls below"
-        : "touches";
+  const verb = alertVerb(opts.type);
+  const kind: AnalyzerAlertKind =
+    opts.kind ?? (opts.positionId ? "position" : "canvas");
   const color =
-    opts.type === "price_above"
+    opts.color ||
+    (opts.type === "price_above"
       ? "#22c55e"
       : opts.type === "price_below"
         ? "#ef4444"
-        : "#3b82f6";
+        : "#3b82f6");
+  const px = opts.targetPrice.toFixed(0);
+  const title =
+    kind === "position" && opts.positionLabel
+      ? `${opts.positionLabel} ${verb} ${px}`
+      : `${opts.symbol} ${verb} ${px}`;
   return {
-    id: uid("al"),
+    id: opts.id || uid("al"),
+    kind,
     type: opts.type,
     symbol: opts.symbol.toUpperCase(),
     targetPrice: opts.targetPrice,
     positionId: opts.positionId,
-    title: `${opts.symbol} ${verb} ${opts.targetPrice.toFixed(0)}`,
+    positionLabel: opts.positionLabel,
+    targetIsUnderlier: opts.targetIsUnderlier ?? true,
+    title,
     severity: "medium",
     status: "new",
     enabled: true,

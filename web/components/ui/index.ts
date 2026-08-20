@@ -1,6 +1,9 @@
 export { default as Button } from "./Button";
 export { default as IconButton } from "./IconButton";
 export { default as AlertDialog } from "./AlertDialog";
+export { default as Modal } from "./Modal";
+export { default as SegmentedControl } from "./SegmentedControl";
+export { default as Banner } from "./Banner";
 export { ConfirmProvider, useConfirm } from "./ConfirmProvider";
 export type { ConfirmOptions } from "./ConfirmProvider";
 export * from "./icons";

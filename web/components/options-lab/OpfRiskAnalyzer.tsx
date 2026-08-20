@@ -23,9 +23,12 @@ import {
   loadAnalyzerTrade,
 } from "@/lib/options-lab/analyzerTrade";
 import {
+  alertConditionMet,
+  createPriceAlert,
   evaluateAlerts,
   loadAlerts,
   loadPositions,
+  positionStrikeAlertLabel,
   lockLimit,
   lockNatural,
   closePosition,
@@ -78,7 +81,7 @@ import {
   syncBookFromTradeLog,
 } from "@/lib/options-lab/analyzerTradeLogSync";
 import { createTrade, fetchTrades } from "@/lib/tradeLogApi";
-import AnalyzerAlertsSection from "@/components/options-lab/AnalyzerAlertsSection";
+
 import AnalyzerPositionsList from "@/components/options-lab/AnalyzerPositionsList";
 import AnalyzerControlsColumn from "@/components/options-lab/AnalyzerControlsColumn";
 import PositionBuilder from "@/components/options-lab/PositionBuilder";
@@ -92,6 +95,11 @@ import {
 } from "@/lib/options-lab/templates/gex";
 import type { ValueModeId } from "@/lib/options-lab/templates/types";
 import Button from "@/components/ui/Button";
+import AlertBuilderDialog, {
+  type AlertBuilderSeed,
+} from "@/components/options-lab/AlertBuilderDialog";
+import type { AlertsManagerDraft } from "@/lib/alerts/analyzerAlertsAdapter";
+import { alertUnbound } from "@/lib/alerts/analyzerAlertsAdapter";
 import { IconChevronUpDown } from "@/components/ui/icons";
 import { applyStrikeDragToPosition } from "@/lib/options-lab/listedStrikeDrag";
 import { snapToListed } from "@/lib/options-lab/listedStrikes";
@@ -173,6 +181,9 @@ export default function OpfRiskAnalyzer() {
   const searchParams = useSearchParams();
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [alertBuilderOpen, setAlertBuilderOpen] = useState(false);
+  const [alertBuilderSeed, setAlertBuilderSeed] =
+    useState<AlertBuilderSeed | null>(null);
   const [alerts, setAlerts] = useState<AnalyzerThresholdAlert[]>(
     () => loadAlerts(),
   );
@@ -1005,6 +1016,7 @@ export default function OpfRiskAnalyzer() {
     () =>
       alerts
         .filter((a) => a.enabled && a.status !== "dismissed")
+        .filter((a) => a.targetIsUnderlier !== false)
         .filter((a) => !a.symbol || a.symbol === symbol)
         .map((a) => ({
           price: a.targetPrice,
@@ -1012,12 +1024,11 @@ export default function OpfRiskAnalyzer() {
           label:
             (a.type.replace("price_", "") || "alert") +
             (sessionHeld ? " · held" : ""),
-          style:
-            a.status === "triggered"
-              ? ("active" as const)
-              : ("dashed" as const),
+          style: alertConditionMet(a, displaySpot, symbol)
+            ? ("active" as const)
+            : ("dashed" as const),
         })),
-    [alerts, symbol, sessionHeld],
+    [alerts, symbol, sessionHeld, displaySpot],
   );
 
   const handleBuilderSave = useCallback(
@@ -1344,6 +1355,53 @@ export default function OpfRiskAnalyzer() {
           setRangePct2(Math.max(0.01, Math.min(99.99, Math.round(value * 100) / 100)));
         }}
         rangePctDisabled={!rangeHorizon}
+        onCreateAlert={() => {
+          setAlertBuilderSeed({
+            kind: "canvas",
+            category: "price",
+            price: displaySpot > 0 ? displaySpot : undefined,
+            condition: "at",
+          });
+          setAlertBuilderOpen(true);
+        }}
+        onEditAlert={(id) => {
+          const a = alerts.find((x) => x.id === id);
+          if (!a) return;
+          setAlertBuilderSeed({
+            kind: a.kind ?? (a.positionId ? "position" : "canvas"),
+            category:
+              a.kind === "position" || a.positionId ? "position" : "price",
+            price: a.targetPrice,
+            condition:
+              a.type === "price_above"
+                ? "above"
+                : a.type === "price_below"
+                  ? "below"
+                  : "at",
+            positionId: a.positionId,
+          });
+          setAlertBuilderOpen(true);
+        }}
+        alerts={alerts
+          .filter((a) => a.status !== "dismissed")
+          .map((a) => {
+            const kind = a.kind ?? (a.positionId ? "position" : "canvas");
+            const unbound = alertUnbound(
+              kind,
+              a.positionId,
+              new Set(positions.map((p) => p.id)),
+            );
+            return {
+              id: a.id,
+              kind,
+              title: a.title,
+              unbound,
+              active:
+                !unbound &&
+                !sessionHeld &&
+                alertConditionMet(a, displaySpot, symbol),
+            };
+          })}
       />
 
       {/* Right column: viewport + book (under) + alerts — list never left of viewport */}
@@ -1495,6 +1553,46 @@ export default function OpfRiskAnalyzer() {
                   onStrikeDrag={onStrikeDrag}
                   onStrikeCommit={onStrikeCommit}
                   snapStrike={snapStrike}
+                  alertLines={alertLines.map((l) => ({
+                    price: l.price,
+                    color: l.color,
+                    active: l.style === "active",
+                  }))}
+                  positionAlertChoices={displayPositions
+                    .filter((p) => p.visible)
+                    .map((p) => ({
+                      id: p.id,
+                      strikesLabel: positionStrikeAlertLabel(p),
+                    }))}
+                  onCanvasAlert={(price, type) => {
+                    setAlertBuilderSeed({
+                      kind: "canvas",
+                      category: "price",
+                      price,
+                      condition:
+                        type === "price_above"
+                          ? "above"
+                          : type === "price_below"
+                            ? "below"
+                            : "at",
+                    });
+                    setAlertBuilderOpen(true);
+                  }}
+                  onPositionAlert={(positionId, price, type) => {
+                    setAlertBuilderSeed({
+                      kind: "position",
+                      category: "position",
+                      positionId,
+                      price,
+                      condition:
+                        type === "price_above"
+                          ? "above"
+                          : type === "price_below"
+                            ? "below"
+                            : "at",
+                    });
+                    setAlertBuilderOpen(true);
+                  }}
                 />
                 {/* Centered notice over grid — translucent so scales stay readable */}
                 {viewportFocus?.notice ? (
@@ -1591,35 +1689,49 @@ export default function OpfRiskAnalyzer() {
         </div>
       </div>
 
-      {/* Alerts under book (OD-AZ2) — own scroll, not part of drag split */}
-      <div
-        className="max-h-[16vh] shrink-0 overflow-y-auto bg-[var(--color-surface)] px-3 py-2"
-        data-testid="analyzer-alerts-region"
-      >
-        <AnalyzerAlertsSection
-          alerts={alerts}
-          symbol={symbol}
-          onAck={(id) =>
-            setAlerts((prev) =>
-              prev.map((a) =>
-                a.id === id ? { ...a, status: "acknowledged" } : a,
-              ),
-            )
-          }
-          onDismiss={(id) =>
-            setAlerts((prev) =>
-              prev.map((a) =>
-                a.id === id ? { ...a, status: "dismissed" } : a,
-              ),
-            )
-          }
-          onDelete={(id) =>
-            setAlerts((prev) => prev.filter((a) => a.id !== id))
-          }
-        />
-      </div>
       </div>
 
+      <AlertBuilderDialog
+        open={alertBuilderOpen}
+        seed={alertBuilderSeed}
+        symbol={symbol}
+        spot={displaySpot}
+        positions={displayPositions
+          .filter((p) => p.visible)
+          .map((p) => ({
+            id: p.id,
+            strikesLabel: positionStrikeAlertLabel(p),
+          }))}
+        onClose={() => setAlertBuilderOpen(false)}
+        onSave={(draft: AlertsManagerDraft) => {
+          const type =
+            draft.trigger.condition === "above"
+              ? "price_above"
+              : draft.trigger.condition === "below"
+                ? "price_below"
+                : "price_touch";
+          const next = createPriceAlert({
+            id: draft.id,
+            type,
+            symbol: draft.symbol,
+            targetPrice: draft.trigger.target,
+            kind: draft.kind,
+            positionId: draft.position_id,
+            positionLabel: draft.position_label,
+            targetIsUnderlier: draft.trigger.family === "price",
+            color: draft.color,
+          });
+          setAlerts((prev) => {
+            const i = prev.findIndex((a) => a.id === next.id);
+            if (i >= 0) {
+              const copy = prev.slice();
+              copy[i] = next;
+              return copy;
+            }
+            return [...prev, next];
+          });
+        }}
+      />
       <PositionBuilder
         open={builderOpen}
         mode={editId ? "edit" : "create"}

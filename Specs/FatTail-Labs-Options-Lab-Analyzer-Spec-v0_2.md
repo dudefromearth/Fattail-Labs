@@ -248,7 +248,7 @@ Read with §0.2 buckets: each subsection below tags its bucket.
 | Region | **As-built** | **TARGET (Coach)** |
 |--------|--------------|---------------------|
 | Main split | **Left sidebar** (~21rem) + **right viewport** (`lg:flex-row`) | **Vertical stack:** viewport **above**, position list **below**, with **divider**. Book default **230px** (~1.25 three-leg cards after −20% pad/lock, **type size unchanged**); saved height goes to the canvas. |
-| Sidebar contents | **HIG inspector:** GEX · Probability · What-if. **No Instrument / OPF-model / Graph panel.** Dark strip **above** the canvas: **upper-left** Symbol + Spot + VIX (**50px** gaps); **center** Auto-fit (**≥44pt**). Position list and Alerts sit **under** the viewport | **OD-AZ1 Accept:** top compact control strip; **list under viewport**; **OD-AZ2 Accept:** Alerts under position list |
+| Sidebar contents | **HIG inspector:** **Alerts** (header **+** create, empty holder, **scroll**, default height **~3–4 cards**) · GEX · Probability · What-if. **No Instrument / OPF-model / Graph panel.** Dark strip **above** the canvas: **upper-left** Symbol + Spot + VIX (**50px** gaps); **center** Auto-fit (**≥44pt**). Position list under the viewport. Alerts list: info + Active/Idle only. MSC canvas/position apply on the graph. | **OD-AZ1 Accept:** top compact control strip; **list under viewport** |
 | Viewport | Full remaining height · dark canvas · chart panel | Same — **one** focused graph panel |
 | MSC heritage | MSC had list **left** of viewport | Labs: list **under** viewport |
 
@@ -407,9 +407,9 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Dollar grid | P&L **Y** and underlier **X** independently: **1–2–5 × 10ⁿ**, floor **$10**, target **≥10** lines when the span allows, cap **~20** so labels stay readable. If even $10 cannot produce 10 lines, stay at $10 (do not invent $1/$2/$5). GEX scales are not dollars and do not use this law. **DL-460**. |
 | Dual series render | Expiration + theoretical |
 | Spot / sim spot lines | Yes |
-| Alert lines | Threshold alerts remain in the Alerts strip; **not** drawn on the host canvas yet |
-| Context menu alerts | **Not on host pane** — next overlays program |
-| Position-specific alert | **Not on host pane** — next overlays program |
+| Alert lines | Enabled Canvas and Position alerts draw as vertical lines on the plot (solid when Active, dashed when Idle). |
+| Context menu alerts | **Right-click blank plot** → **Canvas** price alert (rises above / falls below / touches) at that underlier price. Same MSC grammar. |
+| Position-specific alert | **Right-click the tent** (~8px) → **Position** alert: pick a Shown card by strike label (`6700C/6720C/6740C`), then the same three conditions. |
 | Legend labels | Pack theo legend + Held suffix |
 | GEX backdrop | Same heatmap GEX template + dual-side ladder; bars at listed strikes; GEX axis = plot mid-height; **Call/Put = two right scales** (sky call up, red put down), each scaled to that side’s longest bar; Net/Abs = one right scale colored to the bars; units ÷1e9 as heatmap; pan/zoom with the view (DL-459). **Chain-attached (AZ-VP-2 / DL-461):** GEX paints from the listed expiration even when **no positions are shown** (empty book or all hidden). Horizon = shown-card exp if any, else Range listed date, else first listed. Not a second position book. |
 | Range band | Gray column **behind GEX**, clipped to the **plot** (not the black gutters above/below). Member % is two-sided normal mass **XX.XX%** (1σ = **68.27%**, 2σ = **95.45%**). Geometry is ±z·σ·√τ on a **listed** expiration (ATM IV). Inspector **Probability**: Show/Hide · expiration · Width 68.27% · optional second 95.45%. Pan/zoom with the view. |
@@ -454,7 +454,12 @@ Builder internals (also PB Spec + recent land): listed strikes only, ATM center,
 
 ### 1.14 Threshold alerts · **Alerts**
 
-Alerts are a **core Analyzer feature**, co-equal with the position book and the viewport for day-trader workflow. Implementation: `AnalyzerAlertsSection` + `analyzerBook` alert model. Host-pane context menu / `alertLines` **not wired** on `HostPnLChart` (DL-458); next overlays program.
+**Normative Builder + canvas apply + Manager hook:**
+[`FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md`](./FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md) · **DL-463**.
+
+Analyzer is a work-surface **client** of the future Labs-wide **Alerts Manager + API**. Session-local alerts are a **stub adapter** until that manager GO’s.
+
+As-built holder: left inspector (info + Active/Idle, header **+**). Canvas right-click: Canvas vs Position (MSC). **+** / canvas apply open **Alert Builder**.
 
 #### 1.14.1 Persistence & identity
 
@@ -506,16 +511,18 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 | Effect | Status → `triggered` · set `triggeredAt` · re-render list + chart style |
 | Cadence | On every spot update effect (not a separate server stream) |
 
-#### 1.14.5 List UI (`AnalyzerAlertsSection`)
+#### 1.14.5 List UI (left inspector holder)
 
-| Feature | As-built |
-|---------|----------|
-| Region | Analyzer chrome (as-built: left sidebar under Positions) |
-| Empty copy | “No threshold alerts — right-click the risk graph…” |
-| Filter | Drop `dismissed`; filter by current symbol; sort newest first; **cap 20** shown |
-| Card | Title · relative time · severity left rail color · status chip when triggered |
-| Actions | **Ack** / **× dismiss** when `new`; **× delete** when acknowledged or triggered |
-| testids | `analyzer-alerts-section` · `analyzer-alert-{id}` |
+**Normative:** AZ-ALB §5. Ack / dismiss / delete chrome is **superseded** (delete unshipped v1).
+
+| Feature | Law |
+|---------|-----|
+| Region | Left inspector **Alerts** section |
+| Empty | **No copy** — named Coach deviation from HI `EmptyState` |
+| Card | Title · Canvas vs Position · **Active** / **Idle** / **Unbound** |
+| **+** | 44pt kit `IconButton`; opens Alert Builder (Price, Spot) |
+| Delete | Unshipped v1 |
+| testids | `analyzer-alerts-panel` · `analyzer-alerts-holder` · `analyzer-alert-create` |
 
 #### 1.14.6 Chart draw
 

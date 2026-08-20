@@ -6,6 +6,7 @@
  */
 
 import Button from "@/components/ui/Button";
+import IconButton from "@/components/ui/IconButton";
 import { IconPlus } from "@/components/ui/icons";
 import {
   INSPECTOR_W,
@@ -74,6 +75,15 @@ export type AnalyzerControlsColumnProps = {
   rangePct2: number;
   onRangePct2: (value: number) => void;
   rangePctDisabled: boolean;
+  alerts: {
+    id: string;
+    kind: "canvas" | "position";
+    title: string;
+    active: boolean;
+    unbound?: boolean;
+  }[];
+  onCreateAlert: () => void;
+  onEditAlert?: (id: string) => void;
 };
 
 export default function AnalyzerControlsColumn({
@@ -116,6 +126,9 @@ export default function AnalyzerControlsColumn({
   rangePct2,
   onRangePct2,
   rangePctDisabled,
+  alerts,
+  onCreateAlert,
+  onEditAlert,
 }: AnalyzerControlsColumnProps) {
   const simAtRest =
     elapsedHours === 0 &&
@@ -196,6 +209,65 @@ export default function AnalyzerControlsColumn({
                 : "Off market — last print. Not polling a live chain."}
           </div>
         )}
+
+        <InspectorSection
+          title="Alerts"
+          testId="analyzer-alerts-panel"
+          headerRight={
+            <IconButton
+              label="Create alert"
+              tone="tint"
+              onClick={onCreateAlert}
+              data-testid="analyzer-alert-create"
+              className="rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] hover:bg-[var(--color-tint-emphasis)]"
+            >
+              <IconPlus size={18} />
+            </IconButton>
+          }
+        >
+          <div
+            className="h-[13rem] overflow-y-auto"
+            data-testid="analyzer-alerts-holder"
+          >
+            {alerts.map((a) => {
+              const state = a.unbound ? "Unbound" : a.active ? "Active" : "Idle";
+              return (
+                <button
+                  type="button"
+                  key={a.id}
+                  className={inspectorRow + " w-full text-left"}
+                  data-testid={`analyzer-alert-row-${a.id}`}
+                  data-alert-kind={a.kind}
+                  data-alert-active={a.active ? "1" : "0"}
+                  data-alert-unbound={a.unbound ? "1" : "0"}
+                  onClick={() => onEditAlert?.(a.id)}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[length:var(--text-subheadline)] text-[var(--color-label)]">
+                      {a.title}
+                    </div>
+                    <div className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
+                      {a.kind === "position" ? "Position" : "Canvas"}
+                    </div>
+                  </div>
+                  <span
+                    className={
+                      "shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-caption)] font-medium " +
+                      (a.unbound
+                        ? "bg-[var(--color-fill)] text-[var(--color-label-secondary)]"
+                        : a.active
+                          ? "bg-[color-mix(in_srgb,var(--color-success)_22%,transparent)] text-[var(--color-success)]"
+                          : "bg-[var(--color-fill)] text-[var(--color-label-tertiary)]")
+                    }
+                    aria-label={state}
+                  >
+                    {state}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </InspectorSection>
 
         <InspectorSection title="GEX" testId="analyzer-gex-panel">
           <div className={inspectorRow + " justify-between"}>
