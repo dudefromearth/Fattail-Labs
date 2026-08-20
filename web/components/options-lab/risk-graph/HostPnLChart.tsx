@@ -12,6 +12,7 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from "react";
 import {
   atmCenteredXRange,
@@ -35,6 +36,15 @@ import {
   type StrikeDragPreview,
 } from "@/lib/risk-graph/strikeHandleBind";
 import type { PnLPoint, PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
+import type { ThresholdAlertType } from "@/lib/options-lab/analyzerBook";
+import {
+  inPlot,
+  nearTent,
+  resolveAlertMenuKind,
+  toHostDataX,
+  type HostAlertMenu,
+  type PositionAlertChoice,
+} from "@/lib/risk-graph/hostAlertMenu";
 import {
   fmtGexAxis,
   GEX_DISPLAY_DIV,
@@ -116,6 +126,14 @@ export type HostPnLChartProps = {
     grabbedStrike: number,
     rawTarget: number,
   ) => number;
+  alertLines?: { price: number; color: string; active?: boolean }[];
+  positionAlertChoices?: PositionAlertChoice[];
+  onCanvasAlert?: (price: number, type: ThresholdAlertType) => void;
+  onPositionAlert?: (
+    positionId: string,
+    price: number,
+    type: ThresholdAlertType,
+  ) => void;
 };
 
 const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
@@ -142,6 +160,10 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       onStrikeDrag,
       onStrikeCommit,
       snapStrike,
+      alertLines = [],
+      positionAlertChoices = [],
+      onCanvasAlert,
+      onPositionAlert,
     },
     ref,
   ) {
@@ -169,6 +191,23 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
     dragRef.current = onStrikeDrag;
     const snapRef = useRef(snapStrike);
     snapRef.current = snapStrike;
+    const expRef = useRef(expirationData);
+    expRef.current = expirationData;
+    const theoRef = useRef(theoreticalData);
+    theoRef.current = theoreticalData;
+    const choicesRef = useRef(positionAlertChoices);
+    choicesRef.current = positionAlertChoices;
+    const canvasAlertRef = useRef(onCanvasAlert);
+    canvasAlertRef.current = onCanvasAlert;
+    const positionAlertRef = useRef(onPositionAlert);
+    positionAlertRef.current = onPositionAlert;
+    const [alertMenu, setAlertMenu] = useState<
+      | (HostAlertMenu & {
+          step: "root" | "condition";
+          positionId?: string;
+        })
+      | null
+    >(null);
 
     const fit = useCallback((): HostView => {
       const expBes = expirationBreakevens.filter(Number.isFinite);
@@ -290,6 +329,27 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
           ctx.fillStyle = fills[Math.min(i, fills.length - 1)];
           ctx.fillRect(x0, PAD.top, Math.max(0, x1 - x0), ch);
         });
+        ctx.restore();
+      }
+
+      if (alertLines.length) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(PAD.left, PAD.top, cw, ch);
+        ctx.clip();
+        for (const line of alertLines) {
+          if (!Number.isFinite(line.price)) continue;
+          if (line.price < xMin || line.price > xMax) continue;
+          const cx = toX(line.price);
+          ctx.strokeStyle = line.color || "#f59e0b";
+          ctx.lineWidth = line.active ? 2 : 1;
+          ctx.setLineDash(line.active ? [] : [5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(cx, PAD.top);
+          ctx.lineTo(cx, PAD.top + ch);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
         ctx.restore();
       }
 
@@ -592,6 +652,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       theoreticalStroke,
       theoreticalLegendLabel,
       strikeHandles,
+      alertLines,
     ]);
 
     drawRef.current = draw;
@@ -636,10 +697,42 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
           hitStrikeHandle(e, node, viewRef.current, handlesRef.current) !=
           null,
       });
+      const onContextMenu = (e: MouseEvent) => {
+        e.preventDefault();
+        const rect = node.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const w = node.clientWidth;
+        const h = node.clientHeight;
+        if (!inPlot(mx, my, w, h)) {
+          setAlertMenu(null);
+          return;
+        }
+        const price = toHostDataX(mx, w, viewRef.current);
+        const near = nearTent(
+          mx,
+          my,
+          w,
+          h,
+          viewRef.current,
+          expRef.current,
+          theoRef.current,
+        );
+        const kind = resolveAlertMenuKind(near, choicesRef.current.length);
+        setAlertMenu({
+          x: mx,
+          y: my,
+          price,
+          kind,
+          step: "root",
+        });
+      };
+      node.addEventListener("contextmenu", onContextMenu);
       const ro = new ResizeObserver(() => drawRef.current());
       ro.observe(node);
       const prev = unbindRef.current;
       unbindRef.current = () => {
+        node.removeEventListener("contextmenu", onContextMenu);
         ro.disconnect();
         unbindStrikes();
         prev();
@@ -696,6 +789,74 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
             pointerEvents: "none",
           }}
         />
+        {alertMenu ? (
+          <div
+            className="absolute z-50 min-w-[13.5rem] rounded-lg border border-white/15 bg-[#1c1c24] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+            style={{ left: alertMenu.x, top: alertMenu.y }}
+            data-testid="analyzer-alert-menu"
+            data-alert-kind={alertMenu.kind}
+            onMouseLeave={() => setAlertMenu(null)}
+          >
+            {alertMenu.kind === "position" && alertMenu.step === "root" ? (
+              <>
+                <div className="border-b border-white/10 px-3 py-1.5 text-[11px] text-white/45">
+                  Position alert
+                </div>
+                {positionAlertChoices.map((pl) => (
+                  <button
+                    key={pl.id}
+                    type="button"
+                    className="block w-full px-3 py-1.5 text-left font-mono text-[13px] text-white/90 hover:bg-white/10"
+                    onClick={() =>
+                      setAlertMenu({
+                        ...alertMenu,
+                        step: "condition",
+                        positionId: pl.id,
+                      })
+                    }
+                  >
+                    {pl.strikesLabel}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <>
+                <div className="border-b border-white/10 px-3 py-1.5 text-[11px] text-white/45">
+                  {alertMenu.kind === "position"
+                    ? "Position alert"
+                    : `Price alert at ${alertMenu.price.toFixed(0)}`}
+                </div>
+                {(
+                  [
+                    ["price_above", "Alert when price rises above"],
+                    ["price_below", "Alert when price falls below"],
+                    ["price_touch", "Alert when price touches"],
+                  ] as const
+                ).map(([type, label]) => (
+                  <button
+                    key={type}
+                    type="button"
+                    className="block w-full px-3 py-1.5 text-left text-[13px] text-white/90 hover:bg-white/10"
+                    onClick={() => {
+                      if (alertMenu.kind === "position" && alertMenu.positionId) {
+                        positionAlertRef.current?.(
+                          alertMenu.positionId,
+                          alertMenu.price,
+                          type,
+                        );
+                      } else {
+                        canvasAlertRef.current?.(alertMenu.price, type);
+                      }
+                      setAlertMenu(null);
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        ) : null}
       </div>
     );
   },

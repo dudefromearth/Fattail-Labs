@@ -135,6 +135,8 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
     "utf8",
   );
   assert(!controls.includes('title="Graph"'), "Graph panel removed from inspector");
+  assert(controls.includes('title="Alerts"'), "Alerts inspector in left column");
+  assert(host.includes("contextmenu"), "right-click alert menu on host");
 });
 
 console.log(`\n${n} tests passed`);

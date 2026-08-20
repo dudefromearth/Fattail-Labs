@@ -55,14 +55,21 @@ export function InspectorSection({
   title,
   children,
   testId,
+  headerRight,
 }: {
   title: string;
   children: ReactNode;
   testId?: string;
+  headerRight?: ReactNode;
 }) {
   return (
     <section data-testid={testId}>
-      <h3 className={inspectorSectionHeader}>{title}</h3>
+      <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
+        <h3 className="text-[length:var(--text-footnote)] font-semibold text-[var(--color-label-secondary)]">
+          {title}
+        </h3>
+        {headerRight}
+      </div>
       <div className={inspectorGroup}>{children}</div>
     </section>
   );
