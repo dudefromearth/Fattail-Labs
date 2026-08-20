@@ -128,6 +128,8 @@ Options Lab: `useOptionChainBus` prefers WS; polls when stream stale.
 
 `getMarketSocket()` is a **tab singleton**. Multiple widgets register interest; they must not create additional WebSockets (aged-browser socket limits).
 
+**Scope:** this law is **market data**. Member-identity streams (in-app notifications, `GET /api/me/alerts/stream` — Alerts Manager Spec v1.0 · **DL-464**) are **not** market sockets. They are lawful as a second WS/SSE. They are **not** precedent for a second Massive or market WebSocket. India W0 on any alerts board restates this so “one WS/tab” is not read as forbidding the alerts stream.
+
 ### 4.4 Live underlier mids — site-wide UI standard (mandatory)
 
 Any surface that shows underlier **mid / last / live price** for symbols in

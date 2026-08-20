@@ -4,6 +4,90 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-20 — DL-466 Analyzer canvas-apply prototype reachable (accept as-built)
+
+**Decision:** W0-G named the Analyzer right-click alert menu **reachable**
+in the local working tree (`HostPnLChart` `contextmenu` + Builder
+callbacks; no off-switch). Coach at W0-BA: **accept as-built** for that
+prototype. Not Packet C2 GO. AT-ALB-2/3/4/8/15 still required at C2-G
+after both viewport W-G + India C2-0 + C2-BA. MiniTwo not implied.
+
+**Does not:** keep-dark (D0-1 not fired); ship canvas apply as gated
+product; MiniTwo.
+
+---
+
+## 2026-08-20 — DL-465 Labs Alerts bench plan (board `p-alerts`)
+
+**Decision:** Coach stamped
+`docs/Labs-Alerts-Full-Agent-Bench-Plan-v1.0.md` **v1.0.3**. Board
+`agents/p-alerts/`. W0-BA names Packet **M** and Packet **C1**. Packet
+**C2** blocked until `p-az-viewport-2d` W-G **and**
+`p-az-viewport-return` W-G. HIG conversion is packet work (FP14 · §8.5).
+
+**Does not:** MiniTwo; C2 fire; SMS/email live; delete chrome.
+
+---
+
+## 2026-08-20 — DL-464 Labs-wide Alerts Manager (suite hooks)
+
+**Decision:** Coach: **Alerts Manager + API** is Labs-wide. Alert **instances
+are authored and held in the app they belong to**. **Settings, configuration,
+and stats** live in the Manager — user menu **Alerts** (`/app/alerts`) and/or
+**Settings → Alerts**. **Every App Suite** registers a hook and **its own
+alert types**. Analyzer (canvas / position / Builder) is the first client.
+Spec: `Specs/FatTail-Labs-Alerts-Manager-Spec-v1.0.md` (canonical draft
+§3.2). First-client spec:
+`Specs/FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md`
+(cites §3.2; does not fork a second wire).
+
+**Does not:** implement the HTTP manager in this decision; MiniTwo until asked.
+
+**Same-day clarifications (India review ALB-B1 / B2 · A1–A4 — not a
+reversal):**
+
+1. **One draft table.** ALM §3.2 is canonical. Every draft **always**
+   includes `suite` and `severity`. Analyzer stamps `suite: options_lab`
+   (adapter constant) and named default **`severity: medium`**. Builder v1
+   has no severity field (deferred). `POST` without either is 4xx.
+2. **Delete is deliberately unshipped in v1.** Holder has no delete
+   chrome; Manager index has no delete control. `DELETE` may exist later
+   if Coach adds it. Missing delete is **not** a spec gap.
+3. **Canvas-apply sequencing (ALB-B1).** Analyzer canvas apply lives on
+   `HostPnLChart` (same files as Packet A). BUILD of canvas-apply is
+   **downstream of** `p-az-viewport-2d` W-G **and** `p-az-viewport-return`
+   W-G; **India names the lock handoff**. Builder dialog + adapter are
+   new files and **may BUILD earlier**. Manager app shell / settings /
+   API are **independent** of the viewport tangle.
+4. **Unbound `local_ref` (ALB-A1).** Card gone → alert stays listed,
+   marked Unbound, never Active; member edits or it expires. Hidden is
+   still bound. Write before the adapter swap.
+5. **Arch 28 (ALB-A2).** One-socket law is **market data**.
+   `/api/me/alerts/stream` is a member-identity WS/SSE — lawful, not a
+   second market socket, not precedent for one. India W0 restates.
+6. **Tango (ALB-A3).** “P&L above 200 is a number, not a promise.”
+   Member-authored thresholds are process telemetry; Labs copy
+   invariants govern what Labs says, not what members set.
+7. **Adapter-swap AT (ALB-A4).** AT-ALB-1…4 must still PASS when the
+   adapter points at the manager instead of the session stub.
+
+---
+
+## 2026-08-20 — DL-463 Analyzer Alert Builder hooks Labs-wide Alerts Manager
+
+**Decision:** Coach: Analyzer canvas + Alert Builder follow MSC apply
+(Canvas vs Position). Holder is the left inspector (info + Active/Idle).
+Labs will have a separate **Alerts Manager + API**. Analyzer **hooks** that
+manager (`source_system: analyzer_risk_graph`) and must not become a second
+closed alert center. Spec:
+`Specs/FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md`.
+
+**Does not:** ship the Manager/API in this spec; MiniTwo until asked.
+Canvas-apply BUILD waits on viewport W-G (DL-464 sequencing). Delete
+unshipped v1.
+
+---
+
 ## 2026-08-20 — DL-462 Autofit when a book appears on an empty canvas
 
 **Decision:** Coach: if the Analyzer canvas has **no positions** and then

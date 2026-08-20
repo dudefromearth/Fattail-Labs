@@ -167,6 +167,11 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   Board: `agents/p-az-viewport-2d/ORCHESTRATOR.md`.  
   **Next: W0-0 Coach stamp · no PnLChart code before W0-BA (or impl+DL).**  
   Impl: `docs/Options-Lab-Analyzer-Viewport-Drag-Scroll-Implementation-Plan-v1.0.md`.
+- `agents/p-alerts/` — **Labs Alerts** (two planes: Manager + API · Analyzer first client).  
+  Specs: ALM v1.0.1 · AZ-ALB v1.0.1 · **DL-464**.  
+  **Plan:** `docs/Labs-Alerts-Full-Agent-Bench-Plan-v1.0.md` **v1.0.3**.  
+  Board: `agents/p-alerts/ORCHESTRATOR.md`.  
+  **Next: W0-0 Coach stamp.** Packet M ∥ C1 after W0-BA. Packet C2 blocked until both viewport W-G + India C2-0 + C2-BA. If W0-G names the canvas menu reachable, W0-BA must keep-dark or accept-as-built+DL. No MiniTwo until asked.
 - `agents/p-app-framework/` — **Application Framework implementation** (active plan).
   Charter + full multi-agent board: `agents/p-app-framework/ORCHESTRATOR.md`.
   Specs: `Specs/FatTail-Labs-Application-Framework-Spec-v1.0.md`,
