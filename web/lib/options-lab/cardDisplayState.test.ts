@@ -6,7 +6,10 @@
 
 import {
   definedDebitSigned,
+  lockLimit,
+  lockNatural,
   positionFromInput,
+  unlockCard,
   type AnalyzerPosition,
 } from "./analyzerBook";
 import {
@@ -387,6 +390,68 @@ test("viewport book: two shown cards stay live — hide is not a radio", () => {
     { now, sessionHeld: true },
   );
   assert(hideBoth == null, "all hidden → empty viewport");
+});
+
+function liveZeroEntry(exp: string, nat: number): AnalyzerPosition {
+  const p = base(exp);
+  return {
+    ...p,
+    position: {
+      ...p.position,
+      net_debit_override: null,
+      legs: p.position.legs.map((l) => ({ ...l, entry_price: 0 })),
+    },
+    lastNatSigned: nat,
+    livePackagePerShare: Math.abs(nat),
+    definedDebitPerShare: nat,
+    priceSide: nat >= 0 ? "debit" : "credit",
+    liveState: "live",
+    visible: true,
+    lock: { mode: "unlocked" },
+  };
+}
+
+test("unlocked live book has no frozen limit — canvas marks to market", () => {
+  const leftover = base("2026-08-14");
+  leftover.liveState = "live";
+  leftover.visible = true;
+  leftover.lastNatSigned = 2.05;
+  leftover.livePackagePerShare = 2.05;
+  leftover.definedDebitPerShare = 2.05;
+  leftover.priceSide = "debit";
+  const book = visibleBookTrade([leftover], { now, symbol: "SPX" });
+  assert(book.trades.length === 1, "live trade");
+  assert(book.trades[0].limit == null, "no leftover @LMT");
+  assert(book.trades[0].debit == null, "no leftover debit");
+});
+
+test("lock natural stamps D* onto the canvas trade", () => {
+  let pos = liveZeroEntry("2026-08-14", 2.05);
+  pos = lockNatural(pos);
+  const book = visibleBookTrade([pos], { now, symbol: "SPX" });
+  assert(book.trades.length === 1, "live trade");
+  assert(book.trades[0].limit === 2.05, "canvas basis is locked 2.05");
+  assert(book.trades[0].debit === 2.05, "signed D*");
+  assert(book.trades[0].isCredit === false, "debit fly");
+});
+
+test("editing locked limit updates the canvas basis", () => {
+  let pos = liveZeroEntry("2026-08-14", 2.05);
+  pos = lockNatural(pos);
+  pos = lockLimit(pos, 1.8, false);
+  const book = visibleBookTrade([pos], { now, symbol: "SPX" });
+  assert(book.trades[0].limit === 1.8, "new D* is the canvas basis");
+  assert(book.trades[0].debit === 1.8, "signed");
+});
+
+test("unlock strips D* immediately — canvas is free at market", () => {
+  let pos = liveZeroEntry("2026-08-14", 2.05);
+  pos = lockNatural(pos);
+  pos = unlockCard(pos);
+  const book = visibleBookTrade([pos], { now, symbol: "SPX" });
+  assert(pos.lock.mode === "unlocked", "unlocked");
+  assert(book.trades[0].limit == null, "no frozen limit");
+  assert(book.trades[0].debit == null, "no frozen debit");
 });
 
 test("viewport: price → live curves, no notice", () => {

@@ -16,6 +16,7 @@ import {
   cardShowsPackageMark,
   isOptionPointerExpired,
   lockLimit,
+  lockNatural,
   positionFromInput,
   setCardExpiration,
   unlockCard,
@@ -292,6 +293,41 @@ test("unlock then lockLimit saves per-position debit as user limit", () => {
   pos = unlockCard(pos);
   assert(pos.lock.mode === "unlocked", "unlocked");
   assert(pos.position.net_debit_override == null, "override cleared");
+  assert(pos.livePackagePerShare === 1.65, "card reverts to last natural");
+  assert(pos.definedDebitPerShare === 1.65, "defined debit follows market");
+});
+
+test("unlock after market moved shows live nat, not locked D*", () => {
+  let pos = positionFromInput(fly("2026-08-14"));
+  pos = {
+    ...pos,
+    livePackagePerShare: 2.05,
+    lastNatSigned: 2.05,
+    definedDebitPerShare: 2.05,
+    priceSide: "debit",
+    liveState: "live",
+    lock: { mode: "unlocked" },
+  };
+  pos = lockNatural(pos);
+  assert(pos.lock.mode === "locked", "locked");
+  assert(pos.livePackagePerShare === 2.05, "card shows D*");
+  pos = applyPackageQuote(
+    pos,
+    {
+      complete: true,
+      package_debit_per_share: 1.5,
+      mark_mode: "live",
+      as_of: "2026-08-12T14:00:00Z",
+    },
+    { sessionHeld: false, interestOk: true },
+  );
+  assert(pos.lock.mode === "locked", "still locked");
+  assert(pos.livePackagePerShare === 2.05, "display stays D*");
+  assert(pos.lastNatSigned === 1.5, "nat tracks market while locked");
+  pos = unlockCard(pos);
+  assert(pos.lock.mode === "unlocked", "unlocked");
+  assert(pos.livePackagePerShare === 1.5, "card field is live mid");
+  assert(pos.definedDebitPerShare === 1.5, "basis is live");
 });
 
 console.log(`\n${passed} tests passed`);

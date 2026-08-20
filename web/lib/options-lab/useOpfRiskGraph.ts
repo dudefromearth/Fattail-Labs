@@ -133,7 +133,9 @@ function cacheKey(opts: {
   spotPct: number;
 }): string {
   return [
-    opts.trades.map((t) => `${t.symbol}:${t.raw}`).join("||"),
+    opts.trades
+      .map((t) => `${t.symbol}:${t.raw}:${t.limit ?? ""}:${t.debit ?? ""}`)
+      .join("||"),
     opts.useCase,
     opts.packId ?? "",
     opts.spotOverride ?? "",
@@ -389,7 +391,7 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
     epochKey,
     useCase,
     packId,
-    bookTrades.map((t) => t.raw).join("||"),
+    bookTrades.map((t) => `${t.raw}:${t.limit ?? ""}:${t.debit ?? ""}`).join("||"),
     String(spotUse),
     String(spotPct),
     String(volOffsetPts),

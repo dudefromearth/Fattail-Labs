@@ -23,6 +23,7 @@ import {
 import { bindPackageLabel } from "@/lib/options-lab/optionBind";
 import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
 import type { ParsedTosTrade } from "@/lib/options-lab/tosParser";
+import { generateTosScript } from "@/lib/options-lab/tosGenerator";
 import { sumAlignedPnL } from "@/lib/options-lab/opfPricingApi";
 import { buildPayoffCurve } from "@/lib/options-lab/riskPayoff";
 
@@ -343,9 +344,12 @@ export function visibleBookTrade(
     ).slice(0, 10);
     if (isOptionPointerExpired(exp, now)) {
       expiredTrades.push(withCardDebit(t, p));
+    } else if (p.lock.mode === "locked") {
+      // Canvas basis is the card's D* — not live mid.
+      trades.push(withCardDebit(t, p));
     } else {
-      // Each live/held definition resolves on its own last-print generation.
-      trades.push(t);
+      // Unlocked: no frozen @LMT. Local sheet marks to market.
+      trades.push(withMarketBasis(t));
     }
   }
   return {
@@ -356,11 +360,40 @@ export function visibleBookTrade(
   };
 }
 
+function withCostBasis(
+  trade: ParsedTosTrade,
+  debit: number | null,
+): ParsedTosTrade {
+  if (debit == null || !Number.isFinite(debit)) {
+    const raw =
+      generateTosScript({
+        symbol: trade.symbol,
+        legs: trade.legs,
+        costBasis: null,
+      }) || trade.raw;
+    return { ...trade, debit: null, limit: null, raw };
+  }
+  const limit = Math.abs(debit);
+  const raw =
+    generateTosScript({
+      symbol: trade.symbol,
+      legs: trade.legs,
+      costBasis: limit,
+    }) || trade.raw;
+  return {
+    ...trade,
+    debit,
+    isCredit: debit < 0,
+    limit,
+    raw,
+  };
+}
+
 function withCardDebit(
   trade: ParsedTosTrade,
   pos: AnalyzerPosition,
 ): ParsedTosTrade {
-  // Defined debit/credit for this pointer — frozen on expire.
+  // Defined debit/credit for this pointer — frozen on expire / lock.
   // Must not fall back to zero; that is a different position.
   let debit = definedDebitSigned(pos);
   if (debit == null || !Number.isFinite(debit)) {
@@ -377,12 +410,13 @@ function withCardDebit(
     }
   }
   if (debit == null || !Number.isFinite(debit)) return trade;
-  return {
-    ...trade,
-    debit,
-    isCredit: debit < 0,
-    limit: Math.abs(debit),
-  };
+  return withCostBasis(trade, debit);
+}
+
+/** Unlocked live book: never carry a leftover @LMT into the canvas. */
+function withMarketBasis(trade: ParsedTosTrade): ParsedTosTrade {
+  if (trade.limit == null && trade.debit == null) return trade;
+  return withCostBasis(trade, null);
 }
 
 /**

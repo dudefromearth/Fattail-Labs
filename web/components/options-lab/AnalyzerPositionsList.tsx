@@ -78,8 +78,11 @@ function fmtStrike(n: number): string {
 }
 
 /**
- * Unlocked card: debit/credit is an input. Tab, Enter, or click-away
- * commits the magnitude and locks. Escape cancels and stays unlocked.
+ * Price cell is the lock control for the canvas basis.
+ *
+ * Unlocked: shows live mid. Click → lock immediately, stay in edit.
+ * Locked: click to edit D*. Tab / Enter / Return (or blur) commits;
+ * the card stays locked and the canvas re-renders at the new basis.
  */
 function PackagePriceField({
   id,
@@ -88,6 +91,7 @@ function PackagePriceField({
   priceLabel,
   textMain,
   onCommit,
+  onLockForEdit,
 }: {
   id: string;
   locked: boolean;
@@ -95,36 +99,83 @@ function PackagePriceField({
   priceLabel: string;
   textMain: string;
   onCommit: (magnitude: number) => void;
+  onLockForEdit: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const committedRef = useRef(false);
+  const stayEditingRef = useRef(false);
+  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(() =>
     price != null && Number.isFinite(price) ? price.toFixed(2) : "",
   );
 
   useEffect(() => {
-    if (locked) return;
-    committedRef.current = false;
+    if (locked) {
+      if (stayEditingRef.current) {
+        stayEditingRef.current = false;
+        setEditing(true);
+      }
+      return;
+    }
+    setEditing(false);
+  }, [locked]);
+
+  useEffect(() => {
+    if (editing) return;
     setDraft(price != null && Number.isFinite(price) ? price.toFixed(2) : "");
+  }, [price, editing]);
+
+  useEffect(() => {
+    if (!editing) return;
+    committedRef.current = false;
     const t = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
     });
     return () => window.cancelAnimationFrame(t);
-  }, [locked, id]);
+  }, [editing]);
+
+  const beginEdit = () => {
+    committedRef.current = false;
+    setDraft(price != null && Number.isFinite(price) ? price.toFixed(2) : "");
+    if (!locked) {
+      stayEditingRef.current = true;
+      onLockForEdit();
+    }
+    setEditing(true);
+  };
 
   const commit = () => {
     if (committedRef.current) return;
     const mag = Math.abs(parseFloat(String(draft).replace(/[−–—]/g, "-")));
     if (!Number.isFinite(mag) || mag <= 0) {
       if (price != null && Number.isFinite(price)) setDraft(price.toFixed(2));
+      setEditing(false);
       return;
     }
     committedRef.current = true;
+    setEditing(false);
     onCommit(mag);
   };
 
-  if (locked) return <>{priceLabel}</>;
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className={
+          "font-mono text-[20.25px] font-semibold tabular-nums " + textMain
+        }
+        data-testid={`analyzer-pos-price-edit-${id}`}
+        title={locked ? "Edit locked basis" : "Lock and edit basis"}
+        onClick={(e) => {
+          e.stopPropagation();
+          beginEdit();
+        }}
+      >
+        {priceLabel}
+      </button>
+    );
+  }
 
   return (
     <input
@@ -144,6 +195,7 @@ function PackagePriceField({
       onBlur={(e) => {
         const next = e.relatedTarget as HTMLElement | null;
         if (next?.closest?.(`[data-testid="analyzer-pos-lock-${id}"]`)) {
+          setEditing(false);
           return;
         }
         commit();
@@ -157,6 +209,7 @@ function PackagePriceField({
         if (e.key === "Escape") {
           committedRef.current = true;
           if (price != null && Number.isFinite(price)) setDraft(price.toFixed(2));
+          setEditing(false);
           (e.target as HTMLInputElement).blur();
         }
       }}
@@ -867,32 +920,38 @@ function PosBlock({
               }
             >
               {isTop ? (
-                !locked ? (
-                  <PackagePriceField
-                    id={pos.id}
-                    locked={locked}
-                    price={price}
-                    priceLabel={priceLabel}
-                    textMain={textMain}
-                    onCommit={(mag) => onLockLimit(pos.id, mag)}
-                  />
-                ) : display.kind === "price" ||
-                  (display.kind === "expired" &&
-                    definedDebitSigned(pos) != null) ? (
+                display.kind === "price" ? (
+                  <>
+                    <PackagePriceField
+                      id={pos.id}
+                      locked={locked}
+                      price={price}
+                      priceLabel={priceLabel}
+                      textMain={textMain}
+                      onCommit={(mag) => onLockLimit(pos.id, mag)}
+                      onLockForEdit={() => onLockNatural(pos.id)}
+                    />
+                    {locked && liveMark ? (
+                      <span
+                        className={
+                          "ml-1 text-[13.5px] font-semibold uppercase " +
+                          textMuted
+                        }
+                      >
+                        {display.chipLabel}
+                      </span>
+                    ) : null}
+                  </>
+                ) : display.kind === "expired" &&
+                  definedDebitSigned(pos) != null ? (
                   <>
                     {priceLabel}
                     <span
-                      className={`ml-1 text-[13.5px] font-semibold uppercase ${
-                        display.kind === "expired"
-                          ? "text-amber-200"
-                          : textMuted
-                      }`}
+                      className={
+                        "ml-1 text-[13.5px] font-semibold uppercase text-amber-200"
+                      }
                     >
-                      {display.kind === "expired"
-                        ? "EXPIRED"
-                        : liveMark
-                          ? display.chipLabel
-                          : null}
+                      EXPIRED
                     </span>
                   </>
                 ) : (

@@ -66,7 +66,11 @@ export function usePackageQuotes(opts: {
   sessionHeld?: boolean;
   enabled?: boolean;
   onUpdate: (id: string, next: AnalyzerPosition) => void;
-  /** @deprecated unused — atomic mode does not re-search on generation ticks */
+  /**
+   * Chain generation fingerprint from the Analyzer sheet. Unlocked cards
+   * re-quote on a new epoch so the price field stays at live mid.
+   * Locked cards only refresh lastNat (displayed D* does not move).
+   */
   generationEpoch?: string;
   listedExpirations?: readonly string[];
 }) {
@@ -75,6 +79,7 @@ export function usePackageQuotes(opts: {
     sessionHeld = false,
     enabled = true,
     onUpdate,
+    generationEpoch,
     listedExpirations = null,
   } = opts;
 
@@ -440,6 +445,35 @@ export function usePackageQuotes(opts: {
     void resolvePending();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- definitionEpoch is the sole trigger
   }, [definitionEpoch, enabled]);
+
+  /**
+   * Live mid for unlocked cards. Definition settle stays atomic; this only
+   * re-opens cards that already have a package when the held generation moves.
+   */
+  const lastLiveEpochRef = useRef("");
+  useEffect(() => {
+    if (!enabled) return;
+    const epoch = generationEpoch ?? "";
+    if (!epoch || epoch === lastLiveEpochRef.current) return;
+    lastLiveEpochRef.current = epoch;
+    let need = false;
+    for (const p of positionsRef.current) {
+      if (!p.visible) continue;
+      if (isOptionPointerExpired(p.position.expiration)) continue;
+      if (p.bind && !p.bind.bindable) continue;
+      if (
+        p.liveState === "incomplete" ||
+        p.liveState === "budget_refused" ||
+        p.liveState === "skewed" ||
+        p.liveState === "not_live"
+      ) {
+        continue;
+      }
+      settledDefRef.current.delete(p.id);
+      need = true;
+    }
+    if (need) void resolvePending();
+  }, [generationEpoch, enabled, resolvePending]);
 
   // Manual refresh: clear settle flags and re-resolve once
   const refreshAll = useCallback(async () => {
