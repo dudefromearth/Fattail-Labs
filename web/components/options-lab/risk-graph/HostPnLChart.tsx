@@ -24,7 +24,7 @@ import {
   bindChartHost,
   type HostView,
 } from "@/lib/risk-graph/chartHostBind";
-import type { PnLPoint, PnLChartHandle } from "./PnLChart";
+import type { PnLPoint, PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
 
 const PAD = { top: 40, right: 20, bottom: 50, left: 60 };
 

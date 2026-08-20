@@ -138,7 +138,7 @@ These share **one** Analyzer session: same **Positions**, **Alerts**, **Models**
 
 | Viewport id | Label | Role | Presentation |
 |-------------|-------|------|----------------|
-| **risk** | Risk graph | OPF dual curves for the **shown book** (additive) | 2D `PnLChart` (as-built) |
+| **risk** | Risk graph | OPF dual curves for the **shown book** (additive) | 2D `HostPnLChart` (as-built · DL-458) |
 | **surface** | Surface | **Same shown book + same OPF samples** — P&amp;L over e.g. spot × DTE | 3D mesh (MSC RiskGraph3DView heritage; **OPF SoR only**) |
 
 | ID | Law |
@@ -388,7 +388,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Sim spot indicator | Separate indicator when what-if spot % ≠ 0 |
 | Module cache | Keep-warm across Heatmap ↔ Analyzer route switches (30 min TTL); soft refresh |
 | Manual Refresh | Forces re-resolve |
-| Auto-fit | `PnLChart` handle `autoFit()` |
+| Auto-fit | `HostPnLChart` handle `autoFit()` |
 | Max/Min P/L | Header summary dollars |
 | Incomplete | Loud empty — **no fabricated curve** |
 | Error | Loud amber status |
@@ -397,16 +397,16 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Mark pkg chip | resolve package_debit or focused card live package |
 | Wings (A3) | From symbol profile when available; residual hardcode until wired |
 
-### 1.10 Chart interaction (`PnLChart` presentation) · **Viewport** (+ **Alerts** create/draw)
+### 1.10 Chart interaction (`HostPnLChart` presentation) · **Viewport** (+ **Alerts** create/draw)
 
 | Feature | As-built (wired) |
 |---------|------------------|
-| Path | `web/components/options-lab/risk-graph/PnLChart.tsx` (renamed from `msc-risk/` · B1) |
+| Path | `web/components/options-lab/risk-graph/HostPnLChart.tsx` + `chartHostBind.ts` (**DL-458**; legacy `PnLChart.tsx` removed) |
 | Dual series render | Expiration + theoretical |
 | Spot / sim spot lines | Yes |
-| Alert lines | From threshold alerts |
-| Context menu alerts | price_above · price_below · price_touch |
-| Position-specific alert | Context near curve → pick position notation |
+| Alert lines | Threshold alerts remain in the Alerts strip; **not** drawn on the host canvas yet |
+| Context menu alerts | **Not on host pane** — next overlays program |
+| Position-specific alert | **Not on host pane** — next overlays program |
 | Legend labels | Pack theo legend + Held suffix |
 | Heritage | MSC Risk Graph UX only — no MSC pricing import (DL-302 / AZ-VP-S4) |
 
@@ -448,7 +448,7 @@ Builder internals (also PB Spec + recent land): listed strikes only, ATM center,
 
 ### 1.14 Threshold alerts · **Alerts**
 
-Alerts are a **core Analyzer feature**, co-equal with the position book and the viewport for day-trader workflow. Implementation: `AnalyzerAlertsSection` + `analyzerBook` alert model + `PnLChart` context menu / `alertLines`.
+Alerts are a **core Analyzer feature**, co-equal with the position book and the viewport for day-trader workflow. Implementation: `AnalyzerAlertsSection` + `analyzerBook` alert model. Host-pane context menu / `alertLines` **not wired** on `HostPnLChart` (DL-458); next overlays program.
 
 #### 1.14.1 Persistence & identity
 
@@ -535,7 +535,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 | `AnalyzerPositionsList.tsx` | Book UI | Positions |
 | `AnalyzerAlertsSection.tsx` | Alerts UI | Alerts |
 | `PositionBuilder.tsx` · `StrikeSelect.tsx` | Full definition editor | Positions |
-| `msc-risk/PnLChart.tsx` | Analyzer graph presentation | Viewport analyzer |
+| `risk-graph/HostPnLChart.tsx` | Analyzer graph presentation (DL-458) | Viewport analyzer |
 | `VolumeProfileChart.tsx` | VP suite app (as-built candles+bins; law = bins only) | Viewport volume-profile |
 | `HeatmapChainPanel.tsx` + `templates/gex.ts` | Chain templates incl. GEX | Viewport gex / Heatmap |
 | `lib/options-lab/useOpfRiskGraph.ts` | Resolve + curve cache | Viewport analyzer |

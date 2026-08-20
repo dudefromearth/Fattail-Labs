@@ -23,7 +23,6 @@ import {
   loadAnalyzerTrade,
 } from "@/lib/options-lab/analyzerTrade";
 import {
-  createPriceAlert,
   evaluateAlerts,
   loadAlerts,
   loadPositions,
@@ -86,11 +85,8 @@ import AnalyzerPositionsList from "@/components/options-lab/AnalyzerPositionsLis
 import AnalyzerControlsColumn from "@/components/options-lab/AnalyzerControlsColumn";
 import PositionBuilder from "@/components/options-lab/PositionBuilder";
 import SurfaceViewport from "@/components/options-lab/SurfaceViewport";
-import {
-  type PnLChartHandle,
-  type PriceAlertType,
-} from "@/components/options-lab/risk-graph/PnLChart";
 import HostPnLChart from "@/components/options-lab/risk-graph/HostPnLChart";
+import type { PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
 import { useSmoothNumber } from "@/lib/useSmoothValue";
 import {
   expiredGhostSeries,
@@ -734,19 +730,6 @@ export default function OpfRiskAnalyzer() {
               : ("dashed" as const),
         })),
     [alerts, symbol, sessionHeld],
-  );
-
-  const onOpenAlertDialog = useCallback(
-    (price: number, type: PriceAlertType) => {
-      const a = createPriceAlert({
-        type,
-        symbol,
-        targetPrice: price,
-        positionId: focusedId ?? undefined,
-      });
-      setAlerts((prev) => [a, ...prev]);
-    },
-    [symbol, focusedId],
   );
 
   const handleBuilderSave = useCallback(

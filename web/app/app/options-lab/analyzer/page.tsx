@@ -5,7 +5,7 @@ import OpfRiskAnalyzer from "@/components/options-lab/OpfRiskAnalyzer";
 /**
  * Options Lab Analyzer — full exercise of Options Pricing Foundation.
  * Data: dual-side chain generations. Pricing: OPF model packs only.
- * Render: PnLChart (presentation). MSC is not the pricing standard.
+ * Render: HostPnLChart (host-contract 2D). MSC is not the pricing standard.
  *
  * Suspense: OpfRiskAnalyzer reads useSearchParams (builder=1). Next 16
  * prerender requires a boundary; do not wrap Surface the same way.

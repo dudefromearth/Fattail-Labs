@@ -81,32 +81,19 @@ test("VP-A1 Show/Hide does not clear lock; structure does", () => {
 
 test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   const here = dirname(fileURLToPath(import.meta.url));
-  const chart = readFileSync(
-    join(here, "../../components/options-lab/risk-graph/PnLChart.tsx"),
+  const bind = readFileSync(join(here, "chartHostBind.ts"), "utf8");
+  const host = readFileSync(
+    join(here, "../../components/options-lab/risk-graph/HostPnLChart.tsx"),
     "utf8",
   );
   const az = readFileSync(
     join(here, "../../components/options-lab/OpfRiskAnalyzer.tsx"),
     "utf8",
   );
-  assert(!chart.includes("Don't start drag"), "left-click no longer steals pan");
-  assert(chart.includes("passive: false"), "native wheel");
-  assert(chart.includes("setPointerCapture"), "pointer capture on pan");
-  assert(chart.includes('addEventListener("pointerdown"'), "native pan");
-  assert(chart.includes("touchAction: 'none'"), "host eats browser pan");
-  assert(
-    chart.includes("remount-paint: first layout always draws"),
-    "Surface round-trip still paints when Autofit is skipped",
-  );
-  assert(
-    chart.includes("retry while host < 50px"),
-    "undersized remount retries draw",
-  );
-  assert(
-    chart.includes("width: '100%'") && chart.includes("pointerEvents: 'none'"),
-    "canvas fills host; hits go to the container",
-  );
-  assert(chart.includes("useLayoutEffect"), "paint before blank frame");
+  assert(bind.includes("setPointerCapture"), "pointer capture on pan");
+  assert(bind.includes("passive: false"), "native wheel");
+  assert(bind.includes('addEventListener("pointerdown"'), "native pan");
+  assert(host.includes('ref={attach}'), "bind is host node life");
   assert(az.includes("<HostPnLChart"), "live pane is host-contract chart");
   assert(!az.includes("onStrikeDrag="), "AT-AZ-WIRE-1 Packet B not shipped");
 });

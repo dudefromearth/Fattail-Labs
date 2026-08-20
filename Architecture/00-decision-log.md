@@ -4,6 +4,19 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-458 Analyzer 2D host-contract viewport (legacy PnLChart removed)
+
+**Decision:** Coach confirmed the host-contract 2D pane works after leave/return
+without a hard refresh. **`HostPnLChart` is the live Analyzer Risk graph.**
+Legacy `web/components/options-lab/risk-graph/PnLChart.tsx` is **deleted**.
+Bind pan/wheel to the host node's life (`chartHostBind.ts`). Same OPF curves.
+Alerts / GEX / probability overlays are **not** this DL — next program.
+
+**Does not:** Packet B strike handles; MiniTwo is a separate deploy of this
+commit.
+
+---
+
 ## 2026-08-19 — DL-457 Analyzer 2D sticky view (Packet A)
 
 **Decision:** Coach **GO Packet A** on
