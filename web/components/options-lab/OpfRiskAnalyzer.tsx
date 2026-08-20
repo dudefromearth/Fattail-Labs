@@ -25,6 +25,7 @@ import {
 import {
   alertConditionMet,
   toggleAlertRunState,
+  normalizeAlertRunState,
   createPriceAlert,
   evaluateAlerts,
   loadAlerts,
@@ -1033,8 +1034,8 @@ export default function OpfRiskAnalyzer() {
       alerts
         .filter((a) => {
           if (a.status === "dismissed") return false;
-          const st = a.runState ?? (a.enabled ? "running" : "idle");
-          return st === "running" || st === "tripped";
+          const st = normalizeAlertRunState(a.runState, a.enabled, a.status);
+          return st === "live" || st === "touched";
         })
         .filter((a) => a.targetIsUnderlier !== false)
         .filter((a) => !a.symbol || a.symbol === symbol)
@@ -1045,7 +1046,8 @@ export default function OpfRiskAnalyzer() {
             (a.type.replace("price_", "") || "alert") +
             (sessionHeld ? " · held" : ""),
           style:
-            (a.runState ?? "") === "tripped" ||
+            normalizeAlertRunState(a.runState, a.enabled, a.status) ===
+              "touched" ||
             alertConditionMet(a, displaySpot, symbol)
               ? ("active" as const)
               : ("dashed" as const),
@@ -1402,7 +1404,7 @@ export default function OpfRiskAnalyzer() {
                   ? "below"
                   : "at",
             positionId: a.positionId,
-            runState: a.runState ?? (a.enabled ? "running" : "idle"),
+            runState: normalizeAlertRunState(a.runState, a.enabled, a.status),
           });
           setAlertBuilderOpen(true);
         }}
@@ -1411,9 +1413,9 @@ export default function OpfRiskAnalyzer() {
             prev.map((a) => {
               if (a.id !== id) return a;
               const next = toggleAlertRunState(
-                a.runState ?? (a.enabled ? "running" : "idle"),
+                normalizeAlertRunState(a.runState, a.enabled, a.status),
               );
-              return { ...a, runState: next, enabled: next === "running" };
+              return { ...a, runState: next, enabled: next === "live" };
             }),
           );
         }}
@@ -1431,7 +1433,7 @@ export default function OpfRiskAnalyzer() {
               kind,
               title: a.title,
               unbound,
-              runState: a.runState ?? (a.enabled ? "running" : "idle"),
+              runState: normalizeAlertRunState(a.runState, a.enabled, a.status),
             };
           })}
       />

@@ -79,7 +79,7 @@ export type AnalyzerControlsColumnProps = {
     id: string;
     kind: "canvas" | "position";
     title: string;
-    runState: "running" | "idle" | "paused" | "tripped";
+    runState: "idle" | "live" | "touched";
     unbound?: boolean;
   }[];
   onCreateAlert: () => void;
@@ -234,24 +234,20 @@ export default function AnalyzerControlsColumn({
             {alerts.map((a) => {
               const state = a.unbound
                 ? "Unbound"
-                : a.runState === "running"
-                  ? "Running"
-                  : a.runState === "paused"
-                    ? "Paused"
-                    : a.runState === "tripped"
-                      ? "Tripped"
-                      : "Idle";
+                : a.runState === "live"
+                  ? "Live"
+                  : a.runState === "touched"
+                    ? "Touched"
+                    : "Idle";
               const chipCls =
                 "shrink-0 min-h-[var(--hit-min)] rounded-full px-3 text-[length:var(--text-caption)] font-medium " +
                 (a.unbound
                   ? "bg-[var(--color-fill)] text-[var(--color-label-secondary)]"
-                  : a.runState === "running"
+                  : a.runState === "live"
                     ? "bg-[var(--color-tint-soft)] text-[var(--color-tint)]"
-                    : a.runState === "tripped"
+                    : a.runState === "touched"
                       ? "bg-[var(--color-destructive-soft)] text-[var(--color-destructive)]"
-                      : a.runState === "paused"
-                        ? "bg-[color-mix(in_srgb,var(--color-warning)_18%,transparent)] text-[var(--color-label)]"
-                        : "bg-[var(--color-fill)] text-[var(--color-label-tertiary)]");
+                      : "bg-[var(--color-fill)] text-[var(--color-label-tertiary)]");
               return (
                 <div
                   key={a.id}
@@ -282,7 +278,7 @@ export default function AnalyzerControlsColumn({
                       type="button"
                       className={chipCls}
                       data-testid={`analyzer-alert-state-${a.id}`}
-                      aria-label={`${state}. Click to ${a.runState === "running" ? "Idle" : "Running"}`}
+                      aria-label={`${state}. Click to ${a.runState === "live" ? "Idle" : "Live"}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleAlertState?.(a.id);

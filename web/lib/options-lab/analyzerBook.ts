@@ -141,14 +141,28 @@ export type ThresholdSeverity = "info" | "low" | "medium" | "high" | "critical";
 export type AnalyzerAlertKind = "canvas" | "position";
 
 /** Member + evaluation run state — list chip + Builder. */
-export type AlertRunState = "running" | "idle" | "paused" | "tripped";
+export type AlertRunState = "idle" | "live" | "touched";
+
+export function normalizeAlertRunState(
+  raw: unknown,
+  enabled?: boolean,
+  status?: string,
+): AlertRunState {
+  if (raw === "idle" || raw === "live" || raw === "touched") return raw;
+  if (raw === "running") return "live";
+  if (raw === "tripped") return "touched";
+  if (raw === "paused") return "idle";
+  if (status === "triggered") return "touched";
+  if (enabled === false) return "idle";
+  return "live";
+}
 
 export function toggleAlertRunState(state: AlertRunState): AlertRunState {
-  return state === "running" ? "idle" : "running";
+  return state === "live" ? "idle" : "live";
 }
 
 export function alertIsArmed(state: AlertRunState): boolean {
-  return state === "running";
+  return state === "live";
 }
 
 export type AnalyzerThresholdAlert = {
@@ -1024,13 +1038,11 @@ export function loadAlerts(): AnalyzerThresholdAlert[] {
     const arr = JSON.parse(s) as AnalyzerThresholdAlert[];
     if (!Array.isArray(arr)) return [];
     return arr.map((a) => {
-      const runState: AlertRunState =
-        a.runState ??
-        (a.status === "triggered"
-          ? "tripped"
-          : a.enabled === false
-            ? "idle"
-            : "running");
+      const runState = normalizeAlertRunState(
+        a.runState,
+        a.enabled,
+        a.status,
+      );
       return {
         ...a,
         kind: a.kind ?? (a.positionId ? "position" : "canvas"),
@@ -1059,7 +1071,9 @@ export function alertConditionMet(
   spot: number,
   symbol: string,
 ): boolean {
-  const armed = alertIsArmed(alert.runState ?? (alert.enabled ? "running" : "idle"));
+  const armed = alertIsArmed(
+    normalizeAlertRunState(alert.runState, alert.enabled, alert.status),
+  );
   if (!armed || alert.status === "dismissed") return false;
   if (alert.kind === "position" && !alert.positionId) return false;
   if (!(spot > 0)) return false;
@@ -1118,8 +1132,8 @@ export function createPriceAlert(opts: {
     title,
     severity: "medium",
     status: "new",
-    runState: opts.runState ?? "running",
-    enabled: alertIsArmed(opts.runState ?? "running"),
+    runState: opts.runState ?? "live",
+    enabled: alertIsArmed(opts.runState ?? "live"),
     createdAt: new Date().toISOString(),
     color,
   };
@@ -1135,8 +1149,8 @@ export function evaluateAlerts(
   let changed = false;
   const out = alerts.map((a) => {
     if (a.status === "dismissed") return a;
-    const state = a.runState ?? (a.enabled ? "running" : "idle");
-    if (state !== "running") return a;
+    const state = normalizeAlertRunState(a.runState, a.enabled, a.status);
+    if (state !== "live") return a;
     if (a.symbol && a.symbol !== sym) return a;
     let hit = false;
     if (a.type === "price_above" && spot >= a.targetPrice) hit = true;
@@ -1147,7 +1161,7 @@ export function evaluateAlerts(
     changed = true;
     return {
       ...a,
-      runState: "tripped" as const,
+      runState: "touched" as const,
       enabled: false,
       status: "triggered" as const,
       triggeredAt: new Date().toISOString(),

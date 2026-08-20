@@ -37,9 +37,8 @@ assert(
   "hidden still bound",
 );
 
-assert(toggleAlertRunState("running") === "idle", "running → idle");
-assert(toggleAlertRunState("idle") === "running", "idle → running");
-assert(toggleAlertRunState("paused") === "running", "paused → running");
-assert(toggleAlertRunState("tripped") === "running", "tripped → running");
+assert(toggleAlertRunState("live") === "idle", "live → idle");
+assert(toggleAlertRunState("idle") === "live", "idle → live");
+assert(toggleAlertRunState("touched") === "live", "touched → live");
 
 console.log("  adapter constants + unbound + run-state ok");

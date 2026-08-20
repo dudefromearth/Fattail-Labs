@@ -68,10 +68,9 @@ const LIVE_POS_TABS = [
 ];
 
 const RUN_STATE_OPTIONS = [
-  { id: "running" as const, label: "Running" },
+  { id: "live" as const, label: "Live" },
   { id: "idle" as const, label: "Idle" },
-  { id: "paused" as const, label: "Paused" },
-  { id: "tripped" as const, label: "Tripped" },
+  { id: "touched" as const, label: "Touched" },
 ];
 
 export default function AlertBuilderDialog({
@@ -95,7 +94,7 @@ export default function AlertBuilderDialog({
   const [greek, setGreek] = useState<"delta" | "gamma" | "theta">("delta");
   const [noExp, setNoExp] = useState(false);
   const [expiration, setExpiration] = useState("");
-  const [runState, setRunState] = useState<AlertsManagerRunState>("running");
+  const [runState, setRunState] = useState<AlertsManagerRunState>("live");
   const seededRef = useRef(false);
   const spotRef = useRef(spot);
   const positionsRef = useRef(positions);
@@ -128,7 +127,7 @@ export default function AlertBuilderDialog({
     setPosTab("pnl");
     setGreek("delta");
     setNoExp(false);
-    setRunState(seed?.runState ?? "running");
+    setRunState(seed?.runState ?? "live");
     const et = new Date().toLocaleDateString("en-CA", {
       timeZone: "America/New_York",
     });
