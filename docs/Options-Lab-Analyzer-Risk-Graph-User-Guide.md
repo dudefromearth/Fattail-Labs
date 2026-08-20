@@ -187,7 +187,7 @@ Two kinds — same as thinkorswim / MSC Risk Graph. Left-click still pans; **rig
 
 Lines draw on the graph (solid = **Active** now, dashed = **Idle**).
 
-**Inspector → Alerts:** only the facts (title, Canvas vs Position) and an **Active / Idle** indicator. No Ack/Dismiss chrome. Active means the condition is true on the current spot.
+**Inspector → Alerts:** title, Canvas vs Position, and **Idle / Live / Touched**. You set Live or Idle. Touched happens when a Live alert meets its print — the row shows **when** (ET) and the underlier. Chip click **resets** Touched to Live. No Ack/Dismiss chrome.
 
 ---
 

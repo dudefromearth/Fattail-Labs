@@ -8,7 +8,16 @@ import {
   ALERTS_SUITE,
   alertUnbound,
 } from "./analyzerAlertsAdapter";
-import { toggleAlertRunState } from "../options-lab/analyzerBook";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  applyAlertRunState,
+  createPriceAlert,
+  evaluateAlerts,
+  formatAlertTouchedContext,
+  toggleAlertRunState,
+} from "../options-lab/analyzerBook";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(`FAIL: ${msg}`);
@@ -39,6 +48,50 @@ assert(
 
 assert(toggleAlertRunState("live") === "idle", "live → idle");
 assert(toggleAlertRunState("idle") === "live", "idle → live");
-assert(toggleAlertRunState("touched") === "live", "touched → live");
+assert(toggleAlertRunState("touched") === "live", "touched → live (reset)");
+
+const live = createPriceAlert({
+  type: "price_above",
+  symbol: "SPX",
+  targetPrice: 6700,
+  runState: "live",
+});
+const tripped = evaluateAlerts([live], 6701, "SPX")[0];
+assert(tripped.runState === "touched", "Live meeting the print becomes Touched");
+assert(!!tripped.triggeredAt, "Touched stamps when");
+assert(tripped.triggeredSpot === 6701, "Touched stamps the print");
+
+const reset = applyAlertRunState(tripped, "live");
+assert(reset.runState === "live", "reset is Live");
+assert(reset.triggeredAt == null, "reset clears when");
+assert(reset.triggeredSpot == null, "reset clears the print");
+
+const at = "2026-08-20T14:42:00.000Z";
+assert(
+  formatAlertTouchedContext({
+    at,
+    spot: 6724.4,
+    nowMs: Date.parse("2026-08-20T18:00:00.000Z"),
+  }) === "10:42 AM ET at 6724",
+  "same-day touch is clock + print",
+);
+assert(
+  formatAlertTouchedContext({
+    at,
+    nowMs: Date.parse("2026-08-21T14:00:00.000Z"),
+  }) === "Aug 20, 10:42 AM ET",
+  "other-day touch includes the date",
+);
+
+const here = dirname(fileURLToPath(import.meta.url));
+const builder = readFileSync(
+  join(here, "../../components/options-lab/AlertBuilderDialog.tsx"),
+  "utf8",
+);
+assert(
+  !builder.includes('{ id: "touched" as const, label: "Touched" }'),
+  "Touched is not a settable Builder state",
+);
+assert(builder.includes("Reset to Live"), "Builder resets Touched, does not set it");
 
 console.log("  adapter constants + unbound + run-state ok");

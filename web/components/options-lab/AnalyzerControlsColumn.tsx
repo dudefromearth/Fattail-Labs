@@ -81,6 +81,8 @@ export type AnalyzerControlsColumnProps = {
     title: string;
     runState: "idle" | "live" | "touched";
     unbound?: boolean;
+    /** When Touched: time + print, e.g. "10:42 AM ET at 6724". */
+    touchedDetail?: string;
   }[];
   onCreateAlert: () => void;
   onEditAlert?: (id: string) => void;
@@ -256,6 +258,9 @@ export default function AnalyzerControlsColumn({
                   data-alert-kind={a.kind}
                   data-alert-state={a.unbound ? "unbound" : a.runState}
                   data-alert-unbound={a.unbound ? "1" : "0"}
+                  data-alert-touched={
+                    a.runState === "touched" ? a.touchedDetail || "" : undefined
+                  }
                 >
                   <button
                     type="button"
@@ -267,6 +272,9 @@ export default function AnalyzerControlsColumn({
                     </div>
                     <div className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
                       {a.kind === "position" ? "Position" : "Canvas"}
+                      {a.runState === "touched" && a.touchedDetail
+                        ? ` · ${a.touchedDetail}`
+                        : ""}
                     </div>
                   </button>
                   {a.unbound ? (
@@ -278,7 +286,11 @@ export default function AnalyzerControlsColumn({
                       type="button"
                       className={chipCls}
                       data-testid={`analyzer-alert-state-${a.id}`}
-                      aria-label={`${state}. Click to ${a.runState === "live" ? "Idle" : "Live"}`}
+                      aria-label={
+                        a.runState === "touched"
+                          ? `Touched${a.touchedDetail ? ` ${a.touchedDetail}` : ""}. Click to reset to Live`
+                          : `${state}. Click to ${a.runState === "live" ? "Idle" : "Live"}`
+                      }
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleAlertState?.(a.id);

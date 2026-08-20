@@ -25,6 +25,8 @@ import {
 import {
   alertConditionMet,
   toggleAlertRunState,
+  applyAlertRunState,
+  formatAlertTouchedContext,
   normalizeAlertRunState,
   createPriceAlert,
   evaluateAlerts,
@@ -1419,6 +1421,8 @@ export default function OpfRiskAnalyzer() {
                   : "at",
             positionId: a.positionId,
             runState: normalizeAlertRunState(a.runState, a.enabled, a.status),
+            touchedAt: a.triggeredAt,
+            touchedSpot: a.triggeredSpot,
           });
           setAlertBuilderOpen(true);
         }}
@@ -1429,7 +1433,7 @@ export default function OpfRiskAnalyzer() {
               const next = toggleAlertRunState(
                 normalizeAlertRunState(a.runState, a.enabled, a.status),
               );
-              return { ...a, runState: next, enabled: next === "live" };
+              return applyAlertRunState(a, next);
             }),
           );
         }}
@@ -1448,6 +1452,10 @@ export default function OpfRiskAnalyzer() {
               title: a.title,
               unbound,
               runState: normalizeAlertRunState(a.runState, a.enabled, a.status),
+              touchedDetail: formatAlertTouchedContext({
+                at: a.triggeredAt,
+                spot: a.triggeredSpot,
+              }),
             };
           })}
       />
@@ -1772,7 +1780,13 @@ export default function OpfRiskAnalyzer() {
             const i = prev.findIndex((a) => a.id === next.id);
             if (i >= 0) {
               const copy = prev.slice();
-              copy[i] = next;
+              const keepTouch = next.runState === "touched";
+              copy[i] = {
+                ...next,
+                createdAt: prev[i].createdAt,
+                triggeredAt: keepTouch ? prev[i].triggeredAt : undefined,
+                triggeredSpot: keepTouch ? prev[i].triggeredSpot : undefined,
+              };
               return copy;
             }
             return [...prev, next];

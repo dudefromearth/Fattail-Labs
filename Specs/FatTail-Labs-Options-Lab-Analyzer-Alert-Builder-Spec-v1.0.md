@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Analyzer Alert Builder Spec v1.0
 
-**Status:** DRAFT — Coach 2026-08-20 (Analyzer canvas + builder). **v1.0.7** per-card at-expiration canvas Position alerts.  
+**Status:** DRAFT — Coach 2026-08-20 (Analyzer canvas + builder). **v1.0.8** Touched is evaluation-only (when + print); Live/Idle are settable.  
 **Type:** Product Spec — Analyzer **Alert Builder** and **canvas apply**.  
 **Short name:** AZ-ALB  
 **Route:** `/app/options-lab/analyzer`  
@@ -192,6 +192,15 @@ Pan/zoom moves lines with the view.
 | Greeks | `{SYMBOL} - Greeks Alert (Δ Γ Θ)` |
 | Algo | `{SYMBOL} - Algo Alert` |
 
+### 4.0 State
+
+| Record | Control |
+|--------|---------|
+| Live or Idle | Kit `SegmentedControl` **Live** · **Idle**. These are the only member-settable states. |
+| Touched | **Not a segment.** Banner reports **Touched {time ET} at {print}**. **Reset to Live** (kit `Button`) — then Live / Idle can be set. Save while still Touched keeps the stamp. |
+
+Touched is written only by evaluation (`triggeredAt`, `triggeredSpot`). Builder must not offer it as a choice.
+
 ### 4.1 Type (segmented)
 
 Kit `SegmentedControl` (4 segments, inside the 2–5 enum): **Price** · **Position** · **Greeks** · **Algo**
@@ -256,13 +265,13 @@ Not MSC’s left-rail Ack list.
 | Header | **Alerts** + round **+** (tint, stands off the header) |
 | Body | Scrollable holder, default height **~3–4 cards** |
 | Empty | **No instructional copy** — empty holder. **Coach deviation from HI `EmptyState`** (kit: icon + title + one action). Named so `p-hig` lint does not “fix” it. Tango: an empty alerts holder needing no essay is calm density. |
-| Card | Title (info) · Canvas vs Position · run state **Idle** / **Live** / **Touched**. **Unbound** replaces the chip when §2.5 applies. |
-| Live | Member-armed. Evaluates. |
-| Idle | Not evaluating. List chip toggle from Live, or Builder. |
-| Touched | Condition met while Live. Stays Touched until the member changes it. Canvas line is solid. List chip click re-arms to **Live**. |
+| Card | Title (info) · Canvas vs Position · run state **Idle** / **Live** / **Touched**. When Touched, the subtitle shows **when** it was touched (ET) and the underlier print. **Unbound** replaces the chip when §2.5 applies. |
+| Live | Member-settable. Armed. Evaluates. |
+| Idle | Member-settable. Not evaluating. List chip toggle from Live, or Builder. |
+| Touched | **Not member-settable.** Evaluation only: Live met its condition. Stays Touched until **reset**. Canvas line is solid. Holder + Builder show when (ET) and the print. List chip / Builder **Reset to Live** re-arms. Then Idle can be set. |
 | Unbound | Card gone. Chip is not a toggle. |
 
-**List gestures:** click the **state chip** toggles **Idle ↔ Live** (Touched → Live). Click **anywhere else** on the card opens Builder in edit mode. Builder **State** control sets and reports Idle / Live / Touched. **Delete is deliberately unshipped in v1**.
+**List gestures:** click the **state chip** toggles **Idle ↔ Live**. **Touched → Live** is a **reset** (clears the touch stamp). Click **anywhere else** on the card opens Builder in edit mode. Builder **State** control sets **Live / Idle** only. When Touched, Builder reports the stamp and **Reset to Live** — it does not offer Touched as a choice. **Delete is deliberately unshipped in v1**.
 
 ---
 
@@ -323,6 +332,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 | **AT-ALB-13** | Empty holder has **no** copy and **no** kit `EmptyState` (named Coach deviation). |
 | **AT-ALB-14** | Kilo lint: no raw hex / magic px / `zinc-*` in Builder/holder **chrome**. Alert `color` payload (data for the canvas line) may remain a stored value; chip **UI** still uses tokens. |
 | **AT-ALB-15** | Canvas context-menu rows ≥44pt. No keyboard nav invented for the menu. Header **+** remains the a11y path (§3.3). Menu chrome uses tokens. `CURVE_HIT_DISTANCE = 8` is hit geometry, not a chrome token. |
+| **AT-ALB-16** | Builder State is Live / Idle only. Touched is evaluation: holder + Builder show when (ET) + print; Reset / chip → Live and clears the stamp. |
 
 ---
 
@@ -342,6 +352,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.8** | 2026-08-20 | Coach: Live / Idle are settable. **Touched** is evaluation-only (when + print) and can only be **reset** (→ Live). |
 | **v1.0.7** | 2026-08-20 | Canvas Position alerts: MSC 8px / hover / right-click; Labs hit-tests **per-card at-expiration** (closest wins) — no MSC picker. |
 | **v1.0.6** | 2026-08-20 | Coach: states are **Idle / Live / Touched**. Running/Paused/Tripped map onto these. |
 | **v1.0.5** | 2026-08-20 | **Tripped** run state: fires when Running meets its condition; chip/Builder report it; chip click re-arms Running. |

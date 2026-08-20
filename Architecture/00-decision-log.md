@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-20 — DL-468 Alert Touched is evaluation-only (when + print)
+
+**Decision:** Coach: member can **set Live or Idle**. **Touched cannot be
+set** — it is the evaluation stamp when a Live alert meets its condition,
+and it can only be **reset** (chip / Builder → Live). Holder and Builder
+show **when** it was touched (America/New_York) and the underlier print.
+
+**Does not:** MiniTwo; Manager HTTP schema for `triggered_at` (session
+stub carries `triggeredAt` / `triggeredSpot`); Ack/Dismiss chrome.
+
+---
+
 ## 2026-08-20 — DL-467 Canvas Position alerts hit per-card at-expiration (MSC grammar, no picker)
 
 **Decision:** Coach: Position alerts are **active on the canvas**, as an

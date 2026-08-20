@@ -89,8 +89,11 @@ card only** (strike label in the header), then the same three conditions.
 Overlapping tents: the closest curve wins. Left-click still pans.
 
 Alerts list in the **left inspector** (Alerts panel): the title, whether
-it is Canvas or Position, and **Idle / Live / Touched**. Lines on the
-graph are solid when Live, dashed when Idle.
+it is Canvas or Position, and **Idle / Live / Touched**. You set Live or
+Idle. Touched is not a setting — it happens when a Live alert meets its
+print, and the row shows when (ET) and the underlier. Click the chip to
+reset Touched to Live. Lines on the graph are solid when Live or Touched,
+dashed when Idle.
 
 ## Session posture
 The inspector badge is Live, Pre/post, or Off market. Off market uses the

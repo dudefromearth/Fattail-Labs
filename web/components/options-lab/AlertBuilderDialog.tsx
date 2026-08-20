@@ -6,10 +6,12 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Banner from "@/components/ui/Banner";
 import Button from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
 import Modal from "@/components/ui/Modal";
 import SegmentedControl from "@/components/ui/SegmentedControl";
+import { formatAlertTouchedContext } from "@/lib/options-lab/analyzerBook";
 import { IconPlus } from "@/components/ui/icons";
 import type {
   AlertsManagerBehavior,
@@ -37,6 +39,8 @@ export type AlertBuilderSeed = {
   condition?: AlertsManagerCondition;
   positionId?: string;
   runState?: AlertsManagerRunState;
+  touchedAt?: string;
+  touchedSpot?: number;
 };
 
 export type AlertBuilderPosition = {
@@ -67,10 +71,10 @@ const LIVE_POS_TABS = [
   { id: "greeks" as const, label: "Greeks" },
 ];
 
+/** Member-settable only. Touched is evaluation — Reset, never pick. */
 const RUN_STATE_OPTIONS = [
   { id: "live" as const, label: "Live" },
   { id: "idle" as const, label: "Idle" },
-  { id: "touched" as const, label: "Touched" },
 ];
 
 export default function AlertBuilderDialog({
@@ -231,12 +235,33 @@ export default function AlertBuilderDialog({
       <div className="flex flex-col gap-6">
         <div className={group}>
           <span className={lab}>State</span>
-          <SegmentedControl
-            ariaLabel="Alert state"
-            value={runState}
-            options={RUN_STATE_OPTIONS}
-            onChange={setRunState}
-          />
+          {runState === "touched" ? (
+            <div className="flex flex-col gap-3">
+              <Banner tone="warning">
+                <span data-testid="alert-builder-touched-at">
+                  Touched{" "}
+                  {formatAlertTouchedContext({
+                    at: seed?.touchedAt,
+                    spot: seed?.touchedSpot,
+                  }) || "— reset to Live or Idle"}
+                </span>
+              </Banner>
+              <Button
+                variant="bordered"
+                onClick={() => setRunState("live")}
+                data-testid="alert-builder-reset-touch"
+              >
+                Reset to Live
+              </Button>
+            </div>
+          ) : (
+            <SegmentedControl
+              ariaLabel="Alert state"
+              value={runState}
+              options={RUN_STATE_OPTIONS}
+              onChange={(id) => setRunState(id as "live" | "idle")}
+            />
+          )}
         </div>
         <div className={group}>
           <span className={lab}>Type</span>

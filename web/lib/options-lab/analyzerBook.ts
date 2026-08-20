@@ -165,6 +165,54 @@ export function alertIsArmed(state: AlertRunState): boolean {
   return state === "live";
 }
 
+/** Member-facing when a Live alert was touched. Empty if the stamp is missing. */
+export function formatAlertTouchedContext(opts: {
+  at?: string | null;
+  spot?: number | null;
+  nowMs?: number;
+}): string {
+  const ms = opts.at ? Date.parse(opts.at) : NaN;
+  if (!Number.isFinite(ms)) return "";
+  const zone = "America/New_York";
+  const time = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  })
+    .format(new Date(ms))
+    .replace(/\s/g, " ");
+  const day = (t: number) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: zone }).format(new Date(t));
+  const sameDay = day(ms) === day(opts.nowMs ?? Date.now());
+  const when = sameDay
+    ? `${time} ET`
+    : `${new Intl.DateTimeFormat("en-US", {
+        timeZone: zone,
+        month: "short",
+        day: "numeric",
+      }).format(new Date(ms))}, ${time} ET`;
+  if (opts.spot != null && Number.isFinite(opts.spot)) {
+    return `${when} at ${Math.round(opts.spot)}`;
+  }
+  return when;
+}
+
+export function applyAlertRunState(
+  alert: AnalyzerThresholdAlert,
+  next: AlertRunState,
+): AnalyzerThresholdAlert {
+  const keepTouch = next === "touched";
+  return {
+    ...alert,
+    runState: next,
+    enabled: next === "live",
+    status: next === "touched" ? "triggered" : "new",
+    triggeredAt: keepTouch ? alert.triggeredAt : undefined,
+    triggeredSpot: keepTouch ? alert.triggeredSpot : undefined,
+  };
+}
+
 export type AnalyzerThresholdAlert = {
   id: string;
   kind: AnalyzerAlertKind;
@@ -183,6 +231,8 @@ export type AnalyzerThresholdAlert = {
   enabled: boolean;
   createdAt: string;
   triggeredAt?: string;
+  /** Underlier print that moved Live → Touched. */
+  triggeredSpot?: number;
   color: string;
 };
 
@@ -1165,6 +1215,7 @@ export function evaluateAlerts(
       enabled: false,
       status: "triggered" as const,
       triggeredAt: new Date().toISOString(),
+      triggeredSpot: spot,
     };
   });
   return changed ? out : alerts;
