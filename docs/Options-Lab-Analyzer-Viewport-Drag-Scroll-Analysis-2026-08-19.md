@@ -2,6 +2,7 @@
 
 **Date:** 2026-08-19  
 **Status:** Analysis + proposed fix. **Review-folded** (VP-B1 stamped · VP-A1–A3 advisory).  
+**Remaining defect (hard refresh vs leave/return):** new WHAT + board — [`docs/Options-Lab-Analyzer-Viewport-Return-Hard-Refresh-Analysis-2026-08-19.md`](./Options-Lab-Analyzer-Viewport-Return-Hard-Refresh-Analysis-2026-08-19.md). This file is **not** overwritten.  
 **Bench:** [`docs/Options-Lab-Analyzer-Viewport-Drag-Scroll-Full-Agent-Bench-Plan-v1.0.md`](./Options-Lab-Analyzer-Viewport-Drag-Scroll-Full-Agent-Bench-Plan-v1.0.md) · board [`agents/p-az-viewport-2d/`](../agents/p-az-viewport-2d/).  
 Packet A is **GO-able** after W0-BA (or impl stamp + DL). Packet B waits. **Not BUILD AUTHORITY** until Coach GO.  
 **Surface:** Options Lab Analyzer 2D risk graph (`/app/options-lab/analyzer`, Risk tab)  
