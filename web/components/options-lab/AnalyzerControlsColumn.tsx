@@ -79,11 +79,12 @@ export type AnalyzerControlsColumnProps = {
     id: string;
     kind: "canvas" | "position";
     title: string;
-    active: boolean;
+    runState: "running" | "idle" | "paused";
     unbound?: boolean;
   }[];
   onCreateAlert: () => void;
   onEditAlert?: (id: string) => void;
+  onToggleAlertState?: (id: string) => void;
 };
 
 export default function AnalyzerControlsColumn({
@@ -129,6 +130,7 @@ export default function AnalyzerControlsColumn({
   alerts,
   onCreateAlert,
   onEditAlert,
+  onToggleAlertState,
 }: AnalyzerControlsColumnProps) {
   const simAtRest =
     elapsedHours === 0 &&
@@ -230,40 +232,62 @@ export default function AnalyzerControlsColumn({
             data-testid="analyzer-alerts-holder"
           >
             {alerts.map((a) => {
-              const state = a.unbound ? "Unbound" : a.active ? "Active" : "Idle";
+              const state = a.unbound
+                ? "Unbound"
+                : a.runState === "running"
+                  ? "Running"
+                  : a.runState === "paused"
+                    ? "Paused"
+                    : "Idle";
+              const chipCls =
+                "shrink-0 min-h-[var(--hit-min)] rounded-full px-3 text-[length:var(--text-caption)] font-medium " +
+                (a.unbound
+                  ? "bg-[var(--color-fill)] text-[var(--color-label-secondary)]"
+                  : a.runState === "running"
+                    ? "bg-[var(--color-tint-soft)] text-[var(--color-tint)]"
+                    : a.runState === "paused"
+                      ? "bg-[color-mix(in_srgb,var(--color-warning)_18%,transparent)] text-[var(--color-label)]"
+                      : "bg-[var(--color-fill)] text-[var(--color-label-tertiary)]");
               return (
-                <button
-                  type="button"
+                <div
                   key={a.id}
-                  className={inspectorRow + " w-full text-left"}
+                  className={inspectorRow}
                   data-testid={`analyzer-alert-row-${a.id}`}
                   data-alert-kind={a.kind}
-                  data-alert-active={a.active ? "1" : "0"}
+                  data-alert-state={a.unbound ? "unbound" : a.runState}
                   data-alert-unbound={a.unbound ? "1" : "0"}
-                  onClick={() => onEditAlert?.(a.id)}
                 >
-                  <div className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    className="min-h-[var(--hit-min)] min-w-0 flex-1 py-1 text-left"
+                    onClick={() => onEditAlert?.(a.id)}
+                  >
                     <div className="truncate text-[length:var(--text-subheadline)] text-[var(--color-label)]">
                       {a.title}
                     </div>
                     <div className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
                       {a.kind === "position" ? "Position" : "Canvas"}
                     </div>
-                  </div>
-                  <span
-                    className={
-                      "shrink-0 rounded-full px-2 py-0.5 text-[length:var(--text-caption)] font-medium " +
-                      (a.unbound
-                        ? "bg-[var(--color-fill)] text-[var(--color-label-secondary)]"
-                        : a.active
-                          ? "bg-[color-mix(in_srgb,var(--color-success)_22%,transparent)] text-[var(--color-success)]"
-                          : "bg-[var(--color-fill)] text-[var(--color-label-tertiary)]")
-                    }
-                    aria-label={state}
-                  >
-                    {state}
-                  </span>
-                </button>
+                  </button>
+                  {a.unbound ? (
+                    <span className={chipCls} aria-label="Unbound">
+                      Unbound
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={chipCls}
+                      data-testid={`analyzer-alert-state-${a.id}`}
+                      aria-label={`${state}. Click to ${a.runState === "running" ? "Idle" : "Running"}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleAlertState?.(a.id);
+                      }}
+                    >
+                      {state}
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>

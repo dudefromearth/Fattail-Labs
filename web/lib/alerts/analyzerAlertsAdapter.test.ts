@@ -8,6 +8,7 @@ import {
   ALERTS_SUITE,
   alertUnbound,
 } from "./analyzerAlertsAdapter";
+import { toggleAlertRunState } from "../options-lab/analyzerBook";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(`FAIL: ${msg}`);
@@ -36,4 +37,8 @@ assert(
   "hidden still bound",
 );
 
-console.log("  adapter constants + unbound ok");
+assert(toggleAlertRunState("running") === "idle", "running → idle");
+assert(toggleAlertRunState("idle") === "running", "idle → running");
+assert(toggleAlertRunState("paused") === "running", "paused → running");
+
+console.log("  adapter constants + unbound + run-state ok");

@@ -254,11 +254,13 @@ Not MSC’s left-rail Ack list.
 | Header | **Alerts** + round **+** (tint, stands off the header) |
 | Body | Scrollable holder, default height **~3–4 cards** |
 | Empty | **No instructional copy** — empty holder. **Coach deviation from HI `EmptyState`** (kit: icon + title + one action). Named so `p-hig` lint does not “fix” it. Tango: an empty alerts holder needing no essay is calm density. |
-| Card | Title (info) · Canvas vs Position · **Active** / **Idle** only. **Unbound** replaces Active/Idle when §2.5 applies. |
-| Active | Manager (or adapter evaluator) says the condition is **currently true** on the live mark / live P&L / live greek. Unbound is never Active. |
-| Idle | Armed, condition not true (or Held: no “live fire” theater — still Idle unless Coach says Held-evaluate) |
+| Card | Title (info) · Canvas vs Position · run state **Running** / **Idle** / **Paused**. **Unbound** replaces the chip when §2.5 applies. |
+| Running | Member-armed. Evaluates. Canvas line may glow when the condition is currently true. |
+| Idle | Member-disarmed via the list chip (toggle from Running) or Builder. Does not evaluate. |
+| Paused | Member-disarmed from Builder. Does not evaluate. List chip click resumes to **Running**. |
+| Unbound | Card gone. Chip is not a toggle. |
 
-Clicking a card **opens Builder** in edit mode (hook `upsertAlert` with id). **Delete is deliberately unshipped in v1** (Coach did not ask). Do not treat missing delete chrome as a spec gap.
+**List gestures:** click the **state chip** toggles **Idle ↔ Running** (Paused → Running). Click **anywhere else** on the card opens Builder in edit mode (hook `upsertAlert` with id). Builder **State** control sets and reports Running / Idle / Paused. **Delete is deliberately unshipped in v1**.
 
 ---
 
@@ -338,6 +340,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.4** | 2026-08-20 | Holder run state: **Running** / **Idle** / **Paused**. Chip toggles Idle↔Running; rest of card opens Builder. Builder State control sets and reports it. |
 | **v1.0.3** | 2026-08-20 | HIG conversion is acceptance: AT-ALB-11…15 (kit primitives, 44pt, empty-holder deviation, chrome lint, canvas menu a11y). |
 | **v1.0.2** | 2026-08-20 | HIG fold: §4 kit tokens (`radius.lg`, `Modal`, `IconButton`/`xmark`); dark-pinned work-surface dialect declared; 44pt sweep; empty-holder Coach deviation from `EmptyState`; **+** is the canvas a11y path. |
 | **v1.0.1** | 2026-08-20 | India review ALB-B1/B2 · A1–A4: canonical draft cites ALM §3.2 (`suite` + `severity: medium` default; dialog field deferred); canvas-apply lock vs viewport W-G; unbound `position_id`; adapter-swap AT-ALB-9; Tango threshold-copy; delete unshipped v1. |

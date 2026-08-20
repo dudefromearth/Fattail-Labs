@@ -24,6 +24,7 @@ import {
 } from "@/lib/options-lab/analyzerTrade";
 import {
   alertConditionMet,
+  toggleAlertRunState,
   createPriceAlert,
   evaluateAlerts,
   loadAlerts,
@@ -1030,7 +1031,11 @@ export default function OpfRiskAnalyzer() {
   const alertLines = useMemo(
     () =>
       alerts
-        .filter((a) => a.enabled && a.status !== "dismissed")
+        .filter(
+          (a) =>
+            a.status !== "dismissed" &&
+            (a.runState ?? (a.enabled ? "running" : "idle")) === "running",
+        )
         .filter((a) => a.targetIsUnderlier !== false)
         .filter((a) => !a.symbol || a.symbol === symbol)
         .map((a) => ({
@@ -1383,6 +1388,7 @@ export default function OpfRiskAnalyzer() {
           const a = alerts.find((x) => x.id === id);
           if (!a) return;
           setAlertBuilderSeed({
+            id: a.id,
             kind: a.kind ?? (a.positionId ? "position" : "canvas"),
             category:
               a.kind === "position" || a.positionId ? "position" : "price",
@@ -1394,8 +1400,20 @@ export default function OpfRiskAnalyzer() {
                   ? "below"
                   : "at",
             positionId: a.positionId,
+            runState: a.runState ?? (a.enabled ? "running" : "idle"),
           });
           setAlertBuilderOpen(true);
+        }}
+        onToggleAlertState={(id) => {
+          setAlerts((prev) =>
+            prev.map((a) => {
+              if (a.id !== id) return a;
+              const next = toggleAlertRunState(
+                a.runState ?? (a.enabled ? "running" : "idle"),
+              );
+              return { ...a, runState: next, enabled: next === "running" };
+            }),
+          );
         }}
         alerts={alerts
           .filter((a) => a.status !== "dismissed")
@@ -1411,10 +1429,7 @@ export default function OpfRiskAnalyzer() {
               kind,
               title: a.title,
               unbound,
-              active:
-                !unbound &&
-                !sessionHeld &&
-                alertConditionMet(a, displaySpot, symbol),
+              runState: a.runState ?? (a.enabled ? "running" : "idle"),
             };
           })}
       />
@@ -1730,6 +1745,7 @@ export default function OpfRiskAnalyzer() {
             positionLabel: draft.position_label,
             targetIsUnderlier: draft.trigger.family === "price",
             color: draft.color,
+            runState: draft.run_state,
           });
           setAlerts((prev) => {
             const i = prev.findIndex((a) => a.id === next.id);

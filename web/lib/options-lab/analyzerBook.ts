@@ -140,6 +140,17 @@ export type ThresholdSeverity = "info" | "low" | "medium" | "high" | "critical";
 /** Canvas = price on the plot. Position = bound to one Shown card. */
 export type AnalyzerAlertKind = "canvas" | "position";
 
+/** Member run state — list chip + Builder. Not condition-met. */
+export type AlertRunState = "running" | "idle" | "paused";
+
+export function toggleAlertRunState(state: AlertRunState): AlertRunState {
+  return state === "running" ? "idle" : "running";
+}
+
+export function alertIsArmed(state: AlertRunState): boolean {
+  return state === "running";
+}
+
 export type AnalyzerThresholdAlert = {
   id: string;
   kind: AnalyzerAlertKind;
@@ -154,6 +165,7 @@ export type AnalyzerThresholdAlert = {
   title: string;
   severity: ThresholdSeverity;
   status: ThresholdAlertStatus;
+  runState: AlertRunState;
   enabled: boolean;
   createdAt: string;
   triggeredAt?: string;
@@ -623,9 +635,20 @@ export function lockLimit(
 }
 
 export function unlockCard(pos: AnalyzerPosition): AnalyzerPosition {
+  const nat = pos.lastNatSigned;
+  const hasNat = nat != null && Number.isFinite(nat);
   return {
     ...pos,
     lock: { mode: "unlocked" },
+    livePackagePerShare: hasNat ? Math.abs(nat) : null,
+    definedDebitPerShare: hasNat ? nat : null,
+    priceSide: hasNat
+      ? nat > 0
+        ? "debit"
+        : nat < 0
+          ? "credit"
+          : pos.priceSide
+      : pos.priceSide,
     position: {
       ...pos.position,
       net_debit_override: null,
@@ -1000,10 +1023,16 @@ export function loadAlerts(): AnalyzerThresholdAlert[] {
     if (!s) return [];
     const arr = JSON.parse(s) as AnalyzerThresholdAlert[];
     if (!Array.isArray(arr)) return [];
-    return arr.map((a) => ({
-      ...a,
-      kind: a.kind ?? (a.positionId ? "position" : "canvas"),
-    }));
+    return arr.map((a) => {
+      const runState: AlertRunState =
+        a.runState ?? (a.enabled === false ? "idle" : "running");
+      return {
+        ...a,
+        kind: a.kind ?? (a.positionId ? "position" : "canvas"),
+        runState,
+        enabled: alertIsArmed(runState),
+      };
+    });
   } catch {
     return [];
   }
@@ -1025,7 +1054,8 @@ export function alertConditionMet(
   spot: number,
   symbol: string,
 ): boolean {
-  if (!alert.enabled || alert.status === "dismissed") return false;
+  const armed = alertIsArmed(alert.runState ?? (alert.enabled ? "running" : "idle"));
+  if (!armed || alert.status === "dismissed") return false;
   if (alert.kind === "position" && !alert.positionId) return false;
   if (!(spot > 0)) return false;
   if (alert.symbol && alert.symbol !== symbol.toUpperCase()) return false;
@@ -1054,6 +1084,7 @@ export function createPriceAlert(opts: {
   targetIsUnderlier?: boolean;
   color?: string;
   id?: string;
+  runState?: AlertRunState;
 }): AnalyzerThresholdAlert {
   const verb = alertVerb(opts.type);
   const kind: AnalyzerAlertKind =
@@ -1082,7 +1113,8 @@ export function createPriceAlert(opts: {
     title,
     severity: "medium",
     status: "new",
-    enabled: true,
+    runState: opts.runState ?? "running",
+    enabled: alertIsArmed(opts.runState ?? "running"),
     createdAt: new Date().toISOString(),
     color,
   };

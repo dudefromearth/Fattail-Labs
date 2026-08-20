@@ -16,6 +16,7 @@ import type {
   AlertsManagerCondition,
   AlertsManagerDraft,
   AlertsManagerKind,
+  AlertsManagerRunState,
 } from "@/lib/alerts/analyzerAlertsAdapter";
 import {
   ALERTS_DOMAIN,
@@ -29,11 +30,13 @@ type Category = "price" | "position" | "greeks" | "algo";
 type PosTab = "pnl" | "profit" | "greeks" | "breakeven" | "trailing" | "zerodte";
 
 export type AlertBuilderSeed = {
+  id?: string;
   kind: AlertsManagerKind;
   category?: Category;
   price?: number;
   condition?: AlertsManagerCondition;
   positionId?: string;
+  runState?: AlertsManagerRunState;
 };
 
 export type AlertBuilderPosition = {
@@ -64,6 +67,12 @@ const LIVE_POS_TABS = [
   { id: "greeks" as const, label: "Greeks" },
 ];
 
+const RUN_STATE_OPTIONS = [
+  { id: "running" as const, label: "Running" },
+  { id: "idle" as const, label: "Idle" },
+  { id: "paused" as const, label: "Paused" },
+];
+
 export default function AlertBuilderDialog({
   open,
   onClose,
@@ -85,6 +94,7 @@ export default function AlertBuilderDialog({
   const [greek, setGreek] = useState<"delta" | "gamma" | "theta">("delta");
   const [noExp, setNoExp] = useState(false);
   const [expiration, setExpiration] = useState("");
+  const [runState, setRunState] = useState<AlertsManagerRunState>("running");
   const seededRef = useRef(false);
   const spotRef = useRef(spot);
   const positionsRef = useRef(positions);
@@ -117,6 +127,7 @@ export default function AlertBuilderDialog({
     setPosTab("pnl");
     setGreek("delta");
     setNoExp(false);
+    setRunState(seed?.runState ?? "running");
     const et = new Date().toLocaleDateString("en-CA", {
       timeZone: "America/New_York",
     });
@@ -187,6 +198,7 @@ export default function AlertBuilderDialog({
                     ? "price"
                     : "pnl";
               onSave({
+                id: seed?.id,
                 source_system: ALERTS_SOURCE_SYSTEM,
                 suite: ALERTS_SUITE,
                 domain: ALERTS_DOMAIN,
@@ -197,6 +209,7 @@ export default function AlertBuilderDialog({
                 color: tag.paint,
                 behavior,
                 severity: ALERTS_SEVERITY_DEFAULT,
+                run_state: runState,
                 position_id: kind === "position" ? positionId : undefined,
                 position_label: bound?.strikesLabel,
                 expires_at: noExp ? undefined : expiration || undefined,
@@ -216,6 +229,15 @@ export default function AlertBuilderDialog({
       }
     >
       <div className="flex flex-col gap-6">
+        <div className={group}>
+          <span className={lab}>State</span>
+          <SegmentedControl
+            ariaLabel="Alert state"
+            value={runState}
+            options={RUN_STATE_OPTIONS}
+            onChange={setRunState}
+          />
+        </div>
         <div className={group}>
           <span className={lab}>Type</span>
           <SegmentedControl

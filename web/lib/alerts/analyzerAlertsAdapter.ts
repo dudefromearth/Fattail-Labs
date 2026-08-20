@@ -17,6 +17,7 @@ export type AlertsManagerBehavior =
   | "repeating"
   | "persistent";
 export type AlertsManagerCondition = "above" | "below" | "at";
+export type AlertsManagerRunState = "running" | "idle" | "paused";
 export type AlertsManagerSeverity =
   | "info"
   | "low"
@@ -36,6 +37,7 @@ export type AlertsManagerDraft = {
   color: string;
   behavior: AlertsManagerBehavior;
   severity: AlertsManagerSeverity;
+  run_state: AlertsManagerRunState;
   position_id?: string;
   position_label?: string;
   expires_at?: string;
