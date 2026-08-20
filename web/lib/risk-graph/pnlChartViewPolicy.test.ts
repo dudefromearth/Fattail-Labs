@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   autofitShouldRun2d,
+  bookAppearedOnCanvas,
   expBeHashOf,
   shouldClearUserViewLock,
 } from "./pnlChartViewPolicy";
@@ -79,6 +80,18 @@ test("VP-A1 Show/Hide does not clear lock; structure does", () => {
   assert(shouldClearUserViewLock("live-tick") === false, "tick");
 });
 
+test("empty canvas → positions appear Autofits even after pan", () => {
+  assert(bookAppearedOnCanvas(false, true) === true, "appear");
+  assert(bookAppearedOnCanvas(true, true) === false, "already showing");
+  assert(bookAppearedOnCanvas(true, false) === false, "hide last");
+  assert(bookAppearedOnCanvas(false, false) === false, "still empty");
+  assert(
+    autofitShouldRun2d("book-appear", { userAdjusted: true }) === true,
+    "pan on empty GEX must not block Autofit when a book appears",
+  );
+  assert(shouldClearUserViewLock("empty-to-book") === true, "clear lock");
+});
+
 test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   const here = dirname(fileURLToPath(import.meta.url));
   const bind = readFileSync(join(here, "chartHostBind.ts"), "utf8");
@@ -107,6 +120,21 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(az.includes("onStrikeCommit="), "listed strike handles wired");
   assert(host.includes("bindStrikeHandles"), "yellow ticks bind on host");
   assert(host.includes("strikeHandleHot"), "handle size follows proximity");
+  assert(
+    !az.includes('data-notice-kind="empty_book"'),
+    "no center empty-book instruction on the canvas",
+  );
+  assert(az.includes('book-appear'), "empty canvas → book Autofits");
+  assert(az.includes("bookAppearedOnCanvas"), "appear helper wired");
+  assert(az.includes('data-testid="analyzer-symbol-select"'), "symbol pulldown on viewport");
+  assert(!az.includes("opf-model-select"), "OPF model is not member chrome");
+  assert(!az.includes("OPF risk graph"), "no chatty upper-left title");
+  assert(az.includes('data-testid="analyzer-autofit"'), "Auto-fit on viewport strip");
+  const controls = readFileSync(
+    join(here, "../../components/options-lab/AnalyzerControlsColumn.tsx"),
+    "utf8",
+  );
+  assert(!controls.includes('title="Graph"'), "Graph panel removed from inspector");
 });
 
 console.log(`\n${n} tests passed`);

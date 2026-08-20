@@ -4,6 +4,19 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-20 — DL-462 Autofit when a book appears on an empty canvas
+
+**Decision:** Coach: if the Analyzer canvas has **no positions** and then
+positions **appear** — Show, Create, paste, or any other path — **Autofit
+must run**. A pan/zoom of the empty GEX/grid view does not keep the lock
+across that transition (`book-appear` / `empty-to-book`). VP-A1 still
+holds when a shown book already exists: Show/Hide of a sibling does not
+steal the window.
+
+**Does not:** Autofit on hide; Autofit on live ticks; MiniTwo until asked.
+
+---
+
 ## 2026-08-20 — DL-461 Analyzer GEX without a shown position
 
 **Decision:** Coach: GEX on the Analyzer host **displays even when no

@@ -7,7 +7,8 @@ export type ButtonVariant =
   | "secondary"
   | "plain"
   | "destructive"
-  | "tint";
+  | "tint"
+  | "bordered";
 
 const VARIANT: Record<ButtonVariant, string> = {
   primary:
@@ -19,6 +20,11 @@ const VARIANT: Record<ButtonVariant, string> = {
   destructive:
     "bg-[var(--color-destructive)] text-white hover:opacity-90",
   tint: "bg-[var(--color-tint-soft)] text-[var(--color-tint)] hover:opacity-90",
+  /** Inverse / dark chrome — Apple bordered: transparent fill, label stroke. */
+  bordered:
+    "border border-[var(--color-on-inverse)] bg-transparent text-[var(--color-on-inverse)] " +
+    "hover:bg-[color-mix(in_srgb,var(--color-on-inverse)_12%,transparent)] " +
+    "active:bg-[color-mix(in_srgb,var(--color-on-inverse)_20%,transparent)]",
 };
 
 const Button = forwardRef<
@@ -41,8 +47,9 @@ const Button = forwardRef<
       type={type}
       disabled={disabled}
       className={[
-        "inline-flex items-center justify-center gap-2 rounded-[var(--radius-full)] px-4 text-sm font-medium transition-opacity",
+        "inline-flex items-center justify-center gap-2 rounded-[var(--radius-full)] px-4 text-sm font-medium transition-colors",
         "min-h-[var(--hit-min)] disabled:opacity-45 disabled:pointer-events-none",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]",
         VARIANT[variant],
         className,
       ].join(" ")}

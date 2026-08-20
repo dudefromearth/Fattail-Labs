@@ -200,7 +200,7 @@ All new and migrated UI uses these. Variants are **closed enums**.
 
 | Primitive | Variants | Notes |
 |---|---|---|
-| `Button` | `primary` · `secondary` · `tertiary`/`plain` · `destructive` · `tint` | Loading + disabled states; min height 44 |
+| `Button` | `primary` · `secondary` · `tertiary`/`plain` · `destructive` · `tint` · `bordered` | Loading + disabled states; min height 44. **`bordered`** = Apple outline on inverse/dark chrome (transparent fill, `--color-on-inverse` stroke + label, hover/press fill, tint focus ring). Capsule `radius-full`. |
 | `IconButton` | same intents | Square 44×44; requires accessible name |
 | `Link` | inline / standalone | Uses `color.tint`; underline on focus/hover per HIG web practice |
 | `SegmentedControl` | 2–5 segments | Tabs that are mutually exclusive filters |

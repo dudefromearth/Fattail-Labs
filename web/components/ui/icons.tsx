@@ -84,14 +84,24 @@ export function IconChevronRight(p: IconProps) {
   );
 }
 
+/** macOS pop-up button disclosure — chevron up + down. */
+export function IconChevronUpDown(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M7 9l5-4 5 4" />
+      <path d="M7 15l5 4 5-4" />
+    </svg>
+  );
+}
+
 /**
  * Lock glyph tone for surfaces where `currentColor` is wrong.
  * - `inherit` — uses currentColor (preferred in themed chrome)
  * - `light` — white / near-white (dark bars, green blotter, inverse tiles)
  * - `dark` — near-black (light cards, white surfaces)
  *
- * Geometry matches the Thinkorswim package/interest unlock silhouette
- * (solid body, open left shackle) — superior to platform emoji.
+ * Geometry matches Thinkorswim package lock: closed bolt over the body;
+ * unlocked bolt swung fully to the side. No keyhole. No emoji.
  */
 export type IconLockTone = "inherit" | "light" | "dark";
 
@@ -104,7 +114,7 @@ function lockPaint(tone: IconLockTone | undefined): string {
 }
 
 /**
- * Locked padlock — solid body, closed shackle (ToS counterpart of unlock).
+ * Locked padlock — solid body, shackle (bolt) closed over the body.
  * Filled silhouette; no keyhole. Use `tone` for light/dark surfaces.
  */
 export function IconLock(p: IconLockProps) {
@@ -120,11 +130,11 @@ export function IconLock(p: IconLockProps) {
       aria-hidden
       data-lock-tone={tone}
       data-lock-state="locked"
+      data-lock-shackle="over"
       {...rest}
     >
-      {/* Body — solid rounded rect (ToS has no keyhole cutout) */}
       <rect x="5" y="11" width="14" height="10.25" rx="2.25" />
-      {/* Closed shackle — both posts into body shoulders */}
+      {/* Closed shackle — both posts into the body, bolt over the body */}
       <path
         d="M8.25 11.2V8.15a3.9 3.9 0 0 1 7.8 0v3.05"
         fill="none"
@@ -138,32 +148,36 @@ export function IconLock(p: IconLockProps) {
 }
 
 /**
- * Unlocked padlock — solid body, open-left shackle.
- * Geometry from Thinkorswim Interest / package unlock (sim.png).
- * Use `tone="light"` on dark chrome; `tone="dark"` on light cards.
+ * Unlocked padlock — ToS: shackle swung fully beside the body.
+ * Wider than locked on purpose so the bolt is not cramped over the box.
  */
 export function IconUnlock(p: IconLockProps) {
   const { tone = "inherit", size = 20, className, ...rest } = p;
   const paint = lockPaint(tone);
+  const height = size;
+  const width = Math.round((Number(size) * 32) / 24);
   return (
     <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
+      width={width}
+      height={height}
+      viewBox="0 0 32 24"
       fill={paint}
+      overflow="visible"
       className={className}
       aria-hidden
       data-lock-tone={tone}
       data-lock-state="unlocked"
+      data-lock-shackle="side"
       {...rest}
     >
-      <rect x="5" y="11" width="14" height="10.25" rx="2.25" />
+      {/* Same body as lock, shifted right so the U has a full bay on the left */}
+      <rect x="16" y="11" width="14" height="10.25" rx="2.25" />
       {/*
-        Open shackle: free left post ends above the body; right post seats
-        into the left-center of the body top (ToS offset, not centered arch).
+        Full U to the left of the body: right post in the left shoulder,
+        arch left, free post hanging beside the box.
       */}
       <path
-        d="M6.35 9.55V7.85A3.85 3.85 0 0 1 14.1 8.05V11.2"
+        d="M17.2 11.2V5.1A4.4 4.4 0 0 0 8.4 5.1V16.8"
         fill="none"
         stroke={paint}
         strokeWidth={2.6}

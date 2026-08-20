@@ -9,6 +9,7 @@ export type PnlAutofitTrigger =
   | "first-paint"
   | "autofit-button"
   | "book-change"
+  | "book-appear"
   | "live-spot"
   | "what-if"
   | "exp-be"
@@ -25,18 +26,38 @@ export function autofitShouldRun2d(
   },
 ): boolean {
   if (opts.dragging || opts.strikeDragging) return false;
-  if (trigger === "autofit-button") return true;
+  if (trigger === "autofit-button" || trigger === "book-appear") return true;
   if (opts.userAdjusted) return false;
   if (trigger === "first-paint") return true;
   if (trigger === "book-change" || trigger === "series-len") return true;
   return false;
 }
 
-/** Juliet VP-A1 default: Show/Hide is not a lock-clear. Structure / Auto-fit are. */
+/**
+ * VP-A1: Show/Hide among an already-shown book is not a lock-clear.
+ * Empty canvas → a drawable book appears (Show, Create, paste) is.
+ */
 export function shouldClearUserViewLock(
-  reason: "autofit-button" | "structure" | "show-hide" | "live-tick",
+  reason:
+    | "autofit-button"
+    | "structure"
+    | "show-hide"
+    | "live-tick"
+    | "empty-to-book",
 ): boolean {
-  return reason === "autofit-button" || reason === "structure";
+  return (
+    reason === "autofit-button" ||
+    reason === "structure" ||
+    reason === "empty-to-book"
+  );
+}
+
+/** True when the canvas goes from no drawable series to having one. */
+export function bookAppearedOnCanvas(
+  hadCurves: boolean,
+  hasCurves: boolean,
+): boolean {
+  return !hadCurves && hasCurves;
 }
 
 export function expBeHashOf(bes: readonly number[]): string {

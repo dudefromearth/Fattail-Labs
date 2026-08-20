@@ -13,27 +13,15 @@ import {
   inspectorAside,
   inspectorBody,
   inspectorField,
-  inspectorListRow,
   inspectorRow,
   inspectorRowLabel,
   inspectorStickyNav,
 } from "@/components/options-lab/inspectorChrome";
-import {
-  OPF_ANALYZER_MODELS,
-  type OpfModelOption,
-  type OpfUseCase,
-} from "@/lib/options-lab/opfModels";
 import type { SessionPosture } from "@/lib/options-lab/sessionPosture";
 import { gexTemplate } from "@/lib/options-lab/templates/gex";
 import type { ValueModeId } from "@/lib/options-lab/templates/types";
 
 export const ANALYZER_INSPECTOR_W = INSPECTOR_W;
-
-const USE_CASE_LABEL: Record<OpfUseCase, string> = {
-  day_trade: "Day trade",
-  outlook: "Outlook",
-  backtest: "Backtest",
-};
 
 function postureLabel(posture: SessionPosture): string {
   if (posture === "Live") return "Live";
@@ -48,14 +36,8 @@ function formatSigned(n: number, suffix: string, digits = 0): string {
 
 export type AnalyzerControlsColumnProps = {
   posture: SessionPosture;
-  model: OpfModelOption;
   inputOverrideActive: boolean;
   sessionHeld: boolean;
-  symbol: string;
-  universe: { symbol: string }[];
-  universeLoading: boolean;
-  onSymbolChange: (symbol: string) => void;
-  onModelChange: (packId: string) => void;
   timeMachineEnabled: boolean;
   onTimeMachineEnabled: (value: boolean) => void;
   elapsedHours: number;
@@ -74,14 +56,6 @@ export type AnalyzerControlsColumnProps = {
   onSimSpotPct: (value: number) => void;
   onResetSim: () => void;
   onCreate: () => void;
-  onRefresh: () => void;
-  refreshDisabled: boolean;
-  refreshLoading: boolean;
-  onAutoFit: () => void;
-  autoFitDisabled: boolean;
-  showReanchor: boolean;
-  epochStale: boolean;
-  onReanchor: () => void;
   gexEnabled: boolean;
   onGexEnabled: (value: boolean) => void;
   gexValueMode: ValueModeId;
@@ -104,14 +78,8 @@ export type AnalyzerControlsColumnProps = {
 
 export default function AnalyzerControlsColumn({
   posture,
-  model,
   inputOverrideActive,
   sessionHeld,
-  symbol,
-  universe,
-  universeLoading,
-  onSymbolChange,
-  onModelChange,
   timeMachineEnabled,
   onTimeMachineEnabled,
   elapsedHours,
@@ -130,14 +98,6 @@ export default function AnalyzerControlsColumn({
   onSimSpotPct,
   onResetSim,
   onCreate,
-  onRefresh,
-  refreshDisabled,
-  refreshLoading,
-  onAutoFit,
-  autoFitDisabled,
-  showReanchor,
-  epochStale,
-  onReanchor,
   gexEnabled,
   onGexEnabled,
   gexValueMode,
@@ -198,9 +158,6 @@ export default function AnalyzerControlsColumn({
               />
               {postureLabel(posture)}
             </span>
-            <span className="rounded-full bg-[var(--color-fill)] px-2 py-1 text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
-              {USE_CASE_LABEL[model.useCase]}
-            </span>
           </div>
         </div>
         <div data-testid="analyzer-open-builder" className="contents">
@@ -239,40 +196,6 @@ export default function AnalyzerControlsColumn({
                 : "Off market — last print. Not polling a live chain."}
           </div>
         )}
-
-        <InspectorSection title="Instrument">
-          <label className={inspectorRow}>
-            <span className={inspectorRowLabel}>Symbol</span>
-            <select
-              className={inspectorField}
-              value={symbol}
-              onChange={(e) => onSymbolChange(e.target.value)}
-              disabled={universeLoading}
-              data-testid="analyzer-symbol-select"
-            >
-              {universe.map((u) => (
-                <option key={u.symbol} value={u.symbol}>
-                  {u.symbol}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={inspectorRow}>
-            <span className={inspectorRowLabel}>OPF model</span>
-            <select
-              className={inspectorField}
-              value={model.packId}
-              onChange={(e) => onModelChange(e.target.value)}
-              data-testid="opf-model-select"
-            >
-              {OPF_ANALYZER_MODELS.map((m) => (
-                <option key={m.packId} value={m.packId}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </InspectorSection>
 
         <InspectorSection title="GEX" testId="analyzer-gex-panel">
           <div className={inspectorRow + " justify-between"}>
@@ -332,7 +255,7 @@ export default function AnalyzerControlsColumn({
           />
         </InspectorSection>
 
-        <InspectorSection title="Range" testId="analyzer-range-panel">
+        <InspectorSection title="Probability" testId="analyzer-range-panel">
           <div className={inspectorRow + " justify-between"}>
             <span className="text-[length:var(--text-subheadline)] text-[var(--color-label)]">
               Show
@@ -341,7 +264,7 @@ export default function AnalyzerControlsColumn({
               type="button"
               role="switch"
               aria-checked={rangeEnabled}
-              aria-label="Show range"
+              aria-label="Show probability"
               data-testid="analyzer-range-enable"
               onClick={() => onRangeEnabled(!rangeEnabled)}
               className={
@@ -393,7 +316,7 @@ export default function AnalyzerControlsColumn({
                 disabled={!rangeEnabled || rangePctDisabled}
                 onChange={(e) => onRangePct1(Number(e.target.value))}
                 data-testid="analyzer-range-pct1"
-                aria-label="Range coverage percent"
+                aria-label="Probability coverage percent"
               />
               <span className="shrink-0 text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]">
                 %
@@ -408,7 +331,7 @@ export default function AnalyzerControlsColumn({
               type="button"
               role="switch"
               aria-checked={rangeSecondOn}
-              aria-label="Second range"
+              aria-label="Second probability band"
               data-testid="analyzer-range-second"
               disabled={!rangeEnabled}
               onClick={() => onRangeSecondOn(!rangeSecondOn)}
@@ -444,7 +367,7 @@ export default function AnalyzerControlsColumn({
                 disabled={!rangeEnabled || !rangeSecondOn || rangePctDisabled}
                 onChange={(e) => onRangePct2(Number(e.target.value))}
                 data-testid="analyzer-range-pct2"
-                aria-label="Second range coverage percent"
+                aria-label="Second probability coverage percent"
               />
               <span className="shrink-0 text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]">
                 %
@@ -524,41 +447,6 @@ export default function AnalyzerControlsColumn({
               Reset
             </Button>
           </div>
-        </InspectorSection>
-
-        <InspectorSection title="Graph">
-          <button
-            type="button"
-            className={inspectorListRow}
-            onClick={onRefresh}
-            disabled={refreshDisabled}
-          >
-            <span>Refresh</span>
-            {refreshLoading ? (
-              <span
-                className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-separator)] border-t-[var(--color-tint)]"
-                aria-hidden
-              />
-            ) : null}
-          </button>
-          <button
-            type="button"
-            className={inspectorListRow}
-            onClick={onAutoFit}
-            disabled={autoFitDisabled}
-          >
-            Auto-fit
-          </button>
-          {showReanchor ? (
-            <button type="button" className={inspectorListRow} onClick={onReanchor}>
-              <span>Re-anchor</span>
-              {epochStale ? (
-                <span className="text-[length:var(--text-caption)] text-[var(--color-warning)]">
-                  Stale
-                </span>
-              ) : null}
-            </button>
-          ) : null}
         </InspectorSection>
       </div>
     </aside>

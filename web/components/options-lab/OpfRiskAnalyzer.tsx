@@ -91,9 +91,15 @@ import {
   gexTemplate,
 } from "@/lib/options-lab/templates/gex";
 import type { ValueModeId } from "@/lib/options-lab/templates/types";
+import Button from "@/components/ui/Button";
+import { IconChevronUpDown } from "@/components/ui/icons";
 import { applyStrikeDragToPosition } from "@/lib/options-lab/listedStrikeDrag";
 import { snapToListed } from "@/lib/options-lab/listedStrikes";
 import type { StrikeDragInfo } from "@/lib/risk-graph/strikeHandleBind";
+import {
+  autofitShouldRun2d,
+  bookAppearedOnCanvas,
+} from "@/lib/risk-graph/pnlChartViewPolicy";
 import {
   bandFromMassPct,
   RANGE_MASS_1SIGMA,
@@ -110,10 +116,10 @@ import {
   visibleBookTrade,
 } from "@/lib/options-lab/cardDisplayState";
 
-const BOOK_H_KEY = "ft_analyzer_book_height_px";
+const BOOK_H_KEY = "ft_analyzer_book_height_px_v2";
 const BOOK_H_MIN = 72;
-/** Header + ~1.25 three-leg cards (default 20-wide fly). */
-const BOOK_H_DEFAULT = 288;
+/** Header + ~1.25 three-leg cards; 20% card height saved goes to the viewport. */
+const BOOK_H_DEFAULT = 230;
 const VIEWPORT_H_MIN = 140;
 
 async function fetchPlanePosture(): Promise<SessionPosture> {
@@ -980,6 +986,20 @@ export default function OpfRiskAnalyzer() {
     risk.theoreticalPoints.length > 0;
   const hasGhostSeries = showExpiredGhost && ghostPoints.length > 0;
   const hasCurves = hasLiveSeries || hasGhostSeries;
+  const hadCurvesRef = useRef(false);
+  useLayoutEffect(() => {
+    const appeared = bookAppearedOnCanvas(hadCurvesRef.current, hasCurves);
+    hadCurvesRef.current = hasCurves;
+    if (!appeared) return;
+    if (
+      !autofitShouldRun2d("book-appear", {
+        userAdjusted: true,
+      })
+    ) {
+      return;
+    }
+    chartRef.current?.autoFit();
+  }, [hasCurves]);
 
   const alertLines = useMemo(
     () =>
@@ -1041,17 +1061,6 @@ export default function OpfRiskAnalyzer() {
     if (!editId) return null;
     return positions.find((p) => p.id === editId)?.position ?? null;
   }, [editId, positions]);
-
-  const timeRefLabel =
-    model.useCase === "day_trade"
-      ? sessionHeld
-        ? `Held · ${risk.generationEpoch ? "last gen" : "—"}`
-        : `Live · gen ${risk.generationEpoch.slice(0, 24) || "…"}`
-      : model.useCase === "outlook"
-        ? epochStale
-          ? "Scenario · epoch stale"
-          : "Scenario · epoch"
-        : "Replay · no live claim";
 
   const positionsHandlers = {
     positions,
@@ -1261,20 +1270,8 @@ export default function OpfRiskAnalyzer() {
     >
       <AnalyzerControlsColumn
         posture={posture}
-        model={model}
         inputOverrideActive={inputOverrideActive}
         sessionHeld={sessionHeld}
-        symbol={symbol}
-        universe={universe}
-        universeLoading={universeLoading}
-        onSymbolChange={setSymbol}
-        onModelChange={(packId) => {
-          const m = findOpfModel(packId);
-          setModel(m);
-          if (m.useCase === "outlook") setEpochPinned(true);
-          else setEpochPinned(false);
-          setEpochStale(false);
-        }}
         timeMachineEnabled={timeMachineEnabled}
         onTimeMachineEnabled={setTimeMachineEnabled}
         elapsedHours={whatIfHydrated ? elapsedHours : 0}
@@ -1321,19 +1318,6 @@ export default function OpfRiskAnalyzer() {
           setEditId(null);
           setBuilderOpen(true);
         }}
-        onRefresh={() => risk.refresh()}
-        refreshDisabled={!trade || risk.loading}
-        refreshLoading={risk.loading}
-        onAutoFit={() => chartRef.current?.autoFit()}
-        autoFitDisabled={!hasCurves}
-        showReanchor={model.useCase === "outlook"}
-        epochStale={epochStale}
-        onReanchor={() => {
-          setEpochPinned(false);
-          setEpochStale(false);
-          risk.refresh();
-          setEpochPinned(true);
-        }}
         gexEnabled={gexEnabled}
         onGexEnabled={setGexEnabled}
         gexValueMode={gexValueMode}
@@ -1374,52 +1358,89 @@ export default function OpfRiskAnalyzer() {
           className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0a0a0e] p-2"
           data-testid="analyzer-viewport-region"
         >
-          <div className="mb-2 flex shrink-0 items-center gap-3 px-1 text-xs text-white/50">
-            <div className="flex min-w-0 flex-wrap items-center gap-3">
-              <span className="font-semibold text-white/80">
-                {trade ? `${trade.symbol} · OPF risk graph` : "No trade"}
+          <div className="relative mb-2 flex min-h-11 shrink-0 items-center px-1">
+          <div className="flex items-center gap-[50px]">
+            <label className="flex shrink-0 items-center gap-1.5">
+              <span className="text-[16px] font-bold text-yellow-400">
+                Symbol
               </span>
-              <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80">
-                {activeModel.label}
+              <span className="relative inline-flex min-h-11 items-center">
+                <select
+                  className={
+                    "min-h-11 min-w-[7.5rem] appearance-none rounded-[var(--radius-md,0.5rem)] " +
+                    "border border-white/20 bg-[#1c1c24] py-1 pl-3 pr-11 " +
+                    "font-mono text-[24px] font-bold tabular-nums text-yellow-400 " +
+                    "shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_1px_2px_rgba(0,0,0,0.45)] " +
+                    "outline-none " +
+                    "hover:border-yellow-400/45 hover:bg-[#22222c] " +
+                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
+                    "focus-visible:outline-yellow-400/80 " +
+                    "disabled:opacity-45"
+                  }
+                  value={symbol}
+                  onChange={(e) => setSymbol(e.target.value)}
+                  disabled={universeLoading}
+                  data-testid="analyzer-symbol-select"
+                  aria-label="Symbol"
+                >
+                  {(universe.some((u) => u.symbol === symbol)
+                    ? universe
+                    : [{ symbol }, ...universe]
+                  ).map((u) => (
+                    <option key={u.symbol} value={u.symbol}>
+                      {u.symbol}
+                    </option>
+                  ))}
+                </select>
+                <span
+                  className={
+                    "pointer-events-none absolute inset-y-0 right-0 flex w-10 " +
+                    "items-center justify-center rounded-r-[var(--radius-md,0.5rem)] " +
+                    "border-l border-white/15 bg-white/[0.06] text-yellow-400"
+                  }
+                  aria-hidden
+                >
+                  <IconChevronUpDown size={16} />
+                </span>
               </span>
-              <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60">
-                {timeRefLabel}
-              </span>
-              <span>
-                Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
-              </span>
-              <span className="text-cyan-400/80">Expiration</span>
-              <span className="text-fuchsia-400/80">
-                {activeModel.theoLegend}
-              </span>
-            </div>
-            <div className="ml-auto flex shrink-0 items-baseline gap-4">
-              <label className="flex items-baseline gap-1.5">
-                <span className="text-[16px] font-bold text-yellow-400">Spot</span>
-                <input
-                  className="w-[8.5rem] border-b border-yellow-400/40 bg-transparent py-0 text-right font-mono text-[24px] font-bold tabular-nums text-yellow-400 outline-none focus:border-yellow-300"
-                  value={spotStr}
-                  onChange={(e) => {
-                    setSpotDirty(true);
-                    setSpotStr(e.target.value);
-                  }}
-                  data-testid="analyzer-spot-input"
-                  aria-label="Spot"
-                />
-              </label>
-              <label className="flex items-baseline gap-1.5">
-                <span className="text-[16px] font-bold text-red-500">VIX</span>
-                <input
-                  className="w-[5.75rem] border-b border-red-500/40 bg-transparent py-0 text-right font-mono text-[24px] font-bold tabular-nums text-red-500 outline-none focus:border-red-400"
-                  value={vixStr}
-                  onChange={(e) => {
-                    setVixDirty(true);
-                    setVixStr(e.target.value);
-                  }}
-                  data-testid="analyzer-vix-input"
-                  aria-label="VIX"
-                />
-              </label>
+            </label>
+            <label className="flex shrink-0 items-baseline gap-1.5">
+              <span className="text-[16px] font-bold text-yellow-400">Spot</span>
+              <input
+                className="w-[8.5rem] border-b border-yellow-400/40 bg-transparent py-0 text-right font-mono text-[24px] font-bold tabular-nums text-yellow-400 outline-none focus:border-yellow-300"
+                value={spotStr}
+                onChange={(e) => {
+                  setSpotDirty(true);
+                  setSpotStr(e.target.value);
+                }}
+                data-testid="analyzer-spot-input"
+                aria-label="Spot"
+              />
+            </label>
+            <label className="flex shrink-0 items-baseline gap-1.5">
+              <span className="text-[16px] font-bold text-red-500">VIX</span>
+              <input
+                className="w-[5.75rem] border-b border-red-500/40 bg-transparent py-0 text-right font-mono text-[24px] font-bold tabular-nums text-red-500 outline-none focus:border-red-400"
+                value={vixStr}
+                onChange={(e) => {
+                  setVixDirty(true);
+                  setVixStr(e.target.value);
+                }}
+                data-testid="analyzer-vix-input"
+                aria-label="VIX"
+              />
+            </label>
+          </div>
+            <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center">
+              <Button
+                variant="bordered"
+                className="pointer-events-auto"
+                onClick={() => chartRef.current?.autoFit()}
+                disabled={!hasCurves}
+                data-testid="analyzer-autofit"
+              >
+                Auto-fit
+              </Button>
             </div>
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
@@ -1520,26 +1541,6 @@ export default function OpfRiskAnalyzer() {
                       <p className="mt-1.5 text-[12px] leading-snug text-white/60">
                         Could not draw a package curve yet. Confirm every leg is
                         on a listed strike and try again.
-                      </p>
-                    </div>
-                  </div>
-                ) : !trade ? (
-                  <div
-                    className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4"
-                    data-testid="analyzer-viewport-notice"
-                    data-notice-kind="empty_book"
-                  >
-                    <div className="max-w-sm rounded-2xl border border-white/12 bg-black/35 px-5 py-3.5 text-center backdrop-blur-sm">
-                      <p className="text-[12px] leading-snug text-white/55">
-                        Check{" "}
-                        <strong className="font-semibold text-white/75">
-                          Show
-                        </strong>{" "}
-                        on one or more positions, or open{" "}
-                        <strong className="font-semibold text-white/75">
-                          Builder
-                        </strong>
-                        . Right-click the graph for alerts.
                       </p>
                     </div>
                   </div>

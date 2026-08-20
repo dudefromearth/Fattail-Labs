@@ -184,9 +184,9 @@ function legsInDisplayOrder(legs: readonly LegInput[]): LegInput[] {
   });
 }
 
-// Body 22.5px = 15px × 1.5; chrome scaled with it
+// Body 20.25px unchanged — height cut is pad / extra Y / lock, not type.
 const th =
-  "px-1.5 py-1.5 text-left text-[16.5px] font-semibold uppercase tracking-wide text-white/55 whitespace-nowrap";
+  "px-1.5 py-1 text-left text-[16.5px] font-semibold uppercase tracking-wide text-white/55 whitespace-nowrap";
 /** Horizontal pad only — vertical pad is set per card so extra Y is shared across legs. */
 const td = "px-1.5 text-[20.25px] tabular-nums whitespace-nowrap";
 const COLS = [
@@ -206,8 +206,8 @@ const COLS = [
   "5%",
   "10%",
 ] as const;
-const TD_PAD_Y = 5;
-const CARD_EXTRA_Y = 22;
+const TD_PAD_Y = 4;
+const CARD_EXTRA_Y = 18;
 const actionBtn =
   "rounded bg-black/25 px-1.5 py-0.5 text-[16.5px] font-semibold uppercase text-white/90 hover:bg-black/40";
 
@@ -798,7 +798,7 @@ function PosBlock({
                   <button
                     type="button"
                     className={
-                      "inline-flex h-6 w-8 items-center justify-center rounded " +
+                      "inline-flex h-5 w-8 items-center justify-center rounded " +
                       "bg-black/25 text-[15px] font-bold leading-none text-white " +
                       "hover:bg-black/45 disabled:opacity-40"
                     }
@@ -812,7 +812,7 @@ function PosBlock({
                   <button
                     type="button"
                     className={
-                      "inline-flex h-6 w-8 items-center justify-center rounded " +
+                      "inline-flex h-5 w-8 items-center justify-center rounded " +
                       "bg-black/25 text-[15px] font-bold leading-none text-white " +
                       "hover:bg-black/45 disabled:opacity-40"
                     }
@@ -952,7 +952,7 @@ function PosBlock({
                   {locked ? (
                     <button
                       type="button"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded bg-black/20 hover:bg-black/35"
+                      className="inline-flex h-9 w-9 items-center justify-center overflow-visible rounded bg-black/20 hover:bg-black/35"
                       title="Unlock package basis"
                       aria-label="Unlock"
                       data-testid={`analyzer-pos-lock-${pos.id}`}
@@ -960,19 +960,19 @@ function PosBlock({
                       onClick={() => onUnlock(pos.id)}
                     >
                       {/* light tone: white ToS glyph on green/red blotter */}
-                      <IconLock size={27} tone="light" />
+                      <IconLock size={22} tone="light" />
                     </button>
                   ) : (
                     <button
                       type="button"
-                      className="inline-flex h-11 w-11 items-center justify-center rounded bg-black/15 opacity-90 hover:bg-black/30 hover:opacity-100"
+                      className="inline-flex h-9 w-9 items-center justify-center overflow-visible rounded bg-black/15 opacity-90 hover:bg-black/30 hover:opacity-100"
                       title="Lock at natural mid"
                       aria-label="Lock natural"
                       data-testid={`analyzer-pos-lock-${pos.id}`}
                       data-locked="0"
                       onClick={() => onLockNatural(pos.id)}
                     >
-                      <IconUnlock size={27} tone="light" />
+                      <IconUnlock size={22} tone="light" />
                     </button>
                   )}
                 </div>

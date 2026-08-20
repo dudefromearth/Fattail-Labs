@@ -247,8 +247,8 @@ Read with §0.2 buckets: each subsection below tags its bucket.
 
 | Region | **As-built** | **TARGET (Coach)** |
 |--------|--------------|---------------------|
-| Main split | **Left sidebar** (~21rem) + **right viewport** (`lg:flex-row`) | **Vertical stack:** viewport **above**, position list **below**, with **divider**; single panel with divider *or* two stacked panels |
-| Sidebar contents | **HIG inspector:** Instrument · GEX · Range · What-if · Graph. Spot/VIX in the dark strip **above** the risk canvas (upper-right). Position list and Alerts sit **under** the viewport | **OD-AZ1 Accept:** top compact control strip; **list under viewport**; **OD-AZ2 Accept:** Alerts under position list |
+| Main split | **Left sidebar** (~21rem) + **right viewport** (`lg:flex-row`) | **Vertical stack:** viewport **above**, position list **below**, with **divider**. Book default **230px** (~1.25 three-leg cards after −20% pad/lock, **type size unchanged**); saved height goes to the canvas. |
+| Sidebar contents | **HIG inspector:** GEX · Probability · What-if. **No Instrument / OPF-model / Graph panel.** Dark strip **above** the canvas: **upper-left** Symbol + Spot + VIX (**50px** gaps); **center** Auto-fit (**≥44pt**). Position list and Alerts sit **under** the viewport | **OD-AZ1 Accept:** top compact control strip; **list under viewport**; **OD-AZ2 Accept:** Alerts under position list |
 | Viewport | Full remaining height · dark canvas · chart panel | Same — **one** focused graph panel |
 | MSC heritage | MSC had list **left** of viewport | Labs: list **under** viewport |
 
@@ -412,7 +412,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Position-specific alert | **Not on host pane** — next overlays program |
 | Legend labels | Pack theo legend + Held suffix |
 | GEX backdrop | Same heatmap GEX template + dual-side ladder; bars at listed strikes; GEX axis = plot mid-height; **Call/Put = two right scales** (sky call up, red put down), each scaled to that side’s longest bar; Net/Abs = one right scale colored to the bars; units ÷1e9 as heatmap; pan/zoom with the view (DL-459). **Chain-attached (AZ-VP-2 / DL-461):** GEX paints from the listed expiration even when **no positions are shown** (empty book or all hidden). Horizon = shown-card exp if any, else Range listed date, else first listed. Not a second position book. |
-| Range band | Gray column **behind GEX**, clipped to the **plot** (not the black gutters above/below). Member % is two-sided normal mass **XX.XX%** (1σ = **68.27%**, 2σ = **95.45%**). Geometry is ±z·σ·√τ on a **listed** expiration (ATM IV). Inspector **Range**: Show/Hide · expiration · Width 68.27% · optional second 95.45%. Pan/zoom with the view. |
+| Range band | Gray column **behind GEX**, clipped to the **plot** (not the black gutters above/below). Member % is two-sided normal mass **XX.XX%** (1σ = **68.27%**, 2σ = **95.45%**). Geometry is ±z·σ·√τ on a **listed** expiration (ATM IV). Inspector **Probability**: Show/Hide · expiration · Width 68.27% · optional second 95.45%. Pan/zoom with the view. |
 | Heritage | MSC Risk Graph UX only — no MSC pricing import (DL-302 / AZ-VP-S4) |
 | Strike handles | Yellow ticks on the $0 line at each **visible** position’s listed strikes. **MSC handle grammar (Labs-typed):** hover thickens + grab cursor; press grabbing; **Single handle** (no Shift): only that tick highlights and only that strike moves. **Shift-click/drag:** all handles of the position highlight and move in unison. **Proximity size:** thick only while the pointer is in that handle’s hit box (or during the live drag). Leaving proximity — including after drop — restores idle tick size; Shift-group thicken is not sticky. Handles **detent only to listed strikes** for that position’s expiration (no free slide). Live snap, redefine the card, redraw tent; drop commits (unlock + atomic rebind). No invented strikes (DL-309). Do not Autofit on drop. |
 
@@ -593,7 +593,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 | Feature | As-built | TARGET |
 |---------|----------|--------|
 | Role | Probability framing for the underlier (and optional structure-relative bands) | Dedicated **Probability viewport** |
-| MSC / chart heritage | Autofit still knows 1σ window. **As-built overlay:** gray ±% band behind GEX on `HostPnLChart`; Range inspector Show/Hide · listed expiration · Width % (1σ default) · optional second (2σ default). Honest geometry only (AZ-VP-8). | Dedicated Probability viewport later (OD-AZ8) |
+| MSC / chart heritage | Autofit still knows 1σ window. **As-built overlay:** gray ±% band behind GEX on `HostPnLChart`; **Probability** inspector Show/Hide · listed expiration · Width % (1σ default) · optional second (2σ default). Honest geometry only (AZ-VP-8). | Dedicated Probability viewport later (OD-AZ8) |
 | Suite nav / route | **None** | **OD-AZ8 Accept:** suite-attached panel (e.g. `/app/options-lab/probability`) |
 | Data | — | Live underlier mid · **labeled IV/VIX basis with own as_of/session** (A8); optional OPF meta; **not** package SoR |
 | Focused card | — | Optional **structure-relative** 1σ / band when a position is focused |
@@ -650,7 +650,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 |----|-----|
 | **AZ-FOCUS-1** | At most **one** highlighted (focused) card at a time — highlight only. |
 | **AZ-FOCUS-2** | **Every shown** (`visible`) card drives the viewport as an additive book. Focus is not required. *(Supersedes “focused and visible only” · DL-394.)* |
-| **AZ-FOCUS-3** | If no shown drawable card, viewport is empty CTA (**scales + grid + GEX** when GEX is on). GEX is chain-attached — it does not require a shown position (DL-461). |
+| **AZ-FOCUS-3** | If no shown drawable card, viewport is **scales + grid + GEX** (when GEX is on) — **no center instruction card**. GEX is chain-attached — it does not require a shown position (DL-461). When a drawable book **appears** on an empty canvas (Show, Create, paste, or any other path), **Autofit must run** even if the member had panned/zoomed the empty GEX view (**DL-462**). Show/Hide among an already-shown book still does not steal the view (VP-A1). |
 | **AZ-FOCUS-4** | Hiding a card drops **that card only** from the book (PB13). Siblings stay. |
 | **AZ-FOCUS-5** | Removing a card removes it from the book; highlight fallback is independent. |
 | **AZ-FOCUS-6** | Incomplete/skewed **shown** unlocked cards do not fabricate a curve (PB-VIEW-6); they do not blank a drawable sibling. |
