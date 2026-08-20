@@ -246,7 +246,7 @@ const th =
 /** Horizontal pad only — vertical pad is set per card so extra Y is shared across legs. */
 const td = "px-1.5 text-[20.25px] tabular-nums whitespace-nowrap";
 const COLS = [
-  "3%",
+  "6%",
   "7%",
   "8%",
   "5%",
@@ -260,7 +260,7 @@ const COLS = [
   "6%",
   "6%",
   "5%",
-  "10%",
+  "7%",
 ] as const;
 const TD_PAD_Y = 4;
 const CARD_EXTRA_Y = 18;
@@ -376,7 +376,7 @@ export default function AnalyzerPositionsList({
             </colgroup>
             <thead className="sticky top-0 z-[1] bg-[#0a0a0e] shadow-[0_1px_0_rgba(255,255,255,0.12)]">
               <tr>
-                <th className={th + " text-center"} aria-label="Show on graph">
+                <th className={th} aria-label="Show on graph and delete from list">
                   Show
                 </th>
                 <th className={th}>Spread</th>
@@ -720,26 +720,49 @@ function PosBlock({
                 : `analyzer-pos-leg-${pos.id}-${i}`
             }
           >
-            <td
-              className={td + " w-8 text-center"}
-              style={edge}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {isTop ? (
-                <input
-                  type="checkbox"
-                  checked={!hidden}
-                  onChange={() => onToggleVisibility(pos.id)}
-                  aria-label={
-                    hidden
-                      ? `Show ${pos.label} on graph`
-                      : `Hide ${pos.label} from graph`
-                  }
-                  data-testid={`analyzer-pos-show-${pos.id}`}
-                  className="h-4 w-4 cursor-pointer accent-[var(--color-tint)]"
-                />
-              ) : null}
-            </td>
+            {isTop ? (
+              <td
+                rowSpan={nLegs}
+                className={td + " align-top"}
+                style={cellBase(true)}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex flex-col items-stretch gap-4 py-0.5">
+                  <label
+                    className={
+                      "flex min-h-8 cursor-pointer items-center gap-1.5 " +
+                      "text-[16.5px] font-semibold uppercase tracking-wide text-white/80"
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!hidden}
+                      onChange={() => onToggleVisibility(pos.id)}
+                      aria-label={
+                        hidden
+                          ? `Show ${pos.label} on graph`
+                          : `Hide ${pos.label} from graph`
+                      }
+                      data-testid={`analyzer-pos-show-${pos.id}`}
+                      className="h-5 w-5 shrink-0 cursor-pointer accent-[var(--color-tint)]"
+                    />
+                    Show
+                  </label>
+                  <button
+                    type="button"
+                    className={
+                      actionBtn +
+                      " min-h-8 w-full px-2 py-1 text-[16.5px] text-red-100"
+                    }
+                    data-testid={`analyzer-pos-delete-${pos.id}`}
+                    aria-label={`Delete ${pos.label} from the list`}
+                    onClick={() => onDelete(pos.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
+            ) : null}
             <td
               className={
                 td +
@@ -1148,13 +1171,6 @@ function PosBlock({
                       To Trade Log
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    className={actionBtn + " text-red-100"}
-                    onClick={() => onDelete(pos.id)}
-                  >
-                    ×
-                  </button>
                 </div>
               ) : null}
             </td>
