@@ -135,7 +135,7 @@ function PackagePriceField({
       data-testid={`analyzer-pos-price-edit-${id}`}
       className={
         "w-[6.75rem] rounded bg-black/25 px-1 py-0.5 text-right font-mono " +
-        "text-[22.5px] font-semibold tabular-nums outline-none ring-1 ring-white/40 " +
+        "text-[20.25px] font-semibold tabular-nums outline-none ring-1 ring-white/40 " +
         textMain
       }
       value={draft}
@@ -186,9 +186,9 @@ function legsInDisplayOrder(legs: readonly LegInput[]): LegInput[] {
 
 // Body 22.5px = 15px × 1.5; chrome scaled with it
 const th =
-  "px-1.5 py-2 text-left text-[18px] font-semibold uppercase tracking-wide text-white/55 whitespace-nowrap";
-/** Horizontal pad only — vertical pad is set per card so +24px is shared across legs. */
-const td = "px-1.5 text-[22.5px] tabular-nums whitespace-nowrap";
+  "px-1.5 py-1.5 text-left text-[16.5px] font-semibold uppercase tracking-wide text-white/55 whitespace-nowrap";
+/** Horizontal pad only — vertical pad is set per card so extra Y is shared across legs. */
+const td = "px-1.5 text-[20.25px] tabular-nums whitespace-nowrap";
 const COLS = [
   "3%",
   "7%",
@@ -206,10 +206,10 @@ const COLS = [
   "5%",
   "10%",
 ] as const;
-const TD_PAD_Y = 6;
-const CARD_EXTRA_Y = 24;
+const TD_PAD_Y = 5;
+const CARD_EXTRA_Y = 22;
 const actionBtn =
-  "rounded bg-black/25 px-1.5 py-0.5 text-[18px] font-semibold uppercase text-white/90 hover:bg-black/40";
+  "rounded bg-black/25 px-1.5 py-0.5 text-[16.5px] font-semibold uppercase text-white/90 hover:bg-black/40";
 
 export type AnalyzerPositionsListProps = {
   positions: AnalyzerPosition[];
@@ -310,7 +310,7 @@ export default function AnalyzerPositionsList({
       ) : (
         <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto rounded border border-[var(--color-separator)] bg-[#0a0a0e]">
           <table
-            className="w-full min-w-[1400px] table-fixed border-separate border-spacing-0 text-left text-[24px] leading-snug"
+            className="w-full min-w-[1400px] table-fixed border-separate border-spacing-0 text-left text-[21.5px] leading-snug"
             data-testid="analyzer-positions-table"
           >
             <colgroup>
@@ -698,7 +698,7 @@ function PosBlock({
               {isTop ? (
                 <select
                   className={
-                    "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[22.5px] font-semibold uppercase outline-none " +
+                    "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[20.25px] font-semibold uppercase outline-none " +
                     textMain
                   }
                   value={pkgDir === "SELL" ? "sell" : "buy"}
@@ -751,7 +751,7 @@ function PosBlock({
               {isTop && expChoices.length > 0 ? (
                 <select
                   className={
-                    "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[22.5px] font-semibold outline-none " +
+                    "w-full max-w-full cursor-pointer rounded bg-black/20 py-0.5 pl-1 pr-0.5 text-[20.25px] font-semibold outline-none " +
                     textMain
                   }
                   value={
@@ -798,8 +798,8 @@ function PosBlock({
                   <button
                     type="button"
                     className={
-                      "inline-flex h-7 w-8 items-center justify-center rounded " +
-                      "bg-black/25 text-[16.5px] font-bold leading-none text-white " +
+                      "inline-flex h-6 w-8 items-center justify-center rounded " +
+                      "bg-black/25 text-[15px] font-bold leading-none text-white " +
                       "hover:bg-black/45 disabled:opacity-40"
                     }
                     title="Shift all strikes up one listed step (unlocks package)"
@@ -812,8 +812,8 @@ function PosBlock({
                   <button
                     type="button"
                     className={
-                      "inline-flex h-7 w-8 items-center justify-center rounded " +
-                      "bg-black/25 text-[16.5px] font-bold leading-none text-white " +
+                      "inline-flex h-6 w-8 items-center justify-center rounded " +
+                      "bg-black/25 text-[15px] font-bold leading-none text-white " +
                       "hover:bg-black/45 disabled:opacity-40"
                     }
                     title="Shift all strikes down one listed step (unlocks package)"
@@ -882,7 +882,7 @@ function PosBlock({
                   <>
                     {priceLabel}
                     <span
-                      className={`ml-1 text-[15px] font-semibold uppercase ${
+                      className={`ml-1 text-[13.5px] font-semibold uppercase ${
                         display.kind === "expired"
                           ? "text-amber-200"
                           : textMuted
@@ -898,7 +898,7 @@ function PosBlock({
                 ) : (
                   <span
                     className={
-                      "text-[18px] font-bold uppercase tracking-wide " +
+                      "text-[16.5px] font-bold uppercase tracking-wide " +
                       (display.kind === "updating"
                         ? textMuted
                         : "text-amber-200")
@@ -923,7 +923,7 @@ function PosBlock({
                   if (nt) {
                     return (
                       <span
-                        className="text-[16.5px] font-bold uppercase tracking-wide text-amber-200"
+                        className="text-[15px] font-bold uppercase tracking-wide text-amber-200"
                         data-testid={`analyzer-pos-leg-not-traded-${pos.id}-${i}`}
                         title={`${leg.strike} ${leg.type} — not traded`}
                       >
@@ -944,7 +944,7 @@ function PosBlock({
               {isTop ? (
                 <div className="flex items-center gap-1">
                   <span
-                    className={`text-[21px] font-semibold uppercase ${textMain}`}
+                    className={`text-[19px] font-semibold uppercase ${textMain}`}
                     data-testid={`analyzer-pos-pkg-side-${pos.id}`}
                   >
                     {pkgSide}
@@ -952,7 +952,7 @@ function PosBlock({
                   {locked ? (
                     <button
                       type="button"
-                      className="inline-flex h-12 w-12 items-center justify-center rounded bg-black/20 hover:bg-black/35"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded bg-black/20 hover:bg-black/35"
                       title="Unlock package basis"
                       aria-label="Unlock"
                       data-testid={`analyzer-pos-lock-${pos.id}`}
@@ -960,19 +960,19 @@ function PosBlock({
                       onClick={() => onUnlock(pos.id)}
                     >
                       {/* light tone: white ToS glyph on green/red blotter */}
-                      <IconLock size={30} tone="light" />
+                      <IconLock size={27} tone="light" />
                     </button>
                   ) : (
                     <button
                       type="button"
-                      className="inline-flex h-12 w-12 items-center justify-center rounded bg-black/15 opacity-90 hover:bg-black/30 hover:opacity-100"
+                      className="inline-flex h-11 w-11 items-center justify-center rounded bg-black/15 opacity-90 hover:bg-black/30 hover:opacity-100"
                       title="Lock at natural mid"
                       aria-label="Lock natural"
                       data-testid={`analyzer-pos-lock-${pos.id}`}
                       data-locked="0"
                       onClick={() => onLockNatural(pos.id)}
                     >
-                      <IconUnlock size={30} tone="light" />
+                      <IconUnlock size={27} tone="light" />
                     </button>
                   )}
                 </div>
@@ -981,7 +981,7 @@ function PosBlock({
             <td
               className={
                 td +
-                " text-[18px] font-semibold uppercase " +
+                " text-[16.5px] font-semibold uppercase " +
                 (isTop
                   ? chip === "live"
                     ? kind !== "neutral"
@@ -1030,7 +1030,7 @@ function PosBlock({
                     In
                     <input
                       type="time"
-                      className="rounded bg-black/25 px-1 py-0.5 text-[16px] text-white"
+                      className="rounded bg-black/25 px-1 py-0.5 text-[14.5px] text-white"
                       data-testid={`analyzer-pos-entry-${pos.id}`}
                       value={etHmValue(resolveEntryAt(pos))}
                       onChange={(e) =>

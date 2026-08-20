@@ -108,7 +108,8 @@ import {
 
 const BOOK_H_KEY = "ft_analyzer_book_height_px";
 const BOOK_H_MIN = 72;
-const BOOK_H_DEFAULT = 200;
+/** Header + ~1.25 three-leg cards (default 20-wide fly). */
+const BOOK_H_DEFAULT = 288;
 const VIEWPORT_H_MIN = 140;
 
 async function fetchPlanePosture(): Promise<SessionPosture> {
@@ -212,7 +213,7 @@ export default function OpfRiskAnalyzer() {
       const raw = sessionStorage.getItem(BOOK_H_KEY);
       if (!raw) return;
       const n = parseInt(raw, 10);
-      if (Number.isFinite(n) && n >= BOOK_H_MIN) setBookHeightPx(n);
+      if (Number.isFinite(n) && n >= BOOK_H_DEFAULT) setBookHeightPx(n);
     } catch {
       /* ignore */
     }
