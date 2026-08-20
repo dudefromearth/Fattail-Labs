@@ -38,6 +38,8 @@ from market_data.chain_ladder import (
     extract_chain_underlying_price,
     infer_listed_step,
     is_proxy_mark_source,
+    occ_root_from_ticker,
+    prefer_pm_weekly_contracts,
     select_listed_wing_window,
     strike_window_from_wings,
 )
@@ -301,7 +303,9 @@ def _fetch_ladder_uncached(
             strike_price_lte=hi,
             contract_type=None,
             limit=MASSIVE_PAGE_LIMIT,
-            max_pages=1,
+            # Monthly Friday: SPX + SPXW share the date (~2 pages). One page
+            # is ticker-sorted AM SPX and 502s as truncated (HM18).
+            max_pages=3,
             allow_truncate=False,  # HM18
         )
 
@@ -318,12 +322,26 @@ def _fetch_ladder_uncached(
         spot = chain_spot2
         spot_source = "chain_underlying"
 
+    raw = prefer_pm_weekly_contracts(raw, product)
     listed_strikes = _strikes_from_raw(raw)
     if not listed_strikes:
         raise HTTPException(
             status_code=502,
             detail=f"No option contracts returned for {product} {expiration}",
         )
+    occ_roots = sorted(
+        {
+            r
+            for r in (
+                occ_root_from_ticker(
+                    str((row.get("details") or {}).get("ticker") or row.get("ticker") or "")
+                )
+                for row in raw
+                if isinstance(row, dict)
+            )
+            if r
+        }
+    )
 
     try:
         band, lo, hi, atm, listed_n = select_listed_wing_window(
@@ -357,6 +375,8 @@ def _fetch_ladder_uncached(
     payload["listed_in_window"] = listed_n
     payload["wings_requested"] = wings_req
     payload["wings_effective"] = wings_eff
+    payload["occ_root"] = occ_roots[0] if len(occ_roots) == 1 else None
+    payload["occ_roots"] = occ_roots
     payload["max_strikes_per_dte"] = MAX_STRIKES_PER_DTE
     payload["massive_page_limit"] = MASSIVE_PAGE_LIMIT
     payload["bus"] = "redis" if bus_enabled() else "process"

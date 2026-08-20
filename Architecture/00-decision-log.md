@@ -4,6 +4,107 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-20 — DL-481 SPX 1DTE / monthly Friday uses SPXW not truncated SPX
+
+**Decision:** On dates where **SPX monthly (AM)** and **SPXW weekly (PM)**
+share an expiration (third Friday), Massive’s I:SPX snapshot returns both
+roots, ticker-sorted so `O:SPX…` fills the first 250-contract page.
+`allow_truncate=False` then 502s the whole generation → Analyzer cards
+show **NOT TRADED** on listed, liquid SPXW strikes.
+
+Law: prefer the **PM weekly root** (SPXW / NDXP / RUTW) when both exist;
+paginate up to 3 Massive pages so that root is complete; never mix AM and
+PM quotes on the same strike. OPF SPX settlement is already PM.
+
+**Does not:** MiniTwo until asked; change wing counts; invent mids.
+
+---
+
+## 2026-08-20 — DL-480 ToS Trade History expiry, expire-worthless, partial closes
+
+**Decision:** Trade Log thinkorswim Account Trade History import must persist option **expiry**, treat remaining quantity past that date as **expired worthless**, and match **partial closes** by unit quantity.
+
+**As-built:**
+- Futures-option `Exp` is the option root (`/E1AQ25`); the date is in `Symbol` (`4 AUG 25`). Parser searches the symbol for `D MON YY`. Equity `21 APR 26` unchanged.
+- `Pos Effect` EXPIRED / EXERCISE / ASSIGNMENT → `TO_CLOSE` at 0 (blank Side allowed).
+- `match_open_close` is quantity-aware (GCD units). A 1-unit close of a 5-unit open leaves 4 open. Remaining units with `expiry <= today` get a synthetic expired-worthless close (not persisted) so Status is Complete and realized P&L is the open debit/credit at 0.
+
+**Does not:** contract-level matching of a SINGLE close against one leg of a butterfly; live broker sync; changing the 30-day hold safety cap.
+
+---
+
+## 2026-08-20 — DL-479 AZ-ALGO expedited BUILD AUTHORITY
+
+**Decision:** Coach stamps **W0-BA** on AZ-ALGO Spec **v1.0.1** (DL-472 / DL-473) and bench plan **v1.0.1** without firing W0-2…W0-6 review packets. Same shape as **DL-457**. Bypassed: India confirm, Echo, Tango, Hotel, Victor W0 reviews and Delta **W0-G** — deferred to the **W-G** gate, where Echo HIG, Tango copy, and Hotel accuracy review the **as-built** instead of the spec. Reason: Coach wants the algo testable in dev now; spec v1.0.1 already carries the external review fold (B1/A1/A2). Silent ODs apply: **OD-DEMO out**, **OD-LLM out** (local sentences), **OD-VP omit-when-off**, **OD-W4 paint-only**. **W4-0 is not bypassed.** MiniTwo not implied.
+
+**Does not:** Demo mode; LLM squawk; VP overlay; threshold C2 apply.
+
+---
+
+## 2026-08-20 — DL-478 OL-TO v0.1.3 + FTI v0.1.1 review fold
+
+**Decision:** Coach: fold **TO-B1 · FTI-B1 · FTI-A1 · FTI-A2**. T Ortho: historical path is fact; What-if is a **scenario cursor** on a re-sampled contour (AT-TO-3 both halves). FTI: \(\sigma_{\mathrm{entry}}=S\times\mathrm{IV}_{\mathrm{ATM}}\times\sqrt{\tau_{\mathrm{rem}}}\) (not annualized); trail **exit** draws `p_fill` and **retries** each snap until fill or close; ATM bodies default **calls**. Specs remain **DRAFT** — Phase 5 still Coach.
+
+**Does not:** implementation plan; MiniTwo; resolving OD-FTI-OPF.
+
+---
+
+## 2026-08-20 — DL-477 FatTail Intelligence Spec v0.1 (DRAFT)
+
+**Decision:** Coach: StudioOne research successor to the SSR **method**. Spec
+[`FatTail-Labs-FatTail-Intelligence-Spec-v0.1.md`](../Specs/FatTail-Labs-FatTail-Intelligence-Spec-v0.1.md)
+(**FTI** · DRAFT). Preserves SSR **§A1**. Snapshot plane retires SSR13 / silent-20% / vicinity-OPRA blocker for gold 0DTE snaps. Grid `(symbol, day, minute, body)`; 390 minutes; ±2.5σ; regime width table **not** a fifth axis. Exit **cites AZ-ALGO §7** (shared conformance fixtures). Walk once, sample many; `p_fill` only; mid fill; mid-optimism **named residual**. **OD-FTI-OPF open** (HTTP vs research infra — do not resolve). Hypothesis not a claim. **Not BUILD AUTHORITY.** No implementation plan until Phase 5.
+
+**Does not:** MiniTwo; member UI; restating trail math.
+
+---
+
+## 2026-08-20 — DL-476 Surface T Ortho Spec v0.1 (DRAFT)
+
+**Decision:** Coach: T Ortho is the trader’s **native plane** (price × time vs risk-graph P&L × price). Spec
+[`FatTail-Labs-Options-Lab-Surface-T-Ortho-Spec-v0.1.md`](../Specs/FatTail-Labs-Options-Lab-Surface-T-Ortho-Spec-v0.1.md)
+(**OL-TO** · DRAFT). Orthographic map: spot × time, IV color/contour, live path; What-if = real-time walk; squawk **observation only** (Hotel question; Tango before Bob). HI tokens, no raw hex. As-built egg/tape **checked, not imported**. Invariant #8 on copy. **Not BUILD AUTHORITY.** No implementation plan until Phase 5.
+
+**Does not:** MiniTwo; Analyzer host; TimeOrthoEggPanel as law.
+
+---
+
+## 2026-08-20 — DL-475 AZ-ALGO plan v1.0.1 (neighbor artifacts · AT-10 canvas)
+
+**Decision:** Plan fold **ALGP-B1 / ALGP-A1**. W0-2 India quotes **three** neighbor artifacts from those boards’ gate reports — `p-alerts` C1-G **and** C2, `p-az-viewport-2d` W-G, `p-az-viewport-return` current packet — and names `OpfRiskAnalyzer.tsx` overlap. AT-ALGO-10 **canvas last-paint** is on W4 / W4-G. Workflow template: any plan that asserts another board’s state gets an India artifact-quote per assertion (`spec-create-review-workflow.md` · neighbor-board quotes). Ready for **W0-0**.
+
+**Does not:** W0-BA; MiniTwo; product code.
+
+---
+
+## 2026-08-20 — DL-474 AZ-ALGO full agent bench plan
+
+**Decision:** Juliet sequences Analyzer Algo Alert implementation as board
+[`agents/p-az-algo/`](../agents/p-az-algo/) · plan
+[`docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md`](../docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md).
+W0 remaining reviews → Coach **W0-BA** → W1 math → W2 Builder/+ pulse → W3 narrative → W4 canvas (**draw only**, India lock vs `p-alerts` C2) → W5/W6 → W-G.
+**No product code until W0-BA.** Demo (FI-033), LLM (FI-032), VP overlay (FI-031) are NX.
+
+**Does not:** MiniTwo; BUILD AUTHORITY on the spec (that is W0-BA).
+
+---
+
+## 2026-08-20 — DL-473 AZ-ALGO v1.0.1 review fold (far-side trail)
+
+**Decision:** Coach stamp on ALGO-B1: option **(a)** refined — *the geometry mirrors, the narration doesn’t.* One trail vertical **re-inverts** when spot crosses the body (`side: near | far`); exit direction flips; narrative names the side; payload `exit_side`. Not two simultaneous lines; not silence on the far wing. **ALGO-A1:** `f` is a **running minimum** while Armed. **ALGO-A2:** threaten pulse on at 20% of `G`, off at 25%. Spec **v1.0.1**. Still DRAFT — not BUILD AUTHORITY.
+
+**Does not:** MiniTwo; implement the packet; demo mode (FI-033).
+
+---
+
+## 2026-08-20 — DL-472 Analyzer Algo alert (OTM fly narrative trail)
+
+**Decision:** Coach: Analyzer Type → Algo is a **dynamic trailing stop that does not stop the position out**. It is bound to an **OTM butterfly**. Spec: [`FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md`](../Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md) (**AZ-ALGO** · DRAFT). Eligible card → Alerts **+** pulses → Builder opens on Algo and describes the job. Defaults: wait for **75% of debit**, then trail at **75% of high-water**, ratcheting; trail **fraction** 75% → **20%** by last-trade, paced by **premium decay**. Two **thin dashed** verticals (high-water print, trail invert), assignable colors, optional overlay that densifies + pulses when spot threatens the trail; exit **records** and **stops** (position stays). Narrative window in T Ortho **grammar** (GEX; VP only if engaged; greeks / debit / gamma / probabilities; decay-adjusted copy). Job: stay in so a runner can run; don’t give back more than they should; most clip small, some bank. **Not BUILD AUTHORITY** until Coach Phase 5.
+
+**Does not:** Tradier / close; MSC Trailing tab; MiniTwo; Manager HTTP freeze.
+
+---
+
 ## 2026-08-20 — DL-471 Analyzer crosshair Y chips are at-expiry and T+0 P&L
 
 **Decision:** Coach: the 2D crosshair must indicate **at-expiration** and

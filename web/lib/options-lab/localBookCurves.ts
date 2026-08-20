@@ -33,6 +33,52 @@ export const LOCAL_ENGINE_ID = "local.bsm_european";
 
 export type LocalSheetHole = "IV NO" | "NOT TRADED" | "CHECK LEGS";
 
+/** Map a local-sheet / hydrate error to the canvas named state. Never invent CHECK LEGS. */
+export function curveFailureNotice(error: string | null): {
+  title: LocalSheetHole | "UPDATING";
+  detail: string;
+  kind: string;
+} | null {
+  if (!error) return null;
+  const e = error.toLowerCase();
+  if (e.includes("no listed iv")) {
+    return {
+      title: "IV NO",
+      kind: "iv_no",
+      detail:
+        error ||
+        "No listed implied vol on a leg. The debit can still bind from mids; T+0 waits for IV.",
+    };
+  }
+  if (
+    e.includes("not on the held generation") ||
+    e.includes("no listed mid") ||
+    e.includes("not traded")
+  ) {
+    return {
+      title: "NOT TRADED",
+      kind: "not_traded",
+      detail: error,
+    };
+  }
+  if (
+    e.includes("no chain generation") ||
+    e.includes("no opf-held generation") ||
+    e.includes("waiting for the ladder")
+  ) {
+    return {
+      title: "UPDATING",
+      kind: "updating",
+      detail: "Still loading this expiration’s chain. The structure is intact.",
+    };
+  }
+  return {
+    title: "CHECK LEGS",
+    kind: "check_legs",
+    detail: error,
+  };
+}
+
 export type LocalBookCurvesOk = {
   ok: true;
   result: OpfResolveResult;

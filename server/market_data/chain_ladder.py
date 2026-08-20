@@ -256,6 +256,59 @@ def _contract_side(row: dict[str, Any]) -> str | None:
     return None
 
 
+# Index products list a PM weekly root (SPXW) *and* an AM monthly (SPX) on
+# third-Friday dates. Massive snapshot for I:SPX returns both, ticker-sorted
+# so O:SPX… fills the first 250-contract page and O:SPXW… is truncated.
+# Analyzer/OPF settlement for SPX is PM — keep the weekly when both exist.
+_PM_WEEKLY_ROOT = {
+    "SPX": "SPXW",
+    "SPXW": "SPXW",
+    "NDX": "NDXP",
+    "NDXP": "NDXP",
+    "RUT": "RUTW",
+    "RUTW": "RUTW",
+}
+
+
+def occ_root_from_ticker(ticker: str | None) -> str | None:
+    """O:SPXW260821C07690000 → SPXW."""
+    t = (ticker or "").strip().upper()
+    if t.startswith("O:"):
+        t = t[2:]
+    i = 0
+    while i < len(t) and t[i].isalpha():
+        i += 1
+    return t[:i] or None
+
+
+def prefer_pm_weekly_contracts(
+    raw_contracts: list[dict[str, Any]],
+    product: str,
+) -> list[dict[str, Any]]:
+    """Keep one OCC root per expiration.
+
+    When SPX monthly and SPXW weekly share a date, return SPXW only.
+    If the weekly is absent, leave the snapshot unchanged.
+    """
+    want = _PM_WEEKLY_ROOT.get((product or "").strip().upper())
+    if not want:
+        return raw_contracts
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in raw_contracts:
+        if not isinstance(row, dict):
+            continue
+        details = row.get("details") or {}
+        root = occ_root_from_ticker(
+            str(details.get("ticker") or row.get("ticker") or "")
+        )
+        if not root:
+            continue
+        grouped.setdefault(root, []).append(row)
+    if want in grouped:
+        return grouped[want]
+    return raw_contracts
+
+
 def _is_standard_contract(details: dict[str, Any], row: dict[str, Any]) -> bool:
     """HM19: keep standard 100-share contracts; drop adjusted/non-standard."""
     spc = details.get("shares_per_contract")

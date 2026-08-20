@@ -7,6 +7,7 @@
 import {
   LOCAL_CURVE_STEPS,
   LOCAL_ENGINE_ID,
+  curveFailureNotice,
   listedIvFromRow,
   localSpotAxis,
   resolveLocalBookCurves,
@@ -68,6 +69,17 @@ function gen(rows: Array<Record<string, unknown>>): OpfGenerationIn {
 
 console.log("localBookCurves");
 
+test("canvas notice names the real hole — not a generic CHECK LEGS", () => {
+  const iv = curveFailureNotice("No listed IV for call 7685 2026-08-24.");
+  assert(iv?.title === "IV NO", iv?.title ?? "null");
+  const miss = curveFailureNotice(
+    "call 7715 2026-08-24 is not on the held generation.",
+  );
+  assert(miss?.title === "NOT TRADED", miss?.title ?? "null");
+  const hyd = curveFailureNotice("No chain generation for SPX 2026-08-24");
+  assert(hyd?.title === "UPDATING", hyd?.title ?? "null");
+});
+
 test("listed IV: decimal stays, percent 18 → 0.18", () => {
   assert(listedIvFromRow(0.18) === 0.18, "decimal");
   assert(listedIvFromRow(18) === 0.18, "percent");
@@ -102,6 +114,45 @@ test("long call: 161 pts, expiry at K is −premium, engine is local", () => {
     Math.abs(last.y - expected) < 1,
     `expiry at ${last.x} is (intrinsic−prem)*100, got ${last.y}`,
   );
+});
+
+test("4DTE fly binds when generation has listed IVs and mids", () => {
+  const fly = trade({
+    structure: "butterfly",
+    expiration: "2026-08-24",
+    strikes: [7685, 7700, 7715],
+    body: 7700,
+    legs: [
+      { strike: 7685, quantity: 1, right: "call", expiration: "2026-08-24" },
+      { strike: 7700, quantity: -2, right: "call", expiration: "2026-08-24" },
+      { strike: 7715, quantity: 1, right: "call", expiration: "2026-08-24" },
+    ],
+  });
+  const out = resolveLocalBookCurves({
+    trade: fly,
+    generations: [
+      {
+        product: "SPX",
+        expiration: "2026-08-24",
+        wings: 50,
+        spot: 7641,
+        content_hash: "h4",
+        rows: [
+          { strike: 7685, side: "call", iv: 0.095, mid: 14.85 },
+          { strike: 7700, side: "call", iv: 0.092, mid: 9.95 },
+          { strike: 7715, side: "call", iv: 0.089, mid: 6.4 },
+        ],
+      },
+    ],
+    spot: 7641,
+  });
+  assert(out.ok, out.ok ? "ok" : `${out.hole} ${out.detail}`);
+  if (out.ok) {
+    const exp = out.result.curves?.expiration?.points ?? [];
+    const theo = out.result.curves?.model_t0?.points ?? [];
+    assert(exp.length > 20, "expiry tent");
+    assert(theo.length > 20, "t0 tent");
+  }
 });
 
 test("missing listed IV is IV NO — no invented smile", () => {

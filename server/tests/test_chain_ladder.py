@@ -322,6 +322,123 @@ def test_diff_dual_side_composite_keys():
     assert float(d["upserts"][0]["mid"]) == 12.5
 
 
+def _raw_root(root: str, strike: float, *, mid: float, side: str = "call", exp: str = "2026-08-21") -> dict:
+    yy = exp[2:4]
+    mm = exp[5:7]
+    dd = exp[8:10]
+    cp = "C" if side == "call" else "P"
+    ticker = f"O:{root}{yy}{mm}{dd}{cp}{int(strike * 1000):08d}"
+    return {
+        "details": {
+            "strike_price": strike,
+            "expiration_date": exp,
+            "contract_type": side,
+            "ticker": ticker,
+        },
+        "last_quote": {"bid": mid - 0.1, "ask": mid + 0.1, "midpoint": mid},
+        "greeks": {},
+        "open_interest": 1,
+        "day": {"volume": 1},
+    }
+
+
+def test_occ_root_and_pm_weekly_preference():
+    """Monthly Friday: SPX AM + SPXW PM share a date — keep SPXW (DL-481)."""
+    from market_data.chain_ladder import (
+        occ_root_from_ticker,
+        prefer_pm_weekly_contracts,
+    )
+
+    assert occ_root_from_ticker("O:SPXW260821C07690000") == "SPXW"
+    assert occ_root_from_ticker("O:SPX260821C07690000") == "SPX"
+    mixed = [
+        _raw_root("SPX", 7690, mid=2.47, side="call"),
+        _raw_root("SPX", 7690, mid=41.4, side="put"),
+        _raw_root("SPXW", 7690, mid=5.15, side="call"),
+        _raw_root("SPXW", 7690, mid=6.3, side="put"),
+        _raw_root("SPXW", 7710, mid=2.08, side="call"),
+    ]
+    kept = prefer_pm_weekly_contracts(mixed, "SPX")
+    roots = {occ_root_from_ticker(r["details"]["ticker"]) for r in kept}
+    assert roots == {"SPXW"}
+    assert len(kept) == 3
+    # No weekly on the snapshot → leave monthly in place
+    monthly_only = mixed[:2]
+    assert prefer_pm_weekly_contracts(monthly_only, "SPX") == monthly_only
+
+
+def test_mixed_monthly_weekly_ladder_uses_spxw_mid():
+    """Same strike on SPX and SPXW must not last-write the AM monthly quote."""
+    from market_data.chain_ladder import prefer_pm_weekly_contracts
+
+    mixed = [
+        _raw_root("SPX", 7690, mid=2.47, side="call"),
+        _raw_root("SPXW", 7690, mid=5.15, side="call"),
+        _raw_root("SPXW", 7710, mid=2.08, side="call"),
+        _raw_root("SPXW", 7730, mid=0.88, side="call"),
+    ]
+    raw = prefer_pm_weekly_contracts(mixed, "SPX")
+    lad = build_ladder(
+        raw,
+        underlier="I:SPX",
+        spot=7641.0,
+        expiration="2026-08-21",
+        side="call",
+        band=120.0,
+        vix=16.0,
+        dte=1,
+        dual_side=True,
+        strike_lo=7590.0,
+        strike_hi=7750.0,
+    )
+    by_k = {r["strike"]: r for r in lad["rows"] if r["side"] == "call"}
+    assert by_k[7690]["mid"] == 5.15
+    assert 7710 in by_k and 7730 in by_k
+    assert all(str(r["ticker"]).startswith("O:SPXW") for r in lad["rows"])
+
+
+def test_one_page_ticker_sort_drops_otm_spxw_after_prefer():
+    """Why 1DTE monthly Friday looks like NOT TRADED.
+
+    Massive sorts O:SPX… before O:SPXW…. One 250-contract page is AM
+    monthly plus only the *low* SPXW strikes. Preferring SPXW then leaves
+    a hole where the liquid OTM fly (7690/7710/7730) lives.
+    """
+    from market_data.chain_ladder import prefer_pm_weekly_contracts
+
+    # 100 SPX dual-side (200) + 25 low SPXW dual-side (50) = 250, like page 1
+    page1 = []
+    for k in range(7395, 7895, 5):  # 100 SPX strikes
+        page1.append(_raw_root("SPX", k, mid=1.0, side="call"))
+        page1.append(_raw_root("SPX", k, mid=1.0, side="put"))
+    for k in range(7395, 7520, 5):  # 25 SPXW strikes at the low edge only
+        page1.append(_raw_root("SPXW", k, mid=1.0, side="call"))
+        page1.append(_raw_root("SPXW", k, mid=1.0, side="put"))
+    assert len(page1) == 250
+    kept = prefer_pm_weekly_contracts(page1, "SPX")
+    strikes = {r["details"]["strike_price"] for r in kept}
+    assert 7395 in strikes
+    assert 7690 not in strikes
+    assert 7710 not in strikes
+    assert 7730 not in strikes
+
+
+def test_second_page_of_spxw_restores_otm_fly():
+    """Paginate then prefer — OTM SPXW strikes return (DL-481)."""
+    from market_data.chain_ladder import prefer_pm_weekly_contracts
+
+    mixed = []
+    for k in range(7395, 7895, 5):
+        mixed.append(_raw_root("SPX", k, mid=2.0, side="call"))
+        mixed.append(_raw_root("SPX", k, mid=2.0, side="put"))
+        mixed.append(_raw_root("SPXW", k, mid=5.0, side="call"))
+        mixed.append(_raw_root("SPXW", k, mid=5.0, side="put"))
+    kept = prefer_pm_weekly_contracts(mixed, "SPX")
+    strikes = {r["details"]["strike_price"] for r in kept}
+    assert 7690 in strikes and 7710 in strikes and 7730 in strikes
+    assert all(r["details"]["ticker"].startswith("O:SPXW") for r in kept)
+
+
 def test_standard_contract_filter_excludes_adjusted():
     """HM19: non-100 shares_per_contract dropped + counted."""
     raw = [
@@ -383,3 +500,78 @@ def test_next_three_expiries_are_distinct_sorted_with_dte():
     assert next3_fri == ["2026-08-14", "2026-08-21", "2026-08-28"]
     assert dte_from_expiration("2026-08-10", today=today) == 0
     assert dte_from_expiration("2026-08-14", today=today) == 4
+
+
+def test_live_zero_dte_fits_one_page_monthly_friday_does_not():
+    """Live Massive: 0DTE is SPXW-only; 1DTE third-Friday truncates at 250.
+
+    This is the >0 DTE Analyzer NOT TRADED / CHECK LEGS failure.
+    """
+    import os
+    from datetime import date, datetime
+
+    import pytest
+    from market_data.massive_client import MassiveClient, MassiveClientError
+
+    if not (os.environ.get("MASSIVE_API_KEY") or os.environ.get("POLYGON_API_KEY")):
+        pytest.skip("MASSIVE_API_KEY not set")
+    try:
+        from zoneinfo import ZoneInfo
+
+        et = datetime.now(ZoneInfo("America/New_York")).date()
+    except Exception:
+        et = date.today()
+    zero = "2026-08-20"
+    friday = "2026-08-21"
+    if date.fromisoformat(friday) < et:
+        pytest.skip("fixture expirations have settled")
+
+    client = MassiveClient()
+    spot = 7641.0
+    lo, hi = spot - 250, spot + 250
+
+    z = client.fetch_option_chain(
+        "I:SPX",
+        expiration_date=zero,
+        strike_price_gte=lo,
+        strike_price_lte=hi,
+        limit=250,
+        max_pages=1,
+        allow_truncate=False,
+    )
+    assert len(z) == 200
+    assert all("SPXW" in str((r.get("details") or {}).get("ticker") or "") for r in z)
+
+    with pytest.raises(MassiveClientError, match="truncated option chain"):
+        client.fetch_option_chain(
+            "I:SPX",
+            expiration_date=friday,
+            strike_price_gte=lo,
+            strike_price_lte=hi,
+            limit=250,
+            max_pages=1,
+            allow_truncate=False,
+        )
+
+    full = client.fetch_option_chain(
+        "I:SPX",
+        expiration_date=friday,
+        strike_price_gte=lo,
+        strike_price_lte=hi,
+        limit=250,
+        max_pages=3,
+        allow_truncate=False,
+    )
+    from market_data.chain_ladder import prefer_pm_weekly_contracts
+
+    kept = prefer_pm_weekly_contracts(full, "SPX")
+    strikes = {
+        float((r.get("details") or {}).get("strike_price"))
+        for r in kept
+        if (r.get("details") or {}).get("strike_price") is not None
+    }
+    assert 7690 in strikes and 7710 in strikes and 7730 in strikes
+    assert all(
+        str((r.get("details") or {}).get("ticker") or "").startswith("O:SPXW")
+        for r in kept
+    )

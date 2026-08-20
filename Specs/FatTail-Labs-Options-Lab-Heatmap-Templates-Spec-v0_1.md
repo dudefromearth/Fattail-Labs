@@ -90,7 +90,8 @@ All templates share **one** chain data plane:
 | **HM16 — Side is view filter only** | Member control **Calls / Puts** filters **display and single-side structure templates** against the dual-side model. It **must not** trigger a second Massive fetch or a side-specific generation key that re-pulls the other book. |
 | **HM17 — Strike window ≤ 250 contracts** | Massive page limit is **250**. With both sides,  
   \((\text{distinct strikes in window}) × 2 ≤ 250\) ⇒ **≤ 125 strikes** in the band.  
-  Implementers **must** choose wings / strike window so this holds in **one page** (no multi-page dependency for Heatmap v1). Default wings 10/25/50 are fine; **wings=100** may require clamping the dual-side band or rejecting that wing choice for dual-side generation with fail-loud copy. This is ordinary window management — **not** a reason to split call/put fetches. |
+  Implementers **must** choose wings / strike window so this holds in **one page** (no multi-page dependency for Heatmap v1). Default wings 10/25/50 are fine; **wings=100** may require clamping the dual-side band or rejecting that wing choice for dual-side generation with fail-loud copy. This is ordinary window management — **not** a reason to split call/put fetches.  
+  **DL-481:** on third-Friday dates Massive’s I:SPX snapshot mixes **SPX monthly (AM)** and **SPXW weekly (PM)** and ticker-sorts AM first, so one page 502s as truncated. Paginate just enough to complete the **PM weekly root**, then collapse to that root. The **held generation** is still one OCC root, dual-side, ≤250. Do not mix AM and PM quotes on the same strike. |
 
 ---
 
