@@ -2,8 +2,9 @@
  * Live Analyzer book curves — local sheet on the OPF-held generation.
  *
  * Working 2.5s and Away 5s share this path. The client already holds
- * listed strikes, mids, and IVs from the ladder poll. Repricing 161
- * spots is a browser job. `/api/me/pricing/resolve` is not on this clock
+ * listed strikes, mids, and IVs from the ladder poll. Repricing the
+ * local sheet (161-pt backbone + strike kinks + dense tent window) is a
+ * browser job. `/api/me/pricing/resolve` is not on this clock
  * (lock / pack / RECON stay server when those packets run).
  *
  * Law: finite listed IV on the held row, or a named hole. Never invent.
@@ -167,16 +168,44 @@ export function localSpotAxis(
   const pct = Math.max(1, Math.min(40, rangePct));
   let xLo = spot * (1 - pct / 100);
   let xHi = spot * (1 + pct / 100);
-  const ks = strikes.filter((k) => Number.isFinite(k) && k > 0);
+  const ks = [
+    ...new Set(strikes.filter((k) => Number.isFinite(k) && k > 0)),
+  ].sort((a, b) => a - b);
   if (ks.length) {
-    const lo = Math.min(...ks);
-    const hi = Math.max(...ks);
+    const lo = ks[0];
+    const hi = ks[ks.length - 1];
     const pad = Math.max((hi - lo) * 0.35, spot * 0.02, 5);
     xLo = Math.min(xLo, lo - pad);
     xHi = Math.max(xHi, hi + pad);
   }
   if (!(xHi > xLo)) xHi = xLo + 1;
-  return Array.from({ length: n }, (_, i) => xLo + (i / (n - 1)) * (xHi - xLo));
+
+  const xs = new Set<number>();
+  for (let i = 0; i < n; i++) {
+    xs.add(xLo + (i / (n - 1)) * (xHi - xLo));
+  }
+  // Expiration tents kink only at listed strikes. A uniform 161-pt sheet
+  // over ±8% of SPX is ~$8/step — Autofit then shows a chopped tent.
+  for (const k of ks) {
+    if (k >= xLo && k <= xHi) xs.add(k);
+  }
+  if (ks.length) {
+    const lo = ks[0];
+    const hi = ks[ks.length - 1];
+    const span = Math.max(hi - lo, 1);
+    const innerLo = Math.max(xLo, lo - Math.max(span, 20));
+    const innerHi = Math.min(xHi, hi + Math.max(span, 20));
+    if (innerHi > innerLo) {
+      const innerN = Math.min(
+        401,
+        Math.max(n, Math.ceil(innerHi - innerLo) + 1),
+      );
+      for (let i = 0; i < innerN; i++) {
+        xs.add(innerLo + (i / Math.max(innerN - 1, 1)) * (innerHi - innerLo));
+      }
+    }
+  }
+  return [...xs].sort((a, b) => a - b);
 }
 
 export function resolveLocalBookCurves(opts: {

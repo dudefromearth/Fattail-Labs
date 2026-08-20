@@ -8,6 +8,7 @@ import {
   LOCAL_CURVE_STEPS,
   LOCAL_ENGINE_ID,
   listedIvFromRow,
+  localSpotAxis,
   resolveLocalBookCurves,
 } from "./localBookCurves";
 import type { OpfGenerationIn } from "./opfPricingApi";
@@ -86,8 +87,9 @@ test("long call: 161 pts, expiry at K is −premium, engine is local", () => {
   if (!out.ok) return;
   const exp = out.result.curves?.expiration?.points ?? [];
   const theo = out.result.curves?.model_t0?.points ?? [];
-  assert(exp.length === LOCAL_CURVE_STEPS, "161 expiry");
-  assert(theo.length === LOCAL_CURVE_STEPS, "161 t0");
+  assert(exp.length >= LOCAL_CURVE_STEPS, "at least 161 expiry");
+  assert(theo.length >= LOCAL_CURVE_STEPS, "at least 161 t0");
+  assert(exp.some((p) => Math.abs(p.x - 100) < 1e-9), "expiry samples K");
   assert(out.result.meta?.engine_id === LOCAL_ENGINE_ID, "local engine");
   assert(out.result.marks?.leg_marks?.[0]?.iv_source === "generation", "source");
   const atK = exp.reduce((b, p) =>
@@ -142,11 +144,15 @@ test("vol offset moves T+0, not expiration intrinsic", () => {
   });
   assert(base.ok && bumped.ok, "both ok");
   if (!base.ok || !bumped.ok) return;
-  const mid = Math.floor(LOCAL_CURVE_STEPS / 2);
-  const exp0 = base.result.curves!.expiration!.points![mid].y;
-  const exp1 = bumped.result.curves!.expiration!.points![mid].y;
-  const t0 = base.result.curves!.model_t0!.points![mid].y;
-  const t1 = bumped.result.curves!.model_t0!.points![mid].y;
+  const at = (
+    pts: { x: number; y: number }[],
+    x: number,
+  ): { x: number; y: number } =>
+    pts.reduce((b, p) => (Math.abs(p.x - x) < Math.abs(b.x - x) ? p : b));
+  const exp0 = at(base.result.curves!.expiration!.points!, 100).y;
+  const exp1 = at(bumped.result.curves!.expiration!.points!, 100).y;
+  const t0 = at(base.result.curves!.model_t0!.points!, 100).y;
+  const t1 = at(bumped.result.curves!.model_t0!.points!, 100).y;
   assert(Math.abs(exp0 - exp1) < 1e-9, "expiry is intrinsic");
   assert(t1 !== t0, "T+0 moves with vol");
 });
@@ -184,7 +190,7 @@ test("same-strike calendar expiry is front-exp residual, not flat −debit", () 
   if (!out.ok) return;
   const exp = out.result.curves?.expiration?.points ?? [];
   const theo = out.result.curves?.model_t0?.points ?? [];
-  assert(exp.length === LOCAL_CURVE_STEPS, "161 expiry");
+  assert(exp.length >= LOCAL_CURVE_STEPS, "at least 161 expiry");
   const ys = exp.map((p) => p.y);
   const span = Math.max(...ys) - Math.min(...ys);
   assert(span > 20, `expiry is not a flat −debit line (span ${span})`);
@@ -244,10 +250,29 @@ test("AT-TM-13 15:30 0DTE elapsed still moves T+0 vs 15:00", () => {
   assert(tauA > tauB, `15:00 τ ${tauA} vs 15:30 ${tauB}`);
   const hourFloor = 1 / (365 * 24);
   assert(tauB < hourFloor, `15:30 τ must be below 1-hour floor, got ${tauB}`);
-  const mid = Math.floor(LOCAL_CURVE_STEPS / 2);
-  const t0a = a.result.curves!.model_t0!.points![mid].y;
-  const t0b = b.result.curves!.model_t0!.points![mid].y;
+  const near = (
+    pts: { x: number; y: number }[],
+    x: number,
+  ): number =>
+    pts.reduce((b, p) => (Math.abs(p.x - x) < Math.abs(b.x - x) ? p : b)).y;
+  const t0a = near(a.result.curves!.model_t0!.points!, 100);
+  const t0b = near(b.result.curves!.model_t0!.points!, 100);
   assert(t0a !== t0b, "T+0 moves in the last hour");
+});
+
+test("spot axis pins listed strikes and densifies the tent window", () => {
+  const xs = localSpotAxis(7665.67, [7675, 7690, 7705], 8, 161);
+  assert(xs.length >= LOCAL_CURVE_STEPS, "keeps the wide backbone");
+  for (const k of [7675, 7690, 7705]) {
+    assert(xs.some((x) => Math.abs(x - k) < 1e-9), `exact kink at ${k}`);
+  }
+  const inner = xs.filter((x) => x >= 7660 && x <= 7720);
+  const step =
+    inner.length > 1
+      ? (inner[inner.length - 1] - inner[0]) / (inner.length - 1)
+      : 99;
+  assert(inner.length >= 40, "Autofit window is not 16 vertices");
+  assert(step < 2, `tent step ${step} is tighter than the old ~$8 grid`);
 });
 
 test("keep-warm hook does not POST /resolve", () => {

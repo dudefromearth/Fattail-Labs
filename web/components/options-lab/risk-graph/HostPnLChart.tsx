@@ -567,28 +567,61 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         ctx.setLineDash([]);
       }
 
-      const strokeSeries = (pts: PnLPoint[], color: string, widthPx: number) => {
+      const strokeSeries = (
+        pts: PnLPoint[],
+        color: string,
+        widthPx: number,
+        opts?: { smooth?: boolean; join?: CanvasLineJoin },
+      ) => {
         if (pts.length < 2) return;
         ctx.strokeStyle = color;
         ctx.lineWidth = widthPx;
+        ctx.lineJoin = opts?.join ?? "miter";
+        ctx.miterLimit = 8;
         ctx.beginPath();
-        let started = false;
+        const xs: number[] = [];
+        const ys: number[] = [];
         for (const p of pts) {
           if (!Number.isFinite(p.price) || !Number.isFinite(p.pnl)) continue;
-          const cx = toX(p.price);
-          const cy = toY(p.pnl);
-          if (!started) {
-            ctx.moveTo(cx, cy);
-            started = true;
-          } else ctx.lineTo(cx, cy);
+          xs.push(toX(p.price));
+          ys.push(toY(p.pnl));
+        }
+        if (xs.length < 2) return;
+        ctx.moveTo(xs[0], ys[0]);
+        if (opts?.smooth && xs.length > 2) {
+          // Catmull-Rom through every sample (peak stays on the data).
+          // Stroke only — does not change priced points.
+          for (let i = 0; i < xs.length - 1; i++) {
+            const p0x = xs[Math.max(0, i - 1)];
+            const p0y = ys[Math.max(0, i - 1)];
+            const p1x = xs[i];
+            const p1y = ys[i];
+            const p2x = xs[i + 1];
+            const p2y = ys[i + 1];
+            const p3x = xs[Math.min(xs.length - 1, i + 2)];
+            const p3y = ys[Math.min(ys.length - 1, i + 2)];
+            ctx.bezierCurveTo(
+              p1x + (p2x - p0x) / 16,
+              p1y + (p2y - p0y) / 16,
+              p2x - (p3x - p1x) / 16,
+              p2y - (p3y - p1y) / 16,
+              p2x,
+              p2y,
+            );
+          }
+        } else {
+          for (let i = 1; i < xs.length; i++) ctx.lineTo(xs[i], ys[i]);
         }
         ctx.stroke();
       };
       ctx.globalAlpha = 0.45;
       strokeSeries(expiredExpirationData, "#22d3ee", 1.5);
       ctx.globalAlpha = 1;
-      strokeSeries(expirationData, "#22d3ee", 2);
-      strokeSeries(theoreticalData, theoreticalStroke, 2);
+      strokeSeries(expirationData, "#22d3ee", 2, { join: "miter" });
+      strokeSeries(theoreticalData, theoreticalStroke, 2, {
+        smooth: true,
+        join: "round",
+      });
 
       const hoveredId = hoveredPosRef.current;
       const hoveredCurve = hoveredId

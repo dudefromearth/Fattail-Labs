@@ -142,6 +142,7 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
     "position alerts hit per-card at-exp, not a picker",
   );
   assert(host.includes("hoverPosition"), "hover highlights the hit card");
+  assert(host.includes("bezierCurveTo"), "T+0 is stroked smooth; expiry stays polyline");
 });
 
 console.log(`\n${n} tests passed`);
