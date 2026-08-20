@@ -189,6 +189,8 @@ Lines draw on the graph (solid = **Active** now, dashed = **Idle**).
 
 **Inspector → Alerts:** title, Canvas vs Position, and **Idle / Live / Touched**. You set Live or Idle. Touched happens when a Live alert meets its print — the row shows **when** (ET) and the underlier. Chip click **resets** Touched to Live. No Ack/Dismiss chrome.
 
+The Alert Builder is a **floating** panel (drag the header). The Risk graph stays live underneath. Esc, Close, or Cancel dismisses it.
+
 ---
 
 ## 10. Session posture

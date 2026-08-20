@@ -182,6 +182,7 @@ export default function AlertBuilderDialog({
       title={title}
       onClose={onClose}
       workSurface="dark"
+      floatable
       testId="analyzer-alert-builder"
       footer={
         <>

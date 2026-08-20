@@ -93,7 +93,8 @@ it is Canvas or Position, and **Idle / Live / Touched**. You set Live or
 Idle. Touched is not a setting — it happens when a Live alert meets its
 print, and the row shows when (ET) and the underlier. Click the chip to
 reset Touched to Live. Lines on the graph are solid when Live or Touched,
-dashed when Idle.
+dashed when Idle. The Alert Builder floats — drag the header; the graph
+stays live. Esc, Close, or Cancel dismisses it.
 
 ## Session posture
 The inspector badge is Live, Pre/post, or Off market. Off market uses the

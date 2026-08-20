@@ -4,6 +4,17 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-20 — DL-470 Alert Builder is floatable
+
+**Decision:** Coach: the Alerts dialog **must be floatable**. Same grammar
+as Position Builder: **no scrim**, header drag, Analyzer canvas stays
+live, Esc / Close / Cancel dismiss. Not a blocking HI Modal overlay.
+Kit `Modal` grows an opt-in `floatable` dialect for this work surface.
+
+**Does not:** MiniTwo; make every Labs Modal floatable.
+
+---
+
 ## 2026-08-20 — DL-468 Alert Touched is evaluation-only (when + print)
 
 **Decision:** Coach: member can **set Live or Idle**. **Touched cannot be

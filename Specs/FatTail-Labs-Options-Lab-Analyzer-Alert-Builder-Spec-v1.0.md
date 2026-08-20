@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Analyzer Alert Builder Spec v1.0
 
-**Status:** DRAFT — Coach 2026-08-20 (Analyzer canvas + builder). **v1.0.8** Touched is evaluation-only (when + print); Live/Idle are settable.  
+**Status:** DRAFT — Coach 2026-08-20 (Analyzer canvas + builder). **v1.0.9** Alert Builder is floatable (no scrim; drag header; canvas stays live).  
 **Type:** Product Spec — Analyzer **Alert Builder** and **canvas apply**.  
 **Short name:** AZ-ALB  
 **Route:** `/app/options-lab/analyzer`  
@@ -179,7 +179,7 @@ Pan/zoom moves lines with the view.
 
 **Work-surface dialect (declared):** Analyzer (Risk graph, inspector, Builder) is a **dark-pinned work surface**. It consumes the **dark side of HI Spec v1.0 tokens**, not a hardcoded MSC theme and not raw hex/`zinc-*`/magic px in feature code. This is a named dialect decision (same standing as Member vs Operator density): light+dark tokens still exist in the kit; this surface **pins appearance to dark**. Do not smuggle MSC `#0a0a0e` / `12px` into the dialog.
 
-**Chrome (HI Spec v1.0 primitives):** `Modal` (scrim, focus trap, Esc cancels non-critical); card width ~460px as a **layout note**, not a token; corners **`radius.lg`**; elevation **`elevation.3`**; **draggable** header; close = kit **`IconButton`** + `xmark` (accessible name **Close**) — **not** a “close dot” and **not** a new kit affordance; title; body scroll; footer **Cancel** (`Button` plain) · **Save** (`Button` filled / primary). Sentence case. Esc / scrim = Cancel without save.
+**Chrome (HI Spec v1.0 primitives):** kit `Modal` in **floatable** dialect (same grammar as Position Builder — **Coach**). **No scrim.** Analyzer canvas stays live. Card width ~460px as a **layout note**, not a token; corners **`radius.lg`**; elevation **`elevation.3`**; **draggable header** (grab); close = kit **`IconButton`** + `xmark` (accessible name **Close**) — **not** a “close dot” and **not** a new kit affordance; title; body scroll; footer **Cancel** (`Button` plain) · **Save** (`Button` filled / primary). Sentence case. Esc / Close / Cancel dismiss. Outside click does **not** dismiss (that would be working the graph).
 
 **44pt:** every interactive control in Builder and holder is ≥ **44×44 pt** even when the visual glyph is smaller — Type segments, tag color chips, ±1 value steppers, Position sub-tabs, holder cards as tap targets, and the round **+**.
 
@@ -333,6 +333,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 | **AT-ALB-14** | Kilo lint: no raw hex / magic px / `zinc-*` in Builder/holder **chrome**. Alert `color` payload (data for the canvas line) may remain a stored value; chip **UI** still uses tokens. |
 | **AT-ALB-15** | Canvas context-menu rows ≥44pt. No keyboard nav invented for the menu. Header **+** remains the a11y path (§3.3). Menu chrome uses tokens. `CURVE_HIT_DISTANCE = 8` is hit geometry, not a chrome token. |
 | **AT-ALB-16** | Builder State is Live / Idle only. Touched is evaluation: holder + Builder show when (ET) + print; Reset / chip → Live and clears the stamp. |
+| **AT-ALB-17** | Alert Builder is **floatable**: no scrim, `aria-modal=false`, header drag moves the panel, graph stays interactive, Esc/Cancel/Close dismiss. |
 
 ---
 
@@ -352,6 +353,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.9** | 2026-08-20 | Coach: Alert Builder **must be floatable** — no scrim; drag header; canvas stays live (Position Builder grammar). |
 | **v1.0.8** | 2026-08-20 | Coach: Live / Idle are settable. **Touched** is evaluation-only (when + print) and can only be **reset** (→ Live). |
 | **v1.0.7** | 2026-08-20 | Canvas Position alerts: MSC 8px / hover / right-click; Labs hit-tests **per-card at-expiration** (closest wins) — no MSC picker. |
 | **v1.0.6** | 2026-08-20 | Coach: states are **Idle / Live / Touched**. Running/Paused/Tripped map onto these. |

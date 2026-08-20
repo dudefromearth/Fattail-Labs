@@ -40,6 +40,7 @@ for (const rel of FILES) {
   }
   if (rel.endsWith("AlertBuilderDialog.tsx")) {
     assert(src.includes("Modal"), "Builder uses Modal");
+    assert(src.includes("floatable"), "Builder is floatable");
     assert(src.includes("SegmentedControl"), "Builder uses SegmentedControl");
     assert(src.includes("IconXMark") || src.includes("IconButton"), "close kit");
     assert(!src.includes("Coming soon") || src.includes("Save is off"), "placeholder");
@@ -54,5 +55,10 @@ const holder = readFileSync(
 assert(!/EmptyState/.test(holder), "holder has no EmptyState");
 assert(holder.includes("Create alert"), "44pt create control");
 assert(holder.includes("Unbound"), "unbound state");
+
+const modal = readFileSync(join(root, "components/ui/Modal.tsx"), "utf8");
+assert(modal.includes("floatable"), "Modal supports floatable");
+assert(modal.includes("modal-drag-handle"), "floatable header is the drag handle");
+assert(modal.includes('aria-modal="false"'), "floatable is not a blocking scrim");
 
 console.log("  C1 chrome lint ok");
