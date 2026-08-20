@@ -254,13 +254,14 @@ Not MSC’s left-rail Ack list.
 | Header | **Alerts** + round **+** (tint, stands off the header) |
 | Body | Scrollable holder, default height **~3–4 cards** |
 | Empty | **No instructional copy** — empty holder. **Coach deviation from HI `EmptyState`** (kit: icon + title + one action). Named so `p-hig` lint does not “fix” it. Tango: an empty alerts holder needing no essay is calm density. |
-| Card | Title (info) · Canvas vs Position · run state **Running** / **Idle** / **Paused**. **Unbound** replaces the chip when §2.5 applies. |
-| Running | Member-armed. Evaluates. Canvas line may glow when the condition is currently true. |
+| Card | Title (info) · Canvas vs Position · run state **Running** / **Idle** / **Paused** / **Tripped**. **Unbound** replaces the chip when §2.5 applies. |
+| Running | Member-armed. Evaluates. |
 | Idle | Member-disarmed via the list chip (toggle from Running) or Builder. Does not evaluate. |
 | Paused | Member-disarmed from Builder. Does not evaluate. List chip click resumes to **Running**. |
+| Tripped | Condition met while Running. Stays Tripped until the member changes it. Canvas line is solid. List chip click re-arms to **Running**. |
 | Unbound | Card gone. Chip is not a toggle. |
 
-**List gestures:** click the **state chip** toggles **Idle ↔ Running** (Paused → Running). Click **anywhere else** on the card opens Builder in edit mode (hook `upsertAlert` with id). Builder **State** control sets and reports Running / Idle / Paused. **Delete is deliberately unshipped in v1**.
+**List gestures:** click the **state chip** toggles **Idle ↔ Running** (Paused or Tripped → Running). Click **anywhere else** on the card opens Builder in edit mode. Builder **State** control sets and reports Running / Idle / Paused / Tripped. **Delete is deliberately unshipped in v1**.
 
 ---
 
@@ -340,6 +341,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.5** | 2026-08-20 | **Tripped** run state: fires when Running meets its condition; chip/Builder report it; chip click re-arms Running. |
 | **v1.0.4** | 2026-08-20 | Holder run state: **Running** / **Idle** / **Paused**. Chip toggles Idle↔Running; rest of card opens Builder. Builder State control sets and reports it. |
 | **v1.0.3** | 2026-08-20 | HIG conversion is acceptance: AT-ALB-11…15 (kit primitives, 44pt, empty-holder deviation, chrome lint, canvas menu a11y). |
 | **v1.0.2** | 2026-08-20 | HIG fold: §4 kit tokens (`radius.lg`, `Modal`, `IconButton`/`xmark`); dark-pinned work-surface dialect declared; 44pt sweep; empty-holder Coach deviation from `EmptyState`; **+** is the canvas a11y path. |

@@ -519,7 +519,7 @@ As-built holder: left inspector (info + Active/Idle, header **+**). Canvas right
 |---------|-----|
 | Region | Left inspector **Alerts** section |
 | Empty | **No copy** — named Coach deviation from HI `EmptyState` |
-| Card | Title · Canvas vs Position · **Running** / **Idle** / **Paused** (chip toggles Idle↔Running; rest of card opens Builder). **Unbound** is not a toggle. |
+| Card | Title · Canvas vs Position · **Running** / **Idle** / **Paused** / **Tripped** (chip toggles Idle↔Running; Paused/Tripped resume Running; rest of card opens Builder). **Unbound** is not a toggle. |
 | **+** | 44pt kit `IconButton`; opens Alert Builder (Price, Spot) |
 | Delete | Unshipped v1 |
 | testids | `analyzer-alerts-panel` · `analyzer-alerts-holder` · `analyzer-alert-create` |

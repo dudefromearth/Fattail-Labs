@@ -79,7 +79,7 @@ export type AnalyzerControlsColumnProps = {
     id: string;
     kind: "canvas" | "position";
     title: string;
-    runState: "running" | "idle" | "paused";
+    runState: "running" | "idle" | "paused" | "tripped";
     unbound?: boolean;
   }[];
   onCreateAlert: () => void;
@@ -238,16 +238,20 @@ export default function AnalyzerControlsColumn({
                   ? "Running"
                   : a.runState === "paused"
                     ? "Paused"
-                    : "Idle";
+                    : a.runState === "tripped"
+                      ? "Tripped"
+                      : "Idle";
               const chipCls =
                 "shrink-0 min-h-[var(--hit-min)] rounded-full px-3 text-[length:var(--text-caption)] font-medium " +
                 (a.unbound
                   ? "bg-[var(--color-fill)] text-[var(--color-label-secondary)]"
                   : a.runState === "running"
                     ? "bg-[var(--color-tint-soft)] text-[var(--color-tint)]"
-                    : a.runState === "paused"
-                      ? "bg-[color-mix(in_srgb,var(--color-warning)_18%,transparent)] text-[var(--color-label)]"
-                      : "bg-[var(--color-fill)] text-[var(--color-label-tertiary)]");
+                    : a.runState === "tripped"
+                      ? "bg-[var(--color-destructive-soft)] text-[var(--color-destructive)]"
+                      : a.runState === "paused"
+                        ? "bg-[color-mix(in_srgb,var(--color-warning)_18%,transparent)] text-[var(--color-label)]"
+                        : "bg-[var(--color-fill)] text-[var(--color-label-tertiary)]");
               return (
                 <div
                   key={a.id}

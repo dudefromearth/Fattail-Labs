@@ -140,8 +140,8 @@ export type ThresholdSeverity = "info" | "low" | "medium" | "high" | "critical";
 /** Canvas = price on the plot. Position = bound to one Shown card. */
 export type AnalyzerAlertKind = "canvas" | "position";
 
-/** Member run state — list chip + Builder. Not condition-met. */
-export type AlertRunState = "running" | "idle" | "paused";
+/** Member + evaluation run state — list chip + Builder. */
+export type AlertRunState = "running" | "idle" | "paused" | "tripped";
 
 export function toggleAlertRunState(state: AlertRunState): AlertRunState {
   return state === "running" ? "idle" : "running";
@@ -1025,7 +1025,12 @@ export function loadAlerts(): AnalyzerThresholdAlert[] {
     if (!Array.isArray(arr)) return [];
     return arr.map((a) => {
       const runState: AlertRunState =
-        a.runState ?? (a.enabled === false ? "idle" : "running");
+        a.runState ??
+        (a.status === "triggered"
+          ? "tripped"
+          : a.enabled === false
+            ? "idle"
+            : "running");
       return {
         ...a,
         kind: a.kind ?? (a.positionId ? "position" : "canvas"),
@@ -1129,8 +1134,9 @@ export function evaluateAlerts(
   const sym = symbol.toUpperCase();
   let changed = false;
   const out = alerts.map((a) => {
-    if (!a.enabled || a.status === "dismissed" || a.status === "triggered")
-      return a;
+    if (a.status === "dismissed") return a;
+    const state = a.runState ?? (a.enabled ? "running" : "idle");
+    if (state !== "running") return a;
     if (a.symbol && a.symbol !== sym) return a;
     let hit = false;
     if (a.type === "price_above" && spot >= a.targetPrice) hit = true;
@@ -1141,6 +1147,8 @@ export function evaluateAlerts(
     changed = true;
     return {
       ...a,
+      runState: "tripped" as const,
+      enabled: false,
       status: "triggered" as const,
       triggeredAt: new Date().toISOString(),
     };

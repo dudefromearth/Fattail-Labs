@@ -1031,11 +1031,11 @@ export default function OpfRiskAnalyzer() {
   const alertLines = useMemo(
     () =>
       alerts
-        .filter(
-          (a) =>
-            a.status !== "dismissed" &&
-            (a.runState ?? (a.enabled ? "running" : "idle")) === "running",
-        )
+        .filter((a) => {
+          if (a.status === "dismissed") return false;
+          const st = a.runState ?? (a.enabled ? "running" : "idle");
+          return st === "running" || st === "tripped";
+        })
         .filter((a) => a.targetIsUnderlier !== false)
         .filter((a) => !a.symbol || a.symbol === symbol)
         .map((a) => ({
@@ -1044,9 +1044,11 @@ export default function OpfRiskAnalyzer() {
           label:
             (a.type.replace("price_", "") || "alert") +
             (sessionHeld ? " · held" : ""),
-          style: alertConditionMet(a, displaySpot, symbol)
-            ? ("active" as const)
-            : ("dashed" as const),
+          style:
+            (a.runState ?? "") === "tripped" ||
+            alertConditionMet(a, displaySpot, symbol)
+              ? ("active" as const)
+              : ("dashed" as const),
         })),
     [alerts, symbol, sessionHeld, displaySpot],
   );

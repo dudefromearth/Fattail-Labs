@@ -40,5 +40,6 @@ assert(
 assert(toggleAlertRunState("running") === "idle", "running → idle");
 assert(toggleAlertRunState("idle") === "running", "idle → running");
 assert(toggleAlertRunState("paused") === "running", "paused → running");
+assert(toggleAlertRunState("tripped") === "running", "tripped → running");
 
 console.log("  adapter constants + unbound + run-state ok");

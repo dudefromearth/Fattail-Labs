@@ -17,7 +17,7 @@ export type AlertsManagerBehavior =
   | "repeating"
   | "persistent";
 export type AlertsManagerCondition = "above" | "below" | "at";
-export type AlertsManagerRunState = "running" | "idle" | "paused";
+export type AlertsManagerRunState = "running" | "idle" | "paused" | "tripped";
 export type AlertsManagerSeverity =
   | "info"
   | "low"

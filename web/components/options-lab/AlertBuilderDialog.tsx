@@ -71,6 +71,7 @@ const RUN_STATE_OPTIONS = [
   { id: "running" as const, label: "Running" },
   { id: "idle" as const, label: "Idle" },
   { id: "paused" as const, label: "Paused" },
+  { id: "tripped" as const, label: "Tripped" },
 ];
 
 export default function AlertBuilderDialog({
