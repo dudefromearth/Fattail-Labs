@@ -38,6 +38,7 @@ import {
 import type { PnLPoint, PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
 import type { ThresholdAlertType } from "@/lib/options-lab/analyzerBook";
 import {
+  hostCrosshairCurvePnls,
   hostCrosshairReadout,
   inPlot,
   nearestPositionOnExpiration,
@@ -676,23 +677,52 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
           yMax,
         });
       if (readout && track) {
+        const curves = hostCrosshairCurvePnls(
+          readout.price,
+          expirationData,
+          theoreticalData,
+        );
         host.dataset.crosshairPrice = readout.priceLabel;
-        host.dataset.crosshairPnl = readout.pnlLabel;
+        if (curves.expLabel) host.dataset.crosshairExp = curves.expLabel;
+        else delete host.dataset.crosshairExp;
+        if (curves.theoLabel) host.dataset.crosshairTheo = curves.theoLabel;
+        else delete host.dataset.crosshairTheo;
+        delete host.dataset.crosshairPnl;
+
+        const expY =
+          curves.expPnl != null && Number.isFinite(curves.expPnl)
+            ? toY(curves.expPnl)
+            : null;
+        const theoY =
+          curves.theoPnl != null && Number.isFinite(curves.theoPnl)
+            ? toY(curves.theoPnl)
+            : null;
+
         ctx.save();
         ctx.beginPath();
         ctx.rect(PAD.left, PAD.top, cw, ch);
         ctx.clip();
-        ctx.strokeStyle = "rgba(150,150,150,0.6)";
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = "rgba(150,150,150,0.6)";
         ctx.beginPath();
         ctx.moveTo(track.x, PAD.top);
         ctx.lineTo(track.x, PAD.top + ch);
         ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(PAD.left, track.y);
-        ctx.lineTo(PAD.left + cw, track.y);
-        ctx.stroke();
+        if (expY != null) {
+          ctx.strokeStyle = "rgba(34,211,238,0.7)";
+          ctx.beginPath();
+          ctx.moveTo(PAD.left, expY);
+          ctx.lineTo(PAD.left + cw, expY);
+          ctx.stroke();
+        }
+        if (theoY != null) {
+          ctx.strokeStyle = "rgba(232,121,249,0.7)";
+          ctx.beginPath();
+          ctx.moveTo(PAD.left, theoY);
+          ctx.lineTo(PAD.left + cw, theoY);
+          ctx.stroke();
+        }
         ctx.restore();
 
         const paintChip = (
@@ -700,7 +730,6 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
           cx: number,
           cy: number,
           bg: string,
-          fg: string,
           axis: "x" | "y",
         ) => {
           ctx.font = AXIS_FONT;
@@ -720,29 +749,22 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
             ctx.rect(x, y, chipW, chipH);
           }
           ctx.fill();
-          ctx.fillStyle = fg;
+          ctx.fillStyle = "#fff";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(text, x + chipW / 2, y + chipH / 2);
         };
-        paintChip(
-          readout.priceLabel,
-          track.x,
-          0,
-          "#3b82f6",
-          "#fff",
-          "x",
-        );
-        paintChip(
-          readout.pnlLabel,
-          0,
-          track.y,
-          "rgba(100,100,100,0.9)",
-          "#fff",
-          "y",
-        );
+        paintChip(readout.priceLabel, track.x, 0, "#3b82f6", "x");
+        if (curves.expLabel && expY != null) {
+          paintChip(curves.expLabel, 0, expY, "#22d3ee", "y");
+        }
+        if (curves.theoLabel && theoY != null) {
+          paintChip(curves.theoLabel, 0, theoY, theoreticalStroke, "y");
+        }
       } else {
         delete host.dataset.crosshairPrice;
+        delete host.dataset.crosshairExp;
+        delete host.dataset.crosshairTheo;
         delete host.dataset.crosshairPnl;
       }
       } catch {

@@ -56,7 +56,10 @@ test("Analyzer plot hover paints scale crosshair chips", async ({ page }) => {
       timeout: 8_000,
     })
     .toMatch(/^\d+(\.\d{2})?$/);
-  await expect(host).toHaveAttribute("data-crosshair-pnl", /^[+-]\d+$/);
+  const expChip = await host.getAttribute("data-crosshair-exp");
+  const theoChip = await host.getAttribute("data-crosshair-theo");
+  if (expChip) expect(expChip).toMatch(/^[+-]\d+$/);
+  if (theoChip) expect(theoChip).toMatch(/^[+-]\d+$/);
 
   await page.screenshot({
     path: "test-results/analyzer-crosshair.png",

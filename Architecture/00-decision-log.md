@@ -4,6 +4,21 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-20 — DL-471 Analyzer crosshair Y chips are at-expiry and T+0 P&L
+
+**Decision:** Coach: the 2D crosshair must indicate **at-expiration** and
+**real-time (T+0)** P&L at the cursor underlier — not a gray mouse-Y
+readout. Y-scale chips sit at those curve values: **cyan** `#22d3ee`
+(at-expiry stroke) and **magenta** `#e879f9` (theoretical stroke). X-scale
+chip remains the underlier/strike. Interpolate the plotted series; do not
+invent a P&L when a series is empty. MSC presentation, Labs colors, no
+MSC code copy.
+
+**Does not:** MiniTwo until asked; change pan/zoom or strike-handle
+grammar.
+
+---
+
 ## 2026-08-20 — DL-470 Alert Builder is floatable
 
 **Decision:** Coach: the Alerts dialog **must be floatable**. Same grammar

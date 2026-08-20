@@ -72,7 +72,7 @@ export function fmtCrosshairPnl(pnl: number): string {
 
 /**
  * Pointer readout for the 2D host crosshair (MSC presentation).
- * Chips sit on the X (underlier/strike) and Y (P&L) scales.
+ * X chip is underlier at the cursor; Y chips are curve P&L at that price.
  */
 export function hostCrosshairReadout(
   canvasX: number,
@@ -82,18 +82,34 @@ export function hostCrosshairReadout(
   view: HostView,
 ): {
   price: number;
-  pnl: number;
   priceLabel: string;
-  pnlLabel: string;
 } | null {
   if (!inPlot(canvasX, canvasY, width, height)) return null;
   const price = toHostDataX(canvasX, width, view);
-  const pnl = toHostDataY(canvasY, height, view);
   return {
     price,
-    pnl,
     priceLabel: fmtCrosshairStrike(price),
-    pnlLabel: fmtCrosshairPnl(pnl),
+  };
+}
+
+/** At-expiry and real-time (T+0) P&L at the crosshair underlier. */
+export function hostCrosshairCurvePnls(
+  price: number,
+  expiration: readonly PnLPoint[],
+  theoretical: readonly PnLPoint[],
+): {
+  expPnl: number | null;
+  theoPnl: number | null;
+  expLabel: string | null;
+  theoLabel: string | null;
+} {
+  const expPnl = findPnLAtPrice(expiration, price);
+  const theoPnl = findPnLAtPrice(theoretical, price);
+  return {
+    expPnl,
+    theoPnl,
+    expLabel: expPnl != null ? fmtCrosshairPnl(expPnl) : null,
+    theoLabel: theoPnl != null ? fmtCrosshairPnl(theoPnl) : null,
   };
 }
 

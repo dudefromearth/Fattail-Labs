@@ -11,6 +11,7 @@ import {
   fmtCrosshairStrike,
   fmtCrosshairPnl,
   hostCrosshairReadout,
+  hostCrosshairCurvePnls,
   CURVE_HIT_DISTANCE,
 } from "./hostAlertMenu";
 import { CHART_HOST_PAD as PAD } from "./chartHostBind";
@@ -98,13 +99,31 @@ assert(fmtCrosshairPnl(-8) === "-8", "negative pnl chip");
   const r = hostCrosshairReadout(midX, midY, w, h, view);
   assert(r != null, "in-plot pointer has a readout");
   assert(Math.abs(r!.price - 150) < 1e-6, "X chip is underlier at cursor");
-  assert(Math.abs(r!.pnl - 0) < 1e-6, "Y chip is P&L at cursor");
   assert(r!.priceLabel === "150", "X chip listed integer");
-  assert(r!.pnlLabel === "+0", "Y chip axis grammar");
   assert(
     hostCrosshairReadout(1, midY, w, h, view) === null,
     "gutter is not a crosshair",
   );
 }
 
-console.log("  18 tests passed");
+{
+  const curves = hostCrosshairCurvePnls(
+    150,
+    [
+      { price: 100, pnl: 0 },
+      { price: 200, pnl: 100 },
+    ],
+    [
+      { price: 100, pnl: -20 },
+      { price: 200, pnl: 10 },
+    ],
+  );
+  assert(curves.expPnl === 50, "at-expiry interpolates at cursor price");
+  assert(curves.expLabel === "+50", "cyan chip axis grammar");
+  assert(curves.theoPnl === -5, "T+0 interpolates at cursor price");
+  assert(curves.theoLabel === "-5", "magenta chip axis grammar");
+  const empty = hostCrosshairCurvePnls(150, [], []);
+  assert(empty.expPnl === null && empty.theoPnl === null, "no series → no P&L chips");
+}
+
+console.log("  20 tests passed");
