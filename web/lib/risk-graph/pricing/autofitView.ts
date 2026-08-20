@@ -82,6 +82,59 @@ export interface AtmCenteredXRangeArgs {
 /**
  * Symmetric X window about ATM (or content mid if spot looks stale).
  */
+/**
+ * Analyzer Autofit X: Shown strikes centered in the plot.
+ *
+ * When `plotWidthPx` + `ptsPerInch` are set, X span is
+ * (plot CSS inches) × points/inch — a physical scale, not “fill the pane
+ * with the tent.” Higher pts/inch → more axis on screen → smaller tent.
+ * Strike span always fits (never clip the book).
+ *
+ * Without density, falls back to strike span + padFrac of that span
+ * each side (legacy).
+ */
+export function strikeCenteredXRange(args: {
+  strikes: readonly number[];
+  padFrac?: number;
+  minSpanPts?: number;
+  plotWidthPx?: number;
+  ptsPerInch?: number;
+}): { xMin: number; xMax: number; center: number } {
+  const padFrac = args.padFrac ?? AUTOFIT_PAD_FRAC;
+  const minSpan = Math.max(args.minSpanPts ?? AUTOFIT_MIN_HALF_PTS * 2, 1);
+  const ks = [
+    ...new Set(
+      args.strikes.filter((k) => Number.isFinite(k) && k > 0),
+    ),
+  ].sort((a, b) => a - b);
+  if (!ks.length) {
+    return { xMin: 5900, xMax: 6100, center: 6000 };
+  }
+  const lo = ks[0];
+  const hi = ks[ks.length - 1];
+  const center = (lo + hi) / 2;
+  const raw = hi - lo;
+  const span = raw > 1e-6 ? raw : minSpan;
+  const plotPx = args.plotWidthPx;
+  const ppi = args.ptsPerInch;
+  if (
+    plotPx != null &&
+    ppi != null &&
+    plotPx > 0 &&
+    ppi > 0 &&
+    Number.isFinite(plotPx) &&
+    Number.isFinite(ppi)
+  ) {
+    const fromDensity = (plotPx / 96) * ppi;
+    const xSpan = Math.max(span, fromDensity);
+    const half = xSpan / 2;
+    return { xMin: center - half, xMax: center + half, center };
+  }
+  const pad = span * padFrac;
+  const half = span / 2 + pad;
+  return { xMin: center - half, xMax: center + half, center };
+}
+
 export function atmCenteredXRange(args: AtmCenteredXRangeArgs): {
   xMin: number;
   xMax: number;

@@ -11,6 +11,10 @@ import {
   nSigmaFromMassPct,
   RANGE_MASS_1SIGMA,
   RANGE_MASS_2SIGMA,
+  RANGE_INNER_SIGMA_PRESETS,
+  RANGE_OUTER_SIGMA_PRESETS,
+  matchingSigmaPreset,
+  rangeBandAlphas,
   tYearsFromRemainingHours,
 } from "./probRange";
 import { MIN_TAU } from "../risk-graph/surfaceModel";
@@ -79,6 +83,24 @@ test("band is ±pct of spot", () => {
 test("τ floor is 1 minute", () => {
   assert(tYearsFromRemainingHours(0) === MIN_TAU, "zero remaining");
   assert(tYearsFromRemainingHours(-1) === MIN_TAU, "negative");
+});
+
+test("inner/outer σ presets fill mass %", () => {
+  assert(RANGE_INNER_SIGMA_PRESETS[1] === 1, "1σ inner");
+  assert(matchingSigmaPreset(68.27, RANGE_INNER_SIGMA_PRESETS) === 1, "match 1σ");
+  assert(matchingSigmaPreset(95.45, RANGE_INNER_SIGMA_PRESETS) === 2, "match 2σ");
+  const p3 = massInsideSigmaPct(3);
+  assert(p3 != null && p3 > 99, "3σ is ~99.7");
+  assert(matchingSigmaPreset(p3!, RANGE_OUTER_SIGMA_PRESETS) === 3, "match 3σ");
+  assert(RANGE_OUTER_SIGMA_PRESETS[0] === 2.25, "outer starts 2.25σ");
+});
+
+test("second band opacity is ¾ of the first", () => {
+  const a = rangeBandAlphas(40, true);
+  assert(Math.abs(a.first - 0.4) < 1e-9, "first");
+  assert(Math.abs(a.second - 0.3) < 1e-9, "second is 3/4");
+  const one = rangeBandAlphas(40, false);
+  assert(one.second === 0, "no second");
 });
 
 test("rejects junk", () => {

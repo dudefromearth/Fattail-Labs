@@ -1100,13 +1100,14 @@ function PosBlock({
             >
               {isTop && expired ? "EXPIRED" : `${dteOf(exp)}d`}
             </td>
-            <td
-              className={td}
-              style={edge}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {isTop ? (
-                <div className="flex flex-nowrap items-center gap-0.5">
+            {isTop ? (
+              <td
+                rowSpan={nLegs}
+                className={td + " align-top whitespace-normal"}
+                style={cellBase(true)}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex flex-col items-stretch gap-2 py-0.5">
                   <label
                     className="flex items-center gap-1 text-[14px] uppercase tracking-wide text-white/70"
                     title="When this position was put on. Default is the cash open."
@@ -1114,7 +1115,7 @@ function PosBlock({
                     In
                     <input
                       type="time"
-                      className="rounded bg-black/25 px-1 py-0.5 text-[14.5px] text-white"
+                      className="min-h-8 min-w-0 flex-1 rounded bg-black/25 px-1 py-0.5 text-[14.5px] text-white"
                       data-testid={`analyzer-pos-entry-${pos.id}`}
                       value={etHmValue(resolveEntryAt(pos))}
                       onChange={(e) =>
@@ -1127,7 +1128,7 @@ function PosBlock({
                   </label>
                   {pos.closedAt != null ? (
                     <span
-                      className="px-1 text-[14px] uppercase tracking-wide text-white/80"
+                      className="px-1 text-[14px] uppercase leading-snug tracking-wide text-white/80"
                       data-testid={`analyzer-pos-closed-${pos.id}`}
                     >
                       Closed {formatEtHm(pos.closedAt)}
@@ -1138,7 +1139,7 @@ function PosBlock({
                   ) : (
                     <button
                       type="button"
-                      className={actionBtn}
+                      className={actionBtn + " min-h-8 w-full px-2 py-1"}
                       data-testid={`analyzer-pos-close-${pos.id}`}
                       onClick={() => onClosePosition(pos.id)}
                     >
@@ -1156,7 +1157,7 @@ function PosBlock({
                   ) : null}
                   <button
                     type="button"
-                    className={actionBtn}
+                    className={actionBtn + " min-h-8 w-full px-2 py-1"}
                     onClick={() => onEdit(pos.id)}
                   >
                     Edit
@@ -1164,7 +1165,7 @@ function PosBlock({
                   {onSendToTradeLog ? (
                     <button
                       type="button"
-                      className={actionBtn}
+                      className={actionBtn + " min-h-8 w-full px-2 py-1"}
                       data-testid={`analyzer-pos-send-log-${pos.id}`}
                       onClick={() => onSendToTradeLog(pos.id)}
                     >
@@ -1172,8 +1173,8 @@ function PosBlock({
                     </button>
                   ) : null}
                 </div>
-              ) : null}
-            </td>
+              </td>
+            ) : null}
           </tr>
         );
       })}

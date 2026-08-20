@@ -12,6 +12,28 @@ export const RANGE_MASS_1SIGMA = 68.27;
 /** Two-sided mass inside ±2σ, XX.XX percent. */
 export const RANGE_MASS_2SIGMA = 95.45;
 
+/** Inner (first) band σ presets — fill mass % on select. */
+export const RANGE_INNER_SIGMA_PRESETS = [0.75, 1, 1.25, 1.5, 2] as const;
+/** Outer (second) band σ presets. */
+export const RANGE_OUTER_SIGMA_PRESETS = [2.25, 2.5, 2.75, 3] as const;
+
+export function clampMassPct(n: number): number {
+  if (!Number.isFinite(n)) return RANGE_MASS_1SIGMA;
+  return Math.max(0.01, Math.min(99.99, Math.round(n * 100) / 100));
+}
+
+export function matchingSigmaPreset(
+  pct: number,
+  presets: readonly number[],
+): number | null {
+  if (!Number.isFinite(pct)) return null;
+  for (const s of presets) {
+    const p = massInsideSigmaPct(s);
+    if (p != null && Math.abs(p - pct) < 0.02) return s;
+  }
+  return null;
+}
+
 export function tYearsFromRemainingHours(hours: number): number {
   const h = Number.isFinite(hours) ? Math.max(0, hours) : 0;
   return Math.max(h / (365.25 * 24), MIN_TAU);
@@ -108,4 +130,20 @@ export function bandFromMassPct(opts: {
   });
   if (half == null) return null;
   return bandFromSpotPct(opts.spot, half);
+}
+
+/** Second (outer) band is this fraction of the first band's opacity. */
+export const RANGE_SECOND_OPACITY_FRAC = 0.75;
+
+/** First-band alpha from the member slider; second is ¾ of that. */
+export function rangeBandAlphas(
+  opacityPct: number,
+  hasSecond: boolean,
+): { first: number; second: number } {
+  const first = Math.max(0, Math.min(1, Number(opacityPct) / 100));
+  const a = Number.isFinite(first) ? first : 0;
+  return {
+    first: a,
+    second: hasSecond ? a * RANGE_SECOND_OPACITY_FRAC : 0,
+  };
 }

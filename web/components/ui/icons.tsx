@@ -52,6 +52,14 @@ export function IconPlus(p: IconProps) {
   );
 }
 
+export function IconMinus(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
 export function IconXMark(p: IconProps) {
   return (
     <svg {...base(p)}>

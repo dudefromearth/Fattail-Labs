@@ -28,6 +28,11 @@ import {
   type StatusLogEntry,
 } from "@/lib/options-lab/statusLog";
 import { useEffect, useState } from "react";
+import ProbSigmaField from "@/components/options-lab/ProbSigmaField";
+import {
+  RANGE_INNER_SIGMA_PRESETS,
+  RANGE_OUTER_SIGMA_PRESETS,
+} from "@/lib/options-lab/probRange";
 
 export const ANALYZER_INSPECTOR_W = INSPECTOR_W;
 
@@ -82,6 +87,8 @@ export type AnalyzerControlsColumnProps = {
   rangePct2: number;
   onRangePct2: (value: number) => void;
   rangePctDisabled: boolean;
+  rangeOpacityPct: number;
+  onRangeOpacityPct: (value: number) => void;
   alerts: {
     id: string;
     kind: "canvas" | "position";
@@ -138,6 +145,8 @@ export default function AnalyzerControlsColumn({
   rangePct2,
   onRangePct2,
   rangePctDisabled,
+  rangeOpacityPct,
+  onRangeOpacityPct,
   alerts,
   onCreateAlert,
   notice = null,
@@ -434,28 +443,15 @@ export default function AnalyzerControlsColumn({
               ))}
             </select>
           </label>
-          <label className={inspectorRow}>
-            <span className={inspectorRowLabel}>Width</span>
-            <span className="flex min-w-0 flex-1 items-center gap-1">
-              <input
-                className={inspectorField + " font-mono tabular-nums"}
-                type="number"
-                min={0.01}
-                max={99.99}
-                step={0.01}
-                value={
-                  Number.isFinite(rangePct1) ? rangePct1.toFixed(2) : ""
-                }
-                disabled={!rangeEnabled || rangePctDisabled}
-                onChange={(e) => onRangePct1(Number(e.target.value))}
-                data-testid="analyzer-range-pct1"
-                aria-label="Probability coverage percent"
-              />
-              <span className="shrink-0 text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]">
-                %
-              </span>
-            </span>
-          </label>
+          <ProbSigmaField
+            label="Width"
+            pct={rangePct1}
+            onChange={onRangePct1}
+            presets={RANGE_INNER_SIGMA_PRESETS}
+            disabled={!rangeEnabled || rangePctDisabled}
+            testId="analyzer-range-pct1"
+            ariaLabel="Probability coverage percent"
+          />
           <div className={inspectorRow + " justify-between"}>
             <span className="text-[length:var(--text-subheadline)] text-[var(--color-label)]">
               Second
@@ -485,28 +481,26 @@ export default function AnalyzerControlsColumn({
               />
             </button>
           </div>
-          <label className={inspectorRow}>
-            <span className={inspectorRowLabel}>Second</span>
-            <span className="flex min-w-0 flex-1 items-center gap-1">
-              <input
-                className={inspectorField + " font-mono tabular-nums"}
-                type="number"
-                min={0.01}
-                max={99.99}
-                step={0.01}
-                value={
-                  Number.isFinite(rangePct2) ? rangePct2.toFixed(2) : ""
-                }
-                disabled={!rangeEnabled || !rangeSecondOn || rangePctDisabled}
-                onChange={(e) => onRangePct2(Number(e.target.value))}
-                data-testid="analyzer-range-pct2"
-                aria-label="Second probability coverage percent"
-              />
-              <span className="shrink-0 text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]">
-                %
-              </span>
-            </span>
-          </label>
+          <ProbSigmaField
+            label="Second"
+            pct={rangePct2}
+            onChange={onRangePct2}
+            presets={RANGE_OUTER_SIGMA_PRESETS}
+            disabled={!rangeEnabled || !rangeSecondOn || rangePctDisabled}
+            testId="analyzer-range-pct2"
+            ariaLabel="Second probability coverage percent"
+          />
+          <SliderRow
+            label="Opacity"
+            value={`${Math.round(rangeOpacityPct)}%`}
+            min={0}
+            max={100}
+            step={1}
+            disabled={!rangeEnabled}
+            testId="analyzer-range-opacity"
+            valueNow={rangeOpacityPct}
+            onChange={onRangeOpacityPct}
+          />
         </InspectorSection>
 
         <InspectorSection title="What-if" testId="analyzer-whatif-panel">

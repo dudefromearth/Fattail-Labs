@@ -15,10 +15,8 @@ import {
   useState,
 } from "react";
 import {
-  atmCenteredXRange,
+  strikeCenteredXRange,
   fitPnlYRange,
-  AUTOFIT_PAD_FRAC,
-  EXP_BREAKEVEN_MAX_VIEWPORT_FRAC,
 } from "@/lib/risk-graph/pricing/autofitView";
 import { clampAxisRange } from "@/lib/risk-graph/pnlChartViewPolicy";
 import { dollarAxisStep } from "@/lib/risk-graph/axisGrid";
@@ -37,6 +35,7 @@ import {
 } from "@/lib/risk-graph/strikeHandleBind";
 import type { PnLPoint, PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
 import type { ThresholdAlertType } from "@/lib/options-lab/analyzerBook";
+import { RANGE_SECOND_OPACITY_FRAC } from "@/lib/options-lab/probRange";
 import {
   hostCrosshairCurvePnls,
   hostCrosshairReadout,
@@ -111,6 +110,8 @@ export type HostPnLChartProps = {
   expirationBreakevens: number[];
   theoreticalBreakevens: number[];
   strikes: number[];
+  /** Autofit X: underlier points per CSS inch of the plot (admin scale). */
+  autofitPtsPerInch?: number;
   theoreticalStroke?: string;
   theoreticalLegendLabel?: string;
   gexEnabled?: boolean;
@@ -120,6 +121,8 @@ export type HostPnLChartProps = {
   gexOpacityPct?: number;
   rangeEnabled?: boolean;
   rangeBands?: { lo: number; hi: number }[];
+  /** First-band opacity 0–100. Second band is ¾ of this. */
+  rangeOpacityPct?: number;
   strikeHandles?: StrikeHandle[];
   onStrikeDrag?: (info: StrikeDragInfo | null) => void;
   onStrikeCommit?: (info: StrikeDragInfo) => void;
@@ -151,6 +154,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       expirationBreakevens,
       theoreticalBreakevens,
       strikes,
+      autofitPtsPerInch,
       theoreticalStroke = "#e879f9",
       theoreticalLegendLabel = "T+0",
       gexEnabled = false,
@@ -160,6 +164,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       gexOpacityPct = 40,
       rangeEnabled = false,
       rangeBands = [],
+      rangeOpacityPct = 40,
       strikeHandles = [],
       onStrikeDrag,
       onStrikeCommit,
@@ -213,18 +218,14 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
     >(null);
 
     const fit = useCallback((): HostView => {
-      const expBes = expirationBreakevens.filter(Number.isFinite);
-      const contentPrices = [
-        ...strikes.filter(Number.isFinite),
-        ...expBes,
-        ...theoreticalBreakevens.filter(Number.isFinite),
-      ];
-      const { xMin, xMax } = atmCenteredXRange({
-        spot: spotPrice,
-        contentPrices,
-        padFrac: AUTOFIT_PAD_FRAC,
-        expBreakevenPrices: expBes,
-        expBreakevenMaxViewportFrac: EXP_BREAKEVEN_MAX_VIEWPORT_FRAC,
+      const host = hostRef.current;
+      const plotW = host
+        ? Math.max(1, host.clientWidth - PAD.left - PAD.right)
+        : 800;
+      const { xMin, xMax } = strikeCenteredXRange({
+        strikes,
+        plotWidthPx: plotW,
+        ptsPerInch: autofitPtsPerInch,
       });
       const pnls = [
         ...expirationData,
@@ -247,10 +248,8 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       expirationData,
       theoreticalData,
       expiredExpirationData,
-      expirationBreakevens,
-      theoreticalBreakevens,
       strikes,
-      spotPrice,
+      autofitPtsPerInch,
     ]);
 
     const autoFit = useCallback(() => {
@@ -322,14 +321,17 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         ctx.beginPath();
         ctx.rect(PAD.left, PAD.top, cw, ch);
         ctx.clip();
-        const fills = ["rgba(255,255,255,0.05)", "rgba(255,255,255,0.10)"];
+        const a = Math.max(0, Math.min(1, rangeOpacityPct / 100));
+        const alphas =
+          rangeBands.length > 1 ? [a * RANGE_SECOND_OPACITY_FRAC, a] : [a];
         rangeBands.forEach((b, i) => {
           if (!(b.hi > b.lo) || !Number.isFinite(b.lo) || !Number.isFinite(b.hi)) {
             return;
           }
           const x0 = toX(b.lo);
           const x1 = toX(b.hi);
-          ctx.fillStyle = fills[Math.min(i, fills.length - 1)];
+          const alpha = alphas[Math.min(i, alphas.length - 1)];
+          ctx.fillStyle = `rgba(255,255,255,${alpha})`;
           ctx.fillRect(x0, PAD.top, Math.max(0, x1 - x0), ch);
         });
         ctx.restore();
@@ -816,6 +818,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       gexOpacityPct,
       rangeEnabled,
       rangeBands,
+      rangeOpacityPct,
       theoreticalStroke,
       theoreticalLegendLabel,
       strikeHandles,

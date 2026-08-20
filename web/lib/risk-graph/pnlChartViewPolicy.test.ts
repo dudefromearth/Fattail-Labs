@@ -56,6 +56,17 @@ test("AT-2D-AF-10 strike-drag must not Autofit", () => {
     }) === false,
     "isStrikeDragging",
   );
+  assert(
+    autofitShouldRun2d("strike-drop", {
+      userAdjusted: true,
+      strikeDragging: true,
+    }) === false,
+    "still dragging",
+  );
+  assert(
+    autofitShouldRun2d("strike-drop", { userAdjusted: true }) === true,
+    "drop Autofits even after pan",
+  );
 });
 
 test("AT-2D-AF-3 cent BE jitter changes hash", () => {
@@ -118,6 +129,7 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(!az.includes("SurfaceViewport"), "Analyzer is 2D only; Surface is suite page");
   assert(!az.includes("analyzer-viewport-surface"), "no in-viewport Surface tab");
   assert(az.includes("onStrikeCommit="), "listed strike handles wired");
+  assert(az.includes('"strike-drop"'), "leg / group drop Autofits");
   assert(host.includes("bindStrikeHandles"), "yellow ticks bind on host");
   assert(host.includes("strikeHandleHot"), "handle size follows proximity");
   assert(
@@ -130,6 +142,10 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(!az.includes("opf-model-select"), "OPF model is not member chrome");
   assert(!az.includes("OPF risk graph"), "no chatty upper-left title");
   assert(az.includes('data-testid="analyzer-autofit"'), "Auto-fit on viewport strip");
+  assert(
+    host.includes("strikeCenteredXRange"),
+    "Autofit X is strike-span, not ATM wings",
+  );
   const controls = readFileSync(
     join(here, "../../components/options-lab/AnalyzerControlsColumn.tsx"),
     "utf8",

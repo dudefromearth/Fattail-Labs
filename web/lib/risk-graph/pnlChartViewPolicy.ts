@@ -15,7 +15,8 @@ export type PnlAutofitTrigger =
   | "exp-be"
   | "series-len"
   | "gex"
-  | "vp";
+  | "vp"
+  | "strike-drop";
 
 export function autofitShouldRun2d(
   trigger: PnlAutofitTrigger,
@@ -26,7 +27,13 @@ export function autofitShouldRun2d(
   },
 ): boolean {
   if (opts.dragging || opts.strikeDragging) return false;
-  if (trigger === "autofit-button" || trigger === "book-appear") return true;
+  if (
+    trigger === "autofit-button" ||
+    trigger === "book-appear" ||
+    trigger === "strike-drop"
+  ) {
+    return true;
+  }
   if (opts.userAdjusted) return false;
   if (trigger === "first-paint") return true;
   if (trigger === "book-change" || trigger === "series-len") return true;

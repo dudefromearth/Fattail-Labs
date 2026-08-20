@@ -106,6 +106,15 @@ import type { AlertsManagerDraft } from "@/lib/alerts/analyzerAlertsAdapter";
 import { alertUnbound } from "@/lib/alerts/analyzerAlertsAdapter";
 import { IconChevronUpDown } from "@/components/ui/icons";
 import { applyStrikeDragToPosition } from "@/lib/options-lab/listedStrikeDrag";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import {
+  AUTOFIT_PTS_PER_INCH_DEFAULT,
+  AUTOFIT_PTS_PER_INCH_MAX,
+  AUTOFIT_PTS_PER_INCH_MIN,
+  clampAutofitPtsPerInch,
+  loadAutofitPtsPerInch,
+  saveAutofitPtsPerInch,
+} from "@/lib/options-lab/analyzerAutofitPad";
 import { snapToListed } from "@/lib/options-lab/listedStrikes";
 import type { StrikeDragInfo } from "@/lib/risk-graph/strikeHandleBind";
 import {
@@ -205,8 +214,16 @@ export default function OpfRiskAnalyzer() {
   const [rangeSecondOn, setRangeSecondOn] = useState(true);
   const [rangePct1Dirty, setRangePct1Dirty] = useState(false);
   const [rangePct2Dirty, setRangePct2Dirty] = useState(false);
+  const [rangeOpacityPct, setRangeOpacityPct] = useState(40);
   const [rangePrefReady, setRangePrefReady] = useState(false);
   const [strikeDrag, setStrikeDrag] = useState<StrikeDragInfo | null>(null);
+  const isAdmin = useIsAdmin();
+  const [autofitPtsPerInch, setAutofitPtsPerInch] = useState(
+    AUTOFIT_PTS_PER_INCH_DEFAULT,
+  );
+  useEffect(() => {
+    setAutofitPtsPerInch(loadAutofitPtsPerInch());
+  }, []);
 
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
@@ -367,6 +384,7 @@ export default function OpfRiskAnalyzer() {
         secondOn?: boolean;
         pct1Dirty?: boolean;
         pct2Dirty?: boolean;
+        opacityPct?: number;
       };
       if (typeof p.enabled === "boolean") setRangeEnabled(p.enabled);
       if (typeof p.horizon === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.horizon)) {
@@ -381,6 +399,12 @@ export default function OpfRiskAnalyzer() {
       if (typeof p.secondOn === "boolean") setRangeSecondOn(p.secondOn);
       if (typeof p.pct1Dirty === "boolean") setRangePct1Dirty(p.pct1Dirty);
       if (typeof p.pct2Dirty === "boolean") setRangePct2Dirty(p.pct2Dirty);
+      if (
+        typeof p.opacityPct === "number" &&
+        Number.isFinite(p.opacityPct)
+      ) {
+        setRangeOpacityPct(Math.max(0, Math.min(100, Math.round(p.opacityPct))));
+      }
     } catch {
       /* ignore */
     }
@@ -399,6 +423,7 @@ export default function OpfRiskAnalyzer() {
           secondOn: rangeSecondOn,
           pct1Dirty: rangePct1Dirty,
           pct2Dirty: rangePct2Dirty,
+          opacityPct: rangeOpacityPct,
         }),
       );
     } catch {
@@ -412,6 +437,7 @@ export default function OpfRiskAnalyzer() {
     rangeSecondOn,
     rangePct1Dirty,
     rangePct2Dirty,
+    rangeOpacityPct,
     rangePrefReady,
   ]);
 
@@ -1031,6 +1057,11 @@ export default function OpfRiskAnalyzer() {
   const hasGhostSeries = showExpiredGhost && ghostPoints.length > 0;
   const hasCurves = hasLiveSeries || hasGhostSeries;
   const hadCurvesRef = useRef(false);
+  const pendingStrikeFitRef = useRef(false);
+  const strikeFitStalePtsRef = useRef<{
+    exp: unknown;
+    theo: unknown;
+  } | null>(null);
   useLayoutEffect(() => {
     const appeared = bookAppearedOnCanvas(hadCurvesRef.current, hasCurves);
     hadCurvesRef.current = hasCurves;
@@ -1044,6 +1075,35 @@ export default function OpfRiskAnalyzer() {
     }
     chartRef.current?.autoFit();
   }, [hasCurves]);
+
+  useLayoutEffect(() => {
+    if (!pendingStrikeFitRef.current) return;
+    if (strikeDrag != null) return;
+    const stale = strikeFitStalePtsRef.current;
+    if (
+      stale &&
+      risk.expirationPoints === stale.exp &&
+      risk.theoreticalPoints === stale.theo
+    ) {
+      return;
+    }
+    if (
+      !autofitShouldRun2d("strike-drop", {
+        userAdjusted: true,
+        strikeDragging: false,
+      })
+    ) {
+      return;
+    }
+    pendingStrikeFitRef.current = false;
+    strikeFitStalePtsRef.current = null;
+    chartRef.current?.autoFit();
+  }, [
+    risk.expirationPoints,
+    risk.theoreticalPoints,
+    strikeDrag,
+    hasCurves,
+  ]);
 
   const alertLines = useMemo(
     () =>
@@ -1295,6 +1355,11 @@ export default function OpfRiskAnalyzer() {
 
   const onStrikeCommit = useCallback(
     (info: StrikeDragInfo) => {
+      pendingStrikeFitRef.current = true;
+      strikeFitStalePtsRef.current = {
+        exp: risk.expirationPoints,
+        theo: risk.theoreticalPoints,
+      };
       setPositions((prev) =>
         prev.map((p) =>
           p.id === info.positionId
@@ -1310,6 +1375,16 @@ export default function OpfRiskAnalyzer() {
       );
       setStrikeDrag(null);
       risk.refresh();
+      requestAnimationFrame(() => {
+        if (
+          autofitShouldRun2d("strike-drop", {
+            userAdjusted: true,
+            strikeDragging: false,
+          })
+        ) {
+          chartRef.current?.autoFit();
+        }
+      });
     },
     [chain, risk],
   );
@@ -1396,6 +1471,8 @@ export default function OpfRiskAnalyzer() {
           setRangePct2(Math.max(0.01, Math.min(99.99, Math.round(value * 100) / 100)));
         }}
         rangePctDisabled={!rangeHorizon}
+        rangeOpacityPct={rangeOpacityPct}
+        onRangeOpacityPct={setRangeOpacityPct}
         onCreateAlert={() => {
           setAlertBuilderSeed({
             kind: "canvas",
@@ -1559,6 +1636,33 @@ export default function OpfRiskAnalyzer() {
                 Auto-fit
               </Button>
             </div>
+            {isAdmin ? (
+              <label
+                className="relative z-[2] ml-auto flex min-h-11 items-center gap-2 text-[13px] font-medium uppercase tracking-wide text-white/60"
+                title="Autofit scale: underlier points per CSS inch. Higher = smaller tent."
+              >
+                Strikes/in
+                <input
+                  type="range"
+                  min={AUTOFIT_PTS_PER_INCH_MIN}
+                  max={AUTOFIT_PTS_PER_INCH_MAX}
+                  step={1}
+                  value={Math.round(autofitPtsPerInch)}
+                  onChange={(e) => {
+                    const next = clampAutofitPtsPerInch(Number(e.target.value));
+                    setAutofitPtsPerInch(next);
+                    saveAutofitPtsPerInch(next);
+                    requestAnimationFrame(() => chartRef.current?.autoFit());
+                  }}
+                  className="h-11 w-36 cursor-pointer accent-[var(--color-tint)]"
+                  data-testid="analyzer-autofit-width"
+                  aria-label="Autofit strikes per inch"
+                />
+                <span className="w-8 font-mono tabular-nums text-white/80">
+                  {Math.round(autofitPtsPerInch)}
+                </span>
+              </label>
+            ) : null}
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
             <div
@@ -1601,6 +1705,7 @@ export default function OpfRiskAnalyzer() {
                           )
                         : []
                   }
+                  autofitPtsPerInch={autofitPtsPerInch}
                   gexEnabled={gexEnabled}
                   gexValueMode={gexValueMode}
                   gexPoints={gexProfile.points}
@@ -1608,6 +1713,7 @@ export default function OpfRiskAnalyzer() {
                   gexOpacityPct={gexOpacityPct}
                   rangeEnabled={rangeEnabled}
                   rangeBands={rangeBands}
+                  rangeOpacityPct={rangeOpacityPct}
                   strikeHandles={strikeHandles}
                   onStrikeDrag={onStrikeDrag}
                   onStrikeCommit={onStrikeCommit}

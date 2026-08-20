@@ -47,7 +47,7 @@ When Spot or VIX is overridden, the inspector shows an **override** banner. Pack
 
 **Where:** center of the strip above the canvas. Capsule **bordered** button (white outline, transparent fill, 44pt).
 
-- Click **Auto-fit** to frame the visible book (ATM-centered, structure in view, dollar grid readable).
+- Click **Auto-fit** to frame the visible book: **center the position(s)**. Scale is **12** underlier points per inch of the plot. Height padding on P&L. Not ATM / wing padding.
 - Auto-fit is disabled when there is **no drawable position** on the canvas (nothing Shown, or the book is empty).
 - If the canvas was empty (GEX/grid only) and a position **appears** — Show, Create, paste, or any other path — Auto-fit **runs by itself**, even if you had panned the empty view.
 - Pan, zoom, or drag a strike handle **locks** the window. Live ticks and What-if do **not** steal that window. Show/Hide among an **already shown** book also does not Autofit.
@@ -94,7 +94,7 @@ Yellow ticks on $0 are the listed strikes of **Shown** positions.
 | **Leave** | Tick returns to the thin idle size. |
 | **Drag (no Shift)** | Only that strike moves. Detent **only to listed strikes**. Tent redraws when you land on a new listed strike. |
 | **Shift-click / Shift-drag** | All handles of **that position** highlight and move together (same listed step count). |
-| **Drop** | Commits: card unlocks, legs rebind on the OPF-held chain. No invented strikes. Auto-fit does **not** run on drop. |
+| **Drop** | Commits: card unlocks, legs rebind on the OPF-held chain. No invented strikes. Auto-fit **runs on drop** (one leg or the whole position). |
 
 You cannot slide between strikes. If the chain has no next strike in that direction, the handle stays put.
 
