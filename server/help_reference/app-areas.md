@@ -90,12 +90,10 @@ your development, not just individual sessions.
 ## Options Lab
 The options inspection suite — Heatmap, Analyzer, Surface, Volume Profile.
 Open it from the apps area (`/app/options-lab`). The Heatmap is a grid of
-listed flies; Analyzer builds a book; Surface shows that book's P&L shape.
-Surface stays available after the close and after expiration — residual
-or expired is a label, not a lock. After midnight, yesterday’s expired
-positions stay as a grey wireframe (no filled tent), the same idea as
-the Analyzer ghost. You can inspect a weekly or a calendar back-month
-any time.
+listed flies; Analyzer is the 2D **Risk graph** and position book
+(`/app/options-lab/analyzer`); Surface is the 3D page
+(`/app/options-lab/surface`). See **Options Lab Analyzer** for how to use
+the Risk graph (pan, handles, GEX, Probability, What-if, Auto-fit).
 See the Options Lab Heatmap reference for what each Heatmap Value number
 means (Long/Debit, Short/Credit, % Change, Risk to Reward, Delta, Gamma,
 Theta).
@@ -111,18 +109,20 @@ is not on the listed chain. See Options Lab Heatmap for each Value formula.
 A space to build and study options strategies — design a structure and examine its
 risk/reward before you ever risk capital. Availability can depend on your tier.
 
-## Options Lab
-The day-trader risk desk. Its centre is the **Analyzer** (`/app/options-lab/analyzer`),
-where you study a position two ways in one session: the **Risk graph** (2D) and the
-**Surface** (3D) — same positions, alerts, and what-ifs, you just switch the canvas.
-Options Lab also includes the **Heatmap** and **Volume Profile** views. Availability can
-depend on your tier.
+## Analyzer
+The Analyzer (`/app/options-lab/analyzer`) is the **Risk graph**: 2D P&L vs
+price for every Shown position. Inspector: GEX, Probability, What-if.
+Position list and Alerts sit under the canvas. Symbol, Spot, and VIX are
+on the strip above the graph; Auto-fit is centered there. See the
+**Options Lab Analyzer** help topic for each control (handles, GEX,
+Probability bands, What-if, named states). Surface is a **separate**
+page (`/app/options-lab/surface`), not a tab on this canvas. Availability
+can depend on your tier.
 
 ## Surface
-The **Surface** is the 3D view inside the Options Lab Analyzer — a landscape (mesh)
-picture of your position's profit-and-loss. It uses the exact same position and pricing
-as the 2D Risk graph; only the presentation differs (a 3D surface instead of lines).
-Drag to orbit, scroll to zoom.
+The **Surface** (`/app/options-lab/surface`) is the 3D Options Lab page — a
+landscape (mesh) picture of position profit-and-loss. It is not a tab on
+the Analyzer canvas. Drag to orbit, scroll to zoom.
 
 **What it shows / how to read it:**
 - The **height** of the surface at any point is the position's **profit or loss in
