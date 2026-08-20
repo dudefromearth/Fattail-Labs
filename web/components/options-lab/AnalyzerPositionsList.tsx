@@ -26,7 +26,10 @@ import {
   formatEtHm,
   resolveEntryAt,
 } from "@/lib/options-lab/positionSession";
-import { resolveCardDisplayState } from "@/lib/options-lab/cardDisplayState";
+import {
+  packageLivenessChip,
+  resolveCardDisplayState,
+} from "@/lib/options-lab/cardDisplayState";
 import { legNotTradedLabel } from "@/lib/options-lab/optionBind";
 import type { LegInput } from "@/lib/options-lab/positionTypes";
 import { detectFamily } from "@/lib/options-lab/positionLabels";
@@ -453,8 +456,10 @@ export default function AnalyzerPositionsList({
                 sessionHeld,
                 packageSide: side,
               });
+              const livenessChip = packageLivenessChip(pos, display);
               const definedDebit = definedDebitSigned(pos);
               const liveMark =
+                !locked &&
                 display.kind === "price" &&
                 pos.livePackagePerShare != null &&
                 Number.isFinite(pos.livePackagePerShare);
@@ -514,6 +519,7 @@ export default function AnalyzerPositionsList({
                   price={price}
                   priceLabel={priceLabel}
                   liveMark={!!liveMark}
+                  livenessChip={livenessChip}
                   expired={expired}
                   isGhost={isGhost}
                   side={side}
@@ -564,6 +570,7 @@ function PosBlock({
   price,
   priceLabel,
   liveMark,
+  livenessChip,
   expired,
   isGhost,
   side,
@@ -604,6 +611,7 @@ function PosBlock({
   price: number | null;
   priceLabel: string;
   liveMark: boolean;
+  livenessChip: string;
   expired: boolean;
   isGhost: boolean;
   side: "debit" | "credit" | null;
@@ -900,7 +908,11 @@ function PosBlock({
               onClick={(e) => e.stopPropagation()}
               data-testid={isTop ? `analyzer-pos-price-${pos.id}` : undefined}
               data-display-kind={isTop ? display.kind : undefined}
-              data-live={isTop && display.kind === "price" ? "1" : undefined}
+              data-live={
+                isTop && liveMark && livenessChip.toLowerCase() === "live"
+                  ? "1"
+                  : undefined
+              }
               data-expired={isTop && display.kind === "expired" ? "1" : undefined}
               data-bindable={
                 isTop
@@ -921,27 +933,15 @@ function PosBlock({
             >
               {isTop ? (
                 display.kind === "price" ? (
-                  <>
-                    <PackagePriceField
-                      id={pos.id}
-                      locked={locked}
-                      price={price}
-                      priceLabel={priceLabel}
-                      textMain={textMain}
-                      onCommit={(mag) => onLockLimit(pos.id, mag)}
-                      onLockForEdit={() => onLockNatural(pos.id)}
-                    />
-                    {locked && liveMark ? (
-                      <span
-                        className={
-                          "ml-1 text-[13.5px] font-semibold uppercase " +
-                          textMuted
-                        }
-                      >
-                        {display.chipLabel}
-                      </span>
-                    ) : null}
-                  </>
+                  <PackagePriceField
+                    id={pos.id}
+                    locked={locked}
+                    price={price}
+                    priceLabel={priceLabel}
+                    textMain={textMain}
+                    onCommit={(mag) => onLockLimit(pos.id, mag)}
+                    onLockForEdit={() => onLockNatural(pos.id)}
+                  />
                 ) : display.kind === "expired" &&
                   definedDebitSigned(pos) != null ? (
                   <>
@@ -1042,11 +1042,12 @@ function PosBlock({
                 td +
                 " text-[16.5px] font-semibold uppercase " +
                 (isTop
-                  ? chip === "live"
+                  ? livenessChip.toLowerCase() === "live"
                     ? kind !== "neutral"
                       ? "text-emerald-200"
                       : "text-emerald-600"
-                    : chip === "held"
+                    : livenessChip.toLowerCase() === "held" ||
+                        livenessChip.toLowerCase().startsWith("theo")
                       ? "text-amber-200"
                       : chip === "incomplete" || chip === "skewed"
                         ? "text-amber-200"
@@ -1054,8 +1055,9 @@ function PosBlock({
                   : textDim)
               }
               style={edge}
+              data-testid={isTop ? `analyzer-pos-live-${pos.id}` : undefined}
             >
-              {isTop ? display.chipLabel : ""}
+              {isTop ? livenessChip : ""}
             </td>
             <td
               className={td + ` text-right ${textMuted}`}

@@ -134,6 +134,26 @@ def test_build_and_diff_only_changed_strikes():
         assert d0["changed_strike_count"] == 0
         assert d0["removed_strike_count"] == 0
 
+    # VIX-only move is OPF generation content — must not be swallowed as unchanged
+    b_vix = build_ladder(
+        raw,
+        underlier="I:SPX",
+        spot=spot,
+        expiration="2026-08-15",
+        side="call",
+        band=50.0,
+        vix=18.4,
+        dte=1,
+        wings=25,
+        strike_step=5.0,
+        strike_lo=4950.0,
+        strike_hi=5050.0,
+    )
+    assert content_hash(b_vix) != h1
+    d_vix = diff_ladder(a, b_vix)
+    assert d_vix["mode"] == "diff"
+    assert d_vix["vix"] == 18.4
+
     # only mid of 5000 changes
     raw2 = [
         _raw(4990, mid=10.0),

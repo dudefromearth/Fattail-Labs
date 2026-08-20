@@ -57,6 +57,7 @@ export function useBuilderChain(
   const offMarket = opts?.offMarket === true;
   const [expirations, setExpirations] = useState<string[]>([]);
   const [spot, setSpot] = useState<number | null>(null);
+  const [vix, setVix] = useState<number | null>(null);
   const [spotStrike, setSpotStrike] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +77,9 @@ export function useBuilderChain(
     };
     laddersRef.current.set(key, normalized);
     if (normalized.spot > 0) setSpot(normalized.spot);
+    if (normalized.vix != null && Number(normalized.vix) > 0) {
+      setVix(Number(normalized.vix));
+    }
     const strikes = uniqueListedStrikes(
       normalized.rows.map((r) => r.strike),
     );
@@ -150,12 +154,19 @@ export function useBuilderChain(
           content_hash: polled.content_hash,
           as_of: polled.as_of,
           spot: polled.spot ?? prev.spot,
+          vix: polled.vix ?? prev.vix,
           spot_strike: polled.spot_strike ?? prev.spot_strike,
           rows: [...byKey.values()],
         };
       }
-      // unchanged
-      return laddersRef.current.get(exp) ?? null;
+      const prev = laddersRef.current.get(exp);
+      if (!prev) return null;
+      return {
+        ...prev,
+        as_of: polled.as_of ?? prev.as_of,
+        spot: polled.spot != null && polled.spot > 0 ? polled.spot : prev.spot,
+        vix: polled.vix != null && Number(polled.vix) > 0 ? polled.vix : prev.vix,
+      };
     },
     [symbol],
   );
@@ -357,6 +368,7 @@ export function useBuilderChain(
     () => ({
       expirations,
       spot,
+      vix,
       spotStrike,
       loading,
       error,
@@ -371,6 +383,7 @@ export function useBuilderChain(
     [
       expirations,
       spot,
+      vix,
       spotStrike,
       loading,
       error,

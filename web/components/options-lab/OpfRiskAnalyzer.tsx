@@ -745,8 +745,16 @@ export default function OpfRiskAnalyzer() {
   }, [risk.generationEpoch, model.useCase, epochPinned]);
 
   const activeModel = findOpfModel(risk.packId ?? model.packId);
+  const opfSpot =
+    chain.spot != null && chain.spot > 0
+      ? chain.spot
+      : risk.spot != null && risk.spot > 0
+        ? risk.spot
+        : null;
+  const opfVix =
+    chain.vix != null && Number(chain.vix) > 0 ? Number(chain.vix) : null;
   const displaySpotRaw =
-    spotOverride ?? risk.spot ?? chain.spot ?? trade?.body ?? 0;
+    spotOverride ?? opfSpot ?? trade?.body ?? 0;
   /** Live spot eases between ticks — risk graph line moves continuously */
   const displaySpot =
     useSmoothNumber(displaySpotRaw > 0 ? displaySpotRaw : null, {
@@ -754,7 +762,7 @@ export default function OpfRiskAnalyzer() {
     }) ?? (displaySpotRaw > 0 ? displaySpotRaw : 0);
 
   // A1: evaluate alerts on raw underlier mark (not smoothed, not what-if override)
-  const rawMarkForAlerts = risk.spot ?? chain.spot ?? null;
+  const rawMarkForAlerts = opfSpot;
   useEffect(() => {
     if (rawMarkForAlerts == null || !(rawMarkForAlerts > 0)) return;
     setAlerts((prev) => {
@@ -765,12 +773,17 @@ export default function OpfRiskAnalyzer() {
 
   useEffect(() => {
     if (spotDirty) return;
-    if (risk.spot != null && risk.spot > 0) {
-      setSpotStr(String(Math.round(risk.spot * 100) / 100));
-    } else if (chain.spot != null && chain.spot > 0) {
-      setSpotStr(String(Math.round(chain.spot * 100) / 100));
+    if (opfSpot != null) {
+      setSpotStr(String(Math.round(opfSpot * 100) / 100));
     }
-  }, [risk.spot, chain.spot, spotDirty]);
+  }, [opfSpot, spotDirty]);
+
+  useEffect(() => {
+    if (vixDirty) return;
+    if (opfVix != null) {
+      setVixStr(String(Math.round(opfVix * 100) / 100));
+    }
+  }, [opfVix, vixDirty]);
 
   const resetSim = () => {
     setTimeMachineEnabled(false);
@@ -1503,8 +1516,9 @@ export default function OpfRiskAnalyzer() {
                 className="w-[8.5rem] border-b border-yellow-400/40 bg-transparent py-0 text-right font-mono text-[24px] font-bold tabular-nums text-yellow-400 outline-none focus:border-yellow-300"
                 value={spotStr}
                 onChange={(e) => {
-                  setSpotDirty(true);
-                  setSpotStr(e.target.value);
+                  const v = e.target.value;
+                  setSpotStr(v);
+                  setSpotDirty(v.trim() !== "");
                 }}
                 data-testid="analyzer-spot-input"
                 aria-label="Spot"
@@ -1516,8 +1530,9 @@ export default function OpfRiskAnalyzer() {
                 className="w-[5.75rem] border-b border-red-500/40 bg-transparent py-0 text-right font-mono text-[24px] font-bold tabular-nums text-red-500 outline-none focus:border-red-400"
                 value={vixStr}
                 onChange={(e) => {
-                  setVixDirty(true);
-                  setVixStr(e.target.value);
+                  const v = e.target.value;
+                  setVixStr(v);
+                  setVixDirty(v.trim() !== "");
                 }}
                 data-testid="analyzer-vix-input"
                 aria-label="VIX"

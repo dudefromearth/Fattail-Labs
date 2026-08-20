@@ -541,6 +541,9 @@ def get_chain_ladder(
             "mode": "unchanged",
             "content_hash": patch.get("content_hash"),
             "as_of": patch.get("as_of"),
+            # OPF generation already has these — do not drop them on a row-hash miss.
+            "spot": nxt.get("spot"),
+            "vix": nxt.get("vix"),
             "product": resolved["product"],
             "opf_session": session,
             "server_time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),

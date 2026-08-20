@@ -56,6 +56,7 @@ def content_hash(payload: dict[str, Any]) -> str:
         "expiration": payload.get("expiration"),
         "dual_side": dual,
         "spot": payload.get("spot"),
+        "vix": payload.get("vix"),
         "rows": payload.get("rows") or [],
     }
     if not dual:

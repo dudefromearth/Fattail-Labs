@@ -61,6 +61,8 @@ export type ChainContract = {
 export type ChainAccessors = {
   expirations: string[];
   spot: number | null;
+  /** Native VIX / VIX1D % from the OPF-held generation. */
+  vix?: number | null;
   /** ATM listed strike from ladder (spot snap) — preferred Builder center. */
   spotStrike?: number | null;
   loading: boolean;

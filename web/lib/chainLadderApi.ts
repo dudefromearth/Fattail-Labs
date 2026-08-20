@@ -55,7 +55,13 @@ export type LadderFull = {
 };
 
 export type LadderPollResult =
-  | { mode: "unchanged"; content_hash: string; as_of?: string }
+  | {
+      mode: "unchanged";
+      content_hash: string;
+      as_of?: string;
+      spot?: number;
+      vix?: number | null;
+    }
   | {
       mode: "diff";
       content_hash: string;
@@ -206,6 +212,8 @@ export async function pollChainLadder(opts: {
       mode: "unchanged",
       content_hash: d.content_hash || opts.since_hash || "",
       as_of: d.as_of,
+      spot: d.spot,
+      vix: d.vix,
     };
   }
   if (d.mode === "diff") {
@@ -247,7 +255,11 @@ export function applyLadderDiff(
     return {
       next: rowsByKey,
       touched: new Set(),
-      meta: null,
+      meta: {
+        spot: result.spot,
+        vix: result.vix,
+        as_of: result.as_of,
+      },
       hash: result.content_hash,
     };
   }
