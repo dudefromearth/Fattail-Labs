@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -85,10 +86,11 @@ import AnalyzerPositionsList from "@/components/options-lab/AnalyzerPositionsLis
 import AnalyzerControlsColumn from "@/components/options-lab/AnalyzerControlsColumn";
 import PositionBuilder from "@/components/options-lab/PositionBuilder";
 import SurfaceViewport from "@/components/options-lab/SurfaceViewport";
-import PnLChart, {
+import {
   type PnLChartHandle,
   type PriceAlertType,
 } from "@/components/options-lab/risk-graph/PnLChart";
+import HostPnLChart from "@/components/options-lab/risk-graph/HostPnLChart";
 import { useSmoothNumber } from "@/lib/useSmoothValue";
 import {
   expiredGhostSeries,
@@ -258,6 +260,12 @@ export default function OpfRiskAnalyzer() {
       setBuilderOpen(true);
     }
   }, [searchParams]);
+
+  useLayoutEffect(() => {
+    if (positions.length > 0) return;
+    const stored = loadPositions();
+    if (stored.length > 0) setPositions(stored);
+  }, []);
 
   useEffect(() => {
     // Never persist the pre-hydrate empty default — that wiped the book and
@@ -1137,34 +1145,23 @@ export default function OpfRiskAnalyzer() {
             )}
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
-            {viewportMode === "surface" ? (
-              <SurfaceViewport
-                hasTrade={trades.length > 0 && drawLiveCurves}
-                symbol={trade?.symbol || symbol}
-                packLabel={activeModel.label}
-                loading={risk.loading}
-                error={risk.error}
-                notice={viewportFocus?.notice ?? null}
-                trade={
-                  trades.length > 1
-                    ? combineParsedTrades(trades)
-                    : trade
-                }
-                spot={risk.spot}
-                legMarks={risk.result?.marks?.leg_marks ?? null}
-              />
-            ) : (
-              <div
-                className="relative h-full min-h-[240px] w-full"
-                data-testid="analyzer-risk-viewport"
-                data-curve-mode={curveMode}
-              >
-                <PnLChart
+            {/* 2D stays mounted (hidden) on Surface so return is not a blank
+                remount. Surface unmounts on Risk so its WebGL host cannot
+                steal drag/wheel from the graph. */}
+            <div
+              className="absolute inset-0"
+              data-testid="analyzer-risk-viewport"
+              data-curve-mode={curveMode}
+              style={{
+                visibility: viewportMode === "risk" ? "visible" : "hidden",
+                pointerEvents: viewportMode === "risk" ? "auto" : "none",
+                zIndex: viewportMode === "risk" ? 1 : 0,
+              }}
+              aria-hidden={viewportMode !== "risk"}
+              inert={viewportMode !== "risk"}
+            >
+                <HostPnLChart
                   ref={chartRef}
-                  /*
-                   * OT-EF / PB-VIEW-6: never fabricate a live package curve.
-                   * Minimal state = scales + grid (always). Curves optional.
-                   */
                   expirationData={
                     drawLiveCurves ? risk.expirationPoints : []
                   }
@@ -1172,7 +1169,6 @@ export default function OpfRiskAnalyzer() {
                     drawLiveCurves ? risk.theoreticalPoints : []
                   }
                   expiredExpirationData={ghostPoints}
-                  expiredTheoreticalData={[]}
                   theoreticalStroke="#e879f9"
                   theoreticalLegendLabel={
                     showExpiredGhost && !drawLiveCurves
@@ -1199,27 +1195,6 @@ export default function OpfRiskAnalyzer() {
                           )
                         : []
                   }
-                  alertLines={alertLines}
-                  onOpenAlertDialog={onOpenAlertDialog}
-                  positionLabels={
-                    drawLiveCurves || showExpiredGhost
-                      ? positions
-                          .filter((p) => p.visible)
-                          .map((p) => ({
-                            id: p.id,
-                            strikesLabel: p.notation,
-                          }))
-                      : []
-                  }
-                  onPositionAlertSelect={(positionId, price) => {
-                    const a = createPriceAlert({
-                      type: "price_touch",
-                      symbol,
-                      targetPrice: price,
-                      positionId,
-                    });
-                    setAlerts((prev) => [a, ...prev]);
-                  }}
                 />
                 {/* Centered notice over grid — translucent so scales stay readable */}
                 {viewportFocus?.notice ? (
@@ -1290,8 +1265,26 @@ export default function OpfRiskAnalyzer() {
                     </div>
                   </div>
                 ) : null}
+            </div>
+            {viewportMode === "surface" ? (
+              <div className="absolute inset-0 z-[1]">
+                <SurfaceViewport
+                  hasTrade={trades.length > 0 && drawLiveCurves}
+                  symbol={trade?.symbol || symbol}
+                  packLabel={activeModel.label}
+                  loading={risk.loading}
+                  error={risk.error}
+                  notice={viewportFocus?.notice ?? null}
+                  trade={
+                    trades.length > 1
+                      ? combineParsedTrades(trades)
+                      : trade
+                  }
+                  spot={risk.spot}
+                  legMarks={risk.result?.marks?.leg_marks ?? null}
+                />
               </div>
-            )}
+            ) : null}
           </div>
         </section>
 
