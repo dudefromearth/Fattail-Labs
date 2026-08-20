@@ -101,7 +101,7 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 | **Viewport(s)** | See §0.3 — Analyzer risk graph · VP · GEX canvases | Pricing SoR (OPF owns package/curves for Analyzer) |
 | **Time machine** | What-if time / vol / spot % into **Analyzer** resolve; sim spot indicator | Changing card legs unless Save; not required on VP/GEX |
 | **Models** | Pack id + use case (day_trade · outlook · backtest); epoch re-anchor | Drawing curves (Analyzer viewport consumes packs) |
-| **Controls** | Posture badge, symbol, OPF model, spot/VIX, GEX, What-if, Refresh/Auto-fit/Builder. Suite nav (not inspector) for Heatmap / other apps | Replacing any other bucket’s SoR |
+| **Controls** | Posture badge, symbol, OPF model, GEX, Range, What-if, Refresh/Auto-fit/Builder. Spot/VIX sit upper-right above the risk canvas. Suite nav for Heatmap / other apps | Replacing any other bucket’s SoR |
 
 ### 0.2.1 Cross-bucket laws
 
@@ -248,7 +248,7 @@ Read with §0.2 buckets: each subsection below tags its bucket.
 | Region | **As-built** | **TARGET (Coach)** |
 |--------|--------------|---------------------|
 | Main split | **Left sidebar** (~21rem) + **right viewport** (`lg:flex-row`) | **Vertical stack:** viewport **above**, position list **below**, with **divider**; single panel with divider *or* two stacked panels |
-| Sidebar contents | **HIG inspector:** Instrument · Marks · GEX · What-if · Graph. No Go to / Readout panels. Position list and Alerts sit **under** the viewport | **OD-AZ1 Accept:** top compact control strip; **list under viewport**; **OD-AZ2 Accept:** Alerts under position list |
+| Sidebar contents | **HIG inspector:** Instrument · GEX · Range · What-if · Graph. Spot/VIX in the dark strip **above** the risk canvas (upper-right). Position list and Alerts sit **under** the viewport | **OD-AZ1 Accept:** top compact control strip; **list under viewport**; **OD-AZ2 Accept:** Alerts under position list |
 | Viewport | Full remaining height · dark canvas · chart panel | Same — **one** focused graph panel |
 | MSC heritage | MSC had list **left** of viewport | Labs: list **under** viewport |
 
@@ -411,8 +411,9 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Position-specific alert | **Not on host pane** — next overlays program |
 | Legend labels | Pack theo legend + Held suffix |
 | GEX backdrop | Same heatmap GEX template + dual-side ladder; bars at listed strikes; GEX axis = plot mid-height; **Call/Put = two right scales** (sky call up, red put down), each scaled to that side’s longest bar; Net/Abs = one right scale colored to the bars; units ÷1e9 as heatmap; pan/zoom with the view (DL-459) |
-| Range band | Gray column **behind GEX**, full canvas height. Member % is two-sided normal mass **XX.XX%** (1σ = **68.27%**, 2σ = **95.45%**), not a decimal and not % of spot. Geometry is ±z·σ·√τ on a **listed** expiration (ATM IV). Inspector **Range**: Show/Hide · expiration · Width 68.27% · optional second 95.45%. Pan/zoom with the view. |
+| Range band | Gray column **behind GEX**, clipped to the **plot** (not the black gutters above/below). Member % is two-sided normal mass **XX.XX%** (1σ = **68.27%**, 2σ = **95.45%**). Geometry is ±z·σ·√τ on a **listed** expiration (ATM IV). Inspector **Range**: Show/Hide · expiration · Width 68.27% · optional second 95.45%. Pan/zoom with the view. |
 | Heritage | MSC Risk Graph UX only — no MSC pricing import (DL-302 / AZ-VP-S4) |
+| Strike handles | Yellow ticks on the $0 line at each **visible** position’s listed strikes. **MSC handle grammar (Labs-typed):** hover thickens + grab cursor; press grabbing; **Single handle** (no Shift): only that tick highlights and only that strike moves. **Shift-click/drag:** all handles of the position highlight and move in unison. Handles **detent only to listed strikes** for that position’s expiration (no free slide). Live snap, redefine the card, redraw tent; drop commits (unlock + atomic rebind). No invented strikes (DL-309). Do not Autofit on drop. |
 
 ### 1.11 What-if (OPF scenario knobs) · A6 Enable
 

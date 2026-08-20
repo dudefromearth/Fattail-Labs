@@ -104,7 +104,8 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(az.includes("<HostPnLChart"), "live pane is host-contract chart");
   assert(!az.includes("SurfaceViewport"), "Analyzer is 2D only; Surface is suite page");
   assert(!az.includes("analyzer-viewport-surface"), "no in-viewport Surface tab");
-  assert(!az.includes("onStrikeDrag="), "AT-AZ-WIRE-1 Packet B not shipped");
+  assert(az.includes("onStrikeCommit="), "listed strike handles wired");
+  assert(host.includes("bindStrikeHandles"), "yellow ticks bind on host");
 });
 
 console.log(`\n${n} tests passed`);

@@ -21,8 +21,10 @@ export function bindChartHost(opts: {
   view: { current: HostView };
   userAdjusted: { current: boolean };
   draw: () => void;
+  /** Return true to skip pan (e.g. listed strike handle). */
+  hitHandle?: (e: PointerEvent) => boolean;
 }): () => void {
-  const { host, view, userAdjusted, draw } = opts;
+  const { host, view, userAdjusted, draw, hitHandle } = opts;
   const safeDraw = () => {
     try {
       draw();
@@ -51,6 +53,7 @@ export function bindChartHost(opts: {
 
   const onDown = (e: PointerEvent) => {
     if (e.button !== 0) return;
+    if (hitHandle?.(e)) return;
     dragging = true;
     pointerId = e.pointerId;
     startX = e.clientX;

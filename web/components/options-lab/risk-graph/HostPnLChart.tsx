@@ -25,6 +25,13 @@ import {
   CHART_HOST_PAD,
   type HostView,
 } from "@/lib/risk-graph/chartHostBind";
+import {
+  bindStrikeHandles,
+  hitStrikeHandle,
+  type StrikeHandle,
+  type StrikeDragInfo,
+  type StrikeDragPreview,
+} from "@/lib/risk-graph/strikeHandleBind";
 import type { PnLPoint, PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
 import {
   fmtGexAxis,
@@ -52,6 +59,35 @@ function niceStep(range: number, target: number): number {
   return nice * mag;
 }
 
+/** Underlier prices where real-time P&L crosses 0. */
+function realtimeZeroCrossings(pts: PnLPoint[]): number[] {
+  const out: number[] = [];
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    if (!Number.isFinite(a.price) || !Number.isFinite(b.price)) continue;
+    if (!Number.isFinite(a.pnl) || !Number.isFinite(b.pnl)) continue;
+    if (a.pnl === 0) {
+      out.push(a.price);
+      continue;
+    }
+    if (a.pnl * b.pnl < 0) {
+      const t = a.pnl / (a.pnl - b.pnl);
+      out.push(a.price + t * (b.price - a.price));
+    }
+  }
+  const last = pts[pts.length - 1];
+  if (
+    last &&
+    Number.isFinite(last.price) &&
+    Number.isFinite(last.pnl) &&
+    last.pnl === 0
+  ) {
+    out.push(last.price);
+  }
+  return out;
+}
+
 export type HostPnLChartProps = {
   expirationData: PnLPoint[];
   theoreticalData: PnLPoint[];
@@ -70,6 +106,14 @@ export type HostPnLChartProps = {
   gexOpacityPct?: number;
   rangeEnabled?: boolean;
   rangeBands?: { lo: number; hi: number }[];
+  strikeHandles?: StrikeHandle[];
+  onStrikeDrag?: (info: StrikeDragInfo | null) => void;
+  onStrikeCommit?: (info: StrikeDragInfo) => void;
+  snapStrike?: (
+    positionId: string,
+    grabbedStrike: number,
+    rawTarget: number,
+  ) => number;
 };
 
 const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
@@ -92,6 +136,10 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       gexOpacityPct = 40,
       rangeEnabled = false,
       rangeBands = [],
+      strikeHandles = [],
+      onStrikeDrag,
+      onStrikeCommit,
+      snapStrike,
     },
     ref,
   ) {
@@ -107,6 +155,18 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
     const userAdjustedRef = useRef(false);
     const drawRef = useRef<() => void>(() => {});
     const rafRef = useRef(0);
+    const handlesRef = useRef<StrikeHandle[]>([]);
+    handlesRef.current = strikeHandles;
+    const previewRef = useRef<StrikeDragPreview>(null);
+    const hoverRef = useRef<StrikeHandle | null>(null);
+    const groupRef = useRef<string | null>(null);
+    const hoverShiftRef = useRef(false);
+    const commitRef = useRef(onStrikeCommit);
+    commitRef.current = onStrikeCommit;
+    const dragRef = useRef(onStrikeDrag);
+    dragRef.current = onStrikeDrag;
+    const snapRef = useRef(snapStrike);
+    snapRef.current = snapStrike;
 
     const fit = useCallback((): HostView => {
       const expBes = expirationBreakevens.filter(Number.isFinite);
@@ -216,7 +276,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       if (rangeEnabled && rangeBands.length) {
         ctx.save();
         ctx.beginPath();
-        ctx.rect(PAD.left, 0, cw, height);
+        ctx.rect(PAD.left, PAD.top, cw, ch);
         ctx.clip();
         const fills = ["rgba(255,255,255,0.05)", "rgba(255,255,255,0.10)"];
         rangeBands.forEach((b, i) => {
@@ -226,7 +286,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
           const x0 = toX(b.lo);
           const x1 = toX(b.hi);
           ctx.fillStyle = fills[Math.min(i, fills.length - 1)];
-          ctx.fillRect(x0, 0, Math.max(0, x1 - x0), height);
+          ctx.fillRect(x0, PAD.top, Math.max(0, x1 - x0), ch);
         });
         ctx.restore();
       }
@@ -245,7 +305,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         ctx.moveTo(PAD.left, cy);
         ctx.lineTo(width - PAD.right, cy);
         ctx.stroke();
-        const lab = y >= 0 ? `+$${y.toFixed(0)}` : `-$${Math.abs(y).toFixed(0)}`;
+        const lab = y >= 0 ? `+${y.toFixed(0)}` : `-${Math.abs(y).toFixed(0)}`;
         ctx.fillText(lab, PAD.left - 6, cy);
       }
       ctx.textAlign = "center";
@@ -465,6 +525,58 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       strokeSeries(expirationData, "#22d3ee", 2);
       strokeSeries(theoreticalData, theoreticalStroke, 2);
 
+      const zeroY = toY(0);
+      if (Number.isFinite(zeroY)) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(PAD.left, PAD.top, cw, ch);
+        ctx.clip();
+        ctx.strokeStyle = "#ef4444";
+        ctx.lineWidth = 2;
+        ctx.lineCap = "butt";
+        const tick = 16;
+        for (const px of realtimeZeroCrossings(theoreticalData)) {
+          if (!Number.isFinite(px) || px < xMin || px > xMax) continue;
+          const cx = toX(px);
+          ctx.beginPath();
+          ctx.moveTo(cx, zeroY - tick);
+          ctx.lineTo(cx, zeroY + tick);
+          ctx.stroke();
+        }
+        const prev = previewRef.current;
+        const hover = hoverRef.current;
+        const groupId =
+          groupRef.current ??
+          (hoverShiftRef.current && hover ? hover.positionId : null);
+        for (const hdl of handlesRef.current) {
+          const k = hdl.strike;
+          if (!Number.isFinite(k) || k < xMin || k > xMax) continue;
+          const cx = toX(k);
+          const groupAll =
+            (prev != null && prev.shiftAll && prev.positionId === hdl.positionId) ||
+            (groupId != null && hdl.positionId === groupId);
+          const dest =
+            prev && !prev.shiftAll && prev.positionId === hdl.positionId
+              ? prev.grabbedStrike + prev.offset
+              : null;
+          const hot =
+            groupAll ||
+            (dest != null && Math.abs(hdl.strike - dest) < 1e-6) ||
+            (hover != null &&
+              !groupAll &&
+              hover.positionId === hdl.positionId &&
+              hover.strike === hdl.strike);
+          ctx.strokeStyle = hot ? "#fbbf24" : "#f59e0b";
+          ctx.lineWidth = hot ? 3 : 1;
+          const ht = hot ? 28 : 16;
+          ctx.beginPath();
+          ctx.moveTo(cx, zeroY - ht);
+          ctx.lineTo(cx, zeroY + ht);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
       ctx.font = "13px ui-monospace, monospace";
       ctx.fillStyle = "#22d3ee";
       ctx.textAlign = "left";
@@ -489,6 +601,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       rangeBands,
       theoreticalStroke,
       theoreticalLegendLabel,
+      strikeHandles,
     ]);
 
     drawRef.current = draw;
@@ -507,17 +620,38 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       hostRef.current = node;
       if (!node) return;
       if (!userAdjustedRef.current) viewRef.current = fitRef.current();
+      const unbindStrikes = bindStrikeHandles({
+        host: node,
+        view: viewRef,
+        handles: handlesRef,
+        preview: previewRef,
+        hover: hoverRef,
+        group: groupRef,
+        hoverShift: hoverShiftRef,
+        draw: () => drawRef.current(),
+        onPreview: (info) => {
+          if (info) userAdjustedRef.current = true;
+          dragRef.current?.(info);
+        },
+        onCommit: (info) => commitRef.current?.(info),
+        snapTarget: (positionId, grabbed, raw) =>
+          snapRef.current?.(positionId, grabbed, raw) ?? grabbed,
+      });
       unbindRef.current = bindChartHost({
         host: node,
         view: viewRef,
         userAdjusted: userAdjustedRef,
         draw: () => drawRef.current(),
+        hitHandle: (e) =>
+          hitStrikeHandle(e, node, viewRef.current, handlesRef.current) !=
+          null,
       });
       const ro = new ResizeObserver(() => drawRef.current());
       ro.observe(node);
       const prev = unbindRef.current;
       unbindRef.current = () => {
         ro.disconnect();
+        unbindStrikes();
         prev();
       };
       drawRef.current();
@@ -546,6 +680,11 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
     }, [ensureBound]);
 
     useEffect(() => {
+      if (previewRef.current) {
+        ensureBound();
+        drawRef.current();
+        return;
+      }
       if (!userAdjustedRef.current) viewRef.current = fit();
       ensureBound();
       drawRef.current();

@@ -14,6 +14,7 @@ import {
   positionFromInput,
   setCardExpiration,
   shiftCardStrikes,
+  shiftCardStrikesBySteps,
   type AnalyzerPosition,
 } from "./analyzerBook";
 import { resolveCardDisplayState } from "./cardDisplayState";
@@ -201,6 +202,17 @@ test("shiftCardStrikes moves only on listed steps", () => {
   assert(next.lock.mode === "unlocked", "unlock");
   assert(next.livePackagePerShare == null, "clear package");
   assert(next.bind == null, "clear bind until re-resolve");
+});
+
+test("shiftCardStrikesBySteps moves N listed steps", () => {
+  const pos = positionFromInput(flyInput("2026-08-14", 6000, 20));
+  const next = shiftCardStrikesBySteps(pos, 2, () => LISTED);
+  assert(
+    next.position.legs.every((l) => LISTED.includes(l.strike)),
+    "all listed",
+  );
+  const body = next.position.legs.find((l) => Math.abs(l.quantity) === 2);
+  assert(body != null && body.strike === 6020, `body ${body?.strike}`);
 });
 
 test("shiftCardStrikes at edge is rigid no-op", () => {

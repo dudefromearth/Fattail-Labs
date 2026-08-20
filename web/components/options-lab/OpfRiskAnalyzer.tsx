@@ -90,6 +90,9 @@ import {
   gexTemplate,
 } from "@/lib/options-lab/templates/gex";
 import type { ValueModeId } from "@/lib/options-lab/templates/types";
+import { applyStrikeDragToPosition } from "@/lib/options-lab/listedStrikeDrag";
+import { snapToListed } from "@/lib/options-lab/listedStrikes";
+import type { StrikeDragInfo } from "@/lib/risk-graph/strikeHandleBind";
 import {
   bandFromMassPct,
   RANGE_MASS_1SIGMA,
@@ -181,6 +184,7 @@ export default function OpfRiskAnalyzer() {
   const [rangePct1Dirty, setRangePct1Dirty] = useState(false);
   const [rangePct2Dirty, setRangePct2Dirty] = useState(false);
   const [rangePrefReady, setRangePrefReady] = useState(false);
+  const [strikeDrag, setStrikeDrag] = useState<StrikeDragInfo | null>(null);
 
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
@@ -560,6 +564,30 @@ export default function OpfRiskAnalyzer() {
     offMarket: !planePrinting,
   });
 
+  const displayPositions = useMemo(() => {
+    if (!strikeDrag) return positions;
+    return positions.map((p) =>
+      p.id === strikeDrag.positionId
+        ? applyStrikeDragToPosition(
+            p,
+            strikeDrag.grabbedStrike,
+            strikeDrag.targetStrike,
+            strikeDrag.shiftKey,
+            (e) => chain.getStrikes(e),
+          )
+        : p,
+    );
+  }, [positions, strikeDrag, chain]);
+
+  const graphBook = useMemo(
+    () =>
+      visibleBookTrade(displayPositions, {
+        sessionHeld,
+        symbol,
+      }),
+    [displayPositions, sessionHeld, symbol],
+  );
+
   // When Builder opens, force OPF refresh so Create is never a dead panel
   useEffect(() => {
     if (!builderOpen) return;
@@ -622,8 +650,8 @@ export default function OpfRiskAnalyzer() {
   const inputOverrideActive = whatIfActive || memberSpotVixOverride;
 
   const risk = useOpfRiskGraph({
-    trade,
-    trades,
+    trade: graphBook.trade ?? trade,
+    trades: graphBook.trades.length ? graphBook.trades : trades,
     spotOverride,
     vix,
     useCase: model.useCase,
@@ -632,8 +660,9 @@ export default function OpfRiskAnalyzer() {
     // A6: Enable gates all knobs — vol/spot% ignored unless what-if enabled
     volOffsetPts: timeMachineEnabled ? wiredVolPts : 0,
     spotPct: timeMachineEnabled ? simSpotPct : 0,
-    enabled: trades.length > 0,
+    enabled: (graphBook.trades.length ? graphBook.trades : trades).length > 0,
     pollLive: planePrinting,
+    pauseLive: strikeDrag != null,
   });
 
   const { refreshForMarketOpen } = usePackageQuotes({
@@ -1142,6 +1171,74 @@ export default function OpfRiskAnalyzer() {
     },
   };
 
+  const strikeHandles = useMemo(() => {
+    const out: { strike: number; positionId: string }[] = [];
+    const seen = new Set<string>();
+    for (const p of displayPositions) {
+      if (!p.visible) continue;
+      for (const leg of p.position.legs) {
+        if (!Number.isFinite(leg.strike)) continue;
+        const key = `${p.id}:${leg.strike}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ strike: leg.strike, positionId: p.id });
+      }
+    }
+    return out;
+  }, [displayPositions]);
+
+  const onStrikeDrag = useCallback((info: StrikeDragInfo | null) => {
+    setStrikeDrag((prev) => {
+      if (info == null) return null;
+      if (
+        prev &&
+        prev.positionId === info.positionId &&
+        prev.grabbedStrike === info.grabbedStrike &&
+        prev.targetStrike === info.targetStrike &&
+        prev.shiftKey === info.shiftKey
+      ) {
+        return prev;
+      }
+      return info;
+    });
+  }, []);
+
+  const snapStrike = useCallback(
+    (positionId: string, grabbedStrike: number, rawTarget: number) => {
+      const pos = positionsRef.current.find((p) => p.id === positionId);
+      if (!pos) return grabbedStrike;
+      const front = (pos.position.expiration || "").slice(0, 10);
+      const leg = pos.position.legs.find(
+        (l) => Math.abs(l.strike - grabbedStrike) < 1e-6,
+      );
+      const exp = (leg?.expiration || front).slice(0, 10);
+      const listed = chain.getStrikes(exp);
+      return snapToListed(rawTarget, listed) ?? grabbedStrike;
+    },
+    [chain],
+  );
+
+  const onStrikeCommit = useCallback(
+    (info: StrikeDragInfo) => {
+      setPositions((prev) =>
+        prev.map((p) =>
+          p.id === info.positionId
+            ? applyStrikeDragToPosition(
+                p,
+                info.grabbedStrike,
+                info.targetStrike,
+                info.shiftKey,
+                (e) => chain.getStrikes(e),
+              )
+            : p,
+        ),
+      );
+      setStrikeDrag(null);
+      risk.refresh();
+    },
+    [chain, risk],
+  );
+
   return (
     <div
       className="flex min-h-0 flex-1 flex-col md:flex-row"
@@ -1162,16 +1259,6 @@ export default function OpfRiskAnalyzer() {
           if (m.useCase === "outlook") setEpochPinned(true);
           else setEpochPinned(false);
           setEpochStale(false);
-        }}
-        spotStr={spotStr}
-        vixStr={vixStr}
-        onSpotChange={(v) => {
-          setSpotDirty(true);
-          setSpotStr(v);
-        }}
-        onVixChange={(v) => {
-          setVixDirty(true);
-          setVixStr(v);
         }}
         timeMachineEnabled={timeMachineEnabled}
         onTimeMachineEnabled={setTimeMachineEnabled}
@@ -1272,23 +1359,53 @@ export default function OpfRiskAnalyzer() {
           className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#0a0a0e] p-2"
           data-testid="analyzer-viewport-region"
         >
-          <div className="mb-2 flex shrink-0 flex-wrap items-center gap-3 px-1 text-xs text-white/50">
-            <span className="font-semibold text-white/80">
-              {trade ? `${trade.symbol} · OPF risk graph` : "No trade"}
-            </span>
-            <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80">
-              {activeModel.label}
-            </span>
-            <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60">
-              {timeRefLabel}
-            </span>
-            <span>
-              Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
-            </span>
-            <span className="text-cyan-400/80">Expiration</span>
-            <span className="text-fuchsia-400/80">
-              {activeModel.theoLegend}
-            </span>
+          <div className="mb-2 flex shrink-0 items-center gap-3 px-1 text-xs text-white/50">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
+              <span className="font-semibold text-white/80">
+                {trade ? `${trade.symbol} · OPF risk graph` : "No trade"}
+              </span>
+              <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80">
+                {activeModel.label}
+              </span>
+              <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60">
+                {timeRefLabel}
+              </span>
+              <span>
+                Max P/L ${risk.maxPnL.toFixed(0)} / ${risk.minPnL.toFixed(0)}
+              </span>
+              <span className="text-cyan-400/80">Expiration</span>
+              <span className="text-fuchsia-400/80">
+                {activeModel.theoLegend}
+              </span>
+            </div>
+            <div className="ml-auto flex shrink-0 items-baseline gap-4">
+              <label className="flex items-baseline gap-1.5">
+                <span className="text-[16px] font-bold text-yellow-400">Spot</span>
+                <input
+                  className="w-[8.5rem] border-b border-yellow-400/40 bg-transparent py-0 text-right font-mono text-[24px] font-bold tabular-nums text-yellow-400 outline-none focus:border-yellow-300"
+                  value={spotStr}
+                  onChange={(e) => {
+                    setSpotDirty(true);
+                    setSpotStr(e.target.value);
+                  }}
+                  data-testid="analyzer-spot-input"
+                  aria-label="Spot"
+                />
+              </label>
+              <label className="flex items-baseline gap-1.5">
+                <span className="text-[16px] font-bold text-red-500">VIX</span>
+                <input
+                  className="w-[5.75rem] border-b border-red-500/40 bg-transparent py-0 text-right font-mono text-[24px] font-bold tabular-nums text-red-500 outline-none focus:border-red-400"
+                  value={vixStr}
+                  onChange={(e) => {
+                    setVixDirty(true);
+                    setVixStr(e.target.value);
+                  }}
+                  data-testid="analyzer-vix-input"
+                  aria-label="VIX"
+                />
+              </label>
+            </div>
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
             <div
@@ -1338,6 +1455,10 @@ export default function OpfRiskAnalyzer() {
                   gexOpacityPct={gexOpacityPct}
                   rangeEnabled={rangeEnabled}
                   rangeBands={rangeBands}
+                  strikeHandles={strikeHandles}
+                  onStrikeDrag={onStrikeDrag}
+                  onStrikeCommit={onStrikeCommit}
+                  snapStrike={snapStrike}
                 />
                 {/* Centered notice over grid — translucent so scales stay readable */}
                 {viewportFocus?.notice ? (
@@ -1447,7 +1568,10 @@ export default function OpfRiskAnalyzer() {
           style={{ height: bookHeightPx }}
           data-testid="analyzer-positions-region"
         >
-          <AnalyzerPositionsList {...positionsHandlers} />
+          <AnalyzerPositionsList
+            {...positionsHandlers}
+            positions={displayPositions}
+          />
         </div>
       </div>
 

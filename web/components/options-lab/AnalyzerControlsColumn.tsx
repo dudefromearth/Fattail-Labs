@@ -56,10 +56,6 @@ export type AnalyzerControlsColumnProps = {
   universeLoading: boolean;
   onSymbolChange: (symbol: string) => void;
   onModelChange: (packId: string) => void;
-  spotStr: string;
-  vixStr: string;
-  onSpotChange: (value: string) => void;
-  onVixChange: (value: string) => void;
   timeMachineEnabled: boolean;
   onTimeMachineEnabled: (value: boolean) => void;
   elapsedHours: number;
@@ -116,10 +112,6 @@ export default function AnalyzerControlsColumn({
   universeLoading,
   onSymbolChange,
   onModelChange,
-  spotStr,
-  vixStr,
-  onSpotChange,
-  onVixChange,
   timeMachineEnabled,
   onTimeMachineEnabled,
   elapsedHours,
@@ -279,27 +271,6 @@ export default function AnalyzerControlsColumn({
                 </option>
               ))}
             </select>
-          </label>
-        </InspectorSection>
-
-        <InspectorSection title="Marks">
-          <label className={inspectorRow}>
-            <span className={inspectorRowLabel}>Spot</span>
-            <input
-              className={inspectorField + " font-mono tabular-nums"}
-              value={spotStr}
-              onChange={(e) => onSpotChange(e.target.value)}
-              data-testid="analyzer-spot-input"
-            />
-          </label>
-          <label className={inspectorRow}>
-            <span className={inspectorRowLabel}>VIX</span>
-            <input
-              className={inspectorField + " font-mono tabular-nums"}
-              value={vixStr}
-              onChange={(e) => onVixChange(e.target.value)}
-              data-testid="analyzer-vix-input"
-            />
           </label>
         </InspectorSection>
 

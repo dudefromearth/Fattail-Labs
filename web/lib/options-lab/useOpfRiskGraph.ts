@@ -566,6 +566,8 @@ export function useOpfRiskGraph(opts: {
   enabled?: boolean;
   /** Massive still printing (RTH or pre/post). False → one resolve, no interval. */
   pollLive?: boolean;
+  /** Handle drag: keep last paint; ignore keep-warm ticks until drop. */
+  pauseLive?: boolean;
 }): OpfRiskGraphState {
   const {
     trade,
@@ -579,7 +581,10 @@ export function useOpfRiskGraph(opts: {
     spotPct = 0,
     enabled = true,
     pollLive = true,
+    pauseLive = false,
   } = opts;
+  const pauseLiveRef = useRef(pauseLive);
+  pauseLiveRef.current = pauseLive;
 
   const bookTrades = useMemo(() => {
     if (tradesOpt && tradesOpt.length > 0) return tradesOpt;
@@ -639,9 +644,12 @@ export function useOpfRiskGraph(opts: {
   if (key !== lastKeyRef.current) {
     lastKeyRef.current = key;
     const next = key ? readCache(key) : null;
-    laddersRef.current = new Map(next?.ladders ?? []);
-    lastResolveKey.current = next?.lastResolveKey ?? "";
-    resultRef.current = next?.result ?? null;
+    if (next?.result) {
+      laddersRef.current = new Map(next.ladders ?? []);
+      lastResolveKey.current = next.lastResolveKey ?? "";
+      resultRef.current = next.result;
+    }
+    // else keep last paint — strike-handle drag must not blank the tent
   }
 
   const applyEntry = useCallback((entry: GraphCacheEntry) => {
@@ -744,8 +752,7 @@ export function useOpfRiskGraph(opts: {
       lastResolveKey.current = c.lastResolveKey;
     } else {
       setFromCache(false);
-      // Cold start — show spinner only if we have no curves
-      setLoading(true);
+      if (!resultRef.current) setLoading(true);
     }
   }, [key]);
 
@@ -768,7 +775,10 @@ export function useOpfRiskGraph(opts: {
       });
     if (!pollLive) return;
     // Always polling: 2.5s while focused, 5s while away. Last paint is never cleared.
-    return attachKeepWarm(job, true, applyEntry);
+    return attachKeepWarm(job, true, (entry) => {
+      if (pauseLiveRef.current) return;
+      applyEntry(entry);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, bookTrades, enabled, key, pollLive, makeJob, applyEntry]);
 

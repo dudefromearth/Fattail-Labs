@@ -967,6 +967,24 @@ export function shiftCardStrikes(
   };
 }
 
+/** Move the whole structure `steps` listed strikes. Stops at the chain edge. */
+export function shiftCardStrikesBySteps(
+  pos: AnalyzerPosition,
+  steps: number,
+  getListedStrikes?: (expiration: string) => readonly number[],
+): AnalyzerPosition {
+  const n = Math.trunc(steps);
+  if (!n || !getListedStrikes) return pos;
+  const dir = n > 0 ? "up" : "down";
+  let cur = pos;
+  for (let i = 0; i < Math.abs(n); i++) {
+    const next = shiftCardStrikes(cur, dir, getListedStrikes);
+    if (next === cur) return cur;
+    cur = next;
+  }
+  return cur;
+}
+
 export function loadAlerts(): AnalyzerThresholdAlert[] {
   if (typeof window === "undefined") return [];
   try {
