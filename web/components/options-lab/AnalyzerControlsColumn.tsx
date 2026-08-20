@@ -26,6 +26,8 @@ import {
   type OpfUseCase,
 } from "@/lib/options-lab/opfModels";
 import type { SessionPosture } from "@/lib/options-lab/sessionPosture";
+import { gexTemplate } from "@/lib/options-lab/templates/gex";
+import type { ValueModeId } from "@/lib/options-lab/templates/types";
 
 export const ANALYZER_INSPECTOR_W = INSPECTOR_W;
 
@@ -92,6 +94,10 @@ export type AnalyzerControlsColumnProps = {
   packLine: string | null;
   bookNotice: string | null;
   riskError: string | null;
+  gexEnabled: boolean;
+  onGexEnabled: (value: boolean) => void;
+  gexValueMode: ValueModeId;
+  onGexValueMode: (value: ValueModeId) => void;
 };
 
 export default function AnalyzerControlsColumn({
@@ -140,6 +146,10 @@ export default function AnalyzerControlsColumn({
   packLine,
   bookNotice,
   riskError,
+  gexEnabled,
+  onGexEnabled,
+  gexValueMode,
+  onGexValueMode,
 }: AnalyzerControlsColumnProps) {
   const simAtRest =
     elapsedHours === 0 &&
@@ -283,6 +293,54 @@ export default function AnalyzerControlsColumn({
               data-testid="analyzer-vix-input"
             />
           </label>
+        </InspectorSection>
+
+        <InspectorSection title="GEX" testId="analyzer-gex-panel">
+          <div className={inspectorRow + " justify-between"}>
+            <span className="text-[length:var(--text-subheadline)] text-[var(--color-label)]">
+              GEX
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={gexEnabled}
+              aria-label="GEX backdrop"
+              data-testid="analyzer-gex-enable"
+              onClick={() => onGexEnabled(!gexEnabled)}
+              className={
+                "relative h-7 w-11 shrink-0 rounded-full p-0.5 transition-colors " +
+                (gexEnabled
+                  ? "bg-[var(--color-tint)]"
+                  : "bg-[var(--color-fill)]")
+              }
+            >
+              <span
+                className={
+                  "block h-6 w-6 rounded-full bg-[var(--color-surface)] shadow-sm transition-transform " +
+                  (gexEnabled ? "translate-x-4" : "translate-x-0")
+                }
+              />
+            </button>
+          </div>
+          <label className={inspectorRow}>
+            <span className={inspectorRowLabel}>Value</span>
+            <select
+              className={inspectorField}
+              value={gexValueMode}
+              disabled={!gexEnabled}
+              onChange={(e) =>
+                onGexValueMode(e.target.value as ValueModeId)
+              }
+              data-testid="analyzer-gex-value-mode"
+            >
+              {gexTemplate.valueModes.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className={inspectorFooter}>{gexTemplate.description}</p>
         </InspectorSection>
 
         <InspectorSection title="What-if" testId="analyzer-whatif-panel">

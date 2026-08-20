@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-19 — DL-459 Analyzer GEX backdrop on host viewport
+
+**Decision:** Risk graph GEX is a **viewport layer** on `HostPnLChart`, not a
+second chart. Formula and value modes are the heatmap GEX template
+(`gex_v1` Γ·OI·S² · Call/Put · Net · Abs) on the **same dual-side ladder**
+(`chainContextFromLadder` / `useBuilderChain` OPF-held generation). Bars
+use the chart’s **strike X** (`toX`); GEX axis is **plot mid-height**.
+Pan/zoom the tent and GEX move together. Controls sit in the inspector
+**below Marks, above What-if**. Default on.
+
+**Does not:** restyle bars; probability overlay; extra Massive.
+
+---
+
 ## 2026-08-19 — DL-458 Analyzer 2D host-contract viewport (legacy PnLChart removed)
 
 **Decision:** Coach confirmed the host-contract 2D pane works after leave/return

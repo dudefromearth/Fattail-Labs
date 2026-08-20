@@ -22,6 +22,8 @@ import {
   snapToListed,
   uniqueListedStrikes,
 } from "@/lib/options-lab/listedStrikes";
+import { chainContextFromLadder } from "@/lib/options-lab/templates/chainContext";
+import type { ChainContext } from "@/lib/options-lab/templates/types";
 import type {
   ChainAccessors,
   ChainContract,
@@ -341,6 +343,16 @@ export function useBuilderChain(
     [getStrikes],
   );
 
+  const getChainContext = useCallback(
+    (expiration: string): ChainContext | null => {
+      void rev;
+      const lad = laddersRef.current.get(normalizeExp(expiration));
+      if (!lad?.rows?.length) return null;
+      return chainContextFromLadder(symbol, lad);
+    },
+    [rev, symbol],
+  );
+
   return useMemo(
     () => ({
       expirations,
@@ -350,6 +362,7 @@ export function useBuilderChain(
       error,
       getStrikes,
       getContract,
+      getChainContext,
       nearestStrike,
       refresh,
       ensureExpiration,
@@ -363,6 +376,7 @@ export function useBuilderChain(
       error,
       getStrikes,
       getContract,
+      getChainContext,
       nearestStrike,
       refresh,
       ensureExpiration,

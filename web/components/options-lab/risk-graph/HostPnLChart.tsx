@@ -25,6 +25,8 @@ import {
   type HostView,
 } from "@/lib/risk-graph/chartHostBind";
 import type { PnLPoint, PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
+import type { GexProfilePoint } from "@/lib/options-lab/templates/gex";
+import type { ValueModeId } from "@/lib/options-lab/templates/types";
 
 const PAD = { top: 40, right: 20, bottom: 50, left: 60 };
 
@@ -50,6 +52,10 @@ export type HostPnLChartProps = {
   strikes: number[];
   theoreticalStroke?: string;
   theoreticalLegendLabel?: string;
+  gexEnabled?: boolean;
+  gexValueMode?: ValueModeId;
+  gexPoints?: GexProfilePoint[];
+  gexScale?: number;
 };
 
 const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
@@ -65,6 +71,10 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       strikes,
       theoreticalStroke = "#e879f9",
       theoreticalLegendLabel = "T+0",
+      gexEnabled = false,
+      gexValueMode = "gex_all",
+      gexPoints = [],
+      gexScale = 1,
     },
     ref,
   ) {
@@ -215,6 +225,74 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         ctx.fillText(x.toFixed(0), cx, height - PAD.bottom + 8);
       }
 
+      const scale = Math.max(gexScale, 1e-12);
+      const combined =
+        gexValueMode === "gex_all" ||
+        gexValueMode === "gex_call" ||
+        gexValueMode === "gex_put";
+      if (gexEnabled && gexPoints.length) {
+        const inView = gexPoints
+          .map((p) => p.strike)
+          .filter((k) => k >= xMin && k <= xMax)
+          .sort((a, b) => a - b);
+        const gaps: number[] = [];
+        for (let i = 1; i < inView.length; i++) {
+          gaps.push(inView[i] - inView[i - 1]);
+        }
+        gaps.sort((a, b) => a - b);
+        const gapPx =
+          gaps.length > 0
+            ? ((gaps[Math.floor(gaps.length / 2)] / (xMax - xMin)) * cw)
+            : 10;
+        const barW = Math.max(2, Math.min(14, gapPx * 0.42));
+        const maxH = ch * 0.42;
+        const gexAxisY = PAD.top + ch / 2;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(PAD.left, PAD.top, cw, ch);
+        ctx.clip();
+        for (const pt of gexPoints) {
+          if (pt.strike < xMin || pt.strike > xMax) continue;
+          const cx = toX(pt.strike);
+          const hCall =
+            pt.call != null
+              ? Math.min(1, Math.abs(pt.call) / scale) * maxH
+              : 0;
+          const hPut =
+            pt.put != null
+              ? Math.min(1, Math.abs(pt.put) / scale) * maxH
+              : 0;
+          if (combined) {
+            if (hCall > 0.5) {
+              ctx.fillStyle = "rgba(14,165,233,0.38)";
+              ctx.fillRect(cx - barW / 2, gexAxisY - hCall, barW, hCall);
+            }
+            if (hPut > 0.5) {
+              ctx.fillStyle = "rgba(239,68,68,0.38)";
+              ctx.fillRect(cx - barW / 2, gexAxisY, barW, hPut);
+            }
+          } else if (pt.valid && pt.value != null) {
+            const mag = Math.min(1, Math.abs(pt.value) / scale) * maxH;
+            if (mag > 0.5) {
+              const neg = gexValueMode !== "gex_abs" && pt.value < 0;
+              ctx.fillStyle = neg
+                ? "rgba(239,68,68,0.38)"
+                : "rgba(14,165,233,0.38)";
+              if (neg) ctx.fillRect(cx - barW / 2, gexAxisY, barW, mag);
+              else ctx.fillRect(cx - barW / 2, gexAxisY - mag, barW, mag);
+            }
+          }
+        }
+        ctx.strokeStyle = "rgba(255,255,255,0.18)";
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath();
+        ctx.moveTo(PAD.left, gexAxisY);
+        ctx.lineTo(width - PAD.right, gexAxisY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
       ctx.strokeStyle = "rgba(255,255,255,0.22)";
       ctx.beginPath();
       ctx.moveTo(PAD.left, toY(0));
@@ -266,6 +344,10 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       expiredExpirationData,
       spotPrice,
       spotIndicatorPrice,
+      gexEnabled,
+      gexValueMode,
+      gexPoints,
+      gexScale,
       theoreticalStroke,
       theoreticalLegendLabel,
     ]);

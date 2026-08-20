@@ -73,6 +73,8 @@ export type ChainAccessors = {
     type: OptionRight,
   ) => ChainContract | undefined;
   nearestStrike: (expiration: string, target: number) => number;
+  /** Dual-side ladder as heatmap template ChainContext (GEX / tiles). */
+  getChainContext: (expiration: string) => import("./templates/types").ChainContext | null;
   refresh: () => void;
   /**
    * Hydrate a listed expiration on demand (Builder front/back/leg exp).

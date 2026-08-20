@@ -408,6 +408,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Context menu alerts | **Not on host pane** — next overlays program |
 | Position-specific alert | **Not on host pane** — next overlays program |
 | Legend labels | Pack theo legend + Held suffix |
+| GEX backdrop | Same heatmap GEX template + dual-side ladder; bars at listed strikes; GEX axis = plot mid-height; pan/zoom with the view (DL-459) |
 | Heritage | MSC Risk Graph UX only — no MSC pricing import (DL-302 / AZ-VP-S4) |
 
 ### 1.11 What-if (OPF scenario knobs) · A6 Enable

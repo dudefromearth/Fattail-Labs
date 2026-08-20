@@ -87,6 +87,14 @@ import PositionBuilder from "@/components/options-lab/PositionBuilder";
 import SurfaceViewport from "@/components/options-lab/SurfaceViewport";
 import HostPnLChart from "@/components/options-lab/risk-graph/HostPnLChart";
 import type { PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
+import {
+  buildGexProfile,
+  gexProfileScale,
+  gexTemplate,
+} from "@/lib/options-lab/templates/gex";
+import type { ValueModeId } from "@/lib/options-lab/templates/types";
+
+const GEX_PREF_KEY = "ft_options_lab_analyzer_gex_v1";
 import { useSmoothNumber } from "@/lib/useSmoothValue";
 import {
   expiredGhostSeries,
@@ -159,6 +167,11 @@ export default function OpfRiskAnalyzer() {
   const [posture, setPosture] = useState<SessionPosture>("Held");
   const [viewportMode, setViewportMode] =
     useState<AnalyzerViewportMode>("risk");
+  const [gexEnabled, setGexEnabled] = useState(true);
+  const [gexValueMode, setGexValueMode] = useState<ValueModeId>(
+    gexTemplate.defaultValueMode,
+  );
+  const [gexPrefReady, setGexPrefReady] = useState(false);
 
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
@@ -262,6 +275,36 @@ export default function OpfRiskAnalyzer() {
     const stored = loadPositions();
     if (stored.length > 0) setPositions(stored);
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(GEX_PREF_KEY);
+      if (!raw) {
+        setGexPrefReady(true);
+        return;
+      }
+      const p = JSON.parse(raw) as { enabled?: boolean; valueMode?: string };
+      if (typeof p.enabled === "boolean") setGexEnabled(p.enabled);
+      const modes = new Set(gexTemplate.valueModes.map((m) => m.id));
+      if (p.valueMode && modes.has(p.valueMode as ValueModeId)) {
+        setGexValueMode(p.valueMode as ValueModeId);
+      }
+    } catch {
+      /* ignore */
+    }
+    setGexPrefReady(true);
+  }, []);
+  useEffect(() => {
+    if (!gexPrefReady) return;
+    try {
+      sessionStorage.setItem(
+        GEX_PREF_KEY,
+        JSON.stringify({ enabled: gexEnabled, valueMode: gexValueMode }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [gexEnabled, gexValueMode, gexPrefReady]);
 
   useEffect(() => {
     // Never persist the pre-hydrate empty default — that wiped the book and
@@ -681,6 +724,15 @@ export default function OpfRiskAnalyzer() {
   const showExpiredGhost = viewportFocus?.showExpiredGhost === true;
   /** Live package series only when Law B says price is representable. */
   const drawLiveCurves = curveMode === "live";
+  const gexProfile = useMemo(() => {
+    if (!gexEnabled) return { points: [], scale: 1 };
+    const exp = (trade?.expiration || "").slice(0, 10);
+    if (!exp) return { points: [], scale: 1 };
+    const ctx = chain.getChainContext(exp);
+    if (!ctx) return { points: [], scale: 1 };
+    const points = buildGexProfile(ctx, gexValueMode);
+    return { points, scale: gexProfileScale(points, gexValueMode) };
+  }, [gexEnabled, gexValueMode, trade?.expiration, chain]);
   const ghostPoints = useMemo(
     () =>
       showExpiredGhost
@@ -1059,6 +1111,10 @@ export default function OpfRiskAnalyzer() {
         packLine={packLine}
         bookNotice={bookNotice}
         riskError={risk.error}
+        gexEnabled={gexEnabled}
+        onGexEnabled={setGexEnabled}
+        gexValueMode={gexValueMode}
+        onGexValueMode={setGexValueMode}
       />
 
       {/* Right column: viewport + book (under) + alerts — list never left of viewport */}
@@ -1178,6 +1234,10 @@ export default function OpfRiskAnalyzer() {
                           )
                         : []
                   }
+                  gexEnabled={gexEnabled}
+                  gexValueMode={gexValueMode}
+                  gexPoints={gexProfile.points}
+                  gexScale={gexProfile.scale}
                 />
                 {/* Centered notice over grid — translucent so scales stay readable */}
                 {viewportFocus?.notice ? (
