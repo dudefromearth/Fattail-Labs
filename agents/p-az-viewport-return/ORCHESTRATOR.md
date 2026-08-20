@@ -30,8 +30,9 @@ W-G Delta
 | W0-1 | **PASS** |
 | W0-2 | **APPROVED** (lock handoff named) |
 | W0-3…5 | **APPROVED** |
-| W0-M | **in flight** |
-| Product code | Forbidden until W0-M FAIL + W0-BA |
+| W0-M | **BLOCKED** (Chromium A–F green) |
+| W0-G | **BLOCKED** — no W0-BA |
+| Product code | Forbidden |
 
 ## Coordination
 

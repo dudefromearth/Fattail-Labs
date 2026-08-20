@@ -144,8 +144,11 @@ Charlie changes **only** the survivor W0-M named. If W0-M names R1 (bind skipped
 
 | Packet | State |
 |--------|--------|
-| This analysis | **Landed · awaiting W0-0** |
-| This plan | **v1.0.1 · RH-B1 folded · awaiting W0-0** |
+| This analysis | **Landed** |
+| This plan | **v1.0.1** |
 | Board | **Landed** |
-| W0-M | Not fired |
-| Product code | **Forbidden** until W0-BA |
+| W0-0 | **STAMP** |
+| W0-1…5 | **PASS / APPROVED** |
+| W0-M | **BLOCKED** — `e2e/analyzer-viewport-w0m-splitter.spec.ts` green A–F |
+| W0-G | **BLOCKED** |
+| Product code | **Forbidden** |
