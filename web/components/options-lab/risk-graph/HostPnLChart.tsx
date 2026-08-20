@@ -20,6 +20,7 @@ import {
   EXP_BREAKEVEN_MAX_VIEWPORT_FRAC,
 } from "@/lib/risk-graph/pricing/autofitView";
 import { clampAxisRange } from "@/lib/risk-graph/pnlChartViewPolicy";
+import { dollarAxisStep } from "@/lib/risk-graph/axisGrid";
 import {
   bindChartHost,
   CHART_HOST_PAD,
@@ -298,7 +299,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       ctx.fillStyle = "rgba(255,255,255,0.48)";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
-      const yStep = niceStep(yMax - yMin, 6);
+      const yStep = dollarAxisStep(yMax - yMin);
       const y0 = Math.ceil(yMin / yStep) * yStep;
       for (let y = y0; y <= yMax; y += yStep) {
         const cy = toY(y);
@@ -311,7 +312,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       }
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      const xStep = niceStep(xMax - xMin, 8);
+      const xStep = dollarAxisStep(xMax - xMin);
       const x0 = Math.ceil(xMin / xStep) * xStep;
       for (let x = x0; x <= xMax; x += xStep) {
         const cx = toX(x);

@@ -2,10 +2,14 @@
  *   npx --yes tsx lib/options-lab/templates/chainContext.test.ts
  */
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { chainContextFromLadder } from "./chainContext";
 import {
   buildGexProfile,
   fmtGexAxis,
+  gexHorizonExpiration,
   gexProfileScale,
   gexSidePeaks,
   gexValueToPlotY,
@@ -93,4 +97,44 @@ assert(gexValueToPlotY(-100, 100, 40, 200) === 240, "put peak at plot bottom");
 assert(fmtGexAxis(0) === "0", "axis zero");
 assert(fmtGexAxis(-2.5e9).startsWith("−"), `neg axis ${fmtGexAxis(-2.5e9)}`);
 
-console.log("chainContext GEX 6 tests passed");
+assert(
+  gexHorizonExpiration({
+    tradeExpiration: null,
+    rangeHorizon: "2026-12-18",
+    listedExpirations: ["2026-09-18", "2026-12-18"],
+  }) === "2026-12-18",
+  "empty book uses Range / listed horizon",
+);
+assert(
+  gexHorizonExpiration({
+    tradeExpiration: "2026-09-18",
+    rangeHorizon: "2026-12-18",
+    listedExpirations: ["2026-09-18", "2026-12-18"],
+  }) === "2026-09-18",
+  "shown card exp wins",
+);
+assert(
+  gexHorizonExpiration({
+    listedExpirations: ["2026-09-18"],
+  }) === "2026-09-18",
+  "first listed when no card and no Range",
+);
+assert(
+  gexHorizonExpiration({}) === "",
+  "no listed calendar yet",
+);
+
+{
+  const here = dirname(fileURLToPath(import.meta.url));
+  const az = readFileSync(
+    join(here, "../../../components/options-lab/OpfRiskAnalyzer.tsx"),
+    "utf8",
+  );
+  assert(az.includes("gexHorizonExpiration"), "Analyzer GEX uses listed horizon");
+  assert(
+    !az.includes('const exp = (trade?.expiration || "").slice(0, 10)'),
+    "GEX must not require a shown position expiration",
+  );
+}
+
+console.log("chainContext GEX 10 tests passed");

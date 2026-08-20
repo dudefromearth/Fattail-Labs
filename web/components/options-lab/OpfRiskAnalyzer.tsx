@@ -86,6 +86,7 @@ import HostPnLChart from "@/components/options-lab/risk-graph/HostPnLChart";
 import type { PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
 import {
   buildGexProfile,
+  gexHorizonExpiration,
   gexProfileScale,
   gexTemplate,
 } from "@/lib/options-lab/templates/gex";
@@ -557,8 +558,9 @@ export default function OpfRiskAnalyzer() {
     // Always warm session calendar when Create may open with no cards
     const today = new Date().toISOString().slice(0, 10);
     s.add(today);
+    if (rangeHorizon) s.add(rangeHorizon);
     return [...s].filter(Boolean);
-  }, [positions]);
+  }, [positions, rangeHorizon]);
 
   const chain = useBuilderChain(symbol, warmExps, true, {
     offMarket: !planePrinting,
@@ -901,15 +903,28 @@ export default function OpfRiskAnalyzer() {
   const showExpiredGhost = viewportFocus?.showExpiredGhost === true;
   /** Live package series only when Law B says price is representable. */
   const drawLiveCurves = curveMode === "live";
+  /** GEX is chain-attached — listed exp, not the shown book. */
+  const gexExpiration = useMemo(
+    () =>
+      gexHorizonExpiration({
+        tradeExpiration: trade?.expiration,
+        rangeHorizon,
+        listedExpirations: chain.expirations,
+      }),
+    [trade?.expiration, rangeHorizon, chain.expirations],
+  );
+  useEffect(() => {
+    if (!gexEnabled || !gexExpiration) return;
+    chain.ensureExpiration(gexExpiration);
+  }, [gexEnabled, gexExpiration]); // eslint-disable-line react-hooks/exhaustive-deps
   const gexProfile = useMemo(() => {
     if (!gexEnabled) return { points: [], scale: 1 };
-    const exp = (trade?.expiration || "").slice(0, 10);
-    if (!exp) return { points: [], scale: 1 };
-    const ctx = chain.getChainContext(exp);
+    if (!gexExpiration) return { points: [], scale: 1 };
+    const ctx = chain.getChainContext(gexExpiration);
     if (!ctx) return { points: [], scale: 1 };
     const points = buildGexProfile(ctx, gexValueMode);
     return { points, scale: gexProfileScale(points, gexValueMode) };
-  }, [gexEnabled, gexValueMode, trade?.expiration, chain]);
+  }, [gexEnabled, gexValueMode, gexExpiration, chain]);
   const ghostPoints = useMemo(
     () =>
       showExpiredGhost

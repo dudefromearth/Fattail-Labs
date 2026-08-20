@@ -404,13 +404,14 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | Feature | As-built (wired) |
 |---------|------------------|
 | Path | `web/components/options-lab/risk-graph/HostPnLChart.tsx` + `chartHostBind.ts` (**DL-458**; legacy `PnLChart.tsx` removed) |
+| Dollar grid | P&L **Y** and underlier **X** independently: **1–2–5 × 10ⁿ**, floor **$10**, target **≥10** lines when the span allows, cap **~20** so labels stay readable. If even $10 cannot produce 10 lines, stay at $10 (do not invent $1/$2/$5). GEX scales are not dollars and do not use this law. **DL-460**. |
 | Dual series render | Expiration + theoretical |
 | Spot / sim spot lines | Yes |
 | Alert lines | Threshold alerts remain in the Alerts strip; **not** drawn on the host canvas yet |
 | Context menu alerts | **Not on host pane** — next overlays program |
 | Position-specific alert | **Not on host pane** — next overlays program |
 | Legend labels | Pack theo legend + Held suffix |
-| GEX backdrop | Same heatmap GEX template + dual-side ladder; bars at listed strikes; GEX axis = plot mid-height; **Call/Put = two right scales** (sky call up, red put down), each scaled to that side’s longest bar; Net/Abs = one right scale colored to the bars; units ÷1e9 as heatmap; pan/zoom with the view (DL-459) |
+| GEX backdrop | Same heatmap GEX template + dual-side ladder; bars at listed strikes; GEX axis = plot mid-height; **Call/Put = two right scales** (sky call up, red put down), each scaled to that side’s longest bar; Net/Abs = one right scale colored to the bars; units ÷1e9 as heatmap; pan/zoom with the view (DL-459). **Chain-attached (AZ-VP-2 / DL-461):** GEX paints from the listed expiration even when **no positions are shown** (empty book or all hidden). Horizon = shown-card exp if any, else Range listed date, else first listed. Not a second position book. |
 | Range band | Gray column **behind GEX**, clipped to the **plot** (not the black gutters above/below). Member % is two-sided normal mass **XX.XX%** (1σ = **68.27%**, 2σ = **95.45%**). Geometry is ±z·σ·√τ on a **listed** expiration (ATM IV). Inspector **Range**: Show/Hide · expiration · Width 68.27% · optional second 95.45%. Pan/zoom with the view. |
 | Heritage | MSC Risk Graph UX only — no MSC pricing import (DL-302 / AZ-VP-S4) |
 | Strike handles | Yellow ticks on the $0 line at each **visible** position’s listed strikes. **MSC handle grammar (Labs-typed):** hover thickens + grab cursor; press grabbing; **Single handle** (no Shift): only that tick highlights and only that strike moves. **Shift-click/drag:** all handles of the position highlight and move in unison. **Proximity size:** thick only while the pointer is in that handle’s hit box (or during the live drag). Leaving proximity — including after drop — restores idle tick size; Shift-group thicken is not sticky. Handles **detent only to listed strikes** for that position’s expiration (no free slide). Live snap, redefine the card, redraw tent; drop commits (unlock + atomic rebind). No invented strikes (DL-309). Do not Autofit on drop. |
@@ -585,7 +586,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 | Modes | gex_net · gex_abs · side variants (template value modes) |
 | Formula heritage | call +Γ·OI·S² · put −Γ·OI·S² · net / abs |
 | Suite nav item | **Not yet** a top-level Options Lab tab (unlike VP · Heatmap · Analyzer) |
-| PnLChart | Optional `gexByStrike` autofit prop exists for future Analyzer overlay |
+| Host overlay | `HostPnLChart` GEX backdrop (DL-459). **DL-461:** paints with no shown positions; listed horizon via `gexHorizonExpiration`. |
 
 #### 1.16.4 Probability (attached · TARGET / partial as-built)
 
@@ -649,7 +650,7 @@ Alerts are a **core Analyzer feature**, co-equal with the position book and the 
 |----|-----|
 | **AZ-FOCUS-1** | At most **one** highlighted (focused) card at a time — highlight only. |
 | **AZ-FOCUS-2** | **Every shown** (`visible`) card drives the viewport as an additive book. Focus is not required. *(Supersedes “focused and visible only” · DL-394.)* |
-| **AZ-FOCUS-3** | If no shown drawable card, viewport is empty CTA (scales + grid). |
+| **AZ-FOCUS-3** | If no shown drawable card, viewport is empty CTA (**scales + grid + GEX** when GEX is on). GEX is chain-attached — it does not require a shown position (DL-461). |
 | **AZ-FOCUS-4** | Hiding a card drops **that card only** from the book (PB13). Siblings stay. |
 | **AZ-FOCUS-5** | Removing a card removes it from the book; highlight fallback is independent. |
 | **AZ-FOCUS-6** | Incomplete/skewed **shown** unlocked cards do not fabricate a curve (PB-VIEW-6); they do not blank a drawable sibling. |

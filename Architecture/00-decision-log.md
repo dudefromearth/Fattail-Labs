@@ -4,6 +4,36 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-20 — DL-461 Analyzer GEX without a shown position
+
+**Decision:** Coach: GEX on the Analyzer host **displays even when no
+positions are showing** (empty book or every card hidden). GEX is
+chain-attached (AZ-VP-2), not a second position book. Horizon is the
+shown card’s expiration when one exists, else the Range listed date,
+else the first listed expiration. Hide/empty book still paints bars,
+scales, and grid. Curves/tents still follow AZ-FOCUS-3 (no fabricated
+package P&L).
+
+**Does not:** Autofit the full chain; change GEX formula; MiniTwo until
+asked.
+
+---
+
+## 2026-08-20 — DL-460 Analyzer dollar-axis grid (ToS-style 1–2–5)
+
+**Decision:** Coach adopted a Thinkorswim-style **nice-interval** grid on the
+Analyzer host canvas. P&L **Y** and underlier **X** each pick a
+**1–2–5 × 10ⁿ** step with a **$10 floor**, aiming for **≥10** grid lines
+when the visible span allows and **capping ~20** so labels stay readable.
+If even $10 cannot produce 10 lines, stay at $10 — do not invent $1/$2/$5.
+The two axes choose independently (they zoom separately). GEX right-hand
+scales are **not** dollars and keep their own ticks.
+
+**Does not:** lock to only $10/$100/$1000; change Autofit; change GEX
+density; MiniTwo until asked.
+
+---
+
 ## 2026-08-19 — DL-459 Analyzer GEX backdrop on host viewport
 
 **Decision:** Risk graph GEX is a **viewport layer** on `HostPnLChart`, not a

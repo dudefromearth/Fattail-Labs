@@ -24,6 +24,27 @@ export type GexProfilePoint = {
   put: number | null;
 };
 
+/**
+ * Listed expiration for Analyzer GEX. Chain-attached (AZ-VP-2): not a
+ * position book. Prefer a shown card’s exp, else Range horizon, else first
+ * listed. Empty / hidden book still has a horizon.
+ */
+export function gexHorizonExpiration(opts: {
+  tradeExpiration?: string | null;
+  rangeHorizon?: string | null;
+  listedExpirations?: readonly string[] | null;
+}): string {
+  const listed = (opts.listedExpirations ?? [])
+    .map((e) => (e || "").slice(0, 10))
+    .filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e));
+  const candidates = [
+    (opts.tradeExpiration || "").slice(0, 10),
+    (opts.rangeHorizon || "").slice(0, 10),
+    ...listed,
+  ];
+  return candidates.find((e) => /^\d{4}-\d{2}-\d{2}$/.test(e)) ?? "";
+}
+
 export function buildGexProfile(
   ctx: ChainContext,
   mode: ValueModeId,
