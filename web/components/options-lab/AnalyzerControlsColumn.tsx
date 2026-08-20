@@ -21,6 +21,13 @@ import {
 import type { SessionPosture } from "@/lib/options-lab/sessionPosture";
 import { gexTemplate } from "@/lib/options-lab/templates/gex";
 import type { ValueModeId } from "@/lib/options-lab/templates/types";
+import {
+  appendStatusLog,
+  formatStatusLogLine,
+  planeExceptionMessage,
+  type StatusLogEntry,
+} from "@/lib/options-lab/statusLog";
+import { useEffect, useState } from "react";
 
 export const ANALYZER_INSPECTOR_W = INSPECTOR_W;
 
@@ -85,6 +92,8 @@ export type AnalyzerControlsColumnProps = {
     touchedDetail?: string;
   }[];
   onCreateAlert: () => void;
+  /** One-shot book / lock notices — logged in the exception field. */
+  notice?: string | null;
   onEditAlert?: (id: string) => void;
   onToggleAlertState?: (id: string) => void;
 };
@@ -131,9 +140,25 @@ export default function AnalyzerControlsColumn({
   rangePctDisabled,
   alerts,
   onCreateAlert,
+  notice = null,
   onEditAlert,
   onToggleAlertState,
 }: AnalyzerControlsColumnProps) {
+  const [statusLog, setStatusLog] = useState<StatusLogEntry[]>([]);
+  const planeMsg = planeExceptionMessage({
+    inputOverrideActive,
+    sessionHeld,
+    posture,
+  });
+
+  useEffect(() => {
+    setStatusLog((prev) => appendStatusLog(prev, planeMsg, Date.now()));
+  }, [planeMsg]);
+
+  useEffect(() => {
+    setStatusLog((prev) => appendStatusLog(prev, notice, Date.now()));
+  }, [notice]);
+
   const simAtRest =
     elapsedHours === 0 &&
     simSpotPct === 0 &&
@@ -193,26 +218,27 @@ export default function AnalyzerControlsColumn({
 
       <div className={inspectorBody}>
 
-        {(inputOverrideActive || sessionHeld) && (
-          <div
-            className={
-              "rounded-[var(--radius-md)] px-3 py-2.5 text-[length:var(--text-footnote)] leading-snug " +
-              (inputOverrideActive
-                ? "bg-[var(--color-tint-soft)] text-[var(--color-tint)]"
-                : posture === "Extended"
-                  ? "bg-[var(--color-fill)] text-[var(--color-label)]"
-                  : "bg-[color-mix(in_srgb,var(--color-warning)_12%,transparent)] text-[var(--color-label)]")
-            }
-            data-testid="analyzer-override-banner"
-            role="status"
-          >
-            {inputOverrideActive
-              ? "Override active — RECON is override (not live pass/fail)."
-              : posture === "Extended"
-                ? "Pre/post session — Massive last print / extended quotes. Not RTH NBBO."
-                : "Off market — last print. Not polling a live chain."}
-          </div>
-        )}
+        <div
+          className={
+            "h-[4.125em] overflow-y-auto rounded-[var(--radius-md)] px-3 py-1 " +
+            "text-[length:var(--text-footnote)] leading-snug " +
+            "bg-[color-mix(in_srgb,var(--color-warning)_12%,transparent)] " +
+            "text-[var(--color-label)]"
+          }
+          data-testid="analyzer-override-banner"
+          role="status"
+          aria-live="polite"
+        >
+          {statusLog.length === 0 ? (
+            <span className="text-[var(--color-label-tertiary)]"> </span>
+          ) : (
+            statusLog.map((entry) => (
+              <div key={`${entry.at}-${entry.text}`}>
+                {formatStatusLogLine(entry)}
+              </div>
+            ))
+          )}
+        </div>
 
         <InspectorSection
           title="Alerts"
@@ -220,12 +246,11 @@ export default function AnalyzerControlsColumn({
           headerRight={
             <IconButton
               label="Create alert"
-              tone="tint"
               onClick={onCreateAlert}
               data-testid="analyzer-alert-create"
-              className="rounded-full bg-[var(--color-tint)] text-[var(--color-on-tint)] hover:bg-[var(--color-tint-emphasis)]"
+              className="rounded-full bg-[var(--color-tint)] text-white hover:bg-[var(--color-tint-emphasis)] hover:text-white"
             >
-              <IconPlus size={18} />
+              <IconPlus size={18} className="text-white" />
             </IconButton>
           }
         >

@@ -155,7 +155,7 @@ async function fetchPlanePosture(): Promise<SessionPosture> {
 export default function OpfRiskAnalyzer() {
   const { symbol, setSymbol, universe, loading: universeLoading } =
     useOptionsLab();
-  const [, setBookNotice] = useState<string | null>(null);
+  const [bookNotice, setBookNotice] = useState<string | null>(null);
   const [spotStr, setSpotStr] = useState("");
   const [vixStr, setVixStr] = useState("");
   /** Member edited spot/VIX fields (auto-fill is not an override). */
@@ -1323,6 +1323,7 @@ export default function OpfRiskAnalyzer() {
         posture={posture}
         inputOverrideActive={inputOverrideActive}
         sessionHeld={sessionHeld}
+        notice={bookNotice}
         timeMachineEnabled={timeMachineEnabled}
         onTimeMachineEnabled={setTimeMachineEnabled}
         elapsedHours={whatIfHydrated ? elapsedHours : 0}
