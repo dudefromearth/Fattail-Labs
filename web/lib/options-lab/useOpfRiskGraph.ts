@@ -44,6 +44,8 @@ export type OpfRiskGraphState = {
   contentHashes: Record<string, string>;
   expirationPoints: { price: number; pnl: number }[];
   theoreticalPoints: { price: number; pnl: number }[];
+  /** Per shown card at-expiration P&L — canvas position-alert hit test. */
+  positionExpirationCurves: { id: string; expiration: { price: number; pnl: number }[] }[];
   expirationBreakevens: number[];
   theoreticalBreakevens: number[];
   allStrikes: number[];
@@ -101,6 +103,7 @@ type GraphCacheEntry = {
   lastResolveKey: string;
   error: string | null;
   updatedAt: number;
+  positionExpiration: { id: string; points: { price: number; pnl: number }[] }[];
 };
 
 /** Module cache — survives Analyzer unmount when switching Heatmap / Volume Profile. */
@@ -193,6 +196,7 @@ type WarmJob = {
   spotPct: number;
   ladders: Map<string, LadderFull>;
   lastResolveKey: string;
+  tradeIds: string[];
 };
 
 /**
@@ -348,11 +352,19 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
         content_hash: polled.content_hash,
         as_of: polled.as_of,
         spot: polled.spot ?? prev.spot,
+        vix: polled.vix ?? prev.vix,
         rows: [...byKey.values()],
       };
       ladders.set(exp, ladder);
     } else if (polled.mode === "unchanged" && prev) {
-      ladder = prev;
+      ladder = {
+        ...prev,
+        as_of: polled.as_of ?? prev.as_of,
+        spot: polled.spot != null && polled.spot > 0 ? polled.spot : prev.spot,
+        vix:
+          polled.vix != null && Number(polled.vix) > 0 ? polled.vix : prev.vix,
+      };
+      ladders.set(exp, ladder);
     } else if (!ladder) {
       const full = await pollChainLadder({
         expiration: exp,
@@ -368,7 +380,7 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
       throw new Error(`No chain generation for ${primary.symbol} ${exp}`);
     }
     ladderPool.set(ladderPoolKey(primary.symbol, exp), ladder);
-    if (chainSpot == null && ladder.spot > 0) chainSpot = ladder.spot;
+    if (ladder.spot > 0) chainSpot = ladder.spot;
     gens.push(ladderToOpfGeneration(ladder, primary.symbol, WINGS));
   }
 
@@ -392,6 +404,7 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
     useCase,
     packId,
     bookTrades.map((t) => `${t.raw}:${t.limit ?? ""}:${t.debit ?? ""}`).join("||"),
+    (job.tradeIds || []).join(","),
     String(spotUse),
     String(spotPct),
     String(volOffsetPts),
@@ -425,7 +438,8 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
     return Math.max(8, Math.min(25, (span / spotUse) * 100 + 3));
   })();
 
-  const settled = bookTrades.map((t) => {
+  const ids = job.tradeIds || [];
+  const settled = bookTrades.map((t, i) => {
     const local = resolveLocalBookCurves({
       trade: t,
       generations: gens,
@@ -442,11 +456,17 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
     if (!local.ok) {
       return {
         trade: t,
+        id: ids[i] || "",
         resolved: null as OpfResolveResult | null,
         error: local.detail,
       };
     }
-    return { trade: t, resolved: local.result, error: null as string | null };
+    return {
+      trade: t,
+      id: ids[i] || "",
+      resolved: local.result,
+      error: null as string | null,
+    };
   });
 
   const ok = settled.filter((s) => s.resolved);
@@ -462,6 +482,7 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
       lastResolveKey: job.lastResolveKey,
       error: msg,
       updatedAt: Date.now(),
+      positionExpiration: cached?.positionExpiration ?? [],
     };
     writeCache(key, entry);
     return entry;
@@ -513,6 +534,13 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
     },
   };
 
+  const positionExpiration = ok
+    .map((s, i) => ({
+      id: s.id,
+      points: expSeries[i] || [],
+    }))
+    .filter((c) => c.id && c.points.length);
+
   const leftover = settled.filter((s) => !s.resolved);
   const errMsg =
     leftover.length && ok.length === 0
@@ -529,6 +557,7 @@ async function resolveAndCache(job: WarmJob): Promise<GraphCacheEntry> {
     lastResolveKey: resolveKey,
     error: errMsg,
     updatedAt: Date.now(),
+    positionExpiration,
   };
   writeCache(key, entry);
   return entry;
@@ -570,6 +599,8 @@ export function useOpfRiskGraph(opts: {
   pollLive?: boolean;
   /** Handle drag: keep last paint; ignore keep-warm ticks until drop. */
   pauseLive?: boolean;
+  /** Card ids aligned 1:1 with `trades` — canvas position-alert hit test. */
+  tradeIds?: string[] | null;
 }): OpfRiskGraphState {
   const {
     trade,
@@ -584,6 +615,7 @@ export function useOpfRiskGraph(opts: {
     enabled = true,
     pollLive = true,
     pauseLive = false,
+    tradeIds: tradeIdsOpt = null,
   } = opts;
   const pauseLiveRef = useRef(pauseLive);
   pauseLiveRef.current = pauseLive;
@@ -634,6 +666,14 @@ export function useOpfRiskGraph(opts: {
   const [generations, setGenerations] = useState<OpfGenerationIn[]>(
     () => warm?.generations ?? [],
   );
+  const [positionExpirationCurves, setPositionExpirationCurves] = useState<
+    OpfRiskGraphState["positionExpirationCurves"]
+  >(() =>
+    (warm?.positionExpiration ?? []).map((c) => ({
+      id: c.id,
+      expiration: c.points,
+    })),
+  );
 
   const laddersRef = useRef<Map<string, LadderFull>>(
     new Map(warm?.ladders ?? []),
@@ -668,6 +708,12 @@ export function useOpfRiskGraph(opts: {
     setLoading(false);
     lastResolveKey.current = entry.lastResolveKey;
     laddersRef.current = new Map(entry.ladders);
+    setPositionExpirationCurves(
+      (entry.positionExpiration ?? []).map((c) => ({
+        id: c.id,
+        expiration: c.points,
+      })),
+    );
   }, []);
 
   const makeJob = useCallback((): WarmJob | null => {
@@ -684,6 +730,7 @@ export function useOpfRiskGraph(opts: {
       spotPct,
       ladders: laddersRef.current,
       lastResolveKey: lastResolveKey.current,
+      tradeIds: tradeIdsOpt?.length ? [...tradeIdsOpt] : [],
     };
   }, [
     bookTrades,
@@ -695,6 +742,7 @@ export function useOpfRiskGraph(opts: {
     timeOffsetHours,
     volOffsetPts,
     spotPct,
+    tradeIdsOpt,
   ]);
 
   const run = useCallback(async (opts?: { force?: boolean; soft?: boolean }) => {
@@ -752,6 +800,12 @@ export function useOpfRiskGraph(opts: {
       setLoading(false);
       laddersRef.current = new Map(c.ladders);
       lastResolveKey.current = c.lastResolveKey;
+      setPositionExpirationCurves(
+        (c.positionExpiration ?? []).map((p) => ({
+          id: p.id,
+          expiration: p.points,
+        })),
+      );
     } else {
       setFromCache(false);
       if (!resultRef.current) setLoading(true);
@@ -837,6 +891,7 @@ export function useOpfRiskGraph(opts: {
     contentHashes,
     expirationPoints,
     theoreticalPoints,
+    positionExpirationCurves,
     expirationBreakevens: findBreakevens(expirationPoints),
     theoreticalBreakevens: findBreakevens(theoreticalPoints),
     allStrikes,

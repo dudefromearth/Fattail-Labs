@@ -14,6 +14,7 @@ import {
 } from "./analyzerBook";
 import {
   expiredGhostSeries,
+  packageLivenessChip,
   resolveCardDisplayState,
   resolveViewportBookPolicy,
   resolveViewportFocusPolicy,
@@ -163,6 +164,36 @@ test("held price → numeric path", () => {
   assert(s.chipLabel === "held", "held chip");
 });
 
+test("live chip only when unlocked; held/theo when unlocked off-RTH", () => {
+  let pos = base("2026-08-14");
+  pos = {
+    ...pos,
+    liveState: "live",
+    livePackagePerShare: 2.05,
+    lastNatSigned: 2.05,
+    priceSide: "debit",
+    lock: { mode: "unlocked" },
+    bind: {
+      bindable: true,
+      failedCount: 0,
+      summary: "bound",
+      assessedAt: Date.now(),
+      legs: [],
+    },
+  };
+  const live = resolveCardDisplayState(pos, { now, sessionHeld: false });
+  assert(packageLivenessChip(pos, live) === "live", "unlocked RTH is live");
+  pos = lockNatural(pos);
+  const locked = resolveCardDisplayState(pos, { now, sessionHeld: false });
+  assert(locked.chipLabel === "live", "session still live");
+  assert(packageLivenessChip(pos, locked) === "", "locked never says live");
+
+  pos = unlockCard(pos);
+  const held = resolveCardDisplayState(pos, { now, sessionHeld: true });
+  assert(held.chipLabel === "held", "unlocked off-RTH is held");
+  assert(packageLivenessChip(pos, held) === "held", "held shows when unlocked");
+});
+
 test("pre_open mark → theo until open chip; live mark clears it", () => {
   let pos = base("2026-08-14");
   pos = {
@@ -245,6 +276,7 @@ test("viewport book: live + expired keeps ghost residual", () => {
     symbol: "SPX",
   });
   assert(split.trades.length === 1, "expired is not sent to live OPF");
+  assert(split.liveIds.join() === "live", "expired is not in liveIds");
   assert(split.expiredTrades.length === 1, "expired is in ghost book");
   const ghost = expiredGhostSeries([live, expired], { now, symbol: "SPX" });
   assert(ghost.length > 2, "ghost residual has a curve");
@@ -351,6 +383,7 @@ test("viewport book: two shown cards stay live — hide is not a radio", () => {
   assert(both?.curveMode === "live", "both shown → live book");
   const book = visibleBookTrade([a, b], { now, sessionHeld: true, symbol: "SPX" });
   assert(book.contributingIds.length === 2, "both contribute");
+  assert(book.liveIds.join() === "a,b", "live ids aligned 1:1 with trades");
   assert(book.trades.length === 2, "each card is its own OPF structure");
   assert(book.trade != null, "primary trade");
   assert(book.trades[0].legs.length === 3, "first fly intact");

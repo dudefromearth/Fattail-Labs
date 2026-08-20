@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-20 — DL-467 Canvas Position alerts hit per-card at-expiration (MSC grammar, no picker)
+
+**Decision:** Coach: Position alerts are **active on the canvas**, as an
+extension of canvas apply. **Refer to MSC** for the grammar: 8px vertical
+hit, hover thickens the curve, right-click opens a position-only menu,
+left-click still pans. Labs does **not** copy MSC’s multi-position
+**picker**. Hit-test each Shown card’s **at-expiration** P&L at the cursor
+price; closest ≤ 8px wins; menu binds that `position_id` only.
+
+**Does not:** MiniTwo; Packet C2 GO / viewport W-G; T+0 as a second hit
+target; Manager HTTP swap.
+
+---
+
 ## 2026-08-20 — DL-466 Analyzer canvas-apply prototype reachable (accept as-built)
 
 **Decision:** W0-G named the Analyzer right-click alert menu **reachable**

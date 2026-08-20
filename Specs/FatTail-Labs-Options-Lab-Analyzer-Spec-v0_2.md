@@ -459,7 +459,7 @@ Builder internals (also PB Spec + recent land): listed strikes only, ATM center,
 
 Analyzer is a work-surface **client** of the future Labs-wide **Alerts Manager + API**. Session-local alerts are a **stub adapter** until that manager GO’s.
 
-As-built holder: left inspector (info + Active/Idle, header **+**). Canvas right-click: Canvas vs Position (MSC). **+** / canvas apply open **Alert Builder**.
+As-built holder: left inspector (info + Idle/Live/Touched, header **+**). Canvas right-click: Canvas vs Position (MSC 8px). Position: hover highlights that card’s **at-expiration**; menu is for **that card only** (no picker). **+** / canvas apply open **Alert Builder**.
 
 #### 1.14.1 Persistence & identity
 

@@ -1,6 +1,8 @@
 /**
  * MSC Risk Graph alert menus on the 2D host.
- * Blank plot → Canvas (price) alert. Near tent → Position alert (pick Shown card).
+ * Blank plot → Canvas (price) alert.
+ * Near a position's at-expiration curve → Position alert for that card only.
+ * Nearest vertical distance at the cursor price picks one tent when they overlap.
  */
 
 import { CHART_HOST_PAD, type HostView } from "./chartHostBind";
@@ -101,4 +103,36 @@ export function resolveAlertMenuKind(
   positionCount: number,
 ): AlertMenuKind {
   return nearCurve && positionCount > 0 ? "position" : "canvas";
+}
+
+export type PositionExpirationCurve = {
+  id: string;
+  expiration: readonly PnLPoint[];
+};
+
+/**
+ * MSC-style hit: vertical distance from the pointer to each position's
+ * at-expiration P&L at this underlier price. Closest within 8px wins.
+ */
+export function nearestPositionOnExpiration(
+  mx: number,
+  my: number,
+  width: number,
+  height: number,
+  view: HostView,
+  curves: readonly PositionExpirationCurve[],
+): { id: string; dist: number } | null {
+  if (!inPlot(mx, my, width, height) || !curves.length) return null;
+  const price = toHostDataX(mx, width, view);
+  let best: { id: string; dist: number } | null = null;
+  for (const c of curves) {
+    if (!c.id || !c.expiration.length) continue;
+    const pnl = findPnLAtPrice(c.expiration, price);
+    if (pnl == null) continue;
+    const y = toHostCanvasY(pnl, height, view);
+    const dist = Math.abs(my - y);
+    if (dist > CURVE_HIT_DISTANCE) continue;
+    if (!best || dist < best.dist) best = { id: c.id, dist };
+  }
+  return best;
 }

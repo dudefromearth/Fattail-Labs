@@ -183,7 +183,7 @@ Two kinds — same as thinkorswim / MSC Risk Graph. Left-click still pans; **rig
 | Kind | How you create it | What it is |
 |------|-------------------|------------|
 | **Canvas** | Right-click **empty plot** | A **price** alert at that underlier level: rises above / falls below / touches. |
-| **Position** | Right-click **on the tent** (within ~8px of a curve) | Pick a **Shown** position by strike label (`6700C/6720C/6740C`), then the same three conditions. Bound to that card. |
+| **Position** | Hover a Shown card’s **at-expiration** curve (within ~8px). It highlights. Right-click that curve. | Menu is **only** for that card (strike label in the header), then the same three conditions. Bound to that card. Overlapping tents: the closest curve wins. |
 
 Lines draw on the graph (solid = **Active** now, dashed = **Idle**).
 

@@ -83,14 +83,14 @@ or a made-up debit/credit.
 ## Alerts
 There are **two kinds**. Right-click the **empty plot** for a **Canvas**
 price alert (rises above / falls below / touches that underlier price).
-Right-click **on the tent** to set a **Position** alert: pick the Shown
-position by strike label (for example 6700C/6720C/6740C), then the same
-three conditions. Left-click still pans.
+Hover a Shown card’s **at-expiration** curve (within about 8px) to
+highlight it; right-click that curve for a **Position** alert on **that
+card only** (strike label in the header), then the same three conditions.
+Overlapping tents: the closest curve wins. Left-click still pans.
 
 Alerts list in the **left inspector** (Alerts panel): the title, whether
-it is Canvas or Position, and **Active** or **Idle**. Active means the
-condition is true on current spot. Lines on the graph are solid when
-Active, dashed when Idle.
+it is Canvas or Position, and **Idle / Live / Touched**. Lines on the
+graph are solid when Live, dashed when Idle.
 
 ## Session posture
 The inspector badge is Live, Pre/post, or Off market. Off market uses the

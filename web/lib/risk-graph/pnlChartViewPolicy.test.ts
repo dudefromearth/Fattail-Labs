@@ -137,6 +137,11 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(!controls.includes('title="Graph"'), "Graph panel removed from inspector");
   assert(controls.includes('title="Alerts"'), "Alerts inspector in left column");
   assert(host.includes("contextmenu"), "right-click alert menu on host");
+  assert(
+    host.includes("nearestPositionOnExpiration"),
+    "position alerts hit per-card at-exp, not a picker",
+  );
+  assert(host.includes("hoverPosition"), "hover highlights the hit card");
 });
 
 console.log(`\n${n} tests passed`);

@@ -197,6 +197,19 @@ export function resolveCardDisplayState(
 }
 
 /**
+ * Live-column copy. "live" is only for an unlocked card in session.
+ * Unlocked outside RTH keeps held / theo. A locked card never claims live.
+ */
+export function packageLivenessChip(
+  pos: AnalyzerPosition,
+  display: CardDisplayState,
+): string {
+  const chip = display.chipLabel;
+  if (pos.lock.mode === "locked" && chip.toLowerCase() === "live") return "";
+  return chip;
+}
+
+/**
  * Risk-graph / Surface focus policy (OT-EF · PB-VIEW-6).
  *
  * Incomplete or non-representable focus must **never** fabricate a curve and
@@ -321,15 +334,23 @@ export function visibleBookTrade(
   trades: ParsedTosTrade[];
   expiredTrades: ParsedTosTrade[];
   contributingIds: string[];
+  liveIds: string[];
 } {
   const shown = positions.filter((p) => p.visible);
   if (shown.length === 0) {
-    return { trade: null, trades: [], expiredTrades: [], contributingIds: [] };
+    return {
+      trade: null,
+      trades: [],
+      expiredTrades: [],
+      contributingIds: [],
+      liveIds: [],
+    };
   }
 
   const now = opts?.now ?? new Date();
   const want = (opts?.symbol || shown[0].position.underlying || "").toUpperCase();
   const contributingIds: string[] = [];
+  const liveIds: string[] = [];
   const trades: ParsedTosTrade[] = [];
   const expiredTrades: ParsedTosTrade[] = [];
   for (const p of shown) {
@@ -345,10 +366,10 @@ export function visibleBookTrade(
     if (isOptionPointerExpired(exp, now)) {
       expiredTrades.push(withCardDebit(t, p));
     } else if (p.lock.mode === "locked") {
-      // Canvas basis is the card's D* — not live mid.
+      liveIds.push(p.id);
       trades.push(withCardDebit(t, p));
     } else {
-      // Unlocked: no frozen @LMT. Local sheet marks to market.
+      liveIds.push(p.id);
       trades.push(withMarketBasis(t));
     }
   }
@@ -357,6 +378,7 @@ export function visibleBookTrade(
     trades,
     expiredTrades,
     contributingIds,
+    liveIds,
   };
 }
 

@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Analyzer Alert Builder Spec v1.0
 
-**Status:** DRAFT — Coach 2026-08-20 (Analyzer canvas + builder). **v1.0.3** HIG ATs (conversion is C1/C2 law, not polish).  
+**Status:** DRAFT — Coach 2026-08-20 (Analyzer canvas + builder). **v1.0.7** per-card at-expiration canvas Position alerts.  
 **Type:** Product Spec — Analyzer **Alert Builder** and **canvas apply**.  
 **Short name:** AZ-ALB  
 **Route:** `/app/options-lab/analyzer`  
@@ -131,7 +131,7 @@ Left-click **pans**. Alerts are **right-click** (or **+** → Builder). Never st
 
 ### 3.1 Canvas alert
 
-**Apply on canvas:** right-click **empty plot** (not within 8px of a tent, not in gutters).
+**Apply on canvas:** right-click **empty plot** (not within 8px of a Shown card’s **at-expiration**, not in gutters).
 
 **Menu (MSC):** header `Price alert at {price}` (underlier, no `$` required). Items:
 
@@ -145,15 +145,17 @@ Left-click **pans**. Alerts are **right-click** (or **+** → Builder). Never st
 
 ### 3.2 Position alert
 
-**Apply on canvas:** right-click **on the tent** (≤ **8px** from expiry or T+0 curve — MSC `CURVE_HIT_DISTANCE`).
+**MSC grammar Labs applies:** 8px hit (`CURVE_HIT_DISTANCE`), hover thickens the curve (glow), **right-click** opens a **position-only** menu (blank plot stays Canvas / price). Left-click still pans.
 
-**How positions are selectable (MSC):** menu header `Position alert`. List **Shown** cards only, label = listed strikes with C/P suffix, e.g. `6700C/6720C/6740C`, sorted left-to-right by leftmost strike. Click a row.
+**Labs vs MSC picker:** MSC hit-tests the **additive** tent (expiry or T+0) and, with more than one Shown card, lists every card. Labs hit-tests each Shown card’s **at-expiration** P&L at the cursor underlier price. **Closest vertical distance ≤ 8px wins.** Overlapping tents are distinguished by that distance — no picker.
 
-**Then:** **opens Alert Builder**, Type = **Position**, Position dropdown bound to that card, Value seeded from click underlier price (member may change to P&L / greeks in the dialog). Save: `kind: position`, `position_id` set.
+**Hover:** within 8px of a card’s at-expiration curve, highlight **that** curve (thicker + glow). Pointer cursor. Strike-handle proximity wins over curve hover.
 
-Zero Shown cards: treat as Canvas (no empty Position menu).
+**Apply on canvas:** right-click **that highlighted curve**. Menu header `Position alert · {strikesLabel}` (e.g. `6700C/6720C/6740C`). Items are the same three conditions as Canvas. Menu applies **only** to the hit card.
 
-One Shown card: may skip the picker and open Builder bound to that card.
+**Then:** choosing an item **opens Alert Builder**, Type = **Position**, Position dropdown bound to that card, Value seeded from click underlier price (member may change to P&L / greeks in the dialog). Save: `kind: position`, `position_id` set.
+
+Zero Shown cards, or cursor not within 8px of any card’s at-expiration: treat as Canvas.
 
 ### 3.3 Inspector **+**
 
@@ -308,7 +310,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 |----|-----------|
 | **AT-ALB-1** | **+** opens Alert Builder (Price, value = Spot) |
 | **AT-ALB-2** | Right-click blank plot → Canvas menu → item opens Builder with that price + condition |
-| **AT-ALB-3** | Right-click tent → Position list (Shown, strike labels) → Builder bound to that position |
+| **AT-ALB-3** | Hover a Shown card’s at-expiration (≤8px, closest wins) highlights that curve. Right-click → Position menu **for that card only** (no picker) → Builder bound to that `position_id` |
 | **AT-ALB-4** | Save Price → holder card + vertical line; Active/Idle follows spot |
 | **AT-ALB-5** | Save goes through the **hook** (`source_system: analyzer_risk_graph`) — not a third store |
 | **AT-ALB-6** | Algo / Break-Even / Trailing / 0DTE: visible, Save off |
@@ -340,6 +342,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.7** | 2026-08-20 | Canvas Position alerts: MSC 8px / hover / right-click; Labs hit-tests **per-card at-expiration** (closest wins) — no MSC picker. |
 | **v1.0.6** | 2026-08-20 | Coach: states are **Idle / Live / Touched**. Running/Paused/Tripped map onto these. |
 | **v1.0.5** | 2026-08-20 | **Tripped** run state: fires when Running meets its condition; chip/Builder report it; chip click re-arms Running. |
 | **v1.0.4** | 2026-08-20 | Holder run state: **Running** / **Idle** / **Paused**. Chip toggles Idle↔Running; rest of card opens Builder. Builder State control sets and reports it. |

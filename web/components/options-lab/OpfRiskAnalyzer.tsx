@@ -699,6 +699,7 @@ export default function OpfRiskAnalyzer() {
     enabled: (graphBook.trades.length ? graphBook.trades : trades).length > 0,
     pollLive: planePrinting,
     pauseLive: strikeDrag != null,
+    tradeIds: graphBook.trades.length ? graphBook.liveIds : undefined,
   });
 
   const { refreshForMarketOpen } = usePackageQuotes({
@@ -1592,6 +1593,7 @@ export default function OpfRiskAnalyzer() {
                     color: l.color,
                     active: l.style === "active",
                   }))}
+                  positionExpirationCurves={risk.positionExpirationCurves}
                   positionAlertChoices={displayPositions
                     .filter((p) => p.visible)
                     .map((p) => ({

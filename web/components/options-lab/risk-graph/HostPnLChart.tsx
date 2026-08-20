@@ -39,11 +39,11 @@ import type { PnLPoint, PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
 import type { ThresholdAlertType } from "@/lib/options-lab/analyzerBook";
 import {
   inPlot,
-  nearTent,
-  resolveAlertMenuKind,
+  nearestPositionOnExpiration,
   toHostDataX,
   type HostAlertMenu,
   type PositionAlertChoice,
+  type PositionExpirationCurve,
 } from "@/lib/risk-graph/hostAlertMenu";
 import {
   fmtGexAxis,
@@ -127,6 +127,8 @@ export type HostPnLChartProps = {
     rawTarget: number,
   ) => number;
   alertLines?: { price: number; color: string; active?: boolean }[];
+  /** Per Shown card at-expiration series — MSC 8px hit, that card only. */
+  positionExpirationCurves?: PositionExpirationCurve[];
   positionAlertChoices?: PositionAlertChoice[];
   onCanvasAlert?: (price: number, type: ThresholdAlertType) => void;
   onPositionAlert?: (
@@ -161,6 +163,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       onStrikeCommit,
       snapStrike,
       alertLines = [],
+      positionExpirationCurves = [],
       positionAlertChoices = [],
       onCanvasAlert,
       onPositionAlert,
@@ -191,12 +194,9 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
     dragRef.current = onStrikeDrag;
     const snapRef = useRef(snapStrike);
     snapRef.current = snapStrike;
-    const expRef = useRef(expirationData);
-    expRef.current = expirationData;
-    const theoRef = useRef(theoreticalData);
-    theoRef.current = theoreticalData;
-    const choicesRef = useRef(positionAlertChoices);
-    choicesRef.current = positionAlertChoices;
+    const posCurvesRef = useRef(positionExpirationCurves);
+    posCurvesRef.current = positionExpirationCurves;
+    const hoveredPosRef = useRef<string | null>(null);
     const canvasAlertRef = useRef(onCanvasAlert);
     canvasAlertRef.current = onCanvasAlert;
     const positionAlertRef = useRef(onPositionAlert);
@@ -587,6 +587,36 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       strokeSeries(expirationData, "#22d3ee", 2);
       strokeSeries(theoreticalData, theoreticalStroke, 2);
 
+      const hoveredId = hoveredPosRef.current;
+      const hoveredCurve = hoveredId
+        ? posCurvesRef.current.find((c) => c.id === hoveredId)
+        : null;
+      if (hoveredCurve && hoveredCurve.expiration.length > 1) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(PAD.left, PAD.top, cw, ch);
+        ctx.clip();
+        ctx.strokeStyle = "#22d3ee";
+        ctx.lineWidth = 8;
+        ctx.globalAlpha = 0.2;
+        ctx.shadowColor = "#22d3ee";
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        let glowStarted = false;
+        for (const p of hoveredCurve.expiration) {
+          if (!Number.isFinite(p.price) || !Number.isFinite(p.pnl)) continue;
+          const cx = toX(p.price);
+          const cy = toY(p.pnl);
+          if (!glowStarted) {
+            ctx.moveTo(cx, cy);
+            glowStarted = true;
+          } else ctx.lineTo(cx, cy);
+        }
+        ctx.stroke();
+        ctx.restore();
+        strokeSeries([...hoveredCurve.expiration], "#22d3ee", 4);
+      }
+
       const zeroY = toY(0);
       if (Number.isFinite(zeroY)) {
         ctx.save();
@@ -697,6 +727,47 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
           hitStrikeHandle(e, node, viewRef.current, handlesRef.current) !=
           null,
       });
+      const hitPosition = (mx: number, my: number, w: number, h: number) =>
+        nearestPositionOnExpiration(
+          mx,
+          my,
+          w,
+          h,
+          viewRef.current,
+          posCurvesRef.current,
+        );
+      const setHover = (id: string | null) => {
+        if (hoveredPosRef.current === id) return;
+        hoveredPosRef.current = id;
+        if (id) node.dataset.hoverPosition = id;
+        else delete node.dataset.hoverPosition;
+        drawRef.current();
+      };
+      const onHoverMove = (e: PointerEvent) => {
+        if (e.buttons !== 0) return;
+        if (previewRef.current) return;
+        if (node.style.cursor === "grabbing") return;
+        const rect = node.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const w = node.clientWidth;
+        const h = node.clientHeight;
+        if (
+          hitStrikeHandle(e, node, viewRef.current, handlesRef.current) != null
+        ) {
+          setHover(null);
+          return;
+        }
+        const hit = hitPosition(mx, my, w, h);
+        setHover(hit?.id ?? null);
+        if (node.style.cursor !== "grabbing") {
+          node.style.cursor = hit ? "pointer" : "grab";
+        }
+      };
+      const onHoverLeave = () => {
+        setHover(null);
+        if (node.style.cursor !== "grabbing") node.style.cursor = "grab";
+      };
       const onContextMenu = (e: MouseEvent) => {
         e.preventDefault();
         const rect = node.getBoundingClientRect();
@@ -709,29 +780,36 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
           return;
         }
         const price = toHostDataX(mx, w, viewRef.current);
-        const near = nearTent(
-          mx,
-          my,
-          w,
-          h,
-          viewRef.current,
-          expRef.current,
-          theoRef.current,
-        );
-        const kind = resolveAlertMenuKind(near, choicesRef.current.length);
+        const hit = hitPosition(mx, my, w, h);
+        if (hit) {
+          setHover(hit.id);
+          setAlertMenu({
+            x: mx,
+            y: my,
+            price,
+            kind: "position",
+            step: "condition",
+            positionId: hit.id,
+          });
+          return;
+        }
         setAlertMenu({
           x: mx,
           y: my,
           price,
-          kind,
-          step: "root",
+          kind: "canvas",
+          step: "condition",
         });
       };
+      node.addEventListener("pointermove", onHoverMove);
+      node.addEventListener("pointerleave", onHoverLeave);
       node.addEventListener("contextmenu", onContextMenu);
       const ro = new ResizeObserver(() => drawRef.current());
       ro.observe(node);
       const prev = unbindRef.current;
       unbindRef.current = () => {
+        node.removeEventListener("pointermove", onHoverMove);
+        node.removeEventListener("pointerleave", onHoverLeave);
         node.removeEventListener("contextmenu", onContextMenu);
         ro.disconnect();
         unbindStrikes();
@@ -773,6 +851,12 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       drawRef.current();
     }, [fit, draw, ensureBound]);
 
+    const hitLabel =
+      alertMenu?.kind === "position"
+        ? positionAlertChoices.find((p) => p.id === alertMenu.positionId)
+            ?.strikesLabel
+        : null;
+
     return (
       <div
         ref={attach}
@@ -791,70 +875,62 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         />
         {alertMenu ? (
           <div
+            aria-hidden
+            data-testid="analyzer-alert-preview"
+            className="pointer-events-none absolute z-40 w-0.5"
+            style={{
+              left: alertMenu.x,
+              top: PAD.top,
+              height: `calc(100% - ${PAD.top + PAD.bottom}px)`,
+              background:
+                "repeating-linear-gradient(to bottom, #f59e0b 0px, #f59e0b 4px, transparent 4px, transparent 8px)",
+              opacity: 0.8,
+            }}
+          />
+        ) : null}
+        {alertMenu ? (
+          <div
             className="absolute z-50 min-w-[13.5rem] rounded-lg border border-white/15 bg-[#1c1c24] py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
             style={{ left: alertMenu.x, top: alertMenu.y }}
             data-testid="analyzer-alert-menu"
             data-alert-kind={alertMenu.kind}
+            data-alert-position={alertMenu.positionId ?? ""}
             onMouseLeave={() => setAlertMenu(null)}
           >
-            {alertMenu.kind === "position" && alertMenu.step === "root" ? (
-              <>
-                <div className="border-b border-white/10 px-3 py-1.5 text-[11px] text-white/45">
-                  Position alert
-                </div>
-                {positionAlertChoices.map((pl) => (
-                  <button
-                    key={pl.id}
-                    type="button"
-                    className="block w-full px-3 py-1.5 text-left font-mono text-[13px] text-white/90 hover:bg-white/10"
-                    onClick={() =>
-                      setAlertMenu({
-                        ...alertMenu,
-                        step: "condition",
-                        positionId: pl.id,
-                      })
-                    }
-                  >
-                    {pl.strikesLabel}
-                  </button>
-                ))}
-              </>
-            ) : (
-              <>
-                <div className="border-b border-white/10 px-3 py-1.5 text-[11px] text-white/45">
-                  {alertMenu.kind === "position"
-                    ? "Position alert"
-                    : `Price alert at ${alertMenu.price.toFixed(0)}`}
-                </div>
-                {(
-                  [
-                    ["price_above", "Alert when price rises above"],
-                    ["price_below", "Alert when price falls below"],
-                    ["price_touch", "Alert when price touches"],
-                  ] as const
-                ).map(([type, label]) => (
-                  <button
-                    key={type}
-                    type="button"
-                    className="block w-full px-3 py-1.5 text-left text-[13px] text-white/90 hover:bg-white/10"
-                    onClick={() => {
-                      if (alertMenu.kind === "position" && alertMenu.positionId) {
-                        positionAlertRef.current?.(
-                          alertMenu.positionId,
-                          alertMenu.price,
-                          type,
-                        );
-                      } else {
-                        canvasAlertRef.current?.(alertMenu.price, type);
-                      }
-                      setAlertMenu(null);
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </>
-            )}
+            <div className="border-b border-white/10 px-3 py-1.5 text-[11px] text-white/45">
+              {alertMenu.kind === "position"
+                ? hitLabel
+                  ? `Position alert · ${hitLabel}`
+                  : "Position alert"
+                : `Price alert at ${alertMenu.price.toFixed(0)}`}
+            </div>
+            {(
+              [
+                ["price_above", "Alert when price rises above"],
+                ["price_below", "Alert when price falls below"],
+                ["price_touch", "Alert when price touches"],
+              ] as const
+            ).map(([type, label]) => (
+              <button
+                key={type}
+                type="button"
+                className="block w-full px-3 py-1.5 text-left text-[13px] text-white/90 hover:bg-white/10"
+                onClick={() => {
+                  if (alertMenu.kind === "position" && alertMenu.positionId) {
+                    positionAlertRef.current?.(
+                      alertMenu.positionId,
+                      alertMenu.price,
+                      type,
+                    );
+                  } else {
+                    canvasAlertRef.current?.(alertMenu.price, type);
+                  }
+                  setAlertMenu(null);
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         ) : null}
       </div>
