@@ -66,12 +66,22 @@ import {
 import {
   bwFlyDebit,
   formatHeatmapTileFace,
+  listedPackageGreeks,
   resolveBwWings,
   symFlyDebit,
   verticalPackage,
 } from "@/lib/options-lab/templates/pricing";
 import { saveAnalyzerTrade } from "@/lib/options-lab/analyzerTrade";
 import HeatmapControlsColumn from "@/components/options-lab/HeatmapControlsColumn";
+import { HeatmapHoverTip } from "@/components/options-lab/HeatmapHoverTip";
+import {
+  flyColumnConvexityScores,
+  heatmapGexTip,
+  heatmapMatrixTip,
+  miniExpirationPayoff,
+  type HeatmapPositionInspect,
+  type HeatmapTipModel,
+} from "@/lib/options-lab/heatmapTip";
 
 const EXPIRY_PICK_COUNT = 3;
 
@@ -223,8 +233,19 @@ export default function HeatmapChainPanel() {
   /** bw-fly: place broken wing closest to spot or furthest */
   const [bwWingSide, setBwWingSide] = useState<BwWingSide>(BW_WING_SIDE_DEFAULT);
   const [selectedTile, setSelectedTile] = useState<MatrixTileKey | null>(null);
+  const [hoverTip, setHoverTip] = useState<{
+    model: HeatmapTipModel;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [tipPinned, setTipPinned] = useState(false);
+  const tipPinnedRef = useRef(false);
+  tipPinnedRef.current = tipPinned;
   const [tosScript, setTosScript] = useState<string>("");
   const [tosCopied, setTosCopied] = useState(false);
+  const [tipInspect, setTipInspect] = useState<HeatmapPositionInspect | null>(
+    null,
+  );
   const mounted = useRef(true);
 
   // Apply per-symbol profile when product changes (wings, side, template defaults)
@@ -277,6 +298,8 @@ export default function HeatmapChainPanel() {
   });
 
   const tpl = getTemplate(templateId);
+  const modeLabel =
+    tpl.valueModes.find((m) => m.id === valueMode)?.label ?? valueMode;
 
   // AF10 / AF11 — dispose pipeline memory on plane change
   useEffect(() => {
@@ -304,6 +327,9 @@ export default function HeatmapChainPanel() {
 
   useEffect(() => {
     setSelectedTile(null);
+    setHoverTip(null);
+    setTipPinned(false);
+    setTipInspect(null);
   }, [symbol, expiration, side, wings, valueMode, bwStrikeCount, bwWingSide]);
 
   // Leave fly template → free pipeline
@@ -409,9 +435,10 @@ export default function HeatmapChainPanel() {
     ],
   );
 
-  const copyTosForFly = useCallback(
-    async (body: number, widthPts: number) => {
-      if (!expiration) return;
+  /** All local: OPF-held generation already in `chainCtx`. No extra fetch. */
+  const openHeldTile = useCallback(
+    (body: number, widthPts: number) => {
+      if (!expiration) return null;
       const shortFly = valueMode === "credit";
       let cost: number | null = null;
       let legs;
@@ -434,7 +461,7 @@ export default function HeatmapChainPanel() {
           bwStrikeCount,
           bwWingSide,
         );
-        if (!wings) return;
+        if (!wings) return null;
         const d = bwFlyDebit(chainCtx, body, wings.lo, wings.hi);
         cost = d != null && Number.isFinite(d) ? Math.abs(d) : null;
         legs = bwFlyTosLegs({
@@ -446,7 +473,6 @@ export default function HeatmapChainPanel() {
           short: shortFly,
         });
       } else {
-        // Always price from mid debit (structure cost), not RoC / R:R display modes
         const d = symFlyDebit(chainCtx, body, widthPts);
         cost = d != null && Number.isFinite(d) ? Math.abs(d) : null;
         legs = symFlyTosLegs({
@@ -462,18 +488,31 @@ export default function HeatmapChainPanel() {
         legs,
         costBasis: cost,
       });
+      const signedDebit = shortFly ? -(cost ?? 0) : cost ?? 0;
+      const payoff = miniExpirationPayoff({
+        legs,
+        debit: signedDebit,
+        spot: chainCtx.spot,
+      });
+      const inspect: HeatmapPositionInspect = {
+        greeks: listedPackageGreeks(chainCtx, side, legs),
+        payoff: payoff.points,
+        maxProfit: payoff.maxProfit,
+        maxLoss: payoff.maxLoss,
+        spot: chainCtx.spot,
+      };
       setTosScript(script);
+      setTipInspect(inspect);
       setSelectedTile({ strike: body, colId: `w${widthPts}` });
-      // Hand off to Analyzer (session) — same line as clipboard
-      saveAnalyzerTrade(script, "heatmap");
       rememberTosScript(script);
-      try {
-        await navigator.clipboard.writeText(script);
-        setTosCopied(true);
-        window.setTimeout(() => setTosCopied(false), 1600);
-      } catch {
-        setTosCopied(false);
-      }
+      void navigator.clipboard.writeText(script).then(
+        () => {
+          setTosCopied(true);
+          window.setTimeout(() => setTosCopied(false), 1600);
+        },
+        () => setTosCopied(false),
+      );
+      return { script, inspect };
     },
     [
       chainCtx,
@@ -486,6 +525,30 @@ export default function HeatmapChainPanel() {
       bwWingSide,
     ],
   );
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (!tipPinnedRef.current) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('[data-testid="heatmap-tile-tip"]')) return;
+      if (t?.closest?.("[data-heatmap-tile='1']")) return;
+      setTipPinned(false);
+      setHoverTip(null);
+      setTipInspect(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setTipPinned(false);
+      setHoverTip(null);
+      setTipInspect(null);
+    };
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
 
   /** Coach: 10…50 by 5 for every Advanced Fly variant (DL-435). */
   const flyWidths = useMemo(() => heatmapFlyWidths(), []);
@@ -569,6 +632,54 @@ export default function HeatmapChainPanel() {
     }
     return buildGrid(tpl, chainCtx, templateParams);
   }, [tpl, chainCtx, templateParams, flyPaint, valueMode, stickyScale]);
+
+  /** Same-width listed-gamma rank, 1–10. Held chain only. */
+  const convexityScores = useMemo(() => {
+    const out = new Map<string, number>();
+    if (!matrix) return out;
+    const bodies = matrix.rows.map((r) => r.strike);
+    for (const col of matrix.cols) {
+      const w = col.widthPts;
+      const colMap = flyColumnConvexityScores(
+        chainCtx,
+        side,
+        bodies,
+        (body) => {
+          if (templateId === "vertical") {
+            const far = side === "call" ? body + w : body - w;
+            return [
+              { strike: body, quantity: 1 },
+              { strike: far, quantity: -1 },
+            ];
+          }
+          if (templateId === "bw-fly") {
+            const wings = resolveBwWings(
+              chainCtx,
+              body,
+              w,
+              bwStrikeCount,
+              bwWingSide,
+            );
+            if (!wings) return null;
+            return [
+              { strike: wings.lo, quantity: 1 },
+              { strike: body, quantity: -2 },
+              { strike: wings.hi, quantity: 1 },
+            ];
+          }
+          return [
+            { strike: body - w, quantity: 1 },
+            { strike: body, quantity: -2 },
+            { strike: body + w, quantity: 1 },
+          ];
+        },
+      );
+      for (const [body, score] of colMap) {
+        out.set(`${body}|${col.id}`, score);
+      }
+    }
+    return out;
+  }, [matrix, chainCtx, side, templateId, bwStrikeCount, bwWingSide]);
   const gexProfile = useMemo(() => {
     if (tpl.layout !== "profile" || tpl.id !== "gex") return null;
     const points = buildGexProfile(chainCtx, valueMode);
@@ -908,24 +1019,19 @@ export default function HeatmapChainPanel() {
                   const seriesNeg = seriesSigned < 0;
                   const seriesPos = seriesSigned > 0;
 
-                  const tip = combined
-                    ? [
-                        `Strike ${pt.label}`,
-                        pt.call != null
-                          ? `Call ${fmtGexProfile(pt.call)}`
-                          : "Call —",
-                        pt.put != null
-                          ? `Put ${fmtGexProfile(pt.put)}`
-                          : "Put —",
-                        pt.value != null
-                          ? `Net ${fmtGexProfile(pt.value)}`
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")
-                    : pt.valid && pt.value != null
-                      ? `${pt.label}: ${fmtGexProfile(pt.value)} (÷1e9)`
-                      : `${pt.label}: missing γ/OI`;
+                  const gexModel = heatmapGexTip({
+                    strikeLabel: pt.label,
+                    isSpot: pt.isSpot,
+                    combined,
+                    call: pt.call,
+                    put: pt.put,
+                    net: pt.value,
+                    callLabel:
+                      pt.call != null ? fmtGexProfile(pt.call) : "—",
+                    putLabel: pt.put != null ? fmtGexProfile(pt.put) : "—",
+                    netLabel:
+                      pt.value != null ? fmtGexProfile(pt.value) : "—",
+                  });
 
                   return (
                     <div
@@ -937,7 +1043,18 @@ export default function HeatmapChainPanel() {
                           ? "border-t border-amber-400/70 bg-amber-400/5"
                           : "",
                       ].join(" ")}
-                      title={tip}
+                      onMouseEnter={(e) => {
+                        if (tipPinnedRef.current) return;
+                        setHoverTip({
+                          model: gexModel,
+                          x: e.clientX,
+                          y: e.clientY,
+                        });
+                      }}
+                      onMouseLeave={() => {
+                        if (tipPinnedRef.current) return;
+                        setHoverTip(null);
+                      }}
                     >
                       <span
                         className={[
@@ -1086,32 +1203,71 @@ export default function HeatmapChainPanel() {
                             key={col.id}
                             role="button"
                             tabIndex={0}
-                            title={
-                              [
-                                tile.face !== tile.alt ? tile.alt : null,
-                                cell?.tooltip,
-                                "Option-click: copy ToS butterfly script",
-                              ]
-                                .filter(Boolean)
-                                .join("\n")
-                            }
                             aria-label={tile.alt}
                             aria-pressed={selected}
                             data-selected={selected ? "1" : "0"}
+                            data-heatmap-tile="1"
                             onClick={(e) => {
-                              if (e.altKey) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (!cell?.valid) return;
-                                void copyTosForFly(row.strike, col.widthPts);
-                                return;
-                              }
-                              setSelectedTile((prev) =>
-                                prev?.strike === row.strike &&
-                                prev?.colId === col.id
-                                  ? null
-                                  : { strike: row.strike, colId: col.id },
-                              );
+                              e.stopPropagation();
+                              if (!cell?.valid) return;
+                              const model = heatmapMatrixTip({
+                                templateId,
+                                templateLabel: tpl.label,
+                                mode: valueMode,
+                                modeLabel,
+                                strike: row.strike,
+                                strikeLabel: row.label,
+                                widthPts: col.widthPts,
+                                widthLabel: col.label,
+                                tileFace: tile.face,
+                                tileAlt: tile.alt,
+                                cellValid: true,
+                                cellValue: cell.value ?? null,
+                                cellTooltip: cell.tooltip,
+                                isSpot: row.isSpot,
+                                convexityScore:
+                                  convexityScores.get(
+                                    `${row.strike}|${col.id}`,
+                                  ) ?? null,
+                              });
+                              setHoverTip({
+                                model,
+                                x: e.clientX,
+                                y: e.clientY,
+                              });
+                              setTipPinned(true);
+                              openHeldTile(row.strike, col.widthPts);
+                            }}
+                            onMouseEnter={(e) => {
+                              if (tipPinnedRef.current) return;
+                              setHoverTip({
+                                model: heatmapMatrixTip({
+                                  templateId,
+                                  templateLabel: tpl.label,
+                                  mode: valueMode,
+                                  modeLabel,
+                                  strike: row.strike,
+                                  strikeLabel: row.label,
+                                  widthPts: col.widthPts,
+                                  widthLabel: col.label,
+                                  tileFace: tile.face,
+                                  tileAlt: tile.alt,
+                                  cellValid: !!cell?.valid,
+                                  cellValue: cell?.value ?? null,
+                                  cellTooltip: cell?.tooltip,
+                                  isSpot: row.isSpot,
+                                  convexityScore:
+                                    convexityScores.get(
+                                      `${row.strike}|${col.id}`,
+                                    ) ?? null,
+                                }),
+                                x: e.clientX,
+                                y: e.clientY,
+                              });
+                            }}
+                            onMouseLeave={() => {
+                              if (tipPinnedRef.current) return;
+                              setHoverTip(null);
                             }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" || e.key === " ") {
@@ -1241,6 +1397,23 @@ export default function HeatmapChainPanel() {
           </div>
         </div>
       </section>
+      <HeatmapHoverTip
+        model={hoverTip?.model ?? null}
+        x={hoverTip?.x ?? 0}
+        y={hoverTip?.y ?? 0}
+        pinned={tipPinned}
+        tosScript={tipPinned ? tosScript : null}
+        copied={tosCopied}
+        inspect={tipPinned ? tipInspect : null}
+        onAnalyze={() => {
+          if (tosScript) saveAnalyzerTrade(tosScript, "heatmap");
+        }}
+        onClose={() => {
+          setTipPinned(false);
+          setHoverTip(null);
+          setTipInspect(null);
+        }}
+      />
     </div>
   );
 }

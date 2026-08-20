@@ -215,6 +215,60 @@ export function symFlyGreek(
   return a - 2 * b + c;
 }
 
+export type ListedGreekName = "delta" | "gamma" | "theta" | "vega";
+
+export type ListedPackageGreeks = {
+  delta: number | null;
+  gamma: number | null;
+  theta: number | null;
+  vega: number | null;
+  /** |qty|-weighted listed IV (decimal). Null if any leg has no IV. */
+  iv: number | null;
+};
+
+/**
+ * Package greeks from OPF-held chain rows only. Missing listed greek → null.
+ */
+export function listedPackageGreeks(
+  ctx: ChainContext,
+  side: "call" | "put",
+  legs: readonly { strike: number; quantity: number }[],
+): ListedPackageGreeks {
+  const sum = (
+    greek: ListedGreekName,
+  ): number | null => {
+    let t = 0;
+    for (const leg of legs) {
+      const row = rowAt(ctx, side, leg.strike);
+      const v = row != null ? Number(row[greek]) : NaN;
+      if (!Number.isFinite(v)) return null;
+      t += leg.quantity * v;
+    }
+    return t;
+  };
+  let ivNum = 0;
+  let ivDen = 0;
+  let ivOk = legs.length > 0;
+  for (const leg of legs) {
+    const row = rowAt(ctx, side, leg.strike);
+    const iv = row != null ? Number(row.iv) : NaN;
+    if (!Number.isFinite(iv) || iv <= 0) {
+      ivOk = false;
+      break;
+    }
+    const w = Math.abs(leg.quantity) || 1;
+    ivNum += w * (iv > 3 ? iv / 100 : iv);
+    ivDen += w;
+  }
+  return {
+    delta: sum("delta"),
+    gamma: sum("gamma"),
+    theta: sum("theta"),
+    vega: sum("vega"),
+    iv: ivOk && ivDen > 0 ? ivNum / ivDen : null,
+  };
+}
+
 /** Short fly package: −1 / +2 / −1. */
 export function symFlyCredit(
   ctx: ChainContext,
