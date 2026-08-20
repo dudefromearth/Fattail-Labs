@@ -414,6 +414,7 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 | GEX backdrop | Same heatmap GEX template + dual-side ladder; bars at listed strikes; GEX axis = plot mid-height; **Call/Put = two right scales** (sky call up, red put down), each scaled to that side’s longest bar; Net/Abs = one right scale colored to the bars; units ÷1e9 as heatmap; pan/zoom with the view (DL-459). **Chain-attached (AZ-VP-2 / DL-461):** GEX paints from the listed expiration even when **no positions are shown** (empty book or all hidden). Horizon = shown-card exp if any, else Range listed date, else first listed. Not a second position book. |
 | Range band | Gray column **behind GEX**, clipped to the **plot** (not the black gutters above/below). Member % is two-sided normal mass **XX.XX%** (1σ = **68.27%**, 2σ = **95.45%**). Geometry is ±z·σ·√τ on a **listed** expiration (ATM IV). Inspector **Probability**: Show/Hide · expiration · Width 68.27% · optional second 95.45%. Pan/zoom with the view. |
 | Heritage | MSC Risk Graph UX only — no MSC pricing import (DL-302 / AZ-VP-S4) |
+| Crosshair | Pointer in the plot: dashed V/H hair; **X-scale chip** (blue) = underlier/strike at the cursor (listed-exact, OC6a); **Y-scale chip** (gray) = P&L at the cursor (same `+12` / `-8` grammar as axis ticks). MSC presentation — chips sit on the scales, not a tooltip. Hidden while pan or strike-drag. Painted from a pointer ref (not React state per move). Host `data-crosshair-price` / `data-crosshair-pnl`. **DL-469**. |
 | Strike handles | Yellow ticks on the $0 line at each **visible** position’s listed strikes. **MSC handle grammar (Labs-typed):** hover thickens + grab cursor; press grabbing; **Single handle** (no Shift): only that tick highlights and only that strike moves. **Shift-click/drag:** all handles of the position highlight and move in unison. **Proximity size:** thick only while the pointer is in that handle’s hit box (or during the live drag). Leaving proximity — including after drop — restores idle tick size; Shift-group thicken is not sticky. Handles **detent only to listed strikes** for that position’s expiration (no free slide). Live snap, redefine the card, redraw tent; drop commits (unlock + atomic rebind). No invented strikes (DL-309). Do not Autofit on drop. |
 
 ### 1.11 What-if (OPF scenario knobs) · A6 Enable
@@ -459,7 +460,7 @@ Builder internals (also PB Spec + recent land): listed strikes only, ATM center,
 
 Analyzer is a work-surface **client** of the future Labs-wide **Alerts Manager + API**. Session-local alerts are a **stub adapter** until that manager GO’s.
 
-As-built holder: left inspector (info + Idle/Live/Touched, header **+**). Canvas right-click: Canvas vs Position (MSC 8px). Position: hover highlights that card’s **at-expiration**; menu is for **that card only** (no picker). **+** / canvas apply open **Alert Builder**.
+As-built holder: left inspector (info + Idle/Live/Touched, header **+**). Canvas right-click: Canvas vs Position (MSC 8px). Position: hover highlights that card’s **at-expiration**; menu is for **that card only** (no picker). **+** / canvas apply open **Alert Builder** (floatable: no scrim, drag header, graph stays live).
 
 #### 1.14.1 Persistence & identity
 

@@ -46,6 +46,57 @@ export function toHostCanvasY(
   return PAD.top + ((view.yMax - pnl) / (view.yMax - view.yMin)) * ch;
 }
 
+export function toHostDataY(
+  canvasY: number,
+  height: number,
+  view: HostView,
+): number {
+  const ch = height - PAD.top - PAD.bottom;
+  if (!(ch > 0)) return view.yMax;
+  return view.yMax - ((canvasY - PAD.top) / ch) * (view.yMax - view.yMin);
+}
+
+/** Underlier / strike chip on the bottom scale. */
+export function fmtCrosshairStrike(price: number): string {
+  if (!Number.isFinite(price)) return "—";
+  if (Math.abs(price - Math.round(price)) < 1e-6) return String(Math.round(price));
+  return price.toFixed(2);
+}
+
+/** P&L chip on the left scale — same grammar as the axis ticks. */
+export function fmtCrosshairPnl(pnl: number): string {
+  if (!Number.isFinite(pnl)) return "—";
+  const mag = Math.abs(pnl).toFixed(0);
+  return pnl >= 0 ? `+${mag}` : `-${mag}`;
+}
+
+/**
+ * Pointer readout for the 2D host crosshair (MSC presentation).
+ * Chips sit on the X (underlier/strike) and Y (P&L) scales.
+ */
+export function hostCrosshairReadout(
+  canvasX: number,
+  canvasY: number,
+  width: number,
+  height: number,
+  view: HostView,
+): {
+  price: number;
+  pnl: number;
+  priceLabel: string;
+  pnlLabel: string;
+} | null {
+  if (!inPlot(canvasX, canvasY, width, height)) return null;
+  const price = toHostDataX(canvasX, width, view);
+  const pnl = toHostDataY(canvasY, height, view);
+  return {
+    price,
+    pnl,
+    priceLabel: fmtCrosshairStrike(price),
+    pnlLabel: fmtCrosshairPnl(pnl),
+  };
+}
+
 export function findPnLAtPrice(
   pts: readonly PnLPoint[],
   price: number,

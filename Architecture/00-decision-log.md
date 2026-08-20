@@ -15,6 +15,21 @@ Kit `Modal` grows an opt-in `floatable` dialect for this work surface.
 
 ---
 
+## 2026-08-20 — DL-469 Analyzer 2D crosshair on price and strike scales (MSC presentation)
+
+**Decision:** Coach: the Analyzer viewport canvas was missing the MSC
+crosshair **price indicator**. While the pointer is in the plot, paint a
+dashed V/H hair and chips **on the scales**: bottom **X** = underlier /
+strike at the cursor (listed-exact); left **Y** = P&L at the cursor
+(axis grammar `+12` / `-8`). Hide during pan and strike-drag. Canvas
+paint from a pointer ref — do not set React state on every move. No MSC
+code copy.
+
+**Does not:** curve P&L chips (expiration/theo readouts) from MSC; MiniTwo
+until asked; change pan/zoom or strike-handle grammar.
+
+---
+
 ## 2026-08-20 — DL-468 Alert Touched is evaluation-only (when + print)
 
 **Decision:** Coach: member can **set Live or Idle**. **Touched cannot be

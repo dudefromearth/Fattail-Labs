@@ -7,6 +7,10 @@ import {
   findPnLAtPrice,
   nearestPositionOnExpiration,
   toHostCanvasY,
+  toHostDataY,
+  fmtCrosshairStrike,
+  fmtCrosshairPnl,
+  hostCrosshairReadout,
   CURVE_HIT_DISTANCE,
 } from "./hostAlertMenu";
 import { CHART_HOST_PAD as PAD } from "./chartHostBind";
@@ -79,4 +83,28 @@ const overlap = nearestPositionOnExpiration(mx, myAt(0), w, h, view, [
 ]);
 assert(overlap?.id === "near", "closest vertical distance wins when both in range");
 
-console.log("  11 tests passed");
+assert(fmtCrosshairStrike(5750) === "5750", "listed integer strike");
+assert(fmtCrosshairStrike(412.5) === "412.50", "cent-exact strike");
+assert(fmtCrosshairPnl(12.4) === "+12", "pnl chip matches axis");
+assert(fmtCrosshairPnl(-8) === "-8", "negative pnl chip");
+{
+  const y = toHostCanvasY(0, h, view);
+  assert(Math.abs(toHostDataY(y, h, view) - 0) < 1e-9, "Y invert round-trips");
+}
+
+{
+  const midX = PAD.left + (w - PAD.left - PAD.right) / 2;
+  const midY = PAD.top + (h - PAD.top - PAD.bottom) / 2;
+  const r = hostCrosshairReadout(midX, midY, w, h, view);
+  assert(r != null, "in-plot pointer has a readout");
+  assert(Math.abs(r!.price - 150) < 1e-6, "X chip is underlier at cursor");
+  assert(Math.abs(r!.pnl - 0) < 1e-6, "Y chip is P&L at cursor");
+  assert(r!.priceLabel === "150", "X chip listed integer");
+  assert(r!.pnlLabel === "+0", "Y chip axis grammar");
+  assert(
+    hostCrosshairReadout(1, midY, w, h, view) === null,
+    "gutter is not a crosshair",
+  );
+}
+
+console.log("  18 tests passed");

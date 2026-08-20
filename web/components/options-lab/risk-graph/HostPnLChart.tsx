@@ -38,6 +38,7 @@ import {
 import type { PnLPoint, PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
 import type { ThresholdAlertType } from "@/lib/options-lab/analyzerBook";
 import {
+  hostCrosshairReadout,
   inPlot,
   nearestPositionOnExpiration,
   toHostDataX,
@@ -197,6 +198,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
     const posCurvesRef = useRef(positionExpirationCurves);
     posCurvesRef.current = positionExpirationCurves;
     const hoveredPosRef = useRef<string | null>(null);
+    const trackRef = useRef<{ x: number; y: number } | null>(null);
     const canvasAlertRef = useRef(onCanvasAlert);
     canvasAlertRef.current = onCanvasAlert;
     const positionAlertRef = useRef(onPositionAlert);
@@ -663,6 +665,86 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       ctx.fillText("At expiry", PAD.left + 8, PAD.top + 12);
       ctx.fillStyle = theoreticalStroke;
       ctx.fillText(theoreticalLegendLabel, PAD.left + 8, PAD.top + 28);
+
+      const track = trackRef.current;
+      const readout =
+        track &&
+        hostCrosshairReadout(track.x, track.y, width, height, {
+          xMin,
+          xMax,
+          yMin,
+          yMax,
+        });
+      if (readout && track) {
+        host.dataset.crosshairPrice = readout.priceLabel;
+        host.dataset.crosshairPnl = readout.pnlLabel;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(PAD.left, PAD.top, cw, ch);
+        ctx.clip();
+        ctx.strokeStyle = "rgba(150,150,150,0.6)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(track.x, PAD.top);
+        ctx.lineTo(track.x, PAD.top + ch);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(PAD.left, track.y);
+        ctx.lineTo(PAD.left + cw, track.y);
+        ctx.stroke();
+        ctx.restore();
+
+        const paintChip = (
+          text: string,
+          cx: number,
+          cy: number,
+          bg: string,
+          fg: string,
+          axis: "x" | "y",
+        ) => {
+          ctx.font = AXIS_FONT;
+          const padX = 6;
+          const chipH = 22;
+          const chipW = ctx.measureText(text).width + padX * 2;
+          let x =
+            axis === "x" ? cx - chipW / 2 : Math.max(4, PAD.left - chipW - 6);
+          let y = axis === "x" ? height - PAD.bottom + 6 : cy - chipH / 2;
+          x = Math.max(2, Math.min(x, width - chipW - 2));
+          y = Math.max(2, Math.min(y, height - chipH - 2));
+          ctx.fillStyle = bg;
+          ctx.beginPath();
+          if (typeof ctx.roundRect === "function") {
+            ctx.roundRect(x, y, chipW, chipH, 3);
+          } else {
+            ctx.rect(x, y, chipW, chipH);
+          }
+          ctx.fill();
+          ctx.fillStyle = fg;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(text, x + chipW / 2, y + chipH / 2);
+        };
+        paintChip(
+          readout.priceLabel,
+          track.x,
+          0,
+          "#3b82f6",
+          "#fff",
+          "x",
+        );
+        paintChip(
+          readout.pnlLabel,
+          0,
+          track.y,
+          "rgba(100,100,100,0.9)",
+          "#fff",
+          "y",
+        );
+      } else {
+        delete host.dataset.crosshairPrice;
+        delete host.dataset.crosshairPnl;
+      }
       } catch {
         /* keep pan/zoom alive */
       }
@@ -741,32 +823,46 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         hoveredPosRef.current = id;
         if (id) node.dataset.hoverPosition = id;
         else delete node.dataset.hoverPosition;
-        drawRef.current();
       };
       const onHoverMove = (e: PointerEvent) => {
-        if (e.buttons !== 0) return;
-        if (previewRef.current) return;
-        if (node.style.cursor === "grabbing") return;
         const rect = node.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
         const w = node.clientWidth;
         const h = node.clientHeight;
-        if (
-          hitStrikeHandle(e, node, viewRef.current, handlesRef.current) != null
-        ) {
-          setHover(null);
+        const dragging =
+          e.buttons !== 0 ||
+          !!previewRef.current ||
+          node.style.cursor === "grabbing";
+        if (dragging) {
+          if (trackRef.current || hoveredPosRef.current) {
+            trackRef.current = null;
+            setHover(null);
+            drawRef.current();
+          }
           return;
         }
-        const hit = hitPosition(mx, my, w, h);
+        trackRef.current = inPlot(mx, my, w, h) ? { x: mx, y: my } : null;
+        if (
+          hitStrikeHandle(e, node, viewRef.current, handlesRef.current) !=
+          null
+        ) {
+          setHover(null);
+          drawRef.current();
+          return;
+        }
+        const hit = trackRef.current ? hitPosition(mx, my, w, h) : null;
         setHover(hit?.id ?? null);
         if (node.style.cursor !== "grabbing") {
           node.style.cursor = hit ? "pointer" : "grab";
         }
+        drawRef.current();
       };
       const onHoverLeave = () => {
+        trackRef.current = null;
         setHover(null);
         if (node.style.cursor !== "grabbing") node.style.cursor = "grab";
+        drawRef.current();
       };
       const onContextMenu = (e: MouseEvent) => {
         e.preventDefault();
@@ -783,6 +879,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         const hit = hitPosition(mx, my, w, h);
         if (hit) {
           setHover(hit.id);
+          drawRef.current();
           setAlertMenu({
             x: mx,
             y: my,
