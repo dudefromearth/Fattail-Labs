@@ -5,6 +5,7 @@
  */
 
 import { ZOOM_GAIN_MAX, ZOOM_GAIN_MIN } from "@/lib/risk-graph/surfaceScene/camera";
+import { RELIEF_MAX, RELIEF_MIN } from "@/lib/risk-graph/surfaceRelief";
 
 const btn =
   "inline-flex min-h-11 min-w-11 items-center justify-center rounded-full " +
@@ -20,6 +21,8 @@ export default function CameraHud({
   projection = "perspective",
   zoomGain,
   onZoomGain,
+  relief,
+  onRelief,
   spots,
   onSpotOn,
   onSpotBrightness,
@@ -31,6 +34,8 @@ export default function CameraHud({
   projection?: "perspective" | "orthographic";
   zoomGain: number;
   onZoomGain: (gain: number) => void;
+  relief: number;
+  onRelief: (v: number) => void;
   spots: Array<{ on: boolean; brightness: number }>;
   onSpotOn: (index: number, on: boolean) => void;
   onSpotBrightness: (index: number, brightness: number) => void;
@@ -62,6 +67,19 @@ export default function CameraHud({
           <span>Slow</span>
           <span>Fast</span>
         </div>
+      </label>
+      <label className="w-full text-[11px] text-white/55">
+        Curvature {Math.round(relief * 100)}%
+        <input
+          type="range"
+          className="mt-1 w-full"
+          min={RELIEF_MIN}
+          max={RELIEF_MAX}
+          step={0.01}
+          value={relief}
+          onChange={(e) => onRelief(Number(e.target.value))}
+          data-testid="surface-relief"
+        />
       </label>
       <div
         className="w-full text-[11px] text-white/55"

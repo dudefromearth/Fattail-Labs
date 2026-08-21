@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Surface T Ortho Spec v0.1
 
-**Status:** DRAFT — Coach 2026-08-20. **v0.1.3** TO-B1: What-if does not rewrite the historical path. Not BUILD AUTHORITY until Coach Phase 5.  
+**Status:** DRAFT — Coach 2026-08-21. **v0.1.4** Surface is a simple alternate of the Analyzer canvas; T Ortho is the surprise Easter Egg inside Surface (**DL-509**). **v0.1.3** TO-B1: What-if does not rewrite the historical path. Not BUILD AUTHORITY until Coach Phase 5.  
 **Type:** Product Spec — Surface **addendum** (Options Lab). Named-view **T Ortho**.  
 **Short name:** **OL-TO**  
 **Route:** `/app/options-lab/surface`  
@@ -34,6 +34,15 @@
 **Projection, verbatim:**
 
 > orthographic down the τ axis — spot on one axis, time on the other, IV as color/contour, member's live position path drawn across the contour map. Easter egg placement in the Surface app.
+
+**Host and surprise, verbatim (2026-08-21):**
+
+> The surface should be a simple alternate view of the Canvas in the Analyzer.
+
+> And the T Ortho is a surprise view within the Surface. An Ester Egg view.
+
+Recorded as **intent**. Surface is not a second product. T Ortho stays a
+**surprise / Easter Egg** named view inside Surface. **DL-509**.
 
 **What-if machine, verbatim:**
 
@@ -215,6 +224,7 @@ Local deterministic sentences from the **sheet + path**. Keep-Warm. Optional mod
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v0.1.4** | 2026-08-21 | Coach: Surface = simple alternate of Analyzer canvas; T Ortho = surprise Easter Egg inside Surface. Intent only. **DL-509**. |
 | **v0.1.3** | 2026-08-20 | **TO-B1:** historical path is fact; What-if moves a scenario cursor on the re-sampled contour. AT-TO-3 both halves. |
 | **v0.1.2** | 2026-08-20 | Coach squawk line: Journal agent only. **No algo alert, no trail** in this spec (Analyzer / AZ-ALGO). |
 | **v0.1.1** | 2026-08-20 | Coach: Algo alerts are **Analyzer-only**. T Ortho does not run them. |

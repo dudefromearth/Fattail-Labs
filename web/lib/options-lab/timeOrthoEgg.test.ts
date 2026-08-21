@@ -41,4 +41,17 @@ assert.equal(captureFilename("SPX", "2026-08-18"), "t-ortho-spx-2026-08-18.png")
   assert.doesNotMatch(empty, /\bstrateg(?:y|ies)\b/i);
 }
 
+{
+  const fs = require("node:fs") as typeof import("node:fs");
+  const path = require("node:path") as typeof import("node:path");
+  const panel = fs.readFileSync(
+    path.join(__dirname, "../../components/options-lab/surface/TimeOrthoEggPanel.tsx"),
+    "utf8",
+  );
+  assert.match(panel, /surface-time-ortho-ai/);
+  assert.doesNotMatch(panel, /Position List/);
+  assert.doesNotMatch(panel, /This is your position sitting/);
+  assert.doesNotMatch(panel, /surface-time-ortho-capture/);
+}
+
 console.log("timeOrthoEgg.test.ts ok");

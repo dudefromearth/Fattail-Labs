@@ -11,39 +11,20 @@ import { usePathname } from "next/navigation";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import {
   ANALYZER_BOOK_EVENT,
-  closePosition,
   loadPositions,
   savePositions,
 } from "@/lib/options-lab/analyzerBook";
-import { analyzerPositionToOpenTrade } from "@/lib/options-lab/analyzerToTradeLog";
-import {
-  linkTradeLogId,
-  syncBookFromTradeLog,
-} from "@/lib/options-lab/analyzerTradeLogSync";
-import { createTrade, fetchTrades } from "@/lib/tradeLogApi";
+import { syncBookFromTradeLog } from "@/lib/options-lab/analyzerTradeLogSync";
+import { fetchTrades } from "@/lib/tradeLogApi";
 import TimeOrthoLiveChart, {
   type TimeOrthoTapeHandle,
 } from "./TimeOrthoLiveChart";
 import TimeOrthoEggPanel from "./TimeOrthoEggPanel";
-import {
-  canvasToPngBlob,
-  captureCaption,
-  captureFilename,
-  compositeCanvases,
-  downloadBlob,
-  journalDateYmd,
-  shouldExitTimeOrtho,
-} from "@/lib/options-lab/timeOrthoEgg";
-import {
-  attachCaptureToTodayJournal,
-  JournalCaptureClosedError,
-} from "@/lib/options-lab/timeOrthoJournal";
+import { shouldExitTimeOrtho } from "@/lib/options-lab/timeOrthoEgg";
 import {
   clearTapeCache,
   useWarmTimeOrthoTape,
 } from "@/lib/options-lab/timeOrthoTapeCache";
-import { localSessionNote } from "@/lib/options-lab/timeOrthoNote";
-import { chartWindow } from "@/lib/options-lab/timeOrthoSession";
 import { positionToParsedTrade } from "@/lib/options-lab/positionToTrade";
 import { visibleBookTrade } from "@/lib/options-lab/cardDisplayState";
 import { computeExpiredGhostSheet } from "@/lib/risk-graph/surfaceGhost";
@@ -113,7 +94,6 @@ import HudCollapse from "./HudCollapse";
 import {
   cadenceClaim,
   isRealityAltered,
-  isTimeAltered,
   samplePlayhead,
 } from "@/lib/risk-graph/surfaceInspect";
 import {
@@ -167,8 +147,9 @@ export default function SurfaceApp() {
   const [whatIfHydrated, setWhatIfHydrated] = useState(false);
   const pendingElapsedRef = useRef<number | null>(null);
   const [strikeOn, setStrikeOn] = useState(false);
-  const [timeOn, setTimeOn] = useState(true);
+  const [timeOn, setTimeOn] = useState(false);
   const [strikePos, setStrikePos] = useState(100);
+  const [timePos, setTimePos] = useState(0);
   const [projection, setProjection] = useState<"perspective" | "orthographic">(
     "perspective",
   );
@@ -181,10 +162,7 @@ export default function SurfaceApp() {
     SURFACE_VALUE_PLANE_OPACITY_DEFAULT,
   );
   const [relief, setRelief] = useState(RELIEF_DEFAULT);
-  const [candlesOn, setCandlesOn] = useState(false);
   const [eggOn, setEggOn] = useState(false);
-  const [sendNote, setSendNote] = useState<string | null>(null);
-  const [captureBusy, setCaptureBusy] = useState(false);
   const [bookReady, setBookReady] = useState(false);
   const tapeRef = useRef<TimeOrthoTapeHandle | null>(null);
   const hadBookRef = useRef(false);
@@ -780,7 +758,6 @@ export default function SurfaceApp() {
     if (!next) return null;
     return surfaceValueWindow(next.contentLo, next.contentHi, heightPadFrac);
   }, [hudSheet, bookFitKey, autofitGen, heightPadFrac]);
-  const timeWalked = hudSheet ? isTimeAltered(tauStar, tauHi, tauLo) : false;
   const altered = hudSheet
     ? isRealityAltered({
         tau: tauStar,
@@ -799,7 +776,6 @@ export default function SurfaceApp() {
       altered,
       valueWindow: valueWindow ?? undefined,
       zoomGain,
-      candlesOn,
       spots,
       relief,
       planes: {
@@ -809,14 +785,14 @@ export default function SurfaceApp() {
           position: strikeForPlane,
         },
         time: {
-          visible: !!(sheet && timeOn && timeWalked),
+          visible: timeOn,
           opacity: 0.28,
-          position: tauStar,
+          position: timePos,
         },
         value: { visible: valueOpacity > 0, opacity: valueOpacity, position: 0 },
       },
     });
-  }, [sheetKey, tauStar, timeElapsed, strikeOn, timeOn, timeWalked, strikeForPlane, altered, valueWindow, sheet, hudSheet, zoomGain, valueOpacity, spots, candlesOn, relief]);
+  }, [sheetKey, tauStar, timeElapsed, strikeOn, timeOn, timePos, strikeForPlane, altered, valueWindow, sheet, hudSheet, zoomGain, valueOpacity, spots, relief]);
 
   function applySurfaceDefaults() {
     setWidthPadFrac(SURFACE_PAD_FRAC);
@@ -879,108 +855,7 @@ export default function SurfaceApp() {
               : risk.packageDebit
           }
           bookState={law}
-          onToggleVisibility={(id) => {
-            const next = loadPositions().map((p) =>
-              p.id === id ? { ...p, visible: !p.visible } : p,
-            );
-            savePositions(next);
-            window.dispatchEvent(new Event(ANALYZER_BOOK_EVENT));
-          }}
-          onClosePosition={(id) => {
-            const next = loadPositions().map((p) =>
-              p.id === id ? closePosition(p) : p,
-            );
-            savePositions(next);
-            window.dispatchEvent(new Event(ANALYZER_BOOK_EVENT));
-          }}
-          onRemovePosition={(id) => {
-            const next = loadPositions().filter((p) => p.id !== id);
-            savePositions(next);
-            window.dispatchEvent(new Event(ANALYZER_BOOK_EVENT));
-          }}
-          captureBusy={captureBusy}
-          onCapture={async () => {
-            if (captureBusy) return;
-            setCaptureBusy(true);
-            try {
-              const tape = tapeRef.current?.getCanvas() ?? null;
-              if (!tape) {
-                setSendNote("Nothing to capture yet.");
-                return;
-              }
-              const surface = sceneRef.current?.captureCanvas() ?? null;
-              const composed = compositeCanvases(tape, surface);
-              const blob = await canvasToPngBlob(composed);
-              const dateYmd = journalDateYmd();
-              const filename = captureFilename(symbol, dateYmd);
-              const file = new File([blob], filename, { type: "image/png" });
-              const win = chartWindow(Date.now());
-              const visible = allForSymbol.filter((p) => p.visible !== false);
-              const caption = captureCaption({
-                symbol,
-                dateYmd,
-                positions: visible.map((p) => ({
-                  label: p.label,
-                  notation: p.notation,
-                })),
-                note: localSessionNote({
-                  symbol,
-                  phase: win.prefillsPriorDay ? "pre" : "rth",
-                  positions: visible.map((p) => ({
-                    label: p.label,
-                    notation: p.notation,
-                  })),
-                  lastMid: liveSpot,
-                  bookPnl: Number.isFinite(risk.theoreticalPnLAtSpot)
-                    ? risk.theoreticalPnLAtSpot
-                    : risk.packageDebit,
-                  bookState: law,
-                }),
-              });
-              try {
-                await attachCaptureToTodayJournal(file, caption);
-                setSendNote("Saved to today’s journal.");
-              } catch (err) {
-                downloadBlob(file, filename);
-                setSendNote(
-                  err instanceof JournalCaptureClosedError
-                    ? "Journal is closed for today — saved a picture here instead."
-                    : "Saved a picture here. Journal did not take it.",
-                );
-              }
-            } catch {
-              setSendNote("Could not capture this view.");
-            } finally {
-              setCaptureBusy(false);
-            }
-          }}
-          onSendToTradeLog={async (id) => {
-            const pos = loadPositions().find((p) => p.id === id);
-            if (!pos) return;
-            const res = await createTrade(analyzerPositionToOpenTrade(pos));
-            if (res.ok && res.data?.id != null) {
-              const next = loadPositions().map((p) =>
-                p.id === id ? linkTradeLogId(p, res.data.id) : p,
-              );
-              savePositions(next);
-            }
-            setSendNote(
-              res.ok
-                ? "Sent to Trade Log as an open trade (simulation). Linked — a Trade Log close will close it here too."
-                : res.error.kind === "err"
-                  ? res.error.message
-                  : "Could not send this position to Trade Log.",
-            );
-          }}
         />
-      ) : null}
-      {sendNote ? (
-        <div
-          className="pointer-events-none absolute bottom-24 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] text-white/80"
-          data-testid="surface-time-ortho-toast"
-        >
-          {sendNote}
-        </div>
       ) : null}
       <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-sm text-[11px] text-white/55">
         <div className="font-medium text-white/80">{label}</div>
@@ -1040,7 +915,6 @@ export default function SurfaceApp() {
               setProjection("orthographic");
             } else setProjection("perspective");
             if (id === "timeOrtho") {
-              setCandlesOn(false);
               if (!eggOn) {
                 valueOpacityBeforeEggRef.current = valueOpacity;
                 setValueOpacity(0);
@@ -1072,6 +946,7 @@ export default function SurfaceApp() {
                 strikeOn,
                 timeOn,
                 strikePos,
+                timePos,
               },
               updated_at: new Date().toISOString(),
             };
@@ -1102,6 +977,7 @@ export default function SurfaceApp() {
             if (typeof ins.strikeOn === "boolean") setStrikeOn(ins.strikeOn);
             if (typeof ins.timeOn === "boolean") setTimeOn(ins.timeOn);
             if (typeof ins.strikePos === "number") setStrikePos(ins.strikePos);
+            if (typeof ins.timePos === "number") setTimePos(ins.timePos);
           }}
           onDelete={(id) => {
             const views = saved.filter((x) => x.id !== id);
@@ -1120,9 +996,11 @@ export default function SurfaceApp() {
             strikePos={hudSheet ? strikeForPlane : strikePos}
             strikeMin={hudSheet?.sMin ?? 80}
             strikeMax={hudSheet?.sMax ?? 120}
+            timePos={timePos}
             onStrikeOn={setStrikeOn}
             onTimeOn={setTimeOn}
             onStrikePos={setStrikePos}
+            onTimePos={setTimePos}
             widthPadFrac={widthPadFrac}
             heightPadFrac={heightPadFrac}
             onWidthPadFrac={setWidthPadFrac}
@@ -1132,10 +1010,6 @@ export default function SurfaceApp() {
               setValueOpacity(v);
               if (!eggOn) valueOpacityBeforeEggRef.current = v;
             }}
-            candlesOn={candlesOn}
-            onCandlesOn={setCandlesOn}
-            relief={relief}
-            onRelief={setRelief}
             onAutofit={applySurfaceDefaults}
           />
         </HudCollapse>
@@ -1189,6 +1063,8 @@ export default function SurfaceApp() {
               projection={projection}
               zoomGain={zoomGain}
               onZoomGain={setZoomGain}
+              relief={relief}
+              onRelief={setRelief}
               spots={spots}
               onSpotOn={(i, on) => {
                 setSpots((prev) =>

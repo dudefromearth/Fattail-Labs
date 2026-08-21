@@ -97,6 +97,7 @@ const tau = 3 / 365.25;
   );
   assert.ok(hud.includes('data-testid="surface-autofit"'), "AT-AF-5: Autofit button exists");
   assert.ok(hud.includes('data-testid="surface-fit"'), "AT-AF-5: Fit stays a separate control");
+  assert.ok(hud.includes('data-testid="surface-relief"'), "Curvature lives in Camera");
 }
 
 {
@@ -118,11 +119,21 @@ const tau = 3 / 365.25;
     path.join(__dirname, "../../components/options-lab/surface/PlanesHud.tsx"),
     "utf8",
   );
+  assert.ok(planes.includes("Time Plane"), "Time Plane is independent of What-if");
+  assert.ok(!planes.includes("surface-relief"), "Curvature is not in Planes");
+  assert.ok(
+    planes.includes('data-testid="surface-plane-time-pos"'),
+    "Time slider sits with Strike",
+  );
   assert.ok(planes.includes('data-testid="surface-width-pad"'), "width pad control");
   assert.ok(planes.includes('data-testid="surface-height-pad"'), "height pad control");
   assert.ok(
     planes.includes('data-testid="surface-planes-autofit"'),
     "Autofit on the pad panel restores defaults",
+  );
+  assert.ok(
+    !planes.includes("Candles") && !planes.includes("surface-candles"),
+    "Planes has no Candles checkbox; tape is T Ortho only",
   );
 }
 
@@ -138,8 +149,8 @@ const tau = 3 / 365.25;
     "utf8",
   );
   assert.ok(
-    /const \[candlesOn, setCandlesOn\] = useState\(false\)/.test(app),
-    "ISO default: 3D candles off",
+    !app.includes("setCandlesOn"),
+    "ISO never toggles 3D candles; T Ortho tape is always on",
   );
   assert.ok(
     app.includes("SURFACE_VALUE_PLANE_OPACITY_DEFAULT"),
@@ -162,8 +173,26 @@ const tau = 3 / 365.25;
     "leaving T Ortho restores the last $0 plane setting",
   );
   assert.ok(
+    app.includes("visible: timeOn"),
+    "Time Plane visibility is the checkbox, not What-if",
+  );
+  assert.ok(
+    !app.includes("timeWalked"),
+    "Time Plane is not gated on What-if time walk",
+  );
+  assert.ok(
     !scene.includes('group.name = "surface-candles"'),
     "no 3D candle meshes hanging off the Now wall",
+  );
+  assert.ok(
+    scene.includes('if (!egg)') && scene.includes("world.scale.z = 1"),
+    "leaving T Ortho restores ISO world scale",
+  );
+  assert.ok(scene.includes("dataset.spotLab"), "spot print on the front floor edge");
+  assert.ok(scene.includes("#facc15"), "spot orb/label uses Analyzer yellow-400");
+  assert.ok(
+    scene.includes("width:10px;height:10px") && scene.includes("SPOT_MARK_CSS"),
+    "spot orb is the same 10px ball as listed strikes",
   );
 }
 

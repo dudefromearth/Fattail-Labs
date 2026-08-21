@@ -4,6 +4,23 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-509 Surface is an Analyzer-canvas alternate; T Ortho is the Easter Egg
+
+**Decision (Coach, intent only — no implementation in this body):**
+
+> The surface should be a simple alternate view of the Canvas in the Analyzer.
+
+> And the T Ortho is a surprise view within the Surface. An Ester Egg view.
+
+Surface’s job is that **simple alternate** of the Analyzer 2D canvas (same
+shown book). **T Ortho** remains a **surprise / Easter Egg** named view
+**inside** Surface, not a second app and not the default Surface job.
+Recorded in App Spec §1 and OL-TO §0.
+
+**Does not:** MiniTwo; code; changing the T Ortho detent or Analyzer canvas.
+
+---
+
 ## 2026-08-21 — DL-508 Surface $0 plane default is 40%
 
 **Decision:** The Surface **$0 plane** default opacity is **40%** (Coach

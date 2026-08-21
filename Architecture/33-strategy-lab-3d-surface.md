@@ -11,8 +11,11 @@
 ## 0. Mission
 
 Give Options Lab a **dedicated 3D P&L tent** of the shown listed book,
-beside Analyzer (builder + 2D risk). Strategy Lab **consumes** the same
-object (backtest time machine + mini tape-walk). File name is historical.
+beside Analyzer (builder + 2D risk). **Intent (Coach 2026-08-21 · DL-509):**
+Surface is a **simple alternate view of the Analyzer canvas**. **T Ortho**
+is a **surprise / Easter Egg** named view **inside** Surface, not a second
+product. Strategy Lab **consumes** the same object (backtest time machine +
+mini tape-walk). File name is historical.
 
 **One calculator.** Shape from **per-leg IV** (exact or locked only). Inspect
 state (camera, planes, time window) is member-owned and does not reprice.

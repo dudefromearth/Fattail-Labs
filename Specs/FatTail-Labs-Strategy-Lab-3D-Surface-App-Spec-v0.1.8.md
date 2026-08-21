@@ -23,6 +23,17 @@ built later, it is re-derived from the Labs sheet contract below.
 
 ## 1. What this app is
 
+**Coach intent (2026-08-21, verbatim — do not drop · DL-509):**
+
+> The surface should be a simple alternate view of the Canvas in the Analyzer.
+
+> And the T Ortho is a surprise view within the Surface. An Ester Egg view.
+
+Recorded as **intent of this view**. No implementation from that statement
+in the same body of work. Surface = **simple alternate of the Analyzer
+canvas**. **T Ortho** = surprise / Easter Egg **inside** Surface, not a
+second product.
+
 An **Options Lab app** whose job is to show the **primary surface**: the 3D
 real-time P&L tent of the **shown listed book** (DL-381 · §4.7 · DL-394).
 
@@ -736,3 +747,4 @@ DL-411 · §4.3 · §4.6 · §4.6a · §4.8 · §5.1).
 | **v0.1.6** | Mark path only (no §4.3 cascade). IV NO folded to OT-EF. Time machine = snap rebind, not frozen-smile walk. Additive book law + v0.1 slice. **§4.6a last-minute truth.** **DL-409**. |
 | **v0.1.7** | **§4.8 named consumers** (backtest sheet + mini tape-walk). **S1 closed:** first home is Options Lab (`/app/options-lab/surface`). Strategy Lab consumes. **DL-410** · **DL-411**. |
 | **v0.1.8** | Review accept. §1 / §4.1 / §5.2 = shown listed book (§4.7), not a focus radio. Mini graphic label **day walking · n of N**. **DL-412**. |
+| **v0.1.8+** | 2026-08-21 Coach intent recorded: Surface = simple alternate of Analyzer canvas; T Ortho = Easter Egg inside Surface. **DL-509**. No code in that body. |

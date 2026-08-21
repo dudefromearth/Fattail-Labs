@@ -106,6 +106,9 @@ const ZERO_STROKE = 0xfde68a;
 const ZERO_WIDTH_PX = 2.6;
 /** Listed-strike orbs + floor rails. */
 const STRIKE_MARK = 0xc2410c;
+/** Analyzer Spot field is `text-yellow-400`. */
+const SPOT_MARK = 0xfacc15;
+const SPOT_MARK_CSS = "#facc15";
 const ZERO_BLEND = 0.045;
 
 function resolveDpr(): number {
@@ -240,9 +243,9 @@ function buildSurface(
         new THREE.Vector3(spotX, 1, 1),
       ]),
       new THREE.LineBasicMaterial({
-        color: 0xf8fafc,
+        color: SPOT_MARK,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.55,
       }),
     );
     group.add(spotLine);
@@ -755,9 +758,11 @@ export function mountSurfaceScene(
     }
   };
 
-  let spotHud: { x: number; orb: HTMLElement } | null = null;
+  let spotHud: { x: number; orb: HTMLElement; lab: HTMLElement } | null = null;
+  const formatSpot = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
   const clearSpotHud = () => {
     spotHud?.orb.remove();
+    spotHud?.lab.remove();
     spotHud = null;
   };
   const rebuildSpotHud = (sheet: SurfaceSheet | null) => {
@@ -771,10 +776,19 @@ export function mountSurfaceScene(
     orb.dataset.spotOrb = "1";
     orb.style.cssText =
       "position:absolute;width:10px;height:10px;border-radius:50%;" +
-      "background:#f8fafc;transform:translate(-50%,-50%);pointer-events:none;" +
+      `background:${SPOT_MARK_CSS};transform:translate(-50%,-50%);pointer-events:none;` +
       "box-shadow:0 0 0 1px rgba(0,0,0,0.35);";
+    const lab = document.createElement("span");
+    lab.dataset.spotLab = "1";
+    lab.textContent = formatSpot(sheet.spot);
+    lab.style.cssText =
+      "position:absolute;transform:translate(-50%,8px);" +
+      `color:${SPOT_MARK_CSS};` +
+      "font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap;" +
+      "pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,0.7);";
     labels.appendChild(orb);
-    spotHud = { x, orb };
+    labels.appendChild(lab);
+    spotHud = { x, orb, lab };
   };
 
   const TICK_MINOR = 0.045;
@@ -1150,6 +1164,9 @@ export function mountSurfaceScene(
       spotHud.orb.style.left = `${p.left}px`;
       spotHud.orb.style.top = `${p.top}px`;
       spotHud.orb.style.opacity = p.front ? "1" : "0";
+      spotHud.lab.style.left = `${p.left}px`;
+      spotHud.lab.style.top = `${p.top}px`;
+      spotHud.lab.style.opacity = p.front ? "1" : "0";
     }
     layoutTimeTicks();
   };
@@ -1165,7 +1182,7 @@ export function mountSurfaceScene(
     time: {
       visible: false,
       opacity: 0.28,
-      position: lastSheet?.timeAxis[0] ?? 0,
+      position: 0,
     },
     value: { visible: true, opacity: 0.16, position: 0 },
   };
@@ -1185,7 +1202,7 @@ export function mountSurfaceScene(
     valueEdge.visible = valueAlpha > 0;
     const clamp = (n: number) => Math.min(1, Math.max(-1, n));
     strikePlane.position.set(clamp(worldX(planes.strike.position)), 0, 0);
-    timePlane.position.set(0, 0, clamp(playheadZ()));
+    timePlane.position.set(0, 0, clamp(elapsedToBoxZ(planes.time.position)));
     valuePlane.position.set(0, clamp(worldY(planes.value.position)), 0);
     paint();
   };
@@ -1393,7 +1410,6 @@ export function mountSurfaceScene(
       if (patch.camera) setPose(patch.camera);
       if (patch.timePlayhead != null) {
         lastFrontTau = patch.timePlayhead;
-        planes.time.position = patch.timePlayhead;
       }
       if (patch.timeElapsed != null && Number.isFinite(patch.timeElapsed)) {
         lastElapsed = Math.min(1, Math.max(0, patch.timeElapsed));
@@ -1462,10 +1478,15 @@ export function mountSurfaceScene(
       if (id === "fit" || id === "iso" || id === "timeOrtho") {
         lastFitR = frameRadius(box, w / h);
       }
+      const egg = id === "timeOrtho";
+      // T Ortho tape-align mutates world z. ISO/Fit/other views must not inherit it.
+      if (!egg) {
+        world.position.z = 0;
+        world.scale.z = 1;
+      }
       const next = factoryPose(id, box, w / h, pose.zoomGain, planeZ);
       setPose(next);
       host.dataset.factoryView = id;
-      const egg = id === "timeOrtho";
       applyMapOverlay(egg);
       applySurfaceLock(egg);
       if (egg) {

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * T Ortho egg: live 5m chart, locked surface, Position List hide/show/add.
+ * T Ortho: live 5m chart, locked surface, narrative floater on-screen.
  * Language is position (not strategy).
  */
 
@@ -37,7 +37,7 @@ const seedPos = {
   },
 };
 
-test("T Ortho Position List hide/show + Analyzer add language", async ({
+test("T Ortho narrative floater is on-screen and has no book chrome", async ({
   page,
 }) => {
   test.setTimeout(90_000);
@@ -70,47 +70,26 @@ test("T Ortho Position List hide/show + Analyzer add language", async ({
     /\d+/,
     { timeout: 20_000 },
   );
-  await expect(page.getByTestId("surface-time-ortho-copy")).toContainText(
-    "position",
-  );
-  await expect(page.getByTestId("surface-time-ortho-copy")).not.toContainText(
-    /strateg/i,
-  );
-  await expect(page.getByTestId("surface-time-ortho-pos-heading")).toHaveText(
-    /Position List/,
-  );
-  await expect(page.getByTestId("surface-time-ortho-add")).toHaveText(
-    "Add position",
-  );
-
-  const vis = page.getByTestId("surface-time-ortho-vis-e2e-pos-1");
-  await expect(vis).toHaveText("Hide");
-  await vis.click({ force: true });
-  await expect(vis).toHaveText("Show");
-  const hidden = await page.evaluate((key) => {
-    const raw = localStorage.getItem(key);
-    const list = raw ? (JSON.parse(raw) as Array<{ visible?: boolean }>) : [];
-    return list[0]?.visible === false;
-  }, POS_KEY);
-  expect(hidden).toBe(true);
-  await vis.click({ force: true });
-  await expect(vis).toHaveText("Hide");
-
-  await expect(page.getByTestId("surface-time-ortho-capture")).toBeVisible();
-  await expect(page.getByTestId("surface-time-ortho-capture")).toHaveText(
-    "Capture",
-  );
-  await expect(page.getByTestId("surface-time-ortho-copy")).toContainText(
-    "Remove the last one",
-  );
-
-  await page.getByTestId("surface-time-ortho-add").click();
-  await expect(page).toHaveURL(/builder=1/);
-  await expect(page.getByTestId("analyzer-positions-list")).toContainText(
-    "Position List",
-  );
-  await expect(page.getByTestId("analyzer-create-position")).toBeVisible();
-  await expect(page.getByTestId("analyzer-pos-show-e2e-pos-1")).toBeVisible();
+  const floater = page.getByTestId("surface-time-ortho-copy");
+  await expect(floater).toBeVisible();
+  await expect(page.getByTestId("surface-time-ortho-ai")).toBeVisible();
+  await expect(floater).not.toContainText(/strateg/i);
+  await expect(floater).not.toContainText("Position List");
+  await expect(floater).not.toContainText("This is your position sitting");
+  await expect(page.getByTestId("surface-time-ortho-add")).toHaveCount(0);
+  await expect(page.getByTestId("surface-time-ortho-capture")).toHaveCount(0);
+  const box = await floater.boundingBox();
+  const hostBox = await host.boundingBox();
+  expect(box).toBeTruthy();
+  expect(hostBox).toBeTruthy();
+  if (box && hostBox) {
+    expect(box.x).toBeGreaterThanOrEqual(hostBox.x);
+    expect(box.y).toBeGreaterThanOrEqual(hostBox.y);
+    expect(box.x + box.width).toBeLessThanOrEqual(hostBox.x + hostBox.width + 1);
+    expect(box.y + box.height).toBeLessThanOrEqual(
+      hostBox.y + hostBox.height + 1,
+    );
+  }
 });
 
 test("T Ortho goes away when the last position is removed", async ({
@@ -138,20 +117,13 @@ test("T Ortho goes away when the last position is removed", async ({
     "1",
   );
   await expect(page.getByTestId("surface-time-ortho-live-chart")).toBeVisible();
-  await expect(page.getByTestId("surface-time-ortho-capture")).toBeVisible();
+  await expect(page.getByTestId("surface-time-ortho-copy")).toBeVisible();
 
-  const downloadWait = page.waitForEvent("download", { timeout: 15_000 }).catch(
-    () => null,
-  );
-  await page.getByTestId("surface-time-ortho-capture").click({ force: true });
-  await expect(page.getByTestId("surface-time-ortho-toast")).toBeVisible({
-    timeout: 20_000,
-  });
-  await downloadWait;
-
-  await page.getByTestId("surface-time-ortho-remove-e2e-pos-1").click({
-    force: true,
-  });
+  await page.evaluate((key) => {
+    localStorage.setItem(key, "[]");
+    sessionStorage.setItem(key, "[]");
+    window.dispatchEvent(new Event("ftl-analyzer-book"));
+  }, POS_KEY);
 
   await expect(page.getByTestId("surface-host")).toHaveAttribute(
     "data-time-ortho",

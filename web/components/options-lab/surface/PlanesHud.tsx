@@ -5,7 +5,6 @@ import {
   SURFACE_PAD_FRAC_MIN,
   SURFACE_WIDTH_PAD_FRAC_MAX,
 } from "@/lib/risk-graph/surfaceAutofit";
-import { RELIEF_MAX, RELIEF_MIN } from "@/lib/risk-graph/surfaceRelief";
 
 function pct(frac: number) {
   return Math.round(frac * 100);
@@ -17,19 +16,17 @@ export default function PlanesHud({
   strikePos,
   strikeMin,
   strikeMax,
+  timePos,
   onStrikeOn,
   onTimeOn,
   onStrikePos,
+  onTimePos,
   widthPadFrac,
   heightPadFrac,
   onWidthPadFrac,
   onHeightPadFrac,
   valueOpacity,
   onValueOpacity,
-  candlesOn,
-  onCandlesOn,
-  relief,
-  onRelief,
   onAutofit,
 }: {
   strikeOn: boolean;
@@ -37,19 +34,17 @@ export default function PlanesHud({
   strikePos: number;
   strikeMin: number;
   strikeMax: number;
+  timePos: number;
   onStrikeOn: (v: boolean) => void;
   onTimeOn: (v: boolean) => void;
   onStrikePos: (v: number) => void;
+  onTimePos: (v: number) => void;
   widthPadFrac: number;
   heightPadFrac: number;
   onWidthPadFrac: (v: number) => void;
   onHeightPadFrac: (v: number) => void;
   valueOpacity: number;
   onValueOpacity: (v: number) => void;
-  candlesOn: boolean;
-  onCandlesOn: (v: boolean) => void;
-  relief: number;
-  onRelief: (v: number) => void;
   onAutofit: () => void;
 }) {
   return (
@@ -65,7 +60,7 @@ export default function PlanesHud({
           onChange={(e) => onStrikeOn(e.target.checked)}
           data-testid="surface-plane-strike"
         />
-        Strike Show
+        Strike Plane
       </label>
       <label className="flex min-h-11 items-center gap-2">
         <input
@@ -74,16 +69,7 @@ export default function PlanesHud({
           onChange={(e) => onTimeOn(e.target.checked)}
           data-testid="surface-plane-time"
         />
-        Time Show
-      </label>
-      <label className="flex min-h-11 items-center gap-2">
-        <input
-          type="checkbox"
-          checked={candlesOn}
-          onChange={(e) => onCandlesOn(e.target.checked)}
-          data-testid="surface-candles"
-        />
-        Candles
+        Time Plane
       </label>
       <label className="mt-1 block text-white/55">
         $0 plane {pct(valueOpacity)}%
@@ -99,19 +85,6 @@ export default function PlanesHud({
         />
       </label>
       <label className="mt-1 block text-white/55">
-        Curvature {pct(relief)}%
-        <input
-          type="range"
-          className="w-full"
-          min={RELIEF_MIN}
-          max={RELIEF_MAX}
-          step={0.01}
-          value={relief}
-          onChange={(e) => onRelief(Number(e.target.value))}
-          data-testid="surface-relief"
-        />
-      </label>
-      <label className="mt-1 block text-white/55">
         Strike
         <input
           type="range"
@@ -122,6 +95,23 @@ export default function PlanesHud({
           value={strikePos}
           onChange={(e) => onStrikePos(Number(e.target.value))}
         />
+      </label>
+      <label className="mt-1 block text-white/55">
+        Time
+        <input
+          type="range"
+          className="w-full"
+          min={0}
+          max={1}
+          step={0.01}
+          value={timePos}
+          onChange={(e) => onTimePos(Number(e.target.value))}
+          data-testid="surface-plane-time-pos"
+        />
+        <div className="mt-0.5 flex justify-between text-[10px] uppercase tracking-wide text-white/40">
+          <span>Now</span>
+          <span>Expiry</span>
+        </div>
       </label>
       <div className="mt-2 font-medium text-white/80">Autofit pad</div>
       <label className="mt-1 block text-white/55">
