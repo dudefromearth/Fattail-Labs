@@ -1,6 +1,6 @@
 # FatTail Labs — Alerts Manager Spec v1.0
 
-**Status:** DRAFT — Coach 2026-08-20. **v1.0.4** Analyzer holder Delete (ALB-D1). **v1.0.3** HIG ATs (Member dialect is M-G law).  
+**Status:** DRAFT — Coach 2026-08-21. **v1.0.5** in-place admin of Algo Reason **house base prompt** on `/app/alerts` (**DL-511**). **v1.0.4** Analyzer holder Delete (ALB-D1). **v1.0.3** HIG ATs (Member dialect is M-G law).  
 **Type:** Product + API Spec — Labs-wide **Alerts Manager**  
 **Short name:** ALM  
 **Member app:** `/app/alerts` (user menu)  
@@ -19,7 +19,12 @@
 2. **Alerts are managed locally** in the app they belong to (create, edit, bind, holder, canvas).  
 3. **Settings, configuration, and stats** live in the **Manager** — a **user app**: user menu **and/or** Settings.  
 4. **Every App Suite** has a **hook** into the Alerts Manager with **their own types** of alerts.  
-5. Analyzer is the first client (canvas vs position · Builder). It must **not** become a second closed alert center.
+5. Analyzer is the first client (canvas vs position · Builder). It must **not** become a second closed alert center.  
+6. **In-place admin (2026-08-21, verbatim — do not drop · DL-511):**
+
+> The Alerts Manager is a manager for all users. However like many features, there's in-place editing for features. And this is just such a case.
+
+    The Manager stays a **member** app. Administrators edit the Algo Reason **house base prompt** **on this page** (Dual Surface: production URL is the editor). Not a second `/admin` alerts CMS.
 
 ---
 
@@ -28,7 +33,7 @@
 | Plane | Who | What |
 |-------|-----|------|
 | **Work-surface (local)** | Each suite / surface | Create, edit, apply, list **in context**. Analyzer inspector holder, canvas right-click, Alert Builder. Practice/Journal/etc. when they spec their types. |
-| **Manager** | Member Alerts app + Settings | Configuration, delivery, quiet hours, class enablement, **stats**. Read-only **index** of the member’s alerts (deep link back to the originating app). **Not** the place to draw a Risk-graph tent or Journal prompt. |
+| **Manager** | Member Alerts app + Settings | Configuration, delivery, quiet hours, class enablement, **stats**. Read-only **index** of the member’s alerts (deep link back to the originating app). **Not** the place to draw a Risk-graph tent or a member Journal prompt. **Is** the place for **in-place admin** of the Algo Reason **house base prompt** (administrator edit mode only · **DL-511**). |
 
 The Manager is SoR for **identity of an alert record**, **delivery**, **settings**, **stats**.  
 The originating app is SoR for **how the alert is authored and shown in that product**.
@@ -46,6 +51,7 @@ The originating app is SoR for **how the alert is authored and shown in that pro
 | Auth | Signed-in. Same posture as `/me` / `/settings`. |
 | Chrome | **Member dialect** (HI Spec §2.3): iOS-like grouped content, calm, clear CTAs. **Not** Operator density of `/admin`. A stats-and-index page must not drift toward dashboard-dense. Tokens + `web/components/ui/*` only. Honesty banner = kit `Banner` (info). |
 | Panes | **Overview (stats)** · **Index** (read-only list + “Open in {app}”) · link to **Settings → Alerts** for delivery/config |
+| In-place admin | When `useIsAdmin()` and edit mode: markdown **Algo Reason base prompt** (AZ-ALGO §5.5). Hidden for non-admins. Member dialect of the page is unchanged; edit chrome is HI §7.3, not `/admin` density. |
 
 Stats (v1, no profit theater):
 
@@ -330,6 +336,7 @@ Held/closed market: no “live fire” theater for underlier prices unless the s
 | **AT-ALM-11** | Alerts stream is **not** `MarketSocket` / `/api/me/market/stream` (ALB-A2) |
 | **AT-ALM-12** | `/app/alerts` is **Member dialect** (grouped, calm). Kit primitives (`List` / `Banner` / `Button`). **Not** `/admin` density. |
 | **AT-ALM-13** | Kilo lint: no raw hex / magic px / `zinc-*` in Manager app or Settings Alerts pane chrome. |
+| **AT-ALM-14** | Administrator in edit mode on `/app/alerts` can in-place edit the Algo Reason **house base prompt** (markdown). Non-admin: editor not mounted. Not an `/admin` page. **DL-511**. |
 
 India W0 (when a Manager board is seeded): restate ALB-A2 Arch 28 scope in the India packet so the one-socket law is not misread.
 
@@ -340,7 +347,7 @@ India W0 (when a Manager board is seeded): restate ALB-A2 Arch 28 scope in the I
 | Path | Role | BUILD lock |
 |------|------|------------|
 | This spec | Law | — |
-| `web/app/app/alerts/page.tsx` | Manager app | **Independent of** Analyzer `HostPnLChart` / viewport boards |
+| `web/app/app/alerts/page.tsx` | Manager app + in-place Algo Reason **base prompt** (admin edit mode) | **Independent of** Analyzer `HostPnLChart` / viewport boards |
 | `web/lib/alerts/` | Client hook + registry | Independent (adapter swap is AT-ALB-9, after this GO) |
 | `server/routes/alerts.py` | `/api/me/alerts*` | Independent |
 | Settings Alerts pane | Config (already exists; wire live) | Independent |
@@ -353,6 +360,7 @@ India W0 (when a Manager board is seeded): restate ALB-A2 Arch 28 scope in the I
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.5** | 2026-08-21 | In-place admin of Algo Reason **house base prompt** on `/app/alerts` (manager for all users + Dual Surface edit). **DL-511** · AZ-ALGO §5.5. |
 | **v1.0.4** | 2026-08-20 | Analyzer holder **Delete** is in (**ALB-D1** · **DL-493**). Manager HTTP `DELETE` and index chrome still later. |
 | **v1.0.3** | 2026-08-20 | HIG conversion is acceptance: AT-ALM-12…13. |
 | **v1.0.2** | 2026-08-20 | HIG fold: `/app/alerts` is **Member dialect** (not `/admin` density). |

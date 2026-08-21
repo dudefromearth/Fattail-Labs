@@ -126,6 +126,19 @@ export function positionPriceView(
   return { lo, hi };
 }
 
+/**
+ * Shared chart: tape Y is the surface box strike window (sMin–sMax).
+ * No extra pad, no union with printed H/L — same dollars as the tent.
+ */
+export function tapePriceView(opts: {
+  box: PriceView | null;
+  printed: PriceView | null;
+  shareBox: boolean;
+}): PriceView | null {
+  if (opts.shareBox && opts.box) return opts.box;
+  return unionPriceView(opts.box, opts.printed);
+}
+
 /** Keep the position window and the printed candles on screen together. */
 export function unionPriceView(
   ...views: Array<PriceView | null | undefined>
@@ -500,12 +513,12 @@ export function layoutDayAxis(
   controlsRight = leftChromeRightPx(width),
   price?: PriceView,
 ): DayAxis {
-  const pricePad = 64;
+  const pricePad = 114;
   const plotRight = Math.max(controlsRight + 120, width - pricePad);
   // 9:30 AM — just right of the left control column (Views + Planes).
-  const xOpen = Math.min(
-    plotRight * 0.28,
-    Math.max(controlsRight + 24, plotRight * 0.18),
+  const xOpen = Math.max(
+    controlsRight + 24,
+    Math.min(plotRight * 0.28, Math.max(controlsRight + 24, plotRight * 0.18)),
   );
   // 4:00 PM — room on the right for extended hours.
   const postW = Math.max(100, plotRight * 0.16);

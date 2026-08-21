@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Surface T Ortho Spec v0.1
 
-**Status:** DRAFT — Coach 2026-08-21. **v0.1.4** Surface is a simple alternate of the Analyzer canvas; T Ortho is the surprise Easter Egg inside Surface (**DL-509**). **v0.1.3** TO-B1: What-if does not rewrite the historical path. Not BUILD AUTHORITY until Coach Phase 5.  
+**Status:** DRAFT — Coach 2026-08-21. **v0.1.5** tape and surface share the box strike scale (floor/ceiling). **v0.1.4** Surface is a simple alternate of the Analyzer canvas; T Ortho is the surprise Easter Egg inside Surface (**DL-509**). **v0.1.3** TO-B1: What-if does not rewrite the historical path. Not BUILD AUTHORITY until Coach Phase 5.  
 **Type:** Product Spec — Surface **addendum** (Options Lab). Named-view **T Ortho**.  
 **Short name:** **OL-TO**  
 **Route:** `/app/options-lab/surface`  
@@ -89,7 +89,7 @@ Recorded so this spec does not accidentally bless the egg.
 
 | Axis / channel | Law |
 |----------------|-----|
-| **Spot** | Underlier / strike axis. Listed strikes **exact** (OC6a). No SPY→SPX cross-fill. |
+| **Spot** | Underlier / strike axis. Listed strikes **exact** (OC6a). No SPY→SPX cross-fill. **Shared scale:** the candle tape and the surface box use the **same** `sMin`–`sMax` strike window. Tape Y is that window; candles occupy the box **floor** (and ceiling — same S). Spot print and listed Ks are the same dollars on the same chart. |
 | **Time** | Session / remaining-life clock of the **sheet** (OPF τ / last-trade honesty as the Surface already splits: What-if remaining last-trade vs OPF29 τ). Empty τ the structure does not have is not stretched (App Spec §5.3c must-not). |
 | **IV** | **Color / contour** on that plane. Source = OPF-held **listed** IV on the bound generation (OT-EF). Missing IV → **named** (IV NO / WAITING), never a silent 0.20 or unlabeled VIX. |
 | **Path** | The **live position** (Shown book on this symbol) as a polyline on the map: \((S(t), t)\) from entry (or first representable print) to now. **Historical facts.** Closed cards freeze at `closedAt`. What-if does **not** rewrite this polyline (**TO-B1**). |
@@ -224,6 +224,7 @@ Local deterministic sentences from the **sheet + path**. Keep-Warm. Optional mod
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v0.1.5** | 2026-08-21 | Candle tape and surface box share `sMin`–`sMax`. Tape occupies the box floor/ceiling. Spot and listed strikes are the same dollars on the shared chart. **DL-512**. |
 | **v0.1.4** | 2026-08-21 | Coach: Surface = simple alternate of Analyzer canvas; T Ortho = surprise Easter Egg inside Surface. Intent only. **DL-509**. |
 | **v0.1.3** | 2026-08-20 | **TO-B1:** historical path is fact; What-if moves a scenario cursor on the re-sampled contour. AT-TO-3 both halves. |
 | **v0.1.2** | 2026-08-20 | Coach squawk line: Journal agent only. **No algo alert, no trail** in this spec (Analyzer / AZ-ALGO). |

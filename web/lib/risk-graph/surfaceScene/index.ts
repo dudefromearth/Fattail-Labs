@@ -87,8 +87,15 @@ export type SurfaceSceneHandle = {
   getPose(): CameraPose;
   /** Screen X of the Now (+Z) and Expiry (−Z) walls — Time Ortho left→right. */
   getTimeAxisScreen(): { nowX: number; expiryX: number };
-  /** Pin Now/Expiry walls to chart X (0DTE: Now walks with the candle). */
-  alignTimeOrtho(span: { nowX: number; expiryX: number } | null): void;
+  /** Pin Now/Expiry to tape X and box sMin/sMax to tape Y (shared strike scale). */
+  alignTimeOrtho(
+    span: {
+      nowX: number;
+      expiryX: number;
+      sMinY?: number;
+      sMaxY?: number;
+    } | null,
+  ): void;
   /** T Ortho: dashed grey rails at T+0 BEs (live + parked ghosts). */
   setBeGhosts(strikes: number[]): void;
   /** Paint now and return the WebGL canvas (same-turn read for capture). */
@@ -1479,9 +1486,11 @@ export function mountSurfaceScene(
         lastFitR = frameRadius(box, w / h);
       }
       const egg = id === "timeOrtho";
-      // T Ortho tape-align mutates world z. ISO/Fit/other views must not inherit it.
+      // T Ortho tape-align mutates world x/z. ISO/Fit/other views must not inherit it.
       if (!egg) {
+        world.position.x = 0;
         world.position.z = 0;
+        world.scale.x = box.hx;
         world.scale.z = 1;
       }
       const next = factoryPose(id, box, w / h, pose.zoomGain, planeZ);
@@ -1552,24 +1561,48 @@ export function mountSurfaceScene(
       paint();
     },
     alignTimeOrtho(span) {
+      const pinStrike =
+        span != null &&
+        Number.isFinite(span.sMinY) &&
+        Number.isFinite(span.sMaxY) &&
+        Math.abs((span.sMaxY as number) - (span.sMinY as number)) > 8;
       if (!span || !(span.expiryX > span.nowX + 8)) {
+        world.position.x = 0;
         world.position.z = 0;
+        world.scale.x = box.hx;
         world.scale.z = 1;
         paint();
         return;
       }
+      world.position.x = 0;
       world.position.z = 0;
+      world.scale.x = 1;
       world.scale.z = 1;
       world.updateMatrixWorld(true);
       camera.updateMatrixWorld(true);
       const sNow = projectLocal(0, 0, 1).left;
       const sExp = projectLocal(0, 0, -1).left;
-      const B = (sNow - sExp) / 2;
-      const A = (sNow + sExp) / 2;
-      if (Math.abs(B) < 1e-6) return;
+      const Bz = (sNow - sExp) / 2;
+      const Az = (sNow + sExp) / 2;
+      if (Math.abs(Bz) < 1e-6) return;
       world.position.z =
-        (span.nowX + span.expiryX - 2 * A) / (2 * B);
-      world.scale.z = (span.nowX - span.expiryX) / (2 * B);
+        (span.nowX + span.expiryX - 2 * Az) / (2 * Bz);
+      world.scale.z = (span.nowX - span.expiryX) / (2 * Bz);
+      if (pinStrike) {
+        const sHi = projectLocal(1, -1, 0).top;
+        const sLo = projectLocal(-1, -1, 0).top;
+        const Bx = (sHi - sLo) / 2;
+        const Ax = (sHi + sLo) / 2;
+        if (Math.abs(Bx) > 1e-6) {
+          world.position.x =
+            ((span.sMaxY as number) + (span.sMinY as number) - 2 * Ax) /
+            (2 * Bx);
+          world.scale.x =
+            ((span.sMaxY as number) - (span.sMinY as number)) / (2 * Bx);
+        }
+      } else {
+        world.scale.x = box.hx;
+      }
       paint();
     },
     setCandles(boxes) {

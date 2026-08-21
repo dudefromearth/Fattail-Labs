@@ -1,6 +1,12 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import type { OhlcBar } from "@/lib/marketOhlcApi";
 import {
   dayClockToX,
@@ -9,7 +15,7 @@ import {
   leftChromeRightPx,
   marketWhereWhen,
   positionPriceView,
-  unionPriceView,
+  tapePriceView,
   listedStrikeTicks,
   tickerPriceTicks,
   priceWindow,
@@ -170,7 +176,7 @@ function paintPriceSpine(
     ctx.fillText("K", spineX + 6, plotY - 2);
   }
   ctx.textBaseline = "middle";
-  ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
+  ctx.font = "24.75px ui-sans-serif, system-ui, sans-serif";
   if (showPx) {
     for (const price of pxTicks) {
       const y = Math.round(priceToY(axis, price)) + 0.5;
@@ -416,6 +422,8 @@ function paintTape(
 
 export type TimeOrthoTapeHandle = {
   getCanvas: () => HTMLCanvasElement | null;
+  /** Paint now and pin the surface box if onAxis is set. */
+  redraw: () => void;
 };
 
 const TimeOrthoLiveChart = forwardRef<
@@ -423,7 +431,12 @@ const TimeOrthoLiveChart = forwardRef<
   {
     symbol: string;
     book?: TapeBookMark[];
-    onAxis?: (span: { nowX: number; expiryX: number }) => void;
+    onAxis?: (span: {
+      nowX: number;
+      expiryX: number;
+      sMinY?: number;
+      sMaxY?: number;
+    }) => void;
     /** Strike window of the visible position — defines tape Y. */
     positionScale?: { lo: number; hi: number } | null;
     listedStrikes?: number[];
@@ -481,6 +494,7 @@ const TimeOrthoLiveChart = forwardRef<
 
   useImperativeHandle(ref, () => ({
     getCanvas: () => canvasRef.current,
+    redraw: () => draw(),
   }));
 
   const draw = () => {
@@ -512,7 +526,12 @@ const TimeOrthoLiveChart = forwardRef<
       positionScaleRef.current?.hi,
     );
     const printed = priceWindow(asCandles);
-    const fitted = unionPriceView(posScale, printed);
+    const shareBox = Boolean(onAxisRef.current && posScale);
+    const fitted = tapePriceView({
+      box: posScale,
+      printed,
+      shareBox,
+    });
     const price = userPanRef.current
       ? priceViewRef.current ?? fitted
       : fitted;
@@ -543,9 +562,19 @@ const TimeOrthoLiveChart = forwardRef<
       open.length > 0
         ? nowMs
         : marks.reduce((t, m) => Math.max(t, m.closedAt ?? 0), axis.tOpen);
+    const boxLo = positionScaleRef.current?.lo;
+    const boxHi = positionScaleRef.current?.hi;
     onAxisRef.current?.({
       nowX: dayClockToX(liveMs, axis),
       expiryX: axis.xClose,
+      sMinY:
+        boxLo != null && Number.isFinite(boxLo)
+          ? priceToY(axis, boxLo)
+          : undefined,
+      sMaxY:
+        boxHi != null && Number.isFinite(boxHi)
+          ? priceToY(axis, boxHi)
+          : undefined,
     });
     canvas.dataset.xOpen = String(Math.round(axis.xOpen));
     canvas.dataset.xClose = String(Math.round(axis.xClose));
@@ -562,6 +591,7 @@ const TimeOrthoLiveChart = forwardRef<
       canvas.dataset.priceLo = String(price.lo);
       canvas.dataset.priceHi = String(price.hi);
     }
+    canvas.dataset.shareBox = shareBox ? "1" : "0";
   };
 
   useEffect(() => {
@@ -667,11 +697,15 @@ const TimeOrthoLiveChart = forwardRef<
     };
   }, []);
 
-  useEffect(() => {
-    userPanRef.current = false;
-    priceViewRef.current = null;
+  // Pin the box on this frame — do not wait for the 30s OHLC poll.
+  useLayoutEffect(() => {
+    onAxisRef.current = onAxis;
+    positionScaleRef.current = positionScale;
+    if (!userPanRef.current) priceViewRef.current = null;
     draw();
-  }, [scaleKey]);
+    // interactive flips when T Ortho opens; scaleKey is the box sMin–sMax.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scaleKey, interactive]);
 
   return (
     <div

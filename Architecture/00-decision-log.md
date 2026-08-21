@@ -4,6 +4,58 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-512 T Ortho tape and surface share the strike scale
+
+**Decision (Coach):** The candle chart and the surface box use the **same
+strike / spot window** (`sMin`–`sMax`). The tape occupies the **floor**
+(and ceiling — same S) of the box. A given dollar (spot print, listed K)
+is the same place on the shared chart. Applies first in **T Ortho**; the
+box S axis is the candle scale on every surface view.
+
+OL-TO **v0.1.5**.
+
+**Does not:** MiniTwo in this body.
+
+---
+
+## 2026-08-21 — DL-511 Algo Reason house base prompt is in-place on Alerts Manager
+
+**Decision (Coach, verbatim):**
+
+> The Alerts Manager is a manager for all users. However like many features, there's in-place editing for features. And this is just such a case.
+
+`/app/alerts` remains the **member** Alerts Manager. The Algo Reason **house
+base prompt** is edited **in place** on that production URL when the viewer
+is an administrator (Dual Surface: production URL is the editor). Not a
+second `/admin` alerts CMS. Members never see the editor. Analyzer Trail
+Settings still holds the member’s optional **focus** prompt.
+
+AZ-ALGO **v1.0.10** §5.5 · ALM **v1.0.5** · **AT-ALM-14** · **AT-ALGO-R7**.
+
+**Does not:** MiniTwo; code in this body; restyling `/app/alerts` as `/admin`.
+
+---
+
+## 2026-08-21 — DL-510 Algo Reason is whole-trail narration, not two-stop hold/fold
+
+**Decision (Coach):** One **Reason** checkbox on **Trail Settings** (right of
+the title). Scope is the **entire trail while it is in effect** (Armed),
+not Start/End stops. Checking the box is **enough** to start **basic
+narration** in a T Ortho–similar **floater**. The markdown field is
+**optional focus** (a market condition or trader concern) that **modifies**
+the narrative and **must not divert** it from its primary purpose
+(play-by-play of this 0DTE OTM butterfly on this trail). Reason does
+**not** change the alert, the trail engine, or the position.
+
+Supercedes **DL-484** (two Reason boxes; AI hold/fold of alert state).
+Qualifies **DL-495**: Builder panel still has no narrative (**ALGO-N1**);
+the viewport floater mounts when Reason is **checked** (**ALGO-R1**).
+AZ-ALGO **v1.0.9**.
+
+**Does not:** MiniTwo; code in this body; Tradier close.
+
+---
+
 ## 2026-08-21 — DL-509 Surface is an Analyzer-canvas alternate; T Ortho is the Easter Egg
 
 **Decision (Coach, intent only — no implementation in this body):**

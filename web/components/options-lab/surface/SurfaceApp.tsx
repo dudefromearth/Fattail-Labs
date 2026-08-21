@@ -626,6 +626,11 @@ export default function SurfaceApp() {
     sceneRef.current?.applyFactoryView("time");
   };
 
+  useLayoutEffect(() => {
+    if (!eggOn) return;
+    tapeRef.current?.redraw();
+  }, [eggOn, sheetKey]);
+
   useEffect(() => {
     const n = allForSymbol.length;
     if (eggOn && shouldExitTimeOrtho(hadBookRef.current, n)) {

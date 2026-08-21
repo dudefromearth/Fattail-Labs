@@ -10,6 +10,7 @@ import {
   sessionClockBands,
   tickerPriceTicks,
   unionPriceView,
+  tapePriceView,
 } from "./timeOrthoTape";
 import { nyWallToUtcMs } from "./timeOrthoSession";
 
@@ -77,6 +78,14 @@ const noon = nyWallToUtcMs(2026, 8, 18, 12, 0);
   assert.ok(view);
   assert.ok(view.lo <= 5600);
   assert.ok(view.hi >= 5735);
+  const shared = tapePriceView({ box: pos, printed: tape, shareBox: true });
+  assert.ok(shared);
+  assert.equal(shared.lo, 5600);
+  assert.equal(shared.hi, 5800);
+  const warm = tapePriceView({ box: pos, printed: tape, shareBox: false });
+  assert.ok(warm);
+  assert.ok(warm.lo < 5600);
+  assert.ok(warm.hi > 5735);
   const snap = followPriceView({ lo: 5710, hi: 5730 }, 5720, { lo: 0, hi: 1 });
   assert.ok(snap && snap.lo > 5000, "dummy 0–1 scale must not crush live prices");
 }
