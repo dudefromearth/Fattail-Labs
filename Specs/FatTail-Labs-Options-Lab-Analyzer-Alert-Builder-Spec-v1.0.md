@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Analyzer Alert Builder Spec v1.0
 
-**Status:** DRAFT — Coach 2026-08-20 (Analyzer canvas + builder). **v1.0.9** Alert Builder is floatable (no scrim; drag header; canvas stays live).  
+**Status:** DRAFT — Coach 2026-08-20 (Analyzer canvas + builder). **v1.0.11** holder **Delete** on each card. **v1.0.10** Type → Algo is the OTM-fly narrative trail ([AZ-ALGO](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md)).  
 **Type:** Product Spec — Analyzer **Alert Builder** and **canvas apply**.  
 **Short name:** AZ-ALB  
 **Route:** `/app/options-lab/analyzer`  
@@ -19,7 +19,8 @@ This document **hooks** Analyzer into that manager as the Options Lab client.
 2. How they are **applied on the canvas** and how **positions are selectable** follow **MSC**.  
 3. The **only** Labs difference in the holder UI: Alerts live in the **left inspector** as a scrollable card list (header **+**, ~3–4 cards tall). Each card shows **info about the alert** and an **Active / Idle** indicator — not Ack/Dismiss chrome.  
 4. **+** (and canvas apply) opens the **Alert Builder** dialog.  
-5. **Heads-up:** Labs will have an **Alerts Manager and API**. Analyzer features must **interface** with that main manager — not become a second closed alert center.
+5. **Heads-up:** Labs will have an **Alerts Manager and API**. Analyzer features must **interface** with that main manager — not become a second closed alert center.  
+6. **I need a delete control on the alerts cards.**
 
 ---
 
@@ -40,7 +41,7 @@ Analyzer **must not** be the Labs-wide SoR. Session-local storage (today’s `se
 
 Analyzer is a **work-surface client** of the Alerts Manager:
 
-- **Create / patch / list** go through the hook. **Delete is unshipped in v1** (hook name exists; no holder/Manager chrome).  
+- **Create / patch / list** go through the hook. **Holder Delete** is now in (Coach asked — **ALB-D1**). Manager HTTP `DELETE` remains specified for later; the session adapter removes the card today.  
 - **Evaluate / Active** is reported by the manager (or a client evaluator the manager owns). Analyzer **displays** Active/Idle; it does not invent a second evaluation bus.  
 - **Delivery** (OS, process surface, digest) is the manager + Member Settings Alerts pane — Analyzer does not send SMS/email itself.  
 - **Identity / membership** of an alert is the manager’s `alert_id`. Analyzer may keep a session cache of records it cares about (this Analyzer tab, this symbol).
@@ -56,7 +57,7 @@ A single module (client today, HTTP later) exposes:
 | `listAlerts({ surface, symbol })` | Alerts this Analyzer should show (holder + canvas lines). |
 | `upsertAlert(draft)` | Create or edit from Builder / canvas apply. Returns manager record. |
 | `setEnabled(alertId, enabled)` | Optional later — not in the holder v1 (info + Active only). |
-| `removeAlert(alertId)` | **Unshipped in v1** (deliberate — Coach did not ask delete). Holder has no delete chrome. Manager `DELETE` stays specified for when Coach adds it. |
+| `removeAlert(alertId)` | **Holder chrome in** (**ALB-D1**). Session adapter drops the record. Manager HTTP `DELETE` still later. |
 | `subscribeAlerts(onChange)` | Live updates (manager SSE / poll). |
 
 `draft` always includes (ALM §3.2 names on the wire; Analyzer-local aliases noted):
@@ -169,7 +170,8 @@ Round **+** in the Alerts header (stands out: tint fill). **Opens Alert Builder*
 |--------|------|
 | Canvas **price** (and Position alerts whose trigger is still an underlier price) | Vertical line at `target` on the plot. **Idle** = dashed; **Active** = solid + glow (MSC). Color = tag. |
 | Position **P&L / profit** | No fake underlier line unless the member’s trigger is price. Active/Idle still in the holder. |
-| Greeks / Algo placeholders | No invented geometry. |
+| Greeks placeholders | No invented geometry. |
+| **Algo** (OTM fly trail) | Two thin dashed verticals + optional overlay — **AZ-ALGO**, not this table. |
 
 Pan/zoom moves lines with the view.
 
@@ -242,9 +244,13 @@ Reachable via Type → Greeks **or** Position → Greeks. Pick **Delta / Gamma /
 
 Save → hook `alert_class: threshold`, trigger greek. **Do not** invent greeks — OPF/book only; WAITING if unmeasured.
 
-### 4.5 Algo (placeholder)
+### 4.5 Algo
 
-Subtypes: 0DTE Entry · Profit Mgmt · Prompt. Criteria **Coming soon**. **Save disabled.** Manager may later accept `alert_class: algo | prompt`.
+**Normative:** [AZ-ALGO — Analyzer Algo Alert Spec v1.0](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md).
+
+Labs Type → Algo is the **OTM butterfly narrative trail** (dynamic trail that **does not** stop the position out). Eligible card → **+** flashes → Builder opens on Algo and **describes what it will do**. Save **on** when the bind is an OTM debit fly with a named debit.
+
+MSC-shaped subtypes **0DTE Entry · Profit Mgmt · Prompt** stay **unshipped** (not deleted — they are not this algo). Break-Even / Trailing / 0DTE under Type → Position remain Coming soon (Save off).
 
 ### 4.6 Shared footer fields
 
@@ -265,13 +271,15 @@ Not MSC’s left-rail Ack list.
 | Header | **Alerts** + round **+** (tint, stands off the header) |
 | Body | Scrollable holder, default height **~3–4 cards** |
 | Empty | **No instructional copy** — empty holder. **Coach deviation from HI `EmptyState`** (kit: icon + title + one action). Named so `p-hig` lint does not “fix” it. Tango: an empty alerts holder needing no essay is calm density. |
-| Card | Title (info) · Canvas vs Position · run state **Idle** / **Live** / **Touched**. When Touched, the subtitle shows **when** it was touched (ET) and the underlier print. **Unbound** replaces the chip when §2.5 applies. |
+| Card | Title (info) · Canvas vs Position · run state **Idle** / **Live** / **Touched**. When Touched, the subtitle shows **when** it was touched (ET) and the underlier print. **Unbound** replaces the chip when §2.5 applies. **Delete** control on the card (**ALB-D1**). |
 | Live | Member-settable. Armed. Evaluates. |
 | Idle | Member-settable. Not evaluating. List chip toggle from Live, or Builder. |
 | Touched | **Not member-settable.** Evaluation only: Live met its condition. Stays Touched until **reset**. Canvas line is solid. Holder + Builder show when (ET) and the print. List chip / Builder **Reset to Live** re-arms. Then Idle can be set. |
 | Unbound | Card gone. Chip is not a toggle. |
 
-**List gestures:** click the **state chip** toggles **Idle ↔ Live**. **Touched → Live** is a **reset** (clears the touch stamp). Click **anywhere else** on the card opens Builder in edit mode. Builder **State** control sets **Live / Idle** only. When Touched, Builder reports the stamp and **Reset to Live** — it does not offer Touched as a choice. **Delete is deliberately unshipped in v1**.
+**List gestures:** click the **state chip** toggles **Idle ↔ Live**. **Touched → Live** is a **reset** (clears the touch stamp). Click **anywhere else** on the card opens Builder in edit mode. Builder **State** control sets **Live / Idle** only. When Touched, Builder reports the stamp and **Reset to Live** — it does not offer Touched as a choice. **Delete** (trash, ≥44pt) removes the card from the holder and the canvas line; it does not open Builder.
+
+**ALB-D1.** Each holder card has a **Delete** control. One click removes that alert (session adapter today; Manager `DELETE` when that plane GO’s). Open Builder on that id dismisses. Empty holder stays empty — no essay.
 
 ---
 
@@ -284,7 +292,8 @@ Adapter may use:
 | Price (canvas or position-bound price) | Spot vs target: ≥ above, ≤ below, \|spot−target\| ≤ tick (0.5 residual) |
 | Position P&L / profit | Position P&L at spot vs target |
 | Greeks | Live greek vs target |
-| Placeholders | Never Active |
+| Algo (OTM fly trail) | **AZ-ALGO** phases (Waiting / Armed / Recorded) |
+| Placeholders (Break-Even / Trailing / 0DTE / MSC Algo subtypes) | Never Active |
 
 Raw underlier mark for price (not smoothed display). Held: do not claim live fire.
 
@@ -322,7 +331,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 | **AT-ALB-3** | Hover a Shown card’s at-expiration (≤8px, closest wins) highlights that curve. Right-click → Position menu **for that card only** (no picker) → Builder bound to that `position_id` |
 | **AT-ALB-4** | Save Price → holder card + vertical line; Active/Idle follows spot |
 | **AT-ALB-5** | Save goes through the **hook** (`source_system: analyzer_risk_graph`) — not a third store |
-| **AT-ALB-6** | Algo / Break-Even / Trailing / 0DTE: visible, Save off |
+| **AT-ALB-6** | Break-Even / Trailing / 0DTE (Position tabs) and MSC Algo subtypes: visible, Save off. **Type → Algo** (OTM fly trail) Save **on** when AZ-ALGO eligibility holds. |
 | **AT-ALB-7** | Holder: no helper essay; + visible; height ~3–4 cards; scroll |
 | **AT-ALB-8** | Left-drag pan unaffected by right-click alerts |
 | **AT-ALB-9** | **Adapter swap (ALB-A4).** When Manager GO’s: AT-ALB-1…4 still PASS with the adapter pointed at the manager instead of the session stub. Canvas + Builder member grammar unchanged. |
@@ -334,6 +343,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 | **AT-ALB-15** | Canvas context-menu rows ≥44pt. No keyboard nav invented for the menu. Header **+** remains the a11y path (§3.3). Menu chrome uses tokens. `CURVE_HIT_DISTANCE = 8` is hit geometry, not a chrome token. |
 | **AT-ALB-16** | Builder State is Live / Idle only. Touched is evaluation: holder + Builder show when (ET) + print; Reset / chip → Live and clears the stamp. |
 | **AT-ALB-17** | Alert Builder is **floatable**: no scrim, `aria-modal=false`, header drag moves the panel, graph stays interactive, Esc/Cancel/Close dismiss. |
+| **AT-ALB-18** | Each holder card has a ≥44pt **Delete** control. Click removes the alert from the holder and canvas; does not open Builder. |
 
 ---
 
@@ -353,6 +363,8 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.11** | 2026-08-20 | Holder **Delete** on each card (**ALB-D1**). Coach asked. Manager HTTP `DELETE` still later. **DL-493**. |
+| **v1.0.10** | 2026-08-20 | Type → Algo filled by **AZ-ALGO** (OTM fly narrative trail). MSC 0DTE/Profit Mgmt/Prompt subtypes remain unshipped. AT-ALB-6 split. |
 | **v1.0.9** | 2026-08-20 | Coach: Alert Builder **must be floatable** — no scrim; drag header; canvas stays live (Position Builder grammar). |
 | **v1.0.8** | 2026-08-20 | Coach: Live / Idle are settable. **Touched** is evaluation-only (when + print) and can only be **reset** (→ Live). |
 | **v1.0.7** | 2026-08-20 | Canvas Position alerts: MSC 8px / hover / right-click; Labs hit-tests **per-card at-expiration** (closest wins) — no MSC picker. |

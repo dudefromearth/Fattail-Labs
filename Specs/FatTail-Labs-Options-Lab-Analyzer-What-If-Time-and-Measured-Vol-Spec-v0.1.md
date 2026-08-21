@@ -107,7 +107,7 @@ What’s broken is **range, display, detent**. The additive unit is law.
 | **AZ-TM-3** | Analyzer Risk and Surface **share one What-if** τ walk and one vol scenario (AZ-VP-S2). The Surface control this binds is the **What-if HUD** (`TimeHud`: frozen-smile τ walk + vol + spot%). It is **not** the Surface Time-machine replay (snap rebind) and **not** a second playhead. Same `time_offset_hours` and `vol_offset_pts` (OPF31). Two different vol maths are a spec break. |
 | **AZ-TM-4** | No invented strikes, no invented IV when the generation has none (OT-EF). |
 
-Vocabulary (TM-A1): this spec says **What-if** everywhere. Analyzer §1.11’s heading “Time machine” **inherits that rename**. Surface spec v0.1.8: *Must not call the what-if τ playhead a time machine.*
+Vocabulary (TM-A1): this spec says **What-if** everywhere for the **inspector knobs**. Analyzer §1.11’s heading “Time machine” **inherits that rename** for those knobs. Surface spec v0.1.8: *Must not call the what-if τ playhead a time machine.* **DL-486 / AZ-ATM:** Analyzer **Time Machine** is a **different seat** — OnDemand **day replay** (calendar, 1-minute path, video controls). That product keeps the name Time Machine. This What-if spec does not govern it.
 
 ### 3.2 Time — remaining to last trade; τ stays OPF
 

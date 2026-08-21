@@ -57,6 +57,13 @@ Do **not** use `DISCARDED` / `REJECTED` as idea status.
 | FI-028 | 2026-08-17 | Coach subscribe-then-price | One in-tab generation store: Analyzer + Builder join MarketSocket (stop ladder HTTP polls) | Audit DL-420 | Heatmap already subscribes; Analyzer/Builder re-fetch the same generation | `OPEN` | Audit v1.0 Phase B · do not add SSE |
 | FI-029 | 2026-08-18 | Heatmap Value Metrics Proposal | Width Efficiency, Time Decay, Spot Sensitivity, Surface Stability, SRS; Velocity/Acceleration until a series exists | Coach proposal + product walk | Research stack beyond shipped Value menu | `OPEN` | `docs/Options-Lab-Heatmap-Value-Metrics-Proposal.md` · **DL-442** |
 | FI-030 | 2026-08-18 | Coach | Heatmap Condors template (OTM same-side / short-span control) | Coach | Heatmap is a different job than Builder condors; ATM IC rejected | `RESHAPED` | **DL-444:** condors stay in Position Builder only |
+| FI-031 | 2026-08-20 | AZ-ALGO v1.0 | Analyzer Volume Profile **overlay** so Algo narrative can cite VP levels | Juliet (Coach: VP only if engaged) | Suite VP page exists; Analyzer has no VP overlay as-built. Narrative rule is in; sentences stay silent until engagement exists | `OPEN` | AZ-ALGO §9.2 · §13 |
+| FI-032 | 2026-08-20 | AZ-ALGO v1.0 | Optional LLM session-note on the Algo narrative (T Ortho `/session-note` family) | Juliet | v1 is local deterministic copy; model fail-open is not required to arm | `OPEN` | AZ-ALGO §9.2 · §13 |
+| FI-033 | 2026-08-20 | Coach | Algo **demo mode**: works outside RTH on a **future expiry**, with **What-if / time machine** to simulate the position | Coach | **Opened** 2026-08-20: Demo checkbox; Spot / Time / Vol drive the trail | `FOLDED` | **DL-485** |
+| FI-034 | 2026-08-20 | OL-TO v0.1 | As-built T Ortho **HLOC tape** underlay vs IV contour as SoR picture | Juliet (as-built check) | Coach seated contour; tape exists. **OD-TO-1** | `OPEN` | OL-TO §10 |
+| FI-035 | 2026-08-20 | FTI v0.1 | **OD-FTI-OPF:** OPF over HTTP vs research infra outside the governed suite | Coach | Open on purpose. Do not resolve. | `OPEN` | FTI header |
+| FI-036 | 2026-08-20 | AZ-ATM v0.1 | Time Machine **vol from full chain-snapshot days** (SSR live_capture / successor) so the tent is last-print honest at \(t\) | Coach (later plane) | Basic TM is 1-minute **price + time** only; must not badge last-minute package IV | `OPEN` | AZ-ATM §3.4 · **DL-486** |
+| FI-037 | 2026-08-20 | AZ-ATM v0.1.1 | TPO **grain** for Time Machine “follow the path” (tick/second path vs 30-minute Market Profile letters vs other feed) | Juliet (Coach specified TPO path, not grain) | Must not silently pick a TPO SoR | `OPEN` | AZ-ATM §3.3 ATM-P5 · §13 · **DL-487** |
 
 ---
 

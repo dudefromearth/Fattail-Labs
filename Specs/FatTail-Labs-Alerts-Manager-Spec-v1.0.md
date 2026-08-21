@@ -1,6 +1,6 @@
 # FatTail Labs — Alerts Manager Spec v1.0
 
-**Status:** DRAFT — Coach 2026-08-20. **v1.0.3** HIG ATs (Member dialect is M-G law).  
+**Status:** DRAFT — Coach 2026-08-20. **v1.0.4** Analyzer holder Delete (ALB-D1). **v1.0.3** HIG ATs (Member dialect is M-G law).  
 **Type:** Product + API Spec — Labs-wide **Alerts Manager**  
 **Short name:** ALM  
 **Member app:** `/app/alerts` (user menu)  
@@ -109,7 +109,7 @@ Every suite adapter implements:
 ```
 listAlerts({ suite?, source_system?, symbol? })
 upsertAlert(draft)
-removeAlert(alertId)           // unshipped v1 — Coach did not ask delete
+removeAlert(alertId)           // Analyzer holder Delete is in (ALB-D1). Manager HTTP DELETE later.
 setEnabled(alertId, enabled)   // optional in a given surface UI
 subscribeAlerts(onChange)
 ```
@@ -152,7 +152,7 @@ Write this before any adapter swap: session-stub alerts never lived long enough 
 
 | Suite | Surfaces (v1) | Own alert types (v1) | Holder |
 |-------|----------------|----------------------|--------|
-| **Options Lab** | Analyzer Risk graph | `canvas` (underlier price) · `position` (bound card: price / P&L / greeks). Algo/prompt **placeholder**. See [Alert Builder Spec](./FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md) | Inspector Alerts holder |
+| **Options Lab** | Analyzer Risk graph | `canvas` (underlier price) · `position` (bound card: price / P&L / greeks) · `algo` (OTM fly narrative trail — [AZ-ALGO](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md)). Prompt **placeholder**. See [Alert Builder Spec](./FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md) | Inspector Alerts holder |
 | **Options Lab** | Heatmap · VP · Surface | **None until a surface spec** — hook registered, types empty | — |
 | **Practice** | Trade Log · Journal · Reports · Campaigns | **None until a Practice alerts spec** | — |
 | **Strategy Lab** | Design / Curate / Deploy | **None until a Strategy Lab alerts spec** | — |
@@ -173,7 +173,7 @@ Adding a type = **version the suite’s surface spec** + append this catalog. Do
 | Class | Who authors | Meaning |
 |-------|-------------|---------|
 | **threshold** | Suite Builder / canvas | Numeric / listed-mark condition (price, P&L $, greek, later fills) |
-| **algo** | Suite when live | Process algorithm (placeholders until that suite GO’s) |
+| **algo** | Suite when live | Process algorithm. Options Lab Analyzer: **AZ-ALGO** OTM-fly narrative trail. Other suites remain placeholder until their spec. |
 | **prompt** | Suite / Coach later | Language or checklist prompt |
 | **system** | Platform | Entitlement, session, delivery failure — never a fake market |
 
@@ -219,7 +219,7 @@ Body matches Member Settings `AlertSettings` (minus Settings-local draft rules).
 | `GET` | `/api/me/alerts/{alert_id}` | One record |
 | `POST` | `/api/me/alerts` | `upsert` create — **called by suite adapters**, not by random clients |
 | `PATCH` | `/api/me/alerts/{alert_id}` | Edit from originating Builder |
-| `DELETE` | `/api/me/alerts/{alert_id}` | **Specified, unshipped in v1.** Coach did not ask delete. Holder has no delete chrome; Manager index has no delete control. Endpoint may exist behind the API for a later OD — **do not treat missing delete UI as a gap** (DL-464). |
+| `DELETE` | `/api/me/alerts/{alert_id}` | **Specified, unshipped.** Analyzer **holder Delete** is in (**ALB-D1** · **DL-493**). Manager index still has no delete control. HTTP `DELETE` waits on Manager GO. |
 
 `POST`/`PATCH` **require** a registered `source_system` **and** `suite` + `severity`. Manager rejects unknown suites.
 
@@ -353,6 +353,7 @@ India W0 (when a Manager board is seeded): restate ALB-A2 Arch 28 scope in the I
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.4** | 2026-08-20 | Analyzer holder **Delete** is in (**ALB-D1** · **DL-493**). Manager HTTP `DELETE` and index chrome still later. |
 | **v1.0.3** | 2026-08-20 | HIG conversion is acceptance: AT-ALM-12…13. |
 | **v1.0.2** | 2026-08-20 | HIG fold: `/app/alerts` is **Member dialect** (not `/admin` density). |
 | **v1.0.1** | 2026-08-20 | India review ALB-B1/B2 · A1–A4: §3.2 is the canonical draft (`suite` + `severity` required); unbound `local_ref`; Arch 28 stream scope; Tango threshold-copy; delete unshipped v1; Manager BUILD independent of Risk graph. |

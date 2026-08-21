@@ -132,6 +132,12 @@ APPROVED | RETURNED (implementation readiness only — not product deletion)
 If no new flags: `Flagged ideas: none — inventory intact.`  
 Bench delta is still required (what did we learn?).
 
+### Neighbor-board artifact quotes (India, every plan)
+
+Any execution plan whose **parent table** (or coordination table) **asserts another board’s state** — PASS, BLOCKED, W-G filed, file lock, “C1 owns this path” — gets an **India artifact-quote line for every such assertion**. Quote the neighbor’s **gate report or ORCHESTRATOR status row**, path + excerpt, not the asserting plan’s table. If a shared file (`OpfRiskAnalyzer.tsx`, `HostPnLChart.tsx`, …) is in more than one board’s scope, the handoff **names the overlap**.
+
+A table assertion without an artifact quote is the same class as VPP-B1 / RH-B1 / AL-A2 / ALGP-B1: **RETURNED** until quoted. Do not assume lock over.
+
 ### Ideas inventory (in the draft/build spec)
 
 Juliet lists non-trivial Phase 0 ideas as `IN-SCOPE` · `FLAGGED` · `DEFERRED` ·

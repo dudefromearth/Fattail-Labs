@@ -4,6 +4,185 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-20 — DL-493 Analyzer alert cards have Delete
+
+**Decision:** Coach asked for a **delete control on the alerts cards**. Holder
+cards get a ≥44pt trash control (**ALB-D1** / **AT-ALB-18**). Click removes
+the session record and any canvas line; does not open Builder. This **reverses
+the holder half** of DL-464 clarification 2 (delete was unshipped because Coach
+had not asked). Manager HTTP `DELETE` and the Manager index delete control
+remain later.
+
+**Does not:** MiniTwo; Manager API `DELETE`; confirm-dialog (position Delete
+is one click).
+
+---
+
+## 2026-08-20 — DL-492 Time Machine: add position after the day, then Algo
+
+**Decision:** Time Machine is a live-session rehearsal. The day may load with an
+empty book. The member **adds the fly afterwards**, then **creates the Algo
+alert**. Builder ATM, OTM eligibility, and Demo ticks use the **playhead**
+(session open when parked). Demo defaults on while Time Machine is engaged and
+does **not** turn What-if on. AZ-ATM **v0.1.5** · **ATM-A1** · AZ-ALGO **v1.0.3**
+· **ALGO-TM1**.
+
+**Does not:** MiniTwo; historical chain rebind; auto-entering a fly.
+
+---
+
+## 2026-08-20 — DL-491 Time Machine Spot + X scale bind to session open
+
+**Decision:** When a Time Machine day loads, Analyzer **Spot** and Autofit **X**
+use that session’s **opening price** (first 1-minute bar `o`, else the first
+print). Live underlier mid does not keep the yellow field or the price scale.
+Playhead ticks still walk the sim-spot indicator and do **not** Autofit
+(ATM-K4). Stop returns the playhead to that open. AZ-ATM **v0.1.4** · **ATM-O1**
+· **AT-ATM-18**.
+
+**Does not:** MiniTwo; TPO walk; historical chain rebind; changing live
+strike-centered Autofit when Time Machine is idle.
+
+---
+
+## 2026-08-20 — DL-490 Finish-line: Packet A W-G · algo W4 · C2 · ATM chrome
+
+**Decision:** Coach sequenced `HostPnLChart` unblocking: Packet A **W-G PASS**,
+then algo **W4 paint** (trail verticals + overlay), then **C2 apply**
+(as-built right-click menu + 44pt rows), then AZ-ATM **W0-BA GO** and Basic
+Time Machine chrome (calendar, 1-minute path, transport, mini HUD, glows).
+Return-board W-G remains unfiled; Coach overrode the dual-W-G wait for C2.
+
+**Does not:** MiniTwo; TPO walk; Enhanced GEX-on; Packet B BA.
+
+---
+
+## 2026-08-20 — DL-489 AZ-ALGO plan v1.0.3 · AZ-ATM bench plan v1.0
+
+**Decision:** Juliet revises the Algo Alert bench plan to **v1.0.3** without
+replacing executed W1–W3. Absorbs OD-LLM **opened** (DL-484, four laws:
+alert-state only; member-terms narration; named fallback; `engine` on every
+record; fixtures bind builtin only), Demo clocks DL-485/486 with Recorded
+`mode` (DL-488), Tango Reason copy before Bob quotes, W-G evidence `engine` +
+`mode`. W4-0 neighbor **re-sweep** (2026-08-20): Packet A W-G unfiled, C2
+BLOCKED → **W4 HOLD** stands.
+
+New board **`p-az-atm`**: Full Agent Bench Plan **v1.0** for AZ-ATM Spec
+**v0.1.1**. W0 = India · Echo · Tango · Hotel. Math/data **W1** (1m fetch,
+390, close-to-close, playhead) before contested chrome. Chrome **serialized
+behind** Packet A W-G → algo W4 → C2. Basic before Enhanced. TPO behind
+simple. Echo owns non-color-only mode glows.
+
+**Does not:** W0-BA for Time Machine; MiniTwo; firing W4 or ATM chrome.
+
+---
+
+## 2026-08-20 — DL-488 Trail floor default 25; fixtures parameterized
+
+**Decision:** DL-482's **25%** floor propagated to AT-ALGO-4 and the ideas
+inventory (were stale at 20). Conformance fixture set parameterized on member
+knob inputs (`entry_pct`, `trail_start_pct`, `trail_floor_pct`); defaults are
+placeholders, not law. Recorded payload gains `mode: live | demo_whatif |
+demo_timemachine` so demo exits are provenance-labeled. Holder subtitle
+`Recorded · demo` for demo modes. FTI **v0.1.2** inherits. AZ-ALGO **v1.0.2**.
+
+**Does not:** MiniTwo; HostPnLChart (W4 hold); BUILD AUTHORITY.
+
+---
+
+## 2026-08-20 — DL-487 Time Machine day is 390 closes; walk close-to-close or TPO path
+
+**Decision:** Coach: **each day will have 390 candles or closes.** Replay may
+**move simple from close to close**, or do a **more complex download of TPO
+data and follow the path.** Folded into AZ-ATM **v0.1.1**. Simple close-to-close
+is the Basic default. TPO is specified, not dropped. Missing TPO is **NO TPO**,
+not a fake path from OHLC. Do not pad short sessions to 390. Index 16:15 extra
+minutes, if they printed, **append** — 390 is not silently rewritten to 405.
+
+**Does not:** MiniTwo; BUILD AUTHORITY; choose TPO grain (tick vs 30-min letters)
+— that stays open on AZ-ATM §13.
+
+---
+
+## 2026-08-20 — DL-486 Analyzer Time Machine is OnDemand day replay (not What-if)
+
+**Decision:** Coach seats Analyzer **Time Machine** as thinkorswim **OnDemand-class
+day replay**, separate from **What-if**. Spec:
+`Specs/FatTail-Labs-Options-Lab-Analyzer-Time-Machine-Spec-v0.1.md` (**AZ-ATM** v0.1,
+DRAFT, not BUILD AUTHORITY until Phase 5).
+
+**What-if** stays the inspector knobs: ad-hoc **time, spot, and vol** (TM-A1 /
+§1.11). Must not be labeled Time Machine.
+
+**Time Machine:** calendar control selects the NY day → system downloads the
+**1-minute** underlier path → member sees the **mini chart fill as it downloads**
+→ pick start time → video controls **Start / Pause / Stop** at **3× / 10× / 20×**
+in the **dark strip above the canvas, right of Autofit**. **Strikes/in** moves
+**left of Autofit**. Mini day **candle or line** chart lives in the **upper-right
+canvas corner** with a **draggable scrubber**. Inner viewport glow: **blue** for
+Time Machine, **red** for What-if (blue wins if both).
+
+**Basic** Time Machine **turns off GEX and Probability**. **Enhanced** Time
+Machine **allows** GEX and Probability. Primitive plane is **price and time**;
+vol from full chain snaps is later (**FI-036**). Algo Demo may point at this
+clock. Not Surface §4.6 snap-rebind. No client Massive.
+
+**Does not:** MiniTwo until asked; BUILD AUTHORITY; last-minute package IV in
+Basic.
+
+---
+
+## 2026-08-20 — DL-485 Algo Demo: What-if Spot / Time / Vol trigger the trail
+
+**Decision:** Coach opens **FI-033**. Type → Algo has **Demo**. On: works
+outside RTH on a future expiry; Save enables **What-if**; member **moves
+Spot** and **manipulates Time and Vol** to arm and trail. Eval uses the
+simulated spot and elapsed clock against the built-in engine (Reason off)
+or stored hold/fold prompts (Reason on). This **supersedes OD-DEMO out**
+for this dogfood path.
+
+**Does not:** MiniTwo until asked; Tradier close; LLM fire from Demo.
+
+---
+
+## 2026-08-20 — DL-484 Algo trail stops may inject an AI hold/fold Reason
+
+**Decision:** Coach: the **two trail stops** (stop the trail / end the trail)
+each have a **Reason** checkbox. On → member injects a prompt the AI uses
+for **hold or fold** at that stop. Off or blank → **built-in** trail
+engine (no LLM). Start-gain and decay-end do not get Reason in v1.
+
+**Does not:** MiniTwo until asked; fire an LLM from the Builder; profit
+claims in default copy.
+
+---
+
+## 2026-08-20 — DL-483 Algo trail decay ends at EoD unless specified
+
+**Decision:** Coach: the trail decays **75% → 25%** over a bounded window.
+There is an **end time or condition** where that dynamic decay **stops**.
+Specify nothing → **end of day** (this session’s last trade: index 16:15 ET,
+equity 16:00 ET). A member datetime is the decay wall (`f = fMin` there).
+This is **not** the option’s last-trade days later, and not the AZ-ALB alert
+expiration field.
+
+**Does not:** MiniTwo until asked; change arm / ratchet math.
+
+---
+
+## 2026-08-20 — DL-482 Algo Builder: three always-on trail knobs (75 / 75 / 25)
+
+**Decision:** Coach: Type → Algo always exposes **three** member criteria:
+**start profit management** = % unrealized gain of debit (default **75%**);
+**stop the trail at** % of high-water (default **75%**); **end the trail at**
+% of high-water (default **25%**). Start occurs when unrealized gain hits
+the first knob. Knobs stay on even before an OTM debit fly is bound.
+Supersedes the 20% session-end floor in AZ-ALGO §0.5 / §5.2 as **25%**.
+
+**Does not:** MiniTwo until asked; change trail math besides `fMin` default.
+
+---
+
 ## 2026-08-20 — DL-481 SPX 1DTE / monthly Friday uses SPXW not truncated SPX
 
 **Decision:** On dates where **SPX monthly (AM)** and **SPXW weekly (PM)**

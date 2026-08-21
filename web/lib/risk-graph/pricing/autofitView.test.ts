@@ -5,6 +5,7 @@
 import {
   AUTOFIT_PAD_FRAC,
   AUTOFIT_MIN_HALF_PTS,
+  openCenteredXRange,
   strikeCenteredXRange,
 } from "./autofitView";
 
@@ -59,4 +60,31 @@ assert(
   "low pts/in still never clips the strikes",
 );
 
-console.log("  7 tests passed");
+{
+  const near = openCenteredXRange({
+    strikes: [7675, 7690, 7705],
+    open: 7688,
+    plotWidthPx: 960,
+    ptsPerInch: 80,
+  });
+  assert(near.center === 7688, "nearby session centers on open, not strike mid");
+  assert(
+    Math.abs(near.xMax - near.xMin - 800) < 1e-6,
+    "nearby open keeps density span",
+  );
+  assert(near.xMin < 7688 && near.xMax > 7688, "open is inside the window");
+}
+
+{
+  const far = openCenteredXRange({
+    strikes: [7675, 7690, 7705],
+    open: 5800,
+    plotWidthPx: 960,
+    ptsPerInch: 80,
+  });
+  assert(far.center === 5800, "far open is the Autofit center");
+  assert(far.xMin < 5800, "open is on-scale");
+  assert(far.xMax > 7705, "today's strikes stay in view");
+}
+
+console.log("  9 tests passed");

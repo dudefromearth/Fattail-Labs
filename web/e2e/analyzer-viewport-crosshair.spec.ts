@@ -45,6 +45,17 @@ test("Analyzer plot hover paints scale crosshair chips", async ({ page }) => {
   await expect
     .poll(async () => host.getAttribute("data-painted"), { timeout: 20_000 })
     .toBe("1");
+  await expect
+    .poll(async () => host.getAttribute("data-spot-label"), { timeout: 20_000 })
+    .toMatch(/^\d+\.\d{2}$/);
+  const spot = page.getByTestId("analyzer-spot-input");
+  await expect
+    .poll(async () => spot.inputValue(), { timeout: 20_000 })
+    .toMatch(/^\d+\.\d{2}$/);
+  const vix = page.getByTestId("analyzer-vix-input");
+  await expect
+    .poll(async () => vix.inputValue(), { timeout: 20_000 })
+    .toMatch(/^\d+\.\d{2}$/);
 
   const box = await host.boundingBox();
   expect(box, "chart host has a box").toBeTruthy();

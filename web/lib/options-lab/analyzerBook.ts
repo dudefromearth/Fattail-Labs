@@ -234,6 +234,26 @@ export type AnalyzerThresholdAlert = {
   /** Underlier print that moved Live → Touched. */
   triggeredSpot?: number;
   color: string;
+  alertClass?: "threshold" | "algo";
+  algoPhase?: "waiting" | "armed" | "recorded";
+  algo?: {
+    variant: "otm_fly_trail";
+    entry_pct: number;
+    trail_start_pct: number;
+    trail_floor_pct: number;
+    decay_end?: "eod" | string;
+    trail_stop_reason?: string;
+    trail_end_reason?: string;
+    /** What-if Spot / Time / Vol drive the trail (FI-033). */
+    demo?: boolean;
+    trail_state?: import("./algoTrailMath").AlgoTrailState;
+    remaining_at_arm?: number;
+    e_at_arm?: number | null;
+    prev_spot?: number;
+    overlay: boolean;
+    high_water_color: string;
+    trail_color: string;
+  };
 };
 
 const POS_KEY = "ft_options_lab_analyzer_positions_v2";
@@ -1189,6 +1209,58 @@ export function createPriceAlert(opts: {
   };
 }
 
+export function createAlgoAlert(opts: {
+  symbol: string;
+  positionId: string;
+  positionLabel?: string;
+  color: string;
+  trailColor: string;
+  entryPct: number;
+  trailStartPct: number;
+  trailFloorPct: number;
+  decayEnd?: "eod" | string;
+  trailStopReason?: string;
+  trailEndReason?: string;
+  demo?: boolean;
+  overlay: boolean;
+  runState?: AlertRunState;
+  id?: string;
+}): AnalyzerThresholdAlert {
+  const title = `${opts.symbol} OTM fly trail`;
+  return {
+    id: opts.id || uid("al"),
+    kind: "position",
+    type: "price_touch",
+    symbol: opts.symbol.toUpperCase(),
+    targetPrice: 0,
+    positionId: opts.positionId,
+    positionLabel: opts.positionLabel,
+    targetIsUnderlier: false,
+    title,
+    severity: "medium",
+    status: "new",
+    runState: opts.runState ?? "live",
+    enabled: alertIsArmed(opts.runState ?? "live"),
+    createdAt: new Date().toISOString(),
+    color: opts.color,
+    alertClass: "algo",
+    algoPhase: "waiting",
+    algo: {
+      variant: "otm_fly_trail",
+      entry_pct: opts.entryPct,
+      trail_start_pct: opts.trailStartPct,
+      trail_floor_pct: opts.trailFloorPct,
+      decay_end: opts.decayEnd ?? "eod",
+      trail_stop_reason: opts.trailStopReason,
+      trail_end_reason: opts.trailEndReason,
+      demo: opts.demo === true,
+      overlay: opts.overlay,
+      high_water_color: opts.color,
+      trail_color: opts.trailColor,
+    },
+  };
+}
+
 export function evaluateAlerts(
   alerts: AnalyzerThresholdAlert[],
   spot: number,
@@ -1202,6 +1274,7 @@ export function evaluateAlerts(
     const state = normalizeAlertRunState(a.runState, a.enabled, a.status);
     if (state !== "live") return a;
     if (a.symbol && a.symbol !== sym) return a;
+    if (a.alertClass === "algo") return a;
     let hit = false;
     if (a.type === "price_above" && spot >= a.targetPrice) hit = true;
     if (a.type === "price_below" && spot <= a.targetPrice) hit = true;

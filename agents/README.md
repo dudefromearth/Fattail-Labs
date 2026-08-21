@@ -167,6 +167,16 @@ and the gate it feeds. If a seed can't be executed from cold, it isn't finished.
   Board: `agents/p-az-viewport-2d/ORCHESTRATOR.md`.  
   **Next: W0-0 Coach stamp · no PnLChart code before W0-BA (or impl+DL).**  
   Impl: `docs/Options-Lab-Analyzer-Viewport-Drag-Scroll-Implementation-Plan-v1.0.md`.
+- `agents/p-az-algo/` — **Analyzer Algo Alert** (OTM-fly **narrative trail**, not a flatten).  
+  Spec: `Specs/FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md` (**v1.0.2 DRAFT** · **DL-472** · **DL-473** · **DL-488**).  
+  **Plan:** `docs/Options-Lab-Analyzer-Algo-Alert-Full-Agent-Bench-Plan-v1.0.md` **v1.0.3** · **DL-474** · **DL-489**.  
+  Board: `agents/p-az-algo/ORCHESTRATOR.md`.  
+  **W1–W3 PASS.** Next: W3-R (Reason) · W4 HOLD (Packet A / C2). Demo + Reason **in**.  
+- `agents/p-az-atm/` — **Analyzer Time Machine** (OnDemand **day replay**, not What-if).  
+  Spec: `Specs/FatTail-Labs-Options-Lab-Analyzer-Time-Machine-Spec-v0.1.md` (**v0.1.1 DRAFT** · **DL-486** · **DL-487**).  
+  **Plan:** `docs/Options-Lab-Analyzer-Time-Machine-Full-Agent-Bench-Plan-v1.0.md` **v1.0** · **DL-489**.  
+  Board: `agents/p-az-atm/ORCHESTRATOR.md`.  
+  **Next: W0-0 Coach stamp.** W1 math/data before chrome. Chrome behind Packet A W-G → algo W4 → C2.
 - `agents/p-alerts/` — **Labs Alerts** (two planes: Manager + API · Analyzer first client).  
   Specs: ALM v1.0.1 · AZ-ALB v1.0.1 · **DL-464**.  
   **Plan:** `docs/Labs-Alerts-Full-Agent-Bench-Plan-v1.0.md` **v1.0.3**.  

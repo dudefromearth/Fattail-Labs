@@ -131,6 +131,18 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(az.includes("onStrikeCommit="), "listed strike handles wired");
   assert(az.includes('"strike-drop"'), "leg / group drop Autofits");
   assert(host.includes("bindStrikeHandles"), "yellow ticks bind on host");
+  assert(host.includes("SPOT_LABEL_FG"), "spot chip on the strike scale");
+  assert(host.includes("#facc15"), "spot scale text is yellow-400");
+  assert(host.includes("#3f3f46"), "spot scale field is dark grey");
+  assert(
+    host.includes("(Math.round(spotMark * 100) / 100).toFixed(2)"),
+    "spot chip keeps hundredths so the scale doesn't jump",
+  );
+  assert(host.includes("dataset.spotLabel"), "spot chip is observable");
+  assert(
+    host.includes("ctx.font = AXIS_FONT"),
+    "spot chip font matches strike ticks",
+  );
   assert(host.includes("strikeHandleHot"), "handle size follows proximity");
   assert(
     !az.includes('data-notice-kind="empty_book"'),
@@ -142,9 +154,26 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(!az.includes("opf-model-select"), "OPF model is not member chrome");
   assert(!az.includes("OPF risk graph"), "no chatty upper-left title");
   assert(az.includes('data-testid="analyzer-autofit"'), "Auto-fit on viewport strip");
+  assert(az.includes("function formatFixed2"), "Spot and VIX share hundredths format");
+  assert(
+    /return \(Math\.round\(n \* 100\) \/ 100\)\.toFixed\(2\)/.test(az),
+    "Spot and VIX keep hundredths including .00",
+  );
+  assert(az.includes("setSpotStr(formatFixed2(opfSpot))"), "Spot live fill is fixed-2");
+  assert(az.includes("setVixStr(formatFixed2(opfVix))"), "VIX live fill is fixed-2");
   assert(
     host.includes("strikeCenteredXRange"),
     "Autofit X is strike-span, not ATM wings",
+  );
+  assert(az.includes("sessionOpenSpot"), "TM session open helper");
+  assert(az.includes("setSpotStr(formatFixed2(tmOpenSpot))"), "Spot fills from session open");
+  assert(az.includes("autofitCenterPrice={tmOpenSpot}"), "Autofit X centers on session open");
+  assert(host.includes("openCenteredXRange"), "TM Autofit recenters on open");
+  assert(az.includes("sessionSpotNow"), "TM entry/eligibility uses playhead");
+  assert(az.includes("demo: tmActive"), "Create Alert during TM defaults Demo");
+  assert(
+    az.includes("if (ag.demo && !tmDay)"),
+    "Demo does not force What-if when TM owns the clock",
   );
   const controls = readFileSync(
     join(here, "../../components/options-lab/AnalyzerControlsColumn.tsx"),

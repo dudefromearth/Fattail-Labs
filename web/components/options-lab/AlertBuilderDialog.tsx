@@ -27,6 +27,19 @@ import {
   ALERTS_SUITE,
   ALERT_TAG_CHIPS,
 } from "@/lib/alerts/analyzerAlertsAdapter";
+import {
+  ALGO_ENTRY_PCT_DEFAULT,
+  ALGO_F0_DEFAULT,
+  ALGO_FMIN_DEFAULT,
+  algoReasonPrompt,
+} from "@/lib/options-lab/algoTrailMath";
+import { sessionEodMs } from "@/lib/options-lab/whatIfClocks";
+
+function toDatetimeLocal(ms: number): string {
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 type Category = "price" | "position" | "greeks" | "algo";
 type PosTab = "pnl" | "profit" | "greeks" | "breakeven" | "trailing" | "zerodte";
@@ -41,11 +54,17 @@ export type AlertBuilderSeed = {
   runState?: AlertsManagerRunState;
   touchedAt?: string;
   touchedSpot?: number;
+  /** Default Demo on when creating during Time Machine (ATM-A1). */
+  demo?: boolean;
+  demoClock?: "timemachine" | "whatif";
+  /** Session clock for EoD (playhead `t_ms` on a TM day). */
+  clockMs?: number;
 };
 
 export type AlertBuilderPosition = {
   id: string;
   strikesLabel: string;
+  algoEligible?: boolean;
 };
 
 type Props = {
@@ -99,6 +118,25 @@ export default function AlertBuilderDialog({
   const [noExp, setNoExp] = useState(false);
   const [expiration, setExpiration] = useState("");
   const [runState, setRunState] = useState<AlertsManagerRunState>("live");
+  const [entryPct, setEntryPct] = useState(
+    Math.round(ALGO_ENTRY_PCT_DEFAULT * 100),
+  );
+  const [trailStartPct, setTrailStartPct] = useState(
+    Math.round(ALGO_F0_DEFAULT * 100),
+  );
+  const [trailFloorPct, setTrailFloorPct] = useState(
+    Math.round(ALGO_FMIN_DEFAULT * 100),
+  );
+  const [decayEod, setDecayEod] = useState(true);
+  const [decayEndAt, setDecayEndAt] = useState("");
+  const [stopReasonOn, setStopReasonOn] = useState(false);
+  const [stopReason, setStopReason] = useState("");
+  const [endReasonOn, setEndReasonOn] = useState(false);
+  const [endReason, setEndReason] = useState("");
+  const [demoOn, setDemoOn] = useState(false);
+  const [overlayOn, setOverlayOn] = useState(false);
+  const [hwColorId, setHwColorId] = useState<(typeof ALERT_TAG_CHIPS)[number]["id"]>("target");
+  const [trailColorId, setTrailColorId] = useState<(typeof ALERT_TAG_CHIPS)[number]["id"]>("warning");
   const seededRef = useRef(false);
   const spotRef = useRef(spot);
   const positionsRef = useRef(positions);
@@ -127,7 +165,12 @@ export default function AlertBuilderDialog({
     );
     setBehavior("once_only");
     setTagId("watch");
-    setPositionId(seed?.positionId || livePositions[0]?.id || "");
+    const eligible = livePositions.filter((p) => p.algoEligible);
+    setPositionId(
+      seed?.positionId ||
+        (cat === "algo" ? eligible[0]?.id : livePositions[0]?.id) ||
+        "",
+    );
     setPosTab("pnl");
     setGreek("delta");
     setNoExp(false);
@@ -136,7 +179,22 @@ export default function AlertBuilderDialog({
       timeZone: "America/New_York",
     });
     setExpiration(`${et}T16:00`);
-  }, [open, seed]);
+    setEntryPct(Math.round(ALGO_ENTRY_PCT_DEFAULT * 100));
+    setTrailStartPct(Math.round(ALGO_F0_DEFAULT * 100));
+    setTrailFloorPct(Math.round(ALGO_FMIN_DEFAULT * 100));
+    setDecayEod(true);
+    setDecayEndAt(
+      toDatetimeLocal(sessionEodMs(symbol, seed?.clockMs ?? Date.now())),
+    );
+    setStopReasonOn(false);
+    setStopReason("");
+    setEndReasonOn(false);
+    setEndReason("");
+    setDemoOn(seed?.demo === true);
+    setOverlayOn(false);
+    setHwColorId("target");
+    setTrailColorId("warning");
+  }, [open, seed, symbol]);
 
   const bound = positions.find((p) => p.id === positionId) ?? positions[0];
   const title = useMemo(() => {
@@ -152,12 +210,41 @@ export default function AlertBuilderDialog({
     category === "position" &&
     (posTab === "breakeven" || posTab === "trailing" || posTab === "zerodte");
   const algo = category === "algo";
+  const algoList = positions.filter((p) => p.algoEligible);
+  /** Eligible flies first; if none qualify, still list the book so they can pick. */
+  const pickerPositions =
+    category === "algo"
+      ? algoList.length > 0
+        ? algoList
+        : positions
+      : positions;
+
+  useEffect(() => {
+    if (!open) return;
+    if (
+      category !== "algo" &&
+      category !== "position" &&
+      category !== "greeks"
+    ) {
+      return;
+    }
+    if (!pickerPositions.length) return;
+    if (positionId && pickerPositions.some((p) => p.id === positionId)) return;
+    setPositionId(pickerPositions[0].id);
+  }, [open, category, pickerPositions, positionId]);
   const n = Number(target);
-  const canSave =
-    !placeholder &&
-    !algo &&
-    Number.isFinite(n) &&
-    (category !== "position" || !!positionId || positions.length === 0);
+  const algoOk =
+    algo &&
+    !!positionId &&
+    algoList.some((p) => p.id === positionId) &&
+    entryPct > 0 &&
+    trailStartPct > trailFloorPct &&
+    trailFloorPct > 0;
+  const canSave = algo
+    ? algoOk
+    : !placeholder &&
+      Number.isFinite(n) &&
+      (category !== "position" || !!positionId || positions.length === 0);
 
   const bump = (delta: number) => {
     const cur = Number(target);
@@ -194,6 +281,60 @@ export default function AlertBuilderDialog({
             disabled={!canSave}
             onClick={() => {
               if (!canSave) return;
+              if (category === "algo") {
+                const hw =
+                  ALERT_TAG_CHIPS.find((t) => t.id === hwColorId) ??
+                  ALERT_TAG_CHIPS[3];
+                const tr =
+                  ALERT_TAG_CHIPS.find((t) => t.id === trailColorId) ??
+                  ALERT_TAG_CHIPS[2];
+                onSave({
+                  id: seed?.id,
+                  source_system: ALERTS_SOURCE_SYSTEM,
+                  suite: ALERTS_SUITE,
+                  domain: ALERTS_DOMAIN,
+                  alert_class: "algo",
+                  kind: "position",
+                  symbol,
+                  title: `${symbol} OTM fly trail`,
+                  color: hw.paint,
+                  behavior: "once_only",
+                  severity: ALERTS_SEVERITY_DEFAULT,
+                  run_state: runState,
+                  position_id: positionId,
+                  position_label: bound?.strikesLabel,
+                  expires_at: noExp ? undefined : expiration || undefined,
+                  trigger: {
+                    family: "algo",
+                    condition: "at",
+                    target: 0,
+                    algo: {
+                      variant: "otm_fly_trail",
+                      entry_pct: entryPct,
+                      trail_start_pct: trailStartPct,
+                      trail_floor_pct: trailFloorPct,
+                      decay_end:
+                        decayEod || !decayEndAt
+                          ? "eod"
+                          : new Date(decayEndAt).toISOString(),
+                      trail_stop_reason: algoReasonPrompt(
+                        stopReasonOn,
+                        stopReason,
+                      ),
+                      trail_end_reason: algoReasonPrompt(
+                        endReasonOn,
+                        endReason,
+                      ),
+                      demo: demoOn,
+                      overlay: overlayOn,
+                      high_water_color: hw.paint,
+                      trail_color: tr.paint,
+                    },
+                  },
+                });
+                onClose();
+                return;
+              }
               const kind: AlertsManagerKind =
                 category === "price" ? "canvas" : "position";
               const family =
@@ -277,7 +418,7 @@ export default function AlertBuilderDialog({
         {(category === "position" ||
           category === "greeks" ||
           category === "algo") &&
-          positions.length > 0 && (
+          pickerPositions.length > 0 && (
             <div className={group}>
               <label className={lab} htmlFor="alert-builder-position">
                 Position
@@ -287,10 +428,13 @@ export default function AlertBuilderDialog({
                 className={field}
                 value={positionId}
                 onChange={(e) => setPositionId(e.target.value)}
+                data-testid="alert-builder-position"
               >
-                {positions.map((p) => (
+                {pickerPositions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.strikesLabel}
+                    {category === "algo" && p.algoEligible === false
+                      ? `${p.strikesLabel} — not an OTM debit fly`
+                      : p.strikesLabel}
                   </option>
                 ))}
               </select>
@@ -318,7 +462,185 @@ export default function AlertBuilderDialog({
           </div>
         )}
 
-        {placeholder || algo ? (
+        {algo ? (
+          <div className="flex flex-col gap-4" data-testid="analyzer-alert-algo">
+            {algoList.length === 0 ? (
+              <p className="text-[length:var(--text-subheadline)] text-[var(--color-label-secondary)]">
+                {positions.length === 0
+                  ? "Specify an OTM butterfly."
+                  : "Choose a long OTM debit butterfly (call body above spot, put body below). Save stays off until that bind is valid."}
+              </p>
+            ) : (
+              <p
+                className="text-[length:var(--text-subheadline)] leading-snug text-[var(--color-label)]"
+                data-testid="analyzer-alert-algo-copy"
+              >
+                This is a narrative trail on this OTM butterfly. It will not
+                close the position. It waits until unrealized gain reaches{" "}
+                {entryPct}% of the debit, then arms. The trail sits at{" "}
+                {trailStartPct}% of the high-water unrealized gain, ratchets
+                with new highs, and tightens toward {trailFloorPct}% by
+                decay end, paced by premium decay. Two dashed verticals
+                (high-water and trail); optional band between them pulses if
+                spot threatens the trail. If spot exits the trail, the alert
+                stops and records.
+              </p>
+            )}
+            <label className={lab} htmlFor="algo-entry-pct">
+              Start profit management (% unrealized gain)
+            </label>
+            <input
+              id="algo-entry-pct"
+              className={field}
+              type="number"
+              min={1}
+              max={100}
+              value={entryPct}
+              onChange={(e) => setEntryPct(Number(e.target.value) || 0)}
+              data-testid="algo-entry-pct"
+            />
+            <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
+              Starts when unrealized gain reaches this percent of the debit.
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[10rem] flex-1">
+                <label className={lab} htmlFor="algo-trail-start">
+                  Stop the trail at (% of high-water)
+                </label>
+                <input
+                  id="algo-trail-start"
+                  className={field}
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={trailStartPct}
+                  onChange={(e) =>
+                    setTrailStartPct(Number(e.target.value) || 0)
+                  }
+                  data-testid="algo-trail-start"
+                />
+              </div>
+              <label className="flex min-h-[var(--hit-min)] items-center gap-2 pb-1">
+                <input
+                  type="checkbox"
+                  checked={stopReasonOn}
+                  onChange={(e) => setStopReasonOn(e.target.checked)}
+                  data-testid="algo-trail-stop-reason-on"
+                />
+                Reason
+              </label>
+            </div>
+            {stopReasonOn ? (
+              <textarea
+                className={field + " min-h-[5.5rem] py-2"}
+                value={stopReason}
+                onChange={(e) => setStopReason(e.target.value)}
+                placeholder="Prompt the AI will use to hold or fold at this stop. Off = built-in engine."
+                data-testid="algo-trail-stop-reason"
+              />
+            ) : null}
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-[10rem] flex-1">
+                <label className={lab} htmlFor="algo-trail-floor">
+                  End the trail at (% of high-water)
+                </label>
+                <input
+                  id="algo-trail-floor"
+                  className={field}
+                  type="number"
+                  min={1}
+                  max={99}
+                  value={trailFloorPct}
+                  onChange={(e) =>
+                    setTrailFloorPct(Number(e.target.value) || 0)
+                  }
+                  data-testid="algo-trail-floor"
+                />
+              </div>
+              <label className="flex min-h-[var(--hit-min)] items-center gap-2 pb-1">
+                <input
+                  type="checkbox"
+                  checked={endReasonOn}
+                  onChange={(e) => setEndReasonOn(e.target.checked)}
+                  data-testid="algo-trail-end-reason-on"
+                />
+                Reason
+              </label>
+            </div>
+            {endReasonOn ? (
+              <textarea
+                className={field + " min-h-[5.5rem] py-2"}
+                value={endReason}
+                onChange={(e) => setEndReason(e.target.value)}
+                placeholder="Prompt the AI will use to hold or fold at trail end. Off = built-in engine."
+                data-testid="algo-trail-end-reason"
+              />
+            ) : null}
+            <label className="flex min-h-[var(--hit-min)] items-center gap-3">
+              <input
+                type="checkbox"
+                checked={decayEod}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setDecayEod(on);
+                  if (!on && !decayEndAt) {
+                    setDecayEndAt(
+                      toDatetimeLocal(
+                        sessionEodMs(symbol, seed?.clockMs ?? Date.now()),
+                      ),
+                    );
+                  }
+                }}
+                data-testid="algo-decay-eod"
+              />
+              Decay ends at end of day
+            </label>
+            {!decayEod ? (
+              <>
+                <label className={lab} htmlFor="algo-decay-end">
+                  Decay ends
+                </label>
+                <input
+                  id="algo-decay-end"
+                  className={field}
+                  type="datetime-local"
+                  value={decayEndAt}
+                  onChange={(e) => setDecayEndAt(e.target.value)}
+                  data-testid="algo-decay-end"
+                />
+              </>
+            ) : null}
+            <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
+              Trail decays from {trailStartPct}% to {trailFloorPct}% until this
+              time. Specify nothing and it goes to end of day.
+            </p>
+            <label className="flex min-h-[var(--hit-min)] items-center gap-3">
+              <input
+                type="checkbox"
+                checked={demoOn}
+                onChange={(e) => setDemoOn(e.target.checked)}
+                data-testid="algo-demo"
+              />
+              Demo
+            </label>
+            {demoOn ? (
+              <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
+                {seed?.demoClock === "timemachine"
+                  ? "Play or scrub the Time Machine day to arm and trail. Enter the fly, attach the algo, then let the session print — same sequence as live."
+                  : "Enable What-if, then move Spot, Time, and Vol to arm and trail the fly. Off-market is fine."}
+              </p>
+            ) : null}
+            <label className="flex min-h-[var(--hit-min)] items-center gap-3">
+              <input
+                type="checkbox"
+                checked={overlayOn}
+                onChange={(e) => setOverlayOn(e.target.checked)}
+                data-testid="algo-overlay"
+              />
+              Overlay between lines
+            </label>
+          </div>
+        ) : placeholder ? (
           <p
             className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-separator)] px-4 py-8 text-center text-[length:var(--text-subheadline)] text-[var(--color-label-tertiary)]"
             data-testid="analyzer-alert-coming-soon"

@@ -29,11 +29,11 @@ Packet B              after W-G · Echo grammar · not this fire
 | W0-0 | Coach plan stamp | **STAMP** (`gate-reports/W0-0-coach-stamp.md`) |
 | W0-1 | Lima hash | **PASS** (`gate-reports/W0-1-lima.md`) |
 | W0-2 … W0-BA | Bypassed · **DL-457** | named |
-| **W1-1** | Coach GO Packet A + DL-457 | **in flight** |
-| W2-1 | W1-1 PASS | BLOCKED |
-| W3-1 Lima | W1-1 PASS | BLOCKED |
-| W3-2 Echo (W3-E) | W1-1 PASS | BLOCKED |
-| W-G | W2 + W3 + W3-E | BLOCKED |
+| **W1-1** | Coach GO Packet A + DL-457 | **PASS** (`W1-G.md`) |
+| W2-1 | W1-1 PASS | **PASS** (`W2-1-kilo.md`) |
+| W3-1 Lima | W1-1 PASS | **PASS** (`W3-1-lima.md`) |
+| W3-2 Echo (W3-E) | W1-1 PASS | **PASS** (`W3-2-echo.md`) |
+| W-G | W2 + W3 + W3-E | **PASS** (`W-G.md`) |
 | Packet B BA | After Packet A W-G · **own Coach stamp** | BLOCKED |
 | WB-1 | After Packet B BA + Echo Packet B grammar | BLOCKED |
 
@@ -57,6 +57,6 @@ Packet B              after W-G · Echo grammar · not this fire
 | Analysis | Review-folded · VP-B1 stamped |
 | This review plan | **W0-0 STAMP** · W0-1 PASS · **NEXT W0-2** |
 | Impl plan v1.0 | **Landed · awaiting fire** |
-| W0 | Not fired |
-| W1+ Packet A | Not fired |
-| Packet B | Blocked |
+| W0 | Bypassed **DL-457** |
+| W1+ Packet A | **W-G PASS** |
+| Packet B | Own BA (handles as-built; not this fire) |

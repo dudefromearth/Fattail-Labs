@@ -37,6 +37,17 @@ export function remainingLastTradeHours(
   return rem;
 }
 
+/** Today's last-trade wall in America/New_York (index 16:15 · equity 16:00). */
+export function sessionEodMs(symbol: string, nowMs: number = Date.now()): number {
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(nowMs));
+  return lastTradeInstantMs(ymd, symbol);
+}
+
 export function whatIfTimeStepHours(remainingHours: number): number {
   if (remainingHours <= 8) return 5 / 60;
   if (remainingHours <= 24) return 15 / 60;

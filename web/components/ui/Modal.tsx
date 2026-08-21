@@ -31,12 +31,20 @@ type Props = {
 const FLOAT_W = 512;
 const FLOAT_DEFAULT = { x: 48, y: 72 };
 
+/** Left of the Analyzer canvas — next to Create alert, not the far right. */
 function defaultFloatPos(): { x: number; y: number } {
   const w = typeof window !== "undefined" ? window.innerWidth : FLOAT_W + 96;
-  const x = Math.max(
-    16,
-    Math.min(w - Math.min(FLOAT_W, w - 32) - 16, w - FLOAT_W - 40),
-  );
+  const canvas =
+    typeof document !== "undefined"
+      ? document.querySelector("[data-testid='pnl-chart-host']")
+      : null;
+  const canvasLeft = canvas?.getBoundingClientRect().left;
+  const preferred =
+    canvasLeft != null && Number.isFinite(canvasLeft)
+      ? canvasLeft + 12
+      : FLOAT_DEFAULT.x;
+  const maxX = Math.max(16, w - Math.min(FLOAT_W, w - 32) - 16);
+  const x = Math.max(16, Math.min(preferred, maxX));
   return { x: Number.isFinite(x) ? x : FLOAT_DEFAULT.x, y: FLOAT_DEFAULT.y };
 }
 

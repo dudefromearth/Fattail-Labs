@@ -29,12 +29,14 @@ import {
   formatAlertTouchedContext,
   normalizeAlertRunState,
   createPriceAlert,
+  createAlgoAlert,
   evaluateAlerts,
   loadAlerts,
   loadPositions,
   positionStrikeAlertLabel,
   lockLimit,
   lockNatural,
+  definedDebitSigned,
   closePosition,
   positionFromInput,
   saveAlerts,
@@ -90,6 +92,8 @@ import AnalyzerPositionsList from "@/components/options-lab/AnalyzerPositionsLis
 import AnalyzerControlsColumn from "@/components/options-lab/AnalyzerControlsColumn";
 import PositionBuilder from "@/components/options-lab/PositionBuilder";
 import HostPnLChart from "@/components/options-lab/risk-graph/HostPnLChart";
+import AnalyzerTimeMachineStrip from "@/components/options-lab/AnalyzerTimeMachineStrip";
+import AnalyzerDayReplayHud from "@/components/options-lab/AnalyzerDayReplayHud";
 import type { PnLChartHandle } from "@/lib/risk-graph/pnlChartTypes";
 import {
   buildGexProfile,
@@ -102,8 +106,30 @@ import Button from "@/components/ui/Button";
 import AlertBuilderDialog, {
   type AlertBuilderSeed,
 } from "@/components/options-lab/AlertBuilderDialog";
+import AlgoNarrativePanel from "@/components/options-lab/AlgoNarrativePanel";
 import type { AlertsManagerDraft } from "@/lib/alerts/analyzerAlertsAdapter";
 import { alertUnbound } from "@/lib/alerts/analyzerAlertsAdapter";
+import {
+  algoEntryDebit,
+  isOtmDebitButterfly,
+} from "@/lib/options-lab/algoTrailMath";
+import {
+  remainingHoursForAlgo,
+  tickAlgoAlert,
+} from "@/lib/options-lab/algoEval";
+import { findPnLAtPrice } from "@/lib/risk-graph/hostAlertMenu";
+import {
+  replayCursor,
+  sessionOpenCursor,
+  sessionOpenSpot,
+  sessionSpotNow,
+  spotPctFromReplay,
+  type ReplayCursor,
+  type ReplaySample,
+  type ReplaySpeed,
+} from "@/lib/options-lab/algoDayReplay";
+import { fetchAlgoReplayPath } from "@/lib/options-lab/algoReplayApi";
+import { positionNetPremium } from "@/lib/options-lab/positionToTrade";
 import { IconChevronUpDown } from "@/components/ui/icons";
 import { applyStrikeDragToPosition } from "@/lib/options-lab/listedStrikeDrag";
 import { useIsAdmin } from "@/lib/useIsAdmin";
@@ -136,6 +162,7 @@ import {
   resolveViewportBookPolicy,
   visibleBookTrade,
 } from "@/lib/options-lab/cardDisplayState";
+import { curveFailureNotice } from "@/lib/options-lab/localBookCurves";
 
 const BOOK_H_KEY = "ft_analyzer_book_height_px_v2";
 const BOOK_H_MIN = 72;
@@ -159,6 +186,12 @@ async function fetchPlanePosture(): Promise<SessionPosture> {
   } catch {
     return clockPostureFallback();
   }
+}
+
+/** Spot and VIX keep hundredths, including .00, so the fields don't jump. */
+function formatFixed2(n: number): string {
+  if (!Number.isFinite(n)) return "";
+  return (Math.round(n * 100) / 100).toFixed(2);
 }
 
 export default function OpfRiskAnalyzer() {
@@ -224,6 +257,84 @@ export default function OpfRiskAnalyzer() {
   useEffect(() => {
     setAutofitPtsPerInch(loadAutofitPtsPerInch());
   }, []);
+
+  const [tmDay, setTmDay] = useState("");
+  const [tmSamples, setTmSamples] = useState<ReplaySample[]>([]);
+  const [tmHole, setTmHole] = useState<string | null>(null);
+  const [tmLoading, setTmLoading] = useState(false);
+  const [tmPlaying, setTmPlaying] = useState(false);
+  const [tmSpeed, setTmSpeed] = useState<ReplaySpeed>(10);
+  const [tmCursor, setTmCursor] = useState<ReplayCursor | null>(null);
+  const tmOriginRef = useRef({ wall: 0, sample: 0 });
+  const tmAllRef = useRef<ReplaySample[]>([]);
+  const [tmOpenSpot, setTmOpenSpot] = useState<number | null>(null);
+
+  const loadTmDay = useCallback(
+    async (day: string) => {
+      setTmDay(day);
+      setTmPlaying(false);
+      setTmHole(null);
+      setTmCursor(null);
+      setTmSamples([]);
+      tmAllRef.current = [];
+      if (!day) {
+        setTmOpenSpot(null);
+        return;
+      }
+      setTmLoading(true);
+      const path = await fetchAlgoReplayPath(symbol, day);
+      setTmLoading(false);
+      const rows = path?.samples ?? [];
+      if (!rows.length) {
+        setTmHole(path?.hole || "NO PATH");
+        setTmOpenSpot(null);
+        return;
+      }
+      tmAllRef.current = rows;
+      setTmOpenSpot(sessionOpenSpot(rows));
+      setTmCursor(sessionOpenCursor(rows));
+      let i = 0;
+      const paint = () => {
+        i = Math.min(rows.length, i + Math.max(6, Math.ceil(rows.length / 48)));
+        setTmSamples(rows.slice(0, i));
+        if (i < rows.length) requestAnimationFrame(paint);
+      };
+      requestAnimationFrame(paint);
+    },
+    [symbol],
+  );
+
+  useEffect(() => {
+    setTmDay("");
+    setTmSamples([]);
+    setTmCursor(null);
+    setTmPlaying(false);
+    setTmHole(null);
+    tmAllRef.current = [];
+    setTmOpenSpot(null);
+  }, [symbol]);
+
+  useEffect(() => {
+    if (!tmPlaying || !tmSamples.length) return;
+    let raf = 0;
+    const tick = (now: number) => {
+      const c = replayCursor({
+        samples: tmAllRef.current.length ? tmAllRef.current : tmSamples,
+        originWallMs: tmOriginRef.current.wall,
+        originSampleMs: tmOriginRef.current.sample,
+        nowWallMs: now,
+        speed: tmSpeed,
+      });
+      setTmCursor(c);
+      if (c?.done) {
+        setTmPlaying(false);
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [tmPlaying, tmSamples, tmSpeed]);
 
   const chartRef = useRef<PnLChartHandle>(null);
   const positionsRef = useRef(positions);
@@ -628,17 +739,6 @@ export default function OpfRiskAnalyzer() {
     );
   }, [positions, strikeDrag, chain]);
 
-  const alertBuilderPositions = useMemo(
-    () =>
-      displayPositions
-        .filter((p) => p.visible)
-        .map((p) => ({
-          id: p.id,
-          strikesLabel: positionStrikeAlertLabel(p),
-        })),
-    [displayPositions],
-  );
-
   const closeAlertBuilder = useCallback(() => {
     setAlertBuilderOpen(false);
   }, []);
@@ -669,9 +769,10 @@ export default function OpfRiskAnalyzer() {
 
   const spotOverride = useMemo(() => {
     const n = Number(spotStr);
-    if (Number.isFinite(n) && n > 0) return n;
-    return null;
-  }, [spotStr]);
+    if (!(Number.isFinite(n) && n > 0)) return null;
+    if (tmOpenSpot != null && !spotDirty) return null;
+    return n;
+  }, [spotStr, tmOpenSpot, spotDirty]);
 
   const vix = useMemo(() => {
     const n = Number(vixStr);
@@ -698,16 +799,19 @@ export default function OpfRiskAnalyzer() {
   const elapsedHours = Math.min(Math.max(0, simElapsedHours), remainingHours);
 
   const timeOffsetHours =
-    model.useCase === "outlook" && epochPinned
-      ? 0
-      : timeMachineEnabled
-        ? elapsedHours
-        : 0;
+    tmCursor != null
+      ? (tmCursor.t_ms - Date.now()) / 3_600_000
+      : model.useCase === "outlook" && epochPinned
+        ? 0
+        : timeMachineEnabled
+          ? elapsedHours
+          : 0;
 
   /** B4/A6: override when what-if Enable + knobs, or member-edited spot/VIX */
   const whatIfActive =
-    timeMachineEnabled &&
-    (elapsedHours !== 0 || wiredVolPts !== 0 || simSpotPct !== 0);
+    tmCursor != null ||
+    (timeMachineEnabled &&
+      (elapsedHours !== 0 || wiredVolPts !== 0 || simSpotPct !== 0));
   const memberSpotVixOverride =
     (spotDirty && spotOverride != null && spotOverride > 0) ||
     (vixDirty && vix != null && vix > 0);
@@ -723,7 +827,12 @@ export default function OpfRiskAnalyzer() {
     timeOffsetHours,
     // A6: Enable gates all knobs — vol/spot% ignored unless what-if enabled
     volOffsetPts: timeMachineEnabled ? wiredVolPts : 0,
-    spotPct: timeMachineEnabled ? simSpotPct : 0,
+    spotPct:
+      tmCursor && chain.spot && chain.spot > 0
+        ? spotPctFromReplay(tmCursor.spot, chain.spot)
+        : timeMachineEnabled
+          ? simSpotPct
+          : 0,
     enabled: (graphBook.trades.length ? graphBook.trades : trades).length > 0,
     pollLive: planePrinting,
     pauseLive: strikeDrag != null,
@@ -781,6 +890,7 @@ export default function OpfRiskAnalyzer() {
         : null;
   const opfVix =
     chain.vix != null && Number(chain.vix) > 0 ? Number(chain.vix) : null;
+  const sessionSpot = sessionSpotNow(tmCursor, tmOpenSpot);
   const displaySpotRaw =
     spotOverride ?? opfSpot ?? trade?.body ?? 0;
   /** Live spot eases between ticks — risk graph line moves continuously */
@@ -789,8 +899,53 @@ export default function OpfRiskAnalyzer() {
       durationMs: 420,
     }) ?? (displaySpotRaw > 0 ? displaySpotRaw : 0);
 
-  // A1: evaluate alerts on raw underlier mark (not smoothed, not what-if override)
+  // A1: live alerts on raw underlier. Time Machine eligibility uses playhead.
   const rawMarkForAlerts = opfSpot;
+
+  const alertBuilderPositions = useMemo(() => {
+    const spot =
+      sessionSpot != null && sessionSpot > 0
+        ? sessionSpot
+        : rawMarkForAlerts != null && rawMarkForAlerts > 0
+          ? rawMarkForAlerts
+          : displaySpotRaw > 0
+            ? displaySpotRaw
+            : 0;
+    return displayPositions
+      .filter((p) => p.visible)
+      .map((p) => {
+        const debit = algoEntryDebit({
+          definedDebitPerShare: definedDebitSigned(p),
+          lockMode: p.lock.mode,
+          lockPackageDebit: p.lock.packageDebitPerShare,
+          livePackagePerShare: p.livePackagePerShare,
+          priceSide: p.priceSide,
+          netPremium: positionNetPremium(p.position),
+        });
+        const listed = chain.getStrikes(p.position.expiration || "");
+        return {
+          id: p.id,
+          strikesLabel: positionStrikeAlertLabel(p),
+          algoEligible: isOtmDebitButterfly(
+            { legs: p.position.legs, debit },
+            spot,
+            listed,
+          ),
+        };
+      });
+  }, [displayPositions, chain, rawMarkForAlerts, displaySpotRaw, sessionSpot]);
+
+  const liveAlgo = alerts.find(
+    (a) =>
+      a.alertClass === "algo" &&
+      (a.runState === "live" ||
+        a.runState === "touched" ||
+        a.algoPhase === "recorded"),
+  );
+
+  const algoPulse =
+    alertBuilderPositions.some((p) => p.algoEligible) &&
+    !alerts.some((a) => a.alertClass === "algo" && a.runState === "live");
   useEffect(() => {
     if (rawMarkForAlerts == null || !(rawMarkForAlerts > 0)) return;
     setAlerts((prev) => {
@@ -801,15 +956,19 @@ export default function OpfRiskAnalyzer() {
 
   useEffect(() => {
     if (spotDirty) return;
-    if (opfSpot != null) {
-      setSpotStr(String(Math.round(opfSpot * 100) / 100));
+    if (tmOpenSpot != null) {
+      setSpotStr(formatFixed2(tmOpenSpot));
+      return;
     }
-  }, [opfSpot, spotDirty]);
+    if (opfSpot != null) {
+      setSpotStr(formatFixed2(opfSpot));
+    }
+  }, [opfSpot, spotDirty, tmOpenSpot]);
 
   useEffect(() => {
     if (vixDirty) return;
     if (opfVix != null) {
-      setVixStr(String(Math.round(opfVix * 100) / 100));
+      setVixStr(formatFixed2(opfVix));
     }
   }, [opfVix, vixDirty]);
 
@@ -967,6 +1126,74 @@ export default function OpfRiskAnalyzer() {
   }, [elapsedHours, wiredVolPts, timeMachineEnabled, whatIfHydrated]);
 
   const simSpot = displaySpot * (1 + simSpotPct / 100);
+
+  useEffect(() => {
+    const demoLive = alerts.some(
+      (a) =>
+        a.alertClass === "algo" &&
+        a.algo?.demo &&
+        normalizeAlertRunState(a.runState, a.enabled, a.status) === "live",
+    );
+    if (!demoLive) return;
+    const demoSpot =
+      tmCursor && tmCursor.spot > 0
+        ? tmCursor.spot
+        : timeMachineEnabled && simSpot > 0
+          ? simSpot
+          : opfSpot != null && opfSpot > 0
+            ? opfSpot
+            : 0;
+    if (!(demoSpot > 0)) return;
+    const nowMs =
+      tmCursor != null
+        ? tmCursor.t_ms
+        : Date.now() + (timeMachineEnabled ? elapsedHours : 0) * 3_600_000;
+    const curve = risk.theoreticalPoints.map((p) => ({
+      price: p.price,
+      pnl: p.pnl / 100,
+    }));
+    setAlerts((prev) => {
+      let changed = false;
+      const next = prev.map((a) => {
+        if (a.alertClass !== "algo" || !a.algo?.demo) return a;
+        const pos = positions.find((p) => p.id === a.positionId);
+        if (!pos) return a;
+        const debit = algoEntryDebit({
+          definedDebitPerShare: definedDebitSigned(pos),
+          lockMode: pos.lock.mode,
+          lockPackageDebit: pos.lock.packageDebitPerShare,
+          livePackagePerShare: pos.livePackagePerShare,
+          priceSide: pos.priceSide,
+          netPremium: positionNetPremium(pos.position),
+        });
+        const raw = findPnLAtPrice(risk.theoreticalPoints, demoSpot);
+        const U = raw == null ? 0 : raw / 100;
+        const ticked = tickAlgoAlert(a, {
+          symbol,
+          spot: demoSpot,
+          U,
+          debit,
+          legs: pos.position.legs,
+          curve,
+          remainingHours: remainingHoursForAlgo(a, symbol, nowMs),
+          E: null,
+        });
+        if (ticked !== a) changed = true;
+        return ticked;
+      });
+      return changed ? next : prev;
+    });
+  }, [
+    alerts,
+    positions,
+    simSpot,
+    elapsedHours,
+    timeMachineEnabled,
+    tmCursor,
+    opfSpot,
+    risk.theoreticalPoints,
+    symbol,
+  ]);
   /**
    * OT-EF viewport policy: named state + no fabricated live curve.
    * Never replace the graph shell with cryptic PB-VIEW-6 copy.
@@ -1014,6 +1241,7 @@ export default function OpfRiskAnalyzer() {
   );
   /** ATM for empty shell — chain/risk/spot field, never 0 */
   const axisSpot = useMemo(() => {
+    if (tmOpenSpot != null && tmOpenSpot > 0) return tmOpenSpot;
     if (displaySpot > 0) return displaySpot;
     if (risk.spot != null && risk.spot > 0) return risk.spot;
     if (chain.spot != null && chain.spot > 0) return chain.spot;
@@ -1025,14 +1253,16 @@ export default function OpfRiskAnalyzer() {
     if (s === "NDX" || s.startsWith("NQ")) return 21000;
     if (s === "RUT") return 2200;
     return 100;
-  }, [displaySpot, risk.spot, chain.spot, spotStr, symbol]);
+  }, [tmOpenSpot, displaySpot, risk.spot, chain.spot, spotStr, symbol]);
 
   const rangeCenterSpot =
-    timeMachineEnabled && simSpot > 0
-      ? simSpot
-      : displaySpot > 0
-        ? displaySpot
-        : axisSpot;
+    tmOpenSpot != null && tmOpenSpot > 0
+      ? tmOpenSpot
+      : timeMachineEnabled && simSpot > 0
+        ? simSpot
+        : displaySpot > 0
+          ? displaySpot
+          : axisSpot;
   const rangeBands = (() => {
     const out: { lo: number; hi: number }[] = [];
     if (!rangeEnabled || rangeIvDecimal == null) return out;
@@ -1052,10 +1282,10 @@ export default function OpfRiskAnalyzer() {
 
   const hasLiveSeries =
     drawLiveCurves &&
-    risk.expirationPoints.length > 0 &&
-    risk.theoreticalPoints.length > 0;
+    (risk.expirationPoints.length > 0 || risk.theoreticalPoints.length > 0);
   const hasGhostSeries = showExpiredGhost && ghostPoints.length > 0;
   const hasCurves = hasLiveSeries || hasGhostSeries;
+  const sheetNotice = curveFailureNotice(risk.error);
   const hadCurvesRef = useRef(false);
   const pendingStrikeFitRef = useRef(false);
   const strikeFitStalePtsRef = useRef<{
@@ -1130,6 +1360,48 @@ export default function OpfRiskAnalyzer() {
         })),
     [alerts, symbol, sessionHeld, displaySpot],
   );
+  const algoTrailLines = useMemo(() => {
+    const out: { price: number; color: string; active?: boolean }[] = [];
+    for (const a of alerts) {
+      if (a.alertClass !== "algo" || !a.algo?.trail_state) continue;
+      const st = a.algo.trail_state;
+      if (st.phase === "waiting") continue;
+      if (st.xH != null && Number.isFinite(st.xH)) {
+        out.push({
+          price: st.xH,
+          color: a.algo.high_water_color || a.color,
+          active: st.phase === "armed",
+        });
+      }
+      if (st.xS != null && Number.isFinite(st.xS)) {
+        out.push({
+          price: st.xS,
+          color: a.algo.trail_color || "#f59e0b",
+          active: st.pulse,
+        });
+      }
+    }
+    return out;
+  }, [alerts]);
+  const algoBand = (() => {
+    const st = liveAlgo?.algo?.trail_state;
+    if (!liveAlgo?.algo?.overlay || !st) return null;
+    if (st.phase === "waiting") return null;
+    if (st.xH == null || st.xS == null) return null;
+    if (!Number.isFinite(st.xH) || !Number.isFinite(st.xS)) return null;
+    return {
+      lo: Math.min(st.xH, st.xS),
+      hi: Math.max(st.xH, st.xS),
+      color: liveAlgo.algo.trail_color || "#f59e0b",
+      pulse: st.pulse === true,
+    };
+  })();
+  const tmActive = tmDay !== "" || tmLoading;
+
+  useEffect(() => {
+    if (tmOpenSpot == null) return;
+    requestAnimationFrame(() => chartRef.current?.autoFit());
+  }, [tmDay, tmOpenSpot]);
 
   const handleBuilderSave = useCallback(
     (input: PositionInput, label: string, notation: string) => {
@@ -1474,14 +1746,36 @@ export default function OpfRiskAnalyzer() {
         rangeOpacityPct={rangeOpacityPct}
         onRangeOpacityPct={setRangeOpacityPct}
         onCreateAlert={() => {
-          setAlertBuilderSeed({
-            kind: "canvas",
-            category: "price",
-            price: displaySpot > 0 ? displaySpot : undefined,
-            condition: "at",
-          });
+          const eligible = alertBuilderPositions.filter((p) => p.algoEligible);
+          if (eligible.length) {
+            const focused = eligible.find((p) => p.id === focusedId);
+            setAlertBuilderSeed({
+              kind: "position",
+              category: "algo",
+              positionId: (focused ?? eligible[0]).id,
+              demo: tmActive,
+              demoClock: tmActive ? "timemachine" : undefined,
+              clockMs: tmCursor?.t_ms,
+            });
+          } else {
+            setAlertBuilderSeed({
+              kind: "canvas",
+              category: "price",
+              price:
+                sessionSpot != null && sessionSpot > 0
+                  ? sessionSpot
+                  : displaySpot > 0
+                    ? displaySpot
+                    : undefined,
+              condition: "at",
+              demo: tmActive,
+              demoClock: tmActive ? "timemachine" : undefined,
+              clockMs: tmCursor?.t_ms,
+            });
+          }
           setAlertBuilderOpen(true);
         }}
+        algoPulse={algoPulse}
         onEditAlert={(id) => {
           const a = alerts.find((x) => x.id === id);
           if (!a) return;
@@ -1515,6 +1809,10 @@ export default function OpfRiskAnalyzer() {
             }),
           );
         }}
+        onDeleteAlert={(id) => {
+          setAlerts((prev) => prev.filter((a) => a.id !== id));
+          if (alertBuilderSeed?.id === id) closeAlertBuilder();
+        }}
         alerts={alerts
           .filter((a) => a.status !== "dismissed")
           .map((a) => {
@@ -1534,6 +1832,7 @@ export default function OpfRiskAnalyzer() {
                 at: a.triggeredAt,
                 spot: a.triggeredSpot,
               }),
+              algoPhase: a.algoPhase,
             };
           })}
       />
@@ -1606,6 +1905,12 @@ export default function OpfRiskAnalyzer() {
                   setSpotStr(v);
                   setSpotDirty(v.trim() !== "");
                 }}
+                onBlur={() => {
+                  const n = Number(spotStr);
+                  if (Number.isFinite(n) && spotStr.trim() !== "") {
+                    setSpotStr(formatFixed2(n));
+                  }
+                }}
                 data-testid="analyzer-spot-input"
                 aria-label="Spot"
               />
@@ -1620,12 +1925,45 @@ export default function OpfRiskAnalyzer() {
                   setVixStr(v);
                   setVixDirty(v.trim() !== "");
                 }}
+                onBlur={() => {
+                  const n = Number(vixStr);
+                  if (Number.isFinite(n) && vixStr.trim() !== "") {
+                    setVixStr(formatFixed2(n));
+                  }
+                }}
                 data-testid="analyzer-vix-input"
                 aria-label="VIX"
               />
             </label>
           </div>
-            <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center">
+            <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center gap-2">
+              {isAdmin ? (
+                <label
+                  className="pointer-events-auto flex min-h-11 items-center gap-2 text-[13px] font-medium uppercase tracking-wide text-white/60"
+                  title="Autofit scale: underlier points per CSS inch. Higher = smaller tent."
+                >
+                  Strikes/in
+                  <input
+                    type="range"
+                    min={AUTOFIT_PTS_PER_INCH_MIN}
+                    max={AUTOFIT_PTS_PER_INCH_MAX}
+                    step={1}
+                    value={Math.round(autofitPtsPerInch)}
+                    onChange={(e) => {
+                      const next = clampAutofitPtsPerInch(Number(e.target.value));
+                      setAutofitPtsPerInch(next);
+                      saveAutofitPtsPerInch(next);
+                      requestAnimationFrame(() => chartRef.current?.autoFit());
+                    }}
+                    className="h-11 w-28 cursor-pointer accent-[var(--color-tint)]"
+                    data-testid="analyzer-autofit-width"
+                    aria-label="Autofit strikes per inch"
+                  />
+                  <span className="w-8 font-mono tabular-nums text-white/80">
+                    {Math.round(autofitPtsPerInch)}
+                  </span>
+                </label>
+              ) : null}
               <Button
                 variant="bordered"
                 className="pointer-events-auto"
@@ -1636,35 +1974,95 @@ export default function OpfRiskAnalyzer() {
                 Auto-fit
               </Button>
             </div>
-            {isAdmin ? (
-              <label
-                className="relative z-[2] ml-auto flex min-h-11 items-center gap-2 text-[13px] font-medium uppercase tracking-wide text-white/60"
-                title="Autofit scale: underlier points per CSS inch. Higher = smaller tent."
-              >
-                Strikes/in
-                <input
-                  type="range"
-                  min={AUTOFIT_PTS_PER_INCH_MIN}
-                  max={AUTOFIT_PTS_PER_INCH_MAX}
-                  step={1}
-                  value={Math.round(autofitPtsPerInch)}
-                  onChange={(e) => {
-                    const next = clampAutofitPtsPerInch(Number(e.target.value));
-                    setAutofitPtsPerInch(next);
-                    saveAutofitPtsPerInch(next);
-                    requestAnimationFrame(() => chartRef.current?.autoFit());
-                  }}
-                  className="h-11 w-36 cursor-pointer accent-[var(--color-tint)]"
-                  data-testid="analyzer-autofit-width"
-                  aria-label="Autofit strikes per inch"
-                />
-                <span className="w-8 font-mono tabular-nums text-white/80">
-                  {Math.round(autofitPtsPerInch)}
-                </span>
-              </label>
-            ) : null}
+            <div className="relative z-[2] ml-auto shrink-0">
+              <AnalyzerTimeMachineStrip
+                day={tmDay}
+                onDay={(d) => void loadTmDay(d)}
+                samples={tmSamples}
+                playing={tmPlaying}
+                speed={tmSpeed}
+                onSpeed={(s) => {
+                  if (tmPlaying && tmCursor) {
+                    tmOriginRef.current = {
+                      wall: performance.now(),
+                      sample: tmCursor.t_ms,
+                    };
+                  }
+                  setTmSpeed(s);
+                }}
+                onPlay={() => {
+                  const rows = tmAllRef.current.length
+                    ? tmAllRef.current
+                    : tmSamples;
+                  if (!rows.length) return;
+                  const origin =
+                    tmCursor && !tmCursor.done ? tmCursor.t_ms : rows[0].t_ms;
+                  tmOriginRef.current = {
+                    wall: performance.now(),
+                    sample: origin,
+                  };
+                  setTmPlaying(true);
+                }}
+                onPause={() => {
+                  setTmPlaying(false);
+                  if (tmCursor) {
+                    tmOriginRef.current = {
+                      wall: performance.now(),
+                      sample: tmCursor.t_ms,
+                    };
+                  }
+                }}
+                onStop={() => {
+                  setTmPlaying(false);
+                  const rows = tmAllRef.current;
+                  const origin = sessionOpenCursor(rows);
+                  if (!origin) return;
+                  setTmCursor(origin);
+                  tmOriginRef.current = { wall: 0, sample: origin.t_ms };
+                }}
+                loading={tmLoading}
+              />
+            </div>
           </div>
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-xl border border-white/10">
+            {tmActive ? (
+              <div
+                aria-hidden
+                data-testid="analyzer-viewport-glow"
+                data-glow="timemachine"
+                className="pointer-events-none absolute inset-0 z-[15] rounded-xl shadow-[inset_0_0_28px_12px_rgba(59,130,246,0.55)]"
+              />
+            ) : timeMachineEnabled ? (
+              <div
+                aria-hidden
+                data-testid="analyzer-viewport-glow"
+                data-glow="whatif"
+                className="pointer-events-none absolute inset-0 z-[15] rounded-xl shadow-[inset_0_0_28px_12px_rgba(239,68,68,0.5)]"
+              />
+            ) : null}
+            {tmActive ? (
+              <AnalyzerDayReplayHud
+                day={tmDay}
+                samples={tmSamples}
+                cursor={tmCursor}
+                hole={tmHole}
+                loading={tmLoading}
+                onSeek={(s) => {
+                  const rows = tmAllRef.current;
+                  const idx = rows.findIndex((r) => r.t_ms === s.t_ms);
+                  setTmCursor({
+                    t_ms: s.t_ms,
+                    spot: s.spot,
+                    idx: idx >= 0 ? idx : 0,
+                    done: false,
+                  });
+                  tmOriginRef.current = {
+                    wall: performance.now(),
+                    sample: s.t_ms,
+                  };
+                }}
+              />
+            ) : null}
             <div
               className="absolute inset-0"
               data-testid="analyzer-risk-viewport"
@@ -1687,8 +2085,13 @@ export default function OpfRiskAnalyzer() {
                         (sessionHeld ? " · held" : "")
                   }
                   spotPrice={axisSpot}
+                  autofitCenterPrice={tmOpenSpot}
                   spotIndicatorPrice={
-                    timeMachineEnabled && simSpot > 0 ? simSpot : undefined
+                    tmCursor && tmCursor.spot > 0
+                      ? tmCursor.spot
+                      : timeMachineEnabled && simSpot > 0
+                        ? simSpot
+                        : undefined
                   }
                   expirationBreakevens={
                     drawLiveCurves ? risk.expirationBreakevens : []
@@ -1706,23 +2109,29 @@ export default function OpfRiskAnalyzer() {
                         : []
                   }
                   autofitPtsPerInch={autofitPtsPerInch}
-                  gexEnabled={gexEnabled}
+                  gexEnabled={tmActive ? false : gexEnabled}
                   gexValueMode={gexValueMode}
                   gexPoints={gexProfile.points}
                   gexScale={gexProfile.scale}
                   gexOpacityPct={gexOpacityPct}
-                  rangeEnabled={rangeEnabled}
+                  rangeEnabled={tmActive ? false : rangeEnabled}
                   rangeBands={rangeBands}
                   rangeOpacityPct={rangeOpacityPct}
                   strikeHandles={strikeHandles}
                   onStrikeDrag={onStrikeDrag}
                   onStrikeCommit={onStrikeCommit}
                   snapStrike={snapStrike}
-                  alertLines={alertLines.map((l) => ({
-                    price: l.price,
-                    color: l.color,
-                    active: l.style === "active",
-                  }))}
+                  alertLines={[
+                    ...alertLines.map((l) => ({
+                      price: l.price,
+                      color: l.color,
+                      active: l.style === "active",
+                    })),
+                    ...algoTrailLines,
+                  ]}
+                  algoBand={algoBand}
+                  algoPhase={liveAlgo?.algoPhase}
+                  algoSide={liveAlgo?.algo?.trail_state?.side}
                   positionExpirationCurves={risk.positionExpirationCurves}
                   positionAlertChoices={displayPositions
                     .filter((p) => p.visible)
@@ -1760,6 +2169,22 @@ export default function OpfRiskAnalyzer() {
                     setAlertBuilderOpen(true);
                   }}
                 />
+                {liveAlgo ? (
+                  <AlgoNarrativePanel
+                    phase={liveAlgo.algoPhase ?? "waiting"}
+                    side={liveAlgo.algo?.trail_state?.side ?? "near"}
+                    symbol={symbol}
+                    fPct={
+                      liveAlgo.algo?.trail_state
+                        ? Math.round(liveAlgo.algo.trail_state.f * 100)
+                        : (liveAlgo.algo?.trail_start_pct ?? 75)
+                    }
+                    xS={liveAlgo.algo?.trail_state?.xS ?? null}
+                    gexOn={gexEnabled}
+                    vpOn={false}
+                    decayFast={false}
+                  />
+                ) : null}
                 {/* Centered notice over grid — translucent so scales stay readable */}
                 {viewportFocus?.notice ? (
                   <div
@@ -1792,19 +2217,18 @@ export default function OpfRiskAnalyzer() {
                       </p>
                     </div>
                   </div>
-                ) : !hasCurves && trade && risk.error ? (
+                ) : !hasCurves && trade && sheetNotice ? (
                   <div
                     className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4"
                     data-testid="analyzer-viewport-notice"
-                    data-notice-kind="check_legs"
+                    data-notice-kind={sheetNotice.kind}
                   >
                     <div className="max-w-sm rounded-2xl border border-white/15 bg-black/40 px-5 py-4 text-center backdrop-blur-sm">
                       <div className="text-[13px] font-semibold tracking-wide text-white/90">
-                        CHECK LEGS
+                        {sheetNotice.title}
                       </div>
                       <p className="mt-1.5 text-[12px] leading-snug text-white/60">
-                        Could not draw a package curve yet. Confirm every leg is
-                        on a listed strike and try again.
+                        {sheetNotice.detail}
                       </p>
                     </div>
                   </div>
@@ -1861,10 +2285,43 @@ export default function OpfRiskAnalyzer() {
         open={alertBuilderOpen}
         seed={alertBuilderSeed}
         symbol={symbol}
-        spot={displaySpot}
+        spot={
+          sessionSpot != null && sessionSpot > 0 ? sessionSpot : displaySpot
+        }
         positions={alertBuilderPositions}
         onClose={closeAlertBuilder}
         onSave={(draft: AlertsManagerDraft) => {
+          if (draft.alert_class === "algo" && draft.trigger.algo) {
+            const ag = draft.trigger.algo;
+            const next = createAlgoAlert({
+              id: draft.id,
+              symbol: draft.symbol,
+              positionId: draft.position_id || "",
+              positionLabel: draft.position_label,
+              color: ag.high_water_color,
+              trailColor: ag.trail_color,
+              entryPct: ag.entry_pct,
+              trailStartPct: ag.trail_start_pct,
+              trailFloorPct: ag.trail_floor_pct,
+              decayEnd: ag.decay_end ?? "eod",
+              trailStopReason: ag.trail_stop_reason,
+              trailEndReason: ag.trail_end_reason,
+              demo: ag.demo === true,
+              overlay: ag.overlay,
+              runState: draft.run_state,
+            });
+            if (ag.demo && !tmDay) setTimeMachineEnabled(true);
+            setAlerts((prev) => {
+              const i = prev.findIndex((a) => a.id === next.id);
+              if (i >= 0) {
+                const copy = prev.slice();
+                copy[i] = { ...next, createdAt: prev[i].createdAt };
+                return copy;
+              }
+              return [...prev, next];
+            });
+            return;
+          }
           const type =
             draft.trigger.condition === "above"
               ? "price_above"
@@ -1904,7 +2361,13 @@ export default function OpfRiskAnalyzer() {
         open={builderOpen}
         mode={editId ? "edit" : "create"}
         symbol={symbol}
-        spotPrice={displaySpot > 0 ? displaySpot : chain.spot || 5000}
+        spotPrice={
+          sessionSpot != null && sessionSpot > 0
+            ? sessionSpot
+            : displaySpot > 0
+              ? displaySpot
+              : chain.spot || 5000
+        }
         chain={chain}
         initial={editInitial}
         marketLive={posture === "Live"}

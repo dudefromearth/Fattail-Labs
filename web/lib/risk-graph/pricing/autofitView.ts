@@ -135,6 +135,40 @@ export function strikeCenteredXRange(args: {
   return { xMin: center - half, xMax: center + half, center };
 }
 
+/**
+ * Time Machine Autofit X: same density/strike span as Autofit, centered on
+ * the session open (ATM-O1). Listed strikes stay in view so the tent is
+ * not clipped when the open sits away from today's book.
+ */
+export function openCenteredXRange(args: {
+  strikes: readonly number[];
+  open: number;
+  padFrac?: number;
+  minSpanPts?: number;
+  plotWidthPx?: number;
+  ptsPerInch?: number;
+}): { xMin: number; xMax: number; center: number } {
+  const open = args.open;
+  const win = strikeCenteredXRange({
+    strikes: args.strikes,
+    padFrac: args.padFrac,
+    minSpanPts: args.minSpanPts,
+    plotWidthPx: args.plotWidthPx,
+    ptsPerInch: args.ptsPerInch,
+  });
+  if (!(open > 0) || !Number.isFinite(open)) return win;
+  const half = Math.max((win.xMax - win.xMin) / 2, AUTOFIT_MIN_HALF_PTS);
+  let xMin = open - half;
+  let xMax = open + half;
+  const pad = Math.max(5, (xMax - xMin) * 0.02);
+  for (const k of args.strikes) {
+    if (!(k > 0) || !Number.isFinite(k)) continue;
+    if (k < xMin) xMin = k - pad;
+    if (k > xMax) xMax = k + pad;
+  }
+  return { xMin, xMax, center: open };
+}
+
 export function atmCenteredXRange(args: AtmCenteredXRangeArgs): {
   xMin: number;
   xMax: number;

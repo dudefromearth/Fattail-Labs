@@ -25,7 +25,7 @@ Options Lab **Analyzer** is the member **day-trader risk surface**. Product is o
 | 1 | **Alerts** | Threshold price rules: create, list, evaluate, draw on the **Analyzer** graph |
 | 2 | **Positions** | Definition book (cards) + Builder (full edit) + package/lock |
 | 3 | **Viewport(s)** | In Analyzer: **Risk graph (2D)** · **Surface (3D)**. Suite/attached: **Volume Profile** · **GEX** · **Probability** (see §0.3) |
-| 4 | **Time machine** | What-if / scenario knobs (time · vol · spot %) over OPF resolve (Analyzer viewport) |
+| 4 | **Time machine** | Two seats: **What-if** (ad-hoc time · vol · spot %) and **Time Machine** (OnDemand day replay). Replay law: [AZ-ATM Spec v0.1](./FatTail-Labs-Options-Lab-Analyzer-Time-Machine-Spec-v0.1.md). |
 | 5 | **Models** | OPF pack / use-case selection (day_trade · outlook · backtest) |
 | 6 | **Controls** | Session chrome: posture, symbol, spot/VIX, ToS handoff, actions |
 
@@ -99,7 +99,7 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 | **Alerts** | Threshold rules, list UI, evaluation vs underlier mark, chart lines | Structure legs, OPF curves, pack choice |
 | **Positions** | Definition SoR (cards), Builder, focus, lock, package display path | Curve pixels, alert evaluation |
 | **Viewport(s)** | See §0.3 — Analyzer risk graph · VP · GEX canvases | Pricing SoR (OPF owns package/curves for Analyzer) |
-| **Time machine** | What-if time / vol / spot % into **Analyzer** resolve; sim spot indicator | Changing card legs unless Save; not required on VP/GEX |
+| **Time machine** | **What-if** time / vol / spot % into **Analyzer** resolve; sim spot indicator. **Time Machine** (AZ-ATM): calendar day, 1-minute download, video transport | Changing card legs unless Save. Basic TM turns GEX/Probability **off**; Enhanced **allows** them |
 | **Models** | Pack id + use case (day_trade · outlook · backtest); epoch re-anchor | Drawing curves (Analyzer viewport consumes packs) |
 | **Controls** | Posture badge, symbol, OPF model, GEX, Range, What-if, Refresh/Auto-fit/Builder. Spot/VIX sit upper-right above the risk canvas. Suite nav for Heatmap / other apps | Replacing any other bucket’s SoR |
 
@@ -121,7 +121,7 @@ Where PB Spec already defines book/package/lock/viewport economics, Analyzer **m
 | **Controls** | §1.1–1.3, §1.5–1.6, §1.12, actions in §1.9–1.13 |
 | **Models** | §1.4, §6 modes |
 | **Viewport(s)** | §0.3 · §1.9–1.10 · §1.16 · §3 focus · §6 |
-| **Time machine** | §1.11 |
+| **Time machine** | §1.11 What-if · [AZ-ATM Spec v0.1](./FatTail-Labs-Options-Lab-Analyzer-Time-Machine-Spec-v0.1.md) replay |
 | **Positions** | §1.7–1.8, §1.13 Builder, §4–5 |
 | **Alerts** | §1.14, §7 |
 
@@ -248,7 +248,7 @@ Read with §0.2 buckets: each subsection below tags its bucket.
 | Region | **As-built** | **TARGET (Coach)** |
 |--------|--------------|---------------------|
 | Main split | **Left sidebar** (~21rem) + **right viewport** (`lg:flex-row`) | **Vertical stack:** viewport **above**, position list **below**, with **divider**. Book default **230px** (~1.25 three-leg cards after −20% pad/lock, **type size unchanged**); saved height goes to the canvas. |
-| Sidebar contents | **HIG inspector:** **Alerts** (header **+** create, empty holder, **scroll**, default height **~3–4 cards**) · GEX · Probability · What-if. **No Instrument / OPF-model / Graph panel.** Dark strip **above** the canvas: **upper-left** Symbol + Spot + VIX (**50px** gaps); **center** Auto-fit (**≥44pt**). Position list under the viewport. Alerts list: info + Active/Idle only. MSC canvas/position apply on the graph. | **OD-AZ1 Accept:** top compact control strip; **list under viewport** |
+| Sidebar contents | **HIG inspector:** **Alerts** (header **+** create, empty holder, **scroll**, default height **~3–4 cards**) · GEX · Probability · What-if. **No Instrument / OPF-model / Graph panel.** Dark strip **above** the canvas: **upper-left** Symbol + Spot + VIX (**50px** gaps); **Strikes/in left of Autofit**; **center** Auto-fit (**≥44pt**); **Time Machine** video controls **right of Autofit** (calendar, Start/Pause/Stop, 10×/20×/50×). Mini day chart: **upper-right of the canvas** (AZ-ATM). Position list under the viewport. Alerts list: info + Active/Idle only. MSC canvas/position apply on the graph. | **OD-AZ1 Accept:** top compact control strip; **list under viewport**. **DL-486** Time Machine strip. |
 | Viewport | Full remaining height · dark canvas · chart panel | Same — **one** focused graph panel |
 | MSC heritage | MSC had list **left** of viewport | Labs: list **under** viewport |
 
@@ -419,7 +419,9 @@ Selectable packs (`OPF_ANALYZER_MODELS` — only OPF packs, no MSC):
 
 ### 1.11 What-if (OPF scenario knobs) · A6 Enable
 
-Member chrome is **What-if** (not Time machine). The suite map may still say Time machine as the historical bucket (AZ-X-2). Law: What-if T/σ spec v0.1 · DL-451 · DL-452.
+Member **inspector** chrome is **What-if** (not Time machine). **TM-A1 stands** for those knobs. The suite map **bucket 4** now has a second seat: **Time Machine** = OnDemand **day replay** (calendar → 1-minute download → start time → video controls). Law for replay: [AZ-ATM Spec v0.1](./FatTail-Labs-Options-Lab-Analyzer-Time-Machine-Spec-v0.1.md) · **DL-486**. What-if T/σ spec v0.1 · DL-451 · DL-452 still govern the sliders.
+
+**Do not** label the What-if Enable / Time / Vol / Spot% group “Time Machine.” Time Machine lives in the **dark strip above the canvas** (right of Autofit) plus the **upper-right mini day chart**.
 
 | Knob | Range | Law |
 |------|-------|-----|
@@ -456,7 +458,9 @@ Builder internals (also PB Spec + recent land): listed strikes only, ATM center,
 ### 1.14 Threshold alerts · **Alerts**
 
 **Normative Builder + canvas apply + Manager hook:**
-[`FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md`](./FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md) · **DL-463**.
+[`FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md`](./FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md) · **DL-463**.  
+**Algo (OTM fly narrative trail):**
+[`FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md`](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md) · **DL-472**.
 
 Analyzer is a work-surface **client** of the future Labs-wide **Alerts Manager + API**. Session-local alerts are a **stub adapter** until that manager GO’s.
 
@@ -537,9 +541,9 @@ As-built holder: left inspector (info + Idle/Live/Touched, header **+**). Canvas
 #### 1.14.7 What alerts are not (v0.1)
 
 - Not a multi-device Alert Center / SSE bus  
-- Not OPF package-level P&amp;L alerts (underlier **price** thresholds only)  
 - Not broker order triggers  
-- Not profit/payout promises
+- Not profit/payout promises  
+- Threshold alerts remain underlier **price** / position P&amp;L / greeks. **Type → Algo** is OPF package P&amp;L **trail math** (AZ-ALGO) — narrative only, **not** a flatten.
 
 ### 1.15 Client modules (code map)
 
@@ -892,6 +896,7 @@ All ODs below are **Accepted** as written. Recommendations become **normative la
 | **v0.2.1** | 2026-08-11 | **Coach Accept OD-AZ1–8** (DL-304) — law locked |
 | **v0.2.1 path** | 2026-08-11 | Filename reconcile → `...Analyzer-Spec-v0_2.md` (P-B1 · DL-306); content still v0.2.1 |
 | **v0.2.2** | 2026-08-16 | **DL-394** Show/Hide checkbox; additive continuous book viewport. Prior one-focus-viewport rows kept as superseded. |
+| **v0.2.2 + AZ-ATM pointer** | 2026-08-20 | Bucket 4 seats What-if **and** Time Machine replay. Inspector knobs stay What-if (TM-A1). Replay law in AZ-ATM v0.1 · **DL-486**. What-if §1.11 text kept; Time Machine named beside it. |
 
 **Reference UX (non-authority):** MSC Risk Graph (2D + 3D) — workflow / scene only. **MSC is not the pricing standard.**
 

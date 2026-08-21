@@ -43,10 +43,26 @@ export type AlertsManagerDraft = {
   expires_at?: string;
   goal?: string;
   trigger: {
-    family: "price" | "pnl" | "greek" | "placeholder";
+    family: "price" | "pnl" | "greek" | "placeholder" | "algo";
     condition: AlertsManagerCondition;
     target: number;
     greek?: "delta" | "gamma" | "theta";
+    algo?: {
+      variant: "otm_fly_trail";
+      entry_pct: number;
+      trail_start_pct: number;
+      trail_floor_pct: number;
+      /** `"eod"` (default) or ISO datetime when trail decay reaches the end %. */
+      decay_end?: "eod" | string;
+      /** AI hold/fold prompt at the initial trail stop (75% default). */
+      trail_stop_reason?: string;
+      /** AI hold/fold prompt at the trail end / floor (25% default). */
+      trail_end_reason?: string;
+      demo?: boolean;
+      overlay: boolean;
+      high_water_color: string;
+      trail_color: string;
+    };
   };
 };
 

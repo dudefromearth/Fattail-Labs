@@ -7,7 +7,7 @@
 
 import Button from "@/components/ui/Button";
 import IconButton from "@/components/ui/IconButton";
-import { IconPlus } from "@/components/ui/icons";
+import { IconPlus, IconTrash } from "@/components/ui/icons";
 import {
   INSPECTOR_W,
   InspectorSection,
@@ -97,12 +97,16 @@ export type AnalyzerControlsColumnProps = {
     unbound?: boolean;
     /** When Touched: time + print, e.g. "10:42 AM ET at 6724". */
     touchedDetail?: string;
+    algoPhase?: "waiting" | "armed" | "recorded";
   }[];
   onCreateAlert: () => void;
+  /** Eligible OTM debit fly on the book — subtle pulse on +. */
+  algoPulse?: boolean;
   /** One-shot book / lock notices — logged in the exception field. */
   notice?: string | null;
   onEditAlert?: (id: string) => void;
   onToggleAlertState?: (id: string) => void;
+  onDeleteAlert?: (id: string) => void;
 };
 
 export default function AnalyzerControlsColumn({
@@ -149,9 +153,11 @@ export default function AnalyzerControlsColumn({
   onRangeOpacityPct,
   alerts,
   onCreateAlert,
+  algoPulse = false,
   notice = null,
   onEditAlert,
   onToggleAlertState,
+  onDeleteAlert,
 }: AnalyzerControlsColumnProps) {
   const [statusLog, setStatusLog] = useState<StatusLogEntry[]>([]);
   const planeMsg = planeExceptionMessage({
@@ -257,7 +263,11 @@ export default function AnalyzerControlsColumn({
               label="Create alert"
               onClick={onCreateAlert}
               data-testid="analyzer-alert-create"
-              className="rounded-full bg-[var(--color-tint)] text-white hover:bg-[var(--color-tint-emphasis)] hover:text-white"
+              data-algo-pulse={algoPulse ? "1" : "0"}
+              className={
+                "rounded-full bg-[var(--color-tint)] text-white hover:bg-[var(--color-tint-emphasis)] hover:text-white" +
+                (algoPulse ? " motion-safe:animate-pulse" : "")
+              }
             >
               <IconPlus size={18} className="text-white" />
             </IconButton>
@@ -305,7 +315,15 @@ export default function AnalyzerControlsColumn({
                       {a.title}
                     </div>
                     <div className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
-                      {a.kind === "position" ? "Position" : "Canvas"}
+                      {a.algoPhase === "waiting"
+                        ? "Waiting"
+                        : a.algoPhase === "armed"
+                          ? "Armed"
+                          : a.algoPhase === "recorded"
+                            ? "Recorded"
+                            : a.kind === "position"
+                              ? "Position"
+                              : "Canvas"}
                       {a.runState === "touched" && a.touchedDetail
                         ? ` · ${a.touchedDetail}`
                         : ""}
@@ -333,6 +351,17 @@ export default function AnalyzerControlsColumn({
                       {state}
                     </button>
                   )}
+                  <IconButton
+                    label={`Delete ${a.title}`}
+                    tone="destructive"
+                    data-testid={`analyzer-alert-delete-${a.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteAlert?.(a.id);
+                    }}
+                  >
+                    <IconTrash size={16} />
+                  </IconButton>
                 </div>
               );
             })}

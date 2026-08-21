@@ -16,6 +16,7 @@ import {
 } from "react";
 import {
   strikeCenteredXRange,
+  openCenteredXRange,
   fitPnlYRange,
 } from "@/lib/risk-graph/pricing/autofitView";
 import { clampAxisRange } from "@/lib/risk-graph/pnlChartViewPolicy";
@@ -60,6 +61,43 @@ const AXIS_FONT = "19.5px ui-monospace, monospace";
 const GEX_CAPTION_FONT = "16.5px ui-monospace, monospace";
 const GEX_CALL_RGB = "14,165,233";
 const GEX_PUT_RGB = "239,68,68";
+/** Analyzer Spot field is `text-yellow-400`. */
+const SPOT_LABEL_FG = "#facc15";
+/** Stands off the canvas `#0a0a0e` in the strike scale. */
+const SPOT_LABEL_BG = "#3f3f46";
+
+function paintAxisChip(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  cx: number,
+  cy: number,
+  bg: string,
+  fg: string,
+  axis: "x" | "y",
+  width: number,
+  height: number,
+): void {
+  ctx.font = AXIS_FONT;
+  const padX = 6;
+  const chipH = 26;
+  const chipW = ctx.measureText(text).width + padX * 2;
+  let x = axis === "x" ? cx - chipW / 2 : Math.max(4, PAD.left - chipW - 6);
+  let y = axis === "x" ? height - PAD.bottom + 6 : cy - chipH / 2;
+  x = Math.max(2, Math.min(x, width - chipW - 2));
+  y = Math.max(2, Math.min(y, height - chipH - 2));
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x, y, chipW, chipH, 3);
+  } else {
+    ctx.rect(x, y, chipW, chipH);
+  }
+  ctx.fill();
+  ctx.fillStyle = fg;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x + chipW / 2, y + chipH / 2);
+}
 
 function niceStep(range: number, target: number): number {
   const rough = range / Math.max(target, 1);
@@ -107,6 +145,8 @@ export type HostPnLChartProps = {
   expiredExpirationData?: PnLPoint[];
   spotPrice: number;
   spotIndicatorPrice?: number;
+  /** Time Machine: Autofit X centers on this print (session open). */
+  autofitCenterPrice?: number | null;
   expirationBreakevens: number[];
   theoreticalBreakevens: number[];
   strikes: number[];
@@ -132,6 +172,15 @@ export type HostPnLChartProps = {
     rawTarget: number,
   ) => number;
   alertLines?: { price: number; color: string; active?: boolean }[];
+  /** Optional fill between high-water and trail (AZ-ALGO overlay). */
+  algoBand?: {
+    lo: number;
+    hi: number;
+    color: string;
+    pulse?: boolean;
+  } | null;
+  algoPhase?: string;
+  algoSide?: string;
   /** Per Shown card at-expiration series — MSC 8px hit, that card only. */
   positionExpirationCurves?: PositionExpirationCurve[];
   positionAlertChoices?: PositionAlertChoice[];
@@ -151,6 +200,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       expiredExpirationData = [],
       spotPrice,
       spotIndicatorPrice,
+      autofitCenterPrice = null,
       expirationBreakevens,
       theoreticalBreakevens,
       strikes,
@@ -170,6 +220,9 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       onStrikeCommit,
       snapStrike,
       alertLines = [],
+      algoBand = null,
+      algoPhase,
+      algoSide,
       positionExpirationCurves = [],
       positionAlertChoices = [],
       onCanvasAlert,
@@ -222,11 +275,29 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       const plotW = host
         ? Math.max(1, host.clientWidth - PAD.left - PAD.right)
         : 800;
-      const { xMin, xMax } = strikeCenteredXRange({
-        strikes,
-        plotWidthPx: plotW,
-        ptsPerInch: autofitPtsPerInch,
-      });
+      const centerOn =
+        autofitCenterPrice != null && autofitCenterPrice > 0
+          ? autofitCenterPrice
+          : null;
+      const win =
+        centerOn != null
+          ? openCenteredXRange({
+              strikes,
+              open: centerOn,
+              plotWidthPx: plotW,
+              ptsPerInch: autofitPtsPerInch,
+            })
+          : strikeCenteredXRange({
+              strikes,
+              plotWidthPx: plotW,
+              ptsPerInch: autofitPtsPerInch,
+            });
+      let { xMin, xMax } = win;
+      if (centerOn == null && spotPrice > 0) {
+        const pad = Math.max(5, (xMax - xMin) * 0.02);
+        if (spotPrice < xMin) xMin = spotPrice - pad;
+        if (spotPrice > xMax) xMax = spotPrice + pad;
+      }
       const pnls = [
         ...expirationData,
         ...theoreticalData,
@@ -250,6 +321,8 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       expiredExpirationData,
       strikes,
       autofitPtsPerInch,
+      spotPrice,
+      autofitCenterPrice,
     ]);
 
     const autoFit = useCallback(() => {
@@ -334,6 +407,24 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
           ctx.fillStyle = `rgba(255,255,255,${alpha})`;
           ctx.fillRect(x0, PAD.top, Math.max(0, x1 - x0), ch);
         });
+        ctx.restore();
+      }
+
+      if (algoBand && algoBand.hi > algoBand.lo) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(PAD.left, PAD.top, cw, ch);
+        ctx.clip();
+        const x0 = toX(algoBand.lo);
+        const x1 = toX(algoBand.hi);
+        ctx.globalAlpha = algoBand.pulse ? 0.28 : 0.12;
+        ctx.fillStyle = algoBand.color || "#f59e0b";
+        ctx.fillRect(
+          Math.min(x0, x1),
+          PAD.top,
+          Math.abs(x1 - x0),
+          ch,
+        );
         ctx.restore();
       }
 
@@ -558,7 +649,8 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       ctx.lineTo(width - PAD.right, toY(0));
       ctx.stroke();
 
-      const spotX = toX(spotIndicatorPrice ?? spotPrice);
+      const spotMark = spotIndicatorPrice ?? spotPrice;
+      const spotX = toX(spotMark);
       if (Number.isFinite(spotX)) {
         ctx.strokeStyle = "rgba(255,255,255,0.55)";
         ctx.setLineDash([4, 4]);
@@ -567,6 +659,26 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         ctx.lineTo(spotX, height - PAD.bottom);
         ctx.stroke();
         ctx.setLineDash([]);
+        const inScale = spotX >= PAD.left && spotX <= width - PAD.right;
+        if (inScale && Number.isFinite(spotMark) && spotMark > 0) {
+          const spotLabel = (Math.round(spotMark * 100) / 100).toFixed(2);
+          paintAxisChip(
+            ctx,
+            spotLabel,
+            spotX,
+            0,
+            SPOT_LABEL_BG,
+            SPOT_LABEL_FG,
+            "x",
+            width,
+            height,
+          );
+          host.dataset.spotLabel = spotLabel;
+        } else {
+          delete host.dataset.spotLabel;
+        }
+      } else {
+        delete host.dataset.spotLabel;
       }
 
       const strokeSeries = (
@@ -760,41 +872,42 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
         }
         ctx.restore();
 
-        const paintChip = (
-          text: string,
-          cx: number,
-          cy: number,
-          bg: string,
-          axis: "x" | "y",
-        ) => {
-          ctx.font = AXIS_FONT;
-          const padX = 6;
-          const chipH = 22;
-          const chipW = ctx.measureText(text).width + padX * 2;
-          let x =
-            axis === "x" ? cx - chipW / 2 : Math.max(4, PAD.left - chipW - 6);
-          let y = axis === "x" ? height - PAD.bottom + 6 : cy - chipH / 2;
-          x = Math.max(2, Math.min(x, width - chipW - 2));
-          y = Math.max(2, Math.min(y, height - chipH - 2));
-          ctx.fillStyle = bg;
-          ctx.beginPath();
-          if (typeof ctx.roundRect === "function") {
-            ctx.roundRect(x, y, chipW, chipH, 3);
-          } else {
-            ctx.rect(x, y, chipW, chipH);
-          }
-          ctx.fill();
-          ctx.fillStyle = "#fff";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(text, x + chipW / 2, y + chipH / 2);
-        };
-        paintChip(readout.priceLabel, track.x, 0, "#3b82f6", "x");
+        paintAxisChip(
+          ctx,
+          readout.priceLabel,
+          track.x,
+          0,
+          "#3b82f6",
+          "#fff",
+          "x",
+          width,
+          height,
+        );
         if (curves.expLabel && expY != null) {
-          paintChip(curves.expLabel, 0, expY, "#22d3ee", "y");
+          paintAxisChip(
+            ctx,
+            curves.expLabel,
+            0,
+            expY,
+            "#22d3ee",
+            "#fff",
+            "y",
+            width,
+            height,
+          );
         }
         if (curves.theoLabel && theoY != null) {
-          paintChip(curves.theoLabel, 0, theoY, theoreticalStroke, "y");
+          paintAxisChip(
+            ctx,
+            curves.theoLabel,
+            0,
+            theoY,
+            theoreticalStroke,
+            "#fff",
+            "y",
+            width,
+            height,
+          );
         }
       } else {
         delete host.dataset.crosshairPrice;
@@ -823,6 +936,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       theoreticalLegendLabel,
       strikeHandles,
       alertLines,
+      algoBand,
     ]);
 
     drawRef.current = draw;
@@ -1016,6 +1130,8 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       <div
         ref={attach}
         data-testid="pnl-chart-host"
+        data-algo-phase={algoPhase || undefined}
+        data-algo-side={algoSide || undefined}
         className="relative h-full min-h-[240px] w-full"
         style={{ width: "100%", height: "100%", minHeight: 240 }}
       >
@@ -1069,7 +1185,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
               <button
                 key={type}
                 type="button"
-                className="block w-full px-3 py-1.5 text-left text-[13px] text-white/90 hover:bg-white/10"
+                className="block min-h-11 w-full px-3 py-2 text-left text-[13px] text-white/90 hover:bg-white/10"
                 onClick={() => {
                   if (alertMenu.kind === "position" && alertMenu.positionId) {
                     positionAlertRef.current?.(

@@ -212,6 +212,22 @@ export function IconPlay(p: IconProps) {
   );
 }
 
+export function IconPause(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M7 5h3v14H7zM14 5h3v14h-3z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconStop(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M6 6h12v12H6z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function IconGear(p: IconProps) {
   return (
     <svg {...base(p)}>
