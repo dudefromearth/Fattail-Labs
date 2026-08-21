@@ -152,6 +152,71 @@ before you take it. It is a study-and-planning tool for building intuition and
 disciplined decisions — it does **not** predict profit, give trade signals, or tell you
 what to buy.
 
+## Volume Profile
+A study tool in Options Lab (`/app/options-lab/volume-profile`) that shows a sideways
+histogram of how much volume has traded at each price. Price runs up the side; a longer
+horizontal bar means more volume traded there — so you can see where a symbol has "done
+most of its business." A live-price marker highlights the bar at the current mid, and you
+choose the symbol, a bar period (1d / 4h / 1h / 30m), and text size.
+
+**How to read it:** pick your symbol and period, then scan for the longest bars — the
+busiest, most-accepted prices — note the thin bars where price moved through quickly, and
+watch where the live marker sits.
+
+**Why it matters:** high-volume prices tend to be reference levels traders revisit, so it
+helps you frame where activity has concentrated when studying a name.
+
+**Good to know:** it's a study tool, not a signal. The member chart *estimates*
+volume-by-price from OHLC bars (it's labelled "From OHLC window — not measured tick VP"),
+so it's an approximation, not exact tick data; it covers regular-hours equity/ETF data and
+doesn't show Point of Control or value areas.
+
+## Playbook
+Your personal scrapbook for how you trade under risk — your rules, setups, regimes, and
+the evidence behind them (`/app/playbook`, part of Practice). Each strategy is its own
+**book** of chapters and pages: a library of covers opens into a scrapbook view with a
+chapter list, a clean 16:9 page stage, and an **Archive** drawer for stapled files (charts,
+prints, PDFs). Books carry Draft / version / Archived badges, and a **Present** mode opens
+any book fullscreen for review or walking a peer through it.
+
+**How to use it:** New book → title it → Open book → Add chapter / Add page → Edit page
+(Markdown) → Apply. Upload files into the Archive to staple them in; add Tags; press
+**Save** to lock in a version; **Present** to review; **Export book** to download it as a
+ZIP.
+
+**Save matters:** your work is kept automatically as a working copy, but only **Save**
+creates a version — **Discard** reverts to your last Save (or deletes a never-saved
+draft). Once saved, a book can be Archived but not fully deleted. Link supporting evidence
+by attaching **journal sessions** from the Journal side (tagging a book alone doesn't
+count as evidence). Present mode hides your identity, so screenshots are safe to share.
+
+## Accounts & Capital
+The one place to manage your trade books and the money behind them (`/accounts-capital`,
+reached from your Profile / the account menu). It shows a total across all accounts, each
+account's balance, live position values, your buying-power setting, cash-movement history,
+and your tolerated master-drawdown setting.
+
+**How to use it:** create or retire accounts (up to 10 active), set a starting balance,
+record deposits and withdrawals, set per-account buying power, set your drawdown
+tolerance, and confirm balances as current.
+
+**Why it matters:** it's the only place you edit capital facts — Practice and Reports read
+from here (for example, the starting capital shown in Reports is read-only and comes from
+here). Balance = starting balance + trade outcomes + cash movements. Money here is
+campaign-blind; Practice campaigns are optional direction, not separate accounts.
+
+## Records
+"Records" is an older name for your performance dashboard — the Records link opens your
+**Reports** (see *Reports / Statistics*): your equity curve, win rate, and other
+breakdowns of your logged trades. To manage accounts and cash instead, see *Accounts &
+Capital*.
+
+## Market
+"Market" is the entry name for the **Options Lab** market-study desk — the Market page and
+old market links open Options Lab, with live underlier prices plus the **Heatmap**,
+**Volume Profile**, and **Analyzer** (Risk graph + Surface) tools. See *Options Lab* for
+the full picture. It's for studying the market, not placing orders.
+
 ## Practice
 The practice desk: Trade Log, Reports, Journal, Retrospective, Playbook, and optional
 Campaigns. Each account is one book. A campaign is a badge, not a book. Journal is still
