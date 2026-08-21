@@ -917,7 +917,8 @@ export default function OpfRiskAnalyzer() {
         const debit = algoEntryDebit({
           definedDebitPerShare: definedDebitSigned(p),
           lockMode: p.lock.mode,
-          lockPackageDebit: p.lock.packageDebitPerShare,
+          lockPackageDebit:
+            p.lock.mode === "locked" ? p.lock.packageDebitPerShare : null,
           livePackagePerShare: p.livePackagePerShare,
           priceSide: p.priceSide,
           netPremium: positionNetPremium(p.position),
@@ -1161,7 +1162,8 @@ export default function OpfRiskAnalyzer() {
         const debit = algoEntryDebit({
           definedDebitPerShare: definedDebitSigned(pos),
           lockMode: pos.lock.mode,
-          lockPackageDebit: pos.lock.packageDebitPerShare,
+          lockPackageDebit:
+            pos.lock.mode === "locked" ? pos.lock.packageDebitPerShare : null,
           livePackagePerShare: pos.livePackagePerShare,
           priceSide: pos.priceSide,
           netPremium: positionNetPremium(pos.position),
