@@ -64,6 +64,8 @@ Do **not** use `DISCARDED` / `REJECTED` as idea status.
 | FI-035 | 2026-08-20 | FTI v0.1 | **OD-FTI-OPF:** OPF over HTTP vs research infra outside the governed suite | Coach | Open on purpose. Do not resolve. | `OPEN` | FTI header |
 | FI-036 | 2026-08-20 | AZ-ATM v0.1 | Time Machine **vol from full chain-snapshot days** (SSR live_capture / successor) so the tent is last-print honest at \(t\) | Coach (later plane) | Basic TM is 1-minute **price + time** only; must not badge last-minute package IV | `OPEN` | AZ-ATM §3.4 · **DL-486** |
 | FI-037 | 2026-08-20 | AZ-ATM v0.1.1 | TPO **grain** for Time Machine “follow the path” (tick/second path vs 30-minute Market Profile letters vs other feed) | Juliet (Coach specified TPO path, not grain) | Must not silently pick a TPO SoR | `OPEN` | AZ-ATM §3.3 ATM-P5 · §13 · **DL-487** |
+| FI-038 | 2026-08-21 | TF v0.1 | Next Labs **hosts** of Trader Feed after T Ortho + Algo (Journal, Heatmap, Practice, Strategy Lab, Community, Visualize AI, …) | Juliet (Coach: “may be used in other features”) | Reuse law is in; auto-mount on those surfaces is not | `OPEN` | TF §3.3 · §7.3 · **OD-FN-6** · **DL-514** · **DL-517** |
+| FI-039 | 2026-08-21 | TF v0.1.1 | Member **composer** inside Trader Feed (Journal two-way) vs host-voice posts only | Juliet (Coach: Journal-shaped posts; did not name a composer) | Journal is a chatbot; TF trader-review may stay one-sided | `OPEN` | TF **OD-FN-7** · **DL-515** · **DL-517** |
 
 ---
 

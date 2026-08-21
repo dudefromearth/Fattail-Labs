@@ -41,6 +41,8 @@ export type AlgoTrailState = {
   side: AlgoSide;
   f: number;
   H: number;
+  /** Current unrealized gain — same units as H. */
+  U: number;
   S: number;
   xH: number | null;
   xS: number | null;
@@ -373,6 +375,7 @@ export function stepAlgoTrailWithPrevSpot(
       side: "near",
       f: f0,
       H: 0,
+      U: input.U,
       S: 0,
       xH: null,
       xS: null,
@@ -449,6 +452,7 @@ export function stepAlgoTrailWithPrevSpot(
     side,
     f,
     H,
+    U: input.U,
     S,
     xH,
     xS: invertNamed === "ok" ? xS : armedAlready ? prev?.xS ?? null : null,

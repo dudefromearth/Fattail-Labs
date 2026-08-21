@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Surface T Ortho Spec v0.1
 
-**Status:** DRAFT — Coach 2026-08-21. **v0.1.5** tape and surface share the box strike scale (floor/ceiling). **v0.1.4** Surface is a simple alternate of the Analyzer canvas; T Ortho is the surprise Easter Egg inside Surface (**DL-509**). **v0.1.3** TO-B1: What-if does not rewrite the historical path. Not BUILD AUTHORITY until Coach Phase 5.  
+**Status:** DRAFT — Coach 2026-08-21. **v0.1.10** product is **Trader Feed** (**TF** · **DL-517**). **v0.1.9** T Ortho is a **Trader Feed venue** (market + position + trader aware; same base market info — **DL-516**). **v0.1.8** T Ortho FN host has an **instructions prompt**; squawk is a **timestamped post tape** (Journal-shaped, generalized — **DL-515**). **v0.1.7** T Ortho narrative box is **replaced** by Labs **Feature Narrative** ([FN](./FatTail-Labs-Feature-Narrative-Spec-v0.1.md) · **DL-514**) — T Ortho is a **host** (observation-only; still no algo/trail). **v0.1.6** squawk is a floating narrative for trader review — T Ortho–specific, context-aware (trader + examining position(s)). **v0.1.5** tape and surface share the box strike scale (floor/ceiling). **v0.1.4** Surface is a simple alternate of the Analyzer canvas; T Ortho is the surprise Easter Egg inside Surface (**DL-509**). **v0.1.3** TO-B1: What-if does not rewrite the historical path. Not BUILD AUTHORITY until Coach Phase 5.  
 **Type:** Product Spec — Surface **addendum** (Options Lab). Named-view **T Ortho**.  
 **Short name:** **OL-TO**  
 **Route:** `/app/options-lab/surface`  
@@ -15,6 +15,7 @@
 | [OT-EF](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.1.md) · **DL-309** | Representable or named state · no invented strikes |
 | [Keep-Warm v0.1.2](./FatTail-Labs-Options-Lab-Analyzer-Viewport-Keep-Warm-Spec-v0.1.md) | Last paint · Working / Away / Idle · no 1s heavy resolve |
 | [HI Spec v1.0](./FatTail-Labs-Human-Interface-Spec-v1.0.md) | Dark work-surface **tokens** — **no raw hex** in feature chrome |
+| [Trader Feed v0.1](./FatTail-Labs-Trader-Feed-Spec-v0.1.md) · **DL-514** · **DL-517** | **Chrome** for the T Ortho narrative. This spec owns the **host** (voice, boundary, examining positions). TF **replaces** the egg narrative box. |
 | North Star v1.2 · doctrine learner-capacity | **Sacred Invariant #8** (Labs copy: process outcomes, **never profit claims**) — AZ-ALB §7 names the same law |
 
 **Not in this spec:** [AZ-ALGO](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md) — Analyzer-only. T Ortho has **no algo alert, no trail**. Do not carry that machinery here.
@@ -57,6 +58,30 @@ Recorded as **intent**. Surface is not a second product. T Ortho stays a
 **As-built, verbatim:** Do not import TimeOrthoEggPanel chrome assumptions into new work; check as-built first.
 
 **Copy, verbatim:** Sacred Invariant #8 applies to any member-facing copy in T Ortho.
+
+**Floating narrative (2026-08-21, verbatim):**
+
+> Both of these features are to feed a floating Narrative for trader review
+
+> So, the Narrative is feature-specific and contectually aware including aware of the trader and their current position(s) they are examining
+
+**Labs-wide Feature Narrative (2026-08-21, verbatim — do not drop · DL-514):**
+
+> So, this is a new feature I am proposing. It will take the place of the narrative box in T Ortho, and it will supplement the Algo Alert feature, and it may be used in other geatures throughout FatTail Labs.
+
+**Seating:** T Ortho **squawk is a host** of [Trader Feed](./FatTail-Labs-Trader-Feed-Spec-v0.1.md) (**TF** · formerly Feature Narrative **FN**). TF **replaces** the egg **narrative box**. This spec still owns the **voice** (observation-only; Journal-agent boundary) and still has **no algo alert, no trail**. Awareness law unchanged: **T Ortho–specific** and **contextually aware** of **this trader** and the **position(s) they are examining** on Surface. DL-513 “two hosts, two products” is **reshaped for chrome** (one primitive); **eval isolation** is kept.
+
+**Tape and prompt (2026-08-21, verbatim — do not drop · DL-515):**
+
+> Each place the feature is employed, it will have an instructions prompt to follow. The narrative will be a continuous scroll, so the user can view older posts. The posts will be timestamped. This feature is very similar to the Jounaling feature. But it is generalized
+
+T Ortho employment includes an **instructions prompt** (TF §5.2). The squawk body is TF’s **timestamped post tape**, not the egg’s overwrite paragraph. “Instructions” = what the **narrative follows**. **Never** “what to do” (Journal-agent boundary unchanged).
+
+**Trader Feed (2026-08-21, verbatim — do not drop · DL-516):**
+
+> One of my members referred to this feature as the trader feed. A merket and position and trader aware contrinuous narrative. It is customized per venue. But largely based on the same base market info.
+
+T Ortho is one **venue**. Chrome title **Trader Feed**. Customization = this venue’s instructions prompt + observation-only voice. Base market info is the shared OPF / Arch 28 plane — not a T Ortho Massive.
 
 ---
 
@@ -120,7 +145,7 @@ Recorded so this spec does not accidentally bless the egg.
 
 ## 5. Squawk agent (named)
 
-A **named** observation surface on T Ortho. Not the egg.
+A **named** observation surface on T Ortho. Not the egg. **Job:** a **floating narrative for trader review**. Chrome is Labs **Trader Feed** (TF · `host_id: t-ortho`). Feature-specific (this named view). **Contextually aware** of **this member** and the **Shown / focused position(s)** they are examining on Surface (path on the map). Not the Analyzer Algo **voice**, not a generic market squawk. TF **replaces** the egg narrative box (**DL-514** · **DL-517**).
 
 ### 5.1 Boundary (Coach — do not drop)
 
@@ -147,11 +172,11 @@ Tango reviews **copy vocabulary** **before Bob ever quotes it**. Invariant **#8*
 
 ### 5.4 Chrome (HI)
 
-Dark-pinned **tokens**. No raw hex in feature chrome. Floatable/observation panel may exist; it is **not** `TimeOrthoEggPanel`. Own testid `surface-t-ortho-squawk`. Own storage key if dragged — do not share the egg’s.
+Dark-pinned **tokens**. No raw hex in feature chrome. The pane **is** Trader Feed (`t-ortho`). It is **not** `TimeOrthoEggPanel`. testid alias `surface-t-ortho-squawk` plus `data-trader-feed="t-ortho"`. Persist key `ft_labs_trader_feed_pos_t-ortho` — do not share the egg’s `ft_options_lab_narrative_pos_v1`. Default seat **OD-FN-1**.
 
 ### 5.5 Cadence
 
-Local deterministic sentences from the **sheet + path**. Keep-Warm. Optional model enrichment is **out of v0.1** unless Coach opens it (do not copy the egg’s 3-minute `/session-note` by default).
+**Instructions prompt required** (TF §5.2 · **DL-515**). Sentences from the **sheet + path + this trader + examining position(s)** **append** as timestamped posts. Keep-Warm. Do **not** copy the egg’s 3-minute overwrite `/session-note`. Editor **location** is **OD-FN-9** (existence is no longer open). Model-vs-local cadence remains **OD-TO-2**.
 
 ---
 
@@ -175,6 +200,9 @@ Local deterministic sentences from the **sheet + path**. Keep-Warm. Optional mod
 | What-if = real-time walk on the contour | **IN-SCOPE** |
 | Historical path inviolate; What-if = scenario cursor from now | **IN-SCOPE** · **TO-B1** |
 | Squawk observation-only; same boundary as the Journal agent | **IN-SCOPE** |
+| Floating narrative for trader review; T Ortho–specific; aware of this trader and examining position(s) | **IN-SCOPE** · §0 · TF host `t-ortho` (**DL-514** · **DL-517**); eval still isolated from Algo |
+| T Ortho narrative **box** replaced by Trader Feed | **IN-SCOPE** · §5 · **DL-514** · **DL-517** |
+| T Ortho instructions prompt + timestamped post tape | **IN-SCOPE** · §5.5 · TF §5.1–5.2 · **DL-515** |
 | HI tokens, no raw hex | **IN-SCOPE** |
 | Do not import egg chrome | **IN-SCOPE** |
 | As-built HLOC tape underlay | **FLAGGED** — not the SoR picture; Coach seats contour |
@@ -204,8 +232,8 @@ Local deterministic sentences from the **sheet + path**. Keep-Warm. Optional mod
 | **AT-TO-1** | T Ortho detent shows **spot × time** orthographic map with **IV contour** from OPF-held IV. |
 | **AT-TO-2** | Live Shown path is drawn; unrepresentable cells are named, not invented. |
 | **AT-TO-3** | What-if Enable **re-samples the contour** in real time (same knobs as Surface What-if). The **historical path does not move**. A **scenario cursor** (ghost / projected segment from now) shows where the trade would sit. Not snap rebind. Not a rewritten polyline. |
-| **AT-TO-4** | Squawk: geometry, IV-since-entry, τ burn, contour distance. **No** instruction strings. |
-| **AT-TO-5** | Chrome uses HI tokens; no raw hex in squawk/map chrome. Not `TimeOrthoEggPanel`. |
+| **AT-TO-4** | Squawk: geometry, IV-since-entry, τ burn, contour distance. **No** “what to do” strings. Feature-specific; names **this trader’s examining position(s)** — not a generic market tape, not the Algo **voice**. Chrome is Trader Feed `t-ortho` (**AT-FN-3**): **instructions prompt** + **timestamped post tape** (**AT-FN-11…13**). |
+| **AT-TO-5** | Chrome uses HI tokens; no raw hex in squawk/map chrome. Not `TimeOrthoEggPanel`. Persist is the FN per-host key, not the egg’s. |
 | **AT-TO-6** | Invariant #8: no profit claims in squawk. Tango vocabulary stamped before any Bob quote. |
 | **AT-TO-7** | Keep-Warm: last paint remains; Idle is not 1s resolve. One market WS. |
 
@@ -216,7 +244,7 @@ Local deterministic sentences from the **sheet + path**. Keep-Warm. Optional mod
 | OD | Question | Silent |
 |----|----------|--------|
 | **OD-TO-1** | As-built HLOC tape: underlay, replace, or hide when contour is SoR? | **None** — Coach seats at Phase 5 |
-| **OD-TO-2** | Squawk local-only vs optional model | v0.1 **local** unless Coach opens |
+| **OD-TO-2** | Squawk local-only vs model ticks on the post tape | Prompt **exists** (**DL-515**). Cadence / model-vs-local still open. Editor URL **OD-FN-9**. |
 
 ---
 
@@ -224,6 +252,11 @@ Local deterministic sentences from the **sheet + path**. Keep-Warm. Optional mod
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v0.1.10** | 2026-08-21 | Product renamed **Trader Feed** (**TF**). **DL-517**. |
+| **v0.1.9** | 2026-08-21 | T Ortho is a **Trader Feed venue** (market + position + trader aware; same base market info). **DL-516**. |
+| **v0.1.8** | 2026-08-21 | Coach: T Ortho FN host has an **instructions prompt**; squawk is a **timestamped post tape** (Journal-shaped, generalized). Observation-only unchanged. **DL-515**. |
+| **v0.1.7** | 2026-08-21 | Coach: Labs **Feature Narrative** **replaces** the T Ortho narrative box. T Ortho is a **host** (`t-ortho`); voice/boundary unchanged (observation-only; no algo/trail). **DL-514**. |
+| **v0.1.6** | 2026-08-21 | Coach: T Ortho squawk and Algo Reason floater both feed a **floating narrative for trader review**; each is **feature-specific** and **context-aware** (this trader + examining position(s)). T Ortho still has no algo/trail. **DL-513**. |
 | **v0.1.5** | 2026-08-21 | Candle tape and surface box share `sMin`–`sMax`. Tape occupies the box floor/ceiling. Spot and listed strikes are the same dollars on the shared chart. **DL-512**. |
 | **v0.1.4** | 2026-08-21 | Coach: Surface = simple alternate of Analyzer canvas; T Ortho = surprise Easter Egg inside Surface. Intent only. **DL-509**. |
 | **v0.1.3** | 2026-08-20 | **TO-B1:** historical path is fact; What-if moves a scenario cursor on the re-sampled contour. AT-TO-3 both halves. |

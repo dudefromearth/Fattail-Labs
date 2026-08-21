@@ -460,7 +460,7 @@ Builder internals (also PB Spec + recent land): listed strikes only, ATM center,
 **Normative Builder + canvas apply + Manager hook:**
 [`FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md`](./FatTail-Labs-Options-Lab-Analyzer-Alert-Builder-Spec-v1.0.md) · **DL-463**.  
 **Algo (OTM fly narrative trail):**
-[`FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md`](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md) · **DL-472**.
+[`FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md`](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md) · **DL-472**. Reason floater **chrome** is Labs [Trader Feed](./FatTail-Labs-Trader-Feed-Spec-v0.1.md) (**TF** · **DL-514** · **DL-517**) — Algo **supplements**, it does not replace the trail.
 
 Analyzer is a work-surface **client** of the future Labs-wide **Alerts Manager + API**. Session-local alerts are a **stub adapter** until that manager GO’s.
 
@@ -897,6 +897,8 @@ All ODs below are **Accepted** as written. Recommendations become **normative la
 | **v0.2.1 path** | 2026-08-11 | Filename reconcile → `...Analyzer-Spec-v0_2.md` (P-B1 · DL-306); content still v0.2.1 |
 | **v0.2.2** | 2026-08-16 | **DL-394** Show/Hide checkbox; additive continuous book viewport. Prior one-focus-viewport rows kept as superseded. |
 | **v0.2.2 + AZ-ATM pointer** | 2026-08-20 | Bucket 4 seats What-if **and** Time Machine replay. Inspector knobs stay What-if (TM-A1). Replay law in AZ-ATM v0.1 · **DL-486**. What-if §1.11 text kept; Time Machine named beside it. |
+| **v0.2.2 + FN pointer** | 2026-08-21 | §1.14 Algo Reason chrome is Labs Feature Narrative (**FN** · **DL-514**). Analyzer content still v0.2.1 law. |
+| **v0.2.2 + TF rename** | 2026-08-21 | §1.14 chrome is **Trader Feed** (**TF** · **DL-517**). Analyzer content still v0.2.1 law. |
 
 **Reference UX (non-authority):** MSC Risk Graph (2D + 3D) — workflow / scene only. **MSC is not the pricing standard.**
 

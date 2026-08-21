@@ -4,6 +4,148 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-522 Analyzer PiP: box + tent + $0; Surface Autofit pad
+
+**Decision (Coach):** PiP shows **view box, surface, and $0 plane** — no
+strike plane. Strike window and P&L height use the same Autofit pad as
+Surface (`SURFACE_PAD_FRAC`).
+
+**Does not:** MiniTwo in this body.
+
+---
+
+## 2026-08-21 — DL-521 Analyzer PiP ISO frames in the PiP; drag + scroll
+
+**Decision (Coach):** The PiP tent is the Surface **ISO image inside the PiP
+box**. Do not apply the full-page **window-center lift** (that shoved the
+mesh off the small canvas). The only surface control in the PiP is **drag
+(orbit) and scroll (zoom)**. Active corner square stays **red**; others
+**white**.
+
+**Does not:** MiniTwo in this body.
+
+---
+
+## 2026-08-21 — DL-520 Analyzer PiP size ladder
+
+**Decision (Coach):** Small is the former Large (336×252). Medium is **50%
+bigger than Small**. Large is **100% bigger than Small**. Active corner
+square stays **red**; others **white**.
+
+**Does not:** MiniTwo in this body.
+
+---
+
+## 2026-08-21 — DL-519 Analyzer ISO Picture-in-Picture
+
+**Decision (Coach):** Analyzer has a **PiP** of the Surface **ISO** tent.
+Toggle sits in the upper bar **to the right of Autofit**. Sizes **small /
+medium / large** (toolbar). Default **off**, first show **upper-right**.
+The PiP is the **3D image only**. Corner placement is **tiny squares on
+the PiP’s four corners** — **red** = active dock, **white** = others.
+
+**Does not:** MiniTwo in this body; T Ortho in the PiP.
+
+---
+
+## 2026-08-21 — DL-518 Algo HUD includes Profit between High and Trail
+
+**Decision (Coach):** The Algo tracker (Live + Armed, lower-left above $0)
+shows **High · Profit · Trail · Stop**. **Profit** is **current gain**
+(`U`), same dollars as **High** (`H`). Colons stay aligned.
+
+AZ-ALGO **v1.0.16** · **AT-ALGO-17**.
+
+**Does not:** MiniTwo in this body; changing trail math.
+
+---
+
+## 2026-08-21 — DL-517 Product renamed Feature Narrative → Trader Feed
+
+**Decision (Coach, verbatim):**
+
+> Yes rename it.
+
+**Seating:** the Labs-wide floating narrative is **Trader Feed** (**TF**). Spec file [`FatTail-Labs-Trader-Feed-Spec-v0.1.md`](../Specs/FatTail-Labs-Trader-Feed-Spec-v0.1.md) **v0.1.3**. Former name **Feature Narrative** (**FN**) through v0.1.2. Issued IDs **AT-FN-*** / **OD-FN-*** kept. Stub at the old filename points here.
+
+**OD-FN-10** adopted.
+
+**Does not:** MiniTwo; code; Phase 5.
+
+---
+
+## 2026-08-21 — DL-516 Trader Feed: market + position + trader aware; per venue; same base market
+
+**Decision (Coach, verbatim):**
+
+> One of my members referred to this feature as the trader feed. A merket and position and trader aware contrinuous narrative. It is customized per venue. But largely based on the same base market info.
+
+**Seating:** Feature Narrative ([spec v0.1.2](../Specs/FatTail-Labs-Feature-Narrative-Spec-v0.1.md)) **member-facing name** is **Trader Feed**. Awareness is **market + position + trader**. **Continuous** = the timestamped post tape (**DL-515**). **Venue** = an employment (T Ortho, Algo, later) with its own instructions prompt. **Base market info** = one Labs plane (Arch 28 + OPF-held). Venues customize the **narrative**, not the **prints**. No per-venue Massive.
+
+Spec short name stays **FN** until **OD-FN-10**. Chrome title **Trader Feed**.
+
+FN **v0.1.2** · OL-TO **v0.1.9** · AZ-ALGO **v1.0.14**. **DRAFT**.
+
+**Does not:** MiniTwo; code; rename the spec file; merge Algo eval into T Ortho.
+
+---
+
+## 2026-08-21 — DL-515 Feature Narrative is a Journal-shaped tape: per-host prompt, timestamped posts, continuous scroll
+
+**Decision (Coach, verbatim):**
+
+> Each place the feature is employed, it will have an instructions prompt to follow. The narrative will be a continuous scroll, so the user can view older posts. The posts will be timestamped. This feature is very similar to the Jounaling feature. But it is generalized
+
+**Seating:** Feature Narrative ([spec v0.1.1](../Specs/FatTail-Labs-Feature-Narrative-Spec-v0.1.md)) is **Journal-shaped, generalized** — not a replacement of Journal.
+
+| Coach | Law |
+|-------|-----|
+| Each employment has an **instructions prompt** | Required on every host pack. Algo house base **is** that prompt. T Ortho now has one (**OD-FN-2** adopted). “Instructions” = what the **narrative follows**, not “what to do.” |
+| **Continuous scroll** of older **posts** | Bounded tape; append; member can scroll up; stick-to-newest unless reading older (Journal v0.6 §1.4 shape). |
+| Posts **timestamped** | Visible stamp on every post, not hover. |
+
+**Does not:** replace Journal (calendar, week, retrospective, composer-as-record); MiniTwo; code in this body; silent member composer (**OD-FN-7**); silent MySQL tape (**OD-FN-8**).
+
+FN **v0.1.1** · OL-TO **v0.1.8** · AZ-ALGO **v1.0.13**. **DRAFT**.
+
+---
+
+## 2026-08-21 — DL-514 Feature Narrative is Labs-wide chrome (replaces T Ortho box; supplements Algo)
+
+**Decision (Coach, verbatim):**
+
+> So, this is a new feature I am proposing. It will take the place of the narrative box in T Ortho, and it will supplement the Algo Alert feature, and it may be used in other geatures throughout FatTail Labs.
+
+**Job and awareness (kept from DL-513, verbatim):**
+
+> Both of these features are to feed a floating Narrative for trader review
+
+> So, the Narrative is feature-specific and contectually aware including aware of the trader and their current position(s) they are examining
+
+**Seating:** one Labs **Feature Narrative** primitive ([spec v0.1](../Specs/FatTail-Labs-Feature-Narrative-Spec-v0.1.md) · **FN**). T Ortho is a **host** (`t-ortho`) — FN **replaces** the egg narrative box; observation-only voice stays OL-TO. Algo Reason is a **host** (`algo-reason`) — FN **supplements** Algo; trail / Reason / **ALGO-N1** / **ALGO-R1** stay AZ-ALGO. Other Labs features may host later (**FI-038**).
+
+**Reshapes DL-513 chrome:** “two hosts, two products” → one chrome, **N isolated context packs**. **Does not** merge Algo trail eval into Surface, or T Ortho observation into Algo.
+
+OL-TO **v0.1.7** · AZ-ALGO **v1.0.12**. **DRAFT** — not BUILD AUTHORITY. No implementation plan until Coach Phase 5.
+
+**Does not:** MiniTwo; code in this body; fire AZ-ALGO W4; retire the rest of `TimeOrthoEggPanel` (**OD-FN-4**).
+
+---
+
+## 2026-08-21 — DL-513 Floating narratives: feature-specific, trader- and position-aware
+
+**Decision (Coach, verbatim):**
+
+> Both of these features are to feed a floating Narrative for trader review
+
+> So, the Narrative is feature-specific and contectually aware including aware of the trader and their current position(s) they are examining
+
+**These features** = Analyzer **Algo** Reason floater (AZ-ALGO **v1.0.11**) and Surface **T Ortho** squawk (OL-TO **v0.1.6**). Same **job** (floating narrative for **trader review**). **Two hosts, two products** — no shared store, no algo/trail on T Ortho. Each floater is **feature-specific** and **contextually aware** of **this member** and the **position(s) they are examining**.
+
+**Does not:** MiniTwo; merge the two floaters; T Ortho prompt editor (still unspecified).
+
+---
+
 ## 2026-08-21 — DL-512 T Ortho tape and surface share the strike scale
 
 **Decision (Coach):** The candle chart and the surface box use the **same

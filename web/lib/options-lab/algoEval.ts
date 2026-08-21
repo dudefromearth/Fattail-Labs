@@ -33,6 +33,7 @@ function trailEqual(a: AlgoTrailState, b: AlgoTrailState): boolean {
     a.side === b.side &&
     a.f === b.f &&
     a.H === b.H &&
+    a.U === b.U &&
     a.S === b.S &&
     a.xH === b.xH &&
     a.xS === b.xS &&

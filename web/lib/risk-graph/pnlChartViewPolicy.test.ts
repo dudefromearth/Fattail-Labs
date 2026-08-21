@@ -174,8 +174,10 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(az.includes("autofitCenterPrice={tmOpenSpot}"), "Autofit X centers on session open");
   assert(host.includes("openCenteredXRange"), "TM Autofit recenters on open");
   assert(host.includes('lab: "High"'), "Algo HUD High (not Highest)");
+  assert(host.includes('lab: "Profit"'), "Algo HUD Profit between High and Trail");
   assert(host.includes('lab: "Trail"'), "Algo HUD Trail");
   assert(host.includes('lab: "Stop"'), "Algo HUD Stop");
+  assert(host.includes("algoProfit"), "Profit dataset");
   assert(host.includes("fmtAlgoPrint"), "Stop is ticker print, not $");
   assert(az.includes("algoHud={algoHud}"), "Algo HUD wired");
   assert(az.includes("resetSim()"), "Demo Exit also ends What-if");

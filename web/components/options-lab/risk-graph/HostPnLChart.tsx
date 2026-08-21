@@ -79,13 +79,19 @@ function fmtAlgoPrint(n: number | null): string {
 
 function paintAlgoHud(
   ctx: CanvasRenderingContext2D,
-  hud: { highest: number | null; trailPct: number; stop: number | null },
+  hud: {
+    highest: number | null;
+    profit: number | null;
+    trailPct: number;
+    stop: number | null;
+  },
   zeroY: number,
   plotLeft: number,
   plotTop: number,
 ): void {
   const rows = [
     { lab: "High", val: fmtAlgoMoney(hud.highest) },
+    { lab: "Profit", val: fmtAlgoMoney(hud.profit) },
     { lab: "Trail", val: `${Math.round(hud.trailPct)}%` },
     { lab: "Stop", val: fmtAlgoPrint(hud.stop) },
   ];
@@ -231,6 +237,7 @@ export type HostPnLChartProps = {
   /** Armed/recorded tracker, lower-left above $0. */
   algoHud?: {
     highest: number | null;
+    profit: number | null;
     trailPct: number;
     stop: number | null;
   } | null;
@@ -711,10 +718,12 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       if (algoHud) {
         paintAlgoHud(ctx, algoHud, toY(0), PAD.left, PAD.top);
         host.dataset.algoHighest = fmtAlgoMoney(algoHud.highest);
+        host.dataset.algoProfit = fmtAlgoMoney(algoHud.profit);
         host.dataset.algoTrail = `${Math.round(algoHud.trailPct)}%`;
         host.dataset.algoStop = fmtAlgoPrint(algoHud.stop);
       } else {
         delete host.dataset.algoHighest;
+        delete host.dataset.algoProfit;
         delete host.dataset.algoTrail;
         delete host.dataset.algoStop;
       }

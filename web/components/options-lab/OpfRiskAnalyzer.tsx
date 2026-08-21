@@ -104,6 +104,14 @@ import {
 } from "@/lib/options-lab/templates/gex";
 import type { ValueModeId } from "@/lib/options-lab/templates/types";
 import Button from "@/components/ui/Button";
+import AnalyzerSurfacePip from "@/components/options-lab/AnalyzerSurfacePip";
+import {
+  DEFAULT_PIP,
+  loadAnalyzerPip,
+  saveAnalyzerPip,
+  type PipSize,
+} from "@/lib/options-lab/analyzerPip";
+import type { OpfLegMarkForSheet } from "@/lib/risk-graph/surfaceModel";
 import AlertBuilderDialog, {
   type AlertBuilderSeed,
 } from "@/components/options-lab/AlertBuilderDialog";
@@ -267,6 +275,14 @@ export default function OpfRiskAnalyzer() {
   useEffect(() => {
     setAutofitPtsPerInch(loadAutofitPtsPerInch());
   }, []);
+  const [pip, setPip] = useState(DEFAULT_PIP);
+  useEffect(() => {
+    setPip(loadAnalyzerPip());
+  }, []);
+  const persistPip = (next: typeof DEFAULT_PIP) => {
+    setPip(next);
+    saveAnalyzerPip(next);
+  };
 
   const [tmDay, setTmDay] = useState("");
   const [tmSamples, setTmSamples] = useState<ReplaySample[]>([]);
@@ -968,6 +984,7 @@ export default function OpfRiskAnalyzer() {
       : (liveAlgo.algo.trail_start_pct || 75) / 100;
     return {
       highest: st.H,
+      profit: Number.isFinite(st.U) ? st.U : null,
       trailPct: Math.round(g * 100),
       stop: st.xS != null && Number.isFinite(st.xS) ? st.xS : null,
     };
@@ -2030,6 +2047,37 @@ export default function OpfRiskAnalyzer() {
               >
                 Auto-fit
               </Button>
+              <Button
+                variant="bordered"
+                className={
+                  "pointer-events-auto " +
+                  (pip.on
+                    ? "border-red-400/80 text-red-200"
+                    : "")
+                }
+                aria-pressed={pip.on}
+                data-testid="analyzer-pip-toggle"
+                onClick={() => persistPip({ ...pip, on: !pip.on })}
+              >
+                PiP
+              </Button>
+              {pip.on
+                ? (["sm", "md", "lg"] as PipSize[]).map((s) => (
+                    <Button
+                      key={s}
+                      variant="bordered"
+                      className={
+                        "pointer-events-auto min-w-11 px-2 uppercase " +
+                        (pip.size === s ? "border-red-400/80 text-red-200" : "")
+                      }
+                      aria-pressed={pip.size === s}
+                      data-testid={`analyzer-pip-size-${s}`}
+                      onClick={() => persistPip({ ...pip, size: s })}
+                    >
+                      {s}
+                    </Button>
+                  ))
+                : null}
             </div>
             <div className="relative z-[2] ml-auto shrink-0">
               <AnalyzerTimeMachineStrip
@@ -2232,6 +2280,27 @@ export default function OpfRiskAnalyzer() {
                     setAlertBuilderOpen(true);
                   }}
                 />
+                {pip.on ? (
+                  <AnalyzerSurfacePip
+                    trades={
+                      graphBook.trades.length ? graphBook.trades : trades
+                    }
+                    marks={
+                      (risk.result?.marks?.leg_marks ??
+                        null) as OpfLegMarkForSheet[] | null
+                    }
+                    spot={
+                      opfSpot != null && opfSpot > 0
+                        ? opfSpot
+                        : risk.spot
+                    }
+                    volOffsetPts={timeMachineEnabled ? wiredVolPts : 0}
+                    timeOffsetHours={timeOffsetHours}
+                    size={pip.size}
+                    corner={pip.corner}
+                    onCorner={(c) => persistPip({ ...pip, corner: c })}
+                  />
+                ) : null}
                 {/* Centered notice over grid — translucent so scales stay readable */}
                 {viewportFocus?.notice ? (
                   <div

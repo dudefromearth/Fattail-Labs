@@ -522,8 +522,10 @@ function factoryPose(
 
 export function mountSurfaceScene(
   host: HTMLElement,
-  init: { sheet?: SurfaceSheet | null } = {},
+  init: { sheet?: SurfaceSheet | null; windowLift?: boolean } = {},
 ): SurfaceSceneHandle {
+  /** Full Surface page centers the box on the window. PiP must not. */
+  const windowLift = init.windowLift !== false;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0a0a0e);
   const persp = new THREE.PerspectiveCamera(PERSPECTIVE_FOV, 1, 0.05, 80);
@@ -1255,6 +1257,10 @@ export function mountSurfaceScene(
   const applyLift = (cam: THREE.PerspectiveCamera | THREE.OrthographicCamera, w: number, h: number) => {
     cam.clearViewOffset();
     cam.updateProjectionMatrix();
+    if (!windowLift) {
+      host.dataset.liftPx = "0";
+      return;
+    }
     cam.updateMatrixWorld();
     world.updateMatrixWorld(true);
     const liftPx = windowCenterLiftPx(cam, w, h);
