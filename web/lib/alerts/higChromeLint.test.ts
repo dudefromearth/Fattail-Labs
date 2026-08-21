@@ -46,10 +46,25 @@ for (const rel of FILES) {
     assert(!src.includes("Coming soon") || src.includes("Save is off"), "placeholder");
     assert(!/EmptyState/.test(src), "no EmptyState in Builder");
     assert(src.includes("seed?.demo === true"), "TM create defaults Demo");
-    assert(src.includes('demoClock === "timemachine"'), "TM Demo copy");
+    assert(
+      !src.includes("Specify nothing and it goes to end of day"),
+      "no Decay helper copy",
+    );
+    assert(
+      !src.includes("Enable What-if, then move Spot"),
+      "no Demo helper copy",
+    );
     assert(
       !src.includes("analyzer-alert-algo-copy"),
       "Algo panel has no narrative paragraph",
+    );
+    assert(src.includes("Start Trail %"), "trail start chrome label");
+    assert(src.includes("End Trail %"), "trail end chrome label");
+    assert(src.includes("algo-trail-range"), "trail range is a boxed group");
+    assert(src.includes("Trail Settings"), "trail range has a title");
+    assert(
+      src.includes("bg-[var(--color-tint-soft)]"),
+      "trail range uses contrasting fill",
     );
   }
 }
@@ -60,11 +75,21 @@ const holder = readFileSync(
 );
 assert(!/EmptyState/.test(holder), "holder has no EmptyState");
 assert(holder.includes("Create alert"), "44pt create control");
+assert(holder.includes("headerInPanel"), "Alerts + lives in the panel header");
 assert(holder.includes("Unbound"), "unbound state");
 assert(holder.includes("IconTrash"), "holder Delete uses kit trash");
 assert(holder.includes("IconTrash size={24}"), "holder trash is 50% larger than 16");
 assert(holder.includes("analyzer-alert-delete-"), "Delete test id on each card");
 assert(holder.includes("onDeleteAlert"), "Delete is wired");
+assert(holder.includes("onEditAlert"), "holder click opens Builder");
+assert(holder.includes("analyzer-demo-link"), "Demo wrap around Alerts + What-if");
+assert(holder.includes("bg-red-500/15"), "Demo wrap matches What-if red glow");
+assert(holder.includes("Demo Mode"), "Demo wrap title");
+assert(holder.includes("analyzer-demo-exit"), "Demo wrap Exit");
+assert(
+  holder.includes("analyzer-alert-edit-"),
+  "edit test id on each card title",
+);
 
 const modal = readFileSync(join(root, "components/ui/Modal.tsx"), "utf8");
 assert(modal.includes("floatable"), "Modal supports floatable");

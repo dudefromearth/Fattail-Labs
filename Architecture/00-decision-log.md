@@ -4,6 +4,52 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-505 What-if sits under Alerts; Demo wraps both
+
+**Decision:** Left inspector order is **Alerts · What-if · GEX · Probability**.
+When any holder alert is **Demo**, Alerts and What-if share a **red** **Demo
+Mode** wrap (same `239,68,68` as the What-if viewport glow) with **Exit** in
+the upper right. Exit clears Demo on those alerts **and ends What-if** (Enable
+off, knobs at rest); the wrap dismisses. GEX / Probability stay outside.
+
+**Does not:** MiniTwo in this body.
+
+---
+
+## 2026-08-21 — DL-504 Algo trail knobs boxed as Start / End Trail %
+
+**Decision:** Type → Algo chrome labels the give-up pair **Start Trail %** and
+**End Trail %**. Those two, **Decay ends at end of day**, and the datetime
+when that box is off, sit in one **tinted** group (tint-soft fill, tint
+border) so the trail’s beginning and end read as one control. Math is
+unchanged (`S = (1−g)×H`). AZ-ALGO **v1.0.8**.
+
+**Does not:** MiniTwo in this body.
+
+---
+
+## 2026-08-21 — DL-503 Holder click opens Builder on that alert
+
+**Decision:** Clicking an Alerts holder card (not the state chip, not Delete)
+opens Alert Builder **seeded from that record**: id, Type, bind, knobs, Live/
+Idle/Touched. Algo cards open Type **Algo** with stored give-up knobs — not
+Position with a $0 target. Clicking another card while Builder is open
+re-seeds. AZ-ALB **v1.0.12** · **AT-ALB-19**.
+
+**Does not:** MiniTwo in this body.
+
+---
+
+## 2026-08-21 — DL-502 Chain Snapshot writes only live ladders
+
+**Decision (Coach):** Dashboard activity is not capture. The tap must persist a `snap-*.json` **only** when the bus generation has listed strikes. Empty Redis / `NO CHAIN` is a named miss on the count ledger — it must not write a 263-byte stub every 2s and count it as a snap.
+
+**As-built:** `generation_has_rows` requires `generation.rows` with a strike. Miss → `record_miss` (hole flag, snap count unchanged). Lookup tries configured wings plus 15/25 so a wing mismatch cannot skip a live chain. Poll set unchanged (0DTE expire-today; hardening still opt-in).
+
+**Does not:** turn on `LABS_SSR_GOLD_COPY`; rewrite Friday 2026-08-14; change cadence.
+
+---
+
 ## 2026-08-21 — DL-501 Alert holder trash is 50% larger
 
 **Decision:** Analyzer Alerts holder Delete glyph is **24px** (was 16). Hit

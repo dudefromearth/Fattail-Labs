@@ -13,9 +13,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   applyAlertRunState,
+  createAlgoAlert,
   createPriceAlert,
   evaluateAlerts,
   formatAlertTouchedContext,
+  holderAlertToBuilderSeed,
   toggleAlertRunState,
 } from "../options-lab/analyzerBook";
 
@@ -93,5 +95,48 @@ assert(
   "Touched is not a settable Builder state",
 );
 assert(builder.includes("Reset to Live"), "Builder resets Touched, does not set it");
+assert(builder.includes("seed?.entryPct"), "edit hydrates Algo knobs from seed");
+assert(
+  !builder.includes("if (seededRef.current) return"),
+  "clicking a holder card re-seeds even if Builder is already open",
+);
+
+const price = createPriceAlert({
+  type: "price_above",
+  symbol: "SPX",
+  targetPrice: 6700,
+  runState: "live",
+});
+const priceSeed = holderAlertToBuilderSeed(price);
+assert(priceSeed.id === price.id, "price edit keeps id");
+assert(priceSeed.category === "price", "price alert opens Type Price");
+assert(priceSeed.price === 6700, "price alert keeps target");
+assert(priceSeed.condition === "above", "price_above → above");
+
+const algo = createAlgoAlert({
+  symbol: "SPX",
+  positionId: "pos_1",
+  positionLabel: "6700/6720/6740",
+  color: "#5eead4",
+  trailColor: "#ffd60a",
+  entryPct: 80,
+  trailStartPct: 60,
+  trailFloorPct: 20,
+  decayEnd: "eod",
+  trailStopReason: "give it back",
+  overlay: true,
+  demo: true,
+  runState: "live",
+});
+const algoSeed = holderAlertToBuilderSeed(algo);
+assert(algoSeed.category === "algo", "algo holder click opens Type Algo");
+assert(algoSeed.id === algo.id, "algo edit keeps id");
+assert(algoSeed.positionId === "pos_1", "algo keeps bind");
+assert(algoSeed.entryPct === 80, "algo keeps entry %");
+assert(algoSeed.trailStartPct === 60, "algo keeps trail %");
+assert(algoSeed.trailFloorPct === 20, "algo keeps floor %");
+assert(algoSeed.overlay === true, "algo keeps overlay");
+assert(algoSeed.demo === true, "algo keeps demo");
+assert(algoSeed.trailStopReason === "give it back", "algo keeps reason");
 
 console.log("  adapter constants + unbound + run-state ok");

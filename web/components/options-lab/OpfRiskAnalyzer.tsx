@@ -30,6 +30,7 @@ import {
   normalizeAlertRunState,
   createPriceAlert,
   createAlgoAlert,
+  holderAlertToBuilderSeed,
   evaluateAlerts,
   loadAlerts,
   loadPositions,
@@ -1837,21 +1838,8 @@ export default function OpfRiskAnalyzer() {
           const a = alerts.find((x) => x.id === id);
           if (!a) return;
           setAlertBuilderSeed({
-            id: a.id,
-            kind: a.kind ?? (a.positionId ? "position" : "canvas"),
-            category:
-              a.kind === "position" || a.positionId ? "position" : "price",
-            price: a.targetPrice,
-            condition:
-              a.type === "price_above"
-                ? "above"
-                : a.type === "price_below"
-                  ? "below"
-                  : "at",
-            positionId: a.positionId,
+            ...holderAlertToBuilderSeed(a),
             runState: normalizeAlertRunState(a.runState, a.enabled, a.status),
-            touchedAt: a.triggeredAt,
-            touchedSpot: a.triggeredSpot,
           });
           setAlertBuilderOpen(true);
         }}
@@ -1869,6 +1857,17 @@ export default function OpfRiskAnalyzer() {
         onDeleteAlert={(id) => {
           setAlerts((prev) => prev.filter((a) => a.id !== id));
           if (alertBuilderSeed?.id === id) closeAlertBuilder();
+        }}
+        onExitDemo={() => {
+          setAlerts((prev) =>
+            prev.map((a) =>
+              a.algo?.demo ? { ...a, algo: { ...a.algo, demo: false } } : a,
+            ),
+          );
+          setAlertBuilderSeed((prev) =>
+            prev?.demo ? { ...prev, demo: false } : prev,
+          );
+          resetSim();
         }}
         alerts={alerts
           .filter((a) => a.status !== "dismissed")
@@ -1890,6 +1889,7 @@ export default function OpfRiskAnalyzer() {
                 spot: a.triggeredSpot,
               }),
               algoPhase: a.algoPhase,
+              demo: a.algo?.demo === true,
             };
           })}
       />

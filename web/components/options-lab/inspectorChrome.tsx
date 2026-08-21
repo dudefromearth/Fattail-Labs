@@ -56,21 +56,48 @@ export function InspectorSection({
   children,
   testId,
   headerRight,
+  headerInPanel = false,
 }: {
   title: string;
   children: ReactNode;
   testId?: string;
   headerRight?: ReactNode;
+  /** Title + actions sit inside the panel, not above it. */
+  headerInPanel?: boolean;
 }) {
+  const heading = (
+    <div
+      className={
+        headerInPanel
+          ? "flex items-center justify-between gap-3 border-b border-[var(--color-separator)] px-4 py-2"
+          : "mb-1.5 flex items-center justify-between gap-2 px-1"
+      }
+    >
+      <h3
+        className={
+          headerInPanel
+            ? "text-[length:var(--text-subheadline)] font-semibold text-[var(--color-label)]"
+            : "text-[length:var(--text-footnote)] font-semibold text-[var(--color-label-secondary)]"
+        }
+      >
+        {title}
+      </h3>
+      {headerRight}
+    </div>
+  );
   return (
     <section data-testid={testId}>
-      <div className="mb-1.5 flex items-center justify-between gap-2 px-1">
-        <h3 className="text-[length:var(--text-footnote)] font-semibold text-[var(--color-label-secondary)]">
-          {title}
-        </h3>
-        {headerRight}
-      </div>
-      <div className={inspectorGroup}>{children}</div>
+      {headerInPanel ? (
+        <div className={inspectorGroup}>
+          {heading}
+          {children}
+        </div>
+      ) : (
+        <>
+          {heading}
+          <div className={inspectorGroup}>{children}</div>
+        </>
+      )}
     </section>
   );
 }

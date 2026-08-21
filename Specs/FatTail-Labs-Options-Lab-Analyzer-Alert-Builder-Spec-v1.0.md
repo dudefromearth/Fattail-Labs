@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Analyzer Alert Builder Spec v1.0
 
-**Status:** DRAFT — Coach 2026-08-20 (Analyzer canvas + builder). **v1.0.11** holder **Delete** on each card. **v1.0.10** Type → Algo is the OTM-fly narrative trail ([AZ-ALGO](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md)).  
+**Status:** DRAFT — Coach 2026-08-21 (Analyzer canvas + builder). **v1.0.12** holder click opens Builder on that record. **v1.0.11** holder **Delete** on each card. **v1.0.10** Type → Algo is the OTM-fly narrative trail ([AZ-ALGO](./FatTail-Labs-Options-Lab-Analyzer-Algo-Alert-Spec-v1.0.md)).  
 **Type:** Product Spec — Analyzer **Alert Builder** and **canvas apply**.  
 **Short name:** AZ-ALB  
 **Route:** `/app/options-lab/analyzer`  
@@ -268,7 +268,7 @@ Not MSC’s left-rail Ack list.
 
 | Law | |
 |-----|--|
-| Header | **Alerts** + round **+** (tint, stands off the header) |
+| Header | **Alerts** + round **+** (tint) **inside the panel header** |
 | Body | Scrollable holder, default height **~3–4 cards** |
 | Empty | **No instructional copy** — empty holder. **Coach deviation from HI `EmptyState`** (kit: icon + title + one action). Named so `p-hig` lint does not “fix” it. Tango: an empty alerts holder needing no essay is calm density. |
 | Card | Title (info) · Canvas vs Position · run state **Idle** / **Live** / **Touched**. When Touched, the subtitle shows **when** it was touched (ET) and the underlier print. **Unbound** replaces the chip when §2.5 applies. **Delete** control on the card (**ALB-D1**). |
@@ -344,6 +344,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 | **AT-ALB-16** | Builder State is Live / Idle only. Touched is evaluation: holder + Builder show when (ET) + print; Reset / chip → Live and clears the stamp. |
 | **AT-ALB-17** | Alert Builder is **floatable**: no scrim, `aria-modal=false`, header drag moves the panel, graph stays interactive, Esc/Cancel/Close dismiss. |
 | **AT-ALB-18** | Each holder card has a ≥44pt **Delete** control. Click removes the alert from the holder and canvas; does not open Builder. |
+| **AT-ALB-19** | Click anywhere on a holder card except the state chip and Delete opens Alert Builder **seeded with that record** (id, Type, bind, knobs, state). Algo stays **Algo**. Re-clicking another card while Builder is open re-seeds. |
 
 ---
 
@@ -363,6 +364,7 @@ Once Manager owns evaluation, Analyzer **subscribes**; it does not keep a second
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.12** | 2026-08-21 | Holder card click opens Builder on **that** alert (Algo knobs included). **AT-ALB-19** · **DL-503**. |
 | **v1.0.11** | 2026-08-20 | Holder **Delete** on each card (**ALB-D1**). Coach asked. Manager HTTP `DELETE` still later. **DL-493**. |
 | **v1.0.10** | 2026-08-20 | Type → Algo filled by **AZ-ALGO** (OTM fly narrative trail). MSC 0DTE/Profit Mgmt/Prompt subtypes remain unshipped. AT-ALB-6 split. |
 | **v1.0.9** | 2026-08-20 | Coach: Alert Builder **must be floatable** — no scrim; drag header; canvas stays live (Position Builder grammar). |

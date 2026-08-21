@@ -178,6 +178,7 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(host.includes('lab: "Stop"'), "Algo HUD Stop");
   assert(host.includes("fmtAlgoPrint"), "Stop is ticker print, not $");
   assert(az.includes("algoHud={algoHud}"), "Algo HUD wired");
+  assert(az.includes("resetSim()"), "Demo Exit also ends What-if");
   assert(az.includes('liveAlgo.runState !== "live"'), "HUD hidden unless Live");
   assert(az.includes('st.phase !== "armed"'), "HUD hidden unless Armed");
   assert(az.includes("sessionSpotNow"), "TM entry/eligibility uses playhead");
@@ -206,6 +207,19 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   );
   assert(!controls.includes('title="Graph"'), "Graph panel removed from inspector");
   assert(controls.includes('title="Alerts"'), "Alerts inspector in left column");
+  {
+    const alertsAt = controls.indexOf('title="Alerts"');
+    const whatIfAt = controls.indexOf('title="What-if"');
+    const gexAt = controls.indexOf('title="GEX"');
+    assert(
+      alertsAt >= 0 && whatIfAt > alertsAt && gexAt > whatIfAt,
+      "What-if sits after Alerts, before GEX",
+    );
+  }
+  assert(controls.includes("analyzer-demo-link"), "Demo links Alerts + What-if");
+  assert(controls.includes("data-demo-link"), "Demo wrap is data-driven");
+  assert(controls.includes("Demo Mode"), "Demo wrap title");
+  assert(controls.includes("analyzer-demo-exit"), "Demo wrap Exit");
   assert(controls.includes('label="Spot"'), "What-if Spot is points, not %");
   assert(controls.includes("analyzer-whatif-spot"), "What-if Spot test id");
   assert(!controls.includes('label="Spot %"'), "Spot % control removed");

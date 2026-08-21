@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Analyzer Algo Alert Spec v1.0
 
-**Status:** DRAFT — Coach 2026-08-21 (Analyzer Algo alert). **v1.0.7** HUD only while Live + Armed. **v1.0.6** High / Trail / Stop HUD. **v1.0.5** trail % = **give-up of profit** (`S = (1−g)×H`). **v1.0.4** no narrative on the Algo panel (**ALGO-N1**). **v1.0.3** add fly after Time Machine day (**ALGO-TM1**). **v1.0.2** floor default **25** (DL-482) · knobs are law · Recorded `mode`. **v1.0.1** review fold (ALGO-B1 far-side regime · ALGO-A1 monotone `f` · ALGO-A2 pulse hysteresis). Not BUILD AUTHORITY until Coach Phase 5.  
+**Status:** DRAFT — Coach 2026-08-21 (Analyzer Algo alert). **v1.0.8** Start/End Trail % boxed with Decay. **v1.0.7** HUD only while Live + Armed. **v1.0.6** High / Trail / Stop HUD. **v1.0.5** trail % = **give-up of profit** (`S = (1−g)×H`). **v1.0.4** no narrative on the Algo panel (**ALGO-N1**). **v1.0.3** add fly after Time Machine day (**ALGO-TM1**). **v1.0.2** floor default **25** (DL-482) · knobs are law · Recorded `mode`. **v1.0.1** review fold (ALGO-B1 far-side regime · ALGO-A1 monotone `f` · ALGO-A2 pulse hysteresis). Not BUILD AUTHORITY until Coach Phase 5.  
 **Type:** Product Spec — Analyzer **Algo alert** (dynamic trailing narrative on an OTM butterfly).  
 **Short name:** AZ-ALGO  
 **Route:** `/app/options-lab/analyzer`  
@@ -129,8 +129,8 @@ Defaults fill the blanks (75 / 75 / 25). Updating a knob updates the paragraph.
 |---------|---------|-----|
 | Position | Eligible card (§4.2) | Dropdown: eligible OTM debit flies only. Empty → Save off + named “Specify an OTM butterfly.” |
 | Start profit management (% unrealized gain) | **75** | 1–100. **Always shown** on Type → Algo. Starts when unrealized gain reaches this percent of the **debit**. |
-| Give up (% of profit) | **75** | 1–100. Must be **> end**. How much of high-water **profit** you can give back at arm (`S = (1−g)×H`). **Reason** checkbox: off → **built-in** trail engine; on → inject a prompt the AI uses to **hold or fold** at this stop. |
-| End give-up (% of profit) | **25** | 1–99. Give-up fraction when **decay ends** (tighter). Same **Reason** checkbox as the stop (built-in unless a prompt is on). **DL-484**. |
+| **Start Trail %** | **75** | Chrome for give-up at arm. 1–100. Must be **> end**. How much of high-water **profit** you can give back at arm (`S = (1−g)×H`). **Reason** checkbox: off → **built-in** trail engine; on → inject a prompt the AI uses to **hold or fold** at this stop. |
+| **End Trail %** | **25** | Chrome for give-up when decay ends. 1–99. Give-up fraction when **decay ends** (tighter). Same **Reason** checkbox as the stop (built-in unless a prompt is on). **DL-484**. |
 | Decay ends | **End of day** | Optional. Blank / “End of day” = this session’s last trade (index **16:15 ET**, equity **16:00 ET**). A datetime **stops the dynamic decay** there (`f = fMin`). Alert expiration (AZ-ALB) is a separate control. **DL-483**. |
 | High-water line color | Tag **target** | Assignable. Canvas vertical. |
 | Trail line color | Tag **warning** | Assignable. Canvas vertical + overlay tint. |
@@ -462,6 +462,7 @@ Do **not** start this packet until Coach marks this spec BUILD AUTHORITY. AZ-ALB
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.8** | 2026-08-21 | Chrome: **Start Trail %** · **End Trail %** · Decay EoD (and datetime if off) in one tinted box. Give-up math unchanged. **DL-504**. |
 | **v1.0.7** | 2026-08-21 | HUD only while Live + Armed. **DL-500**. |
 | **v1.0.6** | 2026-08-21 | Lower-left tracker above $0: **High** · Trail % · Stop. Colons aligned. **DL-498**. |
 | **v1.0.5** | 2026-08-20 | Trail % is **give-up of profit**: `S = (1−g)×H`. 75% was inverted (kept 75%). **DL-497**. |

@@ -213,6 +213,70 @@ export function applyAlertRunState(
   };
 }
 
+export type AlertBuilderCategory = "price" | "position" | "greeks" | "algo";
+
+/** Seed the Alert Builder from a holder record (edit, not create). */
+export function holderAlertToBuilderSeed(a: AnalyzerThresholdAlert): {
+  id: string;
+  kind: AnalyzerAlertKind;
+  category: AlertBuilderCategory;
+  price?: number;
+  condition: "above" | "below" | "at";
+  positionId?: string;
+  runState: AlertRunState;
+  touchedAt?: string;
+  touchedSpot?: number;
+  demo?: boolean;
+  overlay?: boolean;
+  entryPct?: number;
+  trailStartPct?: number;
+  trailFloorPct?: number;
+  decayEnd?: "eod" | string;
+  trailStopReason?: string;
+  trailEndReason?: string;
+  highWaterColor?: string;
+  trailColor?: string;
+  color?: string;
+} {
+  const algo = a.alertClass === "algo";
+  const condition: "above" | "below" | "at" =
+    a.type === "price_above"
+      ? "above"
+      : a.type === "price_below"
+        ? "below"
+        : "at";
+  return {
+    id: a.id,
+    kind: a.kind ?? (a.positionId ? "position" : "canvas"),
+    category: algo
+      ? "algo"
+      : a.kind === "position" || a.positionId
+        ? "position"
+        : "price",
+    price: algo ? undefined : a.targetPrice,
+    condition,
+    positionId: a.positionId,
+    runState: a.runState,
+    touchedAt: a.triggeredAt,
+    touchedSpot: a.triggeredSpot,
+    color: a.color,
+    ...(algo && a.algo
+      ? {
+          demo: a.algo.demo === true,
+          overlay: a.algo.overlay === true,
+          entryPct: a.algo.entry_pct,
+          trailStartPct: a.algo.trail_start_pct,
+          trailFloorPct: a.algo.trail_floor_pct,
+          decayEnd: a.algo.decay_end,
+          trailStopReason: a.algo.trail_stop_reason,
+          trailEndReason: a.algo.trail_end_reason,
+          highWaterColor: a.algo.high_water_color,
+          trailColor: a.algo.trail_color,
+        }
+      : {}),
+  };
+}
+
 export type AnalyzerThresholdAlert = {
   id: string;
   kind: AnalyzerAlertKind;

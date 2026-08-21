@@ -59,7 +59,30 @@ export type AlertBuilderSeed = {
   demoClock?: "timemachine" | "whatif";
   /** Session clock for EoD (playhead `t_ms` on a TM day). */
   clockMs?: number;
+  overlay?: boolean;
+  entryPct?: number;
+  trailStartPct?: number;
+  trailFloorPct?: number;
+  decayEnd?: "eod" | string;
+  trailStopReason?: string;
+  trailEndReason?: string;
+  highWaterColor?: string;
+  trailColor?: string;
+  color?: string;
 };
+
+function pctField(n: number | undefined, fallback: number): number {
+  if (n == null || !Number.isFinite(n)) return fallback;
+  return n <= 1 ? Math.round(n * 100) : Math.round(n);
+}
+
+function chipIdForPaint(
+  paint: string | undefined,
+  fallback: (typeof ALERT_TAG_CHIPS)[number]["id"],
+): (typeof ALERT_TAG_CHIPS)[number]["id"] {
+  const hit = ALERT_TAG_CHIPS.find((c) => c.paint === paint);
+  return hit?.id ?? fallback;
+}
 
 export type AlertBuilderPosition = {
   id: string;
@@ -137,19 +160,24 @@ export default function AlertBuilderDialog({
   const [overlayOn, setOverlayOn] = useState(false);
   const [hwColorId, setHwColorId] = useState<(typeof ALERT_TAG_CHIPS)[number]["id"]>("target");
   const [trailColorId, setTrailColorId] = useState<(typeof ALERT_TAG_CHIPS)[number]["id"]>("warning");
-  const seededRef = useRef(false);
   const spotRef = useRef(spot);
   const positionsRef = useRef(positions);
   spotRef.current = spot;
   positionsRef.current = positions;
+  const seedKey = open
+    ? [
+        seed?.id ?? "new",
+        seed?.category ?? "",
+        seed?.kind ?? "",
+        seed?.positionId ?? "",
+        seed?.condition ?? "",
+        seed?.price ?? "",
+        seed?.entryPct ?? "",
+      ].join("|")
+    : "closed";
 
   useEffect(() => {
-    if (!open) {
-      seededRef.current = false;
-      return;
-    }
-    if (seededRef.current) return;
-    seededRef.current = true;
+    if (!open) return;
     const liveSpot = spotRef.current;
     const livePositions = positionsRef.current;
     const cat =
@@ -164,7 +192,7 @@ export default function AlertBuilderDialog({
           : "",
     );
     setBehavior("once_only");
-    setTagId("watch");
+    setTagId(chipIdForPaint(seed?.color, "watch"));
     const eligible = livePositions.filter((p) => p.algoEligible);
     setPositionId(
       seed?.positionId ||
@@ -179,22 +207,39 @@ export default function AlertBuilderDialog({
       timeZone: "America/New_York",
     });
     setExpiration(`${et}T16:00`);
-    setEntryPct(Math.round(ALGO_ENTRY_PCT_DEFAULT * 100));
-    setTrailStartPct(Math.round(ALGO_F0_DEFAULT * 100));
-    setTrailFloorPct(Math.round(ALGO_FMIN_DEFAULT * 100));
-    setDecayEod(true);
-    setDecayEndAt(
-      toDatetimeLocal(sessionEodMs(symbol, seed?.clockMs ?? Date.now())),
+    setEntryPct(pctField(seed?.entryPct, Math.round(ALGO_ENTRY_PCT_DEFAULT * 100)));
+    setTrailStartPct(
+      pctField(seed?.trailStartPct, Math.round(ALGO_F0_DEFAULT * 100)),
     );
-    setStopReasonOn(false);
-    setStopReason("");
-    setEndReasonOn(false);
-    setEndReason("");
+    setTrailFloorPct(
+      pctField(seed?.trailFloorPct, Math.round(ALGO_FMIN_DEFAULT * 100)),
+    );
+    const decay = seed?.decayEnd;
+    if (decay && decay !== "eod") {
+      const ms = Date.parse(decay);
+      setDecayEod(false);
+      setDecayEndAt(
+        Number.isFinite(ms)
+          ? toDatetimeLocal(ms)
+          : toDatetimeLocal(sessionEodMs(symbol, seed?.clockMs ?? Date.now())),
+      );
+    } else {
+      setDecayEod(true);
+      setDecayEndAt(
+        toDatetimeLocal(sessionEodMs(symbol, seed?.clockMs ?? Date.now())),
+      );
+    }
+    const stop = (seed?.trailStopReason || "").trim();
+    setStopReasonOn(stop.length > 0);
+    setStopReason(stop);
+    const end = (seed?.trailEndReason || "").trim();
+    setEndReasonOn(end.length > 0);
+    setEndReason(end);
     setDemoOn(seed?.demo === true);
-    setOverlayOn(false);
-    setHwColorId("target");
-    setTrailColorId("warning");
-  }, [open, seed, symbol]);
+    setOverlayOn(seed?.overlay === true);
+    setHwColorId(chipIdForPaint(seed?.highWaterColor, "target"));
+    setTrailColorId(chipIdForPaint(seed?.trailColor, "warning"));
+  }, [open, seedKey, seed, symbol]);
 
   const bound = positions.find((p) => p.id === positionId) ?? positions[0];
   const title = useMemo(() => {
@@ -487,121 +532,125 @@ export default function AlertBuilderDialog({
             <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
               Starts when unrealized gain reaches this percent of the debit.
             </p>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="min-w-[10rem] flex-1">
-                <label className={lab} htmlFor="algo-trail-start">
-                  Give up (% of profit)
+            <div
+              className={
+                "flex flex-col gap-4 rounded-[var(--radius-md)] border " +
+                "border-[var(--color-tint)] bg-[var(--color-tint-soft)] p-4"
+              }
+              data-testid="algo-trail-range"
+            >
+              <h4 className="text-[length:var(--text-subheadline)] font-semibold text-[var(--color-label)]">
+                Trail Settings
+              </h4>
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-[10rem] flex-1">
+                  <label className={lab} htmlFor="algo-trail-start">
+                    Start Trail %
+                  </label>
+                  <input
+                    id="algo-trail-start"
+                    className={field}
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={trailStartPct}
+                    onChange={(e) =>
+                      setTrailStartPct(Number(e.target.value) || 0)
+                    }
+                    data-testid="algo-trail-start"
+                  />
+                </div>
+                <label className="flex min-h-[var(--hit-min)] items-center gap-2 pb-1">
+                  <input
+                    type="checkbox"
+                    checked={stopReasonOn}
+                    onChange={(e) => setStopReasonOn(e.target.checked)}
+                    data-testid="algo-trail-stop-reason-on"
+                  />
+                  Reason
                 </label>
-                <input
-                  id="algo-trail-start"
-                  className={field}
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={trailStartPct}
-                  onChange={(e) =>
-                    setTrailStartPct(Number(e.target.value) || 0)
-                  }
-                  data-testid="algo-trail-start"
-                />
               </div>
-              <label className="flex min-h-[var(--hit-min)] items-center gap-2 pb-1">
+              {stopReasonOn ? (
+                <textarea
+                  className={field + " min-h-[5.5rem] py-2"}
+                  value={stopReason}
+                  onChange={(e) => setStopReason(e.target.value)}
+                  placeholder="Prompt the AI will use to hold or fold at this stop. Off = built-in engine."
+                  data-testid="algo-trail-stop-reason"
+                />
+              ) : null}
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="min-w-[10rem] flex-1">
+                  <label className={lab} htmlFor="algo-trail-floor">
+                    End Trail %
+                  </label>
+                  <input
+                    id="algo-trail-floor"
+                    className={field}
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={trailFloorPct}
+                    onChange={(e) =>
+                      setTrailFloorPct(Number(e.target.value) || 0)
+                    }
+                    data-testid="algo-trail-floor"
+                  />
+                </div>
+                <label className="flex min-h-[var(--hit-min)] items-center gap-2 pb-1">
+                  <input
+                    type="checkbox"
+                    checked={endReasonOn}
+                    onChange={(e) => setEndReasonOn(e.target.checked)}
+                    data-testid="algo-trail-end-reason-on"
+                  />
+                  Reason
+                </label>
+              </div>
+              {endReasonOn ? (
+                <textarea
+                  className={field + " min-h-[5.5rem] py-2"}
+                  value={endReason}
+                  onChange={(e) => setEndReason(e.target.value)}
+                  placeholder="Prompt the AI will use to hold or fold at trail end. Off = built-in engine."
+                  data-testid="algo-trail-end-reason"
+                />
+              ) : null}
+              <label className="flex min-h-[var(--hit-min)] items-center gap-3">
                 <input
                   type="checkbox"
-                  checked={stopReasonOn}
-                  onChange={(e) => setStopReasonOn(e.target.checked)}
-                  data-testid="algo-trail-stop-reason-on"
+                  checked={decayEod}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setDecayEod(on);
+                    if (!on && !decayEndAt) {
+                      setDecayEndAt(
+                        toDatetimeLocal(
+                          sessionEodMs(symbol, seed?.clockMs ?? Date.now()),
+                        ),
+                      );
+                    }
+                  }}
+                  data-testid="algo-decay-eod"
                 />
-                Reason
+                Decay ends at end of day
               </label>
+              {!decayEod ? (
+                <>
+                  <label className={lab} htmlFor="algo-decay-end">
+                    Decay ends
+                  </label>
+                  <input
+                    id="algo-decay-end"
+                    className={field}
+                    type="datetime-local"
+                    value={decayEndAt}
+                    onChange={(e) => setDecayEndAt(e.target.value)}
+                    data-testid="algo-decay-end"
+                  />
+                </>
+              ) : null}
             </div>
-            <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
-              75% means you can give back 75% of high-water profit (keep 25%).
-            </p>
-            {stopReasonOn ? (
-              <textarea
-                className={field + " min-h-[5.5rem] py-2"}
-                value={stopReason}
-                onChange={(e) => setStopReason(e.target.value)}
-                placeholder="Prompt the AI will use to hold or fold at this stop. Off = built-in engine."
-                data-testid="algo-trail-stop-reason"
-              />
-            ) : null}
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="min-w-[10rem] flex-1">
-                <label className={lab} htmlFor="algo-trail-floor">
-                  End give-up (% of profit)
-                </label>
-                <input
-                  id="algo-trail-floor"
-                  className={field}
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={trailFloorPct}
-                  onChange={(e) =>
-                    setTrailFloorPct(Number(e.target.value) || 0)
-                  }
-                  data-testid="algo-trail-floor"
-                />
-              </div>
-              <label className="flex min-h-[var(--hit-min)] items-center gap-2 pb-1">
-                <input
-                  type="checkbox"
-                  checked={endReasonOn}
-                  onChange={(e) => setEndReasonOn(e.target.checked)}
-                  data-testid="algo-trail-end-reason-on"
-                />
-                Reason
-              </label>
-            </div>
-            {endReasonOn ? (
-              <textarea
-                className={field + " min-h-[5.5rem] py-2"}
-                value={endReason}
-                onChange={(e) => setEndReason(e.target.value)}
-                placeholder="Prompt the AI will use to hold or fold at trail end. Off = built-in engine."
-                data-testid="algo-trail-end-reason"
-              />
-            ) : null}
-            <label className="flex min-h-[var(--hit-min)] items-center gap-3">
-              <input
-                type="checkbox"
-                checked={decayEod}
-                onChange={(e) => {
-                  const on = e.target.checked;
-                  setDecayEod(on);
-                  if (!on && !decayEndAt) {
-                    setDecayEndAt(
-                      toDatetimeLocal(
-                        sessionEodMs(symbol, seed?.clockMs ?? Date.now()),
-                      ),
-                    );
-                  }
-                }}
-                data-testid="algo-decay-eod"
-              />
-              Decay ends at end of day
-            </label>
-            {!decayEod ? (
-              <>
-                <label className={lab} htmlFor="algo-decay-end">
-                  Decay ends
-                </label>
-                <input
-                  id="algo-decay-end"
-                  className={field}
-                  type="datetime-local"
-                  value={decayEndAt}
-                  onChange={(e) => setDecayEndAt(e.target.value)}
-                  data-testid="algo-decay-end"
-                />
-              </>
-            ) : null}
-            <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
-              Trail decays from {trailStartPct}% to {trailFloorPct}% until this
-              time. Specify nothing and it goes to end of day.
-            </p>
             <label className="flex min-h-[var(--hit-min)] items-center gap-3">
               <input
                 type="checkbox"
@@ -611,13 +660,6 @@ export default function AlertBuilderDialog({
               />
               Demo
             </label>
-            {demoOn ? (
-              <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
-                {seed?.demoClock === "timemachine"
-                  ? "Play or scrub the Time Machine day to arm and trail. Enter the fly, attach the algo, then let the session print — same sequence as live."
-                  : "Enable What-if, then move Spot, Time, and Vol to arm and trail the fly. Off-market is fine."}
-              </p>
-            ) : null}
             <label className="flex min-h-[var(--hit-min)] items-center gap-3">
               <input
                 type="checkbox"

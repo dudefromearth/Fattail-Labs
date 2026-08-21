@@ -100,15 +100,18 @@ export type AnalyzerControlsColumnProps = {
     /** When Touched: time + print, e.g. "10:42 AM ET at 6724". */
     touchedDetail?: string;
     algoPhase?: "waiting" | "armed" | "recorded";
+    demo?: boolean;
   }[];
   onCreateAlert: () => void;
   /** Eligible OTM debit fly on the book — subtle pulse on +. */
   algoPulse?: boolean;
   /** One-shot book / lock notices — logged in the exception field. */
   notice?: string | null;
-  onEditAlert?: (id: string) => void;
+  onEditAlert: (id: string) => void;
   onToggleAlertState?: (id: string) => void;
   onDeleteAlert?: (id: string) => void;
+  /** Clears Demo on holder alerts so the Demo Mode wrap dismisses. */
+  onExitDemo?: () => void;
 };
 
 export default function AnalyzerControlsColumn({
@@ -162,6 +165,7 @@ export default function AnalyzerControlsColumn({
   onEditAlert,
   onToggleAlertState,
   onDeleteAlert,
+  onExitDemo,
 }: AnalyzerControlsColumnProps) {
   const [statusLog, setStatusLog] = useState<StatusLogEntry[]>([]);
   const planeMsg = planeExceptionMessage({
@@ -182,6 +186,7 @@ export default function AnalyzerControlsColumn({
     elapsedHours === 0 &&
     simSpotPts === 0 &&
     !timeMachineEnabled;
+  const demoLinked = alerts.some((a) => a.demo === true);
 
   return (
     <aside
@@ -259,9 +264,34 @@ export default function AnalyzerControlsColumn({
           )}
         </div>
 
+        <div
+          className={
+            demoLinked
+              ? "flex flex-col gap-5 rounded-[var(--radius-md)] border border-red-500/55 bg-red-500/15 p-3 shadow-[inset_0_0_22px_8px_rgba(239,68,68,0.28)]"
+              : "flex flex-col gap-5"
+          }
+          data-testid="analyzer-demo-link"
+          data-demo-link={demoLinked ? "1" : "0"}
+        >
+        {demoLinked ? (
+          <div className="flex min-h-[var(--hit-min)] items-center justify-between gap-2 px-1">
+            <h4 className="text-[length:var(--text-subheadline)] font-semibold text-[var(--color-label)]">
+              Demo Mode
+            </h4>
+            <Button
+              variant="plain"
+              className="!min-h-11 !px-3"
+              onClick={onExitDemo}
+              data-testid="analyzer-demo-exit"
+            >
+              Exit
+            </Button>
+          </div>
+        ) : null}
         <InspectorSection
           title="Alerts"
           testId="analyzer-alerts-panel"
+          headerInPanel
           headerRight={
             <IconButton
               label="Create alert"
@@ -269,7 +299,7 @@ export default function AnalyzerControlsColumn({
               data-testid="analyzer-alert-create"
               data-algo-pulse={algoPulse ? "1" : "0"}
               className={
-                "rounded-full bg-[var(--color-tint)] text-white hover:bg-[var(--color-tint-emphasis)] hover:text-white" +
+                "shrink-0 rounded-full bg-[var(--color-tint)] text-white hover:bg-[var(--color-tint-emphasis)] hover:text-white" +
                 (algoPulse ? " motion-safe:animate-pulse" : "")
               }
             >
@@ -301,7 +331,7 @@ export default function AnalyzerControlsColumn({
               return (
                 <div
                   key={a.id}
-                  className={inspectorRow}
+                  className={inspectorRow + " cursor-pointer"}
                   data-testid={`analyzer-alert-row-${a.id}`}
                   data-alert-kind={a.kind}
                   data-alert-state={a.unbound ? "unbound" : a.runState}
@@ -309,11 +339,16 @@ export default function AnalyzerControlsColumn({
                   data-alert-touched={
                     a.runState === "touched" ? a.touchedDetail || "" : undefined
                   }
+                  onClick={() => onEditAlert(a.id)}
                 >
                   <button
                     type="button"
                     className="min-h-[var(--hit-min)] min-w-0 flex-1 py-1 text-left"
-                    onClick={() => onEditAlert?.(a.id)}
+                    data-testid={`analyzer-alert-edit-${a.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditAlert(a.id);
+                    }}
                   >
                     <div className="truncate text-[length:var(--text-subheadline)] text-[var(--color-label)]">
                       {a.title}
@@ -371,6 +406,80 @@ export default function AnalyzerControlsColumn({
             })}
           </div>
         </InspectorSection>
+
+        <InspectorSection title="What-if" testId="analyzer-whatif-panel">
+          <div className={inspectorRow + " justify-between"}>
+            <span className="text-[length:var(--text-subheadline)] text-[var(--color-label)]">
+              What-if
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={timeMachineEnabled}
+              aria-label="What-if"
+              data-testid="analyzer-whatif-enable"
+              onClick={() => onTimeMachineEnabled(!timeMachineEnabled)}
+              className={
+                "relative h-7 w-11 shrink-0 rounded-full p-0.5 transition-colors " +
+                (timeMachineEnabled
+                  ? "bg-[var(--color-tint)]"
+                  : "bg-[var(--color-fill)]")
+              }
+            >
+              <span
+                className={
+                  "block h-6 w-6 rounded-full bg-[var(--color-surface)] shadow-sm transition-transform " +
+                  (timeMachineEnabled ? "translate-x-4" : "translate-x-0")
+                }
+              />
+            </button>
+          </div>
+          <SliderRow
+            label="Time"
+            value={timeReadout}
+            min={0}
+            max={Math.max(0, remainingHours)}
+            step={timeStepHours}
+            disabled={timeDisabled}
+            testId="analyzer-whatif-time"
+            valueNow={elapsedHours}
+            onChange={onElapsedHours}
+            ends={["Now", "Last trade"]}
+          />
+          <SliderRow
+            label="Implied vol"
+            value={volReadout}
+            min={volMin}
+            max={volMax}
+            step={0.1}
+            disabled={volDisabled}
+            testId="analyzer-whatif-vol"
+            valueNow={simIvPct}
+            onChange={onSimIvPct}
+          />
+          <SliderRow
+            label="Spot"
+            value={formatSigned(simSpotPts, "", 0)}
+            min={spotPtsMin}
+            max={spotPtsMax}
+            step={1}
+            disabled={!timeMachineEnabled}
+            testId="analyzer-whatif-spot"
+            valueNow={simSpotPts}
+            onChange={onSimSpotPts}
+          />
+          <div className="flex justify-end px-2 py-1">
+            <Button
+              variant="plain"
+              className="!min-h-11 !px-3"
+              disabled={simAtRest && !timeMachineEnabled}
+              onClick={onResetSim}
+            >
+              Reset
+            </Button>
+          </div>
+        </InspectorSection>
+        </div>
 
         <InspectorSection title="GEX" testId="analyzer-gex-panel">
           <div className={inspectorRow + " justify-between"}>
@@ -534,79 +643,6 @@ export default function AnalyzerControlsColumn({
             valueNow={rangeOpacityPct}
             onChange={onRangeOpacityPct}
           />
-        </InspectorSection>
-
-        <InspectorSection title="What-if" testId="analyzer-whatif-panel">
-          <div className={inspectorRow + " justify-between"}>
-            <span className="text-[length:var(--text-subheadline)] text-[var(--color-label)]">
-              What-if
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={timeMachineEnabled}
-              aria-label="What-if"
-              data-testid="analyzer-whatif-enable"
-              onClick={() => onTimeMachineEnabled(!timeMachineEnabled)}
-              className={
-                "relative h-7 w-11 shrink-0 rounded-full p-0.5 transition-colors " +
-                (timeMachineEnabled
-                  ? "bg-[var(--color-tint)]"
-                  : "bg-[var(--color-fill)]")
-              }
-            >
-              <span
-                className={
-                  "block h-6 w-6 rounded-full bg-[var(--color-surface)] shadow-sm transition-transform " +
-                  (timeMachineEnabled ? "translate-x-4" : "translate-x-0")
-                }
-              />
-            </button>
-          </div>
-          <SliderRow
-            label="Time"
-            value={timeReadout}
-            min={0}
-            max={Math.max(0, remainingHours)}
-            step={timeStepHours}
-            disabled={timeDisabled}
-            testId="analyzer-whatif-time"
-            valueNow={elapsedHours}
-            onChange={onElapsedHours}
-            ends={["Now", "Last trade"]}
-          />
-          <SliderRow
-            label="Implied vol"
-            value={volReadout}
-            min={volMin}
-            max={volMax}
-            step={0.1}
-            disabled={volDisabled}
-            testId="analyzer-whatif-vol"
-            valueNow={simIvPct}
-            onChange={onSimIvPct}
-          />
-          <SliderRow
-            label="Spot"
-            value={formatSigned(simSpotPts, "", 0)}
-            min={spotPtsMin}
-            max={spotPtsMax}
-            step={1}
-            disabled={!timeMachineEnabled}
-            testId="analyzer-whatif-spot"
-            valueNow={simSpotPts}
-            onChange={onSimSpotPts}
-          />
-          <div className="flex justify-end px-2 py-1">
-            <Button
-              variant="plain"
-              className="!min-h-11 !px-3"
-              disabled={simAtRest && !timeMachineEnabled}
-              onClick={onResetSim}
-            >
-              Reset
-            </Button>
-          </div>
         </InspectorSection>
       </div>
     </aside>
