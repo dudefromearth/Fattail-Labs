@@ -376,7 +376,7 @@ export default function AnalyzerPositionsList({
             </colgroup>
             <thead className="sticky top-0 z-[1] bg-[#0a0a0e] shadow-[0_1px_0_rgba(255,255,255,0.12)]">
               <tr>
-                <th className={th} aria-label="Show on graph and delete from list">
+                <th className={th} aria-label="Show on graph, edit, and delete from list">
                   Show
                 </th>
                 <th className={th}>Spread</th>
@@ -748,6 +748,15 @@ function PosBlock({
                     />
                     Show
                   </label>
+                  <button
+                    type="button"
+                    className={actionBtn + " min-h-8 w-full px-2 py-1"}
+                    data-testid={`analyzer-pos-edit-${pos.id}`}
+                    aria-label={`Edit ${pos.label}`}
+                    onClick={() => onEdit(pos.id)}
+                  >
+                    Edit
+                  </button>
                   <button
                     type="button"
                     className={
@@ -1155,13 +1164,6 @@ function PosBlock({
                       TL #{pos.tradeLogTradeId}
                     </span>
                   ) : null}
-                  <button
-                    type="button"
-                    className={actionBtn + " min-h-8 w-full px-2 py-1"}
-                    onClick={() => onEdit(pos.id)}
-                  >
-                    Edit
-                  </button>
                   {onSendToTradeLog ? (
                     <button
                       type="button"
