@@ -79,7 +79,14 @@ export default function AnalyzerDayReplayHud(props: {
           aria-hidden
         >
           {d ? (
-            <path d={d} fill="none" stroke="rgba(147,197,253,0.9)" strokeWidth="1.5" />
+            <path
+              d={d}
+              fill="none"
+              stroke="rgba(147,197,253,0.9)"
+              strokeWidth="1.25"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
           ) : (
             <rect width={w} height={h} fill="rgba(255,255,255,0.04)" />
           )}
