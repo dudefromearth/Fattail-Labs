@@ -18,7 +18,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [08-canonical-course-model.md](./08-canonical-course-model.md) | Portable Course graph: export/import/validate architecture |
 | [09-canonical-course-design.md](./09-canonical-course-design.md) | Admin UX design for packages |
 | [10-resources-design.md](./10-resources-design.md) | Resources: first-class versioned library |
-| [11-wiki-design.md](./11-wiki-design.md) | Member Wiki: lab-wiki checkout → derived index → /app/wiki |
+| [11-wiki-design.md](./11-wiki-design.md) | Member Wiki: lab-wiki checkout → derived index → /app/wiki (member-facing **IKI Lab** proposed — IKI spec v0.1 · **DL-527**) |
 | [12-retrospective-report-dto.md](./12-retrospective-report-dto.md) | Retrospective workspace DTO (gather/report/comparison) — as-built v0.6 |
 | [13-habit-catalog-design.md](./13-habit-catalog-design.md) | Habit Catalog methodology layer — **design locked**, pre-Spec |
 | [09-strategy-lab-tradier.md](./09-strategy-lab-tradier.md) | Strategy Lab data/exec split (Massive / Tradier) + shared Curate marks |
@@ -50,6 +50,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Arch **29** | **Heatmap templates** (design): flies / verticals / GEX over one chain model · diff once · many views |
 | Arch **30** | **Options Pricing Foundation** (design): L0–L4 data plane + day/outlook/backtest packs · foundation before app wiring |
 | Arch **31** | **SSR thesis:** package-surface replay · MC distributions · one day first · Spec `FatTail-Labs-Structure-Surface-Replay-Spec-v0_1.md` |
+| Spec **IKI Lab + Factory v0.1.1** | `Specs/FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md` — **IKI** · DRAFT · Wiki Apps card → **IKI Lab** · IKI = Information-Knowledge-Intelligence · new **IKI Factory** · suite nav like Practice / Options Lab · foundation page = PDS Part I (`iki`) · Factory job **OD-IKI-1** · **DL-527** · **DL-528** |
 | Spec **OPF v0.2.1** | `Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` — normative law (OPF1–33); v0.1 superseded |
 | Bench **OPF** | `docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-pricing-foundation/` |
 | Spec **Position Builder/Book v0.3** | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md` — VIEW-7 + B5; v0.2 SUPERSEDED; **DL-306** |
@@ -69,6 +70,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Bench **OT-EF / Session-Print** | `docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md` (**v1.0.1**) · board `agents/p-ot-ef-session-print/` — no chrome until Echo labels; no code until Delta list; W4 when W1-G+W2-G+W3-G pass |
 | Spec **Heatmap Templates v0.2** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` — product law (DRAFT); v0.1 superseded |
 | Bench plan | `docs/Options-Lab-Heatmap-Templates-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-heatmap/` |
+| Spec **Heatmap Width Fit v0.1.1 BUILD AUTHORITY** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md` — **WF** · `width_fit` on Advanced Fly / `sym-fly` · member criteria weights · neighborhood **penalty** (**OD-W6 Accept**) · honest \(n\) · observation-only · **OD-W1…W6 Accept** · **DL-525** · bench `docs/Options-Lab-Heatmap-Width-Fit-Full-Agent-Bench-Plan-v1.1.md` · board `agents/p-options-lab-heatmap-width-fit/` · W0 `agents/go/OLHWF-W0.md` |
 | Spec | `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` v1.0.1 |
 | Chain surface | `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` · route `/app/options-lab` |
 | Bench | `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md` · `agents/p-market-bus/` |

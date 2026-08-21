@@ -34,6 +34,10 @@ import type {
   TemplateParams,
 } from "./types";
 import { contractKey } from "@/lib/chainLadderApi";
+import {
+  assignWidthFitColors,
+  widthFitComputeCell,
+} from "./widthFit";
 
 /**
  * Heatmap fly columns (center-to-wing points).
@@ -197,6 +201,10 @@ export const symFlyTemplate: HeatmapTemplate = {
     const mode = params.valueMode;
     const hist = params.flyHistory ?? null;
 
+    if (mode === "width_fit") {
+      return widthFitComputeCell(ctx, row, col, params);
+    }
+
     if (mode === "debit") {
       return {
         display: formatDebit(d),
@@ -322,6 +330,9 @@ export const symFlyTemplate: HeatmapTemplate = {
   },
 
   assignColors(grid, params) {
+    if (params.valueMode === "width_fit") {
+      return assignWidthFitColors(grid, params);
+    }
     const threshold =
       params.gradientThreshold ?? DEFAULT_GRADIENT_THRESHOLD;
     void params.valueMode;

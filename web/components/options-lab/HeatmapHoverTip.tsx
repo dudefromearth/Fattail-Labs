@@ -245,10 +245,13 @@ export function HeatmapHoverTip({
               key={row.label}
               className="flex items-baseline justify-between gap-4"
             >
-              <span className="text-[15px] text-white/50">{row.label}</span>
+              <span className="shrink-0 text-[15px] text-white/50">
+                {row.label}
+              </span>
               <span
                 className={
-                  "font-mono text-[18px] font-semibold tabular-nums " +
+                  "max-w-[70%] text-right text-[16px] font-semibold leading-snug " +
+                  (row.label === "Meaning" ? "" : "font-mono tabular-nums text-[18px] ") +
                   TONE[row.tone]
                 }
               >

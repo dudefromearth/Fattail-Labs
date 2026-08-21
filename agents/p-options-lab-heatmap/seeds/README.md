@@ -29,6 +29,8 @@ Juliet materializes seeds from:
 
 **Do not start AF-H / AF-M implementation seeds before AF0-G + Coach AF0-0** unless Coach fire_immediately on a named spike.
 
+**Width Fit** is **not** AF-X. Use [`p-options-lab-heatmap-width-fit`](../../p-options-lab-heatmap-width-fit/).
+
 ## Parent program seeds (historical)
 
 From [`docs/Options-Lab-Heatmap-Templates-Full-Agent-Bench-Plan-v1.0.md`](../../../docs/Options-Lab-Heatmap-Templates-Full-Agent-Bench-Plan-v1.0.md) §6.

@@ -47,6 +47,7 @@ See Advanced Fly Spec **AF1–AF17**, parent **HM1–HM20**, and OPF Truth **DL-
 - Volume Profile trade backfill  
 - Analyzer package-quote residual  
 - SRS as member trading “signal” (Coach-gated research only)  
+- **Width Fit** — separate board [`p-options-lab-heatmap-width-fit`](../p-options-lab-heatmap-width-fit/). Do **not** implement leftover **AF-X** `width_eff` / `stability` as that product.  
 
 ## Coordination
 

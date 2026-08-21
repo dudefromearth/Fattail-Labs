@@ -4,6 +4,124 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-528 IKI Lab foundation page is PDS Spec v0.1 Part I
+
+**Decision (Coach, verbatim):**
+
+> I want to store the foundational document in the IKI Lab which is an executive summary of what it is to become. It is contained within the following spec FatTail Labs — Public Data Service Spec v0.1
+
+**Seating:** IKI Lab member-wiki page slug **`iki`** (`lab-wiki/wiki/concepts/iki.md`) holds Public Data Service Spec v0.1 **Part I** (executive summary) **verbatim**. That page is what IKI is to become. PDS remains **THESIS** — this is not GO for a public data service. IKI spec **v0.1.1**.
+
+**Does not:** MiniTwo; public wiki; close OD-IKI-1; push lab-wiki (local store; publish path is git push + reindex).
+
+---
+
+## 2026-08-21 — DL-527 IKI Lab (renames Wiki card) + IKI Factory suite nav
+
+**Decision (Coach, verbatim):**
+
+> I want to rename the Wiki Card in the Apps section of the website to the IKI Lab. IKI stands for Information-Knowledge-Intelligence. And I want to create a new app called the IKI Factory. It will use the same Nav we have in other app suites like Practice and Options Lab.
+
+**Seating:** Spec [`FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md`](../Specs/FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md) (**IKI** v0.1 · DRAFT). `/app` Wiki card title → **IKI Lab**. New suite app **IKI Factory** on the same segmented nav grammar as Practice / Options Lab. Member Wiki specs remain the **Lab** engine. Factory **job open** (**OD-IKI-1**). Not BUILD AUTHORITY.
+
+**Does not:** MiniTwo; code; invent Factory workflow.
+
+---
+
+## 2026-08-21 — DL-529 Width Fit is a Heatmap template (OD-W1 Override)
+
+**Decision (Coach):** Width Fit belongs in the Heatmap **Template**
+switcher, not under Advanced flies → Value.
+
+**OD-W1 Override:** registry id `width-fit`, label **Width Fit**. Same
+fly geometry. Internal mode id `width_fit`. Advanced Fly Value list
+does not include Width Fit.
+
+**Does not:** MiniTwo in this body; changing compute law.
+
+---
+
+## 2026-08-21 — DL-526 Heatmap Width Fit WF1–WF4 as-built
+
+**Decision:** Width Fit **value mode** is on Advanced Fly (`sym-fly`).
+Pure module `web/lib/options-lab/templates/widthFit.ts`. `computeCell`
+emits raw components only. `assignColors` normalizes, applies criteria
+weights, then OD-W6 stability **penalty** (floor 0.25). Footer: median +
+\(n\). Default Debit unchanged. No Massive in the template.
+
+AT pack: `widthFit.test.ts` · `widthFit.stability.test.ts` ·
+`widthFit.vocab.test.ts` · Advanced Fly structure still green.
+
+**Does not:** MiniTwo in this body; FTI persistence (FI-040).
+
+---
+
+## 2026-08-21 — DL-525 Heatmap Width Fit WF0-0 GO
+
+**Decision (Coach):** **GO.** Token
+[`agents/go/OLHWF-W0.md`](../agents/go/OLHWF-W0.md) signed Coach 2026-08-21.
+Delta reads that file (**DL-328**). Gate name **WF0-G** (specialist notes
+may still land; they do not block WF1).
+
+**Spec:** v0.1.1 **BUILD AUTHORITY**
+[`FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md)
+
+**Whole-file sha1:** `739cb93a0e50800ce1c08b19269e4148963bf05c`
+
+| ID | Ruling |
+|----|--------|
+| **OD-W1** | Accept — `width_fit` on `sym-fly`; no second switcher |
+| **OD-W2** | Accept — member **criteria** weights + documented default |
+| **OD-W3** | Accept — Width Fit ≠ SRS; no platform ranking signal |
+| **OD-W4** | Accept — history / calibration → FTI / StudioOne (**FI-040**) |
+| **OD-W5** | Accept — “Width Fit” vocabulary; Spec §8.3 forbidden list |
+| **OD-W6** | Accept **(a)** — stability is a **penalty outside** the weight vector, config floor; not member-zeroable; not a second weighted component |
+| **JR1** | Equal \(1/7\) on the seven criteria weights |
+| **JR2** | `min_valid_n` = 5 |
+| **JR3** | `normalization` = `per_width` |
+| **JR4** | Supporting modes = inspector; `payoff_efficiency` aliases `r2r` (one \(D\le 0\) fixture) |
+| **JR5** | Primary aggregate = median |
+| **JR6** | Advanced Fly default stays **Debit** |
+| **JR7** | OD-W6 (a) |
+
+L1–L6 **lock**. Fire **WF1**. Plan v1.1. Board `agents/p-options-lab-heatmap-width-fit/`.
+
+**Does not:** MiniTwo in this body; AF-X as Width Fit; `flySurfaceHistory` in WF1.
+
+---
+
+## 2026-08-21 — DL-524 Heatmap Width Fit bench plan v1.1 (India review fold)
+
+**Decision:** Width Fit Full Agent Bench Plan is **v1.1**. Canonical
+[`docs/Options-Lab-Heatmap-Width-Fit-Full-Agent-Bench-Plan-v1.1.md`](../docs/Options-Lab-Heatmap-Width-Fit-Full-Agent-Bench-Plan-v1.1.md).
+The v1.0 path is a stub.
+
+Folded from India review: **B1** L1–L5 PROVISIONAL until WF0-0; **B2**
+`computeCell` raw components only; **B3** **OD-W6** rec (stability penalty
+outside the member weight vector, config floor); **C1** Spec file exists;
+**C2** DL-309 / DL-328 / FI-040 landed; **A1–A6** as listed in the plan
+changelog.
+
+**Does not:** MiniTwo; code; Coach GO.
+
+---
+
+## 2026-08-21 — DL-523 Heatmap Width Fit Full Agent Bench Plan v1.0
+
+**Decision (Juliet, Coach asked):** Width Fit Spec **v0.1 DRAFT** has a full
+agent bench plan. Implementation waits Coach **WF0-0**
+([`agents/go/OLHWF-W0.md`](../agents/go/OLHWF-W0.md)). **OD-W1…W5** remain
+recommended, not ruled.
+
+**Plan:** [`docs/Options-Lab-Heatmap-Width-Fit-Full-Agent-Bench-Plan-v1.0.md`](../docs/Options-Lab-Heatmap-Width-Fit-Full-Agent-Bench-Plan-v1.0.md)  
+**Board:** `agents/p-options-lab-heatmap-width-fit/`  
+**Spec:** [`FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md)
+
+**Does not:** MiniTwo; code; treating DRAFT as BUILD AUTHORITY; implementing
+AF-X as Width Fit.
+
+---
+
 ## 2026-08-21 — DL-522 Analyzer PiP: box + tent + $0; Surface Autofit pad
 
 **Decision (Coach):** PiP shows **view box, surface, and $0 plane** — no

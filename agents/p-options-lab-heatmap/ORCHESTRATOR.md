@@ -11,8 +11,10 @@
 
 ```text
 AF0 → AF-H → AF-M → AF-U → AF-K → AF-Z
-         [AF-X optional Wave‑2]
+         [AF-X optional Wave‑2 — NOT Width Fit]
          [AF-X2 SRS — Coach only]
+
+**Width Fit** is a **new board:** [`p-options-lab-heatmap-width-fit`](../p-options-lab-heatmap-width-fit/) · plan v1.0. Do not fire AF-X as Width Fit.
 ```
 
 | Phase | Name | Blocks |

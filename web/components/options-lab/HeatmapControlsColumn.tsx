@@ -26,7 +26,16 @@ import type {
   BwWingSide,
   HeatmapTemplate,
   ValueModeId,
+  WidthFitWeights,
 } from "@/lib/options-lab/templates/types";
+import {
+  DEFAULT_WIDTH_FIT_WEIGHTS,
+  WIDTH_FIT_CRITERIA,
+  WIDTH_FIT_STATE_LABEL,
+  type WidthFitFooterCol,
+  type WidthFitSurfaceState,
+  resolveWidthFitWeights,
+} from "@/lib/options-lab/templates/widthFit";
 import type { LadderExpirationContract } from "@/lib/chainLadderApi";
 
 const EXPIRY_PICK_COUNT = 3;
@@ -75,6 +84,14 @@ export type HeatmapControlsColumnProps = {
   dteLine: string | null;
   feedLine: string | null;
   patchLine: string | null;
+  widthFit?: {
+    weights: WidthFitWeights;
+    onWeights: (w: WidthFitWeights) => void;
+    expanded: boolean;
+    onExpanded: (v: boolean) => void;
+    state: WidthFitSurfaceState;
+    footer: WidthFitFooterCol[];
+  } | null;
 };
 
 function statusCopy(
@@ -171,6 +188,7 @@ export default function HeatmapControlsColumn({
   dteLine,
   feedLine,
   patchLine,
+  widthFit = null,
 }: HeatmapControlsColumnProps) {
   const status = statusCopy(streaming, held, transport);
 
@@ -331,6 +349,60 @@ export default function HeatmapControlsColumn({
           </p>
         </InspectorSection>
 
+        {widthFit ? (
+          <InspectorSection title="Width Fit">
+            <p
+              className="px-3 py-2 text-[length:var(--text-caption)] text-[var(--color-label-secondary)]"
+              data-testid="width-fit-state"
+            >
+              {WIDTH_FIT_STATE_LABEL[widthFit.state]}
+            </p>
+            <button
+              type="button"
+              className="mx-3 mb-2 min-h-11 rounded-full border border-[var(--color-separator)] px-4 text-[length:var(--text-subheadline)]"
+              data-testid="width-fit-expand"
+              aria-pressed={widthFit.expanded}
+              onClick={() => widthFit.onExpanded(!widthFit.expanded)}
+            >
+              {widthFit.expanded ? "Show coherent regions" : "Expand full matrix"}
+            </button>
+            {WIDTH_FIT_CRITERIA.map((k) => (
+              <label key={k} className={inspectorRow + " flex-col items-stretch gap-1 py-1"}>
+                <span className={inspectorRowLabel + " normal-case"}>
+                  {k.replace(/_/g, " ")}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="min-h-9 w-full accent-[var(--color-tint)]"
+                  value={Math.round(widthFit.weights[k] * 100)}
+                  data-testid={`width-fit-weight-${k}`}
+                  aria-label={k.replace(/_/g, " ")}
+                  onChange={(e) => {
+                    const next = {
+                      ...widthFit.weights,
+                      [k]: Number(e.target.value) / 100,
+                    };
+                    widthFit.onWeights(resolveWidthFitWeights(next));
+                  }}
+                />
+              </label>
+            ))}
+            <button
+              type="button"
+              className="mx-3 mb-2 min-h-11 text-[length:var(--text-caption)] text-[var(--color-label-secondary)] underline"
+              data-testid="width-fit-weights-reset"
+              onClick={() =>
+                widthFit.onWeights({ ...DEFAULT_WIDTH_FIT_WEIGHTS })
+              }
+            >
+              Restore default weights
+            </button>
+          </InspectorSection>
+        ) : null}
+
         <InspectorSection title="Chain">
           <label className={inspectorRow}>
             <span className={inspectorRowLabel}>
@@ -363,6 +435,7 @@ export default function HeatmapControlsColumn({
             onChange={onSideChange}
             testId="chain-ladder-side"
           />
+          {widthFit ? null : (
           <label className={inspectorRow + " flex-col items-stretch gap-1 py-2"}>
             <span className="sr-only">Rate of change color sensitivity</span>
             <div className="flex items-center gap-2 px-3">
@@ -396,6 +469,7 @@ export default function HeatmapControlsColumn({
               </span>
             </div>
           </label>
+          )}
           <button
             type="button"
             className={inspectorListRow}

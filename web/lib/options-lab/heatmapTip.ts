@@ -3,7 +3,13 @@
  * Native `title` is too small and too slow; this is the SoR for tile copy.
  */
 
-import type { ChainContext, ValueModeId } from "./templates/types";
+import type {
+  ChainContext,
+  ValueModeId,
+  WidthFitComponents,
+  WidthFitQuality,
+} from "./templates/types";
+import { widthFitPanelCopy } from "./templates/widthFit";
 import { expirationPnLDollars } from "./riskPayoff";
 import {
   listedPackageGreeks,
@@ -141,6 +147,16 @@ export function heatmapMatrixTip(opts: {
   cellTooltip?: string;
   isSpot?: boolean;
   convexityScore?: number | null;
+  /** Width Fit: color is the score; hover/click must name it. */
+  widthFit?: {
+    colorT: number | null;
+    outline?: boolean;
+    qualityFlag?: WidthFitQuality | null;
+    stability?: number | null;
+    components?: WidthFitComponents | null;
+    widthMedian?: number | null;
+    detail?: boolean;
+  };
 }): HeatmapTipModel {
   const kicker = [
     opts.templateLabel,
@@ -152,12 +168,45 @@ export function heatmapMatrixTip(opts: {
     .join("  ·  ");
 
   const fly =
-    opts.templateId === "sym-fly" && opts.widthPts > 0
+    (opts.templateId === "sym-fly" || opts.templateId === "width-fit") &&
+    opts.widthPts > 0
       ? flyStructure(opts.strike, opts.widthPts)
       : undefined;
 
+  const widthFitOn =
+    opts.templateId === "width-fit" || opts.mode === "width_fit";
+
   const rows: HeatmapTipRow[] = [];
-  if (opts.cellValid) {
+  let note: string | undefined;
+  if (widthFitOn) {
+    const copy = widthFitPanelCopy({
+      valid: opts.cellValid,
+      colorT: opts.widthFit?.colorT ?? null,
+      outline: opts.widthFit?.outline,
+      qualityFlag: opts.widthFit?.qualityFlag,
+      stability: opts.widthFit?.stability,
+      score: opts.cellValue,
+      gate: opts.cellTooltip,
+      widthMedian: opts.widthFit?.widthMedian,
+      components: opts.widthFit?.components,
+      detail: opts.widthFit?.detail === true,
+    });
+    for (const r of copy.rows) {
+      rows.push({
+        label: r.label,
+        value: r.value,
+        tone:
+          r.label === "Color" && r.value === "Amber"
+            ? "debit"
+            : r.label === "Color" && r.value === "Teal"
+              ? "muted"
+              : r.label === "Meaning"
+                ? "neutral"
+                : "neutral",
+      });
+    }
+    note = copy.note;
+  } else if (opts.cellValid) {
     const shown = opts.tileAlt || opts.tileFace;
     rows.push({
       label: "Value",
@@ -174,12 +223,20 @@ export function heatmapMatrixTip(opts: {
   }
 
   return {
-    title: opts.modeLabel,
+    title: widthFitOn ? "Width Fit" : opts.modeLabel,
     kicker,
     structure: fly,
     rows,
-    note: opts.cellValid ? undefined : opts.cellTooltip || "Not listed",
-    hint: opts.cellValid ? "Click copies ToS" : undefined,
+    note: widthFitOn
+      ? note
+      : opts.cellValid
+        ? undefined
+        : opts.cellTooltip || "Not listed",
+    hint: opts.cellValid
+      ? widthFitOn
+        ? "Click for components and ToS"
+        : "Click copies ToS"
+      : undefined,
     convexityScore:
       opts.convexityScore != null && Number.isFinite(opts.convexityScore)
         ? Math.max(1, Math.min(10, Math.round(opts.convexityScore)))

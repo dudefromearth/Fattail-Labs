@@ -15,6 +15,7 @@ export type ValueModeId =
   | "slope"
   | "curvature"
   | "cp_asym"
+  | "width_fit"
   | "gex_all"
   | "gex_net"
   | "gex_call"
@@ -49,6 +50,28 @@ export type RowDef = {
   isSpot?: boolean;
 };
 
+export type WidthFitQuality = "good" | "poor" | "invalid";
+
+export type WidthFitComponents = {
+  debit_efficiency: number | null;
+  payoff_efficiency: number | null;
+  gamma_efficiency: number | null;
+  curvature_efficiency: number | null;
+  theta_efficiency: number | null;
+  surface_responsiveness: number | null;
+  call_put_asymmetry: number | null;
+};
+
+export type WidthFitWeights = {
+  debit_efficiency: number;
+  payoff_efficiency: number;
+  gamma_efficiency: number;
+  curvature_efficiency: number;
+  theta_efficiency: number;
+  surface_responsiveness: number;
+  call_put_asymmetry: number;
+};
+
 export type GridCell = {
   display: string | null;
   value: number | null;
@@ -56,6 +79,10 @@ export type GridCell = {
   valid: boolean;
   tooltip?: string;
   bgCss?: string;
+  components?: WidthFitComponents;
+  qualityFlag?: WidthFitQuality;
+  widthFitStability?: number;
+  widthFitOutline?: boolean;
 };
 
 /** Which side of the body gets the broken (N-strike) wing. */
@@ -96,6 +123,12 @@ export type TemplateParams = {
   /** Descending centers for this grid (slope/curvature). */
   flyRowStrikes?: readonly number[];
   flyRowIndex?: number;
+  /** Width Fit — seven criteria weights (OD-W6: no stability slot). */
+  widthFitWeights?: WidthFitWeights;
+  minValidN?: number;
+  /** Clamped to a config floor — not member-zeroable (OD-W6). */
+  stabilityPenaltyStrength?: number;
+  widthFitNormalization?: "per_width" | "grid";
 };
 
 export type HeatmapTemplate = {

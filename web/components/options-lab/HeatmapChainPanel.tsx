@@ -36,6 +36,11 @@ import {
   symFlyTemplate,
 } from "@/lib/options-lab/templates/symFly";
 import {
+  isFlySurfaceTemplate,
+  isWidthFitTemplate,
+  widthFitTemplate,
+} from "@/lib/options-lab/templates/widthFitTemplate";
+import {
   BW_STRIKE_COUNT_CHOICES,
   BW_STRIKE_COUNT_DEFAULT,
   BW_WING_SIDE_DEFAULT,
@@ -55,7 +60,17 @@ import type {
   ChainContext,
   TemplateParams,
   ValueModeId,
+  WidthFitWeights,
 } from "@/lib/options-lab/templates/types";
+import {
+  DEFAULT_MIN_VALID_N,
+  DEFAULT_STABILITY_PENALTY,
+  DEFAULT_WIDTH_FIT_WEIGHTS,
+  assignWidthFitColors,
+  attachFooterWidths,
+  widthFitSurfaceState,
+  type WidthFitFooterCol,
+} from "@/lib/options-lab/templates/widthFit";
 import { isUsEquityRthOpenByClock } from "@/lib/market/usEquitySession";
 import {
   generateTosScript,
@@ -232,6 +247,10 @@ export default function HeatmapChainPanel() {
   const [bwStrikeCount, setBwStrikeCount] = useState(BW_STRIKE_COUNT_DEFAULT);
   /** bw-fly: place broken wing closest to spot or furthest */
   const [bwWingSide, setBwWingSide] = useState<BwWingSide>(BW_WING_SIDE_DEFAULT);
+  const [widthFitWeights, setWidthFitWeights] = useState<WidthFitWeights>(
+    () => ({ ...DEFAULT_WIDTH_FIT_WEIGHTS }),
+  );
+  const [widthFitExpanded, setWidthFitExpanded] = useState(false);
   const [selectedTile, setSelectedTile] = useState<MatrixTileKey | null>(null);
   const [hoverTip, setHoverTip] = useState<{
     model: HeatmapTipModel;
@@ -332,9 +351,9 @@ export default function HeatmapChainPanel() {
     setTipInspect(null);
   }, [symbol, expiration, side, wings, valueMode, bwStrikeCount, bwWingSide]);
 
-  // Leave fly template → free pipeline
+  // Leave fly surface templates → free pipeline
   useEffect(() => {
-    if (templateId === "sym-fly") return;
+    if (isFlySurfaceTemplate(templateId)) return;
     flyPipeRef.current?.seam();
     flyPipeRef.current = null;
     setFlyPaint(null);
@@ -566,15 +585,18 @@ export default function HeatmapChainPanel() {
    * One mode only · rAF coalesce · skip if key unchanged.
    */
   useEffect(() => {
-    if (templateId !== "sym-fly") return;
+    if (!isFlySurfaceTemplate(templateId)) return;
     if (!bus.hash || !chainCtx.contracts.size) return;
 
-    const ingestKey = `${bus.hash}|${side}|${valueMode}|${flyWidths.join(",")}`;
+    const ingestMode = isWidthFitTemplate(templateId)
+      ? "width_fit"
+      : valueMode;
+    const ingestKey = `${bus.hash}|${side}|${ingestMode}|${flyWidths.join(",")}`;
     if (ingestKey === lastIngestKeyRef.current) return;
 
     if (ingestRafRef.current) cancelAnimationFrame(ingestRafRef.current);
     const hashAtSchedule = bus.hash;
-    const modeAtSchedule = valueMode;
+    const modeAtSchedule = ingestMode;
     ingestRafRef.current = requestAnimationFrame(() => {
       ingestRafRef.current = 0;
       // Drop stale frame if hash moved again
@@ -586,13 +608,22 @@ export default function HeatmapChainPanel() {
         flyWidths,
         { receivedAt: genReceivedAtRef.current.at || Date.now() },
       );
-      symFlyTemplate.assignColors(paint.cells, {
+      const colorParams = {
         valueMode: modeAtSchedule,
-        widthMode: "fixed_points",
+        widthMode: "fixed_points" as const,
         fixedPoints: flyWidths,
         stickyScale,
         gradientThreshold,
-      });
+        widthFitWeights,
+        minValidN: DEFAULT_MIN_VALID_N,
+        stabilityPenaltyStrength: DEFAULT_STABILITY_PENALTY,
+        widthFitNormalization: "per_width" as const,
+      };
+      if (modeAtSchedule === "width_fit") {
+        widthFitTemplate.assignColors(paint.cells, colorParams);
+      } else {
+        symFlyTemplate.assignColors(paint.cells, colorParams);
+      }
       lastIngestKeyRef.current = `${hashAtSchedule}|${side}|${modeAtSchedule}|${flyWidths.join(",")}`;
       setFlyPaint(paint);
     });
@@ -602,7 +633,7 @@ export default function HeatmapChainPanel() {
     };
     // Intentionally NOT depending on full chainCtx identity — hash is the gen gate.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- chainCtx read inside when hash changes
-  }, [templateId, bus.hash, side, valueMode, flyWidths, stickyScale, gradientThreshold]);
+  }, [templateId, bus.hash, side, valueMode, flyWidths, stickyScale, gradientThreshold, widthFitWeights]);
 
   const templateParams: TemplateParams = useMemo(
     () => ({
@@ -613,24 +644,49 @@ export default function HeatmapChainPanel() {
       gradientThreshold,
       bwStrikeCount,
       bwWingSide,
+      widthFitWeights,
+      minValidN: DEFAULT_MIN_VALID_N,
+      stabilityPenaltyStrength: DEFAULT_STABILITY_PENALTY,
+      widthFitNormalization: "per_width",
     }),
-    [valueMode, stickyScale, bwStrikeCount, bwWingSide, flyWidths, gradientThreshold],
+    [
+      valueMode,
+      stickyScale,
+      bwStrikeCount,
+      bwWingSide,
+      flyWidths,
+      gradientThreshold,
+      widthFitWeights,
+    ],
   );
 
   const matrix = useMemo(() => {
     if (tpl.layout !== "matrix") return null;
-    if (tpl.id === "sym-fly") {
-      if (!flyPaint || flyPaint.mode !== valueMode) return null;
+    if (isFlySurfaceTemplate(tpl.id)) {
+      const wantMode = isWidthFitTemplate(tpl.id) ? "width_fit" : valueMode;
+      if (!flyPaint || flyPaint.mode !== wantMode) return null;
       const cells = flyPaint.cells.map((row) => row.map((c) => ({ ...c })));
+      if (isWidthFitTemplate(tpl.id)) {
+        const wf = assignWidthFitColors(cells, templateParams);
+        return {
+          rows: flyPaint.rows,
+          cols: flyPaint.cols,
+          cells,
+          stickyScale: wf.stickyScale,
+          footer: attachFooterWidths(wf.footer, flyPaint.cols),
+        };
+      }
       const colored = symFlyTemplate.assignColors(cells, templateParams);
       return {
         rows: flyPaint.rows,
         cols: flyPaint.cols,
         cells,
         stickyScale: colored.stickyScale,
+        footer: [] as WidthFitFooterCol[],
       };
     }
-    return buildGrid(tpl, chainCtx, templateParams);
+    const built = buildGrid(tpl, chainCtx, templateParams);
+    return { ...built, footer: [] as WidthFitFooterCol[] };
   }, [tpl, chainCtx, templateParams, flyPaint, valueMode, stickyScale]);
 
   /** Same-width listed-gamma rank, 1–10. Held chain only. */
@@ -827,6 +883,18 @@ export default function HeatmapChainPanel() {
             window.setTimeout(() => setTosCopied(false), 1600);
           });
         }}
+        widthFit={
+          isWidthFitTemplate(templateId) && matrix
+            ? {
+                weights: widthFitWeights,
+                onWeights: setWidthFitWeights,
+                expanded: widthFitExpanded,
+                onExpanded: setWidthFitExpanded,
+                state: widthFitSurfaceState(matrix.footer ?? []),
+                footer: matrix.footer ?? [],
+              }
+            : null
+        }
         onOpenAnalyzer={() => saveAnalyzerTrade(tosScript, "heatmap")}
         spotLabel={smoothSpot != null ? fmt(smoothSpot, 2) : "—"}
         genLine={bus.hash ? `gen ${bus.hash.slice(0, 8)}` : null}
@@ -1167,7 +1235,18 @@ export default function HeatmapChainPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {matrix.rows.map((row, ri) => (
+                  {matrix.rows.map((row, ri) => {
+                    const anyOutline = matrix.cells.some((r) =>
+                      r.some((c) => c.widthFitOutline),
+                    );
+                    const hideRow =
+                      isWidthFitTemplate(templateId) &&
+                      !widthFitExpanded &&
+                      anyOutline &&
+                      !row.isSpot &&
+                      !matrix.cells[ri]?.some((c) => c.widthFitOutline);
+                    if (hideRow) return null;
+                    return (
                     <tr
                       key={row.strike}
                       data-spot={row.isSpot ? "1" : "0"}
@@ -1188,16 +1267,29 @@ export default function HeatmapChainPanel() {
                       </td>
                       {matrix.cols.map((col, ci) => {
                         const cell = matrix.cells[ri]?.[ci];
-                        const tile = formatHeatmapTileFace(
-                          cell?.display,
-                          cell?.value,
-                        );
+                        const tile =
+                          isWidthFitTemplate(templateId) && cell?.valid
+                            ? { face: "", alt: cell.tooltip || "Width Fit" }
+                            : formatHeatmapTileFace(
+                                cell?.display,
+                                cell?.value,
+                              );
                         const selected =
                           selectedTile?.strike === row.strike &&
                           selectedTile?.colId === col.id;
                         const bg = selected
                           ? darkenCssColor(cell?.bgCss || "#1a1a1a", 0.5)
                           : cell?.bgCss || "#1a1a1a";
+                        const widthFitTip = isWidthFitTemplate(templateId)
+                          ? {
+                              colorT: cell?.colorT ?? null,
+                              outline: !!cell?.widthFitOutline,
+                              qualityFlag: cell?.qualityFlag,
+                              stability: cell?.widthFitStability ?? null,
+                              components: cell?.components,
+                              widthMedian: matrix.footer?.[ci]?.median ?? null,
+                            }
+                          : undefined;
                         return (
                           <td
                             key={col.id}
@@ -1209,7 +1301,8 @@ export default function HeatmapChainPanel() {
                             data-heatmap-tile="1"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (!cell?.valid) return;
+                              if (!cell?.valid && !isWidthFitTemplate(templateId))
+                                return;
                               const model = heatmapMatrixTip({
                                 templateId,
                                 templateLabel: tpl.label,
@@ -1221,14 +1314,17 @@ export default function HeatmapChainPanel() {
                                 widthLabel: col.label,
                                 tileFace: tile.face,
                                 tileAlt: tile.alt,
-                                cellValid: true,
-                                cellValue: cell.value ?? null,
-                                cellTooltip: cell.tooltip,
+                                cellValid: !!cell?.valid,
+                                cellValue: cell?.value ?? null,
+                                cellTooltip: cell?.tooltip,
                                 isSpot: row.isSpot,
                                 convexityScore:
                                   convexityScores.get(
                                     `${row.strike}|${col.id}`,
                                   ) ?? null,
+                                widthFit: widthFitTip
+                                  ? { ...widthFitTip, detail: true }
+                                  : undefined,
                               });
                               setHoverTip({
                                 model,
@@ -1236,7 +1332,9 @@ export default function HeatmapChainPanel() {
                                 y: e.clientY,
                               });
                               setTipPinned(true);
-                              openHeldTile(row.strike, col.widthPts);
+                              if (cell?.valid) {
+                                openHeldTile(row.strike, col.widthPts);
+                              }
                             }}
                             onMouseEnter={(e) => {
                               if (tipPinnedRef.current) return;
@@ -1260,6 +1358,9 @@ export default function HeatmapChainPanel() {
                                     convexityScores.get(
                                       `${row.strike}|${col.id}`,
                                     ) ?? null,
+                                  widthFit: widthFitTip
+                                    ? { ...widthFitTip, detail: false }
+                                    : undefined,
                                 }),
                                 x: e.clientX,
                                 y: e.clientY,
@@ -1286,7 +1387,9 @@ export default function HeatmapChainPanel() {
                               "hover:z-[1] hover:ring-1 hover:ring-white/35",
                               selected
                                 ? "z-[1] ring-2 ring-amber-400/70 brightness-90"
-                                : "",
+                                : cell?.widthFitOutline
+                                  ? "z-[1] ring-1 ring-white/50"
+                                  : "",
                               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber-300",
                             ].join(" ")}
                             style={{ backgroundColor: bg }}
@@ -1296,7 +1399,8 @@ export default function HeatmapChainPanel() {
                         );
                       })}
                     </tr>
-                  ))}
+                    );
+                  })}
                   {!matrix.rows.length && (
                     <tr>
                       <td
@@ -1310,6 +1414,32 @@ export default function HeatmapChainPanel() {
                     </tr>
                   )}
                 </tbody>
+                {isWidthFitTemplate(templateId) && matrix.footer?.length ? (
+                  <tfoot data-testid="width-fit-footer">
+                    <tr className="h-14 border-t border-white/15 bg-[#0a0a0e]">
+                      <th
+                        scope="row"
+                        className="sticky left-0 z-[1] w-[7rem] bg-[#0a0a0e] px-1 text-center text-[11px] font-medium uppercase tracking-wide text-white/45"
+                      >
+                        Width Fit
+                      </th>
+                      {matrix.footer.map((f) => (
+                        <td
+                          key={f.widthPts}
+                          className="px-1 text-center align-middle text-[11px] tabular-nums text-white/70"
+                          data-testid={`width-fit-footer-${f.widthPts}`}
+                          data-low-n={f.lowConfidence ? "1" : "0"}
+                        >
+                          {f.lowConfidence
+                            ? `n ${f.n}`
+                            : f.median != null
+                              ? `${f.median.toFixed(2)} · n ${f.n}`
+                              : `n ${f.n}`}
+                        </td>
+                      ))}
+                    </tr>
+                  </tfoot>
+                ) : null}
               </table>
             ) : (
               <table className="w-full min-w-[32rem] border-collapse text-sm">

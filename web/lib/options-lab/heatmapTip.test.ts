@@ -58,6 +58,64 @@ test("debit tile is labeled and amber-toned", () => {
   assert(t.hint?.includes("Click copies ToS") === true, "hint");
 });
 
+test("Width Fit hover names the color when the tile has no number", () => {
+  const t = heatmapMatrixTip({
+    templateId: "width-fit",
+    templateLabel: "Width Fit",
+    mode: "width_fit",
+    modeLabel: "Width Fit",
+    strike: 5740,
+    strikeLabel: "5740",
+    widthPts: 20,
+    widthLabel: "20",
+    tileFace: "",
+    tileAlt: "Width Fit",
+    cellValid: true,
+    cellValue: 0.72,
+    widthFit: { colorT: 0.8, outline: true, stability: 0.7, detail: false },
+  });
+  assert(t.structure === "5720 / 5740 / 5760", "fly structure");
+  const color = t.rows.find((r) => r.label === "Color");
+  const meaning = t.rows.find((r) => r.label === "Meaning");
+  assert(color?.value === "Amber", "amber");
+  assert(meaning?.value.includes("Stronger fit"), "meaning");
+  assert(t.note?.includes("Not a directional signal"), "not a signal");
+});
+
+test("Width Fit click adds component rows", () => {
+  const t = heatmapMatrixTip({
+    templateId: "width-fit",
+    templateLabel: "Width Fit",
+    mode: "width_fit",
+    modeLabel: "Width Fit",
+    strike: 5740,
+    strikeLabel: "5740",
+    widthPts: 20,
+    widthLabel: "20",
+    tileFace: "",
+    tileAlt: "",
+    cellValid: true,
+    cellValue: 0.8,
+    widthFit: {
+      colorT: 0.8,
+      detail: true,
+      components: {
+        debit_efficiency: 0.4,
+        payoff_efficiency: 1.2,
+        gamma_efficiency: 0.01,
+        curvature_efficiency: 0.02,
+        theta_efficiency: 0.5,
+        surface_responsiveness: 0.3,
+        call_put_asymmetry: 0.1,
+      },
+    },
+  });
+  assert(
+    t.rows.some((r) => r.label === "gamma efficiency"),
+    "components on click",
+  );
+});
+
 test("invalid tile shows the reason, not a fake value", () => {
   const t = heatmapMatrixTip({
     templateId: "sym-fly",

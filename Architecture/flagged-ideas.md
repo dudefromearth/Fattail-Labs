@@ -66,6 +66,8 @@ Do **not** use `DISCARDED` / `REJECTED` as idea status.
 | FI-037 | 2026-08-20 | AZ-ATM v0.1.1 | TPO **grain** for Time Machine “follow the path” (tick/second path vs 30-minute Market Profile letters vs other feed) | Juliet (Coach specified TPO path, not grain) | Must not silently pick a TPO SoR | `OPEN` | AZ-ATM §3.3 ATM-P5 · §13 · **DL-487** |
 | FI-038 | 2026-08-21 | TF v0.1 | Next Labs **hosts** of Trader Feed after T Ortho + Algo (Journal, Heatmap, Practice, Strategy Lab, Community, Visualize AI, …) | Juliet (Coach: “may be used in other features”) | Reuse law is in; auto-mount on those surfaces is not | `OPEN` | TF §3.3 · §7.3 · **OD-FN-6** · **DL-514** · **DL-517** |
 | FI-039 | 2026-08-21 | TF v0.1.1 | Member **composer** inside Trader Feed (Journal two-way) vs host-voice posts only | Juliet (Coach: Journal-shaped posts; did not name a composer) | Journal is a chatbot; TF trader-review may stay one-sided | `OPEN` | TF **OD-FN-7** · **DL-515** · **DL-517** |
+| FI-040 | 2026-08-21 | WF v0.1 | Multi-snapshot Width Fit history, weight calibration, longer-horizon confidence — **FatTail Intelligence / StudioOne** | Juliet (Spec §10 · OD-W4) | Template stays pure; do not persist fit series on the heatmap board | `OPEN` | WF Spec §10 · §12 Phase 4 · **OD-W4** · **DL-523** |
+| FI-041 | 2026-08-21 | IKI v0.1 | **IKI Factory** job (compile board / admin Dual Surface / member-authored knowledge / other) | Juliet (Coach named the app, not the workflow) | Suite pill is in; inventing a factory is not | `OPEN` | IKI **OD-IKI-1** · **DL-527** |
 
 ---
 

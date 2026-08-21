@@ -32,6 +32,7 @@ import type {
   RowDef,
   ValueModeId,
 } from "./types";
+import { widthFitComputeCell } from "./widthFit";
 
 /** Hard caps — SPX ±50 dual-side can be large; fly surface must stay lean. */
 export const FLY_MAX_CENTERS = 80;
@@ -45,6 +46,8 @@ export type HeldCell = {
   value: number | null;
   valid: boolean;
   tooltip?: string;
+  components?: import("./types").WidthFitComponents;
+  qualityFlag?: import("./types").WidthFitQuality;
 };
 
 export type FlyPipelinePaint = {
@@ -165,6 +168,27 @@ function computeOne(
   hist: FlySurfaceHistory,
   live: DebitGridSnap,
 ): HeldCell {
+  if (mode === "width_fit") {
+    const raw = widthFitComputeCell(
+      ctx,
+      { strike: k, label: String(k) },
+      { id: `w${w}`, label: String(w), widthPts: w },
+      {
+        valueMode: "width_fit",
+        widthMode: "fixed_points",
+        flyRowStrikes: centers,
+        flyRowIndex: cIdx,
+      },
+    );
+    return {
+      display: raw.display ?? "",
+      value: raw.value,
+      valid: raw.valid,
+      tooltip: raw.tooltip,
+      components: raw.components,
+      qualityFlag: raw.qualityFlag,
+    };
+  }
   if (mode === "d_debit" || mode === "d2_debit" || mode === "theta") {
     const greek =
       mode === "d_debit" ? "delta" : mode === "d2_debit" ? "gamma" : "theta";
@@ -490,6 +514,7 @@ export class FlySurfacePipeline {
       geomChanged ||
       modeCold ||
       modeChanged ||
+      mode === "width_fit" ||
       (TIME_MODES.has(mode) && genChanged)
     ) {
       changed = [...debits.keys()];
@@ -598,6 +623,8 @@ export class FlySurfacePipeline {
               value: h.value,
               valid: h.valid,
               tooltip: h.tooltip,
+              components: h.components,
+              qualityFlag: h.qualityFlag,
               colorT: null,
             }
           : {

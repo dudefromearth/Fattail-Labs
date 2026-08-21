@@ -2,6 +2,7 @@
 
 import type { HeatmapTemplate } from "./types";
 import { symFlyTemplate } from "./symFly";
+import { widthFitTemplate } from "./widthFitTemplate";
 import { bwFlyTemplate } from "./bwFly";
 import { verticalTemplate } from "./vertical";
 import { gexTemplate } from "./gex";
@@ -11,6 +12,7 @@ export const DEFAULT_HEATMAP_TEMPLATE_ID = "sym-fly";
 
 export const HEATMAP_TEMPLATES: HeatmapTemplate[] = [
   symFlyTemplate,
+  widthFitTemplate,
   bwFlyTemplate,
   verticalTemplate,
   {
