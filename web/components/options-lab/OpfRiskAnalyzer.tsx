@@ -106,7 +106,7 @@ import Button from "@/components/ui/Button";
 import AlertBuilderDialog, {
   type AlertBuilderSeed,
 } from "@/components/options-lab/AlertBuilderDialog";
-import AlgoNarrativePanel from "@/components/options-lab/AlgoNarrativePanel";
+
 import type { AlertsManagerDraft } from "@/lib/alerts/analyzerAlertsAdapter";
 import { alertUnbound } from "@/lib/alerts/analyzerAlertsAdapter";
 import {
@@ -2014,6 +2014,10 @@ export default function OpfRiskAnalyzer() {
                     };
                   }
                 }}
+                onLeave={() => {
+                  void loadTmDay("");
+                  requestAnimationFrame(() => chartRef.current?.autoFit());
+                }}
                 onStop={() => {
                   setTmPlaying(false);
                   const rows = tmAllRef.current;
@@ -2171,22 +2175,6 @@ export default function OpfRiskAnalyzer() {
                     setAlertBuilderOpen(true);
                   }}
                 />
-                {liveAlgo ? (
-                  <AlgoNarrativePanel
-                    phase={liveAlgo.algoPhase ?? "waiting"}
-                    side={liveAlgo.algo?.trail_state?.side ?? "near"}
-                    symbol={symbol}
-                    fPct={
-                      liveAlgo.algo?.trail_state
-                        ? Math.round(liveAlgo.algo.trail_state.f * 100)
-                        : (liveAlgo.algo?.trail_start_pct ?? 75)
-                    }
-                    xS={liveAlgo.algo?.trail_state?.xS ?? null}
-                    gexOn={gexEnabled}
-                    vpOn={false}
-                    decayFast={false}
-                  />
-                ) : null}
                 {/* Centered notice over grid — translucent so scales stay readable */}
                 {viewportFocus?.notice ? (
                   <div

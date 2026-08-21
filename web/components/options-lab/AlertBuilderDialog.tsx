@@ -470,22 +470,7 @@ export default function AlertBuilderDialog({
                   ? "Specify an OTM butterfly."
                   : "Choose a long OTM debit butterfly (call body above spot, put body below). Save stays off until that bind is valid."}
               </p>
-            ) : (
-              <p
-                className="text-[length:var(--text-subheadline)] leading-snug text-[var(--color-label)]"
-                data-testid="analyzer-alert-algo-copy"
-              >
-                This is a narrative trail on this OTM butterfly. It will not
-                close the position. It waits until unrealized gain reaches{" "}
-                {entryPct}% of the debit, then arms. The trail sits at{" "}
-                {trailStartPct}% of the high-water unrealized gain, ratchets
-                with new highs, and tightens toward {trailFloorPct}% by
-                decay end, paced by premium decay. Two dashed verticals
-                (high-water and trail); optional band between them pulses if
-                spot threatens the trail. If spot exits the trail, the alert
-                stops and records.
-              </p>
-            )}
+            ) : null}
             <label className={lab} htmlFor="algo-entry-pct">
               Start profit management (% unrealized gain)
             </label>

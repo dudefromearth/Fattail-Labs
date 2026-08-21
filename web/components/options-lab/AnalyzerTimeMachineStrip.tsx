@@ -19,6 +19,7 @@ export default function AnalyzerTimeMachineStrip(props: {
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
+  onLeave: () => void;
   loading?: boolean;
   disabled?: boolean;
 }) {
@@ -91,6 +92,16 @@ export default function AnalyzerTimeMachineStrip(props: {
           {s}×
         </button>
       ))}
+      <Button
+        variant="bordered"
+        className="shrink-0 whitespace-nowrap px-3"
+        onClick={props.onLeave}
+        disabled={!props.day && !props.loading}
+        aria-label="Leave Time Machine"
+        data-testid="analyzer-tm-leave"
+      >
+        Leave Time Machine
+      </Button>
     </div>
   );
 }

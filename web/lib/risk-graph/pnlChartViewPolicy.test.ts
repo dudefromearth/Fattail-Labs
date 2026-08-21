@@ -126,6 +126,10 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
     "pageshow/visibility effect must not unbind the host",
   );
   assert(az.includes("<HostPnLChart"), "live pane is host-contract chart");
+  assert(
+    !az.includes("AlgoNarrativePanel"),
+    "Algo narrative window is not on the viewport (ALGO-N1)",
+  );
   assert(!az.includes("SurfaceViewport"), "Analyzer is 2D only; Surface is suite page");
   assert(!az.includes("analyzer-viewport-surface"), "no in-viewport Surface tab");
   assert(az.includes("onStrikeCommit="), "listed strike handles wired");
@@ -175,6 +179,16 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
     az.includes("if (ag.demo && !tmDay)"),
     "Demo does not force What-if when TM owns the clock",
   );
+  const tmStrip = readFileSync(
+    join(here, "../../components/options-lab/AnalyzerTimeMachineStrip.tsx"),
+    "utf8",
+  );
+  assert(
+    tmStrip.includes("Leave Time Machine"),
+    "exit control is Leave Time Machine, not Clear",
+  );
+  assert(tmStrip.includes("analyzer-tm-leave"), "Leave Time Machine test id");
+  assert(!/\bClear\b/.test(tmStrip), "no Clear label on TM strip");
   const controls = readFileSync(
     join(here, "../../components/options-lab/AnalyzerControlsColumn.tsx"),
     "utf8",

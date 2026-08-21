@@ -47,6 +47,10 @@ for (const rel of FILES) {
     assert(!/EmptyState/.test(src), "no EmptyState in Builder");
     assert(src.includes("seed?.demo === true"), "TM create defaults Demo");
     assert(src.includes('demoClock === "timemachine"'), "TM Demo copy");
+    assert(
+      !src.includes("analyzer-alert-algo-copy"),
+      "Algo panel has no narrative paragraph",
+    );
   }
 }
 

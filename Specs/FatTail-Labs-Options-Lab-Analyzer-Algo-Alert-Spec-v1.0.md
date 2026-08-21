@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Analyzer Algo Alert Spec v1.0
 
-**Status:** DRAFT — Coach 2026-08-20 (Analyzer Algo alert). **v1.0.3** add fly after Time Machine day (**ALGO-TM1**). **v1.0.2** floor default **25** (DL-482) · knobs are law · Recorded `mode`. **v1.0.1** review fold (ALGO-B1 far-side regime · ALGO-A1 monotone `f` · ALGO-A2 pulse hysteresis). Not BUILD AUTHORITY until Coach Phase 5.  
+**Status:** DRAFT — Coach 2026-08-20 (Analyzer Algo alert). **v1.0.4** no narrative on the Algo panel (**ALGO-N1**). **v1.0.3** add fly after Time Machine day (**ALGO-TM1**). **v1.0.2** floor default **25** (DL-482) · knobs are law · Recorded `mode`. **v1.0.1** review fold (ALGO-B1 far-side regime · ALGO-A1 monotone `f` · ALGO-A2 pulse hysteresis). Not BUILD AUTHORITY until Coach Phase 5.  
 **Type:** Product Spec — Analyzer **Algo alert** (dynamic trailing narrative on an OTM butterfly).  
 **Short name:** AZ-ALGO  
 **Route:** `/app/options-lab/analyzer`  
@@ -19,6 +19,7 @@
 6. A **vertical line** is drawn at the **highest profit achieved** and **another at the trail**. These colors are **assignable**. Lines are **thin dashed**. An **optional transparent overlay** sits **between** the two verticals. The overlay gets **more opaque and pulses** if price **threatens the stop price**. If price **exits the trail** the alert **stops and records the result**.  
 7. A **window** appears, similar to the **narration window in the Surface app under the “T Ortho” view**. This narrative is a **play-by-play of the underlying market structure from the POV of the GEX**, and **if Volume Profile is engaged, the position to structural levels**. If VP is **not** engaged, it is **left out of the narrative**. Other narrative types concern the **greeks, debit and gamma risk, probabilities**, etc.  
 8. **Goal:** keep the trader in the trade long enough to **maximize profit** so long as the risk does not threaten **losing more than they should**. **Most trades are going to result in small profits, some will bank it.** There will be **adjustments to the narrative based on premium decay rate** as well.
+9. **Remove the narrative from the Algo Alert panel.**
 
 Tango / Hotel notes sit in **§10** beside this text. They do not delete it.
 
@@ -106,9 +107,11 @@ Title: `{SYMBOL} — Algo Alert` (AZ-ALB §4).
 
 State control: **Live / Idle** only. Touched is evaluation (AZ-ALB §4.0). After a **Recorded** exit, Builder shows the stamp + **Reset to Live** (starts a **new wait-for-entry**, does not resume a dead trail).
 
-### 5.1 Description (required)
+### 5.1 Description
 
-A short, calm paragraph **the algo already knows**. Sentence case. **No profit claims** in this Labs copy (Tango §10). It must say, in member language:
+**ALGO-N1.** Coach: **remove the narrative from the Algo Alert panel.** Type → Algo shows **knobs only** (and the empty-state bind copy when no eligible fly). No description paragraph. No play-by-play window on the viewport. Trail **lines**, holder Waiting / Armed / Recorded, and Demo stay. Original §0.7 window and the §5.1 paragraph below remain Coach intent, **not current chrome**.
+
+A short, calm paragraph **the algo already knows** (specified, not shown on the panel). Sentence case. **No profit claims** in this Labs copy (Tango §10). It must say, in member language:
 
 - This is a **narrative trail** on this **OTM butterfly**. It will **not** close the position.  
 - It **waits** until unrealized gain reaches **{entryPct}% of the debit**, then **arms**.  
@@ -277,7 +280,9 @@ Pan/zoom moves them with the view. Do not steal left-drag pan or strike handles.
 
 ### 9.1 Chrome
 
-When an Algo alert is **Waiting, Armed, or Recorded**, a **floatable play-by-play window** appears over the Analyzer canvas.
+**ALGO-N1 (chrome):** the play-by-play window is **not mounted**. Trail geometry still paints. §9.2 voices remain the law if the window returns.
+
+When an Algo alert is **Waiting, Armed, or Recorded**, a **floatable play-by-play window** is specified over the Analyzer canvas (not shown while ALGO-N1 holds).
 
 **Similar to** Surface T Ortho narration (`TimeOrthoEggPanel` / `surface-time-ortho-copy`): glass panel, **drag**, play-by-play body. **Not** a copy of that component’s position list, candle prefs, or raw `bg-black/70` hex if HI chrome lint forbids it.
 
@@ -407,14 +412,14 @@ Holder + Builder + narrative read this. **Reset to Live** clears it.
 | AT | Criterion |
 |----|-----------|
 | **AT-ALGO-1** | Eligible OTM debit fly on the book → Alerts **+** pulses. No eligible card → no pulse. |
-| **AT-ALGO-2** | Click **+** while eligible → Builder Type **Algo**, bound to that card, description filled, Save **on** when debit is named. |
+| **AT-ALGO-2** | Click **+** while eligible → Builder Type **Algo**, bound to that card, knobs only (no description paragraph), Save **on** when debit is named. |
 | **AT-ALGO-3** | **+** with no eligible card → Price / Spot (AZ-ALB). Type → Algo with empty eligible list → Save **off**. |
-| **AT-ALGO-4** | Defaults: entry 75, trail start 75, floor 25, overlay off (placeholders; **member knobs are the law**, DL-482). Description uses those numbers. |
+| **AT-ALGO-4** | Defaults: entry 75, trail start 75, floor 25, overlay off (placeholders; **member knobs are the law**, DL-482). |
 | **AT-ALGO-5** | Waiting: no high-water / trail / overlay. Unrealized ≥ entry% × debit → Armed. |
 | **AT-ALGO-6** | Armed: `H` ratchets; `S = f × H`; `f` follows §7.3 (decay may tighten early; `fMin` at last-trade). **ALGO-A1:** `f` is a running minimum — an `E(t)` rise must not loosen `f` or retreat `S`. |
 | **AT-ALGO-7** | Two **thin dashed** verticals, member colors. Overlay optional between them. Pulse **on** at last 20% of `G` toward trail; pulse **off** at 25% (ALGO-A2). |
 | **AT-ALGO-8** | Spot exits trail → Recorded (Touched + payload). Eval stops. Lines freeze. Position **not** closed. |
-| **AT-ALGO-9** | Narrative window while Waiting/Armed/Recorded. GEX voice iff GEX on. VP voice iff VP engaged; else **absent**. Decay changes copy. No profit claims. |
+| **AT-ALGO-9** | **ALGO-N1:** no narrative paragraph on Type → Algo; no `analyzer-algo-narrative` on the viewport. Trail lines and holder phase stay. |
 | **AT-ALGO-10** | Unpriceable debit / greeks / invert → named state, no invented mark (DL-309). Last paint may remain. |
 | **AT-ALGO-11** | `upsertAlert` `alert_class: algo`, `kind: position`, `trigger.family: algo`. Hook only — no third store. |
 | **AT-ALGO-12** | Idle / Keep-Warm: no 1s heavy resolve. Pulse is paint. Left-drag pan and strike handles unaffected. |
@@ -446,6 +451,7 @@ Do **not** start this packet until Coach marks this spec BUILD AUTHORITY. AZ-ALB
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.4** | 2026-08-20 | **ALGO-N1:** remove the narrative from the Algo Alert panel (Builder copy + viewport window). Knobs, trail lines, holder states stay. **DL-495**. |
 | **v1.0.3** | 2026-08-20 | **ALGO-TM1:** Time Machine day may load empty; add the fly afterwards, then Create Alert. Eligibility / Builder ATM / Demo use the playhead. **DL-492**. |
 | **v1.0.2** | 2026-08-20 | Floor default **25** propagated (DL-482). Conformance fixtures parameterized on member knobs (defaults are placeholders, not law). Recorded payload `mode: live \| demo_whatif \| demo_timemachine`. **DL-488**. |
 | **v1.0.1** | 2026-08-20 | Review fold. **ALGO-B1 Coach:** option (a) refined — *geometry mirrors, narration doesn’t.* Far-side regime: one trail re-inverts through the body; `exit_side`; AT-ALGO-16. **ALGO-A1:** `f` running min while Armed. **ALGO-A2:** pulse hysteresis 20%/25%. |

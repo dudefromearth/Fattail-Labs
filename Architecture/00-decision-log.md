@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-20 — DL-495 Algo Alert panel has no narrative chrome
+
+**Decision:** Coach: **remove the narrative from the Algo Alert panel.** Type →
+Algo shows knobs (and empty-state bind copy) only — no description paragraph.
+The T Ortho–similar play-by-play window is **not mounted**. Trail verticals,
+overlay, holder Waiting / Armed / Recorded, and Demo stay. Original §0.7
+window remains specified, not shown (**ALGO-N1**). AZ-ALGO **v1.0.4**.
+
+**Does not:** MiniTwo in this body; deleting trail math or `algoNarrative.ts`.
+
+---
+
+## 2026-08-20 — DL-494 Leave Time Machine is the exit control
+
+**Decision:** The Time Machine exit control is labeled **Leave Time Machine**,
+not Clear. It clears the selected day (glow off, HUD gone, live Spot/scale,
+GEX/Probability prefs restore). **Stop** still only returns the playhead to
+session open. AZ-ATM **v0.1.6** · **ATM-S3** · **AT-ATM-20**.
+
+**Does not:** MiniTwo in this body (Coach did not re-ask).
+
+---
+
 ## 2026-08-20 — DL-493 Analyzer alert cards have Delete
 
 **Decision:** Coach asked for a **delete control on the alerts cards**. Holder
