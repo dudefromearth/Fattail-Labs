@@ -66,6 +66,53 @@ const SPOT_LABEL_FG = "#facc15";
 /** Stands off the canvas `#0a0a0e` in the strike scale. */
 const SPOT_LABEL_BG = "#3f3f46";
 
+function fmtAlgoMoney(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  const v = (Math.round(n * 100) / 100).toFixed(2);
+  return n < 0 ? `-$${Math.abs(Number(v)).toFixed(2)}` : `$${v}`;
+}
+
+function fmtAlgoPrint(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return (Math.round(n * 100) / 100).toFixed(2);
+}
+
+function paintAlgoHud(
+  ctx: CanvasRenderingContext2D,
+  hud: { highest: number | null; trailPct: number; stop: number | null },
+  zeroY: number,
+  plotLeft: number,
+  plotTop: number,
+): void {
+  const rows = [
+    { lab: "High", val: fmtAlgoMoney(hud.highest) },
+    { lab: "Trail", val: `${Math.round(hud.trailPct)}%` },
+    { lab: "Stop", val: fmtAlgoPrint(hud.stop) },
+  ];
+  ctx.font = AXIS_FONT;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  const colonGap = 8;
+  const labW = Math.max(...rows.map((r) => ctx.measureText(r.lab).width));
+  const valW = Math.max(...rows.map((r) => ctx.measureText(r.val).width));
+  const lineH = 22;
+  const x = plotLeft + 8;
+  let y = zeroY - 8;
+  const blockH = lineH * rows.length;
+  if (y - blockH < plotTop + 4) y = plotTop + 4 + blockH;
+  const boxW = labW + colonGap + ctx.measureText(":").width + 6 + valW + 12;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    ctx.fillStyle = "rgba(10,10,14,0.78)";
+    ctx.fillRect(x - 4, y - 17, boxW, 22);
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.fillText(rows[i].lab, x, y);
+    const colonX = x + labW + colonGap;
+    ctx.fillText(":", colonX, y);
+    ctx.fillText(rows[i].val, colonX + ctx.measureText(":").width + 6, y);
+    y -= lineH;
+  }
+}
+
 function paintAxisChip(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -181,6 +228,12 @@ export type HostPnLChartProps = {
   } | null;
   algoPhase?: string;
   algoSide?: string;
+  /** Armed/recorded tracker, lower-left above $0. */
+  algoHud?: {
+    highest: number | null;
+    trailPct: number;
+    stop: number | null;
+  } | null;
   /** Per Shown card at-expiration series — MSC 8px hit, that card only. */
   positionExpirationCurves?: PositionExpirationCurve[];
   positionAlertChoices?: PositionAlertChoice[];
@@ -190,6 +243,8 @@ export type HostPnLChartProps = {
     price: number,
     type: ThresholdAlertType,
   ) => void;
+  /** Visible X (strike) range after pan/zoom/fit. */
+  onXRange?: (range: { xMin: number; xMax: number }) => void;
 };
 
 const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
@@ -223,10 +278,12 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       algoBand = null,
       algoPhase,
       algoSide,
+      algoHud = null,
       positionExpirationCurves = [],
       positionAlertChoices = [],
       onCanvasAlert,
       onPositionAlert,
+      onXRange,
     },
     ref,
   ) {
@@ -254,6 +311,8 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
     dragRef.current = onStrikeDrag;
     const snapRef = useRef(snapStrike);
     snapRef.current = snapStrike;
+    const onXRangeRef = useRef(onXRange);
+    onXRangeRef.current = onXRange;
     const posCurvesRef = useRef(positionExpirationCurves);
     posCurvesRef.current = positionExpirationCurves;
     const hoveredPosRef = useRef<string | null>(null);
@@ -376,6 +435,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
 
       host.dataset.painted = "1";
       host.dataset.viewX = `${xMin}:${xMax}`;
+      onXRangeRef.current?.({ xMin, xMax });
 
       const cw = width - PAD.left - PAD.right;
       const ch = height - PAD.top - PAD.bottom;
@@ -648,6 +708,16 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       ctx.moveTo(PAD.left, toY(0));
       ctx.lineTo(width - PAD.right, toY(0));
       ctx.stroke();
+      if (algoHud) {
+        paintAlgoHud(ctx, algoHud, toY(0), PAD.left, PAD.top);
+        host.dataset.algoHighest = fmtAlgoMoney(algoHud.highest);
+        host.dataset.algoTrail = `${Math.round(algoHud.trailPct)}%`;
+        host.dataset.algoStop = fmtAlgoPrint(algoHud.stop);
+      } else {
+        delete host.dataset.algoHighest;
+        delete host.dataset.algoTrail;
+        delete host.dataset.algoStop;
+      }
 
       const spotMark = spotIndicatorPrice ?? spotPrice;
       const spotX = toX(spotMark);
@@ -937,6 +1007,7 @@ const HostPnLChart = forwardRef<PnLChartHandle, HostPnLChartProps>(
       strikeHandles,
       alertLines,
       algoBand,
+      algoHud,
     ]);
 
     drawRef.current = draw;

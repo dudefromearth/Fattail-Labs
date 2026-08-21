@@ -428,7 +428,7 @@ Member **inspector** chrome is **What-if** (not Time machine). **TM-A1 stands** 
 | Enable | switch | **Gates all three** time / implied vol / spot% (A6) |
 | Time | `[0, remaining_last_trade]` | Last trade: index **16:15 ET** · equity **16:00 ET**. Readout clock ET · hours left. τ stays OPF29 **16:00** (1-minute floor). Outlook + epoch pin ignores the time knob. **Supersedes** 0…72 h as the member domain. |
 | Implied vol | `[0.5 σ_m, 2.0 σ_m]` clamp 1–200% | Absolute %; detent = listed ATM IV on the soonest shown expiration. Wire `vol_offset_pts = σ_s − σ_m` (OPF31 additive). **IV NO** / **WAITING** when unmeasured. **Supersedes** −30…+30 pts as the member domain. |
-| Spot % | −5%…+5% | Applied when Enable; sim spot indicator |
+| Spot | **Strike points** on the visible canvas (not %). Slider min/max = plot `xMin`/`xMax` minus live Spot — full travel is the **width of the canvas** (e.g. ±50 strikes when that is the view). Applied when Enable; sim spot indicator |
 | Active banner | — | Labeled what-if / override state (B4). Enable + non-zero knobs → RECON `override`. |
 | Reset | button | Clears elapsed / vol offset / spot% + disable |
 

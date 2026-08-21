@@ -62,6 +62,7 @@ assert(!/EmptyState/.test(holder), "holder has no EmptyState");
 assert(holder.includes("Create alert"), "44pt create control");
 assert(holder.includes("Unbound"), "unbound state");
 assert(holder.includes("IconTrash"), "holder Delete uses kit trash");
+assert(holder.includes("IconTrash size={24}"), "holder trash is 50% larger than 16");
 assert(holder.includes("analyzer-alert-delete-"), "Delete test id on each card");
 assert(holder.includes("onDeleteAlert"), "Delete is wired");
 

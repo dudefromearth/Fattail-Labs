@@ -4,6 +4,75 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-501 Alert holder trash is 50% larger
+
+**Decision:** Analyzer Alerts holder Delete glyph is **24px** (was 16). Hit
+target stays ≥44pt (`IconButton`). AZ-ALB **ALB-D1**.
+
+**Does not:** MiniTwo in this body; Manager index chrome.
+
+---
+
+## 2026-08-21 — DL-500 Algo HUD only while Live and Armed
+
+**Decision:** High / Trail / Stop on the risk graph paint **only** while the
+Algo is **Live** and **Armed**. Waiting, Idle, Touched, and Recorded hide the
+block. Narrows **DL-498** (which painted for Live / Touched / Recorded,
+including Waiting dashes). AZ-ALGO **v1.0.7** · **AT-ALGO-17**.
+
+**Does not:** MiniTwo in this body; hiding trail verticals.
+
+---
+
+## 2026-08-21 — DL-499 Time Machine exit is Reset (What-if chrome)
+
+**Decision:** The Time Machine exit control is labeled **Reset**, using the
+same **plain** Button chrome as What-if Reset (`!min-h-11 !px-3`). This
+**reverses the DL-494 label** (Leave Time Machine). Behavior unchanged: clears
+the day, glow off, HUD gone, live Spot/scale, GEX/Probability prefs restore.
+Stop still only returns the playhead to session open. AZ-ATM **v0.1.7** ·
+**ATM-S3** · **AT-ATM-20**.
+
+**Does not:** MiniTwo in this body.
+
+---
+
+## 2026-08-21 — DL-498 Algo HUD: Highest · Trail · Stop above $0
+
+**Decision:** While an Algo is Live / Touched / Recorded, the risk graph shows
+three stats in the **lower left**, just **above the $0 line**: **High**
+(high-water unrealized gain H) · **Trail** (give-up % `g`) · **Stop**
+(ticker print `x_S`). Labels **High / Trail / Stop** with aligned colons.
+AZ-ALGO **v1.0.6** · **AT-ALGO-17**.
+
+**Does not:** MiniTwo in this body; bringing back the narrative window.
+
+---
+
+## 2026-08-20 — DL-497 Algo trail % is give-up of profit
+
+**Decision:** A **75% trail** means the member can **give up 75% of high-water
+profit** (keep 25%). Not an absolute, not % of total package value. Stop
+`S = (1 − g) × H`. `g` starts at 75 and decays to 25 at EoD so the stop
+**tightens** (keep more of H). Prior `S = f × H` was opposite. AZ-ALGO
+**v1.0.5**.
+
+**Does not:** MiniTwo in this body.
+
+---
+
+## 2026-08-20 — DL-496 What-if Spot is strike points, canvas-wide
+
+**Decision:** What-if Spot is **not a percent**. The slider is **strike/price
+points** on the underlier scale. Its min/max is the **visible canvas X**
+about live Spot (full travel = plot width — e.g. ±50 when that is the
+view). Fixed ±5% was too fast. Engine still receives `spotPct` converted
+from points. **AZ-TM** What-if T/σ: Spot row updated.
+
+**Does not:** MiniTwo in this body; changing Time/Vol domains.
+
+---
+
 ## 2026-08-20 — DL-495 Algo Alert panel has no narrative chrome
 
 **Decision:** Coach: **remove the narrative from the Algo Alert panel.** Type →

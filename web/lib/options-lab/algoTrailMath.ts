@@ -50,7 +50,9 @@ export type AlgoTrailState = {
 };
 
 export const ALGO_ENTRY_PCT_DEFAULT = 0.75;
+/** Give-up fraction of high-water profit at arm (75% trail → keep 25%). */
 export const ALGO_F0_DEFAULT = 0.75;
+/** Give-up fraction at decay end (25% trail → keep 75%). */
 export const ALGO_FMIN_DEFAULT = 0.25;
 
 /**
@@ -229,6 +231,17 @@ export function trailFractionRaw(opts: {
   return clamp(Math.min(fDecay, fClock), fMin, f0);
 }
 
+/**
+ * Trail % is **give-up of profit**, not keep-fraction and not total value.
+ * 75% trail → S = 25% of high-water profit.
+ */
+export function trailProfitStop(giveUp: number, highWater: number): number {
+  const H = Math.max(highWater, 0);
+  if (!(H > 0) || !Number.isFinite(giveUp)) return 0;
+  const g = clamp(giveUp, 0, 1);
+  return (1 - g) * H;
+}
+
 export function applyFMonotone(prevF: number | null, fRaw: number, f0: number, fMin: number): number {
   const raw = clamp(fRaw, fMin, f0);
   if (prevF == null || !Number.isFinite(prevF)) return raw;
@@ -378,7 +391,7 @@ export function stepAlgoTrailWithPrevSpot(
   });
   const f = applyFMonotone(armedAlready ? prev!.f : f0, fRaw, f0, fMin);
   const H = armedAlready ? Math.max(prev!.H, input.U) : input.U;
-  const S = f * Math.max(H, 0);
+  const S = trailProfitStop(f, H);
   let xH = armedAlready ? prev!.xH : input.spot;
   if (!armedAlready || input.U > (prev?.H ?? -Infinity) + 1e-12) xH = input.spot;
   if (xH == null) xH = input.spot;

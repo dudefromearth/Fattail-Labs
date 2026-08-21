@@ -65,8 +65,10 @@ export type AnalyzerControlsColumnProps = {
   volMax: number;
   volReadout: string;
   volDisabled: boolean;
-  simSpotPct: number;
-  onSimSpotPct: (value: number) => void;
+  simSpotPts: number;
+  onSimSpotPts: (value: number) => void;
+  spotPtsMin: number;
+  spotPtsMax: number;
   onResetSim: () => void;
   onCreate: () => void;
   gexEnabled: boolean;
@@ -127,8 +129,10 @@ export default function AnalyzerControlsColumn({
   volMax,
   volReadout,
   volDisabled,
-  simSpotPct,
-  onSimSpotPct,
+  simSpotPts,
+  onSimSpotPts,
+  spotPtsMin,
+  spotPtsMax,
   onResetSim,
   onCreate,
   gexEnabled,
@@ -176,7 +180,7 @@ export default function AnalyzerControlsColumn({
 
   const simAtRest =
     elapsedHours === 0 &&
-    simSpotPct === 0 &&
+    simSpotPts === 0 &&
     !timeMachineEnabled;
 
   return (
@@ -360,7 +364,7 @@ export default function AnalyzerControlsColumn({
                       onDeleteAlert?.(a.id);
                     }}
                   >
-                    <IconTrash size={16} />
+                    <IconTrash size={24} />
                   </IconButton>
                 </div>
               );
@@ -583,15 +587,15 @@ export default function AnalyzerControlsColumn({
             onChange={onSimIvPct}
           />
           <SliderRow
-            label="Spot %"
-            value={formatSigned(simSpotPct, "%", 1)}
-            min={-5}
-            max={5}
-            step={0.1}
+            label="Spot"
+            value={formatSigned(simSpotPts, "", 0)}
+            min={spotPtsMin}
+            max={spotPtsMax}
+            step={1}
             disabled={!timeMachineEnabled}
-            testId="analyzer-whatif-spotpct"
-            valueNow={simSpotPct}
-            onChange={onSimSpotPct}
+            testId="analyzer-whatif-spot"
+            valueNow={simSpotPts}
+            onChange={onSimSpotPts}
           />
           <div className="flex justify-end px-2 py-1">
             <Button

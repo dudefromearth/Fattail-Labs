@@ -490,7 +490,7 @@ export default function AlertBuilderDialog({
             <div className="flex flex-wrap items-end gap-3">
               <div className="min-w-[10rem] flex-1">
                 <label className={lab} htmlFor="algo-trail-start">
-                  Stop the trail at (% of high-water)
+                  Give up (% of profit)
                 </label>
                 <input
                   id="algo-trail-start"
@@ -515,6 +515,9 @@ export default function AlertBuilderDialog({
                 Reason
               </label>
             </div>
+            <p className="text-[length:var(--text-caption)] text-[var(--color-label-tertiary)]">
+              75% means you can give back 75% of high-water profit (keep 25%).
+            </p>
             {stopReasonOn ? (
               <textarea
                 className={field + " min-h-[5.5rem] py-2"}
@@ -527,7 +530,7 @@ export default function AlertBuilderDialog({
             <div className="flex flex-wrap items-end gap-3">
               <div className="min-w-[10rem] flex-1">
                 <label className={lab} htmlFor="algo-trail-floor">
-                  End the trail at (% of high-water)
+                  End give-up (% of profit)
                 </label>
                 <input
                   id="algo-trail-floor"

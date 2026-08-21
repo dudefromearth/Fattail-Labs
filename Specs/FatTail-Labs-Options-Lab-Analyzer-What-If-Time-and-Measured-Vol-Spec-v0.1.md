@@ -147,7 +147,7 @@ Keep the shipped What-if inspector group (44pt rows, Enable switch, Reset).
 |-----|-----------|
 | Time | Label **Time**. Trailing readout T7. Track min=0 max=remaining_last_trade. Ends: **Now** · **Last trade**. |
 | Implied vol | Label **Implied vol**. Trailing readout V6. Track in % (one decimal). Detent at measured. |
-| Spot % | Unchanged. |
+| Spot | **Strike points**, range = visible canvas width about Spot (not %). Coach: % was too fast. |
 
 No unanchored “±30 pts” as the member story. Disabled state is quiet, not a fake number.
 
@@ -174,7 +174,8 @@ Do not call Massive. Do not add a WebSocket. IV comes from the generation OPF al
 
 ## 6. Out of scope
 
-- Spot % range or meaning  
+- Spot % as the member metric (Coach: **strike points**, canvas-wide)   
+
 - New OPF packs / server `/resolve` fields (`vol_scale`, `scenario_atm_iv`) — unless Coach picks OD-1 A and files an OPF delta  
 - Moving OPF τ to 16:15  
 - Rebinding Marks VIX to a vol model  

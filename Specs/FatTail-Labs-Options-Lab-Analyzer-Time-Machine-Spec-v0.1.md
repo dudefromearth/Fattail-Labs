@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Analyzer Time Machine Spec v0.1
 
-**Status:** DRAFT — Coach 2026-08-20. **v0.1.6** **Leave Time Machine** exits. **v0.1.5** add position after the day, then Algo. **v0.1.4** Spot field + Autofit X = session **open**. **v0.1.3** no start-time picker. **v0.1.2** speeds 10× / 20× / 50×. **v0.1.1** 390 candles/closes · close-to-close **or** TPO path. Not BUILD AUTHORITY until Coach Phase 5.  
+**Status:** DRAFT — Coach 2026-08-21. **v0.1.7** exit control is **Reset** (same chrome as What-if Reset). **v0.1.6** **Leave Time Machine** exits (superseded by v0.1.7). **v0.1.5** add position after the day, then Algo. **v0.1.4** Spot field + Autofit X = session **open**. **v0.1.3** no start-time picker. **v0.1.2** speeds 10× / 20× / 50×. **v0.1.1** 390 candles/closes · close-to-close **or** TPO path. Not BUILD AUTHORITY until Coach Phase 5.  
 **Type:** Product Spec — Analyzer **Time Machine** (calendar day replay of underlier price and time).  
 **Short name:** **AZ-ATM**  
 **Route:** `/app/options-lab/analyzer`  
@@ -44,6 +44,7 @@ Verbatim Coach, this thread, preserved in order:
 13. **The spot price and price scale need to match the beginning of the day's chosen opening price.**
 14. **The position can be added afterwards. The algo alert is created, just like real life.**
 15. **The clear button should be called Leave Time Machine.**
+16. **Change the Leave Time Machine to just “Reset” that matches the What-If Reset.**
 
 Tango / Hotel / Echo / India notes sit in **§14** beside this text. They do not delete it.
 
@@ -171,7 +172,7 @@ Calendar (NY session date)
 
 **ATM-S2.** Stop returns the playhead to the first print, priced at that session’s **open** (**ATM-O1**). Stop does **not** exit Time Machine.
 
-**ATM-S3.** **Leave Time Machine** (that exact label — not Clear) exits: day cleared, playhead gone, HUD hidden, blue glow off, Spot and Autofit X return to live, GEX / Probability prefs restore (**ATM-B3**). Changing symbol also exits. Clearing the date field is still lawful; the named control is the member path.
+**ATM-S3.** **Reset** (same label and **plain** chrome as What-if **Reset** — not Clear, not Leave Time Machine) exits: day cleared, playhead gone, HUD hidden, blue glow off, Spot and Autofit X return to live, GEX / Probability prefs restore (**ATM-B3**). Changing symbol also exits. Clearing the date field is still lawful; the named control is the member path. **DL-499** (reverses the **DL-494** label).
 
 **ATM-O1.** On day load (and on Stop): Analyzer **Spot** field and Autofit **X scale** bind to that day’s **opening price** — first 1-minute bar `o` when the path has OHLC; otherwise the first print. Live underlier mid does **not** keep the field or the scale. Listed strikes stay in view so the tent is not clipped. Playhead ticks move the sim-spot indicator, not Autofit (**ATM-K4**). Simple walk after Play still steps **close to close** (**ATM-K1** / **ATM-P2**).
 
@@ -185,7 +186,7 @@ Calendar (NY session date)
 | **Pause** | Freeze. Playhead and tent stay. |
 | **Stop** | Pause + return playhead to the **session open** (first print, priced at bar `o` — **ATM-O1**). Does **not** exit. |
 | **10× / 20× / 50×** | Wall elapsed × speed = session elapsed. Changing speed while playing does **not** jump the playhead. |
-| **Leave Time Machine** | Exit. Label is **Leave Time Machine**, not Clear (**ATM-S3**). |
+| **Reset** | Exit. Label and chrome match What-if **Reset** (**ATM-S3**). |
 
 No 1× required in v1 (Coach specified 10 / 20 / 50). A later 1× is **FLAGGED**, not silently added as law.
 
@@ -222,7 +223,7 @@ Calendar and start-time sit with the video controls in that strip (OnDemand tran
 
 **ATM-H4.** As download fills (**§4.2 ATM-D3**), the mini chart **grows** with arriving minutes. Scrubber domain is the filled prefix until complete, then the full session.
 
-**ATM-H5.** Hide the window when no day is selected (Time Machine idle). Stop does **not** hide it. **Leave Time Machine** does.
+**ATM-H5.** Hide the window when no day is selected (Time Machine idle). Stop does **not** hide it. **Reset** does.
 
 **ATM-H6.** The mini chart is **orientation**, not a second SoR. It must not invent candles the download does not have: OHLC present → candles allowed; marks-only → **line**. Mixed: line of spots is always legal.
 
@@ -335,7 +336,7 @@ Do not interpolate across a missing minute as if it printed. **Simple** walk: pl
 | **AT-ATM-17** | TPO walk: playhead follows downloaded TPO path. Missing TPO → **NO TPO**, simple walk still works. |
 | **AT-ATM-18** | Choosing a day sets the yellow **Spot** field and Autofit **X** center to that session’s **open** (first bar `o`, else first print). Live SPX does not keep the scale. Playhead ticks do not Autofit. |
 | **AT-ATM-19** | Day may load with an empty book. Add a fly **after** the day is on the clock; Create Alert uses that playhead for ATM / OTM eligibility; Demo defaults on and ticks the TM day (does not force What-if). |
-| **AT-ATM-20** | A control labeled **Leave Time Machine** (not Clear) exits: day empty, glow off, HUD gone, live Spot/scale. Stop does not exit. |
+| **AT-ATM-20** | A control labeled **Reset** (same plain chrome as What-if Reset; not Clear; not Leave Time Machine) exits: day empty, glow off, HUD gone, live Spot/scale. Stop does not exit. |
 
 ---
 
@@ -387,6 +388,7 @@ India / Echo / Tango / Hotel / Victor write **beside** §0. They do not delete C
 | Version | Date | Notes |
 |---------|------|-------|
 | **v0.1** | 2026-08-20 | Coach OnDemand Time Machine: calendar download, 1-minute fill of mini chart, start time, video controls in the dark strip right of Autofit, Strikes/in left of Autofit, upper-right mini chart + draggable scrubber, blue/red inner glows, Basic (GEX/Prob off) vs Enhanced (allow), What-if remains ad-hoc. **DL-486**. |
+| **v0.1.7** | 2026-08-21 | Exit control labeled **Reset**, same plain chrome as What-if Reset. **ATM-S3** · **DL-499**. |
 | **v0.1.6** | 2026-08-20 | Exit control labeled **Leave Time Machine** (not Clear). Stop still does not exit. **ATM-S3** · **DL-494**. |
 | **v0.1.5** | 2026-08-20 | Position **after** the day: add the fly, then create the Algo — live-session sequence (**ATM-A1**). **DL-492**. |
 | **v0.1.4** | 2026-08-20 | **Spot** field + Autofit **X** bind to the chosen day’s **opening price** (bar `o`, else first print). Live underlier does not keep the scale. **DL-491**. |

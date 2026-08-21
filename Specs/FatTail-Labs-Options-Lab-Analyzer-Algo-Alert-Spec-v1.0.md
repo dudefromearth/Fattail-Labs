@@ -1,6 +1,6 @@
 # FatTail Labs — Options Lab Analyzer Algo Alert Spec v1.0
 
-**Status:** DRAFT — Coach 2026-08-20 (Analyzer Algo alert). **v1.0.4** no narrative on the Algo panel (**ALGO-N1**). **v1.0.3** add fly after Time Machine day (**ALGO-TM1**). **v1.0.2** floor default **25** (DL-482) · knobs are law · Recorded `mode`. **v1.0.1** review fold (ALGO-B1 far-side regime · ALGO-A1 monotone `f` · ALGO-A2 pulse hysteresis). Not BUILD AUTHORITY until Coach Phase 5.  
+**Status:** DRAFT — Coach 2026-08-21 (Analyzer Algo alert). **v1.0.7** HUD only while Live + Armed. **v1.0.6** High / Trail / Stop HUD. **v1.0.5** trail % = **give-up of profit** (`S = (1−g)×H`). **v1.0.4** no narrative on the Algo panel (**ALGO-N1**). **v1.0.3** add fly after Time Machine day (**ALGO-TM1**). **v1.0.2** floor default **25** (DL-482) · knobs are law · Recorded `mode`. **v1.0.1** review fold (ALGO-B1 far-side regime · ALGO-A1 monotone `f` · ALGO-A2 pulse hysteresis). Not BUILD AUTHORITY until Coach Phase 5.  
 **Type:** Product Spec — Analyzer **Algo alert** (dynamic trailing narrative on an OTM butterfly).  
 **Short name:** AZ-ALGO  
 **Route:** `/app/options-lab/analyzer`  
@@ -20,6 +20,8 @@
 7. A **window** appears, similar to the **narration window in the Surface app under the “T Ortho” view**. This narrative is a **play-by-play of the underlying market structure from the POV of the GEX**, and **if Volume Profile is engaged, the position to structural levels**. If VP is **not** engaged, it is **left out of the narrative**. Other narrative types concern the **greeks, debit and gamma risk, probabilities**, etc.  
 8. **Goal:** keep the trader in the trade long enough to **maximize profit** so long as the risk does not threaten **losing more than they should**. **Most trades are going to result in small profits, some will bank it.** There will be **adjustments to the narrative based on premium decay rate** as well.
 9. **Remove the narrative from the Algo Alert panel.**
+10. **The 75% trail means you can give up 75% of the profit.** It is a **% of profit**, not an absolute and not total value. The as-built `S = f × H` was **opposite** (75% was keeping 75%). Law: `S = (1 − g) × H` with `g` the give-up %.
+11. **The algo alert should show the values that are important to track, and display them in the lower left corner just above the $0 line.** Top: **High** (highest unrealized gain). Then **Trail** (% value of the trail). Then **Stop** (**ticker price** `x_S`). Colons line up. **Only while the algo is active** (Live and Armed). Hidden while Waiting, Idle, Touched, or Recorded.
 
 Tango / Hotel notes sit in **§10** beside this text. They do not delete it.
 
@@ -127,8 +129,8 @@ Defaults fill the blanks (75 / 75 / 25). Updating a knob updates the paragraph.
 |---------|---------|-----|
 | Position | Eligible card (§4.2) | Dropdown: eligible OTM debit flies only. Empty → Save off + named “Specify an OTM butterfly.” |
 | Start profit management (% unrealized gain) | **75** | 1–100. **Always shown** on Type → Algo. Starts when unrealized gain reaches this percent of the **debit**. |
-| Stop the trail at (% of high-water) | **75** | 1–100. Must be **> end**. Initial trail stop once armed. **Reason** checkbox: off → **built-in** trail engine; on → inject a prompt the AI uses to **hold or fold** at this stop. |
-| End the trail at (% of high-water) | **25** | 1–99. Minimum trail fraction when **decay ends**. Same **Reason** checkbox as the stop (built-in unless a prompt is on). **DL-484**. |
+| Give up (% of profit) | **75** | 1–100. Must be **> end**. How much of high-water **profit** you can give back at arm (`S = (1−g)×H`). **Reason** checkbox: off → **built-in** trail engine; on → inject a prompt the AI uses to **hold or fold** at this stop. |
+| End give-up (% of profit) | **25** | 1–99. Give-up fraction when **decay ends** (tighter). Same **Reason** checkbox as the stop (built-in unless a prompt is on). **DL-484**. |
 | Decay ends | **End of day** | Optional. Blank / “End of day” = this session’s last trade (index **16:15 ET**, equity **16:00 ET**). A datetime **stops the dynamic decay** there (`f = fMin`). Alert expiration (AZ-ALB) is a separate control. **DL-483**. |
 | High-water line color | Tag **target** | Assignable. Canvas vertical. |
 | Trail line color | Tag **warning** | Assignable. Canvas vertical + overlay tint. |
@@ -225,7 +227,15 @@ After last-trade (Held / closed session): `f` stays at `fMin`; Armed may continu
 
 **Coach ruling (v1.0.1 — ALGO-B1):** option **(a)** with the refinement — *the geometry mirrors, the narration doesn’t.* One trail vertical that **re-inverts** when spot crosses the body. Not two simultaneous lines. Not silence on the far wing.
 
-Trail **P&L** `S(t) = f(t) × H(t)`. `H` and `S` **carry across** a side flip; only the underlier mapping changes (ALGO-A1: `f` does not loosen on the flip).
+**Give-up (Coach):** trail % `g(t)` is how much of **high-water profit** you can give back — not a keep-fraction, not total package value. **75% trail → keep 25% of H.** **25% trail → keep 75% of H.**
+
+```
+S(t) = (1 − g(t)) × H(t)
+```
+
+`g` starts at `trail_start_pct` (0.75) and decays to `trail_floor_pct` (0.25) by decay end, so the **stop rises toward H** (tighter) as the session burns. New highs raise `H`; `S` is recomputed at the current `g`. `H` and `S` **carry across** a side flip; only the underlier mapping changes (ALGO-A1: `g` does not loosen on the flip).
+
+Prior formula `S = f × H` treated 75% as keep-75% (give up 25%) — **opposite**. Superceded.
 
 **Trail underlier `x_S`:** invert the **T+0** curve of the **bound card** for P&L `= S`. A fly tent often has **two** crossings. Field `side: near | far` (default **near** at arm).
 
@@ -416,10 +426,11 @@ Holder + Builder + narrative read this. **Reset to Live** clears it.
 | **AT-ALGO-3** | **+** with no eligible card → Price / Spot (AZ-ALB). Type → Algo with empty eligible list → Save **off**. |
 | **AT-ALGO-4** | Defaults: entry 75, trail start 75, floor 25, overlay off (placeholders; **member knobs are the law**, DL-482). |
 | **AT-ALGO-5** | Waiting: no high-water / trail / overlay. Unrealized ≥ entry% × debit → Armed. |
-| **AT-ALGO-6** | Armed: `H` ratchets; `S = f × H`; `f` follows §7.3 (decay may tighten early; `fMin` at last-trade). **ALGO-A1:** `f` is a running minimum — an `E(t)` rise must not loosen `f` or retreat `S`. |
+| **AT-ALGO-6** | Armed: `H` ratchets; `S = (1−g)×H` (75% trail keeps 25% of profit); `g` follows §7.3 (decay may tighten early; `gMin` at last-trade). **ALGO-A1:** `g` is a running minimum — an `E(t)` rise must not loosen give-up or retreat `S`. |
 | **AT-ALGO-7** | Two **thin dashed** verticals, member colors. Overlay optional between them. Pulse **on** at last 20% of `G` toward trail; pulse **off** at 25% (ALGO-A2). |
 | **AT-ALGO-8** | Spot exits trail → Recorded (Touched + payload). Eval stops. Lines freeze. Position **not** closed. |
 | **AT-ALGO-9** | **ALGO-N1:** no narrative paragraph on Type → Algo; no `analyzer-algo-narrative` on the viewport. Trail lines and holder phase stay. |
+| **AT-ALGO-17** | **Live + Armed** Algo paints lower-left of the plot, just above $0: **High** (H) · **Trail** (g %) · **Stop** (ticker `x_S`). Colons aligned. Hidden unless Live and Armed. Host `data-algo-highest` / `data-algo-trail` / `data-algo-stop`. |
 | **AT-ALGO-10** | Unpriceable debit / greeks / invert → named state, no invented mark (DL-309). Last paint may remain. |
 | **AT-ALGO-11** | `upsertAlert` `alert_class: algo`, `kind: position`, `trigger.family: algo`. Hook only — no third store. |
 | **AT-ALGO-12** | Idle / Keep-Warm: no 1s heavy resolve. Pulse is paint. Left-drag pan and strike handles unaffected. |
@@ -451,6 +462,9 @@ Do **not** start this packet until Coach marks this spec BUILD AUTHORITY. AZ-ALB
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v1.0.7** | 2026-08-21 | HUD only while Live + Armed. **DL-500**. |
+| **v1.0.6** | 2026-08-21 | Lower-left tracker above $0: **High** · Trail % · Stop. Colons aligned. **DL-498**. |
+| **v1.0.5** | 2026-08-20 | Trail % is **give-up of profit**: `S = (1−g)×H`. 75% was inverted (kept 75%). **DL-497**. |
 | **v1.0.4** | 2026-08-20 | **ALGO-N1:** remove the narrative from the Algo Alert panel (Builder copy + viewport window). Knobs, trail lines, holder states stay. **DL-495**. |
 | **v1.0.3** | 2026-08-20 | **ALGO-TM1:** Time Machine day may load empty; add the fly afterwards, then Create Alert. Eligibility / Builder ATM / Demo use the playhead. **DL-492**. |
 | **v1.0.2** | 2026-08-20 | Floor default **25** propagated (DL-482). Conformance fixtures parameterized on member knobs (defaults are placeholders, not law). Recorded payload `mode: live \| demo_whatif \| demo_timemachine`. **DL-488**. |

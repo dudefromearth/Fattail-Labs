@@ -173,6 +173,13 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
   assert(az.includes("setSpotStr(formatFixed2(tmOpenSpot))"), "Spot fills from session open");
   assert(az.includes("autofitCenterPrice={tmOpenSpot}"), "Autofit X centers on session open");
   assert(host.includes("openCenteredXRange"), "TM Autofit recenters on open");
+  assert(host.includes('lab: "High"'), "Algo HUD High (not Highest)");
+  assert(host.includes('lab: "Trail"'), "Algo HUD Trail");
+  assert(host.includes('lab: "Stop"'), "Algo HUD Stop");
+  assert(host.includes("fmtAlgoPrint"), "Stop is ticker print, not $");
+  assert(az.includes("algoHud={algoHud}"), "Algo HUD wired");
+  assert(az.includes('liveAlgo.runState !== "live"'), "HUD hidden unless Live");
+  assert(az.includes('st.phase !== "armed"'), "HUD hidden unless Armed");
   assert(az.includes("sessionSpotNow"), "TM entry/eligibility uses playhead");
   assert(az.includes("demo: tmActive"), "Create Alert during TM defaults Demo");
   assert(
@@ -183,18 +190,26 @@ test("AT-CLICK-1 / AT-WH-1 / AT-AZ-WIRE-1 source", () => {
     join(here, "../../components/options-lab/AnalyzerTimeMachineStrip.tsx"),
     "utf8",
   );
-  assert(
-    tmStrip.includes("Leave Time Machine"),
-    "exit control is Leave Time Machine, not Clear",
-  );
-  assert(tmStrip.includes("analyzer-tm-leave"), "Leave Time Machine test id");
+  assert(tmStrip.includes('aria-label="Reset"'), "TM exit is Reset, matching What-if");
+  assert(tmStrip.includes("analyzer-tm-reset"), "Reset test id");
+  assert(tmStrip.includes('variant="plain"'), "TM Reset uses What-if plain chrome");
+  assert(tmStrip.includes("!min-h-11 !px-3"), "TM Reset shares What-if Reset padding");
+  assert(!tmStrip.includes("Leave Time Machine"), "Leave Time Machine label gone");
   assert(!/\bClear\b/.test(tmStrip), "no Clear label on TM strip");
   const controls = readFileSync(
     join(here, "../../components/options-lab/AnalyzerControlsColumn.tsx"),
     "utf8",
   );
+  assert(
+    controls.includes(">Reset<") || /Reset\s*<\/Button>/.test(controls),
+    "What-if Reset stays",
+  );
   assert(!controls.includes('title="Graph"'), "Graph panel removed from inspector");
   assert(controls.includes('title="Alerts"'), "Alerts inspector in left column");
+  assert(controls.includes('label="Spot"'), "What-if Spot is points, not %");
+  assert(controls.includes("analyzer-whatif-spot"), "What-if Spot test id");
+  assert(!controls.includes('label="Spot %"'), "Spot % control removed");
+  assert(!controls.includes("min={-5}"), "no fixed ±5% Spot slider");
   assert(host.includes("contextmenu"), "right-click alert menu on host");
   assert(
     host.includes("nearestPositionOnExpiration"),

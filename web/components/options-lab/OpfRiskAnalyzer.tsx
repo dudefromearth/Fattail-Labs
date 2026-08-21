@@ -129,6 +129,11 @@ import {
   type ReplaySpeed,
 } from "@/lib/options-lab/algoDayReplay";
 import { fetchAlgoReplayPath } from "@/lib/options-lab/algoReplayApi";
+import {
+  clampSpotPts,
+  spotPctFromPts,
+  spotPtsRangeFromCanvas,
+} from "@/lib/options-lab/whatIfSpotPts";
 import { positionNetPremium } from "@/lib/options-lab/positionToTrade";
 import { IconChevronUpDown } from "@/components/ui/icons";
 import { applyStrikeDragToPosition } from "@/lib/options-lab/listedStrikeDrag";
@@ -210,7 +215,11 @@ export default function OpfRiskAnalyzer() {
   const [timeMachineEnabled, setTimeMachineEnabled] = useState(false);
   const [simElapsedHours, setSimElapsedHours] = useState(0);
   const [simIvPct, setSimIvPct] = useState<number | null>(null);
-  const [simSpotPct, setSimSpotPct] = useState(0);
+  const [simSpotPts, setSimSpotPts] = useState(0);
+  const [canvasX, setCanvasX] = useState<{
+    xMin: number;
+    xMax: number;
+  } | null>(null);
   const [wiredVolPts, setWiredVolPts] = useState(0);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const lastMeasuredRef = useRef<number | null>(null);
@@ -723,6 +732,10 @@ export default function OpfRiskAnalyzer() {
   const chain = useBuilderChain(symbol, warmExps, true, {
     offMarket: !planePrinting,
   });
+  const simSpotPct = spotPctFromPts(
+    simSpotPts,
+    chain.spot != null && chain.spot > 0 ? chain.spot : 0,
+  );
 
   const displayPositions = useMemo(() => {
     if (!strikeDrag) return positions;
@@ -811,7 +824,7 @@ export default function OpfRiskAnalyzer() {
   const whatIfActive =
     tmCursor != null ||
     (timeMachineEnabled &&
-      (elapsedHours !== 0 || wiredVolPts !== 0 || simSpotPct !== 0));
+      (elapsedHours !== 0 || wiredVolPts !== 0 || simSpotPts !== 0));
   const memberSpotVixOverride =
     (spotDirty && spotOverride != null && spotOverride > 0) ||
     (vixDirty && vix != null && vix > 0);
@@ -944,6 +957,21 @@ export default function OpfRiskAnalyzer() {
         a.algoPhase === "recorded"),
   );
 
+  const algoHud = useMemo(() => {
+    if (!liveAlgo?.algo) return null;
+    if (liveAlgo.runState !== "live") return null;
+    const st = liveAlgo.algo.trail_state;
+    if (!st || st.phase !== "armed") return null;
+    const g = Number.isFinite(st.f)
+      ? st.f
+      : (liveAlgo.algo.trail_start_pct || 75) / 100;
+    return {
+      highest: st.H,
+      trailPct: Math.round(g * 100),
+      stop: st.xS != null && Number.isFinite(st.xS) ? st.xS : null,
+    };
+  }, [liveAlgo]);
+
   const algoPulse =
     alertBuilderPositions.some((p) => p.algoEligible) &&
     !alerts.some((a) => a.alertClass === "algo" && a.runState === "live");
@@ -979,7 +1007,7 @@ export default function OpfRiskAnalyzer() {
     setSimIvPct(lastMeasuredRef.current);
     setWiredVolPts(0);
     sessionVolOffsetRef.current = 0;
-    setSimSpotPct(0);
+    setSimSpotPts(0);
   };
 
   useEffect(() => {
@@ -1126,7 +1154,7 @@ export default function OpfRiskAnalyzer() {
     });
   }, [elapsedHours, wiredVolPts, timeMachineEnabled, whatIfHydrated]);
 
-  const simSpot = displaySpot * (1 + simSpotPct / 100);
+  const simSpot = displaySpot > 0 ? displaySpot + simSpotPts : 0;
 
   useEffect(() => {
     const demoLive = alerts.some(
@@ -1256,6 +1284,31 @@ export default function OpfRiskAnalyzer() {
     if (s === "RUT") return 2200;
     return 100;
   }, [tmOpenSpot, displaySpot, risk.spot, chain.spot, spotStr, symbol]);
+
+  const spotPtsRange = useMemo(
+    () =>
+      spotPtsRangeFromCanvas({
+        xMin: canvasX?.xMin ?? 0,
+        xMax: canvasX?.xMax ?? 0,
+        spot: axisSpot,
+      }),
+    [canvasX, axisSpot],
+  );
+  useEffect(() => {
+    setSimSpotPts((p) => {
+      const n = clampSpotPts(p, spotPtsRange);
+      return n === p ? p : n;
+    });
+  }, [spotPtsRange]);
+
+  const onCanvasXRange = useCallback(
+    (r: { xMin: number; xMax: number }) => {
+      setCanvasX((prev) =>
+        prev && prev.xMin === r.xMin && prev.xMax === r.xMax ? prev : r,
+      );
+    },
+    [],
+  );
 
   const rangeCenterSpot =
     tmOpenSpot != null && tmOpenSpot > 0
@@ -1712,8 +1765,10 @@ export default function OpfRiskAnalyzer() {
         volDisabled={
           !timeMachineEnabled || measuredPct == null || trades.length === 0
         }
-        simSpotPct={simSpotPct}
-        onSimSpotPct={setSimSpotPct}
+        simSpotPts={simSpotPts}
+        onSimSpotPts={setSimSpotPts}
+        spotPtsMin={spotPtsRange.min}
+        spotPtsMax={spotPtsRange.max}
         onResetSim={resetSim}
         onCreate={() => {
           setEditId(null);
@@ -2091,6 +2146,7 @@ export default function OpfRiskAnalyzer() {
                         (sessionHeld ? " · held" : "")
                   }
                   spotPrice={axisSpot}
+                  onXRange={onCanvasXRange}
                   autofitCenterPrice={tmOpenSpot}
                   spotIndicatorPrice={
                     tmCursor && tmCursor.spot > 0
@@ -2138,6 +2194,7 @@ export default function OpfRiskAnalyzer() {
                   algoBand={algoBand}
                   algoPhase={liveAlgo?.algoPhase}
                   algoSide={liveAlgo?.algo?.trail_state?.side}
+                  algoHud={algoHud}
                   positionExpirationCurves={risk.positionExpirationCurves}
                   positionAlertChoices={displayPositions
                     .filter((p) => p.visible)

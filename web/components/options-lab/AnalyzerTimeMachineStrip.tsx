@@ -93,14 +93,14 @@ export default function AnalyzerTimeMachineStrip(props: {
         </button>
       ))}
       <Button
-        variant="bordered"
-        className="shrink-0 whitespace-nowrap px-3"
+        variant="plain"
+        className="!min-h-11 !px-3 shrink-0"
         onClick={props.onLeave}
         disabled={!props.day && !props.loading}
-        aria-label="Leave Time Machine"
-        data-testid="analyzer-tm-leave"
+        aria-label="Reset"
+        data-testid="analyzer-tm-reset"
       >
-        Leave Time Machine
+        Reset
       </Button>
     </div>
   );

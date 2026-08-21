@@ -13,6 +13,7 @@ import {
   algoEntryDebit,
   algoReasonPrompt,
   applyFMonotone,
+  trailProfitStop,
   inferLongFly,
   invertPnlCrossings,
   isOtmDebitButterfly,
@@ -107,8 +108,23 @@ test("Reason off or blank uses the built-in engine; on stores the prompt", () =>
 
 test("member knobs default 75 / 75 / 25 (placeholders, not fixture law)", () => {
   assert(ALGO_ENTRY_PCT_DEFAULT === 0.75, "start at 75% of debit");
-  assert(ALGO_F0_DEFAULT === 0.75, "stop trail at 75% of high-water");
-  assert(ALGO_FMIN_DEFAULT === 0.25, "end trail at 25% of high-water");
+  assert(ALGO_F0_DEFAULT === 0.75, "75% trail = give up 75% of profit");
+  assert(ALGO_FMIN_DEFAULT === 0.25, "25% trail = give up 25% of profit");
+  assert(Math.abs(trailProfitStop(0.75, 8) - 2) < 1e-9, "75% of $8 profit → keep $2");
+  assert(Math.abs(trailProfitStop(0.25, 8) - 6) < 1e-9, "25% of $8 profit → keep $6");
+  {
+    const debit = 100;
+    const mark = 175;
+    const profit = mark - debit;
+    assert(profit === 75, "175 mark on 100 debit is $75 profit");
+    assert(shouldArm(profit, debit, 0.75), "75 profit arms at 75% of debit");
+    const give = profit * 0.75;
+    assert(Math.abs(give - 56.25) < 1e-9, "give up 75% of $75 = $56.25");
+    const keep = trailProfitStop(0.75, profit);
+    assert(Math.abs(keep - 18.75) < 1e-9, "keep $18.75 of profit");
+    const stopMark = debit + keep;
+    assert(Math.abs(stopMark - 118.75) < 1e-9, "stop at 175 - 56.25 = 118.75");
+  }
   assert(knobs.entry_pct === ALGO_ENTRY_PCT_DEFAULT, "conformance uses same placeholders");
   assert(knobs.trail_floor_pct === ALGO_FMIN_DEFAULT, "floor input is the default placeholder");
 });
@@ -191,7 +207,7 @@ test("3 arm at U ≥ entry_pct · D", () => {
   assert(shouldArm(threshold + 0.2, DEBIT, knobs.entry_pct), "above");
 });
 
-test("4 H ratchet; S = f × H", () => {
+test("4 H ratchet; S = (1 − f) × H (give-up % of profit)", () => {
   let st: AlgoTrailState | null = null;
   st = stepAlgoTrailWithPrevSpot({
     ...base,
@@ -203,7 +219,7 @@ test("4 H ratchet; S = f × H", () => {
   assert(st.phase === "armed", "armed");
   assert(Math.abs(st.H - 3.1) < 1e-9, "H=U");
   const f0 = st.f;
-  assert(Math.abs(st.S - f0 * 3.1) < 1e-9, "S=fH");
+  assert(Math.abs(st.S - trailProfitStop(f0, 3.1)) < 1e-9, "S=(1-f)H");
   st = stepAlgoTrailWithPrevSpot({
     ...base,
     spot: 6092,
