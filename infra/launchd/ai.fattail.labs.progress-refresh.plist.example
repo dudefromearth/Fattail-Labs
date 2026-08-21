@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Progress admin source refresh (DL-395).
+     Hourly is ample: YouTube Analytics lags ~2 days, so anything faster is
+     theatre. Each source is isolated — one failure never blocks the others.
+     Install: copy to ~/Library/LaunchAgents/, edit the paths, then
+       launchctl load ~/Library/LaunchAgents/ai.fattail.labs.progress-refresh.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>ai.fattail.labs.progress-refresh</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>cd "$HOME/Fattail-Labs" &amp;&amp; set -a &amp;&amp; source .env &amp;&amp; set +a &amp;&amp; cd server &amp;&amp; .venv/bin/python -m progress.refresh</string>
+  </array>
+  <key>StartInterval</key><integer>3600</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/tmp/labs-progress-refresh.log</string>
+  <key>StandardErrorPath</key><string>/tmp/labs-progress-refresh.err</string>
+</dict>
+</plist>
