@@ -230,3 +230,42 @@ export function filterSessionBars(bars: OhlcBar[], nowMs: number): OhlcBar[] {
     (b) => Number.isFinite(b.t) && b.t >= fromMs && b.t <= toMs + BAR_MS,
   );
 }
+
+/**
+ * Every 5m slot from first print through the framed session close.
+ * Missing prints and the remainder of the day carry the last close so the
+ * day's record is complete (no hole at the right edge). Does not invent
+ * bars before the first print.
+ */
+export function completeSessionBars(
+  bars: OhlcBar[],
+  fromMs: number,
+  toMs: number,
+  _nowMs?: number,
+): OhlcBar[] {
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs < fromMs) {
+    return [];
+  }
+  const lastSlot = toMs;
+  if (lastSlot < fromMs) return [];
+  const bySlot = new Map<number, OhlcBar>();
+  for (const b of bars || []) {
+    if (!Number.isFinite(b.t) || !Number.isFinite(b.c)) continue;
+    const slot = fromMs + Math.floor((b.t - fromMs) / BAR_MS) * BAR_MS;
+    if (slot < fromMs || slot > lastSlot) continue;
+    bySlot.set(slot, { ...b, t: slot });
+  }
+  const out: OhlcBar[] = [];
+  let prev: number | null = null;
+  for (let t = fromMs; t <= lastSlot; t += BAR_MS) {
+    const hit = bySlot.get(t);
+    if (hit) {
+      out.push(hit);
+      prev = hit.c;
+      continue;
+    }
+    if (prev == null) continue;
+    out.push({ t, o: prev, h: prev, l: prev, c: prev });
+  }
+  return out;
+}

@@ -116,6 +116,49 @@ export function priceWindow(candles: TapeCandle[]): PriceView | null {
 }
 
 /** Strike window of the Analyzer position — this is the tape's Y scale. */
+/**
+ * Last 5m candle follows the live underlier mid so tape S matches the box spot.
+ * Does not rewrite closed slots. Overnight prior-session tape: caller skips.
+ */
+export function applyLiveTapeClose(
+  bars: OhlcBar[],
+  live: number | null | undefined,
+  nowMs: number,
+): OhlcBar[] {
+  const px = Number(live);
+  if (!(px > 0) || !Number.isFinite(nowMs)) return bars;
+  const slot = Math.floor(nowMs / BAR_MS) * BAR_MS;
+  if (!bars.length) {
+    return [{ t: slot, o: px, h: px, l: px, c: px }];
+  }
+  const last = bars[bars.length - 1];
+  const lastSlot = Math.floor(Number(last.t) / BAR_MS) * BAR_MS;
+  if (lastSlot === slot) {
+    const next = bars.slice();
+    next[next.length - 1] = {
+      ...last,
+      c: px,
+      h: Math.max(last.h ?? last.c, px),
+      l: Math.min(last.l ?? last.c, px),
+    };
+    return next;
+  }
+  if (slot > lastSlot) {
+    const o = last.c;
+    return [
+      ...bars,
+      {
+        t: slot,
+        o,
+        h: Math.max(o, px),
+        l: Math.min(o, px),
+        c: px,
+      },
+    ];
+  }
+  return bars;
+}
+
 export function positionPriceView(
   sMin: number | null | undefined,
   sMax: number | null | undefined,

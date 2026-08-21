@@ -3,6 +3,7 @@ import {
   BAR_MS,
   chartWindow,
   filterSessionBars,
+  completeSessionBars,
   isSessionWhitespace,
   nyWall,
   nyWallToUtcMs,
@@ -73,6 +74,34 @@ import {
   );
   assert.equal(bars.length, 2);
   assert.equal(bars[0].c, 2);
+}
+
+{
+  const from = nyWallToUtcMs(2026, 8, 18, 9, 30);
+  const to = nyWallToUtcMs(2026, 8, 18, 16, 0);
+  const now = from + 4 * BAR_MS + 30_000;
+  const filled = completeSessionBars(
+    [
+      { t: from, o: 10, h: 11, l: 9, c: 10.5 },
+      { t: from + 2 * BAR_MS, o: 10.5, h: 12, l: 10, c: 11 },
+    ],
+    from,
+    to,
+    now,
+  );
+  const slots = Math.floor((to - from) / BAR_MS) + 1;
+  assert.equal(filled.length, slots, "full day from first print through session close");
+  assert.equal(filled[1].c, 10.5, "gap carries last close");
+  assert.equal(filled[1].t, from + BAR_MS);
+  assert.equal(filled[filled.length - 1].t, to, "last slot is session close");
+  assert.equal(filled[filled.length - 1].c, 11, "EOD remainder carries last close");
+  const before = completeSessionBars(
+    [{ t: from + BAR_MS, o: 1, h: 1, l: 1, c: 1 }],
+    from,
+    to,
+    now,
+  );
+  assert.equal(before[0].t, from + BAR_MS, "no invented bars before first print");
 }
 
 {

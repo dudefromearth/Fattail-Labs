@@ -75,11 +75,6 @@ import {
 } from "@/lib/risk-graph/surfaceCandles";
 import { SLOW_ZOOM_GAIN } from "@/lib/risk-graph/surfaceScene/camera";
 import {
-  beGhostEps,
-  parkMovedBreakEvens,
-  t0BreakEvens,
-} from "@/lib/options-lab/t0BreakEvenGhost";
-import {
   listedExpirationsOf,
   surfaceAsOfLabel,
   surfaceBookClock,
@@ -594,13 +589,7 @@ export default function SurfaceApp() {
     );
   }, [sheetKey]);
 
-  const beGhostsRef = useRef<number[]>([]);
-  const prevLiveBeRef = useRef<number[]>([]);
-  const [beLevels, setBeLevels] = useState<number[]>([]);
   useEffect(() => {
-    beGhostsRef.current = [];
-    prevLiveBeRef.current = [];
-    setBeLevels([]);
     setTimeElapsed(0);
     setPlayhead(null);
   }, [bookFitKey]);
@@ -619,10 +608,6 @@ export default function SurfaceApp() {
   const leaveEgg = () => {
     setEggOn(false);
     setValueOpacity(valueOpacityBeforeEggRef.current);
-    beGhostsRef.current = [];
-    prevLiveBeRef.current = [];
-    setBeLevels([]);
-    sceneRef.current?.setBeGhosts([]);
     sceneRef.current?.applyFactoryView("time");
   };
 
@@ -639,21 +624,6 @@ export default function SurfaceApp() {
     if (hadBookRef.current && n === 0) clearTapeCache(symbol);
     hadBookRef.current = n > 0;
   }, [allForSymbol.length, eggOn, symbol]);
-  useEffect(() => {
-    const live = t0BreakEvens(hudSheet);
-    const eps = beGhostEps(hudSheet?.sMin ?? 0, hudSheet?.sMax ?? 1);
-    beGhostsRef.current = parkMovedBreakEvens(
-      prevLiveBeRef.current,
-      live,
-      beGhostsRef.current,
-      eps,
-    );
-    prevLiveBeRef.current = live;
-    const all = [...beGhostsRef.current, ...live];
-    setBeLevels(all);
-    sceneRef.current?.setBeGhosts(eggOn ? all : []);
-  }, [sheetKey, hudSheet, eggOn, bookFitKey]);
-
   const tauHi = hudSheet?.timeAxis[0] ?? 0;
   const tauLo = hudSheet?.timeAxis[(hudSheet?.timeAxis.length || 1) - 1] ?? 0;
   const soonestExp = useMemo(() => {
@@ -845,7 +815,11 @@ export default function SurfaceApp() {
             hudSheet ? { lo: hudSheet.sMin, hi: hudSheet.sMax } : null
           }
           listedStrikes={hudSheet?.listedStrikes ?? []}
-          beLevels={beLevels}
+          liveSpot={
+            liveSpot != null && liveSpot > 0
+              ? liveSpot
+              : hudSheet?.spot ?? null
+          }
           interactive={eggOn}
         />
       ) : null}
@@ -928,10 +902,6 @@ export default function SurfaceApp() {
             } else {
               if (eggOn) {
                 setValueOpacity(valueOpacityBeforeEggRef.current);
-                beGhostsRef.current = [];
-                prevLiveBeRef.current = [];
-                setBeLevels([]);
-                sceneRef.current?.setBeGhosts([]);
               }
               setEggOn(false);
             }

@@ -11,8 +11,9 @@ import {
   tickerPriceTicks,
   unionPriceView,
   tapePriceView,
+  applyLiveTapeClose,
 } from "./timeOrthoTape";
-import { nyWallToUtcMs } from "./timeOrthoSession";
+import { BAR_MS, nyWallToUtcMs } from "./timeOrthoSession";
 
 const day = nyWallToUtcMs(2026, 8, 18, 10, 0);
 const open = nyWallToUtcMs(2026, 8, 18, 9, 30);
@@ -88,6 +89,20 @@ const noon = nyWallToUtcMs(2026, 8, 18, 12, 0);
   assert.ok(warm.hi > 5735);
   const snap = followPriceView({ lo: 5710, hi: 5730 }, 5720, { lo: 0, hi: 1 });
   assert.ok(snap && snap.lo > 5000, "dummy 0–1 scale must not crush live prices");
+}
+
+{
+  const slot = Math.floor(Date.now() / BAR_MS) * BAR_MS;
+  const bars = [{ t: slot, o: 100, h: 101, l: 99, c: 100.5 }];
+  const live = applyLiveTapeClose(bars, 102, slot + 60_000);
+  assert.equal(live.length, 1);
+  assert.equal(live[0].c, 102);
+  assert.equal(live[0].h, 102);
+  assert.equal(live[0].l, 99);
+  const next = applyLiveTapeClose(bars, 103, slot + BAR_MS + 1000);
+  assert.equal(next.length, 2);
+  assert.equal(next[1].o, 100.5);
+  assert.equal(next[1].c, 103);
 }
 
 {

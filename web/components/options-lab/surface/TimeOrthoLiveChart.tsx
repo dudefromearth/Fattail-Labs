@@ -16,6 +16,7 @@ import {
   marketWhereWhen,
   positionPriceView,
   tapePriceView,
+  applyLiveTapeClose,
   listedStrikeTicks,
   tickerPriceTicks,
   priceWindow,
@@ -34,7 +35,11 @@ import {
   type TapeCandleKind,
   type TapePrefs,
 } from "@/lib/options-lab/timeOrthoTapePrefs";
-import { BAR_MS, chartWindow } from "@/lib/options-lab/timeOrthoSession";
+import {
+  BAR_MS,
+  chartWindow,
+  completeSessionBars,
+} from "@/lib/options-lab/timeOrthoSession";
 import {
   prefetchTimeOrthoTape,
   readTapeCache,
@@ -214,7 +219,6 @@ function paintTape(
   book: TapeBookMark[],
   prefs: TapePrefs,
   listedStrikes: number[],
-  beLevels: number[],
 ) {
   const { width, height, plotY, plotH, plotRight, xClose } = axis;
   ctx.clearRect(0, 0, width, height);
@@ -340,18 +344,6 @@ function paintTape(
 
   paintHloc(ctx, axis, bars, prefs.candleKind);
 
-  ctx.setLineDash([6, 5]);
-  ctx.strokeStyle = "rgba(156,163,175,0.85)";
-  ctx.lineWidth = 1.4;
-  for (const s of beLevels) {
-    if (!Number.isFinite(s) || s < axis.priceLo || s > axis.priceHi) continue;
-    const y = Math.round(priceToY(axis, s)) + 0.5;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(plotRight, y);
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
   ctx.restore();
 
   ctx.strokeStyle = "rgba(255,255,255,0.16)";
@@ -440,8 +432,8 @@ const TimeOrthoLiveChart = forwardRef<
     /** Strike window of the visible position — defines tape Y. */
     positionScale?: { lo: number; hi: number } | null;
     listedStrikes?: number[];
-    /** T+0 P&L break-evens (live + parked ghosts) — T Ortho view only. */
-    beLevels?: number[];
+    /** Live underlier mid — last 5m bar tracks this so tape S matches the box spot. */
+    liveSpot?: number | null;
     /** False while the tape stays warm under an opaque 3D surface. */
     interactive?: boolean;
   }
@@ -452,7 +444,7 @@ const TimeOrthoLiveChart = forwardRef<
     onAxis,
     positionScale = null,
     listedStrikes = [],
-    beLevels = [],
+    liveSpot = null,
     interactive = true,
   },
   ref,
@@ -467,8 +459,8 @@ const TimeOrthoLiveChart = forwardRef<
   positionScaleRef.current = positionScale;
   const listedRef = useRef(listedStrikes);
   listedRef.current = listedStrikes;
-  const beRef = useRef(beLevels);
-  beRef.current = beLevels;
+  const liveSpotRef = useRef(liveSpot);
+  liveSpotRef.current = liveSpot;
   const prefsRef = useRef<TapePrefs>(DEFAULT_TAPE_PREFS);
   const barsRef = useRef<OhlcBar[]>([]);
   const winRef = useRef({
@@ -511,10 +503,15 @@ const TimeOrthoLiveChart = forwardRef<
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const { fromMs, toMs, nowMs, prefillsPriorDay } = winRef.current;
+    const { fromMs, toMs, prefillsPriorDay } = winRef.current;
     if (!fromMs || !toMs) return;
+    const nowMs = prefillsPriorDay ? winRef.current.nowMs : Date.now();
     const dayMs = prefillsPriorDay ? fromMs + 6 * 3600 * 1000 : nowMs;
-    const asCandles = barsRef.current.map((b, i) => ({
+    const withLive = prefillsPriorDay
+      ? barsRef.current
+      : applyLiveTapeClose(barsRef.current, liveSpotRef.current, nowMs);
+    const paintedBars = completeSessionBars(withLive, fromMs, toMs);
+    const asCandles = paintedBars.map((b, i) => ({
       slot: i,
       high: b.h ?? b.c,
       low: b.l ?? b.c,
@@ -549,13 +546,12 @@ const TimeOrthoLiveChart = forwardRef<
     paintTape(
       ctx,
       axis,
-      barsRef.current,
+      paintedBars,
       nowMs,
       prefillsPriorDay,
       marks,
       prefsRef.current,
       listedRef.current,
-      beRef.current,
     );
     const open = marks.filter((m) => m.closedAt == null);
     const liveMs =
@@ -697,15 +693,15 @@ const TimeOrthoLiveChart = forwardRef<
     };
   }, []);
 
-  // Pin the box on this frame — do not wait for the 30s OHLC poll.
+  // Pin the box on this frame. Live mid redraws the last candle with the spot.
   useLayoutEffect(() => {
     onAxisRef.current = onAxis;
     positionScaleRef.current = positionScale;
+    liveSpotRef.current = liveSpot;
     if (!userPanRef.current) priceViewRef.current = null;
     draw();
-    // interactive flips when T Ortho opens; scaleKey is the box sMin–sMax.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scaleKey, interactive]);
+  }, [scaleKey, interactive, liveSpot]);
 
   return (
     <div

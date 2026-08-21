@@ -96,7 +96,7 @@ export type SurfaceSceneHandle = {
       sMaxY?: number;
     } | null,
   ): void;
-  /** T Ortho: dashed grey rails at T+0 BEs (live + parked ghosts). */
+  /** Removed: T+0 BE ghost rails. Call still clears leftovers. */
   setBeGhosts(strikes: number[]): void;
   /** Paint now and return the WebGL canvas (same-turn read for capture). */
   captureCanvas(): HTMLCanvasElement;
@@ -1522,43 +1522,13 @@ export function mountSurfaceScene(
       const exp = projectLocal(0, 0, -1);
       return { nowX: now.left, expiryX: exp.left };
     },
-    setBeGhosts(strikes) {
+    setBeGhosts(_strikes) {
       const old = world.getObjectByName("be-ghosts");
       if (old) {
         world.remove(old);
         disposeObject(old);
-      }
-      const sheet = lastSheet;
-      if (!sheet || !Array.isArray(strikes) || !strikes.length) {
         paint();
-        return;
       }
-      const group = new THREE.Group();
-      group.name = "be-ghosts";
-      const s0 = sheet.sMin;
-      const sSpan = Math.max(sheet.sMax - sheet.sMin, 1e-9);
-      for (const s of strikes) {
-        if (!Number.isFinite(s)) continue;
-        const x = ((s - s0) / sSpan) * 2 - 1;
-        if (x < -1.08 || x > 1.08) continue;
-        const line = fatPolyline(
-          [x, 0, 1, x, 0, -1],
-          0x9ca3af,
-          1.6,
-          0.7,
-          true,
-        );
-        const mat = line.material as LineMaterial;
-        mat.dashed = true;
-        mat.dashSize = 0.06;
-        mat.gapSize = 0.045;
-        mat.depthTest = false;
-        line.computeLineDistances();
-        line.renderOrder = 3;
-        group.add(line);
-      }
-      world.add(group);
-      paint();
     },
     alignTimeOrtho(span) {
       const pinStrike =

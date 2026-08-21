@@ -6,7 +6,11 @@
 
 import { useEffect } from "react";
 import { fetchMarketOhlc, type OhlcBar } from "@/lib/marketOhlcApi";
-import { chartWindow, filterSessionBars } from "./timeOrthoSession";
+import {
+  chartWindow,
+  completeSessionBars,
+  filterSessionBars,
+} from "./timeOrthoSession";
 
 export const TAPE_CACHE_KEY = "ft_options_lab_t_ortho_tape_v1";
 export const TAPE_CACHE_FRESH_MS = 15_000;
@@ -130,17 +134,18 @@ export async function prefetchTimeOrthoTape(
 
   const run = (async () => {
     const payload = await fetchMarketOhlc(sym, "5m", {
-      lookbackDays: 5,
+      lookbackDays: 10,
       signal: opts?.signal,
     });
     const at = Date.now();
     const win = chartWindow(at);
+    const framed = filterSessionBars(payload.bars || [], at);
     return writeTapeCache({
       symbol: sym,
       fromMs: win.fromMs,
       toMs: win.toMs,
       prefillsPriorDay: win.prefillsPriorDay,
-      bars: filterSessionBars(payload.bars || [], at),
+      bars: completeSessionBars(framed, win.fromMs, win.toMs),
       fetchedAt: at,
     });
   })().finally(() => {
