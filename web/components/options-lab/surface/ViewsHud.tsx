@@ -10,6 +10,17 @@ const detent =
   "border border-white/40 bg-black/55 px-2 text-[18px] font-medium text-white/90 " +
   "shadow-[0_0_10px_2px_rgba(255,255,255,0.55)]";
 
+/** Light emerald wash — distinct from the white detents, not a neon pill. */
+const detentTOrtho =
+  "inline-flex h-[66px] min-h-[66px] w-full items-center justify-center rounded-full " +
+  "border border-emerald-400/40 bg-emerald-400/10 px-2 text-[18px] font-medium text-white/90 " +
+  "shadow-[inset_0_0_14px_4px_rgba(52,211,153,0.28)]";
+
+const detentTOrthoOn =
+  "inline-flex h-[66px] min-h-[66px] w-full items-center justify-center rounded-full " +
+  "border border-emerald-400/55 bg-emerald-400/15 px-2 text-[18px] font-medium text-white/90 " +
+  "shadow-[inset_0_0_16px_5px_rgba(52,211,153,0.36)]";
+
 const mini =
   "inline-flex min-h-11 flex-1 items-center justify-center rounded-full " +
   "border border-white/15 bg-black/55 px-3 text-[13px] font-medium text-white/90";
@@ -20,12 +31,14 @@ export default function ViewsHud({
   onSave,
   onRecall,
   onDelete,
+  timeOrthoOn = false,
 }: {
   onFactory: (id: FactoryViewId) => void;
   views: { id: string; name: string }[];
   onSave: () => void;
   onRecall: (id: string) => void;
   onDelete: (id: string) => void;
+  timeOrthoOn?: boolean;
 }) {
   return (
     <div className="flex w-full flex-col gap-2" data-testid="surface-views-hud">
@@ -39,7 +52,13 @@ export default function ViewsHud({
             <button
               key={id}
               type="button"
-              className={detent}
+              className={
+                id === "timeOrtho"
+                  ? timeOrthoOn
+                    ? detentTOrthoOn
+                    : detentTOrtho
+                  : detent
+              }
               data-testid={`surface-view-${id}`}
               onClick={() => onFactory(id)}
             >

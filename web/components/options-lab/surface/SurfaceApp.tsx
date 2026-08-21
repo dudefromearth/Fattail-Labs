@@ -81,7 +81,11 @@ import {
   unionListedStrikes,
 } from "@/lib/risk-graph/surfaceAutofit";
 import { RELIEF_DEFAULT } from "@/lib/risk-graph/surfaceRelief";
-import { mountSurfaceScene, type SurfaceSceneHandle } from "@/lib/risk-graph/surfaceScene";
+import {
+  mountSurfaceScene,
+  SURFACE_VALUE_PLANE_OPACITY_DEFAULT,
+  type SurfaceSceneHandle,
+} from "@/lib/risk-graph/surfaceScene";
 import { fetchMarketOhlc } from "@/lib/marketOhlcApi";
 import {
   candleTfForTau,
@@ -173,7 +177,9 @@ export default function SurfaceApp() {
   const [widthPadFrac, setWidthPadFrac] = useState(SURFACE_PAD_FRAC);
   const [heightPadFrac, setHeightPadFrac] = useState(SURFACE_PAD_FRAC);
   const [zoomGain, setZoomGain] = useState(SLOW_ZOOM_GAIN);
-  const [valueOpacity, setValueOpacity] = useState(0.12);
+  const [valueOpacity, setValueOpacity] = useState(
+    SURFACE_VALUE_PLANE_OPACITY_DEFAULT,
+  );
   const [relief, setRelief] = useState(RELIEF_DEFAULT);
   const [candlesOn, setCandlesOn] = useState(false);
   const [eggOn, setEggOn] = useState(false);
@@ -182,6 +188,7 @@ export default function SurfaceApp() {
   const [bookReady, setBookReady] = useState(false);
   const tapeRef = useRef<TimeOrthoTapeHandle | null>(null);
   const hadBookRef = useRef(false);
+  const valueOpacityBeforeEggRef = useRef(SURFACE_VALUE_PLANE_OPACITY_DEFAULT);
   const [spots, setSpots] = useState([
     { on: true, brightness: 0.55 },
     { on: true, brightness: 0.55 },
@@ -633,6 +640,7 @@ export default function SurfaceApp() {
 
   const leaveEgg = () => {
     setEggOn(false);
+    setValueOpacity(valueOpacityBeforeEggRef.current);
     beGhostsRef.current = [];
     prevLiveBeRef.current = [];
     setBeLevels([]);
@@ -809,6 +817,20 @@ export default function SurfaceApp() {
       },
     });
   }, [sheetKey, tauStar, timeElapsed, strikeOn, timeOn, timeWalked, strikeForPlane, altered, valueWindow, sheet, hudSheet, zoomGain, valueOpacity, spots, candlesOn, relief]);
+
+  function applySurfaceDefaults() {
+    setWidthPadFrac(SURFACE_PAD_FRAC);
+    setHeightPadFrac(SURFACE_PAD_FRAC);
+    if (eggOn) {
+      setValueOpacity(0);
+    } else {
+      valueOpacityBeforeEggRef.current = SURFACE_VALUE_PLANE_OPACITY_DEFAULT;
+      setValueOpacity(SURFACE_VALUE_PLANE_OPACITY_DEFAULT);
+    }
+    setAutofitGen((n) => n + 1);
+    setProjection("perspective");
+    sceneRef.current?.fit();
+  }
 
   return (
     <div
@@ -1012,14 +1034,26 @@ export default function SurfaceApp() {
         data-testid="surface-hud-dock"
       >
         <ViewsHud
+          timeOrthoOn={eggOn}
           onFactory={(id: FactoryViewId) => {
             if (id === "now" || id === "time" || id === "timeOrtho") {
               setProjection("orthographic");
             } else setProjection("perspective");
             if (id === "timeOrtho") {
               setCandlesOn(false);
+              if (!eggOn) {
+                valueOpacityBeforeEggRef.current = valueOpacity;
+                setValueOpacity(0);
+              }
               setEggOn(true);
             } else {
+              if (eggOn) {
+                setValueOpacity(valueOpacityBeforeEggRef.current);
+                beGhostsRef.current = [];
+                prevLiveBeRef.current = [];
+                setBeLevels([]);
+                sceneRef.current?.setBeGhosts([]);
+              }
               setEggOn(false);
             }
             if (id === "fit") sceneRef.current?.fit();
@@ -1094,11 +1128,15 @@ export default function SurfaceApp() {
             onWidthPadFrac={setWidthPadFrac}
             onHeightPadFrac={setHeightPadFrac}
             valueOpacity={valueOpacity}
-            onValueOpacity={setValueOpacity}
+            onValueOpacity={(v) => {
+              setValueOpacity(v);
+              if (!eggOn) valueOpacityBeforeEggRef.current = v;
+            }}
             candlesOn={candlesOn}
             onCandlesOn={setCandlesOn}
             relief={relief}
             onRelief={setRelief}
+            onAutofit={applySurfaceDefaults}
           />
         </HudCollapse>
         <HudCollapse title="What-if" testId="surface-time-wrap">
@@ -1166,11 +1204,7 @@ export default function SurfaceApp() {
                 setProjection("perspective");
                 sceneRef.current?.fit();
               }}
-              onAutofit={() => {
-                setAutofitGen((n) => n + 1);
-                setProjection("perspective");
-                sceneRef.current?.fit();
-              }}
+              onAutofit={applySurfaceDefaults}
               onIso={() => {
                 setProjection("perspective");
                 sceneRef.current?.applyFactoryView("iso");

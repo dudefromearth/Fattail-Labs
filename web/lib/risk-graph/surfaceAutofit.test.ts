@@ -28,7 +28,7 @@ const tau = 3 / 365.25;
   assert.ok(w.sMin < 6400 && w.sMax > 6500, "listed strikes stay in the box");
   assert.ok(w.pad > 0 && Math.abs(w.sMax - w.contentHi - w.pad) < 1e-9);
   assert.ok(Math.abs(w.contentLo - w.pad - w.sMin) < 1e-9 || w.sMin === 0.01);
-  assert.ok(w.padFrac === 0.15, "default width pad is Analyzer-like 15%");
+  assert.ok(w.padFrac === 0.5, "default Autofit pad is 50%");
 
   const expBes: number[] = [];
   let prev = evaluatePnlAtSpot(fly, w.sMin, 0);
@@ -120,6 +120,10 @@ const tau = 3 / 365.25;
   );
   assert.ok(planes.includes('data-testid="surface-width-pad"'), "width pad control");
   assert.ok(planes.includes('data-testid="surface-height-pad"'), "height pad control");
+  assert.ok(
+    planes.includes('data-testid="surface-planes-autofit"'),
+    "Autofit on the pad panel restores defaults",
+  );
 }
 
 {
@@ -136,6 +140,26 @@ const tau = 3 / 365.25;
   assert.ok(
     /const \[candlesOn, setCandlesOn\] = useState\(false\)/.test(app),
     "ISO default: 3D candles off",
+  );
+  assert.ok(
+    app.includes("SURFACE_VALUE_PLANE_OPACITY_DEFAULT"),
+    "$0 plane default is 40%",
+  );
+  assert.ok(
+    app.includes("function applySurfaceDefaults"),
+    "Autofit restores pad and $0 plane defaults",
+  );
+  assert.ok(
+    app.includes("setWidthPadFrac(SURFACE_PAD_FRAC)"),
+    "Autofit Width pad back to 50%",
+  );
+  assert.ok(
+    app.includes("setValueOpacity(0)"),
+    "T Ortho hides the $0 plane",
+  );
+  assert.ok(
+    app.includes("setValueOpacity(valueOpacityBeforeEggRef.current)"),
+    "leaving T Ortho restores the last $0 plane setting",
   );
   assert.ok(
     !scene.includes('group.name = "surface-candles"'),

@@ -19,8 +19,12 @@ import {
   timeCutPoints,
   valueWindowForSheet,
 } from "./timeCut";
-import type { ValueWindow } from "../surfaceAutofit";
-import { surfaceFillEnabled, type SurfaceDrawStyle } from "./style";
+import { SURFACE_PAD_FRAC, type ValueWindow } from "../surfaceAutofit";
+import {
+  surfaceFillEnabled,
+  SURFACE_VALUE_PLANE_OPACITY_DEFAULT,
+  type SurfaceDrawStyle,
+} from "./style";
 import { clampRelief, RELIEF_DEFAULT, surfaceReliefFromHeights } from "../surfaceRelief";
 import { elapsedToBoxZ } from "../surfaceInspect";
 import { timeToBoxZ } from "../surfaceCandles";
@@ -53,7 +57,7 @@ export type PlaneInspect = {
 };
 
 export type { SurfaceDrawStyle } from "./style";
-export { surfaceFillEnabled } from "./style";
+export { surfaceFillEnabled, SURFACE_VALUE_PLANE_OPACITY_DEFAULT } from "./style";
 
 export type SurfaceSceneHandle = {
   setSheet(sheet: SurfaceSheet | null): void;
@@ -542,7 +546,7 @@ export function mountSurfaceScene(
     "position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;";
   host.style.overflow = "hidden";
   host.style.position = host.style.position || "relative";
-  host.dataset.heightPad = "0.15";
+  host.dataset.heightPad = String(SURFACE_PAD_FRAC);
   host.replaceChildren(chart2d, canvas);
   // CSS size = host CSS pixels. updateStyle true so a Retina
   // backing store does not display at 2× and crop to a plane face.
@@ -1075,7 +1079,7 @@ export function mountSurfaceScene(
   const timePlane = mkPlane(0xfde68a, 0.18);
   timePlane.renderOrder = 1;
   tnLine.renderOrder = 2;
-  const valuePlane = mkPlane(0x000000, 0.12);
+  const valuePlane = mkPlane(0x000000, SURFACE_VALUE_PLANE_OPACITY_DEFAULT);
   const valueMat0 = valuePlane.material as THREE.MeshBasicMaterial;
   valueMat0.transparent = true;
   valueMat0.depthWrite = false;

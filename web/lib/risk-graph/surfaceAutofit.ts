@@ -16,8 +16,8 @@ import {
 } from "./surfaceModel";
 
 export const SURFACE_AUTOFIT_STRIKE_STEPS = 4;
-/** Analyzer-like air: 15% of content span on each side (≈ 30% of half-width). */
-export const SURFACE_PAD_FRAC = 0.15;
+/** Default Autofit pad: 50% of content span on each side. */
+export const SURFACE_PAD_FRAC = 0.5;
 export const SURFACE_PAD_FRAC_MIN = 0;
 export const SURFACE_WIDTH_PAD_FRAC_MAX = 0.845;
 export const SURFACE_HEIGHT_PAD_FRAC_MAX = 0.65;

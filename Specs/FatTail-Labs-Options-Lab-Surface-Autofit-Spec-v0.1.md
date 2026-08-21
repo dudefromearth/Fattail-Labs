@@ -2,7 +2,7 @@
 
 **Status:** **ACCEPTED** default (Coach stamp v0.1.1) · special-case amendments land here  
 **Date:** 2026-08-17  
-**Content version:** **v0.1.6**  
+**Content version:** **v0.1.9**  
 **Filename:** `FatTail-Labs-Options-Lab-Surface-Autofit-Spec-v0.1.md`  
 **Home:** Options Lab Surface · `/app/options-lab/surface`  
 **Parents:** App Spec v0.1.8 **§5.3** / **§5.3c** · Tech Spec v0.1 · Arch **33** · OT-EF v1.1 · **DL-421** (stands)  
@@ -28,7 +28,7 @@ Coach sees index screenshots; then AF-n if needed.
 **Invoke:**
 
 1. Every time a position is **added to the viewport** (shown book changes).
-2. On command when the member clicks **Autofit**.
+2. On command when the member clicks **Autofit**. Autofit **restores default pad (50%) and $0 plane (40%)**, then rescans the window and camera-Fits. **Fit** does not restore those defaults.
 
 **Do not invoke** on live spot drift, What-if dials, or playhead walk.
 The **Autofit** button covers those.
@@ -110,7 +110,7 @@ Autofit is **one algorithm on two axes**. Pad is the air; the book
 | **Height (P&L)** | Sheet `minPnL`…`maxPnL` and **$0** | Equal **top and bottom** | `[yMin, yMax] → box Y` |
 
 - Pad = `max(contentSpan × padFrac, floor)` on **each** side.
-- Default `padFrac` = **0.15** (Analyzer-like: 15% of span each side ≈ 30% of half-width).
+- Default `padFrac` = **0.50** (50% of span each side). Member sliders still range Width `0`…`85%` · Height `0`…`65%`.
 - Width floor = **10** points. Height floor = **$1**.
 - Member sliders: **Width pad** `0`…`85%` · **Height pad** `0`…`65%`. Same Autofit, new air.
 - Moving a pad slider re-pads **held** content (does not rescan BEs).
@@ -259,6 +259,9 @@ Detection stays in one place. Default remains the fallback.
 | **v0.1.3** | 2026-08-17 | Pad slider max **50%** (was 40%; +25%) on both axes. |
 | **v0.1.4** | 2026-08-17 | Pad slider max **65%** (was 50%; +30%) on both axes. |
 | **v0.1.5** | 2026-08-17 | Width pad max **85%** (was 65%; +30%). Height stays 65%. |
+| **v0.1.9** | 2026-08-21 | $0 plane default **40%** (was 30%). Autofit restores that too. **DL-508**. |
+| **v0.1.8** | 2026-08-21 | **Autofit** restores default pad **50%** and $0 plane **30%**, then rescans + Fit. Same control on Planes (pad) and Camera. **DL-507**. |
+| **v0.1.7** | 2026-08-21 | Default Autofit pad **50%** (was 15%). Width and Height sliders open at 50%. **DL-506**. |
 | **v0.1.6** | 2026-08-17 | Expiry BEs scan the **front-exp face** (OD-PF2 / **DL-427**), not \(\tau=0\) on every leg. |
 
 **End of Options Lab Surface Autofit Spec v0.1.1**

@@ -30,6 +30,7 @@ export default function PlanesHud({
   onCandlesOn,
   relief,
   onRelief,
+  onAutofit,
 }: {
   strikeOn: boolean;
   timeOn: boolean;
@@ -49,6 +50,7 @@ export default function PlanesHud({
   onCandlesOn: (v: boolean) => void;
   relief: number;
   onRelief: (v: number) => void;
+  onAutofit: () => void;
 }) {
   return (
     <div
@@ -148,6 +150,19 @@ export default function PlanesHud({
           data-testid="surface-height-pad"
         />
       </label>
+      <button
+        type="button"
+        className={
+          "mt-3 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full " +
+          "border border-white/15 bg-black/55 px-3.5 text-[13px] font-medium text-white/90 " +
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
+          "focus-visible:outline-white/70"
+        }
+        data-testid="surface-planes-autofit"
+        onClick={onAutofit}
+      >
+        Autofit
+      </button>
     </div>
   );
 }

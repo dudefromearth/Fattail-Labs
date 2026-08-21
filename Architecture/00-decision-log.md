@@ -4,6 +4,36 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-508 Surface $0 plane default is 40%
+
+**Decision:** The Surface **$0 plane** default opacity is **40%** (Coach
+changed from 30%). Autofit restores this value with pad 50%. Spec **v0.1.9**.
+Reverses the 30% figure in **DL-507**.
+
+**Does not:** MiniTwo in this body.
+
+---
+
+## 2026-08-21 — DL-507 Surface Autofit restores default pad and $0 plane
+
+**Decision:** **Autofit** (Planes panel and Camera HUD) restores Width/Height
+pad to **50%** and the **$0 plane** to **30%**, then rescans the S window and
+camera-Fits. **Fit** still only frames the current box. Spec **v0.1.8**.
+
+**Does not:** MiniTwo in this body; resetting What-if, relief, or lights.
+
+---
+
+## 2026-08-21 — DL-506 Surface Autofit pad default is 50%
+
+**Decision:** Surface Autofit Width and Height pad sliders default to **50%**
+(`SURFACE_PAD_FRAC = 0.5`). Prior default was Analyzer-like 15%. Slider
+ranges unchanged (Width 0–85%, Height 0–65%). Spec **v0.1.7**.
+
+**Does not:** MiniTwo in this body.
+
+---
+
 ## 2026-08-21 — DL-505 What-if sits under Alerts; Demo wraps both
 
 **Decision:** Left inspector order is **Alerts · What-if · GEX · Probability**.
