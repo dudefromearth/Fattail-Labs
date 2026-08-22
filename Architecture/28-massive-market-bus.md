@@ -1,7 +1,7 @@
 # Massive Market Bus (shared market data plane)
 
 **Status:** **AS-BUILT** (2026-08-10 · DL-282…286)  
-**Spec authority:** [`Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md`](../Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) **v1.0.1**  
+**Spec authority:** [`Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md`](../Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) **v1.0.2**  
 **Chain surface law:** [`Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md`](../Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md)  
 **Bench / program:** [`docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md`](../docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md) · board `agents/p-market-bus/`  
 **Related:** [Arch/18 shared live marks](./18-shared-live-marks-stream.md) (MySQL marks path — still lawful for Curate)  
@@ -58,6 +58,8 @@ Redis (localhost)     keys mb:*  · pub channel mb:pub
 | Label proxy marks (`massive_proxy_v1`) | Use proxy mid for SPX strike center (OC2) |
 | Exact listed strikes (OC6a), e.g. 302.50 | Round half-strikes to integers |
 
+**Which spec is Redis vs “SSE gateway”:** [`34-redis-cache-and-sse-gateway.md`](./34-redis-cache-and-sse-gateway.md). As-built member door is this WS, not SSE.
+
 ---
 
 ## 2. Components & paths
@@ -82,7 +84,7 @@ Redis (localhost)     keys mb:*  · pub channel mb:pub
 
 | Key | Content |
 |-----|---------|
-| `mb:ladder:{feed}:{exp}:{side}:w{N}` | Full ladder JSON + `content_hash` |
+| `mb:ladder:{feed}:{exp}:{side}:w{N}` | Full ladder JSON + `content_hash` + `stale` + `epoch_quality` (**DL-535** · MB Spec v1.0.2). Hash does not include `stale`. |
 | `mb:chain:{feed}:{exp}:{side}` | Optional wide chain generation (feed) |
 | `mb:sym:{PRODUCT}` | Last mid/bid/ask + `source` + seq |
 | `mb:session:market_status` | Massive market status document |
@@ -113,6 +115,7 @@ WS /api/me/market/stream
 - Client ops: `hello` · `sub` · `unsub` · `ping`  
 - Server: `hello` · `chain` (mode full) · `sym` · `session` · `err` · `pong`  
 - **MB7:** on sub/reconnect, **snapshot first**, then updates  
+- **v1.0.2 / DL-535:** every `chain` frame carries `stale` + `epoch_quality` (marks / OPF definitions). HTTP `chain-ladder` is the same document shape.  
 
 ### 4.2 HTTP poll (fallback / Redis-backed)
 

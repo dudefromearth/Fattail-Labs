@@ -1,8 +1,11 @@
 # FINDING — chain generation document lacks `stale` / `epoch_quality`
 
-**Not a Template Runner defect.** Do not work around in `web/lib/runner/`.  
-**Owner:** Market Bus (**Alpha**).  
-**Requires:** Market Bus Spec amendment **v1.0.2** + a DL entry. Out of this board's scope.
+**Status:** **CLOSED** — **DL-535** · Market Bus Spec **v1.0.2** · GO `agents/go/MB-P2.md`.  
+Chain documents now carry `stale` + `epoch_quality` by the marks/OPF definitions.
+
+**Was:** Not a Template Runner defect. Owner Market Bus (Alpha).
+
+TR-P2 subscribe (TR10 / SI #2) yields `stale` and `epoch_quality` **from the document**. It does not invent them from `session_open`. On the as-built bus that fail-louds `STALENESS_MISSING`.
 
 TR-P2 subscribe (TR10 / SI #2) yields `stale` and `epoch_quality` **from the document**. It does not invent them from `session_open`. On the as-built bus that fail-louds `STALENESS_MISSING`.
 

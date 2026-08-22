@@ -32,6 +32,48 @@ _CLOSED_SLEEP_S = 15.0
 _NY = ZoneInfo("America/New_York")
 
 
+def _chain_wire(
+    *,
+    mode: str,
+    key: str,
+    ladder: dict[str, Any],
+    session_open: bool,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Every chain frame carries stale + epoch_quality (MB-P2). Fail loud."""
+    from market_data.chain_provenance import (
+        ChainProvenanceError,
+        apply_chain_provenance,
+        provenance_wire,
+    )
+
+    try:
+        apply_chain_provenance(ladder)
+        prov = provenance_wire(ladder)
+    except ChainProvenanceError as exc:
+        return {
+            "t": "err",
+            "code": exc.code,
+            "message": str(exc),
+            "key": key,
+        }
+    out: dict[str, Any] = {
+        "t": "chain",
+        "mode": mode,
+        "key": key,
+        "content_hash": ladder.get("content_hash"),
+        "session_open": session_open,
+        **prov,
+    }
+    if extra:
+        out.update(extra)
+    if mode == "full":
+        out["ladder"] = ladder
+    elif extra is None or "as_of" not in extra:
+        out.setdefault("as_of", ladder.get("as_of"))
+    return out
+
+
 def _utc_now_iso() -> str:
     return (
         datetime.now(timezone.utc)
@@ -309,14 +351,12 @@ async def _handle_sub(
             pass
 
         await ws.send_json(
-            {
-                "t": "chain",
-                "mode": "full",
-                "key": key,
-                "content_hash": ladder.get("content_hash"),
-                "ladder": ladder,
-                "session_open": _session_open_for_chain_push(),
-            }
+            _chain_wire(
+                mode="full",
+                key=key,
+                ladder=ladder,
+                session_open=_session_open_for_chain_push(),
+            )
         )
 
     if msg.get("session"):
@@ -478,14 +518,13 @@ async def _chain_push_loop(
                 try:
                     if prev_hash and new_hash and prev_hash == new_hash:
                         await ws.send_json(
-                            {
-                                "t": "chain",
-                                "mode": "unchanged",
-                                "key": key,
-                                "content_hash": new_hash,
-                                "as_of": ladder.get("as_of"),
-                                "session_open": True,
-                            }
+                            _chain_wire(
+                                mode="unchanged",
+                                key=key,
+                                ladder=ladder,
+                                session_open=True,
+                                extra={"as_of": ladder.get("as_of")},
+                            )
                         )
                     elif prev_hash:
                         # Build patch from server hash cache when possible
@@ -495,54 +534,51 @@ async def _chain_push_loop(
                         mode = patch.get("mode") or "full"
                         if mode == "unchanged":
                             await ws.send_json(
-                                {
-                                    "t": "chain",
-                                    "mode": "unchanged",
-                                    "key": key,
-                                    "content_hash": new_hash,
-                                    "as_of": ladder.get("as_of"),
-                                    "session_open": True,
-                                }
+                                _chain_wire(
+                                    mode="unchanged",
+                                    key=key,
+                                    ladder=ladder,
+                                    session_open=True,
+                                    extra={"as_of": ladder.get("as_of")},
+                                )
                             )
                         elif mode == "diff":
+                            extra = {
+                                "as_of": patch.get("as_of"),
+                                "spot": patch.get("spot"),
+                                "band": patch.get("band"),
+                                "upserts": patch.get("upserts") or [],
+                                "removes": patch.get("removes") or [],
+                                "changed_strike_count": patch.get(
+                                    "changed_strike_count"
+                                ),
+                            }
                             await ws.send_json(
-                                {
-                                    "t": "chain",
-                                    "mode": "diff",
-                                    "key": key,
-                                    "content_hash": patch.get("content_hash"),
-                                    "as_of": patch.get("as_of"),
-                                    "spot": patch.get("spot"),
-                                    "band": patch.get("band"),
-                                    "upserts": patch.get("upserts") or [],
-                                    "removes": patch.get("removes") or [],
-                                    "changed_strike_count": patch.get(
-                                        "changed_strike_count"
-                                    ),
-                                    "session_open": True,
-                                }
+                                _chain_wire(
+                                    mode="diff",
+                                    key=key,
+                                    ladder=ladder,
+                                    session_open=True,
+                                    extra=extra,
+                                )
                             )
                         else:
                             await ws.send_json(
-                                {
-                                    "t": "chain",
-                                    "mode": "full",
-                                    "key": key,
-                                    "content_hash": new_hash,
-                                    "ladder": ladder,
-                                    "session_open": True,
-                                }
+                                _chain_wire(
+                                    mode="full",
+                                    key=key,
+                                    ladder=ladder,
+                                    session_open=True,
+                                )
                             )
                     else:
                         await ws.send_json(
-                            {
-                                "t": "chain",
-                                "mode": "full",
-                                "key": key,
-                                "content_hash": new_hash,
-                                "ladder": ladder,
-                                "session_open": True,
-                            }
+                            _chain_wire(
+                                mode="full",
+                                key=key,
+                                ladder=ladder,
+                                session_open=True,
+                            )
                         )
                 except Exception:
                     return

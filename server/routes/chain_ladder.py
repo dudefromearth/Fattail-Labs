@@ -380,7 +380,9 @@ def _fetch_ladder_uncached(
     payload["max_strikes_per_dte"] = MAX_STRIKES_PER_DTE
     payload["massive_page_limit"] = MASSIVE_PAGE_LIMIT
     payload["bus"] = "redis" if bus_enabled() else "process"
-    return payload
+    from market_data.chain_provenance import apply_chain_provenance
+
+    return apply_chain_provenance(payload)
 
 
 def _fetch_ladder(
@@ -408,6 +410,9 @@ def _fetch_ladder(
             hit = store.get_json(bus_key)
             if hit and hit.get("content_hash"):
                 store.touch_interest(bus_key)
+                from market_data.chain_provenance import apply_chain_provenance
+
+                hit = apply_chain_provenance(hit)
                 # park for diff
                 with _cache_lock:
                     _latest[key] = hit
@@ -424,7 +429,9 @@ def _fetch_ladder(
         prev_payload = _latest.get(key)
         ts = _fetched_at.get(key, 0.0)
         if prev_payload and (now - ts) < _CACHE_TTL_S and "_raw" not in prev_payload:
-            return prev_payload
+            from market_data.chain_provenance import apply_chain_provenance
+
+            return apply_chain_provenance(prev_payload)
 
     def _fill() -> dict[str, Any]:
         return _fetch_ladder_uncached(
@@ -542,8 +549,19 @@ def get_chain_ladder(
         with _cache_lock:
             prev = _by_hash.get(since_hash)
 
+    from market_data.chain_provenance import (
+        ChainProvenanceError,
+        apply_chain_provenance,
+        provenance_wire,
+    )
+
+    try:
+        nxt = apply_chain_provenance(nxt)
+    except ChainProvenanceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     patch = diff_ladder(prev, nxt)
     mode = patch.get("mode")
+    prov = provenance_wire(nxt)
     session = _opf_session_for_ladder(
         product=resolved["product"],
         kind=str(resolved.get("kind") or "equity"),
@@ -567,6 +585,7 @@ def get_chain_ladder(
             "product": resolved["product"],
             "opf_session": session,
             "server_time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            **prov,
         }
     if mode == "diff":
         return {
@@ -576,6 +595,7 @@ def get_chain_ladder(
             **{k: v for k, v in patch.items() if k != "mode"},
             "opf_session": session,
             "server_time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            **prov,
         }
     return {
         "unchanged": False,
@@ -585,6 +605,7 @@ def get_chain_ladder(
         "content_hash": nxt.get("content_hash"),
         "opf_session": session,
         "server_time": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        **prov,
     }
 
 

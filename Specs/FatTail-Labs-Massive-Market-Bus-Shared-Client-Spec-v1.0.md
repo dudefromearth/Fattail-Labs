@@ -2,7 +2,7 @@
 
 **Status:** **DRAFT** — specialist gates incomplete; **Coach GO blocked** until §18 gate table PASS  
 **Date:** 2026-08-10  
-**Current revision:** **v1.0.1**  
+**Current revision:** **v1.0.2** — chain documents carry `stale` + `epoch_quality` (MB-P2 · **DL-535**). v1.0.1 hash below is the prior fold.  
 **Type:** Architecture authority — **shared market data plane** (transport + generation store). **Not** a member surface Spec for header chrome or app naming.  
 
 **Short name:** **Market Bus** (MB)
@@ -230,6 +230,7 @@ Multi-process / multi-worker **requires** Redis (or equivalent shared bus). Pure
 | `mb:sym:{PRODUCT}` | Last symbol document |
 | `mb:session:market_status` | Market status document |
 | `mb:chain:{feed}:{exp}:{side}` | Ladder generation + hash |
+| `mb:ladder:*` | Full ladder JSON + `content_hash` + **`stale: boolean`** + **`epoch_quality`** (v1.0.2). `content_hash` does **not** include `stale`. |
 | `mb:bar:…` | Optional short ring |
 | `mb:pub` (or family channels) | Notify API of updates |
 
@@ -264,7 +265,9 @@ WS  /api/me/market/stream
 | `hello` | server_time, heartbeat_s, v |
 | `session` | Market status |
 | `sym` / `sym_bar` | Symbol / bar |
-| `chain` | full \| diff \| unchanged |
+| `chain` | full \| diff \| unchanged. **v1.0.2:** every `chain` message (snapshot and update) carries `stale: boolean` and `epoch_quality`. Same fields on HTTP `GET /api/me/market/chain-ladder`. One document shape. |
+
+**Law (v1.0.2):** chain documents carry `stale` + `epoch_quality` by the marks/OPF definitions — no third definition. `stale` = underlier-marks rule (`live_marks.stale_seconds()` vs write age). `epoch_quality` = `opf.generation.build_epoch`. Missing either field at emit → named error, not `false`/`null`.
 | `err` / `pong` | Errors / heartbeat |
 
 **MB7:** after `sub` or reconnect, **snapshot first**, then deltas.

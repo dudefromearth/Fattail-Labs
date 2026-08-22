@@ -76,6 +76,9 @@ def main(argv: list[str] | None = None) -> int:
                     wings=wings,
                     strike_step_cfg=resolved.get("strike_step"),
                 )
+                from market_data.chain_provenance import apply_chain_provenance
+
+                payload = apply_chain_provenance(payload)
                 # Always write dual canonical key when dual interest
                 store.set_json(write_key, payload)
                 if write_key != topic and parsed.dual:

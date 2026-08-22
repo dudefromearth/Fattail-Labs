@@ -4,6 +4,26 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-535 Chain documents carry stale + epoch_quality (MB-P2)
+
+**Decision (Coach GO):** Market Bus **v1.0.2**. The chain generation
+document (`mb:ladder:*`, `WS /api/me/market/stream`, HTTP
+`chain-ladder`) carries `stale: boolean` and `epoch_quality` using the
+**existing** marks and OPF definitions — no third semantics.
+
+- `stale` = `live_marks.stale_seconds()` vs write age (`fetched_at_unix` /
+  `as_of`). Same boolean as underlier marks.
+- `epoch_quality` = `opf.generation.build_epoch` on this generation.
+- `content_hash` does **not** include `stale`.
+- Missing either field at emit → named `CHAIN_PROVENANCE`, not a default.
+- Closes [`FINDING-chain-doc-staleness.md`](../agents/p-template-runner/gate-reports/FINDING-chain-doc-staleness.md).
+- Token [`agents/go/MB-P2.md`](../agents/go/MB-P2.md).
+
+**Does not:** MiniTwo; OPF change; web/; TR-P3 (sym-fly onto Runner
+subscribe); new timestamps.
+
+---
+
 ## 2026-08-21 — DL-534 Template Runner TR-P2 controls + live + Spread Tax Map
 
 **Decision (Coach GO):** TR-P2 lands controls schema, live subscribe

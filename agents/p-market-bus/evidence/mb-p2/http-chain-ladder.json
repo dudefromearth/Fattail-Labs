@@ -1,0 +1,12 @@
+{
+  "mode": "full",
+  "content_hash": "aaba48e7fae9ab42",
+  "stale": false,
+  "epoch_quality": "ok",
+  "as_of": null,
+  "unchanged": false,
+  "ladder_keys_has_stale": true,
+  "ladder_keys_has_epoch": true,
+  "ladder_stale": false,
+  "ladder_epoch_quality": "ok"
+}

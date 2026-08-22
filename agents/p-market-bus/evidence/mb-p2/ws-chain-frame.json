@@ -1,0 +1,21 @@
+{
+  "t": "chain",
+  "mode": "full",
+  "key": "chain:SPX:2026-08-24:w25",
+  "content_hash": "1f077059d548b5f4",
+  "stale": false,
+  "epoch_quality": "ok",
+  "session_open": false,
+  "keys": [
+    "content_hash",
+    "epoch_quality",
+    "key",
+    "ladder",
+    "mode",
+    "session_open",
+    "stale",
+    "t"
+  ],
+  "ladder_stale": false,
+  "ladder_epoch_quality": "ok"
+}
