@@ -156,3 +156,32 @@ class TestRunRate:
                    "Navigator": {"paying": 8, "payment_failed": 0}}
         rate = M.recurring_run_rate(members, {"Activator": 97.0, "Navigator": 267.0})
         assert rate == pytest.approx(50 * 97 + 8 * 267)
+
+
+class TestTrap5AppliesToTheFunnelToo:
+    """The current month is a fraction of a month — never average it in.
+
+    Shipped wrong once: observer_funnel emitted no `partial` key, so the
+    report's "complete months only" filter was a silent no-op and a 22-day
+    August averaged in as a whole month, dragging intake from 88 to 71.3.
+    """
+
+    def test_funnel_rows_flag_the_current_month(self):
+        subs = [sub("Observer", "2026-08-05", total=17, cust=1),
+                sub("Observer", "2026-07-05", total=17, cust=2)]
+        rows = {r["month"]: r for r in M.observer_funnel(subs, 2, NOW)}
+        assert rows["2026-08"]["partial"] is True
+        assert rows["2026-07"]["partial"] is False
+
+    def test_empty_cohorts_also_carry_the_flag(self):
+        rows = {r["month"]: r for r in M.observer_funnel([], 2, NOW)}
+        assert rows["2026-08"]["partial"] is True
+        assert set(rows["2026-07"]) >= {"month", "signups", "upgraded", "rate",
+                                        "mature", "partial"}
+
+    def test_filtering_on_partial_drops_only_the_current_month(self):
+        subs = ([sub("Observer", "2026-07-05", total=17, cust=i) for i in range(69)]
+                + [sub("Observer", "2026-08-05", total=17, cust=100 + i) for i in range(38)])
+        rows = M.observer_funnel(subs, 2, NOW)
+        complete = [r for r in rows if not r["partial"]]
+        assert [r["signups"] for r in complete] == [69]

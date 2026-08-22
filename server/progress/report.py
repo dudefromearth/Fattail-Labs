@@ -122,7 +122,9 @@ def build(now: dt.datetime | None = None) -> dict:
         funnel = M.observer_funnel(subs, MONTHS, now)
         act_churn = M.churn_by_month(subs, "Activator", MONTHS, now)
         nav_churn = M.churn_by_month(subs, "Navigator", MONTHS, now)
-        complete = [r for r in funnel if not r.get("partial")][-3:]
+        # Trap 5: average COMPLETE months only. The current month is a fraction
+        # of a month and averaging it in understates intake badly.
+        complete = [r for r in funnel if not r["partial"]][-3:]
         observers_pm = (sum(r["signups"] for r in complete) / len(complete)) if complete else 0.0
         report["commerce"] = {
             "members": members,

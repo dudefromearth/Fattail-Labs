@@ -195,7 +195,7 @@ def observer_funnel(subs: Sequence[dict], months: int, now: dt.datetime,
         ]
         if not cohort:
             rows.append({"month": start.strftime("%Y-%m"), "signups": 0, "upgraded": 0,
-                         "rate": None, "mature": False})
+                         "rate": None, "mature": False, "partial": end > now})
             continue
         upgraded = 0
         for sub in cohort:
@@ -215,6 +215,7 @@ def observer_funnel(subs: Sequence[dict], months: int, now: dt.datetime,
                 "upgraded": upgraded,
                 "rate": round(upgraded / len(cohort), 4),
                 "mature": mature,
+                "partial": end > now,   # Trap 5 — a half month is not a month
             }
         )
     return rows
