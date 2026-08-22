@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-22 — DL-542 Wiki Spec v1.2 seated for W0 only
+
+**Decision (Coach GO, plan v1.1):** Wiki Spec v1.2 is **seated for W0 only**. W0 ships (1) sibling tables `wiki_compile_candidates` + `wiki_compile_watcher_state` (OD-WK4; last SHA is not a candidate row — AT-WK5) and a fail-loud SHA watcher stub (CLI `--sha` / env `LABS_WIKI_WATCHER_SHA` / test fixture; no MiniTwo poll); (2) a read-only empty compile-inbox region on `/app/wiki` (administrator DOM only; no Compile / Dismiss / chooser). Member Wiki v0.1 remains spec of record for storage, course corpus ①②⑤, and W1–W11. Do not run `agents/p-wiki/` as this packet.
+
+**Oscar:** Labs wiki curator seated at `agents/bench/oscar.md` v0.3 from `Specs/oscar_2.md` via `agent-template.md`. Collision check: that path did not exist in-repo. Knowledge-vault Oscar (`~/.grok/agents/oscar.md`) is **not** clobbered. AGENTS.md roster line deferred (not on the W0 allowlist).
+
+**Admin Interface:** one file, `Specs/FatTail-Labs-Wiki-Admin-Interface-Spec-v0_1_2.md`. Leftover `v0_1` / `v0_1_1_1` files removed.
+
+**DL-540 confirmed** (not invented): IKI Lab auth specifications remain **withdrawn**. IKI has zero identity responsibility. Shared `/app/*` guard only. W0 adds no `iki_public`, no IKI middleware, no IKI-specific login redirect.
+
+**Does not:** W1 (second stamp: OD-WK2 deploy stubs, OD-WK9); Foxtrot live watcher (OD-WK1 / W3+); AppChrome / Options Lab launcher (DL-539); MiniTwo; course-path edits; `web/app/app/iki/**`.
+
+---
+
 ## 2026-08-21 — DL-536 TR-P3 one Runner path at flag 1 (TR8)
 
 **Decision (Coach GO):** At `NEXT_PUBLIC_LABS_RUNNER_SHELL=1`, every
