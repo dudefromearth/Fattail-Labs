@@ -195,6 +195,29 @@ export default function WikiEntryPage() {
         </button>
       </form>
 
+      {/* W0 — admin compile inbox, read-only empty region (Admin Interface v0.1.2 §2).
+          Below search, never displacing WI1. No Compile / Dismiss / chooser. */}
+      {index?.admin === true && (
+        <section
+          data-testid="wiki-compile-inbox"
+          aria-labelledby="wiki-compile-inbox-heading"
+          className="mt-8 border-t border-[var(--color-separator)] pt-8"
+        >
+          <h2
+            id="wiki-compile-inbox-heading"
+            className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]"
+          >
+            Compile inbox
+          </h2>
+          <p
+            data-testid="wiki-compile-inbox-empty"
+            className="mt-3 text-sm text-[var(--color-label-secondary)]"
+          >
+            Nothing deployed without a wiki/help directive.
+          </p>
+        </section>
+      )}
+
       {/* Zone 2 — Start here */}
       <section className="mt-12" aria-labelledby="wiki-start-heading">
         <h2
