@@ -4,6 +4,35 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-534 Template Runner TR-P2 controls + live + Spread Tax Map
+
+**Decision (Coach GO):** TR-P2 lands controls schema, live subscribe
+updates, derived (not invented) staleness, and Knowledge template
+`spread-tax@0.1`. Token [`agents/go/TR-P2.md`](../agents/go/TR-P2.md).
+
+- `controls` is `{ id, kind, default, bounds?, options? }[]`. Missing
+  default → `CONTROL_DEFAULT`. Unknown / out-of-bounds → `CONTROL_INVALID`
+  (no coerce, no clamp).
+- Subscribe yields snapshot then updates (MB7). Each document must carry
+  `stale` (boolean) and `epoch_quality` from the document; absent →
+  `STALENESS_MISSING` (TR10). As-built chain WS does not yet send those
+  keys (they live on underlier marks / PackageQuote). Tests inject them.
+  Do not map `session_open` into `stale`.
+- Render re-fires only when `content_hash` changes. `stale` /
+  `epoch_quality` are host props. Runner does not draw Keep-Warm chrome.
+- `sym-fly@0.2` registered `controls: []`, `live: true`. Source
+  **unchanged**. TR-P1 three-generation hashes still match.
+- `spread-tax@0.1`: `(ask−bid)/mid` per strike. `side` default `both`;
+  `min_oi` default `0` bounds `[0, ∞)`. Missing bid/ask or `mid≤0` →
+  `null` (not zero). Flag-gated selector on heatmap shell host.
+- Heatmap Templates Spec v0.2 **unchanged**.
+- Runner Spec §6 step 3 (controls + live) as-built. Data output still
+  THESIS. Zero `server/` · zero `web/lib/market/` edit.
+
+**Does not:** MiniTwo; IKI host; notify/data sinks; composition; license.
+
+---
+
 ## 2026-08-21 — DL-533 Template Runner TR-P1 browser shell (additive)
 
 **Decision (Coach GO):** Packet TR-P1 lands a browser Template Runner

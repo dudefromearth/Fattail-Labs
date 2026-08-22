@@ -100,6 +100,8 @@ function ok(m: string) {
     mode: "full",
     key: "SPX:2026-08-21",
     content_hash: "gen-spx-trp1",
+    stale: false,
+    epoch_quality: "ok",
   };
   sock.emit(msg);
   assert(snaps.length === 1, "one snapshot");

@@ -67,7 +67,8 @@ export function paintCurrentHeatmap(ctx: ChainContext): HeatmapTiles {
   };
 }
 
-function compute(streams: RunnerStreams): HeatmapTiles {
+function compute(streams: RunnerStreams, _controls: unknown): HeatmapTiles {
+  void _controls;
   const ctx = streams.chain;
   if (!isChainContext(ctx)) {
     return {
@@ -84,9 +85,10 @@ register({
   id: HEATMAP_ID,
   version: HEATMAP_VERSION,
   inputs: ["chain"],
-  controls: {},
+  controls: [],
+  live: true,
   outputKind: "visual/heatmap",
-  cadence: "static",
+  cadence: "live",
   sinks: ["render"],
   honesty:
     "Tiles are listed long-fly package mids on the held generation. Gaps stay gaps.",

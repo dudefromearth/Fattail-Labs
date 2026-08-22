@@ -1,5 +1,5 @@
 /**
- * Template Runner registry (TR-P1 · TR7 · TR8 · TR12).
+ * Template Runner registry (TR-P1 · TR-P2 · TR7 · TR8 · TR12).
  * One registry. Hosts differ by sink bindings, not by forked templates.
  */
 
@@ -7,7 +7,10 @@ export type RunnerErrorCode =
   | "UNKNOWN_TEMPLATE"
   | "UNDECLARED_SINK"
   | "TEMPLATE_IO"
-  | "MISSING_SOCKET";
+  | "MISSING_SOCKET"
+  | "CONTROL_DEFAULT"
+  | "CONTROL_INVALID"
+  | "STALENESS_MISSING";
 
 export class RunnerError extends Error {
   readonly code: RunnerErrorCode;
@@ -19,10 +22,22 @@ export class RunnerError extends Error {
 }
 
 export type RunnerOutputKind = "visual/heatmap";
-export type RunnerCadence = "static";
+export type RunnerCadence = "static" | "live";
 export type RunnerSinkId = "render";
 
-export type RunnerControls = Record<string, never>;
+export type ControlKind = "number" | "select" | "toggle";
+
+export type ControlDef = {
+  id: string;
+  kind: ControlKind;
+  default: string | number | boolean;
+  /** number: [min, max]. select: unused (see options). */
+  bounds?: [number, number];
+  /** select: allowed values */
+  options?: string[];
+};
+
+export type ControlValues = Record<string, string | number | boolean>;
 
 export type HeatmapTiles = {
   rows: { strike: number; label: string }[];
@@ -43,20 +58,23 @@ export type HeatmapTiles = {
 export type RunnerStreams = {
   chain?: unknown;
   content_hash?: string | null;
+  epoch_quality?: string | null;
+  stale?: boolean;
 };
 
 export type RunnerTemplate = {
   id: string;
   version: string;
   inputs: string[];
-  controls: RunnerControls;
+  controls: ControlDef[];
+  live: boolean;
   outputKind: RunnerOutputKind;
   cadence: RunnerCadence;
   sinks: RunnerSinkId[];
   honesty: string;
   framing: string;
   nonClaim: string;
-  compute: (streams: RunnerStreams, controls: RunnerControls) => HeatmapTiles;
+  compute: (streams: RunnerStreams, controls: ControlValues) => HeatmapTiles;
 };
 
 const _reg = new Map<string, RunnerTemplate>();
@@ -65,7 +83,25 @@ function key(id: string, version: string): string {
   return `${id}@${version}`;
 }
 
+function assertControlDefaults(template: RunnerTemplate): void {
+  if (!Array.isArray(template.controls)) {
+    throw new RunnerError(
+      "CONTROL_DEFAULT",
+      `controls must be a schema array for ${template.id}@${template.version}`,
+    );
+  }
+  for (const c of template.controls) {
+    if (c.default === undefined) {
+      throw new RunnerError(
+        "CONTROL_DEFAULT",
+        `control ${c.id} missing default (${template.id}@${template.version})`,
+      );
+    }
+  }
+}
+
 export function register(template: RunnerTemplate): void {
+  assertControlDefaults(template);
   _reg.set(key(template.id, template.version), template);
 }
 
@@ -78,6 +114,10 @@ export function get(id: string, version: string): RunnerTemplate {
     );
   }
   return t;
+}
+
+export function listRegistered(): RunnerTemplate[] {
+  return [..._reg.values()];
 }
 
 /** Test helper — empty the registry. */
@@ -97,17 +137,17 @@ export function emitToSink(
   }
 }
 
-/**
- * Additive flag. Missing or any value other than "1" → current path.
- * Missing is not fail-loud (TR-P1 · DL-533).
- */
+export function controlDefaults(template: RunnerTemplate): ControlValues {
+  const out: ControlValues = {};
+  for (const c of template.controls) out[c.id] = c.default;
+  return out;
+}
+
 export function runnerShellEnabled(
-  env: Record<string, string | undefined> = process.env as Record<
-    string,
-    string | undefined
-  >,
+  env?: Record<string, string | undefined>,
 ): boolean {
-  return env.NEXT_PUBLIC_LABS_RUNNER_SHELL === "1";
+  if (env) return env.NEXT_PUBLIC_LABS_RUNNER_SHELL === "1";
+  return process.env.NEXT_PUBLIC_LABS_RUNNER_SHELL === "1";
 }
 
 export function tilesHash(tiles: HeatmapTiles): string {

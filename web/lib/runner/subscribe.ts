@@ -1,14 +1,12 @@
 /**
- * Runner subscribe — TR2 / TR3 / MB7.
- * Registers interest on the existing tab singleton. Opens no socket of its own.
- * No HTTP. No poll.
+ * Runner subscribe — TR2 / TR3 / MB7 / TR10.
+ * Snapshot first, then updates. Provenance derived, not invented.
  */
 
 import { getMarketSocket } from "@/lib/market/MarketSocket";
 import type { ChainSub, MarketInbound } from "@/lib/market/types";
 import { RunnerError } from "./registry";
 
-/** Duck type — do not extend MarketSocket. Production uses getMarketSocket(). */
 export type RunnerSocket = {
   setChainInterest: (id: string, sub: ChainSub | null) => void;
   subscribe: (fn: (msg: MarketInbound) => void) => () => void;
@@ -18,6 +16,7 @@ export type RunnerSubscribeInputs = {
   interestId: string;
   topics: string[];
   chain?: ChainSub | null;
+  onError?: (err: unknown) => void;
 };
 
 export type RunnerSnapshot = {
@@ -25,11 +24,12 @@ export type RunnerSnapshot = {
   content_hash: string | null;
   mode: "full" | "diff" | "unchanged" | string;
   as_of?: string | null;
+  epoch_quality: string;
+  stale: boolean;
   raw: MarketInbound;
 };
 
 export type SubscribeDeps = {
-  /** Injected in tests. Production uses getMarketSocket(). */
   socket?: RunnerSocket | null;
 };
 
@@ -49,10 +49,50 @@ function requireSocket(deps?: SubscribeDeps): RunnerSocket {
   return getMarketSocket();
 }
 
+function pick(obj: Record<string, unknown>, key: string): unknown {
+  return obj[key];
+}
+
 /**
- * Register chain interest on the tab singleton and yield chain snapshots
- * (MB7: server sends snapshot first, then updates). Caller must unsubscribe.
+ * TR10: stale and epoch_quality must be on the document (message or ladder).
+ * Derived, not invented. Missing field → STALENESS_MISSING.
  */
+export function provenanceFromChainDoc(msg: MarketInbound): {
+  stale: boolean;
+  epoch_quality: string;
+} {
+  const m = msg as unknown as Record<string, unknown>;
+  const ladder =
+    m.ladder && typeof m.ladder === "object"
+      ? (m.ladder as Record<string, unknown>)
+      : null;
+  const staleRaw =
+    pick(m, "stale") !== undefined
+      ? pick(m, "stale")
+      : ladder
+        ? pick(ladder, "stale")
+        : undefined;
+  const eqRaw =
+    pick(m, "epoch_quality") !== undefined
+      ? pick(m, "epoch_quality")
+      : ladder
+        ? pick(ladder, "epoch_quality")
+        : undefined;
+  if (typeof staleRaw !== "boolean") {
+    throw new RunnerError(
+      "STALENESS_MISSING",
+      "chain document lacks boolean stale",
+    );
+  }
+  if (eqRaw == null || eqRaw === "") {
+    throw new RunnerError(
+      "STALENESS_MISSING",
+      "chain document lacks epoch_quality",
+    );
+  }
+  return { stale: staleRaw, epoch_quality: String(eqRaw) };
+}
+
 export function subscribe(
   inputs: RunnerSubscribeInputs,
   onSnapshot: (snap: RunnerSnapshot) => void,
@@ -71,13 +111,21 @@ export function subscribe(
       as_of?: string;
       key?: string;
     };
-    onSnapshot({
-      topic: String(m.key || "chain"),
-      content_hash: m.content_hash ?? null,
-      mode: m.mode || "full",
-      as_of: m.as_of ?? null,
-      raw: msg,
-    });
+    try {
+      const prov = provenanceFromChainDoc(msg);
+      onSnapshot({
+        topic: String(m.key || "chain"),
+        content_hash: m.content_hash ?? null,
+        mode: m.mode || "full",
+        as_of: m.as_of ?? null,
+        epoch_quality: prov.epoch_quality,
+        stale: prov.stale,
+        raw: msg,
+      });
+    } catch (err) {
+      if (inputs.onError) inputs.onError(err);
+      else throw err;
+    }
   });
   return () => {
     sock.setChainInterest(inputs.interestId, null);
@@ -85,10 +133,6 @@ export function subscribe(
   };
 }
 
-/**
- * Same field `useOptionChainBus` stores as `hash` (chain content_hash).
- * Kept here so the AT can compare without editing the hook.
- */
 export function chainMessageContentHash(msg: MarketInbound): string | null {
   if (msg.t !== "chain") return null;
   const h = (msg as { content_hash?: string }).content_hash;

@@ -1,15 +1,13 @@
 /**
- * Runner run — TR5 purity. Template is a pure function of streams + controls.
- * I/O during compute → RunnerError('TEMPLATE_IO').
- *
- * Guarded surfaces (all six, always): fetch, XMLHttpRequest, WebSocket,
- * localStorage, sessionStorage, document.
+ * Runner run — TR5 purity + TR-P2 control validation.
+ * Unknown / out-of-bounds control → CONTROL_INVALID (no coerce, no clamp).
  */
 
 import {
+  controlDefaults,
   RunnerError,
+  type ControlValues,
   type HeatmapTiles,
-  type RunnerControls,
   type RunnerStreams,
   type RunnerTemplate,
 } from "./registry";
@@ -37,24 +35,12 @@ function withPurityGuard<T>(fn: () => T): T {
     value: g[name],
   }));
 
-  function install(name: string, value: unknown): void {
-    try {
-      Object.defineProperty(g, name, {
-        configurable: true,
-        enumerable: true,
-        writable: true,
-        value,
-      });
-    } catch {
-      g[name] = value;
-    }
-  }
-
-  g.fetch = trap;
-  g.XMLHttpRequest = function ForbiddenXHR() {
+  const bag = g as Record<string, unknown>;
+  bag.fetch = trap;
+  bag.XMLHttpRequest = function ForbiddenXHR() {
     trap();
   };
-  g.WebSocket = function ForbiddenWS() {
+  bag.WebSocket = function ForbiddenWS() {
     trap();
   };
   for (const name of ["localStorage", "sessionStorage", "document"] as const) {
@@ -66,7 +52,7 @@ function withPurityGuard<T>(fn: () => T): T {
         set: trap,
       });
     } catch {
-      g[name] = trap;
+      bag[name] = trap;
     }
   }
 
@@ -81,18 +67,71 @@ function withPurityGuard<T>(fn: () => T): T {
           delete g[s.name];
         }
       } catch {
-        g[s.name] = s.value;
+        (g as Record<string, unknown>)[s.name] = s.value;
       }
     }
   }
 }
 
+export function validateControls(
+  template: RunnerTemplate,
+  supplied: ControlValues,
+): ControlValues {
+  const schema = new Map(template.controls.map((c) => [c.id, c]));
+  for (const id of Object.keys(supplied)) {
+    if (!schema.has(id)) {
+      throw new RunnerError(
+        "CONTROL_INVALID",
+        `unknown control ${id} (${template.id}@${template.version})`,
+      );
+    }
+  }
+  const merged = { ...controlDefaults(template), ...supplied };
+  for (const def of template.controls) {
+    const v = merged[def.id];
+    if (def.kind === "number") {
+      if (typeof v !== "number" || !Number.isFinite(v)) {
+        throw new RunnerError(
+          "CONTROL_INVALID",
+          `control ${def.id} not a finite number`,
+        );
+      }
+      if (def.bounds) {
+        const [lo, hi] = def.bounds;
+        if (v < lo || v > hi) {
+          throw new RunnerError(
+            "CONTROL_INVALID",
+            `control ${def.id} out of bounds`,
+          );
+        }
+      }
+    } else if (def.kind === "select") {
+      const opts = def.options ?? [];
+      if (typeof v !== "string" || !opts.includes(v)) {
+        throw new RunnerError(
+          "CONTROL_INVALID",
+          `control ${def.id} not in options`,
+        );
+      }
+    } else if (def.kind === "toggle") {
+      if (typeof v !== "boolean") {
+        throw new RunnerError(
+          "CONTROL_INVALID",
+          `control ${def.id} not a boolean`,
+        );
+      }
+    }
+  }
+  return merged;
+}
+
 export function run(
   template: RunnerTemplate,
   streams: RunnerStreams,
-  controls: RunnerControls,
+  controls: ControlValues,
 ): HeatmapTiles {
-  return withPurityGuard(() => template.compute(streams, controls));
+  const values = validateControls(template, controls);
+  return withPurityGuard(() => template.compute(streams, values));
 }
 
 export const TEMPLATE_IO_SURFACES = GUARDED;

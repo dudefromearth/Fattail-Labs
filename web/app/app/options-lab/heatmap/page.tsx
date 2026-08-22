@@ -8,7 +8,7 @@ import "@/lib/runner/templates/heatmap";
 
 /**
  * Heatmap — full-height workspace: controls ~1/5 · chain ~4/5.
- * TR-P1: NEXT_PUBLIC_LABS_RUNNER_SHELL=1 → Runner shell host (same renderer).
+ * Flag NEXT_PUBLIC_LABS_RUNNER_SHELL=1 → Runner shell host (template selector).
  */
 export default function OptionsLabHeatmapPage() {
   return (
