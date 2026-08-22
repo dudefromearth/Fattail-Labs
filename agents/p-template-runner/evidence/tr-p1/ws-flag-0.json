@@ -1,0 +1,24 @@
+{
+  "flag": "0",
+  "base": "http://localhost:3000",
+  "url": "http://localhost:3000/app/options-lab/heatmap",
+  "tiles": 423,
+  "marketCount": 1,
+  "sockets": [
+    {
+      "url": "ws://localhost:3000/_next/webpack-hmr?id=4V53BBwfHzJlY-sdXcX2R",
+      "openedAt": "2026-08-22T02:19:50.117Z",
+      "market": false
+    },
+    {
+      "url": "ws://localhost:3000/_next/webpack-hmr?id=2FyC6dey_jTc66J-2XBUi",
+      "openedAt": "2026-08-22T02:19:51.330Z",
+      "market": false
+    },
+    {
+      "url": "ws://localhost:3000/api/me/market/stream",
+      "openedAt": "2026-08-22T02:19:51.407Z",
+      "market": true
+    }
+  ]
+}

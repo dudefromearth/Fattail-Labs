@@ -4,6 +4,72 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-533 Template Runner TR-P1 browser shell (additive)
+
+**Decision (Coach GO):** Packet TR-P1 lands a browser Template Runner
+shell in `web/lib/runner/`. Token [`agents/go/TR-P1.md`](../agents/go/TR-P1.md).
+
+- Templates run in the browser (TR2). **Zero `server/` change.**
+- Subscribe door = existing `WS /api/me/market/stream` via
+  `getMarketSocket()` interest API (`setChainInterest`). No new socket,
+  no HTTP, no poll (TR3 · Arch 28 §4.1–4.3 · Arch 34 · DL-419/420).
+- Today's heatmap template (`sym-fly` v0.2) is **registered**, not copied.
+  `tilesHash(shell) === tilesHash(current)` on SPX / TSLA / SPY recorded
+  generations. Heatmap template source diff empty.
+- Shell is **additive** behind `NEXT_PUBLIC_LABS_RUNNER_SHELL`:
+  missing or `0` → current path; `1` → shell host (same
+  `HeatmapChainPanel` renderer). Missing env is **not** fail-loud.
+- TR12 named errors: `UNKNOWN_TEMPLATE` · `UNDECLARED_SINK` ·
+  `TEMPLATE_IO` · `MISSING_SOCKET`.
+- Spec v0.1 §6 step 1 marked as-built. Rest of Runner spec stays THESIS.
+
+**Does not:** MiniTwo required in this body; IKI host; controls; live /
+data / notify sinks; composition; license; any `web/lib/market/` edit.
+
+---
+
+## 2026-08-21 — DL-532 Redis cache and SSE-gateway spec map
+
+**Decision:** Pointer doc
+[`Architecture/34-redis-cache-and-sse-gateway.md`](./34-redis-cache-and-sse-gateway.md)
+records which specs bind the Redis generation store vs Coach’s “SSE
+gateway.” Redis = Market Bus Spec §5 + Arch 28. As-built subscribe door
+= `WS /api/me/market/stream` (Coach phrase “SSE gateway”; OPF3 forbids
+SSE as market transport). A real SSE gateway is Template Runner **TR3**
+thesis only — not GO.
+
+**Does not:** MiniTwo; new transport; BUILD AUTHORITY on TR3.
+
+---
+
+## 2026-08-21 — DL-531 Inside IKI Lab: Wiki and IKI Factory
+
+**Decision (Coach, verbatim):**
+
+> Inside IKI lab is the Wiki and the IKI Factory
+
+**Seating:** **IKI Lab** is the Apps-grid **suite** (like Options Lab). Inner nav pills are **Wiki** and **IKI Factory**. Wiki is not renamed away. IKI spec **v0.1.2**. **OD-IKI-3** adopted.
+
+**Does not:** MiniTwo; Factory job (**OD-IKI-1** still open).
+
+---
+
+## 2026-08-21 — DL-530 Width Fit member guide in docs + help reference
+
+**Decision (Coach):** Member how-to for Heatmap **Width Fit** lives in
+[`docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md`](../docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md)
+and is ingested by the help concierge as
+`server/help_reference/options-lab-heatmap-width-fit.md`.
+
+Covers Template switcher (not Advanced flies Value), color-only tiles
+(teal weaker / amber stronger), hover vs click panels, footer median +
+\(n\), weights, Expand, surface states. Observation-only vocabulary
+(Spec §8.3). App-areas Heatmap / Options Lab point at it.
+
+**Does not:** MiniTwo in this body; changing compute law.
+
+---
+
 ## 2026-08-21 — DL-528 IKI Lab foundation page is PDS Spec v0.1 Part I
 
 **Decision (Coach, verbatim):**
