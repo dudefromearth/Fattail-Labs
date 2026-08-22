@@ -4,6 +4,14 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-22 — DL-544 Wiki Spec v1.2 W1 seated
+
+**Decision (Coach GO):** Wiki Spec v1.2 **W1** is seated. OD-WK2 = **stubs** (deploy / admin-point only). OD-WK9 = **board transition hook** on `published` for `product_line=wiki`. Declared `surface_key` list: `iki.wiki.entry`, `iki.wiki.article`, `iki.runner`, `iki.factory`. Launcher on IKI + Wiki routes (“Compile this into Wiki”). Admin-point + wiki-only compile; help/both disabled. Capture is surface_key + route (no entity id, no Family B). OD-WA3 W1 = visible operator mark.
+
+**Does not:** help target (OD-WK6); Foxtrot live watcher; AppChrome / Options Lab launcher; MiniTwo; IKI-P3 restyle; implementing DL-543.
+
+---
+
 ## 2026-08-22 — DL-543 Email + intent is a platform auth gate, not IKI
 
 **Decision (Coach):** Email + structured intent is an **authentication gate at platform level** (Identity-Access / Accounts & Capital). It is **not** an IKI Lab feature and is **not** minted by IKI. Coach: it “will be taken care of at a completely different level.”

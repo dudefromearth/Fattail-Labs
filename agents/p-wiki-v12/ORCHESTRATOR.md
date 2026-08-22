@@ -11,8 +11,8 @@
 | Slice | State |
 |-------|--------|
 | Plan v1.1 | **GO W0** 2026-08-22 (OD-WK4 both siblings · Oscar = Labs `agents/bench/oscar.md` does not clobber vault · design chain = UX·Echo·Interaction·Tango) |
-| W0 | **W0-G PASS** 2026-08-22 (tables + watcher stub + empty inbox). Commits at logical slices. |
-| W1 | second stamp; blocked |
+| W0 | **W0-G PASS** 2026-08-22 |
+| W1 | **W1-G PASS** 2026-08-22 (OD-WK2 stubs · OD-WK9 publish hook · launcher + wiki-only compile) |
 
 ### Do not
 

@@ -215,3 +215,15 @@ W1 is a **second stamp** (OD-WK2 deploy-path stubs, OD-WK9). Do not stamp those 
 
 **Signed:** Coach (GO 2026-08-22: “Coach approved so, GO with the plan”)  
 **Date:** 2026-08-22
+
+---
+
+## Coach stamp (W1)
+
+- [x] **OD-WK2** = stubs (deploy / admin-point path only). Course path unchanged.
+- [x] **OD-WK9** = board transition hook on `published` for `product_line=wiki` (Oscar files; no board authority).
+- [x] **GO W1** — Coach 2026-08-22: “go forward with the rest of the plan”
+- [x] **OD-WA3** W1 default = visible operator mark (not Help corner). Chord not shipped.
+
+**Signed:** Coach  
+**Date:** 2026-08-22
