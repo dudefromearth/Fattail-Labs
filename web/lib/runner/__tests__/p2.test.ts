@@ -19,7 +19,7 @@ import {
   type RunnerSnapshot,
   type RunnerSocket,
 } from "../subscribe";
-import { pushTileSet } from "../sinks/render";
+import { pushTileSet } from "../host";
 import {
   HEATMAP_TEMPLATE_ID,
   HEATMAP_TEMPLATE_VERSION,

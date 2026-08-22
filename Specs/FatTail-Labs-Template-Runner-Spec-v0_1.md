@@ -97,7 +97,7 @@ Browser execution + "a standing 24-hour process" reconcile as: the **Factory** r
 
 1. Registry: HM v0.2 templates register unchanged as `output kind = visual/heatmap, static-per-generation`. Byte-identical regression against the current heatmap is the first AT. **AS-BUILT TR-P1** (`web/lib/runner/` · evidence `web/lib/runner/__tests__/shell.test.ts` · **DL-533**). Flag `NEXT_PUBLIC_LABS_RUNNER_SHELL` (missing/`0` = current path; `1` = shell). Zero `server/` change. Heatmap template source unchanged.
 2. Gateway: stand up SSE gateway reading the same generations the WS path serves; AT: same generation hash on both doors.
-3. Controls + live + data output: contract additions per TR7 with no change to existing templates. **AS-BUILT TR-P2 (controls + live only)** — `web/lib/runner/` · `spread-tax@0.1` · **DL-534**. Data output remains THESIS. Heatmap Templates Spec v0.2 **unchanged**.
+3. Controls + live + data output: contract additions per TR7 with no change to existing templates. **AS-BUILT TR-P2 (controls + live)** · **TR-P3 (TR8 one path at flag 1)** — `HeatmapChainPanel` off the shell host · **DL-534** · **DL-536**. Data output remains THESIS. Heatmap Templates Spec v0.2 **unchanged**. The TR-P2 selector/unmount interest drop is resolved in TR-P3.
 4. IKI host mount.
 5. Composition (TR6) and notification/signal sinks last — they are the first things with consent/contract implications (OD-PDS11).
 

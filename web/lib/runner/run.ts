@@ -44,6 +44,10 @@ function withPurityGuard<T>(fn: () => T): T {
     trap();
   };
   for (const name of ["localStorage", "sessionStorage", "document"] as const) {
+    const desc =
+      Object.getOwnPropertyDescriptor(g, name) ||
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(g), name);
+    if (desc && desc.configurable === false) continue;
     try {
       Object.defineProperty(g, name, {
         configurable: true,

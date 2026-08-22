@@ -1,0 +1,32 @@
+{
+  "captured_at": "2026-08-22T03:30:41.417Z",
+  "rows": [
+    {
+      "symbol": "SPX",
+      "expiration": "2026-08-24",
+      "content_hash": "90d5efeb50962751",
+      "tilesHash_flag0_pipeline": "-105ca387:26141",
+      "tilesHash_through_run": "-105ca387:26141",
+      "equal": true,
+      "source": "live HTTP chain-ladder"
+    },
+    {
+      "symbol": "TSLA",
+      "expiration": "2026-08-24",
+      "content_hash": "c2b43299aabedbaf",
+      "tilesHash_flag0_pipeline": "5c23f585:17503",
+      "tilesHash_through_run": "5c23f585:17503",
+      "equal": true,
+      "source": "live HTTP chain-ladder"
+    },
+    {
+      "symbol": "SPY",
+      "expiration": "2026-08-24",
+      "content_hash": "d4b16262d1203e6e",
+      "tilesHash_flag0_pipeline": "-546147c5:11192",
+      "tilesHash_through_run": "-546147c5:11192",
+      "equal": true,
+      "source": "live HTTP chain-ladder"
+    }
+  ]
+}

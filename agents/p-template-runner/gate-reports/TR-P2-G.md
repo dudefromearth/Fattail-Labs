@@ -65,5 +65,5 @@ Submitted with evidence pack [`agents/p-template-runner/evidence/tr-p2/`](../evi
 **Re-checked:** p2 tests 13 passed · TR-P1 regression hashes unchanged · flag-1 market WS = 1 · `sym-fly@0.2` live bus = HeatmapChainPanel (423 tiles) · `spread-tax@0.1` live bus = named `STALENESS_MISSING` · TR8 not true at flag 1 (stated).
 
 **Recorded:** **PASS**  
-**Residual:** TR-P3 — put `sym-fly` on the Runner `subscribe()` path; blocked on Market Bus chain-doc `stale` / `epoch_quality` ([FINDING-chain-doc-staleness.md](./FINDING-chain-doc-staleness.md)).  
-**Does not:** MiniTwo. TR-P2 remains uncommitted until Coach opens commit.
+**Residual:** TR-P3 — put `sym-fly` on the Runner `subscribe()` path. **Closed by TR-P3** (GO `agents/go/TR-P3.md` · **DL-536**): flag 1 host no longer mounts `HeatmapChainPanel`; every template uses `subscribe() → run() → render`.  
+**Does not:** MiniTwo.

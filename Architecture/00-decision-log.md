@@ -4,6 +4,23 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-21 — DL-536 TR-P3 one Runner path at flag 1 (TR8)
+
+**Decision (Coach GO):** At `NEXT_PUBLIC_LABS_RUNNER_SHELL=1`, every
+template including `sym-fly@0.2` renders `subscribe() → run() → render
+sink`. `HeatmapChainPanel` is **not** mounted on the shell path. TR8
+holds at flag 1. Flag 0 is unchanged (panel still draws).
+
+TR-P2 host defect (selector unmount dropped interest) is resolved as a
+consequence. MB-P2 consumer proof (spread-tax on the real bus) closes
+here. Runner Spec §6 steps 1–3 as-built. Heatmap Spec v0.2 unchanged.
+Token [`agents/go/TR-P3.md`](../agents/go/TR-P3.md). TR-P2-G residual
+closed.
+
+**Does not:** MiniTwo; editing `HeatmapChainPanel` or `sym-fly`; IKI.
+
+---
+
 ## 2026-08-21 — DL-535 Chain documents carry stale + epoch_quality (MB-P2)
 
 **Decision (Coach GO):** Market Bus **v1.0.2**. The chain generation
