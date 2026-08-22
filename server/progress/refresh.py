@@ -41,7 +41,7 @@ def refresh_source(name: str, months: int = 8, now: dt.datetime | None = None) -
         payload, status, error = None, "failed", f"{type(exc).__name__}: {exc}"
         log.warning("progress source %s failed: %s", name, error)
     duration_ms = int((time.monotonic() - started) * 1000)
-    with db.transaction() as cur:
+    with db.transaction() as conn, conn.cursor() as cur:
         cur.execute(
             "INSERT INTO progress_snapshot "
             "(source, captured_at, status, error, duration_ms, payload) "
@@ -61,7 +61,7 @@ def refresh_all(months: int = 8) -> list[dict]:
 
 def latest(source: str) -> dict | None:
     """Most recent SUCCESSFUL snapshot for a source, payload decoded."""
-    with db.transaction() as cur:
+    with db.transaction() as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT captured_at, payload FROM progress_snapshot "
             "WHERE source = %s AND status = 'ok' ORDER BY captured_at DESC LIMIT 1",
@@ -78,7 +78,7 @@ def latest(source: str) -> dict | None:
 
 def last_attempt(source: str) -> dict | None:
     """Most recent attempt of any status — how a failure surfaces on the page."""
-    with db.transaction() as cur:
+    with db.transaction() as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT captured_at, status, error FROM progress_snapshot "
             "WHERE source = %s ORDER BY captured_at DESC LIMIT 1",
@@ -90,7 +90,7 @@ def last_attempt(source: str) -> dict | None:
 def prune(keep_days: int = 30) -> int:
     """Snapshots are telemetry, not a ledger. Old rows go."""
     cutoff = dt.datetime.utcnow() - dt.timedelta(days=keep_days)
-    with db.transaction() as cur:
+    with db.transaction() as conn, conn.cursor() as cur:
         cur.execute("DELETE FROM progress_snapshot WHERE captured_at < %s", (cutoff,))
         return cur.rowcount
 

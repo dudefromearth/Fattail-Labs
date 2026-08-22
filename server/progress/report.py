@@ -24,7 +24,7 @@ SOURCES = ("woocommerce", "youtube", "activecampaign")
 
 
 def load_params() -> dict:
-    with db.transaction() as cur:
+    with db.transaction() as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT param_key, param_value, unit, label, hint, min_value, max_value, "
             "sort_order, updated_at, updated_by FROM progress_model_param "
@@ -55,7 +55,7 @@ def set_param(key: str, value: float, actor: str | None) -> dict:
         raise ValueError(
             f"{key} must be between {spec['min_value']} and {spec['max_value']}"
         )
-    with db.transaction() as cur:
+    with db.transaction() as conn, conn.cursor() as cur:
         cur.execute(
             "UPDATE progress_model_param SET param_value=%s, updated_at=%s, "
             "updated_by=%s WHERE param_key=%s",
