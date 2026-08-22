@@ -21,8 +21,23 @@ STATUSES = (
 )
 
 PRODUCT_LINES = frozenset(
-    {"course", "youtube_long", "coaching_short", "thematic_short", "other"}
+    {
+        "course",
+        "youtube_long",
+        "coaching_short",
+        "thematic_short",
+        "other",
+        "wiki",  # Wiki Spec v1.2 W1 — wiki-only stubs (help waits on OD-WK6)
+    }
 )
+
+# Wiki stubs skip the video production package. draft → awaiting_approval → published.
+WIKI_TRANSITIONS: dict[str, frozenset[str]] = {
+    "draft": frozenset({"awaiting_approval", "rejected"}),
+    "awaiting_approval": frozenset({"published", "rejected"}),
+    "published": frozenset(),
+    "rejected": frozenset({"draft"}),
+}
 
 SUB_STAGES = frozenset(
     {"research", "design", "script", "produce", "package", "guardian"}
@@ -244,7 +259,14 @@ def create_item(
     priority: int = 0,
     cast_id: str | None = None,
 ) -> dict:
-    if actor.kind != "human" or actor.role != "administrator":
+    wiki_oscar = (
+        (product_line or "").strip() == "wiki"
+        and actor.kind == "agent"
+        and actor.label == "oscar"
+    )
+    if not (
+        (actor.kind == "human" and actor.role == "administrator") or wiki_oscar
+    ):
         raise BoardError("only human administrators may create backlog items")
     title = (title or "").strip()
     intent = (intent_md or "").strip()
@@ -389,19 +411,6 @@ def transition(
     else:
         sub_stage = None
 
-    # Phase C: package must be complete before entering awaiting_approval
-    if to_status == "awaiting_approval":
-        try:
-            import packages as packages_mod
-
-            packages_mod.validate_for_approval(item_id)
-        except Exception as exc:
-            from packages import PackageError
-
-            if isinstance(exc, PackageError):
-                raise BoardError(str(exc)) from exc
-            raise
-
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -411,8 +420,24 @@ def transition(
             if not row:
                 raise BoardError("item not found")
             from_status = row["status"]
+            is_wiki = str(row.get("product_line") or "") == "wiki"
+            if to_status == "awaiting_approval" and not is_wiki:
+                try:
+                    import packages as packages_mod
+
+                    packages_mod.validate_for_approval(item_id)
+                except Exception as exc:
+                    from packages import PackageError
+
+                    if isinstance(exc, PackageError):
+                        raise BoardError(str(exc)) from exc
+                    raise
             if to_status != from_status:
-                allowed = TRANSITIONS.get(from_status, frozenset())
+                allowed = (
+                    WIKI_TRANSITIONS.get(from_status, frozenset())
+                    if is_wiki
+                    else TRANSITIONS.get(from_status, frozenset())
+                )
                 if to_status not in allowed:
                     raise BoardError(
                         f"illegal transition {from_status} → {to_status}"
@@ -488,7 +513,11 @@ def transition(
     )
 
     # Phase C: freeze package when entering awaiting_approval
-    if to_status == "awaiting_approval" and from_status != to_status:
+    if (
+        to_status == "awaiting_approval"
+        and from_status != to_status
+        and not is_wiki
+    ):
         try:
             import packages as packages_mod
 
@@ -502,7 +531,11 @@ def transition(
 
     # Phase C/D: decide package + optional Labs placement on human publish
     placement_result = None
-    if to_status == "published" and from_status != to_status:
+    if to_status == "published" and from_status != to_status and is_wiki:
+        import wiki_compile_oscar as oscar_mod
+
+        oscar_mod.on_board_published(item_id)
+    elif to_status == "published" and from_status != to_status:
         try:
             import packages as packages_mod
 

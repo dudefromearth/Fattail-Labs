@@ -11,12 +11,19 @@ from __future__ import annotations
 import json
 import re
 
-from fastapi import APIRouter, HTTPException, Request
+from datetime import datetime
+
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 
 import auth
 import db
+import wiki_compile_oscar as oscar
+import wiki_compile_store as compile_store
+import wiki_compile_surfaces as surfaces
 import wiki_store
 from guards import require_actor, require_session
+from wiki_compile_oscar import WikiCompileError
+from wiki_compile_surfaces import CaptureError
 
 router = APIRouter(tags=["wiki"])
 
@@ -121,13 +128,31 @@ def wiki_index(request: Request) -> dict:
                 f"""
                 SELECT slug, title, kind, status, updated_date, tags_json, sources_json
                 FROM wiki_pages_idx
+                WHERE slug = 'iki' {status_clause}
+                LIMIT 1
+                """
+            )
+            foundation = cur.fetchone()
+            cur.execute(
+                f"""
+                SELECT slug, title, kind, status, updated_date, tags_json, sources_json
+                FROM wiki_pages_idx
                 WHERE 1=1 {status_clause}
                 ORDER BY updated_date DESC, slug ASC
                 LIMIT 6
                 """
             )
             recent = [_page_row(r) for r in cur.fetchall()]
-    return {"kinds": kinds, "start_here": topics[:8], "recent": recent, "admin": admin}
+    start_here = []
+    if foundation:
+        start_here.append(_page_row(foundation))
+    for t in topics:
+        if t["slug"] == "iki":
+            continue
+        start_here.append(t)
+        if len(start_here) >= 8:
+            break
+    return {"kinds": kinds, "start_here": start_here, "recent": recent, "admin": admin}
 
 
 @router.get("/api/wiki/pages/{slug}")
@@ -262,3 +287,99 @@ def wiki_reindex(request: Request) -> dict:
     with db.transaction() as conn:
         counts = wiki_store.reindex(conn, root)
     return counts
+
+
+def _require_admin(request: Request) -> dict:
+    claims = require_session(request)
+    if not _is_admin(claims):
+        raise HTTPException(status_code=404, detail="Not found")
+    return claims
+
+
+def _jsonable(row: dict) -> dict:
+    out = dict(row)
+    for k, v in list(out.items()):
+        if isinstance(v, datetime):
+            out[k] = v.isoformat()
+    return out
+
+
+@router.get("/api/wiki/compile-inbox")
+def compile_inbox(request: Request) -> dict:
+    _require_admin(request)
+    return {
+        "candidates": [_jsonable(r) for r in compile_store.list_candidates()],
+        "surfaces": list(surfaces.DECLARED_SURFACES),
+    }
+
+
+@router.post("/api/wiki/compile-candidates")
+def compile_admin_point(
+    request: Request, background: BackgroundTasks, body: dict = {}
+) -> dict:
+    """Admin-point (AT-WK11/12). Capture only surface_key, state_key, route."""
+    claims = _require_admin(request)
+    compile_now = bool(body.get("compile_now"))
+    target = body.get("target")
+    try:
+        oscar.assert_wiki_target(target)
+        captured = surfaces.sanitize_capture(body)
+    except (CaptureError, WikiCompileError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    note = body.get("note")
+    note_s = None if note in (None, "") else str(note)[:1024]
+    ident = surfaces.identity_key(captured["surface_key"], captured["state_key"])
+    title = oscar._title_for(captured["surface_key"])
+    row = compile_store.insert_admin_point(
+        identity_key=ident,
+        title=title,
+        surface_key=captured["surface_key"],
+        state_key=captured["state_key"],
+        route=captured["route"],
+        note=note_s,
+    )
+    if compile_now:
+        compile_store.set_disposition(
+            row["id"], "compiling", disposed_by=int(claims["identity_id"])
+        )
+        row = compile_store.get_candidate(row["id"]) or row
+        background.add_task(oscar.compile_wiki_stub, row["id"])
+    return _jsonable(row)
+
+
+@router.post("/api/wiki/compile-candidates/{candidate_id}/compile")
+def compile_from_inbox(
+    candidate_id: int, request: Request, background: BackgroundTasks, body: dict = {}
+) -> dict:
+    claims = _require_admin(request)
+    row = compile_store.get_candidate(candidate_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    try:
+        oscar.assert_wiki_target(body.get("target"))
+        oscar.assert_audience(row["audience"], body.get("audience"))
+    except WikiCompileError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    compile_store.set_disposition(
+        candidate_id, "compiling", disposed_by=int(claims["identity_id"])
+    )
+    row = compile_store.get_candidate(candidate_id) or row
+    background.add_task(oscar.compile_wiki_stub, candidate_id)
+    return _jsonable(row)
+
+
+@router.post("/api/wiki/compile-candidates/{candidate_id}/dismiss")
+def dismiss_candidate(candidate_id: int, request: Request, body: dict | None = None) -> dict:
+    claims = _require_admin(request)
+    row = compile_store.get_candidate(candidate_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    note = (body or {}).get("note")
+    note_s = None if note in (None, "") else str(note)[:1024]
+    row = compile_store.set_disposition(
+        candidate_id,
+        "dismissed",
+        disposed_by=int(claims["identity_id"]),
+        note=note_s,
+    )
+    return _jsonable(row)
