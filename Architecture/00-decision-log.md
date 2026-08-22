@@ -4,6 +4,18 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-22 — DL-543 Email + intent is a platform auth gate, not IKI
+
+**Decision (Coach):** Email + structured intent is an **authentication gate at platform level** (Identity-Access / Accounts & Capital). It is **not** an IKI Lab feature and is **not** minted by IKI. Coach: it “will be taken care of at a completely different level.”
+
+Spec: [`Specs/FatTail-Labs-Platform-Email-Intent-Auth-Gate-Spec-v0_1.md`](../Specs/FatTail-Labs-Platform-Email-Intent-Auth-Gate-Spec-v0_1.md) **DRAFT v0.1** — named, not seated for implementation. Coach content retained from the withdrawn IKI-P1 packet: email + structured intent · consent recorded · no dark patterns · one-click unsubscribe · no anonymous WS. **No `iki_public` role.**
+
+**DL-540 stands:** IKI has zero identity responsibility; shared `/app/*` guard only. When public IKI views exist (OD-WK7 / OD-PDS10), they consume this platform gate — they do not grow a second auth.
+
+**Does not:** implement the gate now; Wiki W1; MiniTwo; IKI-P3 chrome; anonymous public WS.
+
+---
+
 ## 2026-08-22 — DL-542 Wiki Spec v1.2 seated for W0 only
 
 **Decision (Coach GO, plan v1.1):** Wiki Spec v1.2 is **seated for W0 only**. W0 ships (1) sibling tables `wiki_compile_candidates` + `wiki_compile_watcher_state` (OD-WK4; last SHA is not a candidate row — AT-WK5) and a fail-loud SHA watcher stub (CLI `--sha` / env `LABS_WIKI_WATCHER_SHA` / test fixture; no MiniTwo poll); (2) a read-only empty compile-inbox region on `/app/wiki` (administrator DOM only; no Compile / Dismiss / chooser). Member Wiki v0.1 remains spec of record for storage, course corpus ①②⑤, and W1–W11. Do not run `agents/p-wiki/` as this packet.
@@ -15,6 +27,45 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 **DL-540 confirmed** (not invented): IKI Lab auth specifications remain **withdrawn**. IKI has zero identity responsibility. Shared `/app/*` guard only. W0 adds no `iki_public`, no IKI middleware, no IKI-specific login redirect.
 
 **Does not:** W1 (second stamp: OD-WK2 deploy stubs, OD-WK9); Foxtrot live watcher (OD-WK1 / W3+); AppChrome / Options Lab launcher (DL-539); MiniTwo; course-path edits; `web/app/app/iki/**`.
+
+---
+
+## 2026-08-22 — DL-540 IKI Lab auth specifications withdrawn
+
+**Decision (Coach):** IKI Lab auth specifications are **withdrawn**. IKI has
+**zero identity responsibility**. Identity is platform-level (Accounts &
+Capital). IKI consumes the shared `/app/*` guard only — the same member
+session as Options Lab and every other Lab. No `iki_public` role, no
+magic-link / email+intent session mint, no IKI-specific WS door, no IKI
+middleware.
+
+**DL-537 SUPERSEDED / WITHDRAWN** by this entry. Spec
+`FatTail-Labs-IKI-Public-Session-Spec-v0_1.md` and GO `agents/go/IKI-P1.md`
+removed. OD-TR4 and OD-TR9 (public IKI session minting) struck.
+
+Email + structured intent is **not discarded.** It is the platform auth
+gate in **DL-543** — Identity-Access / Accounts & Capital, not IKI.
+
+**Does not:** MiniTwo; Options Lab; Market Bus provenance (`market_stream.py`
+MB-P2 stays); IKI-P3 chrome; implementing DL-543 in this entry.
+
+---
+
+## 2026-08-21 — DL-537 IKI Public Session spec v0.1 (IKI-P1)
+
+**Status:** **SUPERSEDED / WITHDRAWN** by **DL-540** (2026-08-22). Do not implement.
+
+**Decision (Coach GO):** Public IKI WS session is **implementation**
+(OD-TR9). Spec
+[`FatTail-Labs-IKI-Public-Session-Spec-v0_1.md`](../Specs/FatTail-Labs-IKI-Public-Session-Spec-v0_1.md).
+Email + structured intent · consent recorded · no dark patterns ·
+one-click unsubscribe · no anonymous WS. Role **`iki_public`** (not
+observer). Magic link, `ft_session`. Universe scope = table subset of
+`market_symbol_universe`, fail-loud. Lead-Sync not wired. OD-PDS3 launch
+views = runner templates (implementation). Token
+[`agents/go/IKI-P1.md`](../agents/go/IKI-P1.md).
+
+**Does not:** MiniTwo; auth code in this stamp (spec first); marketing/SEO.
 
 ---
 

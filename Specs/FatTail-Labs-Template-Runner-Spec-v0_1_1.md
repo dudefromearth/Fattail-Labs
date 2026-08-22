@@ -36,7 +36,7 @@
 
 > SSE is a gateway.
 
-> OD-TR1: I think everything is a stream. · OD-TR5: They must abide by the license. · OD-TR4: auth is correct.
+> OD-TR1: I think everything is a stream. · OD-TR5: They must abide by the license. · OD-TR4: auth is correct. **(IKI public-session reading WITHDRAWN DL-540; email+intent is the platform auth gate DL-543.)**
 
 ## 1. Mission
 
@@ -48,7 +48,7 @@ One **harness** exposing OPF as subscribable streams through a gateway; one **fr
 |---|---|---|
 | **TR1 — Server updates the model** | The server's only Runner-facing job is to keep the OPF model current (Market Bus feeds → OPF data/pricing plane). No template logic server-side. | Coach |
 | **TR2 — Client subscribes** | Templates execute **in the client browser**. The client subscribes to model streams; nothing is pushed to a template it did not subscribe to (MB5 interest law inherited). **Everything the model produces is a stream** (OD-TR1): generations, marks, per-leg IV, greeks, package quotes, session, quality — no curated subset; interest is the only filter. | Coach |
-| **TR3 — "SSE gateway" = the subscribe plane** | Coach's term for *subscribe to the model, do the rest in the client* (DL-419). **As-built it is `WS /api/me/market/stream` + `web/lib/market/MarketSocket.ts`, one socket per tab, snapshot-then-delta (MB7).** The Runner subscribes through this door. **No second market transport** (DL-420, OPF3, Arch 30). The wire being WebSocket rather than SSE changes nothing in this spec. Auth = member session (as-built); public IKI clients need a session minted from email + intent (OD-TR4 → OD-TR9). A literal one-way SSE process for anonymous public scale remains **THESIS** and is not required by any law here. | Coach · Arch 34 |
+| **TR3 — "SSE gateway" = the subscribe plane** | Coach's term for *subscribe to the model, do the rest in the client* (DL-419). **As-built it is `WS /api/me/market/stream` + `web/lib/market/MarketSocket.ts`, one socket per tab, snapshot-then-delta (MB7).** The Runner subscribes through this door. **No second market transport** (DL-420, OPF3, Arch 30). The wire being WebSocket rather than SSE changes nothing in this spec. IKI Lab has zero auth responsibility. Identity is platform-level (Accounts & Capital); IKI consumes the shared `/app/*` guard. A literal one-way SSE process for anonymous public scale remains **THESIS** and is not required by any law here. | Coach · Arch 34 |
 | **TR4 — Template = stream transform** | A template consumes one or more **input streams** and emits any of: **modified streams**, **notifications**, **visualizations**. It declares all three sets. | Coach |
 | **TR5 — Purity (HM6 lifted)** | A template is a pure function of its input streams, controls, and version. No hidden state, no fetches, no persistence. Persistence of produced streams is the bus/gateway's job, never the template's. | HM6 → TR |
 | **TR6 — Composition under license** | A template's **modified stream** is a first-class stream. Within the same client session any template may subscribe to it. A produced Knowledge/Intelligence stream may be **published back through the gateway** to other clients **only under the terms of its license** (PDS §8); the license, not a runner law, governs re-serving. Published streams become part of the model the server maintains (TR1 holds). Intelligence templates may consume Knowledge streams rather than raw OPF. | Coach OD-TR5 |
@@ -120,10 +120,10 @@ Browser execution + "a standing 24-hour process" reconcile as: the **Factory** r
 | OD-TR1 | **CLOSED:** everything is a stream. |
 | OD-TR2 | **COLLAPSED** — one door, `WS /api/me/market/stream`, both hosts. |
 | OD-TR3 | Headless client = existing agent scheduler? Confirm or name a different mechanism. |
-| OD-TR4 | **CLOSED:** email + intent session token. |
+| OD-TR4 | **WITHDRAWN as IKI auth (DL-540).** Email + structured intent is a **platform auth gate (DL-543)**, not an IKI mint. IKI consumes the shared `/app/*` guard. |
 | OD-TR5 | **CLOSED:** re-serving is governed by the stream's license, not by a runner law. TR6 restated. Consequence: gateway must carry published Knowledge streams outbound, with license terms attached as stream metadata. |
 | OD-TR8 | **ANSWERED** by Arch 28 §4.1 / Arch 34: session-cookie auth; ops `hello·sub·unsub·ping`; server `hello·chain·sym·session·err·pong`; MB7 snapshot-then-delta. |
-| OD-TR9 | Public IKI client session: how email + intent mints a session the WS door accepts (Mike). Scope of `market_symbol_universe` interest a public session may hold. |
+| OD-TR9 | **WITHDRAWN as IKI auth (DL-540).** Public session minting is the platform email+intent gate (**DL-543**), not an IKI packet. |
 | OD-TR10 | Market Bus Spec amendment for published Knowledge streams as a new topic family (TR6) — key layout, writer (browser→API publish route), license metadata (OD-TR7). |
 | OD-TR7 | License metadata on a published stream: minimum fields (licensor, terms id, permitted modes, attribution, expiry) and where enforced (gateway subscribe-time). |
 | OD-TR6 | Which sinks ship at launch per host (cross-ref OD-PDS11). |

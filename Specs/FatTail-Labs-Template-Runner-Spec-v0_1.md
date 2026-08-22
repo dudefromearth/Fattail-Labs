@@ -119,7 +119,7 @@ Browser execution + "a standing 24-hour process" reconcile as: the **Factory** r
 | OD-TR1 | Stream vocabulary: which OPF outputs are gateway streams at v1 (chain generations · marks · per-leg IV · greeks · package quotes · session/quality)? |
 | OD-TR2 | Does Options Lab's Runner mount stay on WS, or also move behind the SSE gateway? (Arch 30 posture untouched either way.) |
 | OD-TR3 | Headless client = existing agent scheduler? Confirm or name a different mechanism. |
-| OD-TR4 | Gateway auth for public IKI clients: email+intent session token, or anonymous with rate limit? |
+| OD-TR4 | **WITHDRAWN as IKI auth (DL-540).** Email + structured intent is a **platform auth gate (DL-543)**, not an IKI mint. IKI consumes the shared `/app/*` guard. |
 | OD-TR5 | Composition scope: same-session only (TR6 as written), or may a published Knowledge stream be re-served through the gateway to other clients? (This is the point at which server state appears — flagged, not recommended.) |
 | OD-TR6 | Which sinks ship at launch per host (cross-ref OD-PDS11). |
 
