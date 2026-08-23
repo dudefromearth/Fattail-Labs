@@ -4,6 +4,24 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-23 — DL-546 Member Wiki S0: Start here from git pins
+
+**Decision (Coach GO S0):** Start here is published pages with frontmatter
+`pin: true`, ordered by integer `pin_order`, cap 8. Reindex caches those fields
+(plus `compiled_by` / `approved_by`) on `wiki_pages_idx` — **derived columns, not
+a pin table** (migration 133). Empty pins → honest empty copy; do not invent pins
+in MySQL. Article ships kind + title, provenance from frontmatter when present,
+and a rail shell (In your practice / Related hide when empty; Linked from / See
+also stay). Apps-card title waits on **D-1**.
+
+**Store law unchanged (DL-545):** git is the only writer of page bytes; MySQL is
+a cache of the checkout; D-12 pull + reindex is load-bearing.
+
+**Does not:** S1 save or hover; S2–S6; MiniTwo; D-1 card copy; compile inbox;
+a second `wiki_pages` authoring table.
+
+---
+
 ## 2026-08-22 — DL-545 Member Wiki restored: git is the only writer (WIK-D1)
 
 **Decision (Coach):** The original Member Wiki is restored. lab-wiki git is the only

@@ -43,6 +43,8 @@ def _page_row(r: dict) -> dict:
         "updated": r["updated_date"],
         "tags": json.loads(r["tags_json"] or "[]"),
         "sources": json.loads(r["sources_json"] or "[]"),
+        "compiled_by": r.get("compiled_by") or "",
+        "approved_by": r.get("approved_by") or "",
     }
 
 
@@ -116,17 +118,20 @@ def wiki_index(request: Request) -> dict:
             )
             kinds = {r["kind"]: r["n"] for r in cur.fetchall()}
             cur.execute(
-                f"""
-                SELECT slug, title, kind, status, updated_date, tags_json, sources_json
+                """
+                SELECT slug, title, kind, status, updated_date, tags_json, sources_json,
+                       compiled_by, approved_by
                 FROM wiki_pages_idx
-                WHERE kind = 'topic' {status_clause}
-                ORDER BY title ASC
+                WHERE pin = 1 AND status = 'published'
+                ORDER BY pin_order ASC, title ASC
+                LIMIT 8
                 """
             )
-            topics = [_page_row(r) for r in cur.fetchall()]
+            start_here = [_page_row(r) for r in cur.fetchall()]
             cur.execute(
                 f"""
-                SELECT slug, title, kind, status, updated_date, tags_json, sources_json
+                SELECT slug, title, kind, status, updated_date, tags_json, sources_json,
+                       compiled_by, approved_by
                 FROM wiki_pages_idx
                 WHERE 1=1 {status_clause}
                 ORDER BY updated_date DESC, slug ASC
@@ -134,7 +139,7 @@ def wiki_index(request: Request) -> dict:
                 """
             )
             recent = [_page_row(r) for r in cur.fetchall()]
-    return {"kinds": kinds, "start_here": topics[:8], "recent": recent, "admin": admin}
+    return {"kinds": kinds, "start_here": start_here, "recent": recent, "admin": admin}
 
 
 @router.get("/api/wiki/pages/{slug}")
@@ -146,7 +151,7 @@ def wiki_page(slug: str, request: Request) -> dict:
             cur.execute(
                 """
                 SELECT slug, path, title, kind, status, body_md, tags_json,
-                       sources_json, updated_date
+                       sources_json, updated_date, compiled_by, approved_by
                 FROM wiki_pages_idx WHERE slug = %s
                 """,
                 (slug,),

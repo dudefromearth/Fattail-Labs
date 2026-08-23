@@ -1,7 +1,7 @@
 "use client";
 
 // Wiki entry surface — Interface Spec v0.1 §2 (search-first).
-// Zones bound to /api/wiki/index: Start here (topics), New this week (recent).
+// Zones bound to /api/wiki/index: Start here (git pins), New this week (recent).
 
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";

@@ -6,6 +6,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import WikiArticleRail, {
+  type WikiRailSection,
+} from "@/components/wiki/WikiArticleRail";
 import WikiMarkdown from "@/components/wiki/WikiMarkdown";
 
 /** Page frontmatter title is rendered as the h1 — drop a duplicate leading
@@ -29,6 +32,8 @@ type WikiPage = {
   updated: string;
   tags: string[];
   sources: string[];
+  compiled_by?: string;
+  approved_by?: string;
   body_md: string;
   path: string;
   backlinks: PageLink[];
@@ -41,17 +46,6 @@ type LoadState =
   | { phase: "missing" }
   | { phase: "error" }
   | { phase: "ok"; page: WikiPage };
-
-function SectionHeading({ id, children }: { id: string; children: string }) {
-  return (
-    <h2
-      id={id}
-      className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]"
-    >
-      {children}
-    </h2>
-  );
-}
 
 export default function WikiArticlePage() {
   const params = useParams<{ slug: string }>();
@@ -143,7 +137,7 @@ export default function WikiArticlePage() {
             href="/app/wiki"
             className="mt-4 inline-block text-sm font-medium text-[var(--color-tint)] hover:underline"
           >
-            Back to the wiki →
+            Back to Wiki →
           </Link>
         </div>
       </main>
@@ -162,77 +156,88 @@ export default function WikiArticlePage() {
     ).values(),
   );
 
+  const provenance = [
+    page.updated ? `Updated ${page.updated}` : "",
+    page.compiled_by ? `compiled by ${page.compiled_by}` : "",
+    page.approved_by ? `approved by ${page.approved_by}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const relatedItems: WikiRailSection["items"] = [];
+  const practiceItems: WikiRailSection["items"] = [];
+  const railSections: WikiRailSection[] = [
+    { id: "practice", title: "In your practice", items: practiceItems },
+    { id: "related", title: "Related", items: relatedItems },
+    {
+      id: "linked",
+      title: "Linked from",
+      items: page.backlinks.map((b) => ({
+        key: b.slug,
+        label: b.title,
+        href: `/app/wiki/${encodeURIComponent(b.slug)}`,
+      })),
+    },
+    {
+      id: "see-also",
+      title: "See also",
+      items: seeAlso.map((l) => ({
+        key: l.slug,
+        label: l.title,
+        href: `/app/wiki/${encodeURIComponent(l.slug)}`,
+      })),
+    },
+  ];
+  const hasRail = railSections.some((s) => s.items.length > 0);
+
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-10">
+    <main className="mx-auto w-full max-w-5xl px-6 py-10">
       {crumbs}
 
-      <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
-        {page.kind}
-      </p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--color-label)]">
-        {page.title}
-      </h1>
+      <div
+        className={
+          hasRail
+            ? "mt-6 grid gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(14rem,1fr)]"
+            : "mt-6"
+        }
+      >
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]">
+            {page.kind}
+          </p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--color-label)]">
+            {page.title}
+          </h1>
+          <article className="mt-8 text-[var(--color-label)]">
+            <WikiMarkdown unresolvedSlugs={unresolvedSlugs}>
+              {stripLeadingTitle(page.body_md, page.title)}
+            </WikiMarkdown>
+          </article>
+          {page.sources.length > 0 ? (
+            <section className="mt-10" aria-labelledby="wiki-sources-heading">
+              <h2
+                id="wiki-sources-heading"
+                className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]"
+              >
+                Compiled from
+              </h2>
+              <ul className="mt-3 space-y-1 text-sm text-[var(--color-label-secondary)]">
+                {page.sources.map((s, i) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          {provenance ? (
+            <p className="mt-10 text-xs text-[var(--color-label-tertiary)]">
+              {provenance}
+            </p>
+          ) : null}
+        </div>
+        <WikiArticleRail sections={railSections} variant="desktop" />
+      </div>
 
-      <article className="mt-8 text-[var(--color-label)]">
-        <WikiMarkdown unresolvedSlugs={unresolvedSlugs}>
-          {stripLeadingTitle(page.body_md, page.title)}
-        </WikiMarkdown>
-      </article>
-
-      {page.sources.length > 0 && (
-        <section className="mt-12" aria-labelledby="wiki-sources-heading">
-          <SectionHeading id="wiki-sources-heading">
-            Compiled from
-          </SectionHeading>
-          <ul className="mt-3 space-y-1 text-sm text-[var(--color-label-secondary)]">
-            {page.sources.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {page.backlinks.length > 0 && (
-        <section className="mt-10" aria-labelledby="wiki-backlinks-heading">
-          <SectionHeading id="wiki-backlinks-heading">
-            Linked from
-          </SectionHeading>
-          <ul className="mt-3 space-y-1 text-sm">
-            {page.backlinks.map((b) => (
-              <li key={b.slug}>
-                <Link
-                  href={`/app/wiki/${encodeURIComponent(b.slug)}`}
-                  className="text-[var(--color-tint)] hover:underline"
-                >
-                  {b.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {seeAlso.length > 0 && (
-        <section className="mt-10" aria-labelledby="wiki-see-also-heading">
-          <SectionHeading id="wiki-see-also-heading">See also</SectionHeading>
-          <ul className="mt-3 space-y-1 text-sm">
-            {seeAlso.map((l) => (
-              <li key={l.slug}>
-                <Link
-                  href={`/app/wiki/${encodeURIComponent(l.slug)}`}
-                  className="text-[var(--color-tint)] hover:underline"
-                >
-                  {l.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <p className="mt-12 text-xs text-[var(--color-label-tertiary)]">
-        Updated {page.updated}
-      </p>
+      <WikiArticleRail sections={railSections} variant="mobile" />
     </main>
   );
 }

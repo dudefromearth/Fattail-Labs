@@ -66,6 +66,54 @@ def test_parse_wikilinks_dedup_and_labels():
     assert links == ["a", "b-c"]
 
 
+def test_parse_pin_and_pin_order():
+    assert wiki_store._parse_bool("true") is True
+    assert wiki_store._parse_bool("yes") is True
+    assert wiki_store._parse_bool("1") is True
+    assert wiki_store._parse_bool("false") is False
+    assert wiki_store._parse_bool("") is False
+    assert wiki_store._parse_int("3", 1_000_000) == 3
+    assert wiki_store._parse_int("nope", 1_000_000) == 1_000_000
+
+
+def test_load_pages_pins(tmp_path):
+    root = make_vault(tmp_path)
+    (root / "wiki" / "topics" / "later-pin.md").write_text(
+        "---\ntitle: Later\nkind: topic\nstatus: published\npin: true\npin_order: 20\n---\n\n# Later\n"
+    )
+    (root / "wiki" / "topics" / "first-pin.md").write_text(
+        "---\ntitle: First\nkind: topic\nstatus: published\npin: true\npin_order: 10\n"
+        "compiled_by: oscar\napproved_by: coach\n---\n\n# First\n"
+    )
+    pages, _ = wiki_store.load_pages(root)
+    pinned = sorted([p for p in pages if p.pin], key=lambda p: p.pin_order)
+    assert [p.slug for p in pinned] == ["first-pin", "later-pin"]
+    first = pinned[0]
+    assert first.compiled_by == "oscar"
+    assert first.approved_by == "coach"
+    unpinned = next(p for p in pages if p.slug == "alpha-topic")
+    assert unpinned.pin is False
+    assert unpinned.pin_order == 1_000_000
+
+
+def test_reindex_persists_pin_cache(tmp_path):
+    root = make_vault(tmp_path)
+    (root / "wiki" / "topics" / "first-pin.md").write_text(
+        "---\ntitle: First\nkind: topic\nstatus: published\npin: true\npin_order: 10\n---\n\n# First\n"
+    )
+    with db.transaction() as conn:
+        wiki_store.reindex(conn, root)
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT slug, pin, pin_order FROM wiki_pages_idx WHERE pin = 1 "
+                "ORDER BY pin_order ASC"
+            )
+            rows = cur.fetchall()
+    assert [(r["slug"], r["pin"], r["pin_order"]) for r in rows] == [
+        ("first-pin", 1, 10)
+    ]
+
+
 def test_load_pages_tolerant(tmp_path):
     root = make_vault(tmp_path)
     pages, warnings = wiki_store.load_pages(root)

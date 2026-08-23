@@ -15,18 +15,22 @@ How to run this project with the bench. Juliet maintains; Coach drives.
 5. Nothing merges to `main` until WK0's commit plan says so (specs land with code —
    documentation parity).
 
+**Live plan:** [`docs/Member-Wiki-v0.1-Full-Agent-Bench-Plan-v2.0.md`](../../docs/Member-Wiki-v0.1-Full-Agent-Bench-Plan-v2.0.md) **GO S0**.
+
+Spine WK0–WK7 is **shipped** (do not restart). Current packet = **S0**.
+
 ## Seed status
 
 | Seed | Agent | Status |
 |------|-------|--------|
-| WK0 audit | India | ☐ |
-| WK1 store + schema | Alpha | ☐ |
-| WK2 API | Alpha | ☐ |
-| WK3 env + sync | Foxtrot | ☐ |
-| WK4 frontend wire | Charlie | ☐ |
-| WK5 HIG + security review | Echo + Mike | ☐ |
-| WK6 tests | Kilo | ☐ |
-| WK7 gate + docs + ship | Delta + Lima | ☐ |
+| WK0–WK7 spine | — | **shipped** |
+| S0-1 pins + start_here | Alpha | **landed** |
+| S0-2 article chrome | Charlie | **landed** |
+| S0-3 Echo + Tango | Echo, Tango | **PASS** |
+| S0-4 Kilo WI | Kilo | **landed** (18 passed) |
+| S0-5 Lima Arch 11 | Lima | **landed** |
+| S0-G | Delta | **PASS** `gate-reports/S0-delta-gate.md` |
+| S1–S6 | — | later stamps |
 
 ## Invocation templates
 

@@ -39,6 +39,10 @@ class WikiPage:
     sources: list[str] = field(default_factory=list)
     updated: str = ""
     links: list[str] = field(default_factory=list)  # outbound wikilink target slugs
+    pin: bool = False
+    pin_order: int = 1_000_000
+    compiled_by: str = ""
+    approved_by: str = ""
 
 
 def wiki_root() -> Path:
@@ -71,6 +75,17 @@ def _parse_list(raw: str) -> list[str]:
         if item:
             items.append(item)
     return items
+
+
+def _parse_bool(raw: str) -> bool:
+    return raw.strip().strip("\"'").lower() in {"1", "true", "yes", "on"}
+
+
+def _parse_int(raw: str, default: int) -> int:
+    try:
+        return int(str(raw).strip().strip("\"'"))
+    except (TypeError, ValueError):
+        return default
 
 
 def parse_frontmatter(text: str) -> tuple[dict, str]:
@@ -161,6 +176,10 @@ def load_pages(root: Path) -> tuple[list[WikiPage], list[str]]:
                     sources=_parse_list(meta.get("sources", "")),
                     updated=meta.get("updated", "").strip(),
                     links=parse_wikilinks(body),
+                    pin=_parse_bool(meta.get("pin", "")),
+                    pin_order=_parse_int(meta.get("pin_order", ""), 1_000_000),
+                    compiled_by=meta.get("compiled_by", "").strip().strip("\"'"),
+                    approved_by=meta.get("approved_by", "").strip().strip("\"'"),
                 )
             )
 
@@ -185,8 +204,9 @@ def reindex(conn, root: Path) -> dict:
                 """
                 INSERT INTO wiki_pages_idx
                   (slug, path, title, kind, status, body_md, tags_json,
-                   sources_json, updated_date)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                   sources_json, updated_date, pin, pin_order,
+                   compiled_by, approved_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     p.slug,
@@ -198,6 +218,10 @@ def reindex(conn, root: Path) -> dict:
                     json.dumps(p.tags),
                     json.dumps(p.sources),
                     p.updated,
+                    1 if p.pin else 0,
+                    p.pin_order,
+                    p.compiled_by,
+                    p.approved_by,
                 ),
             )
         unresolved = 0

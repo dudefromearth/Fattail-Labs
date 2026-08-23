@@ -18,7 +18,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [08-canonical-course-model.md](./08-canonical-course-model.md) | Portable Course graph: export/import/validate architecture |
 | [09-canonical-course-design.md](./09-canonical-course-design.md) | Admin UX design for packages |
 | [10-resources-design.md](./10-resources-design.md) | Resources: first-class versioned library |
-| [11-wiki-design.md](./11-wiki-design.md) | Member Wiki: lab-wiki checkout → derived index → /app/wiki (member-facing **IKI Lab** proposed — IKI spec v0.1 · **DL-527**) |
+| [11-wiki-design.md](./11-wiki-design.md) | Member Wiki: lab-wiki git SoR → derived `wiki_pages_idx` cache → `/app/wiki` (Start here = frontmatter pins · **DL-545/546**) |
 | [12-retrospective-report-dto.md](./12-retrospective-report-dto.md) | Retrospective workspace DTO (gather/report/comparison) — as-built v0.6 |
 | [13-habit-catalog-design.md](./13-habit-catalog-design.md) | Habit Catalog methodology layer — **design locked**, pre-Spec |
 | [09-strategy-lab-tradier.md](./09-strategy-lab-tradier.md) | Strategy Lab data/exec split (Massive / Tradier) + shared Curate marks |
