@@ -58,10 +58,11 @@ the real `LABS_WIKI_ROOT` after any fixture reindex.
 | Search | `/app/wiki/search?q=` | grouped results + snippets; honest empty state |
 | Graph | `/app/wiki/graph` | dependency-free SVG (polar clusters by kind, cap 150 nodes) + alphabetical list fallback |
 | Switcher | all wiki routes (`layout.tsx`) | ⌘K/Ctrl-K palette over `/api/wiki/search` |
+| Suite chrome | all wiki routes (`layout.tsx`) | `IkiSuiteChrome` — Wiki · Factory · Runner. Compile inbox **off**. Factory/Runner pages are not this tree (**DL-547**) |
 
 Components: `web/components/wiki/{WikiMarkdown,WikiSwitcher,WikiGraph,WikiArticleRail}.tsx` —
 registered per Application Framework D2 (Interface spec §6). No compile inbox on
-these routes (**DL-545**). Apps-card title waits on **D-1**.
+these routes (**DL-545**). Suite nav stays (**DL-547**). Apps-card title waits on **D-1**.
 
 ## 4. Content flow (publish path)
 

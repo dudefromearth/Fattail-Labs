@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-23 — DL-547 IKI suite nav stays; implement Wiki only
+
+**Decision (Coach):** Implementing the Member Wiki does **not** remove Runner or
+Factory. `/app/wiki` keeps `IkiSuiteChrome` (Wiki · Factory · Runner). Compile
+inbox / “Compile this into Wiki” stays off. Do not restyle, unmount, or relocate
+`/app/iki/runner` or `/app/iki/factory`.
+
+Corrects the over-read of **DL-545** “no IKI suite chrome” as a peel of the
+suite. Git-only writer and no compile inbox still stand.
+
+**Does not:** MiniTwo; D-1 card title; Factory job; Runner internals.
+
+---
+
 ## 2026-08-23 — DL-546 Member Wiki S0: Start here from git pins
 
 **Decision (Coach GO S0):** Start here is published pages with frontmatter
