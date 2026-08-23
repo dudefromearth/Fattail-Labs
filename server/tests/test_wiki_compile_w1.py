@@ -195,19 +195,13 @@ def test_inbox_compile_and_dismiss(clean_candidates, client):
     assert ok.json()["disposition"] == "compiling"
 
 
-def test_at_wk13_publish_one_idx_row_no_reindex(clean_candidates, client, monkeypatch):
-    """WK15: one wiki_pages_idx row. Must not reindex the dev DB."""
-    monkeypatch.setattr(
-        oscar,
-        "_slug_for",
-        lambda sk: "zzwikicompile-" + str(sk).replace(".", "-"),
-    )
+def test_publish_does_not_write_wiki_pages_idx(clean_candidates, client, monkeypatch):
+    """WIK-D1: git is the only writer. Publish must not touch wiki_pages_idx."""
 
     def _reindex_forbidden(*_a, **_k):
         raise AssertionError("wiki_store.reindex must not run on publish")
 
     monkeypatch.setattr("wiki_store.reindex", _reindex_forbidden)
-    monkeypatch.setattr("wiki_compile_oscar.wiki_store.reindex", _reindex_forbidden)
 
     before = _idx_count()
     cookies = cookie_for("administrator")
@@ -226,17 +220,11 @@ def test_at_wk13_publish_one_idx_row_no_reindex(clean_candidates, client, monkey
     item_id = int(final["compiled_content_ids"][0])
     admin = Actor(kind="human", id=0, label="test-admin", role="administrator")
     board.transition(item_id, admin, to_status="published")
-    after = _idx_count()
-    assert after == before + 1
+    assert _idx_count() == before
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT slug, title, status, body_md FROM wiki_pages_idx "
-                "WHERE slug = 'zzwikicompile-iki-runner'"
+                "SELECT COUNT(*) AS n FROM wiki_pages_idx "
+                "WHERE slug LIKE 'zzwikicompile-%' OR slug LIKE 'compiled-%'"
             )
-            page = cur.fetchone()
-    assert page is not None
-    assert page["status"] == "published"
-    assert "surface_key: `iki.runner`" in (page["body_md"] or "")
-    _delete_probe_pages()
-    assert _idx_count() == before
+            assert int(cur.fetchone()["n"]) == 0

@@ -4,6 +4,20 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-22 — DL-545 Member Wiki restored: git is the only writer (WIK-D1)
+
+**Decision (Coach):** The original Member Wiki is restored. lab-wiki git is the only
+writer of wiki pages. `wiki_pages_idx` is derived (reindex from checkout). Oscar /
+compile-on-publish **must not** upsert `wiki_pages_idx` or write lab-wiki until
+Coach decides IKI interfaces. `/app/wiki` is the July surfaces again (search,
+Start here, article, graph, ⌘K) — no IKI suite chrome, no compile inbox, no
+"Compile this into Wiki" launcher.
+
+**Does not:** MiniTwo; delete compile tables/APIs (idle until interfaces); Options Lab;
+Strategy Lab; invent a new IKI wiki UI.
+
+---
+
 ## 2026-08-22 — DL-544 Wiki Spec v1.2 W1 seated
 
 **Decision (Coach GO):** Wiki Spec v1.2 **W1** is seated. OD-WK2 = **stubs** (deploy / admin-point only). OD-WK9 = **board transition hook** on `published` for `product_line=wiki`. Declared `surface_key` list: `iki.wiki.entry`, `iki.wiki.article`, `iki.runner`, `iki.factory`. Launcher on IKI + Wiki routes (“Compile this into Wiki”). Admin-point + wiki-only compile; help/both disabled. Capture is surface_key + route (no entity id, no Family B). OD-WA3 W1 = visible operator mark.

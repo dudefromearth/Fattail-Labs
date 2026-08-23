@@ -128,31 +128,13 @@ def wiki_index(request: Request) -> dict:
                 f"""
                 SELECT slug, title, kind, status, updated_date, tags_json, sources_json
                 FROM wiki_pages_idx
-                WHERE slug = 'iki' {status_clause}
-                LIMIT 1
-                """
-            )
-            foundation = cur.fetchone()
-            cur.execute(
-                f"""
-                SELECT slug, title, kind, status, updated_date, tags_json, sources_json
-                FROM wiki_pages_idx
                 WHERE 1=1 {status_clause}
                 ORDER BY updated_date DESC, slug ASC
                 LIMIT 6
                 """
             )
             recent = [_page_row(r) for r in cur.fetchall()]
-    start_here = []
-    if foundation:
-        start_here.append(_page_row(foundation))
-    for t in topics:
-        if t["slug"] == "iki":
-            continue
-        start_here.append(t)
-        if len(start_here) >= 8:
-            break
-    return {"kinds": kinds, "start_here": start_here, "recent": recent, "admin": admin}
+    return {"kinds": kinds, "start_here": topics[:8], "recent": recent, "admin": admin}
 
 
 @router.get("/api/wiki/pages/{slug}")

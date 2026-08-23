@@ -534,7 +534,7 @@ def transition(
     if to_status == "published" and from_status != to_status and is_wiki:
         import wiki_compile_oscar as oscar_mod
 
-        # WK15: one page row. Must not call wiki_store.reindex (wipes wiki_pages_idx).
+        # Must not write wiki_pages_idx (WIK-D1). Filing TBD.
         oscar_mod.on_board_published(item_id)
     elif to_status == "published" and from_status != to_status:
         try:

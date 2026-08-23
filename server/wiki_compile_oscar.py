@@ -8,10 +8,8 @@ from __future__ import annotations
 from datetime import date
 
 import board
-import db
 import wiki_compile_store as store
 import wiki_compile_surfaces as surfaces
-import wiki_store
 from agent_auth import Actor
 from wiki_compile_store import (
     AUDIENCE_WIDEN,
@@ -116,39 +114,11 @@ def compile_wiki_stub(candidate_id: int) -> dict:
 
 
 def on_board_published(content_item_id: int) -> None:
-    """OD-WK9 / WK15 wiki-only: one published page row. Never reindex (wipes idx)."""
+    """OD-WK9 hook. Does not write wiki_pages_idx (WIK-D1: git is the only writer)."""
     item = board.get_item(content_item_id)
     if not item or item.get("product_line") != "wiki":
         return
-    row = store.candidate_for_content_item(content_item_id)
-    if row is None:
-        return
-    slug = _slug_for(row.get("surface_key") or f"item-{content_item_id}")
-    raw = _stub_md(row, status="published")
-    meta, body = wiki_store.parse_frontmatter(raw)
-    title = (meta.get("title") or "").strip() or row["title"]
-    updated = (meta.get("updated") or "").strip() or date.today().isoformat()
-    path = f"wiki/concepts/{slug}.md"
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO wiki_pages_idx
-                  (slug, path, title, kind, status, body_md, tags_json,
-                   sources_json, updated_date)
-                VALUES (%s, %s, %s, 'concept', 'published', %s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE
-                  path = VALUES(path),
-                  title = VALUES(title),
-                  kind = VALUES(kind),
-                  status = VALUES(status),
-                  body_md = VALUES(body_md),
-                  tags_json = VALUES(tags_json),
-                  sources_json = VALUES(sources_json),
-                  updated_date = VALUES(updated_date)
-                """,
-                (slug, path, title, body, "[]", "[]", updated),
-            )
+    # Filing into lab-wiki (and then reindex) is an interface decision. Not this packet.
 
 
 def admin_point_and_maybe_compile(

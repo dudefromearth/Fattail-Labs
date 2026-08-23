@@ -24,19 +24,6 @@ type IndexPayload = {
   admin: boolean;
 };
 
-type CompileCandidate = {
-  id: number;
-  title: string;
-  kind: string;
-  origin: string;
-  audience: string;
-  suggested_target: string | null;
-  rationale: string | null;
-  disposition: string;
-  route: string | null;
-  note: string | null;
-};
-
 function oneLine(page: IndexPage): string {
   return page.tags.length > 0 ? page.tags.join(" · ") : page.kind;
 }
@@ -66,8 +53,6 @@ export default function WikiEntryPage() {
   const [q, setQ] = useState("");
   const [index, setIndex] = useState<IndexPayload | null>(null);
   const [isMac, setIsMac] = useState(true);
-  const [candidates, setCandidates] = useState<CompileCandidate[] | null>(null);
-  const [inboxBusy, setInboxBusy] = useState<number | null>(null);
 
   useEffect(() => {
     setIsMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
@@ -105,20 +90,6 @@ export default function WikiEntryPage() {
       cancelled = true;
     };
   }, [auth]);
-
-  function loadInbox() {
-    fetch("/api/wiki/compile-inbox", { credentials: "same-origin" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        setCandidates(Array.isArray(data?.candidates) ? data.candidates : []);
-      })
-      .catch(() => setCandidates([]));
-  }
-
-  useEffect(() => {
-    if (auth !== "ok" || index?.admin !== true) return;
-    loadInbox();
-  }, [auth, index?.admin]);
 
   useEffect(() => {
     if (auth === "ok") inputRef.current?.focus();
@@ -223,94 +194,6 @@ export default function WikiEntryPage() {
           Search
         </button>
       </form>
-
-      {/* Compile inbox — Admin Interface v0.1.2 §2. Below search (WI1). W1: Compile/Dismiss; help/both disabled. */}
-      {index?.admin === true && (
-        <section
-          data-testid="wiki-compile-inbox"
-          aria-labelledby="wiki-compile-inbox-heading"
-          className="mt-8 border-t border-[var(--color-separator)] pt-8"
-        >
-          <h2
-            id="wiki-compile-inbox-heading"
-            className="text-sm font-semibold uppercase tracking-wide text-[var(--color-label-tertiary)]"
-          >
-            Compile inbox
-          </h2>
-          {(!candidates || candidates.length === 0) && (
-            <p
-              data-testid="wiki-compile-inbox-empty"
-              className="mt-3 text-sm text-[var(--color-label-secondary)]"
-            >
-              Nothing deployed without a wiki/help directive.
-            </p>
-          )}
-          {candidates && candidates.length > 0 && (
-            <ul className="mt-3 space-y-2" data-testid="wiki-compile-inbox-list">
-              {candidates.map((c) => (
-                <li
-                  key={c.id}
-                  className="rounded-xl border border-[var(--color-separator)] p-3"
-                >
-                  <p className="font-medium text-[var(--color-label)]">
-                    {c.title}
-                  </p>
-                  <p className="mt-1 text-xs text-[var(--color-label-secondary)]">
-                    {c.kind} · {c.origin} · {c.disposition}
-                    {c.rationale ? ` · ${c.rationale}` : ""}
-                  </p>
-                  {c.disposition === "open" && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={inboxBusy === c.id}
-                        onClick={async () => {
-                          setInboxBusy(c.id);
-                          await fetch(
-                            `/api/wiki/compile-candidates/${c.id}/compile`,
-                            {
-                              method: "POST",
-                              credentials: "same-origin",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ target: "wiki" }),
-                            }
-                          );
-                          setInboxBusy(null);
-                          loadInbox();
-                        }}
-                        className="min-h-[var(--hit-min)] rounded-full bg-[var(--color-tint)] px-4 text-sm font-medium text-[var(--color-on-tint)] disabled:opacity-50"
-                      >
-                        Compile
-                      </button>
-                      <button
-                        type="button"
-                        disabled={inboxBusy === c.id}
-                        onClick={async () => {
-                          setInboxBusy(c.id);
-                          await fetch(
-                            `/api/wiki/compile-candidates/${c.id}/dismiss`,
-                            {
-                              method: "POST",
-                              credentials: "same-origin",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({}),
-                            }
-                          );
-                          setInboxBusy(null);
-                          loadInbox();
-                        }}
-                        className="min-h-[var(--hit-min)] rounded-full border border-[var(--color-separator)] px-4 text-sm font-medium text-[var(--color-label)] disabled:opacity-50"
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
 
       {/* Zone 2 — Start here */}
       <section className="mt-12" aria-labelledby="wiki-start-heading">

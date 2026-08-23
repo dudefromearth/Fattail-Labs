@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import CompileLauncher from "@/components/wiki/CompileLauncher";
 import IkiSuiteNav from "./IkiSuiteNav";
 import { ikiSuiteItem, type IkiSuiteId } from "@/lib/ikiSuite";
 
@@ -66,9 +64,6 @@ export default function IkiSuiteChrome({
           {topNav}
         </div>
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-        <ErrorBoundary>
-          <CompileLauncher />
-        </ErrorBoundary>
       </div>
     );
   }
@@ -79,9 +74,6 @@ export default function IkiSuiteChrome({
         {topNav}
       </div>
       {children}
-      <ErrorBoundary>
-        <CompileLauncher />
-      </ErrorBoundary>
     </div>
   );
 }
