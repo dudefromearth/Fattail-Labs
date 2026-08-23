@@ -6,7 +6,6 @@ Deterministic. No model call. Wiki-only. Help/both refused.
 from __future__ import annotations
 
 from datetime import date
-from pathlib import Path
 
 import board
 import db
@@ -117,7 +116,7 @@ def compile_wiki_stub(candidate_id: int) -> dict:
 
 
 def on_board_published(content_item_id: int) -> None:
-    """OD-WK9 hook: file stub into lab-wiki checkout and reindex (WK15 wiki-only)."""
+    """OD-WK9 / WK15 wiki-only: one published page row. Never reindex (wipes idx)."""
     item = board.get_item(content_item_id)
     if not item or item.get("product_line") != "wiki":
         return
@@ -125,13 +124,31 @@ def on_board_published(content_item_id: int) -> None:
     if row is None:
         return
     slug = _slug_for(row.get("surface_key") or f"item-{content_item_id}")
-    body = _stub_md(row, status="published")
-    root: Path = wiki_store.wiki_root()
-    dest_dir = root / "wiki" / "concepts"
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    (dest_dir / f"{slug}.md").write_text(body, encoding="utf-8")
+    raw = _stub_md(row, status="published")
+    meta, body = wiki_store.parse_frontmatter(raw)
+    title = (meta.get("title") or "").strip() or row["title"]
+    updated = (meta.get("updated") or "").strip() or date.today().isoformat()
+    path = f"wiki/concepts/{slug}.md"
     with db.transaction() as conn:
-        wiki_store.reindex(conn, root)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO wiki_pages_idx
+                  (slug, path, title, kind, status, body_md, tags_json,
+                   sources_json, updated_date)
+                VALUES (%s, %s, %s, 'concept', 'published', %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                  path = VALUES(path),
+                  title = VALUES(title),
+                  kind = VALUES(kind),
+                  status = VALUES(status),
+                  body_md = VALUES(body_md),
+                  tags_json = VALUES(tags_json),
+                  sources_json = VALUES(sources_json),
+                  updated_date = VALUES(updated_date)
+                """,
+                (slug, path, title, body, "[]", "[]", updated),
+            )
 
 
 def admin_point_and_maybe_compile(
