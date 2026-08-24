@@ -101,6 +101,7 @@ def create_app() -> FastAPI:
     from routes.integrations_tradier import router as tradier_integration_router
     from routes.landing import router as landing_router
     from routes.apply import router as apply_router
+    from routes.progress_admin import router as progress_admin_router
     from routes.stats_admin import router as stats_admin_router
     from routes.presence import router as presence_router
 
@@ -121,6 +122,7 @@ def create_app() -> FastAPI:
     app.include_router(landing_router)
     app.include_router(apply_router)
     app.include_router(stats_admin_router)
+    app.include_router(progress_admin_router)
     app.include_router(presence_router)
     app.include_router(admin_router)
     app.include_router(canonical_courses_router)

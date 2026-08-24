@@ -896,6 +896,51 @@ Covers Template switcher (not Advanced flies Value), color-only tiles
 **Does not:** MiniTwo in this body; changing compute law.
 
 ---
+## 2026-08-22 — DL-530 Progress admin surface
+
+**Decision.** Ship a standalone administrator page at `/admin/progress` that answers
+one question — *are we growing, and will we hit the revenue target* — from live
+WooCommerce, YouTube and ActiveCampaign data.
+
+**Shape.** Additive only. New migration (`132_progress_admin.sql`, new tables), new
+`server/progress/` package, new `server/routes/progress_admin.py`, new
+`web/app/admin/progress/page.tsx`. Exactly two existing lines change: the router
+registration in `server/main.py` and one nav entry inside the "Users & Support"
+group in `AdminNav.tsx`. Nothing on a member path is touched.
+
+**Snapshot, never live-fetch on render.** Three external APIs on a page load would be
+slow and rate-limited. A launchd job refreshes hourly into `progress_snapshot`; the
+page reads the latest good snapshot per source. Each source records its own status
+and error, so a dead YouTube token degrades that panel alone and is shown as **stale**
+— it is never rendered as a zero that reads as real.
+
+**Model parameters are data, not code.** Churn rates, conversion rates, revenue per
+Observer and the target live in `progress_model_param` with an admin editor and
+range validation. They drift with the business; retuning them must not need a deploy.
+This follows the platform's never-hardcode rule.
+
+**Rule-based findings, no LLM.** Every finding fires from an explicit numeric
+threshold and renders the measured value beside the threshold it crossed, so any
+claim on the page is auditable. A confidently wrong recommendation on a growth
+dashboard is worse than none.
+
+**Five data traps are encoded as rules, each pinned by a test.** Every one produced a
+materially wrong number against live data before it was fixed: (1) zero-price
+Observer subscriptions from the Nov 2025–Feb 2026 free era are excluded; (2) paying
+counts come from subscriptions, never membership records, which are also minted by
+0-DTE SSO login; (3) revenue is every order line grouped by product, never split
+new-vs-renewal; (4) the Observer term is read per record (28 days to Jul 2026, 42
+from Aug); (5) partial months and immature cohorts are labelled, never annualised or
+read as a crash.
+
+**Verification.** 59 unit tests over the pure modules. The projection reproduces
+figures derived independently from the database, and the live clients reproduce the
+known totals — 1,056 subscriptions, 521 free Observers excluded, June Observer
+revenue $6,375, July email CTR 0.27%.
+
+**Consequences.** Adding a source is a new `sources_*.py` plus one entry in
+`refresh.SOURCES`. Adding a finding is one function plus one entry in `rules.RULES`.
+The WooCommerce key is read-scope only; Labs never writes to commerce.
 
 ## 2026-08-21 — DL-528 IKI Lab foundation page is PDS Spec v0.1 Part I
 
@@ -9600,4 +9645,3 @@ Script telemetry + backdate-into-closure restored.
 
 **Deferred (unchanged):** cost-of-deviation; external agent provider; anti-gaming empty-retro clock.
 Cross-ref Spec v0.51, v0.6 residuals, DL-118.
-
