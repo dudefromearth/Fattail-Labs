@@ -23,6 +23,11 @@ import {
   type RunnerSnapshot,
   type RunnerSocket,
 } from "./subscribe";
+import {
+  contractsFromMap,
+  getStreamBook,
+  interestKey,
+} from "./streamBook";
 
 export function pushTileSet(
   lastHash: { current: string | null },
@@ -203,6 +208,23 @@ export function createShellSession(opts: {
   function fire(snap: RunnerSnapshot) {
     lastSnap = snap;
     held = applySnapToHeld(held, snap);
+    if (held.hash) {
+      getStreamBook().push(
+        interestKey(opts.chain.symbol, opts.chain.expiration),
+        {
+          contentHash: held.hash,
+          asOf: held.asOf,
+          receivedAt: Date.now(),
+          epochQuality: snap.epoch_quality,
+          stale: snap.stale,
+          contracts: contractsFromMap(held.contracts),
+          spot: held.spot,
+          strikeStep: held.strikeStep,
+          wings: held.wings,
+          memo: null,
+        },
+      );
+    }
     const tiles = runActive(
       templateId,
       templateVersion,

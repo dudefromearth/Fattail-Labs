@@ -5,7 +5,8 @@
 **Parent:** Heatmap Templates Spec v0.2 (HM1–HM20) · Advanced Fly / `sym-fly`  
 **Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md`  
 **Short name:** Width Fit / WF  
-**Type:** Value-mode extension to the existing symmetric-butterfly matrix  
+**Type:** Heatmap **template** (`width-fit`) — sibling of Advanced flies (**OD-W1 Override** · **DL-529**). Internal compute id `width_fit`.  
+**Member guide:** [`docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md`](../docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md) · help concierge `server/help_reference/options-lab-heatmap-width-fit.md` (**DL-530**)  
 
 **Origin:** Rewrite of the SPX 0DTE Butterfly Width Optimizer development specification into a form fully compliant with the Heatmap Templates contract so an implementation plan can be drawn directly from this document.
 
@@ -61,7 +62,7 @@ Advanced Fly / `sym-fly` geometry, debit formula, dual-side model, and existing 
 | **WF1** | Neighborhood stability term is mandatory. A cell’s final fit score must incorporate a penalty (or down-weight) derived from dispersion of its principal metrics versus adjacent centers of the same width. Isolated high scores are suppressed; coherent regions are not. |
 | **WF2** | Per-width valid-center count (\(n\)) must be computable from the matrix of valid flags. All robust aggregates and stability statistics for a width are calculated **only** on that width’s valid cells. Footer must surface \(n\). |
 | **WF3** | Component weights are member-editable template params. A shipped, documented default preset is required. Platform-fixed weights that produce a ranking are forbidden. |
-| **WF4** | The template is a pure function of the current dual-side chain context + params + valueMode. Multi-snapshot history, fit time-series stores, and weight calibration loops are out of scope for this template and belong on the FatTail Intelligence / StudioOne plane. Short-term temporal signals may use only the existing client `flySurfaceHistory` ring-buffer pattern. |
+| **WF4** | The template is a pure function of the current dual-side chain context + params + valueMode. Multi-snapshot history, fit time-series stores, and weight calibration loops are out of scope for this template and belong on the FatTail Intelligence / StudioOne plane. Short-term temporal signals may use only the existing client `flySurfaceHistory` ring-buffer pattern. **Average and Replay of Width Fit colors / per-width aggregates are Template Runner views (TR14 stream book), not template state and not a second ranking formula.** |
 | **WF5** | Vocabulary is observation-only. See mandatory mapping table in §8. |
 
 ---

@@ -4,6 +4,32 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-24 — DL-574 Template Runner TR14 stream book (SB0-0 GO)
+
+**Decision (Coach GO):** Client Template Runner remembers subscribed OPF
+generations (stream book) so any provisioned template can Average or Replay.
+Relieves the server. Member cache budget **4 / 8 / 16 / 32 MiB** (default 8;
+caption “MB” = 2²⁰ bytes). Drop-oldest (global). Templates stay pure (TR5 /
+WF4). Width Fit ships **MA heatmap and ranking sheet** (Heatmap \| Ranking;
+Live \| Average; window detent 10/20/50/100). Same Width Fit aggregates; no
+second formula. Interval = distinct `content_hash`. Confidence maps to \(n\),
+#1−#2 median gap, min-window stability. Chrome: HI Spec `DetentSlider` kit
+primitive + landed `SegmentedControl`.
+
+**DL-539:** this program **includes** `HeatmapChainPanel.tsx`,
+`HeatmapControlsColumn.tsx`, `web/components/ui/DetentSlider.tsx`. Coach GO
+is the written in-program grant (plan §0.3 second box). **TR13** unchanged
+(IKI-P3 host chrome).
+
+**Spec:** Runner **TR14**. Plan v1.0.4
+`docs/Template-Runner-Stream-Book-Full-Agent-Bench-Plan-v1.0.md`. Token
+`agents/go/TRSB-W0.md`. Board `agents/p-template-runner-stream-book/`.
+
+**Does not:** server interval archive; SSR; raising `FLY_HISTORY_DEPTH`;
+IndexedDB; MiniTwo; extra WebSocket.
+
+---
+
 ## 2026-08-24 — DL-572 Help catalog GET (S1 poll surface)
 
 **Decision (Coach 2026-08-24):** Help publishes a **course-shaped** catalog of

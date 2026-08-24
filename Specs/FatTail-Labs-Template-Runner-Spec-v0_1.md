@@ -55,6 +55,7 @@ One **harness** exposing OPF as subscribable streams through a gateway; one **fr
 | **TR10 — Honesty at the stream** | Every stream carries provenance (source generation, timestamp, `epoch_quality`, staleness). Gaps propagate as gaps (no fill); failure states are first-class stream values the template must render/emit, not swallow. | PDS §5 · OPF elegant-failure doctrine |
 | **TR11 — Signals fire on what is** | A notification or API signal fires on a **measurement condition the subscriber chose**, never on a forecast. (Hard line, PDS Part I.) Wording OD-PDS5. | Coach hard line |
 | **TR12 — Fail loud** | Missing gateway config, unknown template id/version, undeclared sink, or a template attempting I/O aborts with a named error. No silent defaults. | SI #2 |
+| **TR14 — Stream book** | The runner may retain recent **input streams** it already subscribed to, **on the client**, under a **member-expressed byte budget**. Templates remain pure (TR5) and do not read the book. Default display is Live (current generation). Average and Scrubber are explicit host views that select stored streams, then `run()`. Same `content_hash` does not add a slot. Gaps stay gaps. One book per tab, shared by every registered template (TR8). **TR13** (IKI-P3 host chrome) is a different law and is not this book. | Coach GO **DL-574** · plan TRSB v1.0.4 |
 
 ## 3. Architecture (boundary sketch)
 

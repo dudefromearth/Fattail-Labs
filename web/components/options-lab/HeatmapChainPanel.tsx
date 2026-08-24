@@ -71,6 +71,19 @@ import {
   widthFitSurfaceState,
   type WidthFitFooterCol,
 } from "@/lib/options-lab/templates/widthFit";
+import WidthFitRanking from "@/components/options-lab/WidthFitRanking";
+import {
+  applyAverageColorT,
+  clampBudgetMib,
+  clampWindow,
+  contractsFromMap,
+  formatCacheLine,
+  getStreamBook,
+  interestKey,
+  weightsFingerprint,
+  type AverageWindow,
+  type BudgetStopMib,
+} from "@/lib/runner/streamBook";
 import { isUsEquityRthOpenByClock } from "@/lib/market/usEquitySession";
 import {
   generateTosScript,
@@ -251,6 +264,32 @@ export default function HeatmapChainPanel() {
     () => ({ ...DEFAULT_WIDTH_FIT_WEIGHTS }),
   );
   const [widthFitExpanded, setWidthFitExpanded] = useState(false);
+  const [wfIface, setWfIface] = useState<"heatmap" | "ranking">("heatmap");
+  const [wfTime, setWfTime] = useState<"live" | "average">("live");
+  const [wfWindow, setWfWindow] = useState<AverageWindow>(10);
+  const [cacheBudgetMib, setCacheBudgetMib] =
+    useState<BudgetStopMib>(8);
+  const [cacheRev, setCacheRev] = useState(0);
+
+  useEffect(() => {
+    try {
+      const b = clampBudgetMib(
+        Number(localStorage.getItem("ft_labs_runner_cache_budget_mb") || 8),
+      );
+      setCacheBudgetMib(b);
+      getStreamBook().setBudgetMib(b);
+      const t = localStorage.getItem("ft_labs_width_fit_time");
+      if (t === "live" || t === "average") setWfTime(t);
+      const i = localStorage.getItem("ft_labs_width_fit_interface");
+      if (i === "heatmap" || i === "ranking") setWfIface(i);
+      const w = clampWindow(
+        Number(localStorage.getItem("ft_labs_width_fit_avg_window") || 10),
+      );
+      setWfWindow(w);
+    } catch {
+      /* private mode */
+    }
+  }, []);
   const [selectedTile, setSelectedTile] = useState<MatrixTileKey | null>(null);
   const [hoverTip, setHoverTip] = useState<{
     model: HeatmapTipModel;
@@ -689,6 +728,74 @@ export default function HeatmapChainPanel() {
     return { ...built, footer: [] as WidthFitFooterCol[] };
   }, [tpl, chainCtx, templateParams, flyPaint, valueMode, stickyScale]);
 
+  const bookKey = interestKey(symbol, expiration);
+  const weightsFp = weightsFingerprint(widthFitWeights);
+
+  const lastBookHash = useRef<string>("");
+  useEffect(() => {
+    if (!isWidthFitTemplate(templateId) || !matrix || !bus.hash) return;
+    getStreamBook().setBudgetMib(cacheBudgetMib);
+    getStreamBook().push(bookKey, {
+      contentHash: bus.hash,
+      asOf: chainCtx.asOf,
+      receivedAt: Date.now(),
+      epochQuality: "ok",
+      stale: bus.transport === "held",
+      contracts: contractsFromMap(chainCtx.contracts),
+      spot: chainCtx.spot,
+      strikeStep: chainCtx.strikeStep,
+      wings: chainCtx.wings,
+      memo: {
+        weightsFp,
+        colorT: matrix.cells.map((row) => row.map((c) => c.colorT)),
+        widthPts: matrix.cols.map((c) => c.widthPts),
+        median: (matrix.footer ?? []).map((f) => f.median),
+        stability: (matrix.footer ?? []).map((f) => f.stability),
+        n: (matrix.footer ?? []).map((f) => f.n),
+      },
+    });
+    if (lastBookHash.current !== bus.hash) {
+      lastBookHash.current = bus.hash;
+      setCacheRev((n) => n + 1);
+    }
+    // matrix from this render after flyPaint; hash is the gen gate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bus.hash, bookKey, weightsFp, templateId, flyPaint, cacheBudgetMib]);
+
+  const displayMatrix = useMemo(() => {
+    if (!matrix) return null;
+    if (!isWidthFitTemplate(templateId) || wfTime !== "average") return matrix;
+    const avg = getStreamBook().averageColorT(bookKey, wfWindow, weightsFp);
+    if (!avg.used) return matrix;
+    const cells = applyAverageColorT(matrix.cells, avg.grid);
+    return { ...matrix, cells };
+  }, [matrix, templateId, wfTime, bookKey, wfWindow, weightsFp, cacheRev]);
+
+  const rankingStats = useMemo(() => {
+    if (!matrix || !isWidthFitTemplate(templateId)) return null;
+    if (wfTime === "average") {
+      const s = getStreamBook().averageWidthStats(
+        bookKey,
+        wfWindow,
+        weightsFp,
+      );
+      if (s.used) return s;
+    }
+    return {
+      widthPts: matrix.cols.map((c) => c.widthPts),
+      meanMedian: (matrix.footer ?? []).map((f) => f.median),
+      minStability: (matrix.footer ?? []).map((f) => f.stability),
+      nGens: (matrix.footer ?? []).map((f) => f.n),
+      used: 1,
+    };
+  }, [matrix, templateId, wfTime, bookKey, wfWindow, weightsFp, cacheRev]);
+
+  const cacheStatus = useMemo(() => {
+    void cacheRev;
+    getStreamBook().setBudgetMib(cacheBudgetMib);
+    return getStreamBook().status(bookKey);
+  }, [cacheBudgetMib, bookKey, cacheRev]);
+
   /** Same-width listed-gamma rank, 1–10. Held chain only. */
   const convexityScores = useMemo(() => {
     const out = new Map<string, number>();
@@ -892,9 +999,66 @@ export default function HeatmapChainPanel() {
                 onExpanded: setWidthFitExpanded,
                 state: widthFitSurfaceState(matrix.footer ?? []),
                 footer: matrix.footer ?? [],
+                iface: wfIface,
+                onIface: (v) => {
+                  setWfIface(v);
+                  try {
+                    localStorage.setItem("ft_labs_width_fit_interface", v);
+                  } catch {
+                    /* ignore */
+                  }
+                },
+                time: wfTime,
+                onTime: (v) => {
+                  setWfTime(v);
+                  try {
+                    localStorage.setItem("ft_labs_width_fit_time", v);
+                  } catch {
+                    /* ignore */
+                  }
+                },
+                window: wfWindow,
+                onWindow: (v) => {
+                  setWfWindow(v);
+                  try {
+                    localStorage.setItem(
+                      "ft_labs_width_fit_avg_window",
+                      String(v),
+                    );
+                  } catch {
+                    /* ignore */
+                  }
+                },
+                avgUsed:
+                  wfTime === "average"
+                    ? getStreamBook().averageColorT(
+                        bookKey,
+                        wfWindow,
+                        weightsFp,
+                      ).used
+                    : null,
               }
             : null
         }
+        streamCache={{
+          budgetMib: cacheBudgetMib,
+          onBudget: (n) => {
+            setCacheBudgetMib(n);
+            getStreamBook().setBudgetMib(n);
+            setCacheRev((x) => x + 1);
+            try {
+              localStorage.setItem(
+                "ft_labs_runner_cache_budget_mb",
+                String(n),
+              );
+            } catch {
+              /* ignore */
+            }
+          },
+          line: formatCacheLine(cacheStatus),
+          atLimit: cacheStatus.atLimit,
+          oversize: cacheStatus.oversize,
+        }}
         onOpenAnalyzer={() => saveAnalyzerTrade(tosScript, "heatmap")}
         spotLabel={smoothSpot != null ? fmt(smoothSpot, 2) : "—"}
         genLine={bus.hash ? `gen ${bus.hash.slice(0, 8)}` : null}
@@ -1212,7 +1376,34 @@ export default function HeatmapChainPanel() {
                   </div>
                 )}
               </div>
-            ) : tpl.layout === "matrix" && matrix ? (
+            ) : isWidthFitTemplate(templateId) &&
+              wfIface === "ranking" &&
+              rankingStats ? (
+              <WidthFitRanking
+                symbol={symbol}
+                expirationLabel={
+                  expiryContracts.find((c) => c.expiration === expiration)
+                    ?.label || expiration || "—"
+                }
+                asOfLabel={
+                  chainCtx.asOf
+                    ? new Date(chainCtx.asOf).toLocaleTimeString(undefined, {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    : "—"
+                }
+                snapshotLine={
+                  wfTime === "average"
+                    ? `Average · ${getStreamBook().averageWidthStats(bookKey, wfWindow, weightsFp).used} of ${wfWindow}`
+                    : "Live heat-map snapshot"
+                }
+                widthPts={rankingStats.widthPts}
+                median={rankingStats.meanMedian}
+                n={rankingStats.nGens}
+                stability={rankingStats.minStability}
+              />
+            ) : tpl.layout === "matrix" && displayMatrix ? (
               /* Symmetric flies matrix: 2× type vs MSC 12/10px baseline */
               <table className="w-full min-w-[40rem] table-fixed border-collapse text-[24px] leading-none">
                 <thead className="sticky top-0 z-[2] bg-[#0a0a0e]/90 backdrop-blur-sm">
@@ -1223,7 +1414,7 @@ export default function HeatmapChainPanel() {
                     >
                       Strike
                     </th>
-                    {matrix.cols.map((c) => (
+                    {displayMatrix.cols.map((c) => (
                       <th
                         key={c.id}
                         scope="col"
@@ -1235,8 +1426,8 @@ export default function HeatmapChainPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {matrix.rows.map((row, ri) => {
-                    const anyOutline = matrix.cells.some((r) =>
+                  {displayMatrix.rows.map((row, ri) => {
+                    const anyOutline = displayMatrix.cells.some((r) =>
                       r.some((c) => c.widthFitOutline),
                     );
                     const hideRow =
@@ -1244,7 +1435,7 @@ export default function HeatmapChainPanel() {
                       !widthFitExpanded &&
                       anyOutline &&
                       !row.isSpot &&
-                      !matrix.cells[ri]?.some((c) => c.widthFitOutline);
+                      !displayMatrix.cells[ri]?.some((c) => c.widthFitOutline);
                     if (hideRow) return null;
                     return (
                     <tr
@@ -1265,8 +1456,8 @@ export default function HeatmapChainPanel() {
                       >
                         {row.label}
                       </td>
-                      {matrix.cols.map((col, ci) => {
-                        const cell = matrix.cells[ri]?.[ci];
+                      {displayMatrix.cols.map((col, ci) => {
+                        const cell = displayMatrix.cells[ri]?.[ci];
                         const tile =
                           isWidthFitTemplate(templateId) && cell?.valid
                             ? { face: "", alt: cell.tooltip || "Width Fit" }
@@ -1287,7 +1478,7 @@ export default function HeatmapChainPanel() {
                               qualityFlag: cell?.qualityFlag,
                               stability: cell?.widthFitStability ?? null,
                               components: cell?.components,
-                              widthMedian: matrix.footer?.[ci]?.median ?? null,
+                              widthMedian: displayMatrix.footer?.[ci]?.median ?? null,
                             }
                           : undefined;
                         return (
@@ -1401,10 +1592,10 @@ export default function HeatmapChainPanel() {
                     </tr>
                     );
                   })}
-                  {!matrix.rows.length && (
+                  {!displayMatrix.rows.length && (
                     <tr>
                       <td
-                        colSpan={matrix.cols.length + 1}
+                        colSpan={displayMatrix.cols.length + 1}
                         className="px-4 py-24 text-center text-[24px] text-white/40"
                       >
                         {expiration
@@ -1414,7 +1605,7 @@ export default function HeatmapChainPanel() {
                     </tr>
                   )}
                 </tbody>
-                {isWidthFitTemplate(templateId) && matrix.footer?.length ? (
+                {isWidthFitTemplate(templateId) && displayMatrix.footer?.length ? (
                   <tfoot data-testid="width-fit-footer">
                     <tr className="h-14 border-t border-white/15 bg-[#0a0a0e]">
                       <th
@@ -1423,7 +1614,7 @@ export default function HeatmapChainPanel() {
                       >
                         Width Fit
                       </th>
-                      {matrix.footer.map((f) => (
+                      {displayMatrix.footer.map((f) => (
                         <td
                           key={f.widthPts}
                           className="px-1 text-center align-middle text-[11px] tabular-nums text-white/70"

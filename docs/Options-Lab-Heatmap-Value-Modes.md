@@ -3,6 +3,9 @@
 **Home:** Options Lab → Heatmap (`/app/options-lab/heatmap`)  
 **Help ingest (canonical for the concierge):**
 `server/help_reference/options-lab-heatmap.md`  
+**Width Fit** is a separate **template** (not a Value on this menu):
+[`Options-Lab-Heatmap-Width-Fit-User-Guide.md`](./Options-Lab-Heatmap-Width-Fit-User-Guide.md)
+· help `server/help_reference/options-lab-heatmap-width-fit.md`.  
 **Research source (Coach proposal):**
 [`Options-Lab-Heatmap-Value-Metrics-Proposal.md`](./Options-Lab-Heatmap-Value-Metrics-Proposal.md)
 · PDF [`Heatmap-Value-Metrics-Proposal.pdf`](./Heatmap-Value-Metrics-Proposal.pdf)  

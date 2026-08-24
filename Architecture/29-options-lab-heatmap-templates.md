@@ -43,7 +43,7 @@
 | Diff keys `side:strike` | Landed |
 | Template registry + switcher | Landed |
 | Advanced Fly (id `sym-fly`): Long/Debit +1/−2/+1 · Short/Credit −1/+2/−1 · columns 10…50×5 · RoC −/+ slider / tick % / R:R / Δ / Δ² / vel / accel / slope / curvature / C/P + history | Landed (DL-311 · **DL-434** · **DL-435**) |
-| **Width Fit** (template id `width-fit`) | Landed **DL-525** / **DL-526** / **DL-529** — Template switcher sibling of Advanced flies · member criteria weights (equal \(1/7\)) · stability **penalty** outside weights (OD-W6) · footer median + \(n\) · observation-only |
+| **Width Fit** (template id `width-fit`) | Landed **DL-525** / **DL-526** / **DL-529** — Template switcher sibling of Advanced flies · member criteria weights (equal \(1/7\)) · stability **penalty** outside weights (OD-W6) · footer median + \(n\) · observation-only · member guide [`docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md`](../docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md) · help `server/help_reference/options-lab-heatmap-width-fit.md` (**DL-530**) |
 | Client flySurfaceHistory + AF10/AF17 | Landed |
 | sym-fly debit/credit/pct_change/r2r + RoC sticky color | Superseded as surface by Advanced Fly modes |
 | gex_v1 call/put/net | Landed |

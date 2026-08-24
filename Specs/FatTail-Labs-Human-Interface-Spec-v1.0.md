@@ -215,6 +215,7 @@ All new and migrated UI uses these. Variants are **closed enums**.
 | `Select` | Native or custom with full keyboard |
 | `Checkbox` / `Switch` / `RadioGroup` | 44pt targets |
 | `SearchField` | Clear button, submit semantics |
+| `DetentSlider` | Discrete stops only (no in-between). Tick marks + numeric labels under the track. Thumb hit ≥ 44 pt. Keyboard Left/Right/Home/End. `aria-valuetext` names the stop. Reduced-motion: no thumb animation. Used for Runner cache budget and Width Fit Average window (**DL-574**). |
 
 ### 6.3 Feedback & modality
 

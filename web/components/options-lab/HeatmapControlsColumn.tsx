@@ -37,6 +37,15 @@ import {
   resolveWidthFitWeights,
 } from "@/lib/options-lab/templates/widthFit";
 import type { LadderExpirationContract } from "@/lib/chainLadderApi";
+import SegmentedControl from "@/components/ui/SegmentedControl";
+import DetentSlider from "@/components/ui/DetentSlider";
+import Banner from "@/components/ui/Banner";
+import {
+  BUDGET_STOPS_MIB,
+  WINDOW_STOPS,
+  type AverageWindow,
+  type BudgetStopMib,
+} from "@/lib/runner/streamBook";
 
 const EXPIRY_PICK_COUNT = 3;
 
@@ -91,7 +100,21 @@ export type HeatmapControlsColumnProps = {
     onExpanded: (v: boolean) => void;
     state: WidthFitSurfaceState;
     footer: WidthFitFooterCol[];
+    iface: "heatmap" | "ranking";
+    onIface: (v: "heatmap" | "ranking") => void;
+    time: "live" | "average";
+    onTime: (v: "live" | "average") => void;
+    window: AverageWindow;
+    onWindow: (v: AverageWindow) => void;
+    avgUsed: number | null;
   } | null;
+  streamCache: {
+    budgetMib: BudgetStopMib;
+    onBudget: (n: BudgetStopMib) => void;
+    line: string;
+    atLimit: boolean;
+    oversize: boolean;
+  };
 };
 
 function statusCopy(
@@ -189,6 +212,7 @@ export default function HeatmapControlsColumn({
   feedLine,
   patchLine,
   widthFit = null,
+  streamCache,
 }: HeatmapControlsColumnProps) {
   const status = statusCopy(streaming, held, transport);
 
@@ -357,6 +381,49 @@ export default function HeatmapControlsColumn({
             >
               {WIDTH_FIT_STATE_LABEL[widthFit.state]}
             </p>
+            <div className="px-3 py-2" data-testid="width-fit-interface">
+              <p className={inspectorRowLabel + " mb-1"}>Interface</p>
+              <SegmentedControl
+                ariaLabel="Width Fit interface"
+                value={widthFit.iface}
+                onChange={widthFit.onIface}
+                options={[
+                  { id: "heatmap", label: "Heatmap" },
+                  { id: "ranking", label: "Ranking" },
+                ]}
+              />
+            </div>
+            <div className="px-3 py-2" data-testid="width-fit-time">
+              <p className={inspectorRowLabel + " mb-1"}>Time</p>
+              <SegmentedControl
+                ariaLabel="Width Fit time"
+                value={widthFit.time}
+                onChange={widthFit.onTime}
+                options={[
+                  { id: "live", label: "Live" },
+                  { id: "average", label: "Average" },
+                ]}
+              />
+            </div>
+            {widthFit.time === "average" ? (
+              <>
+                <DetentSlider
+                  label="Average window"
+                  stops={WINDOW_STOPS}
+                  value={widthFit.window}
+                  onChange={(n) => widthFit.onWindow(n as AverageWindow)}
+                  valuetext={(n) => `${n} intervals`}
+                  testId="width-fit-average-window"
+                />
+                {widthFit.avgUsed != null &&
+                widthFit.avgUsed < widthFit.window ? (
+                  <p className="px-3 text-[length:var(--text-caption)] text-[var(--color-label-secondary)]">
+                    {widthFit.avgUsed} of {widthFit.window}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+            {widthFit.iface === "heatmap" ? (
             <button
               type="button"
               className="mx-3 mb-2 min-h-11 rounded-full border border-[var(--color-separator)] px-4 text-[length:var(--text-subheadline)]"
@@ -366,6 +433,7 @@ export default function HeatmapControlsColumn({
             >
               {widthFit.expanded ? "Show coherent regions" : "Expand full matrix"}
             </button>
+            ) : null}
             {WIDTH_FIT_CRITERIA.map((k) => (
               <label key={k} className={inspectorRow + " flex-col items-stretch gap-1 py-1"}>
                 <span className={inspectorRowLabel + " normal-case"}>
@@ -402,6 +470,32 @@ export default function HeatmapControlsColumn({
             </button>
           </InspectorSection>
         ) : null}
+
+        <InspectorSection title="Cache">
+          <DetentSlider
+            label="Cache"
+            stops={BUDGET_STOPS_MIB}
+            value={streamCache.budgetMib}
+            onChange={(n) => streamCache.onBudget(n as BudgetStopMib)}
+            valuetext={(n) => `${n} megabytes`}
+            testId="runner-cache-budget"
+          />
+          <p
+            className="px-3 pb-2 text-[length:var(--text-caption)] text-[var(--color-label-secondary)]"
+            data-testid="runner-cache-line"
+          >
+            {streamCache.line}
+            {streamCache.atLimit ? " · Cache at your limit" : ""}
+          </p>
+          {streamCache.oversize ? (
+            <div className="px-3 pb-2">
+              <Banner tone="warning">
+                This generation is larger than your cache budget. Only it is
+                kept.
+              </Banner>
+            </div>
+          ) : null}
+        </InspectorSection>
 
         <InspectorSection title="Chain">
           <label className={inspectorRow}>
