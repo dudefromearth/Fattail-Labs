@@ -4,6 +4,47 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-24 — DL-576 Heatmap tab-session help guide
+
+**Decision:** Member how-to for Heatmap inspector tab-session (**HM21**)
+is published as
+`server/help_reference/options-lab-heatmap-session.md`. File present =
+published (**DL-572**). Concierge search + `GET /api/help/guides` pick it
+up; no write path.
+
+App-areas **Heatmap** / **Options Lab**, Advanced flies, and Width Fit
+topics point at **This tab session**. Covers what stays, what does not
+(hover / Average snapshots / new tab), listed-expiration restore, and
+honest Average memory vs inspector choices.
+
+**Does not:** MiniTwo; changing compute law; server-saved layouts.
+
+---
+
+## 2026-08-24 — DL-575 Heatmap inspector tab-session stickiness (HM21)
+
+**Decision (Coach):** Heatmap inspector selections stay for the **current
+browser tab session**. Leave for other apps/suites and return in this tab →
+same symbol, listed expiration, template, value, side, wings, Width Fit
+weights and view (Heatmap \| Ranking, Live \| Average, window, cache-budget
+detent). A new tab starts from product defaults.
+
+**Store:** `sessionStorage` key `ft_labs_heatmap_session`
+(`web/lib/options-lab/heatmapSession.ts`). Not Redis. Not server SoR. Not
+the TR14 stream book (RAM generations). Distinct from **HM5 / VT6**
+(market-session hold of last chain) and from **§5.2.2** (color-scale
+hysteresis). Glance / hover / pin / ToS copy are not persisted. Expiration
+restores only if still listed on the fetched expiry pack.
+
+**Spec:** Heatmap Templates **v0.2.1** **HM21** · Width Fit **v0.1.2** §8.5 ·
+Runner TR14 sentence (book ≠ blob) · Arch **29**. Help already names the
+tab session.
+
+**Does not:** survive tab close; persist generations; extra WebSocket;
+MiniTwo (code was local at log time).
+
+---
+
 ## 2026-08-24 — DL-574 Template Runner TR14 stream book (SB0-0 GO)
 
 **Decision (Coach GO):** Client Template Runner remembers subscribed OPF

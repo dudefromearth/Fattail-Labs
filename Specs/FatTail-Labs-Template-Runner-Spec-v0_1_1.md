@@ -17,7 +17,7 @@
 | [Arch 34 — Redis cache and SSE gateway](../Architecture/34-redis-cache-and-sse-gateway.md) (DL-532) | **Which doc binds what.** Coach's "SSE gateway" seats on the as-built WS subscribe plane (DL-419); do not add a second market SSE (DL-420) |
 | [Market Bus Spec v1.0.1](./FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1_0.md) · Arch 28 (as-built DL-282–286) | MB1 feed-owned upstream · MB2 Redis generation store + pub/sub · MB5 interest-driven · MB7 snapshot-then-delta |
 | [OPF Spec v0.2](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) · Arch 30 | The **model** the server updates; packs `pack_id@semver`; "tools wire in by declaring a use case" (Arch 30 §1.4); **Not: SSE as market transport** (see TR3) |
-| [Heatmap Templates Spec v0.2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | HM6 purity lifts to Runner law (TR5); HM1–HM20 remain binding for heatmap-form templates |
+| [Heatmap Templates Spec v0.2.1](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | HM6 purity lifts to Runner law (TR5); HM1–HM21 remain binding for heatmap-form templates. **HM21** is inspector tab-session prefs, not the TR14 book. |
 | [IKI Lab PDS Spec v0.2](./FatTail-Labs-IKI-Lab-Public-Data-Service-Spec-v0_2.md) | IKI host: view contract, delivery modes, hierarchy |
 | Wiki Interface v0.1 · Member Wiki v0.1 | Wiki as consumer of Runner output (PDS §4a) |
 | CLAUDE.md · AGENTS.md · INSTRUCTIONS.md §2 | Sacred invariants; no second store of truth; fail loud |

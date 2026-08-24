@@ -27,8 +27,10 @@ readable; rank order is still the Width Fit median.
 
 ## How to open Width Fit
 Apps → Options Lab → Heatmap. Inspector **Template** → **Width Fit**. Choose
-symbol, listed expiration, Calls or Puts. The strike window is the held
-chain. Changing Template does not add a second market feed.
+symbol, listed expiration, Calls or Puts. Inspector choices stay for this
+browser tab session when you leave and come back — see **This tab session**.
+The strike window is the held chain. Changing Template does not add a second
+market feed.
 
 ## Color tiles
 Tiles show **color only** — no numbers on the face.

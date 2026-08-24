@@ -4,7 +4,7 @@
 **What this is:** a Heatmap **template** that scores listed long butterflies for **fit to the criteria you set**, on the live dual-side chain.  
 **Language:** observation and structure only — no profit claims, no “buy this width.”
 
-**Help (concierge):** `server/help_reference/options-lab-heatmap-width-fit.md`  
+**Help (concierge):** `server/help_reference/options-lab-heatmap-width-fit.md` · tab session `server/help_reference/options-lab-heatmap-session.md` (**DL-576**)  
 **Spec (engineering):** `Specs/FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md`
 
 This guide matches the **as-built** Width Fit template: Template switcher, color-only tiles, hover / click panels, footer median + \(n\), member weight sliders, plus **Heatmap / Ranking** interfaces and **Live / Average** (moving-average of held generations on this tab; cache budget 4–32 MB).
@@ -34,6 +34,8 @@ This guide matches the **as-built** Width Fit template: Template switcher, color
 3. Choose **Width Fit** (sibling of **Advanced flies**, not a Value on Advanced flies).
 
 Pick a **symbol**, a **listed expiration**, and **Calls** or **Puts**. The strike window comes from the held chain. The grid is the same long-fly geometry as Advanced flies: body \(K\), wings \(K \pm w\), quantities **+1 / −2 / +1**.
+
+Inspector choices (template, expiration, side, weights, Heatmap \| Ranking, Live \| Average, window, cache size) stay for **this browser tab** when you leave Heatmap and come back. A new tab starts from defaults. Average still uses the generations held in this tab’s memory — not a server archive.
 
 Width Fit is **not** on the Advanced flies **Value** menu.
 

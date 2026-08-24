@@ -2,7 +2,8 @@
 
 **Status:** **BUILD AUTHORITY** (Coach WF0-0 · **DL-525**)  
 **Date:** 2026-08-21  
-**Parent:** Heatmap Templates Spec v0.2 (HM1–HM20) · Advanced Fly / `sym-fly`  
+**Current revision:** **v0.1.2** (filename remains `…-v0_1.md`)  
+**Parent:** Heatmap Templates Spec v0.2.1 (HM1–HM21) · Advanced Fly / `sym-fly`  
 **Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md`  
 **Short name:** Width Fit / WF  
 **Type:** Heatmap **template** (`width-fit`) — sibling of Advanced flies (**OD-W1 Override** · **DL-529**). Internal compute id `width_fit`.  
@@ -40,7 +41,7 @@ The best-fitting butterfly structures are encoded in the shape and economics of 
 
 ## 1. Parent Laws
 
-All of Heatmap Templates Spec v0.2 laws **HM1–HM20** apply in full. Critical reminders:
+All of Heatmap Templates Spec v0.2.1 laws **HM1–HM21** apply in full. Critical reminders:
 
 | ID | Law |
 |----|-----|
@@ -49,6 +50,7 @@ All of Heatmap Templates Spec v0.2 laws **HM1–HM20** apply in full. Critical r
 | **HM8** | Exact listed strikes; no snap. \(K \pm w\) must be listed or cell is invalid |
 | **HM14** | HIG chrome (tokens, ≥44 pt, reduced-motion) |
 | **HM15–HM17** | Always both sides; side is view filter only; strike window ≤ 250 contracts |
+| **HM21** | Inspector tab-session (`sessionStorage` `ft_labs_heatmap_session`). Width Fit weights, expand, Heatmap \| Ranking, Live \| Average, window detent, and cache-budget detent restore in this tab. Not the TR14 generation bytes. |
 | **§0.3** | Structure descriptors only; no profit claims |
 
 Advanced Fly / `sym-fly` geometry, debit formula, dual-side model, and existing value modes remain the foundation.
@@ -258,6 +260,17 @@ When a cell is high-fit but the width-level aggregate is only moderate, the insp
 
 > This cell scores well relative to other centers at the same width; the width as a whole shows only moderate coherence.
 
+### 8.5 Tab-session inspector (HM21)
+
+Width Fit inspector controls persist with the rest of Heatmap under parent **HM21**:
+
+- member criteria weights and **Expand full matrix**
+- interface **Heatmap \| Ranking**
+- time **Live \| Average** and window detent **10 / 20 / 50 / 100**
+- cache-budget detent **4 / 8 / 16 / 32** (caption MB = \(2^{20}\) bytes)
+
+**Average** still reads **TR14** RAM generations on this tab. The detent *choice* is the session blob; the held snapshots are the book. Closing the tab drops both. A new tab starts from defaults (heatmap · live · window 10 · budget 8). Glance / hover / pin are not in the blob.
+
 ---
 
 ## 9. Call / Put Handling
@@ -298,6 +311,7 @@ When a cell is high-fit but the width-level aggregate is only moderate, the insp
 | **AT-WF10** | All aggregates for a width use only that width’s valid cells; widths with \(n < min_valid_n\) are flagged low-confidence and cannot be presented as high-fit. |
 | **AT-WF11** | Corrupted inputs (negative debit artifact, crossed market, extreme spread, null critical greek) never produce a high fit score. |
 | **AT-WF12** | Footer aggregates change when weights change (without chain re-fetch). |
+| **AT-WF13** | Width Fit weights, iface, time, window, and cache-budget detent round-trip in `ft_labs_heatmap_session` (HM21). The TR14 book is not written into that blob. |
 
 ---
 
@@ -352,8 +366,9 @@ The following rulings make the Spec implementable without further ambiguity:
 
 | Version | Date | Notes |
 |---------|------|--------|
+| **v0.1.2** | 2026-08-24 | **HM21** tab-session inspector (§8.5). Weights / Heatmap\|Ranking / Live\|Average / window / cache-budget detent persist in this tab. Distinct from TR14 RAM book. **AT-WF13**. **DL-575**. |
 | **v0.1.1** | 2026-08-21 | **BUILD AUTHORITY.** Coach WF0-0 · **DL-525**. OD-W1…W6 Accept. JR1–7. Originating `surface_stability` weight line kept; OD-W6 relocates suppression to `stability_penalty_strength` with a floor. |
 | **v0.1** | 2026-08-21 | Initial DRAFT. Rewrite of Width Optimizer into pure Heatmap Templates form. Incorporates OD-W1–W5, neighborhood stability, honest per-width \(n\), observation-only vocabulary, progressive-disclosure UI contract, and clear Intelligence boundary. |
 
 **One-line law**  
-A pure, member-weighted fit score over the live dual-side butterfly surface, computed cell-by-cell with mandatory neighborhood stability, honest per-width sample sizes, and observation-only language — never a platform signal.
+A pure, member-weighted fit score over the live dual-side butterfly surface, computed cell-by-cell with mandatory neighborhood stability, honest per-width sample sizes, and observation-only language — never a platform signal. Inspector Width Fit choices stick for this tab (HM21); Average still reads the TR14 book.

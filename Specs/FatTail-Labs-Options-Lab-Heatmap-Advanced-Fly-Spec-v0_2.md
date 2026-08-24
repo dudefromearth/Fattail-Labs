@@ -2,9 +2,9 @@
 
 **Status:** **DRAFT** — product law for the fly heatmap surface (replaces Symmetric Fly)  
 **Date:** 2026-08-12  
-**Current revision:** **v0.2.3** (filename remains `…-v0_2.md`)  
+**Current revision:** **v0.2.4** (filename remains `…-v0_2.md`)  
 **Supersedes:** [v0.1](./FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_1.md)  
-**Supersedes (surface law):** Symmetric Fly section of [Heatmap Templates Spec v0.2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) **§5.2** for member-visible fly matrix behavior (parent HM1–HM20 remain fully in force)  
+**Supersedes (surface law):** Symmetric Fly section of [Heatmap Templates Spec v0.2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) **§5.2** for member-visible fly matrix behavior (parent HM1–HM21 remain fully in force)  
 **Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md`  
 **Type:** Product Spec — pure template Value modes + client generation history over **one** OPF-held dual-side chain  
 
@@ -20,7 +20,8 @@ shasum -a 1 Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md
 **B1–B4 RESOLVED** in v0.2. **A1–A6, A5 AT folded.** A7 process note above. A8: OPF-Truth path verified at parents table.  
 **Post-fold residuals (2026-08-12 verify):** **N1** curvature uniform-triple · **N2** Credit magnitude+chip display — folded in **v0.2.1**.  
 **v0.2.2 (Coach 2026-08-18):** N2 **amended** — Credit is the **short fly** (−1/+2/−1), not abs(D)+CR. Labels **Long/Debit** · **Short/Credit**. **DL-434**.  
-**v0.2.3 (Coach 2026-08-18):** Width columns 10…50 × 5. RoC color slider under Side (−/+). **DL-435**.
+**v0.2.3 (Coach 2026-08-18):** Width columns 10…50 × 5. RoC color slider under Side (−/+). **DL-435**.  
+**v0.2.4 (2026-08-24):** Parent **HM21** citation only. **DL-575**.
 
 **Process:** Spec review (Coach + Claude) → OD Accept/Override at AF0 → implementation via Full Agent Bench Plan → code/ATs.  
 **No implementation seed fire** until Coach **AF0-0 GO**.
@@ -78,7 +79,7 @@ On Options Lab **Heatmap** (`/app/options-lab/heatmap`), the **fly surface** is 
 
 | Parent law | Advanced Fly |
 |------------|--------------|
-| **HM1–HM20** | Fully in force |
+| **HM1–HM21** | Fully in force. **HM21** inspector tab-session is host chrome on `HeatmapChainPanel`, not AF compute. |
 | **§5.2 sym-fly** geometry · debit formula · Width · no-snap · RoC color · sticky scale | **Incorporated by reference** and restated in **§3** (geometry) and **§4** (color); AF is the ship vehicle |
 | **§5.2 value modes** Debit · pct_change · r2r | Superseded/extended by **§5** of this Spec (Credit also frozen here) |
 | **GEX · ladder · vertical · bw-fly** | Unchanged; separate templates |
@@ -126,7 +127,7 @@ Massive dual-side snapshot
 
 | Spec / doc | Role |
 |------------|------|
-| [Heatmap Templates Spec v0.2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | HM1–HM20 · framework · parent catalog |
+| [Heatmap Templates Spec v0.2.1](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | HM1–HM21 · framework · parent catalog |
 | [OPF Truth & Elegant Failure Doctrine v1.0](./FatTail-Labs-Options-Lab-OPF-Truth-and-Elegant-Failure-Doctrine-v1.0.md) · **DL-309** | OPF-held chain sole instrument truth (Heatmap consumes that plane) — path verified |
 | [Options Pricing Foundation Spec v0.2](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) | Generation / mark heritage; AF does not re-price packages |
 | [Massive Market Bus Spec](./FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) (content v1.0.1) | One WS/tab · push |
@@ -138,7 +139,7 @@ Massive dual-side snapshot
 
 ## 2. Laws (Advanced Fly)
 
-Parent **HM1–HM20** apply. Advanced Fly–specific:
+Parent **HM1–HM21** apply. Advanced Fly–specific:
 
 | ID | Law |
 |----|-----|
@@ -592,6 +593,7 @@ Ship with:
 | **v0.2.1** | 2026-08-12 | N1 curvature uniform-triple; N2 Credit magnitude+chip suite display; still AF0-ready |
 | **v0.2.2** | 2026-08-18 | Coach: Long/Debit = +1/−2/+1 · Short/Credit = −1/+2/−1. Drop forced CR chip. **DL-434**. |
 | **v0.2.3** | 2026-08-18 | Columns **10…50 by 5** for every variant. −/+ RoC sensitivity slider under Side. **DL-435**. |
+| **v0.2.4** | 2026-08-24 | Parent **HM21** citation (inspector tab-session). No AF compute change. **DL-575**. |
 
 **One-line product law:**  
 **One OPF-held dual-side chain; Advanced Fly is the Symmetric Fly surface with honest Value modes and client generation history — pure template, never a second data path, never a profit claim.**

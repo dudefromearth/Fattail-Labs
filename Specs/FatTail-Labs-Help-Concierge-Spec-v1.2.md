@@ -25,6 +25,14 @@ the bot to answer those without dumping an ever-growing KB into every request.
   Membership, Notifications, Help).
 - **courses.md** — the published courses distilled from their real descriptions + a
   recommended learning order.
+- **wiki.md** — member Wiki (search-first map at `/app/wiki`; published pages;
+  Wiki vs Help).
+- **wiki-agent.md** — Wiki agent for **administrators only** (members never see
+  the control; first sections say so).
+- Plus Options Lab topics (`options-lab-*.md`) as those surfaces shipped
+  (`options-lab-heatmap.md`, `options-lab-heatmap-width-fit.md`,
+  `options-lab-heatmap-session.md` — inspector tab-session · **DL-576**,
+  `options-lab-analyzer.md`).
 
 All member-facing. Adding/editing a doc changes what the bot knows — no code change.
 

@@ -1,9 +1,9 @@
 # Options Lab — Heatmap Template Architecture
 
-**Status:** **AS-BUILT (partial)** (2026-08-12) — dual-side generation + template registry + **Advanced Fly** (id `sym-fly`) + gex_v1 + ladder; vertical/bw-fly deferred  
+**Status:** **AS-BUILT (partial)** (2026-08-24) — dual-side generation + template registry + **Advanced Fly** (id `sym-fly`) + **Width Fit** + gex_v1 + ladder + **HM21** inspector tab-session; vertical/bw-fly landed  
 **Surface:** Options Lab → **Heatmap** (`/app/options-lab/heatmap`)  
 **Type:** Design + as-built map — live chain **views** (templates) over one shared option-chain model  
-**Product law:** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) · **Advanced Fly** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md) (v0.2.1) · **DL-311**  
+**Product law:** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) **v0.2.1** (**HM21** · **DL-575**) · **Advanced Fly** [`Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md`](../Specs/FatTail-Labs-Options-Lab-Heatmap-Advanced-Fly-Spec-v0_2.md) (v0.2.4) · **DL-311**  
 **Not:** MSC convexity heatmap · MarketSwarm code · per-template Massive polling  
 
 **Parents / companions:**
@@ -12,7 +12,7 @@
 |-----|------|
 | [28 — Massive Market Bus](./28-massive-market-bus.md) | Massive → feeds → Redis → one WS/tab → shared client |
 | [18 — Shared live marks](./18-shared-live-marks-stream.md) | Universe / marks posture (do not confuse with `mb:*`) |
-| Spec [Heatmap Templates v0.2](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | **Product law** — dual-side, Width, modal step, next_url fail-loud, standard contracts |
+| Spec [Heatmap Templates v0.2.1](../Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | **Product law** — dual-side, Width, modal step, next_url fail-loud, standard contracts, **HM21** inspector tab-session |
 | Spec [Options Chain Picker v1.0.2](../Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md) | Universe SoR · OC2 proxy-safe spot · OC6/OC6a fields · **no MSC** (OC13) |
 | Spec [Market Bus v1.0](../Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md) | Transport law · one socket per tab |
 | Spec [Human Interface v1.0](../Specs/FatTail-Labs-Human-Interface-Spec-v1.0.md) | Member chrome · tokens · ≥44pt |
@@ -25,6 +25,7 @@
 | Heatmap route | `web/app/app/options-lab/heatmap/page.tsx` |
 | Workspace chrome | `web/components/options-lab/OptionsLabChrome.tsx` (`workspace`) |
 | Chain panel + template switcher | `web/components/options-lab/HeatmapChainPanel.tsx` |
+| Inspector tab-session (HM21) | `web/lib/options-lab/heatmapSession.ts` — `sessionStorage` `ft_labs_heatmap_session` |
 | Templates (ladder · Advanced Fly/`sym-fly` · gex · history) | `web/lib/options-lab/templates/*` · `flySurfaceHistory.ts` |
 | Dual-side push client | `web/lib/market/useOptionChainBus.ts` · `MarketSocket.ts` · `chainLadderApi.ts` |
 | Dual-side ladder + HM18/19/20 | `server/routes/chain_ladder.py` · `server/market_data/chain_ladder.py` · `massive_client.py` |
@@ -43,12 +44,14 @@
 | Diff keys `side:strike` | Landed |
 | Template registry + switcher | Landed |
 | Advanced Fly (id `sym-fly`): Long/Debit +1/−2/+1 · Short/Credit −1/+2/−1 · columns 10…50×5 · RoC −/+ slider / tick % / R:R / Δ / Δ² / vel / accel / slope / curvature / C/P + history | Landed (DL-311 · **DL-434** · **DL-435**) |
-| **Width Fit** (template id `width-fit`) | Landed **DL-525** / **DL-526** / **DL-529** — Template switcher sibling of Advanced flies · member criteria weights (equal \(1/7\)) · stability **penalty** outside weights (OD-W6) · footer median + \(n\) · observation-only · member guide [`docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md`](../docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md) · help `server/help_reference/options-lab-heatmap-width-fit.md` (**DL-530**) |
+| **Width Fit** (template id `width-fit`) | Landed **DL-525** / **DL-526** / **DL-529** — Template switcher sibling of Advanced flies · member criteria weights (equal \(1/7\)) · stability **penalty** outside weights (OD-W6) · footer median + \(n\) · observation-only · member guide [`docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md`](../docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md) · help `server/help_reference/options-lab-heatmap-width-fit.md` (**DL-530**) · TR14 Average / Ranking **DL-574** · inspector tab-session **HM21** **DL-575** |
+| Inspector tab-session (HM21) | Landed **DL-575** — `sessionStorage` `ft_labs_heatmap_session`; listed expiration restores only if still on the pack; glance / TR14 book not in the blob; new tab starts clean |
 | Client flySurfaceHistory + AF10/AF17 | Landed |
 | sym-fly debit/credit/pct_change/r2r + RoC sticky color | Superseded as surface by Advanced Fly modes |
 | gex_v1 call/put/net | Landed |
 | vertical · bw-fly templates | **Verticals** Long/Debit · Short/Credit (DL-443) · bw-fly landed |
 | Full e2e AT-HM1…16 in Playwright | Partial (unit AT pack) |
+| AT-HM17 inspector session blob | Landed unit: `web/lib/options-lab/heatmapSession.test.ts` |
 
 ---
 
@@ -158,6 +161,8 @@ D(K,w) = m(K-w) + m(K+w) - 2\,m(K)
 **Law VT5 — No MSC:** No MarketSwarm-Canonical heatmap pipelines, Redis key schemas, or copied MSC UI.
 
 **Law VT6 — Session hold:** When US equities session is **not open**, continuous push stops; last model (and last computed grids) **hold**. Empty UI → **one-shot hydrate** of last ladder (not continuous poll).
+
+**Law VT7 — Inspector tab-session (HM21):** Inspector selections persist in `sessionStorage` `ft_labs_heatmap_session` for **this browser tab**. Distinct from VT6 (market-session hold) and from TR14 (RAM stream book).
 
 ---
 
@@ -304,7 +309,7 @@ Shared: sticky strike column, scroll to spot, reduced-motion (no flash spam), to
 | `bwShort` / `bwLong` | bw-fly | asymmetric distances |
 | `gexConvention` | gex | sign convention version string |
 
-Params live in UI state + session prefs; not in Redis.
+Params live in UI state + **HM21** inspector session prefs (`sessionStorage` `ft_labs_heatmap_session`); not in Redis. Not the TR14 stream book.
 
 ---
 
@@ -394,6 +399,10 @@ Viewport: `h-[calc(100dvh-4.5rem)]`; columns stretch top→bottom under chrome.
 
 Token-only colors; surface vs canvas; ≥44pt controls; segmented template/value switchers; focus rings; reduced-motion for row/tile flash.
 
+### 6.4 Inspector session (HM21 · as-built)
+
+`HeatmapChainPanel` hydrates `readHeatmapSession()` on mount, writes after `sessionReady`, and restores a listed expiration from the blob when that date is still on the expiry pack. Per-symbol profile defaults skip once when the blob’s symbol matches. Hover / pin / ToS copy stay RAM-only. Help: `server/help_reference/options-lab-heatmap-session.md` (**DL-576**); Advanced flies `options-lab-heatmap.md`; Width Fit `options-lab-heatmap-width-fit.md`.
+
 ---
 
 ## 7. Client module responsibilities
@@ -404,7 +413,8 @@ Token-only colors; surface vs canvas; ≥44pt controls; segmented template/value
 | `useOptionChainBus` | Sub → apply full/diff; **no interval poll**; **hydrate-if-empty** once |
 | `useChainTemplateGrid` (planned) | Chain model + active template + valueMode → `GridModel` |
 | Template modules | Pure pricing + color |
-| `HeatmapChainPanel` | Layout; host switchers; pick renderer |
+| `heatmapSession.ts` | Parse / read / write HM21 blob; legacy Width Fit localStorage seed |
+| `HeatmapChainPanel` | Layout; host switchers; pick renderer; session hydrate |
 
 **Hydrate (special, not poll):** if UI empty and model can load (bootstrap, after hours, stream error), **one** HTTP full ladder; inject; then hold or resume stream. Continuous `setInterval` poll is **forbidden** for steady state.
 
@@ -485,6 +495,7 @@ Foundation already landed: workspace layout, push stream, hydrate-if-empty, ladd
 | **AT-HM6** | GEX cell null when γ or OI null |
 | **AT-HM7** | Color uses assigned `colorT`, not raw debit alone for sym-fly v1 |
 | **AT-HM8** | OC6a: strikes display cent-exact; fly centers use listed strikes |
+| **AT-HM17** | Inspector blob round-trips in `sessionStorage` `ft_labs_heatmap_session`; new tab empty → defaults (Spec v0.2.1 HM21) |
 
 ---
 
@@ -509,6 +520,7 @@ Foundation already landed: workspace layout, push stream, hydrate-if-empty, ladd
 | **1.0** | 2026-08-10 | Initial design architecture |
 | **1.1** | 2026-08-10 | Spec v0.1.1 dual-side |
 | **1.2** | 2026-08-10 | Spec **v0.2** review fold: Width vocabulary; modal step; next_url fail-loud; standard contracts only; color hysteresis; gex units; parent citation table |
+| **1.3** | 2026-08-24 | **HM21** inspector tab-session as-built (`heatmapSession.ts`). VT7. Distinct from VT6 and TR14. Spec v0.2.1. **DL-575**. |
 
 **One-line law:**  
-**One dual-side, standard-contract, non-truncated chain under a wing band; pushed and diffed once; pure templates recompute every snapshot — Width is center-to-wing; GEX is a labeled estimate — last print held when closed.**
+**One dual-side, standard-contract, non-truncated chain under a wing band; pushed and diffed once; pure templates recompute every snapshot — Width is center-to-wing; GEX is a labeled estimate — last print held when closed; inspector selections stick for this tab (HM21).**

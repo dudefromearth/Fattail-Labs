@@ -74,8 +74,6 @@ import {
 import WidthFitRanking from "@/components/options-lab/WidthFitRanking";
 import {
   applyAverageColorT,
-  clampBudgetMib,
-  clampWindow,
   contractsFromMap,
   formatCacheLine,
   getStreamBook,
@@ -84,6 +82,10 @@ import {
   type AverageWindow,
   type BudgetStopMib,
 } from "@/lib/runner/streamBook";
+import {
+  readHeatmapSession,
+  writeHeatmapSession,
+} from "@/lib/options-lab/heatmapSession";
 import { isUsEquityRthOpenByClock } from "@/lib/market/usEquitySession";
 import {
   generateTosScript,
@@ -270,26 +272,8 @@ export default function HeatmapChainPanel() {
   const [cacheBudgetMib, setCacheBudgetMib] =
     useState<BudgetStopMib>(8);
   const [cacheRev, setCacheRev] = useState(0);
-
-  useEffect(() => {
-    try {
-      const b = clampBudgetMib(
-        Number(localStorage.getItem("ft_labs_runner_cache_budget_mb") || 8),
-      );
-      setCacheBudgetMib(b);
-      getStreamBook().setBudgetMib(b);
-      const t = localStorage.getItem("ft_labs_width_fit_time");
-      if (t === "live" || t === "average") setWfTime(t);
-      const i = localStorage.getItem("ft_labs_width_fit_interface");
-      if (i === "heatmap" || i === "ranking") setWfIface(i);
-      const w = clampWindow(
-        Number(localStorage.getItem("ft_labs_width_fit_avg_window") || 10),
-      );
-      setWfWindow(w);
-    } catch {
-      /* private mode */
-    }
-  }, []);
+  const [sessionReady, setSessionReady] = useState(false);
+  const restoreSymbolRef = useRef<string | null>(null);
   const [selectedTile, setSelectedTile] = useState<MatrixTileKey | null>(null);
   const [hoverTip, setHoverTip] = useState<{
     model: HeatmapTipModel;
@@ -306,9 +290,75 @@ export default function HeatmapChainPanel() {
   );
   const mounted = useRef(true);
 
-  // Apply per-symbol profile when product changes (wings, side, template defaults)
+  useEffect(() => {
+    const s = readHeatmapSession();
+    if (s) {
+      restoreSymbolRef.current = s.symbol;
+      if (s.expiration) setExpiration(s.expiration);
+      setSide(s.side);
+      setWings(s.wings);
+      setTemplateId(s.templateId);
+      setValueMode(s.valueMode);
+      setRocSensitivity(s.rocSensitivity);
+      setBwStrikeCount(s.bwStrikeCount);
+      setBwWingSide(s.bwWingSide);
+      setWidthFitWeights(s.widthFitWeights);
+      setWidthFitExpanded(s.widthFitExpanded);
+      setWfIface(s.wfIface);
+      setWfTime(s.wfTime);
+      setWfWindow(s.wfWindow);
+      setCacheBudgetMib(s.cacheBudgetMib);
+      getStreamBook().setBudgetMib(s.cacheBudgetMib);
+    }
+    setSessionReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!sessionReady || !symbol) return;
+    writeHeatmapSession({
+      symbol,
+      expiration,
+      side,
+      wings,
+      templateId,
+      valueMode,
+      rocSensitivity,
+      bwStrikeCount,
+      bwWingSide,
+      widthFitWeights,
+      widthFitExpanded,
+      wfIface,
+      wfTime,
+      wfWindow,
+      cacheBudgetMib,
+    });
+  }, [
+    sessionReady,
+    symbol,
+    expiration,
+    side,
+    wings,
+    templateId,
+    valueMode,
+    rocSensitivity,
+    bwStrikeCount,
+    bwWingSide,
+    widthFitWeights,
+    widthFitExpanded,
+    wfIface,
+    wfTime,
+    wfWindow,
+    cacheBudgetMib,
+  ]);
+
+  // Apply per-symbol profile when product changes (wings, side, template defaults).
+  // Skip once when this tab already has sticky Heatmap prefs for that symbol.
   useEffect(() => {
     if (!profile?.symbol) return;
+    if (restoreSymbolRef.current === profile.symbol) {
+      restoreSymbolRef.current = null;
+      return;
+    }
     const w = profile.default_wings;
     if (
       STRIKE_WING_CHOICES.includes(w as StrikeWings) ||
@@ -378,10 +428,14 @@ export default function HeatmapChainPanel() {
   }, [bus.sessionOpen]);
 
   useEffect(() => {
-    setValueMode(tpl.defaultValueMode);
+    const allowed = tpl.valueModes.some((m) => m.id === valueMode);
+    if (!allowed) setValueMode(tpl.defaultValueMode);
+  }, [templateId, tpl, valueMode]);
+
+  useEffect(() => {
     setStickyScale(undefined);
     setSelectedTile(null);
-  }, [templateId, tpl.defaultValueMode]);
+  }, [templateId]);
 
   useEffect(() => {
     setSelectedTile(null);
@@ -416,25 +470,37 @@ export default function HeatmapChainPanel() {
 
   useEffect(() => {
     if (!symbol) return;
-    setExpiration("");
+    const sticky = readHeatmapSession();
+    const keepExp =
+      sticky?.symbol === symbol && Boolean(sticky.expiration);
+    if (!keepExp) {
+      setExpiration("");
+      setLadderDte(null);
+    }
     setExpiryContracts([]);
-    setLadderDte(null);
     let cancelled = false;
     const loadExpiries = async () => {
       try {
         const pack = await fetchLadderExpirations(symbol, EXPIRY_PICK_COUNT);
         if (cancelled || !mounted.current) return;
         setExpiryContracts(pack.contracts);
-        // Prefer server default (skips 0DTE after RTH close). Client clock
-        // is a safety net if an older API still returns expired 0DTE first.
+        // Prefer sticky listed expiration, else server default (skips 0DTE
+        // after RTH close). Client clock is a safety net if an older API
+        // still returns expired 0DTE first.
         let def =
           pack.default_expiration || pack.contracts[0]?.expiration || "";
-        const sessionOpen = isUsEquityRthOpenByClock();
-        if (!sessionOpen && pack.contracts.length) {
-          const first = pack.contracts.find((c) => c.expiration === def);
-          if (first && first.dte === 0) {
-            const next = pack.contracts.find((c) => c.dte > 0);
-            if (next) def = next.expiration;
+        const listed = (e: string) =>
+          pack.contracts.some((c) => c.expiration === e);
+        if (keepExp && sticky?.expiration && listed(sticky.expiration)) {
+          def = sticky.expiration;
+        } else {
+          const sessionOpen = isUsEquityRthOpenByClock();
+          if (!sessionOpen && pack.contracts.length) {
+            const first = pack.contracts.find((c) => c.expiration === def);
+            if (first && first.dte === 0) {
+              const next = pack.contracts.find((c) => c.dte > 0);
+              if (next) def = next.expiration;
+            }
           }
         }
         setExpiration(def);
@@ -1000,35 +1066,11 @@ export default function HeatmapChainPanel() {
                 state: widthFitSurfaceState(matrix.footer ?? []),
                 footer: matrix.footer ?? [],
                 iface: wfIface,
-                onIface: (v) => {
-                  setWfIface(v);
-                  try {
-                    localStorage.setItem("ft_labs_width_fit_interface", v);
-                  } catch {
-                    /* ignore */
-                  }
-                },
+                onIface: setWfIface,
                 time: wfTime,
-                onTime: (v) => {
-                  setWfTime(v);
-                  try {
-                    localStorage.setItem("ft_labs_width_fit_time", v);
-                  } catch {
-                    /* ignore */
-                  }
-                },
+                onTime: setWfTime,
                 window: wfWindow,
-                onWindow: (v) => {
-                  setWfWindow(v);
-                  try {
-                    localStorage.setItem(
-                      "ft_labs_width_fit_avg_window",
-                      String(v),
-                    );
-                  } catch {
-                    /* ignore */
-                  }
-                },
+                onWindow: setWfWindow,
                 avgUsed:
                   wfTime === "average"
                     ? getStreamBook().averageColorT(
@@ -1046,14 +1088,6 @@ export default function HeatmapChainPanel() {
             setCacheBudgetMib(n);
             getStreamBook().setBudgetMib(n);
             setCacheRev((x) => x + 1);
-            try {
-              localStorage.setItem(
-                "ft_labs_runner_cache_budget_mb",
-                String(n),
-              );
-            } catch {
-              /* ignore */
-            }
           },
           line: formatCacheLine(cacheStatus),
           atLimit: cacheStatus.atLimit,

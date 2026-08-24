@@ -16,7 +16,7 @@
 | `Architecture/00-decision-log.md` | Binding; DL entry proposed in §9 |
 | [Market Bus Spec v1.0.1](./FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1_0.md) · Arch 28 (as-built DL-282–286) | MB1 feed-owned upstream · MB2 Redis generation store + pub/sub · MB5 interest-driven · MB7 snapshot-then-delta |
 | [OPF Spec v0.2](./FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md) · Arch 30 | The **model** the server updates; packs `pack_id@semver`; "tools wire in by declaring a use case" (Arch 30 §1.4); **Not: SSE as market transport** (see TR3) |
-| [Heatmap Templates Spec v0.2](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | HM6 purity lifts to Runner law (TR5); HM1–HM20 remain binding for heatmap-form templates |
+| [Heatmap Templates Spec v0.2.1](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md) | HM6 purity lifts to Runner law (TR5); HM1–HM21 remain binding for heatmap-form templates. **HM21** is inspector tab-session prefs, not the TR14 book. |
 | [IKI Lab PDS Spec v0.2](./FatTail-Labs-IKI-Lab-Public-Data-Service-Spec-v0_2.md) | IKI host: view contract, delivery modes, hierarchy |
 | Wiki Interface v0.1 · Member Wiki v0.1 | Wiki as consumer of Runner output (PDS §4a) |
 | CLAUDE.md · AGENTS.md · INSTRUCTIONS.md §2 | Sacred invariants; no second store of truth; fail loud |
@@ -55,7 +55,7 @@ One **harness** exposing OPF as subscribable streams through a gateway; one **fr
 | **TR10 — Honesty at the stream** | Every stream carries provenance (source generation, timestamp, `epoch_quality`, staleness). Gaps propagate as gaps (no fill); failure states are first-class stream values the template must render/emit, not swallow. | PDS §5 · OPF elegant-failure doctrine |
 | **TR11 — Signals fire on what is** | A notification or API signal fires on a **measurement condition the subscriber chose**, never on a forecast. (Hard line, PDS Part I.) Wording OD-PDS5. | Coach hard line |
 | **TR12 — Fail loud** | Missing gateway config, unknown template id/version, undeclared sink, or a template attempting I/O aborts with a named error. No silent defaults. | SI #2 |
-| **TR14 — Stream book** | The runner may retain recent **input streams** it already subscribed to, **on the client**, under a **member-expressed byte budget**. Templates remain pure (TR5) and do not read the book. Default display is Live (current generation). Average and Scrubber are explicit host views that select stored streams, then `run()`. Same `content_hash` does not add a slot. Gaps stay gaps. One book per tab, shared by every registered template (TR8). **TR13** (IKI-P3 host chrome) is a different law and is not this book. | Coach GO **DL-574** · plan TRSB v1.0.4 |
+| **TR14 — Stream book** | The runner may retain recent **input streams** it already subscribed to, **on the client**, under a **member-expressed byte budget**. Templates remain pure (TR5) and do not read the book. Default display is Live (current generation). Average and Scrubber are explicit host views that select stored streams, then `run()`. Same `content_hash` does not add a slot. Gaps stay gaps. One book per tab, shared by every registered template (TR8). **TR13** (IKI-P3 host chrome) is a different law and is not this book. **HM21** is a different law: inspector control *choices* (including the cache-budget detent) live in `sessionStorage` `ft_labs_heatmap_session`; the book itself is RAM generations and is never written into that blob. Closing the tab drops both. | Coach GO **DL-574** · HM21 **DL-575** · plan TRSB v1.0.4 |
 
 ## 3. Architecture (boundary sketch)
 

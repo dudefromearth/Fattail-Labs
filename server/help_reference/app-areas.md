@@ -96,14 +96,23 @@ listed flies; Analyzer is the 2D **Risk graph** and position book
 the Risk graph (pan, handles, GEX, Probability, What-if, Auto-fit).
 See the Options Lab Heatmap reference for what each Heatmap Value number
 means (Long/Debit, Short/Credit, % Change, Risk to Reward, Delta, Gamma,
-Theta).
+Theta). See **Width Fit** for the Heatmap template that scores listed
+long butterflies against your criteria (color-only tiles, footer n,
+weights). See **This tab session** for inspector choices that stay when
+you leave Heatmap and come back on the same tab.
 
 ## Heatmap
 Options Lab → Heatmap (`/app/options-lab/heatmap`). Rows are body strikes;
-columns are fly widths 10 through 50. The Value menu chooses the number on
-each tile. Colors follow how that number changes to the neighbor; the − / +
-slider under Side only changes color sensitivity. Blank tiles mean the fly
-is not on the listed chain. See Options Lab Heatmap for each Value formula.
+columns are fly widths 10 through 50. The **Template** switcher picks the
+view. **Advanced flies** uses the Value menu for the number on each tile;
+colors follow how that number changes to the neighbor; the − / + slider
+under Side only changes color sensitivity. **Width Fit** is a sibling
+template (not a Value): color-only tiles (teal = weaker fit, amber =
+stronger fit to your weights), footer median + n, hover/click panels.
+Blank or dark tiles mean the fly is not on the listed chain. Inspector
+choices stay for **this browser tab** when you leave and come back; a new
+tab starts from defaults — see **This tab session**. See Options Lab
+Heatmap for each Value formula; see Width Fit for the fit template.
 
 ## Strategy Lab
 A space to build and study options strategies — design a structure and examine its

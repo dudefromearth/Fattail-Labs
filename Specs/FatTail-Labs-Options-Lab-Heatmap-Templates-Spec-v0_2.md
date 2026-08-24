@@ -2,14 +2,14 @@
 
 **Status:** **DRAFT** — product / architecture authority for live options-chain **view templates**  
 **Date:** 2026-08-10  
-**Current revision:** **v0.2**  
+**Current revision:** **v0.2.1** (filename remains `…-v0_2.md`) · **HM21** 2026-08-24  
 **Supersedes:** [v0.1 / v0.1.1](./FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_1.md)  
 **Canonical filename:** `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md`  
 **Type:** Product + client view-plane Spec — switchable analytical panels over **one** dual-side live chain model  
 
 **Short name:** **Heatmap Templates** / **HM**
 
-**Content hash (v0.2):** recompute at Coach GO:  
+**Content hash (v0.2.1):** recompute at Coach GO:  
 `shasum -a 1 Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` → record in DL.
 
 **External review folded:** Claude advisor 2026-08-10 (H1–H12).  
@@ -111,6 +111,7 @@ UI may show labels such as “max structural profit” / “R2R” as **structur
 | **HM18 — Truncation fail-loud** | If Massive response includes **`next_url`** (or equivalent more-pages signal) for a Heatmap generation, treat as **hard error**: **do not** publish a partial dual-side model. Fail loud; zero rows to stream/HTTP full for that generation. |
 | **HM19 — Standard contracts only** | At row construction, include **standard** contracts only for key `(side, strike)`. **Exclude** adjusted / non-standard OCC contracts (post-split, special dividend, etc.) that share strike+expiry. Record `excluded_adjusted_count` (or equivalent) on generation **meta**. Never silently overwrite a standard row with an adjusted one. |
 | **HM20 — Modal strike step** | `strikeStep` on `ChainContext` is the **modal inter-strike gap** among loaded **standard** strikes in the current wing band (most common consecutive difference). Recomputed per generation. Not a single hard-coded global for all underliers forever. |
+| **HM21 — Inspector tab-session** | Heatmap **inspector selections** persist for **this browser tab** (`sessionStorage` key `ft_labs_heatmap_session`). Leave Heatmap for other apps/suites and return in the same tab → restore. A new tab or a new browsing session starts from product defaults. Not server SoR. Not Redis. **Not** HM5 (market-session hold of last chain). **Not** §5.2.2 (color-scale hysteresis). **Not** TR14 (RAM stream book of OPF generations). Glance / hover / pin / ToS copy are not persisted. Expiration restores only if still **listed** on the fetched expiry pack. |
 
 ---
 
@@ -206,6 +207,8 @@ calls, puts, asOf, contentHash, meta
 ### 4.4 Params
 
 `valueMode`, `widthMode` (`step_multiples` \| `fixed_points`), width list, `bwShort`/`bwLong`, `gexAlgoVersion`.
+
+Inspector params persist per **HM21** / §6.4 (`sessionStorage`; not server SoR). v0.1 already required this; v0.2.1 names the key and the tab-lifetime rule.
 
 ### 4.5 Renderers
 
@@ -309,6 +312,28 @@ Live stream · Held · market closed · Error / connecting.
 
 Template / value mode / side: recompute local only; **zero** chain HTTP while stream healthy (AT-HM3, AT-HM3b, AT-HM11).
 
+### 6.4 Inspector session prefs (HM21)
+
+**Store:** browser `sessionStorage` key `ft_labs_heatmap_session`. JSON blob. Client hydrate in `useEffect` (no SSR mismatch). Quota / private-mode write failure → stay on defaults; do not throw.
+
+**Persisted (inspector):** `symbol`, `expiration`, `side`, `wings`, `templateId`, `valueMode`, `rocSensitivity`, `bwStrikeCount`, `bwWingSide`, `widthFitWeights`, `widthFitExpanded`, `wfIface` (heatmap \| ranking), `wfTime` (live \| average), `wfWindow` (10/20/50/100), `cacheBudgetMib` (4/8/16/32).
+
+**Not persisted:** hover tip, pinned inspect, selected tile, ToS copy buffer, color-scale \(S_{\mathrm{sticky}}\), TR14 generation slots (those live in RAM until the tab dies).
+
+**Restore**
+- After mount, apply the blob before writes (`sessionReady`).
+- Suite symbol also lives in `options-lab-symbol`; when the blob’s symbol matches, **skip one** per-symbol profile apply (do not overwrite sticky wings / side / template with profile defaults).
+- Expiration: keep only if that date is still in the listed expiry pack; else server default (including skip expired 0DTE after RTH close).
+- `valueMode` not in the restored template’s modes → that template’s default. Unknown `templateId` → ignore blob.
+
+**Write:** after hydrate, whenever a persisted field changes.
+
+**Legacy:** if the session key is empty, a one-time read of old Width Fit `localStorage` keys (`ft_labs_width_fit_time`, `ft_labs_width_fit_interface`, `ft_labs_width_fit_avg_window`, `ft_labs_runner_cache_budget_mb`) may seed the blob. Those keys are not a second SoR.
+
+**Cache budget detent** is an inspector pref (this blob). **Cached generations** are TR14 RAM. Closing the tab drops both.
+
+**Member help:** `server/help_reference/options-lab-heatmap-session.md` (**DL-576**).
+
 ---
 
 ## 7. Client paths
@@ -318,6 +343,7 @@ Template / value mode / side: recompute local only; **zero** chain HTTP while st
 | `MarketSocket` | One WS/tab |
 | `useOptionChainBus` (or successor dual-side hook) | Push apply; hydrate-if-empty; no steady poll |
 | `web/lib/options-lab/templates/*` | Registry + pure templates |
+| `web/lib/options-lab/heatmapSession.ts` | HM21 inspector blob (`ft_labs_heatmap_session`) |
 | `HeatmapChainPanel` | Workspace host |
 
 ---
@@ -353,6 +379,8 @@ Grid + `template_id`, `value_mode`, `algo` ids (`sym_fly_debit_v1`, `gex_v1`), `
 - Per-template Massive subs  
 - Snapping structure legs to nearest strike  
 - Publishing partial chains when `next_url` present  
+- Inspector prefs that survive tab close or roam devices (that would be `localStorage` / server SoR — Coach: **current tab session** only)  
+- Persisting glance chrome or TR14 generation bytes in `sessionStorage`  
 
 **Payoff math lawful** (§0.3); profit **claims** banned.
 
@@ -397,6 +425,7 @@ Grid + `template_id`, `value_mode`, `algo` ids (`sym_fly_debit_v1`, `gex_v1`), `
 | **AT-HM14** | `pct_change` with \(D_{j-1}=0\) → invalid, not ∞/NaN (H9) |
 | **AT-HM15** | Standard + adjusted at same strike → standard wins; `excluded_adjusted_count ≥ 1` (H12) |
 | **AT-HM16** | Color sticky scale: small mid moves do not re-normalize if p95 within 25% (H6) |
+| **AT-HM17** | Inspector blob round-trips in `sessionStorage` `ft_labs_heatmap_session`; missing/invalid `templateId` rejected; invalid `valueMode` → template default; empty key → product defaults; glance / hover / pin fields absent from the blob; listed expiration restores only if still in the expiry pack (HM21) |
 
 ---
 
@@ -423,6 +452,7 @@ Grid + `template_id`, `value_mode`, `algo` ids (`sym_fly_debit_v1`, `gex_v1`), `
 | **v0.1** | 2026-08-10 | Initial DRAFT |
 | **v0.1.1** | 2026-08-10 | Dual-side HM15–HM17 (H1 resolved) |
 | **v0.2** | 2026-08-10 | External review H2–H12: modal step + no-snap; parent citations; Width vocabulary; gex_v1 units; color hysteresis; MSC look vs code; payoff-math sentence; AT extensions; next_url hard error; standard-contracts-only; filename `v0_2` |
+| **v0.2.1** | 2026-08-24 | **HM21** inspector tab-session (`sessionStorage` `ft_labs_heatmap_session`). Restores v0.1 §4.4 sessionStorage intent with Coach’s tab-lifetime rule. Distinct from HM5, §5.2.2, TR14. **AT-HM17**. **DL-575**. |
 
 **Review disposition map:**
 
@@ -442,4 +472,4 @@ Grid + `template_id`, `value_mode`, `algo` ids (`sym_fly_debit_v1`, `gex_v1`), `
 | H12 | HM19 · AT-HM15 |
 
 **One-line law:**  
-**One dual-side, standard-contract chain under a complete (non-truncated) wing band; pushed and diffed once; pure templates recompute every snapshot — Width is center-to-wing; GEX is a labeled estimate with explicit units; last print held when closed.**
+**One dual-side, standard-contract chain under a complete (non-truncated) wing band; pushed and diffed once; pure templates recompute every snapshot — Width is center-to-wing; GEX is a labeled estimate with explicit units; last print held when closed; inspector selections stick for this tab (HM21).**

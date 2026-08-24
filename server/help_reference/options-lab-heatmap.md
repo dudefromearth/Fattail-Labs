@@ -23,6 +23,12 @@ Missing listed mid → blank tile. Option-click copies a VERTICAL
 thinkorswim script.
 
 ## Heatmap
+Inspector choices (symbol, expiration, template, value, side, Width Fit
+weights and view) stay for **this browser tab session** when you leave for
+other apps and come back. A new tab starts from defaults. See **This tab
+session** for what stays, what does not (hover, Average snapshots), and
+how expiration restore works.
+
 The Heatmap is a grid of **symmetric butterflies** (flies) on the live
 OPF-held options chain. Rows are body strikes. Columns are fly width
 (center-to-wing) in points: **10, 15, 20, 25, 30, 35, 40, 45, 50**.

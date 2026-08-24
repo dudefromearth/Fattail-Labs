@@ -117,6 +117,40 @@ def test_search_heatmap_width_fit():
         assert word not in blob, word
 
 
+def test_search_heatmap_tab_session():
+    """Heatmap inspector tab-session guide is searchable in the help reference."""
+    help_ai._sections.cache_clear()
+    heads = {s["heading"] for s in help_ai._sections()}
+    for h in (
+        "This tab session",
+        "What stays",
+        "What does not stay",
+        "How to use it",
+        "Expiration",
+        "New tab",
+        "What this is not",
+    ):
+        assert h in heads, h
+    found = help_ai._search(["heatmap sticky tab session come back"]).lower()
+    assert "this browser tab" in found or "this tab" in found
+    assert "new tab" in found
+    stays = help_ai._search(["heatmap inspector choices stay symbol expiration"]).lower()
+    assert "expiration" in stays and ("template" in stays or "width fit" in stays)
+    gone = help_ai._search(["heatmap hover pin average snapshots reload"]).lower()
+    assert "hover" in gone
+    assert "reload" in gone or "memory" in gone
+    exp = help_ai._search(["heatmap expiration listed 0dte after close"]).lower()
+    assert "listed" in exp
+    forbidden = ("optimizer", "bos", "butterfly opportunity", "preferred width")
+    blob = " ".join(
+        s["body"]
+        for s in help_ai._sections()
+        if s["doc"] == "options-lab-heatmap-session"
+    ).lower()
+    for word in forbidden:
+        assert word not in blob, word
+
+
 def test_search_heatmap_value_modes():
     """Heatmap Value formulas live in the help reference (concierge)."""
     help_ai._sections.cache_clear()
