@@ -1,11 +1,17 @@
 # FatTail Labs — Wiki Interface Spec v0.1
 
-**Status:** DRAFT — for Coach review. No authority until approved and logged.
+> **SUPERSEDED (DL-555).** Spec of record is
+> [`FatTail-Labs-Wiki-Spec-v0_2_1.md`](./FatTail-Labs-Wiki-Spec-v0_2_1.md)
+> (Wiki Spec v0.2.1 APPROVED). This file is frozen so historical gates and DL
+> citations still resolve. Do not implement from this document. Banner-only.
+
+**Status:** SUPERSEDED — see banner. Historical DRAFT body below is frozen.
 **Product:** FatTail Labs (`labs.fattail.ai`)
 **Purpose:** Member-facing interface for the Wiki app — entry surface, article surface,
 search, graph, and the apps-grid card. Defines *what members see and how it behaves*.
 **Parent spec:** [`FatTail-Labs-Member-Wiki-Spec-v0.1.md`](./FatTail-Labs-Member-Wiki-Spec-v0.1.md)
-(system of record for data model, pipeline, corpus, privacy firewall — not repeated here).
+(system of record for data model, pipeline, corpus, privacy firewall — not repeated here).  
+**Suite naming (DRAFT):** Apps card **IKI Lab**; sibling app **IKI Factory** — [`FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md`](./FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md) · **DL-527**. This file still owns Lab surfaces until that spec is BUILD.
 **Framework home:** Application Framework v1.0 — this spec declares the Wiki templates'
 slots and registers their components (Part C/D2 obligations).
 **Doctrine:** capacity-over-dependency; process outcomes only; HIG per Echo.

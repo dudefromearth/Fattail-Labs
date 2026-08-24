@@ -15,25 +15,9 @@ import WikiGraph, {
 type GraphPayload = { nodes: GraphNode[]; edges: GraphEdge[] };
 
 export default function WikiGraphPage() {
-  const [auth, setAuth] = useState<"loading" | "ok" | "anon">("loading");
   const [graph, setGraph] = useState<GraphPayload | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then((r) => {
-        if (!cancelled) setAuth(r.ok ? "ok" : "anon");
-      })
-      .catch(() => {
-        if (!cancelled) setAuth("anon");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (auth !== "ok") return;
     let cancelled = false;
     fetch("/api/wiki/graph", { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : { nodes: [], edges: [] }))
@@ -46,7 +30,7 @@ export default function WikiGraphPage() {
     return () => {
       cancelled = true;
     };
-  }, [auth]);
+  }, []);
 
   const nodes = graph?.nodes ?? [];
   const edges = graph?.edges ?? [];
@@ -74,17 +58,7 @@ export default function WikiGraphPage() {
         an editor.
       </p>
 
-      {auth === "anon" ? (
-        <div className="surface-card mt-8 border border-[var(--color-separator)] p-8 text-center">
-          <p className="font-medium text-[var(--color-label)]">Sign in to view the map</p>
-          <Link
-            href={`/login?next=${encodeURIComponent("/app/wiki/graph")}`}
-            className="mt-4 inline-block text-sm font-medium text-[var(--color-tint)] hover:underline"
-          >
-            Log in →
-          </Link>
-        </div>
-      ) : auth === "loading" || graph === null ? (
+      {graph === null ? (
         <p className="mt-8 text-sm text-[var(--color-label-secondary)]">
           Loading…
         </p>

@@ -51,6 +51,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ),
     );
 
+  const wikiIdx = await apiGet<{ pages: { slug: string; updated: string }[] }>(
+    "/api/wiki/sitemap",
+  ).catch(() => ({ pages: [] as { slug: string; updated: string }[] }));
+  const wikiPages: MetadataRoute.Sitemap = [
+    {
+      url: siteUrl("/app/wiki"),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    ...wikiIdx.pages.map((p) => ({
+      url: siteUrl(`/app/wiki/${encodeURIComponent(p.slug)}`),
+      lastModified: p.updated ? new Date(p.updated) : undefined,
+      changeFrequency: "weekly" as const,
+      priority: 0.65,
+    })),
+  ];
+
   return [
     {
       url: siteUrl("/"),
@@ -100,5 +117,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...hubs,
     ...courses,
     ...freeLessons,
+    ...wikiPages,
   ];
 }

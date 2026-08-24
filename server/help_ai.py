@@ -129,6 +129,66 @@ def _sections() -> tuple[dict, ...]:
     return tuple(out)
 
 
+_GUIDE_ID_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
+
+
+def _title_from_markdown(text: str, fallback: str) -> str:
+    for line in (text or "").splitlines():
+        s = line.strip()
+        if s.startswith("# "):
+            return s[2:].strip() or fallback
+        if s.startswith("#"):
+            return s.lstrip("#").strip() or fallback
+        if s:
+            break
+    return fallback.replace("-", " ")
+
+
+def _guide_article(path: Path) -> dict:
+    text = path.read_text(encoding="utf-8")
+    stem = path.stem
+    return {
+        "id": stem,
+        "title": _title_from_markdown(text, stem),
+        "body": text,
+        "canonical_url": f"/api/help/guides/{stem}",
+        "status": "published",
+    }
+
+
+def list_guides() -> list[dict]:
+    """Published help guides: every *.md present in help_reference/. No draft flag."""
+    if not _REF_DIR.is_dir():
+        return []
+    out: list[dict] = []
+    for path in sorted(_REF_DIR.glob("*.md")):
+        if not _GUIDE_ID_RE.match(path.stem):
+            continue
+        try:
+            out.append(_guide_article(path))
+        except OSError as exc:
+            log.warning("help guide unreadable (%s): %s", path.name, exc)
+    return out
+
+
+def get_guide(guide_id: str) -> dict | None:
+    """One published guide by stem. None if missing or id is not a safe stem."""
+    if not _GUIDE_ID_RE.match(guide_id or ""):
+        return None
+    root = _REF_DIR.resolve()
+    path = (root / f"{guide_id}.md").resolve()
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return None
+    if not path.is_file():
+        return None
+    try:
+        return _guide_article(path)
+    except OSError:
+        return None
+
+
 def _index() -> str:
     """Compact 'doc: heading; heading; …' index for the system prompt."""
     docs: dict[str, list[str]] = {}

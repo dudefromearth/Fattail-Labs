@@ -37,6 +37,21 @@ RATE_PER_HOUR = 10
 VALID_CATEGORIES = ("bug", "struggling", "general")
 
 
+@router.get("/api/help/guides")
+def list_help_guides() -> dict:
+    """Unauthenticated published catalog of help_reference/*.md (S1 poll shape)."""
+    return {"articles": help_ai.list_guides()}
+
+
+@router.get("/api/help/guides/{guide_id}")
+def get_help_guide(guide_id: str) -> dict:
+    """Unauthenticated one-guide GET. Unknown id → 404. No write path."""
+    article = help_ai.get_guide(guide_id)
+    if article is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    return article
+
+
 def _iso(dt) -> str | None:
     return dt.isoformat() + "Z" if dt is not None else None
 

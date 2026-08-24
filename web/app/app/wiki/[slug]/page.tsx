@@ -1,7 +1,7 @@
 "use client";
 
-// Wiki article — Interface Spec v0.1 §3. Bound to /api/wiki/pages/[slug].
-// Drafts and missing slugs 404 for members; anon gets the sign-in gate.
+// Wiki article — Wiki Spec v0.2.1 III.2. Bound to /api/wiki/pages/[slug].
+// Published pages are public. Drafts 404 for everyone but admin.
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -42,7 +42,6 @@ type WikiPage = {
 
 type LoadState =
   | { phase: "loading" }
-  | { phase: "anon" }
   | { phase: "missing" }
   | { phase: "error" }
   | { phase: "ok"; page: WikiPage };
@@ -61,8 +60,7 @@ export default function WikiArticlePage() {
     })
       .then(async (r) => {
         if (cancelled) return;
-        if (r.status === 401) setState({ phase: "anon" });
-        else if (r.status === 404) setState({ phase: "missing" });
+        if (r.status === 404) setState({ phase: "missing" });
         else if (r.ok) setState({ phase: "ok", page: await r.json() });
         else setState({ phase: "error" });
       })
@@ -95,25 +93,6 @@ export default function WikiArticlePage() {
         <p className="mt-4 text-sm text-[var(--color-label-secondary)]">
           Loading…
         </p>
-      </main>
-    );
-  }
-
-  if (state.phase === "anon") {
-    return (
-      <main className="mx-auto w-full max-w-3xl px-6 py-10">
-        {crumbs}
-        <div className="surface-card mt-8 border border-[var(--color-separator)] p-8 text-center">
-          <p className="font-medium text-[var(--color-label)]">
-            Sign in to read this page
-          </p>
-          <Link
-            href={`/login?next=${encodeURIComponent(`/app/wiki/${slug}`)}`}
-            className="mt-4 inline-block text-sm font-medium text-[var(--color-tint)] hover:underline"
-          >
-            Log in →
-          </Link>
-        </div>
       </main>
     );
   }
@@ -165,9 +144,8 @@ export default function WikiArticlePage() {
     .join(" · ");
 
   const relatedItems: WikiRailSection["items"] = [];
-  const practiceItems: WikiRailSection["items"] = [];
+  // Public pages never include "In your practice" (Family B · Mike WU-2-1).
   const railSections: WikiRailSection[] = [
-    { id: "practice", title: "In your practice", items: practiceItems },
     { id: "related", title: "Related", items: relatedItems },
     {
       id: "linked",

@@ -84,6 +84,39 @@ def test_search_matches_relevant_sections():
     assert help_ai._search([]) == ""
 
 
+def test_search_heatmap_width_fit():
+    """Width Fit member guide is searchable in the help reference."""
+    help_ai._sections.cache_clear()
+    heads = {s["heading"] for s in help_ai._sections()}
+    for h in (
+        "Width Fit",
+        "How to open Width Fit",
+        "Color tiles",
+        "Hover and click",
+        "Footer",
+        "Weights",
+        "Surface states",
+        "What Width Fit is not",
+    ):
+        assert h in heads, h
+    found = help_ai._search(["width fit heatmap"]).lower()
+    assert "width fit" in found
+    assert "template" in found
+    color = help_ai._search(["heatmap teal amber tiles"]).lower()
+    assert "teal" in color and "amber" in color
+    assert "weaker" in color or "stronger" in color
+    hover = help_ai._search(["width fit hover click color meaning"]).lower()
+    assert "hover" in hover and "click" in hover
+    footer = help_ai._search(["width fit footer median n"]).lower()
+    assert "median" in footer and "n" in footer
+    weights = help_ai._search(["width fit debit efficiency weights"]).lower()
+    assert "debit efficiency" in weights or "1/7" in weights or "slider" in weights
+    forbidden = ("optimizer", "bos", "butterfly opportunity", "preferred width")
+    blob = " ".join(s["body"] for s in help_ai._sections() if s["doc"] == "options-lab-heatmap-width-fit").lower()
+    for word in forbidden:
+        assert word not in blob, word
+
+
 def test_search_heatmap_value_modes():
     """Heatmap Value formulas live in the help reference (concierge)."""
     help_ai._sections.cache_clear()

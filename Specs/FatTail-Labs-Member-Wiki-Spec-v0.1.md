@@ -1,10 +1,16 @@
 # FatTail Labs — Member Wiki (Knowledge Base) Spec v0.1
 
-**Status:** DRAFT — for Coach review. No authority until approved and logged.
+> **SUPERSEDED (DL-555).** Spec of record is
+> [`FatTail-Labs-Wiki-Spec-v0_2_1.md`](./FatTail-Labs-Wiki-Spec-v0_2_1.md)
+> (Wiki Spec v0.2.1 APPROVED). This file is frozen so historical gates and DL
+> citations still resolve. Do not implement from this document. Banner-only.
+
+**Status:** SUPERSEDED — see banner. Historical DRAFT body below is frozen.
 **Product:** FatTail Labs (`labs.fattail.ai`)
 **Purpose:** Member-facing knowledge base app at `/app/wiki` — a compiled, perpetually
 maintained map of the entire FatTail content corpus (courses, daily live streams,
-historical videos, resources), with search and always-fresh related-content links.
+historical videos, resources), with search and always-fresh related-content links.  
+**Door rename (DRAFT):** member-facing Apps card **IKI Lab** — [`FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md`](./FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md) · **DL-527**. This file remains the Lab engine.
 **Framework home:** Application Framework v1.0 (this is a new L4 template + new L0 domain,
 constructed per Part D1).
 **Domain authority:** this spec (wiki + corpus data model). Canonical content entities
@@ -79,8 +85,8 @@ process outcomes only, documentation parity.
 | Surface | `/app/wiki` — new `apps` row (slug `wiki`, status `soon` → `live`) |
 | Family | **A-variant**: shared content, admin + **agent** authored, member-consumed. Not Family B (nothing member-private). |
 | Actor (write) | `administrator` (in-place curation) + agent principals via existing agent API keys (compilation, board-gated) |
-| Actor (read) | Authenticated members. **Open decision D-3:** which plans (proposal: all members incl. Observer — it is an engagement surface). |
-| Visibility | Member-gated v1. No public/SEO surface in v1 (v2 candidate: public teaser subset, Sierra-designed). |
+| Actor (read) | **Wide open by default** (Coach 2026-08-23 · **DL-551**). D-3 dissolved. As-built `/app/wiki` still member-session until **WA-6** (public read surface; defined, not stamped; Coach stamps timing). Drafts 404 for anyone who is not an administrator (W5). |
+| Visibility | Published wiki contents are wide open by default (**DL-551**). No public read UI in v0.1 as-built (WA-6; Coach stamps timing). Drafts never public. |
 | AI runtime | Existing `ai.complete()` gateway (Agent-Model-Interface v1.0) |
 | Scheduling | Existing poller pattern (Quebec precedent) — a `wiki-registrar` tick; launchd on MiniTwo |
 
@@ -332,7 +338,7 @@ A phase without its captured runbook outputs is not shipped, regardless of demo.
 |---|---|---|
 | **D-1** | Member-facing name ("Wiki"? "Knowledge Base"? branded name?) | Coach names; slug `wiki` is stable regardless |
 | **D-2** | v1 page seed — start empty, or seed from course descriptions + existing docs? | Seed ~10 topic pages manually in W1 so search/related have substance |
-| **D-3** | Entitlement: which plans read the wiki | All authenticated members incl. Observer (engagement surface; supports the three big goals) |
+| **D-3** | Entitlement: which plans read the wiki | **DISSOLVED (DL-551).** Advisor assumption, never Coach direction (**DL-552**). Wiki contents wide open by default; restrictions only when Coach names them. Public read surface = WA-6 (unstamped; Coach stamps timing). |
 | **D-4** | Vector/embedding search | Defer to v2; FULLTEXT is honest and cheap for v1 corpus size |
 | **D-5** | Transcription engine | Whisper local on MiniTwo if load allows; else hosted API with budget cap |
 | **D-6** | Historical YouTube backfill scope | Start with last 12 months, then extend; full-channel backfill is a queue, not a blocker |

@@ -70,6 +70,19 @@ prompt-injection cases behave correctly.
 Server-only: ships `help_ai.py` + `help_reference/` (removes `help_concierge_kb.md`). **No
 migration, no web build.** Apply + restart the API.
 
+## 6.1 Published catalog (Coach 2026-08-24 · **DL-572**)
+
+Help guides are files in `server/help_reference/*.md`. File present = published.
+No draft state. Unauthenticated GETs for a GET-only consumer (Wiki S1 poll):
+
+- `GET /api/help/guides` → `{ articles: [{ id, title, body, canonical_url, status }] }`
+- `GET /api/help/guides/{id}` → one article; unknown id **404**
+- No write path. `status` is always `published`. `id` is the filename stem.
+
+Wiki does not read the filesystem. It polls this catalog.
+
+---
+
 ## 7. Deferred to v1.3+
 
 - Self-improving loop (admin Questions dashboard: most-asked / unanswered / escalation-rate

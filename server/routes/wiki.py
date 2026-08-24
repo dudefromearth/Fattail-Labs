@@ -1,9 +1,8 @@
-"""Member Wiki API — derived-index reads over the lab-wiki checkout.
+"""Wiki API — derived-index reads over the lab-wiki checkout.
 
-Specs: Member-Wiki v0.1 (system) · Wiki-Interface v0.1 §§2–5 (surfaces).
-Gates: member session for reads; drafts 404 for members, visible to admin
-(WIK-D2); reindex is admin-only. Index is derived (WIK-D1) — no writes here
-ever author content.
+Spec of record: Wiki Spec v0.2.1 (III.2 public read · DL-551).
+Published pages are readable without a session. Drafts 404 for everyone but
+administrators. Reindex is admin/agent. Index is derived (WIK-D1).
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ import wiki_compile_oscar as oscar
 import wiki_compile_store as compile_store
 import wiki_compile_surfaces as surfaces
 import wiki_store
-from guards import require_actor, require_session
+from guards import claims_or_none, require_actor, require_session
 from wiki_compile_oscar import WikiCompileError
 from wiki_compile_surfaces import CaptureError
 
@@ -30,8 +29,25 @@ router = APIRouter(tags=["wiki"])
 SNIPPET_WORDS = 30  # D-i5 starting value
 
 
-def _is_admin(claims: dict) -> bool:
+def _is_admin(claims: dict | None) -> bool:
+    if not claims:
+        return False
     return auth.role_at_least(str(claims.get("role", "")), "administrator")
+
+
+def _reader_is_admin(request: Request) -> bool:
+    return _is_admin(claims_or_none(request))
+
+
+def _lead_answer(body: str) -> str:
+    """40–60 word extractable answer for meta/AEO when the page is long enough."""
+    words = [w for w in _md_to_plain(body or "").split(" ") if w]
+    if not words:
+        return ""
+    take = min(len(words), 60)
+    if len(words) >= 40:
+        take = min(60, max(40, min(len(words), 50)))
+    return " ".join(words[:take])
 
 
 def _page_row(r: dict) -> dict:
@@ -102,11 +118,37 @@ def _snippet(body: str, q: str) -> str:
     return f"{prefix}{chunk}{suffix}"
 
 
+@router.get("/api/wiki/sitemap")
+def wiki_sitemap() -> dict:
+    """Published slugs only — Next sitemap + unpublish-transition proof."""
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT slug, updated_date
+                  FROM wiki_pages_idx
+                 WHERE status = 'published'
+                 ORDER BY slug ASC
+                """
+            )
+            rows = cur.fetchall()
+    return {
+        "pages": [
+            {
+                "slug": r["slug"],
+                "updated": r["updated_date"].isoformat()
+                if hasattr(r["updated_date"], "isoformat")
+                else str(r["updated_date"] or ""),
+            }
+            for r in rows
+        ]
+    }
+
+
 @router.get("/api/wiki/index")
 def wiki_index(request: Request) -> dict:
     """Browse payload for the entry surface: kinds, start-here, recent."""
-    claims = require_session(request)
-    admin = _is_admin(claims)
+    admin = _reader_is_admin(request)
     status_clause = "" if admin else "AND status = 'published'"
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -144,8 +186,7 @@ def wiki_index(request: Request) -> dict:
 
 @router.get("/api/wiki/pages/{slug}")
 def wiki_page(slug: str, request: Request) -> dict:
-    claims = require_session(request)
-    admin = _is_admin(claims)
+    admin = _reader_is_admin(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -199,6 +240,7 @@ def wiki_page(slug: str, request: Request) -> dict:
     page = _page_row(row)
     page["body_md"] = row["body_md"]
     page["path"] = row["path"]
+    page["lead"] = _lead_answer(row["body_md"] or "")
     page["backlinks"] = backlinks
     page["links"] = outbound
     return page
@@ -206,8 +248,7 @@ def wiki_page(slug: str, request: Request) -> dict:
 
 @router.get("/api/wiki/search")
 def wiki_search(request: Request, q: str = "") -> dict:
-    claims = require_session(request)
-    admin = _is_admin(claims)
+    admin = _reader_is_admin(request)
     q = q.strip()
     if not q:
         return {"query": "", "results": []}
@@ -242,8 +283,7 @@ def wiki_search(request: Request, q: str = "") -> dict:
 
 @router.get("/api/wiki/graph")
 def wiki_graph(request: Request) -> dict:
-    claims = require_session(request)
-    admin = _is_admin(claims)
+    admin = _reader_is_admin(request)
     status_clause = "" if admin else "WHERE status = 'published'"
     with db.transaction() as conn:
         with conn.cursor() as cur:

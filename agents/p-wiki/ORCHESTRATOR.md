@@ -15,9 +15,15 @@ How to run this project with the bench. Juliet maintains; Coach drives.
 5. Nothing merges to `main` until WK0's commit plan says so (specs land with code —
    documentation parity).
 
-**Live plan:** [`docs/Member-Wiki-v0.1-Full-Agent-Bench-Plan-v2.0.md`](../../docs/Member-Wiki-v0.1-Full-Agent-Bench-Plan-v2.0.md) **GO S0**.
+**Live member-wiki plan:** [`docs/Member-Wiki-v0.1-Full-Agent-Bench-Plan-v2.0.md`](../../docs/Member-Wiki-v0.1-Full-Agent-Bench-Plan-v2.0.md) **S0 landed**. S1–S6 wait.
 
-Spine WK0–WK7 is **shipped** (do not restart). Current packet = **S0**.
+**Wiki Agent:** WA-1-G / WA-2-G / WA-3-G / **WA-4-G PASS** · **DL-548…554**.
+
+**Wiki Spec v0.2.1 APPROVED · DL-555** (H1 v0.2.1 · **DL-561**). WU-0…WU-2 shipped.
+**Source Contract v0.1.4 APPROVED DL-560** · B-3 closed **DL-561** (parent = Wiki Spec v0.2.1).
+Plan [`docs/Wiki-Source-Contract-v0_1_4-Full-Agent-Bench-Plan-v1.0.md`](../../docs/Wiki-Source-Contract-v0_1_4-Full-Agent-Bench-Plan-v1.0.md) — **GO SC-0** diffs (**DL-562**). **GO SC-1** envelope + watermark (**DL-568**). **GO SC-2** S7 push (**DL-570**). **GO SC-3** poll S1+S2 (**DL-571**). **S7 RULED** finished-only. **OD-3 RULED** skill-delivered, no stub (**DL-564**). Remaining holds: OD-4, 6, 7, 8, 9, 10, 12, 13, 14. **SC-3b** waits on Factory publication signal. Help Package superseded. WU-3 = Source Contract poll/compose.
+
+Spine WK0–WK7 is **shipped** (do not restart). Member-wiki S0 **shipped**. Wiki Agent = **R0 / awaiting spec stamp**.
 
 ## Seed status
 

@@ -14,6 +14,13 @@ Community App Spec v1.0.2 (BUILD AUTHORITY · DL-239/240)
 4. **No payment card data** in Labs (Stripe/Woo own checkout)  
 5. **Minimal secret surface** — env only, never committed  
 
+**Access doctrine (Coach 2026-08-23 · DL-552):** Access rules come only from
+Coach’s explicit direction. Where Coach has not directed, specs carry access as
+an OPEN question put to Coach — never a defaulted posture in either direction.
+**Wiki (DL-551):** contents are wide open by default; specific restrictions only
+when Coach names them. That is directed for this product, not a platform-wide
+default. The SSO perimeter is the instrument when a restriction *is* named.
+
 ---
 
 ## 2. Authentication

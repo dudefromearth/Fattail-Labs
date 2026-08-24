@@ -55,6 +55,10 @@ ad-hoc polls or WS-only mid tables. See Arch **28** §4.4 and `AGENTS.md` market
   back, check the UI. "It should work" is banned.
 - **Change control:** declare exact files + changes before touching; only touch what was
   approved.
+- **No drift; do not touch existing work (DL-539):** the active program is the only
+  tree. If existing work must be touched, raise it to Coach **three times** and obtain
+  **three successive OKs** on the GO token **before** the first edit. One OK is not
+  three; a break resets the count.
 - **Documentation parity (nothing hidden):** every feature ships WITH its spec (new or
   versioned in `Specs/`), its decision-log entry, and updates to any affected
   architecture docs — in the same body of work, never "later". `Specs/` must always

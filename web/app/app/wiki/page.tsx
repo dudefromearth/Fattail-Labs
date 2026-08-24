@@ -76,7 +76,6 @@ export default function WikiEntryPage() {
   }, []);
 
   useEffect(() => {
-    if (auth !== "ok") return;
     let cancelled = false;
     fetch("/api/wiki/index", { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : null))
@@ -89,10 +88,10 @@ export default function WikiEntryPage() {
     return () => {
       cancelled = true;
     };
-  }, [auth]);
+  }, []);
 
   useEffect(() => {
-    if (auth === "ok") inputRef.current?.focus();
+    if (auth !== "loading") inputRef.current?.focus();
   }, [auth]);
 
   function onSearch(e: FormEvent) {
@@ -105,44 +104,10 @@ export default function WikiEntryPage() {
     router.push(`/app/wiki/search?q=${encodeURIComponent(term)}`);
   }
 
-  if (auth === "loading") {
+  if (auth === "loading" && !index) {
     return (
       <main className="mx-auto w-full max-w-3xl px-6 py-10">
         <p className="text-sm text-[var(--color-label-secondary)]">Loading…</p>
-      </main>
-    );
-  }
-
-  if (auth === "anon") {
-    return (
-      <main className="mx-auto w-full max-w-3xl px-6 py-10">
-        <nav className="text-sm text-[var(--color-label-secondary)]">
-          <Link href="/app" className="hover:underline">
-            Apps
-          </Link>
-          <span className="mx-2">›</span>
-          <span>Wiki</span>
-        </nav>
-        <div className="surface-card mt-8 border border-[var(--color-separator)] p-8 text-center">
-          <h1 className="text-xl font-semibold text-[var(--color-label)]">
-            Member wiki
-          </h1>
-          <p className="mt-2 text-sm text-[var(--color-label-secondary)]">
-            Sign in to search the compiled map of courses, live sessions, and
-            videos.
-          </p>
-          <div className="mt-6 flex justify-center gap-3">
-            <Link
-              href={`/login?next=${encodeURIComponent("/app/wiki")}`}
-              className="rounded-full bg-[var(--color-tint)] px-5 py-2 text-sm font-medium text-[var(--color-on-tint)]"
-            >
-              Log in
-            </Link>
-            <Link href="/signup" className="chip text-sm font-medium">
-              Create free account
-            </Link>
-          </div>
-        </div>
       </main>
     );
   }

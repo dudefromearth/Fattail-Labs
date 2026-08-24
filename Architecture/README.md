@@ -18,7 +18,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [08-canonical-course-model.md](./08-canonical-course-model.md) | Portable Course graph: export/import/validate architecture |
 | [09-canonical-course-design.md](./09-canonical-course-design.md) | Admin UX design for packages |
 | [10-resources-design.md](./10-resources-design.md) | Resources: first-class versioned library |
-| [11-wiki-design.md](./11-wiki-design.md) | Member Wiki: lab-wiki git SoR → derived `wiki_pages_idx` cache → `/app/wiki` (Start here = frontmatter pins · **DL-545/546**) |
+| [11-wiki-design.md](./11-wiki-design.md) | Wiki: lab-wiki git SoR → derived index → `/app/wiki`. Spec of record **v0.2.1** (**DL-555**). Wide open by default (**DL-551**); public read **WU-2** shipped (**DL-558**). Agent WA-1…WA-4 shipped. Source Contract **v0.1.4** (**DL-560**); Help Package gone; **SC-0** diffs (**DL-562**); **SC-1** envelope + watermark (**DL-568**). |
 | [12-retrospective-report-dto.md](./12-retrospective-report-dto.md) | Retrospective workspace DTO (gather/report/comparison) — as-built v0.6 |
 | [13-habit-catalog-design.md](./13-habit-catalog-design.md) | Habit Catalog methodology layer — **design locked**, pre-Spec |
 | [09-strategy-lab-tradier.md](./09-strategy-lab-tradier.md) | Strategy Lab data/exec split (Massive / Tradier) + shared Curate marks |
@@ -41,16 +41,19 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [26-strategy-lab-member-timeline.md](./26-strategy-lab-member-timeline.md) | **NOW:** Design+Curate lock; Deploy UX for members; Tradier real-money gated (DL-252) |
 | [32-strategy-lab-guiding-doctrine.md](./32-strategy-lab-guiding-doctrine.md) | **Guiding light:** position don’t predict · book-level shape · VP memory · DL-382–386 |
 | [33-strategy-lab-3d-surface.md](./33-strategy-lab-3d-surface.md) | **3D Surface first-ship as-built** · `/app/options-lab/surface` · App Spec v0.1.8 · Autofit v0.1.6 · multi-DTE front-exp (**DL-427**) · never clock-blocked (**DL-445**) · DL-401–427 · 445 |
+| [34-redis-cache-and-sse-gateway.md](./34-redis-cache-and-sse-gateway.md) | **Pointer map:** which specs bind Redis (`mb:*`) vs Coach’s “SSE gateway” (as-built WS) vs thesis SSE (Template Runner TR3) · **DL-532** |
 
 **Market Bus / Options chain (2026-08-10) — as-built live market plane:**
 
 | Doc | Role |
 |---|---|
 | Arch **28** | Massive → feed → Redis → API → one WebSocket → shared client · **§4.4 live underlier mids UI standard** |
+| Arch **34** | Redis cache + SSE-gateway **spec map** (as-built WS vs thesis SSE) |
 | Arch **29** | **Heatmap templates** (design): flies / verticals / GEX over one chain model · diff once · many views |
 | Arch **30** | **Options Pricing Foundation** (design): L0–L4 data plane + day/outlook/backtest packs · foundation before app wiring |
 | Arch **31** | **SSR thesis:** package-surface replay · MC distributions · one day first · Spec `FatTail-Labs-Structure-Surface-Replay-Spec-v0_1.md` |
-| Spec **IKI Lab + Factory v0.1.1** | `Specs/FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md` — **IKI** · DRAFT · Wiki Apps card → **IKI Lab** · IKI = Information-Knowledge-Intelligence · new **IKI Factory** · suite nav like Practice / Options Lab · foundation page = PDS Part I (`iki`) · Factory job **OD-IKI-1** · **DL-527** · **DL-528** |
+| Spec **IKI Lab + Factory v0.1.1** | `Specs/FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md` — **IKI** · suite chrome/naming · Wiki Apps card → **IKI Lab** · **DL-527** · **DL-528** · **OD-IKI-1 CLOSED** by Factory Spec v0.1.5 **BUILD AUTHORITY** (**DL-556**) |
+| Spec **IKI Factory v0.1.5 BUILD AUTHORITY** | `Specs/FatTail Labs — IKI Factory Spec v0.1.5` — admin Kanban conveyor + Gemba · **OD-F1…F10** · **DL-556** · **GO IF-1** admin `/admin/iki-factory` (**DL-559**) · plan `docs/IKI-Factory-Spec-v0.1.5-Full-Agent-Bench-Plan-v1.1.md` · **GO IF-2 not granted** · charter `agents/bench/gemba.md` seated |
 | Spec **OPF v0.2.1** | `Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` — normative law (OPF1–33); v0.1 superseded |
 | Bench **OPF** | `docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-pricing-foundation/` |
 | Spec **Position Builder/Book v0.3** | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md` — VIEW-7 + B5; v0.2 SUPERSEDED; **DL-306** |
@@ -69,8 +72,9 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Spec **Session/Print v0.1** | `Specs/FatTail-Labs-OPF-Session-and-Print-Authority-Spec-v0.1.md` — **WHETHER = BUILD** (DL-397) · HOW review still lands · OPF34–36 |
 | Bench **OT-EF / Session-Print** | `docs/OT-EF-Session-Print-and-Two-Clocks-Full-Agent-Bench-Plan-v1.0.md` (**v1.0.1**) · board `agents/p-ot-ef-session-print/` — no chrome until Echo labels; no code until Delta list; W4 when W1-G+W2-G+W3-G pass |
 | Spec **Heatmap Templates v0.2** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Templates-Spec-v0_2.md` — product law (DRAFT); v0.1 superseded |
+| Spec **Template Runner v0.1.2** | `Specs/FatTail-Labs-Template-Runner-Spec-v0_1.md` — **TR-P1 GO** browser shell `web/lib/runner/` · heatmap registered unchanged · flag `NEXT_PUBLIC_LABS_RUNNER_SHELL` · **DL-533** · rest THESIS · token `agents/go/TR-P1.md` |
 | Bench plan | `docs/Options-Lab-Heatmap-Templates-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-lab-heatmap/` |
-| Spec **Heatmap Width Fit v0.1.1 BUILD AUTHORITY** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md` — **WF** · `width_fit` on Advanced Fly / `sym-fly` · member criteria weights · neighborhood **penalty** (**OD-W6 Accept**) · honest \(n\) · observation-only · **OD-W1…W6 Accept** · **DL-525** · bench `docs/Options-Lab-Heatmap-Width-Fit-Full-Agent-Bench-Plan-v1.1.md` · board `agents/p-options-lab-heatmap-width-fit/` · W0 `agents/go/OLHWF-W0.md` |
+| Spec **Heatmap Width Fit v0.1.1 BUILD AUTHORITY** | `Specs/FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md` — **WF** · Heatmap **Template** `width-fit` (**DL-529**) · member criteria weights · neighborhood **penalty** (**OD-W6 Accept**) · honest \(n\) · observation-only · **OD-W1…W6 Accept** · **DL-525** · bench `docs/Options-Lab-Heatmap-Width-Fit-Full-Agent-Bench-Plan-v1.1.md` · board `agents/p-options-lab-heatmap-width-fit/` · W0 `agents/go/OLHWF-W0.md` · member guide [`docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md`](../docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md) · help concierge `server/help_reference/options-lab-heatmap-width-fit.md` (**DL-530**) |
 | Spec | `Specs/FatTail-Labs-Massive-Market-Bus-Shared-Client-Spec-v1.0.md` v1.0.1 |
 | Chain surface | `Specs/FatTail-Labs-Options-Chain-Picker-Spec-v1.0.2.md` · route `/app/options-lab` |
 | Bench | `docs/Massive-Market-Bus-Full-Agent-Bench-Plan-v1.0.md` · `agents/p-market-bus/` |

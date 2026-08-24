@@ -51,7 +51,6 @@ export default function WikiSearchPage() {
   // Prefer window.location over useSearchParams so the page never suspends
   // forever under Next/Turbopack when the search-params boundary misbehaves.
   const [q, setQ] = useState("");
-  const [auth, setAuth] = useState<"loading" | "ok" | "anon">("loading");
   const [results, setResults] = useState<SearchResult[] | null>(null);
 
   useEffect(() => {
@@ -62,21 +61,7 @@ export default function WikiSearchPage() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/me", { credentials: "same-origin" })
-      .then((r) => {
-        if (!cancelled) setAuth(r.ok ? "ok" : "anon");
-      })
-      .catch(() => {
-        if (!cancelled) setAuth("anon");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (auth !== "ok" || !q) {
+    if (!q) {
       setResults(null);
       return;
     }
@@ -95,7 +80,7 @@ export default function WikiSearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [auth, q]);
+  }, [q]);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-10">
@@ -111,27 +96,13 @@ export default function WikiSearchPage() {
         <span>Search</span>
       </nav>
 
-      {auth === "loading" && (
+      {results === null && q && (
         <p className="mt-4 text-sm text-[var(--color-label-secondary)]">
           Loading…
         </p>
       )}
 
-      {auth === "anon" && (
-        <div className="surface-card mt-4 border border-[var(--color-separator)] p-8 text-center">
-          <p className="font-medium text-[var(--color-label)]">
-            Sign in to search
-          </p>
-          <Link
-            href={`/login?next=${encodeURIComponent(`/app/wiki/search?q=${q}`)}`}
-            className="mt-4 inline-block text-sm font-medium text-[var(--color-tint)] hover:underline"
-          >
-            Log in →
-          </Link>
-        </div>
-      )}
-
-      {auth === "ok" && (
+      {(results !== null || !q) && (
         <>
           <h1 className="mt-4 text-2xl font-semibold text-[var(--color-label)]">
             Search

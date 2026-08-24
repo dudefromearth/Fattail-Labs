@@ -62,14 +62,15 @@ def seeded_index(tmp_path_factory):
             wiki_store.reindex(conn, Path(raw))
 
 
-def test_anonymous_401_everywhere(client, seeded_index):
-    for path in (
-        "/api/wiki/index",
-        "/api/wiki/pages/zzwikitest-pub",
-        "/api/wiki/search?q=x",
-        "/api/wiki/graph",
-    ):
-        assert client.get(path).status_code == 401, path
+def test_anonymous_published_ok_draft_404(client, seeded_index):
+    assert client.get("/api/wiki/index").status_code == 200
+    pub = client.get("/api/wiki/pages/zzwikitest-pub")
+    assert pub.status_code == 200, pub.text
+    assert pub.json()["status"] == "published"
+    assert pub.json().get("lead")
+    assert client.get("/api/wiki/pages/zzwikitest-draft").status_code == 404
+    assert client.get("/api/wiki/search?q=zzwikitest").status_code == 200
+    assert client.get("/api/wiki/graph").status_code == 200
     assert client.post("/api/admin/wiki/reindex").status_code == 401
 
 

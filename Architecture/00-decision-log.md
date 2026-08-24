@@ -4,6 +4,602 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-24 — DL-572 Help catalog GET (S1 poll surface)
+
+**Decision (Coach 2026-08-24):** Help publishes a **course-shaped** catalog of
+`server/help_reference/*.md`. File present = published. No draft, no status
+flip, no admin surface. Unauthenticated:
+
+- `GET /api/help/guides` → `{ articles: [{ id, title, body, canonical_url, status }] }`
+- `GET /api/help/guides/{id}` → article; unknown **404**
+- No write. Help’s tree. Not a Wiki three-OK.
+
+Wiki polls `LABS_WIKI_HELP_CATALOG_URL` default **`/api/help/guides`**. Wiki
+does not read the help_reference filesystem.
+
+**Does not:** migration; User’s Guide page; help-desk threads; MiniTwo.
+
+**Gate:** `agents/p-help-catalog/gate-reports/H-1-delta-gate.md`
+
+---
+
+## 2026-08-24 — DL-571 Wiki Source Contract SC-3 poll S1+S2 (GET-only)
+
+**Decision (Coach 2026-08-24):** **GO SC-3.** Wiki-side GET-only poll of
+**published** courses (S2 `/api/courses`) and help (S1 catalog URL). Hash-walk
+is the change test. A publication signal is a prefilter only. **L10:** if the
+signal says new and `content_hash` matches the Wiki-side watermark, do **not**
+compose. Disposition always. Missing signal does not skip hash. Cadence: **15
+minutes local** (`server/wiki_source_poll_tick.py`). MiniTwo not required.
+OD-6 unpublish remains HELD. S3 Factory signal is SC-3b, not this packet.
+
+**Does not:** Factory tree; emitters; subscribe; S4/S6; AppChrome; MiniTwo.
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Source-Contract-Spec-v0_1_4.md` §3.2, L10  
+**Gate:** `agents/p-wiki/gate-reports/SC-3-delta-gate.md`
+
+---
+
+## 2026-08-24 — DL-570 Wiki Source Contract SC-2 S7 push (artifact + intent)
+
+**Decision (Coach 2026-08-24):** **GO SC-2.** Admin push is a **delivery
+point**. Artifact + intent only — no schema form. Server infers metadata
+(L3). `content_hash` on ledger and watermark when a page lands. L12 residual:
+thin body → `failed-partial` + reason, **zero retries**, no git page. Hotel
+guidelines remain law (profit claim → no page). Session path unchanged.
+Members never see the panel. AppChrome untouched.
+
+**Does not:** OD-9 fetch-from-source; poll; S6; skill wiring; AppChrome;
+`web/app/layout.tsx`; HelpLauncher; resolve remaining ODs.
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Source-Contract-Spec-v0_1_4.md` §3.3, §5.2  
+**Gate:** `agents/p-wiki/gate-reports/SC-2-delta-gate.md`
+
+---
+
+## 2026-08-24 — DL-569 IKI Factory GO IF-3 (Spec + conveyor Spec→Build)
+
+**Decision (Coach 2026-08-24):** **GO IF-3.** Token
+[`agents/go/IKI-FACTORY-IF3.md`](../agents/go/IKI-FACTORY-IF3.md).
+
+Admin Research→Spec drafts a Template Specification (`spec_md`), marks
+Spec-ready, notifies the owner. Conveyor Spec→Build when Spec-ready **and**
+repo `plan_ref` attached **and** not Hold. Plan attachment **is** Spec
+approval — no second Approve act. Build marks Built-ready against that plan +
+Spec. Rework destination is Admin-only. Hold skips conveyor; clearing Hold
+resumes. Auto-moves are visible on the card.
+
+**Does not:** GO IF-4; B5; Deploy/Live; Wiki envelope; MiniTwo.
+
+**Gate:** `agents/p-iki-factory/gate-reports/IF-3-G.md`
+
+---
+
+## 2026-08-24 — DL-568 Wiki Source Contract SC-1 envelope + watermark
+
+**Decision (Coach 2026-08-24):** **GO SC-1.** One portal. `source_kind`
+present ⇒ Source Contract schema. `kind=session` unchanged. No second
+portal. No second store of page bytes.
+
+Closed `source_kind`: `help_guide` · `course` · `iki_factory_template` ·
+`transcript` · `youtube` · `blog` · `admin_push`. Unrecognized → 4xx +
+ledger `rejected` + reason. Incomplete required set → `failed-partial` +
+reason; no invented substance. Valid envelope → `accepted` + `contract_id`
++ Wiki-side watermark `(source_kind, source_id) → content_hash, seen_at`.
+
+Optional `acquired_by` when present: `poll` · `push` · `subscribe` ·
+`skill`.
+
+**Does not:** compose/LLM; poll adapters; Factory emit; UI; OD-6 unpublish
+action; skill wiring; AppChrome; resolve OD-4, 6, 7, 8, 9, 10, 12, 13, 14.
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Source-Contract-Spec-v0_1_4.md`  
+**Migration:** `migrations/139_wiki_source_watermarks.sql`  
+**Gate:** `agents/p-wiki/gate-reports/SC-1-delta-gate.md`
+
+---
+
+## 2026-08-24 — DL-567 IKI Factory GO IF-2 (research registry)
+
+**Decision (Coach 2026-08-24):** **GO IF-2.** Token
+[`agents/go/IKI-FACTORY-IF2.md`](../agents/go/IKI-FACTORY-IF2.md).
+
+Live principal `gemba`. Versioned `iki_factory_skills` registry. Empty
+registry fail-loud on the Idea (blocked, **zero** invented findings). 24 h
+window. Top ≤10 child cards with rank + reason + sources; remainder on parent.
+No production skill seeded until Coach names one.
+
+**Does not:** GO IF-3; named research skill; MiniTwo; Wiki envelope.
+
+**Gate:** `agents/p-iki-factory/gate-reports/IF-2-G.md`
+
+---
+
+## 2026-08-24 — DL-566 IKI Factory B2: board under suite pill
+
+**Decision (Coach 2026-08-24):** The Kanban lives under **IKI Factory** —
+`/app/iki/factory` (IKI Lab suite nav). Admin-gated: administrators see the
+board; everyone else sees the soon page. `/admin/iki-factory` redirects to the
+suite route.
+
+Supersedes the B2 default in **DL-559** (admin-only `/admin/iki-factory`,
+suite pill stays soon).
+
+**Does not:** GO IF-2; member-visible Live templates (still IF-4); MiniTwo.
+
+---
+
+## 2026-08-24 — DL-565 IKI Factory SC-0 four diffs on record
+
+**Decision:** Source Contract SC-0 **four** stale→replacement diffs are on
+record for the Factory/Gemba floor (Coach: run SC-0 now; board card is in
+the list). Wiki-side SC-0 remains **DL-562 / DL-564**. This entry is the
+Factory four.
+
+| # | Artifact | Replacement |
+|---|----------|-------------|
+| 1 | Factory Spec OD-F10 / §6 / §9 | Deploy exposes a **publication signal only**. No registration envelope, no complete-package belt-stop. Original OD-F10 Accept kept as labeled superseded history. |
+| 2 | Factory plan IF-4 | No delivery hook. Signal only. IF-4 smaller. B4 dead. |
+| 3 | Gemba invariant 9 | Signal-only. Does **not** say “Deploy pushes registration.” Does **not** name Help Package as a Factory stop. |
+| 4 | IKI Factory board card | No Help Package chrome. Floor state only. |
+
+**Does not:** GO IF-2; GO SC-1; publication-signal code; MiniTwo.
+
+**Gate:** `agents/p-iki-factory/gate-reports/SC-0-G.md`
+
+---
+
+## 2026-08-24 — DL-564 Wiki Source Contract OD-3 corrected: skill-delivered, no stub
+
+**Decision (Coach 2026-08-24):** The earlier OD-3 framing (stub; OUT of first
+ship; decline until installed) was **wrong. No stub.**
+
+Transcript decomposition is a **skill**, not a Wiki subsystem. Coach has a
+working skill. It is modified to emit a **complete Source Contract envelope**
+directly — summary or extraction in `body`, plus `title`, `origin_ref`,
+`content_hash`, and the rest of the required set. Coach supplies the
+instruction ("summarize this and fill the fields"); the skill does the rest.
+The envelope arrives fully formed.
+
+This is a **third in-scope delivery mode**, distinct from push and poll:
+**skill-delivered.** Named in Source Contract §3 alongside poll and push.
+`acquired_by` gains a fourth value: `skill` (alongside `poll` · `push` ·
+`subscribe`). Subscribe remains out of v0.1.
+
+**OD-8 note (OD-8 stays HOLD):** one transcript may legitimately produce
+several pages under different instructions — a summary and a how-to from the
+same video. That is intentional and honest, not the accidental duplication
+OD-8 concerns. Do not collapse them. Each envelope has its own `source_id`.
+
+**S7 unchanged (DL-562):** finished, publishable material only; delivery
+point, not a submission surface; no draft/queue/unfinished store; development
+progress notes not eligible; agent does not review or hold human-submitted
+work. L12 decline largely gone on push and on skill-delivered (envelope
+finished before arrival). L12 still full on automated poll channels.
+
+**Does not:** resolve OD-4, 6, 7, 8, 9, 10, 12, 13, 14. GO SC-1. Product
+code. Wiring the skill (later GO). MiniTwo. AppChrome.
+
+**Corrects:** DL-562 OD-3 paragraph (stub / OUT of first ship). That entry
+stands as the S7 + §6.1 diffs record; this entry is the OD-3 law.
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Source-Contract-Spec-v0_1_4.md` §3.1, §3.6,
+§5.1.1, `acquired_by`
+
+---
+
+## 2026-08-24 — DL-563 IKI Factory B4 dead; SC-0 list includes board card
+
+**Decision (Coach 2026-08-24):** Factory plan **B4 is dead.** There is no Help
+Package (Wiki Source Contract v0.1.4 · **DL-560**). IF-4’s Wiki obligation is
+**expose a publication signal at Deploy** — nothing else (no envelope, no
+delivery hook, no wiki page bytes). B4 does **not** block IF-4.
+
+**SC-0 list amended:** Source Contract §6.1 / charge §4 / SC plan now include
+the **IKI Factory board card**
+(`web/components/admin/IkiFactoryBoard.tsx`) beside Factory Spec OD-F10/§6/§9,
+IF-4 seeds, and Gemba invariant 9, so the board and the documents say the same
+thing. No Help Package chrome on the card.
+
+**Does not:** GO IF-2; B5; MiniTwo.
+
+**Plan:** `docs/IKI-Factory-Spec-v0.1.5-Full-Agent-Bench-Plan-v1.1.md`  
+**Token:** `agents/go/IKI-FACTORY-IF1.md`
+
+---
+
+## 2026-08-24 — DL-562 Wiki Source Contract SC-0 diffs; S7 and OD-3 closed
+
+**Decision (Coach 2026-08-24):** **GO SC-0.** Land the three §6.1 diffs.
+**S7 RULED. OD-3 RULED.** Remaining open decisions stay holds: **OD-4, 6, 7, 8,
+9, 10, 12, 13, 14.** Do not resolve by default.
+
+**S7 under L11 — RULED.** The admin push bot accepts **finished, publishable
+material only**. There is no draft state, no queue, no unfinished-work store
+on either side. Coach prepares content to completion outside the system and
+hands it off; the bot is a **delivery point**, not a submission surface.
+Development progress notes are **not eligible**. The agent does not review
+or hold human-submitted work.
+
+**L12 consequence.** On the push path the L12 decline case largely
+disappears, because material is finished before it arrives. L12 still
+governs the automated channels in full — a thin Factory template still
+produces no page.
+
+**OD-3 — RULED.** Transcript decomposition is a **skill**, not a subsystem,
+and is **OUT of first ship**. The contract stubs the plug-in interface
+(§5.1.1) so a skill can be dropped in later without reopening the contract.
+The stub **must not** compose pages from raw transcripts; it declines with a
+stated reason until a real skill is installed. A stub that produces a poor
+page violates L12 and is worse than no transcript handling.
+
+**§6.1 diffs landed (stale claim → replacement, not rewrites):**
+
+1. **Wiki-side (Lima).** Wiki Spec v0.2.1 II.1 / IV.2 / IV.5.3: Help Package
+   payload and Factory emit **SUPERSEDED**. WU-3 = Source Contract poll +
+   Wiki-side envelope. Wiki plan B4 closed. Arch 11 + ORCHESTRATOR updated.
+2. **Factory (Factory/Gemba board).** Factory Spec v0.1.5 OD-F10 / §6 / §9
+   (and IF6, IF13, conveyor preconditions, AT-IF-6/8/13): Deploy exposes a
+   **publication signal only**. No envelope, no hook, no wiki page bytes.
+   Product type/tier/free-vs-paid remains a Factory Deploy input. Original
+   OD-F10 Accept (complete Help Package + push `kind=registration`) is
+   recorded as **superseded**, not hidden. Factory plan IF-4 is **smaller**;
+   B4 closed.
+3. **Gemba.** Invariants 4, 8, 9 + workflow step 5 + CUSTOMIZATION: signal
+   only; never a Wiki envelope; never wiki page bytes. Help Package
+   completeness is not a Factory belt-stop. Thin material is Wiki L12.
+
+**Coach Content Law (up front):** Factory Spec v0.1.5 and Gemba charter
+sentences that named Help Package completeness as a Deploy belt-stop and
+registration push were **Coach’s original Accept (OD-F10)**. This packet
+**replaces those claims** because Coach already superseded the Help Package
+(DL-560) and stamped GO SC-0. The original Accept is kept as labeled
+history in the Factory changelog and OD-F10 row. Product-spec Deploy
+inputs, conveyor, Hold, WooCommerce, and “Gemba never writes wiki pages”
+are unchanged.
+
+**Does not:** GO SC-1 or any product code. Emitters. Factory POST of a Wiki
+envelope. A real transcript decomposer. Resolve OD-4, 6, 7, 8, 9, 10, 12,
+13, 14. MiniTwo. AppChrome.
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Source-Contract-Spec-v0_1_4.md`  
+**Plan:** `docs/Wiki-Source-Contract-v0_1_4-Full-Agent-Bench-Plan-v1.0.md`  
+**Gate:** `agents/p-wiki/gate-reports/SC-0-delta-gate.md`
+
+---
+
+## 2026-08-24 — DL-561 Wiki Source Contract B-3 closed; Wiki Spec H1 match
+
+**Decision (Coach 2026-08-24):** **B-3 CLOSED.** Parent of Wiki Source Contract
+v0.1.4 is **`Specs/FatTail-Labs-Wiki-Spec-v0_2_1.md`**, content version
+**v0.2.1**, APPROVED **DL-555**. The Wiki Agent Spec files
+(`FatTail-Labs-Wiki-Agent-Spec-v0_1.md` and `…-v0_1_3.md` lineage) are
+SUPERSEDED and are **not** the parent.
+
+**H1 fix:** that parent’s H1 read “Wiki Spec v0.2 (Unified)” while filename and
+status said v0.2.1. H1 corrected to **Wiki Spec v0.2.1 (Unified)**. Title and
+version now agree.
+
+**Does not:** resolve S7 eligibility or OD-3 (unfilled ARE/ARE NOT and IN/OUT
+remain holds). Does not start Help Package supersession code.
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Source-Contract-Spec-v0_1_4.md`  
+**Plan:** `docs/Wiki-Source-Contract-v0_1_4-Full-Agent-Bench-Plan-v1.0.md`
+
+---
+
+## 2026-08-23 — DL-560 Wiki Source Contract v0.1.4 stamped (Help Package superseded)
+
+**Decision (Coach 2026-08-23):** Wiki Source Contract Spec **v0.1.4** is
+**APPROVED**. There is no Help Package. One envelope, seven `source_kind`s.
+Help is **S1**. Charge:
+[`Specs/Charge-GB-Help-Package-Supersession-v1_0.md`](../Specs/Charge-GB-Help-Package-Supersession-v1_0.md).
+
+| ID | Ruling |
+|----|--------|
+| **P1** | Spec stamped. File: `Specs/FatTail-Labs-Wiki-Source-Contract-Spec-v0_1_4.md`. |
+| **P3 / L10** | **ACCEPTED.** Hash is correctness; the publication signal is optimization. Where they disagree, the hash wins. |
+| **P4** | **Both.** Lima owns wiki-side stale “Help Package” / registration-envelope diffs. Factory/Gemba board owns Factory Spec OD-F10/§6/§9, IF-4 seeds, and Gemba **invariant 9**. Diffs land in the same body of work as the first execution packet — not this entry. |
+| **P2 / B-3** | **HOLD.** Parent discovery found two named candidates (see below). Coach rules the parent. Bench plan per charge §6 waits on that confirmation. |
+| **S7 under L11** | **HOLD.** Coach’s ARE / ARE NOT bracket is unfilled. |
+| **OD-3** | **HOLD.** IN / OUT of first ship unfilled. |
+
+**P2 discovery (do not decide):** both candidates define numbered agent
+directives, contract kinds, and `failed-partial`:
+
+1. `Specs/FatTail-Labs-Wiki-Agent-Spec-v0_1.md` — H1 **Wiki Agent Spec v0.1**
+   (lineage also `…-v0_1_3.md`, H1 **Wiki Agent Spec v0.1.3**, last agent-spec
+   of record before unification).
+2. `Specs/FatTail-Labs-Wiki-Spec-v0_2_1.md` — H1 **Wiki Spec v0.2 (Unified)**;
+   status names content version **v0.2.1** (**DL-555**). Absorbs the agent spec.
+
+**Does not:** bench plan · §6.1 diffs this entry · Factory signal · WU-3 code ·
+emitters · AppChrome.
+
+---
+
+## 2026-08-23 — DL-559 IKI Factory GO IF-1 (admin board + Ideas)
+
+**Decision (Coach 2026-08-23):** **GO IF-1.** Token
+[`agents/go/IKI-FACTORY-IF1.md`](../agents/go/IKI-FACTORY-IF1.md).
+
+**B2:** Admin only — board lives at **`/admin/iki-factory`**. Member
+`/app/iki/factory` stays the soon page. Do not replace the suite pill.
+
+IF-1 ships: Kanban Ideas→Live, drag + click-advance/detract, Priority
+Low/Medium/High, ownership, Hold, Idea deposit with pickup stub
+(Ideas→Research, visible auto-move reason, waiting for skills). Research→Spec
+is Admin human only. Invalid moves 422, card stays, reason on the card.
+Non-admin 403.
+
+**Does not:** GO IF-2; `gemba` principal; skills registry; Woo product create;
+registration push; Runner writes; `gemba.md`; B4/B5.
+
+**Spec:** Factory Spec v0.1.5 BUILD (**DL-556**)  
+**Plan:** `docs/IKI-Factory-Spec-v0.1.5-Full-Agent-Bench-Plan-v1.1.md`  
+**Board:** `agents/p-iki-factory/`
+
+---
+
+## 2026-08-23 — DL-558 Wiki Spec GO WU-2 (public read)
+
+**Decision (Coach 2026-08-23):** **WU-2 timing stamped. GO WU-2 granted.**
+Sierra (`reviews/WU-2-0-sierra.md`) and Mike (`reviews/WU-2-1-mike.md`)
+reviews in-tree. Published wiki pages are readable without a session.
+Drafts 404 for everyone but administrators. Sitemap lists published slugs
+only; unpublish drops the URL. “In your practice” never on public HTML.
+
+**Does not:** AppChrome · root layout · HelpLauncher · registration (WU-3) ·
+Factory/charter packets · session API opened to the public.
+
+---
+
+## 2026-08-23 — DL-557 Wiki Spec WU-1 chrome ruling (B) + GO WU-1
+
+**Decision (Coach 2026-08-23):** Chrome ruling **(B) Narrow** — wiki-owned
+layouts only. Keep or evolve `WikiAgentPanel`; do **not** mount into
+AppChrome. Standing-presence defect on frozen surfaces is **accepted** until
+a later three-OK. **GO WU-1** under (B) only.
+
+**O1 disposition:** keep and evolve `WikiAgentPanel` on
+`web/app/app/wiki/layout.tsx`. No second orb (`WikiAgentLauncher` not
+created).
+
+**Does not:** AppChrome · `web/app/layout.tsx` · HelpLauncher · public read
+(WU-2) · registration (WU-3) · Factory/charter packets.
+
+---
+
+## 2026-08-23 — DL-556 IKI Factory Spec v0.1.5 BUILD AUTHORITY (OD-F1…F10; OD-IKI-1 closed)
+
+**Decision (Coach stamp 2026-08-23):** IKI Factory Spec **v0.1.5** is **BUILD AUTHORITY**.
+**GO IF-1 is not granted.** Next lawful work is **W0** (read-only inventory) only.
+Plan: [`docs/IKI-Factory-Spec-v0.1.5-Full-Agent-Bench-Plan-v1.1.md`](../docs/IKI-Factory-Spec-v0.1.5-Full-Agent-Bench-Plan-v1.1.md).
+Charter [`agents/bench/gemba.md`](../agents/bench/gemba.md) is Coach-rewritten and seated — **do not rewrite**.
+
+Spec-header reviewers were **PENDING**. Coach expedited Phase 5 (same class as **DL-479**). Sequential India/Mike/Echo+Tango/Hotel/Delta reviews remain owed as W0 + later gates; they do not unstamp BUILD.
+
+**OD-IKI-1 closed.** Suite spec v0.1 left Factory’s *job* open (**DL-527**). This spec seats it: admin-only Kanban conveyor Ideas → Research → Spec → Build → Live, fronted by **Gemba**, WooCommerce subscription product on Deploy, Wiki Agent `registration` emit. Member `/app/iki/factory` pill stays **named soon** until Coach opens it (**OD-F7** / plan **B2**).
+
+| ID | Ruling |
+|----|--------|
+| **OD-F1** | Accept — lanes Ideas → Research → Spec → Build → Live |
+| **OD-F2** | Accept — Priority Low / Medium / High (Admin-authoritative) |
+| **OD-F3** | Accept — extensible versioned skill registry |
+| **OD-F4** | Accept — ranked list after ≤24 h; top ≤10 or fewer become Research cards with rank + reason |
+| **OD-F5** | Accept — repo-resident plan attached is **Spec approval**; no second approval act downstream |
+| **OD-F6** | Accept — WooCommerce subscription product on Deploy; **WooCommerce is the platform-wide commerce entry point**. Native-Billing-Stripe remains superseded-unless-Coach-revives. `INSTRUCTIONS.md` §11.1 is **not in this repo**; the live contradiction is CLAUDE.md (Woo only) vs `agents/p1-foundation/CHARTER.md` pillar 6 (Woo and/or native Stripe). This entry is the ruling. P1 charter amendment is a named later packet (not this body; **DL-539**). |
+| **OD-F7** | Accept — board admin-only; only Live templates member-visible |
+| **OD-F8** | Accept — Gemba / principal `gemba` / `agents/bench/gemba.md`. Not Quebec, Bravo, Oscar, or Golf |
+| **OD-F9** | Accept — conveyor: Ideas→Research auto; Research→Spec Admin only; Spec→Build auto when Spec-ready + plan attached (unless Hold); Build→Deploy auto when Built-ready + product spec + complete Help Package (unless Hold). Failures and missing inputs stop the belt. Every auto-move visible. Hold always available |
+| **OD-F10** | Accept — Deploy requires a **complete Help Package** (all fields the Wiki `registration` contract requires). Incomplete packages stop the belt. Deploy pushes `kind=registration`; wiki-side poller is the OD-5 bridge until the Factory hook ships. Wiki-side declares new vs update |
+
+**Does not:** **GO IF-1**; product schema/UI; seeds; Runner (`web/lib/runner/**`) writes; Wiki page bytes; MiniTwo; naming the IKI Template Help Package spec (**B4**); ticking **B2** / **B5**; editing `gemba.md`.
+
+**Spec:** [`Specs/FatTail Labs — IKI Factory Spec v0.1.5`](../Specs/FatTail%20Labs%20%E2%80%94%20IKI%20Factory%20Spec%20v0.1.5)  
+**FI-041:** SEATED (this entry).
+
+---
+
+## 2026-08-23 — DL-555 Wiki Spec v0.2.1 seated (unified organism)
+
+**Decision (Coach GO SPEC 2026-08-23):** Wiki Spec **v0.2.1** is **APPROVED** and
+is the spec of record for the Wiki program.
+`Specs/FatTail-Labs-Wiki-Spec-v0_2_1.md`.
+
+**SUPERSEDED** (banner-only, never deleted, body frozen so historical gates and
+DL citations still resolve):
+
+- `Specs/FatTail-Labs-Member-Wiki-Spec-v0.1.md` (and `v0_1.md` duplicate path)
+- `Specs/FatTail-Labs-Wiki-Interface-Spec-v0.1.md`
+- `Specs/FatTail-Labs-Wiki-Agent-Spec-v0_1_3.md` and lineage v0.1–v0.1.2
+- `Specs/FatTail-Labs-Wiki-Proactive-Compilation-Spec-v0_2.md` (already OD-3;
+  absorbed here)
+
+**Landing vs advisor v0.2 (Coach confirms hunks 2–4; do not revert):**
+
+- **I.1** — DL-539 never licenses a frozen mount → **binding**
+- **Registration** — Factory complete package; new-vs-update is **wiki-side**;
+  Factory emit after Live; wiki-side poller until that hook → **WU-3 law**
+- **IV.5.1** — Help-mount discovery is the first seed, India-gated before
+  chrome-adjacent code → **process law**
+
+**Access:** DL-551 / DL-552 unchanged (wide open by default; restrictions only
+when Coach names them).
+
+**Owed WA-4 record checks:**
+
+- **(a)** Member Wiki v0.1 access hunk (D-3 dissolved / wide open) absorbed by
+  I.3. IKI Apps-card door rename (DL-527) is unrelated; not folded as access law.
+- **(b)** `Architecture/05-security-and-access.md` seven-line access doctrine
+  **DECLARED** (DL-552 + wiki directed rule).
+
+**R0:** zero invariant BLOCKING (`agents/p-wiki/reviews/WU-R0-*.md`). GO SPEC
+was held one turn on recon-only test; Coach lifted that hold by confirming
+hunks 2–4.
+
+**Does not:** public read (WU-2 — timing unstamped) · floating launcher
+(WU-1 — chrome ruling still blank; not a DL-539 three-OK) · registration live
+(WU-3 — Coach has not named Help Package spec file + version) · AppChrome ·
+`web/app/layout.tsx` · MiniTwo · Factory/charter packets.
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Spec-v0_2_1.md`  
+**Plan:** `docs/Wiki-Spec-v0_2_1-Full-Agent-Bench-Plan-v1.0.md`  
+**GO WU-0:** docs-only seating (this entry + banners + Arch 11).
+
+---
+
+## 2026-08-23 — DL-554 Wiki Agent WA-4 shipped (session + admin panel + drain)
+
+**Decision (Coach GO WA-4):** Session lifecycle is live: open (admin cookie,
+context) → first agent turn cites `{surface, route, entity}` → accrete while
+`sealed_at` IS NULL → seal immutable; follow-on is a new contract referencing
+the sealed id. Session drafts take the WA-2 path (git `status: draft` → board
+`awaiting_approval`) with **context-into-entry** frontmatter. Affordance is
+admin-only in-place-admin on wiki-owned layout (`WikiAgentPanel` via
+`useIsAdmin()`). Linkage-queue drain pulls next `LABS_WIKI_LINKAGE_DRAIN_N`
+(fail-loud) queued reverse-pass rows into board cards. Nothing auto-publishes.
+
+**Rider 1 mount:** `web/app/app/wiki/layout.tsx` +
+`web/components/wiki/WikiAgentPanel.tsx`. **`web/components/AppChrome.tsx` not
+touched.** Not a DL-539 three-OK. “Anywhere” is content-into-entry, not host
+chrome.
+
+**Does not:** public read (WA-6); registration (WA-5 — Coach must direct Help
+Package spec creation and name file + version); AppChrome; MiniTwo;
+course/help/IKI trees; member-visible UI.
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Agent-Spec-v0_1_3.md`  
+**Gate:** `agents/p-wiki/gate-reports/WA-4-delta-gate.md`
+
+---
+
+## 2026-08-23 — DL-553 Wiki Agent session semantics sharpened
+
+**Decision (Coach ruling 2026-08-23):** Direct communication with the Wiki Agent
+is **admin-only**. The affordance renders for `administrator` only, via the
+in-place-admin pattern (admin controls on production pages, invisible to everyone
+else). **“Callable from anywhere” is a content directive**, not a chrome
+directive: calling-surface context `{surface, route, entity}` is **input to the
+entry** — its framing, its candidate linkages, its provenance — not merely
+conversational awareness.
+
+India’s R0-1 carve is now spec law (v0.1.3): sealed session transcript is
+**contract evidence** on the ledger row; wiki **page bytes** remain git-only
+(WIK-D1). Spec §7 “no content in contracts beyond pointers and summaries”
+applies to `source_change` / `registration`; `kind=session` is the documented
+exception.
+
+**Does not:** public wiki read surface (WA-6); AppChrome / DL-539 three-OK;
+member-visible UI; registration (WA-5).
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Agent-Spec-v0_1_3.md` (this packet).
+
+---
+
+## 2026-08-23 — DL-552 Access doctrine (Coach-directed; no defaulted posture)
+
+**Decision (Coach ruling 2026-08-23, correction on the record):** Access rules
+come **only** from Coach’s explicit direction. Where Coach has not directed
+access, specs carry it as an **OPEN question put to Coach** — never a defaulted
+posture in either direction.
+
+The member-gated wiki posture and Member Wiki v0.1 open decision **D-3**
+originated as **advisor assumption, never Coach direction**. That assumption
+is corrected here.
+
+**Current directed rule for the wiki (DL-551):** contents are **wide open by
+default**; specific restrictions only when Coach names them. That is Coach’s
+direction for this product, not a platform-wide default.
+
+The SSO perimeter remains Coach’s instrument when a restriction *is* named.
+
+**Does not:** change any as-built route tonight except as each feature’s own
+stamp provides. Does not ship a public wiki read surface (WA-6).
+
+---
+
+## 2026-08-23 — DL-551 Wiki content is wide open by default
+
+**Decision (Coach ruling 2026-08-23):** Wiki contents are **wide open by
+default** — public, readable outside membership. Supersedes the member-gated
+v1 posture. Dissolves Member Wiki v0.1 open decision **D-3**. Specific
+restrictions only when Coach names them.
+
+Drafts remain invisible to everyone but administrators. Publish gate **W5** is
+what protects the public: unpublished pages 404. The old “member 404 on drafts”
+becomes **unauthenticated 404 on drafts** once a public read surface exists.
+
+**Public READ SURFACE is not built in WA-4.** That is slice **WA-6** (defined,
+not stamped; Coach stamps timing): unauthenticated wiki read path + Sierra
+SEO/AEO + Mike review of the **exposure mechanics** (unauthenticated 404 on
+drafts; no member-personal data reachable; “In your practice” rail and any
+Family B-adjacent surface never render on public pages). The access *rule* is
+already directed here — WA-6 reviews cover implementation, not whether.
+
+**Does not:** unauthenticated `/app/wiki` in this packet; registration (WA-5
+waits on Coach directing the Help Package spec and naming file + version);
+session chrome on AppChrome.
+
+---
+
+## 2026-08-23 — DL-550 Wiki Agent WA-3 shipped (linkage pass)
+
+**Decision (Coach GO WA-3):** v1 linkage is **built** in the wiki tree (`wiki_refs`,
+FULLTEXT + title boost, reverse-pass revision drafts). Reverse-pass board volume is
+**one rollup card** per ingest; overflow lives in `wiki_linkage_queue` (nothing
+dropped). Thresholds are env, fail-loud. No embeddings (Member Wiki D-4).
+
+**Does not:** member `/app/wiki` related rail fill; WA-4 session/chrome; WA-5;
+MiniTwo; embeddings; course/help/IKI trees.
+
+---
+
+## 2026-08-23 — DL-549 Wiki Agent WA-2 shipped (pollers + Oscar discharge)
+
+**Decision (Coach GO WA-2):** Wiki-side pointer registry (`wiki_pointers`, migration
+135), GET-only courseware/help pollers synthesizing `source_change` contracts,
+Oscar discharge (`ai.complete` + Hotel guidelines) → git `status: draft` + board
+`awaiting_approval`. Retired annotates; never silent delete. W5 stands.
+
+**Does not:** WA-3 `wiki_refs`; WA-4 session accrete/seal or chrome; WA-5
+registration; MiniTwo; writes to course/help/IKI trees; member `/app/wiki` UI.
+
+**Hotel:** `agents/p-wiki/hotel-agent-draft-guidelines.md` (W6).
+
+---
+
+## 2026-08-23 — DL-548 Wiki Agent Spec v0.1.2 seated (GO WA-1)
+
+**Decision (Coach stamp):** Wiki Agent Spec **v0.1.2** is **APPROVED**. **GO WA-1**
+only. WA-2…WA-5 are not granted.
+
+| ID | Ruling |
+|----|--------|
+| **OD-1** | **(b)** Agent owns its pipeline. Humans keep Obsidian (and WI9 when S1). |
+| **OD-2** | **None.** W5 for every contract class. |
+| **OD-3** | **Standalone.** This spec supersedes Proactive Compilation v0.2. Idle compile APIs stay idle; no product UI. |
+| **OD-4** | **Consequence.** Template wiki page follows registration; never blocks it. |
+| **OD-5** | **Yes.** Wiki-side pollers until source hooks land; removals logged per-source. |
+| **OD-6** | Direction approved (floating chrome, multi-turn chat, free text, context-seeded). **Chrome mechanics deferred:** B3 stands — WA-4 UI does not start without three successive Coach OKs on AppChrome or a Coach narrowing recorded then. This entry is **not** DL-539 three-OK. |
+
+**Sealed session transcript (India R0-1, Coach):** ledger holds sealed transcript as
+**contract evidence**; wiki **page bytes** remain git-only (WIK-D1). Spec §7 vs
+session payload carve is **v0.1.3** (do not edit spec now).
+
+**Does not:** MiniTwo; AppChrome; Factory/Runner/Options Lab/Market Bus/Trade Log;
+CompileLauncher; Member Wiki S1; GO WA-2…WA-5; pointer registry; pollers; Hotel
+guidelines.
+
+**Seam (Coach-ratified 2026-08-23):** `server/main.py` two lines (import +
+`include_router`) to mount `/api/wiki-agent/*`. Juliet standing rule: router-mount
+and equivalent seam files are **pre-declared** on future allowlists.
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Agent-Spec-v0_1_2.md`  
+**Plan:** `docs/Wiki-Agent-Full-Agent-Bench-Plan-v0_1_2.md`
+
+---
+
 ## 2026-08-23 — DL-547 IKI suite nav stays; implement Wiki only
 
 **Decision (Coach):** Implementing the Member Wiki does **not** remove Runner or
@@ -84,6 +680,14 @@ Spec: [`Specs/FatTail-Labs-Platform-Email-Intent-Auth-Gate-Spec-v0_1.md`](../Spe
 
 ---
 
+## 2026-08-22 — DL-541 Analyzer Auto-fit/PiP cannot sit under Time Machine
+
+**Decision:** Viewport header is three **in-flow** columns (Symbol/Spot/VIX · Auto-fit/PiP · Time Machine). The centered Auto-fit/PiP cluster must not be `position:absolute` under Time Machine. A member (0-DTE SSO, laptop/zoom) was missing **both** Auto-fit and PiP while later right-side chrome still showed. Not an access privilege; not 0-dte.com SSO.
+
+**Does not:** MiniTwo implied until Coach deploys; changing PiP behavior.
+
+---
+
 ## 2026-08-22 — DL-540 IKI Lab auth specifications withdrawn
 
 **Decision (Coach):** IKI Lab auth specifications are **withdrawn**. IKI has
@@ -102,6 +706,44 @@ gate in **DL-543** — Identity-Access / Accounts & Capital, not IKI.
 
 **Does not:** MiniTwo; Options Lab; Market Bus provenance (`market_stream.py`
 MB-P2 stays); IKI-P3 chrome; implementing DL-543 in this entry.
+
+---
+
+## 2026-08-22 — DL-539 No drift; do not touch existing work (three successive OKs)
+
+**Decision (Coach):** Do not drift. Do not touch existing work. If an agent
+feels touching existing work is necessary, bring the issue up to Coach
+**at least three times** and obtain **three successive OKs** before
+starting that work. One mention is not enough. One OK is not enough.
+A break in the chain (no, defer, subject change, or silence) resets
+the count to zero.
+
+This sits **on top of** change control (declare files; only touch what
+was approved). Change control does not license opening a prior tree
+because a new packet “needs” it.
+
+**Now:** active program is **IKI Lab**. Existing work (Options Lab,
+Width Fit, Template Runner internals, Market Bus, Trade Log, and every
+other shipped or in-flight tree) is frozen unless the three-OK rule
+is met.
+
+Doctrine **§15**. India and Delta block violations. Juliet does not
+seed a packet that opens a frozen tree without the three-OK record in
+the GO token.
+
+**Does not:** MiniTwo; reopen TR/MB/Options Lab; IKI-P1 auth code.
+
+---
+
+## 2026-08-21 — DL-538 IKI Lab host mounts TR-P3 Runner (IKI-P2)
+
+**Decision (Coach GO):** IKI Lab suite app **Runner** at `/app/iki/runner`
+(India W0 slug from PDS §1). Mounts TR-P3 `HeatmapRenderHost` unchanged.
+Render sink only. Member session. Public session pending IKI-P1.
+`sym-fly@0.2` and `spread-tax@0.1` selectable. TR8 across hosts.
+No catalog card (OD-nav). Token [`agents/go/IKI-P2.md`](../agents/go/IKI-P2.md).
+
+**Does not:** MiniTwo; IKI-P1 public session; wiki embed / notify / data sinks.
 
 ---
 
