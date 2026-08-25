@@ -1,0 +1,29 @@
+{
+  "host": "127.0.0.1:4000",
+  "LABS_ENV": "dev",
+  "staging_host": "labs-stage.fattail.ai — DNS did not resolve (curl exit 6). Fixture is on the running Factory API this session uses.",
+  "card": {
+    "id": 260,
+    "title": "zz-if4-published-fixture",
+    "lane": "live",
+    "published": true,
+    "obtainable": true,
+    "woo_reason": "Woo step stubbed — store interface is a later program.",
+    "woo_product_id": null,
+    "store_visible": false,
+    "auto_move_reason": "Built-ready + product spec — conveyor to Live. Published is the result of the Admin product-spec gate (invariant #7). Deploy exposes a publication signal."
+  },
+  "signal": {
+    "id": 260,
+    "title": "zz-if4-published-fixture",
+    "live_at": "2026-08-24 21:09:29",
+    "content_hash": "7851a4eb7d724175f43077cc0c5241fb742ee15e6f91310fa43cb95737ca964a"
+  },
+  "signal_keys": ["content_hash", "id", "live_at", "title"],
+  "stub": "Woo step stubbed — store interface is a later program.",
+  "catalog_by_id": "/api/iki-factory/live/260 — 200, published true, obtainable true",
+  "gemba_rework": "test_gemba_cannot_rework_published PASS — Published stays live",
+  "admin_rework": "test_admin_rework_from_published PASS — Admin may Rework to Research",
+  "tango": "agents/p-iki-factory/tango-live-catalog.md — APPROVED",
+  "gate": "agents/p-iki-factory/gate-reports/IF-4-G.md"
+}

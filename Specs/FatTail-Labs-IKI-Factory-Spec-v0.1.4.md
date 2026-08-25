@@ -1,0 +1,286 @@
+Here is the full **IKI Factory Spec v0.1.4** in markdown:
+
+```markdown
+# FatTail Labs — IKI Factory Spec v0.1.4
+
+**Status:** DRAFT — for Coach review. No authority until approved and logged.  
+**Date:** 2026-08-23  
+**Program:** IKI Lab (suite) · IKI Factory (inner app)  
+**Parents:** IKI Lab and Factory Spec v0.1 · Member Wiki Spec v0.1 · Wiki Agent Spec v0.1.2 · North Star v1.2 (Invariant #8) · Public Data Service Spec v0.1 Part I  
+**Doctrine:** config fail-loud · no parallel store of truth · process outcomes only · no profit claims · evidence over assertion · documentation parity · human gates only (judgment) · conveyor when ready  
+
+**Scope statement.** This document defines the IKI Factory as an admin-only Kanban pipeline that turns Ideas into deployed Knowledge/Intelligence templates (with store presence). It does not authorize edits outside the Factory surface or the template registration path. Cross-tree effects (Wiki Agent `registration` contract, WooCommerce product creation) are specified as obligations; the delivering code lives in those trees under their own programs and DL-539 where required.
+
+**Commerce law (Coach ruling, 2026-08-23 — Lima DL entry):** WooCommerce is the commerce entry point **platform-wide**. This resolves the open contradiction in INSTRUCTIONS.md §11.1 (CLAUDE.md “WooCommerce only” vs P1 charter pillar 6 “WooCommerce and/or native Stripe”). Ruled via IKI Factory OD-F6 and generalized by Coach. The Native-Billing-Stripe spec remains on record as superseded-unless-Coach-revives. Update INSTRUCTIONS.md §11.1 to point at this entry. No product code changes required by this ruling itself.
+
+**Agent seating:** The Factory Agent is the bench archetype **Gemba** (Lean Factory Worker). Charter: `agents/bench/gemba.md`. Principal under Agent Identity: `gemba` (product-local). Gemba owns orchestration of the versioned skills pipeline, research window, ranking/materialization of Research cards, intra-lane state, conveyor auto-advances when preconditions are met, and post-authorization Deploy side-effects. Gemba does not invent, does not write Wiki pages (Wiki Agent remains strictly downstream), and stops the belt on any missing required input or failure.
+
+**Reviewers (PENDING until Coach schedules):**
+
+| Gate | Reviewer | Concern |
+|------|----------|---------|
+| Architecture / boundary | India | No second store; template registration path; relation to Wiki Agent; Gemba charter boundary; conveyor preconditions |
+| Auth | Mike | Admin-only surface; card ownership; agent principal `gemba` |
+| Design + psychology | Echo + Tango | Board language, empty states, priority labels, notifications, drag-and-drop affordances, visible auto-move feedback |
+| Trading / content accuracy | Hotel | Template specs and Live output (no invention, no profit claims) |
+| Evidence | Delta | Phase gates / runbooks |
+| Approver | Coach | Ship / scope |
+
+---
+
+## 0. One-paragraph standard
+
+> The IKI Factory is an admin-only Kanban pipeline fronted by **Gemba** (Lean Factory Worker) and operated as a controlled conveyor. Admin deposits Ideas; Gemba automatically picks them up, runs a versioned research skill set for up to 24 hours, ranks findings, and materializes the top results (or fewer if that is all found) as Research cards. Admin selects which Research cards advance to Spec (the judgment gate). Thereafter the belt moves work forward automatically when the required inputs for the next lane are present and valid: Spec-ready + repo plan attached → Build; Built-ready + product type/tier/free-vs-paid present → Deploy. Gemba deploys the template, creates the corresponding WooCommerce subscription product, and makes it visible in the store. Every card carries priority (Low / Medium / High) and full lineage. Any missing input, timeout, or failure stops the belt and surfaces a visible failed/blocked state with reason — nothing calcifies. Admin can always override (hold, rework, archive, or manual advance). Only Live templates are member-visible. The Factory never invents content beyond evidence + Admin direction and never creates a parallel knowledge store. WooCommerce is the sole commerce entry point for this pipeline and platform-wide.
+
+---
+
+## 1. Intent & success criteria
+
+### 1.1 Intent
+
+Turn raw Admin ideas into deployed, store-visible Knowledge/Intelligence templates through a visible Kanban pipeline that behaves like a conveyor when inputs are complete, preserves human judgment where it matters (selection of which Research to advance), supports direct manipulation, and never lets work stall silently.
+
+### 1.2 Success criteria
+
+| # | Criterion |
+|---|-----------|
+| IF1 | Admin can create an Idea card; Gemba automatically picks it up and, within the research window, produces a ranked list of findings with reasons and sources. |
+| IF2 | Top findings (up to 10, or fewer if that is all found) are materialized as individual Research cards carrying rank + reason; remainder stay attached to the parent Idea. |
+| IF3 | Only Admin selects which Research cards advance to Spec (drag, click-to-advance, or multi-select). Archive / Trash are Admin actions. |
+| IF4 | On arrival in Spec, Gemba drafts a Template Specification from the proposal + notes and notifies the card owner; card shows Spec-ready state. |
+| IF5 | When Spec-ready **and** a repo plan reference is attached, Gemba auto-advances the card to Build and implements only against that plan + approved Spec (conveyor). Admin may hold or override. |
+| IF6 | When Built-ready **and** product type/tier/free-vs-paid are present, Gemba auto-executes Deploy (template + WooCommerce subscription product + store visibility) unless Admin has placed a Hold. |
+| IF7 | Every card carries Priority (Low / Medium / High) and full lineage (Idea → Research → Spec → Build → Live). |
+| IF8 | Any failure, timeout, missing required input, or un-processable state stops the belt: card moves to a visible failed/blocked state with reason; Gemba never leaves work calcified. |
+| IF9 | Rework destination is chosen by Admin (drop target or explicit choice); Gemba does not select the return lane. |
+| IF10 | Research skills are used only from a simple versioned registry. |
+| IF11 | Factory board and all non-Live cards are admin-only. Only Live templates are member-visible. |
+| IF12 | No profit-claim copy in any agent-drafted content (Invariant #8). |
+| IF13 | Deployed templates are eligible for the Wiki Agent `registration` contract path (Help Package fields supplied or flagged). |
+| IF14 | Admin can move cards by drag-and-drop between allowed lanes/statuses and by click-to-advance / click-to-detract controls. Invalid moves are rejected with a visible reason on the card. |
+| IF15 | Conveyor auto-advances are visible on the card (state change + short reason). Admin can Hold any card to prevent auto-advance. |
+
+---
+
+## 2. Position in the platform
+
+| Aspect | Decision |
+|--------|----------|
+| Suite | Lives inside **IKI Lab**. Nav sibling of Wiki. |
+| Surface | Admin-only Kanban board with drag-and-drop and click-to-advance/detract. Member-facing suite pill remains named soon/empty until Coach opens it. |
+| Store of truth for templates | Deployed templates register through the existing / future template registration path (eventually emitting Wiki Agent `registration` contract). No parallel corpus. |
+| Store of truth for Factory state | Factory board state (cards, lanes, priorities, lineage, agent actions) is the operational SoR for in-progress work. |
+| Commerce | **WooCommerce is the platform-wide commerce entry point** (Coach ruling 2026-08-23). Native Stripe billing remains superseded-unless-Coach-revives. All Deploy side-effects that create sellable products use WooCommerce subscription products. |
+| Agent | **Gemba** (Lean Factory Worker). Bench charter: `agents/bench/gemba.md`. Principal: `gemba`. Uses registered versioned skills only. Owns skills-pipeline orchestration, research window, ranking/materialization, conveyor auto-advances when preconditions are met, and Deploy side-effects. |
+| Human judgment | Absolute at Research → Spec (which proposals advance). Absolute on Hold / Rework / Archive. Absolute when required inputs are missing (belt stops). |
+| Conveyor | Automatic movement when all required inputs for the next lane are present and valid, unless Hold is set. |
+
+---
+
+## 3. Kanban model
+
+### 3.1 Lanes (ordered)
+
+| Lane | Purpose | Primary actor | Exit |
+|------|---------|---------------|------|
+| **Ideas** | Admin deposits raw idea + optional notes/links | Admin creates | Gemba auto-picks up for research |
+| **Research** | Gemba runs skills (≤24 h), ranks findings, materializes top cards | Gemba produces; Admin selects | Admin: Forward (select / drag / click) / Archive / Trash |
+| **Spec** | Gemba drafts Template Specification | Gemba drafts; Admin may attach plan or Hold | Conveyor: Spec-ready + plan attached → Build (unless Hold) |
+| **Build** | Gemba implements; Admin may test or Hold | Gemba builds; Admin tests | Conveyor: Built-ready + product spec present → Deploy (unless Hold) |
+| **Live** | Template deployed + WooCommerce subscription product + store visibility | Gemba executes Deploy side-effects | Terminal (future Retire path optional) |
+
+### 3.2 Card-level fields (not lanes)
+
+- **Priority:** Low | Medium | High (Admin authoritative; Gemba may suggest)
+- **Status filters:** Archived | Trashed | Rework | Hold | Blocked/Failed
+- **Owner:** Admin user who owns the card (receives notifications)
+- **Lineage:** Immutable references back to parent Idea / Research / Spec cards
+- **Product spec (required before Deploy):** type / tier / free-vs-paid
+- **Hold:** Admin flag that prevents conveyor auto-advance until cleared
+
+### 3.3 Interaction model (drag-and-drop + click + conveyor)
+
+- **Drag-and-drop:** Admin may drag any card to another allowed lane or to a status (Archive / Trash / Rework / Hold).
+- **Click-to-advance / click-to-detract:** Every card exposes explicit controls to move one step forward along the happy path or one step backward / into a status.
+- **Conveyor auto-advance:** When a card is not on Hold and all required inputs for the next lane are present and valid, Gemba moves the card forward and records a visible auto-move reason on the card.
+- **Agent movement limits:** Gemba may:
+  - Auto-pick up Ideas into Research,
+  - Place newly created Research cards into the Research lane,
+  - Update card state and content *inside* a lane (Spec-ready, Built-ready, failed, etc.),
+  - Auto-advance Spec → Build when Spec-ready + repo plan attached (unless Hold),
+  - Auto-advance Build → Live / execute Deploy when Built-ready + product type/tier/free-vs-paid present (unless Hold),
+  - Never advance Research → Spec without Admin selection,
+  - Never choose Rework destination.
+- **Validation on drop, click, or auto-move:**
+  - Forward moves (manual or auto) that still lack required Admin input are rejected or blocked; the card stays put (or returns to prior lane) and shows a visible reason.
+  - Backward moves and moves to Archive / Trash / Rework / Hold are always permitted for Admin.
+  - On Rework, Admin chooses the destination; Gemba does not choose.
+- Priority and ownership may be edited at any time and do not block movement.
+- Lineage is preserved regardless of movement method.
+
+### 3.4 Conveyor preconditions (required inputs)
+
+| From → To | Required before auto-advance | If missing |
+|-----------|------------------------------|------------|
+| Ideas → Research | Idea card exists (deposit is the signal) | N/A — auto on deposit |
+| Research → Spec | **Admin selection** of the Research card(s) | Stays in Research until Admin selects |
+| Spec → Build | Spec-ready state **and** repo plan reference attached | Stays in Spec; visible “waiting for plan” |
+| Build → Live / Deploy | Built-ready state **and** product type / tier / free-vs-paid present | Stays in Build; visible “waiting for product spec” |
+| Any → Failed/Blocked | Error, timeout, or un-processable state | Belt stops; card shows reason; owner notified |
+
+Admin Hold on a card disables auto-advance for that card until Hold is cleared.
+
+### 3.5 Agent obligations (covenant) — Gemba
+
+- Pick up new Idea cards automatically and run only registered, versioned research skills.
+- Respect the 24-hour research window; then report actual findings (ranked, with reasons and sources). Materialize top results as cards (≤10 or fewer). Attach any remainder to the parent Idea.
+- Never auto-advance Research → Spec. That transition is Admin selection only.
+- Auto-advance Spec → Build and Build → Deploy **only** when the conveyor preconditions in §3.4 are met and the card is not on Hold.
+- Never invent content, plans, rankings, or product specs.
+- On Spec ready or Build complete: update the card and notify the owning Admin.
+- On any error, timeout, missing required input, or inability to discharge an obligation: stop the belt — move card to a visible failed/blocked state with reason and notify the owner. Calcification is a failure.
+- On Rework: accept Admin-chosen return destination; do not choose it.
+- On Deploy (manual or conveyor): execute template deployment + WooCommerce subscription product creation (using the product spec on the card) + store visibility. Supply or flag Help Package fields for downstream Wiki Agent registration.
+- Go to the Gemba first: observe the actual registry, skill runs, and card state before claiming status or improvement.
+- Make every auto-move visible on the card with a short reason.
+
+---
+
+## 4. Research pipeline
+
+- Skills live in a **simple versioned registry**. Gemba may use only registered skills at their declared versions.
+- New skills are added by registration (build or explicit borrow) + version.
+- Window: up to 24 hours from pickup.
+- Output: ranked list of candidate Knowledge/Intelligence template proposals, each with rank, reason for rank, and source evidence.
+- Top results (target 10, or fewer if that is all of usable quality) become individual cards in Research.
+- If fewer than 10 usable proposals are found, Gemba reports exactly what was found. No padding, no invention.
+- Remainder of the ranked list stays attached to the parent Idea card as additional findings.
+
+---
+
+## 5. Specification & Build
+
+- **Spec lane:** Gemba produces a Template Specification from the forwarded proposal, its sources, and all Admin notes. Card is marked Spec-ready; owner is notified.
+- **Plan attachment:** Admin attaches a reference to an existing implementation plan in the repo (path or doc ID). This is a required conveyor input for Spec → Build.
+- **Conveyor to Build:** When Spec-ready **and** plan is attached **and** card is not on Hold, Gemba auto-advances to Build and implements strictly against that plan + the approved Spec. Gemba does not invent plans.
+- **Build lane:** Gemba performs the implementation. On completion, card is marked Built-ready; owner is notified. Admin may test, Hold, or let the conveyor proceed.
+- **Rework:** Admin marks Rework and chooses the return destination (Spec, Research, Ideas, or holding). Gemba complies.
+
+---
+
+## 6. Deploy & Live
+
+Before Deploy can fire (conveyor or manual), the card must have:
+
+- Product type / tier
+- Free vs paid (subscription)
+
+When Built-ready **and** the product spec above is present **and** the card is not on Hold, Gemba auto-executes Deploy:
+
+1. Deploys the template into the live system (registration path that feeds or will feed the Wiki Agent `registration` contract).
+2. Creates the corresponding **WooCommerce subscription product** using the supplied product spec. (WooCommerce is the platform-wide commerce entry point per Coach ruling 2026-08-23.)
+3. Makes the product visible in the store.
+
+Admin may still issue an explicit Deploy signal or place a Hold. Only cards in **Live** are member-visible. All prior lanes and non-Live statuses remain admin-only.
+
+---
+
+## 7. Non-goals & invariants
+
+- **No invention.** Gemba composes from evidence (sources, proposal, Admin notes, referenced repo plan). It does not assert unevidenced relations or content.
+- **No calcification.** Stuck or failed work is always visible with reason; the belt stops.
+- **No parallel knowledge store.** Deployed templates join the existing template → Wiki registration path.
+- **No member access to the board.** Factory board is admin-only.
+- **No profit claims.** Invariant #8 applies to every agent-drafted string and every Live artifact.
+- **No auto-selection of Research winners.** Research → Spec remains Admin judgment.
+- **No silent auto-advance.** Every conveyor move is visible on the card with reason; Hold is always available.
+- **No alternate commerce path.** Deploy creates WooCommerce subscription products only. Native Stripe billing is superseded-unless-Coach-revives.
+- **No Wiki page authorship.** Gemba never writes wiki pages; Wiki Agent is strictly downstream after Live.
+
+---
+
+## 8. Notifications
+
+- Primary: state and messages appear on the card itself (including auto-move reasons and blocked reasons).
+- Secondary: notify the Admin who owns the card when Spec is ready, Build is complete, a conveyor move occurs, or a failure/block/escalation occurs.
+
+---
+
+## 9. Relation to Wiki Agent & store
+
+- Successful Deploy makes the template eligible for the Wiki Agent `registration` contract (Help Package fields required or explicitly flagged as missing).
+- Factory / Gemba does not write Wiki pages directly; it produces the template and the registration-triggering event.
+- WooCommerce subscription product creation is a mandatory side-effect of Deploy. This is consistent with the platform-wide commerce ruling (WooCommerce only).
+
+---
+
+## 10. Phasing (proposal)
+
+| Phase | Ships | Proves |
+|-------|-------|--------|
+| **IF-1 Board + Ideas** | Kanban surface with drag-and-drop + click-to-advance/detract, Idea cards, Priority, ownership, basic agent pickup, Hold | IF7, IF11, IF14 |
+| **IF-2 Research** | Versioned skill registry, 24 h window, ranked findings, top-card materialization, fail-loud; Gemba principal live | IF1, IF2, IF8, IF10 |
+| **IF-3 Spec + Build + conveyor** | Spec drafting, repo plan reference, conveyor Spec→Build when ready, Rework with Admin-chosen destination, Hold | IF4, IF5, IF9, IF15 |
+| **IF-4 Deploy + Live + conveyor** | Conveyor Deploy when product spec present, template registration path + WooCommerce subscription product + store | IF6, IF13, IF15 |
+| **IF-5 Hardening** | Full lineage queries, notification reliability, failure injection, invalid-move rejection tests, Hold reliability | IF3, IF8, IF12, IF14, IF15 |
+
+Each phase requires Coach stamp, DL entry, and Delta evidence gate.  
+**IF-1** can ship before the full skills-pipeline runner is live. **IF-2 and later cannot** without the live `gemba` principal and versioned skills registry under the Gemba charter.
+
+---
+
+## 11. Closed decisions
+
+| ID | Decision | Ruling |
+|----|----------|--------|
+| OD-F1 | Lane names | Ideas → Research → Spec → Build → Live |
+| OD-F2 | Priority | Low / Medium / High |
+| OD-F3 | Skills | Extensible via simple versioned registry |
+| OD-F4 | Research output | Ranked list after ≤24 h; top results (≤10 or fewer) become cards with rank + reason |
+| OD-F5 | Implementation plans | Repo-resident; Admin attaches reference (required conveyor input for Spec→Build) |
+| OD-F6 | Deploy / commerce | Always creates WooCommerce subscription product; type/tier/free-vs-paid specified by Admin. **Generalized by Coach 2026-08-23: WooCommerce is the platform-wide commerce entry point.** Native-Billing-Stripe remains superseded-unless-Coach-revives. |
+| OD-F7 | Visibility | Board admin-only; only Live templates member-visible |
+| Interaction | Movement | Drag-and-drop + click-to-advance/detract + conveyor auto when preconditions met; Research→Spec remains Admin selection |
+| OD-F8 | Agent archetype | Gemba (Lean Factory Worker). Charter `agents/bench/gemba.md`. Principal `gemba`. Owns skills-pipeline orchestration and conveyor. Not Quebec, Bravo, Oscar, or Golf. |
+| **OD-F9** | **Conveyor / automation** | **Ideas→Research auto; Research→Spec Admin selection only; Spec→Build auto when Spec-ready + plan attached (unless Hold); Build→Deploy auto when Built-ready + product spec present (unless Hold). Failures and missing inputs stop the belt. Every auto-move is visible. Admin Hold always available.** |
+
+---
+
+## 12. Acceptance criteria (when BUILD)
+
+| AT | Criterion |
+|----|-----------|
+| AT-IF-1 | Admin can create Idea cards; Gemba auto-picks them up. |
+| AT-IF-2 | Research produces ranked findings with reasons/sources; top results become cards (or fewer if that is all found). |
+| AT-IF-3 | Only Admin can move a card from Research to Spec (drag, click, or select). |
+| AT-IF-4 | Spec-ready state + owner notification occur after Gemba drafts Spec. |
+| AT-IF-5 | When Spec-ready and repo plan is attached and not on Hold, card auto-advances to Build and implementation runs against plan + Spec. |
+| AT-IF-6 | When Built-ready and product type/tier/free-vs-paid are present and not on Hold, Deploy runs (Live template + WooCommerce subscription product + store visibility). |
+| AT-IF-7 | Priority Low/Medium/High present and Admin-authoritative. |
+| AT-IF-8 | Failures, timeouts, and missing required inputs are visible on the card with reason; belt stops; no silent stalls. |
+| AT-IF-9 | Rework lets Admin choose destination. |
+| AT-IF-10 | Only registered versioned skills are used. |
+| AT-IF-11 | Board is admin-only; only Live items are member-visible. |
+| AT-IF-12 | No profit-claim copy in agent output. |
+| AT-IF-13 | Deployed templates are positioned for Wiki Agent registration. |
+| AT-IF-14 | Drag-and-drop and click-to-advance/detract work; invalid moves are rejected with visible reason. |
+| AT-IF-15 | Conveyor auto-moves are visible; Hold prevents auto-advance; clearing Hold allows conveyor to resume when preconditions are met. |
+
+---
+
+## 13. Changelog
+
+| Ver | Date | Notes |
+|-----|------|-------|
+| **v0.1.4** | 2026-08-23 | Conveyor / controlled automation model. Ideas→Research auto; Research→Spec remains Admin selection (judgment gate); Spec→Build and Build→Deploy auto when required inputs present and card not on Hold. Failures and missing inputs stop the belt. New IF15 / AT-IF-15, Hold status, §3.3–3.5 conveyor rules, OD-F9. Gemba covenant updated for auto-moves and visible reasons. Minimal Admin interaction once judgment and required inputs are supplied. |
+| **v0.1.3** | 2026-08-23 | Seated **Gemba** (Lean Factory Worker) as the Factory Agent archetype. Charter path `agents/bench/gemba.md`, principal `gemba`. Updated §0, §2 Agent row, §3.1/3.4, §4–6, §7, §9, §10, success criteria, acceptance criteria, and closed decision **OD-F8**. |
+| **v0.1.2** | 2026-08-23 | Coach ruling (Lima DL): WooCommerce is the commerce entry point platform-wide. OD-F6 generalized. Native-Billing-Stripe remains superseded-unless-Coach-revives. Commerce law added to header, §2, §6, §7, §9, and closed decisions. |
+| **v0.1.1** | 2026-08-23 | Added drag-and-drop + click-to-advance/detract interaction model. Agent movement limited to intra-lane updates and post-authorization Deploy side-effects. Invalid moves rejected with visible reason. IF14 and AT-IF-14 added. |
+| **v0.1** | 2026-08-23 | Initial Spec. Lanes: Ideas → Research → Spec → Build → Live. Priority Low/Medium/High. 24 h research window, ranked top findings, extensible versioned skills, repo-referenced plans, mandatory WooCommerce subscription product on Deploy, admin-only board, fail-loud, human gates only. |
+
+---
+
+**End of IKI Factory Spec v0.1.4 (DRAFT)**
+```
+
+You can copy the block above into a file named `FatTail-Labs-IKI-Factory-Spec-v0.1.4.md`.

@@ -4,6 +4,152 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-25 — DL-582 IKI Factory Pipeline Spec v1.0 — BUILD AUTHORITY; charter lands
+
+**Decision (Coach 2026-08-25):** **BUILD AUTHORITY** granted on the IKI Factory
+Pipeline Spec. Canonicalized as `Specs/FatTail-Labs-IKI-Factory-Pipeline-Spec-v1_0.md`
+(renamed from `DRAFT-IKI-Factory-Pipeline-Spec-v0_8.md`; drafts v0.1–v0.8 kept on disk
+as history, per doctrine — nothing is deleted). Header/filename/Status act plus the
+three body edits named below — no other content changed.
+
+**Charter recognized as landed law in this same pass, per plan B4** (two documents
+that cite each other do not land apart): `agents/bench/gemba.md` is no longer a draft.
+Its "Coach lands it; the advisor does not" caveat is replaced with a landed marker
+citing this entry. No invariant text changed — invariant 9 was already correct per
+**DL-580**; this entry is the formal landing, not a rewrite.
+
+**Board subhead ruled, adopted as written (§10):** *"Admin floor only. Nothing
+advances itself — work moves when someone takes it."*
+
+**DL-581 / spec mismatch closed, same pass:** the create-endpoint scope and rate
+posture ruling recorded in DL-581 (`factory:operate` reused; rate posture deferred to
+the IF-7 retrain) is now written into the spec itself — added to §0.1 alongside the
+other Phase 4 dispositions, and its former placeholder items (§11 old items 3 and 4)
+struck, with a closing note pointing back to §0.1. The log and the spec no longer
+disagree.
+
+**Does not:** grant **GO IF-6** — left open, per Coach's explicit instruction, not
+withheld by default. **IF-7** (movement retrain) gets no GO from this or any prior
+entry — it requires **three successive Coach OKs recorded on the GO token**, per
+DL-539, a separate exchange not satisfied by a BUILD stamp. **IF-8's wiki-page
+sub-scope** gets no GO — the Wiki program has not answered the publish-path question
+(§8.10: Wiki Spec §7 vs §11; Source Contract v0.1.4 §6). The rest of the Staged lane
+(product, landing, store placement, help page) is not blocked by that and was never
+gated on this entry either — it still waits on its own GO when Coach grants it.
+
+**Plan:** `docs/IKI-Factory-Pipeline-Spec-v0.6-Full-Agent-Bench-Plan-v1.1.md`
+**Spec:** `Specs/FatTail-Labs-IKI-Factory-Pipeline-Spec-v1_0.md`
+**Charter:** `agents/bench/gemba.md`
+
+---
+
+## 2026-08-25 — DL-581 IKI Factory Pipeline Spec — Phase 2/3/4 complete; claim-type gate; create-endpoint scope ruled
+
+**Decision (Coach 2026-08-24/25):** Phases 2 (India), 3 (Echo, Tango), and 4
+(Mike, Hotel) on the IKI Factory Pipeline Spec are **complete**, and their
+findings are folded into `Specs/DRAFT-IKI-Factory-Pipeline-Spec-v0_8.md`
+(still DRAFT — see "Does not," below). This entry does not stamp BUILD; it
+records what the review rounds settled.
+
+**Nine interview dispositions** (v0.8 §0.2, unchanged by this entry, restated
+for the log): raw ideas get no lane (create-backlog function + API endpoint,
+§2.1) · opening an item is a side panel, Apple HIG (§2.5) · priority is **cut
+entirely**, not reordered (§4 removed) · size stays out (§2.2) · this spec
+**amends** `v0.1.5` rather than superseding it (header) · admin-only floor
+confirmed, board never member-visible (§1.2) · Staged cohort gets no label —
+the staging server is the label (§7.2) · level/use-mode are deferred as IKI
+**entities**, not card fields (§2.2) · the "sell vs. usage+intent+paid"
+question **dissolved** along with the priority signal it was about.
+
+**Hotel H-1, folded — §7.5 now gates by claim type, not by artifact
+(v0.8 §7.5, quoted):** *"Gated — wherever it appears: any outcome claim...
+any risk or mechanics claim... Ungated: navigational and procedural
+content."* The prior version exempted "help and wiki pages" as a category;
+that was wrong, per Hotel's Phase 4 finding — a help page stating a wrong
+maximum loss harms a member exactly as a wrong landing-page claim would,
+and the document being cheap to correct afterward does not undo a capital
+decision already made on the wrong version. **DL-580 is untouched by this
+change** — it rules authorship only; this rules what gets reviewed.
+
+**Create-endpoint scope and rate posture (Mike M-2, v0.8 §11 items 3–4) —
+ruled:** the new agent/service card-creation endpoint (§2.1) reuses the
+existing `factory:operate` scope rather than minting a narrower
+`factory:create-card` scope. **Rate posture is deferred to the conveyor
+retrain (IF-7)** rather than decided now — the unconditional Ideas→Research
+auto-pickup that makes throttling urgent is itself retrained there, so the
+two are designed together, not separately. **This ruling is not yet
+reflected in `v0.8` §11**, which still lists both as open pending Coach —
+the spec text has not been edited to close them; this entry is the record
+of the ruling until a later Lima pass syncs the document, the same pattern
+DL-580 used for `SC-0-G`'s superseded-but-unedited quoted evidence.
+
+**This spec AMENDS `IKI Factory Spec v0.1.5`.** `v0.1.5` remains law for
+everything this document does not cover.
+
+**Carried forward, unresolved by this entry:**
+
+- **Three successive OKs** to retrain the shipped IF-1/IF-3/IF-4 conveyor to
+  pull (DL-539) — a separate, direct exchange with Coach, not satisfied by
+  Phase 2–4 review completion.
+- **The wiki publish path** — Wiki Spec v1.2 §7 (board-approval line) vs.
+  §11 ("no agent-direct publish," "no second approval state"), and whether
+  DL-580 amends Source Contract v0.1.4 §6's signal-only boundary. **The Wiki
+  program's to answer**, not this board's.
+
+**Does not:** stamp BUILD AUTHORITY on the pipeline spec; rename or
+canonicalize the spec file; recognize `agents/bench/gemba.md` as landed;
+touch `agents/bench/gemba.md` in any way; grant GO IF-6 or any other GO;
+replace the board subhead; touch any product code, migration, or seed;
+touch `agents/p-wiki/`, `agents/p-wiki-v12/`, or any Wiki-tree file. These
+wait on Coach naming the canonical filename/version — the first blank item
+in the governing Phase 5 order's Task 3 — per the stop line.
+
+**Plan:** `docs/IKI-Factory-Pipeline-Spec-v0.6-Full-Agent-Bench-Plan-v1.1.md`
+**Draft (still provisional filename):** `Specs/DRAFT-IKI-Factory-Pipeline-Spec-v0_8.md`
+
+---
+
+## 2026-08-24 — DL-580 IKI Factory Gemba authors help + wiki pages (supersedes DL-565 invariant 9)
+
+**Decision (Coach 2026-08-24):** **Gemba authors the help page and the wiki
+page for a product.** Both are part of what a product is; the agent that
+built the thing knows what it does. Both are produced **dark in Staged**
+and **publish with Coach's Live switch**.
+
+**Supersedes:** the invariant 9 text quoted in **DL-565** — *"Gemba never
+writes wiki pages and never constructs a Wiki-side contract"* — which is now
+**historical**. `agents/bench/gemba.md` already carries the ruled text; this
+entry is the DL record of the reversal, not an edit to the charter.
+
+**Gate history not reopened:** **SC-0-G** (`agents/p-iki-factory/gate-reports/SC-0-G.md`)
+**PASS stands as history.** It was evaluated against the old invariant 9
+wording, correctly, at the time. Its quoted evidence is **superseded, not
+invalidated** — the gate is not reopened and is not re-run by this entry.
+
+**Division of labor unchanged in kind, moved in scope:** Oscar / the Wiki
+Agent remains the corpus curator downstream — linking, sweeping, weaving
+outside sources, and the publication-signal poll. **Authorship of a
+product's own pages is Gemba's. Curation of the corpus is Oscar's.**
+
+**Carried, not resolved, by this entry:**
+
+- The Wiki Spec's own §7 board-approval line ("Board approval is 'this goes
+  live on this surface'") and §11 boundary ("No agent-direct publish... No
+  second approval state") are in tension with each other. Until the Wiki
+  program reconciles that internally, a Factory-authored wiki page
+  publishing off the Factory's Live switch may not be acceptable Wiki-side.
+  **This entry rules authorship only. It does not rule the publish path.**
+- Wiki Source Contract v0.1.4 §6 states the Factory exposes a publication
+  signal and nothing else. Whether this ruling amends that boundary is the
+  **Wiki program's** to review — not this board's to assume.
+
+**Does not:** reopen or re-run SC-0-G; touch `agents/bench/gemba.md`, any
+Spec, any Factory code, or any Wiki-tree file; add a Status/DL header to
+the charter (India recommended one at **IND-7**; not authorized here — a
+separate Coach exchange); stamp any GO or BUILD.
+
+---
+
 ## 2026-08-24 — DL-576 Heatmap tab-session help guide
 
 **Decision:** Member how-to for Heatmap inspector tab-session (**HM21**)

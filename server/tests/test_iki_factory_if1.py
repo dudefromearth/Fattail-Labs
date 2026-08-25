@@ -1,0 +1,205 @@
+"""IF-1 characterization — IKI Factory Spec v0.1.5 · GO IF-1."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+import agent_auth
+import db
+from config import get_config
+from main import app
+from tests.conftest import LabsTestClient, cookie_for
+
+COOKIE = get_config().session_cookie
+ROOT = Path(__file__).resolve().parents[2]
+
+
+@pytest.fixture()
+def client():
+    with LabsTestClient(app) as c:
+        c.headers.update({"Origin": "http://testserver"})
+        yield c
+
+
+def _cleanup():
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM iki_factory_cards WHERE title LIKE %s",
+                ("zz-if1-%",),
+            )
+
+
+@pytest.fixture(autouse=True)
+def isolate():
+    _cleanup()
+    yield
+    _cleanup()
+
+
+def _admin():
+    return cookie_for("administrator")
+
+
+def _agent(callsign: str, scopes: list[str]) -> str:
+    try:
+        row = agent_auth.create_principal(callsign, callsign)
+        pid = int(row["id"])
+    except agent_auth.AgentAuthError:
+        with db.transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id FROM agent_principals WHERE callsign = %s",
+                    (callsign,),
+                )
+                found = cur.fetchone()
+                assert found
+                pid = int(found["id"])
+    minted = agent_auth.mint_key(pid, name="if1", scopes=scopes)
+    return minted["key"]
+
+
+def _create(client, title: str = "zz-if1-idea") -> dict:
+    r = client.post(
+        "/api/admin/iki-factory/cards",
+        cookies=_admin(),
+        json={"title": title, "priority": "high"},
+    )
+    assert r.status_code == 200, r.text
+    return r.json()["card"]
+
+
+def test_unauthenticated_401(client):
+    r = client.get("/api/admin/iki-factory/cards")
+    assert r.status_code == 401
+
+
+def test_non_admin_403(client):
+    r = client.get(
+        "/api/admin/iki-factory/cards",
+        cookies=cookie_for("navigator"),
+    )
+    assert r.status_code == 403
+
+
+def test_create_idea_pickup_stub(client):
+    card = _create(client, "zz-if1-pickup")
+    assert card["lane"] == "research"
+    assert card["priority"] == "high"
+    assert card["auto_move_reason"]
+    assert "picked up" in card["auto_move_reason"].lower()
+    # IF-2: empty registry fail-loud (no invented findings).
+    assert card["blocked_reason"]
+    assert "skill" in card["blocked_reason"].lower()
+    r = client.get(
+        f"/api/admin/iki-factory/cards/{card['id']}",
+        cookies=_admin(),
+    )
+    assert r.status_code == 200, r.text
+    trans = r.json()["transitions"]
+    lanes = [(t["from_lane"], t["to_lane"], t["auto_move"]) for t in trans]
+    assert (None, "ideas", False) in lanes or any(
+        t["to_lane"] == "ideas" and not t["auto_move"] for t in trans
+    )
+    assert any(t["from_lane"] == "ideas" and t["to_lane"] == "research" and t["auto_move"] for t in trans)
+
+
+def test_admin_research_to_spec_allowed(client):
+    card = _create(client, "zz-if1-admin-rs")
+    r = client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "spec"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["card"]["lane"] == "spec"
+
+
+def test_gemba_bearer_research_to_spec_rejected(client):
+    card = _create(client, "zz-if1-agent-rs")
+    key = _agent("zz-if1-gemba", ["factory:operate"])
+    r = client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        headers={"Authorization": f"Bearer {key}"},
+        json={"to_lane": "spec"},
+    )
+    assert r.status_code == 422, r.text
+    detail = r.json()["detail"]
+    assert "Admin" in detail["reason"]
+    assert detail["card"]["lane"] == "research"
+    got = client.get(
+        f"/api/admin/iki-factory/cards/{card['id']}",
+        cookies=_admin(),
+    ).json()["card"]
+    assert got["lane"] == "research"
+    assert got["blocked_reason"]
+    assert "Admin" in got["blocked_reason"]
+
+
+def test_spec_to_build_waiting_for_plan(client):
+    card = _create(client, "zz-if1-plan")
+    client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "spec"},
+    )
+    r = client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "build"},
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detail"]["reason"] == "waiting for plan"
+    assert r.json()["detail"]["card"]["lane"] == "spec"
+
+
+def test_skip_forward_rejected(client):
+    card = _create(client, "zz-if1-skip")
+    r = client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "build"},
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["detail"]["card"]["lane"] == "research"
+
+
+def test_hold_persists(client):
+    card = _create(client, "zz-if1-hold")
+    r = client.patch(
+        f"/api/admin/iki-factory/cards/{card['id']}",
+        cookies=_admin(),
+        json={"hold": True},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["card"]["hold"] is True
+    got = client.get(
+        f"/api/admin/iki-factory/cards/{card['id']}",
+        cookies=_admin(),
+    ).json()["card"]
+    assert got["hold"] is True
+
+
+def test_does_not_write_content_items(client):
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) AS n FROM content_items")
+            before = int(cur.fetchone()["n"])
+    _create(client, "zz-if1-no-content")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) AS n FROM content_items")
+            after = int(cur.fetchone()["n"])
+    assert after == before
+
+
+def test_factory_board_lives_on_suite_pill():
+    page = (ROOT / "web/app/app/iki/factory/page.tsx").read_text()
+    assert "IkiFactoryBoard" in page
+    assert "IkiFactoryLiveCatalog" in page
+    catalog = (ROOT / "web/components/iki/IkiFactoryLiveCatalog.tsx").read_text()
+    assert 'data-testid="iki-factory-live"' in catalog
+    admin = (ROOT / "web/app/admin/iki-factory/page.tsx").read_text()
+    assert 'redirect("/app/iki/factory")' in admin
