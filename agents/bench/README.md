@@ -1,3 +1,6 @@
+Here is the full updated **README.md**:
+
+```markdown
 # Agent Bench — FatTail Labs
 
 A disciplined ensemble of specialized AI agents purpose-built for the development and
@@ -49,6 +52,7 @@ questioning; block only invariant/law/system; opinions labeled opinions
 | **Charlie** | Frontend Engineer | Next.js app: catalog, course detail, player, dashboard, admin UI |
 | **Echo** | Human Interface & Interaction Designer | Apple HIG for Labs web, design tokens, control grammar, interactive design, visual review |
 | **Foxtrot** | Infrastructure Engineer | MiniTwo/DudeTwo provisioning, launchd, MiniThree nginx, Cloudflare, deploys |
+| **Gemba** | Lean Factory Worker | IKI Factory skills pipeline, pull not conveyor (versioned registry, 24 h research, ranked Research cards, takes a card only when he can do the work, Hold sacred); Staged production dark — product, landing page, store placement, help page, wiki page (Gemba authors help + wiki, DL-580; Oscar curates the corpus downstream); Live is Coach's switch, Gemba prepares and stops |
 | **Mike** | Security & Auth Engineer | Dual-issuer SSO, session JWTs, signed video URLs, secrets, WooCommerce webhooks |
 | **Sierra** | Curriculum & AEO Specialist | Course copy formula, SEO/AEO layer (JSON-LD, titles, prerender), public catalog surface |
 
@@ -95,3 +99,4 @@ integration, P3).
   `gate-reports/`.
 - Project folders under `agents/<project>/` hold `ORCHESTRATOR.md`, `seeds/`, and
   `gate-reports/` (see `agents/README.md`).
+```
