@@ -1,6 +1,3 @@
-Here is the full updated **README.md**:
-
-```markdown
 # Agent Bench — FatTail Labs
 
 A disciplined ensemble of specialized AI agents purpose-built for the development and
@@ -99,4 +96,3 @@ integration, P3).
   `gate-reports/`.
 - Project folders under `agents/<project>/` hold `ORCHESTRATOR.md`, `seeds/`, and
   `gate-reports/` (see `agents/README.md`).
-```
