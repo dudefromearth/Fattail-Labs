@@ -47,7 +47,11 @@ export function paintCurrentHeatmap(ctx: ChainContext): HeatmapTiles {
   const colored = symFlyTemplate.assignColors(cells, DEFAULT_PARAMS);
   void colored;
   return {
-    rows: paint.rows.map((r) => ({ strike: r.strike, label: r.label })),
+    rows: paint.rows.map((r) => ({
+      strike: r.strike,
+      label: r.label,
+      isSpot: r.isSpot,
+    })),
     cols: paint.cols.map((c) => ({
       id: c.id,
       label: c.label,

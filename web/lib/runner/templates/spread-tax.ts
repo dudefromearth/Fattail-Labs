@@ -74,7 +74,12 @@ export function spreadTaxCompute(
     label: s === "call" ? "Call" : "Put",
     widthPts: 0,
   }));
-  const rows = strikes.map((k) => ({ strike: k, label: String(k) }));
+  const rows = strikes.map((k) => {
+    const isSpot = wantSides.some(
+      (s) => byKey.get(contractKey(s, k))?.is_spot,
+    );
+    return { strike: k, label: String(k), isSpot };
+  });
   const cells = rows.map((row) =>
     cols.map((col) => {
       const rec = byKey.get(contractKey(col.id, row.strike));
