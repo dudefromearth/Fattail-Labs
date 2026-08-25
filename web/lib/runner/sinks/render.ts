@@ -13,10 +13,7 @@ import {
   useState,
   type ReactElement,
 } from "react";
-import {
-  DEFAULT_STRIKE_WINGS,
-  fetchLadderExpirations,
-} from "@/lib/chainLadderApi";
+import { DEFAULT_STRIKE_WINGS } from "@/lib/chainLadderApi";
 import { getMarketSocket } from "@/lib/market/MarketSocket";
 import { useOptionsLab } from "@/lib/optionsLabContext";
 import {
@@ -26,11 +23,8 @@ import {
 } from "../registry";
 import { createShellSession, type ShellSession } from "../host";
 import "@/lib/runner/templates/heatmap";
+import "@/lib/runner/templates/width-fit";
 import "@/lib/runner/templates/spread-tax";
-import {
-  HEATMAP_TEMPLATE_ID,
-  HEATMAP_TEMPLATE_VERSION,
-} from "../templates/heatmap";
 import {
   SPREAD_TAX_ID,
   SPREAD_TAX_VERSION,
@@ -62,38 +56,53 @@ function TileGrid(props: {
   return createElement(
     "div",
     {
-      className: "flex min-h-0 flex-1 flex-col overflow-auto bg-[#0a0a0e] text-white",
+      className:
+        "flex min-h-0 flex-1 flex-col overflow-auto bg-[#0a0a0e] text-white",
       "data-testid": "spread-tax-host",
       "data-stale": stale == null ? "" : stale ? "1" : "0",
       "data-epoch-quality": epochQuality ?? "",
     },
-    stale != null
-      ? createElement(
-          "p",
-          { className: "px-3 py-1 text-sm text-white/50", "data-testid": "runner-stale-prop" },
-          `stale=${stale ? "true" : "false"} · epoch_quality=${epochQuality ?? ""}`,
-        )
-      : null,
     error
       ? createElement(
           "p",
-          { className: "px-3 py-2 text-sm text-amber-200", "data-testid": "spread-tax-error" },
+          {
+            className: "px-3 py-2 text-sm text-amber-200",
+            "data-testid": "spread-tax-error",
+          },
           error,
         )
       : null,
     tiles
       ? createElement(
           "table",
-          { className: "w-full border-collapse text-sm", "data-testid": "spread-tax-grid" },
+          {
+            className: "w-full border-collapse",
+            "data-testid": "spread-tax-grid",
+          },
           createElement(
             "thead",
             null,
             createElement(
               "tr",
-              null,
-              createElement("th", { className: "px-2 py-1 text-left" }, "Strike"),
+              { className: "h-9" },
+              createElement(
+                "th",
+                {
+                  className:
+                    "sticky left-0 top-0 z-[2] h-9 w-[7rem] min-w-[7rem] border-b border-r border-white/[0.08] bg-[#121218] px-1 text-center text-[11px] font-medium uppercase tracking-wide text-white/45",
+                },
+                "Strike",
+              ),
               ...tiles.cols.map((c) =>
-                createElement("th", { key: c.id, className: "px-2 py-1" }, c.label),
+                createElement(
+                  "th",
+                  {
+                    key: c.id,
+                    className:
+                      "sticky top-0 z-[1] h-9 border-b border-white/[0.08] bg-[#121218] px-1 text-center text-[11px] font-medium text-white/55",
+                  },
+                  c.label,
+                ),
               ),
             ),
           ),
@@ -103,21 +112,48 @@ function TileGrid(props: {
             ...tiles.rows.map((r, ri) =>
               createElement(
                 "tr",
-                { key: r.strike },
-                createElement("td", { className: "px-2 py-1" }, r.label),
+                {
+                  key: r.strike,
+                  "data-spot": r.isSpot ? "1" : "0",
+                  className: [
+                    "h-14 border-b border-white/[0.03]",
+                    r.isSpot ? "border-t-2 border-amber-400/80" : "",
+                  ].join(" "),
+                },
+                createElement(
+                  "td",
+                  {
+                    className: [
+                      "sticky left-0 z-[1] h-14 w-[7rem] min-w-[7rem] border-r border-white/[0.08] px-1 text-center align-middle text-[24px] tabular-nums",
+                      r.isSpot
+                        ? "bg-black/40 font-bold text-amber-400"
+                        : "bg-[#16161c] text-white/45",
+                    ].join(" "),
+                  },
+                  r.label,
+                ),
                 ...tiles.cols.map((c, ci) => {
                   const cell = tiles.cells[ri]?.[ci];
                   const empty = !cell || !cell.valid || cell.value == null;
+                  const face = empty ? "—" : (cell.display ?? "—");
+                  const bg = cell?.bgCss || "#1a1a1a";
                   return createElement(
                     "td",
                     {
                       key: c.id,
-                      className: "px-2 py-1 text-center tabular-nums",
+                      title: cell?.tooltip || face,
                       "data-heatmap-tile": "1",
                       "data-spread-tax-cell": "1",
                       "data-null": empty ? "1" : "0",
+                      className: [
+                        "h-14 min-w-[2.75rem] cursor-default overflow-hidden px-1 text-center align-middle tabular-nums text-[24px] text-amber-400",
+                        "[text-shadow:0_0_2px_rgba(0,0,0,0.8)]",
+                        "hover:z-[1] hover:ring-1 hover:ring-white/35",
+                        empty ? "text-white/25" : "",
+                      ].join(" "),
+                      style: { backgroundColor: bg },
                     },
-                    empty ? "" : cell.display,
+                    face,
                   );
                 }),
               ),
@@ -128,39 +164,43 @@ function TileGrid(props: {
   );
 }
 
-export function HeatmapRenderHost(): ReactElement {
+export type HeatmapRenderHostProps = {
+  expiration: string;
+  viewSide: "call" | "put";
+  tplKey: string;
+  taxSide: string;
+  minOi: number;
+  onMeta?: (meta: {
+    stale: boolean | null;
+    epochQuality: string | null;
+    contentHash: string | null;
+    error: string | null;
+    tplLabel: string;
+  }) => void;
+};
+
+export function HeatmapRenderHost(props: HeatmapRenderHostProps): ReactElement {
   const { symbol } = useOptionsLab();
-  const [expiration, setExpiration] = useState("");
-  const [viewSide, setViewSide] = useState<"call" | "put">("call");
-  const [tplKey, setTplKey] = useState("sym-fly@0.2");
-  const [taxSide, setTaxSide] = useState("both");
-  const [minOi, setMinOi] = useState(0);
-  const [expiries, setExpiries] = useState<string[]>([]);
+  const { expiration, viewSide, tplKey, taxSide, minOi, onMeta } = props;
   const [tiles, setTiles] = useState<HeatmapTiles | null>(null);
   const [stale, setStale] = useState<boolean | null>(null);
   const [epochQuality, setEpochQuality] = useState<string | null>(null);
+  const [contentHash, setContentHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sessionRef = useRef<ShellSession | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetchLadderExpirations(symbol).then((pack) => {
-      if (cancelled) return;
-      const list = (pack.contracts || []).map((c) => c.expiration);
-      setExpiries(list);
-      setExpiration((prev) =>
-        prev && list.includes(prev) ? prev : pack.default_expiration || list[0] || "",
-      );
-    }).catch((e) => {
-      if (!cancelled) setError(e instanceof Error ? e.message : String(e));
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [symbol]);
+  const onMetaRef = useRef(onMeta);
+  onMetaRef.current = onMeta;
+  const tplLabel =
+    tplKey === `${SPREAD_TAX_ID}@${SPREAD_TAX_VERSION}`
+      ? "Spread Tax Map"
+      : "Advanced flies";
 
   useEffect(() => {
     if (!symbol || !expiration) return;
+    setTiles(null);
+    setContentHash(null);
+    setStale(null);
+    setEpochQuality(null);
     const [id, version] = tplKey.split("@");
     const session = createShellSession({
       socket: getMarketSocket(),
@@ -178,9 +218,27 @@ export function HeatmapRenderHost(): ReactElement {
         setTiles(next);
         setStale(meta.stale);
         setEpochQuality(meta.epoch_quality);
+        setContentHash(meta.content_hash);
         setError(null);
+        onMetaRef.current?.({
+          stale: meta.stale,
+          epochQuality: meta.epoch_quality,
+          contentHash: meta.content_hash,
+          error: null,
+          tplLabel,
+        });
       },
-      onError: (e) => setError(e instanceof Error ? e.message : String(e)),
+      onError: (e) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg);
+        onMetaRef.current?.({
+          stale: null,
+          epochQuality: null,
+          contentHash: null,
+          error: msg,
+          tplLabel,
+        });
+      },
     });
     sessionRef.current = session;
     return () => {
@@ -203,88 +261,15 @@ export function HeatmapRenderHost(): ReactElement {
     }
   }, [tplKey, taxSide, minOi]);
 
-  const selector = createElement(
-    "div",
-    {
-      className: "flex flex-wrap items-center gap-3 px-3 py-2 text-sm",
-      "data-testid": "runner-template-selector",
-    },
-    createElement("span", null, "Template"),
-    createElement(
-      "select",
-      {
-        value: tplKey,
-        "data-testid": "runner-tpl-select",
-        onChange: (e: { target: { value: string } }) => setTplKey(e.target.value),
-        className: "rounded bg-black/40 px-2 py-1",
-      },
-      createElement("option", { value: `${HEATMAP_TEMPLATE_ID}@${HEATMAP_TEMPLATE_VERSION}` }, "Advanced flies"),
-      createElement("option", { value: `${SPREAD_TAX_ID}@${SPREAD_TAX_VERSION}` }, "Spread Tax Map"),
-    ),
-    createElement("span", null, "Exp"),
-    createElement(
-      "select",
-      {
-        value: expiration,
-        onChange: (e: { target: { value: string } }) => setExpiration(e.target.value),
-        className: "rounded bg-black/40 px-2 py-1",
-        "data-testid": "runner-expiration",
-      },
-      ...expiries.map((d) => createElement("option", { key: d, value: d }, d)),
-    ),
-    createElement("span", null, "Side"),
-    createElement(
-      "select",
-      {
-        value: viewSide,
-        onChange: (e: { target: { value: string } }) =>
-          setViewSide(e.target.value === "put" ? "put" : "call"),
-        className: "rounded bg-black/40 px-2 py-1",
-      },
-      createElement("option", { value: "call" }, "call"),
-      createElement("option", { value: "put" }, "put"),
-    ),
-    tplKey === "spread-tax@0.1"
-      ? createElement(
-          "span",
-          { className: "flex items-center gap-2" },
-          "Map",
-          createElement(
-            "select",
-            {
-              value: taxSide,
-              "data-testid": "spread-tax-side",
-              className: "rounded bg-black/40 px-2 py-1",
-              onChange: (e: { target: { value: string } }) => setTaxSide(e.target.value),
-            },
-            createElement("option", { value: "both" }, "both"),
-            createElement("option", { value: "call" }, "call"),
-            createElement("option", { value: "put" }, "put"),
-          ),
-          "min OI",
-          createElement("input", {
-            type: "number",
-            min: 0,
-            value: minOi,
-            "data-testid": "spread-tax-min-oi",
-            className: "w-24 rounded bg-black/40 px-2 py-1",
-            onChange: (e: { target: { value: string } }) => {
-              const n = Number(e.target.value);
-              if (Number.isFinite(n)) setMinOi(n);
-            },
-          }),
-        )
-      : null,
-  );
-
   return createElement(
     "div",
     {
       className: "flex h-full min-h-0 flex-col",
       "data-testid": "runner-shell-host",
+      "data-symbol": symbol,
+      "data-content-hash": contentHash ?? "",
       "data-spread-tax-host": tplKey === "spread-tax@0.1" ? "1" : "0",
     },
-    selector,
     createElement(TileGrid, { tiles, stale, epochQuality, error }),
   );
 }
