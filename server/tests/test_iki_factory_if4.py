@@ -12,6 +12,7 @@ import iki_factory
 import iki_factory_woo as woo
 from main import app
 from tests.conftest import LabsTestClient, cookie_for
+from tests.test_iki_factory_if1 import _agent
 from tests.test_iki_factory_if3 import _to_spec
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -73,6 +74,23 @@ def _to_build(client, title: str) -> dict:
     return got
 
 
+def _to_staged(client, card_id: int) -> dict:
+    """IF-8 (v1.0 §3.3): Build → Staged is Gemba's pull, as build agent —
+    not the admin's, unlike every other forward pull so far. An agent
+    actor is required."""
+    key = _agent("zz-if4-gemba", ["factory:operate"])
+    r = client.post(
+        f"/api/admin/iki-factory/cards/{card_id}/move",
+        headers={"Authorization": f"Bearer {key}"},
+        json={"to_lane": "staged"},
+    )
+    assert r.status_code == 200, r.text
+    got = r.json()["card"]
+    assert got["lane"] == "staged"
+    assert got["staged_ready"] is True
+    return got
+
+
 def _product(client, card_id: int, **extra):
     body = {
         "product_type": "template",
@@ -87,16 +105,21 @@ def _product(client, card_id: int, **extra):
     )
 
 
-def test_missing_product_spec_stays_build(client):
+def test_missing_product_spec_stays_staged(client):
+    """IF-8: Live is reachable only from Staged now (v1.0 §8.1) — the
+    "waiting for product spec" rejection this test proves has moved one
+    lane down from where it lived pre-IF-8 (Build), unchanged in every
+    other respect."""
     card = _to_build(client, "zz-if4-no-product")
+    staged = _to_staged(client, card["id"])
     r = client.post(
-        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        f"/api/admin/iki-factory/cards/{staged['id']}/move",
         cookies=_admin(),
         json={"to_lane": "live"},
     )
     assert r.status_code == 422, r.text
     assert r.json()["detail"]["reason"] == "waiting for product spec"
-    assert r.json()["detail"]["card"]["lane"] == "build"
+    assert r.json()["detail"]["card"]["lane"] == "staged"
 
 
 def test_hold_blocks_deploy_clear_resumes(client):
@@ -115,17 +138,18 @@ def test_hold_blocks_deploy_clear_resumes(client):
     succeeds when retried.
     """
     card = _to_build(client, "zz-if4-hold")
+    staged = _to_staged(client, card["id"])
     client.patch(
-        f"/api/admin/iki-factory/cards/{card['id']}",
+        f"/api/admin/iki-factory/cards/{staged['id']}",
         cookies=_admin(),
         json={"hold": True},
     )
-    r = _product(client, card["id"])
+    r = _product(client, staged["id"])
     assert r.status_code == 200, r.text
-    assert r.json()["card"]["lane"] == "build"
+    assert r.json()["card"]["lane"] == "staged"
 
     blocked = client.post(
-        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        f"/api/admin/iki-factory/cards/{staged['id']}/move",
         cookies=_admin(),
         json={"to_lane": "live"},
     )
@@ -133,15 +157,15 @@ def test_hold_blocks_deploy_clear_resumes(client):
     assert "hold" in blocked.json()["detail"]["reason"].lower()
 
     r2 = client.patch(
-        f"/api/admin/iki-factory/cards/{card['id']}",
+        f"/api/admin/iki-factory/cards/{staged['id']}",
         cookies=_admin(),
         json={"hold": False},
     )
     assert r2.status_code == 200, r.text
-    assert r2.json()["card"]["lane"] == "build"  # clearing Hold deploys nothing by itself
+    assert r2.json()["card"]["lane"] == "staged"  # clearing Hold deploys nothing by itself
 
     pulled = client.post(
-        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        f"/api/admin/iki-factory/cards/{staged['id']}/move",
         cookies=_admin(),
         json={"to_lane": "live"},
     )
@@ -167,16 +191,21 @@ def test_product_spec_writes_published_then_stub(client):
     alone leaves the card in "build"; auto_move_reason is empty since
     nothing is auto; the transition is auto_move=False, and its own reason
     text is what carries "invariant #7" now.
+
+    IF-8 addendum: Live is reachable only from Staged now (v1.0 §8.1), one
+    lane further than when this test was first re-authored — the pull to
+    Staged (Gemba, as build agent) is inserted before the product patch.
     """
     card = _to_build(client, "zz-if4-live")
-    r = _product(client, card["id"])
+    staged = _to_staged(client, card["id"])
+    r = _product(client, staged["id"])
     assert r.status_code == 200, r.text
     patched = r.json()["card"]
-    assert patched["lane"] == "build"  # patch alone does not deploy
+    assert patched["lane"] == "staged"  # patch alone does not deploy
     assert not patched["auto_move_reason"]
 
     pulled = client.post(
-        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        f"/api/admin/iki-factory/cards/{staged['id']}/move",
         cookies=_admin(),
         json={"to_lane": "live"},
     )
@@ -194,7 +223,7 @@ def test_product_spec_writes_published_then_stub(client):
         f"/api/admin/iki-factory/cards/{got['id']}",
         cookies=_admin(),
     ).json()["transitions"]
-    deploy = next(t for t in trans if t["from_lane"] == "build" and t["to_lane"] == "live")
+    deploy = next(t for t in trans if t["from_lane"] == "staged" and t["to_lane"] == "live")
     assert deploy["auto_move"] is False
     assert "invariant #7" in (deploy.get("reason") or "").lower()
     sig = client.get("/api/iki-factory/publication-signal").json()["signals"]
@@ -230,6 +259,7 @@ def _deploy(client, card_id: int) -> dict:
 
 def test_woo_absence_leaves_published_not_build(client):
     card = _to_build(client, "zz-if4-woo-stub")
+    _to_staged(client, card["id"])
     _product(client, card["id"])
     got = _deploy(client, card["id"])
     assert got["lane"] == "live"
@@ -240,6 +270,8 @@ def test_woo_absence_leaves_published_not_build(client):
 def test_paid_not_obtainable_free_is(client):
     free = _to_build(client, "zz-if4-free")
     paid = _to_build(client, "zz-if4-paid")
+    _to_staged(client, free["id"])
+    _to_staged(client, paid["id"])
     _product(client, free["id"], free_vs_paid="free")
     _product(client, paid["id"], free_vs_paid="paid")
     _deploy(client, free["id"])
@@ -254,6 +286,7 @@ def test_paid_not_obtainable_free_is(client):
 def test_catalog_visibility_by_id(client):
     build = _to_build(client, "zz-if4-hidden")
     live = _to_build(client, "zz-if4-shown")
+    _to_staged(client, live["id"])
     _product(client, live["id"])
     _deploy(client, live["id"])
     listed = client.get("/api/iki-factory/live", cookies=_member()).json()["templates"]
@@ -278,6 +311,7 @@ def test_gemba_cannot_rework_published(client):
     from tests.test_iki_factory_if1 import _agent
 
     card = _to_build(client, "zz-if4-rework-gemba")
+    _to_staged(client, card["id"])
     _product(client, card["id"])
     _deploy(client, card["id"])
     live = client.get(

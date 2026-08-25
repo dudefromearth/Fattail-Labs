@@ -4,13 +4,14 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 
 import IkiFactoryItemPanel, { type Card } from "./IkiFactoryItemPanel";
 
-type Lane = "backlog" | "research" | "spec" | "build" | "live";
+type Lane = "backlog" | "research" | "spec" | "build" | "staged" | "live";
 
 const LANES: { id: Lane; label: string }[] = [
   { id: "backlog", label: "Backlog" }, // IF-7: key now matches the label (spec v1.0 §2.1)
   { id: "research", label: "Research" },
   { id: "spec", label: "Spec" },
   { id: "build", label: "Build" },
+  { id: "staged", label: "Staged" }, // IF-8: new lane, Build -> Staged is Gemba's pull (v1.0 §3.3)
   { id: "live", label: "Live" },
 ];
 
@@ -65,6 +66,7 @@ export default function IkiFactoryBoard() {
       research: [],
       spec: [],
       build: [],
+      staged: [],
       live: [],
     };
     for (const c of cards) {
@@ -242,7 +244,7 @@ export default function IkiFactoryBoard() {
         </p>
       ) : null}
 
-      <div className="grid gap-3 lg:grid-cols-5" data-testid="iki-factory-lanes">
+      <div className="grid gap-3 lg:grid-cols-6" data-testid="iki-factory-lanes">
         {LANES.map((lane) => (
           <section
             key={lane.id}

@@ -62,9 +62,35 @@ def get_card(card_id: int, request: Request) -> dict:
             "card": iki_factory.get_card(card_id),
             "transitions": iki_factory.list_transitions(card_id),
             "attachments": iki_factory.list_attachments(card_id),
+            "staged_artifacts": iki_factory.list_staged_artifacts(card_id),
         }
     except iki_factory.FactoryError as exc:
         raise _http(exc) from exc
+
+
+@router.get("/cards/{card_id}/staged")
+def get_staged_artifacts(card_id: int, request: Request) -> dict:
+    _factory_actor(request)
+    try:
+        return {"staged_artifacts": iki_factory.list_staged_artifacts(card_id)}
+    except iki_factory.FactoryError as exc:
+        raise _http(exc) from exc
+
+
+@router.post("/cards/{card_id}/staged/{kind}")
+async def post_staged_artifact(card_id: int, kind: str, request: Request) -> dict:
+    """Gemba (or, until a real production skill exists, an admin standing
+    in for Gemba) records a produced Staged artifact. wiki_page is not a
+    valid kind — it was never the Factory's to produce (DL-583)."""
+    actor = _factory_actor(request)
+    body = await request.json()
+    try:
+        artifact = iki_factory.produce_staged_artifact(
+            card_id, actor, kind=kind, body=body.get("body") or ""
+        )
+    except iki_factory.FactoryError as exc:
+        raise _http(exc) from exc
+    return {"artifact": artifact}
 
 
 @router.post("/cards")

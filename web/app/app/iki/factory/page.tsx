@@ -1,25 +1,34 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
+import IkiFactoryBoard from "@/components/admin/IkiFactoryBoard";
 import IkiSuiteChrome from "@/components/iki/IkiSuiteChrome";
+import IkiFactoryLiveCatalog from "@/components/iki/IkiFactoryLiveCatalog";
+import { fetchMe } from "@/lib/useIsAdmin";
 
 export default function IkiFactoryPage() {
+  const [role, setRole] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    fetchMe().then((me) => setRole(me?.role ?? null));
+  }, []);
+
+  const isAdmin = role === "administrator";
+
   return (
-    <IkiSuiteChrome active="factory">
-      <main className="mx-auto w-full max-w-3xl px-6 py-10">
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--color-label)]">
-          IKI Factory
-        </h1>
-        <p className="mt-2 text-[var(--color-label-secondary)]">
-          The factory is named. What it produces is not seated yet — this is a
-          placeholder, not a second Wiki.
-        </p>
-        <p
-          className="mt-8 text-sm text-[var(--color-label-tertiary)]"
-          data-testid="iki-factory-soon"
-        >
-          Coming soon.
-        </p>
-      </main>
+    <IkiSuiteChrome active="factory" workspace={isAdmin}>
+      {role === undefined ? (
+        <main className="px-6 py-10 text-sm text-[var(--color-label-tertiary)]">
+          Loading…
+        </main>
+      ) : isAdmin ? (
+        <div className="flex min-h-0 flex-1 flex-col bg-[color-mix(in_srgb,var(--color-canvas)_86%,var(--color-label)_14%)]">
+          <IkiFactoryBoard />
+        </div>
+      ) : (
+        <IkiFactoryLiveCatalog />
+      )}
     </IkiSuiteChrome>
   );
 }

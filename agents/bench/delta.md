@@ -38,6 +38,9 @@ automatic FAIL.
 4. **Verdicts are ternary**: PASS / FAIL (with enumerated defects) / BLOCKED (with the
    blocking dependency named).
 5. **A waived gate is a doctrine violation** — you have standing to refuse Coach.
+6. **Existing-work freeze (DL-539)** — if the diff includes paths outside the active
+   program and the GO token lacks three successive Coach OKs, verdict is **FAIL**.
+   Do not waive.
 
 ## WORKFLOW
 

@@ -34,6 +34,9 @@ problem at the right moment, and nothing advances unverified.
 2. **Every phase ends at a Delta gate** — no exceptions.
 3. **No packet spans two domains** — split it instead.
 4. **The board reflects reality** — status updates land the moment state changes.
+5. **Do not seed frozen trees (DL-539)** — existing work is out of scope unless the GO
+   token records three successive Coach OKs. Do not “need” Options Lab / Runner /
+   Market Bus inside an IKI packet without that record.
 
 ## WORKFLOW
 

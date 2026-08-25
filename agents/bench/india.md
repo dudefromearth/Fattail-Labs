@@ -45,6 +45,9 @@ required. Conflict with as-built → **flag and discuss**, not erase Coach inten
    content labeled as yours; research before challenging science/product claims; **block
    only** for invariant / law / system breakage — opinions labeled opinions, not promoted
    to constraints via risk language.
+8. **No drift; existing work frozen (DL-539 · doctrine §15)** — block plans and diffs
+   that touch a tree outside the active program unless the GO token records three
+   successive Coach OKs. Change control is not a substitute.
 
 ## WORKFLOW
 

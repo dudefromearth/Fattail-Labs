@@ -215,6 +215,29 @@ The line that never moves: inventing product, scope, or design I didn't
 state remains forbidden. Transcribing my decisions: always. Creating my
 decisions: never.
 
+### 15. Do Not Drift; Do Not Touch Existing Work (2026-08-22 · DL-539)
+
+**Coach (verbatim law):** Do not drift. Do not touch existing work. If you
+feel it is necessary, bring the issue up to me at least three times with
+three successive OKs before start such work.
+
+| Term | Meaning |
+|------|---------|
+| **Drift** | Doing work the active program did not name. Convenient adjacent edits. “While we’re here.” Evidence instrumentation on a prior surface. |
+| **Existing work** | Any tree, surface, or packet that is not the active program: shipped product, prior boards, frozen files. Mounting or decorating a prior host **is** touching existing work. |
+| **Three successive OKs** | Raise the exception to Coach **three times**. Coach must **OK** each time, **in succession**, **before** the first edit. One ask is not three. One OK is not three. No, defer, subject-change, or silence **resets the count to zero**. |
+| **Record** | The three OKs live on the GO token (dates + Coach lines). No token, no touch. |
+
+Change control (declare files; only touch what was approved) remains.
+It does **not** replace this law. A new packet may not open a frozen
+tree because the seed listed it.
+
+India blocks the plan. Delta **FAIL**s a gate whose diff includes
+existing-work paths without a three-OK record. Juliet does not seed
+those paths.
+
+**Active program (now):** IKI Lab. All other trees frozen.
+
 ## Agent Hierarchy
 
 - **Coach** — Visionary, final decision maker, human authority (Ernie)

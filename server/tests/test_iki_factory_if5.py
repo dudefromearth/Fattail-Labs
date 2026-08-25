@@ -71,12 +71,31 @@ def _to_build(client, title: str) -> dict:
     return pulled.json()["card"]
 
 
+def _to_staged(client, card_id: int) -> dict:
+    """IF-8 (v1.0 §3.3): Build → Staged is Gemba's pull, as build agent —
+    not the admin's. An agent actor is required."""
+    key = _agent("zz-if5-gemba", ["factory:operate"])
+    r = client.post(
+        f"/api/admin/iki-factory/cards/{card_id}/move",
+        headers={"Authorization": f"Bearer {key}"},
+        json={"to_lane": "staged"},
+    )
+    assert r.status_code == 200, r.text
+    got = r.json()["card"]
+    assert got["lane"] == "staged"
+    assert got["staged_ready"] is True
+    return got
+
+
 def _publish(client, title: str, *, free_vs_paid: str = "free") -> dict:
     """IF-7: product-spec patch no longer auto-deploys. This helper absorbs
-    the now-required explicit pull to Live."""
+    the now-required explicit pull to Live.
+    IF-8: Live is reachable only from Staged now — the pull to Staged
+    (Gemba, as build agent) is inserted before the product patch."""
     card = _to_build(client, title)
+    staged = _to_staged(client, card["id"])
     r = client.patch(
-        f"/api/admin/iki-factory/cards/{card['id']}",
+        f"/api/admin/iki-factory/cards/{staged['id']}",
         cookies=_admin(),
         json={
             "product_type": "template",
@@ -85,9 +104,9 @@ def _publish(client, title: str, *, free_vs_paid: str = "free") -> dict:
         },
     )
     assert r.status_code == 200, r.text
-    assert r.json()["card"]["lane"] == "build"
+    assert r.json()["card"]["lane"] == "staged"
     pulled = client.post(
-        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        f"/api/admin/iki-factory/cards/{staged['id']}/move",
         cookies=_admin(),
         json={"to_lane": "live"},
     )
@@ -111,6 +130,10 @@ def test_lineage_idea_to_published(client):
     real point survives unchanged: every hop still carries an actor and a
     reason (charter invariant 4) — now that is true of ALL transitions,
     not just the auto ones, which is IF-7's actual guarantee.
+
+    IF-8 addendum: the lineage gains a fifth hop, build->staged->live
+    instead of build->live directly (v1.0 §7, §8.1) — absorbed by
+    `_publish`'s own retrain, asserted here explicitly.
     """
     got = _publish(client, "zz-if5-lineage")
     trans = client.get(
@@ -122,7 +145,8 @@ def test_lineage_idea_to_published(client):
     assert ("backlog", "research", False) in path
     assert ("research", "spec", False) in path
     assert ("spec", "build", False) in path
-    assert ("build", "live", False) in path
+    assert ("build", "staged", False) in path
+    assert ("staged", "live", False) in path
     # IF-7's core guarantee: nothing in the whole lineage is auto anymore.
     assert not any(t["auto_move"] for t in trans)
     assert all((t.get("reason") or "").strip() for t in trans)
@@ -227,13 +251,42 @@ def test_hold_skips_spec_and_live(client):
     assert pulled.status_code == 200, pulled.text
     build = pulled.json()["card"]
 
+    # IF-8 addendum: a third gate — Hold blocks Build → Staged too, and
+    # that pull is Gemba's (agent), not the admin's (v1.0 §3.3).
     client.patch(
         f"/api/admin/iki-factory/cards/{build['id']}",
         cookies=_admin(),
         json={"hold": True},
     )
-    r3 = client.patch(
+    gemba_key = _agent("zz-if5-gemba-hold", ["factory:operate"])
+    blocked_staged = client.post(
+        f"/api/admin/iki-factory/cards/{build['id']}/move",
+        headers={"Authorization": f"Bearer {gemba_key}"},
+        json={"to_lane": "staged"},
+    )
+    assert blocked_staged.status_code == 422, blocked_staged.text
+
+    client.patch(
         f"/api/admin/iki-factory/cards/{build['id']}",
+        cookies=_admin(),
+        json={"hold": False},
+    )
+    pulled_staged = client.post(
+        f"/api/admin/iki-factory/cards/{build['id']}/move",
+        headers={"Authorization": f"Bearer {gemba_key}"},
+        json={"to_lane": "staged"},
+    )
+    assert pulled_staged.status_code == 200, pulled_staged.text
+    staged = pulled_staged.json()["card"]
+    assert staged["lane"] == "staged"
+
+    client.patch(
+        f"/api/admin/iki-factory/cards/{staged['id']}",
+        cookies=_admin(),
+        json={"hold": True},
+    )
+    r3 = client.patch(
+        f"/api/admin/iki-factory/cards/{staged['id']}",
         cookies=_admin(),
         json={
             "product_type": "template",
@@ -241,23 +294,23 @@ def test_hold_skips_spec_and_live(client):
             "free_vs_paid": "free",
         },
     )
-    assert r3.json()["card"]["lane"] == "build"
+    assert r3.json()["card"]["lane"] == "staged"
 
     blocked2 = client.post(
-        f"/api/admin/iki-factory/cards/{build['id']}/move",
+        f"/api/admin/iki-factory/cards/{staged['id']}/move",
         cookies=_admin(),
         json={"to_lane": "live"},
     )
     assert blocked2.status_code == 422, blocked2.text
 
     r4 = client.patch(
-        f"/api/admin/iki-factory/cards/{build['id']}",
+        f"/api/admin/iki-factory/cards/{staged['id']}",
         cookies=_admin(),
         json={"hold": False},
     )
-    assert r4.json()["card"]["lane"] == "build"  # clearing Hold deploys nothing by itself
+    assert r4.json()["card"]["lane"] == "staged"  # clearing Hold deploys nothing by itself
     pulled2 = client.post(
-        f"/api/admin/iki-factory/cards/{build['id']}/move",
+        f"/api/admin/iki-factory/cards/{staged['id']}/move",
         cookies=_admin(),
         json={"to_lane": "live"},
     )

@@ -14,6 +14,12 @@ const CARDS: { href: string; title: string; body: string; testId: string }[] = [
     testId: "admin-card-board",
   },
   {
+    href: "/app/iki/factory",
+    title: "IKI Factory",
+    body: "Kanban on the IKI Lab Factory pill — admin-gated. Ideas through Live.",
+    testId: "admin-card-iki-factory",
+  },
+  {
     href: "/admin/cast",
     title: "Studio cast",
     body: "HeyGen presenters (AVATAR registry). Assign cast_id on board cards before produce.",

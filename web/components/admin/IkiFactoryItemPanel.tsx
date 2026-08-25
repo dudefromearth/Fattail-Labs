@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type Lane = "backlog" | "research" | "spec" | "build" | "live";
+type Lane = "backlog" | "research" | "spec" | "build" | "staged" | "live";
 
 export type Card = {
   id: number;
@@ -23,6 +23,7 @@ export type Card = {
   remainder?: Array<{ title?: string; rank?: number; reason?: string }> | null;
   spec_ready?: boolean;
   built_ready?: boolean;
+  staged_ready?: boolean;
   plan_ref?: string | null;
   product_type?: string | null;
   product_tier?: string | null;
@@ -45,11 +46,33 @@ export type Attachment = {
   created_at: string | null;
 };
 
+export type StagedArtifact = {
+  id: number;
+  card_id: number;
+  kind: "product" | "landing_page" | "store_placement" | "help_page";
+  status: "pending" | "ready" | "blocked";
+  body: string | null;
+  blocked_reason: string | null;
+  produced_by_label: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+// No wiki_page slot (DL-583) — the wiki page is Oscar's, composed after
+// publication from the published help guide, never the Factory's to produce.
+const STAGED_ARTIFACT_LABEL: Record<StagedArtifact["kind"], string> = {
+  product: "Product",
+  landing_page: "Landing page draft",
+  store_placement: "Store placement",
+  help_page: "Help page",
+};
+
 const LANES: { id: Lane; label: string }[] = [
   { id: "backlog", label: "Backlog" }, // IF-7: key now matches the label (spec v1.0 §2.1)
   { id: "research", label: "Research" },
   { id: "spec", label: "Spec" },
   { id: "build", label: "Build" },
+  { id: "staged", label: "Staged" }, // IF-8: new lane, Build -> Staged is Gemba's pull (v1.0 §3.3)
   { id: "live", label: "Live" },
 ];
 const LANE_IDS = LANES.map((l) => l.id);
@@ -92,6 +115,10 @@ export default function IkiFactoryItemPanel({
   const [linkLabel, setLinkLabel] = useState("");
   const [uploadLabel, setUploadLabel] = useState("");
   const [attachBusy, setAttachBusy] = useState(false);
+  const [stagedArtifacts, setStagedArtifacts] = useState<StagedArtifact[]>([]);
+  const [stagedDrafts, setStagedDrafts] = useState<Record<string, string>>({});
+  const [stagedError, setStagedError] = useState<string | null>(null);
+  const [stagedBusy, setStagedBusy] = useState(false);
 
   useEffect(() => {
     setDescription(card.description ?? "");
@@ -106,10 +133,43 @@ export default function IkiFactoryItemPanel({
     setAttachments(data.attachments);
   }
 
+  async function loadStagedArtifacts() {
+    const r = await fetch(`/api/admin/iki-factory/cards/${card.id}/staged`, {
+      credentials: "same-origin",
+    });
+    if (!r.ok) return;
+    const data = (await r.json()) as { staged_artifacts: StagedArtifact[] };
+    setStagedArtifacts(data.staged_artifacts);
+  }
+
   useEffect(() => {
     void loadAttachments();
+    void loadStagedArtifacts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.id]);
+
+  async function produceArtifact(kind: StagedArtifact["kind"]) {
+    const body = (stagedDrafts[kind] ?? "").trim();
+    if (!body || stagedBusy) return;
+    setStagedBusy(true);
+    try {
+      const r = await fetch(`/api/admin/iki-factory/cards/${card.id}/staged/${kind}`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body }),
+      });
+      if (!r.ok) {
+        setStagedError("Could not record that artifact.");
+        return;
+      }
+      setStagedDrafts((d) => ({ ...d, [kind]: "" }));
+      setStagedError(null);
+      await loadStagedArtifacts();
+    } finally {
+      setStagedBusy(false);
+    }
+  }
 
   async function addLink(e: React.FormEvent) {
     e.preventDefault();
@@ -311,7 +371,7 @@ export default function IkiFactoryItemPanel({
         </label>
       ) : null}
 
-      {card.lane === "spec" || card.lane === "build" ? (
+      {card.lane === "spec" || card.lane === "build" || card.lane === "staged" ? (
         <div className="mt-3 grid gap-2">
           <p className="text-xs text-[var(--color-label-secondary)]">
             Product spec is the human promotion gate (invariant #7). Type, tier, and
@@ -359,6 +419,77 @@ export default function IkiFactoryItemPanel({
               <option value="paid">Paid</option>
             </select>
           </label>
+        </div>
+      ) : null}
+
+      {stagedArtifacts.length > 0 ? (
+        <div className="mt-5 border-t border-[var(--color-separator)] pt-4">
+          <h3 className="text-sm font-semibold text-[var(--color-label)]">
+            Staged production
+          </h3>
+          <p className="mt-1 text-xs text-[var(--color-label-tertiary)]">
+            All dark — nothing here is visible until Coach's Live switch (v1.0 §7.3).
+          </p>
+          {stagedError ? (
+            <p className="mt-1 text-xs text-red-700 dark:text-red-400">{stagedError}</p>
+          ) : null}
+          <ul className="mt-2 flex flex-col gap-2">
+            {stagedArtifacts.map((a) => (
+              <li
+                key={a.kind}
+                className="rounded-md border border-[var(--color-separator)] p-2 text-xs"
+                data-testid={`iki-factory-staged-${a.kind}-${card.id}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-[var(--color-label)]">
+                    {STAGED_ARTIFACT_LABEL[a.kind]}
+                  </span>
+                  <span
+                    className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 uppercase text-[var(--color-label-tertiary)] dark:bg-zinc-800"
+                    data-testid={`iki-factory-staged-status-${a.kind}-${card.id}`}
+                  >
+                    {a.status}
+                  </span>
+                </div>
+                {a.status === "blocked" && a.blocked_reason ? (
+                  <p className="mt-1 text-amber-800 dark:text-amber-300">
+                    {a.blocked_reason}
+                  </p>
+                ) : null}
+                {a.status === "ready" ? (
+                  <p className="mt-1 text-[var(--color-label-secondary)]">
+                    {a.body}
+                    {a.produced_by_label ? (
+                      <span className="text-[var(--color-label-tertiary)]"> — {a.produced_by_label}</span>
+                    ) : null}
+                  </p>
+                ) : null}
+                {a.status === "pending" && card.lane === "staged" ? (
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <textarea
+                      value={stagedDrafts[a.kind] ?? ""}
+                      onChange={(e) =>
+                        setStagedDrafts((d) => ({ ...d, [a.kind]: e.target.value }))
+                      }
+                      rows={2}
+                      className="min-w-[12rem] flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-950"
+                      placeholder="Draft the content, then record it."
+                      data-testid={`iki-factory-staged-draft-${a.kind}-${card.id}`}
+                    />
+                    <button
+                      type="button"
+                      disabled={stagedBusy || !(stagedDrafts[a.kind] ?? "").trim()}
+                      onClick={() => void produceArtifact(a.kind)}
+                      className="min-h-[var(--hit-min)] rounded-md border border-zinc-300 px-3 dark:border-zinc-600"
+                      data-testid={`iki-factory-staged-produce-${a.kind}-${card.id}`}
+                    >
+                      Record
+                    </button>
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
 

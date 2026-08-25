@@ -4,6 +4,59 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-25 — DL-583 Wiki page reverts to Oscar; Gemba keeps the help guide (reverses part of DL-580)
+
+**Decision (Coach 2026-08-25):** **DL-580's wiki-page grant to Gemba is
+reversed.** Gemba writes the help guide. He does not write the wiki page.
+The wiki page is Oscar's — composed after publication from the published
+help guide, the same way he composes a course wiki from a published
+course. **DL-580 stands as history; only its wiki-page clause is
+superseded. The help-guide authorship grant it also made survives
+unchanged.**
+
+**Why.** The wiki page is not the Factory's to build. **The derivation
+rule already existed, platform-wide, before DL-580:** every publishable
+thing has a wiki page derived from it, and the wiki page is always
+Oscar's — a course is not the course wiki, a help guide is not the help
+wiki page. DL-580 built the Factory an exception to a rule that already
+covered it. That was invention the Factory never needed, not a real gap
+Coach's earlier ruling had to fill.
+
+**Consequence — IF-8 amended.** The Staged lane seeds **four** artifacts,
+not five: product, landing page draft, store placement, help guide. No
+`wiki_page` row is created; the permanent-block state that named
+`wiki_page` as a tracked, named gap (§8.10 of the superseded v1.0 spec)
+is removed with it — the slot it was blocking no longer exists to block.
+**Staged → Live's gate is unchanged**: `staged_ready` plus product
+completeness, exactly as IF-8 built it. This is a scope correction to
+what Staged produces, not a re-opening of how Live is reached.
+
+**Also ruled, same session — naming.** "Template" is retired inside the
+new Factory spec: the Factory produces a **Knowledge app**; **Intelligence
+apps** are the tier above. Applied within that document only — not
+propagated to any other spec in this pass. Reach flagged, not actioned.
+
+**Spec:** `Specs/FatTail-Labs-IKI-Factory-Spec-v1_1.md` — **BUILD
+AUTHORITY**, supersedes `FatTail-Labs-IKI-Factory-Pipeline-Spec-v1_0.md`
+(kept on disk as history). §7.3 (four artifacts), §7.6 (a wiki page is
+not a Live precondition — a product publishes and goes visibly noisy
+until one exists; mechanism for "noisy" is OPEN), §7.8 new (the
+derivation rule, stated general), §8.10 resolved (the Wiki Spec §7/§11
+tension no longer blocks this board — nothing publishes into the Wiki
+off the Factory's switch).
+
+**Charter:** `agents/bench/gemba.md` — Coach lands the narrowed invariant
+9 himself. Not edited by this entry or by the accompanying build pass.
+
+**Gate:** IF-8 re-gated for the amendment delta only —
+`agents/p-iki-factory/gate-reports/IF-8-G.md` (amendment addendum).
+
+**Does not:** propagate the Knowledge app / Intelligence app naming
+beyond the v1.1 spec; settle what "noisy" looks like; touch the Wiki
+program's own §7/§11 question, which the Factory no longer depends on.
+
+---
+
 ## 2026-08-25 — DL-582 IKI Factory Pipeline Spec v1.0 — BUILD AUTHORITY; charter lands
 
 **Decision (Coach 2026-08-25):** **BUILD AUTHORITY** granted on the IKI Factory
@@ -150,6 +203,97 @@ separate Coach exchange); stamp any GO or BUILD.
 
 ---
 
+## 2026-08-24 — DL-579 Heatmap Verticals Value is Debit/Credit then Type
+
+**Decision (Coach):** Verticals inspector Value is **two tiers**. **Debit**
+or **Credit** is the main mode. **% Change** and **R:R** are **types of**
+that mode (secondary), not parallel fourth Values.
+
+Default Type is off (package mid). Type applies to the selected Debit or
+Credit. R:R on Credit is collected credit / (width − credit). Exact listed
+strikes; no snap. Help `options-lab-heatmap.md` **Verticals**.
+
+**Does not:** Advanced flies Value menu; MiniTwo in this body.
+
+---
+
+## 2026-08-24 — DL-578 IKI Factory GO IF-5 (hardening; stop at the store)
+
+**Decision (Coach 2026-08-24):** **GO IF-5.** Continue Factory build until
+there is nowhere left without the store. Token
+[`agents/go/IKI-FACTORY-IF5.md`](../agents/go/IKI-FACTORY-IF5.md).
+
+Hardening only: lineage queries, existing admin notify plane (log on
+failure; Deploy does not fail with notify), invalid-move matrix, Hold
+skip/resume, auto-move reasons, empty registry, window expiry, missing
+product spec, Woo **stub** (Published, never Build), Hotel pass on
+agent-drafted strings.
+
+**Does not:** WC API / store on labs.fattail.ai (later program; seam
+`iki_factory_woo.woo_step`); `web/lib/runner/**`; Wiki envelope; MiniTwo;
+named research skill.
+
+**Gate:** `agents/p-iki-factory/gate-reports/IF-5-G.md`
+
+---
+
+## 2026-08-24 — DL-577 IKI Factory GO IF-4 (Deploy + Live + publication signal)
+
+**Decision (Coach 2026-08-24):** **GO IF-4.** Token
+[`agents/go/IKI-FACTORY-IF4.md`](../agents/go/IKI-FACTORY-IF4.md).
+
+**B5** = plan default: Factory Live record + publication signal. No Runner
+write (`web/lib/runner/**` not named; no three OKs). No Wiki envelope. No
+`contracts:deliver`. No wiki page bytes.
+
+Conveyor Build→Live when Built-ready **and** product type/tier/free-vs-paid
+**and** not Hold. Missing product spec stays in Build, visible “waiting
+for product spec.” Hold skips; clearing Hold resumes. Auto-move reason
+names Deploy / publication signal.
+
+Signal path: `GET /api/iki-factory/publication-signal` (Published / Live
+only: `id`, `title`, `live_at`, `content_hash`). Member catalog:
+`GET /api/iki-factory/live` and `/app/iki/factory` for non-admin (Live
+list, not the Kanban). Wiki SC-3b poll wiring remains a neighbor stamp.
+
+### Coach rulings (same day — law; land before further movement)
+
+Transcribed verbatim 2026-08-24:
+
+1. **Order.** On the move to Live, the Factory writes its own record first.
+   Woo comes after. Not the other way round.
+2. **State.** The state after the Live write is **Published**. A template
+   in Published is on the conveyor like any other state and is visible in
+   the Live catalog and the publication signal. Woo failure or absence
+   leaves it in Published with the reason visible; it is never pulled back
+   to Build.
+3. **The Woo step is a stub for now.** There is no WC API interface yet —
+   the store will be hosted on labs.fattail.ai and that interface is a
+   separate program I'll open later. Until then, the Woo step must be
+   named as stubbed everywhere it appears: in the code path, as the visible
+   reason on a Published template, and in the DL. It does not return
+   success. When I come back to the store, there is one named seam to
+   connect and nothing to hunt for.
+4. **Paid.** Paid does not invent a price, and with no product attached a
+   paid template is not obtainable. Free templates in Published are
+   obtainable now. That's the line until the store lands.
+5. **Human gate.** The admin entering product type, tier, and free-vs-paid
+   is the human promotion under invariant #7. Published is the result of
+   that gate, not a bypass of it.
+
+**Named seam:** `server/iki_factory_woo.py` · `woo_step()` — stubbed; does
+not return success; does not call a WC API. Visible reason on Published:
+`Woo step stubbed — store interface is a later program.`
+
+**Does not:** WooCommerce / WC API interface; store on labs.fattail.ai
+(later program); Runner register; Wiki compose; MiniTwo unless named;
+named research skill. **Does not** treat the Woo stub as a successful
+product create.
+
+**Gate:** `agents/p-iki-factory/gate-reports/IF-4-G.md`
+
+---
+
 ## 2026-08-24 — DL-576 Heatmap tab-session help guide
 
 **Decision:** Member how-to for Heatmap inspector tab-session (**HM21**)
@@ -214,6 +358,30 @@ is the written in-program grant (plan §0.3 second box). **TR13** unchanged
 
 **Does not:** server interval archive; SSR; raising `FLY_HISTORY_DEPTH`;
 IndexedDB; MiniTwo; extra WebSocket.
+
+---
+
+## 2026-08-24 — DL-573 Wiki agent plane-wide (original standing-presence intent)
+
+**Decision (Coach 2026-08-24):** The Wiki agent's standing presence is the
+**entire FatTail app plane** — that was the original intent (Spec I.1 / III.3:
+*anywhere the admin works*). WU-1 chrome ruling B (wiki-owned layouts only ·
+**DL-557**) was a **developer-focus** narrowing so a packet would not wander
+into frozen trees. DL-539 three-OK is the same rule: it keeps **developers**
+focused; it does not constrain Coach.
+
+**Mount:** `WikiAgentPanel` in `web/components/AppChrome.tsx`, lower-right dock,
+**immediately left of Help**. One orb. Wiki layout does **not** mount a second
+FAB. Admin-only (`useIsAdmin`; members: DOM absent). Help stays emerald and
+member-facing; Wiki agent stays zinc, sentence-case “Wiki agent”. On `/admin/*`
+Help is hidden; Wiki agent remains lower-right.
+
+**Spec:** `Specs/FatTail-Labs-Wiki-Spec-v0_2_1.md` I.1, III.3, IV.2, IV.5
+updated in this body. Filename stays v0.2.1 (intent restored, not a new
+organism).
+
+**Does not:** Help behavior; member-visible Wiki launcher; second orb;
+unrelated trees (Factory / heatmap / trade log / SSR).
 
 ---
 

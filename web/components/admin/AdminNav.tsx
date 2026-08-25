@@ -17,6 +17,7 @@ const isGroup = (e: Entry): e is Group => "items" in e;
 const NAV: Entry[] = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/board", label: "Board" },
+  { href: "/app/iki/factory", label: "IKI Factory" },
   { href: "/admin/cast", label: "Cast" },
   { href: "/admin/media", label: "Media" },
   { href: "/admin/tags", label: "Tags" },

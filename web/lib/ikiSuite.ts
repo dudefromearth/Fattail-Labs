@@ -26,8 +26,8 @@ export const IKI_SUITE: IkiSuiteItem[] = [
     id: "factory",
     label: "IKI Factory",
     href: "/app/iki/factory",
-    blurb: "Where IKI views are produced. Standing soon — job not seated yet.",
-    status: "soon",
+    blurb: "Where Knowledge/Intelligence templates are produced.",
+    status: "live",
   },
   {
     id: "runner",

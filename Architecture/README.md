@@ -18,7 +18,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | [08-canonical-course-model.md](./08-canonical-course-model.md) | Portable Course graph: export/import/validate architecture |
 | [09-canonical-course-design.md](./09-canonical-course-design.md) | Admin UX design for packages |
 | [10-resources-design.md](./10-resources-design.md) | Resources: first-class versioned library |
-| [11-wiki-design.md](./11-wiki-design.md) | Wiki: lab-wiki git SoR → derived index → `/app/wiki`. Spec of record **v0.2.1** (**DL-555**). Wide open by default (**DL-551**); public read **WU-2** shipped (**DL-558**). Agent WA-1…WA-4 shipped. Source Contract **v0.1.4** (**DL-560**); Help Package gone; **SC-0** diffs (**DL-562**); **SC-1** envelope + watermark (**DL-568**). |
+| [11-wiki-design.md](./11-wiki-design.md) | Wiki: lab-wiki git SoR → derived index → `/app/wiki`. Spec of record **v0.2.1** (**DL-555**). Wide open by default (**DL-551**); public read **WU-2** shipped (**DL-558**). Agent WA-1…WA-4 shipped. Standing presence **plane-wide** in AppChrome, left of Help (**DL-573**; WU-1 ruling B was developer-focus). Source Contract **v0.1.4** (**DL-560**); Help Package gone; **SC-0** diffs (**DL-562**); **SC-1** envelope + watermark (**DL-568**). |
 | [12-retrospective-report-dto.md](./12-retrospective-report-dto.md) | Retrospective workspace DTO (gather/report/comparison) — as-built v0.6 |
 | [13-habit-catalog-design.md](./13-habit-catalog-design.md) | Habit Catalog methodology layer — **design locked**, pre-Spec |
 | [09-strategy-lab-tradier.md](./09-strategy-lab-tradier.md) | Strategy Lab data/exec split (Massive / Tradier) + shared Curate marks |
@@ -53,7 +53,7 @@ wishlist. Feature contracts remain in `Specs/`; binding decisions remain in
 | Arch **30** | **Options Pricing Foundation** (design): L0–L4 data plane + day/outlook/backtest packs · foundation before app wiring |
 | Arch **31** | **SSR thesis:** package-surface replay · MC distributions · one day first · Spec `FatTail-Labs-Structure-Surface-Replay-Spec-v0_1.md` |
 | Spec **IKI Lab + Factory v0.1.1** | `Specs/FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md` — **IKI** · suite chrome/naming · Wiki Apps card → **IKI Lab** · **DL-527** · **DL-528** · **OD-IKI-1 CLOSED** by Factory Spec v0.1.5 **BUILD AUTHORITY** (**DL-556**) |
-| Spec **IKI Factory v0.1.5 BUILD AUTHORITY** | `Specs/FatTail Labs — IKI Factory Spec v0.1.5` — admin Kanban conveyor + Gemba · **OD-F1…F10** · **DL-556** · **GO IF-1** admin `/admin/iki-factory` (**DL-559**) · plan `docs/IKI-Factory-Spec-v0.1.5-Full-Agent-Bench-Plan-v1.1.md` · **GO IF-2 not granted** · charter `agents/bench/gemba.md` seated |
+| Spec **IKI Factory v0.1.5 BUILD AUTHORITY** | `Specs/FatTail Labs — IKI Factory Spec v0.1.5` — admin Kanban conveyor + Gemba · **OD-F1…F10** · **DL-556** · board `/app/iki/factory` (**DL-566**) · **GO IF-1…IF-5** (**DL-559 · 567 · 569 · 577 · 578**) · Published + Woo **stub** (`iki_factory_woo.woo_step`) + `GET /api/iki-factory/publication-signal` · store / WC API not granted · charter `agents/bench/gemba.md` seated |
 | Spec **OPF v0.2.1** | `Specs/FatTail-Labs-Options-Pricing-Foundation-Spec-v0_2.md` — normative law (OPF1–33); v0.1 superseded |
 | Bench **OPF** | `docs/Options-Pricing-Foundation-Full-Agent-Bench-Plan-v1.0.md` · board `agents/p-options-pricing-foundation/` |
 | Spec **Position Builder/Book v0.3** | `Specs/FatTail-Labs-Options-Lab-Position-Builder-Spec-v0_3.md` — VIEW-7 + B5; v0.2 SUPERSEDED; **DL-306** |

@@ -22,6 +22,7 @@ VALID_SCOPES = frozenset(
         "board:operate",
         "wiki:reindex",
         "contracts:deliver",
+        "factory:operate",
     }
 )
 DEFAULT_AI_SCOPES = ["ai:run", "ai:status"]

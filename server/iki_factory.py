@@ -13,14 +13,27 @@ from typing import Any
 import db
 from agent_auth import Actor
 
-LANES = ("backlog", "research", "spec", "build", "live")
+LANES = ("backlog", "research", "spec", "build", "staged", "live")
 CARD_STATUSES = ("active", "archived", "trashed", "rework")
 ORIGINATOR_KINDS = ("coach", "system", "agent", "outside")
 ATTACHMENT_KINDS = ("link", "upload")
+STAGED_ARTIFACT_KINDS = (
+    "product",
+    "landing_page",
+    "store_placement",
+    "help_page",
+)
+STAGED_ARTIFACT_STATUSES = ("pending", "ready", "blocked")
+# The wiki page is not produced here (v1.1 §7.3, DL-583). It is Oscar's,
+# composed after publication from the published help guide — the general
+# derivation rule (v1.1 §7.8), not a Factory-specific gap. Superseded a
+# permanent-block slot that named it as a gap in IF-8 (v1.0 §8.10); there
+# is no slot to block once the artifact was never the Factory's to build.
 PICKUP_REASON = "Picked up for research."
 WAITING_SKILLS = "waiting for skills"
 WAITING_PLAN = "waiting for plan"
 WAITING_PRODUCT = "waiting for product spec"
+WAITING_STAGED = "waiting for Staged-ready"
 HOLD_REASON = "Hold is set. Nothing pulls while held."
 FREE_VS_PAID = ("free", "paid")
 DEPLOY_REASON = (
@@ -29,6 +42,7 @@ DEPLOY_REASON = (
     "Deploy exposes a publication signal."
 )
 ADMIN_ONLY_RS = "Research → Spec is Admin selection only."
+GEMBA_BUILD_PULL = "Build → Staged is Gemba's pull, as build agent."
 ONE_STEP = "Happy-path moves are one lane. Skip-forward is not allowed."
 GEMBA_REWORK = "Gemba does not choose Rework destination."
 
@@ -83,6 +97,7 @@ def _row(r: dict[str, Any]) -> dict[str, Any]:
         ),
         "spec_ready": bool(r["spec_ready"]),
         "built_ready": bool(r["built_ready"]),
+        "staged_ready": bool(r.get("staged_ready")),
         "plan_ref": r.get("plan_ref"),
         "spec_md": r.get("spec_md"),
         "product_type": r.get("product_type"),
@@ -352,6 +367,100 @@ def _mark_built(cur, card_id: int) -> None:
     )
 
 
+def _mark_staged(cur, card_id: int) -> None:
+    """Landing in Staged (v1.1 §7.1, §7.3). Seeds the four artifact slots,
+    all starting 'pending' — Gemba produces them explicitly, no invention.
+    No wiki_page slot (DL-583) — that artifact is not the Factory's."""
+    cur.execute(
+        """
+        UPDATE iki_factory_cards
+           SET staged_ready = 1,
+               waiting_reason = NULL,
+               blocked_reason = NULL
+         WHERE id = %s
+        """,
+        (card_id,),
+    )
+    for kind in STAGED_ARTIFACT_KINDS:
+        cur.execute(
+            """
+            INSERT INTO iki_factory_staged_artifacts (card_id, kind, status)
+            VALUES (%s, %s, 'pending')
+            ON DUPLICATE KEY UPDATE kind = kind
+            """,
+            (card_id, kind),
+        )
+
+
+def _staged_artifact_row(r: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": int(r["id"]),
+        "card_id": int(r["card_id"]),
+        "kind": r["kind"],
+        "status": r["status"],
+        "body": r.get("body"),
+        "blocked_reason": r.get("blocked_reason"),
+        "produced_by_label": r.get("produced_by_label"),
+        "created_at": str(r["created_at"]) if r.get("created_at") else None,
+        "updated_at": str(r["updated_at"]) if r.get("updated_at") else None,
+    }
+
+
+def list_staged_artifacts(card_id: int) -> list[dict[str, Any]]:
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            _get_conn(cur, card_id)
+            cur.execute(
+                """
+                SELECT * FROM iki_factory_staged_artifacts
+                 WHERE card_id = %s ORDER BY FIELD(kind, %s, %s, %s, %s)
+                """,
+                (card_id, *STAGED_ARTIFACT_KINDS),
+            )
+            return [_staged_artifact_row(dict(r)) for r in cur.fetchall()]
+
+
+def produce_staged_artifact(
+    card_id: int, actor: Actor, *, kind: str, body: str
+) -> dict[str, Any]:
+    """Gemba (or, until a real skill exists, an admin standing in for
+    Gemba) records a produced artifact. No invention — the caller supplies
+    the content; this just records it, the same shape as an attachment.
+    wiki_page is not a valid kind (DL-583) — it was never the Factory's
+    artifact to produce."""
+    if not _is_admin_human(actor) and "factory:operate" not in actor.scopes:
+        raise FactoryError("Only Gemba or an administrator may produce Staged artifacts.")
+    kind = (kind or "").strip().lower()
+    if kind not in STAGED_ARTIFACT_KINDS:
+        raise FactoryError("kind must be one of: " + ", ".join(STAGED_ARTIFACT_KINDS))
+    body = (body or "").strip()
+    if not body:
+        raise FactoryError("body is required")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            card = _get_conn(cur, card_id)
+            if card["lane"] != "staged":
+                raise FactoryError("Artifacts are produced in Staged only.")
+            cur.execute(
+                """
+                UPDATE iki_factory_staged_artifacts
+                   SET status = 'ready',
+                       body = %s,
+                       blocked_reason = NULL,
+                       produced_by_kind = %s,
+                       produced_by_id = %s,
+                       produced_by_label = %s
+                 WHERE card_id = %s AND kind = %s
+                """,
+                (body, actor.kind, int(actor.id), actor.label, card_id, kind),
+            )
+            cur.execute(
+                "SELECT * FROM iki_factory_staged_artifacts WHERE card_id = %s AND kind = %s",
+                (card_id, kind),
+            )
+            return _staged_artifact_row(dict(cur.fetchone()))
+
+
 def execute_deploy(
     card_id: int,
     actor: Actor,
@@ -362,17 +471,21 @@ def execute_deploy(
 
     IF-7: this is the pull itself — Live is Coach's (the product-spec
     completeness check below is the human promotion, invariant #7), but the
-    act of pulling a build-ready, product-complete card to Live is an
-    explicit, actor-recorded call, never a side effect of anything else.
+    act of pulling a card to Live is an explicit, actor-recorded call,
+    never a side effect of anything else.
+
+    IF-8 (v1.0 §8.1): Staged→Live is "the one transition that is not a
+    pull — it is a boundary." Deploy now reads from Staged, not Build —
+    Live is reachable only after the card has passed through Staged.
     """
     card = get_card(card_id)
     if card["lane"] == "live" and card.get("published"):
         return card
-    if card["lane"] != "build":
-        raise FactoryError("Deploy only from Build.")
+    if card["lane"] != "staged":
+        raise FactoryError("Deploy only from Staged.")
     if card.get("hold"):
         return card
-    if not card.get("built_ready") or not _product_complete(card):
+    if not card.get("staged_ready") or not _product_complete(card):
         return _set_waiting(card_id, WAITING_PRODUCT)
     pub_hash = _publication_hash(card)
     reason_s = (reason or "").strip() or DEPLOY_REASON
@@ -400,7 +513,7 @@ def execute_deploy(
             _log(
                 cur,
                 card_id,
-                from_lane="build",
+                from_lane="staged",
                 to_lane="live",
                 actor=actor,
                 reason=reason_s,
@@ -472,9 +585,19 @@ def validate_move(
             return WAITING_PLAN
         return None
 
-    if current == "build" and to_lane == "live":
+    if current == "build" and to_lane == "staged":
+        # v1.0 §3.3: "Build → Staged | Gemba as build agent" — named, like
+        # Research→Spec and Spec→Build are named to the admin. Not a
+        # generic factory:operate pull; specifically an agent actor.
+        if actor.kind != "agent":
+            return GEMBA_BUILD_PULL
         if not card.get("built_ready"):
             return "waiting for Built-ready"
+        return None
+
+    if current == "staged" and to_lane == "live":
+        if not card.get("staged_ready"):
+            return WAITING_STAGED
         if not _product_complete(card):
             return WAITING_PRODUCT
         return None
@@ -605,6 +728,8 @@ def move_card(
                     _draft_spec(cur, card_id)
                 if to_lane == "build":
                     _mark_built(cur, card_id)
+                if to_lane == "staged":
+                    _mark_staged(cur, card_id)
                 if to_lane == "research":
                     from iki_factory_research import attempt_research
 
@@ -637,6 +762,13 @@ def move_card(
             out,
             "built_ready",
             "Build complete against the attached plan + Spec.",
+        )
+        return out
+    if out["lane"] == "staged" and out.get("staged_ready"):
+        _notify_factory(
+            out,
+            "staged_ready",
+            "Staged. Producing artifacts dark — nothing visible until Live.",
         )
         return out
     return get_card(out["id"])

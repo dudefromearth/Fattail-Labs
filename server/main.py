@@ -38,6 +38,8 @@ def create_app() -> FastAPI:
     from routes.ai_admin import router as ai_admin_router
     from routes.agents_admin import router as agents_admin_router
     from routes.board_admin import router as board_admin_router
+    from routes.iki_factory_admin import router as iki_factory_admin_router
+    from routes.iki_factory_live import router as iki_factory_live_router
     from routes.cast_admin import router as cast_admin_router
     from routes.notifications_admin import router as notifications_admin_router
     from routes.auth_dev import router as auth_dev_router
@@ -129,6 +131,8 @@ def create_app() -> FastAPI:
     app.include_router(ai_admin_router)
     app.include_router(agents_admin_router)
     app.include_router(board_admin_router)
+    app.include_router(iki_factory_admin_router)
+    app.include_router(iki_factory_live_router)
     app.include_router(cast_admin_router)
     app.include_router(notifications_admin_router)
     app.include_router(courses_router)

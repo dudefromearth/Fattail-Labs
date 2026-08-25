@@ -23,6 +23,7 @@ LearnDash. No shared code with MarketSwarm-Canonical (HTTP only).
 
 | Priority | Guidance for agents |
 |----------|---------------------|
+| **IKI Lab (active program · DL-539)** | **Only** IKI Lab. Do not drift. Do not touch existing work. Exception: raise to Coach **three times**, **three successive OKs**, recorded on the GO token, **before** any edit outside IKI. |
 | **Strategy Lab NOW** | Lock **Design + Curate** for entitled members. Multi-member Curate is absolute. |
 | **Deploy** | Members get **Deploy UX** except **real-broker (Tradier) real-money**. Admin dogfoods Tradier, then provision. **DL-251 / DL-252**. |
 | **Market Bus (shipped core)** | Live chains/symbols: **Massive → feeds → Redis → one WS/tab → shared client**. Options Lab at `/app/options-lab`. See Arch **28**. |
@@ -69,7 +70,7 @@ growth playbook [`Architecture/17-strategy-lab-growth-playbook.md`](./Architectu
 | **Options Lab Heatmap · Width Fit** | Spec **v0.1.1 BUILD AUTHORITY** `FatTail-Labs-Options-Lab-Heatmap-Width-Fit-Spec-v0_1.md` (**WF** · **OD-W1…W6 Accept** · **DL-525** · **DL-529** template) · full-agent plan **v1.1** `docs/Options-Lab-Heatmap-Width-Fit-Full-Agent-Bench-Plan-v1.1.md` · board `agents/p-options-lab-heatmap-width-fit/` · W0 `agents/go/OLHWF-W0.md` — Heatmap **Template** `width-fit` · member guide `docs/Options-Lab-Heatmap-Width-Fit-User-Guide.md` · help `server/help_reference/options-lab-heatmap-width-fit.md` (**DL-530**) |
 | **Template Runner** | Spec **v0.1.2** `FatTail-Labs-Template-Runner-Spec-v0_1.md` — **TR-P1 PASS** `f4cc89a` · **TR-P2 GO** (`agents/go/TR-P2.md` · **DL-534**) controls + live + `spread-tax@0.1` · flag `NEXT_PUBLIC_LABS_RUNNER_SHELL` · rest THESIS · **Stream Book** bench `docs/Template-Runner-Stream-Book-Full-Agent-Bench-Plan-v1.0.md` (**TR14** · **DL-574** · board `agents/p-template-runner-stream-book/` · token `agents/go/TRSB-W0.md` **GO**) — client generation cache, member MB budget, Width Fit MA heatmap **and** ranking; **TR13** remains IKI-P3 chrome |
 | Curate MySQL marks (dual-write / fallback) | Arch **18** · `live_stream` / `sym_feed` → `market_live_marks`; product UI mids still use live underlier pattern |
-| **IKI Lab · IKI Factory** | Spec **v0.1.1 DRAFT** `FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md` (**IKI** · **DL-527** · **DL-528**) — Wiki Apps card → **IKI Lab**; foundation page = PDS Spec v0.1 Part I (`wiki/concepts/iki.md`); new **IKI Factory** on Practice/Options Lab suite nav. Factory job **OD-IKI-1**. Not BUILD AUTHORITY. |
+| **IKI Lab · IKI Factory** | Suite spec **v0.1.1** `FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md` (**IKI** · **DL-527** · **DL-528**) — Wiki Apps card → **IKI Lab**; inner nav Wiki · IKI Factory. Factory *job*: Spec **v0.1.5 BUILD AUTHORITY** `FatTail Labs — IKI Factory Spec v0.1.5` (**OD-F1…F10** · **DL-556** · **OD-IKI-1 closed**). Plan `docs/IKI-Factory-Spec-v0.1.5-Full-Agent-Bench-Plan-v1.1.md`. **GO IF-1** admin `/admin/iki-factory` (**DL-559**). **GO IF-2 not granted**. Gemba charter seated. Member pill stays soon. |
 | Community | `Specs/FatTail-Labs-Community-App-Spec-v1.0.md` · `docs/Community-Chat-Discord-Second-Window.md` |
 | Visualize AI | `Specs/FatTail-Labs-Visualize-AI-Spec-v0.1.md` · `docs/Visualize-AI-How-It-Works.md` |
 | Bot Marketplace | `Specs/FatTail-Labs-Bot-Marketplace-Framework-Spec-v0.1.md` · `docs/Bot-Marketplace-How-It-Works.md` |
@@ -153,6 +154,7 @@ marks are **severity: high** (member capital-adjacent judgment).
 | **Charlie** | Frontend Engineer | Next.js app: catalog, course detail, player, dashboard, admin UI |
 | **Echo** | Human Interface & Interaction Designer | Apple HIG for Labs web, tokens, control grammar, toolbars, visual + interactive review |
 | **Foxtrot** | Infrastructure Engineer | MiniTwo/DudeTwo provisioning, launchd, MiniThree nginx, Cloudflare, deploys |
+| **Gemba** | Lean Factory Worker | IKI Factory skills pipeline + conveyor (versioned registry, 24 h research, ranked Research cards, Spec→Build→Live when ready, Hold sacred). Charter `agents/bench/gemba.md`. Principal `gemba`. |
 | **Mike** | Security & Auth Engineer | Dual-issuer SSO, session JWTs, signed video URLs, secrets, WooCommerce webhooks |
 | **Sierra** | Curriculum & AEO Specialist | Course copy formula, SEO/AEO layer (JSON-LD, titles, prerender), public catalog surface |
 
@@ -220,6 +222,7 @@ to the packet.
 5. **Change control.** Declare exact files + changes before touching; only touch what was approved.
 6. **Stop the bleeding.** Process outcomes in marketing, never profit claims. Pathway
    routes everyone through the flagship first.
+7. **No drift; do not touch existing work (DL-539 · doctrine §15).** The active program is the only tree in play. If touching existing work feels necessary, bring it to Coach **at least three times** and get **three successive OKs** on the GO token **before** the first edit. One OK is not three. A break resets the count. India / Delta block.
 
 ---
 
@@ -390,6 +393,8 @@ Projects:
     import, vendor, or copy MSC code.
 12. **Declare before you touch.** Change control: exact files + changes approved before
     implementation begins.
+13. **Do not drift; do not touch existing work.** Three successive Coach OKs before any
+    exception (**DL-539** · doctrine §15).
 
 ---
 
