@@ -51,6 +51,9 @@ def _admin():
 
 
 def _to_build(client, title: str) -> dict:
+    """IF-7: plan attach no longer auto-conveyors to Build. This helper
+    absorbs the now-required explicit pull so every other IF-5 test keeps
+    its unchanged contract."""
     card = _to_spec(client, title)
     r = client.patch(
         f"/api/admin/iki-factory/cards/{card['id']}",
@@ -58,10 +61,19 @@ def _to_build(client, title: str) -> dict:
         json={"plan_ref": "docs/zz-if5-plan.md"},
     )
     assert r.status_code == 200, r.text
-    return r.json()["card"]
+    assert r.json()["card"]["lane"] == "spec"
+    pulled = client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "build"},
+    )
+    assert pulled.status_code == 200, pulled.text
+    return pulled.json()["card"]
 
 
 def _publish(client, title: str, *, free_vs_paid: str = "free") -> dict:
+    """IF-7: product-spec patch no longer auto-deploys. This helper absorbs
+    the now-required explicit pull to Live."""
     card = _to_build(client, title)
     r = client.patch(
         f"/api/admin/iki-factory/cards/{card['id']}",
@@ -73,24 +85,47 @@ def _publish(client, title: str, *, free_vs_paid: str = "free") -> dict:
         },
     )
     assert r.status_code == 200, r.text
-    return r.json()["card"]
+    assert r.json()["card"]["lane"] == "build"
+    pulled = client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "live"},
+    )
+    assert pulled.status_code == 200, pulled.text
+    return pulled.json()["card"]
 
 
 def test_lineage_idea_to_published(client):
+    """IF-7 re-author. Same conveyor mechanism the India-named tests cover
+    end to end across the whole lineage — not itself named, but directly
+    invalidated by the same retrain, so rewritten alongside them.
+
+    BEFORE (shipped, IF-5-G PASS): the lane key was "ideas", and three of
+    the four hops (ideas->research, spec->build, build->live) were
+    auto_move=True — the whole point of this test was proving the auto
+    conveyor left a complete, reasoned lineage trail.
+
+    AFTER (v1.0 §2.1 lane rename + §3.1 pull retrain): the lane is
+    "backlog", and there is no more auto conveyor to leave a trail for —
+    every hop is an explicit pull, auto_move=False throughout. The test's
+    real point survives unchanged: every hop still carries an actor and a
+    reason (charter invariant 4) — now that is true of ALL transitions,
+    not just the auto ones, which is IF-7's actual guarantee.
+    """
     got = _publish(client, "zz-if5-lineage")
     trans = client.get(
         f"/api/admin/iki-factory/cards/{got['id']}",
         cookies=_admin(),
     ).json()["transitions"]
     path = [(t["from_lane"], t["to_lane"], bool(t["auto_move"])) for t in trans]
-    assert path[0][:2] == (None, "ideas") or path[0][1] == "ideas"
-    assert ("ideas", "research", True) in path
+    assert path[0][:2] == (None, "backlog")
+    assert ("backlog", "research", False) in path
     assert ("research", "spec", False) in path
-    assert ("spec", "build", True) in path
-    assert ("build", "live", True) in path
-    autos = [t for t in trans if t["auto_move"]]
-    assert autos
-    assert all((t.get("reason") or "").strip() for t in autos)
+    assert ("spec", "build", False) in path
+    assert ("build", "live", False) in path
+    # IF-7's core guarantee: nothing in the whole lineage is auto anymore.
+    assert not any(t["auto_move"] for t in trans)
+    assert all((t.get("reason") or "").strip() for t in trans)
 
 
 def test_notify_called_on_published_and_survives_failure(client, monkeypatch):
@@ -146,6 +181,18 @@ def test_invalid_move_matrix(client):
 
 
 def test_hold_skips_spec_and_live(client):
+    """IF-7 re-author. Same conveyor mechanism as the named Hold tests in
+    IF-3/IF-4, exercised here across both gates in one lineage — not itself
+    named, but directly invalidated by the same retrain.
+
+    BEFORE (shipped, IF-5-G PASS): Hold blocked the patch-triggered
+    auto-fire at Spec and again at Build; clearing Hold let each dormant
+    auto-fire resume.
+
+    AFTER: patching never advances the card at either gate. Hold now blocks
+    the explicit pull itself, at each gate; clearing Hold resumes nothing
+    by itself — the pull that was rejected succeeds when retried.
+    """
     spec = _to_spec(client, "zz-if5-hold-spec")
     client.patch(
         f"/api/admin/iki-factory/cards/{spec['id']}",
@@ -158,13 +205,28 @@ def test_hold_skips_spec_and_live(client):
         json={"plan_ref": "docs/zz-if5-hold.md"},
     )
     assert r.json()["card"]["lane"] == "spec"
+
+    blocked = client.post(
+        f"/api/admin/iki-factory/cards/{spec['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "build"},
+    )
+    assert blocked.status_code == 422, blocked.text
+
     r2 = client.patch(
         f"/api/admin/iki-factory/cards/{spec['id']}",
         cookies=_admin(),
         json={"hold": False},
     )
-    assert r2.json()["card"]["lane"] == "build"
-    build = r2.json()["card"]
+    assert r2.json()["card"]["lane"] == "spec"  # clearing Hold moves nothing by itself
+    pulled = client.post(
+        f"/api/admin/iki-factory/cards/{spec['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "build"},
+    )
+    assert pulled.status_code == 200, pulled.text
+    build = pulled.json()["card"]
+
     client.patch(
         f"/api/admin/iki-factory/cards/{build['id']}",
         cookies=_admin(),
@@ -180,13 +242,28 @@ def test_hold_skips_spec_and_live(client):
         },
     )
     assert r3.json()["card"]["lane"] == "build"
+
+    blocked2 = client.post(
+        f"/api/admin/iki-factory/cards/{build['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "live"},
+    )
+    assert blocked2.status_code == 422, blocked2.text
+
     r4 = client.patch(
         f"/api/admin/iki-factory/cards/{build['id']}",
         cookies=_admin(),
         json={"hold": False},
     )
-    assert r4.json()["card"]["published"] is True
-    assert r4.json()["card"]["woo_reason"] == woo.WOO_STUB_REASON
+    assert r4.json()["card"]["lane"] == "build"  # clearing Hold deploys nothing by itself
+    pulled2 = client.post(
+        f"/api/admin/iki-factory/cards/{build['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "live"},
+    )
+    assert pulled2.status_code == 200, pulled2.text
+    assert pulled2.json()["card"]["published"] is True
+    assert pulled2.json()["card"]["woo_reason"] == woo.WOO_STUB_REASON
 
 
 def test_window_expiry_visible(client):

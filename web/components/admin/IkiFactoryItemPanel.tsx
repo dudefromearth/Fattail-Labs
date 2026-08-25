@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type Priority = "low" | "medium" | "high";
-type Lane = "ideas" | "research" | "spec" | "build" | "live";
+type Lane = "backlog" | "research" | "spec" | "build" | "live";
 
 export type Card = {
   id: number;
@@ -13,7 +12,6 @@ export type Card = {
   originator_label: string | null;
   notes: string | null;
   lane: Lane;
-  priority: Priority;
   hold: boolean;
   card_status: string;
   blocked_reason: string | null;
@@ -48,7 +46,7 @@ export type Attachment = {
 };
 
 const LANES: { id: Lane; label: string }[] = [
-  { id: "ideas", label: "Backlog" }, // display label only — key stays "ideas" until IF-7 (spec v1.0 §2.1)
+  { id: "backlog", label: "Backlog" }, // IF-7: key now matches the label (spec v1.0 §2.1)
   { id: "research", label: "Research" },
   { id: "spec", label: "Spec" },
   { id: "build", label: "Build" },

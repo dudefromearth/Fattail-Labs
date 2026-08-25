@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 
 import IkiFactoryItemPanel, { type Card } from "./IkiFactoryItemPanel";
 
-type Lane = "ideas" | "research" | "spec" | "build" | "live";
+type Lane = "backlog" | "research" | "spec" | "build" | "live";
 
 const LANES: { id: Lane; label: string }[] = [
-  { id: "ideas", label: "Backlog" }, // display label only — key stays "ideas" until IF-7 (spec v1.0 §2.1)
+  { id: "backlog", label: "Backlog" }, // IF-7: key now matches the label (spec v1.0 §2.1)
   { id: "research", label: "Research" },
   { id: "spec", label: "Spec" },
   { id: "build", label: "Build" },
@@ -61,7 +61,7 @@ export default function IkiFactoryBoard() {
 
   const byLane = useMemo(() => {
     const m: Record<Lane, Card[]> = {
-      ideas: [],
+      backlog: [],
       research: [],
       spec: [],
       build: [],
@@ -263,7 +263,7 @@ export default function IkiFactoryBoard() {
                 {byLane[lane.id].length}
               </span>
             </h2>
-            {lane.id === "ideas" && byLane.ideas.length === 0 ? (
+            {lane.id === "backlog" && byLane.backlog.length === 0 ? (
               <p className="text-sm text-[var(--color-label-secondary)]" data-testid="iki-factory-empty-ideas">
                 Nothing in the backlog yet. It moves when someone takes it — not
                 on its own.

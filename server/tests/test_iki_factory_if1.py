@@ -61,14 +61,35 @@ def _agent(callsign: str, scopes: list[str]) -> str:
     return minted["key"]
 
 
-def _create(client, title: str = "zz-if1-idea") -> dict:
+def _deposit(client, title: str = "zz-if1-idea") -> dict:
+    """Create-backlog only (v1.0 §2.1) — no pull. IF-7: the card lands in
+    the backlog lane and stays there; nothing moves it automatically."""
     r = client.post(
         "/api/admin/iki-factory/cards",
         cookies=_admin(),
-        json={"title": title, "priority": "high"},
+        json={"title": title},
     )
     assert r.status_code == 200, r.text
     return r.json()["card"]
+
+
+def _pull_to_research(client, card_id: int) -> dict:
+    r = client.post(
+        f"/api/admin/iki-factory/cards/{card_id}/move",
+        cookies=_admin(),
+        json={"to_lane": "research"},
+    )
+    assert r.status_code == 200, r.text
+    return r.json()["card"]
+
+
+def _create(client, title: str = "zz-if1-idea") -> dict:
+    """Setup convenience for every other test file: deposit + explicit pull
+    to research. IF-7 (v1.0 §3.1): this used to be one automatic step inside
+    `create_idea`; it is now two explicit calls. Every existing caller that
+    just needs "a card already in research" keeps working unchanged."""
+    card = _deposit(client, title)
+    return _pull_to_research(client, card["id"])
 
 
 def test_unauthenticated_401(client):
@@ -85,25 +106,47 @@ def test_non_admin_403(client):
 
 
 def test_create_idea_pickup_stub(client):
-    card = _create(client, "zz-if1-pickup")
-    assert card["lane"] == "research"
-    assert card["priority"] == "high"
-    assert card["auto_move_reason"]
-    assert "picked up" in card["auto_move_reason"].lower()
-    # IF-2: empty registry fail-loud (no invented findings).
-    assert card["blocked_reason"]
-    assert "skill" in card["blocked_reason"].lower()
+    """IF-7 re-author (India-named, DL-539 GO IKI-FACTORY-IF7).
+
+    BEFORE (shipped, IF-1-G PASS): `_create` posted once and asserted the
+    card was ALREADY in "research" — `create_idea` auto-jumped it there in
+    the same transaction, auto_move_reason populated, and a single
+    (ideas -> research, auto=True) transition existed alongside the
+    (None -> ideas, auto=False) creation entry.
+
+    AFTER (v1.0 §2.1, §3.1): deposit alone proves nothing moves — the card
+    stays in "backlog", auto_move_reason is empty, no research has been
+    attempted. A second, explicit pull is required to reach research, and
+    that pull is what now carries the old "picked up" reason and triggers
+    the IF-2 empty-registry fail-loud check. The transition log gains a
+    third property: every entry's `auto_move` is False, because there is
+    no more auto path left to set it True.
+    """
+    deposited = _deposit(client, "zz-if1-pickup")
+    assert deposited["lane"] == "backlog"
+    assert "priority" not in deposited
+    assert not deposited["auto_move_reason"]
+    assert not deposited["blocked_reason"]
+
+    pulled = _pull_to_research(client, deposited["id"])
+    assert pulled["lane"] == "research"
+    # IF-2: empty registry fail-loud (no invented findings) — still fires,
+    # now on the explicit pull rather than on creation.
+    assert pulled["blocked_reason"]
+    assert "skill" in pulled["blocked_reason"].lower()
+
     r = client.get(
-        f"/api/admin/iki-factory/cards/{card['id']}",
+        f"/api/admin/iki-factory/cards/{deposited['id']}",
         cookies=_admin(),
     )
     assert r.status_code == 200, r.text
     trans = r.json()["transitions"]
     lanes = [(t["from_lane"], t["to_lane"], t["auto_move"]) for t in trans]
-    assert (None, "ideas", False) in lanes or any(
-        t["to_lane"] == "ideas" and not t["auto_move"] for t in trans
-    )
-    assert any(t["from_lane"] == "ideas" and t["to_lane"] == "research" and t["auto_move"] for t in trans)
+    assert (None, "backlog", False) in lanes
+    assert ("backlog", "research", False) in lanes
+    # IF-7's core guarantee: nothing here is auto anymore.
+    assert not any(t["auto_move"] for t in trans)
+    assert all((t.get("reason") or "").strip() for t in trans)
 
 
 def test_admin_research_to_spec_allowed(client):

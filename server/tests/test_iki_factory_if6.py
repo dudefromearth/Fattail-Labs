@@ -48,7 +48,7 @@ def _admin():
 
 
 def _create(client, title: str = "zz-if6-idea", **extra) -> dict:
-    body = {"title": title, "priority": "medium", **extra}
+    body = {"title": title, **extra}
     r = client.post("/api/admin/iki-factory/cards", cookies=_admin(), json=body)
     assert r.status_code == 200, r.text
     return r.json()["card"]
@@ -165,12 +165,30 @@ def test_upload_attachment_rejects_unsupported_type(client):
     assert r.status_code == 415, r.text
 
 
-def test_priority_unchanged_and_still_required_on_create(client):
-    """Additive-only proof: v1.0 §2.2 cuts priority as a work-item concept,
-    but that removal touches shipped IF-1 code/tests and is out of scope for
-    this GO. Priority stays exactly as IF-1 shipped it."""
+def test_priority_cut(client):
+    """IF-7 re-author, same GO as the priority cut itself (DL-539 GO
+    IKI-FACTORY-IF7). Supersedes this file's own
+    test_priority_unchanged_and_still_required_on_create, which correctly
+    scoped priority as untouched for IF-6 — additive-only, and removing it
+    would have touched shipped IF-1 code/tests, out of scope for that GO.
+    IF-7's own named scope is exactly that removal (v1.0 §2.2).
+
+    A `priority` key sent on create is silently ignored, not rejected — no
+    invented validation error for a field that no longer means anything —
+    matching the create route's existing lenient-body convention. Patching
+    it is different: `patch_card` has always been strict about unknown
+    fields, and priority is now exactly that.
+    """
     card = _create(client, priority="high")
-    assert card["priority"] == "high"
+    assert "priority" not in card
+
+    r = client.patch(
+        f"/api/admin/iki-factory/cards/{card['id']}",
+        cookies=_admin(),
+        json={"priority": "low"},
+    )
+    assert r.status_code == 422, r.text
+    assert "priority" in r.json()["detail"]
 
 
 def test_unknown_patch_field_still_rejected(client):

@@ -76,7 +76,6 @@ async def post_card(request: Request) -> dict:
             actor,
             title=body.get("title") or "",
             notes=body.get("notes"),
-            priority=body.get("priority") or "medium",
             description=body.get("description"),
             originator_kind=body.get("originator_kind"),
             originator_label=body.get("originator_label"),
@@ -169,18 +168,17 @@ async def patch_card(card_id: int, request: Request) -> dict:
 
 @router.post("/cards/{card_id}/move")
 async def post_move(card_id: int, request: Request) -> dict:
+    """Pull, not push (IF-7). Backlog→Research: Gemba or a human (§3.3).
+    Every other transition's actor restriction is enforced in
+    `validate_move`. There is no `auto` flag anymore — every call here is
+    an explicit pull by whoever is authenticated."""
     actor = _factory_actor(request)
     body = await request.json()
-    auto = bool(body.get("auto"))
-    # Conveyor auto-advance is Gemba. Humans may not flag auto to skip gates.
-    if auto and actor.kind != "agent":
-        auto = False
     try:
         card = iki_factory.move_card(
             card_id,
             actor,
             to_lane=body.get("to_lane") or "",
-            auto=auto,
             reason=body.get("reason"),
         )
     except iki_factory.FactoryError as exc:

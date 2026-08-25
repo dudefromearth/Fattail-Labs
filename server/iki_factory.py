@@ -13,19 +13,18 @@ from typing import Any
 import db
 from agent_auth import Actor
 
-LANES = ("ideas", "research", "spec", "build", "live")
-PRIORITIES = ("low", "medium", "high")
+LANES = ("backlog", "research", "spec", "build", "live")
 CARD_STATUSES = ("active", "archived", "trashed", "rework")
 ORIGINATOR_KINDS = ("coach", "system", "agent", "outside")
 ATTACHMENT_KINDS = ("link", "upload")
-PICKUP_REASON = "Idea deposited — picked up for research."
+PICKUP_REASON = "Picked up for research."
 WAITING_SKILLS = "waiting for skills"
 WAITING_PLAN = "waiting for plan"
 WAITING_PRODUCT = "waiting for product spec"
-HOLD_REASON = "Hold is set — conveyor stopped."
+HOLD_REASON = "Hold is set. Nothing pulls while held."
 FREE_VS_PAID = ("free", "paid")
 DEPLOY_REASON = (
-    "Built-ready + product spec — conveyor to Live. "
+    "Built-ready + product spec — pulled to Live. "
     "Published is the result of the Admin product-spec gate (invariant #7). "
     "Deploy exposes a publication signal."
 )
@@ -68,7 +67,6 @@ def _row(r: dict[str, Any]) -> dict[str, Any]:
         "originator_label": r.get("originator_label"),
         "notes": r.get("notes"),
         "lane": r["lane"],
-        "priority": r["priority"],
         "owner_identity_id": int(r["owner_identity_id"]),
         "hold": bool(r["hold"]),
         "card_status": r["card_status"],
@@ -354,91 +352,25 @@ def _mark_built(cur, card_id: int) -> None:
     )
 
 
-def run_conveyor_spec_to_build(card_id: int) -> dict[str, Any]:
-    """Spec-ready + plan attached + not Hold → Build. Plan attachment is approval."""
-    moved = False
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            raw = _get_conn(cur, card_id)
-            if raw["lane"] != "spec":
-                return _row(raw)
-            if not raw.get("spec_ready") or not str(raw.get("plan_ref") or "").strip():
-                cur.execute(
-                    "UPDATE iki_factory_cards SET waiting_reason = %s WHERE id = %s",
-                    (WAITING_PLAN, card_id),
-                )
-                return _row(_get_conn(cur, card_id))
-            if raw.get("hold"):
-                return _row(raw)
-            reason = (
-                "Spec-ready + plan attached — conveyor to Build. "
-                "Plan attachment is Spec approval."
-            )
-            cur.execute(
-                """
-                UPDATE iki_factory_cards
-                   SET lane = 'build',
-                       built_ready = 1,
-                       blocked_reason = NULL,
-                       waiting_reason = NULL,
-                       auto_move_reason = %s
-                 WHERE id = %s
-                """,
-                (reason, card_id),
-            )
-            cur.execute(
-                "SELECT id FROM agent_principals WHERE callsign = 'gemba'"
-            )
-            g = cur.fetchone()
-            gid = int(g["id"]) if g else 0
-            _log(
-                cur,
-                card_id,
-                from_lane="spec",
-                to_lane="build",
-                actor=Actor(
-                    kind="agent",
-                    id=gid,
-                    label="gemba",
-                    role=None,
-                ),
-                reason=reason,
-                auto=True,
-            )
-            moved = True
-            out = _row(_get_conn(cur, card_id))
-    if moved:
-        _notify_factory(
-            out,
-            "built_ready",
-            "Build complete against the attached plan + Spec.",
-        )
-    return run_conveyor_build_to_live(card_id)
-
-
-def _gemba_actor() -> Actor:
-    with db.transaction() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id FROM agent_principals WHERE callsign = 'gemba'")
-            g = cur.fetchone()
-            gid = int(g["id"]) if g else 0
-    return Actor(kind="agent", id=gid, label="gemba", role=None)
-
-
 def execute_deploy(
     card_id: int,
     actor: Actor,
     *,
-    auto: bool,
     reason: str | None = None,
 ) -> dict[str, Any]:
-    """Write Published first. Woo stub after. Never pull back to Build."""
+    """Write Published first. Woo stub after. Never pull back to Build.
+
+    IF-7: this is the pull itself — Live is Coach's (the product-spec
+    completeness check below is the human promotion, invariant #7), but the
+    act of pulling a build-ready, product-complete card to Live is an
+    explicit, actor-recorded call, never a side effect of anything else.
+    """
     card = get_card(card_id)
     if card["lane"] == "live" and card.get("published"):
         return card
     if card["lane"] != "build":
         raise FactoryError("Deploy only from Build.")
-    if auto and card.get("hold"):
+    if card.get("hold"):
         return card
     if not card.get("built_ready") or not _product_complete(card):
         return _set_waiting(card_id, WAITING_PRODUCT)
@@ -472,7 +404,7 @@ def execute_deploy(
                 to_lane="live",
                 actor=actor,
                 reason=reason_s,
-                auto=auto,
+                auto=False,
             )
     published = get_card(card_id)
     import iki_factory_woo as woo
@@ -500,47 +432,38 @@ def execute_deploy(
     return out
 
 
-def run_conveyor_build_to_live(card_id: int) -> dict[str, Any]:
-    """Built-ready + product spec + not Hold → Live."""
-    card = get_card(card_id)
-    if card["lane"] != "build":
-        return card
-    if not card.get("built_ready") or not _product_complete(card):
-        return _set_waiting(card_id, WAITING_PRODUCT)
-    if card.get("hold"):
-        return card
-    return execute_deploy(card_id, _gemba_actor(), auto=True, reason=DEPLOY_REASON)
-
-
 def validate_move(
     card: dict[str, Any],
     to_lane: str,
     actor: Actor,
-    *,
-    auto: bool,
 ) -> str | None:
-    """Return reject reason, or None if allowed."""
+    """Return reject reason, or None if allowed.
+
+    IF-7 (v1.0 §3.1, §3.3): pull, not push. Every move here is an explicit
+    pull by an actor — there is no more "auto" case to carve an exception
+    for, so Hold blocks unconditionally, at every lane, for everyone.
+    """
     if to_lane not in LANES:
         return "Unknown lane."
     current = card["lane"]
     if to_lane == current:
         return None
     if card.get("card_status") not in ("active", "rework"):
-        return "Archived or trashed cards cannot move on the conveyor."
+        return "Archived or trashed cards cannot move."
 
     from_i = LANES.index(current)
     to_i = LANES.index(to_lane)
     forward = to_i > from_i
     one_step = to_i == from_i + 1
 
-    if auto and bool(card.get("hold")):
+    if bool(card.get("hold")):
         return HOLD_REASON
 
     if forward and not one_step:
         return ONE_STEP
 
     if current == "research" and to_lane == "spec":
-        if auto or not _is_admin_human(actor):
+        if not _is_admin_human(actor):
             return ADMIN_ONLY_RS
         return None
 
@@ -557,7 +480,7 @@ def validate_move(
         return None
 
     if forward:
-        if current == "ideas" and to_lane == "research":
+        if current == "backlog" and to_lane == "research":
             return None
         return ONE_STEP
 
@@ -572,21 +495,26 @@ def create_idea(
     *,
     title: str,
     notes: str | None = None,
-    priority: str = "medium",
     description: str | None = None,
     originator_kind: str | None = None,
     originator_label: str | None = None,
 ) -> dict[str, Any]:
-    """Backlog create (Spec v1.0 §2.1, §4). Originator is set at this boundary,
-    not editable afterward — it is the provenance record, not a card field."""
+    """Backlog create (Spec v1.0 §2.1, §4). Lands in the backlog lane and
+    stays there — nothing advances itself (IF-7, v1.0 §3.1). A separate,
+    explicit pull is required to move it anywhere. Originator is set at
+    this boundary, not editable afterward — it is the provenance record,
+    not a card field.
+
+    Priority is cut (v1.0 §2.2, IF-7) — not accepted, not stored, not
+    returned. A `priority` key in the request body is silently ignored,
+    matching this route's existing lenient-create-body convention; it is
+    not treated as an error the way an unknown `patch` field is.
+    """
     title = (title or "").strip()
     if not title:
         raise FactoryError("title is required")
-    pr = (priority or "medium").strip().lower()
-    if pr not in PRIORITIES:
-        raise FactoryError("priority must be low, medium, or high")
     if not _is_admin_human(actor):
-        raise FactoryError("Only an administrator may deposit Ideas.")
+        raise FactoryError("Only an administrator may deposit to the backlog.")
 
     ok = (originator_kind or "coach").strip().lower()
     if ok not in ORIGINATOR_KINDS:
@@ -603,56 +531,23 @@ def create_idea(
                 """
                 INSERT INTO iki_factory_cards
                   (title, description, originator_kind, originator_label,
-                   notes, lane, priority, owner_identity_id, waiting_reason)
-                VALUES (%s, %s, %s, %s, %s, 'ideas', %s, %s, NULL)
+                   notes, lane, owner_identity_id, waiting_reason)
+                VALUES (%s, %s, %s, %s, %s, 'backlog', %s, NULL)
                 """,
-                (title, description, ok, label, notes, pr, int(actor.id)),
+                (title, description, ok, label, notes, int(actor.id)),
             )
             card_id = int(cur.lastrowid)
             _log(
                 cur,
                 card_id,
                 from_lane=None,
-                to_lane="ideas",
+                to_lane="backlog",
                 actor=actor,
-                reason="Admin deposited Idea.",
+                reason="Deposited to the backlog.",
                 auto=False,
             )
-            cur.execute(
-                """
-                UPDATE iki_factory_cards
-                   SET lane = 'research',
-                       pickup_at = CURRENT_TIMESTAMP,
-                       auto_move_reason = %s,
-                       waiting_reason = %s,
-                       blocked_reason = NULL
-                 WHERE id = %s
-                """,
-                (PICKUP_REASON, WAITING_SKILLS, card_id),
-            )
-            _log(
-                cur,
-                card_id,
-                from_lane="ideas",
-                to_lane="research",
-                actor=actor,
-                reason=PICKUP_REASON,
-                auto=True,
-            )
-            from iki_factory_research import attempt_research
-
-            attempt_research(cur, card_id)
             row = _row(_get_conn(cur, card_id))
-    from iki_factory_research import _IMPLS, list_skills, run_registered_skills
-
-    skills = list_skills()
-    if skills and all((s["skill_id"], s["version"]) in _IMPLS for s in skills):
-        run_registered_skills(
-            row["id"],
-            {"title": row["title"], "notes": row.get("notes")},
-        )
-        return get_card(row["id"])
-    return get_card(row["id"])
+    return row
 
 
 def move_card(
@@ -660,18 +555,23 @@ def move_card(
     actor: Actor,
     *,
     to_lane: str,
-    auto: bool = False,
     reason: str | None = None,
 ) -> dict[str, Any]:
+    """Pull, not push (IF-7, v1.0 §3.1, §3.3). Every call is an explicit,
+    actor-initiated move. Nothing here triggers a further move as a side
+    effect — landing in Spec or Build no longer chains onward by itself;
+    the next lane is a separate pull. Actor and reason are always recorded
+    on the transition (charter invariant 4)."""
     to_lane = (to_lane or "").strip().lower()
     rejected: tuple[str, dict[str, Any]] | None = None
     deploy_after = False
+    pulled_to_research = False
     out: dict[str, Any] | None = None
     with db.transaction() as conn:
         with conn.cursor() as cur:
             raw = _get_conn(cur, card_id)
             card = _row(raw)
-            reject = validate_move(raw, to_lane, actor, auto=auto)
+            reject = validate_move(raw, to_lane, actor)
             if reject:
                 blocked = _set_blocked(cur, card_id, reject)
                 rejected = (reject, blocked)
@@ -680,20 +580,17 @@ def move_card(
             elif to_lane == "live":
                 deploy_after = True
             else:
-                waiting = None
-                auto_reason = None
-                if auto:
-                    auto_reason = (reason or "").strip() or "Conveyor auto-advance."
+                move_reason = (reason or "").strip() or f"Pulled by {actor.label}."
                 cur.execute(
                     """
                     UPDATE iki_factory_cards
                        SET lane = %s,
                            blocked_reason = NULL,
-                           auto_move_reason = %s,
-                           waiting_reason = %s
+                           auto_move_reason = NULL,
+                           waiting_reason = NULL
                      WHERE id = %s
                     """,
-                    (to_lane, auto_reason, waiting, card_id),
+                    (to_lane, card_id),
                 )
                 _log(
                     cur,
@@ -701,44 +598,67 @@ def move_card(
                     from_lane=card["lane"],
                     to_lane=to_lane,
                     actor=actor,
-                    reason=auto_reason or (reason or "").strip() or "Admin move.",
-                    auto=auto,
+                    reason=move_reason,
+                    auto=False,
                 )
                 if to_lane == "spec":
                     _draft_spec(cur, card_id)
                 if to_lane == "build":
                     _mark_built(cur, card_id)
+                if to_lane == "research":
+                    from iki_factory_research import attempt_research
+
+                    attempt_research(cur, card_id)
+                    pulled_to_research = True
                 out = _row(_get_conn(cur, card_id))
     if rejected:
         raise FactoryMoveError(rejected[0], rejected[1])
     if deploy_after:
-        return execute_deploy(card_id, actor, auto=auto, reason=reason)
+        return execute_deploy(card_id, actor, reason=reason)
     assert out is not None
+    if pulled_to_research:
+        from iki_factory_research import _IMPLS, list_skills, run_registered_skills
+
+        skills = list_skills()
+        if skills and all((s["skill_id"], s["version"]) in _IMPLS for s in skills):
+            run_registered_skills(
+                out["id"], {"title": out["title"], "notes": out.get("notes")}
+            )
+        return get_card(out["id"])
     if out["lane"] == "spec":
         _notify_factory(
             out,
             "spec_ready",
-            "Spec-ready. Attach a repo plan to approve and conveyor to Build.",
+            "Spec-ready. Attach a repo plan, then pull it to Build.",
         )
-        return run_conveyor_spec_to_build(out["id"])
+        return out
     if out["lane"] == "build" and out.get("built_ready"):
         _notify_factory(
             out,
             "built_ready",
             "Build complete against the attached plan + Spec.",
         )
-        return run_conveyor_build_to_live(out["id"])
+        return out
     return get_card(out["id"])
 
 
 def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, Any]:
+    """IF-7: patching a card never moves it. The spec-ready/plan-attached and
+    built-ready/product-complete auto-advance this used to perform on any
+    successful patch is gone (Delta IF-6-G, not-measured item 4) — a patch
+    only ever patches. Advancing lanes is always a separate, explicit pull.
+
+    Priority is cut (v1.0 §2.2) and is no longer an allowed field — patching
+    it now fails loud with "unknown field", the same as any other retired
+    or never-existed field, rather than silently accepted (create's lenient
+    body convention does not apply here; patch has always been strict).
+    """
     if not _is_admin_human(actor):
         raise FactoryError("Only an administrator may edit card fields.")
     allowed = {
         "title",
         "description",
         "notes",
-        "priority",
         "owner_identity_id",
         "hold",
         "plan_ref",
@@ -755,7 +675,6 @@ def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, An
             title = raw["title"]
             description = raw.get("description")
             notes = raw.get("notes")
-            priority = raw["priority"]
             owner = int(raw["owner_identity_id"])
             hold = int(raw["hold"])
             plan_ref = raw.get("plan_ref")
@@ -770,10 +689,6 @@ def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, An
                 description = body["description"]
             if "notes" in body:
                 notes = body["notes"]
-            if "priority" in body:
-                priority = str(body["priority"] or "").strip().lower()
-                if priority not in PRIORITIES:
-                    raise FactoryError("priority must be low, medium, or high")
             if "owner_identity_id" in body:
                 owner = int(body["owner_identity_id"])
             if "hold" in body:
@@ -805,7 +720,6 @@ def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, An
                    SET title = %s,
                        description = %s,
                        notes = %s,
-                       priority = %s,
                        owner_identity_id = %s,
                        hold = %s,
                        plan_ref = %s,
@@ -818,7 +732,6 @@ def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, An
                     title,
                     description,
                     notes,
-                    priority,
                     owner,
                     hold,
                     plan_ref,
@@ -828,11 +741,6 @@ def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, An
                     card_id,
                 ),
             )
-            row = _row(_get_conn(cur, card_id))
-    if row["lane"] == "spec" and row.get("spec_ready"):
-        return run_conveyor_spec_to_build(card_id)
-    if row["lane"] == "build" and row.get("built_ready"):
-        return run_conveyor_build_to_live(card_id)
     return get_card(card_id)
 
 

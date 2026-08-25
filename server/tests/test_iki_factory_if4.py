@@ -49,6 +49,10 @@ def _member():
 
 
 def _to_build(client, title: str) -> dict:
+    """IF-7: plan attach no longer auto-conveyors to Build (India-named
+    function). A separate, explicit pull is required; this helper absorbs
+    that so every other IF-4 test keeps its unchanged contract — a
+    build-ready card back from this call."""
     card = _to_spec(client, title)
     r = client.patch(
         f"/api/admin/iki-factory/cards/{card['id']}",
@@ -56,7 +60,14 @@ def _to_build(client, title: str) -> dict:
         json={"plan_ref": "docs/zz-if4-plan.md"},
     )
     assert r.status_code == 200, r.text
-    got = r.json()["card"]
+    assert r.json()["card"]["lane"] == "spec"
+    pulled = client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "build"},
+    )
+    assert pulled.status_code == 200, pulled.text
+    got = pulled.json()["card"]
     assert got["lane"] == "build"
     assert got["built_ready"] is True
     return got
@@ -89,6 +100,20 @@ def test_missing_product_spec_stays_build(client):
 
 
 def test_hold_blocks_deploy_clear_resumes(client):
+    """IF-7 re-author. Same mechanism as the India-named
+    test_product_spec_writes_published_then_stub, not itself named, but
+    directly invalidated by the same patch_card-tail removal (Delta
+    IF-6-G, not-measured item 4) — flagged and rewritten alongside it.
+
+    BEFORE (shipped, IF-4-G PASS): Hold blocked the patch's auto-deploy;
+    clearing Hold let that same patch's dormant effect resume, moving the
+    card to Live without a further request.
+
+    AFTER: patching product fields never deploys either way. What Hold
+    blocks now is the explicit "pull to Live" call itself; clearing Hold
+    does not deploy anything by itself — the pull that was rejected now
+    succeeds when retried.
+    """
     card = _to_build(client, "zz-if4-hold")
     client.patch(
         f"/api/admin/iki-factory/cards/{card['id']}",
@@ -98,12 +123,30 @@ def test_hold_blocks_deploy_clear_resumes(client):
     r = _product(client, card["id"])
     assert r.status_code == 200, r.text
     assert r.json()["card"]["lane"] == "build"
+
+    blocked = client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "live"},
+    )
+    assert blocked.status_code == 422, blocked.text
+    assert "hold" in blocked.json()["detail"]["reason"].lower()
+
     r2 = client.patch(
         f"/api/admin/iki-factory/cards/{card['id']}",
         cookies=_admin(),
         json={"hold": False},
     )
-    got = r2.json()["card"]
+    assert r2.status_code == 200, r.text
+    assert r2.json()["card"]["lane"] == "build"  # clearing Hold deploys nothing by itself
+
+    pulled = client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "live"},
+    )
+    assert pulled.status_code == 200, pulled.text
+    got = pulled.json()["card"]
     assert got["lane"] == "live"
     assert got["published"] is True
     assert got["woo_reason"] == woo.WOO_STUB_REASON
@@ -112,10 +155,33 @@ def test_hold_blocks_deploy_clear_resumes(client):
 
 
 def test_product_spec_writes_published_then_stub(client):
+    """IF-7 re-author (India-named, DL-539 GO IKI-FACTORY-IF7).
+
+    BEFORE (shipped, IF-4-G PASS): patching product type/tier/free-vs-paid
+    auto-deployed to Live in the same request — `auto_move_reason` carried
+    "invariant #7", and the build->live transition was auto_move=True.
+
+    AFTER (v1.0 §8.2, §8.3): the product-spec fields are still the human
+    promotion (invariant #7 unchanged) — Coach enters them, that IS the
+    gate — but reaching Live is now a separate, explicit pull. The patch
+    alone leaves the card in "build"; auto_move_reason is empty since
+    nothing is auto; the transition is auto_move=False, and its own reason
+    text is what carries "invariant #7" now.
+    """
     card = _to_build(client, "zz-if4-live")
     r = _product(client, card["id"])
     assert r.status_code == 200, r.text
-    got = r.json()["card"]
+    patched = r.json()["card"]
+    assert patched["lane"] == "build"  # patch alone does not deploy
+    assert not patched["auto_move_reason"]
+
+    pulled = client.post(
+        f"/api/admin/iki-factory/cards/{card['id']}/move",
+        cookies=_admin(),
+        json={"to_lane": "live"},
+    )
+    assert pulled.status_code == 200, pulled.text
+    got = pulled.json()["card"]
     assert got["lane"] == "live"
     assert got["published"] is True
     assert got["obtainable"] is True
@@ -124,15 +190,13 @@ def test_product_spec_writes_published_then_stub(client):
     assert got["woo_reason"] == woo.WOO_STUB_REASON
     assert got["store_visible"] is False
     assert got["woo_product_id"] is None
-    assert "invariant #7" in (got["auto_move_reason"] or "").lower()
     trans = client.get(
         f"/api/admin/iki-factory/cards/{got['id']}",
         cookies=_admin(),
     ).json()["transitions"]
-    assert any(
-        t["from_lane"] == "build" and t["to_lane"] == "live" and t["auto_move"]
-        for t in trans
-    )
+    deploy = next(t for t in trans if t["from_lane"] == "build" and t["to_lane"] == "live")
+    assert deploy["auto_move"] is False
+    assert "invariant #7" in (deploy.get("reason") or "").lower()
     sig = client.get("/api/iki-factory/publication-signal").json()["signals"]
     match = [s for s in sig if s["id"] == got["id"]]
     assert len(match) == 1
@@ -152,10 +216,22 @@ def test_woo_stub_does_not_return_success():
     assert "LABS_WOO" not in src
 
 
+def _deploy(client, card_id: int) -> dict:
+    """IF-7: patching product fields no longer deploys — the explicit pull
+    that used to be automatic is now this call."""
+    r = client.post(
+        f"/api/admin/iki-factory/cards/{card_id}/move",
+        cookies=_admin(),
+        json={"to_lane": "live"},
+    )
+    assert r.status_code == 200, r.text
+    return r.json()["card"]
+
+
 def test_woo_absence_leaves_published_not_build(client):
     card = _to_build(client, "zz-if4-woo-stub")
-    r = _product(client, card["id"])
-    got = r.json()["card"]
+    _product(client, card["id"])
+    got = _deploy(client, card["id"])
     assert got["lane"] == "live"
     assert got["published"] is True
     assert got["woo_reason"] == woo.WOO_STUB_REASON
@@ -166,6 +242,8 @@ def test_paid_not_obtainable_free_is(client):
     paid = _to_build(client, "zz-if4-paid")
     _product(client, free["id"], free_vs_paid="free")
     _product(client, paid["id"], free_vs_paid="paid")
+    _deploy(client, free["id"])
+    _deploy(client, paid["id"])
     listed = client.get("/api/iki-factory/live", cookies=_member()).json()["templates"]
     by_id = {t["id"]: t for t in listed}
     assert by_id[free["id"]]["obtainable"] is True
@@ -177,6 +255,7 @@ def test_catalog_visibility_by_id(client):
     build = _to_build(client, "zz-if4-hidden")
     live = _to_build(client, "zz-if4-shown")
     _product(client, live["id"])
+    _deploy(client, live["id"])
     listed = client.get("/api/iki-factory/live", cookies=_member()).json()["templates"]
     ids = {t["id"] for t in listed}
     assert live["id"] in ids
@@ -200,6 +279,7 @@ def test_gemba_cannot_rework_published(client):
 
     card = _to_build(client, "zz-if4-rework-gemba")
     _product(client, card["id"])
+    _deploy(client, card["id"])
     live = client.get(
         f"/api/admin/iki-factory/cards/{card['id']}",
         cookies=_admin(),
