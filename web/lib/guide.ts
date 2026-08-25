@@ -45,7 +45,6 @@ export const GUIDE_GROUPS: GuideGroup[] = [
       { id: "journey", label: "Journey" },
       { id: "toughness", label: "Toughness" },
       { id: "wiki", label: "Wiki" },
-      { id: "strategy-lab", label: "Strategy Lab" },
     ],
   },
   {
