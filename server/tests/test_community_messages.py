@@ -42,7 +42,7 @@ def test_upsert_discord_message_idempotent():
 
 
 def test_list_messages_api(client, probe_identity):
-    cookies = cookie_for("activator", probe_identity)
+    cookies = cookie_for("administrator")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT id FROM community_channels WHERE slug='practice'")

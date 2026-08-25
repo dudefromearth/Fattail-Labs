@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 import IkiFactoryBoard from "@/components/admin/IkiFactoryBoard";
 import IkiSuiteChrome from "@/components/iki/IkiSuiteChrome";
-import IkiFactoryLiveCatalog from "@/components/iki/IkiFactoryLiveCatalog";
 import { fetchMe } from "@/lib/useIsAdmin";
 
 export default function IkiFactoryPage() {
@@ -27,7 +26,7 @@ export default function IkiFactoryPage() {
           <IkiFactoryBoard />
         </div>
       ) : (
-        <IkiFactoryLiveCatalog />
+        <main className="px-6 py-10" data-testid="iki-factory-forbidden" />
       )}
     </IkiSuiteChrome>
   );

@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 import community_domain as cdom
 import db
 import identity as identity_mod
-from guards import require_session
+from guards import require_admin, require_session
 from labs_discord.config import bridge_config
 from labs_discord import sync as dsync
 
@@ -25,21 +25,9 @@ def _iid(claims: dict) -> int | None:
         return None
 
 
-def _role(claims: dict) -> str:
-    return str(claims.get("role") or "observer")
-
-
-def _require_chat_access(claims: dict) -> None:
-    """Signed-in + Discord-included tier (Spec §8.2). Alumni excluded."""
-    role = _role(claims)
-    if role == "administrator":
-        return
-    if role in ("observer", "activator", "navigator"):
-        return
-    raise HTTPException(
-        status_code=403,
-        detail="Community chat is for active Discord-included memberships",
-    )
+def _require_chat_access(request: Request) -> dict:
+    """Community app is administrator-only (Coach 2026-08-25). Removal, not a new membership gate."""
+    return require_admin(request)
 
 
 def _domain_http(exc: cdom.CommunityDomainError) -> HTTPException:
@@ -48,8 +36,7 @@ def _domain_http(exc: cdom.CommunityDomainError) -> HTTPException:
 
 @router.get("/api/me/community/board")
 def community_board(request: Request) -> dict:
-    claims = require_session(request)
-    _require_chat_access(claims)
+    claims = _require_chat_access(request)
     iid = _iid(claims)
     cfg = bridge_config()
     with db.transaction() as conn:
@@ -69,8 +56,7 @@ def community_board(request: Request) -> dict:
 
 @router.get("/api/me/community/channels")
 def list_channels(request: Request) -> dict:
-    claims = require_session(request)
-    _require_chat_access(claims)
+    claims = _require_chat_access(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             return {"channels": cdom.list_channels(cur)}
@@ -78,8 +64,7 @@ def list_channels(request: Request) -> dict:
 
 @router.get("/api/me/community/channels/{slug}")
 def get_channel(slug: str, request: Request) -> dict:
-    claims = require_session(request)
-    _require_chat_access(claims)
+    claims = _require_chat_access(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             ch = cdom.get_channel_by_slug(cur, slug)
@@ -90,8 +75,7 @@ def get_channel(slug: str, request: Request) -> dict:
 
 @router.get("/api/me/community/apps/{app_key}/channel")
 def channel_for_app(app_key: str, request: Request) -> dict:
-    claims = require_session(request)
-    _require_chat_access(claims)
+    claims = _require_chat_access(request)
     if app_key in cdom.FORBIDDEN_APP_KEYS:
         raise HTTPException(
             status_code=404,
@@ -107,13 +91,13 @@ def channel_for_app(app_key: str, request: Request) -> dict:
 
 @router.get("/api/me/community/shelves/fattail")
 def fattail_shelf(request: Request) -> dict:
-    require_session(request)
+    _require_chat_access(request)
     return cdom.fattail_shelf()
 
 
 @router.get("/api/me/community/shelves/shares")
 def member_shares(request: Request) -> dict:
-    require_session(request)
+    _require_chat_access(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             return {"shares": cdom.list_community_shares(cur)}
@@ -131,8 +115,7 @@ def discord_status(request: Request) -> dict:
 @router.get("/api/me/community/channels/{slug}/messages")
 def list_messages(slug: str, request: Request, limit: int = 50) -> dict:
     """List mirrored messages; backfill from Discord when bridge is on."""
-    claims = require_session(request)
-    _require_chat_access(claims)
+    claims = _require_chat_access(request)
     cfg = bridge_config()
     backfill_info = None
     with db.transaction() as conn:
@@ -163,8 +146,7 @@ def list_messages(slug: str, request: Request, limit: int = 50) -> dict:
 
 @router.post("/api/me/community/channels/{slug}/messages")
 async def post_message(slug: str, request: Request) -> dict:
-    claims = require_session(request)
-    _require_chat_access(claims)
+    claims = _require_chat_access(request)
     iid = _iid(claims)
     if not iid:
         raise HTTPException(status_code=401, detail="Sign in required")

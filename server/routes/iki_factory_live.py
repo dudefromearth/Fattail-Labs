@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 
 import iki_factory
-from guards import require_session
+from guards import require_admin
 
 router = APIRouter(tags=["iki-factory-live"])
 
@@ -22,13 +22,13 @@ def get_publication_signal() -> dict:
 
 @router.get("/api/iki-factory/live")
 def get_live_catalog(request: Request) -> dict:
-    require_session(request)
+    require_admin(request)
     return {"templates": iki_factory.list_live()}
 
 
 @router.get("/api/iki-factory/live/{card_id}")
 def get_live_one(card_id: int, request: Request) -> dict:
-    require_session(request)
+    require_admin(request)
     try:
         return {"template": iki_factory.get_live(card_id)}
     except iki_factory.FactoryError as exc:

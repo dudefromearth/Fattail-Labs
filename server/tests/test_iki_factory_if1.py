@@ -241,8 +241,21 @@ def test_does_not_write_content_items(client):
 def test_factory_board_lives_on_suite_pill():
     page = (ROOT / "web/app/app/iki/factory/page.tsx").read_text()
     assert "IkiFactoryBoard" in page
-    assert "IkiFactoryLiveCatalog" in page
-    catalog = (ROOT / "web/components/iki/IkiFactoryLiveCatalog.tsx").read_text()
-    assert 'data-testid="iki-factory-live"' in catalog
+    assert "IkiFactoryLiveCatalog" not in page
     admin = (ROOT / "web/app/admin/iki-factory/page.tsx").read_text()
     assert 'redirect("/app/iki/factory")' in admin
+    suite = (ROOT / "web/lib/ikiSuite.ts").read_text()
+    assert 'id: "about"' in suite
+    assert 'id: "catalog"' in suite
+    assert 'id: "runner"' in suite
+    assert 'href: "/app/iki/runner"' in suite
+    about = (ROOT / "web/app/app/iki/about/page.tsx").read_text()
+    catalog = (ROOT / "web/app/app/iki/catalog/page.tsx").read_text()
+    assert "IkiComingBanner" in about
+    assert "IkiWikiPanel" in about
+    assert "WikiSearchWidget" in (ROOT / "web/components/iki/IkiWikiPanel.tsx").read_text()
+    assert "IkiComingBanner" in catalog
+    assert "IkiWikiPanel" not in catalog
+    banner = (ROOT / "web/lib/ikiSuite.ts").read_text()
+    assert 'IKI_ABOUT_BANNER_COPY = ""' in banner
+    assert 'IKI_CATALOG_BANNER_COPY = ""' in banner

@@ -92,18 +92,13 @@ function AppCard({
     t.slug === "wiki" ||
     t.slug === "practice-log" ||
     t.slug === "toughness" ||
-    t.slug === "strategy-lab" ||
-    t.slug === "community";
+    t.slug === "strategy-lab";
   const badgeStatus =
-    t.slug === "practice-log" ||
-    t.slug === "toughness" ||
-    t.slug === "community"
+    t.slug === "practice-log" || t.slug === "toughness"
       ? "live"
       : t.slug === "strategy-lab"
         ? "soon"
-        : t.slug === "wiki"
-          ? t.status
-          : t.status;
+        : t.status;
   return (
     <div
       data-highlighted={t.highlighted ? "true" : "false"}

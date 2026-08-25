@@ -48,8 +48,14 @@ def test_board_api_requires_session(client):
     assert r.status_code in (401, 403)
 
 
-def test_board_api_channels_and_fattail_shelf(client, probe_identity):
+def test_board_api_member_forbidden(client, probe_identity):
     cookies = cookie_for("activator", probe_identity)
+    r = client.get("/api/me/community/board", cookies=cookies)
+    assert r.status_code == 403, r.text
+
+
+def test_board_api_channels_and_fattail_shelf(client, probe_identity):
+    cookies = cookie_for("administrator")
     r = client.get("/api/me/community/board", cookies=cookies)
     assert r.status_code == 200, r.text
     body = r.json()
@@ -77,8 +83,16 @@ def test_board_api_channels_and_fattail_shelf(client, probe_identity):
     assert body["discord"]["linked"] is False
 
 
-def test_channel_by_app_key(client, probe_identity):
+def test_channel_by_app_key_member_forbidden(client, probe_identity):
     cookies = cookie_for("navigator", probe_identity)
+    r = client.get(
+        "/api/me/community/apps/strategy-lab/channel", cookies=cookies
+    )
+    assert r.status_code == 403, r.text
+
+
+def test_channel_by_app_key(client, probe_identity):
+    cookies = cookie_for("administrator")
     r = client.get(
         "/api/me/community/apps/strategy-lab/channel", cookies=cookies
     )
@@ -93,7 +107,7 @@ def test_channel_by_app_key(client, probe_identity):
 
 
 def test_messages_list_ok(client, probe_identity):
-    cookies = cookie_for("activator", probe_identity)
+    cookies = cookie_for("administrator")
     r = client.get(
         "/api/me/community/channels/general/messages", cookies=cookies
     )
@@ -105,7 +119,7 @@ def test_messages_list_ok(client, probe_identity):
 
 
 def test_fattail_shelf_endpoint(client, probe_identity):
-    cookies = cookie_for("observer", probe_identity)
+    cookies = cookie_for("administrator")
     r = client.get("/api/me/community/shelves/fattail", cookies=cookies)
     assert r.status_code == 200, r.text
     data = r.json()

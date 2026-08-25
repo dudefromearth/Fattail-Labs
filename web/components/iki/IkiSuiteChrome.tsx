@@ -35,7 +35,7 @@ export default function IkiSuiteChrome({
           ›
         </span>
         <Link
-          href="/app/wiki"
+          href="/app/iki/about"
           className="rounded-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-tint)]"
         >
           IKI Lab

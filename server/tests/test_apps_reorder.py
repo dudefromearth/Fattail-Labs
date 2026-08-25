@@ -84,7 +84,7 @@ def test_reorder_rewrites_sort_order_x10(client, admin_cookies):
         assert body["ok"] is True
         assert body["count"] == len(reversed_ids)
 
-        listed = client.get("/api/apps").json()["apps"]
+        listed = client.get("/api/apps", cookies=admin_cookies).json()["apps"]
         by_id = {int(a["id"]): a for a in listed}
         for pos, aid in enumerate(reversed_ids, 1):
             assert by_id[aid]["sort_order"] == pos * 10

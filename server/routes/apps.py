@@ -61,9 +61,18 @@ def _row(r: dict) -> dict:
     }
 
 
+def _caller_is_admin(request: Request) -> bool:
+    try:
+        require_admin(request)
+        return True
+    except HTTPException:
+        return False
+
+
 @router.get("/api/apps")
-def list_apps() -> dict:
-    """Public catalog of member apps (id + slug + title)."""
+def list_apps(request: Request) -> dict:
+    """Member catalog. Community is administrator-only (Coach 2026-08-25)."""
+    admin = _caller_is_admin(request)
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -71,11 +80,16 @@ def list_apps() -> dict:
                    FROM apps ORDER BY sort_order, id"""
             )
             rows = cur.fetchall()
-    return {"apps": [_row(r) for r in rows]}
+    apps = [_row(r) for r in rows]
+    if not admin:
+        apps = [a for a in apps if a["slug"] != "community"]
+    return {"apps": apps}
 
 
 @router.get("/api/apps/{slug}")
-def get_app(slug: str) -> dict:
+def get_app(slug: str, request: Request) -> dict:
+    if slug == "community" and not _caller_is_admin(request):
+        raise HTTPException(status_code=404, detail="App not found")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(

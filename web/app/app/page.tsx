@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import SectionHubShell from "@/components/section-hub/SectionHubShell";
 import AppsGrid from "@/components/apps/AppsGrid";
-import { apiGet } from "@/lib/api";
+import { apiUrl, sessionCookieHeader } from "@/lib/api";
 import { siteUrl } from "@/lib/catalog";
 import {
   buildTopLevelCatalog,
@@ -32,12 +32,21 @@ const FALLBACK: SitePage = {
 
 async function fetchApps(): Promise<AppRow[]> {
   try {
-    const data = await apiGet<{ apps: AppRow[] }>("/api/apps", {
+    let cookie = "";
+    try {
+      cookie = await sessionCookieHeader();
+    } catch {
+      cookie = "";
+    }
+    const res = await fetch(apiUrl("/api/apps"), {
       cache: "no-store",
+      headers: cookie ? { Cookie: cookie } : undefined,
     });
-    return data.apps?.length ? data.apps : FALLBACK_APPS;
+    if (!res.ok) throw new Error(`API ${res.status} for /api/apps`);
+    const data = (await res.json()) as { apps: AppRow[] };
+    return data.apps?.length ? data.apps : FALLBACK_APPS.filter((a) => a.slug !== "community");
   } catch {
-    return FALLBACK_APPS;
+    return FALLBACK_APPS.filter((a) => a.slug !== "community");
   }
 }
 
@@ -74,7 +83,7 @@ export async function generateMetadata(): Promise<Metadata> {
   );
   const description = metaDescriptionFromMd(
     page.description_md,
-    "Member tools: Journey, Practice suite, Strategy Lab, Wiki, and more.",
+    "Member tools: Journey, Practice suite, Strategy Lab, IKI Lab, and more.",
   );
   return {
     title: page.title,

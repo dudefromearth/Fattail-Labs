@@ -89,7 +89,7 @@ export const FALLBACK_APPS: AppRow[] = [
   {
     id: 0,
     slug: "wiki",
-    title: "Wiki",
+    title: "IKI Lab",
     blurb:
       "The compiled map of everything we teach — courses, live sessions, and videos, cross-linked and searchable.",
     status: "soon",
@@ -153,16 +153,15 @@ export function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
     : fallbackBySlug("strategy-lab");
 
   const communityFromApi = bySlug.get("community");
-  const community: AppRow = communityFromApi
+  const community: AppRow | null = communityFromApi
     ? {
         ...communityFromApi,
         title: communityFromApi.title || "Community",
         blurb:
           communityFromApi.blurb || fallbackBySlug("community").blurb,
         href: communityFromApi.href || "/app/community",
-        status: "live",
       }
-    : fallbackBySlug("community");
+    : null;
 
   const optionsFromApi = bySlug.get("options-lab");
   const optionsLab: AppRow = optionsFromApi
@@ -190,7 +189,15 @@ export function buildTopLevelCatalog(apiApps: AppRow[]): AppRow[] {
   composed.set("toughness", toughness);
   composed.set("strategy-lab", strategy);
   composed.set("options-lab", optionsLab);
-  composed.set("community", community);
+  if (community) composed.set("community", community);
+
+  const wikiRow = composed.get("wiki");
+  if (wikiRow) {
+    composed.set("wiki", {
+      ...wikiRow,
+      title: "IKI Lab",
+    });
+  }
 
   const catalogIdsComplete = [...composed.values()].every((a) => a.id > 0);
   if (catalogIdsComplete) {

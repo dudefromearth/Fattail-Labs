@@ -276,7 +276,7 @@ def test_paid_not_obtainable_free_is(client):
     _product(client, paid["id"], free_vs_paid="paid")
     _deploy(client, free["id"])
     _deploy(client, paid["id"])
-    listed = client.get("/api/iki-factory/live", cookies=_member()).json()["templates"]
+    listed = client.get("/api/iki-factory/live", cookies=_admin()).json()["templates"]
     by_id = {t["id"]: t for t in listed}
     assert by_id[free["id"]]["obtainable"] is True
     assert by_id[paid["id"]]["obtainable"] is False
@@ -289,18 +289,18 @@ def test_catalog_visibility_by_id(client):
     _to_staged(client, live["id"])
     _product(client, live["id"])
     _deploy(client, live["id"])
-    listed = client.get("/api/iki-factory/live", cookies=_member()).json()["templates"]
+    listed = client.get("/api/iki-factory/live", cookies=_admin()).json()["templates"]
     ids = {t["id"] for t in listed}
     assert live["id"] in ids
     assert build["id"] not in ids
     hidden = client.get(
         f"/api/iki-factory/live/{build['id']}",
-        cookies=_member(),
+        cookies=_admin(),
     )
     assert hidden.status_code == 404
     shown = client.get(
         f"/api/iki-factory/live/{live['id']}",
-        cookies=_member(),
+        cookies=_admin(),
     )
     assert shown.status_code == 200, shown.text
     assert shown.json()["template"]["id"] == live["id"]
@@ -347,9 +347,13 @@ def test_admin_rework_from_published(client):
     assert r.json()["card"]["card_status"] == "rework"
 
 
-def test_live_requires_session(client):
+def test_live_requires_admin(client):
     r = client.get("/api/iki-factory/live")
     assert r.status_code == 401
+    member = client.get("/api/iki-factory/live", cookies=_member())
+    assert member.status_code == 403
+    admin = client.get("/api/iki-factory/live", cookies=_admin())
+    assert admin.status_code == 200
 
 
 def test_factory_does_not_touch_wiki_or_runner():

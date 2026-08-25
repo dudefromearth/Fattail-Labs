@@ -77,10 +77,13 @@ test.describe("IKI Factory IF-1 browser walk", () => {
     await page.goto("/api/auth/dev-login-practice");
     await page.waitForURL(/\/app\/trade-log|\/home|\//, { timeout: 30_000 });
     await page.goto("/app/iki/factory");
-    await expect(page.getByTestId("iki-factory-live")).toBeVisible({
+    await expect(page.getByTestId("iki-factory-board")).toHaveCount(0);
+    await expect(page.getByTestId("iki-suite-nav")).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByTestId("iki-factory-board")).toHaveCount(0);
+    await expect(page.getByTestId("iki-suite-nav-factory")).toHaveCount(0);
+    await expect(page.getByTestId("iki-suite-nav-about")).toBeVisible();
+    await expect(page.getByTestId("iki-suite-nav-catalog")).toBeVisible();
     await page.screenshot({
       path: path.join(EVIDENCE, "if1-nonadmin-soon.png"),
       fullPage: true,
