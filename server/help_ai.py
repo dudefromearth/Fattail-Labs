@@ -387,7 +387,7 @@ def _finalize(parsed: dict | None) -> dict:
     }
 
 
-def answer(category: str, thread: list[dict]) -> dict:
+def answer(category: str, thread: list[dict], page_context: str | None = None) -> dict:
     """Return {"reply": str, "resolved": bool, "topic": str}. Never raises; escalates on
     any failure (unconfigured, model/network error, unparseable output, empty reference).
     """
@@ -404,11 +404,18 @@ def answer(category: str, thread: list[dict]) -> dict:
         return {"reply": ESCALATION_REPLY, "resolved": False, "topic": "general"}
 
     msgs = _base_messages(category, thread)
+    if page_context:
+        msgs.append({"role": "system", "content": (
+            f"The member is currently on this page: {page_context}. Use it to "
+            "resolve words like 'this', 'here', 'this page', 'this screen', or "
+            "'the other view' — they almost certainly mean the area or tool at "
+            "that route. Explain how to get where they want from there."
+        )})
     # Proactively ground round 1 with the sections most relevant to the member's latest
     # message (falls back to the overview + area map), so the model can answer helpfully
     # straight away instead of reflexively handing off.
     member_q = _last_member_text(thread)
-    pre_ref = _search([member_q]) if member_q else ""
+    pre_ref = _search([q for q in (member_q, page_context) if q])
     if pre_ref:
         msgs.append({"role": "system", "content": (
             "Relevant reference sections for the member's latest message — use these to "

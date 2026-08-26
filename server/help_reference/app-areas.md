@@ -52,6 +52,18 @@ that campaign — same Autofilter, not a second control. Search-and-assign is no
 the Trade Log — that is Find and Badge, on the Campaigns page. See **Trade Log
 Autofilter**.
 
+## New trade
+To log a position by hand, use the **New trade** button on the Trade Log (you can
+also **Import** a file or paste a thinkorswim ticket). In the trade sheet you set
+everything about the trade yourself: the **underlying**, the strategy, and the legs
+(strike, expiry, side, quantity, price), plus your process notes, then save.
+
+**Changing the underlying (e.g. from SPX):** yes — the underlying is a normal
+editable field. It just **defaults to SPX** (and defaults to SPY for stock, /ES for
+futures, or a crypto pair depending on the asset class), but you can type **any
+symbol** you traded. It is not locked to SPX — change it to whatever the trade was
+on.
+
 ## Campaigns
 Optional practice charters. A campaign is a **badge**, not a book. The book is the
 contents of one account; assigning a badge does not move a fill between books. A

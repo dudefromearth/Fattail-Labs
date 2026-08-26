@@ -181,6 +181,7 @@ async def create_question(request: Request) -> dict:
         res = help_ai.answer(
             "" if auto_topic else category,
             [{"author_role": "member", "body": qbody}],
+            page_context=page,
         )
         resolved = bool(res.get("resolved"))
         if auto_topic:
@@ -258,7 +259,7 @@ async def add_my_message(question_id: int, request: Request) -> dict:
     with db.transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, identity_id, subject, body, category, status FROM help_questions WHERE id = %s",
+                "SELECT id, identity_id, subject, body, category, status, page_context FROM help_questions WHERE id = %s",
                 (question_id,),
             )
             q = cur.fetchone()
@@ -273,13 +274,14 @@ async def add_my_message(question_id: int, request: Request) -> dict:
             status = q["status"]
             category = q["category"]
             opening = q["body"]
+            page = q.get("page_context")
 
     # Bot is still handling this thread → let the concierge reply.
     if status in ("ai_resolved", "ai_pending") and help_ai.is_enabled():
         with db.transaction() as conn:
             with conn.cursor() as cur:
                 thread = _load_ai_thread(cur, question_id, opening)
-        res = help_ai.answer(category, thread)
+        res = help_ai.answer(category, thread, page_context=page)
         resolved = bool(res.get("resolved"))
         _store_ai_reply(question_id, res["reply"], resolved)
         if not resolved:
