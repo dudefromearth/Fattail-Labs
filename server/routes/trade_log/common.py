@@ -13,6 +13,7 @@ import db
 import retrospective_domain as rd
 import trade_log_catalog as cat
 from config import get_config
+from trade_log_domain.matching import blotter_status_by_id
 
 # DL-126 / DL-128: Observer membership = Navigator Practice access (Trade Log,
 # Reports). Free no-plan observer stays denied. Same gate as Journal / Retro.
@@ -194,6 +195,22 @@ def _account_row(r: dict) -> dict:
     return out
 
 
+def _coerce_leg_expiry(r: dict) -> str | None:
+    """ISO date from the stored column, or from a ToS futures Symbol if null."""
+    raw = r.get("expiry")
+    if raw:
+        if hasattr(raw, "isoformat"):
+            return raw.isoformat()
+        s = str(raw)
+        return s[:10] if len(s) >= 10 else s
+    symbol = r.get("symbol")
+    if not symbol:
+        return None
+    from trade_log_io import _parse_expiry
+
+    return _parse_expiry(str(symbol))
+
+
 def _leg_row(r: dict) -> dict:
     return {
         "id": r["id"],
@@ -204,7 +221,7 @@ def _leg_row(r: dict) -> dict:
         "asset_class": r.get("asset_class") or "equity_option",
         "underlier": r.get("underlier"),
         "symbol": r.get("symbol"),
-        "expiry": r["expiry"].isoformat() if r.get("expiry") else None,
+        "expiry": _coerce_leg_expiry(r),
         "strike": float(r["strike"]) if r.get("strike") is not None else None,
         "right": r.get("option_right"),
         "multiplier": r.get("multiplier"),
@@ -619,6 +636,14 @@ _TRADE_BOOK_LIMIT = 10000
 # Blotter UI default page — keep client memory bounded (lazy “load more”).
 _TRADE_PAGE_DEFAULT = 80
 _TRADE_PAGE_MAX = 200
+
+# O3 Status matching is in-memory on the SQL-filtered book. Above this we
+# fail loud — never a page-local Status under a full-book Autofilter UI.
+_BLOTTER_STATUS_BUDGET = _TRADE_BOOK_LIMIT
+_STATUS_BUDGET_DETAIL = (
+    "Status filter needs the full account book in memory. This book exceeds "
+    f"{_TRADE_BOOK_LIMIT} trades. Not applying a page-local Status filter."
+)
 
 
 def _load_accounts(cur, iid: int) -> list[dict]:
@@ -1036,9 +1061,14 @@ def _load_member_book_page(
     months: str | None = None,
     days: str | None = None,
     campaigns: str | None = None,
+    statuses: str | None = None,
     positions_only: bool = False,
-) -> tuple[list[dict], list[dict], bool, str | None]:
-    """Paginated trades for blotter. Newest first. Returns has_more, next_cursor."""
+) -> tuple[list[dict], list[dict], bool, str | None, int, int]:
+    """Paginated trades for blotter. Newest first.
+
+    Returns has_more, next_cursor, match_count (filtered book), book_count
+    (standing scope, no Autofilter).
+    """
     _ensure_default_account(cur, iid)
     limit = max(1, min(int(limit or _TRADE_PAGE_DEFAULT), _TRADE_PAGE_MAX))
     before_exec, before_id = _parse_list_cursor(cursor)
@@ -1068,6 +1098,24 @@ def _load_member_book_page(
     )
     clauses.extend(cr_c)
     args.extend(cr_a)
+    pb_c, pb_a = _playbook_stamp_filter_clauses(
+        playbook_entry_id, playbook_mode=playbook_mode
+    )
+    clauses.extend(pb_c)
+    args.extend(pb_a)
+    extra, extra_args = _adherence_filter_clauses(
+        adherence_mode, from_day=from_day, to_day=to_day
+    )
+    clauses.extend(extra)
+    args.extend(extra_args)
+    standing_where = " AND ".join(clauses)
+    standing_args = list(args)
+    cur.execute(
+        f"SELECT COUNT(*) AS n FROM member_trade_log_trades WHERE {standing_where}",
+        tuple(standing_args),
+    )
+    book_count = int((cur.fetchone() or {}).get("n") or 0)
+
     fd_c, fd_a = _find_filter_clauses(
         iid,
         strategies=strategies,
@@ -1081,17 +1129,54 @@ def _load_member_book_page(
     )
     clauses.extend(fd_c)
     args.extend(fd_a)
-    pb_c, pb_a = _playbook_stamp_filter_clauses(
-        playbook_entry_id, playbook_mode=playbook_mode
-    )
-    clauses.extend(pb_c)
-    args.extend(pb_a)
-    extra, extra_args = _adherence_filter_clauses(
-        adherence_mode, from_day=from_day, to_day=to_day
-    )
-    clauses.extend(extra)
-    args.extend(extra_args)
+
+    status_toks = [
+        t
+        for t in _csv_values(statuses)
+        if t in ("Open", "Complete", "Orphan close", "none")
+    ]
+
     where = " AND ".join(clauses)
+    accounts = _load_accounts(cur, iid)
+
+    if status_toks:
+        cur.execute(
+            f"""SELECT * FROM member_trade_log_trades
+                WHERE {where}
+                ORDER BY exec_at DESC, id DESC LIMIT %s""",
+            tuple(args + [_BLOTTER_STATUS_BUDGET + 1]),
+        )
+        raw = list(cur.fetchall())
+        if len(raw) > _BLOTTER_STATUS_BUDGET:
+            raise HTTPException(status_code=422, detail=_STATUS_BUDGET_DETAIL)
+        pool = _rows_to_trades(cur, raw, iid)
+        st_map = blotter_status_by_id(pool)
+        want = set(status_toks)
+        picked = []
+        for t in pool:
+            token = st_map.get(int(t["id"])) or "none"
+            if token in want:
+                picked.append(t)
+        match_count = len(picked)
+        if before_exec is not None and before_id is not None:
+            picked = [
+                t
+                for t in picked
+                if _cursor_before(t, before_exec, before_id)
+            ]
+        has_more = len(picked) > limit
+        trades = picked[:limit]
+        next_cursor = (
+            _encode_list_cursor(trades[-1]) if has_more and trades else None
+        )
+        return trades, accounts, has_more, next_cursor, match_count, book_count
+
+    cur.execute(
+        f"SELECT COUNT(*) AS n FROM member_trade_log_trades WHERE {where}",
+        tuple(args),
+    )
+    match_count = int((cur.fetchone() or {}).get("n") or 0)
+
     if positions_only:
         join = _position_leg_join_sql().format(alias="t")
         pred = _position_row_predicate("t")
@@ -1136,7 +1221,22 @@ def _load_member_book_page(
         rows = rows[:limit]
     trades = _rows_to_trades(cur, rows, iid)
     next_cursor = _encode_list_cursor(trades[-1]) if has_more and trades else None
-    return trades, _load_accounts(cur, iid), has_more, next_cursor
+    return trades, accounts, has_more, next_cursor, match_count, book_count
+
+
+def _cursor_before(trade: dict, before_exec: str, before_id: int) -> bool:
+    exec_at = str(trade.get("exec_at") or "").replace("T", " ").replace("Z", "")
+    if len(exec_at) > 19:
+        exec_at = exec_at[:19]
+    be = str(before_exec).replace("T", " ").replace("Z", "")
+    if len(be) > 19:
+        be = be[:19]
+    tid = int(trade.get("id") or 0)
+    if exec_at < be:
+        return True
+    if exec_at == be and tid < before_id:
+        return True
+    return False
 
 
 def _position_leg_join_sql() -> str:
@@ -1365,5 +1465,96 @@ def trade_distincts(cur, iid: int) -> dict:
         "effects": effects,
         "symbols": symbols,
         "campaigns": campaigns,
+    }
+
+
+def blotter_distincts(cur, iid: int, account_id: int | None) -> dict:
+    """Account-book Autofilter lists (trades, not Find and Badge positions).
+
+    Status distincts require in-memory match. Over ``_BLOTTER_STATUS_BUDGET``
+    fails loud (O3).
+    """
+    clauses = ["identity_id = %s"]
+    args: list[Any] = [iid]
+    if account_id is not None:
+        _get_account(cur, iid, account_id)
+        clauses.append("account_id = %s")
+        args.append(account_id)
+    where = " AND ".join(clauses)
+
+    def _ymd(v: object) -> str | None:
+        if v is None:
+            return None
+        s = str(v)
+        return s[:10] if len(s) >= 10 else s
+
+    cur.execute(
+        f"""SELECT DISTINCT DATE(exec_at) AS d
+              FROM member_trade_log_trades
+             WHERE {where} AND exec_at IS NOT NULL
+             ORDER BY d DESC
+             LIMIT 4000""",
+        tuple(args),
+    )
+    days = [x for x in (_ymd(r.get("d")) for r in (cur.fetchall() or [])) if x]
+    cur.execute(
+        f"""SELECT DISTINCT strategy AS strategy
+              FROM member_trade_log_trades
+             WHERE {where} AND strategy IS NOT NULL AND strategy <> ''
+             ORDER BY strategy""",
+        tuple(args),
+    )
+    strategies = [str(r["strategy"]) for r in (cur.fetchall() or [])]
+    cur.execute(
+        f"""SELECT DISTINCT COALESCE(NULLIF(l.underlier, ''), NULLIF(l.symbol, '')) AS sym
+              FROM member_trade_log_legs l
+             WHERE l.identity_id = %s
+               AND l.trade_id IN (
+                    SELECT id FROM member_trade_log_trades WHERE {where}
+               )
+               AND COALESCE(NULLIF(l.underlier, ''), NULLIF(l.symbol, '')) IS NOT NULL
+             ORDER BY sym
+             LIMIT 400""",
+        tuple([iid, *args]),
+    )
+    symbols = [str(r["sym"]) for r in (cur.fetchall() or []) if r.get("sym")]
+    cur.execute(
+        f"""SELECT DISTINCT practice_campaign_id
+              FROM member_trade_log_trades WHERE {where}""",
+        tuple(args),
+    )
+    campaigns: list[str] = []
+    seen_none = False
+    ids: list[int] = []
+    for r in cur.fetchall() or []:
+        cid = r.get("practice_campaign_id")
+        if cid is None:
+            seen_none = True
+        else:
+            ids.append(int(cid))
+    if seen_none:
+        campaigns.append("none")
+    campaigns.extend(str(i) for i in sorted(ids))
+
+    cur.execute(
+        f"""SELECT * FROM member_trade_log_trades
+             WHERE {where}
+             ORDER BY exec_at DESC, id DESC LIMIT %s""",
+        tuple(args + [_BLOTTER_STATUS_BUDGET + 1]),
+    )
+    raw = list(cur.fetchall())
+    if len(raw) > _BLOTTER_STATUS_BUDGET:
+        raise HTTPException(status_code=422, detail=_STATUS_BUDGET_DETAIL)
+    pool = _rows_to_trades(cur, raw, iid)
+    st_map = blotter_status_by_id(pool)
+    statuses = sorted({st_map[int(t["id"])] for t in pool if int(t["id"]) in st_map})
+    if any(int(t["id"]) not in st_map for t in pool):
+        statuses.append("none")
+    return {
+        "days": days,
+        "strategies": strategies,
+        "symbols": symbols,
+        "campaigns": campaigns,
+        "statuses": statuses,
     }
 

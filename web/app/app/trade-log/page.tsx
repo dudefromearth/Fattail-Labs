@@ -20,14 +20,14 @@ import PositionsView from "@/components/capital/PositionsView";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import type { Account, Catalog, Trade } from "@/lib/tradeLog";
 import {
-  applyAutofilter,
+  filtersActive,
   type DateWindow,
   type FilterMap,
 } from "@/lib/autofilter";
 import {
+  autofilterToListQuery,
   campaignColumnFilter,
   strategyLabelsFromCatalog,
-  tradeLogColumns,
 } from "@/lib/tradeLogAutofilter";
 import {
   buildCloseDraftFromOpen,
@@ -36,6 +36,7 @@ import {
 } from "@/lib/tradeLog";
 import {
   exportUrl,
+  fetchBlotterDistincts,
   fetchCatalog,
   fetchTrades,
   fetchUnmatchedOpens,
@@ -107,6 +108,12 @@ function TradeLogBody() {
   const [deepLinked, setDeepLinked] = useState(false);
   /** O4 clean visit — Autofilter is session state, never lastUsed. */
   const [autofilter, setAutofilter] = useState<FilterMap>({});
+  const [bookDistincts, setBookDistincts] = useState<
+    Record<string, string[]> | undefined
+  >(undefined);
+  const [matchCount, setMatchCount] = useState(0);
+  const [bookCount, setBookCount] = useState(0);
+  const blotterDaysRef = useRef<string[]>([]);
   /** Log blotter vs cross-account Positions valuation (Spec v0.2). */
   const [viewMode, setViewMode] = useState<"log" | "positions">("log");
   /** Account chrome stays as load scope. Campaign is Autofilter, not fetch. */
@@ -218,6 +225,7 @@ function TradeLogBody() {
     setError(null);
     setNextCursor(null);
     setHasMore(false);
+    const afq = autofilterToListQuery(autofilter, blotterDaysRef.current);
     Promise.all([
       fetchTrades(listAccountId, {
         limit: PAGE_LIMIT,
@@ -228,11 +236,19 @@ function TradeLogBody() {
         adherence_mode: adherenceMode === "drift" ? "drift" : null,
         from_day: blotterFromDay,
         to_day: blotterToDay,
+        years: afq.years,
+        months: afq.months,
+        days: afq.days,
+        strategies: afq.strategies,
+        symbols: afq.symbols,
+        campaigns: afq.campaigns,
+        statuses: afq.statuses,
       }),
       fetchUnmatchedOpens(listAccountId),
       fetchCatalog(),
+      fetchBlotterDistincts(listAccountId),
     ])
-      .then(async ([tr, opens, vn]) => {
+      .then(async ([tr, opens, vn, dist]) => {
         if (!tr.ok) {
           const msg =
             tr.error.kind === "err" ? tr.error.message : tr.error.kind;
@@ -268,6 +284,45 @@ function TradeLogBody() {
         setTrades(tr.data.trades || []);
         setHasMore(!!tr.data.has_more);
         setNextCursor(tr.data.next_cursor ?? null);
+        setMatchCount(
+          typeof tr.data.match_count === "number"
+            ? tr.data.match_count
+            : (tr.data.trades || []).length,
+        );
+        setBookCount(
+          typeof tr.data.book_count === "number"
+            ? tr.data.book_count
+            : (tr.data.trades || []).length,
+        );
+        if (dist.ok) {
+          const days = dist.data.days || [];
+          blotterDaysRef.current = days;
+          setBookDistincts({
+            when: days,
+            campaign: dist.data.campaigns || [],
+            strategy: dist.data.strategies || [],
+            symbol: dist.data.symbols || [],
+            status: dist.data.statuses || [],
+          });
+        } else if (
+          dist.error.kind === "err" &&
+          /Status filter needs the full account book/i.test(
+            dist.error.message || "",
+          )
+        ) {
+          // O3: never fall back to page-local Status under a book UI
+          setState("err");
+          setError(dist.error.message);
+          return;
+        } else {
+          setBookDistincts({
+            when: [],
+            campaign: [],
+            strategy: [],
+            symbol: [],
+            status: [],
+          });
+        }
         if (opens.ok) {
           const rawOpens = opens.data.trades || [];
           setOpenTrades(rawOpens);
@@ -304,12 +359,14 @@ function TradeLogBody() {
     adherenceMode,
     blotterFromDay,
     blotterToDay,
+    autofilter,
   ]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || !nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
+      const afq = autofilterToListQuery(autofilter, blotterDaysRef.current);
       const tr = await fetchTrades(listAccountId, {
         limit: PAGE_LIMIT,
         cursor: nextCursor,
@@ -320,6 +377,13 @@ function TradeLogBody() {
         adherence_mode: adherenceMode === "drift" ? "drift" : null,
         from_day: blotterFromDay,
         to_day: blotterToDay,
+        years: afq.years,
+        months: afq.months,
+        days: afq.days,
+        strategies: afq.strategies,
+        symbols: afq.symbols,
+        campaigns: afq.campaigns,
+        statuses: afq.statuses,
       });
       if (!tr.ok) {
         setLoadingMore(false);
@@ -345,6 +409,7 @@ function TradeLogBody() {
     adherenceMode,
     blotterFromDay,
     blotterToDay,
+    autofilter,
   ]);
 
   useEffect(() => {
@@ -456,15 +521,9 @@ function TradeLogBody() {
     return [...byId.values()];
   }, [trades, openTrades, selected]);
 
-  const autofilterCols = useMemo(
-    () => tradeLogColumns(sheetTrades.length ? sheetTrades : trades),
-    [sheetTrades, trades],
-  );
-  const autofilterResult = useMemo(
-    () => applyAutofilter(trades, autofilterCols, autofilter),
-    [trades, autofilterCols, autofilter],
-  );
-  const tableTrades = autofilterResult.rows;
+  const tableTrades = trades;
+  const ratioShown = tableTrades.length;
+  const ratioTotal = filtersActive(autofilter) ? matchCount : bookCount;
 
   const setCampaignColumn = useCallback((campaignId: number) => {
     setAutofilter((prev) => campaignColumnFilter(prev, campaignId));
@@ -652,6 +711,7 @@ function TradeLogBody() {
       {viewMode === "log" && state === "ok" &&
         accountId !== "all" &&
         trades.length === 0 &&
+        !filtersActive(autofilter) &&
         mergedAccounts.some(
           (a) =>
             a.status === "active" &&
@@ -713,6 +773,9 @@ function TradeLogBody() {
           campaignLabels={campaignLabels}
           strategyLabels={strategyLabels}
           campaignWindows={campaignWindows}
+          bookDistincts={bookDistincts}
+          autofilterShown={ratioShown}
+          autofilterTotal={ratioTotal}
           onCampaignColumn={setCampaignColumn}
           openCount={unmatched.length}
           selectedId={selected?.id}

@@ -42,6 +42,9 @@ export type Leg = {
   fees?: number | null;
 };
 
+/** Virtual expire-worthless close — matching only, never persisted. */
+export const SYNTHETIC_EXPIRED_WORTHLESS = "expired_worthless";
+
 /**
  * How the fill entered the book — three channels, never conflated:
  * - manual: member structure form / legs sheet
@@ -78,6 +81,8 @@ export type Trade = {
   practice_campaign_id?: number | null;
   /** member | memory | null — stamp provenance (Spec §9 badge tier). */
   stamped_by?: string | null;
+  /** Matching-only expire-worthless row (not a blotter fill). */
+  synthetic?: string | null;
 };
 
 /** Normalize API/legacy values for display and policy. */
@@ -432,15 +437,62 @@ function holdWithinLimit(openDay: string, closeDay: string): boolean {
   return span >= 0 && span <= MAX_STRUCTURE_HOLD_DAYS;
 }
 
+function todayYmdLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export type CloseSlice = {
+  close: Trade;
+  close_day: string;
+  units: number;
+};
+
 export type OpenCloseMatch = {
   open: Trade;
   open_day: string;
   close: Trade | null;
   close_day: string | null;
+  open_units?: number;
+  closed_units?: number;
+  closes?: CloseSlice[];
 };
 
+function slotRemaining(m: OpenCloseMatch): number {
+  const openU = m.open_units ?? 0;
+  const closedU = m.closed_units ?? 0;
+  return Math.max(0, openU - closedU);
+}
+
+function syntheticExpireClose(open: Trade, exp: string): Trade {
+  const legs = (open.legs || []).map((l) => ({
+    ...l,
+    side: (l.side === "BUY" ? "SELL" : "BUY") as "BUY" | "SELL",
+    pos_effect: "TO_CLOSE" as const,
+    fill_price: 0,
+  }));
+  return {
+    ...open,
+    id: -open.id,
+    exec_at: `${exp}T16:00:00`,
+    order_type: "EXPIRED",
+    net_price: 0,
+    net_side: null,
+    legs,
+    synthetic: SYNTHETIC_EXPIRED_WORTHLESS,
+    pnl_amount: null,
+  };
+}
+
 /** FIFO open→close by structure key (mirrors server matching.py). */
-export function matchOpenClose(trades: Trade[]): OpenCloseMatch[] {
+export function matchOpenClose(
+  trades: Trade[],
+  asOf?: string,
+): OpenCloseMatch[] {
+  const asOfDay = (asOf || todayYmdLocal()).slice(0, 10);
   const sorted = [...trades].sort((a, b) => {
     const ea = a.exec_at || "";
     const eb = b.exec_at || "";
@@ -457,6 +509,7 @@ export function matchOpenClose(trades: Trade[]): OpenCloseMatch[] {
 
     const key = structureKey(t);
     const isClose = tradeIsCloseFill(t);
+    const units = Math.max(unitQty(t) || 1, 1);
 
     if (!isClose) {
       const m: OpenCloseMatch = {
@@ -464,6 +517,9 @@ export function matchOpenClose(trades: Trade[]): OpenCloseMatch[] {
         open_day: day,
         close: null,
         close_day: null,
+        open_units: units,
+        closed_units: 0,
+        closes: [],
       };
       const q = queues.get(key) || [];
       q.push(m);
@@ -472,14 +528,42 @@ export function matchOpenClose(trades: Trade[]): OpenCloseMatch[] {
       continue;
     }
 
+    let remainingClose = units;
     const q = queues.get(key) || [];
-    const openSlot = q.find(
-      (m) => m.close === null && holdWithinLimit(m.open_day, day),
-    );
-    if (openSlot) {
-      openSlot.close = t;
-      openSlot.close_day = day;
+    for (const openSlot of q) {
+      if (remainingClose <= 0) break;
+      const leftover = slotRemaining(openSlot);
+      if (leftover <= 0) continue;
+      if (!holdWithinLimit(openSlot.open_day, day)) continue;
+      const take = Math.min(leftover, remainingClose);
+      openSlot.closed_units = (openSlot.closed_units ?? 0) + take;
+      remainingClose -= take;
+      (openSlot.closes ||= []).push({
+        close: t,
+        close_day: day,
+        units: take,
+      });
+      if (slotRemaining(openSlot) <= 0) {
+        openSlot.close = t;
+        openSlot.close_day = day;
+      }
     }
+  }
+
+  for (const m of result) {
+    const leftover = slotRemaining(m);
+    if (leftover <= 0) continue;
+    const exp = tradeExpiry(m.open);
+    if (!exp || exp > asOfDay) continue;
+    const synth = syntheticExpireClose(m.open, exp);
+    (m.closes ||= []).push({
+      close: synth,
+      close_day: exp,
+      units: leftover,
+    });
+    m.closed_units = m.open_units;
+    m.close = synth;
+    m.close_day = exp;
   }
   return result;
 }
@@ -523,7 +607,7 @@ export function canDeleteTrade(
   }
   // Open (or non-close) fill
   const close = findPairedClose(all, trade.id);
-  if (close) {
+  if (close && !close.synthetic) {
     return {
       ok: false,
       reason: `Delete the TO CLOSE fill (#${close.id}) first. Only then can this TO OPEN be deleted.`,

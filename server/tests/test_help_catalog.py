@@ -55,6 +55,10 @@ def test_trade_log_autofilter_published():
         assert "Autofilter" in body["title"]
         assert body["body"] == path.read_text(encoding="utf-8")
         assert "Find and Badge" in body["body"]
+        low = body["body"].lower()
+        assert "account" in low and "book" in low
+        assert "already loaded on the page" not in low
+        assert "already in the loaded book" not in low
 
 
 def test_unknown_id_404():

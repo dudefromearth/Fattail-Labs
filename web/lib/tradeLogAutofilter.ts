@@ -1,6 +1,7 @@
 /** Trade Log Autofilter column readers — host-side, not inside the shared component. */
 
 import { NONE_TOKEN, type ColumnDef, type FilterMap } from "@/lib/autofilter";
+import { compactWhen } from "@/lib/tradeLogWhenTree";
 import { positionBadge, type Trade } from "@/lib/tradeLog";
 
 export const TL_STATUS = {
@@ -102,4 +103,34 @@ export function campaignColumnFilter(
   campaignId: number,
 ): FilterMap {
   return { ...prev, campaign: [String(campaignId)] };
+}
+
+function csv(xs: string[] | undefined): string | null {
+  if (!xs || xs.length === 0) return null;
+  return xs.join(",");
+}
+
+/** B — FilterMap → Find and Badge list params (+ statuses). */
+export function autofilterToListQuery(
+  filters: FilterMap,
+  allDays: string[],
+): {
+  years?: string | null;
+  months?: string | null;
+  days?: string | null;
+  strategies?: string | null;
+  symbols?: string | null;
+  campaigns?: string | null;
+  statuses?: string | null;
+} {
+  const when = compactWhen(filters.when, allDays);
+  return {
+    years: when.years ?? null,
+    months: when.months ?? null,
+    days: when.days ?? null,
+    strategies: csv(filters.strategy),
+    symbols: csv(filters.symbol),
+    campaigns: csv(filters.campaign),
+    statuses: csv(filters.status),
+  };
 }

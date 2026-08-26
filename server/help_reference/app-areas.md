@@ -44,8 +44,10 @@ website, not here.
 ## Trade Log
 A practice tool for recording your trades and reviewing them over time. It's the book
 of record for your practice — what you did, and how it turned out. Each account is one
-book. Filter the **loaded** blotter with **Autofilter** on the Trade history row
-(Exec time, Campaign, Strategy, Symbol, Status). Tap a campaign badge on a row to filter to
+book. Filter the **account book** with **Autofilter** on the Trade history row
+(Exec time, Campaign, Strategy, Symbol, Status). The table is a **page** of
+matches; shown is this page, total is how many in the book match. Status is
+the full book. Tap a campaign badge on a row to filter to
 that campaign — same Autofilter, not a second control. Search-and-assign is not on
 the Trade Log — that is Find and Badge, on the Campaigns page. See **Trade Log
 Autofilter**.
@@ -73,9 +75,9 @@ set is a date range plus a **position** count (single, vertical, butterfly, and 
 — not raw fills; a close-out of the same structure is not a second position). The table
 pages 50 at a time.
 
-The same Autofilter **menus** are used on the Trade Log title bar to filter trades
-already loaded. That is a different job — not search, not badge assign. See
-**Trade Log Autofilter**.
+The same Autofilter **menus** are used on the Trade Log title bar to filter this
+account’s book (the table shows a page of matches). That is a different job —
+not search, not badge assign. See **Trade Log Autofilter**.
 
 ## Journal
 Guided journaling to reflect on your trading and your mindset, session by session. Where

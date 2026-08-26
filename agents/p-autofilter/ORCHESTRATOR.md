@@ -1,13 +1,16 @@
 # P-Autofilter Orchestrator
 
-**Active slice:** Trade Log only — **CLOSED**.  
+**Active slice:** Book universe **TLAB2-G** — Help + as-built. TLAB3 not fired.  
 Juliet runs this board. Specialists via seeds. Delta ternary gates.
 
-**Plan:** [`docs/Trade-Log-Autofilter-Full-Agent-Bench-Plan-v1_0.md`](../../docs/Trade-Log-Autofilter-Full-Agent-Bench-Plan-v1_0.md)  
+**Plan (TLAF closed):** [`docs/Trade-Log-Autofilter-Full-Agent-Bench-Plan-v1_0.md`](../../docs/Trade-Log-Autofilter-Full-Agent-Bench-Plan-v1_0.md)  
 **Spec:** [`Specs/FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1_1.md`](../../Specs/FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1_1.md) **BUILD AUTHORITY** · **DL-584** · **DL-586**  
 **Parked:** Autofilter Spec v0.2 / plan v1.1 (journal, records, five remaining deferred columns). Not the next GO.
 
-**Next slice:** Strategy column **GO SPEC DL-587** · **O1/O2 DL-588** · **TLAS1-G PASS** · **TLAS2-G PASS** — TLAS3 not fired  
+**Strategy column:** **TLAS1-G PASS** · **TLAS2-G PASS** — TLAS3 not fired  
+
+**Book universe:** **BUILD AUTHORITY** mechanic **B** · **GO SPEC DL-591** · **O1 DL-590** · **O2/O3 DL-591** · **GO TLAB1** · **GO TLAB2 DL-592**  
+[`Specs/FatTail-Labs-Trade-Log-Autofilter-Book-Universe-Spec-v0_1.md`](../../Specs/FatTail-Labs-Trade-Log-Autofilter-Book-Universe-Spec-v0_1.md) · plan [`docs/Trade-Log-Autofilter-Book-Universe-Full-Agent-Bench-Plan-v1_0.md`](../../docs/Trade-Log-Autofilter-Book-Universe-Full-Agent-Bench-Plan-v1_0.md)  
 [`Specs/FatTail-Labs-Trade-Log-Autofilter-Strategy-Column-Spec-v0_1.md`](../../Specs/FatTail-Labs-Trade-Log-Autofilter-Strategy-Column-Spec-v0_1.md) · plan [`docs/Trade-Log-Autofilter-Strategy-Column-Full-Agent-Bench-Plan-v1_0.md`](../../docs/Trade-Log-Autofilter-Strategy-Column-Full-Agent-Bench-Plan-v1_0.md)
 
 ```text
@@ -50,5 +53,18 @@ TLAF0 → TLAF1 extract → TLAF2 Trade Log cut (first deploy) → TLAF3 Help �
 | TLAS2-2-kilo | Kilo | **done** `reviews/TLAS2-2-kilo.md` |
 | TLAS2-G | Delta | **PASS** `gate-reports/TLAS2-G.md` |
 | TLAS3+ | — | not fired |
+| TLAB0-1-india | India | **done** `reviews/TLAB0-1-india.md` |
+| TLAB0-2-echo-tango | Echo, Tango | **done** `reviews/TLAB0-2-echo-tango.md` |
+| TLAB0-3-hotel | Hotel | **done** `reviews/TLAB0-3-hotel.md` |
+| TLAB0-4-kilo | Kilo | **done** `reviews/TLAB0-4-kilo.md` |
+| TLAB0-G | Delta | **PASS** `gate-reports/TLAB0-G.md` |
+| TLAB1-1-alpha | Alpha | **done** blotter distincts + match_count + Status |
+| TLAB1-2-charlie | Charlie | **done** Autofilter drives fetch; shown/total book-honest |
+| TLAB1-3-kilo | Kilo | **done** `reviews/TLAB1-3-kilo.md` |
+| TLAB1-G | Delta | **PASS** `gate-reports/TLAB1-G.md` |
+| TLAB2-1-lima | Lima | **done** help + Arch 15 §5.4 · **DL-592** |
+| TLAB2-2-kilo | Kilo | **done** `reviews/TLAB2-2-kilo.md` |
+| TLAB2-G | Delta | **PASS** `gate-reports/TLAB2-G.md` |
+| TLAB3+ | — | not fired |
 
-**Do not:** fire TLAS1 from chat · unpark journal/records · add Account/Expiry/Right/Entry source/Adherence in this slice · rewrite Find and Badge · restore `blotter-campaign-filter`.
+**Do not:** fire TLAB3 from this gate · unpark journal/records · add Account/Expiry/Right/Entry source/Adherence in this slice · rewrite Find and Badge · restore `blotter-campaign-filter` · silently ship page-local Status.

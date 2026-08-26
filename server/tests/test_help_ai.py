@@ -217,6 +217,12 @@ def test_search_trade_log_autofilter():
     assert "butterfly" in strat or "stored" in strat or "code" in strat
     on = help_ai._search(["filter on shown total blotter"]).lower()
     assert "filter on" in on
+    assert "page" in on and ("book" in on or "match" in on)
+    book = help_ai._search(["autofilter account book page"]).lower()
+    assert "account" in book and "book" in book
+    assert "page" in book
+    st = help_ai._search(["autofilter status full book"]).lower()
+    assert "status" in st and "book" in st
     badge = help_ai._search(["campaign badge autofilter trade log"]).lower()
     assert "badge" in badge and "campaign" in badge
     blob = " ".join(
@@ -229,6 +235,8 @@ def test_search_trade_log_autofilter():
         "show me the edge",
         "journal autofilter",
         "records autofilter",
+        "already loaded on the page",
+        "already in the loaded book",
     ):
         assert word not in blob, word
     areas = " ".join(
@@ -238,6 +246,9 @@ def test_search_trade_log_autofilter():
     ).lower()
     assert "trade log autofilter" in areas
     assert "autofilter" in areas
+    assert "account book" in areas or "account’s book" in areas
+    assert "loaded blotter" not in areas
+    assert "already loaded" not in areas
 
 
 # --- output parsing ----------------------------------------------------------

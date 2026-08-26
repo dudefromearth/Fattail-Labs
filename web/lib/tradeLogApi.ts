@@ -47,6 +47,8 @@ export type TradesPage = {
   has_more?: boolean;
   next_cursor?: string | null;
   page_limit?: number | null;
+  match_count?: number;
+  book_count?: number;
 };
 
 /** Phase 2 process report pack — adherence + campaigns (no P&L). */
@@ -279,6 +281,7 @@ export async function fetchTrades(
     months?: string | null;
     days?: string | null;
     campaigns?: string | null;
+    statuses?: string | null;
     /** Typed positions only (single / vertical / butterfly / …). */
     positions_only?: boolean;
   },
@@ -315,6 +318,7 @@ export async function fetchTrades(
   if (opts?.months) q.set("months", opts.months);
   if (opts?.days) q.set("days", opts.days);
   if (opts?.campaigns) q.set("campaigns", opts.campaigns);
+  if (opts?.statuses) q.set("statuses", opts.statuses);
   if (opts?.positions_only) q.set("positions_only", "true");
   if (opts?.full) {
     q.set("full", "1");
@@ -342,6 +346,55 @@ export async function fetchUnmatchedOpens(
     credentials: "same-origin",
   });
   return parseJson(r);
+}
+
+export type BlotterDistincts = {
+  days: string[];
+  strategies: string[];
+  symbols: string[];
+  campaigns: string[];
+  statuses: string[];
+};
+
+function blotterTokenList(xs: unknown): string[] {
+  if (!Array.isArray(xs)) return [];
+  const out: string[] = [];
+  for (const x of xs) {
+    if (typeof x === "string") {
+      if (x) out.push(x);
+    } else if (typeof x === "number" && Number.isFinite(x)) {
+      out.push(String(x));
+    } else if (x && typeof x === "object" && "id" in x) {
+      const id = (x as { id: unknown }).id;
+      out.push(id == null ? "none" : String(id));
+    }
+  }
+  return out;
+}
+
+export async function fetchBlotterDistincts(
+  accountId?: number | null,
+): Promise<AnalyticsResult<BlotterDistincts>> {
+  const q = new URLSearchParams();
+  q.set("blotter", "1");
+  if (accountId != null && accountId > 0) {
+    q.set("account_id", String(accountId));
+  }
+  const r = await fetch(`/api/me/trade-log/distincts?${q}`, {
+    credentials: "same-origin",
+  });
+  const parsed = await parseJson<BlotterDistincts>(r);
+  if (!parsed.ok) return parsed;
+  return {
+    ok: true,
+    data: {
+      days: blotterTokenList(parsed.data.days),
+      strategies: blotterTokenList(parsed.data.strategies),
+      symbols: blotterTokenList(parsed.data.symbols),
+      campaigns: blotterTokenList(parsed.data.campaigns),
+      statuses: blotterTokenList(parsed.data.statuses),
+    },
+  };
 }
 
 export async function fetchCatalog(): Promise<

@@ -15,7 +15,7 @@ from trade_log_domain.day_net_calendar import (
     build_day_net_calendar,
     intensity_step,
 )
-from trade_log_domain.matching import match_open_close
+from trade_log_domain.matching import blotter_status_by_id, match_open_close
 from trade_log_domain.pnl import enrich_trades_with_synthetic_pnl, realized_pnl
 from trade_log_domain.reports import build_reports_book
 from trade_log_domain.structure import (

@@ -86,10 +86,15 @@ assert.doesNotMatch(page, /setFilterOpenOnly\(true\)/);
 assert.match(table, /blotter-playbook-filter/);
 assert.match(ctxBar, /practice-account-select/);
 
-// One stream — Practice date/campaign not applied to fetch
+// One stream — Practice date/campaign not applied to fetch.
+// TLAB1 B: FilterMap drives GET params; do not client-apply as membership.
 assert.doesNotMatch(page, /dateFilterActive \? rangeFromYmd/);
 assert.doesNotMatch(page, /practice_campaign_id:\s*\n\s*campaignFilter/);
-assert.match(page, /applyAutofilter/);
+assert.doesNotMatch(page, /applyAutofilter\(/);
+assert.match(page, /autofilterToListQuery/);
+assert.match(page, /fetchBlotterDistincts/);
+assert.match(page, /years: afq\.years/);
+assert.match(page, /statuses: afq\.statuses/);
 assert.match(page, /blotterFromDay = filterFromDay \|\| null/);
 
 // A12 — shared engine; host columns outside autofilter/

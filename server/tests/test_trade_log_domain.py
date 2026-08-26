@@ -1,6 +1,7 @@
 """Pure domain characterization — PH1-1 golden fixtures (useful invariants only)."""
 
 from trade_log_domain import (
+    blotter_status_by_id,
     build_day_book,
     build_reports_book,
     enrich_trades_with_synthetic_pnl,
@@ -8,6 +9,8 @@ from trade_log_domain import (
     structure_key,
     unit_qty,
 )
+from trade_log_domain.matching import STATUS_COMPLETE, STATUS_OPEN, STATUS_ORPHAN
+from trade_log_domain.matching import SYNTHETIC_EXPIRED_WORTHLESS
 
 
 def _leg(
@@ -134,6 +137,64 @@ def test_fifo_match_and_synthetic_pnl_vertical():
     assert by_id[2]["pnl_amount"] == 150.0
 
 
+def test_blotter_status_open_complete_orphan():
+    """O3 — Autofilter Status tokens match client positionBadge grain."""
+    open_t = _trade(
+        1,
+        5,
+        "2026-03-10T09:30:00",
+        "VERTICAL",
+        [
+            _leg("BUY", 1, "TO_OPEN", 5000, fill=5.0),
+            _leg("SELL", 1, "TO_OPEN", 4995, fill=3.0),
+        ],
+        net_price=2.0,
+        net_side="DEBIT",
+    )
+    close_t = _trade(
+        2,
+        5,
+        "2026-03-10T15:00:00",
+        "VERTICAL",
+        [
+            _leg("SELL", 1, "TO_CLOSE", 5000, fill=4.0),
+            _leg("BUY", 1, "TO_CLOSE", 4995, fill=0.5),
+        ],
+        net_price=3.5,
+        net_side="CREDIT",
+    )
+    orphan = _trade(
+        3,
+        5,
+        "2026-03-11T10:00:00",
+        "VERTICAL",
+        [
+            _leg("SELL", 1, "TO_CLOSE", 5100, fill=1.0),
+            _leg("BUY", 1, "TO_CLOSE", 5095, fill=0.5),
+        ],
+        net_price=0.5,
+        net_side="CREDIT",
+    )
+    st = blotter_status_by_id([open_t, close_t, orphan])
+    assert st[1] == STATUS_COMPLETE
+    assert st[2] == STATUS_COMPLETE
+    assert st[3] == STATUS_ORPHAN
+    live = _trade(
+        4,
+        5,
+        "2026-03-10T09:30:00",
+        "VERTICAL",
+        [
+            _leg("BUY", 1, "TO_OPEN", 5000, fill=5.0, exp="2099-12-19"),
+            _leg("SELL", 1, "TO_OPEN", 4995, fill=3.0, exp="2099-12-19"),
+        ],
+        net_price=2.0,
+        net_side="DEBIT",
+    )
+    st_open = blotter_status_by_id([live])
+    assert st_open[4] == STATUS_OPEN
+
+
 def test_synthetic_pnl_scales_butterfly_units():
     """Example from reportsBook: (-1.57 + 2.78) × 100 × 3 = 363."""
     open_t = _trade(
@@ -237,6 +298,76 @@ def test_match_allows_short_multi_day_hold():
     assert matched[0]["close_day"] == "2026-05-05"
     book = build_day_book([open_t, close_t], "2026-05-04")
     assert len(book["open"]) == 1
+
+
+def test_partial_close_leaves_remaining_units_open():
+    """Close 1 unit of a 5-unit fly — open stays unmatched with 4 remaining."""
+    exp = "2026-12-31"
+    open_t = _trade(
+        1,
+        1,
+        "2026-04-21T10:00:00",
+        "BUTTERFLY",
+        [
+            _leg("BUY", 5, "TO_OPEN", 7080, exp=exp),
+            _leg("SELL", 10, "TO_OPEN", 7075, exp=exp),
+            _leg("BUY", 5, "TO_OPEN", 7070, exp=exp),
+        ],
+        net_price=0.60,
+        net_side="DEBIT",
+    )
+    close_t = _trade(
+        2,
+        1,
+        "2026-04-21T14:00:00",
+        "BUTTERFLY",
+        [
+            _leg("SELL", 1, "TO_CLOSE", 7080, exp=exp),
+            _leg("BUY", 2, "TO_CLOSE", 7075, exp=exp),
+            _leg("SELL", 1, "TO_CLOSE", 7070, exp=exp),
+        ],
+        net_price=0.20,
+        net_side="CREDIT",
+    )
+    matched = match_open_close([open_t, close_t], as_of="2026-04-21")
+    assert len(matched) == 1
+    assert matched[0]["close"] is None
+    assert matched[0]["open_units"] == 5
+    assert matched[0]["closed_units"] == 1
+    enriched = enrich_trades_with_synthetic_pnl([open_t, close_t])
+    close = next(t for t in enriched if t["id"] == 2)
+    # (-0.60 + 0.20) × 100 × 1 consumed unit
+    assert close["pnl_amount"] == -40.0
+
+
+def test_expired_worthless_closes_unmatched_open():
+    """Past-expiry unmatched open is Complete at 0; debit is realized as a loss."""
+    open_t = _trade(
+        7,
+        1,
+        "2026-01-09T15:14:12",
+        "BUTTERFLY",
+        [
+            _leg("BUY", 1, "TO_OPEN", 6965, exp="2026-01-09"),
+            _leg("SELL", 2, "TO_OPEN", 6945, exp="2026-01-09"),
+            _leg("BUY", 1, "TO_OPEN", 6925, exp="2026-01-09"),
+        ],
+        net_price=0.55,
+        net_side="DEBIT",
+    )
+    matched = match_open_close([open_t], as_of="2026-01-10")
+    assert len(matched) == 1
+    assert matched[0]["close"] is not None
+    assert matched[0]["close"].get("synthetic") == SYNTHETIC_EXPIRED_WORTHLESS
+    assert matched[0]["close_day"] == "2026-01-09"
+    # Before the expiry calendar date the open is still unmatched.
+    live = match_open_close([open_t], as_of="2026-01-08")
+    assert live[0]["close"] is None
+
+    enriched = enrich_trades_with_synthetic_pnl([open_t])
+    synth = next(t for t in enriched if t.get("synthetic") == SYNTHETIC_EXPIRED_WORTHLESS)
+    # Debit 0.55 expired at 0 → −$55
+    assert synth["pnl_amount"] == -55.0
 
 
 def test_open_on_day_and_same_day_close():

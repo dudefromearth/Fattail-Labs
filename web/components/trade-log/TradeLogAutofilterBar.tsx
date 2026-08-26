@@ -30,6 +30,9 @@ export default function TradeLogAutofilterBar({
   campaignLabels,
   strategyLabels,
   campaignWindows,
+  bookDistincts,
+  shown,
+  total,
   panelHostRef,
 }: {
   trades: Trade[];
@@ -39,6 +42,10 @@ export default function TradeLogAutofilterBar({
   campaignLabels: Map<string, string>;
   strategyLabels?: Map<string, string>;
   campaignWindows: DateWindow[];
+  /** Full-book distincts (B). When set, menus are not derived from the page. */
+  bookDistincts?: Record<string, string[]>;
+  shown: number;
+  total: number;
   /** Title-row controls stay inline; panel renders under the whole bar. */
   panelHostRef?: RefObject<HTMLDivElement | null>;
 }) {
@@ -48,6 +55,13 @@ export default function TradeLogAutofilterBar({
   const cols = useMemo(() => tradeLogColumns(allTrades), [allTrades]);
   const universe = allTrades.length ? allTrades : trades;
   const distinct = useMemo(() => {
+    if (bookDistincts) {
+      const m: Record<string, string[]> = {};
+      for (const col of cols) {
+        m[col.key] = [...(bookDistincts[col.key] || [])];
+      }
+      return m;
+    }
     const m: Record<string, string[]> = {};
     for (const col of cols) {
       const set = new Set<string>();
@@ -57,7 +71,7 @@ export default function TradeLogAutofilterBar({
       m[col.key] = [...set].sort((a, b) => a.localeCompare(b));
     }
     return m;
-  }, [cols, universe]);
+  }, [bookDistincts, cols, universe]);
 
   const incompat = useMemo(
     () => dateVsWindowsConflict("when", "campaign", campaignWindows),
@@ -74,7 +88,7 @@ export default function TradeLogAutofilterBar({
 
   const days = distinct.when || [];
   const active = filtersActive(filters);
-  const emptyCopy = emptyValidCopy(trades.length, active);
+  const emptyCopy = emptyValidCopy(shown, active);
 
   useEffect(() => {
     setHostReady(1);
@@ -170,8 +184,8 @@ export default function TradeLogAutofilterBar({
         Autofilter
       </button>
       <FilterOnMark
-        shown={trades.length}
-        total={universe.length}
+        shown={shown}
+        total={total}
         active={active}
       />
       {active ? (

@@ -10,6 +10,7 @@ from guards import require_session
 from routes.trade_log.common import (
     _TRADE_PAGE_DEFAULT,
     found_set_stats,
+    blotter_distincts,
     trade_distincts,
     _dec,
     _ensure_default_account,
@@ -59,6 +60,7 @@ def list_trades(
     months: str | None = None,
     days: str | None = None,
     campaigns: str | None = None,
+    statuses: str | None = None,
     positions_only: bool = False,
 ) -> dict:
     """List trades for the blotter.
@@ -143,9 +145,12 @@ def list_trades(
                 )
                 has_more = False
                 next_cursor = None
+                match_count = len(trades)
+                book_count = len(trades)
             else:
                 page_limit = limit if limit is not None else _TRADE_PAGE_DEFAULT
-                trades, accounts, has_more, next_cursor = _load_member_book_page(
+                trades, accounts, has_more, next_cursor, match_count, book_count = (
+                    _load_member_book_page(
                     cur,
                     iid,
                     account_id,
@@ -171,7 +176,9 @@ def list_trades(
                     months=months,
                     days=days,
                     campaigns=campaigns,
+                    statuses=statuses,
                     positions_only=positions_only,
+                    )
                 )
     # Legacy key for old clients/tests that expect entries (prose-shaped)
     entries = [
@@ -198,6 +205,8 @@ def list_trades(
         "has_more": has_more,
         "next_cursor": next_cursor,
         "page_limit": None if full else (limit if limit is not None else _TRADE_PAGE_DEFAULT),
+        "match_count": match_count,
+        "book_count": book_count,
     }
 
 
@@ -234,13 +243,23 @@ def trade_log_found(
 
 
 @router.get("/api/me/trade-log/distincts")
-def trade_log_distincts(request: Request) -> dict:
-    """AutoFilter value lists from the whole book."""
+def trade_log_distincts(
+    request: Request,
+    blotter: bool = False,
+    account_id: int | None = None,
+) -> dict:
+    """AutoFilter value lists.
+
+    Default: Find and Badge grain (identity, positions).
+    ``blotter=1``: Trade Log Autofilter grain (account trades + Status).
+    """
     claims = require_session(request)
     _require_tool_member(claims, capability="read")
     with db.transaction() as conn:
         with conn.cursor() as cur:
             iid = _storage_identity_id(cur, claims)
+            if blotter:
+                return blotter_distincts(cur, iid, account_id)
             return trade_distincts(cur, iid)
 
 

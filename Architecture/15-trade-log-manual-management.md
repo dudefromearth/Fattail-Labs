@@ -157,7 +157,7 @@ disclosure so members never hunt economic fields inside advanced chrome.
 Logout does **not** clear last-used (browser preference). Family B product data remains
 server-side only.
 
-### 5.4 Autofilter (TLAF2 as-built · Spec v0.1.1 · Strategy TLAS1)
+### 5.4 Autofilter (TLAF2 as-built · Spec v0.1.1 · Strategy TLAS1 · Book TLAB1 · Help TLAB2)
 
 Standing blotter filter is **one title-bar Autofilter** (`data-testid="trade-log-autofilter"`).
 Shared engine `web/lib/autofilter`; host columns `web/lib/tradeLogAutofilter.ts`.
@@ -165,7 +165,10 @@ Find and Badge uses the same menus; it is not the blotter filter.
 
 | Law | As-built |
 |-----|----------|
-| One stream | `applyAutofilter` on loaded trades. Practice `campaignId` / date range do **not** fetch-filter the blotter. Account chrome remains load scope. Playbook `<select>` stays (server list param). |
+| One stream | Autofilter `FilterMap` drives `GET /api/me/trade-log/trades` (`autofilterToListQuery`). **No** client `applyAutofilter` membership on the page. Practice `campaignId` / date range do **not** fetch-filter the blotter. Account chrome remains load scope. Playbook `<select>` stays (server list param). |
+| Universe | **Account book** (mechanic **B** · **DL-590/591**). Distincts: `GET /distincts?blotter=1` (account **trades** + Status). Not Find and Badge identity/positions. |
+| shown/total | This page of the filtered set / full-book **match_count**. Unfiltered: page size / **book_count**. |
+| Status | Full-book (`blotter_status_by_id` + list `statuses=`). Over `_BLOTTER_STATUS_BUDGET` (10 000) → 422, not page-local. |
 | Columns | Exec time · Campaign · **Strategy** · Symbol · Status (**O1** after Campaign · **DL-588**) |
 | Strategy tokens | stored `trade.strategy` codes; catalog **label** when present; never invent a label (**O2**) |
 | TLAF O1 | `omitDateCampaignFilters` on Trade Log `PracticeSuiteChrome` only |
@@ -175,9 +178,11 @@ Find and Badge uses the same menus; it is not the blotter filter.
 | Badge / `?campaign=` | `campaignColumnFilter` — campaign column, not a private filter |
 | Adhere | Locate fetch + banner; composes with Autofilter |
 
-Help: `server/help_reference/trade-log-autofilter.md`. Spec:
-`Specs/FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1_1.md`. Parent Autofilter v0.2
-**parked**.
+Help: `server/help_reference/trade-log-autofilter.md` + App areas **Trade Log** /
+**Find and Badge** (**TLAB2** · **DL-592**). Universe copy is the **account book**,
+not the loaded page. Spec: `Specs/FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1_1.md`.
+Book universe: `Specs/FatTail-Labs-Trade-Log-Autofilter-Book-Universe-Spec-v0_1.md`.
+Parent Autofilter v0.2 **parked**.
 
 **Flag:** Trade Log Spec v1.1 still names Open:N and a blotter campaign toolbar
 filter. That product copy is superseded here for the shipped blotter. Do not

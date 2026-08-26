@@ -4,6 +4,60 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-25 — DL-592 Trade Log Autofilter book universe Help (TLAB2)
+
+**Decision (Coach GO TLAB2):** Member how-to and as-built name Trade Log Autofilter’s
+universe as the **full account book** (server distincts + server filter). The blotter
+is a **page of the filtered set**. shown = this page; total = book match count.
+Status is full-book.
+
+- Help: `server/help_reference/trade-log-autofilter.md` + App areas **Trade Log** /
+  **Find and Badge**
+- As-built: `Architecture/15-trade-log-manual-management.md` §5.4
+
+File present = published (**DL-572**). No product-code change in this packet.
+
+**Does not:** journal/records Autofilter; TLAB3 spec close; MiniTwo.
+
+**Gate:** `agents/p-autofilter/gate-reports/TLAB2-G.md`
+
+---
+
+## 2026-08-25 — DL-591 Trade Log Autofilter book universe GO SPEC + O2 + O3 + GO TLAB1
+
+**Decision (Coach):** Book-Universe Spec v0.1 is **GO SPEC** (**BUILD AUTHORITY**)
+for mechanic **B**.
+
+| OPEN | Stamp |
+|------|--------|
+| **O2** | shown = rows on this page of the filtered set; total = full-book match count while Autofilter is on. Unfiltered: page size / full book count |
+| **O3** | Status is **full-book** (server filter + distincts), same as Campaign / Symbol / Strategy. If Alpha cannot do that honestly, **stop and report** — do not silently ship page-local Status under a book UI |
+
+**GO TLAB1.** Reuse Find and Badge list params (`years`/`days`/`strategies`/`symbols`/`campaigns`). Distincts must be **account + trades**, not Find and Badge identity/positions. Journal / Records out.
+
+**Does not:** A all-time load · C hybrid · unpark v0.2
+
+---
+
+## 2026-08-25 — DL-590 Trade Log Autofilter book universe O1 = B
+
+**Decision (Coach):** Book-universe mechanic is **B** — server distincts +
+server filter. The blotter shows a **page of the filtered account book**, not
+client-only Autofilter on the first 80. Reuse Find and Badge list params where
+they already exist (`years` / `days` / `strategies` / `symbols` / `campaigns`).
+
+**C rejected** (calendar would lie). **A rejected for this GO** (all-time load).
+
+Still OPEN (no defaults): **shown/total** grain; whether **Status** is full-book
+in this slice.
+
+**GO SPEC** not this stamp. **No product code** until GO SPEC. No Journal /
+Records. Not a silent TLAF reopen.
+
+**Spec:** `Specs/FatTail-Labs-Trade-Log-Autofilter-Book-Universe-Spec-v0_1.md`
+
+---
+
 ## 2026-08-25 — DL-589 Trade Log Autofilter Strategy help (TLAS2)
 
 **Decision (Coach GO TLAS2):** Member how-to and as-built note Strategy as a

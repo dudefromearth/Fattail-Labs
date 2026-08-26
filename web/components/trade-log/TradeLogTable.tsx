@@ -144,6 +144,9 @@ export default function TradeLogTable({
   campaignLabels,
   strategyLabels,
   campaignWindows,
+  bookDistincts,
+  autofilterShown,
+  autofilterTotal,
   onCampaignColumn,
   openCount,
   onSelect,
@@ -162,17 +165,20 @@ export default function TradeLogTable({
   onLoadMore,
   onImportBadgeClick,
 }: {
-  /** Rows to render (already Autofilter-applied). */
+  /** Rows to render (this page of the server-filtered book). */
   trades: Trade[];
   /** Broader set for match/issue chips (loaded pages + server opens). */
   allTradesForIssues?: Trade[];
-  /** Loaded blotter before Autofilter (A9 shown/total). */
+  /** Fallback universe when book distincts are absent. */
   autofilterUniverse?: Trade[];
   autofilter?: FilterMap;
   onAutofilter?: (next: FilterMap) => void;
   campaignLabels?: Map<string, string>;
   strategyLabels?: Map<string, string>;
   campaignWindows?: DateWindow[];
+  bookDistincts?: Record<string, string[]>;
+  autofilterShown?: number;
+  autofilterTotal?: number;
   /** A5 — badge tap sets campaign column. */
   onCampaignColumn?: (campaignId: number) => void;
   /** Authoritative unmatched open count (server). */
@@ -209,6 +215,8 @@ export default function TradeLogTable({
     () => new Set(unmatched.map((t) => t.id)),
     [unmatched],
   );
+  const shown = autofilterShown ?? trades.length;
+  const total = autofilterTotal ?? autofilterUniverse?.length ?? trades.length;
   const sourceTotal = autofilterUniverse?.length ?? trades.length;
   const filterOn = !!(autofilter && Object.values(autofilter).some((xs) => xs && xs.length > 0));
   const autofilterPanelHost = useRef<HTMLDivElement>(null);
@@ -259,13 +267,16 @@ export default function TradeLogTable({
               campaignLabels={campaignLabels ?? new Map()}
               strategyLabels={strategyLabels}
               campaignWindows={campaignWindows ?? []}
+              bookDistincts={bookDistincts}
+              shown={shown}
+              total={total}
               panelHostRef={autofilterPanelHost}
             />
           ) : null}
           <span className="tabular-nums text-[var(--color-label-secondary)]">
             {empty
               ? "0 trades · multi-leg groups"
-              : `${sourceTotal} loaded${hasMore ? "+" : ""}`}
+              : `${shown} / ${total}${autofilterTotal == null && hasMore ? "+" : ""}`}
           </span>
           {openN > 0 && onSelectAllOpens && (
             <button

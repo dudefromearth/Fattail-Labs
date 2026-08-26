@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { applyAutofilter, filtersActive, type FilterMap } from "./autofilter";
 import type { Trade } from "./tradeLog";
 import {
+  autofilterToListQuery,
   campaignColumnFilter,
   strategyLabelsFromCatalog,
   TL_STATUS,
@@ -177,6 +178,22 @@ assert.equal(tradeStatus(c, book), TL_STATUS.orphan);
   });
   assert.equal(r.shown, 1);
   assert.equal(r.rows[0]?.id, 2);
+}
+
+{
+  const q = autofilterToListQuery(
+    {
+      when: ["2022-01-15"],
+      strategy: ["BUTTERFLY"],
+      campaign: ["none"],
+      status: [TL_STATUS.open],
+    },
+    ["2022-01-15", "2026-04-01"],
+  );
+  assert.ok(q.days === "2022-01-15" || q.months === "2022-01" || q.years === "2022");
+  assert.equal(q.strategies, "BUTTERFLY");
+  assert.equal(q.campaigns, "none");
+  assert.equal(q.statuses, TL_STATUS.open);
 }
 
 console.log("tradeLogAutofilter.test.ts ok");
