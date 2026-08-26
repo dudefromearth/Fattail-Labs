@@ -507,15 +507,33 @@ a role. That is the distinction this appendix exists to keep visible: an `observ
 *plan* is a real paid subscription; the `observer` *role* is what you get for having
 nothing.
 
-### 15.3 Gap
+### 15.3 Production — audited, clean
 
-The audit covers **code** and the **local dev database**, which holds zero policy rows.
-**Production policies on MiniTwo were not audited** — admin-written rows could exist
-there. One query settles it:
+**Closed 2026-08-26.** Queried directly on **MiniTwo** (`100.127.76.52`, the sole
+production Labs host), read-only:
 
-```sql
-SELECT target_key, enabled, mode, min_role, selected_plans_json
-  FROM access_policies WHERE min_role = 'observer';
+```text
+TOTAL_POLICY_ROWS: 0
+---- OBSERVER GATES ----
+COUNT: 0
 ```
 
-Any row returned is a gate that admits every free signup. Expected result: none.
+**Production holds zero `access_policies` rows**, therefore zero observer gates. Dev and
+production agree. The audit has no remaining gap.
+
+### 15.4 Consequence — the policy engine is deployed but unused
+
+Zero rows in both environments means **every gate in Labs today is a type default or a
+route-level check** (`can_access_member_content`, `CATEGORY_MIN_ROLE`, `require_admin`).
+Access Control v0.4 — the engine, the admin API, the audit table — is live and correct
+but carries no data.
+
+Two consequences for this program:
+
+1. **ST-0's fail-closed default is load-bearing, not decorative.** A `product:` target
+   with no policy row is the *normal* state, not an edge case. Had `product:` inherited
+   an open default, every published Knowledge app would have been world-readable the
+   moment it went Live.
+2. **The first IKI policy rows will be the first policy rows in Labs, ever.** ST-1
+   should therefore verify the write path against production reality rather than
+   assuming the engine has been exercised there. It has not.
