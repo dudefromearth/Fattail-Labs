@@ -457,3 +457,65 @@ ST-0 and ST-1 deliver the free half with **no WooCommerce work at all**.
 
 **Closed:** free-app access (§4.1, 2026-08-26 — anyone with a login) · price location
 (§7, 2026-08-26 — the Factory card) · refunds (§5.3, 2026-08-26 — immediate revocation).
+
+---
+
+## 15. Appendix — observer-gate audit (2026-08-26)
+
+Prompted by §4.1: if `min_role: observer` reads as a tier gate but enforces nothing,
+anywhere else expressing "paying members" that way is silently open to every free
+signup. Audited at `origin/main` `ce858c93`.
+
+### 15.1 Method
+
+| Checked | Result |
+|---|---|
+| `access_policies` rows (local dev DB) | **0 rows** — all gating currently runs on type defaults |
+| Policies seeded by migration | **None.** `075_access_policies.sql` creates the table only |
+| `min_role` in application code | Only `routes/access_admin.py` CRUD plumbing and `routes/live.py` |
+| `role_at_least(...)` callers | activator · navigator · administrator — **never observer** |
+| `require_role(...)` callers | one, `require_admin` → administrator |
+| `"observer"` string literals | All `claims.get("role") or "observer"` — least-privilege fallbacks, not gates |
+
+### 15.2 Result — no misuse found
+
+The collision is already handled correctly wherever it matters:
+
+```python
+def can_access_member_content(cur, identity_id, session_role) -> bool:
+    """Courses / resources / gated lessons: alumni+ feature role OR any live membership.
+    Covers paid Observer with a stale JWT still saying role=observer."""
+    if role_meets(cur, identity_id, session_role, "alumni"):
+        return True
+    return has_active_membership(cur, identity_id)
+```
+
+**The floor is `alumni` — deliberately one rung above the free-signup fallback** — with
+`has_active_membership()` as the second arm, whose own docstring reads *"Any unexpired
+active/grace membership (paid or alumni) — **not free signup**."* A free account clears
+neither.
+
+Other correct expressions of "paying":
+
+| Site | Shape |
+|---|---|
+| `routes/live.py` | `CATEGORY_MIN_ROLE = {"public": None, "members": "activator", "coaching": "navigator"}` — observer never appears |
+| `routes/flow_admin.py` | `PAID_PLAN_SLUGS = ("observer", "observer-trial", "activator", "navigator")` joined against `memberships` on status + expiry — **a plan constraint, the pattern §4.1 prescribes** |
+
+Note the `flow_admin` list contains the string `observer` — but as a **plan slug**, not
+a role. That is the distinction this appendix exists to keep visible: an `observer`
+*plan* is a real paid subscription; the `observer` *role* is what you get for having
+nothing.
+
+### 15.3 Gap
+
+The audit covers **code** and the **local dev database**, which holds zero policy rows.
+**Production policies on MiniTwo were not audited** — admin-written rows could exist
+there. One query settles it:
+
+```sql
+SELECT target_key, enabled, mode, min_role, selected_plans_json
+  FROM access_policies WHERE min_role = 'observer';
+```
+
+Any row returned is a gate that admits every free signup. Expected result: none.
