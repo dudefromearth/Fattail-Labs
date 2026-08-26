@@ -19,8 +19,14 @@ import {
 import type { Trade } from "@/lib/tradeLog";
 import { fetchCampaigns, type PracticeCampaign } from "@/lib/practiceSpineApi";
 import CampaignBadge from "@/components/practice/CampaignBadge";
-import DateWhenFilter from "@/components/trade-log/DateWhenFilter";
-import FilterMenuPortal from "@/components/trade-log/FilterMenuPortal";
+import DateWhenFilter from "@/components/autofilter/DateWhenFilter";
+import FilterOnMark from "@/components/autofilter/FilterOnMark";
+import ValueFilter from "@/components/autofilter/ValueFilter";
+import {
+  dateVsWindowsConflict,
+  filtersActive,
+  selectionGate,
+} from "@/lib/autofilter/apply";
 import { compactWhen } from "@/lib/tradeLogWhenTree";
 
 const UNDO_LIMIT = 5;
@@ -166,154 +172,6 @@ const COLS: { key: ColKey; label: string }[] = [
   { key: "effect", label: "Effect" },
   { key: "campaign", label: "Campaign" },
 ];
-
-function AutoFilter({
-  col,
-  values,
-  labels,
-  applied,
-  open,
-  onOpen,
-  onApply,
-  onClear,
-}: {
-  col: ColKey;
-  values: string[];
-  labels?: Map<string, string>;
-  applied: string[] | undefined;
-  open: boolean;
-  onOpen: (k: ColKey | null) => void;
-  onApply: (k: ColKey, picked: string[] | null) => void;
-  onClear: (k: ColKey) => void;
-}) {
-  const [q, setQ] = useState("");
-  const [picked, setPicked] = useState<Set<string>>(new Set());
-  const box = useRef<HTMLDivElement>(null);
-  const menu = useRef<HTMLDivElement>(null);
-  const active = applied != null && applied.length > 0;
-
-  useEffect(() => {
-    if (!open) return;
-    setQ("");
-    setPicked(new Set(applied && applied.length ? applied : values));
-  }, [open, applied, values]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      const t = e.target as Node;
-      if (box.current?.contains(t) || menu.current?.contains(t)) return;
-      onOpen(null);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open, onOpen]);
-
-  const shown = values.filter((v) =>
-    (labels?.get(v) || v).toLowerCase().includes(q.trim().toLowerCase()),
-  );
-  const allOn = shown.length > 0 && shown.every((v) => picked.has(v));
-
-  return (
-    <div className="relative inline-flex" ref={box}>
-      <button
-        type="button"
-        className={[
-          "inline-flex h-4 w-4 items-center justify-center rounded-[2px] border text-[9px] leading-none",
-          active
-            ? "border-[var(--color-tint)] bg-[var(--color-tint-soft)] text-[var(--color-tint-emphasis)]"
-            : "border-[var(--color-separator)] bg-[var(--color-fill)] text-[var(--color-label-tertiary)]",
-        ].join(" ")}
-        aria-label={`Filter ${COLS.find((c) => c.key === col)?.label || col}`}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        data-testid={`autofilter-${col}`}
-        data-filtered={active ? "1" : "0"}
-        onClick={() => onOpen(open ? null : col)}
-      >
-        ▾
-      </button>
-      <FilterMenuPortal
-        open={open}
-        anchorRef={box}
-        menuRef={menu}
-        width={224}
-      >
-        <div
-          className="rounded-[var(--radius-md)] border border-[var(--color-separator)] bg-[var(--color-surface)] p-2 shadow-[var(--elevation-2)]"
-          role="listbox"
-          data-testid={`autofilter-menu-${col}`}
-        >
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search"
-            className="w-full rounded border border-[var(--color-separator)] bg-[var(--color-canvas)] px-2 py-1 text-xs"
-          />
-          <label className="mt-2 flex items-center gap-2 border-b border-[var(--color-separator)] pb-1.5 text-xs text-[var(--color-label)]">
-            <input
-              type="checkbox"
-              checked={allOn}
-              onChange={() => {
-                setPicked((prev) => {
-                  const next = new Set(prev);
-                  if (allOn) shown.forEach((v) => next.delete(v));
-                  else shown.forEach((v) => next.add(v));
-                  return next;
-                });
-              }}
-            />
-            (Select All)
-          </label>
-          <ul className="mt-1 max-h-44 overflow-auto">
-            {shown.map((v) => (
-              <li key={v}>
-                <label className="flex items-center gap-2 py-0.5 text-xs text-[var(--color-label)]">
-                  <input
-                    type="checkbox"
-                    checked={picked.has(v)}
-                    onChange={() => {
-                      setPicked((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(v)) next.delete(v);
-                        else next.add(v);
-                        return next;
-                      });
-                    }}
-                  />
-                  <span className="truncate">{labels?.get(v) || v}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-2 flex justify-end gap-1.5">
-            <button
-              type="button"
-              className="rounded px-2 py-1 text-[11px] text-[var(--color-label-secondary)]"
-              onClick={() => {
-                onClear(col);
-                onOpen(null);
-              }}
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              className="rounded bg-[var(--color-tint)] px-2 py-1 text-[11px] font-medium text-[var(--color-on-tint)]"
-              onClick={() => {
-                const all = values.length > 0 && values.every((v) => picked.has(v));
-                onApply(col, all ? null : [...picked]);
-                onOpen(null);
-              }}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      </FilterMenuPortal>
-    </div>
-  );
-}
 
 function uniquesFromDistincts(
   d: TradeDistincts | null,
@@ -520,6 +378,29 @@ export default function TradeFindTag() {
     if (col === "strategy") return strategyLabels;
     return undefined;
   };
+
+  const campaignWindows = useMemo(
+    () =>
+      charters.map((c) => ({
+        id: String(c.id),
+        start: c.starts_at ? String(c.starts_at) : null,
+        end: c.ends_at ? String(c.ends_at) : null,
+      })),
+    [charters],
+  );
+  const incompat = useMemo(
+    () => dateVsWindowsConflict("when", "campaign", campaignWindows),
+    [campaignWindows],
+  );
+  const campaignDisabled = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const v of uniques.campaign) {
+      const g = selectionGate(filters, "campaign", v, incompat);
+      if (g.disabled && g.reason) m.set(v, g.reason);
+    }
+    return m;
+  }, [uniques.campaign, filters, incompat]);
+  const picksOn = filterOn && filtersActive(filters);
 
   const workingSet: FoundSetItem[] =
     items.length > 0
@@ -820,6 +701,7 @@ export default function TradeFindTag() {
             </span>
           </label>
         </div>
+        {picksOn ? <FilterOnMark shown={n} total={0} active /> : null}
         {filterOn ? (
           <button
             type="button"
@@ -960,18 +842,20 @@ export default function TradeFindTag() {
                         />
                       ) : null}
                       {filterOn && c.key !== "when" ? (
-                        <AutoFilter
+                        <ValueFilter
                           col={c.key}
+                          label={c.label}
                           values={uniques[c.key]}
                           labels={colLabels(c.key)}
                           applied={filters[c.key]}
                           open={openCol === c.key}
-                          onOpen={setOpenCol}
+                          onOpen={(k) => setOpenCol(k as ColKey | null)}
                           onApply={(k, picked) => {
                             setFilters((prev) => {
                               const next = { ...prev };
-                              if (!picked || picked.length === 0) delete next[k];
-                              else next[k] = picked;
+                              if (!picked || picked.length === 0)
+                                delete next[k as ColKey];
+                              else next[k as ColKey] = picked;
                               return next;
                             });
                             resetPaging();
@@ -979,11 +863,14 @@ export default function TradeFindTag() {
                           onClear={(k) => {
                             setFilters((prev) => {
                               const next = { ...prev };
-                              delete next[k];
+                              delete next[k as ColKey];
                               return next;
                             });
                             resetPaging();
                           }}
+                          disabledValues={
+                            c.key === "campaign" ? campaignDisabled : undefined
+                          }
                         />
                       ) : null}
                     </span>

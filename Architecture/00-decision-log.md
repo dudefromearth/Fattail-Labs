@@ -4,6 +4,29 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-25 — DL-584 Trade Log Autofilter GO SPEC + O3 + O4 + GO TLAF1
+
+**Decision (Coach 2026-08-25):** Trade Log Autofilter Spec v0.1 is **GO SPEC**
+(BUILD AUTHORITY for this slice). Header DRAFT status **flips** with this stamp.
+
+| OPEN | Stamp |
+|------|--------|
+| **O3** | **select-time** — conflicting values grey out and explain |
+| **O4** | **clean visit** — no filter persistence; never `ft.tradeLog.lastUsed.v1` |
+| **O1** | omit date+campaign on Trade Log only (not other suite pages) — **applies at TLAF2** |
+| **O2** | remove Open:N — **applies at TLAF2** |
+
+**GO TLAF1** (internal, not a deploy): extract shared Autofilter; Find and Badge is
+the only consumer. Do not mount Trade Log title bar; do not remove buttons/nav.
+
+Parent Autofilter Spec v0.2 / plan v1.1 remains **parked**. This slice is the
+active Autofilter program.
+
+**Plan:** `docs/Trade-Log-Autofilter-Full-Agent-Bench-Plan-v1_0.md`  
+**Does not:** GO TLAF2 · journal/records · global nav delete
+
+---
+
 ## 2026-08-25 — DL-583 Wiki page reverts to Oscar; Gemba keeps the help guide (reverses part of DL-580)
 
 **Decision (Coach 2026-08-25):** **DL-580's wiki-page grant to Gemba is

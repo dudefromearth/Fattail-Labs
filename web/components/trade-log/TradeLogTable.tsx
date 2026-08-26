@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * Trade blotter — open/close blocks, open filter, row actions, validation chips.
+ * Trade blotter — open/close blocks, row actions, validation chips.
+ * Title-bar Autofilter (TLAF2) is the standing filter. Select opens is selection only.
  */
 
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BLOTTER_WINDOW_DEFAULT,
   BLOTTER_WINDOW_STEPS,
@@ -17,6 +18,8 @@ import {
 import { BLOTTER_CSS_VARS } from "@/lib/blotterTheme";
 import type { Trade } from "@/lib/tradeLog";
 import CampaignBadge from "@/components/practice/CampaignBadge";
+import TradeLogAutofilterBar from "@/components/trade-log/TradeLogAutofilterBar";
+import type { DateWindow, FilterMap } from "@/lib/autofilter";
 import {
   entrySourceLabel,
   formatQtyEffect,
@@ -135,6 +138,12 @@ function badgeMeta(badge: ReturnType<typeof positionBadge>): {
 export default function TradeLogTable({
   trades,
   allTradesForIssues,
+  autofilterUniverse,
+  autofilter,
+  onAutofilter,
+  campaignLabels,
+  campaignWindows,
+  onCampaignColumn,
   openCount,
   onSelect,
   selectedId,
@@ -143,10 +152,6 @@ export default function TradeLogTable({
   selectedIds,
   onToggleSelect,
   onSelectAllOpens,
-  filterOpenOnly,
-  onFilterOpenOnly,
-  campaignFilter,
-  onCampaignFilter,
   campaignOptions,
   playbookFilter,
   onPlaybookFilter,
@@ -156,10 +161,18 @@ export default function TradeLogTable({
   onLoadMore,
   onImportBadgeClick,
 }: {
-  /** Rows to render (already filtered when Open-only). */
+  /** Rows to render (already Autofilter-applied). */
   trades: Trade[];
   /** Broader set for match/issue chips (loaded pages + server opens). */
   allTradesForIssues?: Trade[];
+  /** Loaded blotter before Autofilter (A9 shown/total). */
+  autofilterUniverse?: Trade[];
+  autofilter?: FilterMap;
+  onAutofilter?: (next: FilterMap) => void;
+  campaignLabels?: Map<string, string>;
+  campaignWindows?: DateWindow[];
+  /** A5 — badge tap sets campaign column. */
+  onCampaignColumn?: (campaignId: number) => void;
   /** Authoritative unmatched open count (server). */
   openCount?: number;
   onSelect: (t: Trade) => void;
@@ -169,10 +182,6 @@ export default function TradeLogTable({
   selectedIds?: Set<number>;
   onToggleSelect?: (id: number) => void;
   onSelectAllOpens?: () => void;
-  filterOpenOnly?: boolean;
-  onFilterOpenOnly?: (v: boolean) => void;
-  campaignFilter?: number | "";
-  onCampaignFilter?: (v: number | "") => void;
   campaignOptions?: {
     id: number;
     title: string;
@@ -194,13 +203,13 @@ export default function TradeLogTable({
   const issueBook = allTradesForIssues ?? trades;
   const unmatched = useMemo(() => listUnmatchedOpens(issueBook), [issueBook]);
   const openN = openCount ?? unmatched.length;
-  const unmatchedIds = useMemo(() => {
-    if (filterOpenOnly) {
-      // Parent already passed only opens as trades
-      return new Set(trades.map((t) => t.id));
-    }
-    return new Set(unmatched.map((t) => t.id));
-  }, [filterOpenOnly, trades, unmatched]);
+  const unmatchedIds = useMemo(
+    () => new Set(unmatched.map((t) => t.id)),
+    [unmatched],
+  );
+  const sourceTotal = autofilterUniverse?.length ?? trades.length;
+  const filterOn = !!(autofilter && Object.values(autofilter).some((xs) => xs && xs.length > 0));
+  const autofilterPanelHost = useRef<HTMLDivElement>(null);
   const [windowRows, setWindowRows] = useState<BlotterWindowRows>(
     BLOTTER_WINDOW_DEFAULT,
   );
@@ -224,8 +233,7 @@ export default function TradeLogTable({
     return m;
   }, [campaignOptions]);
 
-  const empty = !filterOpenOnly && trades.length === 0;
-  const emptyFilter = filterOpenOnly && trades.length === 0;
+  const empty = !filterOn && sourceTotal === 0;
 
   return (
     <div
@@ -234,62 +242,37 @@ export default function TradeLogTable({
       data-empty={empty ? "true" : "false"}
       style={BLOTTER_CSS_VARS}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3">
-        <div className="flex flex-wrap items-center gap-3 text-[13px]">
+      <div className="flex flex-col gap-2 border-b border-[var(--color-separator)] bg-[var(--color-surface)] px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 text-[13px]">
           <span className="font-semibold text-[var(--color-label)]">
             Trade history
           </span>
+          {onAutofilter && autofilter ? (
+            <TradeLogAutofilterBar
+              trades={trades}
+              allTrades={autofilterUniverse ?? trades}
+              filters={autofilter}
+              onFilters={onAutofilter}
+              campaignLabels={campaignLabels ?? new Map()}
+              campaignWindows={campaignWindows ?? []}
+              panelHostRef={autofilterPanelHost}
+            />
+          ) : null}
           <span className="tabular-nums text-[var(--color-label-secondary)]">
             {empty
               ? "0 trades · multi-leg groups"
-              : filterOpenOnly
-                ? `${trades.length} open`
-                : `${trades.length} loaded${hasMore ? "+" : ""}`}
+              : `${sourceTotal} loaded${hasMore ? "+" : ""}`}
           </span>
-          {(openN > 0 || filterOpenOnly) && (
-            <button
-              type="button"
-              onClick={() => onFilterOpenOnly?.(!filterOpenOnly)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold tabular-nums ${
-                filterOpenOnly
-                  ? "bg-emerald-700 text-white"
-                  : "border border-[var(--color-separator)] text-[var(--color-label)] hover:bg-[var(--color-fill)]"
-              }`}
-            >
-              Open: {openN}
-            </button>
-          )}
           {openN > 0 && onSelectAllOpens && (
             <button
               type="button"
               onClick={onSelectAllOpens}
               className="text-xs text-[var(--color-tint)] underline"
+              data-testid="blotter-select-opens"
             >
               Select opens
             </button>
-          )}
-          {onCampaignFilter && (campaignOptions?.length ?? 0) > 0 && (
-            <label className="flex items-center gap-1.5 text-xs text-[var(--color-label-secondary)]">
-              <span className="sr-only">Filter by campaign</span>
-              <select
-                value={campaignFilter === "" || campaignFilter == null ? "" : String(campaignFilter)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  onCampaignFilter(v ? Number(v) : "");
-                }}
-                className="max-w-[14rem] rounded-full border border-[var(--color-separator)] bg-[var(--color-surface)] px-2 py-1 text-xs text-[var(--color-label)]"
-                data-testid="blotter-campaign-filter"
-                title="Named campaign = positions wearing that badge, every account. All campaigns = this account."
-              >
-                {campaignOptions!.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    Campaign · {c.title}
-                    {c.is_ledger || c.is_default ? " · default" : ""}
-                  </option>
-                ))}
-                <option value="">All campaigns</option>
-              </select>
-            </label>
           )}
           {onPlaybookFilter && (
             <label className="flex items-center gap-1.5 text-xs text-[var(--color-label-secondary)]">
@@ -362,6 +345,8 @@ export default function TradeLogTable({
           </span>
         </div>
       </div>
+      <div ref={autofilterPanelHost} />
+      </div>
 
       <div
         className="relative overflow-auto"
@@ -385,23 +370,6 @@ export default function TradeLogTable({
             </tr>
           </thead>
           <tbody>
-            {emptyFilter && (
-              <tr>
-                <td
-                  colSpan={COLUMNS.length}
-                  className="px-4 py-8 text-center text-sm text-[var(--color-label-secondary)]"
-                >
-                  No open positions in this view.{" "}
-                  <button
-                    type="button"
-                    className="text-[var(--color-tint)] underline"
-                    onClick={() => onFilterOpenOnly?.(false)}
-                  >
-                    Show all
-                  </button>
-                </td>
-              </tr>
-            )}
             {!empty &&
               visible.map((trade, ti) => {
                 const legs =
@@ -539,7 +507,7 @@ export default function TradeLogTable({
                                   testId="blotter-campaign-badge"
                                   className="max-w-[9rem]"
                                   titleAttr={`${tier}: ${meta?.title || `Campaign ${cid}`} — tap to filter`}
-                                  onClick={() => onCampaignFilter?.(cid)}
+                                  onClick={() => onCampaignColumn?.(cid)}
                                 />
                               );
                             })()}
@@ -665,7 +633,7 @@ export default function TradeLogTable({
         )}
       </div>
 
-      {hasMore && onLoadMore && !filterOpenOnly && (
+      {hasMore && onLoadMore && (
         <div className="border-t border-[var(--color-separator)] px-4 py-3 text-center">
           <button
             type="button"

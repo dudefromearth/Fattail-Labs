@@ -48,6 +48,7 @@ function PracticeSuiteChromeInner({
   hidePortability = true,
   showBlurb = false,
   breadcrumbUnderTitle = false,
+  omitDateCampaignFilters = false,
 }: {
   active: PracticeSuiteId;
   children: ReactNode;
@@ -62,6 +63,8 @@ function PracticeSuiteChromeInner({
   showBlurb?: boolean;
   /** When true, breadcrumb sits under the page title (quieter header). */
   breadcrumbUnderTitle?: boolean;
+  /** O1: Trade Log only — hide Practice date+campaign chrome. */
+  omitDateCampaignFilters?: boolean;
 }) {
   const item = suiteItem(active);
 
@@ -90,6 +93,7 @@ function PracticeSuiteChromeInner({
       <PracticeContextBar
         inertHint={contextInert}
         inertMessage={contextInertMessage}
+        omitDateCampaign={omitDateCampaignFilters}
       />
 
       {!hideStoryStrip && <PracticeStoryStrip className="mt-3" />}
@@ -155,6 +159,7 @@ export default function PracticeSuiteChrome({
   hidePortability = true,
   showBlurb = false,
   breadcrumbUnderTitle = false,
+  omitDateCampaignFilters = false,
 }: {
   active: PracticeSuiteId;
   children: ReactNode;
@@ -168,6 +173,7 @@ export default function PracticeSuiteChrome({
   hidePortability?: boolean;
   showBlurb?: boolean;
   breadcrumbUnderTitle?: boolean;
+  omitDateCampaignFilters?: boolean;
 }) {
   // Prefer layout-level PracticeContextProvider (B2). Fail loud if missing —
   // do not re-wrap: nested providers remount prefs on every suite nav.
@@ -190,6 +196,7 @@ export default function PracticeSuiteChrome({
       hidePortability={hidePortability}
       showBlurb={showBlurb}
       breadcrumbUnderTitle={breadcrumbUnderTitle}
+      omitDateCampaignFilters={omitDateCampaignFilters}
     >
       {children}
     </PracticeSuiteChromeInner>

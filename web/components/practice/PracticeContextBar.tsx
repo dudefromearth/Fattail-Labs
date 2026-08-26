@@ -27,9 +27,12 @@ export default function PracticeContextBar({
   /** When true, controls stay visible but surface should ignore them (completed retro). */
   inertHint = false,
   inertMessage,
+  /** TLAF2 / O1: omit date+campaign group on Trade Log only. Account stays. */
+  omitDateCampaign = false,
 }: {
   inertHint?: boolean;
   inertMessage?: string;
+  omitDateCampaign?: boolean;
 }) {
   const router = useRouter();
   const {
@@ -72,6 +75,7 @@ export default function PracticeContextBar({
       data-campaign={campaignId != null ? String(campaignId) : "none"}
       data-granularity={granularity}
       data-inert={inertHint ? "true" : "false"}
+      data-omit-date-campaign={omitDateCampaign ? "true" : "false"}
     >
       <div className="flex flex-wrap items-center justify-center gap-3">
         <label className="relative inline-flex min-h-[var(--hit-min)] items-center">
@@ -116,6 +120,7 @@ export default function PracticeContextBar({
           </span>
         </label>
 
+        {omitDateCampaign ? null : (
         <div
           className="inline-flex flex-wrap items-center gap-0.5 rounded-full bg-[var(--color-fill)] p-0.5"
           role="group"
@@ -188,8 +193,9 @@ export default function PracticeContextBar({
             </span>
           </label>
         </div>
+        )}
 
-        {dateFilterActive ? (
+        {!omitDateCampaign && dateFilterActive ? (
           <div className="flex flex-wrap items-center justify-center gap-2">
             <button
               type="button"

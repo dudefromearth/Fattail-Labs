@@ -17,9 +17,17 @@ import TradeLogToolbar from "@/components/trade-log/TradeLogToolbar";
 import TradeSheet from "@/components/trade-log/TradeSheet";
 import ImportSheet from "@/components/trade-log/ImportSheet";
 import PositionsView from "@/components/capital/PositionsView";
-import EmptyPeriodNotice from "@/components/practice/EmptyPeriodNotice";
 import PracticeSuiteChrome from "@/components/practice/PracticeSuiteChrome";
 import type { Account, Catalog, Trade } from "@/lib/tradeLog";
+import {
+  applyAutofilter,
+  type DateWindow,
+  type FilterMap,
+} from "@/lib/autofilter";
+import {
+  campaignColumnFilter,
+  tradeLogColumns,
+} from "@/lib/tradeLogAutofilter";
 import {
   buildCloseDraftFromOpen,
   listUnmatchedOpens,
@@ -73,16 +81,8 @@ function TradeLogBody() {
     accountLabel,
     accounts: ctxAccounts,
     prefsReady,
-    dateFilterActive,
-    periodLabel,
-    setGranularity,
-    campaignId,
-    setCampaignId,
-    campaignLabel,
     campaigns: ctxCampaigns,
     refreshCampaigns,
-    rangeFromYmd,
-    rangeToYmd,
   } = usePracticeContext();
 
   const [state, setState] = useState<LoadState>("loading");
@@ -104,22 +104,12 @@ function TradeLogBody() {
     null,
   );
   const [deepLinked, setDeepLinked] = useState(false);
-  const [filterOpenOnly, setFilterOpenOnly] = useState(false);
+  /** O4 clean visit — Autofilter is session state, never lastUsed. */
+  const [autofilter, setAutofilter] = useState<FilterMap>({});
   /** Log blotter vs cross-account Positions valuation (Spec v0.2). */
   const [viewMode, setViewMode] = useState<"log" | "positions">("log");
-  /**
-   * Campaign filter is chrome Practice context only (A3) — no local auto-ledger.
-   * Table dropdown writes back via setCampaignId.
-   */
-  const campaignFilter: number | "" = campaignId != null ? campaignId : "";
-  /** Campaign is a view of the total book (L5). Do not AND the account. */
-  const listAccountId = campaignFilter === "" ? accountIdParam : null;
-  const setCampaignFilter = useCallback(
-    (v: number | "") => {
-      setCampaignId(v === "" ? null : v);
-    },
-    [setCampaignId],
-  );
+  /** Account chrome stays as load scope. Campaign is Autofilter, not fetch. */
+  const listAccountId = accountIdParam;
   const [playbookFilter, setPlaybookFilter] = useState<
     number | "" | "unaffiliated"
   >("");
@@ -163,12 +153,15 @@ function TradeLogBody() {
       .catch(() => {});
   }, [refreshCampaigns]);
 
-  // Apply ?campaign= from Practice Campaign → Trade Log deep-link into chrome scope
+  // A5 — ?campaign=N sets the Autofilter campaign column (not Practice chrome).
+  const campaignLinkApplied = useRef(0);
   useEffect(() => {
-    if (deepLinkCampaign > 0) {
-      setCampaignId(deepLinkCampaign);
+    if (deepLinkCampaign > 0 && campaignLinkApplied.current !== deepLinkCampaign) {
+      campaignLinkApplied.current = deepLinkCampaign;
+      setAutofilter((prev) => campaignColumnFilter(prev, deepLinkCampaign));
     }
-  }, [deepLinkCampaign, setCampaignId]);
+    if (!(deepLinkCampaign > 0)) campaignLinkApplied.current = 0;
+  }, [deepLinkCampaign]);
 
   // Journey Adhere deep-link only (F2) — no standing process filter on the blotter
   useEffect(() => {
@@ -212,11 +205,9 @@ function TradeLogBody() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
-  /** A4 — blotter date = chrome period, unless Journey locate overrides. */
-  const blotterFromDay =
-    filterFromDay || (dateFilterActive ? rangeFromYmd : null);
-  const blotterToDay =
-    filterToDay || (dateFilterActive ? rangeToYmd : null);
+  /** A6 — date on the fetch is Journey locate only. Practice chrome date does not filter. */
+  const blotterFromDay = filterFromDay || null;
+  const blotterToDay = filterToDay || null;
 
   const load = useCallback(() => {
     if (!prefsReady) {
@@ -229,8 +220,6 @@ function TradeLogBody() {
     Promise.all([
       fetchTrades(listAccountId, {
         limit: PAGE_LIMIT,
-        practice_campaign_id:
-          campaignFilter === "" ? null : campaignFilter,
         playbook_entry_id:
           typeof playbookFilter === "number" ? playbookFilter : null,
         playbook_mode:
@@ -280,13 +269,7 @@ function TradeLogBody() {
         setNextCursor(tr.data.next_cursor ?? null);
         if (opens.ok) {
           const rawOpens = opens.data.trades || [];
-          setOpenTrades(
-            campaignFilter === ""
-              ? rawOpens
-              : rawOpens.filter(
-                  (t) => t.practice_campaign_id === campaignFilter,
-                ),
-          );
+          setOpenTrades(rawOpens);
           if (opens.data.accounts?.length) {
             setAccounts(opens.data.accounts);
           }
@@ -316,7 +299,6 @@ function TradeLogBody() {
     listAccountId,
     prefsReady,
     setAccountId,
-    campaignFilter,
     playbookFilter,
     adherenceMode,
     blotterFromDay,
@@ -330,8 +312,6 @@ function TradeLogBody() {
       const tr = await fetchTrades(listAccountId, {
         limit: PAGE_LIMIT,
         cursor: nextCursor,
-        practice_campaign_id:
-          campaignFilter === "" ? null : campaignFilter,
         playbook_entry_id:
           typeof playbookFilter === "number" ? playbookFilter : null,
         playbook_mode:
@@ -360,7 +340,6 @@ function TradeLogBody() {
     hasMore,
     nextCursor,
     loadingMore,
-    campaignFilter,
     playbookFilter,
     adherenceMode,
     blotterFromDay,
@@ -430,22 +409,26 @@ function TradeLogBody() {
     return scoped.length ? scoped : campaignOptions;
   }, [accountId, campaignOptions]);
 
-  const campaignFilterLabel = useMemo(() => {
-    // Prefer chrome label (null = no campaign filter / undirected rest)
-    if (campaignId == null) return "All campaigns";
-    if (campaignLabel && campaignLabel !== "Campaign") return campaignLabel;
-    const c = campaignOptions.find((x) => x.id === campaignId);
-    if (!c) return "Campaign";
-    const tag = c.is_ledger || c.is_default ? " · default" : "";
-    return `${c.title}${tag}`;
-  }, [campaignId, campaignLabel, campaignOptions]);
+  const contextScopeLabel = accountLabel;
 
-  const contextScopeLabel = useMemo(() => {
-    if (campaignId != null) {
-      return `Campaign: ${campaignFilterLabel} · every account`;
+  const campaignLabels = useMemo(() => {
+    const m = new Map<string, string>();
+    m.set("none", "(none)");
+    for (const c of campaignOptions) {
+      m.set(String(c.id), c.title);
     }
-    return `${accountLabel} · ${campaignFilterLabel}`;
-  }, [accountLabel, campaignFilterLabel, campaignId]);
+    return m;
+  }, [campaignOptions]);
+
+  const campaignWindows = useMemo<DateWindow[]>(
+    () =>
+      ctxCampaigns.map((c) => ({
+        id: String(c.id),
+        start: c.starts_at ?? null,
+        end: c.ends_at ?? null,
+      })),
+    [ctxCampaigns],
+  );
 
   /** Prefer server opens for accuracy; fall back to client match on loaded pages. */
   const unmatched = useMemo(() => {
@@ -467,7 +450,19 @@ function TradeLogBody() {
     return [...byId.values()];
   }, [trades, openTrades, selected]);
 
-  const tableTrades = filterOpenOnly ? unmatched : trades;
+  const autofilterCols = useMemo(
+    () => tradeLogColumns(sheetTrades.length ? sheetTrades : trades),
+    [sheetTrades, trades],
+  );
+  const autofilterResult = useMemo(
+    () => applyAutofilter(trades, autofilterCols, autofilter),
+    [trades, autofilterCols, autofilter],
+  );
+  const tableTrades = autofilterResult.rows;
+
+  const setCampaignColumn = useCallback((campaignId: number) => {
+    setAutofilter((prev) => campaignColumnFilter(prev, campaignId));
+  }, []);
 
   async function trashIds(ids: number[]) {
     setBulkBusy(true);
@@ -650,23 +645,7 @@ function TradeLogBody() {
 
       {viewMode === "log" && state === "ok" &&
         accountId !== "all" &&
-        tableTrades.length === 0 &&
-        dateFilterActive &&
-        (mergedAccounts.find((a) => a.id === accountId)?.trade_count ?? 0) >
-          0 && (
-          <EmptyPeriodNotice
-            periodLabel={periodLabel}
-            accountLabel={accountLabel}
-            variant="trades"
-            onShowAllTime={() => setGranularity("all")}
-            testId="trade-log-empty-period"
-          />
-        )}
-
-      {viewMode === "log" && state === "ok" &&
-        accountId !== "all" &&
-        tableTrades.length === 0 &&
-        !dateFilterActive &&
+        trades.length === 0 &&
         mergedAccounts.some(
           (a) =>
             a.status === "active" &&
@@ -722,18 +701,20 @@ function TradeLogBody() {
         <TradeLogTable
           trades={tableTrades}
           allTradesForIssues={sheetTrades}
+          autofilterUniverse={trades}
+          autofilter={autofilter}
+          onAutofilter={setAutofilter}
+          campaignLabels={campaignLabels}
+          campaignWindows={campaignWindows}
+          onCampaignColumn={setCampaignColumn}
           openCount={unmatched.length}
           selectedId={selected?.id}
-          filterOpenOnly={filterOpenOnly}
-          onFilterOpenOnly={setFilterOpenOnly}
-          campaignFilter={campaignFilter}
-          onCampaignFilter={setCampaignFilter}
           onImportBadgeClick={(id) => setImportQuery(id ?? "open")}
           campaignOptions={campaignOptionsForAccount}
           playbookFilter={playbookFilter}
           onPlaybookFilter={setPlaybookFilter}
           playbookOptions={playbookOptions}
-          hasMore={!filterOpenOnly && hasMore}
+          hasMore={hasMore}
           loadingMore={loadingMore}
           onLoadMore={() => void loadMore()}
           selectedIds={selectedIds}
@@ -747,7 +728,6 @@ function TradeLogBody() {
           }}
           onSelectAllOpens={() => {
             setSelectedIds(new Set(unmatched.map((t) => t.id)));
-            setFilterOpenOnly(true);
           }}
           onNewTrade={() => {
             setSheetMode("create");
@@ -859,7 +839,11 @@ function TradeLogBody() {
 function TradeLogClient() {
   return (
     <main className="mx-auto w-full max-w-[1400px] px-4 py-6 pb-24 sm:px-6">
-      <PracticeSuiteChrome active="trade-log" hideTitle>
+      <PracticeSuiteChrome
+        active="trade-log"
+        hideTitle
+        omitDateCampaignFilters
+      >
         <TradeLogBody />
       </PracticeSuiteChrome>
     </main>
