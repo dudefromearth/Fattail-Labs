@@ -112,7 +112,7 @@ you leave Heatmap and come back on the same tab.
 ## Heatmap
 Options Lab → Heatmap (`/app/options-lab/heatmap`). Rows are body strikes;
 columns are fly widths 10 through 50. The **Template** switcher picks the
-view. **Advanced flies** uses the Value menu for the number on each tile;
+view. **Advanced flies** uses the Value menu for the number — the tile value, sometimes called the score — on each tile;
 colors follow how that number changes to the neighbor; the − / + slider
 under Side only changes color sensitivity. **Width Fit** is a sibling
 template (not a Value): color-only tiles (teal = weaker fit, amber =

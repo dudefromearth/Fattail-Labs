@@ -42,7 +42,7 @@ Option-click a tile to copy a thinkorswim butterfly script and send it to
 Analyzer.
 
 ## Advanced flies Value menu
-The Value dropdown chooses **what number** each tile shows. Every mode uses
+The Value dropdown chooses **what number** each tile shows (the tile value, sometimes called its score). Every mode uses
 the same grid. Colors are a neighbor rate-of-change of that number; the − / +
 slider under Side makes the color more calm (−) or more sensitive (+). Color
 is not a buy/sell signal.
