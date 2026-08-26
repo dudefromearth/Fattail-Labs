@@ -30,6 +30,8 @@ class TypeDefaultKind(str, Enum):
     APP_AS_BUILT = "app_as_built"
     # Campaign targets without policy: deny (fail closed) + admin warning.
     CAMPAIGN_FAIL_CLOSED = "campaign_fail_closed"
+    # IKI Knowledge app without policy: deny (fail closed) — Store Spec ST7.
+    PRODUCT_FAIL_CLOSED = "product_fail_closed"
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,6 +112,17 @@ TYPE_DEFAULTS: dict[TargetKind, TypeDefault] = {
         fail_closed=False,
         grandfather_enrollments_default=False,
         data_bearing_floor=True,
+    ),
+    TargetKind.PRODUCT: TypeDefault(
+        kind=TypeDefaultKind.PRODUCT_FAIL_CLOSED,
+        summary=(
+            "IKI Knowledge app. No policy → DENY (fail closed). An unsold app "
+            "is never open by omission. See IKI Store Spec ST7."
+        ),
+        require_signed_in=True,
+        fail_closed=True,
+        grandfather_enrollments_default=False,
+        data_bearing_floor=False,
     ),
     TargetKind.CAMPAIGN: TypeDefault(
         kind=TypeDefaultKind.CAMPAIGN_FAIL_CLOSED,

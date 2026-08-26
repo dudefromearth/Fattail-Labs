@@ -147,3 +147,52 @@ def test_type_defaults_cover_all_kinds():
 
 def test_validate_returns_canonical():
     assert validate_target_key("lesson:42") == "lesson:42"
+
+
+# --- IKI Store ST-0: product target kind (Store Spec §4.3, ST7) --------------
+
+
+def test_product_key_round_trips():
+    tk = parse_target_key("product:heatmap-gex")
+    assert tk.kind is TargetKind.PRODUCT
+    assert tk.name == "heatmap-gex"
+    assert tk.raw == "product:heatmap-gex"
+    assert tk.entity_id is None
+    assert build_target_key(TargetKind.PRODUCT, name="heatmap-gex") == (
+        "product:heatmap-gex"
+    )
+    assert validate_target_key("product:heatmap-gex") == "product:heatmap-gex"
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "product:",
+        "product:Heatmap",
+        "product:-leading",
+        "product:has space",
+        "product",
+    ],
+)
+def test_product_key_rejects_bad_slugs(bad):
+    with pytest.raises(TargetKeyError):
+        parse_target_key(bad)
+
+
+def test_product_build_requires_name():
+    with pytest.raises(TargetKeyError):
+        build_target_key(TargetKind.PRODUCT)
+
+
+def test_product_is_not_course_family_or_data_bearing():
+    assert not is_course_family("product:heatmap-gex")
+    # A Knowledge app is sold, not member-authored — no read/export floor.
+    assert not is_data_bearing_app_key("product:trade-log")
+
+
+def test_product_default_is_fail_closed():
+    d = default_for_kind(TargetKind.PRODUCT)
+    assert d.fail_closed is True
+    assert d.require_signed_in is True
+    assert d.data_bearing_floor is False
+    assert d.grandfather_enrollments_default is False

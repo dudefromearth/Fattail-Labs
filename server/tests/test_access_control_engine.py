@@ -294,3 +294,111 @@ def test_new_slug_vocabulary_via_expand_mock(monkeypatch):
     # With monkeypatch on COACHING used inside expand_plans in same module:
     out2 = c.expand_plans({"navigator"})
     assert "coaching-plus" in out2
+
+
+# --- IKI Store ST-0: Knowledge app gating (Store Spec ST4, ST6, ST7, §4) ----
+
+
+def test_product_with_no_policy_denies_even_for_navigator():
+    """ST7 — an unsold Knowledge app is never open by omission."""
+    d = evaluate(
+        "product:heatmap-gex",
+        V(identity_id=1, access_role="navigator", plan_slugs=("navigator",)),
+        policy=None,
+    )
+    assert not d.allow
+    assert d.code == "denied"
+
+
+def test_product_with_no_policy_denies_anonymous():
+    d = evaluate("product:heatmap-gex", V(identity_id=None, signed_in=False), policy=None)
+    assert not d.allow
+
+
+def _free_app_policy():
+    """§4.1 free shape — a session and nothing else. No role floor, no plan."""
+    return pol(
+        target="product:starter-ladder",
+        require_signed_in=True,
+        min_role=None,
+        selected_plans=None,
+    )
+
+
+def test_free_app_admits_a_signed_in_account_with_no_plan():
+    """§4.1 — free means free to anyone with a login. The login is the price."""
+    d = evaluate(
+        "product:starter-ladder",
+        V(identity_id=7, access_role="observer", plan_slugs=()),
+        policy=_free_app_policy(),
+    )
+    assert d.allow and d.code == "ok"
+
+
+def test_free_app_still_requires_a_session():
+    d = evaluate(
+        "product:starter-ladder",
+        V(identity_id=None, signed_in=False, access_role="observer"),
+        policy=_free_app_policy(),
+    )
+    assert not d.allow
+    assert d.code == "signin_required"
+
+
+def test_free_member_is_not_an_observer_subscriber():
+    """A free signup lands on the role NAMED 'observer' but holds no plan.
+
+    Guards the name collision in Store Spec §4.1: `min_role: observer` reads as a
+    tier requirement and enforces nothing, because the ladder floor is also the
+    no-plan fallback (identity.derive_role). A paying tier must be expressed as a
+    PLAN constraint, never as the role name.
+    """
+    free = V(identity_id=7, access_role="observer", plan_slugs=())
+    assert free.plan_slugs == ()
+
+    # The misleading shape: admits the free signup despite naming a "tier".
+    assert evaluate("product:x", free, policy=pol(target="product:x",
+                                                  min_role="observer")).allow
+
+    # The correct shape for "paying members only" excludes them.
+    paying_only = pol(
+        target="product:x",
+        min_role=None,
+        selected_plans=("observer-trial",),
+        exact_plans_only=False,
+    )
+    assert not evaluate("product:x", free, policy=paying_only).allow
+
+
+def test_paid_app_admits_only_the_buyer():
+    """ST6 — exact_plans_only, so the app plan is the only key that opens it."""
+    p = pol(
+        target="product:heatmap-gex",
+        min_role=None,
+        selected_plans=("iki-heatmap-gex",),
+        exact_plans_only=True,
+    )
+    buyer = V(identity_id=1, access_role="observer", plan_slugs=("iki-heatmap-gex",))
+    assert evaluate("product:heatmap-gex", buyer, policy=p).allow
+
+
+def test_paid_app_denies_navigator_who_has_not_bought_it():
+    """ST4/ST5 — tier never leaks into per-app entitlement, and vice versa."""
+    p = pol(
+        target="product:heatmap-gex",
+        min_role=None,
+        selected_plans=("iki-heatmap-gex",),
+        exact_plans_only=True,
+    )
+    d = evaluate(
+        "product:heatmap-gex",
+        V(identity_id=2, access_role="navigator", plan_slugs=("navigator",)),
+        policy=p,
+    )
+    assert not d.allow
+    assert d.code == "plan"
+
+
+def test_app_plan_does_not_expand_into_tier_plans():
+    """ST5 — an iki- slug is inert in cumulative expansion."""
+    assert expand_plans({"iki-heatmap-gex"}) == frozenset({"iki-heatmap-gex"})

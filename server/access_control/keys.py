@@ -6,6 +6,7 @@ Exact patterns (AC1-1):
 |----------|---------------------------------|----------------------------|
 | surface  | surface:{name}                  | surface:catalog            |
 | app      | app:{slug}                      | app:trade-log              |
+| product  | product:{slug}                  | product:heatmap-gex        |
 | course   | course:{id}                     | course:12                  |
 | module   | module:{id}                     | module:34                  |
 | lesson   | lesson:{id}                     | lesson:56                  |
@@ -36,6 +37,7 @@ _ID_RE = re.compile(r"^[1-9][0-9]{0,18}$")  # positive int as string
 class TargetKind(str, Enum):
     SURFACE = "surface"
     APP = "app"
+    PRODUCT = "product"
     COURSE = "course"
     MODULE = "module"
     LESSON = "lesson"
@@ -125,6 +127,10 @@ def parse_target_key(raw: str) -> TargetKey:
         name = _require_slug("app slug", rest)
         return TargetKey(kind=kind, raw=key, name=name)
 
+    if kind is TargetKind.PRODUCT:
+        name = _require_slug("product slug", rest)
+        return TargetKey(kind=kind, raw=key, name=name)
+
     if kind in (
         TargetKind.COURSE,
         TargetKind.MODULE,
@@ -172,6 +178,11 @@ def build_target_key(
         if not name:
             raise TargetKeyError("app requires name= (slug)")
         return validate_target_key(f"app:{name}")
+
+    if k is TargetKind.PRODUCT:
+        if not name:
+            raise TargetKeyError("product requires name= (slug)")
+        return validate_target_key(f"product:{name}")
 
     if k in (
         TargetKind.COURSE,
