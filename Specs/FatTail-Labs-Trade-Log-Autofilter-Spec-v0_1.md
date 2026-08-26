@@ -1,10 +1,12 @@
 # FatTail Labs — Trade Log Autofilter Spec v0.1
 
+**SUPERSEDED** by [`FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1_1.md`](./FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1_1.md). Kept as history. Do not execute from this file.
+
 **Provisional filename and version. Coach names the real ones.**
 
 | | |
 |---|---|
-| Status | DRAFT — advisor spec |
+| Status | **SUPERSEDED** — see v0.1.1 (BUILD AUTHORITY) |
 | Date | 2026-08-25 |
 | Relationship | Narrow slice of `FatTail-Labs-Autofilter-Spec-v0_2.md`. That document stands as the eventual multi-surface design; this one ships first on one surface |
 

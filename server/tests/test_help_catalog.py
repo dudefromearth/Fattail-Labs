@@ -37,6 +37,26 @@ def test_list_matches_disk_unauthenticated():
             assert one.json()["body"] == a["body"]
 
 
+def test_trade_log_autofilter_published():
+    """TLAF3 — file present = published (DL-572)."""
+    path = REF / "trade-log-autofilter.md"
+    assert path.is_file()
+    with LabsTestClient(app) as client:
+        client.headers.update({"Origin": "http://testserver"})
+        listed = client.get("/api/help/guides")
+        assert listed.status_code == 200, listed.text
+        ids = {a["id"] for a in listed.json()["articles"]}
+        assert "trade-log-autofilter" in ids
+        one = client.get("/api/help/guides/trade-log-autofilter")
+        assert one.status_code == 200, one.text
+        body = one.json()
+        assert body["status"] == "published"
+        assert body["id"] == "trade-log-autofilter"
+        assert "Autofilter" in body["title"]
+        assert body["body"] == path.read_text(encoding="utf-8")
+        assert "Find and Badge" in body["body"]
+
+
 def test_unknown_id_404():
     with LabsTestClient(app) as client:
         client.headers.update({"Origin": "http://testserver"})

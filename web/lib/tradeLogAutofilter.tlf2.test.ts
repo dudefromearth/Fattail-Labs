@@ -97,6 +97,13 @@ assert.match(apply, /export function applyAutofilter/);
 assert.doesNotMatch(apply, /practice_campaign_id/);
 assert.doesNotMatch(apply, /Trade history/);
 assert.match(host, /tradeLogColumns/);
+assert.match(host, /key: "strategy"/);
+assert.match(bar, /key === "strategy"/);
+assert.doesNotMatch(host, /key: "expiry"/);
+assert.doesNotMatch(host, /key: "account"/);
+assert.doesNotMatch(host, /key: "adherence"/);
+assert.doesNotMatch(host, /key: "entry_source"/);
+assert.doesNotMatch(host, /key: "right"/);
 
 // O4 — no persist into lastUsed
 assert.doesNotMatch(apply, /lastUsed/);

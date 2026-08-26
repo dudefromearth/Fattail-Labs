@@ -81,10 +81,10 @@ strike/qty/right legs. **Side and pos_effect ignored** so open and close reverse
 An open fill (majority `TO_OPEN`) with no paired close within the hold window
 (`MAX_STRUCTURE_HOLD_DAYS` = 30). Drives:
 
-- Open:N filter  
+- Status=Open via title-bar Autofilter (Open:N chip **removed**, TLAF2 / **DL-586**)  
 - Row Close / Trash  
 - Sheet Actions block  
-- Bulk select  
+- Bulk select (`Select opens`)  
 
 ### 4.3 Close pairing gates (UI)
 
@@ -130,7 +130,10 @@ API: `POST`/`PATCH` with `exec_at` (`YYYY-MM-DDTHH:mm` or with seconds). Server 
 - ToS-style open/close block colors retained.  
 - **Status** column: Open / Complete / Orphan close.  
 - **Actions** column: Close · Trash on unmatched opens only.  
-- **Open:N** filter chip; **Select opens** for bulk.  
+- **Autofilter** on the Trade history row (Exec time, Campaign, Strategy, Symbol, Status).  
+  Blotter campaign `<select>` and **Open:N** chip **removed** (TLAF2). **Select opens**
+  remains selection for bulk trash, not a filter. Practice date/campaign chrome is
+  omitted on this page only. See §5.4.  
 - Issue chips: missing net/legs/time, orphan close.  
 
 ### 5.2 Sheet (`TradeSheet`)
@@ -153,6 +156,32 @@ disclosure so members never hunt economic fields inside advanced chrome.
 
 Logout does **not** clear last-used (browser preference). Family B product data remains
 server-side only.
+
+### 5.4 Autofilter (TLAF2 as-built · Spec v0.1.1 · Strategy TLAS1)
+
+Standing blotter filter is **one title-bar Autofilter** (`data-testid="trade-log-autofilter"`).
+Shared engine `web/lib/autofilter`; host columns `web/lib/tradeLogAutofilter.ts`.
+Find and Badge uses the same menus; it is not the blotter filter.
+
+| Law | As-built |
+|-----|----------|
+| One stream | `applyAutofilter` on loaded trades. Practice `campaignId` / date range do **not** fetch-filter the blotter. Account chrome remains load scope. Playbook `<select>` stays (server list param). |
+| Columns | Exec time · Campaign · **Strategy** · Symbol · Status (**O1** after Campaign · **DL-588**) |
+| Strategy tokens | stored `trade.strategy` codes; catalog **label** when present; never invent a label (**O2**) |
+| TLAF O1 | `omitDateCampaignFilters` on Trade Log `PracticeSuiteChrome` only |
+| TLAF O2 | Open:N / `filterOpenOnly` gone. Status=Open is the column |
+| TLAF O3 | Select-time grey-out (`selectionGate`) |
+| TLAF O4 | Clean visit — not `ft.tradeLog.lastUsed.v1` |
+| Badge / `?campaign=` | `campaignColumnFilter` — campaign column, not a private filter |
+| Adhere | Locate fetch + banner; composes with Autofilter |
+
+Help: `server/help_reference/trade-log-autofilter.md`. Spec:
+`Specs/FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1_1.md`. Parent Autofilter v0.2
+**parked**.
+
+**Flag:** Trade Log Spec v1.1 still names Open:N and a blotter campaign toolbar
+filter. That product copy is superseded here for the shipped blotter. Do not
+execute those sentences as current UI.
 
 ---
 

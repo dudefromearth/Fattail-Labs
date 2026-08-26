@@ -142,6 +142,7 @@ export default function TradeLogTable({
   autofilter,
   onAutofilter,
   campaignLabels,
+  strategyLabels,
   campaignWindows,
   onCampaignColumn,
   openCount,
@@ -170,6 +171,7 @@ export default function TradeLogTable({
   autofilter?: FilterMap;
   onAutofilter?: (next: FilterMap) => void;
   campaignLabels?: Map<string, string>;
+  strategyLabels?: Map<string, string>;
   campaignWindows?: DateWindow[];
   /** A5 — badge tap sets campaign column. */
   onCampaignColumn?: (campaignId: number) => void;
@@ -255,6 +257,7 @@ export default function TradeLogTable({
               filters={autofilter}
               onFilters={onAutofilter}
               campaignLabels={campaignLabels ?? new Map()}
+              strategyLabels={strategyLabels}
               campaignWindows={campaignWindows ?? []}
               panelHostRef={autofilterPanelHost}
             />

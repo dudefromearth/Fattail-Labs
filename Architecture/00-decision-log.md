@@ -4,6 +4,112 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-25 — DL-589 Trade Log Autofilter Strategy help (TLAS2)
+
+**Decision (Coach GO TLAS2):** Member how-to and as-built note Strategy as a
+**fifth** Autofilter column after Campaign. Filter tokens = stored codes;
+catalog labels when present; never invent labels.
+
+- Help: `server/help_reference/trade-log-autofilter.md` + App areas **Trade Log**
+- As-built: `Architecture/15-trade-log-manual-management.md` §5.4
+
+File present = published (**DL-572**). No product-code change in this packet.
+
+**Does not:** journal/records Autofilter; other deferred columns; MiniTwo; TLAS3 spec fold.
+
+**Gate:** `agents/p-autofilter/gate-reports/TLAS2-G.md`
+
+---
+
+## 2026-08-25 — DL-588 Trade Log Autofilter Strategy column O1 + O2 + GO TLAS1
+
+**Decision (Coach 2026-08-25):**
+
+| OPEN | Stamp |
+|------|--------|
+| **O1** | after Campaign — Exec time · Campaign · **Strategy** · Symbol · Status |
+| **O2** | filter tokens = stored strategy codes; display catalog labels when available; code alone if no label |
+
+**GO TLAS1** — host `ColumnDef` only. Shared engine unchanged. Find and Badge not
+rewritten. Help (TLAS2) not this GO.
+
+**Does not:** journal/records · Account/Expiry/Right/Entry source/Adherence · MiniTwo
+
+---
+
+## 2026-08-25 — DL-587 Trade Log Autofilter Strategy column GO SPEC
+
+**Decision (Coach 2026-08-25):** Trade Log Autofilter Strategy Column Spec
+v0.1 is **GO SPEC** (BUILD AUTHORITY for this addendum). Header DRAFT
+status **flips** with this stamp.
+
+This names **one** deferred column on the shipped Trade Log Autofilter.
+It does **not** unpark Autofilter Spec v0.2 (journal, records, Account /
+Expiry / Right / Entry source / Adherence).
+
+| OPEN | Stamp |
+|------|--------|
+| **O1** | column order — **still OPEN** |
+| **O2** | stored codes vs catalog labels — **still OPEN** |
+
+**GO TLAS1** requires this GO SPEC **and** O1 + O2. Not fired from GO SPEC
+alone. TLAS0 reviews were not required by this stamp.
+
+**Plan:** `docs/Trade-Log-Autofilter-Strategy-Column-Full-Agent-Bench-Plan-v1_0.md`  
+**Addendum:** `Specs/FatTail-Labs-Trade-Log-Autofilter-Strategy-Column-Spec-v0_1.md`
+
+**Does not:** product code · GO TLAS1 · journal/records · MiniTwo
+
+---
+
+## 2026-08-25 — DL-586 Trade Log Autofilter program close (TLAF4)
+
+**Decision (Coach GO TLAF4):** Trade Log Autofilter Spec **v0.1.1** is the
+**as-built law** for this slice (**BUILD AUTHORITY**). O1–O4 are recorded in
+the spec body so §11 is not a standing OPEN list:
+
+| OPEN | Answer |
+|------|--------|
+| **O1** | omit date+campaign on Trade Log only |
+| **O2** | remove Open:N |
+| **O3** | select-time conflicts |
+| **O4** | clean visit |
+
+**Active Autofilter program** = this Trade Log slice. Parent Autofilter Spec
+v0.2 and plan
+[`docs/Autofilter-Full-Agent-Bench-Plan-v1.1.md`](../docs/Autofilter-Full-Agent-Bench-Plan-v1.1.md)
+(journal, records, six extra columns) are **parked** — not the next GO.
+
+As-built note: `Architecture/15-trade-log-manual-management.md` §5.4.
+v0.1 kept on disk as **SUPERSEDED**.
+
+**Does not:** unpark journal/records; MiniTwo; rewrite Trade Log Spec v1.1
+(flagged in the as-built note).
+
+**Gate:** `agents/p-autofilter/gate-reports/TLAF4-G.md`
+
+---
+
+## 2026-08-25 — DL-585 Trade Log Autofilter help (TLAF3)
+
+**Decision (Coach GO TLAF3):** Member how-to for Trade Log Autofilter is
+published as `server/help_reference/trade-log-autofilter.md`. File present =
+published (**DL-572**). Concierge search + `GET /api/help/guides` pick it
+up; no write path.
+
+App-areas **Trade Log** and **Find and Badge** point at this topic. Covers
+the title-bar control, four columns, Filter on / shown/total, badge and
+`?campaign=` as the campaign column, what was removed (blotter campaign
+select, Open:N, Practice date/campaign on Trade Log only), conflicts vs
+nothing matched, Journey locate, and that Autofilter is not Find and Badge.
+
+**Does not:** journal Autofilter; records; profit claims; MiniTwo; TLAF4
+spec v0.1.1.
+
+**Gate:** `agents/p-autofilter/gate-reports/TLAF3-G.md`
+
+---
+
 ## 2026-08-25 — DL-584 Trade Log Autofilter GO SPEC + O3 + O4 + GO TLAF1
 
 **Decision (Coach 2026-08-25):** Trade Log Autofilter Spec v0.1 is **GO SPEC**

@@ -33,6 +33,27 @@ export function tradeStatus(t: Trade, all: Trade[]): string {
   return NONE_TOKEN;
 }
 
+/** O2 token = stored code. Empty → (none). */
+export function tradeStrategy(t: Trade): string | null {
+  const s = (t.strategy || "").trim();
+  return s ? s : null;
+}
+
+/** O2 — catalog label when present; ValueFilter falls back to the code. */
+export function strategyLabelsFromCatalog(
+  strategies: { code?: string | null; label?: string | null }[],
+): Map<string, string> {
+  const m = new Map<string, string>();
+  m.set(NONE_TOKEN, "(none)");
+  for (const s of strategies) {
+    const code = (s.code || "").trim();
+    if (!code) continue;
+    const label = (s.label || "").trim();
+    if (label) m.set(code, label);
+  }
+  return m;
+}
+
 export function tradeLogColumns(all: Trade[]): ColumnDef<Trade>[] {
   return [
     {
@@ -47,6 +68,12 @@ export function tradeLogColumns(all: Trade[]): ColumnDef<Trade>[] {
       type: "value",
       read: (t) =>
         t.practice_campaign_id == null ? null : String(t.practice_campaign_id),
+    },
+    {
+      key: "strategy",
+      label: "Strategy",
+      type: "value",
+      read: (t) => tradeStrategy(t),
     },
     {
       key: "symbol",

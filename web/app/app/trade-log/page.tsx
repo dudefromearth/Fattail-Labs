@@ -26,6 +26,7 @@ import {
 } from "@/lib/autofilter";
 import {
   campaignColumnFilter,
+  strategyLabelsFromCatalog,
   tradeLogColumns,
 } from "@/lib/tradeLogAutofilter";
 import {
@@ -420,6 +421,11 @@ function TradeLogBody() {
     return m;
   }, [campaignOptions]);
 
+  const strategyLabels = useMemo(
+    () => strategyLabelsFromCatalog(catalog?.strategies || []),
+    [catalog],
+  );
+
   const campaignWindows = useMemo<DateWindow[]>(
     () =>
       ctxCampaigns.map((c) => ({
@@ -705,6 +711,7 @@ function TradeLogBody() {
           autofilter={autofilter}
           onAutofilter={setAutofilter}
           campaignLabels={campaignLabels}
+          strategyLabels={strategyLabels}
           campaignWindows={campaignWindows}
           onCampaignColumn={setCampaignColumn}
           openCount={unmatched.length}

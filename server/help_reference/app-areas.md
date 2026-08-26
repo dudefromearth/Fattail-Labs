@@ -44,9 +44,11 @@ website, not here.
 ## Trade Log
 A practice tool for recording your trades and reviewing them over time. It's the book
 of record for your practice — what you did, and how it turned out. Each account is one
-book. The blotter can filter to a campaign badge (every account) so you can review what
-already wears that badge. Search-and-assign is not on the Trade Log — that is Find and
-Badge, on the Campaigns page.
+book. Filter the **loaded** blotter with **Autofilter** on the Trade history row
+(Exec time, Campaign, Strategy, Symbol, Status). Tap a campaign badge on a row to filter to
+that campaign — same Autofilter, not a second control. Search-and-assign is not on
+the Trade Log — that is Find and Badge, on the Campaigns page. See **Trade Log
+Autofilter**.
 
 ## Campaigns
 Optional practice charters. A campaign is a **badge**, not a book. The book is the
@@ -70,6 +72,10 @@ window is rejected and stays unbadged. Five undos.
 set is a date range plus a **position** count (single, vertical, butterfly, and so on
 — not raw fills; a close-out of the same structure is not a second position). The table
 pages 50 at a time.
+
+The same Autofilter **menus** are used on the Trade Log title bar to filter trades
+already loaded. That is a different job — not search, not badge assign. See
+**Trade Log Autofilter**.
 
 ## Journal
 Guided journaling to reflect on your trading and your mindset, session by session. Where
@@ -241,7 +247,15 @@ The member community — where members discuss, share, and learn together. Avail
 depend on your tier.
 
 ## Wiki
-A reference knowledge base inside Labs for looking up concepts and terminology.
+The compiled map of what we teach — search-first, cross-linked pages
+(`/app/wiki`). Open it from **Apps → IKI Lab → Wiki**. Type a phrase in your
+own words, follow links on an article, or open **Graph** to see how pages
+connect. **Start here** is a short pinned reading list. Published pages can
+be read without signing in; drafts are not public. The Wiki is a map of
+concepts, not a trading signal and not the emerald Help button. See the
+**Wiki** help topic for search, keyboard jump (⌘K / Ctrl+K), and what the
+empty side rails mean. The **Wiki agent** (zinc pill, left of Help) is
+**administrators only** — members never see it; see the Wiki agent topic.
 
 ## Membership
 Where you see your current tier and manage it. To see pricing, or to upgrade, change, or

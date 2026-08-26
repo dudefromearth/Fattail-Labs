@@ -32,10 +32,19 @@ test.describe("Trade Log Autofilter (TLAF2)", () => {
     await expect(panel).toBeVisible();
     await expect(panel.getByText(/exec time/i)).toBeVisible();
     await expect(panel.getByText(/^campaign$/i)).toBeVisible();
+    await expect(panel.getByText(/^strategy$/i)).toBeVisible();
     await expect(panel.getByText(/^symbol$/i)).toBeVisible();
     await expect(panel.getByText(/^status$/i)).toBeVisible();
+    const order = await panel.locator("span.font-semibold").allTextContents();
+    expect(order.map((s) => s.trim().toLowerCase())).toEqual([
+      "exec time",
+      "campaign",
+      "strategy",
+      "symbol",
+      "status",
+    ]);
     await page.screenshot({
-      path: "../agents/p-autofilter/evidence/tlf2-title-bar.png",
+      path: "../agents/p-autofilter/evidence/tlas1-strategy-column.png",
       fullPage: false,
     });
   });

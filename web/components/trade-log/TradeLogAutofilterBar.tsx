@@ -28,6 +28,7 @@ export default function TradeLogAutofilterBar({
   filters,
   onFilters,
   campaignLabels,
+  strategyLabels,
   campaignWindows,
   panelHostRef,
 }: {
@@ -36,6 +37,7 @@ export default function TradeLogAutofilterBar({
   filters: FilterMap;
   onFilters: (next: FilterMap) => void;
   campaignLabels: Map<string, string>;
+  strategyLabels?: Map<string, string>;
   campaignWindows: DateWindow[];
   /** Title-row controls stay inline; panel renders under the whole bar. */
   panelHostRef?: RefObject<HTMLDivElement | null>;
@@ -87,6 +89,7 @@ export default function TradeLogAutofilterBar({
 
   const labelsFor = (key: string) => {
     if (key === "campaign") return campaignLabels;
+    if (key === "strategy") return strategyLabels;
     return undefined;
   };
 

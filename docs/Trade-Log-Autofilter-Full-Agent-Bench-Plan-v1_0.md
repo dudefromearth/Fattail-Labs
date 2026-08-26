@@ -5,8 +5,8 @@
 **Authority:** Coach (GO / ship)  
 **Board:** [`agents/p-autofilter/`](../agents/p-autofilter/)  
 **Canonical filename:** `docs/Trade-Log-Autofilter-Full-Agent-Bench-Plan-v1_0.md`  
-**Spec (this packet):** [`Specs/FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1.md`](../Specs/FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1.md)  
-**Spec status:** **DRAFT** — advisor. Bench gates not run. **Not BUILD AUTHORITY.** **GO SPEC is the moment this field flips** (see §13).  
+**Spec (this packet):** [`Specs/FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1_1.md`](../Specs/FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1_1.md) (v0.1 SUPERSEDED)  
+**Spec status:** **BUILD AUTHORITY** — Spec **v0.1.1** · **DL-584** · **DL-586**. TLAF0–TLAF4 closed. Parent Autofilter v0.2 **parked**.  
 **Parent (parked):** Autofilter Spec v0.2 + [`docs/Autofilter-Full-Agent-Bench-Plan-v1.1.md`](./Autofilter-Full-Agent-Bench-Plan-v1.1.md) — journal, records, six extra columns. **Not this GO.** This slice is the **active** Autofilter program.  
 **Governance:** `agents/bench/doctrine.md` · spec-create-review-workflow · DL-539
 
@@ -334,4 +334,4 @@ and evidence (commands + outputs).
 
 ---
 
-**Signed:** Juliet · Trade Log Autofilter Spec v0.1 · plan `docs/Trade-Log-Autofilter-Full-Agent-Bench-Plan-v1_0.md` · awaiting GO TLAF0 / GO SPEC.
+**Signed:** Juliet · Trade Log Autofilter Spec **v0.1.1** · plan `docs/Trade-Log-Autofilter-Full-Agent-Bench-Plan-v1_0.md` · **TLAF4 closed** (DL-586).

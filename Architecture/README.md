@@ -143,8 +143,12 @@ reconcile (DL-237–**240**); channels General + Practice + Strategy Lab + Tough
 FatTail/member bot shares. Execution: `agents/p-community/` — **C1a PASS** (shell + shelves; bridge off until C1b).
 
 **Trade Log manual management (2026-08-05):**  
-`Architecture/15-trade-log-manual-management.md` — structure-first entry, close gates, trash, blotter open strip.  
-Spec authority: `Specs/FatTail-Labs-Trade-Log-Spec-v1.1.md` **§16**.
+`Architecture/15-trade-log-manual-management.md` — structure-first entry, close gates, trash, blotter Autofilter (§5.4).  
+Spec authority: `Specs/FatTail-Labs-Trade-Log-Spec-v1.1.md` **§16**.  
+**Autofilter (active program, 2026-08-25):** Spec **v0.1.1 BUILD AUTHORITY**
+`Specs/FatTail-Labs-Trade-Log-Autofilter-Spec-v0_1_1.md` · **DL-584** · **DL-586**.
+Parent Autofilter Spec v0.2 / plan v1.1 **parked** (journal, records). Help
+`server/help_reference/trade-log-autofilter.md` (**DL-585**). Board `agents/p-autofilter/`.
 
 **Practice / retrospectives (2026-07-29) — p-retrospective R1b–R7 PASS:**
 

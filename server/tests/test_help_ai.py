@@ -189,6 +189,57 @@ def test_search_find_and_badge_and_autofilter():
     assert "assign" in auto or "badge" in auto
 
 
+def test_search_trade_log_autofilter():
+    """TLAF3 — Trade Log Autofilter topic is in the library and searchable."""
+    help_ai._sections.cache_clear()
+    heads = {s["heading"] for s in help_ai._sections()}
+    for h in (
+        "Trade Log Autofilter",
+        "How to open it",
+        "The columns",
+        "Filter on",
+        "Campaign badge and deep link",
+        "What Autofilter replaced",
+        "Conflicts and nothing matched",
+        "Journey locate",
+        "What Autofilter is not",
+    ):
+        assert h in heads, h
+    found = help_ai._search(["trade log autofilter"]).lower()
+    assert "autofilter" in found
+    assert "trade history" in found or "title" in found
+    cols = help_ai._search(["autofilter exec time campaign strategy symbol status"]).lower()
+    assert "exec time" in cols and "campaign" in cols
+    assert "strategy" in cols
+    assert "symbol" in cols and "status" in cols
+    strat = help_ai._search(["strategy autofilter trade log"]).lower()
+    assert "strategy" in strat
+    assert "butterfly" in strat or "stored" in strat or "code" in strat
+    on = help_ai._search(["filter on shown total blotter"]).lower()
+    assert "filter on" in on
+    badge = help_ai._search(["campaign badge autofilter trade log"]).lower()
+    assert "badge" in badge and "campaign" in badge
+    blob = " ".join(
+        s["body"]
+        for s in help_ai._sections()
+        if s["doc"] == "trade-log-autofilter"
+    ).lower()
+    for word in (
+        "winning",
+        "show me the edge",
+        "journal autofilter",
+        "records autofilter",
+    ):
+        assert word not in blob, word
+    areas = " ".join(
+        s["body"]
+        for s in help_ai._sections()
+        if s["doc"] == "app-areas" and s["heading"] in ("Trade Log", "Find and Badge")
+    ).lower()
+    assert "trade log autofilter" in areas
+    assert "autofilter" in areas
+
+
 # --- output parsing ----------------------------------------------------------
 
 

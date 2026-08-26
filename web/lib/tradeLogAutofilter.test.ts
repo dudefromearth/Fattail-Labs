@@ -7,10 +7,12 @@ import { applyAutofilter, filtersActive, type FilterMap } from "./autofilter";
 import type { Trade } from "./tradeLog";
 import {
   campaignColumnFilter,
+  strategyLabelsFromCatalog,
   TL_STATUS,
   tradeExecDay,
   tradeLogColumns,
   tradeStatus,
+  tradeStrategy,
   tradeSymbols,
 } from "./tradeLogAutofilter";
 
@@ -45,6 +47,7 @@ function trade(partial: Partial<Trade> & Pick<Trade, "id">): Trade {
 
 const a = trade({
   id: 1,
+  strategy: "BUTTERFLY",
   practice_campaign_id: 7,
   exec_at: "2026-01-10T15:30:00Z",
   legs: [
@@ -66,6 +69,7 @@ const a = trade({
 });
 const b = trade({
   id: 2,
+  strategy: "VERTICAL",
   practice_campaign_id: 8,
   exec_at: "2026-02-01T15:30:00Z",
   legs: [
@@ -94,6 +98,21 @@ const c = trade({
 });
 const book = [a, b, c];
 const cols = tradeLogColumns(book);
+
+assert.deepEqual(
+  cols.map((c) => c.key),
+  ["when", "campaign", "strategy", "symbol", "status"],
+);
+assert.equal(tradeStrategy(a), "BUTTERFLY");
+assert.equal(tradeStrategy(trade({ id: 99, strategy: "  " })), null);
+{
+  const labels = strategyLabelsFromCatalog([
+    { code: "BUTTERFLY", label: "Butterfly" },
+    { code: "CUSTOM_X", label: "" },
+  ]);
+  assert.equal(labels.get("BUTTERFLY"), "Butterfly");
+  assert.equal(labels.has("CUSTOM_X"), false);
+}
 
 assert.equal(tradeExecDay(a), "2026-01-10");
 assert.deepEqual(tradeSymbols(a).sort(), ["QQQ", "SPX"]);
@@ -140,6 +159,24 @@ assert.equal(tradeStatus(c, book), TL_STATUS.orphan);
 {
   const r = applyAutofilter(book, cols, { status: [TL_STATUS.open] });
   assert.ok(r.rows.every((t) => tradeStatus(t, book) === TL_STATUS.open));
+}
+
+// S2 — Strategy token is stored code; whole block
+{
+  const r = applyAutofilter(book, cols, { strategy: ["BUTTERFLY"] });
+  assert.equal(r.shown, 1);
+  assert.equal(r.rows[0]?.id, 1);
+  assert.equal(r.rows[0]?.strategy, "BUTTERFLY");
+}
+
+// S3 — AND across Strategy + Symbol
+{
+  const r = applyAutofilter(book, cols, {
+    strategy: ["BUTTERFLY", "VERTICAL"],
+    symbol: ["IWM"],
+  });
+  assert.equal(r.shown, 1);
+  assert.equal(r.rows[0]?.id, 2);
 }
 
 console.log("tradeLogAutofilter.test.ts ok");
