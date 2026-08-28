@@ -186,7 +186,8 @@ function IkiRunnerWorkspace() {
 }
 
 /**
- * IKI-P3 — Heatmap workspace chrome. Member session. Render sink unchanged.
+ * IKI-P3 — Heatmap workspace chrome. Administrator-only URL (server gate
+ * in proxy.ts + layout.tsx). Render sink unchanged.
  */
 export default function IkiRunnerPage() {
   return (

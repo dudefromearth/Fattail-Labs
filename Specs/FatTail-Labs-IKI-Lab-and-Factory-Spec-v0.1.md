@@ -1,6 +1,6 @@
 # FatTail Labs — IKI Lab and IKI Factory Spec v0.1
 
-**Status:** DRAFT — Coach 2026-08-21. **v0.1.2** **IKI Lab** is the suite; **inside** it: **Wiki** and **IKI Factory**. **v0.1.1** foundational document = PDS Spec v0.1 Part I (`iki`). Apps-grid card **IKI Lab**. Suite nav like Practice / Options Lab. **OD-IKI-1 CLOSED** 2026-08-23 by IKI Factory Spec v0.1.5 **BUILD AUTHORITY** (**DL-556**). This suite spec remains chrome/naming law; Factory *job* lives in the Factory spec. Member Factory pill stays soon (**OD-F7**).  
+**Status:** DRAFT — Coach 2026-08-21. **v0.1.3** `/app/iki/runner` is an **administrator-only URL** plus a **server redirect** for anyone else (Ernie lock 2026-08-28 · **DL-593**). **v0.1.2** **IKI Lab** is the suite; **inside** it: **Wiki** and **IKI Factory**. **v0.1.1** foundational document = PDS Spec v0.1 Part I (`iki`). Apps-grid card **IKI Lab**. Suite nav like Practice / Options Lab. **OD-IKI-1 CLOSED** 2026-08-23 by IKI Factory Spec v0.1.5 **BUILD AUTHORITY** (**DL-556**). This suite spec remains chrome/naming law; Factory *job* lives in the Factory spec. Member Factory pill stays soon (**OD-F7**).  
 **Type:** Product Spec — member **app suite** (naming + chrome + Factory placeholder).  
 **Short name:** **IKI**  
 **Expansion:** **I**nformation · **K**nowledge · **I**ntelligence  
@@ -153,6 +153,22 @@ Charlie implements a **new** `IkiSuiteNav` / `IkiSuiteChrome`. Do not import Pra
 
 **OD-IKI-2:** move to `/app/iki/…` vs keep `/app/wiki` as Lab and only add Factory. **Must not** break existing wiki deep links: if paths move, **redirect** `/app/wiki` and `/app/wiki/[slug]`.
 
+### 5.1 Runner URL (administrator-only) — Ernie lock 2026-08-28
+
+As-built suite also mounts **Runner** at `/app/iki/runner` (IKI-P2 · **DL-538**). That path is an **administrator-only URL**. Hiding the nav pill is **not** the gate.
+
+| Law | |
+|-----|--|
+| Unauthenticated GET | Server **redirect** off `/app/iki/runner`. |
+| Signed-in non-admin GET | Same redirect. Practice / member session is not enough. |
+| Redirect target | Existing public IKI door **`/app/iki/about`**. Do not invent a page. Do not 404. Do not empty the page and stay on `/app/iki/runner` (Factory’s `iki-factory-forbidden` stub is **not** this pattern). |
+| First response | Redirect. Body is **not** the Runner workspace (`data-testid="iki-runner-host"` absent). |
+| Administrator | Still gets the Runner. |
+| Enforcement | Server-side (`web/proxy.ts` matcher + server `layout.tsx`). A client `useEffect` redirect still serves **200 + workspace HTML** — that is the leak. |
+| Role SoR | `GET /api/auth/me` `role === "administrator"` (same as `fetchMe()` / `useIsAdmin`). |
+| Nav | Factory/Runner pills stay hidden unless administrator. Nav hide is not the gate. |
+| Factory | Out of scope unless sharing this real server gate. |
+
 ---
 
 ## 6. IKI Lab (rename)
@@ -275,6 +291,7 @@ Until **OD-IKI-1**:
 | **AT-IKI-7** | Guide / home quick-nav “Wiki” → **IKI Lab** in the same ship. |
 | **AT-IKI-8** | lab-wiki SoR and `/api/wiki` still serve Lab content. No second corpus. |
 | **AT-IKI-9** | `/app/wiki/iki` (or Lab equivalent) serves the PDS Part I executive summary, published. When IKI chrome ships, it is first on Start here. |
+| **AT-IKI-10** | Unauthenticated GET `/app/iki/runner` is a redirect to `/app/iki/about`; body is not the Runner workspace. Signed-in non-admin (e.g. `/api/auth/dev-login-practice`) is the same redirect. Administrator still loads `iki-runner-host`. Server-enforced. |
 
 ---
 
@@ -310,6 +327,7 @@ Do **not** start this packet until Coach marks BUILD AUTHORITY.
 
 | Ver | Date | Notes |
 |-----|------|--------|
+| **v0.1.3** | 2026-08-28 | Ernie lock (via Bob): `/app/iki/runner` is admin-only URL + server redirect to `/app/iki/about`. Nav hide is not the gate. Do not stub. **DL-593**. **AT-IKI-10**. |
 | **v0.1.2** | 2026-08-21 | Coach: **Inside IKI Lab is the Wiki and the IKI Factory.** Suite card IKI Lab; pills Wiki · IKI Factory. **DL-531**. |
 | **v0.1.1** | 2026-08-21 | Coach: store PDS Spec v0.1 **Part I** in IKI Lab as the foundational executive summary of what IKI becomes. lab-wiki `wiki/concepts/iki.md`. **DL-528**. |
 | **v0.1** | 2026-08-21 | Coach: Wiki Apps card → **IKI Lab**; IKI = Information-Knowledge-Intelligence; new **IKI Factory**; suite nav like Practice / Options Lab. Factory job open. **DL-527**. |

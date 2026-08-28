@@ -4,6 +4,46 @@ Append-only. Each entry: date, decision, rationale. Reversals get a new entry, n
 
 ---
 
+## 2026-08-28 — DL-593 IKI Runner URL is admin-only + server redirect
+
+**Decision (Ernie lock via Bob, 2026-08-28 board):** IKI Runner at
+`/app/iki/runner` is an **admin-only URL plus a redirect for a non-admin**.
+Nav already hidden is not enough. Do not stub. Do not ticket Ernie or Conor.
+
+Live gemba (logged-out): GET `https://labs.fattail.ai/app/iki/runner` →
+HTTP 200, no Location, HTML includes the Runner workspace
+(`data-testid="iki-runner-host"`). The miss was nav-only hide in
+`IkiSuiteNav` while `web/app/app/iki/runner/page.tsx` always rendered the
+workspace. `web/lib/ikiSuite.ts` already named Factory and Runner
+administrator-only (server-enforced); live was not.
+
+**Craft (not a stub):**
+
+- Logged-out or signed-in non-admin GET `/app/iki/runner` **must redirect
+  off that URL**. They must not receive the Runner workspace HTML
+  (`iki-runner-host` absent from that response).
+- Administrator still gets the Runner.
+- Redirect target: existing public IKI door `/app/iki/about`. Do not invent
+  a new page. Do not 404. Do not empty the page and stay on
+  `/app/iki/runner` (Factory’s `iki-factory-forbidden` is a stub — do not
+  copy it).
+- Enforcement is **server-side** (Next.js 16 `web/proxy.ts` + server
+  `layout.tsx`). Role SoR = `GET /api/auth/me` `role === "administrator"`
+  (same as `fetchMe()`). A client `useEffect` redirect still serves 200
+  with the Runner UI — that is the leak.
+- Nav hide stays. It is not the gate.
+- Factory stays out of scope unless required to share this gate.
+
+**Does not:** MiniTwo; fattail.ai; Strategy Lab; merge; Factory rewrite.
+
+**Spec:** `Specs/FatTail-Labs-IKI-Lab-and-Factory-Spec-v0.1.md` **v0.1.3**
+§5.1 · **AT-IKI-10**.
+
+**Tests:** `web/lib/ikiAdminGate.test.ts` ·
+`web/e2e/iki-runner-admin-gate.spec.ts`.
+
+---
+
 ## 2026-08-25 — DL-592 Trade Log Autofilter book universe Help (TLAB2)
 
 **Decision (Coach GO TLAB2):** Member how-to and as-built name Trade Log Autofilter’s
