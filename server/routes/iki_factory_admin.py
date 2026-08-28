@@ -93,6 +93,41 @@ async def post_staged_artifact(card_id: int, kind: str, request: Request) -> dic
     return {"artifact": artifact}
 
 
+@router.post("/cards/{card_id}/staged/{kind}/approve")
+def post_approve_staged_artifact(card_id: int, kind: str, request: Request) -> dict:
+    """Tick the approval box on one Staged artifact. Administrators only —
+    an agent produces, a human approves (Factory Spec v1.1 section 8.3)."""
+    actor = _factory_actor(request)
+    try:
+        artifact = iki_factory.approve_staged_artifact(card_id, actor, kind=kind)
+    except iki_factory.FactoryError as exc:
+        raise _http(exc) from exc
+    return {
+        "artifact": artifact,
+        "all_approved": iki_factory.staged_all_approved(card_id),
+    }
+
+
+@router.post("/cards/{card_id}/staged/{kind}/reject")
+async def post_reject_staged_artifact(
+    card_id: int, kind: str, request: Request
+) -> dict:
+    """Untick with a reason. The reason is the rework brief Gemba works
+    against, so it is required."""
+    actor = _factory_actor(request)
+    body = await request.json()
+    try:
+        artifact = iki_factory.reject_staged_artifact(
+            card_id, actor, kind=kind, reason=body.get("reason") or ""
+        )
+    except iki_factory.FactoryError as exc:
+        raise _http(exc) from exc
+    return {
+        "artifact": artifact,
+        "all_approved": iki_factory.staged_all_approved(card_id),
+    }
+
+
 @router.post("/cards")
 async def post_card(request: Request) -> dict:
     actor = require_human_admin_actor(request)

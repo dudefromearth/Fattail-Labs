@@ -273,7 +273,16 @@ def test_paid_not_obtainable_free_is(client):
     _to_staged(client, free["id"])
     _to_staged(client, paid["id"])
     _product(client, free["id"], free_vs_paid="free")
-    _product(client, paid["id"], free_vs_paid="paid")
+    # Migration 147: a paid product needs a price before Live (v1.1 §8.6 —
+    # "paid does not invent a price" now has a field to read).
+    _product(
+        client,
+        paid["id"],
+        free_vs_paid="paid",
+        price_cents=2900,
+        price_currency="USD",
+        price_period="month",
+    )
     _deploy(client, free["id"])
     _deploy(client, paid["id"])
     listed = client.get("/api/iki-factory/live", cookies=_admin()).json()["templates"]

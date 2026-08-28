@@ -304,6 +304,11 @@ enters at that same moment (v1.1 §8.2). One act, one place, no second surface t
 | `price_currency` VARCHAR(3) NULL | ISO 4217. NULL for free apps |
 | `price_period` VARCHAR(16) NULL | `month` \| `year` \| `once` |
 
+**BUILT — migration 147** (`147_iki_factory_approval_price.sql`). Columns are on
+`iki_factory_cards`, patchable through the existing card editor, validated
+(positive integer minor units, 3-letter ISO currency, period in
+`month|year|once`), and a free product is refused a price outright.
+
 **Consequences, stated so they are not discovered at build time:**
 
 1. A **Factory migration** adds the columns — a Factory-program change, therefore
@@ -457,6 +462,64 @@ ST-0 and ST-1 deliver the free half with **no WooCommerce work at all**.
 
 **Closed:** free-app access (§4.1, 2026-08-26 — anyone with a login) · price location
 (§7, 2026-08-26 — the Factory card) · refunds (§5.3, 2026-08-26 — immediate revocation).
+
+---
+
+## 14b. Staged artifact approval — built, not enforced
+
+**Built (migration 147).** Each Staged artifact now carries
+`approved_at` / `approved_by_kind` / `approved_by_id` / `approved_by_label`, and a
+fourth status, `approved`. Rejection reuses the existing `blocked_reason`.
+
+| Endpoint | Effect |
+|---|---|
+| `POST /api/admin/iki-factory/cards/{id}/staged/{kind}/approve` | Tick the box. **Administrators only** — an agent may produce, never approve (v1.1 §8.3) |
+| `POST …/staged/{kind}/reject` | Untick with a **required** reason — the reason is the rework brief Gemba works against, and a bare rejection is refused |
+
+Both responses carry `all_approved`, so the board can render the four tickboxes and
+know when the set is complete. `iki_factory.staged_all_approved(card_id)` is the
+programmatic form.
+
+**Before 147, "the AI finished" and "a human approved" were the same state** —
+`produce_staged_artifact()` set `status='ready'` and that was terminal.
+
+### 14b.1 NOT enforced at Live — needs a Coach ruling
+
+The mechanism deliberately does **not** gate the Live transition.
+
+IF-8 ruled artifact status *"tracked and visible, **not enforced as a switch
+condition**"*, defended by
+`test_staged_to_live_gated_on_staged_ready_and_product_not_artifacts`, whose body
+states: *"No artifact has been produced — Live still succeeds. This is the judgment
+call named above, **not an oversight**."* DL-583 reaffirmed rather than reversed it.
+
+Enforcing approval therefore **reverses a documented ruling**, which v1.1's own
+discipline says needs a decision-log entry, "not a quiet edit". Both call sites carry
+a comment naming what to flip, and
+`test_approval_is_not_yet_a_live_gate` pins today's behaviour so the change can never
+be silent.
+
+**Open — Coach.** Should every Staged artifact require approval before Live?
+
+---
+
+## 14c. The store seam is now two steps
+
+Per Coach (2026-08-26): create the Woo product as a **draft at Staged**, publish it
+at **Live**. `server/iki_factory_woo.py` now exposes:
+
+| Function | Called from | Does |
+|---|---|---|
+| `woo_stage(card)` | `_mark_staged` | Create/update the Woo product as a **draft** |
+| `woo_publish(card)` | `execute_deploy` | Flip that draft to published. Never creates |
+
+`woo_step` remains an alias of `woo_publish`, so nothing that already called it
+changed behaviour. Both remain **stubbed** — no write-scoped WC key exists (§10.4).
+`woo_stage` returns success for a **free** card (nothing to sell), so a free product
+is never held in Staged waiting on a store step that does not apply to it.
+
+Landing in Staged never fails on the store: the outcome is recorded to `woo_reason`
+and nothing is raised.
 
 ---
 

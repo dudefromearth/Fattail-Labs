@@ -23,7 +23,9 @@ STAGED_ARTIFACT_KINDS = (
     "store_placement",
     "help_page",
 )
-STAGED_ARTIFACT_STATUSES = ("pending", "ready", "blocked")
+STAGED_ARTIFACT_STATUSES = ("pending", "ready", "approved", "blocked")
+# "ready" now means the AI finished; "approved" means a human ticked it.
+# Before migration 147 these were the same state (Store Spec, gate fix).
 # The wiki page is not produced here (v1.1 §7.3, DL-583). It is Oscar's,
 # composed after publication from the published help guide — the general
 # derivation rule (v1.1 §7.8), not a Factory-specific gap. Superseded a
@@ -36,6 +38,7 @@ WAITING_PRODUCT = "waiting for product spec"
 WAITING_STAGED = "waiting for Staged-ready"
 HOLD_REASON = "Hold is set. Nothing pulls while held."
 FREE_VS_PAID = ("free", "paid")
+PRICE_PERIODS = ("month", "year", "once")
 DEPLOY_REASON = (
     "Built-ready + product spec — pulled to Live. "
     "Published is the result of the Admin product-spec gate (invariant #7). "
@@ -44,6 +47,14 @@ DEPLOY_REASON = (
 ADMIN_ONLY_RS = "Research → Spec is Admin selection only."
 GEMBA_BUILD_PULL = "Build → Staged is Gemba's pull, as build agent."
 ONE_STEP = "Happy-path moves are one lane. Skip-forward is not allowed."
+WAITING_APPROVAL = (
+    "Waiting on Staged artifact approval — every artifact must be approved "
+    "by an administrator before Live."
+)
+WAITING_PRICE = (
+    "A paid product needs a price before Live (Factory Spec v1.1 section 8.6 — "
+    "paid does not invent a price)."
+)
 GEMBA_REWORK = "Gemba does not choose Rework destination."
 
 log = logging.getLogger("labs.iki_factory")
@@ -103,6 +114,9 @@ def _row(r: dict[str, Any]) -> dict[str, Any]:
         "product_type": r.get("product_type"),
         "product_tier": r.get("product_tier"),
         "free_vs_paid": r.get("free_vs_paid"),
+        "price_cents": (int(r["price_cents"]) if r.get("price_cents") is not None else None),
+        "price_currency": r.get("price_currency"),
+        "price_period": r.get("price_period"),
         "live_at": str(r["live_at"]) if r.get("live_at") else None,
         "publication_hash": r.get("publication_hash"),
         "woo_product_id": (
@@ -189,13 +203,28 @@ def _set_blocked(cur, card_id: int, reason: str) -> dict[str, Any]:
     return _row(_get_conn(cur, card_id))
 
 
+def _has_price(card: dict[str, Any]) -> bool:
+    """A price is three things or nothing. Minor units, never a float."""
+    return bool(
+        card.get("price_cents") is not None
+        and int(card.get("price_cents") or 0) > 0
+        and str(card.get("price_currency") or "").strip()
+        and str(card.get("price_period") or "").strip()
+    )
+
+
 def _product_complete(card: dict[str, Any]) -> bool:
     paid = str(card.get("free_vs_paid") or "").strip().lower()
-    return bool(
+    if not (
         str(card.get("product_type") or "").strip()
         and str(card.get("product_tier") or "").strip()
         and paid in FREE_VS_PAID
-    )
+    ):
+        return False
+    # Paid needs a price (v1.1 section 8.6). Free must not carry one.
+    if paid == "paid":
+        return _has_price(card)
+    return True
 
 
 def _publication_hash(card: dict[str, Any]) -> str:
@@ -207,6 +236,9 @@ def _publication_hash(card: dict[str, Any]) -> str:
             "product_type": card.get("product_type") or "",
             "product_tier": card.get("product_tier") or "",
             "free_vs_paid": card.get("free_vs_paid") or "",
+            "price_cents": card.get("price_cents"),
+            "price_currency": card.get("price_currency") or "",
+            "price_period": card.get("price_period") or "",
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -390,6 +422,16 @@ def _mark_staged(cur, card_id: int) -> None:
             """,
             (card_id, kind),
         )
+    # Store seam, Staged half: create the Woo product as a DRAFT (Coach flow).
+    # Stubbed today. Landing in Staged must never fail on the store, so the
+    # outcome is recorded and nothing is raised.
+    import iki_factory_woo as woo
+
+    step = woo.woo_stage(_row(_get_conn(cur, card_id)))
+    cur.execute(
+        "UPDATE iki_factory_cards SET woo_reason = %s WHERE id = %s",
+        (str(step.get("reason") or woo.WOO_STAGE_STUB_REASON), card_id),
+    )
 
 
 def _staged_artifact_row(r: dict[str, Any]) -> dict[str, Any]:
@@ -398,6 +440,9 @@ def _staged_artifact_row(r: dict[str, Any]) -> dict[str, Any]:
         "card_id": int(r["card_id"]),
         "kind": r["kind"],
         "status": r["status"],
+        "approved": (r.get("status") == "approved"),
+        "approved_at": (str(r["approved_at"]) if r.get("approved_at") else None),
+        "approved_by_label": r.get("approved_by_label"),
         "body": r.get("body"),
         "blocked_reason": r.get("blocked_reason"),
         "produced_by_label": r.get("produced_by_label"),
@@ -461,6 +506,118 @@ def produce_staged_artifact(
             return _staged_artifact_row(dict(cur.fetchone()))
 
 
+def _staged_all_approved(cur, card_id: int) -> bool:
+    """Every Staged artifact approved by a human. This is the real Live gate.
+
+    staged_ready only ever meant "the card landed in Staged" — _mark_staged
+    sets it to 1 on arrival — so it never gated anything.
+    """
+    ph = ",".join(["%s"] * len(STAGED_ARTIFACT_KINDS))
+    cur.execute(
+        f"""SELECT COUNT(*) AS n FROM iki_factory_staged_artifacts
+             WHERE card_id = %s AND kind IN ({ph}) AND status = 'approved'""",
+        (card_id, *STAGED_ARTIFACT_KINDS),
+    )
+    row = cur.fetchone()
+    return int(row["n"] if row else 0) == len(STAGED_ARTIFACT_KINDS)
+
+
+def staged_all_approved(card_id: int) -> bool:
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            return _staged_all_approved(cur, card_id)
+
+
+def approve_staged_artifact(card_id: int, actor: Actor, *, kind: str) -> dict[str, Any]:
+    """Tick the box. Humans only — an agent may produce, never approve
+    (v1.1 section 8.3: Gemba prepares everything and stops)."""
+    if not _is_admin_human(actor):
+        raise FactoryError("Only an administrator may approve a Staged artifact.")
+    kind = (kind or "").strip().lower()
+    if kind not in STAGED_ARTIFACT_KINDS:
+        raise FactoryError("kind must be one of: " + ", ".join(STAGED_ARTIFACT_KINDS))
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            card = _get_conn(cur, card_id)
+            if card["lane"] != "staged":
+                raise FactoryError("Artifacts are approved in Staged only.")
+            cur.execute(
+                "SELECT status FROM iki_factory_staged_artifacts"
+                " WHERE card_id = %s AND kind = %s",
+                (card_id, kind),
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise FactoryError(f"No {kind} artifact on this card.")
+            if row["status"] == "pending":
+                raise FactoryError(
+                    f"Nothing to approve — {kind} has not been produced yet."
+                )
+            cur.execute(
+                """
+                UPDATE iki_factory_staged_artifacts
+                   SET status = 'approved',
+                       approved_at = CURRENT_TIMESTAMP,
+                       approved_by_kind = %s,
+                       approved_by_id = %s,
+                       approved_by_label = %s,
+                       blocked_reason = NULL
+                 WHERE card_id = %s AND kind = %s
+                """,
+                (actor.kind, int(actor.id), actor.label, card_id, kind),
+            )
+            cur.execute(
+                "SELECT * FROM iki_factory_staged_artifacts"
+                " WHERE card_id = %s AND kind = %s",
+                (card_id, kind),
+            )
+            return _staged_artifact_row(dict(cur.fetchone()))
+
+
+def reject_staged_artifact(
+    card_id: int, actor: Actor, *, kind: str, reason: str
+) -> dict[str, Any]:
+    """Untick, with a reason. The reason is the brief the AI reworks against,
+    so it is required — a bare rejection tells Gemba nothing."""
+    if not _is_admin_human(actor):
+        raise FactoryError("Only an administrator may reject a Staged artifact.")
+    kind = (kind or "").strip().lower()
+    if kind not in STAGED_ARTIFACT_KINDS:
+        raise FactoryError("kind must be one of: " + ", ".join(STAGED_ARTIFACT_KINDS))
+    reason = (reason or "").strip()
+    if not reason:
+        raise FactoryError("A rejection reason is required — it is the rework brief.")
+    with db.transaction() as conn:
+        with conn.cursor() as cur:
+            card = _get_conn(cur, card_id)
+            if card["lane"] != "staged":
+                raise FactoryError("Artifacts are rejected in Staged only.")
+            cur.execute(
+                """
+                UPDATE iki_factory_staged_artifacts
+                   SET status = 'blocked',
+                       blocked_reason = %s,
+                       approved_at = NULL,
+                       approved_by_kind = NULL,
+                       approved_by_id = NULL,
+                       approved_by_label = NULL
+                 WHERE card_id = %s AND kind = %s
+                """,
+                (reason, card_id, kind),
+            )
+            cur.execute(
+                "SELECT * FROM iki_factory_staged_artifacts"
+                " WHERE card_id = %s AND kind = %s",
+                (card_id, kind),
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise FactoryError(f"No {kind} artifact on this card.")
+            out = _staged_artifact_row(dict(row))
+    _notify_factory(get_card(card_id), "rework", f"{kind} rejected — rework: {reason}")
+    return out
+
+
 def execute_deploy(
     card_id: int,
     actor: Actor,
@@ -485,7 +642,14 @@ def execute_deploy(
         raise FactoryError("Deploy only from Staged.")
     if card.get("hold"):
         return card
-    if not card.get("staged_ready") or not _product_complete(card):
+    if not card.get("staged_ready"):
+        return _set_waiting(card_id, WAITING_STAGED)
+    # Artifact approval intentionally not gated here — see the note in
+    # _transition_block_reason. Flip both sites together, with a DL entry.
+    if not _product_complete(card):
+        paid = str(card.get("free_vs_paid") or "").strip().lower()
+        if paid == "paid" and not _has_price(card):
+            return _set_waiting(card_id, WAITING_PRICE)
         return _set_waiting(card_id, WAITING_PRODUCT)
     pub_hash = _publication_hash(card)
     reason_s = (reason or "").strip() or DEPLOY_REASON
@@ -522,7 +686,8 @@ def execute_deploy(
     published = get_card(card_id)
     import iki_factory_woo as woo
 
-    step = woo.woo_step(published)
+    # Store seam, Live half: publish the draft made at Staged. Never creates.
+    step = woo.woo_publish(published)
     woo_reason = str(step.get("reason") or woo.WOO_STUB_REASON)
     with db.transaction() as conn:
         with conn.cursor() as cur:
@@ -598,7 +763,15 @@ def validate_move(
     if current == "staged" and to_lane == "live":
         if not card.get("staged_ready"):
             return WAITING_STAGED
+        # NOTE: artifact approval is deliberately NOT enforced here. IF-8 ruled
+        # artifact status "tracked and visible, not enforced as a switch
+        # condition" (test_staged_to_live_gated_on_staged_ready_and_product_
+        # not_artifacts). Enforcing it needs a Coach ruling + decision-log
+        # entry. The mechanism is built and ready: staged_all_approved().
         if not _product_complete(card):
+            paid = str(card.get("free_vs_paid") or "").strip().lower()
+            if paid == "paid" and not _has_price(card):
+                return WAITING_PRICE
             return WAITING_PRODUCT
         return None
 
@@ -797,6 +970,9 @@ def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, An
         "product_type",
         "product_tier",
         "free_vs_paid",
+        "price_cents",
+        "price_currency",
+        "price_period",
     }
     unknown = set(body) - allowed
     if unknown:
@@ -813,6 +989,9 @@ def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, An
             product_type = raw.get("product_type")
             product_tier = raw.get("product_tier")
             free_vs_paid = raw.get("free_vs_paid")
+            price_cents = raw.get("price_cents")
+            price_currency = raw.get("price_currency")
+            price_period = raw.get("price_period")
             if "title" in body:
                 title = str(body["title"] or "").strip()
                 if not title:
@@ -846,6 +1025,39 @@ def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, An
                     free_vs_paid = str(body["free_vs_paid"]).strip().lower()
                     if free_vs_paid not in FREE_VS_PAID:
                         raise FactoryError("free_vs_paid must be free or paid")
+            if "price_cents" in body:
+                if body["price_cents"] is None or str(body["price_cents"]).strip() == "":
+                    price_cents = None
+                else:
+                    try:
+                        price_cents = int(body["price_cents"])
+                    except (TypeError, ValueError) as exc:
+                        raise FactoryError(
+                            "price_cents must be a whole number of minor units"
+                        ) from exc
+                    if price_cents <= 0:
+                        raise FactoryError("price_cents must be greater than zero")
+            if "price_currency" in body:
+                if body["price_currency"] is None or str(body["price_currency"]).strip() == "":
+                    price_currency = None
+                else:
+                    price_currency = str(body["price_currency"]).strip().upper()
+                    if len(price_currency) != 3 or not price_currency.isalpha():
+                        raise FactoryError("price_currency must be a 3-letter ISO code")
+            if "price_period" in body:
+                if body["price_period"] is None or str(body["price_period"]).strip() == "":
+                    price_period = None
+                else:
+                    price_period = str(body["price_period"]).strip().lower()
+                    if price_period not in PRICE_PERIODS:
+                        raise FactoryError(
+                            "price_period must be one of: " + ", ".join(PRICE_PERIODS)
+                        )
+            # A free product must not carry a price — Store Spec ST9.
+            if str(free_vs_paid or "").lower() == "free" and any(
+                v is not None for v in (price_cents, price_currency, price_period)
+            ):
+                raise FactoryError("A free product must not carry a price.")
             cur.execute(
                 """
                 UPDATE iki_factory_cards
@@ -857,7 +1069,10 @@ def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, An
                        plan_ref = %s,
                        product_type = %s,
                        product_tier = %s,
-                       free_vs_paid = %s
+                       free_vs_paid = %s,
+                       price_cents = %s,
+                       price_currency = %s,
+                       price_period = %s
                  WHERE id = %s
                 """,
                 (
@@ -870,6 +1085,9 @@ def patch_card(card_id: int, actor: Actor, body: dict[str, Any]) -> dict[str, An
                     product_type,
                     product_tier,
                     free_vs_paid,
+                    price_cents,
+                    price_currency,
+                    price_period,
                     card_id,
                 ),
             )
