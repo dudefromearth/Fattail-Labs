@@ -2,7 +2,7 @@
 
 /**
  * IKI suite nav — Factory · Runner · About · Catalog
- * Factory/Runner: administrator only. Runner: not a link until the host page ships.
+ * Factory/Runner: administrator only. Nav hide is not the URL gate.
  */
 
 import Link from "next/link";
