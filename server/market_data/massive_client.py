@@ -508,6 +508,59 @@ class MassiveClient:
         except (TypeError, ValueError, KeyError):
             return None
 
+    def fetch_index_snapshot(self, ticker: str) -> dict[str, Any]:
+        """GET /v3/snapshot/indices?ticker=I:VIX (case-sensitive I: prefix)."""
+        ticker = (ticker or "").strip()
+        if not ticker:
+            raise MassiveClientError("index ticker required")
+        if ticker.upper().startswith("I:"):
+            ticker = "I:" + ticker[2:].upper()
+        else:
+            ticker = "I:" + ticker.upper()
+        q = urllib.parse.urlencode({"ticker": ticker})
+        return self._get_json(f"{self.base_url}/v3/snapshot/indices?{q}")
+
+    def fetch_index_mark(self, ticker: str) -> dict[str, Any]:
+        """Native index value as a mark. Raises on HTTP error, empty, or NOT_ENTITLED."""
+        snap = self.fetch_index_snapshot(ticker)
+        results = snap.get("results")
+        if not isinstance(results, list) or not results:
+            raise MassiveClientError(f"no index snapshot for {ticker}")
+        row = results[0] if isinstance(results[0], dict) else {}
+        err = row.get("error")
+        if err:
+            raise MassiveClientError(
+                f"index {row.get('ticker') or ticker}: {err} {row.get('message') or ''}".strip()
+            )
+        value = row.get("value")
+        if value is None:
+            raise MassiveClientError(f"no index value for {ticker}")
+        session = row.get("session") if isinstance(row.get("session"), dict) else {}
+        prev = session.get("previous_close")
+        if prev is None:
+            prev = session.get("close")
+        try:
+            mid = float(value)
+        except (TypeError, ValueError) as exc:
+            raise MassiveClientError(f"non-numeric index value for {ticker}") from exc
+        prev_close = None
+        if prev is not None:
+            try:
+                prev_close = float(prev)
+            except (TypeError, ValueError):
+                prev_close = None
+        return {
+            "symbol": str(row.get("ticker") or ticker),
+            "mid": mid,
+            "bid": None,
+            "ask": None,
+            "last_trade": mid,
+            "prev_close": prev_close,
+            "asof_ns": row.get("last_updated"),
+            "timeframe": row.get("timeframe"),
+            "raw": snap,
+        }
+
     def fetch_underlier_mark(self, symbol: str) -> dict[str, Any]:
         """Best-effort mid/last for a shared-stream symbol.
 

@@ -97,10 +97,17 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 source = "massive"
                 try:
-                    # Indices may use I: prefix on feed
                     mark_sym = feed if feed else product
-                    if mark_sym.startswith("I:"):
-                        # try without I: for stock snapshot path first fails loud
+                    if product in ("VIX", "VIX1D"):
+                        index_ticker = (
+                            mark_sym
+                            if mark_sym.upper().startswith("I:")
+                            else f"I:{product}"
+                        )
+                        mark = client.fetch_index_mark(index_ticker)
+                        source = "massive_index_v1"
+                    elif mark_sym.startswith("I:"):
+                        # SPX/XSP still use the stocks snapshot path; not this packet
                         mark = client.fetch_underlier_mark(mark_sym.replace("I:", "", 1))
                     else:
                         mark = client.fetch_underlier_mark(mark_sym)
